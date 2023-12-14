@@ -30,8 +30,8 @@
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
@@ -270,8 +270,8 @@ void BKE_id_attribute_calc_unique_name(ID *id, const char *name, char *outname)
   const int name_maxncpy = CustomData_name_maxncpy_calc(name);
 
   /* Set default name if none specified.
-   * NOTE: We only call IFACE_() if needed to avoid locale lookup overhead. */
-  BLI_strncpy_utf8(outname, (name && name[0]) ? name : IFACE_("Attribute"), name_maxncpy);
+   * NOTE: We only call DATA_() if needed to avoid locale lookup overhead. */
+  BLI_strncpy_utf8(outname, (name && name[0]) ? name : DATA_("Attribute"), name_maxncpy);
 
   const char *defname = ""; /* Dummy argument, never used as `name` is never zero length. */
   BLI_uniquename_cb(unique_name_cb, &data, defname, '.', outname, name_maxncpy);
@@ -807,20 +807,6 @@ CustomDataLayer *BKE_id_attribute_from_index(ID *id,
   return nullptr;
 }
 
-/**
- * Get list of domain types but with ATTR_DOMAIN_FACE and
- * ATTR_DOMAIN_CORNER swapped.
- */
-static void get_domains_types(eAttrDomain domains[ATTR_DOMAIN_NUM])
-{
-  for (const int i : IndexRange(ATTR_DOMAIN_NUM)) {
-    domains[i] = static_cast<eAttrDomain>(i);
-  }
-
-  /* Swap corner and face. */
-  std::swap(domains[ATTR_DOMAIN_FACE], domains[ATTR_DOMAIN_CORNER]);
-}
-
 int BKE_id_attribute_to_index(const ID *id,
                               const CustomDataLayer *layer,
                               eAttrDomainMask domain_mask,
@@ -831,21 +817,19 @@ int BKE_id_attribute_to_index(const ID *id,
   }
 
   DomainInfo info[ATTR_DOMAIN_NUM];
-  eAttrDomain domains[ATTR_DOMAIN_NUM];
-  get_domains_types(domains);
   get_domains(id, info);
 
   int index = 0;
-  for (int i = 0; i < ATTR_DOMAIN_NUM; i++) {
-    if (!(domain_mask & (1 << domains[i])) || !info[domains[i]].customdata) {
+  for (const int domain : IndexRange(ATTR_DOMAIN_NUM)) {
+    const CustomData *customdata = info[domain].customdata;
+
+    if (!customdata || !((1 << int(domain)) & domain_mask)) {
       continue;
     }
 
-    const CustomData *cdata = info[domains[i]].customdata;
-    for (int j = 0; j < cdata->totlayer; j++) {
-      const CustomDataLayer *layer_iter = cdata->layers + j;
-
-      if (!(CD_TYPE_AS_MASK(layer_iter->type) & layer_mask) ||
+    for (int i = 0; i < customdata->totlayer; i++) {
+      const CustomDataLayer *layer_iter = customdata->layers + i;
+      if (!(layer_mask & CD_TYPE_AS_MASK(layer_iter->type)) ||
           (layer_iter->flag & CD_FLAG_TEMPORARY)) {
         continue;
       }

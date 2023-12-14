@@ -22,7 +22,7 @@ struct GeometrySet;
 struct IDProperty;
 struct Object;
 namespace blender::nodes {
-struct GeoNodesLFUserData;
+struct GeoNodesCallData;
 namespace geo_eval_log {
 class GeoModifierLog;
 }  // namespace geo_eval_log
@@ -32,7 +32,8 @@ namespace blender::nodes {
 
 void find_node_tree_dependencies(const bNodeTree &tree,
                                  Set<ID *> &r_ids,
-                                 bool &r_needs_own_transform_relation);
+                                 bool &r_needs_own_transform_relation,
+                                 bool &r_needs_scene_camera_relation);
 
 StringRef input_use_attribute_suffix();
 StringRef input_attribute_name_suffix();
@@ -58,12 +59,11 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
     const bNodeTreeInterfaceSocket &socket);
 void id_property_update_ui_from_socket(IDProperty *idprop, const bNodeTreeInterfaceSocket &socket);
 
-bke::GeometrySet execute_geometry_nodes_on_geometry(
-    const bNodeTree &btree,
-    const IDProperty *properties,
-    const ComputeContext &base_compute_context,
-    bke::GeometrySet input_geometry,
-    FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data);
+bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
+                                                    const IDProperty *properties,
+                                                    const ComputeContext &base_compute_context,
+                                                    GeoNodesCallData &call_data,
+                                                    bke::GeometrySet input_geometry);
 
 /**
  * \param allow_slow_updates: Perform updates that might be expensive and should not be executed

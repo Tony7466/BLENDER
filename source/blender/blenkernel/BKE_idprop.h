@@ -73,20 +73,25 @@ void IDP_FreeArray(struct IDProperty *prop);
 /* ---------- String Type ------------ */
 /**
  * \param st: The string to assign.
+ * Doesn't need to be null terminated when clamped by `maxncpy`.
  * \param name: The property name.
  * \param maxncpy: The maximum size of the string (including the `\0` terminator).
+ * When zero, this is the equivalent of passing in `strlen(st) + 1`
  * \return The new string property.
  */
 struct IDProperty *IDP_NewStringMaxSize(const char *st,
-                                        const char *name,
-                                        int maxncpy) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(2);
+                                        size_t st_maxncpy,
+                                        const char *name) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(3);
 struct IDProperty *IDP_NewString(const char *st, const char *name) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(2);
 /**
  * \param st: The string to assign.
+ * Doesn't need to be null terminated when clamped by `maxncpy`.
  * \param maxncpy: The maximum size of the string (including the `\0` terminator).
+ * When zero, this is the equivalent of passing in `strlen(st) + 1`
  */
-void IDP_AssignStringMaxSize(struct IDProperty *prop, const char *st, int maxncpy) ATTR_NONNULL();
+void IDP_AssignStringMaxSize(struct IDProperty *prop, const char *st, size_t st_maxncpy)
+    ATTR_NONNULL();
 void IDP_AssignString(struct IDProperty *prop, const char *st) ATTR_NONNULL();
 void IDP_FreeString(struct IDProperty *prop) ATTR_NONNULL();
 
@@ -256,7 +261,6 @@ void IDP_Reset(struct IDProperty *prop, const struct IDProperty *reference);
 
 #define IDP_Int(prop) ((prop)->data.val)
 #define IDP_Bool(prop) ((prop)->data.val)
-#define IDP_Enum(prop) ((prop)->data.val)
 #define IDP_Array(prop) ((prop)->data.pointer)
 /* C11 const correctness for casts */
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
@@ -338,8 +342,6 @@ typedef enum eIDPropertyUIDataType {
   IDP_UI_DATA_TYPE_ID = 3,
   /** IDP_BOOLEAN or IDP_ARRAY with subtype IDP_BOOLEAN. */
   IDP_UI_DATA_TYPE_BOOLEAN = 4,
-  /** IDP_ENUM. */
-  IDP_UI_DATA_TYPE_ENUM = 5,
 } eIDPropertyUIDataType;
 
 bool IDP_ui_data_supported(const struct IDProperty *prop);

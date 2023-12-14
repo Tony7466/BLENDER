@@ -59,12 +59,12 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
 #include "UI_interface.hh"
@@ -78,7 +78,7 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Generic BMesh Utilities
@@ -539,7 +539,7 @@ static void end_node_frames(int v,
   const float *rad = nodes[v].radius;
   float mat[3][3];
 
-  if (emap[v].size() == 0) {
+  if (emap[v].is_empty()) {
     float avg = half_v2(rad);
 
     /* For solitary nodes, just build a box (two frames) */
@@ -814,7 +814,7 @@ static EMat *build_edge_mats(const MVertSkin *vs,
 
         *has_valid_root = true;
       }
-      else if (edges.size() == 0) {
+      else if (edges.is_empty()) {
         /* Vertex-only mesh is valid, mark valid root as well (will display error otherwise). */
         *has_valid_root = true;
         break;
@@ -906,7 +906,7 @@ static Mesh *subdivide_base(const Mesh *orig)
       CustomData_get_layer(&orig->vert_data, CD_MVERT_SKIN));
   const blender::Span<blender::float3> orig_vert_positions = orig->vert_positions();
   const blender::Span<blender::int2> orig_edges = orig->edges();
-  const MDeformVert *origdvert = BKE_mesh_deform_verts(orig);
+  const MDeformVert *origdvert = orig->deform_verts().data();
   int orig_vert_num = orig->totvert;
   int orig_edge_num = orig->totedge;
 
@@ -932,7 +932,7 @@ static Mesh *subdivide_base(const Mesh *orig)
       CustomData_get_layer_for_write(&result->vert_data, CD_MVERT_SKIN, result->totvert));
   MDeformVert *outdvert = nullptr;
   if (origdvert) {
-    outdvert = BKE_mesh_deform_verts_for_write(result);
+    outdvert = result->deform_verts_for_write().data();
   }
 
   /* Copy original vertex data */
@@ -1913,7 +1913,6 @@ static Mesh *base_skin(Mesh *origmesh, SkinModifierData *smd, eSkinErrorFlag *r_
   BMesh *bm;
   EMat *emat;
   SkinNode *skin_nodes;
-  const MDeformVert *dvert;
   bool has_valid_root = false;
 
   const MVertSkin *nodes = static_cast<const MVertSkin *>(
@@ -1921,7 +1920,7 @@ static Mesh *base_skin(Mesh *origmesh, SkinModifierData *smd, eSkinErrorFlag *r_
 
   const blender::Span<blender::float3> vert_positions = origmesh->vert_positions();
   const blender::Span<blender::int2> edges = origmesh->edges();
-  dvert = BKE_mesh_deform_verts(origmesh);
+  const MDeformVert *dvert = origmesh->deform_verts().data();
   const int verts_num = origmesh->totvert;
 
   blender::Array<int> vert_to_edge_offsets;
@@ -2076,7 +2075,7 @@ ModifierTypeInfo modifierType_Skin = {
     /*struct_name*/ "SkinModifierData",
     /*struct_size*/ sizeof(SkinModifierData),
     /*srna*/ &RNA_SkinModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
     /*icon*/ ICON_MOD_SKIN,
 

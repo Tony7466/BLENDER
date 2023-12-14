@@ -50,9 +50,6 @@ std::unique_ptr<IDProperty, IDPropertyDeleter> create(StringRefNull prop_name, d
 std::unique_ptr<IDProperty, IDPropertyDeleter> create(StringRefNull prop_name,
                                                       const StringRefNull value);
 
-/** \brief Allocate a new IDProperty of type IDP_ENUM, set its name and value. */
-std::unique_ptr<IDProperty, IDPropertyDeleter> create_enum(StringRefNull prop_name, int value);
-
 /** \brief Allocate a new IDProperty of type IDP_ID, set its name and value. */
 std::unique_ptr<IDProperty, IDPropertyDeleter> create(StringRefNull prop_name, ID *value);
 

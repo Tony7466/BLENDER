@@ -43,8 +43,6 @@ static PyObject *BPy_IDGroup_ViewItems_CreatePyObject(BPy_IDProperty *group);
 static BPy_IDGroup_View *IDGroup_View_New_WithType(BPy_IDProperty *group, PyTypeObject *type);
 static int BPy_IDGroup_Contains(BPy_IDProperty *self, PyObject *value);
 
-static bool BPy_EnumValue_Check(PyObject *ob);
-
 /* -------------------------------------------------------------------- */
 /** \name Python from ID-Property (Internal Conversions)
  *
@@ -82,11 +80,6 @@ static PyObject *idprop_py_from_idp_double(const IDProperty *prop)
 static PyObject *idprop_py_from_idp_bool(const IDProperty *prop)
 {
   return PyBool_FromLong(IDP_Bool(prop));
-}
-
-static PyObject *idprop_py_from_idp_enum(const IDProperty *prop)
-{
-  return PyLong_FromLong(long(IDP_Enum(prop)));
 }
 
 static PyObject *idprop_py_from_idp_group(ID *id, IDProperty *prop, IDProperty *parent)
@@ -171,8 +164,6 @@ PyObject *BPy_IDGroup_WrapData(ID *id, IDProperty *prop, IDProperty *parent)
       return idprop_py_from_idp_double(prop);
     case IDP_BOOLEAN:
       return idprop_py_from_idp_bool(prop);
-    case IDP_ENUM:
-      return idprop_py_from_idp_enum(prop);
     case IDP_GROUP:
       return idprop_py_from_idp_group(id, prop, parent);
     case IDP_ARRAY:
@@ -612,7 +603,7 @@ static IDProperty *idp_from_PySequence(const char *name, PyObject *ob)
   bool use_buffer = false;
 
   if (PyObject_CheckBuffer(ob)) {
-    if (PyObject_GetBuffer(ob, &buffer, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+    if (PyObject_GetBuffer(ob, &buffer, PyBUF_ND | PyBUF_FORMAT) == -1) {
       /* Request failed. A `PyExc_BufferError` will have been raised,
        * so clear it to silently fall back to accessing as a sequence. */
       PyErr_Clear();
@@ -688,18 +679,6 @@ static IDProperty *idp_from_DatablockPointer(const char *name, PyObject *ob)
   return IDP_New(IDP_ID, &val, name);
 }
 
-static IDProperty *idp_from_IDEnum(const char *name, PyObject *ob)
-{
-  BPy_EnumValue *enum_ob = (BPy_EnumValue *)ob;
-
-  IDPropertyTemplate val = {0};
-  val.i = enum_ob->value;
-  if (val.i == -1 && PyErr_Occurred()) {
-    return nullptr;
-  }
-  return IDP_New(IDP_ENUM, &val, name);
-}
-
 static IDProperty *idp_from_PyObject(PyObject *name_obj, PyObject *ob)
 {
   const char *name = idp_try_read_name(name_obj);
@@ -730,9 +709,6 @@ static IDProperty *idp_from_PyObject(PyObject *name_obj, PyObject *ob)
   }
   if (PyMapping_Check(ob)) {
     return idp_from_PyMapping(name, ob);
-  }
-  if (BPy_EnumValue_Check(ob)) {
-    return idp_from_IDEnum(name, ob);
   }
 
   PyErr_Format(
@@ -862,8 +838,6 @@ PyObject *BPy_IDGroup_MapDataToPy(IDProperty *prop)
       return idprop_py_from_idp_double(prop);
     case IDP_BOOLEAN:
       return idprop_py_from_idp_bool(prop);
-    case IDP_ENUM:
-      return idprop_py_from_idp_enum(prop);
     case IDP_ID:
       return idprop_py_from_idp_id(prop);
     case IDP_ARRAY: {
@@ -2177,113 +2151,6 @@ PyTypeObject BPy_IDArray_Type = {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name ID Enum Methods
- * \{ */
-
-static void BPy_EnumValue_dealloc(BPy_EnumValue *self)
-{
-  Py_TYPE(self)->tp_free(self);
-}
-
-static PyObject *BPy_EnumValue_repr(BPy_EnumValue *self)
-{
-  return PyUnicode_FromFormat("<bpy id property enum %d>", self->value);
-}
-
-static PyObject *BPy_EnumValue_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-  if (kwds && PyDict_Size(kwds)) {
-    PyErr_SetString(PyExc_TypeError,
-                    "idprop.types.EnumValue(): "
-                    "takes no keyword args");
-    return nullptr;
-  }
-
-  if (PyTuple_GET_SIZE(args) == 1) {
-    int value;
-    PyArg_ParseTuple(args, "i", &value);
-
-    BPy_EnumValue *self = (BPy_EnumValue *)_PyObject_New(type);
-    if (self) {
-      self->value = value;
-    }
-    return (PyObject *)self;
-  }
-  else {
-    PyErr_SetString(PyExc_TypeError,
-                    "idprop.types.Enumvalue(): "
-                    "needs exactly one argument");
-    return nullptr;
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name ID Enum Type
- * \{ */
-
-PyTypeObject BPy_EnumValue_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
-    /* For printing, in format `<module>.<name>`. */
-    /*tp_name*/ "EnumValue",
-    /*tp_basicsize*/ sizeof(BPy_EnumValue),
-    /*tp_itemsize*/ 0,
-    /*tp_dealloc*/ (destructor)BPy_EnumValue_dealloc,
-    /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ nullptr,
-    /*tp_setattr*/ nullptr,
-    /*tp_as_async*/ nullptr,
-    /*tp_repr*/ (reprfunc)BPy_EnumValue_repr,
-    /*tp_as_number*/ nullptr,
-    /*tp_as_sequence*/ nullptr,
-    /*tp_as_mapping*/ nullptr,
-    /*tp_hash*/ nullptr,
-    /*tp_call*/ nullptr,
-    /*tp_str*/ nullptr,
-    /*tp_getattro*/ nullptr,
-    /*tp_setattro*/ nullptr,
-    /*tp_as_buffer*/ nullptr,
-    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
-    /*tp_doc*/ nullptr,
-    /*tp_traverse*/ nullptr,
-    /*tp_clear*/ nullptr,
-    /*tp_richcompare*/ nullptr,
-    /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ nullptr,
-    /*tp_iternext*/ nullptr,
-    /*tp_methods*/ nullptr,
-    /*tp_members*/ nullptr,
-    /*tp_getset*/ nullptr,
-    /*tp_base*/ nullptr,
-    /*tp_dict*/ nullptr,
-    /*tp_descr_get*/ nullptr,
-    /*tp_descr_set*/ nullptr,
-    /*tp_dictoffset*/ 0,
-    /*tp_init*/ nullptr,
-    /*tp_alloc*/ nullptr,
-    /*tp_new*/ BPy_EnumValue_new,
-    /*tp_free*/ nullptr,
-    /*tp_is_gc*/ nullptr,
-    /*tp_bases*/ nullptr,
-    /*tp_mro*/ nullptr,
-    /*tp_cache*/ nullptr,
-    /*tp_subclasses*/ nullptr,
-    /*tp_weaklist*/ nullptr,
-    /*tp_del*/ nullptr,
-    /*tp_version_tag*/ 0,
-    /*tp_finalize*/ nullptr,
-    /*tp_vectorcall*/ nullptr,
-};
-
-static bool BPy_EnumValue_Check(PyObject *ob)
-{
-  return PyObject_TypeCheck(ob, &BPy_EnumValue_Type);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Initialize Types
  * \{ */
 
@@ -2294,7 +2161,6 @@ void IDProp_Init_Types()
 
   PyType_Ready(&BPy_IDGroup_Type);
   PyType_Ready(&BPy_IDArray_Type);
-  PyType_Ready(&BPy_EnumValue_Type);
 
   PyType_Ready(&BPy_IDGroup_IterKeys_Type);
   PyType_Ready(&BPy_IDGroup_IterValues_Type);
@@ -2380,8 +2246,6 @@ static PyObject *BPyInit_idprop_types()
   PyModule_AddType(submodule, &BPy_IDGroup_IterItems_Type);
 
   PyModule_AddType(submodule, &BPy_IDArray_Type);
-
-  PyModule_AddType(submodule, &BPy_EnumValue_Type);
 
   return submodule;
 }

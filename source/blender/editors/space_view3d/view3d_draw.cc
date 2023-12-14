@@ -18,21 +18,21 @@
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_camera.h"
 #include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_studiolight.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "BLF_api.h"
 
@@ -60,7 +60,7 @@
 #include "ED_view3d_offscreen.hh"
 #include "ED_viewer_path.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -177,7 +177,7 @@ void ED_view3d_update_viewmat(Depsgraph *depsgraph,
       len_sc = float(max_ii(BLI_rcti_size_x(rect), BLI_rcti_size_y(rect)));
     }
     else {
-      len_sc = float(MAX2(region->winx, region->winy));
+      len_sc = float(std::max(region->winx, region->winy));
     }
 
     rv3d->pixsize = len_px / len_sc;
@@ -2420,8 +2420,7 @@ void ED_view3d_depth_override(Depsgraph *depsgraph,
   if (viewport != nullptr) {
     switch (mode) {
       case V3D_DEPTH_NO_GPENCIL:
-        DRW_draw_depth_loop(
-            depsgraph, region, v3d, viewport, false, true, (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0);
+        DRW_draw_depth_loop(depsgraph, region, v3d, viewport, false, true, false);
         break;
       case V3D_DEPTH_GPENCIL_ONLY:
         DRW_draw_depth_loop(depsgraph, region, v3d, viewport, true, false, false);
@@ -2496,10 +2495,6 @@ void ED_view3d_datamask(const Scene *scene,
             if (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_WEIGHT) {
               r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
             }
-            break;
-          }
-          case OB_MODE_SCULPT: {
-            r_cddata_masks->vmask |= CD_MASK_PAINT_MASK;
             break;
           }
         }

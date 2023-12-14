@@ -100,6 +100,9 @@ static void idp_repr_fn_recursive(ReprState *state, const IDProperty *prop)
       break;
     }
     case IDP_INT: {
+      if (const IDPropertyUIDataEnumItem *item = IDP_EnumItemFind(prop)) {
+        STR_APPEND_FMT("%s", item->name);
+      }
       STR_APPEND_FMT("%d", IDP_Int(prop));
       break;
     }
@@ -113,16 +116,6 @@ static void idp_repr_fn_recursive(ReprState *state, const IDProperty *prop)
     }
     case IDP_BOOLEAN: {
       STR_APPEND_FMT("%s", IDP_Bool(prop) ? "True" : "False");
-      break;
-    }
-    case IDP_ENUM: {
-      const IDPropertyUIDataEnumItem *item = IDP_EnumItemFind(prop);
-      if (item) {
-        STR_APPEND_FMT("%s", item->name);
-      }
-      else {
-        STR_APPEND_FMT("%d", IDP_Enum(prop));
-      }
       break;
     }
     case IDP_ARRAY: {

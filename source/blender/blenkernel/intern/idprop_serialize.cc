@@ -34,7 +34,6 @@ static constexpr StringRef IDP_PROPERTY_TYPENAME_STRING("IDP_STRING");
 static constexpr StringRef IDP_PROPERTY_TYPENAME_INT("IDP_INT");
 static constexpr StringRef IDP_PROPERTY_TYPENAME_FLOAT("IDP_FLOAT");
 static constexpr StringRef IDP_PROPERTY_TYPENAME_DOUBLE("IDP_DOUBLE");
-static constexpr StringRef IDP_PROPERTY_TYPENAME_ENUM("IDP_ENUM");
 static constexpr StringRef IDP_PROPERTY_TYPENAME_ARRAY("IDP_ARRAY");
 static constexpr StringRef IDP_PROPERTY_TYPENAME_GROUP("IDP_GROUP");
 static constexpr StringRef IDP_PROPERTY_TYPENAME_UNKNOWN("IDP_UNKNOWN");
@@ -442,46 +441,6 @@ class IDPDoubleSerializer : public IDPropertySerializer {
   }
 };
 
-/** \brief IDPSerializer for IDP_ENUM. */
-class IDPEnumSerializer : public IDPropertySerializer {
- public:
-  constexpr IDPEnumSerializer() = default;
-
-  std::string type_name() const override
-  {
-    return IDP_PROPERTY_TYPENAME_ENUM;
-  }
-
-  std::optional<eIDPropertyType> property_type() const override
-  {
-    return IDP_ENUM;
-  }
-
-  std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const IDProperty *id_property) const override
-  {
-    std::shared_ptr<DictionaryValue> result = create_dictionary(id_property);
-    DictionaryValue::Items &attributes = result->elements();
-    attributes.append_as(std::pair(IDP_KEY_VALUE, new EnumValue(IDP_Enum(id_property))));
-    return result;
-  }
-
-  std::unique_ptr<IDProperty, IDPropertyDeleter> entry_to_idprop(
-      DictionaryEntryParser &entry_reader) const override
-  {
-    BLI_assert(*(entry_reader.get_type()) == IDP_ENUM);
-    std::optional<std::string> name = entry_reader.get_name();
-    if (!name.has_value()) {
-      return nullptr;
-    }
-    std::optional<int> extracted_value = entry_reader.get_int_value();
-    if (!extracted_value.has_value()) {
-      return nullptr;
-    }
-    return create_enum(name->c_str(), *extracted_value);
-  }
-};
-
 /** \brief IDPSerializer for IDP_ARRAY. */
 class IDPArraySerializer : public IDPropertySerializer {
  public:
@@ -748,7 +707,6 @@ static constexpr IDPStringSerializer IDP_SERIALIZER_STRING;
 static constexpr IDPIntSerializer IDP_SERIALIZER_INT;
 static constexpr IDPFloatSerializer IDP_SERIALIZER_FLOAT;
 static constexpr IDPDoubleSerializer IDP_SERIALIZER_DOUBLE;
-static constexpr IDPEnumSerializer IDP_SERIALIZER_ENUM;
 static constexpr IDPArraySerializer IDP_SERIALIZER_ARRAY;
 static constexpr IDPGroupSerializer IDP_SERIALIZER_GROUP;
 static constexpr IDPUnknownSerializer IDP_SERIALIZER_UNKNOWN;
@@ -768,9 +726,6 @@ static const IDPropertySerializer &serializer_for(eIDPropertyType property_type)
 
     case IDP_DOUBLE:
       return IDP_SERIALIZER_DOUBLE;
-
-    case IDP_ENUM:
-      return IDP_SERIALIZER_ENUM;
 
     case IDP_ARRAY:
       return IDP_SERIALIZER_ARRAY;
@@ -798,9 +753,6 @@ static const IDPropertySerializer &serializer_for(StringRef idprop_typename)
   }
   if (idprop_typename == IDP_PROPERTY_TYPENAME_DOUBLE) {
     return IDP_SERIALIZER_DOUBLE;
-  }
-  if (idprop_typename == IDP_PROPERTY_TYPENAME_ENUM) {
-    return IDP_SERIALIZER_ENUM;
   }
   if (idprop_typename == IDP_PROPERTY_TYPENAME_ARRAY) {
     return IDP_SERIALIZER_ARRAY;
