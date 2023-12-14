@@ -41,7 +41,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
 
     MutableSpan<int> lf_index_by_bsocket = own_lf_graph_info.mapping.lf_index_by_bsocket;
     lf_index_by_bsocket[node.output_socket(0).index_in_tree()] = outputs_.append_and_get_index_as(
-        "Delta Time", CPPType::get<ValueOrField<float>>());
+        "Delta Time", CPPType::get<SocketValueVariant<float>>());
 
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
@@ -61,12 +61,12 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
   {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
-    if (!user_data.modifier_data) {
+    if (!user_data.call_data->simulation_params) {
       params.set_default_remaining_outputs();
       return;
     }
-    const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
-    if (!modifier_data.simulation_params) {
+    if (!user_data.call_data->self_object()) {
+      /* Self object is currently required for creating anonymous attribute names. */
       params.set_default_remaining_outputs();
       return;
     }
@@ -79,7 +79,8 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    SimulationZoneBehavior *zone_behavior = modifier_data.simulation_params->get(found_id->id);
+    SimulationZoneBehavior *zone_behavior = user_data.call_data->simulation_params->get(
+        found_id->id);
     if (!zone_behavior) {
       params.set_default_remaining_outputs();
       return;
@@ -102,7 +103,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       BLI_assert_unreachable();
     }
     if (!params.output_was_set(0)) {
-      params.set_output(0, bke::ValueOrField<float>(delta_time));
+      params.set_output(0, bke::SocketValueVariant<float>(delta_time));
     }
   }
 
@@ -116,7 +117,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
     copy_simulation_state_to_values(simulation_items_,
                                     zone_state,
-                                    *user_data.modifier_data->self_object,
+                                    *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     node_,
                                     outputs);
@@ -135,7 +136,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
     move_simulation_state_to_values(simulation_items_,
                                     std::move(zone_state),
-                                    *user_data.modifier_data->self_object,
+                                    *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     node_,
                                     outputs);

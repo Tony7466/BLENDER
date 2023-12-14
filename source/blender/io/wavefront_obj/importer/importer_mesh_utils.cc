@@ -9,7 +9,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 
-#include "BLI_delaunay_2d.h"
+#include "BLI_delaunay_2d.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -125,6 +125,18 @@ void transform_object(Object *object, const OBJImportParams &import_params)
     }
     copy_v3_fl(object->scale, scale);
   }
+}
+
+std::string get_geometry_name(const std::string &full_name, char separator)
+{
+  if (separator == 0) {
+    return full_name;
+  }
+  size_t pos = full_name.find_last_of(separator);
+  if (pos == std::string::npos) {
+    return full_name;
+  }
+  return full_name.substr(pos + 1);
 }
 
 }  // namespace blender::io::obj
