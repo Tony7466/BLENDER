@@ -356,7 +356,7 @@ class TestRNAData(TestHelper, unittest.TestCase):
 
         # Test RNA data for enum property.
         test_object.id_properties_clear()
-        test_object["test_enum_prop"] = idprop.types.EnumValue(2)
+        test_object["test_enum_prop"] = 2
         ui_data_test_prop_enum = test_object.id_properties_ui("test_enum_prop")
         ui_data_test_prop_enum_items = [
             ("TOMATOES", "Tomatoes", "Solanum lycopersicum"),
