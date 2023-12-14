@@ -165,8 +165,8 @@ bool input_has_attribute_toggle(const bNodeTree &node_tree, const int socket_ind
   return field_interface.inputs[socket_index] != nodes::InputSocketFieldType::None;
 }
 
-static void id_property_enum_update_items(const bNodeSocketValueMenu *value,
-                                          IDPropertyUIDataEnum *ui_data)
+static void id_property_int_update_enum_items(const bNodeSocketValueMenu *value,
+                                              IDPropertyUIDataInt *ui_data)
 {
   if (const NodeEnumDefinition *enum_def = value->enum_ref.get_definition()) {
     const int idprop_items_num = enum_def->items_num;
@@ -186,8 +186,8 @@ static void id_property_enum_update_items(const bNodeSocketValueMenu *value,
     }
     /* Node enum definitions should already be valid. */
     BLI_assert(IDP_EnumItemsValidate(idprop_items, idprop_items_num, nullptr));
-    ui_data->items = idprop_items;
-    ui_data->items_num = idprop_items_num;
+    ui_data->enum_items = idprop_items;
+    ui_data->enum_items_num = idprop_items_num;
   }
 }
 
@@ -290,9 +290,9 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
     case SOCK_MENU: {
       const bNodeSocketValueMenu *value = static_cast<const bNodeSocketValueMenu *>(
           socket.socket_data);
-      auto property = bke::idprop::create_enum(identifier, value->value);
-      IDPropertyUIDataEnum *ui_data = (IDPropertyUIDataEnum *)IDP_ui_data_ensure(property.get());
-      id_property_enum_update_items(value, ui_data);
+      auto property = bke::idprop::create(identifier, value->value);
+      IDPropertyUIDataInt *ui_data = (IDPropertyUIDataInt *)IDP_ui_data_ensure(property.get());
+      id_property_int_update_enum_items(value, ui_data);
       return property;
     }
     case SOCK_OBJECT: {
@@ -356,7 +356,7 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_STRING:
       return property.type == IDP_STRING;
     case SOCK_MENU:
-      return property.type == IDP_ENUM;
+      return property.type == IDP_INT;
     case SOCK_OBJECT:
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
@@ -454,8 +454,8 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       break;
     }
     case SOCK_MENU: {
-      int value = IDP_Enum(&property);
-      new (r_value) fn::ValueOrField<int>(std::move(value));
+      int value = IDP_Int(&property);
+      new (r_value) bke::SocketValueVariant<int>(std::move(value));
       break;
     }
     case SOCK_OBJECT: {
@@ -503,8 +503,8 @@ void id_property_update_ui_from_socket(IDProperty *idprop, const bNodeTreeInterf
     case SOCK_MENU: {
       const bNodeSocketValueMenu *value = static_cast<const bNodeSocketValueMenu *>(
           socket.socket_data);
-      IDPropertyUIDataEnum *ui_data = (IDPropertyUIDataEnum *)IDP_ui_data_ensure(idprop);
-      id_property_enum_update_items(value, ui_data);
+      IDPropertyUIDataInt *ui_data = (IDPropertyUIDataInt *)IDP_ui_data_ensure(idprop);
+      id_property_int_update_enum_items(value, ui_data);
     }
     case SOCK_FLOAT:
     case SOCK_INT:

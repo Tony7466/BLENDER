@@ -19,7 +19,7 @@
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
-#include "FN_field_cpp_type.hh"
+#include "BKE_node_socket_value_cpp_type.hh"
 
 #include "WM_api.hh"
 
@@ -334,8 +334,8 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     cpp_type_ = socket_type->geometry_nodes_cpp_type;
 
     /* Construct multifunction if needed. */
-    if (const fn::ValueOrFieldCPPType *value_or_field_type =
-            fn::ValueOrFieldCPPType::get_from_self(*cpp_type_))
+    if (const bke::SocketValueVariantCPPType *value_or_field_type =
+            bke::SocketValueVariantCPPType::get_from_self(*cpp_type_))
     {
       const CPPType &value_type = value_or_field_type->value;
       multi_function_ = std::unique_ptr<MultiFunction>(
@@ -343,7 +343,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     }
 
     debug_name_ = node.name;
-    inputs_.append_as("Switch", CPPType::get<ValueOrField<int>>());
+    inputs_.append_as("Switch", CPPType::get<SocketValueVariant<int>>());
     for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
       inputs_.append_as(enum_item.name, *cpp_type_, lf::ValueUsage::Maybe);
     }
@@ -352,7 +352,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
-    const ValueOrField<int> condition = params.get_input<ValueOrField<int>>(0);
+    const SocketValueVariant<int> condition = params.get_input<SocketValueVariant<int>>(0);
     if (condition.is_field() && can_be_field_) {
       Field<int> condition_field = condition.as_field();
       if (condition_field.node().depends_on_input()) {
@@ -413,8 +413,8 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
       return;
     }
 
-    const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
-        *cpp_type_);
+    const bke::SocketValueVariantCPPType &value_or_field_type =
+        *bke::SocketValueVariantCPPType::get_from_self(*cpp_type_);
 
     Vector<GField> item_fields(enum_def_.items_num + 1);
     item_fields[0] = std::move(condition);
@@ -461,7 +461,7 @@ class LazyFunctionForMenuSwitchSocketUsage : public lf::LazyFunction {
       : enum_def_(node_storage(node).enum_definition)
   {
     debug_name_ = "Menu Switch Socket Usage";
-    inputs_.append_as("Condition", CPPType::get<ValueOrField<int>>());
+    inputs_.append_as("Condition", CPPType::get<SocketValueVariant<int>>());
     for (const int i : IndexRange(enum_def_.items_num)) {
       const NodeEnumItem &enum_item = enum_def_.items()[i];
       outputs_.append_as(enum_item.name, CPPType::get<bool>());
@@ -470,7 +470,7 @@ class LazyFunctionForMenuSwitchSocketUsage : public lf::LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
-    const ValueOrField<bool> &condition = params.get_input<ValueOrField<bool>>(0);
+    const SocketValueVariant<bool> &condition = params.get_input<SocketValueVariant<bool>>(0);
     if (condition.is_field()) {
       for (const int i : IndexRange(enum_def_.items_num)) {
         params.set_output(i, true);

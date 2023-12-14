@@ -54,8 +54,8 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         break;
       }
       case SOCK_MENU: {
-        const fn::ValueOrField<uint32_t> &value = *static_cast<const fn::ValueOrField<uint32_t> *>(
-            socket_value);
+        const bke::SocketValueVariant<uint32_t> &value =
+            *static_cast<const bke::SocketValueVariant<uint32_t> *>(socket_value);
         bake_items[i] = std::make_unique<EnumBakeItem>(value.as_value());
         break;
       }
@@ -181,7 +181,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
     }
     case SOCK_MENU: {
       if (const auto *item = dynamic_cast<const EnumBakeItem *>(&bake_item)) {
-        new (r_value) fn::ValueOrField<uint32_t>(item->value());
+        new (r_value) bke::SocketValueVariant<uint32_t>(item->value());
         return true;
       }
       return false;
