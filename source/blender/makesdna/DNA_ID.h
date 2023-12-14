@@ -54,6 +54,7 @@ typedef struct IDPropertyUIData {
   char _pad[4];
 } IDPropertyUIData;
 
+/* DNA version of #EnumPropertyItem. */
 typedef struct IDPropertyUIDataEnumItem {
   /* Unique identifier, used for string lookup. */
   char *identifier;
