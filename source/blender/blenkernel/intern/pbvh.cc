@@ -1836,10 +1836,10 @@ blender::Span<int> BKE_pbvh_node_get_unique_vert_indices(const PBVHNode *node)
 
 namespace blender::bke::pbvh {
 
-void node_face_indices_calc_mesh(const Span<int> looptri_faces,
-                                 const PBVHNode &node,
-                                 Vector<int> &faces)
+Span<int> node_face_indices_calc_mesh(const PBVH &pbvh, const PBVHNode &node, Vector<int> &faces)
 {
+  faces.clear();
+  const Span<int> looptri_faces = pbvh.looptri_faces;
   int prev_face = -1;
   for (const int tri : node.prim_indices) {
     const int face = looptri_faces[tri];
@@ -1848,39 +1848,43 @@ void node_face_indices_calc_mesh(const Span<int> looptri_faces,
       prev_face = face;
     }
   }
+  return faces.as_span();
+}
+
+Span<int> node_face_indices_calc_grids(const PBVH &pbvh, const PBVHNode &node, Vector<int> &faces)
+{
+  faces.clear();
+  const Span<int> grid_to_face_map = pbvh.subdiv_ccg->grid_to_face_map;
+  int prev_face = -1;
+  for (const int prim : node.prim_indices) {
+    const int face = grid_to_face_map[prim];
+    if (face != prev_face) {
+      faces.append(face);
+      prev_face = face;
+    }
+  }
+  return faces.as_span();
 }
 
 }  // namespace blender::bke::pbvh
 
-void BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node, Vector<int> &faces)
+blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node)
 {
+  using namespace blender::bke::pbvh;
+  Vector<int> faces;
   switch (pbvh.header.type) {
     case PBVH_FACES: {
-      blender::bke::pbvh::node_face_indices_calc_mesh(pbvh.looptri_faces, node, faces);
+      node_face_indices_calc_mesh(pbvh, node, faces);
       break;
     }
     case PBVH_GRIDS: {
-      const SubdivCCG &subdiv_ccg = *pbvh.subdiv_ccg;
-      int prev_face = -1;
-      for (const int prim : node.prim_indices) {
-        const int face = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, prim);
-        if (face != prev_face) {
-          faces.append(face);
-          prev_face = face;
-        }
-      }
+      node_face_indices_calc_grids(pbvh, node, faces);
       break;
     }
     case PBVH_BMESH:
       BLI_assert_unreachable();
       break;
   }
-}
-
-blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node)
-{
-  Vector<int> faces;
-  BKE_pbvh_node_calc_face_indices(pbvh, node, faces);
   return faces;
 }
 
@@ -3036,9 +3040,8 @@ bool pbvh_has_face_sets(PBVH *pbvh)
     case PBVH_FACES:
       return pbvh->mesh->attributes().contains(".sculpt_face_set");
     case PBVH_BMESH:
-      return false;
+      return CustomData_has_layer_named(&pbvh->header.bm->pdata, CD_PROP_FLOAT, ".sculpt_mask");
   }
-
   return false;
 }
 
@@ -3056,14 +3059,6 @@ void BKE_pbvh_get_frustum_planes(const PBVH *pbvh, PBVHFrustumPlanes *planes)
   for (int i = 0; i < planes->num_planes; i++) {
     copy_v4_v4(planes->planes[i], pbvh->planes[i]);
   }
-}
-
-void BKE_pbvh_parallel_range_settings(TaskParallelSettings *settings,
-                                      bool use_threading,
-                                      int totnode)
-{
-  memset(settings, 0, sizeof(*settings));
-  settings->use_threading = use_threading && totnode > 1;
 }
 
 Mesh *BKE_pbvh_get_mesh(PBVH *pbvh)

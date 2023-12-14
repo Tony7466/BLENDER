@@ -380,9 +380,22 @@ blender::Span<int> BKE_pbvh_node_get_vert_indices(const PBVHNode *node);
 blender::Span<int> BKE_pbvh_node_get_unique_vert_indices(const PBVHNode *node);
 blender::Span<int> BKE_pbvh_node_get_loops(const PBVHNode *node);
 
-void BKE_pbvh_node_calc_face_indices(const PBVH &pbvh,
-                                     const PBVHNode &node,
-                                     blender::Vector<int> &faces);
+namespace blender::bke::pbvh {
+
+/**
+ * Gather the indices of all faces (not triangles) used by the node.
+ * For convenience, pass a reference to the data in the result.
+ */
+Span<int> node_face_indices_calc_mesh(const PBVH &pbvh, const PBVHNode &node, Vector<int> &faces);
+
+/**
+ * Gather the indices of all base mesh faces in the node.
+ * For convenience, pass a reference to the data in the result.
+ */
+Span<int> node_face_indices_calc_grids(const PBVH &pbvh, const PBVHNode &node, Vector<int> &faces);
+
+}  // namespace blender::bke::pbvh
+
 blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node);
 
 /* Get number of faces in the mesh; for PBVH_GRIDS the
@@ -584,12 +597,6 @@ void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
 bool pbvh_has_mask(const PBVH *pbvh);
 
 bool pbvh_has_face_sets(PBVH *pbvh);
-
-/* Parallelization. */
-
-void BKE_pbvh_parallel_range_settings(TaskParallelSettings *settings,
-                                      bool use_threading,
-                                      int totnode);
 
 blender::Span<blender::float3> BKE_pbvh_get_vert_positions(const PBVH *pbvh);
 blender::MutableSpan<blender::float3> BKE_pbvh_get_vert_positions(PBVH *pbvh);
