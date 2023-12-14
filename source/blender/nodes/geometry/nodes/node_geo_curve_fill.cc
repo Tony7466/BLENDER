@@ -52,9 +52,20 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
+static void fill_curve_vert_indices(const OffsetIndices<int> offsets,
+                                    MutableSpan<int> face_vert_indices)
+{
+  threading::parallel_for(offsets.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      array_utils::fill_index_range<int>(face_vert_indices.slice(offsets[i]), offsets[i].start());
+    }
+  });
+}
+
 static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curves,
                                                 const CDT_output_type output_type)
 {
+  const OffsetIndices points_by_curve = curves.evaluated_points_by_curve();
   const Span<float3> positions = curves.evaluated_positions();
 
   Array<double2> positions_2d(positions.size());
@@ -63,12 +74,13 @@ static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curve
       positions_2d[i] = double2(positions[i].x, positions[i].y);
     }
   });
+
   Array<int> face_vert_indices(positions.size());
-  array_utils::fill_index_range<int>(face_vert_indices, 0);
+  fill_curve_vert_indices(points_by_curve, face_vert_indices);
 
   meshintersect::CDT_input<double> input;
   input.vert = positions_2d;
-  input.face_offsets = curves.evaluated_points_by_curve();
+  input.face_offsets = points_by_curve;
   input.face_vert_indices = face_vert_indices;
   input.need_ids = false;
   return delaunay_2d_calc(input, output_type);
@@ -86,7 +98,6 @@ static meshintersect::CDT_result<double> do_cdt_with_mask(const bke::CurvesGeome
       points_by_curve, mask, offsets_data);
 
   Array<double2> positions_2d(points_by_curve_masked.total_size());
-  Array<int> face_vert_indices(points_by_curve_masked.total_size());
   mask.foreach_index(GrainSize(1024), [&](const int src_curve, const int dst_curve) {
     const IndexRange src_points = points_by_curve[src_curve];
     const IndexRange dst_points = points_by_curve_masked[dst_curve];
@@ -95,11 +106,12 @@ static meshintersect::CDT_result<double> do_cdt_with_mask(const bke::CurvesGeome
       const int dst = dst_points[i];
       positions_2d[dst] = double2(positions[src].x, positions[src].y);
     }
-    array_utils::fill_index_range<int>(face_vert_indices.as_mutable_span().slice(dst_points),
-                                       dst_points.start());
   });
 
-    meshintersect::CDT_input<double> input;
+  Array<int> face_vert_indices(positions_2d.size());
+  fill_curve_vert_indices(points_by_curve_masked, face_vert_indices);
+
+  meshintersect::CDT_input<double> input;
   input.vert = positions_2d;
   input.face_offsets = points_by_curve_masked;
   input.face_vert_indices = face_vert_indices;

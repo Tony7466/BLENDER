@@ -2094,9 +2094,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
   Array<mpq2> in_verts(flen);
   const Array<int> face_offsets({0, flen});
   Array<int> face_vert_indices(flen);
-  for (int i : face_vert_indices.index_range()) {
-    face_vert_indices[i] = i;
-  }
+  std::iota(face_vert_indices.begin(), face_vert_indices.end(), 0);
 
   /* Project poly along dominant axis of normal to get 2d coords. */
   if (!f->plane_populated()) {
@@ -2126,6 +2124,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
   cdt_in.vert = in_verts;
   cdt_in.face_offsets = face_offsets.as_span();
   cdt_in.face_vert_indices = face_vert_indices;
+
   CDT_result<mpq_class> cdt_out = delaunay_2d_calc(cdt_in, CDT_INSIDE);
   int n_tris = cdt_out.faces().size();
   Array<Face *> ans(n_tris);

@@ -24,36 +24,34 @@
 
 namespace blender::io::obj {
 
-Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
-                                          Span<int> face_vertex_indices)
+Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vert_positions, Span<int> face_verts)
 {
   using namespace blender::meshintersect;
-  if (face_vertex_indices.size() < 3) {
+  if (face_verts.size() < 3) {
     return {};
   }
 
-  /* Calculate face normal, to project verts to 2D. */
-  const float3 normal = bke::mesh::face_normal_calc(vertex_coords, face_vertex_indices);
-
+  const float3 normal = bke::mesh::face_normal_calc(vert_positions, face_verts);
   float axis_mat[3][3];
   axis_dominant_v3_to_m3(axis_mat, normal);
 
   /* Project vertices to 2D. */
-  Array<double2> verts(face_vertex_indices.size());
-  for (const int i : face_vertex_indices.index_range()) {
-    int idx = face_vertex_indices[i];
-    BLI_assert(idx >= 0 && idx < vertex_coords.size());
+  Array<double2> input_verts(face_verts.size());
+  for (const int i : face_verts.index_range()) {
+    int idx = face_verts[i];
+    BLI_assert(idx >= 0 && idx < vert_positions.size());
     float2 coord2d;
-    mul_v2_m3v3(coord2d, axis_mat, vertex_coords[idx]);
-    verts[i] = double2(coord2d.x, coord2d.y);
+    mul_v2_m3v3(coord2d, axis_mat, vert_positions[idx]);
+    input_verts[i] = double2(coord2d.x, coord2d.y);
   }
 
-  Array<int> face_offsets({0, int(verts.size())});
-  Array<int> face_vert_indices(verts.size());
+  const Array<int> face_offsets({0, int(input_verts.size())});
+  Array<int> face_vert_indices(input_verts.size());
   std::iota(face_vert_indices.begin(), face_vert_indices.end(), 0);
 
+  /* Prepare data for CDT. */
   CDT_input<double> input;
-  input.vert = verts;
+  input.vert = input_verts;
   input.face_offsets = face_offsets.as_span();
   input.face_vert_indices = face_vert_indices;
   input.epsilon = 1.0e-6f;
@@ -79,7 +77,7 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
       else {
         /* Vertex corresponds to one or more of the input vertices, use it. */
         const int old_idx = res.orig_verts()[idx][0];
-        BLI_assert(old_idx >= 0 && old_idx < face_vertex_indices.size());
+        BLI_assert(idx >= 0 && idx < face_verts.size());
         face_verts.append(old_idx);
       }
     }
