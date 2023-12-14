@@ -245,6 +245,7 @@ static bool idprop_ui_data_update_int(IDProperty *idprop, PyObject *args, PyObje
                                    &soft_max,
                                    &step,
                                    &default_value,
+                                   &items,
                                    &rna_subtype,
                                    &description))
   {
@@ -292,25 +293,29 @@ static bool idprop_ui_data_update_int(IDProperty *idprop, PyObject *args, PyObje
     }
   }
 
-  PyObject *items_fast;
-  if (!(items_fast = PySequence_Fast(items, "expected a sequence of tuples for the enum items"))) {
-    return false;
-  }
+  if (!ELEM(items, nullptr, Py_None)) {
+    PyObject *items_fast;
+    if (!(items_fast = PySequence_Fast(items, "expected a sequence of tuples for the enum items")))
+    {
+      return false;
+    }
 
-  int idprop_items_num = 0;
-  IDPropertyUIDataEnumItem *idprop_items = idprop_enum_items_from_py(items_fast, idprop_items_num);
-  if (!idprop_items) {
-    Py_DECREF(items_fast);
-    return false;
+    int idprop_items_num = 0;
+    IDPropertyUIDataEnumItem *idprop_items = idprop_enum_items_from_py(items_fast,
+                                                                       idprop_items_num);
+    if (!idprop_items) {
+      Py_DECREF(items_fast);
+      return false;
+    }
+    if (!IDP_EnumItemsValidate(idprop_items, idprop_items_num, [](const char *msg) {
+          PyErr_SetString(PyExc_ValueError, msg);
+        }))
+    {
+      return false;
+    }
+    ui_data.enum_items = idprop_items;
+    ui_data.enum_items_num = idprop_items_num;
   }
-  if (!IDP_EnumItemsValidate(idprop_items, idprop_items_num, [](const char *msg) {
-        PyErr_SetString(PyExc_ValueError, msg);
-      }))
-  {
-    return false;
-  }
-  ui_data.enum_items = idprop_items;
-  ui_data.enum_items_num = idprop_items_num;
 
   /* Write back to the property's UI data. */
   IDP_ui_data_free_unique_contents(&ui_data_orig->base, IDP_ui_data_type(idprop), &ui_data.base);
