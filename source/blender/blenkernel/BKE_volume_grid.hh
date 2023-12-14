@@ -24,16 +24,21 @@ class GVolumeGrid;
 
 class VolumeGridData : public ImplicitSharingMixin {
  private:
-  mutable std::mutex grid_mutex_;
+  mutable std::mutex mutex_;
   mutable std::shared_ptr<openvdb::GridBase> grid_;
   mutable const ImplicitSharingInfo *tree_sharing_info_ = nullptr;
+  mutable bool tree_loaded_ = false;
+  mutable bool transform_loaded_ = false;
+  mutable bool meta_data_loaded_ = false;
   std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid_;
+  mutable std::string error_message_;
 
   VolumeGridData() = default;
 
  public:
   explicit VolumeGridData(std::shared_ptr<openvdb::GridBase> grid);
-  explicit VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid);
+  explicit VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
+                          std::shared_ptr<openvdb::GridBase> meta_data_and_transform_grid = {});
   ~VolumeGridData();
 
   GVolumeGrid copy() const;
@@ -42,6 +47,7 @@ class VolumeGridData : public ImplicitSharingMixin {
   openvdb::GridBase &grid_for_write();
 
   StringRefNull name() const;
+  void set_name(StringRef name);
 
   std::shared_ptr<const openvdb::GridBase> grid_ptr() const;
   std::shared_ptr<openvdb::GridBase> grid_ptr_for_write();

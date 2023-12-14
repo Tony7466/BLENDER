@@ -24,10 +24,6 @@ struct ReportList;
 struct Scene;
 struct Volume;
 struct VolumeGridVector;
-namespace blender::bke {
-struct VolumeFileCacheKey;
-struct VolumeGrid;
-}  // namespace blender::bke
 using VolumeFileCacheKey = blender::bke::VolumeFileCacheKey;
 using VolumeGridData = blender::bke::VolumeGridData;
 

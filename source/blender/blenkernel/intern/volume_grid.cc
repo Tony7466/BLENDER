@@ -29,7 +29,8 @@ class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
   }
 };
 
-VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid) : grid_(std::move(grid))
+VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
+    : tree_loaded_(true), transform_loaded_(true), meta_data_loaded_(true), grid_(std::move(grid))
 {
   BLI_assert(grid_);
   BLI_assert(grid_.unique());
@@ -38,14 +39,21 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid) : grid_(
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
 }
 
-VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid)
-    : lazy_load_grid_(std::move(lazy_load_grid))
+VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
+                               std::shared_ptr<openvdb::GridBase> meta_data_and_transform_grid)
+    : grid_(std::move(meta_data_and_transform_grid)), lazy_load_grid_(std::move(lazy_load_grid))
 {
+  if (grid_) {
+    transform_loaded_ = true;
+    meta_data_loaded_ = true;
+  }
 }
 
 VolumeGridData::~VolumeGridData()
 {
-  tree_sharing_info_->remove_user_and_delete_if_last();
+  if (tree_sharing_info_) {
+    tree_sharing_info_->remove_user_and_delete_if_last();
+  }
 }
 
 void VolumeGridData::delete_self()
@@ -55,16 +63,26 @@ void VolumeGridData::delete_self()
 
 const openvdb::GridBase &VolumeGridData::grid() const
 {
-  this->ensure_grid_loaded();
-  std::lock_guard lock{grid_mutex_};
-  return *grid_;
+  return *this->grid_ptr();
 }
 
 openvdb::GridBase &VolumeGridData::grid_for_write()
 {
-  BLI_assert(this->is_mutable());
+  return *this->grid_ptr_for_write();
+}
+
+std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr() const
+{
+  std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
-  std::lock_guard lock{grid_mutex_};
+  return grid_;
+}
+
+std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write()
+{
+  BLI_assert(this->is_mutable());
+  std::lock_guard lock{mutex_};
+  this->ensure_grid_loaded();
   if (tree_sharing_info_->is_mutable()) {
     tree_sharing_info_->tag_ensured_mutable();
   }
@@ -74,69 +92,121 @@ openvdb::GridBase &VolumeGridData::grid_for_write()
     tree_sharing_info_->remove_user_and_delete_if_last();
     tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, std::move(tree_copy));
   }
-  return *grid_;
-}
-
-std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr() const
-{
-  this->grid();
-  return grid_;
-}
-
-std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write()
-{
-  this->grid_for_write();
   return grid_;
 }
 
 const openvdb::math::Transform &VolumeGridData::transform() const
 {
-  return this->grid().transform();
+  std::lock_guard lock{mutex_};
+  if (!transform_loaded_) {
+    this->ensure_grid_loaded();
+  }
+  return grid_->transform();
 }
 
 openvdb::math::Transform &VolumeGridData::transform_for_write()
 {
   BLI_assert(this->is_mutable());
-  this->ensure_grid_loaded();
+  std::lock_guard lock{mutex_};
+  if (!transform_loaded_) {
+    this->ensure_grid_loaded();
+  }
   return grid_->transform();
 }
 
 StringRefNull VolumeGridData::name() const
 {
-  return this->grid().getName();
+  std::lock_guard lock{mutex_};
+  if (!meta_data_loaded_) {
+    this->ensure_grid_loaded();
+  }
+  return grid_->getName();
+}
+
+void VolumeGridData::set_name(const StringRef name)
+{
+  BLI_assert(this->is_mutable());
+  std::lock_guard lock{mutex_};
+  if (!meta_data_loaded_) {
+    this->ensure_grid_loaded();
+  }
+  grid_->setName(name);
 }
 
 VolumeGridType VolumeGridData::grid_type() const
 {
-  return BKE_volume_grid_type_openvdb(this->grid());
+  std::lock_guard lock{mutex_};
+  if (!meta_data_loaded_) {
+    this->ensure_grid_loaded();
+  }
+  return BKE_volume_grid_type_openvdb(*grid_);
 }
 
 GVolumeGrid VolumeGridData::copy() const
 {
+  std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
-  std::lock_guard lock{grid_mutex_};
   /* Can't use #MEM_new because the default construtor is private. */
   VolumeGridData *new_copy = new (MEM_mallocN(sizeof(VolumeGridData), __func__)) VolumeGridData();
   /* Makes a deep copy of the meta-data but shares the tree. */
   new_copy->grid_ = grid_->copyGrid();
   new_copy->tree_sharing_info_ = tree_sharing_info_;
   new_copy->tree_sharing_info_->add_user();
+  new_copy->tree_loaded_ = tree_loaded_;
+  new_copy->transform_loaded_ = transform_loaded_;
+  new_copy->meta_data_loaded_ = meta_data_loaded_;
   return GVolumeGrid(new_copy);
 }
 
 void VolumeGridData::ensure_grid_loaded() const
 {
-  std::lock_guard lock{grid_mutex_};
-  if (grid_) {
+  /* Assert that the mutex is locked. */
+  BLI_assert(!mutex_.try_lock());
+
+  if (tree_loaded_ && transform_loaded_ && meta_data_loaded_) {
     return;
   }
   BLI_assert(lazy_load_grid_);
-  threading::isolate_task([&]() { grid_ = lazy_load_grid_(); });
-  BLI_assert(grid_);
-  BLI_assert(grid_.unique());
-  BLI_assert(grid_->isTreeUnique());
+  /* TODO: exception handling, reuse old transform/meta-data*/
+  std::shared_ptr<openvdb::GridBase> loaded_grid;
+  threading::isolate_task([&]() {
+    error_message_.clear();
+    try {
+      loaded_grid = lazy_load_grid_();
+    }
+    catch (const openvdb::IoError &e) {
+      error_message_ = e.what();
+    }
+    catch (...) {
+      error_message_ = "Unknown error reading VDB file";
+    }
+  });
+  if (!loaded_grid) {
+    /* TODO: Create empty grid (potentially of correct type). */
+    BLI_assert_unreachable();
+  }
+  BLI_assert(loaded_grid);
+  BLI_assert(loaded_grid.unique());
+  BLI_assert(loaded_grid->isTreeUnique());
+
+  if (grid_) {
+    /* Keep the existing grid pointer and just insert the newly loaded data. */
+    BLI_assert(!tree_loaded_);
+    BLI_assert(meta_data_loaded_);
+    grid_->setTree(loaded_grid->baseTreePtr());
+    if (!transform_loaded_) {
+      grid_->setTransform(loaded_grid->transformPtr());
+    }
+  }
+  else {
+    grid_ = std::move(loaded_grid);
+  }
 
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
+
+  tree_loaded_ = true;
+  transform_loaded_ = true;
+  meta_data_loaded_ = true;
 }
 
 GVolumeGrid::GVolumeGrid(std::shared_ptr<openvdb::GridBase> grid)
