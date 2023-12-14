@@ -3431,16 +3431,16 @@ const wmIMEData *ui_but_ime_data_get(uiBut *but)
 
 static void ui_do_but_text_completion(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  PropertyRNA *prop = but->rnaprop;
-  if (!prop) {
-    return;
-  }
-  const PropertySubType subtype = RNA_property_subtype(prop);
-  if (!ui_but_is_unit(but) && !ELEM(subtype, PROP_PIXEL, PROP_PERCENTAGE)) {
+  /* Unit completion (hint) is only done for buttons with a unit or with a property of type PROP_PIXEL or
+   * PROP_PERCENTAGE. For everything else, we reset the completion to nullptr. */
+  if (!ui_but_is_unit(but) &&
+      (but->rnaprop && !ELEM(RNA_property_subtype(but->rnaprop), PROP_PIXEL, PROP_PERCENTAGE)))
+  {
     UI_but_completion_set(but, nullptr);
     return;
   }
 
+  /* Set the completion  text (hint) to the unit that is used by this value. */
   std::string name_short;
   const int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
   if (unit_type != PROP_NONE) {
@@ -3464,31 +3464,34 @@ static void ui_do_but_text_completion(bContext *C, uiBut *but, uiHandleButtonDat
     const int unit_index = BKE_unit_of_type_or_default(&unit_settings, unit_type);
     name_short = BKE_unit_display_name_short_get(usys, unit_index);
   }
-  /* Special handling for PROP_PIXEL and PROP_PERCENTAGE (because they are not treated as units
-   * unfortunatly). */
-  else if (ELEM(subtype, PROP_PIXEL, PROP_PERCENTAGE)) {
-    switch (subtype) {
-      case PROP_PIXEL:
-        name_short = "px";
-        break;
-      case PROP_PERCENTAGE:
-        name_short = "%";
-      default:
-        break;
-    }
+  else if (but->rnaprop) {
+    /* Special handling for PROP_PIXEL and PROP_PERCENTAGE (because they are not treated as units
+     * unfortunatly). */
+    const PropertySubType subtype = RNA_property_subtype(but->rnaprop);
+    if (ELEM(subtype, PROP_PIXEL, PROP_PERCENTAGE)) {
+      switch (subtype) {
+        case PROP_PIXEL:
+          name_short = "px";
+          break;
+        case PROP_PERCENTAGE:
+          name_short = "%";
+        default:
+          break;
+      }
 
-    /* If the string contains the unit already, don't add it as a hint. */
-    std::string str = data->str;
-    if (str.find(name_short) != std::string::npos) {
-      UI_but_completion_set(but, nullptr);
-      return;
-    }
+      /* If the string contains the unit already, don't add it as a hint. */
+      std::string str = data->str;
+      if (str.find(name_short) != std::string::npos) {
+        UI_but_completion_set(but, nullptr);
+        return;
+      }
 
-    /* If the number we're entering is not valid, don't show the hint. */
-    double value;
-    if (!BPY_run_string_as_number(C, nullptr, data->str, nullptr, &value)) {
-      UI_but_completion_set(but, nullptr);
-      return;
+      /* If the number we're entering is not valid, don't show the hint. */
+      double value;
+      if (!BPY_run_string_as_number(C, nullptr, data->str, nullptr, &value)) {
+        UI_but_completion_set(but, nullptr);
+        return;
+      }
     }
   }
 
