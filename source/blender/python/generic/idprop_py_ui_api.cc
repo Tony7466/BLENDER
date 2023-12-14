@@ -125,7 +125,7 @@ static bool try_parse_enum_item(PyObject *py_item, const int index, IDPropertyUI
 
   item.identifier = BLI_strdup(identifier);
   item.name = BLI_strdup(name);
-  item.description = BLI_strdup(description);
+  item.description = BLI_strdup_null(description);
   if (icon_name) {
     RNA_enum_value_from_identifier(rna_enum_icon_items, icon_name, &item.icon);
   }
@@ -706,11 +706,14 @@ static void idprop_ui_data_to_dict_int(IDProperty *property, PyObject *dict)
     PyObject *items_list = PyList_New(ui_data->enum_items_num);
     for (int i = 0; i < ui_data->enum_items_num; ++i) {
       const IDPropertyUIDataEnumItem &item = ui_data->enum_items[i];
+      BLI_assert(item.identifier != nullptr);
+      BLI_assert(item.name != nullptr);
 
       PyObject *item_tuple = PyTuple_New(5);
       PyTuple_SET_ITEM(item_tuple, 0, PyUnicode_FromString(item.identifier));
       PyTuple_SET_ITEM(item_tuple, 1, PyUnicode_FromString(item.name));
-      PyTuple_SET_ITEM(item_tuple, 2, PyUnicode_FromString(item.description));
+      PyTuple_SET_ITEM(
+          item_tuple, 2, PyUnicode_FromString(item.description ? item.description : ""));
       PyTuple_SET_ITEM(item_tuple, 3, PyLong_FromLong(item.icon));
       PyTuple_SET_ITEM(item_tuple, 4, PyLong_FromLong(item.value));
 
