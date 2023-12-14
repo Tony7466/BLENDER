@@ -21,8 +21,7 @@ struct Volume;
 
 blender::bke::VolumeGridData *BKE_volume_grid_add_vdb(Volume &volume,
                                                       blender::StringRef name,
-                                                      openvdb::GridBase::Ptr vdb_grid,
-                                                      VolumeTreeSource tree_source);
+                                                      openvdb::GridBase::Ptr vdb_grid);
 
 std::optional<blender::Bounds<blender::float3>> BKE_volume_grid_bounds(
     openvdb::GridBase::ConstPtr grid);

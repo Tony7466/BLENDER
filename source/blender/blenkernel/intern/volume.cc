@@ -1095,8 +1095,7 @@ struct CreateGridOp {
 #ifdef WITH_OPENVDB
 VolumeGridData *BKE_volume_grid_add_vdb(Volume &volume,
                                         const StringRef name,
-                                        openvdb::GridBase::Ptr vdb_grid,
-                                        VolumeTreeSource tree_source)
+                                        openvdb::GridBase::Ptr vdb_grid)
 {
   VolumeGridVector &grids = *volume.runtime.grids;
   BLI_assert(BKE_volume_grid_find_for_read(&volume, name.data()) == nullptr);
