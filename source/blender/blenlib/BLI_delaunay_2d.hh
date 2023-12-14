@@ -174,15 +174,10 @@ template<typename Arith_t> class CDT_result {
  public:
   Array<vec2<Arith_t>> vert;
   Array<std::pair<int, int>> edge;
-  Array<int> face_offsets;
-  Array<int> face_vert_indices;
-
+  Array<Vector<int>> face;
   /* The orig vectors are only populated if the need_ids input field is true. */
-
   /** For each output vert, which input verts correspond to it? */
-  Array<int> vert_orig_offsets;
-  Array<int> vert_orig_indices;
-
+  Array<Vector<int>> vert_orig;
   /**
    * For each output edge, which input edges does it overlap?
    * The input edge ids are encoded as follows:
@@ -192,32 +187,11 @@ template<typename Arith_t> class CDT_result {
    *      the edge index by face_edge_offset; "a" will be the input face + 1,
    *      and "b" will be a position within that face.
    */
-  Array<int> edge_orig_offsets;
-  Array<int> edge_orig_indices;
-
+  Array<Vector<int>> edge_orig;
   /** For each output face, which original faces does it overlap? */
-  Array<int> face_orig_offsets;
-  Array<int> face_orig_indices;
-
+  Array<Vector<int>> face_orig;
   /** Used to encode edge_orig (see above). */
   int face_edge_offset;
-
-  GroupedSpan<int> faces() const
-  {
-    return GroupedSpan<int>(face_offsets.as_span(), face_vert_indices);
-  }
-  GroupedSpan<int> orig_verts() const
-  {
-    return GroupedSpan<int>(vert_orig_offsets.as_span(), vert_orig_indices);
-  }
-  GroupedSpan<int> orig_edges() const
-  {
-    return GroupedSpan<int>(edge_orig_offsets.as_span(), edge_orig_indices);
-  }
-  GroupedSpan<int> orig_faces() const
-  {
-    return GroupedSpan<int>(face_orig_offsets.as_span(), face_orig_indices);
-  }
 };
 
 CDT_result<double> delaunay_2d_calc(const CDT_input<double> &input, CDT_output_type output_type);

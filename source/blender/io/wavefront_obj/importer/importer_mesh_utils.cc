@@ -57,28 +57,28 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vert_positions, Span<int>
   input.epsilon = 1.0e-6f;
   input.need_ids = true;
   CDT_result<double> res = delaunay_2d_calc(input, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
-  const GroupedSpan<int> result_faces = res.faces();
 
   /* Emit new face information from CDT result. */
   Vector<Vector<int>> faces;
-  faces.reserve(result_faces.size());
-  for (const int i : result_faces.index_range()) {
+  faces.reserve(res.face.size());
+  for (const auto &f : res.face) {
     Vector<int> face_verts;
-    face_verts.reserve(result_faces[i].size());
-    for (const int idx : result_faces[i]) {
-      BLI_assert(idx >= 0 && idx < res.orig_verts().size());
-      if (res.orig_verts()[idx].is_empty()) {
+    face_verts.reserve(f.size());
+    for (int64_t i = 0; i < f.size(); ++i) {
+      int idx = f[i];
+      BLI_assert(idx >= 0 && idx < res.vert_orig.size());
+      if (res.vert_orig[idx].is_empty()) {
         /* If we have a whole new vertex in the tessellated result,
          * we won't quite know what to do with it (how to create normal/UV
-         * for it, for example). Such vertices are oftvert_orig_indicesen due to
+         * for it, for example). Such vertices are often due to
          * self-intersecting polygons. Just skip them from the output
          * face. */
       }
       else {
         /* Vertex corresponds to one or more of the input vertices, use it. */
-        const int old_idx = res.orig_verts()[idx][0];
+        idx = res.vert_orig[idx][0];
         BLI_assert(idx >= 0 && idx < face_verts.size());
-        face_verts.append(old_idx);
+        face_verts.append(idx);
       }
     }
     faces.append(face_verts);

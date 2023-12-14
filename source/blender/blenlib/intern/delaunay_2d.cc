@@ -2696,20 +2696,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
   result.vert = Array<vec2<T>>(nv);
   if (cdt_state->need_ids) {
-    result.vert_orig_offsets = Array<int>(nv + 1, 0);
-    int i_out = 0;
-    for (int i = 0; i < verts_size; ++i) {
-      const CDTVert<T> *v = cdt->verts[i];
-      if (v->merge_to_index == -1) {
-        result.vert_orig_offsets[i_out] = v->input_ids.size();
-        if (i < cdt_state->input_vert_num) {
-          result.vert_orig_offsets[i_out]++;
-        }
-        i_out++;
-      }
-    }
-    offset_indices::accumulate_counts_to_offsets(result.vert_orig_offsets);
-    result.vert_orig_indices.reinitialize(result.vert_orig_offsets.last());
+    result.vert_orig = Array<Vector<int>>(nv);
   }
   int i_out = 0;
   for (int i = 0; i < verts_size; ++i) {
@@ -2717,14 +2704,11 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
     if (v->merge_to_index == -1) {
       result.vert[i_out] = v->co.exact;
       if (cdt_state->need_ids) {
-        int out_i = result.vert_orig_offsets[i_out];
         if (i < cdt_state->input_vert_num) {
-          result.vert_orig_indices[out_i] = i;
-          out_i++;
+          result.vert_orig[i_out].append(i);
         }
         for (int vert : v->input_ids) {
-          result.vert_orig_indices[out_i] = vert;
-          out_i++;
+          result.vert_orig[i_out].append(vert);
         }
       }
       ++i_out;
@@ -2737,16 +2721,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   });
   result.edge = Array<std::pair<int, int>>(ne);
   if (cdt_state->need_ids) {
-    result.edge_orig_offsets = Array<int>(ne + 1, 0);
-    int e_out = 0;
-    for (const int i : cdt->edges.index_range()) {
-      if (!is_deleted_edge(cdt->edges[i])) {
-        result.edge_orig_offsets[e_out] = cdt->edges[i]->input_ids.size();
-        e_out++;
-      }
-    }
-    offset_indices::accumulate_counts_to_offsets(result.edge_orig_offsets);
-    result.edge_orig_indices.reinitialize(result.edge_orig_offsets.last());
+    result.edge_orig = Array<Vector<int>>(ne);
   }
   int e_out = 0;
   for (const CDTEdge<T> *e : cdt->edges) {
@@ -2755,10 +2730,8 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
       int vo2 = vert_to_output_map[e->symedges[1].vert->index];
       result.edge[e_out] = std::pair<int, int>(vo1, vo2);
       if (cdt_state->need_ids) {
-        int orig_i = result.edge_orig_offsets[e_out];
         for (int edge : e->input_ids) {
-          result.edge_orig_indices[orig_i] = edge;
-          orig_i++;
+          result.edge_orig[e_out].append(edge);
         }
       }
       ++e_out;
@@ -2766,59 +2739,31 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
 
   /* All non-deleted, non-outer faces will be output. */
-  int nf = 0;
-  int new_face_vert_count = 0;
-  for (const CDTFace<T> *f : cdt->faces) {
-    if (!f->deleted && f != cdt->outer_face) {
-      nf++;
-      const SymEdge<T> *se = f->symedge;
-      const SymEdge<T> *se_start = se;
-      do {
-        new_face_vert_count++;
-        se = se->next;
-      } while (se != se_start);
-    }
-  }
-
+  int nf = std::count_if(cdt->faces.begin(), cdt->faces.end(), [=](const CDTFace<T> *f) -> bool {
+    return !f->deleted && f != cdt->outer_face;
+  });
+  result.face = Array<Vector<int>>(nf);
   if (cdt_state->need_ids) {
-    result.face_orig_offsets = Array<int>(nf + 1, 0);
-    result.face_vert_indices.reinitialize(new_face_vert_count);
-    int f_out = 0;
-    for (const int i : cdt->faces.index_range()) {
-      const CDTFace<T> *f = cdt->faces[i];
-      if (!f->deleted && f != cdt->outer_face) {
-        result.face_orig_offsets[f_out] = f->input_ids.size();
-        f_out++;
-      }
-    }
-    offset_indices::accumulate_counts_to_offsets(result.face_orig_offsets);
-    result.face_orig_indices.reinitialize(result.face_orig_offsets.last());
+    result.face_orig = Array<Vector<int>>(nf);
   }
-  int face_vert_out = 0;
   int f_out = 0;
-  result.face_offsets.reinitialize(nf + 1);
   for (const CDTFace<T> *f : cdt->faces) {
     if (!f->deleted && f != cdt->outer_face) {
-      result.face_offsets[f_out] = face_vert_out;
       SymEdge<T> *se = f->symedge;
       BLI_assert(se != nullptr);
       SymEdge<T> *se_start = se;
       do {
-        result.face_vert_indices[face_vert_out] = vert_to_output_map[se->vert->index];
-        face_vert_out++;
+        result.face[f_out].append(vert_to_output_map[se->vert->index]);
         se = se->next;
       } while (se != se_start);
       if (cdt_state->need_ids) {
-        int orig_i = result.face_orig_offsets[f_out];
         for (int face : f->input_ids) {
-          result.face_orig_indices[orig_i] = face;
-          orig_i++;
+          result.face_orig[f_out].append(face);
         }
       }
       ++f_out;
     }
   }
-  result.face_offsets.last() = face_vert_out;
   return result;
 }
 

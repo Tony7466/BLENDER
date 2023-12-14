@@ -189,8 +189,12 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
       const meshintersect::CDT_result<double> &result = results[i_result];
       vert_groups_data[i_result] = result.vert.size();
       edge_groups_data[i_result] = result.edge.size();
-      face_groups_data[i_result] = result.faces().size();
-      loop_groups_data[i_result] = result.faces().offsets.total_size();
+      face_groups_data[i_result] = result.face.size();
+      int loop_len = 0;
+      for (const Vector<int> &face : result.face) {
+        loop_len += face.size();
+      }
+      loop_groups_data[i_result] = loop_len;
     }
   });
 
@@ -229,13 +233,14 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
       }
 
       MutableSpan<int> face_offsets = all_face_offsets.slice(faces_range);
-      for (const int face : result.faces().index_range()) {
-        face_offsets[face] = result.face_offsets[face] + loops_range.start();
-      }
-
       MutableSpan<int> corner_verts = all_corner_verts.slice(loops_range);
-      for (const int i : result.face_vert_indices.index_range()) {
-        corner_verts[i] = result.face_vert_indices[i] + verts_range.start();
+      int i_face_corner = 0;
+      for (const int i_face : result.face.index_range()) {
+        face_offsets[i_face] = i_face_corner + loops_range.start();
+        for (const int i_corner : result.face[i_face].index_range()) {
+          corner_verts[i_face_corner] = result.face[i_face][i_corner] + verts_range.start();
+          i_face_corner++;
+        }
       }
     }
   });

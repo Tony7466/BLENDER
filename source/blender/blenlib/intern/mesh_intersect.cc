@@ -1821,14 +1821,14 @@ static void do_cdt(CDT_data &cd)
                 << "," << cd.cdt_out.vert[i][1].get_d() << "\n";
     }
     std::cout << "Tris\n";
-    for (int f : cd.cdt_out.faces().index_range()) {
+    for (int f : cd.cdt_out.face.index_range()) {
       std::cout << "f" << f << ": ";
-      for (int vert : cd.cdt_out.faces()[f]) {
-        std::cout << vert << " ";
+      for (int j : cd.cdt_out.face[f].index_range()) {
+        std::cout << cd.cdt_out.face[f][j] << " ";
       }
       std::cout << "orig: ";
-      for (int j : cd.cdt_out.orig_faces()[f].index_range()) {
-        std::cout << cd.cdt_out.orig_faces()[f][j] << " ";
+      for (int j : cd.cdt_out.face_orig[f].index_range()) {
+        std::cout << cd.cdt_out.face_orig[f][j] << " ";
       }
       std::cout << "\n";
     }
@@ -1837,8 +1837,8 @@ static void do_cdt(CDT_data &cd)
       std::cout << "e" << e << ": (" << cd.cdt_out.edge[e].first << ", "
                 << cd.cdt_out.edge[e].second << ") ";
       std::cout << "orig: ";
-      for (int j : cd.cdt_out.orig_edges()[e].index_range()) {
-        std::cout << cd.cdt_out.orig_edges()[e][j] << " ";
+      for (int j : cd.cdt_out.edge_orig[e].index_range()) {
+        std::cout << cd.cdt_out.edge_orig[e][j] << " ";
       }
       std::cout << "\n";
     }
@@ -1884,7 +1884,7 @@ static int get_cdt_edge_orig(
    * then want to set *r_is_intersect to true. */
   int face_eorig = NO_INDEX;
   bool have_non_face_eorig = false;
-  for (int orig_index : cd.cdt_out.orig_edges()[e]) {
+  for (int orig_index : cd.cdt_out.edge_orig[e]) {
     /* orig_index encodes the triangle and pos within the triangle of the input edge. */
     if (orig_index >= foff) {
       if (face_eorig == NO_INDEX) {
@@ -1937,10 +1937,10 @@ static Face *cdt_tri_as_imesh_face(
 {
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
   int t_orig = tm.face(cd.input_face[cdt_in_t])->orig;
-  BLI_assert(cdt_out.faces()[cdt_out_t].size() == 3);
-  int i0 = cdt_out.faces()[cdt_out_t][0];
-  int i1 = cdt_out.faces()[cdt_out_t][1];
-  int i2 = cdt_out.faces()[cdt_out_t][2];
+  BLI_assert(cdt_out.face[cdt_out_t].size() == 3);
+  int i0 = cdt_out.face[cdt_out_t][0];
+  int i1 = cdt_out.face[cdt_out_t][1];
+  int i2 = cdt_out.face[cdt_out_t][2];
   mpq3 v0co = unproject_cdt_vert(cd, cdt_out.vert[i0]);
   mpq3 v1co = unproject_cdt_vert(cd, cdt_out.vert[i1]);
   mpq3 v2co = unproject_cdt_vert(cd, cdt_out.vert[i2]);
@@ -2126,7 +2126,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
   cdt_in.face_vert_indices = face_vert_indices;
 
   CDT_result<mpq_class> cdt_out = delaunay_2d_calc(cdt_in, CDT_INSIDE);
-  int n_tris = cdt_out.faces().size();
+  int n_tris = cdt_out.face.size();
   Array<Face *> ans(n_tris);
   for (int t = 0; t < n_tris; ++t) {
     int i_v_out[3];
@@ -2134,12 +2134,12 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
     int eo[3];
     bool needs_steiner = false;
     for (int i = 0; i < 3; ++i) {
-      i_v_out[i] = cdt_out.faces()[t][i];
-      if (cdt_out.orig_verts()[i_v_out[i]].is_empty()) {
+      i_v_out[i] = cdt_out.face[t][i];
+      if (cdt_out.vert_orig[i_v_out[i]].is_empty()) {
         needs_steiner = true;
         break;
       }
-      v[i] = (*f)[cdt_out.orig_verts()[i_v_out[i]][0]];
+      v[i] = (*f)[cdt_out.vert_orig[i_v_out[i]][0]];
     }
     if (needs_steiner) {
       /* Fall back on the polyfill triangulator. */
@@ -2154,7 +2154,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
       int e_out = verts_to_edge.lookup_default(vpair_canon, NO_INDEX);
       BLI_assert(e_out != NO_INDEX);
       eo[i] = NO_INDEX;
-      for (int orig : cdt_out.orig_edges()[e_out]) {
+      for (int orig : cdt_out.edge_orig[e_out]) {
         if (orig >= foff) {
           int pos = orig % foff;
           BLI_assert(pos < f->size());
@@ -2305,8 +2305,8 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
   }
   constexpr int inline_buf_size = 20;
   Vector<Face *, inline_buf_size> faces;
-  for (int f : cdt_out.faces().index_range()) {
-    if (cdt_out.faces()[f].contains(t_in_cdt)) {
+  for (int f : cdt_out.face.index_range()) {
+    if (cdt_out.face_orig[f].contains(t_in_cdt)) {
       Face *facep = cdt_tri_as_imesh_face(f, t_in_cdt, cd, in_tm, arena);
       faces.append(facep);
     }
@@ -2668,8 +2668,8 @@ static void calc_cluster_tris(Array<IMesh> &tri_subdivided,
     const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
     BLI_assert(cd.input_face.size() == n_cluster_tris);
     Array<Vector<Face *>> face_vec(n_cluster_tris);
-    for (int cdt_out_t : cdt_out.faces().index_range()) {
-      for (int cdt_in_t : cdt_out.orig_faces()[cdt_out_t]) {
+    for (int cdt_out_t : cdt_out.face.index_range()) {
+      for (int cdt_in_t : cdt_out.face_orig[cdt_out_t]) {
         Face *f = cdt_tri_as_imesh_face(cdt_out_t, cdt_in_t, cd, tm, arena);
         face_vec[cdt_in_t].append(f);
       }

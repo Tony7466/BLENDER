@@ -1537,7 +1537,7 @@ static PyObject *M_Geometry_convex_hull_2d(PyObject * /*self*/, PyObject *pointl
  * to fill values, with start_table and len_table giving the start index
  * and length of the toplevel_len sub-lists.
  */
-static PyObject *list_of_lists_from_arrays(const blender::GroupedSpan<int> data)
+static PyObject *list_of_lists_from_arrays(const blender::Span<blender::Vector<int>> data)
 {
   if (data.is_empty()) {
     return PyList_New(0);
@@ -1694,16 +1694,16 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
   }
   PyTuple_SET_ITEM(ret_value, 1, out_edges);
 
-  out_faces = list_of_lists_from_arrays(res.faces());
+  out_faces = list_of_lists_from_arrays(res.face);
   PyTuple_SET_ITEM(ret_value, 2, out_faces);
 
-  out_orig_verts = list_of_lists_from_arrays(res.orig_verts());
+  out_orig_verts = list_of_lists_from_arrays(res.vert_orig);
   PyTuple_SET_ITEM(ret_value, 3, out_orig_verts);
 
-  out_orig_edges = list_of_lists_from_arrays(res.orig_edges());
+  out_orig_edges = list_of_lists_from_arrays(res.edge_orig);
   PyTuple_SET_ITEM(ret_value, 4, out_orig_edges);
 
-  out_orig_faces = list_of_lists_from_arrays(res.orig_faces());
+  out_orig_faces = list_of_lists_from_arrays(res.face_orig);
   PyTuple_SET_ITEM(ret_value, 5, out_orig_faces);
 
   return ret_value;
