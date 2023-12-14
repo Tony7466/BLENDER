@@ -1,11 +1,21 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup draw_engine
+ */
+
 #include "BKE_attribute.hh"
-#include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_duplilist.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_mesh.h"
 #include "BKE_pointcloud.h"
+
+#include "BLI_index_range.hh"
+#include "BLI_virtual_array.hh"
 
 #include "DNA_curve_types.h"
 #include "DNA_customdata_types.h"
@@ -14,91 +24,80 @@
 
 #include "DRW_render.h"
 #include "draw_manager_text.h"
-#include <optional>
 
-using namespace blender;
-using namespace blender::bke;
-
-static void add_data_based_on_type(GVArray attributes,
-                                   int index,
-                                   eCustomDataType type,
-                                   blender::float3 pos)
+static void add_data_based_on_type(const blender::GVArray &attributes,
+                                   const blender::VArraySpan<float3> &positions,
+                                   const float4x4 &modelMatrix)
 {
+  const eCustomDataType type = blender::bke::cpp_type_to_custom_data_type(attributes.type());
   if (type == CD_PROP_BOOL) {
-    DRW_text_viewer_attribute(attributes.get<bool>(index), pos);
+    DRW_text_viewer_attribute(attributes.typed<bool>(), positions, modelMatrix);
   }
   if (type == CD_PROP_FLOAT) {
-    DRW_text_viewer_attribute(attributes.get<float>(index), pos);
+    DRW_text_viewer_attribute(attributes.typed<float>(), positions, modelMatrix);
   }
   if (type == CD_PROP_INT32) {
-    DRW_text_viewer_attribute(attributes.get<int>(index), pos);
+    DRW_text_viewer_attribute(attributes.typed<int>(), positions, modelMatrix);
   }
   if (type == CD_PROP_FLOAT2) {
-    DRW_text_viewer_attribute(attributes.get<float2>(index), pos);
+    DRW_text_viewer_attribute(attributes.typed<float2>(), positions, modelMatrix);
   }
   if (type == CD_PROP_FLOAT3) {
-    DRW_text_viewer_attribute(attributes.get<float3>(index), pos);
+    DRW_text_viewer_attribute(attributes.typed<float3>(), positions, modelMatrix);
   }
-  if (CD_PROP_COLOR == type || CD_PROP_QUATERNION == type) {
-    DRW_text_viewer_attribute(attributes.get<float4>(index), pos);
+  if (type == CD_PROP_COLOR) {
+    DRW_text_viewer_attribute(attributes.typed<float4>(), positions, modelMatrix);
   }
 }
 
-// function for passing mesh, pointcloud, and curve data to text cache
-static void add_attributes_to_text_cache(AttributeAccessor attribute_accessor,
+static void add_attributes_to_text_cache(blender::bke::AttributeAccessor attribute_accessor,
                                          float4x4 modelMatrix)
 {
-  if (attribute_accessor.contains(".viewer")) {
-    // get attribute values
-    const GAttributeReader viewer_attribute_reader = attribute_accessor.lookup(".viewer");
-    GVArray viewer_attributes = *viewer_attribute_reader;
+  using namespace blender;
 
-    // get positions
-    VArraySpan<float3> positions = *attribute_accessor.lookup<float3>(
-        "position", viewer_attribute_reader.domain);
-
-    eCustomDataType type = attribute_accessor.lookup_meta_data(".viewer")->data_type;
-
-    // for each position
-    for (const int i : positions.index_range()) {
-      float3 pos = blender::math::transform_point(modelMatrix, positions[i]);
-
-      // add the attribute to the text cache based on it's type
-      add_data_based_on_type(viewer_attributes, i, type, pos);
-    }
+  if (!attribute_accessor.contains(".viewer")) {
+    return;
   }
+
+  bke::GAttributeReader viewer_attribute_reader = attribute_accessor.lookup(".viewer");
+  const GVArray viewer_attributes = *viewer_attribute_reader;
+
+  const VArraySpan<float3> positions = *attribute_accessor.lookup<float3>(
+      "position", viewer_attribute_reader.domain);
+
+  add_data_based_on_type(viewer_attributes, positions, modelMatrix);
 }
 
-static void add_instance_attributes_to_text_cache(AttributeAccessor attribute_accessor,
-                                                  float4x4 modelMatrix,
-                                                  float3 loc,
-                                                  int instance_index)
+static void add_instance_attributes_to_text_cache(
+    blender::bke::AttributeAccessor attribute_accessor,
+    float4x4 modelMatrix,
+    float3 position,
+    int instance_index)
 {
-  // get attribute values, position and type
-  GVArray viewer_attributes = *attribute_accessor.lookup(".viewer");
-  float3 pos = blender::math::transform_point(modelMatrix, loc);
-  eCustomDataType type = attribute_accessor.lookup_meta_data(".viewer")->data_type;
+  using namespace blender;
 
-  // and add that data to the text cache based on it's type
-  add_data_based_on_type(viewer_attributes, instance_index, type, pos);
+  /* Data from instances are read as a single value from a given index. The data is converted back
+   * to an array so one function can handle both instance and object data. */
+  const GVArray viewer_attributes = attribute_accessor.lookup(".viewer").varray.slice(
+      IndexRange{instance_index, 1});
+
+  const blender::VArraySpan<float3> positions{VArray<float3>::ForSingle(position, 1)};
+
+  add_data_based_on_type(viewer_attributes, positions, modelMatrix);
 }
 
 void OVERLAY_viewer_attribute_text(const Object &object)
 {
+  using namespace blender;
   float4x4 modelMatrix = float4x4(object.object_to_world);
-
   DupliObject *dupli_object = DRW_object_get_dupli(&object);
 
-  // check for instances
   if (dupli_object->preview_instance_index >= 0) {
     const auto &instances =
-        *dupli_object->preview_base_geometry->get_component<InstancesComponent>();
-    const AttributeAccessor instance_attributes = *instances.attributes();
+        *dupli_object->preview_base_geometry->get_component<bke::InstancesComponent>();
 
-    // if instances have the viewer attribute
-    if (instance_attributes.contains(".viewer")) {
-      // add single instance value to cache based on instance
-      add_instance_attributes_to_text_cache(instance_attributes,
+    if (instances.attributes()->contains(".viewer")) {
+      add_instance_attributes_to_text_cache(*instances.attributes(),
                                             modelMatrix,
                                             dupli_object->ob->loc,
                                             dupli_object->preview_instance_index);
@@ -107,33 +106,32 @@ void OVERLAY_viewer_attribute_text(const Object &object)
     }
   }
 
-  // if there's no instances, treat as regular object
   switch (object.type) {
     case OB_MESH: {
-      Mesh *mesh = static_cast<Mesh *>(object.data);
-      AttributeAccessor attribute_accessor = mesh->attributes();
+      const Mesh *mesh = static_cast<Mesh *>(object.data);
+      bke::AttributeAccessor attribute_accessor = mesh->attributes();
       add_attributes_to_text_cache(attribute_accessor, modelMatrix);
       break;
     }
     case OB_POINTCLOUD: {
-      PointCloud *pointcloud = static_cast<PointCloud *>(object.data);
-      AttributeAccessor attribute_accessor = pointcloud->attributes();
+      const PointCloud *pointcloud = static_cast<PointCloud *>(object.data);
+      bke::AttributeAccessor attribute_accessor = pointcloud->attributes();
       add_attributes_to_text_cache(attribute_accessor, modelMatrix);
       break;
     }
     case OB_CURVES_LEGACY: {
-      Curve *curve = static_cast<Curve *>(object.data);
+      const Curve *curve = static_cast<Curve *>(object.data);
       if (curve->curve_eval) {
         const bke::CurvesGeometry &curves = curve->curve_eval->geometry.wrap();
-        AttributeAccessor attribute_accessor = curves.attributes();
+        bke::AttributeAccessor attribute_accessor = curves.attributes();
         add_attributes_to_text_cache(attribute_accessor, modelMatrix);
       }
       break;
     }
     case OB_CURVES: {
-      Curves *curves_id = static_cast<Curves *>(object.data);
+      const Curves *curves_id = static_cast<Curves *>(object.data);
       const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-      AttributeAccessor attribute_accessor = curves.attributes();
+      bke::AttributeAccessor attribute_accessor = curves.attributes();
       add_attributes_to_text_cache(attribute_accessor, modelMatrix);
       break;
     }

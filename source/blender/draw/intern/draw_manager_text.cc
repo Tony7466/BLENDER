@@ -6,10 +6,12 @@
  * \ingroup draw
  */
 
+#include "GPU_shader_shared_utils.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memiter.h"
@@ -228,70 +230,108 @@ static void DRW_text_viewer_attribute_ex(char *numstr, size_t numstr_len, blende
   DRW_text_cache_add(dt, position, numstr, numstr_len, 0, 0, txt_flag, col);
 }
 
-void DRW_text_viewer_attribute(float attribute_value, blender::float3 position)
+template<>
+void DRW_text_viewer_attribute<bool>(const blender::VArray<bool> &attribute_values,
+                                     const blender::VArraySpan<blender::float3> &positions,
+                                     const float4x4 modelMatrix)
 {
   char numstr[32];
   size_t numstr_len;
 
-  numstr_len = SNPRINTF_RLEN(numstr, "%g", attribute_value);
-
-  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr, "%s", attribute_values.get(i) ? "True" : "False");
+    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
 }
 
-void DRW_text_viewer_attribute(blender::float2 attribute_value, blender::float3 position)
-{
-  char numstr[32 * 2];
-  size_t numstr_len;
-
-  numstr_len = SNPRINTF_RLEN(numstr, "(%g, %g)", attribute_value.x, attribute_value.y);
-
-  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-}
-
-void DRW_text_viewer_attribute(blender::float3 attribute_value, blender::float3 position)
-{
-  char numstr[32 * 3];
-  size_t numstr_len;
-
-  numstr_len = SNPRINTF_RLEN(
-      numstr, "(%g, %g, %g)", attribute_value.x, attribute_value.y, attribute_value.z);
-
-  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-}
-
-void DRW_text_viewer_attribute(blender::float4 attribute_value, blender::float3 position)
-{
-  char numstr[32 * 4];
-  size_t numstr_len;
-
-  numstr_len = SNPRINTF_RLEN(numstr,
-                             "(%.3f, %.3f, %.3f, %.3f)",
-                             attribute_value.x,
-                             attribute_value.y,
-                             attribute_value.z,
-                             attribute_value.w);
-
-  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-}
-
-void DRW_text_viewer_attribute(bool attribute_value, blender::float3 position)
+template<>
+void DRW_text_viewer_attribute<float>(const blender::VArray<float> &attribute_values,
+                                      const blender::VArraySpan<blender::float3> &positions,
+                                      const float4x4 modelMatrix)
 {
   char numstr[32];
   size_t numstr_len;
 
-  numstr_len = SNPRINTF_RLEN(numstr, "%s", attribute_value ? "True" : "False");
-
-  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr, "%g", attribute_values.get(i));
+    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
 }
 
-void DRW_text_viewer_attribute(int attribute_value, blender::float3 position)
+template<>
+void DRW_text_viewer_attribute<int>(const blender::VArray<int> &attribute_values,
+                                    const blender::VArraySpan<blender::float3> &positions,
+                                    const float4x4 modelMatrix)
+{
+
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr, "%d", attribute_values.get(i));
+    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
+
+template<>
+void DRW_text_viewer_attribute<blender::float2>(
+    const blender::VArray<blender::float2> &attribute_values,
+    const blender::VArraySpan<blender::float3> &positions,
+    const float4x4 modelMatrix)
 {
   char numstr[32];
   size_t numstr_len;
 
-  numstr_len = SNPRINTF_RLEN(numstr, "%d", attribute_value);
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(
+        numstr, "(%g, %g)", attribute_values.get(i).x, attribute_values.get(i).y);
+    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
 
-  DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+template<>
+void DRW_text_viewer_attribute<blender::float3>(
+    const blender::VArray<blender::float3> &attribute_values,
+    const blender::VArraySpan<blender::float3> &positions,
+    const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr,
+                               "(%g, %g, %g)",
+                               attribute_values.get(i).x,
+                               attribute_values.get(i).y,
+                               attribute_values.get(i).z);
+    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
+
+template<>
+void DRW_text_viewer_attribute<blender::float4>(
+    const blender::VArray<blender::float4> &attribute_values,
+    const blender::VArraySpan<blender::float3> &positions,
+    const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr,
+                               "(%.3f, %.3f, %.3f, %.3f)",
+                               attribute_values.get(i).x,
+                               attribute_values.get(i).y,
+                               attribute_values.get(i).z,
+                               attribute_values.get(i).w);
+    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
 }
 
 void DRW_text_edit_mesh_measure_stats(ARegion *region,
