@@ -56,16 +56,6 @@ static void check_object_attribute(const DictionaryValue::Lookup &lookup,
   EXPECT_EQ(element->as_double_value()->value(), expected_value);
 }
 
-static void check_object_attribute_enum(const DictionaryValue::Lookup &lookup,
-                                        const std::string expected_key,
-                                        const int32_t expected_value)
-{
-  EXPECT_TRUE(lookup.contains(expected_key));
-  const std::shared_ptr<Value> &element = *lookup.lookup_ptr(expected_key);
-  ASSERT_EQ(element->type(), eValueType::Enum);
-  EXPECT_EQ(element->as_enum_value()->value(), expected_value);
-}
-
 static void check_object_attribute(const DictionaryValue::Lookup &lookup,
                                    const std::string expected_key,
                                    const double expected_value)
@@ -95,27 +85,6 @@ static void test_string_to_value(const StringRefNull prop_name, const StringRefN
 TEST(idprop, convert_idp_string_to_value)
 {
   test_string_to_value("mykey", "mycontent");
-}
-
-static void test_enum_to_value(const StringRefNull prop_name, int prop_content)
-{
-  std::unique_ptr<IDProperty, IDPropertyDeleter> property = create(prop_name, prop_content);
-
-  std::unique_ptr<ArrayValue> value = convert_to_serialize_values(property.get());
-  check_container_value(value.get());
-  const ArrayValue::Item &item = value->elements()[0];
-  const DictionaryValue *object = item->as_dictionary_value();
-  const DictionaryValue::Lookup lookup = object->create_lookup();
-
-  EXPECT_EQ(lookup.size(), 3);
-  check_object_attribute(lookup, "name", prop_name);
-  check_object_attribute(lookup, "type", "IDP_INT");
-  check_object_attribute_enum(lookup, "value", prop_content);
-}
-
-TEST(idprop, convert_idp_enum_to_value)
-{
-  test_enum_to_value("mykey", 10);
 }
 
 static void test_int_to_value(const StringRefNull prop_name, int32_t prop_content)
@@ -281,16 +250,6 @@ static void test_idprop(const IDProperty *id_property,
   EXPECT_EQ(IDP_Double(id_property), expected_value);
 }
 
-static void test_idprop_enum(const IDProperty *id_property,
-                             StringRef expected_name,
-                             int32_t expected_value)
-{
-  ASSERT_NE(id_property, nullptr);
-  EXPECT_EQ(id_property->type, IDP_INT);
-  EXPECT_EQ(id_property->name, expected_name);
-  EXPECT_EQ(IDP_Int(id_property), expected_value);
-}
-
 static void test_idprop(const IDProperty *id_property,
                         StringRef expected_name,
                         const Vector<int32_t> &values)
@@ -347,17 +306,6 @@ static void test_convert_idprop_from_value(StringRef input,
   IDP_FreeProperty(id_property);
 }
 
-template<typename Type>
-static void test_convert_idprop_from_value_enum(StringRef input,
-                                                StringRef expected_name,
-                                                Type expected_value)
-{
-  std::unique_ptr<Value> value = parse_json(input);
-  IDProperty *id_property = convert_from_serialize_value(*value);
-  test_idprop_enum(id_property, expected_name, expected_value);
-  IDP_FreeProperty(id_property);
-}
-
 TEST(idprop, convert_idp_string_from_value)
 {
   test_convert_idprop_from_value(
@@ -382,12 +330,6 @@ TEST(idprop, convert_idp_double_from_value)
 {
   test_convert_idprop_from_value(
       R"([{"name":"MyDoubleName","type":"IDP_DOUBLE","value":42.24}])", "MyDoubleName", 42.24);
-}
-
-TEST(idprop, convert_idp_enum_from_value)
-{
-  test_convert_idprop_from_value_enum(
-      R"([{"name":"MyEnumName","type":"IDP_ENUM","value":13}])", "MyEnumName", 13);
 }
 
 TEST(idprop, convert_idp_array_int_from_value)
