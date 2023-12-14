@@ -4,7 +4,10 @@
 
 #include "usd_reader_instance.h"
 
+#include "BKE_lib_id.h"
 #include "BKE_object.hh"
+
+#include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 
 #include <iostream>
@@ -33,6 +36,7 @@ void USDInstanceReader::create_object(Main *bmain, const double /* motionSampleT
 void USDInstanceReader::set_instance_collection(Collection *coll)
 {
   if (this->object_) {
+    id_us_plus(&coll->id);
     this->object_->instance_collection = coll;
   }
 }
