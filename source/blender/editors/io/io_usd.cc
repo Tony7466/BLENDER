@@ -441,7 +441,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   const bool import_subdiv = RNA_boolean_get(op->ptr, "import_subdiv");
 
-  const bool import_instance_proxies = RNA_boolean_get(op->ptr, "import_instance_proxies");
+  const bool convert_instances_to_copies = RNA_boolean_get(op->ptr, "convert_instances_to_copies");
 
   const bool import_visible_only = RNA_boolean_get(op->ptr, "import_visible_only");
 
@@ -505,7 +505,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_blendshapes = import_blendshapes;
   params.prim_path_mask = prim_path_mask;
   params.import_subdiv = import_subdiv;
-  params.import_instance_proxies = import_instance_proxies;
+  params.support_scene_instancing = convert_instances_to_copies;
   params.create_collection = create_collection;
   params.import_guide = import_guide;
   params.import_proxy = import_proxy;
@@ -561,7 +561,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "read_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Include"));
   uiItemR(col, ptr, "import_subdiv", UI_ITEM_NONE, IFACE_("Subdivision"), ICON_NONE);
-  uiItemR(col, ptr, "import_instance_proxies", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "convert_instances_to_copies", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_visible_only", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_guide", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_proxy", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -656,9 +656,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   "SubdivisionScheme attribute");
 
   RNA_def_boolean(ot->srna,
-                  "import_instance_proxies",
+                  "convert_instances_to_copies",
                   false,
-                  "Import Instance Proxies",
+                  "Convert Instances to Copies",
                   "Create unique Blender objects for USD instances");
 
   RNA_def_boolean(ot->srna,

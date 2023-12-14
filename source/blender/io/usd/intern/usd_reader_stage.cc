@@ -127,7 +127,7 @@ bool USDStageReader::is_primitive_prim(const pxr::UsdPrim &prim) const
 
 USDPrimReader *USDStageReader::create_reader_if_allowed(const pxr::UsdPrim &prim)
 {
-  if (!params_.import_instance_proxies && prim.IsInstance()) {
+  if (!params_.support_scene_instancing && prim.IsInstance()) {
     return new USDInstanceReader(prim, params_, settings_);
   }
   if (params_.import_shapes && is_primitive_prim(prim)) {
@@ -169,7 +169,7 @@ USDPrimReader *USDStageReader::create_reader_if_allowed(const pxr::UsdPrim &prim
 
 USDPrimReader *USDStageReader::create_reader(const pxr::UsdPrim &prim)
 {
-  if (!params_.import_instance_proxies && prim.IsInstance()) {
+  if (!params_.support_scene_instancing && prim.IsInstance()) {
     return new USDInstanceReader(prim, params_, settings_);
   }
   if (is_primitive_prim(prim)) {
@@ -322,7 +322,7 @@ USDPrimReader *USDStageReader::collect_readers(Main *bmain,
 
   pxr::Usd_PrimFlagsPredicate filter_predicate = pxr::UsdPrimDefaultPredicate;
 
-  if (params_.import_instance_proxies) {
+  if (params_.support_scene_instancing) {
     filter_predicate = pxr::UsdTraverseInstanceProxies(filter_predicate);
   }
 
@@ -399,7 +399,7 @@ void USDStageReader::collect_readers(Main *bmain)
   stage_->SetInterpolationType(pxr::UsdInterpolationType::UsdInterpolationTypeHeld);
   collect_readers(bmain, root, readers_);
 
-  if (!params_.import_instance_proxies) {
+  if (!params_.support_scene_instancing) {
     /* Collect the scenegraph instance prototypes. */
     std::vector<pxr::UsdPrim> protos = stage_->GetPrototypes();
 

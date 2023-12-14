@@ -81,7 +81,7 @@ struct USDImportParams {
   bool import_blendshapes;
   char *prim_path_mask;
   bool import_subdiv;
-  bool import_instance_proxies;
+  bool support_scene_instancing;
   bool create_collection;
   bool import_guide;
   bool import_proxy;
