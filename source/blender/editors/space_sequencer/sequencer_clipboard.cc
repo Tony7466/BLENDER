@@ -29,7 +29,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_blender_copybuffer.h"
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_lib_id.h"
@@ -229,7 +229,8 @@ int sequencer_clipboard_copy_exec(bContext *C, wmOperator *op)
   }
 
   /* We are all done! */
-  BKE_report(op->reports, RPT_INFO, "Copied the selected VSE strips to internal clipboard");
+  BKE_report(
+      op->reports, RPT_INFO, "Copied the selected Video Sequencer strips to internal clipboard");
   return OPERATOR_FINISHED;
 }
 
@@ -290,7 +291,7 @@ int sequencer_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   if (!scene_src || !scene_src->ed) {
-    BKE_report(op->reports, RPT_ERROR, "No clipboard scene to paste VSE data from");
+    BKE_report(op->reports, RPT_ERROR, "No clipboard scene to paste Video Sequencer data from");
     BKE_main_free(bmain_src);
     return OPERATOR_CANCELLED;
   }

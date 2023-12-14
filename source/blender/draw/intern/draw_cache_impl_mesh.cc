@@ -40,6 +40,7 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_tangent.hh"
 #include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -591,7 +592,7 @@ static void mesh_batch_cache_init(Object *object, Mesh *mesh)
 
   if (cache->is_editmode == false) {
     // cache->edge_len = mesh_render_edges_len_get(mesh);
-    // cache->tri_len = mesh_render_looptri_len_get(mesh);
+    // cache->tri_len = mesh_render_looptris_len_get(mesh);
     // cache->face_len = mesh_render_faces_len_get(mesh);
     // cache->vert_len = mesh_render_verts_len_get(mesh);
   }

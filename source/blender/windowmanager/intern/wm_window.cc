@@ -15,6 +15,8 @@
 #include <cstring>
 #include <thread>
 
+#include "CLG_log.h"
+
 #include "DNA_listBase.h"
 #include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
@@ -1321,7 +1323,8 @@ static void ghost_event_proc_timestamp_warning(GHOST_EventHandle ghost_event)
   const uint64_t now_ms = GHOST_GetMilliSeconds(g_system);
   /* Ensure the reference time occurred in the last #event_time_ok_ms.
    * If not, the reference time it's self may be a bad time-stamp. */
-  if ((event_ms_ref < (now_ms - event_time_ok_ms)) || (event_ms_ref > (now_ms + event_time_ok_ms)))
+  if (event_ms_ref < event_time_error_ms || (event_ms_ref < (now_ms - event_time_ok_ms)) ||
+      (event_ms_ref > (now_ms + event_time_ok_ms)))
   {
     /* Skip, the reference time not recent enough to be used. */
     return;
@@ -1332,11 +1335,11 @@ static void ghost_event_proc_timestamp_warning(GHOST_EventHandle ghost_event)
    * Different input methods may detect and trigger events in a way that wont ensure
    * monotonic event times, so only consider this an error for large time deltas. */
   double time_delta = 0.0;
-  if (event_ms_ref < (event_ms - event_time_error_ms)) {
+  if (event_ms < (event_ms_ref - event_time_error_ms)) {
     /* New event time is after (to be expected). */
     time_delta = double(now_ms - event_ms) / -1000.0;
   }
-  else if (event_ms_ref > (event_ms + event_time_error_ms)) {
+  else if (event_ms > (event_ms_ref + event_time_error_ms)) {
     /* New event time is before (unexpected but not an error). */
     time_delta = double(event_ms - now_ms) / 1000.0;
   }
@@ -1359,10 +1362,13 @@ static void ghost_event_proc_timestamp_warning(GHOST_EventHandle ghost_event)
   }
 
   fprintf(stderr,
-          "GHOST: suspicious time-stamp from far in the %s: %.2f %s, type %d\n",
+          "GHOST: suspicious time-stamp from far in the %s: %.2f %s, "
+          "absolute value is %" PRIu64 ", current time is %" PRIu64 ", for type %d\n",
           time_delta < 0.0f ? "past" : "future",
           std::abs(time_delta),
           time_unit,
+          event_ms,
+          now_ms,
           int(GHOST_GetEventType(ghost_event)));
 }
 #endif /* !NDEBUG */
@@ -1649,14 +1655,17 @@ static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr C
       if (ddd->dataType == GHOST_kDragnDropTypeFilenames) {
         const GHOST_TStringArray *stra = static_cast<const GHOST_TStringArray *>(ddd->data);
 
-        for (int a = 0; a < stra->count; a++) {
-          printf("drop file %s\n", stra->strings[a]);
-          /* try to get icon type from extension */
-          int icon = ED_file_extension_icon((char *)stra->strings[a]);
-          wmDragPath *path_data = WM_drag_create_path_data((char *)stra->strings[a]);
+        if (stra->count) {
+          CLOG_INFO(WM_LOG_EVENTS, 1, "Drop %d files:", stra->count);
+          for (const char *path : blender::Span((char **)stra->strings, stra->count)) {
+            CLOG_INFO(WM_LOG_EVENTS, 1, "%s", path);
+          }
+          /* Try to get icon type from extension of the first path. */
+          int icon = ED_file_extension_icon((char *)stra->strings[0]);
+          wmDragPath *path_data = WM_drag_create_path_data(
+              blender::Span((char **)stra->strings, stra->count));
           WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
           /* Void pointer should point to string, it makes a copy. */
-          break; /* only one drop element supported now */
         }
       }
 
