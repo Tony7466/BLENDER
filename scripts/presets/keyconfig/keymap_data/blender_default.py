@@ -311,6 +311,7 @@ def _template_space_region_type_toggle(
         *,
         toolbar_key=None,
         sidebar_key=None,
+        sidebar_key_drag=None,
         channels_key=None,
 ):
     items = []
@@ -326,11 +327,21 @@ def _template_space_region_type_toggle(
             ("wm.context_toggle", toolbar_key,
              {"properties": [("data_path", 'space_data.show_region_toolbar')]})
         )
+        
     if sidebar_key is not None:
-        items.append(
-            ("wm.context_toggle", sidebar_key,
-             {"properties": [("data_path", 'space_data.show_region_ui')]}),
-        )
+        if params.use_pie_click_drag and sidebar_key_drag is not None:
+            items.extend([
+                ("wm.context_toggle", sidebar_key,
+                 {"properties": [("data_path", 'space_data.show_region_ui')]}),
+                 
+                op_menu_pie("WM_MT_region_toggle_pie", sidebar_key_drag),
+            ])
+        else:
+            items.append(
+                ("wm.context_toggle", sidebar_key,
+                 {"properties": [("data_path", 'space_data.show_region_ui')]}),
+            )
+        
     if channels_key is not None:
         items.append(
             ("wm.context_toggle", channels_key,
@@ -1465,7 +1476,8 @@ def km_view3d_generic(params):
         *_template_space_region_type_toggle(
             params,
             toolbar_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         )
     ])
 
@@ -1810,7 +1822,8 @@ def km_graph_editor_generic(params):
     items.extend([
         *_template_space_region_type_toggle(
             params,
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         ),
         ("graph.extrapolation_type", {"type": 'E', "value": 'PRESS', "shift": True}, None),
         ("graph.fmodifier_add", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True},
@@ -1970,11 +1983,13 @@ def km_image_generic(params):
         {"items": items},
     )
 
+    
     items.extend([
         *_template_space_region_type_toggle(
             params,
             toolbar_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         ),
         ("image.new", {"type": 'N', "value": 'PRESS', "alt": True}, None),
         ("image.open", {"type": 'O', "value": 'PRESS', "alt": True}, None),
@@ -2105,7 +2120,8 @@ def km_node_generic(params):
         *_template_space_region_type_toggle(
             params,
             toolbar_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         ),
     ])
 
@@ -2474,7 +2490,8 @@ def km_dopesheet_generic(params):
     items.extend([
         *_template_space_region_type_toggle(
             params,
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         ),
         ("wm.context_set_enum", {"type": 'TAB', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'area.type'), ("value", 'GRAPH_EDITOR')]}),
@@ -2612,7 +2629,8 @@ def km_nla_generic(params):
     items.extend([
         *_template_space_region_type_toggle(
             params,
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         ),
         ("nla.tweakmode_enter", {"type": 'TAB', "value": 'PRESS'},
          {"properties": [("use_upper_stack_evaluation", True)]}),
@@ -2744,7 +2762,8 @@ def km_text_generic(params):
     items.extend([
         *_template_space_region_type_toggle(
             params,
-            sidebar_key={"type": 'T', "value": 'PRESS', "ctrl": True},
+            sidebar_key={"type": 'T', "value": 'CLICK', "ctrl": True} if params.use_pie_click_drag else {"type": 'T', "value": 'PRESS', "ctrl": True},
+            sidebar_key_drag={"type": 'T', "value": 'CLICK_DRAG', "ctrl": True} if params.use_pie_click_drag else None,
         ),
         ("text.start_find", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
         ("text.jump", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
@@ -2910,7 +2929,8 @@ def km_sequencercommon(params):
         *_template_space_region_type_toggle(
             params,
             toolbar_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         ),
         ("wm.context_toggle", {"type": 'O', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'scene.sequence_editor.show_overlay_frame')]}),
@@ -3246,7 +3266,8 @@ def km_clip(params):
         *_template_space_region_type_toggle(
             params,
             toolbar_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
         ),
         ("clip.open", {"type": 'O', "value": 'PRESS', "alt": True}, None),
         ("clip.track_markers", {"type": 'LEFT_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
@@ -3479,7 +3500,8 @@ def km_spreadsheet_generic(params):
     items.extend([
         *_template_space_region_type_toggle(
             params,
-            sidebar_key={"type": 'N', "value": 'PRESS'},
+            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
+            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
             channels_key={"type": 'T', "value": 'PRESS'},
         ),
     ])
