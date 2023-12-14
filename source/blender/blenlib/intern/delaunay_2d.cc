@@ -21,7 +21,7 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "BLI_delaunay_2d.h"
+#include "BLI_delaunay_2d.hh"
 
 namespace blender::meshintersect {
 

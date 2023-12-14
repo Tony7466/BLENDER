@@ -23,7 +23,7 @@
 #include "BLI_math_vector_mpq_types.hh"
 #include "BLI_vector.hh"
 
-#include "BLI_delaunay_2d.h"
+#include "BLI_delaunay_2d.hh"
 
 namespace blender::meshintersect {
 
