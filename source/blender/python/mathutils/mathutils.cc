@@ -384,8 +384,8 @@ bool mathutils_array_parse_alloc_viseq(PyObject *value,
   const int size = PySequence_Fast_GET_SIZE(value_fast);
   if (size != 0) {
     PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
-
     r_offsets.reinitialize(size + 1);
+
     int count = 0;
     for (int i = 0; i < size; i++) {
       r_offsets[i] = count;

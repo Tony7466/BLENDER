@@ -1549,6 +1549,7 @@ static PyObject *list_of_lists_from_arrays(const blender::GroupedSpan<int> data)
     for (const int j : group.index_range()) {
       PyList_SET_ITEM(sublist, j, PyLong_FromLong(group[j]));
     }
+    PyList_SET_ITEM(ret, i, sublist);
   }
   return ret;
 }
@@ -1638,30 +1639,7 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
 
   vert_coords_len = mathutils_array_parse_alloc_v(
       (float **)&in_coords, 2, vert_coords, error_prefix);
-  if (in_coords == nullptr) {
-    return nullptr;
-  }
-  BLI_SCOPED_DEFER([&]() {
-    if (in_coords != nullptr) {
-      PyMem_Free(in_coords);
-    }
-  });
-
-  int(*in_edges)[2] = nullptr;
-  const Py_ssize_t edges_len = mathutils_array_parse_alloc_vi(
-      (int **)&in_edges, 2, edges, error_prefix);
-  if (in_edges == nullptr) {
-    return nullptr;
-  }
-  BLI_SCOPED_DEFER([&]() {
-    if (in_edges != nullptr) {
-      PyMem_Free(in_edges);
-    }
-  });
-
-  Array<int> face_offsets;
-  Array<int> face_vert_indices;
-  if (!mathutils_array_parse_alloc_viseq(faces, error_prefix, face_offsets, face_vert_indices)) {
+  if (vert_coords_len == -1) {
     return nullptr;
   }
 
@@ -1670,8 +1648,9 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
     return nullptr;
   }
 
-  Array<Vector<int>> in_faces;
-  if (!mathutils_array_parse_alloc_viseq(faces, error_prefix, in_faces)) {
+  Array<int> face_offsets;
+  Array<int> face_vert_indices;
+  if (!mathutils_array_parse_alloc_viseq(faces, error_prefix, face_offsets, face_vert_indices)) {
     return nullptr;
   }
 
@@ -1681,16 +1660,17 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
   }
 
   meshintersect::CDT_input<double> in;
-  in.vert = std::move(verts);
+  in.vert = verts;
   in.edge = Span(reinterpret_cast<std::pair<int, int> *>(in_edges), edges_len);
-  in.face = std::move(in_faces);
+  in.face_offsets = face_offsets.as_span();
+  in.face_vert_indices = face_vert_indices;
   in.epsilon = epsilon;
   in.need_ids = need_ids;
 
   const meshintersect::CDT_result<double> res = meshintersect::delaunay_2d_calc(
       in, CDT_output_type(output_type));
 
-  PyObject *ret_value = PyTuple_New(6);
+  ret_value = PyTuple_New(6);
 
   out_vert_coords = PyList_New(res.vert.size());
   for (const int i : res.vert.index_range()) {
