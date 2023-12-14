@@ -244,7 +244,7 @@ bool BKE_pbvh_node_raycast(PBVH *pbvh,
                            float (*origco)[3],
                            bool use_origco,
                            blender::Span<int> corner_verts,
-                           const bool *hide_poly,
+                           blender::Span<bool> hide_poly,
                            const float ray_start[3],
                            const float ray_normal[3],
                            IsectRayPrecalc *isect_precalc,
@@ -284,7 +284,7 @@ bool BKE_pbvh_node_find_nearest_to_ray(PBVH *pbvh,
                                        float (*origco)[3],
                                        bool use_origco,
                                        blender::Span<int> corner_verts,
-                                       const bool *hide_poly,
+                                       blender::Span<bool> hide_poly,
                                        const float ray_start[3],
                                        const float ray_normal[3],
                                        float *depth,
@@ -375,14 +375,10 @@ void BKE_pbvh_mark_rebuild_pixels(PBVH *pbvh);
 
 blender::Span<int> BKE_pbvh_node_get_grid_indices(const PBVHNode &node);
 
-void BKE_pbvh_node_num_verts(const PBVH *pbvh,
-                             const PBVHNode *node,
-                             int *r_uniquevert,
-                             int *r_totvert);
 int BKE_pbvh_node_num_unique_verts(const PBVH &pbvh, const PBVHNode &node);
 blender::Span<int> BKE_pbvh_node_get_vert_indices(const PBVHNode *node);
 blender::Span<int> BKE_pbvh_node_get_unique_vert_indices(const PBVHNode *node);
-void BKE_pbvh_node_get_loops(const PBVHNode *node, const int **r_loop_indices);
+blender::Span<int> BKE_pbvh_node_get_loops(const PBVHNode *node);
 
 void BKE_pbvh_node_calc_face_indices(const PBVH &pbvh,
                                      const PBVHNode &node,
@@ -621,9 +617,6 @@ void BKE_pbvh_store_colors_vertex(PBVH *pbvh,
                                   blender::MutableSpan<blender::float4> r_colors);
 
 bool BKE_pbvh_is_drawing(const PBVH *pbvh);
-
-/* Do not call in PBVH_GRIDS mode */
-void BKE_pbvh_node_num_loops(PBVH *pbvh, PBVHNode *node, int *r_totloop);
 
 void BKE_pbvh_update_active_vcol(PBVH *pbvh, Mesh *mesh);
 
