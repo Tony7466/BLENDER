@@ -121,7 +121,7 @@ PropertyRNA *RNA_struct_find_property_check(PointerRNA &props,
                                             const char *name,
                                             const PropertyType property_type_check);
 /**
- * Same as `RNA_struct_find_property` but returns `nullptr` if the property type is not a
+ * Same as `RNA_struct_find_property` but returns `nullptr` if the property type is not
  * #PropertyType::PROP_COLLECTION or property struct type is different to `struct_type_check`.
  */
 PropertyRNA *RNA_struct_find_collection_property_check(PointerRNA &props,
