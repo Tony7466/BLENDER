@@ -4,7 +4,7 @@
 
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
 
@@ -152,7 +152,7 @@ Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
   offset_indices::accumulate_counts_to_offsets(face_offsets);
 
   /* Don't smooth-shade cubes; we're not worrying about sharpness for Gprims. */
-  BKE_mesh_smooth_flag_set(active_mesh, !prim_.IsA<pxr::UsdGeomCube>());
+  bke::mesh_smooth_set(*active_mesh, !prim_.IsA<pxr::UsdGeomCube>());
 
   MutableSpan<int> corner_verts = active_mesh->corner_verts_for_write();
   for (const int i : corner_verts.index_range()) {

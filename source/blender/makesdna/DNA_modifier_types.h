@@ -2141,7 +2141,7 @@ typedef struct DataTransferModifierData {
   /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.hh. */
   int layers_select_dst[5];
 
-  /** See CDT_MIX_ enum in BKE_customdata.h. */
+  /** See CDT_MIX_ enum in BKE_customdata.hh. */
   int mix_mode;
   float mix_factor;
   /** #MAX_VGROUP_NAME. */
@@ -2285,8 +2285,8 @@ enum {
 
 /** Surface Deform vertex bind modes. */
 enum {
-  MOD_SDEF_MODE_LOOPTRI = 0,
-  MOD_SDEF_MODE_NGON = 1,
+  MOD_SDEF_MODE_LOOPTRIS = 0,
+  MOD_SDEF_MODE_NGONS = 1,
   MOD_SDEF_MODE_CENTROID = 2,
 };
 

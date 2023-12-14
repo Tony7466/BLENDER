@@ -18,13 +18,13 @@
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
@@ -762,7 +762,7 @@ static void node_composit_buts_cryptomatte(uiLayout *layout, bContext *C, Pointe
   uiItemR(row, ptr, "source", DEFAULT_FLAGS | UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
   uiLayout *col = uiLayoutColumn(layout, false);
-  if (node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER) {
+  if (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) {
     uiTemplateID(col,
                  C,
                  ptr,

@@ -26,13 +26,13 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
@@ -128,7 +128,7 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
 
   /* set protected verts */
   if (emd->vgroup) {
-    const MDeformVert *dvert = BKE_mesh_deform_verts(mesh);
+    const MDeformVert *dvert = mesh->deform_verts().data();
     if (dvert) {
       const int defgrp_index = emd->vgroup - 1;
       for (i = 0; i < totvert; i++, dvert++) {
@@ -1221,7 +1221,7 @@ ModifierTypeInfo modifierType_Explode = {
     /*struct_name*/ "ExplodeModifierData",
     /*struct_size*/ sizeof(ExplodeModifierData),
     /*srna*/ &RNA_ExplodeModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh,
     /*icon*/ ICON_MOD_EXPLODE,
     /*copy_data*/ copy_data,

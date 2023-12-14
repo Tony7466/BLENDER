@@ -16,7 +16,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
 
 #include "DNA_action_types.h"
@@ -65,7 +65,7 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
   blender::Vector<bConstraint *> ik_constraints;
   find_ik_constraints(&pchan_tip->constraints, ik_constraints);
 
-  if (ik_constraints.size() == 0) {
+  if (ik_constraints.is_empty()) {
     return;
   }
 
@@ -76,7 +76,7 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
     PoseTree *tree;
     bKinematicConstraint *data = (bKinematicConstraint *)constraint->data;
     /* exclude tip from chain? */
-    if (!(data->flag & CONSTRAINT_IK_TIP)) {
+    if (!(data->flag & CONSTRAINT_IK_TIP) && pchan_tip->parent != nullptr) {
       pchan_tip = pchan_tip->parent;
     }
 

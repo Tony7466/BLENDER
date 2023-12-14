@@ -4,12 +4,12 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_type_conversions.hh"
 
 #include "BLI_math_matrix.hh"
@@ -93,18 +93,18 @@ static void deform_curves(const CurvesGeometry &curves,
         continue;
       }
 
-      const MLoopTri &looptri_old = surface_looptris_old[surface_sample_old.looptri_index];
-      const MLoopTri &looptri_new = surface_looptris_new[surface_sample_new.looptri_index];
+      const MLoopTri &lt_old = surface_looptris_old[surface_sample_old.looptri_index];
+      const MLoopTri &lt_new = surface_looptris_new[surface_sample_new.looptri_index];
       const float3 &bary_weights_old = surface_sample_old.bary_weights;
       const float3 &bary_weights_new = surface_sample_new.bary_weights;
 
-      const int corner_0_old = looptri_old.tri[0];
-      const int corner_1_old = looptri_old.tri[1];
-      const int corner_2_old = looptri_old.tri[2];
+      const int corner_0_old = lt_old.tri[0];
+      const int corner_1_old = lt_old.tri[1];
+      const int corner_2_old = lt_old.tri[2];
 
-      const int corner_0_new = looptri_new.tri[0];
-      const int corner_1_new = looptri_new.tri[1];
-      const int corner_2_new = looptri_new.tri[2];
+      const int corner_0_new = lt_new.tri[0];
+      const int corner_1_new = lt_new.tri[1];
+      const int corner_2_new = lt_new.tri[2];
 
       const int vert_0_old = surface_corner_verts_old[corner_0_old];
       const int vert_1_old = surface_corner_verts_old[corner_1_old];
