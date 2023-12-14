@@ -922,6 +922,10 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+    if (userdef->keying_flag & AUTOKEY_FLAG_INSERTNEEDED) {
+      userdef->keying_flag |= MANUALKEY_FLAG_INSERTNEEDED;
+    }
+    userdef->keying_flag |= AUTOKEY_FLAG_INSERTNEEDED;
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
