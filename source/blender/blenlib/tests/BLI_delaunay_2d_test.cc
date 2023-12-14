@@ -28,21 +28,13 @@
 
 namespace blender::meshintersect {
 
-template<typename T> struct InputStorage {
-  Array<vec2<T>> vert;
-  Array<std::pair<int, int>> edge;
-  Array<int> face;
-  Vector<int> face_vert_indices;
-};
-
 /* The spec should have the form:
  * #verts #edges #faces
  * <float> <float>   [#verts lines)
  * <int> <int>   [#edges lines]
  * <int> <int> ... <int>   [#faces lines]
  */
-template<typename T>
-CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage)
+template<typename T> CDT_input<T> fill_input_from_string(const char *spec)
 {
   std::istringstream ss(spec);
   std::string line;
@@ -53,9 +45,9 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
   if (nverts == 0) {
     return CDT_input<T>();
   }
-  r_storage.vert.reinitialize(nverts);
-  r_storage.edge.reinitialize(nedges);
-  r_storage.face.reinitialize(nfaces + 1);
+  Array<vec2<T>> verts(nverts);
+  Array<std::pair<int, int>> edges(nedges);
+  Array<Vector<int>> faces(nfaces);
   int i = 0;
   while (i < nverts && getline(ss, line)) {
     std::istringstream iss(line);
@@ -63,7 +55,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
     iss >> dp0 >> dp1;
     T p0(dp0);
     T p1(dp1);
-    r_storage.vert[i] = vec2<T>(p0, p1);
+    verts[i] = vec2<T>(p0, p1);
     i++;
   }
   i = 0;
@@ -71,26 +63,22 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
     std::istringstream ess(line);
     int e0, e1;
     ess >> e0 >> e1;
-    r_storage.edge[i] = std::pair<int, int>(e0, e1);
+    edges[i] = std::pair<int, int>(e0, e1);
     i++;
   }
   i = 0;
   while (i < nfaces && getline(ss, line)) {
-    r_storage.face[i] = r_storage.face_vert_indices.size();
     std::istringstream fss(line);
     int v;
     while (fss >> v) {
-      r_storage.face_vert_indices.append(v);
+      faces[i].append(v);
     }
     i++;
   }
-  r_storage.face.last() = r_storage.face_vert_indices.size();
-
   CDT_input<T> ans;
-  ans.vert = r_storage.vert;
-  ans.edge = r_storage.edge;
-  ans.face_offsets = r_storage.face.as_span();
-  ans.face_vert_indices = r_storage.face_vert_indices;
+  ans.vert = verts;
+  ans.edge = edges;
+  ans.face = faces;
 #ifdef WITH_GMP
   if (std::is_same<mpq_class, T>::value) {
     ans.epsilon = T(0);
@@ -299,8 +287,8 @@ void graph_draw(const std::string &label,
   if (verts.is_empty()) {
     return;
   }
-  double2 vmin(1e10, 1e10);
-  double2 vmax(-1e10, -1e10);
+  vec2<double> vmin(1e10, 1e10);
+  vec2<double> vmax(-1e10, -1e10);
   for (const vec2<T> &v : verts) {
     for (int i = 0; i < 2; ++i) {
       double dvi = math_to_double(v[i]);
@@ -401,19 +389,20 @@ template<typename T> void expect_coord_near(const vec2<T> &testco, const vec2<T>
 
 #ifdef WITH_GMP
 template<>
-void expect_coord_near<mpq_class>(const VecBase<mpq_class, 2> &testco,
-                                  const VecBase<mpq_class, 2> &refco)
+void expect_coord_near<mpq_class>(const vec2<mpq_class> &testco, const vec2<mpq_class> &refco)
 {
   EXPECT_EQ(testco[0], refco[0]);
   EXPECT_EQ(testco[0], refco[0]);
 }
 #endif
 
-template<> void expect_coord_near<double>(const double2 &testco, const double2 &refco)
+template<> void expect_coord_near<double>(const vec2<double> &testco, const vec2<double> &refco)
 {
   EXPECT_NEAR(testco[0], refco[0], 1e-5);
   EXPECT_NEAR(testco[1], refco[1], 1e-5);
 }
+
+#if DO_CPP_TESTS
 
 template<typename T> void empty_test()
 {
@@ -1378,8 +1367,8 @@ template<typename T> void diamondinsquarewire_test()
   6 7
   7 4
   )";
-  InputStorage<T> store;
-  CDT_input<T> in = fill_input_from_string<T>(spec, store);
+
+  CDT_input<T> in = fill_input_from_string<T>(spec);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 8);
@@ -1401,8 +1390,8 @@ template<typename T> void repeatedge_test()
   2 3
   2 3
   )";
-  InputStorage<T> store;
-  CDT_input<T> in = fill_input_from_string<T>(spec, store);
+
+  CDT_input<T> in = fill_input_from_string<T>(spec);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 2);
   if (DO_DRAW) {
@@ -1419,8 +1408,8 @@ template<typename T> void repeattri_test()
   0 1 2
   0 1 2
   )";
-  InputStorage<T> store;
-  CDT_input<T> in = fill_input_from_string<T>(spec, store);
+
+  CDT_input<T> in = fill_input_from_string<T>(spec);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 3);
   EXPECT_EQ(out.faces().size(), 1);
@@ -1445,8 +1434,7 @@ template<typename T> void square_o_test()
   0 1 2 3
   4 5 6 7
   )";
-  InputStorage<T> store;
-  CDT_input<T> in = fill_input_from_string<T>(spec, store);
+  CDT_input<T> in = fill_input_from_string<T>(spec);
   CDT_result<T> out1 = delaunay_2d_calc(in, CDT_INSIDE_WITH_HOLES);
   EXPECT_EQ(out1.faces().size(), 8);
   if (DO_DRAW) {
@@ -1605,7 +1593,7 @@ TEST(delaunay_d, SquareO)
   square_o_test<double>();
 }
 
-#ifdef WITH_GMP
+#  ifdef WITH_GMP
 TEST(delaunay_m, Empty)
 {
   empty_test<mpq_class>();
@@ -1744,6 +1732,7 @@ TEST(delaunay_m, RepeatTri)
 {
   repeattri_test<mpq_class>();
 }
+#  endif
 #endif
 
 #if DO_TEXT_TESTS
@@ -2112,10 +2101,14 @@ void rand_delaunay_test(int test_kind,
         }
       }
 
-      Array<vec2<T>> verts(npts);
-      Array<std::pair<int, int>> edges(nedges);
-      Vector<int> face_offsets;
-      Vector<int> face_vert_indices;
+      CDT_input<T> in;
+      in.vert = Array<vec2<T>>(npts);
+      if (nedges > 0) {
+        in.edge = Array<std::pair<int, int>>(nedges);
+      }
+      if (nfaces > 0) {
+        in.face = Array<Vector<int>>(nfaces);
+      }
 
       /* Make vertices and edges or faces. */
       switch (test_kind) {
@@ -2123,46 +2116,45 @@ void rand_delaunay_test(int test_kind,
         case RANDOM_SEGS:
         case RANDOM_POLY: {
           for (int i = 0; i < size; i++) {
-            verts[i][0] = T(BLI_rng_get_double(rng)); /* will be in range in [0,1) */
-            verts[i][1] = T(BLI_rng_get_double(rng));
+            in.vert[i][0] = T(BLI_rng_get_double(rng)); /* will be in range in [0,1) */
+            in.vert[i][1] = T(BLI_rng_get_double(rng));
             if (test_kind != RANDOM_PTS) {
               if (i > 0) {
-                edges[i - 1].first = i - 1;
-                edges[i - 1].second = i;
+                in.edge[i - 1].first = i - 1;
+                in.edge[i - 1].second = i;
               }
             }
           }
           if (test_kind == RANDOM_POLY) {
-            edges[size - 1].first = size - 1;
-            edges[size - 1].second = 0;
+            in.edge[size - 1].first = size - 1;
+            in.edge[size - 1].second = 0;
           }
           break;
         }
         case RANDOM_TILTED_GRID: {
           for (int i = 0; i < size; ++i) {
             for (int j = 0; j < size; ++j) {
-              verts[i * size + j][0] = T(i * param + j);
-              verts[i * size + j][1] = T(i);
+              in.vert[i * size + j][0] = T(i * param + j);
+              in.vert[i * size + j][1] = T(i);
             }
           }
           for (int i = 0; i < size; ++i) {
             /* Horizontal edges: connect `p(i,0)` to `p(i,size-1)`. */
-            edges[i].first = i * size;
-            edges[i].second = i * size + size - 1;
+            in.edge[i].first = i * size;
+            in.edge[i].second = i * size + size - 1;
             /* Vertical edges: connect `p(0,i)` to `p(size-1,i)`. */
-            edges[size + i].first = i;
-            edges[size + i].second = (size - 1) * size + i;
+            in.edge[size + i].first = i;
+            in.edge[size + i].second = (size - 1) * size + i;
           }
           break;
         }
         case RANDOM_CIRCLE: {
           double start_angle = BLI_rng_get_double(rng) * 2.0 * M_PI;
           double angle_delta = 2.0 * M_PI / size;
-          face_offsets.append(0);
           for (int i = 0; i < size; i++) {
-            verts[i][0] = T(cos(start_angle + i * angle_delta));
-            verts[i][1] = T(sin(start_angle + i * angle_delta));
-            face_vert_indices.append(i);
+            in.vert[i][0] = T(cos(start_angle + i * angle_delta));
+            in.vert[i][1] = T(sin(start_angle + i * angle_delta));
+            in.face[0].append(i);
           }
           break;
         }
@@ -2175,34 +2167,27 @@ void rand_delaunay_test(int test_kind,
             int ia = 3 * i;
             int ib = 3 * i + 1;
             int ic = 3 * i + 2;
-            verts[ia][0] = T(cos(angle1));
-            verts[ia][1] = T(sin(angle1));
-            verts[ib][0] = T(cos(angle2));
-            verts[ib][1] = T(sin(angle2));
-            verts[ic][0] = T((param * cos(angle3)));
-            verts[ic][1] = T((param * sin(angle3)));
+            in.vert[ia][0] = T(cos(angle1));
+            in.vert[ia][1] = T(sin(angle1));
+            in.vert[ib][0] = T(cos(angle2));
+            in.vert[ib][1] = T(sin(angle2));
+            in.vert[ic][0] = T((param * cos(angle3)));
+            in.vert[ic][1] = T((param * sin(angle3)));
             /* Put the coordinates in CCW order. */
-            face_offsets.append(face_vert_indices.size());
-            face_vert_indices.append(ia);
-            int orient = orient2d(verts[ia], verts[ib], verts[ic]);
+            in.face[i].append(ia);
+            int orient = orient2d(in.vert[ia], in.vert[ib], in.vert[ic]);
             if (orient >= 0) {
-              face_vert_indices.append(ib);
-              face_vert_indices.append(ic);
+              in.face[i].append(ib);
+              in.face[i].append(ic);
             }
             else {
-              face_vert_indices.append(ic);
-              face_vert_indices.append(ib);
+              in.face[i].append(ic);
+              in.face[i].append(ib);
             }
           }
           break;
         }
       }
-
-      CDT_input<T> in;
-      in.vert = verts;
-      in.edge = edges;
-      in.face_offsets = face_offsets.as_span();
-      in.face_vert_indices = face_vert_indices;
 
       /* Run the test. */
       double tstart = PIL_check_seconds_timer();
