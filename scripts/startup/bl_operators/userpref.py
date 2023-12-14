@@ -1100,7 +1100,7 @@ class PREFERENCES_OT_studiolight_uninstall(Operator):
         for studio_light in prefs.studio_lights:
             if studio_light.index == self.index:
                 filepath = studio_light.path
-                filepath and os.path.exists(filepath):
+                if filepath and os.path.exists(filepath):
                     os.unlink(filepath)
                 prefs.studio_lights.remove(studio_light)
                 return {'FINISHED'}
