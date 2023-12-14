@@ -6331,6 +6331,7 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
                                         nullptr,
                                         false,
                                         nullptr,
+                                        nullptr,
                                         err_out);
 
   if (!ibuf) {
