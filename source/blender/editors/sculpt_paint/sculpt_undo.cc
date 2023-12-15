@@ -159,7 +159,6 @@ struct SculptUndoStep {
 };
 
 static UndoSculpt *get_nodes();
-static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b);
 static void sculpt_save_active_attribute(Object *ob, SculptAttrRef *attr);
 static UndoSculpt *sculpt_undosys_step_get_nodes(UndoStep *us_p);
 
@@ -326,7 +325,7 @@ static void update_modified_node_mesh(PBVHNode *node, void *userdata)
   Vector<int> faces;
   if (!data->modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_mesh(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_face_set_faces[face]) {
@@ -337,7 +336,7 @@ static void update_modified_node_mesh(PBVHNode *node, void *userdata)
   }
   if (!data->modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_mesh(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_hidden_faces[face]) {
@@ -370,7 +369,7 @@ static void update_modified_node_grids(PBVHNode *node, void *userdata)
   Vector<int> faces;
   if (!data->modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_grids(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_face_set_faces[face]) {
@@ -381,7 +380,7 @@ static void update_modified_node_grids(PBVHNode *node, void *userdata)
   }
   if (!data->modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_grids(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_hidden_faces[face]) {
@@ -1039,21 +1038,21 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
   }
 
   if (changed_position) {
-    BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
+    bke::pbvh::update_bounds(*ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
   }
   if (changed_mask) {
-    BKE_pbvh_update_mask(ss->pbvh);
+    bke::pbvh::update_mask(*ss->pbvh);
   }
   if (changed_hide_face) {
     hide::sync_all_from_faces(*ob);
-    BKE_pbvh_update_visibility(ss->pbvh);
+    bke::pbvh::update_visibility(*ss->pbvh);
   }
   if (changed_hide_vert) {
     if (ELEM(BKE_pbvh_type(ss->pbvh), PBVH_FACES, PBVH_GRIDS)) {
       Mesh &mesh = *static_cast<Mesh *>(ob->data);
       BKE_pbvh_sync_visibility_from_verts(ss->pbvh, &mesh);
     }
-    BKE_pbvh_update_visibility(ss->pbvh);
+    bke::pbvh::update_visibility(*ss->pbvh);
   }
 
   if (BKE_sculpt_multires_active(scene, ob)) {
@@ -1589,11 +1588,6 @@ Node *push_node(Object *ob, PBVHNode *node, Type type)
   return unode;
 }
 
-static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b)
-{
-  return a->domain == b->domain && a->type == b->type && STREQ(a->name, b->name);
-}
-
 static void sculpt_save_active_attribute(Object *ob, SculptAttrRef *attr)
 {
   Mesh *mesh = BKE_object_get_original_mesh(ob);
@@ -1738,10 +1732,6 @@ static void set_active_layer(bContext *C, SculptAttrRef *attr)
 
     if (ob->sculpt && ob->sculpt->pbvh) {
       BKE_pbvh_update_active_vcol(ob->sculpt->pbvh, mesh);
-
-      if (!sculpt_attribute_ref_equals(&existing, attr)) {
-        BKE_pbvh_update_vertex_data(ob->sculpt->pbvh, PBVH_UpdateColor);
-      }
     }
   }
 }
