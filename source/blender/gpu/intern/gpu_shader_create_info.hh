@@ -613,17 +613,6 @@ struct ShaderCreateInfo {
 
   Vector<PushConst> push_constants_;
 
-  /** Optional cross-API tuning parameters. */
-  struct CustomParameter {
-    Type type;
-    union {
-      float value_f;
-      int value_i;
-      bool value_b;
-    };
-  };
-  Map<StringRefNull, CustomParameter> custom_parameters_;
-
   /* Sources for resources type definitions. */
   Vector<StringRefNull> typedef_sources_;
 
