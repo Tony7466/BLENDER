@@ -159,7 +159,6 @@ struct SculptUndoStep {
 };
 
 static UndoSculpt *get_nodes();
-static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b);
 static void sculpt_save_active_attribute(Object *ob, SculptAttrRef *attr);
 static UndoSculpt *sculpt_undosys_step_get_nodes(UndoStep *us_p);
 
@@ -326,7 +325,7 @@ static void update_modified_node_mesh(PBVHNode *node, void *userdata)
   Vector<int> faces;
   if (!data->modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_mesh(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_face_set_faces[face]) {
@@ -337,7 +336,7 @@ static void update_modified_node_mesh(PBVHNode *node, void *userdata)
   }
   if (!data->modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_mesh(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_hidden_faces[face]) {
@@ -370,7 +369,7 @@ static void update_modified_node_grids(PBVHNode *node, void *userdata)
   Vector<int> faces;
   if (!data->modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_grids(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_face_set_faces[face]) {
@@ -381,7 +380,7 @@ static void update_modified_node_grids(PBVHNode *node, void *userdata)
   }
   if (!data->modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_grids(*data->pbvh, *node, faces);
     }
     for (const int face : faces) {
       if (data->modified_hidden_faces[face]) {
@@ -1039,21 +1038,21 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
   }
 
   if (changed_position) {
-    BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
+    bke::pbvh::update_bounds(*ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
   }
   if (changed_mask) {
-    BKE_pbvh_update_mask(ss->pbvh);
+    bke::pbvh::update_mask(*ss->pbvh);
   }
   if (changed_hide_face) {
     hide::sync_all_from_faces(*ob);
-    BKE_pbvh_update_visibility(ss->pbvh);
+    bke::pbvh::update_visibility(*ss->pbvh);
   }
   if (changed_hide_vert) {
     if (ELEM(BKE_pbvh_type(ss->pbvh), PBVH_FACES, PBVH_GRIDS)) {
       Mesh &mesh = *static_cast<Mesh *>(ob->data);
       BKE_pbvh_sync_visibility_from_verts(ss->pbvh, &mesh);
     }
-    BKE_pbvh_update_visibility(ss->pbvh);
+    bke::pbvh::update_visibility(*ss->pbvh);
   }
 
   if (BKE_sculpt_multires_active(scene, ob)) {
@@ -1511,59 +1510,68 @@ Node *push_node(Object *ob, PBVHNode *node, Type type)
 {
   SculptSession *ss = ob->sculpt;
 
+  Node *unode;
+
   /* List is manipulated by multiple threads, so we lock. */
   BLI_thread_lock(LOCK_CUSTOM1);
 
   ss->needs_flush_to_id = 1;
 
-  if (ss->bm || ELEM(type, Type::DyntopoBegin, Type::DyntopoEnd)) {
-    /* Dynamic topology stores only one undo node per stroke,
-     * regardless of the number of PBVH nodes modified. */
-    Node *unode = bmesh_push(ob, node, type);
-    BLI_thread_unlock(LOCK_CUSTOM1);
-    return unode;
-  }
-  if (type == Type::Geometry) {
-    Node *unode = geometry_push(ob, type);
-    BLI_thread_unlock(LOCK_CUSTOM1);
-    return unode;
-  }
-  if (Node *unode = get_node(node, type)) {
-    BLI_thread_unlock(LOCK_CUSTOM1);
-    return unode;
-  }
+  threading::isolate_task([&]() {
+    if (ss->bm || ELEM(type, Type::DyntopoBegin, Type::DyntopoEnd)) {
+      /* Dynamic topology stores only one undo node per stroke,
+       * regardless of the number of PBVH nodes modified. */
+      unode = bmesh_push(ob, node, type);
+      BLI_thread_unlock(LOCK_CUSTOM1);
+      // return unode;
+      return;
+    }
+    if (type == Type::Geometry) {
+      unode = geometry_push(ob, type);
+      BLI_thread_unlock(LOCK_CUSTOM1);
+      // return unode;
+      return;
+    }
+    if ((unode = get_node(node, type))) {
+      BLI_thread_unlock(LOCK_CUSTOM1);
+      // return unode;
+      return;
+    }
 
-  Node *unode = alloc_node(ob, node, type);
+    unode = alloc_node(ob, node, type);
 
-  /* NOTE: If this ever becomes a bottleneck, make a lock inside of the node.
-   * so we release global lock sooner, but keep data locked for until it is
-   * fully initialized. */
-  switch (type) {
-    case Type::Position:
-      store_coords(ob, unode);
-      break;
-    case Type::HideVert:
-      store_hidden(ob, unode);
-      break;
-    case Type::HideFace:
-      store_face_hidden(*ob, *unode);
-      break;
-    case Type::Mask:
-      store_mask(ob, unode);
-      break;
-    case Type::Color:
-      store_color(ob, unode);
-      break;
-    case Type::DyntopoBegin:
-    case Type::DyntopoEnd:
-    case Type::DyntopoSymmetrize:
-      BLI_assert_msg(0, "Dynamic topology should've already been handled");
-    case Type::Geometry:
-      break;
-    case Type::FaceSet:
-      store_face_sets(*static_cast<const Mesh *>(ob->data), *unode);
-      break;
-  }
+    /* NOTE: If this ever becomes a bottleneck, make a lock inside of the node.
+     * so we release global lock sooner, but keep data locked for until it is
+     * fully initialized. */
+    switch (type) {
+      case Type::Position:
+        store_coords(ob, unode);
+        break;
+      case Type::HideVert:
+        store_hidden(ob, unode);
+        break;
+      case Type::HideFace:
+        store_face_hidden(*ob, *unode);
+        break;
+      case Type::Mask:
+        store_mask(ob, unode);
+        break;
+      case Type::Color:
+        store_color(ob, unode);
+        break;
+      case Type::DyntopoBegin:
+      case Type::DyntopoEnd:
+      case Type::DyntopoSymmetrize:
+        BLI_assert_msg(0, "Dynamic topology should've already been handled");
+      case Type::Geometry:
+        break;
+      case Type::FaceSet:
+        store_face_sets(*static_cast<const Mesh *>(ob->data), *unode);
+        break;
+    }
+
+    BLI_thread_unlock(LOCK_CUSTOM1);
+  });
 
   /* Store sculpt pivot. */
   copy_v3_v3(unode->pivot_pos, ss->pivot_pos);
@@ -1577,14 +1585,7 @@ Node *push_node(Object *ob, PBVHNode *node, Type type)
     unode->shapeName[0] = '\0';
   }
 
-  BLI_thread_unlock(LOCK_CUSTOM1);
-
   return unode;
-}
-
-static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b)
-{
-  return a->domain == b->domain && a->type == b->type && STREQ(a->name, b->name);
 }
 
 static void sculpt_save_active_attribute(Object *ob, SculptAttrRef *attr)
@@ -1731,10 +1732,6 @@ static void set_active_layer(bContext *C, SculptAttrRef *attr)
 
     if (ob->sculpt && ob->sculpt->pbvh) {
       BKE_pbvh_update_active_vcol(ob->sculpt->pbvh, mesh);
-
-      if (!sculpt_attribute_ref_equals(&existing, attr)) {
-        BKE_pbvh_update_vertex_data(ob->sculpt->pbvh, PBVH_UpdateColor);
-      }
     }
   }
 }

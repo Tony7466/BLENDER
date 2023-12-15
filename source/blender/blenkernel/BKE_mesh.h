@@ -14,8 +14,6 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_customdata.hh"
-
 struct BMesh;
 struct BMeshCreateParams;
 struct BMeshFromMeshParams;
@@ -35,10 +33,6 @@ struct MemArena;
 struct Mesh;
 struct Object;
 struct Scene;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* TODO: Move to `BKE_mesh_types.hh` when possible. */
 typedef enum eMeshBatchDirtyMode {
@@ -178,8 +172,6 @@ void BKE_mesh_material_index_remove(struct Mesh *mesh, short index);
 bool BKE_mesh_material_index_used(struct Mesh *mesh, short index);
 void BKE_mesh_material_index_clear(struct Mesh *mesh);
 void BKE_mesh_material_remap(struct Mesh *mesh, const unsigned int *remap, unsigned int remap_len);
-void BKE_mesh_smooth_flag_set(struct Mesh *mesh, bool use_smooth);
-void BKE_mesh_sharp_edges_set_from_angle(struct Mesh *mesh, float angle);
 
 void BKE_mesh_texspace_calc(struct Mesh *mesh);
 void BKE_mesh_texspace_ensure(struct Mesh *mesh);
@@ -418,8 +410,8 @@ bool BKE_mesh_center_of_volume(const struct Mesh *mesh, float r_cent[3]);
  */
 void BKE_mesh_calc_volume(const float (*vert_positions)[3],
                           int mverts_num,
-                          const struct MLoopTri *mlooptri,
-                          int looptri_num,
+                          const struct MLoopTri *looptris,
+                          int looptris_num,
                           const int *corner_verts,
                           float *r_volume,
                           float r_center[3]);
@@ -562,49 +554,5 @@ void BKE_mesh_debug_print(const struct Mesh *mesh) ATTR_NONNULL(1);
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
  * \{ */
-
-/**
- * \return The material index for each face. May be null.
- * \note In C++ code, prefer using the attribute API (#AttributeAccessor).
- */
-BLI_INLINE const int *BKE_mesh_material_indices(const Mesh *mesh)
-{
-  return (const int *)CustomData_get_layer_named(
-      &mesh->face_data, CD_PROP_INT32, "material_index");
-}
-
-/**
- * \return The material index for each face. Create the layer if it doesn't exist.
- * \note In C++ code, prefer using the attribute API (#MutableAttributeAccessor).
- */
-BLI_INLINE int *BKE_mesh_material_indices_for_write(Mesh *mesh)
-{
-  int *indices = (int *)CustomData_get_layer_named_for_write(
-      &mesh->face_data, CD_PROP_INT32, "material_index", mesh->faces_num);
-  if (indices) {
-    return indices;
-  }
-  return (int *)CustomData_add_layer_named(
-      &mesh->face_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->faces_num, "material_index");
-}
-
-BLI_INLINE const MDeformVert *BKE_mesh_deform_verts(const Mesh *mesh)
-{
-  return (const MDeformVert *)CustomData_get_layer(&mesh->vert_data, CD_MDEFORMVERT);
-}
-BLI_INLINE MDeformVert *BKE_mesh_deform_verts_for_write(Mesh *mesh)
-{
-  MDeformVert *dvert = (MDeformVert *)CustomData_get_layer_for_write(
-      &mesh->vert_data, CD_MDEFORMVERT, mesh->totvert);
-  if (dvert) {
-    return dvert;
-  }
-  return (MDeformVert *)CustomData_add_layer(
-      &mesh->vert_data, CD_MDEFORMVERT, CD_SET_DEFAULT, mesh->totvert);
-}
-
-#ifdef __cplusplus
-}
-#endif
 
 /** \} */

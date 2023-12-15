@@ -142,12 +142,9 @@ bool is_autokey_flag(const Scene *scene, eKeyInsert_Flag flag);
  */
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id);
 
-void autokeyframe_object(
-    bContext *C, Scene *scene, ViewLayer *view_layer, Object *ob, eTfmMode tmode);
+void autokeyframe_object(bContext *C, Scene *scene, Object *ob);
 /**
  * Auto-keyframing feature - for objects
- *
- * \param tmode: A transform mode.
  *
  * \note Context may not always be available,
  * so must check before using it as it's a luxury for a few cases.
@@ -157,14 +154,12 @@ bool autokeyframe_pchan(bContext *C, Scene *scene, Object *ob, bPoseChannel *pch
 /**
  * Auto-keyframing feature - for poses/pose-channels
  *
- * \param tmode: A transform mode.
- *
  * targetless_ik: has targetless ik been done on any channels?
  *
  * \note Context may not always be available,
  * so must check before using it as it's a luxury for a few cases.
  */
-void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short targetless_ik);
+void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, short targetless_ik);
 /**
  * Use for auto-key-framing.
  * \param only_if_property_keyed: if true, auto-key-framing only creates keyframes on already keyed
@@ -193,7 +188,7 @@ int insert_key_action(Main *bmain,
                       PointerRNA *ptr,
                       const std::string &rna_path,
                       float frame,
-                      const Span<float> values,
+                      Span<float> values,
                       eInsertKeyFlags insert_key_flag,
                       eBezTriple_KeyframeType key_type);
 
