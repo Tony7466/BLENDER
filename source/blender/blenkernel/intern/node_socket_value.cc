@@ -20,6 +20,9 @@
 
 namespace blender::bke {
 
+/**
+ * Very fast (compile-time) conversion from a static C++ type to the corresponding socket type.
+ */
 template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_socket_type()
 {
   if constexpr (is_same_any_v<T, int, fn::Field<int>>) {
