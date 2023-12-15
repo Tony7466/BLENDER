@@ -50,7 +50,7 @@ template<typename T> T SocketValueVariant::extract_as()
 {
   if constexpr (std::is_same_v<T, fn::GField>) {
     if (kind_ == Kind::Field) {
-      return value_.get<fn::GField>();
+      return std::move(value_.get<fn::GField>());
     }
     if (kind_ == Kind::Single) {
       const GPointer single_value = this->get_single_ptr();
@@ -64,7 +64,7 @@ template<typename T> T SocketValueVariant::extract_as()
   else {
     BLI_assert(socket_type_ == static_type_to_socket_type<T>());
     if (kind_ == Kind::Single) {
-      return value_.get<T>();
+      return std::move(value_.get<T>());
     }
     if (kind_ == Kind::Field) {
       T ret_value;
@@ -189,6 +189,7 @@ void SocketValueVariant::convert_to_single()
     fn::evaluate_constant_field(field, buffer);
     return;
   }
+  BLI_assert_unreachable();
 }
 
 GPointer SocketValueVariant::get_single_ptr() const
