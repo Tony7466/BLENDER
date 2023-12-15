@@ -67,4 +67,4 @@ struct PaintStepData {
   int mirror_symmetry_pass;
   int _pad0[1];
 };
-BLI_STATIC_ASSERT_ALIGN(PaintStepData, 16);
+BLI_STATIC_ASSERT_ALIGN(PaintStepData, 16)

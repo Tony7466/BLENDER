@@ -784,7 +784,7 @@ static void gpu_painting_paint_step(TexturePaintingUserData &data,
       GPU_storagebuf_bind(batches.step_buf, GPU_shader_get_ssbo_binding(shader, "paint_step_buf"));
       GPU_shader_uniform_2iv(shader, "paint_step_range", paint_step_range);
       GPU_uniformbuf_bind(batches.paint_brush_buf,
-                          GPU_shader_get_uniform_block(shader, "paint_brush_buf"));
+                          GPU_shader_get_ubo_binding(shader, "paint_brush_buf"));
       GPU_storagebuf_bind(batches.vert_coord_buf,
                           GPU_shader_get_ssbo_binding(shader, "vert_coord_buf"));
       GPU_storagebuf_bind(node_data.uv_primitives.gpu_buffer,
