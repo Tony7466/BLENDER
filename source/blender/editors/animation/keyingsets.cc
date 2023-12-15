@@ -1014,42 +1014,44 @@ static eInsertKeyFlags keyingset_apply_keying_flags(const eInsertKeyFlags base_f
 }
 
 static int insert_key_to_keying_set_path(bContext *C,
-                                         KS_Path *ksp,
-                                         KeyingSet *ks,
-                                         const eInsertKeyFlags kflag,
+                                         KS_Path *keying_set_path,
+                                         KeyingSet *keying_set,
+                                         const eInsertKeyFlags insert_key_flags,
                                          const eModifyKey_Modes mode,
-                                         const float cfra)
+                                         const float frame)
 {
   /* Since keying settings can be defined on the paths too,
    * apply the settings for this path first. */
-  const eInsertKeyFlags kflag2 = keyingset_apply_keying_flags(
-      kflag, eInsertKeyFlags(ksp->keyingoverride), eInsertKeyFlags(ksp->keyingflag));
+  const eInsertKeyFlags path_insert_key_flags = keyingset_apply_keying_flags(
+      insert_key_flags,
+      eInsertKeyFlags(keying_set_path->keyingoverride),
+      eInsertKeyFlags(keying_set_path->keyingflag));
 
   const char *groupname = nullptr;
   /* Get pointer to name of group to add channels to. */
-  if (ksp->groupmode == KSP_GROUP_NONE) {
+  if (keying_set_path->groupmode == KSP_GROUP_NONE) {
     groupname = nullptr;
   }
-  else if (ksp->groupmode == KSP_GROUP_KSNAME) {
-    groupname = ks->name;
+  else if (keying_set_path->groupmode == KSP_GROUP_KSNAME) {
+    groupname = keying_set->name;
   }
   else {
-    groupname = ksp->group;
+    groupname = keying_set_path->group;
   }
 
   /* Init - array_length should be greater than array_index so that
    * normal non-array entries get keyframed correctly.
    */
-  int array_index = ksp->array_index;
+  int array_index = keying_set_path->array_index;
   int array_length = array_index;
 
   /* Get length of array if whole array option is enabled. */
-  if (ksp->flag & KSP_FLAG_WHOLE_ARRAY) {
+  if (keying_set_path->flag & KSP_FLAG_WHOLE_ARRAY) {
     PointerRNA ptr;
     PropertyRNA *prop;
 
-    PointerRNA id_ptr = RNA_id_pointer_create(ksp->id);
-    if (RNA_path_resolve_property(&id_ptr, ksp->rna_path, &ptr, &prop)) {
+    PointerRNA id_ptr = RNA_id_pointer_create(keying_set_path->id);
+    if (RNA_path_resolve_property(&id_ptr, keying_set_path->rna_path, &ptr, &prop)) {
       array_length = RNA_property_array_length(&ptr, prop);
       /* Start from start of array, instead of the previously specified index - #48020 */
       array_index = 0;
@@ -1071,39 +1073,44 @@ static int insert_key_to_keying_set_path(bContext *C,
    */
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
-                                                                                    cfra);
+                                                                                    frame);
   int keyed_channels = 0;
   for (; array_index < array_length; array_index++) {
     /* action to take depends on mode */
     if (mode == MODIFYKEY_MODE_INSERT) {
       keyed_channels += blender::animrig::insert_keyframe(bmain,
                                                           reports,
-                                                          ksp->id,
+                                                          keying_set_path->id,
                                                           nullptr,
                                                           groupname,
-                                                          ksp->rna_path,
+                                                          keying_set_path->rna_path,
                                                           array_index,
                                                           &anim_eval_context,
                                                           keytype,
-                                                          kflag2);
+                                                          path_insert_key_flags);
     }
     else if (mode == MODIFYKEY_MODE_DELETE) {
-      keyed_channels += blender::animrig::delete_keyframe(
-          bmain, reports, ksp->id, nullptr, ksp->rna_path, array_index, cfra);
+      keyed_channels += blender::animrig::delete_keyframe(bmain,
+                                                          reports,
+                                                          keying_set_path->id,
+                                                          nullptr,
+                                                          keying_set_path->rna_path,
+                                                          array_index,
+                                                          frame);
     }
   }
 
-  switch (GS(ksp->id->name)) {
+  switch (GS(keying_set_path->id->name)) {
     case ID_OB: /* Object (or Object-Related) Keyframes */
     {
-      Object *ob = (Object *)ksp->id;
+      Object *ob = (Object *)keying_set_path->id;
 
       /* XXX: only object transforms? */
       DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
       break;
     }
     default:
-      DEG_id_tag_update(ksp->id, ID_RECALC_ANIMATION_NO_FLUSH);
+      DEG_id_tag_update(keying_set_path->id, ID_RECALC_ANIMATION_NO_FLUSH);
       break;
   }
 
