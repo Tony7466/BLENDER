@@ -14,10 +14,6 @@
 #include "BLI_cpp_type.hh"
 #include "BLI_generic_pointer.hh"
 
-namespace blender::fn {
-class GField;
-}
-
 namespace blender::bke {
 
 /**
