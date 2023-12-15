@@ -1076,7 +1076,6 @@ static int insert_key_to_keying_set_path(bContext *C,
                                                                                     frame);
   int keyed_channels = 0;
   for (; array_index < array_length; array_index++) {
-    /* action to take depends on mode */
     if (mode == MODIFYKEY_MODE_INSERT) {
       keyed_channels += blender::animrig::insert_keyframe(bmain,
                                                           reports,
