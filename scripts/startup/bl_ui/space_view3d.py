@@ -2179,6 +2179,10 @@ class VIEW3D_MT_paint_grease_pencil(Menu):
 
         layout.menu("VIEW3D_MT_edit_greasepencil_showhide")
 
+        layout.separator()
+
+        layout.operator("paint.sample_color")
+
 
 class VIEW3D_MT_paint_gpencil(Menu):
     bl_label = "Paint"
