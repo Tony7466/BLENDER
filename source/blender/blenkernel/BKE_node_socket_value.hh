@@ -151,9 +151,9 @@ class SocketValueVariant {
  private:
   /**
    * This exists so that only one instance of the underlying template has to be instantiated per
-   * type. So only `store_as_impl<int>` is necessary, but not `store_as_impl<const int &>`.
+   * type. So only `store_impl<int>` is necessary, but not `store_impl<const int &>`.
    */
-  template<typename T> void store_as_impl(T value);
+  template<typename T> void store_impl(T value);
 };
 
 template<typename T> inline SocketValueVariant::SocketValueVariant(T &&value)
@@ -163,7 +163,7 @@ template<typename T> inline SocketValueVariant::SocketValueVariant(T &&value)
 
 template<typename T> inline void SocketValueVariant::set(T &&value)
 {
-  this->store_as_impl<std::decay_t<T>>(std::forward<T>(value));
+  this->store_impl<std::decay_t<T>>(std::forward<T>(value));
 }
 
 }  // namespace blender::bke

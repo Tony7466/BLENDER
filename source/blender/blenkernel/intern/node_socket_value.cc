@@ -82,11 +82,13 @@ template<typename T> T SocketValueVariant::extract()
 
 template<typename T> T SocketValueVariant::get() const
 {
+  /* Simple implementation in terms of #extract for now. This could potentially use a specialized
+   * implementation at some point, but for now it's unlikely to be a bottleneck. */
   SocketValueVariant copied_variant = *this;
   return copied_variant.extract<T>();
 }
 
-template<typename T> void SocketValueVariant::store_as_impl(T value)
+template<typename T> void SocketValueVariant::store_impl(T value)
 {
   if constexpr (std::is_same_v<T, fn::GField>) {
     const std::optional<eNodeSocketDatatype> new_socket_type =
@@ -97,7 +99,8 @@ template<typename T> void SocketValueVariant::store_as_impl(T value)
     value_.emplace<fn::GField>(std::move(value));
   }
   else if constexpr (fn::is_field_v<T>) {
-    this->store_as_impl<fn::GField>(std::move(value));
+    /* Always store #Field<T> as #GField. */
+    this->store_impl<fn::GField>(std::move(value));
   }
   else {
     const std::optional<eNodeSocketDatatype> new_socket_type = static_type_to_socket_type<T>();
@@ -203,6 +206,7 @@ GPointer SocketValueVariant::get_single_ptr() const
   const void *data = value_.get();
   return GPointer(*type, data);
 }
+
 GMutablePointer SocketValueVariant::get_single_ptr()
 {
   const GPointer ptr = const_cast<const SocketValueVariant *>(this)->get_single_ptr();
@@ -238,7 +242,7 @@ bool SocketValueVariant::valid_for_socket(eNodeSocketDatatype socket_type) const
 #define INSTANTIATE(TYPE) \
   template TYPE SocketValueVariant::extract(); \
   template TYPE SocketValueVariant::get() const; \
-  template void SocketValueVariant::store_as_impl(TYPE);
+  template void SocketValueVariant::store_impl(TYPE);
 
 #define INSTANTIATE_SINGLE_AND_FIELD(TYPE) \
   INSTANTIATE(TYPE) \
