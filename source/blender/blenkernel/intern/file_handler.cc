@@ -5,20 +5,7 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
-
 #include "BKE_file_handler.hh"
-#include "BKE_report.h"
-
-#include "CLG_log.h"
-
-#include "RNA_access.hh"
-#include "RNA_prototypes.h"
-
-#include "fmt/format.h"
-
-static CLG_LogRef FH_LOG = {"bke.file_handler"};
-#define LOG (&FH_LOG)
 
 static blender::RawVector<std::unique_ptr<FileHandlerType>> &file_handlers()
 {
