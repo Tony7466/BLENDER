@@ -39,7 +39,7 @@ struct SocketValueVariant {
    * - Simple type: `int`, `float`, `float3`, `std::string`, ...
    * - #GField
    */
-  Any<void, 16> value_;
+  Any<void, 24> value_;
 
  public:
   SocketValueVariant() = default;

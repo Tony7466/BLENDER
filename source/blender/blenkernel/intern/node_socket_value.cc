@@ -43,6 +43,32 @@ static std::optional<eNodeSocketDatatype> cpp_type_to_socket_type(const CPPType 
   return custom_data_type_to_socket_type(cd_type);
 }
 
+template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_socket_type()
+{
+  if constexpr (is_same_any_v<T, int, fn::Field<int>>) {
+    return SOCK_INT;
+  }
+  if constexpr (is_same_any_v<T, float, fn::Field<float>>) {
+    return SOCK_FLOAT;
+  }
+  if constexpr (is_same_any_v<T, bool, fn::Field<bool>>) {
+    return SOCK_BOOLEAN;
+  }
+  if constexpr (is_same_any_v<T, float3, fn::Field<float3>>) {
+    return SOCK_VECTOR;
+  }
+  if constexpr (is_same_any_v<T, ColorGeometry4f, fn::Field<ColorGeometry4f>>) {
+    return SOCK_RGBA;
+  }
+  if constexpr (is_same_any_v<T, math::Quaternion, fn::Field<math::Quaternion>>) {
+    return SOCK_ROTATION;
+  }
+  if constexpr (is_same_any_v<T, std::string>) {
+    return SOCK_STRING;
+  }
+  return std::nullopt;
+}
+
 template<typename T> T SocketValueVariant::extract_as()
 {
   if constexpr (std::is_same_v<T, fn::GField>) {
@@ -55,11 +81,11 @@ template<typename T> T SocketValueVariant::extract_as()
     }
   }
   else if constexpr (fn::is_field_v<T>) {
-    BLI_assert(socket_type_ == cpp_type_to_socket_type(CPPType::get<typename T::base_type>()));
+    BLI_assert(socket_type_ == static_type_to_socket_type<typename T::base_type>());
     return T(this->extract_as<fn::GField>());
   }
   else {
-    BLI_assert(socket_type_ == cpp_type_to_socket_type(CPPType::get<T>()));
+    BLI_assert(socket_type_ == static_type_to_socket_type<T>());
     if (kind_ == Kind::Single) {
       return value_.get<T>();
     }
@@ -94,8 +120,7 @@ template<typename T> void SocketValueVariant::store_as_impl(T value)
     this->store_as_impl<fn::GField>(std::move(value));
   }
   else {
-    const std::optional<eNodeSocketDatatype> new_socket_type = cpp_type_to_socket_type(
-        CPPType::get<T>());
+    const std::optional<eNodeSocketDatatype> new_socket_type = static_type_to_socket_type<T>();
     BLI_assert(new_socket_type);
     socket_type_ = *new_socket_type;
     kind_ = Kind::Single;
