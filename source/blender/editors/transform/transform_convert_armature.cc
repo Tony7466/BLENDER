@@ -1267,13 +1267,12 @@ static void restoreMirrorPoseBones(TransDataContainer *tc)
   }
 }
 
-static void autokeyframe_pose(
-    bContext *C, Scene *scene, Object *ob, short targetless_ik, const eTfmMode tmode)
+static blender::Vector<std::string> get_modified_rna_paths(const eTfmMode tmode,
+                                                           ToolSettings *toolsettings,
+                                                           std::string &rotation_path,
+                                                           const bool targetless_ik)
 {
   blender::Vector<std::string> rna_paths;
-  std::string rotation_path = blender::animrig::get_rotation_mode_path(
-      eRotationModes(ob->rotmode));
-
   if (tmode == TFM_TRANSLATION) {
     if (targetless_ik) {
       rna_paths.append(rotation_path);
@@ -1283,26 +1282,52 @@ static void autokeyframe_pose(
     }
   }
   else if (ELEM(tmode, TFM_ROTATION, TFM_TRACKBALL)) {
-    if (ELEM(scene->toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
+    if (ELEM(toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
       rna_paths.append("location");
     }
 
-    if ((scene->toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
+    if ((toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
       rna_paths.append(rotation_path);
     }
   }
   else if (tmode == TFM_RESIZE) {
-    if (ELEM(scene->toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
+    if (ELEM(toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
       rna_paths.append("location");
     }
 
-    if ((scene->toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
+    if ((toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
       rna_paths.append("scale");
     }
   }
+  return rna_paths;
+}
+
+static void autokeyframe_pose(
+    bContext *C, Scene *scene, Object *ob, short targetless_ik, const eTfmMode tmode)
+{
 
   bPose *pose = ob->pose;
-  blender::animrig::autokeyframe_pose(C, scene, ob, targetless_ik, rna_paths.as_span());
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
+    if ((pchan->bone->flag & BONE_TRANSFORM) == 0 &&
+        !((pose->flag & POSE_MIRROR_EDIT) && (pchan->bone->flag & BONE_TRANSFORM_MIRROR)))
+    {
+      continue;
+    }
+
+    blender::Vector<std::string> rna_paths;
+    std::string rotation_path = blender::animrig::get_rotation_mode_path(
+        eRotationModes(pchan->rotmode));
+
+    if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+      rna_paths = get_modified_rna_paths(tmode, scene->toolsettings, rotation_path, targetless_ik);
+    }
+    else {
+      rna_paths = {"location", rotation_path, "scale"};
+    }
+
+    blender::animrig::autokeyframe_pose_channel(
+        C, scene, ob, pchan, rna_paths.as_span(), targetless_ik);
+  }
 }
 
 static void recalcData_pose(TransInfo *t)

@@ -159,12 +159,12 @@ bool autokeyframe_pchan(bContext *C, Scene *scene, Object *ob, bPoseChannel *pch
  * \note Context may not always be available,
  * so must check before using it as it's a luxury for a few cases.
  */
-void autokeyframe_pose(bContext *C,
-                       Scene *scene,
-                       Object *ob,
-                       bPoseChannel &pose_channel,
-                       Span<std::string> rna_paths,
-                       short targetless_ik);
+void autokeyframe_pose_channel(bContext *C,
+                               Scene *scene,
+                               Object *ob,
+                               bPoseChannel *pose_channel,
+                               Span<std::string> rna_paths,
+                               short targetless_ik);
 /**
  * Use for auto-key-framing.
  * \param only_if_property_keyed: if true, auto-key-framing only creates keyframes on already keyed

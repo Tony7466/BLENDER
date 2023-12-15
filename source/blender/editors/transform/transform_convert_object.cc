@@ -756,13 +756,13 @@ static bool motionpath_need_update_object(Scene *scene, Object *ob)
 /** \name Recalc Data object
  * \{ */
 
-static void autokeyframe_object(bContext *C, Scene *scene, Object *ob, const eTfmMode tmode)
+static blender::Vector<std::string> get_modified_rna_paths(const eTfmMode tmode,
+                                                           Scene *scene,
+                                                           ViewLayer *view_layer,
+                                                           Object *ob,
+                                                           std::string &rotation_path)
 {
   blender::Vector<std::string> rna_paths;
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  std::string rotation_path = blender::animrig::get_rotation_mode_path(
-      eRotationModes(ob->rotmode));
-
   if (tmode == TFM_TRANSLATION) {
     rna_paths.append("location");
   }
@@ -800,6 +800,22 @@ static void autokeyframe_object(bContext *C, Scene *scene, Object *ob, const eTf
     rna_paths.append("location");
     rna_paths.append(rotation_path);
     rna_paths.append("scale");
+  }
+  return rna_paths;
+}
+
+static void autokeyframe_object(bContext *C, Scene *scene, Object *ob, const eTfmMode tmode)
+{
+  blender::Vector<std::string> rna_paths;
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  std::string rotation_path = blender::animrig::get_rotation_mode_path(
+      eRotationModes(ob->rotmode));
+
+  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+    rna_paths = get_modified_rna_paths(tmode, scene, view_layer, ob, rotation_path);
+  }
+  else {
+    rna_paths = {"location", rotation_path, "scale"};
   }
   blender::animrig::autokeyframe_object(C, scene, ob, rna_paths.as_span());
 }
