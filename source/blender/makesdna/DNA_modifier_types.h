@@ -2285,7 +2285,7 @@ enum {
 
 /** Surface Deform vertex bind modes. */
 enum {
-  MOD_SDEF_MODE_LOOPTRIS = 0,
+  MOD_SDEF_MODE_corner_triS = 0,
   MOD_SDEF_MODE_NGONS = 1,
   MOD_SDEF_MODE_CENTROID = 2,
 };

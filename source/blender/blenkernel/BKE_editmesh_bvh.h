@@ -29,16 +29,16 @@ BMBVHTree *BKE_bmbvh_new_from_editmesh(struct BMEditMesh *em,
                                        const float (*cos_cage)[3],
                                        bool cos_cage_free);
 BMBVHTree *BKE_bmbvh_new_ex(struct BMesh *bm,
-                            struct BMLoop *(*looptris)[3],
-                            int looptris_tot,
+                            struct BMLoop *(*corner_tris)[3],
+                            int corner_tris_tot,
                             int flag,
                             const float (*cos_cage)[3],
                             bool cos_cage_free,
                             bool (*test_fn)(struct BMFace *, void *user_data),
                             void *user_data);
 BMBVHTree *BKE_bmbvh_new(struct BMesh *bm,
-                         struct BMLoop *(*looptris)[3],
-                         int looptris_tot,
+                         struct BMLoop *(*corner_tris)[3],
+                         int corner_tris_tot,
                          int flag,
                          const float (*cos_cage)[3],
                          bool cos_cage_free);
@@ -70,14 +70,14 @@ struct BMVert *BKE_bmbvh_find_vert_closest(BMBVHTree *tree, const float co[3], f
 struct BMFace *BKE_bmbvh_find_face_closest(BMBVHTree *tree, const float co[3], float dist_max);
 
 /**
- * Overlap indices reference the looptris.
+ * Overlap indices reference the corner_tris.
  */
 struct BVHTreeOverlap *BKE_bmbvh_overlap(const BMBVHTree *bmtree_a,
                                          const BMBVHTree *bmtree_b,
                                          unsigned int *r_overlap_tot);
 
 /**
- * Overlap indices reference the looptris.
+ * Overlap indices reference the corner_tris.
  */
 struct BVHTreeOverlap *BKE_bmbvh_overlap_self(const BMBVHTree *bmtree,
                                               unsigned int *r_overlap_tot);

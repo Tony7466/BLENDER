@@ -17,8 +17,8 @@
  * \return true if the mesh is changed (intersections cut or faces removed from boolean).
  */
 bool BM_mesh_intersect(BMesh *bm,
-                       struct BMLoop *(*looptris)[3],
-                       int looptris_tot,
+                       struct BMLoop *(*corner_tris)[3],
+                       int corner_tris_tot,
                        int (*test_fn)(BMFace *f, void *user_data),
                        void *user_data,
                        bool use_self,

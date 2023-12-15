@@ -283,11 +283,11 @@ static void BMD_mesh_intersection(BMesh *bm,
 
   /* Main BMesh intersection setup. */
   /* Create tessellation & intersect. */
-  const int looptris_tot = poly_to_tri_count(bm->totface, bm->totloop);
-  BMLoop *(*looptris)[3] = (BMLoop * (*)[3])
-      MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__);
+  const int corner_tris_tot = poly_to_tri_count(bm->totface, bm->totloop);
+  BMLoop *(*corner_tris)[3] = (BMLoop * (*)[3])
+      MEM_malloc_arrayN(corner_tris_tot, sizeof(*corner_tris), __func__);
 
-  BM_mesh_calc_tessellation_beauty(bm, looptris);
+  BM_mesh_calc_tessellation_beauty(bm, corner_tris);
 
   /* postpone this until after tessellating
    * so we can use the original normals before the vertex are moved */
@@ -363,8 +363,8 @@ static void BMD_mesh_intersection(BMesh *bm,
   }
 
   BM_mesh_intersect(bm,
-                    looptris,
-                    looptris_tot,
+                    corner_tris,
+                    corner_tris_tot,
                     bm_face_isect_pair,
                     nullptr,
                     false,
@@ -376,7 +376,7 @@ static void BMD_mesh_intersection(BMesh *bm,
                     bmd->operation,
                     bmd->double_threshold);
 
-  MEM_freeN(looptris);
+  MEM_freeN(corner_tris);
 }
 
 #ifdef WITH_GMP

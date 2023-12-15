@@ -37,7 +37,6 @@ struct CCGElem;
 struct CCGKey;
 struct CustomData;
 struct IsectRayPrecalc;
-struct MLoopTri;
 struct Mesh;
 struct PBVH;
 struct PBVHNode;

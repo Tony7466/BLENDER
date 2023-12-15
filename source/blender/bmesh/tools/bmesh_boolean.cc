@@ -27,16 +27,16 @@ namespace blender::meshintersect {
 
 /**
  * Make a #blender::meshintersect::Mesh from #BMesh bm.
- * We are given a triangulation of it from the caller via #looptris,
- * which are looptris_tot triples of loops that together tessellate
+ * We are given a triangulation of it from the caller via #corner_tris,
+ * which are corner_tris_tot triples of loops that together tessellate
  * the faces of bm.
  * Return a second #IMesh in *r_triangulated that has the triangulated
  * mesh, with face "orig" fields that connect the triangles back to
  * the faces in the returned (polygonal) mesh.
  */
 static IMesh mesh_from_bm(BMesh *bm,
-                          BMLoop *(*looptris)[3],
-                          const int looptris_tot,
+                          BMLoop *(*corner_tris)[3],
+                          const int corner_tris_tot,
                           IMesh *r_triangulated,
                           IMeshArena *arena)
 {
@@ -75,17 +75,17 @@ static IMesh mesh_from_bm(BMesh *bm,
    * The loop_tris have accurate v and f members for the triangles,
    * but their next and e pointers are not correct for the loops
    * that start added-diagonal edges. */
-  Array<Face *> tri_face(looptris_tot);
+  Array<Face *> tri_face(corner_tris_tot);
   face_vert.resize(3);
   face_edge_orig.resize(3);
-  for (int i = 0; i < looptris_tot; ++i) {
-    BMFace *bmf = looptris[i][0]->f;
+  for (int i = 0; i < corner_tris_tot; ++i) {
+    BMFace *bmf = corner_tris[i][0]->f;
     int f = BM_elem_index_get(bmf);
     for (int j = 0; j < 3; ++j) {
-      BMLoop *l = looptris[i][j];
+      BMLoop *l = corner_tris[i][j];
       int v_index = BM_elem_index_get(l->v);
       int e_index;
-      if (l->next->v == looptris[i][(j + 1) % 3]->v) {
+      if (l->next->v == corner_tris[i][(j + 1) % 3]->v) {
         e_index = BM_elem_index_get(l->e);
       }
       else {
@@ -336,8 +336,8 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
 }
 
 static bool bmesh_boolean(BMesh *bm,
-                          BMLoop *(*looptris)[3],
-                          const int looptris_tot,
+                          BMLoop *(*corner_tris)[3],
+                          const int corner_tris_tot,
                           int (*test_fn)(BMFace *f, void *user_data),
                           void *user_data,
                           int nshapes,
@@ -352,7 +352,7 @@ static bool bmesh_boolean(BMesh *bm,
 #  ifdef PERF_DEBUG
   double start_time = PIL_check_seconds_timer();
 #  endif
-  IMesh m_in = mesh_from_bm(bm, looptris, looptris_tot, &m_triangulated, &arena);
+  IMesh m_in = mesh_from_bm(bm, corner_tris, corner_tris_tot, &m_triangulated, &arena);
 #  ifdef PERF_DEBUG
   double mesh_time = PIL_check_seconds_timer();
   std::cout << "bmesh_boolean, imesh_from_bm done, time = " << mesh_time - start_time << "\n";
@@ -420,8 +420,8 @@ static bool bmesh_boolean(BMesh *bm,
  */
 #ifdef WITH_GMP
 bool BM_mesh_boolean(BMesh *bm,
-                     BMLoop *(*looptris)[3],
-                     const int looptris_tot,
+                     BMLoop *(*corner_tris)[3],
+                     const int corner_tris_tot,
                      int (*test_fn)(BMFace *f, void *user_data),
                      void *user_data,
                      const int nshapes,
@@ -432,8 +432,8 @@ bool BM_mesh_boolean(BMesh *bm,
 {
   return blender::meshintersect::bmesh_boolean(
       bm,
-      looptris,
-      looptris_tot,
+      corner_tris,
+      corner_tris_tot,
       test_fn,
       user_data,
       nshapes,
@@ -445,8 +445,8 @@ bool BM_mesh_boolean(BMesh *bm,
 }
 
 bool BM_mesh_boolean_knife(BMesh *bm,
-                           BMLoop *(*looptris)[3],
-                           const int looptris_tot,
+                           BMLoop *(*corner_tris)[3],
+                           const int corner_tris_tot,
                            int (*test_fn)(BMFace *f, void *user_data),
                            void *user_data,
                            const int nshapes,
@@ -456,8 +456,8 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                            const bool keep_hidden)
 {
   return blender::meshintersect::bmesh_boolean(bm,
-                                               looptris,
-                                               looptris_tot,
+                                               corner_tris,
+                                               corner_tris_tot,
                                                test_fn,
                                                user_data,
                                                nshapes,
@@ -469,8 +469,8 @@ bool BM_mesh_boolean_knife(BMesh *bm,
 }
 #else
 bool BM_mesh_boolean(BMesh * /*bm*/,
-                     BMLoop *(*looptris)[3],
-                     const int /*looptris_tot*/,
+                     BMLoop *(*corner_tris)[3],
+                     const int /*corner_tris_tot*/,
                      int (*test_fn)(BMFace *, void *),
                      void * /*user_data*/,
                      const int /*nshapes*/,
@@ -479,7 +479,7 @@ bool BM_mesh_boolean(BMesh * /*bm*/,
                      const bool /*hole_tolerant*/,
                      const int /*boolean_mode*/)
 {
-  UNUSED_VARS(looptris, test_fn);
+  UNUSED_VARS(corner_tris, test_fn);
   return false;
 }
 
@@ -492,8 +492,8 @@ bool BM_mesh_boolean(BMesh * /*bm*/,
  * to the intersection result faces.
  */
 bool BM_mesh_boolean_knife(BMesh * /*bm*/,
-                           BMLoop *(*looptris)[3],
-                           const int /*looptris_tot*/,
+                           BMLoop *(*corner_tris)[3],
+                           const int /*corner_tris_tot*/,
                            int (*test_fn)(BMFace *, void *),
                            void * /*user_data*/,
                            const int /*nshapes*/,
@@ -502,7 +502,7 @@ bool BM_mesh_boolean_knife(BMesh * /*bm*/,
                            const bool /*hole_tolerant*/,
                            const bool /*keep_hidden*/)
 {
-  UNUSED_VARS(looptris, test_fn);
+  UNUSED_VARS(corner_tris, test_fn);
   return false;
 }
 #endif

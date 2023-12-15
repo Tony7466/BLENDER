@@ -838,7 +838,7 @@ finally:
 #ifdef USE_BVH
 
 struct RaycastData {
-  const float **looptris;
+  const float **corner_tris;
   BLI_Buffer *z_buffer;
 };
 
@@ -852,10 +852,10 @@ static void raycast_callback(void *userdata,
                              BVHTreeRayHit * /*hit*/)
 {
   RaycastData *raycast_data = static_cast<RaycastData *>(userdata);
-  const float **looptris = raycast_data->looptris;
-  const float *v0 = looptris[index * 3 + 0];
-  const float *v1 = looptris[index * 3 + 1];
-  const float *v2 = looptris[index * 3 + 2];
+  const float **corner_tris = raycast_data->corner_tris;
+  const float *v0 = corner_tris[index * 3 + 0];
+  const float *v1 = corner_tris[index * 3 + 1];
+  const float *v2 = corner_tris[index * 3 + 2];
   float dist;
 
   if (
@@ -886,12 +886,12 @@ static void raycast_callback(void *userdata,
   }
 }
 
-static int isect_bvhtree_point_v3(BVHTree *tree, const float **looptris, const float co[3])
+static int isect_bvhtree_point_v3(BVHTree *tree, const float **corner_tris, const float co[3])
 {
   BLI_buffer_declare_static(float, z_buffer, BLI_BUFFER_NOP, 64);
 
   RaycastData raycast_data = {
-      looptris,
+      corner_tris,
       &z_buffer,
   };
   BVHTreeRayHit hit = {0};
@@ -945,8 +945,8 @@ static int isect_bvhtree_point_v3(BVHTree *tree, const float **looptris, const f
 #endif /* USE_BVH */
 
 bool BM_mesh_intersect(BMesh *bm,
-                       BMLoop *(*looptris)[3],
-                       const int looptris_tot,
+                       BMLoop *(*corner_tris)[3],
+                       const int corner_tris_tot,
                        int (*test_fn)(BMFace *f, void *user_data),
                        void *user_data,
                        const bool use_self,
@@ -965,7 +965,7 @@ bool BM_mesh_intersect(BMesh *bm,
   bool has_edit_isect = false, has_edit_boolean = false;
 
   /* needed for boolean, since cutting up faces moves the loops within the face */
-  const float **looptri_coords = nullptr;
+  const float **corner_tri_coords = nullptr;
 
 #ifdef USE_BVH
   BVHTree *tree_a, *tree_b;
@@ -1030,25 +1030,25 @@ bool BM_mesh_intersect(BMesh *bm,
     int i, j;
 
     cos = static_cast<float **>(
-        MEM_mallocN(size_t(looptris_tot) * sizeof(*looptri_coords) * 3, __func__));
-    for (i = 0, j = 0; i < looptris_tot; i++) {
-      cos[j++] = looptris[i][0]->v->co;
-      cos[j++] = looptris[i][1]->v->co;
-      cos[j++] = looptris[i][2]->v->co;
+        MEM_mallocN(size_t(corner_tris_tot) * sizeof(*corner_tri_coords) * 3, __func__));
+    for (i = 0, j = 0; i < corner_tris_tot; i++) {
+      cos[j++] = corner_tris[i][0]->v->co;
+      cos[j++] = corner_tris[i][1]->v->co;
+      cos[j++] = corner_tris[i][2]->v->co;
     }
-    looptri_coords = (const float **)cos;
+    corner_tri_coords = (const float **)cos;
   }
 
 #ifdef USE_BVH
   {
     int i;
-    tree_a = BLI_bvhtree_new(looptris_tot, s.epsilon.eps_margin, 8, 8);
-    for (i = 0; i < looptris_tot; i++) {
-      if (test_fn(looptris[i][0]->f, user_data) == 0) {
+    tree_a = BLI_bvhtree_new(corner_tris_tot, s.epsilon.eps_margin, 8, 8);
+    for (i = 0; i < corner_tris_tot; i++) {
+      if (test_fn(corner_tris[i][0]->f, user_data) == 0) {
         const float t_cos[3][3] = {
-            {UNPACK3(looptris[i][0]->v->co)},
-            {UNPACK3(looptris[i][1]->v->co)},
-            {UNPACK3(looptris[i][2]->v->co)},
+            {UNPACK3(corner_tris[i][0]->v->co)},
+            {UNPACK3(corner_tris[i][1]->v->co)},
+            {UNPACK3(corner_tris[i][2]->v->co)},
         };
 
         BLI_bvhtree_insert(tree_a, i, (const float *)t_cos, 3);
@@ -1059,13 +1059,13 @@ bool BM_mesh_intersect(BMesh *bm,
 
   if (use_self == false) {
     int i;
-    tree_b = BLI_bvhtree_new(looptris_tot, s.epsilon.eps_margin, 8, 8);
-    for (i = 0; i < looptris_tot; i++) {
-      if (test_fn(looptris[i][0]->f, user_data) == 1) {
+    tree_b = BLI_bvhtree_new(corner_tris_tot, s.epsilon.eps_margin, 8, 8);
+    for (i = 0; i < corner_tris_tot; i++) {
+      if (test_fn(corner_tris[i][0]->f, user_data) == 1) {
         const float t_cos[3][3] = {
-            {UNPACK3(looptris[i][0]->v->co)},
-            {UNPACK3(looptris[i][1]->v->co)},
-            {UNPACK3(looptris[i][2]->v->co)},
+            {UNPACK3(corner_tris[i][0]->v->co)},
+            {UNPACK3(corner_tris[i][1]->v->co)},
+            {UNPACK3(corner_tris[i][2]->v->co)},
         };
 
         BLI_bvhtree_insert(tree_b, i, (const float *)t_cos, 3);
@@ -1087,7 +1087,7 @@ bool BM_mesh_intersect(BMesh *bm,
 #  ifndef NDEBUG
   /* The overlap result must match that obtained in Release to succeed
    * in the `bmesh_boolean` test. */
-  if (looptris_tot < 1024) {
+  if (corner_tris_tot < 1024) {
     flag &= ~BVH_OVERLAP_USE_THREADING;
   }
 #  endif
@@ -1103,8 +1103,8 @@ bool BM_mesh_intersect(BMesh *bm,
       bm_isect_tri_tri(&s,
                        overlap[i].indexA,
                        overlap[i].indexB,
-                       looptris[overlap[i].indexA],
-                       looptris[overlap[i].indexB],
+                       corner_tris[overlap[i].indexA],
+                       corner_tris[overlap[i].indexB],
                        isect_tri_tri_no_shared);
 #  ifdef USE_DUMP
       printf(")),\n");
@@ -1123,10 +1123,10 @@ bool BM_mesh_intersect(BMesh *bm,
 
 #else
   {
-    for (i_a = 0; i_a < looptris_tot; i_a++) {
-      const int t_a = test_fn(looptris[i_a][0]->f, user_data);
-      for (i_b = i_a + 1; i_b < looptris_tot; i_b++) {
-        const int t_b = test_fn(looptris[i_b][0]->f, user_data);
+    for (i_a = 0; i_a < corner_tris_tot; i_a++) {
+      const int t_a = test_fn(corner_tris[i_a][0]->f, user_data);
+      for (i_b = i_a + 1; i_b < corner_tris_tot; i_b++) {
+        const int t_b = test_fn(corner_tris[i_b][0]->f, user_data);
 
         if (use_self) {
           if ((t_a != 0) || (t_b != 0)) {
@@ -1142,7 +1142,7 @@ bool BM_mesh_intersect(BMesh *bm,
 #  ifdef USE_DUMP
         printf("  ((%d, %d), (", i_a, i_b);
 #  endif
-        bm_isect_tri_tri(&s, i_a, i_b, looptris[i_a], looptris[i_b], isect_tri_tri_no_shared);
+        bm_isect_tri_tri(&s, i_a, i_b, corner_tris[i_a], corner_tris[i_b], isect_tri_tri_no_shared);
 #  ifdef USE_DUMP
         printf(")),\n");
 #  endif
@@ -1553,7 +1553,7 @@ bool BM_mesh_intersect(BMesh *bm,
         // BM_face_calc_center_median(f, co);
         BM_face_calc_point_in_face(f, co);
 
-        hits = isect_bvhtree_point_v3(tree_pair[side], looptri_coords, co);
+        hits = isect_bvhtree_point_v3(tree_pair[side], corner_tri_coords, co);
 
         switch (boolean_mode) {
           case BMESH_ISECT_BOOLEAN_ISECT:
@@ -1632,7 +1632,7 @@ bool BM_mesh_intersect(BMesh *bm,
   }
 
   if (boolean_mode != BMESH_ISECT_BOOLEAN_NONE) {
-    MEM_freeN((void *)looptri_coords);
+    MEM_freeN((void *)corner_tri_coords);
 
     /* no booleans, just free immediate */
     BLI_bvhtree_free(tree_a);
