@@ -6,6 +6,8 @@
  * \ingroup bke
  */
 
+#include <sstream>
+
 #include "BKE_customdata.hh"
 #include "BKE_node.hh"
 #include "BKE_node_socket_value.hh"
@@ -198,6 +200,24 @@ GMutablePointer SocketValueVariant::get_single_ptr()
 {
   const GPointer ptr = const_cast<const SocketValueVariant *>(this)->get_single_ptr();
   return GMutablePointer(ptr.type(), const_cast<void *>(ptr.get()));
+}
+
+std::ostream &operator<<(std::ostream &stream, const SocketValueVariant &value_variant)
+{
+  SocketValueVariant variant_copy = value_variant;
+  variant_copy.convert_to_single();
+  if (value_variant.kind_ == SocketValueVariant::Kind::Single) {
+    const GPointer value = variant_copy.get_single_ptr();
+    const CPPType &cpp_type = *value.type();
+    if (cpp_type.is_printable()) {
+      std::stringstream ss;
+      cpp_type.print(value.get(), ss);
+      stream << ss.str();
+      return stream;
+    }
+  }
+  stream << "SocketValueVariant";
+  return stream;
 }
 
 #define INSTANTIATE(TYPE) \

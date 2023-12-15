@@ -36,7 +36,7 @@ BLI_CPP_TYPE_MAKE(Material *, CPPTypeFlags::BasicType)
 BLI_CPP_TYPE_MAKE(MStringProperty, CPPTypeFlags::None);
 
 BLI_CPP_TYPE_MAKE(blender::bke::AnonymousAttributeSet, CPPTypeFlags::None);
-BLI_CPP_TYPE_MAKE(blender::bke::SocketValueVariant, CPPTypeFlags::None);
+BLI_CPP_TYPE_MAKE(blender::bke::SocketValueVariant, CPPTypeFlags::Printable);
 BLI_VECTOR_CPP_TYPE_MAKE(blender::bke::SocketValueVariant);
 
 void BKE_cpp_types_init()

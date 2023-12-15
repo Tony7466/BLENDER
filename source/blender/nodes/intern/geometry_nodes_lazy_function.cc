@@ -3592,7 +3592,7 @@ struct GeometryNodesLazyFunctionBuilder {
   }
 
   struct TypeWithLinks {
-    const CPPType *type;
+    const bNodeSocketType *typeinfo;
     Vector<const bNodeLink *> links;
   };
 
@@ -3604,15 +3604,24 @@ struct GeometryNodesLazyFunctionBuilder {
       return;
     }
 
+    const bNodeSocketType &from_typeinfo = *from_bsocket.typeinfo;
+
     /* Group available target sockets by type so that they can be handled together. */
     const Vector<TypeWithLinks> types_with_links = this->group_link_targets_by_type(from_bsocket);
 
     for (const TypeWithLinks &type_with_links : types_with_links) {
-      const CPPType &to_type = *type_with_links.type;
+      if (type_with_links.typeinfo == nullptr) {
+        continue;
+      }
+      if (type_with_links.typeinfo->geometry_nodes_cpp_type == nullptr) {
+        continue;
+      }
+      const bNodeSocketType &to_typeinfo = *type_with_links.typeinfo;
+      const CPPType &to_type = *to_typeinfo.geometry_nodes_cpp_type;
       const Span<const bNodeLink *> links = type_with_links.links;
 
       lf::OutputSocket *converted_from_lf_socket = this->insert_type_conversion_if_necessary(
-          from_lf_socket, to_type, graph_params.lf_graph);
+          from_lf_socket, from_typeinfo, to_typeinfo, graph_params.lf_graph);
 
       for (const bNodeLink *link : links) {
         const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(*link,
@@ -3644,13 +3653,9 @@ struct GeometryNodesLazyFunctionBuilder {
         continue;
       }
       const bNodeSocket &to_bsocket = *link->tosock;
-      const CPPType *to_type = get_socket_cpp_type(to_bsocket);
-      if (to_type == nullptr) {
-        continue;
-      }
       bool inserted = false;
       for (TypeWithLinks &types_with_links : types_with_links) {
-        if (types_with_links.type == to_type) {
+        if (types_with_links.typeinfo == to_bsocket.typeinfo) {
           types_with_links.links.append(link);
           inserted = true;
           break;
@@ -3659,7 +3664,7 @@ struct GeometryNodesLazyFunctionBuilder {
       if (inserted) {
         continue;
       }
-      types_with_links.append({to_type, {link}});
+      types_with_links.append({to_bsocket.typeinfo, {link}});
     }
     return types_with_links;
   }
@@ -3709,20 +3714,23 @@ struct GeometryNodesLazyFunctionBuilder {
   }
 
   lf::OutputSocket *insert_type_conversion_if_necessary(lf::OutputSocket &from_socket,
-                                                        const CPPType &to_type,
+                                                        const bNodeSocketType &from_typeinfo,
+                                                        const bNodeSocketType &to_typeinfo,
                                                         lf::Graph &lf_graph)
   {
-    const CPPType &from_type = from_socket.type();
-    if (from_type == to_type) {
+    if (from_typeinfo.type == to_typeinfo.type) {
       return &from_socket;
     }
-    if (conversions_->is_convertible(from_type, to_type)) {
-      const MultiFunction &multi_fn = *conversions_->get_conversion_multi_function(
-          mf::DataType::ForSingle(from_type), mf::DataType::ForSingle(to_type));
-      auto &fn = scope_.construct<LazyFunctionForMultiFunctionConversion>(multi_fn);
-      lf::Node &conversion_node = lf_graph.add_function(fn);
-      lf_graph.add_link(from_socket, conversion_node.input(0));
-      return &conversion_node.output(0);
+    if (from_typeinfo.base_cpp_type && to_typeinfo.base_cpp_type) {
+      if (conversions_->is_convertible(*from_typeinfo.base_cpp_type, *to_typeinfo.base_cpp_type)) {
+        const MultiFunction &multi_fn = *conversions_->get_conversion_multi_function(
+            mf::DataType::ForSingle(*from_typeinfo.base_cpp_type),
+            mf::DataType::ForSingle(*to_typeinfo.base_cpp_type));
+        auto &fn = scope_.construct<LazyFunctionForMultiFunctionConversion>(multi_fn);
+        lf::Node &conversion_node = lf_graph.add_function(fn);
+        lf_graph.add_link(from_socket, conversion_node.input(0));
+        return &conversion_node.output(0);
+      }
     }
     return nullptr;
   }

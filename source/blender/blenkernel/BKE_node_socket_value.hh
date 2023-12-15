@@ -60,6 +60,8 @@ struct SocketValueVariant {
   void *new_single_for_write(eNodeSocketDatatype socket_type);
   void *new_single_for_write(const CPPType &cpp_type);
 
+  friend std::ostream &operator<<(std::ostream &stream, const SocketValueVariant &value_variant);
+
  private:
   template<typename T> void store_as_impl(T value);
 };
