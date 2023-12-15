@@ -20,12 +20,6 @@ import ctypes
 import sys
 from itertools import chain
 
-# If an enum property is set to an integer value for which no enum item exists then an empty string is returned and
-# looking up the integer value of the enum property would fail. In such cases, return this value instead.
-MISSING_ENUM_VALUE = -1
-# Standard-size, explicit byteorder buffer prefixes for native and non-native byteorder.
-NATIVE_STANDARD_SIZE_PREFIX, NON_NATIVE_STANDARD_SIZE_PREFIX = ('<', '>') if sys.byteorder == 'little' else ('>', '<')
-
 id_inst = bpy.context.scene
 id_type = bpy.types.Scene
 
@@ -69,6 +63,20 @@ class SequenceCheckNdarray(np.ndarray):
         super().__setitem__(key, value)
 
 
+def get_enum_item_value(enum_prop_rna, item_identifier):
+    """
+    Get the enum value of an enum identifier. This may not work for some dynamic enum properties, such as
+    `bpy.types.ColorManagedDisplaySettings.display_device`.
+
+    Returns -1 when the item_identifier could not be found in the EnumProperty's `.enum_items`.
+    """
+    item = enum_prop_rna.enum_items.get(item_identifier)
+    if item is None:
+        return -1
+    else:
+        return item.value
+
+
 def prop_as_sequence(collection, prop_rna):
     """
     Helper to get a flat sequence of a specific property through iteration instead of foreach_get.
@@ -84,8 +92,7 @@ def prop_as_sequence(collection, prop_rna):
     elif prop_rna.type == 'ENUM':
         # Enum properties are a special case where foreach_get/set access the enum as an index, but accessing the
         # enum property directly is done using the string identifiers of the enum's items.
-        index_lookup = {item.identifier: item.value for item in prop_rna.enum_items}
-        return [index_lookup.get(getattr(group, prop_name), MISSING_ENUM_VALUE) for group in collection]
+        return [get_enum_item_value(prop_rna, getattr(group, prop_name)) for group in collection]
     else:
         return [getattr(group, prop_name) for group in collection]
 
@@ -94,6 +101,11 @@ def prop_as_sequence(collection, prop_rna):
 # Tests
 
 class BaseTestForeachGetSet(unittest.TestCase):
+    # `new_order` arguments for standard-size, explicit byteorder dtypes with numpy.dtype.newbyteorder.
+    # Implicit native byteorder would be specified with '='.
+    EXPLICIT_NATIVE_ENDIAN_STANDARD_SIZE = '<' if sys.byteorder == 'little' else '>'
+    NON_NATIVE_ENDIAN_STANDARD_SIZE = '>' if sys.byteorder == 'little' else '<'
+
     def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):
         """
         Replace any NumPy arrays with lists to avoid comparison issues in TestCase.assertSequenceEqual() and then call
@@ -141,10 +153,7 @@ class BaseTestForeachGetSet(unittest.TestCase):
                     initial_value = initial_value[0]
             elif prop_rna.type == 'ENUM':
                 # Get the integer value of the string identifier
-                if initial_value in prop_rna.enum_items:
-                    initial_value = prop_rna.enum_items[initial_value].value
-                else:
-                    initial_value = MISSING_ENUM_VALUE
+                initial_value = get_enum_item_value(prop_rna, initial_value)
         else:
             # The collection is empty, so the initial value is irrelevant.
             initial_value = 0
@@ -399,29 +408,35 @@ class BaseTestForeachGetSet(unittest.TestCase):
                                 "at least one sequence should be accessed as a buffer")
 
     def check_foreach_getset(self, collection, prop_rna, is_set):
+        """
+        Check foreach_get/foreach_set for the given collection and collection item property.
+        """
         # List and Tuple with foreach_set and only List with foreach_get.
         self.do_getset_subtest(
             collection, prop_rna, is_set,
             sequence_type="Pure Python Sequence",
-            is_buffers=False)
+            is_buffers=False,
+        )
         # Buffers in native byteorder, their formats without any prefixes.
         # At least one buffer is expected to be considered compatible with the property.
         self.do_getset_subtest(
             collection, prop_rna, is_set,
             sequence_type="Implicit-native buffer",
             assert_buffer_usage=True,
-            is_buffers=True)
-        # Buffers in native byteorder, their format explicitly prefixed by "<" on little-endian systems and ">" on
-        # big-endian systems when byteorder is applicable to the data type.
+            is_buffers=True,
+        )
+        # Buffers in native byteorder and standard size, their format explicitly prefixed by "<" on little-endian
+        # systems and ">" on big-endian systems when byteorder is applicable to the data type.
         # At least one buffer is expected to be considered compatible with the property.
         self.do_getset_subtest(
             collection, prop_rna, is_set,
             sequence_type="Explicit-native buffer",
             assert_buffer_usage=True,
             is_buffers=True,
-            dtype_modifier=lambda dtype: np.dtype(dtype).newbyteorder(NATIVE_STANDARD_SIZE_PREFIX))
-        # Buffers in non-native byteorder, their formats prefixed by ">" on little-endian systems and "<" on big-endian
-        # systems when byteorder is applicable to the data type.
+            dtype_modifier=lambda dtype: np.dtype(dtype).newbyteorder(self.EXPLICIT_NATIVE_ENDIAN_STANDARD_SIZE),
+        )
+        # Buffers in non-native byteorder and standard size, their formats prefixed by ">" on little-endian systems and
+        # "<" on big-endian systems when byteorder is applicable to the data type.
         # Non-native byteorder buffers are expected to be incompatible with the property (falling back to accessing as a
         # sequence), however, byteorder is irrelevant for some buffers, such as `np.byte` (`signed char`), so those
         # could still be considered compatible.
@@ -429,7 +444,8 @@ class BaseTestForeachGetSet(unittest.TestCase):
             collection, prop_rna, is_set,
             sequence_type="Non-native buffer",
             is_buffers=True,
-            dtype_modifier=lambda dtype: np.dtype(dtype).newbyteorder(NON_NATIVE_STANDARD_SIZE_PREFIX))
+            dtype_modifier=lambda dtype: np.dtype(dtype).newbyteorder(self.NON_NATIVE_ENDIAN_STANDARD_SIZE),
+        )
 
     def check_foreach_get(self, collection, prop_rna):
         self.check_foreach_getset(collection, prop_rna, is_set=False)
