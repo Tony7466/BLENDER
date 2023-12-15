@@ -257,7 +257,8 @@ struct ExtrapolateOp {
         vdb_result->insertMeta(*vdb_input_grid);
         vdb_result->setTransform(vdb_input_grid->transform().copy());
       }
-      this->result = bke::make_volume_grid_ptr(std::move(vdb_result));
+      this->result = bke::make_volume_grid_ptr(std::move(vdb_result),
+                                               VOLUME_TREE_SOURCE_GENERATED);
     }
     catch (const openvdb::ValueError &ex) {
       /* TODO this happens when the iso value is outside a valid range, which depends on the

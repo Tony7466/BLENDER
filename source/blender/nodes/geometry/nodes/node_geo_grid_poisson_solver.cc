@@ -105,7 +105,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   openvdb::FloatGrid::Ptr output_grid_vdb = input_grid.grid()->copyWithNewTree();
   output_grid_vdb->setTree(output_tree);
-  bke::GVolumeGridPtr output_grid = bke::make_volume_grid_ptr(output_grid_vdb);
+  bke::GVolumeGridPtr output_grid = bke::make_volume_grid_ptr(output_grid_vdb,
+                                                              VOLUME_TREE_SOURCE_GENERATED);
 
   grids::set_output_grid(params, "Grid", CD_PROP_FLOAT, output_grid);
   params.set_output<bool>("Success", std::move(pcg_state.success));

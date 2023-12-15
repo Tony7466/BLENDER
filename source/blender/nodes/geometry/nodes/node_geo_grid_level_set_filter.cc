@@ -60,7 +60,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = GEO_NODE_GRID_FILTER_MEAN;
 }
 
-bke::GVolumeGridPtr filter_grid(GeoNodeExecParams params)
+static bke::GVolumeGridPtr filter_grid(GeoNodeExecParams params)
 {
   using GridType = typename bke::VolumeGridPtr<float>::GridType;
   using MaskType = typename bke::VolumeGridPtr<float>::GridType;
@@ -141,14 +141,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  RNA_def_node_enum(
-      srna,
-      "operation",
-      "Operation",
-      "Type of filtering operation",
-      rna_enum_grid_filter_operation_items,
-      NOD_inline_enum_accessors(custom1),
-      GEO_NODE_GRID_FILTER_MEAN);
+  RNA_def_node_enum(srna,
+                    "operation",
+                    "Operation",
+                    "Type of filtering operation",
+                    rna_enum_grid_filter_operation_items,
+                    NOD_inline_enum_accessors(custom1),
+                    GEO_NODE_GRID_FILTER_MEAN);
 }
 
 static void node_register()
