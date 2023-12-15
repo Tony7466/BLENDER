@@ -1142,7 +1142,8 @@ bool BM_mesh_intersect(BMesh *bm,
 #  ifdef USE_DUMP
         printf("  ((%d, %d), (", i_a, i_b);
 #  endif
-        bm_isect_tri_tri(&s, i_a, i_b, corner_tris[i_a], corner_tris[i_b], isect_tri_tri_no_shared);
+        bm_isect_tri_tri(
+            &s, i_a, i_b, corner_tris[i_a], corner_tris[i_b], isect_tri_tri_no_shared);
 #  ifdef USE_DUMP
         printf(")),\n");
 #  endif

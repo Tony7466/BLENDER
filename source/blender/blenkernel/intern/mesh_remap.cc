@@ -1287,7 +1287,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     const blender::Span<int> corner_verts_src = me_src->corner_verts();
     const blender::Span<int> corner_edges_src = me_src->corner_edges();
     blender::Span<blender::int3> corner_tris_src;
-    blender::Span<int> corner_tri_faces_src;
+    blender::Span<int> tri_faces_src;
 
     size_t buff_size_interp = MREMAP_DEFAULT_BUFSIZE;
     float(*vcos_interp)[3] = nullptr;
@@ -1443,14 +1443,14 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     else { /* We use faces. */
       if (use_islands) {
         corner_tris_src = me_src->corner_tris();
-        corner_tri_faces_src = me_src->tri_faces();
+        tri_faces_src = me_src->tri_faces();
         blender::BitVector<> corner_tris_active(corner_tris_src.size());
 
         for (tindex = 0; tindex < num_trees; tindex++) {
           int corner_tris_num_active = 0;
           corner_tris_active.fill(false);
           for (const int64_t i : corner_tris_src.index_range()) {
-            const blender::IndexRange face = faces_src[corner_tri_faces_src[i]];
+            const blender::IndexRange face = faces_src[tri_faces_src[i]];
             if (island_store.items_to_islands[face.start()] == tindex) {
               corner_tris_active[i].set();
               corner_tris_num_active++;
@@ -1911,10 +1911,10 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                     /* Create that one on demand. */
                     if (face_to_corner_tri_map_src == nullptr) {
                       BKE_mesh_origindex_map_create_corner_tri(&face_to_corner_tri_map_src,
-                                                            &face_to_corner_tri_map_src_buff,
-                                                            faces_src,
-                                                            corner_tri_faces_src.data(),
-                                                            int(corner_tri_faces_src.size()));
+                                                               &face_to_corner_tri_map_src_buff,
+                                                               faces_src,
+                                                               tri_faces_src.data(),
+                                                               int(tri_faces_src.size()));
                     }
 
                     for (j = face_to_corner_tri_map_src[pidx_src].count; j--;) {

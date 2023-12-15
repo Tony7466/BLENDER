@@ -41,9 +41,9 @@ BLI_INLINE void edituv_tri_add(
 }
 
 static void extract_edituv_tris_iter_looptri_bm(const MeshRenderData & /*mr*/,
-                                                   BMLoop **elt,
-                                                   const int /*elt_index*/,
-                                                   void *_data)
+                                                BMLoop **elt,
+                                                const int /*elt_index*/,
+                                                void *_data)
 {
   MeshExtract_EditUvElem_Data *data = static_cast<MeshExtract_EditUvElem_Data *>(_data);
   edituv_tri_add(data,

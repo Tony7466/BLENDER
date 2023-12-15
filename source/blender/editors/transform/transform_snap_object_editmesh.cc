@@ -190,7 +190,8 @@ static void snap_cache_tri_ensure(SnapCache_EditMesh *em_cache, SnapObjectContex
           sctx->callbacks.edit_mesh.test_face_fn,
           sctx->callbacks.edit_mesh.user_data);
 
-      bvhtree_from_editmesh_corner_tris_ex(&treedata, em, elem_mask, corner_tris_num_active, 0.0f, 4, 6);
+      bvhtree_from_editmesh_corner_tris_ex(
+          &treedata, em, elem_mask, corner_tris_num_active, 0.0f, 4, 6);
     }
     else {
       /* Only cache if BVH-tree is created without a mask.
@@ -262,9 +263,9 @@ static SnapCache_EditMesh *editmesh_snapdata_init(SnapObjectContext *sctx,
 
 /* Callback to ray-cast with back-face culling (#EditMesh). */
 static void editmesh_corner_tris_raycast_backface_culling_cb(void *userdata,
-                                                          int index,
-                                                          const BVHTreeRay *ray,
-                                                          BVHTreeRayHit *hit)
+                                                             int index,
+                                                             const BVHTreeRay *ray,
+                                                             BVHTreeRayHit *hit)
 {
   BMEditMesh *em = static_cast<BMEditMesh *>(userdata);
   const BMLoop **ltri = (const BMLoop **)em->looptris[index];

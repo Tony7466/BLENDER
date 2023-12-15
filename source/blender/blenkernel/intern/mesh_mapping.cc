@@ -189,12 +189,12 @@ void BKE_mesh_uv_vert_map_free(UvVertMap *vmap)
 }
 
 void BKE_mesh_vert_corner_tri_map_create(MeshElemMap **r_map,
-                                      int **r_mem,
-                                      const int totvert,
-                                      const blender::int3 *corner_tris,
-                                      const int tris_num,
-                                      const int *corner_verts,
-                                      const int /*totloop*/)
+                                         int **r_mem,
+                                         const int totvert,
+                                         const blender::int3 *corner_tris,
+                                         const int tris_num,
+                                         const int *corner_verts,
+                                         const int /*totloop*/)
 {
   MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(totvert), __func__);
   int *indices = static_cast<int *>(MEM_mallocN(sizeof(int) * size_t(tris_num) * 3, __func__));
@@ -272,10 +272,10 @@ void BKE_mesh_origindex_map_create(MeshElemMap **r_map,
 }
 
 void BKE_mesh_origindex_map_create_corner_tri(MeshElemMap **r_map,
-                                           int **r_mem,
-                                           const blender::OffsetIndices<int> faces,
-                                           const int *tri_faces,
-                                           const int corner_tris_num)
+                                              int **r_mem,
+                                              const blender::OffsetIndices<int> faces,
+                                              const int *tri_faces,
+                                              const int corner_tris_num)
 {
   MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(faces.size()), __func__);
   int *indices = static_cast<int *>(MEM_mallocN(sizeof(int) * size_t(corner_tris_num), __func__));

@@ -1968,7 +1968,7 @@ static void mesh_partial_update(TransInfo *t,
    * so the values that no longer modified are reset before being left as-is.
    * Needed for translation which can toggle snap-to-normal during transform. */
   const enum ePartialType partial_for_corner_tris = std::max(partial_state->for_corner_tris,
-                                                          partial_state_prev->for_corner_tris);
+                                                             partial_state_prev->for_corner_tris);
   const enum ePartialType partial_for_normals = std::max(partial_state->for_normals,
                                                          partial_state_prev->for_normals);
 

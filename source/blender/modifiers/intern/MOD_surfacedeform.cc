@@ -1105,7 +1105,7 @@ static void bindVert(void *__restrict userdata,
           sdbind->influence = bpoly->weight * bpoly->dominant_angle_weight;
           sdbind->verts_num = bpoly->verts_num;
 
-          sdbind->mode = MOD_SDEF_MODE_corner_triS;
+          sdbind->mode = MOD_SDEF_MODE_CORNER_TRIS;
           sdbind->vert_weights = static_cast<float *>(
               MEM_malloc_arrayN(3, sizeof(*sdbind->vert_weights), "SDefTriVertWeights"));
           if (sdbind->vert_weights == nullptr) {
@@ -1384,7 +1384,7 @@ static void deformVert(void *__restrict userdata,
 
     switch (sdbind->mode) {
       /* ---------- corner_tri mode ---------- */
-      case MOD_SDEF_MODE_corner_triS: {
+      case MOD_SDEF_MODE_CORNER_TRIS: {
         madd_v3_v3fl(temp, data->targetCos[sdbind->vert_inds[0]], sdbind->vert_weights[0]);
         madd_v3_v3fl(temp, data->targetCos[sdbind->vert_inds[1]], sdbind->vert_weights[1]);
         madd_v3_v3fl(temp, data->targetCos[sdbind->vert_inds[2]], sdbind->vert_weights[2]);
@@ -1670,7 +1670,8 @@ static void blend_write(BlendWriter *writer, const ID *id_owner, const ModifierD
           BLO_write_uint32_array(
               writer, bind_verts[i].binds[j].verts_num, bind_verts[i].binds[j].vert_inds);
 
-          if (ELEM(bind_verts[i].binds[j].mode, MOD_SDEF_MODE_CENTROID, MOD_SDEF_MODE_corner_triS)) {
+          if (ELEM(bind_verts[i].binds[j].mode, MOD_SDEF_MODE_CENTROID, MOD_SDEF_MODE_CORNER_TRIS))
+          {
             BLO_write_float3_array(writer, 1, bind_verts[i].binds[j].vert_weights);
           }
           else {
@@ -1698,7 +1699,8 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
           BLO_read_uint32_array(
               reader, smd->verts[i].binds[j].verts_num, &smd->verts[i].binds[j].vert_inds);
 
-          if (ELEM(smd->verts[i].binds[j].mode, MOD_SDEF_MODE_CENTROID, MOD_SDEF_MODE_corner_triS)) {
+          if (ELEM(smd->verts[i].binds[j].mode, MOD_SDEF_MODE_CENTROID, MOD_SDEF_MODE_CORNER_TRIS))
+          {
             BLO_read_float3_array(reader, 1, &smd->verts[i].binds[j].vert_weights);
           }
           else {

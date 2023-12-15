@@ -245,7 +245,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
 
   Vector<float3> root_positions_cu;
   Vector<float3> bary_coords;
-  Vector<int> corner_tri_indices;
+  Vector<int> tri_indices;
   Vector<float2> used_uvs;
 
   /* Find faces that the passed in uvs belong to. */
@@ -260,7 +260,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
     }
     const int3 &tri = inputs.surface_corner_tris[result.tri_index];
     bary_coords.append(result.bary_weights);
-    corner_tri_indices.append(result.tri_index);
+    tri_indices.append(result.tri_index);
     const float3 root_position_su = bke::attribute_math::mix3<float3>(
         result.bary_weights,
         surface_positions[surface_corner_verts[tri[0]]],
@@ -349,7 +349,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   /* Find surface normal at root points. */
   Array<float3> new_normals_su(added_curves_num);
   bke::mesh_surface_sample::sample_corner_normals(inputs.surface_corner_tris,
-                                                  corner_tri_indices,
+                                                  tri_indices,
                                                   bary_coords,
                                                   inputs.corner_normals_su,
                                                   IndexMask(added_curves_num),
