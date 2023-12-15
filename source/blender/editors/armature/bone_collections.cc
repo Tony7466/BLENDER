@@ -417,7 +417,10 @@ static int bone_collection_assign_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* NOTE: this operator can be called through the M/Shift+M shortcuts, which
+   * allow assigning to a newly-created bone collection. */
   BoneCollection *bcoll = get_bonecoll_named_or_active(C, op, ob, CREATE_IF_MISSING);
+  BLI_assert_msg(bcoll, "Bone Collection should always be created");
   if (bcoll == nullptr) {
     return OPERATOR_CANCELLED;
   }
@@ -593,7 +596,7 @@ static int bone_collection_unassign_named_exec(bContext *C, wmOperator *op)
 void ARMATURE_OT_collection_unassign_named(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Remove Bone from Bone collections";
+  ot->name = "Remove Bone from Bone Collection";
   ot->idname = "ARMATURE_OT_collection_unassign_named";
   ot->description = "Unassign the bone from this bone collection";
 
