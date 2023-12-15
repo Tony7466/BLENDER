@@ -526,7 +526,7 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
   uiLayout *col = uiLayoutColumn(layout, false);
   {
     uiLayout *row = uiLayoutRow(col, true);
-    uiLayoutSetActive(row, !ctx.is_baked);
+    uiLayoutSetEnabled(row, !ctx.is_baked);
     uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
   }
   draw_bake_button(col, ctx);
@@ -544,7 +544,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiLayout *col = uiLayoutColumn(layout, false);
     {
       uiLayout *row = uiLayoutRow(col, true);
-      uiLayoutSetActive(row, !ctx.is_baked);
+      uiLayoutSetEnabled(row, !ctx.is_baked);
       uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, "Mode", ICON_NONE);
     }
 
@@ -559,10 +559,9 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   uiLayoutSetPropDecorate(layout, false);
   {
     uiLayout *settings_col = uiLayoutColumn(layout, false);
-    uiLayoutSetActive(settings_col, !ctx.is_baked);
+    uiLayoutSetEnabled(settings_col, !ctx.is_baked);
     {
       uiLayout *col = uiLayoutColumn(settings_col, true);
-      uiLayoutSetActive(col, !ctx.is_baked);
       uiItemR(col, &ctx.bake_rna, "use_custom_path", UI_ITEM_NONE, "Custom Path", ICON_NONE);
       uiLayout *subcol = uiLayoutColumn(col, true);
       uiLayoutSetActive(subcol, ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH);
