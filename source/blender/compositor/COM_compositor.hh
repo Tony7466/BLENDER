@@ -7,6 +7,10 @@
 #include "DNA_color_types.h"
 #include "DNA_node_types.h"
 
+namespace blender::realtime_compositor {
+class RenderContext;
+}
+
 struct Render;
 
 /* Keep ascii art. */
@@ -251,7 +255,7 @@ struct Render;
  * the WorkScheduler controls the devices and selects the device where a
  * WorkPackage will be calculated.
  *
- * \subsection WS_Devices Workscheduler
+ * \subsection WS_Devices Work-scheduler
  * The WorkScheduler controls all Devices.
  * When initializing the compositor the WorkScheduler selects all
  * devices that will be used during compositor.
@@ -332,7 +336,8 @@ void COM_execute(Render *render,
                  Scene *scene,
                  bNodeTree *node_tree,
                  bool rendering,
-                 const char *view_name);
+                 const char *view_name,
+                 blender::realtime_compositor::RenderContext *render_context);
 
 /**
  * \brief Deinitialize the compositor caches and allocated memory.

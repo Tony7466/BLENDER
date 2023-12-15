@@ -22,7 +22,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_lightprobe.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
 #include "BLT_translation.h"
 
@@ -58,7 +58,7 @@ IDTypeInfo IDType_ID_LP = {
     /*main_listbase_index*/ INDEX_ID_LP,
     /*struct_size*/ sizeof(LightProbe),
     /*name*/ "LightProbe",
-    /*name_plural*/ "lightprobes",
+    /*name_plural*/ N_("lightprobes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIGHTPROBE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

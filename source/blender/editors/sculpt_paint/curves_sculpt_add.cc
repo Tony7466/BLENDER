@@ -18,15 +18,15 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.hh"
-#include "BKE_bvhutils.h"
-#include "BKE_context.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
@@ -128,7 +128,7 @@ struct AddOperationExecutor {
     transforms_ = CurvesSurfaceTransforms(*curves_ob_orig_, curves_id_orig_->surface);
 
     Object &surface_ob_orig = *curves_id_orig_->surface;
-    Mesh &surface_orig = *static_cast<Mesh *>(surface_ob_orig.data);
+    const Mesh &surface_orig = *static_cast<const Mesh *>(surface_ob_orig.data);
     if (surface_orig.faces_num == 0) {
       report_empty_original_surface(stroke_extension.reports);
       return;
@@ -146,7 +146,7 @@ struct AddOperationExecutor {
     surface_positions_eval_ = surface_eval_->vert_positions();
     surface_corner_verts_eval_ = surface_eval_->corner_verts();
     surface_looptris_eval_ = surface_eval_->looptris();
-    BKE_bvhtree_from_mesh_get(&surface_bvh_eval_, surface_eval_, BVHTREE_FROM_LOOPTRI, 2);
+    BKE_bvhtree_from_mesh_get(&surface_bvh_eval_, surface_eval_, BVHTREE_FROM_LOOPTRIS, 2);
     BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh_eval_); });
 
     curves_sculpt_ = ctx_.scene->toolsettings->curves_sculpt;
@@ -207,15 +207,7 @@ struct AddOperationExecutor {
     }
 
     const Span<MLoopTri> surface_looptris_orig = surface_orig.looptris();
-
-    /* Find normals. */
-    if (!CustomData_has_layer(&surface_orig.loop_data, CD_NORMAL)) {
-      BKE_mesh_calc_normals_split(&surface_orig);
-    }
-    const Span<float3> corner_normals_su = {
-        reinterpret_cast<const float3 *>(CustomData_get_layer(&surface_orig.loop_data, CD_NORMAL)),
-        surface_orig.totloop};
-
+    const Span<float3> corner_normals_su = surface_orig.corner_normals();
     const geometry::ReverseUVSampler reverse_uv_sampler{surface_uv_map, surface_looptris_orig};
 
     geometry::AddCurvesOnMeshInputs add_inputs;
@@ -305,13 +297,13 @@ struct AddOperationExecutor {
     }
 
     const int looptri_index = ray_hit.index;
-    const MLoopTri &looptri = surface_looptris_eval_[looptri_index];
+    const MLoopTri &lt = surface_looptris_eval_[looptri_index];
     const float3 brush_pos_su = ray_hit.co;
     const float3 bary_coords = bke::mesh_surface_sample::compute_bary_coord_in_triangle(
-        surface_positions_eval_, surface_corner_verts_eval_, looptri, brush_pos_su);
+        surface_positions_eval_, surface_corner_verts_eval_, lt, brush_pos_su);
 
     const float2 uv = bke::mesh_surface_sample::sample_corner_attribute_with_bary_coords(
-        bary_coords, looptri, surface_uv_map_eval_);
+        bary_coords, lt, surface_uv_map_eval_);
     r_sampled_uvs.append(uv);
   }
 
@@ -437,13 +429,10 @@ struct AddOperationExecutor {
           brush_pos_su,
           brush_radius_su,
           [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
-            const MLoopTri &looptri = surface_looptris_eval_[index];
-            const float3 &v0_su =
-                surface_positions_eval_[surface_corner_verts_eval_[looptri.tri[0]]];
-            const float3 &v1_su =
-                surface_positions_eval_[surface_corner_verts_eval_[looptri.tri[1]]];
-            const float3 &v2_su =
-                surface_positions_eval_[surface_corner_verts_eval_[looptri.tri[2]]];
+            const MLoopTri &lt = surface_looptris_eval_[index];
+            const float3 &v0_su = surface_positions_eval_[surface_corner_verts_eval_[lt.tri[0]]];
+            const float3 &v1_su = surface_positions_eval_[surface_corner_verts_eval_[lt.tri[1]]];
+            const float3 &v2_su = surface_positions_eval_[surface_corner_verts_eval_[lt.tri[2]]];
             float3 normal_su;
             normal_tri_v3(normal_su, v0_su, v1_su, v2_su);
             if (math::dot(normal_su, view_direction_su) >= 0.0f) {

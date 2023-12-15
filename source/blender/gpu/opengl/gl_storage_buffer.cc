@@ -93,7 +93,7 @@ void GLStorageBuf::bind(int slot)
   slot_ = slot;
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot_, ssbo_id_);
 
-#ifdef DEBUG
+#ifndef NDEBUG
   BLI_assert(slot < 16);
   /* TODO */
   // GLContext::get()->bound_ssbo_slots |= 1 << slot;
@@ -109,7 +109,7 @@ void GLStorageBuf::bind_as(GLenum target)
 
 void GLStorageBuf::unbind()
 {
-#ifdef DEBUG
+#ifndef NDEBUG
   /* NOTE: This only unbinds the last bound slot. */
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot_, 0);
   /* Hope that the context did not change. */
@@ -159,6 +159,11 @@ void GLStorageBuf::copy_sub(VertBuf *src_, uint dst_offset, uint src_offset, uin
     glCopyBufferSubData(GL_ARRAY_BUFFER, GL_COPY_WRITE_BUFFER, src_offset, dst_offset, copy_size);
     glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
   }
+}
+
+void GLStorageBuf::async_flush_to_host()
+{
+  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 }
 
 void GLStorageBuf::read(void *data)

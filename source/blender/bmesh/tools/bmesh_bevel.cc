@@ -25,16 +25,16 @@
 #include "BLI_vector.hh"
 
 #include "BKE_curveprofile.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
 
 #include "eigen_capi.h"
 
-#include "bmesh.h"
-#include "bmesh_bevel.h" /* own include */
+#include "bmesh.hh"
+#include "bmesh_bevel.hh" /* own include */
 
-#include "./intern/bmesh_private.h"
+#include "./intern/bmesh_private.hh"
 
 using blender::Vector;
 
@@ -331,7 +331,7 @@ struct BevelParams {
   BMesh *bm;
   /** Blender units to offset each side of a beveled edge. */
   float offset;
-  /** How offset is measured; enum defined in bmesh_operators.h. */
+  /** How offset is measured; enum defined in bmesh_operators.hh. */
   int offset_type;
   /** Profile type: radius, superellipse, or custom */
   int profile_type;
@@ -378,8 +378,6 @@ struct BevelParams {
   int vmesh_method;
   /** Amount to spread when doing inside miter. */
   float spread;
-  /** Mesh's smoothresh, used if hardening. */
-  float smoothresh;
 };
 
 // #pragma GCC diagnostic ignored "-Wpadded"
@@ -686,7 +684,7 @@ static BMFace *bev_create_ngon(BMesh *bm,
   BMFace *f = BM_face_create_verts(bm, vert_arr, totv, facerep, BM_CREATE_NOP, true);
 
   if ((facerep || (face_arr && face_arr[0])) && f) {
-    BM_elem_attrs_copy(bm, bm, facerep ? facerep : face_arr[0], f);
+    BM_elem_attrs_copy(bm, facerep ? facerep : face_arr[0], f);
     if (do_interp) {
       int i = 0;
       BMIter iter;
@@ -1974,8 +1972,8 @@ static bool make_unit_square_map(const float va[3],
   normalize_v3(vddir);
   add_v3_v3v3(vd, vo, vddir);
 
-  /* The cols of m are: {vmid - va, vmid - vb, vmid + vd - va -vb, va + vb - vmid;
-   * Blender transform matrices are stored such that m[i][*] is ith column;
+  /* The cols of m are: `vmid - va, vmid - vb, vmid + vd - va -vb, va + vb - vmid`;
+   * Blender transform matrices are stored such that `m[i][*]` is `i-th` column;
    * the last elements of each col remain as they are in unity matrix. */
   sub_v3_v3v3(&r_mat[0][0], vmid, va);
   r_mat[0][3] = 0.0f;
@@ -2497,7 +2495,6 @@ static void bevel_harden_normals(BevelParams *bp, BMesh *bm)
    * To get that to happen, we have to mark the sharpen the edges that are only sharp because
    * of the angle test -- otherwise would be smooth. */
   if (cd_clnors_offset == -1) {
-    BM_edges_sharp_from_angle_set(bm, bp->smoothresh);
     bevel_edges_sharp_boundary(bm, bp);
   }
 
@@ -5693,8 +5690,6 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   bndv = bv->vmesh->boundstart;
   do {
     int i = bndv->index;
-    Vector<BMEdge *, BM_DEFAULT_NGON_STACK_SIZE> bmedges;
-    Vector<BMFace *, BM_DEFAULT_NGON_STACK_SIZE> bmfaces;
 
     /* Add the first corner vertex under this boundvert. */
     face_bmverts[0] = mesh_vert(bv->vmesh, i, 1, 0)->v;
@@ -5728,26 +5723,22 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
     bev_create_ngon(bm,
                     face_bmverts,
                     bp->seg + 2 + build_center_face,
-                    bmfaces.data(),
                     nullptr,
-                    bmedges.data(),
+                    nullptr,
+                    nullptr,
                     bp->mat_nr,
                     true);
   } while ((bndv = bndv->next) != bv->vmesh->boundstart);
 
   /* Create the bottom face if it should be built, reusing previous face_bmverts allocation. */
   if (build_center_face) {
-    Vector<BMEdge *, BM_DEFAULT_NGON_STACK_SIZE> bmedges;
-    Vector<BMFace *, BM_DEFAULT_NGON_STACK_SIZE> bmfaces;
-
     /* Add all of the corner vertices to this face. */
     for (int i = 0; i < n_bndv; i++) {
       /* Add verts from each cutoff face. */
       face_bmverts[i] = mesh_vert(bv->vmesh, i, 1, 0)->v;
     }
-    // BLI_array_append(bmfaces, repface);
-    bev_create_ngon(
-        bm, face_bmverts, n_bndv, bmfaces.data(), nullptr, bmedges.data(), bp->mat_nr, true);
+
+    bev_create_ngon(bm, face_bmverts, n_bndv, nullptr, nullptr, nullptr, bp->mat_nr, true);
   }
 }
 
@@ -6749,7 +6740,7 @@ static bool bev_rebuild_polygon(BMesh *bm, BevelParams *bp, BMFace *f)
       BMEdge *bme_new = BM_edge_exists(vv[k], vv[(k + 1) % n]);
       BLI_assert(ee[k] && bme_new);
       if (ee[k] != bme_new) {
-        BM_elem_attrs_copy(bm, bm, ee[k], bme_new);
+        BM_elem_attrs_copy(bm, ee[k], bme_new);
         /* Want to undo seam and smooth for corner segments
          * if those attrs aren't contiguous around face. */
         if (k < n - 1 && ee[k] == ee[k + 1]) {
@@ -6933,7 +6924,7 @@ static void weld_cross_attrs_copy(BMesh *bm, BevVert *bv, VMesh *vm, int vmindex
     BMEdge *bme = BM_edge_exists(mesh_vert(vm, vmindex, 0, i)->v,
                                  mesh_vert(vm, vmindex, 0, i + 1)->v);
     BLI_assert(bme);
-    BM_elem_attrs_copy(bm, bm, bme_prev, bme);
+    BM_elem_attrs_copy(bm, bme_prev, bme);
     if (disable_seam) {
       BM_elem_flag_disable(bme, BM_ELEM_SEAM);
     }
@@ -7103,8 +7094,8 @@ static void bevel_build_edge_polygons(BMesh *bm, BevelParams *bp, BMEdge *bme)
   BMEdge *bme1 = BM_edge_exists(bmv1, bmv2);
   BMEdge *bme2 = BM_edge_exists(bmv3, bmv4);
   BLI_assert(bme1 && bme2);
-  BM_elem_attrs_copy(bm, bm, bme, bme1);
-  BM_elem_attrs_copy(bm, bm, bme, bme2);
+  BM_elem_attrs_copy(bm, bme, bme1);
+  BM_elem_attrs_copy(bm, bme, bme2);
 
   /* If either end is a "weld cross", want continuity of edge attributes across end edge(s). */
   if (bevvert_is_weld_cross(bv1)) {
@@ -7725,7 +7716,6 @@ void BM_mesh_bevel(BMesh *bm,
                    const int miter_outer,
                    const int miter_inner,
                    const float spread,
-                   const float smoothresh,
                    const CurveProfile *custom_profile,
                    const int vmesh_method)
 {
@@ -7762,7 +7752,6 @@ void BM_mesh_bevel(BMesh *bm,
   bp.miter_outer = miter_outer;
   bp.miter_inner = miter_inner;
   bp.spread = spread;
-  bp.smoothresh = smoothresh;
   bp.face_hash = nullptr;
   bp.profile_type = profile_type;
   bp.custom_profile = custom_profile;

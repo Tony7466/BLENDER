@@ -23,11 +23,9 @@
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
-#include "DNA_object_types.h" /* #BoundBox. */
 
 struct Main;
 struct Depsgraph;
-struct BoundBox;
 struct Scene;
 struct Object;
 struct Material;
@@ -148,7 +146,8 @@ class Layer;
   bool is_editable() const; \
   bool is_selected() const; \
   void set_selected(bool selected); \
-  bool use_onion_skinning() const;
+  bool use_onion_skinning() const; \
+  bool is_child_of(const LayerGroup &group) const;
 
 /* Implements the forwarding of the methods defined by #TREENODE_COMMON_METHODS. */
 #define TREENODE_COMMON_METHODS_FORWARD_IMPL(class_name) \
@@ -191,6 +190,10 @@ class Layer;
   inline bool class_name::use_onion_skinning() const \
   { \
     return this->as_node().use_onion_skinning(); \
+  } \
+  inline bool class_name::is_child_of(const LayerGroup &group) const \
+  { \
+    return this->as_node().is_child_of(group); \
   }
 
 /**
@@ -501,16 +504,10 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   Span<LayerGroup *> groups_for_write();
 
   /**
-   * Returns a pointer to the layer with \a name. If no such layer was found, returns nullptr.
+   * Returns a pointer to the node with \a name. If no such node was found, returns nullptr.
    */
-  const Layer *find_layer_by_name(StringRefNull name) const;
-  Layer *find_layer_by_name(StringRefNull name);
-
-  /**
-   * Returns a pointer to the group with \a name. If no such group was found, returns nullptr.
-   */
-  const LayerGroup *find_group_by_name(StringRefNull name) const;
-  LayerGroup *find_group_by_name(StringRefNull name);
+  const TreeNode *find_node_by_name(StringRefNull name) const;
+  TreeNode *find_node_by_name(StringRefNull name);
 
   /**
    * Print the nodes. For debugging purposes.
@@ -622,6 +619,16 @@ inline bool TreeNode::use_onion_skinning() const
 {
   return ((this->flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0);
 }
+inline bool TreeNode::is_child_of(const LayerGroup &group) const
+{
+  if (const LayerGroup *parent = this->parent_group()) {
+    if (parent == &group) {
+      return true;
+    }
+    return parent->is_child_of(group);
+  }
+  return false;
+}
 inline StringRefNull TreeNode::name() const
 {
   return (this->GreasePencilLayerTreeNode::name != nullptr) ?
@@ -649,7 +656,7 @@ inline TreeNode &Layer::as_node()
 TREENODE_COMMON_METHODS_FORWARD_IMPL(Layer);
 inline bool Layer::is_empty() const
 {
-  return (this->frames().size() == 0);
+  return (this->frames().is_empty());
 }
 inline LayerGroup &Layer::parent_group() const
 {
@@ -674,7 +681,7 @@ class GreasePencilRuntime {
    */
   void *batch_cache = nullptr;
   /* The frame on which the object was evaluated (only valid for evaluated object). */
-  int eval_frame;
+  int eval_frame = 0;
 
  public:
   GreasePencilRuntime() {}
@@ -802,7 +809,6 @@ inline bool GreasePencil::has_active_layer() const
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
 GreasePencil *BKE_grease_pencil_new_nomain();
 GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_src);
-BoundBox BKE_grease_pencil_boundbox_get(Object *ob);
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object);
 void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
                                                GreasePencil *grease_pencil_dst);
@@ -828,6 +834,8 @@ Material *BKE_grease_pencil_object_material_ensure_from_active_input_brush(Main 
 Material *BKE_grease_pencil_object_material_ensure_from_active_input_material(Object *ob);
 Material *BKE_grease_pencil_object_material_ensure_active(Object *ob);
 void BKE_grease_pencil_material_remap(GreasePencil *grease_pencil, const uint *remap, int totcol);
+void BKE_grease_pencil_material_index_remove(GreasePencil *grease_pencil, int index);
 
 bool BKE_grease_pencil_references_cyclic_check(const GreasePencil *id_reference,
                                                const GreasePencil *grease_pencil);
+bool BKE_grease_pencil_material_index_used(GreasePencil *grease_pencil, int index);

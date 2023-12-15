@@ -88,8 +88,9 @@ typedef struct BatchBLF {
   struct FontBLF *font;
   struct GPUBatch *batch;
   struct GPUVertBuf *verts;
-  struct GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step;
-  unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc;
+  struct GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
+      glyph_mode_step;
+  unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc, glyph_mode_loc;
   unsigned int glyph_len;
   /** Copy of `font->pos`. */
   int ofs[2];
@@ -116,7 +117,7 @@ typedef struct GlyphCacheBLF {
   /** Font size. */
   float size;
 
-  float char_weight;
+  int char_weight;
   float char_slant;
   float char_width;
   float char_spacing;
@@ -174,6 +175,10 @@ typedef struct GlyphBLF {
   /** Glyph width and height. */
   int dims[2];
   int pitch;
+  int depth;
+
+  /** Render mode (FT_Render_Mode). */
+  int render_mode;
 
   /**
    * X and Y bearing of the glyph.
@@ -210,6 +215,8 @@ typedef struct FontBufInfoBLF {
 } FontBufInfoBLF;
 
 typedef struct FontMetrics {
+  /** Indicate that these values have been properly loaded. */
+  bool valid;
   /** This font's default weight, 100-900, 400 is normal. */
   short weight;
   /** This font's default width, 1 is normal, 2 is twice as wide. */
@@ -232,11 +239,6 @@ typedef struct FontMetrics {
   /** Maximum Unicode index, or 0xFFFF if greater than. */
   short last_charindex;
 
-  /**
-   * Bounds that can contain every glyph in the font when in default positions. Can be used for
-   * maximum ascender, minimum descender. Can be out by a pixel when hinting. Does not change with
-   * variation axis changes. */
-  rcti bounding_box;
   /**
    * Positive number of font units from baseline to top of typical capitals. Can be slightly more
    * than cap height when head serifs, terminals, or apexes extend above cap line. */
@@ -343,11 +345,11 @@ typedef struct FontBLF {
   /** Axes data for Adobe MM, TrueType GX, or OpenType variation fonts. */
   FT_MM_Var *variations;
 
-  /** Character variation; 0=default, -1=min, +1=max. */
-  float char_weight;
-  float char_slant;
-  float char_width;
-  float char_spacing;
+  /** Character variations. */
+  int char_weight;    /* 100 - 900, 400 = normal. */
+  float char_slant;   /* Slant in clockwise degrees. 0.0 = upright. */
+  float char_width;   /* Factor of normal character width. 1.0 = normal. */
+  float char_spacing; /* Factor of normal character spacing. 0.0 = normal. */
 
   /** Max texture size. */
   int tex_size_max;

@@ -152,7 +152,7 @@ static std::optional<GreasePencil *> separate_grease_pencil_layer_selection(
   BKE_grease_pencil_duplicate_drawing_array(&src_grease_pencil, dst_grease_pencil);
   selection.foreach_index([&](const int index) {
     const bke::greasepencil::Layer &src_layer = *src_grease_pencil.layers()[index];
-    dst_grease_pencil->add_layer(dst_grease_pencil->root_group(), src_layer);
+    dst_grease_pencil->add_layer(src_layer);
   });
   dst_grease_pencil->remove_drawings_with_no_users();
 
@@ -356,7 +356,8 @@ static void node_rna(StructRNA *srna)
                     "Which domain to delete in",
                     rna_enum_attribute_domain_without_corner_items,
                     NOD_storage_enum_accessors(domain),
-                    ATTR_DOMAIN_POINT);
+                    ATTR_DOMAIN_POINT,
+                    enums::domain_experimental_grease_pencil_version3_fn);
 }
 
 static void node_register()

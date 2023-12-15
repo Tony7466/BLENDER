@@ -10,7 +10,7 @@
 
 #include "BLI_dynstr.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_vector.hh"
 
 #include "gpu_shader_dependency_private.h"
@@ -77,7 +77,7 @@ void Shader::print_log(Span<const char *> sources,
     }
 #endif
   }
-  if (sources_end_line.size() == 0) {
+  if (sources_end_line.is_empty()) {
     sources_end_line.append(0);
   }
 

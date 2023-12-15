@@ -16,14 +16,14 @@
 #include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_subdiv.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "opensubdiv_evaluator_capi.h"
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_evaluator_capi.hh"
+#include "opensubdiv_topology_refiner_capi.hh"
 
 /* --------------------------------------------------------------------
  * Helper functions.

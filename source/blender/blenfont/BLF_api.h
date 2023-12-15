@@ -71,6 +71,21 @@ void BLF_unload_all(void);
 
 char *BLF_display_name_from_file(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 
+char *BLF_display_name_from_id(int fontid);
+
+/**
+ * Get the metrics needed for the initial sizing of text objects.
+ */
+bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale);
+
+/**
+ * Convert a character's outlines into curves.
+ */
+float BLF_character_to_curves(int fontid,
+                              unsigned int unicode,
+                              struct ListBase *nurbsbase,
+                              const float scale);
+
 /**
  * Check if font supports a particular glyph.
  */
@@ -84,6 +99,11 @@ void BLF_metrics_attach(int fontid, unsigned char *mem, int mem_size) ATTR_NONNU
 void BLF_aspect(int fontid, float x, float y, float z);
 void BLF_position(int fontid, float x, float y, float z);
 void BLF_size(int fontid, float size);
+
+/**
+ * Weight class: 100 (Thin) - 400 (Normal) - 900 (Heavy).
+ */
+void BLF_character_weight(int fontid, int weight);
 
 /* Goal: small but useful color API. */
 
@@ -325,7 +345,7 @@ int BLF_load_default(bool unique);
 int BLF_load_mono_default(bool unique);
 void BLF_load_font_stack(void);
 
-#ifdef DEBUG
+#ifndef NDEBUG
 void BLF_state_print(int fontid);
 #endif
 

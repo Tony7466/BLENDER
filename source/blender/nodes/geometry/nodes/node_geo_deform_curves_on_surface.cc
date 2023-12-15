@@ -4,12 +4,12 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_type_conversions.hh"
 
 #include "BLI_math_matrix.hh"
@@ -93,18 +93,18 @@ static void deform_curves(const CurvesGeometry &curves,
         continue;
       }
 
-      const MLoopTri &looptri_old = surface_looptris_old[surface_sample_old.looptri_index];
-      const MLoopTri &looptri_new = surface_looptris_new[surface_sample_new.looptri_index];
+      const MLoopTri &lt_old = surface_looptris_old[surface_sample_old.looptri_index];
+      const MLoopTri &lt_new = surface_looptris_new[surface_sample_new.looptri_index];
       const float3 &bary_weights_old = surface_sample_old.bary_weights;
       const float3 &bary_weights_new = surface_sample_new.bary_weights;
 
-      const int corner_0_old = looptri_old.tri[0];
-      const int corner_1_old = looptri_old.tri[1];
-      const int corner_2_old = looptri_old.tri[2];
+      const int corner_0_old = lt_old.tri[0];
+      const int corner_1_old = lt_old.tri[1];
+      const int corner_2_old = lt_old.tri[2];
 
-      const int corner_0_new = looptri_new.tri[0];
-      const int corner_1_new = looptri_new.tri[1];
-      const int corner_2_new = looptri_new.tri[2];
+      const int corner_0_new = lt_new.tri[0];
+      const int corner_1_new = lt_new.tri[1];
+      const int corner_2_new = lt_new.tri[2];
 
       const int vert_0_old = surface_corner_verts_old[corner_0_old];
       const int vert_1_old = surface_corner_verts_old[corner_1_old];
@@ -316,14 +316,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   /* Retrieve face corner normals from each mesh. It's necessary to use face corner normals
    * because face normals or vertex normals may lose information (custom normals, auto smooth) in
-   * some cases. It isn't yet possible to retrieve lazily calculated face corner normals from a
-   * const mesh, so they are calculated here every time. */
-  Array<float3> corner_normals_orig(surface_mesh_orig->totloop);
-  Array<float3> corner_normals_eval(surface_mesh_eval->totloop);
-  BKE_mesh_calc_normals_split_ex(
-      surface_mesh_orig, nullptr, reinterpret_cast<float(*)[3]>(corner_normals_orig.data()));
-  BKE_mesh_calc_normals_split_ex(
-      surface_mesh_eval, nullptr, reinterpret_cast<float(*)[3]>(corner_normals_eval.data()));
+   * some cases. */
+  const Span<float3> corner_normals_orig = surface_mesh_orig->corner_normals();
+  const Span<float3> corner_normals_eval = surface_mesh_eval->corner_normals();
 
   std::atomic<int> invalid_uv_count = 0;
 

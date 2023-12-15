@@ -112,7 +112,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 
     /* Write point attributes. */
     IndexRange stroke_points_range = points_by_curve[stroke_i];
-    if (stroke_points_range.size() == 0) {
+    if (stroke_points_range.is_empty()) {
       continue;
     }
 
@@ -193,7 +193,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
     /* Create a new layer. */
     Layer &new_layer = grease_pencil.add_layer(
-        grease_pencil.root_group(), StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
+        StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
 
     /* Flags. */
     new_layer.set_visible((gpl->flag & GP_LAYER_HIDE) == 0);

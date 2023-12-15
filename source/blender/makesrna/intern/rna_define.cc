@@ -36,7 +36,7 @@
 
 static CLG_LogRef LOG = {"rna.define"};
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #  define ASSERT_SOFT_HARD_LIMITS \
     if (softmin < hardmin || softmax > hardmax) { \
       CLOG_ERROR(&LOG, "error with soft/hard limits: %s.%s", CONTAINER_RNA_ID(cont), identifier); \
@@ -85,7 +85,7 @@ static void print_default_info(const PropertyDefRNA *dp)
           dp->dnaname,
           dp->prop->identifier);
 }
-#endif /* RNA_RUNTIME */
+#endif /* !RNA_RUNTIME */
 
 /* Duplicated code since we can't link in blenkernel or blenlib */
 
@@ -1772,7 +1772,7 @@ void RNA_def_property_range(PropertyRNA *prop, double min, double max)
 {
   StructRNA *srna = DefRNA.laststruct;
 
-#ifdef DEBUG
+#ifndef NDEBUG
   if (min > max) {
     CLOG_ERROR(&LOG, "\"%s.%s\", min > max.", srna->identifier, prop->identifier);
     DefRNA.error = true;
@@ -1784,16 +1784,16 @@ void RNA_def_property_range(PropertyRNA *prop, double min, double max)
       IntPropertyRNA *iprop = (IntPropertyRNA *)prop;
       iprop->hardmin = int(min);
       iprop->hardmax = int(max);
-      iprop->softmin = MAX2(int(min), iprop->hardmin);
-      iprop->softmax = MIN2(int(max), iprop->hardmax);
+      iprop->softmin = std::max(int(min), iprop->hardmin);
+      iprop->softmax = std::min(int(max), iprop->hardmax);
       break;
     }
     case PROP_FLOAT: {
       FloatPropertyRNA *fprop = (FloatPropertyRNA *)prop;
       fprop->hardmin = float(min);
       fprop->hardmax = float(max);
-      fprop->softmin = MAX2(float(min), fprop->hardmin);
-      fprop->softmax = MIN2(float(max), fprop->hardmax);
+      fprop->softmin = std::max(float(min), fprop->hardmin);
+      fprop->softmax = std::min(float(max), fprop->hardmax);
       break;
     }
     default:
@@ -2539,7 +2539,7 @@ void RNA_def_property_int_sdna(PropertyRNA *prop, const char *structname, const 
             }
             else if (STREQ(dp->dnatype, "int")) {
               int *defaultarray = static_cast<int *>(rna_calloc(size_final));
-              memcpy(defaultarray, default_data, MIN2(size_final, dp->dnasize));
+              memcpy(defaultarray, default_data, std::min(size_final, dp->dnasize));
               iprop->defaultarray = defaultarray;
             }
             else {
@@ -2650,7 +2650,7 @@ void RNA_def_property_float_sdna(PropertyRNA *prop, const char *structname, cons
             if (STREQ(dp->dnatype, "float")) {
               const int size_final = sizeof(float) * prop->totarraylength;
               float *defaultarray = static_cast<float *>(rna_calloc(size_final));
-              memcpy(defaultarray, default_data, MIN2(size_final, dp->dnasize));
+              memcpy(defaultarray, default_data, std::min(size_final, dp->dnasize));
               fprop->defaultarray = defaultarray;
             }
             else {
@@ -4240,7 +4240,7 @@ PropertyRNA *RNA_def_float_percentage(StructOrFunctionRNA *cont_,
 
   ASSERT_SOFT_HARD_LIMITS;
 
-#ifdef DEBUG
+#ifndef NDEBUG
   /* Properties with PROP_PERCENTAGE should use a range like 0 to 100, unlike PROP_FACTOR. */
   if (hardmax < 2.0f) {
     CLOG_WARN(&LOG,
@@ -4559,7 +4559,7 @@ void RNA_enum_item_add(EnumPropertyItem **items, int *totitem, const EnumPropert
   if (tot == 0) {
     *items = static_cast<EnumPropertyItem *>(MEM_callocN(sizeof(EnumPropertyItem[8]), __func__));
 /* Ensure we get crashes on missing calls to 'RNA_enum_item_end', see #74227. */
-#ifdef DEBUG
+#ifndef NDEBUG
     memset(*items, 0xff, sizeof(EnumPropertyItem[8]));
 #endif
   }
@@ -4567,7 +4567,7 @@ void RNA_enum_item_add(EnumPropertyItem **items, int *totitem, const EnumPropert
     /* Power of two > 8. */
     *items = static_cast<EnumPropertyItem *>(
         MEM_recallocN_id(*items, sizeof(EnumPropertyItem) * tot * 2, __func__));
-#ifdef DEBUG
+#ifndef NDEBUG
     memset((*items) + tot, 0xff, sizeof(EnumPropertyItem) * tot);
 #endif
   }

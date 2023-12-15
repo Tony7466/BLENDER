@@ -2,17 +2,17 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
 #include "BKE_subdiv.hh"
@@ -23,7 +23,7 @@
 
 #include "BLI_linklist.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_virtual_array.hh"
 
 #include "PIL_time.h"
@@ -37,11 +37,11 @@
 #include "GPU_state.h"
 #include "GPU_vertex_buffer.h"
 
-#include "opensubdiv_capi.h"
-#include "opensubdiv_capi_type.h"
-#include "opensubdiv_converter_capi.h"
-#include "opensubdiv_evaluator_capi.h"
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_capi.hh"
+#include "opensubdiv_capi_type.hh"
+#include "opensubdiv_converter_capi.hh"
+#include "opensubdiv_evaluator_capi.hh"
+#include "opensubdiv_topology_refiner_capi.hh"
 
 #include "draw_cache_extract.hh"
 #include "draw_cache_impl.hh"
@@ -354,7 +354,9 @@ static GPUShader *get_subdiv_custom_data_shader(int comp_type, int dimensions)
 }
 
 /* -------------------------------------------------------------------- */
-/** Vertex formats used for data transfer from OpenSubdiv, and for data processing on our side.
+/** \name Vertex Formats
+ *
+ * Used for data transfer from OpenSubdiv, and for data processing on our side.
  * \{ */
 
 static GPUVertFormat *get_uvs_format()
@@ -754,13 +756,15 @@ static void draw_subdiv_cache_extra_coarse_face_data_mesh(const MeshRenderData &
   const blender::OffsetIndices faces = mesh->faces();
   for (const int i : faces.index_range()) {
     uint32_t flag = 0;
-    if (!(mr.sharp_faces && mr.sharp_faces[i])) {
+    if (!(mr.normals_domain == blender::bke::MeshNormalDomain::Face ||
+          (!mr.sharp_faces.is_empty() && mr.sharp_faces[i])))
+    {
       flag |= SUBDIV_COARSE_FACE_FLAG_SMOOTH;
     }
-    if (mr.select_poly && mr.select_poly[i]) {
+    if (!mr.select_poly.is_empty() && mr.select_poly[i]) {
       flag |= SUBDIV_COARSE_FACE_FLAG_SELECT;
     }
-    if (mr.hide_poly && mr.hide_poly[i]) {
+    if (!mr.hide_poly.is_empty() && mr.hide_poly[i]) {
       flag |= SUBDIV_COARSE_FACE_FLAG_HIDDEN;
     }
     flags_data[i] = uint(faces[i].start()) | (flag << SUBDIV_COARSE_FACE_FLAG_OFFSET);
@@ -783,7 +787,9 @@ static void draw_subdiv_cache_extra_coarse_face_data_mapped(Mesh *mesh,
     /* Selection and hiding from bmesh. */
     uint32_t flag = (f) ? compute_coarse_face_flag_bm(f, mr.efa_act) : 0;
     /* Smooth from mesh. */
-    if (!(mr.sharp_faces && mr.sharp_faces[i])) {
+    if (!(mr.normals_domain == blender::bke::MeshNormalDomain::Face ||
+          (!mr.sharp_faces.is_empty() && mr.sharp_faces[i])))
+    {
       flag |= SUBDIV_COARSE_FACE_FLAG_SMOOTH;
     }
     flags_data[i] = uint(faces[i].start()) | (flag << SUBDIV_COARSE_FACE_FLAG_OFFSET);
@@ -2152,9 +2158,8 @@ static bool draw_subdiv_create_requested_buffers(Object *ob,
   runtime_data->stats_totloop = draw_cache.num_subdiv_loops;
 
   draw_cache.use_custom_loop_normals = (runtime_data->use_loop_normals) &&
-                                       (mesh_eval->flag & ME_AUTOSMOOTH) &&
-                                       CustomData_has_layer(&mesh_eval->loop_data,
-                                                            CD_CUSTOMLOOPNORMAL);
+                                       mesh_eval->normals_domain() ==
+                                           blender::bke::MeshNormalDomain::Corner;
 
   if (DRW_ibo_requested(mbc.buff.ibo.tris)) {
     draw_subdiv_cache_ensure_mat_offsets(draw_cache, mesh_eval, batch_cache.mat_len);
