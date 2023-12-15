@@ -347,14 +347,12 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       else if (property.type == IDP_DOUBLE) {
         value = float(IDP_Double(&property));
       }
-      auto value_variant = new (r_value) bke::SocketValueVariant();
-      value_variant->set(value);
+      new (r_value) bke::SocketValueVariant(value);
       break;
     }
     case SOCK_INT: {
       int value = IDP_Int(&property);
-      auto value_variant = new (r_value) bke::SocketValueVariant();
-      value_variant->set(value);
+      new (r_value) bke::SocketValueVariant(value);
       break;
     }
     case SOCK_VECTOR: {
@@ -370,8 +368,7 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
         BLI_assert(property.subtype == IDP_DOUBLE);
         value = float3(double3(static_cast<const double *>(property_array)));
       }
-      auto value_variant = new (r_value) bke::SocketValueVariant();
-      value_variant->set(value);
+      new (r_value) bke::SocketValueVariant(value);
       break;
     }
     case SOCK_RGBA: {
@@ -388,14 +385,12 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
         vec = float4(double4(static_cast<const double *>(property_array)));
       }
       ColorGeometry4f value(vec);
-      auto value_variant = new (r_value) bke::SocketValueVariant();
-      value_variant->set(value);
+      new (r_value) bke::SocketValueVariant(value);
       break;
     }
     case SOCK_BOOLEAN: {
       const bool value = IDP_Bool(&property);
-      auto *value_variant = new (r_value) bke::SocketValueVariant();
-      value_variant->set(value);
+      new (r_value) bke::SocketValueVariant(value);
       break;
     }
     case SOCK_ROTATION: {
@@ -412,14 +407,12 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
         vec = float3(double3(static_cast<const double *>(property_array)));
       }
       const math::EulerXYZ euler_value = math::EulerXYZ(vec);
-      auto value_variant = new (r_value) bke::SocketValueVariant();
-      value_variant->set(math::to_quaternion(euler_value));
+      new (r_value) bke::SocketValueVariant(math::to_quaternion(euler_value));
       break;
     }
     case SOCK_STRING: {
       std::string value = IDP_String(&property);
-      auto value_variant = new (r_value) bke::SocketValueVariant();
-      value_variant->set(std::move(value));
+      new (r_value) bke::SocketValueVariant(std::move(value));
       break;
     }
     case SOCK_OBJECT: {
@@ -516,8 +509,7 @@ static void initialize_group_input(const bNodeTree &tree,
   if (attribute_name && bke::allow_procedural_attribute_access(*attribute_name)) {
     fn::GField attribute_field = bke::AttributeFieldInput::Create(*attribute_name,
                                                                   *typeinfo->base_cpp_type);
-    auto *value_variant = new (r_value) bke::SocketValueVariant();
-    value_variant->set(std::move(attribute_field));
+    new (r_value) bke::SocketValueVariant(std::move(attribute_field));
   }
   else if (is_layer_selection_field(io_input)) {
     const IDProperty *property_layer_name = IDP_GetPropertyFromGroup(properties,
@@ -525,8 +517,7 @@ static void initialize_group_input(const bNodeTree &tree,
     StringRef layer_name = IDP_String(property_layer_name);
     const fn::GField selection_field(
         std::make_shared<bke::NamedLayerSelectionFieldInput>(layer_name), 0);
-    auto *value_variant = new (r_value) bke::SocketValueVariant();
-    value_variant->set(std::move(selection_field));
+    new (r_value) bke::SocketValueVariant(std::move(selection_field));
   }
   else {
     init_socket_cpp_value_from_property(*property, socket_data_type, r_value);

@@ -16,8 +16,6 @@
 
 #include "DNA_meshdata_types.h"
 
-#include "FN_init.h"
-
 struct Tex;
 struct Image;
 struct Material;
