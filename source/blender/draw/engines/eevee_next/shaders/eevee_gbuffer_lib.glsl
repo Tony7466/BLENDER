@@ -185,14 +185,18 @@ struct GBufferDataPacked {
   /* TODO(fclem): Resize arrays based on used closures. */
   vec4 closure[4];
   vec4 color[3];
+  /* TODO(fclem): Better packing. */
+  // vec4 color[GBUFFER_COLOR_COUNT];
+  // vec2 N[GBUFFER_NORMAL_COUNT];
 };
 
-GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
-                               ClosureTranslucent translucent,
-                               ClosureReflection reflection,
-                               ClosureRefraction refraction,
+GBufferDataPacked gbuffer_pack(ClosureUndetermined diffuse,
+                               ClosureUndetermined translucent,
+                               ClosureUndetermined reflection,
+                               ClosureUndetermined refraction,
                                vec3 default_N,
-                               float thickness)
+                               float thickness,
+                               uint resource_id)
 {
   GBufferDataPacked gbuf;
   gbuf.header = 0u;
@@ -201,7 +205,7 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
   bool has_reflection = reflection.weight > 1e-5;
   bool has_diffuse = diffuse.weight > 1e-5;
   bool has_translucent = translucent.weight > 1e-5;
-  bool has_sss = diffuse.sss_id > 0;
+  bool has_sss = (diffuse.type == CLOSURE_BSSRDF_BURLEY_ID);
 
   int layer = 0;
 
@@ -215,7 +219,7 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
     if (has_shared_normal && has_colorless_reflection) {
       gbuf.color[layer] = gbuffer_color_pack(diffuse.color);
       gbuf.closure[layer].xy = gbuffer_normal_pack(diffuse.N);
-      gbuf.closure[layer].z = reflection.roughness;
+      gbuf.closure[layer].z = reflection.data.r;
       /* Supports weight > 1.0. Same precision as 10bit. */
       gbuf.closure[layer].w = reflection.color.r * (1.0 / 16.0);
       gbuf.header = gbuffer_header_pack(GBUF_OPAQUE_DIELECTRIC, layer);
@@ -226,8 +230,8 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
   if (has_refraction) {
     gbuf.color[layer] = gbuffer_color_pack(refraction.color);
     gbuf.closure[layer].xy = gbuffer_normal_pack(refraction.N);
-    gbuf.closure[layer].z = refraction.roughness;
-    gbuf.closure[layer].w = gbuffer_ior_pack(refraction.ior);
+    gbuf.closure[layer].z = refraction.data.r;
+    gbuf.closure[layer].w = gbuffer_ior_pack(refraction.data.g);
     gbuf.header |= gbuffer_header_pack(GBUF_REFRACTION, layer);
     layer += 1;
   }
@@ -235,7 +239,7 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
   if (has_reflection) {
     gbuf.color[layer] = gbuffer_color_pack(reflection.color);
     gbuf.closure[layer].xy = gbuffer_normal_pack(reflection.N);
-    gbuf.closure[layer].z = reflection.roughness;
+    gbuf.closure[layer].z = reflection.data.r;
     gbuf.closure[layer].w = 0.0; /* Unused. */
     gbuf.header |= gbuffer_header_pack(GBUF_REFLECTION, layer);
     layer += 1;
@@ -260,8 +264,8 @@ GBufferDataPacked gbuffer_pack(ClosureDiffuse diffuse,
   }
   /* TODO(fclem): For now, override SSS if we have translucency. */
   else if (has_sss) {
-    gbuf.closure[layer].xyz = gbuffer_sss_radii_pack(diffuse.sss_radius);
-    gbuf.closure[layer].w = gbuffer_object_id_unorm16_pack(diffuse.sss_id);
+    gbuf.closure[layer].xyz = gbuffer_sss_radii_pack(diffuse.data.rgb);
+    gbuf.closure[layer].w = gbuffer_object_id_unorm16_pack(resource_id);
     gbuf.header |= gbuffer_header_pack(GBUF_SSS, layer);
     layer += 1;
   }

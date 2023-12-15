@@ -128,6 +128,42 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 #  define FrontFacing true
 #endif
 
+typedef enum ClosureType {
+  CLOSURE_NONE_ID = 0u,
+
+  /* Diffuse */
+  CLOSURE_BSDF_DIFFUSE_ID = 1u,
+  // CLOSURE_BSDF_OREN_NAYAR_ID = 2u, /* TODO */
+  // CLOSURE_BSDF_SHEEN_ID = 4u, /* TODO */
+  // CLOSURE_BSDF_DIFFUSE_TOON_ID = 5u, /* TODO */
+  CLOSURE_BSDF_TRANSLUCENT_ID = 6u,
+
+  /* Glossy */
+  CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID,
+  // CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID, /* TODO */
+  // CLOSURE_BSDF_ASHIKHMIN_VELVET_ID, /* TODO */
+  // CLOSURE_BSDF_GLOSSY_TOON_ID, /* TODO */
+  // CLOSURE_BSDF_HAIR_REFLECTION_ID, /* TODO */
+
+  /* Transmission */
+  CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID,
+
+  /* Glass */
+  // CLOSURE_BSDF_HAIR_HUANG_ID, /* TODO */
+
+  /* BSSRDF */
+  CLOSURE_BSSRDF_BURLEY_ID,
+} ClosureType;
+
+struct ClosureUndetermined {
+  vec3 color;
+  float weight;
+  vec3 N;
+  ClosureType type;
+  /* Additional data different for each closure type. */
+  vec4 data;
+};
+
 struct ClosureOcclusion {
   vec3 N;
 };

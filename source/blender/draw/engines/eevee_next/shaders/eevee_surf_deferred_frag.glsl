@@ -87,7 +87,8 @@ void main()
                                         g_reflection_data,
                                         g_refraction_data,
                                         out_normal,
-                                        thickness);
+                                        thickness,
+                                        resource_id);
 
   /* Output header and first closure using frame-buffer attachment. */
   out_gbuf_header = gbuf.header;
