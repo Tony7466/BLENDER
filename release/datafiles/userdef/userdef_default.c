@@ -213,17 +213,27 @@ const UserDef U_default = {
             .section_active = USER_SECTION_INTERFACE,
         },
 
-    .file_space_data =
-        {
-            .display_type = FILE_VERTICALDISPLAY,
-            .thumbnail_size = 96,
-            .sort_type = FILE_SORT_ALPHA,
-            .details_flags = FILE_DETAILS_SIZE | FILE_DETAILS_DATETIME,
-            .flag = FILE_HIDE_DOT,
-            .filter_id = FILTER_ID_ALL,
+    .file_space_data = {.display_type = FILE_VERTICALDISPLAY,
+                        .thumbnail_size = 96,
+                        .sort_type = FILE_SORT_ALPHA,
+                        .details_flags = FILE_DETAILS_SIZE | FILE_DETAILS_DATETIME,
+                        .flag = FILE_HIDE_DOT,
+                        .filter_id = FILTER_ID_ALL},
 
-            .temp_win_sizex = 1060,
-            .temp_win_sizey = 600,
+    .file_winstate =
+        {
+            .posx = 0,
+            .posy = 0,
+            .sizex = 1060,
+            .sizey = 600,
+        },
+
+    .file_winstate =
+        {
+            .posx = 0,
+            .posy = 0,
+            .sizex = 560,
+            .sizey = 520,
         },
 
     .sequencer_disk_cache_dir = "",

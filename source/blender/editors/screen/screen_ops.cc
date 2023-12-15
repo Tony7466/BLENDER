@@ -1459,11 +1459,12 @@ static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     area = sad->sa1;
   }
 
+  wmWindow *win = CTX_wm_window(C);
   const rcti window_rect = {
-      /*xmin*/ area->totrct.xmin,
-      /*xmax*/ area->totrct.xmin + area->winx,
-      /*ymin*/ area->totrct.ymin,
-      /*ymax*/ area->totrct.ymin + area->winy,
+      /*xmin*/ win->posx + area->totrct.xmin,
+      /*xmax*/ win->posx + area->totrct.xmin + area->winx,
+      /*ymin*/ win->posy + area->totrct.ymin,
+      /*ymax*/ win->posy + area->totrct.ymin + area->winy,
   };
 
   /* Create new window. No need to set space_type since it will be copied over. */
@@ -5200,12 +5201,6 @@ static void SCREEN_OT_back_to_previous(wmOperatorType *ot)
 
 static int userpref_show_exec(bContext *C, wmOperator *op)
 {
-  wmWindow *win_cur = CTX_wm_window(C);
-  /* Use eventstate, not event from _invoke, so this can be called through exec(). */
-  const wmEvent *event = win_cur->eventstate;
-  int sizex = (500 + UI_NAVIGATION_REGION_WIDTH) * UI_SCALE_FAC;
-  int sizey = 520 * UI_SCALE_FAC;
-
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "section");
   if (prop && RNA_property_is_set(op->ptr, prop)) {
     /* Set active section via RNA, so it can fail properly. */
@@ -5217,24 +5212,14 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
     RNA_property_update(C, &pref_ptr, active_section_prop);
   }
 
-  const rcti window_rect = {
-      /*xmin*/ event->xy[0],
-      /*xmax*/ event->xy[0] + sizex,
-      /*ymin*/ event->xy[1],
-      /*ymax*/ event->xy[1] + sizey,
-  };
-
   /* changes context! */
-  if (WM_window_open(C,
-                     IFACE_("Blender Preferences"),
-                     &window_rect,
-                     SPACE_USERPREF,
-                     false,
-                     false,
-                     true,
-                     WIN_ALIGN_LOCATION_CENTER,
-                     nullptr,
-                     nullptr) != nullptr)
+  if (WM_window_open_temp(C,
+                          IFACE_("Blender Preferences"),
+                          &U.preferences_winstate,
+                          500 + UI_NAVIGATION_REGION_WIDTH,
+                          520,
+                          SPACE_USERPREF,
+                          false) != nullptr)
   {
     /* The header only contains the editor switcher and looks empty.
      * So hiding in the temp window makes sense. */

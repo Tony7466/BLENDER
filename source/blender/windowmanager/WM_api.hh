@@ -349,6 +349,14 @@ wmWindow *WM_window_open(bContext *C,
                          void (*area_setup_fn)(bScreen *screen, ScrArea *area, void *user_data),
                          void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
 
+struct wmWindow *WM_window_open_temp(struct bContext *C,
+                                     const char *title,
+                                     struct UserDef_WinState *state,
+                                     int def_sizex,
+                                     int def_sizey,
+                                     int space_type,
+                                     bool dialog);
+
 void WM_window_set_dpi(const wmWindow *win);
 
 bool WM_stereo3d_enabled(wmWindow *win, bool only_fullscreen_test);
