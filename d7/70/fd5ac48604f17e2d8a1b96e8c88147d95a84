@@ -1,1 +1,2 @@
 Referenced by issue #116215, Regression: VSE: Crash unlinking packed font file from text strip with more than one user
+Referenced by commit 7346727cfc2cf5365eccdf09153543d21af38a22, Fix #116215: Sequencer crashes unlinking packed text
