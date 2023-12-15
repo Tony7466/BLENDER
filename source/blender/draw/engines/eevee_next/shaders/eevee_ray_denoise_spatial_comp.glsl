@@ -48,7 +48,9 @@ void main()
   ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
   ivec2 texel = (texel_fullres) / rt_resolution_scale;
 
-  if (SC_raytrace_skip_denoise) {
+  bool do_skip_denoise = (SC_raytrace_skip_denoise > -1) ? SC_raytrace_skip_denoise :
+                                                           uniform_buf.raytrace.skip_denoise;
+  if (do_skip_denoise) {
     imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
     return;
   }

@@ -621,8 +621,18 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
 
   ss << "\n/* Specialization Constants (pass-through). */\n";
   for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
-    ss << "#define " << sc.constant_name << " (" << sc.fallback_code_string << ")\n";
-    ss << "#define " << sc.constant_name << "_DEFINED (false)\n";
+    ss << "#define " << sc.constant_name;
+    switch (sc.type) {
+      case Type::INT: {
+        ss << " (" << sc.default_value_i << ")\n";
+      } break;
+      case Type::BOOL: {
+        ss << " (" << sc.default_value_b << ")\n";
+      } break;
+      case Type::FLOAT: {
+        ss << " (" << sc.default_value_f << ")\n";
+      } break;
+    }
   }
 
   ss << "\n/* Pass Resources. */\n";

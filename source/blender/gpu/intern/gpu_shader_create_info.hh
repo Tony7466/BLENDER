@@ -741,19 +741,27 @@ struct ShaderCreateInfo {
   /** \name Shader specialization constants
    * \{ */
 
-  /* Adds a specialization constant which will either fetch a statically compiled
-   * constant value within the PSO, if a specialization config has been provided,
-   * or fallback to a default fallback code string, which will run if no value
-   * has been provided.
+  /* Adds a specialization constant which is a dynamically modifiable value, which will be
+   * statically compiled into a PSO configuration to provide optimal runtime performance,
+   * with a reduced re-compilation cost vs Macro's with easier generation of unique permutations
+   * based on run-time values.
    *
-   * Specialization constants will also expose the macro:
-   * "constant_name_DEFINED" which will return true if a runtime specialized value
-   * has been specified.
+   * Tip: To evaluate use-cases of where specialization constants can provide a performance
+   * gain, benchmark a given shader in its default case. Attempt to statically disable branches or
+   * conditions which rely on uniform look-ups and measure if there is a marked improvement in
+   * performance and/or reduction in memory bandwidth/register pressure.
    *
    * NOTE: Specialization constants will incur new compilation of PSOs and thus can incur an
    * unexpected cost. Specialization constants should be reserved for infrequently changing
    * parameters (e.g. user setting parameters such as toggling of features or quality level
    * presets), or those with a low set of possible runtime permutations.
+   *
+   * Specialization constants are assigned at runtime using:
+   *  - GPU_shader_set_constant_*(shader, constant_id, value)
+   * or
+   *  - `.shader_constant_set(constant_id, value)` for a DrawPass.
+   *
+   * Specialization constants are reset to their provided default values upon `GPU_shader_bind()`.
    * */
   Self &constant_int(int constant_id, StringRefNull constant_name, int default_value = -1)
   {

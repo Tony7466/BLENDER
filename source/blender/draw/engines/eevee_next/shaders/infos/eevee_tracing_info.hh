@@ -140,7 +140,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_spatial)
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
     .constant_int(SC_raytrace_resolution_scale_SLOT, "SC_raytrace_resolution_scale", -1)
     /* NOTE: Ideally this should be bool, but parameter `skip_denoise` is implemented as `int`.*/
-    .constant_int(SC_raytrace_skip_denoise_SLOT, "SC_raytrace_skip_denoise", 0)
+    .constant_int(SC_raytrace_skip_denoise_SLOT, "SC_raytrace_skip_denoise", -1)
     .compute_source("eevee_ray_denoise_spatial_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_denoise_spatial)

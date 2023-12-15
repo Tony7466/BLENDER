@@ -573,17 +573,17 @@ void GPU_shader_transform_feedback_disable(GPUShader *shader)
 /** \name Assign specialization constants.
  * \{ */
 
-void GPU_shader_specialize_constant_1i(GPUShader *sh, int constant_id, int value)
+void GPU_shader_set_constant_1i(GPUShader *sh, int constant_id, int value)
 {
   unwrap(sh)->specialize_constant_int(constant_id, value);
 }
 
-void GPU_shader_specialize_constant_1b(GPUShader *sh, int constant_id, bool value)
+void GPU_shader_set_constant_1b(GPUShader *sh, int constant_id, bool value)
 {
   unwrap(sh)->specialize_constant_bool(constant_id, value);
 }
 
-void GPU_shader_specialize_constant_1f(GPUShader *sh, int constant_id, float value)
+void GPU_shader_set_constant_1f(GPUShader *sh, int constant_id, float value)
 {
   unwrap(sh)->specialize_constant_float(constant_id, value);
 }
