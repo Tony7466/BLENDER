@@ -8,6 +8,8 @@
  * \ingroup bke
  */
 
+#include <mutex>
+
 #include "BLI_color.hh"
 #include "BLI_cpp_type.hh"
 #include "BLI_implicit_sharing.hh"
@@ -120,63 +122,32 @@ struct VolumeGrid : public ImplicitSharingMixin {
   using GridBaseConstPtr = std::shared_ptr<const GridBase>;
 
  protected:
-  /**
-   * OpenVDB grid that is used when there is no file cache entry.
-   * #std::shared_ptr is used here to allow using this grid in all OpenVDB API functions that may
-   * require a grid pointer instead of a reference. This shared_ptr should have exactly 1 user
-   * since it is owned by the implicit sharing data. Sharing the #VolumeGrid will not increment the
-   * user count of this pointer.
-   */
-  GridBasePtr local_grid_;
-  /* File cache entry when grid comes directly from a file and may be shared
-   * with other volume datablocks. */
-  VolumeFileCacheEntry *entry_;
-  /* If this volume grid is in the global file cache, we can reference a simplified version of it,
-   * instead of the original high resolution grid. */
-  int simplify_level_;
-  /**
-   * Indicates if the tree has been loaded for this grid. Note that vdb.tree()
-   * may actually be loaded by another user while this is false. But only after
-   * calling load() and is_loaded changes to true is it safe to access.
-   *
-   * `const` write access to this must be protected by `entry->mutex`.
-   */
-  mutable bool is_loaded_;
+  mutable GridBasePtr grid_;
+  /* Tree data has been loaded from file. */
+  mutable VolumeTreeSource tree_source_;
+  /* Mutex for on-demand reading of tree. */
+  mutable std::mutex mutex_;
 
  public:
-  VolumeGrid(const GridBasePtr &grid);
-  VolumeGrid(const VolumeFileCacheEntry &template_entry, int simplify_level = 0);
-  VolumeGrid(const char *template_file_path,
-             const GridBasePtr &template_grid,
-             int simplify_level = 0);
+  VolumeGrid(const GridBasePtr &grid, VolumeTreeSource tree_source);
   ~VolumeGrid();
 
   VolumeGrid *copy() const;
 
   const char *name() const;
 
-  const char *error_message() const;
-
-  bool grid_is_loaded() const;
-
-  void load(const char *volume_name, const char *filepath) const;
-  void unload(const char *volume_name) const;
-
-  void set_simplify_level(int simplify_level);
-
-  void clear_reference(const char *volume_name);
-  void duplicate_reference(const char *volume_name, const char *filepath);
-
   GridBaseConstPtr grid() const;
   GridBasePtr grid_for_write();
 
- protected:
-  /* Used by #copy function */
-  VolumeGrid(const GridBasePtr &local_grid,
-             VolumeFileCacheEntry *entry,
-             int simplify_level,
-             bool is_loaded);
+  /* Source of the tree data stored in the grid. */
+  VolumeTreeSource tree_source() const;
+  /* Make sure the tree data has been loaded if the grid has a file source. */
+  bool ensure_tree_loaded(
+      StringRef filepath, FunctionRef<void(StringRef)> error_fn = [](StringRef) {}) const;
+  /* Unload the tree data but keep metadata. */
+  void unload_tree() const;
 
+ protected:
   GridBasePtr main_grid() const;
   void clear_cache_entry();
 #endif

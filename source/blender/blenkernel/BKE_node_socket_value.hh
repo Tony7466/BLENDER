@@ -20,19 +20,17 @@ namespace blender::bke {
  * Utility class that wraps a single value and a field, to simplify accessing both of the types.
  * \{ */
 
-template<typename T> struct ValueOrField {
+template<typename T> struct SocketValueVariant {
   /** Value that is used when the field is empty. */
   T value{};
   fn::Field<T> field;
   VolumeGridPtr<T> grid;
 
-  ValueOrField() = default;
+  SocketValueVariant() = default;
 
-  ValueOrField(T value) : value(std::move(value)) {}
-
-  ValueOrField(fn::Field<T> field) : field(std::move(field)) {}
-
-  ValueOrField(VolumeGridPtr<T> grid) : grid(std::move(grid)) {}
+  SocketValueVariant(T value) : value(std::move(value)) {}
+  SocketValueVariant(fn::Field<T> field) : field(std::move(field)) {}
+  SocketValueVariant(VolumeGridPtr<T> grid) : grid(std::move(grid)) {}
 
   bool is_field() const
   {
@@ -69,13 +67,13 @@ template<typename T> struct ValueOrField {
     return this->value;
   }
 
-  friend std::ostream &operator<<(std::ostream &stream, const ValueOrField<T> &value_or_field)
+  friend std::ostream &operator<<(std::ostream &stream, const SocketValueVariant<T> &value_variant)
   {
-    if (value_or_field.field || value_or_field.grid) {
-      stream << "ValueOrField<T>";
+    if (value_variant.field || value_variant.grid) {
+      stream << "SocketValueVariant<T>";
     }
     else {
-      stream << value_or_field.value;
+      stream << value_variant.value;
     }
     return stream;
   }

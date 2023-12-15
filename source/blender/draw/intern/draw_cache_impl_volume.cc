@@ -22,6 +22,7 @@
 
 #include "BKE_global.h"
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_render.hh"
 
 #include "GPU_batch.h"
@@ -297,9 +298,9 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
     return cache_grid;
   }
 
-  /* Remember if grid was loaded. If it was not, we want to unload it after the GPUTexture has been
-   * created. */
-  const bool was_loaded = BKE_volume_grid_is_loaded(grid);
+  /* If grid is a placeholder the grid data is discarded after the GPUTexture has been created. */
+  const bool is_placeholder = (BKE_volume_grid_tree_source(grid) ==
+                               VOLUME_TREE_SOURCE_FILE_PLACEHOLDER);
 
   DenseFloatVolumeGrid dense_grid;
   if (BKE_volume_grid_dense_floats(volume, grid, &dense_grid)) {
@@ -328,7 +329,7 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
   }
 
   /* Free grid from memory if it wasn't previously loaded. */
-  if (!was_loaded) {
+  if (is_placeholder) {
     BKE_volume_grid_unload(volume, grid);
   }
 

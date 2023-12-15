@@ -53,7 +53,8 @@ static void try_dilate_grid(GeoNodeExecParams params,
                             const int iterations,
                             const GeometryNodeGridNeighborTopology neighbors_mode)
 {
-  const bke::ValueOrField<T> value = params.extract_input<bke::ValueOrField<T>>("Grid");
+  const bke::SocketValueVariant<T> value = params.extract_input<bke::SocketValueVariant<T>>(
+      "Grid");
   if (!value.is_grid()) {
     return;
   }
@@ -65,8 +66,10 @@ static void try_dilate_grid(GeoNodeExecParams params,
   openvdb::tools::dilateActiveValues(
       grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
 
-  params.set_output("Grid",
-                    bke::ValueOrField<T>(bke::make_volume_grid_ptr(grid).template typed<T>()));
+  params.set_output(
+      "Grid",
+      bke::SocketValueVariant<T>(
+          bke::make_volume_grid_ptr(grid, VOLUME_TREE_SOURCE_GENERATED).template typed<T>()));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

@@ -155,9 +155,9 @@ bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      return params.extract_input<bke::ValueOrField<float>>(identifier).grid;
+      return params.extract_input<bke::SocketValueVariant<float>>(identifier).grid;
     case CD_PROP_FLOAT3:
-      return params.extract_input<bke::ValueOrField<float3>>(identifier).grid;
+      return params.extract_input<bke::SocketValueVariant<float3>>(identifier).grid;
     default:
       BLI_assert_unreachable();
       break;
@@ -204,10 +204,10 @@ void set_output_grid(GeoNodeExecParams params,
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      params.set_output(identifier, ValueOrField<float>(grid.typed<float>()));
+      params.set_output(identifier, SocketValueVariant<float>(grid.typed<float>()));
       break;
     case CD_PROP_FLOAT3:
-      params.set_output(identifier, ValueOrField<float3>(grid.typed<float3>()));
+      params.set_output(identifier, SocketValueVariant<float3>(grid.typed<float3>()));
       break;
     default:
       BLI_assert_unreachable();

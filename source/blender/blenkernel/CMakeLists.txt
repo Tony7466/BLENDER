@@ -309,6 +309,7 @@ set(SRC
   intern/vfontdata_freetype.cc
   intern/viewer_path.cc
   intern/volume.cc
+  intern/volume_file_cache.cc
   intern/volume_grid.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
@@ -342,8 +343,8 @@ set(SRC
   BKE_blender_undo.h
   BKE_blender_user_menu.h
   BKE_blender_version.h
-  BKE_blendfile.h
-  BKE_blendfile_link_append.h
+  BKE_blendfile.hh
+  BKE_blendfile_link_append.hh
   BKE_boids.h
   BKE_bpath.h
   BKE_brush.hh
@@ -510,6 +511,7 @@ set(SRC
   BKE_vfontdata.hh
   BKE_viewer_path.hh
   BKE_volume.hh
+  BKE_volume_file_cache.hh
   BKE_volume_grid.hh
   BKE_volume_grid_ptr.hh
   BKE_volume_openvdb.hh

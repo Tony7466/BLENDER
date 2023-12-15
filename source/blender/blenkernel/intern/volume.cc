@@ -45,6 +45,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_volume.hh"
+#include "BKE_volume_file_cache.hh"
 #include "BKE_volume_grid_ptr.hh"
 #include "BKE_volume_openvdb.hh"
 
@@ -68,6 +69,7 @@ using blender::IndexRange;
 using blender::StringRef;
 using blender::StringRefNull;
 using blender::bke::GVolumeGridPtr;
+using blender::bke::VolumeFileCache;
 
 #ifdef WITH_OPENVDB
 #  include <atomic>
@@ -507,8 +509,10 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   /* Add grids read from file to own vector, filtering out any null pointers. */
   for (const openvdb::GridBase::Ptr &vdb_grid : vdb_grids) {
     if (vdb_grid) {
-      grids.emplace_back(blender::bke::make_volume_grid_ptr(
-          filepath, vdb_grid, volume->runtime.default_simplify_level));
+      GVolumeGridPtr grid = blender::bke::make_volume_grid_ptr(
+          vdb_grid, VOLUME_TREE_SOURCE_FILE_PLACEHOLDER);
+      VolumeFileCache::get().add_grid({filepath, grid->name()}, grid);
+      grids.emplace_back(std::move(grid));
     }
   }
 
@@ -594,7 +598,13 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
     std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
+      const bool unload = (BKE_volume_grid_tree_source(volume_grid) ==
+                           VOLUME_TREE_SOURCE_FILE_PLACEHOLDER);
+      BKE_volume_grid_load(volume, volume_grid);
       result = blender::bounds::merge(result, BKE_volume_grid_bounds(volume_grid->grid()));
+      if (unload) {
+        BKE_volume_grid_unload(volume, volume_grid);
+      }
     }
     return result;
   }
@@ -647,15 +657,21 @@ static void volume_update_simplify_level(Volume *volume, const Depsgraph *depsgr
 {
 #ifdef WITH_OPENVDB
   const int simplify_level = BKE_volume_simplify_level(depsgraph);
-  if (volume->runtime.grids) {
-    for (GVolumeGridPtr &grid : *volume->runtime.grids) {
-      if (grid->is_mutable()) {
-        blender::bke::VolumeGrid *data = const_cast<blender::bke::VolumeGrid *>(&*grid);
-        data->set_simplify_level(simplify_level);
-      }
-    }
-  }
   volume->runtime.default_simplify_level = simplify_level;
+
+  /* Replace grids with the new simplify level variants from the cache. */
+  if (volume->runtime.grids && BKE_volume_is_loaded(volume)) {
+    VolumeGridVector &grids = *volume->runtime.grids;
+    std::list<GVolumeGridPtr> new_grids;
+    for (const GVolumeGridPtr &old_grid : grids) {
+      const VolumeFileCacheKey base_key(grids.filepath, old_grid->name());
+      const GVolumeGridPtr simple_grid = VolumeFileCache::get().get_simplified_grid(
+          base_key, simplify_level);
+      BLI_assert(simple_grid);
+      new_grids.push_back(simple_grid);
+    }
+    grids.swap(new_grids);
+  }
 #else
   UNUSED_VARS(volume, depsgraph);
 #endif
@@ -931,34 +947,26 @@ bool BKE_volume_grid_load(const Volume *volume, const VolumeGrid *grid)
 {
 #ifdef WITH_OPENVDB
   VolumeGridVector &grids = *volume->runtime.grids;
-  const char *volume_name = volume->id.name + 2;
-  grid->load(volume_name, grids.filepath);
-  const char *error_msg = grid->error_message();
-  if (error_msg) {
-    grids.error_msg = error_msg;
-    return false;
-  }
-  return true;
+  return grid->ensure_tree_loaded(grids.filepath, [&](StringRef msg) { grids.error_msg = msg; });
 #else
   UNUSED_VARS(volume, grid);
   return true;
 #endif
 }
 
-void BKE_volume_grid_unload(const Volume *volume, const VolumeGrid *grid)
+void BKE_volume_grid_unload(const Volume * /*volume*/, const VolumeGrid *grid)
 {
 #ifdef WITH_OPENVDB
-  const char *volume_name = volume->id.name + 2;
-  grid->unload(volume_name);
+  grid->unload_tree();
 #else
-  UNUSED_VARS(volume, grid);
+  UNUSED_VARS(grid);
 #endif
 }
 
-bool BKE_volume_grid_is_loaded(const VolumeGrid *grid)
+VolumeTreeSource BKE_volume_grid_tree_source(const VolumeGrid *grid)
 {
 #ifdef WITH_OPENVDB
-  return grid->grid_is_loaded();
+  return grid->tree_source();
 #else
   UNUSED_VARS(grid);
   return true;
@@ -994,7 +1002,7 @@ void BKE_volume_grid_clear_tree(openvdb::GridBase &grid)
 }
 void BKE_volume_grid_clear_tree(Volume &volume, VolumeGrid &volume_grid)
 {
-  openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(&volume, &volume_grid, false);
+  openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(&volume, &volume_grid);
   BKE_volume_grid_clear_tree(*grid);
 }
 
@@ -1099,7 +1107,7 @@ void BKE_volume_grid_transform_matrix_set(const Volume *volume,
       mat_openvdb(col, row) = mat[col][row];
     }
   }
-  openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(volume, volume_grid, false);
+  openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(volume, volume_grid);
   grid->setTransform(std::make_shared<openvdb::math::Transform>(
       std::make_shared<openvdb::math::AffineMap>(mat_openvdb)));
 #else
@@ -1157,7 +1165,7 @@ VolumeGrid *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType
   }
 
   vdb_grid->setName(name);
-  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid));
+  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid, VOLUME_TREE_SOURCE_GENERATED));
   return const_cast<VolumeGrid *>(grids.back().get());
 #else
   UNUSED_VARS(volume, name, type);
@@ -1175,7 +1183,7 @@ void BKE_volume_grid_move(Volume *volume, const char *name, VolumeGrid *grid)
 
   openvdb::GridBase::Ptr vdb_grid = grid->grid_for_write();
   vdb_grid->setName(name);
-  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid));
+  grids.emplace_back(GVolumeGridPtr{grid});
 #else
   UNUSED_VARS(volume, name, grid);
 #endif
@@ -1184,14 +1192,15 @@ void BKE_volume_grid_move(Volume *volume, const char *name, VolumeGrid *grid)
 #ifdef WITH_OPENVDB
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     const StringRef name,
-                                    openvdb::GridBase::Ptr vdb_grid)
+                                    openvdb::GridBase::Ptr vdb_grid,
+                                    VolumeTreeSource tree_source)
 {
   VolumeGridVector &grids = *volume.runtime.grids;
   BLI_assert(BKE_volume_grid_find_for_read(&volume, name.data()) == nullptr);
   BLI_assert(BKE_volume_grid_type_openvdb(*vdb_grid) != VOLUME_GRID_UNKNOWN);
 
   vdb_grid->setName(name);
-  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid));
+  grids.emplace_back(blender::bke::make_volume_grid_ptr(vdb_grid, tree_source));
   return const_cast<VolumeGrid *>(grids.back().get());
 }
 #endif
@@ -1288,19 +1297,10 @@ openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volum
   return grid->grid();
 }
 
-openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                         VolumeGrid *grid,
-                                                         const bool clear)
+openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume, VolumeGrid *grid)
 {
-  const char *volume_name = volume->id.name + 2;
-  if (clear) {
-    grid->clear_reference(volume_name);
-  }
-  else {
-    VolumeGridVector &grids = *volume->runtime.grids;
-    grid->duplicate_reference(volume_name, grids.filepath);
-  }
-
+  BLI_assert(grid->is_mutable());
+  BKE_volume_grid_load(volume, grid);
   return grid->grid_for_write();
 }
 
