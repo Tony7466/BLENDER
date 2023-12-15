@@ -2047,7 +2047,9 @@ static void object_simplify_update(Scene *scene, Object *ob, bool update_normals
   }
 
   if (scene->r.mode & R_SIMPLIFY_NORMALS || update_normals) {
-    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+    if (OB_TYPE_IS_GEOMETRY(ob->type)) {
+      DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+    }
   }
 }
 
