@@ -52,6 +52,7 @@
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
 
+#include "ED_grease_pencil.hh"
 #include "ED_image.hh"
 #include "ED_object.hh"
 #include "ED_paint.hh"
@@ -1049,6 +1050,9 @@ static bool brush_colors_flip_poll(bContext *C)
     Object *ob = CTX_data_active_object(C);
     if (ob != nullptr) {
       if (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_TEXTURE_PAINT | OB_MODE_SCULPT)) {
+        return true;
+      }
+      if (blender::ed::greasepencil::grease_pencil_painting_poll(C)) {
         return true;
       }
     }

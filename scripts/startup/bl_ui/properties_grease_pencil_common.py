@@ -627,6 +627,8 @@ class GreasePencilVertexcolorPanel:
         gp_settings = brush.gpencil_settings
         tool = brush.gpencil_vertex_tool if is_vertex else brush.gpencil_tool
 
+        is_grease_pencil_version3 = context.preferences.experimental.use_grease_pencil_version3
+
         ob = context.object
 
         if ob:
@@ -637,7 +639,10 @@ class GreasePencilVertexcolorPanel:
             sub_row.prop(brush, "color", text="")
             sub_row.prop(brush, "secondary_color", text="")
 
-            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+            if is_grease_pencil_version3:
+                sub_row.operator("paint.brush_colors_flip", icon='FILE_REFRESH', text="")
+            else:
+                sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
 
             row = layout.row(align=True)
             row.template_ID(gpencil_paint, "palette", new="palette.new")

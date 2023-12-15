@@ -1270,8 +1270,10 @@ def brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
             sub_row.prop_enum(settings, "color_mode", 'VERTEXCOLOR', text="", icon='VPAINT_HLT')
 
         sub_row = row.row(align=True)
+        sub_row.ui_units_x = 5
         sub_row.enabled = settings.color_mode == 'VERTEXCOLOR' or gp_settings.brush_draw_mode == 'VERTEXCOLOR'
         sub_row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
+        sub_row.prop_with_popover(brush, "secondary_color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
         row.prop(gp_settings, "pin_draw_mode", text="")
 
     if props:

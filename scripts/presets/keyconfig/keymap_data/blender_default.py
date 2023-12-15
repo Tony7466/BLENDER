@@ -4586,6 +4586,8 @@ def km_grease_pencil_paint(_params):
 
         # Show/hide
         *_template_items_hide_reveal_actions("grease_pencil.layer_hide", "grease_pencil.layer_reveal"),
+
+        ("paint.brush_colors_flip", {"type": 'X', "value": 'PRESS'}, None),
     ])
 
     return keymap
