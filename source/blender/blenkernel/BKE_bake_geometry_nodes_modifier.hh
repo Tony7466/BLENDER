@@ -51,7 +51,7 @@ struct PrevCache {
 /**
  * Stores the cached/baked data for simulation nodes in geometry nodes.
  */
-struct NodeCache {
+struct SimulationNodeCache {
   CacheStatus cache_status = CacheStatus::Valid;
 
   /** All cached frames. */
@@ -71,7 +71,7 @@ struct NodeCache {
 
 struct ModifierCache {
   mutable std::mutex mutex;
-  Map<int, std::unique_ptr<NodeCache>> cache_by_id;
+  Map<int, std::unique_ptr<SimulationNodeCache>> simulation_cache_by_id;
 };
 
 /**
@@ -84,6 +84,10 @@ std::optional<BakePath> get_node_bake_path(const Main &bmain,
                                            const Object &object,
                                            const NodesModifierData &nmd,
                                            int node_id);
+std::optional<IndexRange> get_node_bake_frame_range(const Scene &scene,
+                                                    const Object &object,
+                                                    const NodesModifierData &nmd,
+                                                    int node_id);
 std::optional<std::string> get_modifier_bake_path(const Main &bmain,
                                                   const Object &object,
                                                   const NodesModifierData &nmd);

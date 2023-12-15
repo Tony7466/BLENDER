@@ -26,12 +26,12 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_cachefile.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -41,8 +41,8 @@
 
 #include "BLO_read_write.hh"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GEO_mesh_primitive_cuboid.hh"
 
@@ -174,7 +174,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   MeshSeqCacheModifierData *mcmd = reinterpret_cast<MeshSeqCacheModifierData *>(md);
 
   /* Only used to check whether we are operating on org data or not... */
-  Mesh *me = (ctx->object->type == OB_MESH) ? static_cast<Mesh *>(ctx->object->data) : nullptr;
+  Mesh *object_mesh = (ctx->object->type == OB_MESH) ? static_cast<Mesh *>(ctx->object->data) :
+                                                       nullptr;
   Mesh *org_mesh = mesh;
 
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
@@ -205,13 +206,13 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     return mesh;
   }
 
-  if (me != nullptr) {
+  if (object_mesh != nullptr) {
     const Span<float3> mesh_positions = mesh->vert_positions();
     const Span<blender::int2> mesh_edges = mesh->edges();
     const blender::OffsetIndices mesh_faces = mesh->faces();
-    const Span<float3> me_positions = me->vert_positions();
-    const Span<blender::int2> me_edges = me->edges();
-    const blender::OffsetIndices me_faces = me->faces();
+    const Span<float3> me_positions = object_mesh->vert_positions();
+    const Span<blender::int2> me_edges = object_mesh->edges();
+    const blender::OffsetIndices me_faces = object_mesh->faces();
 
     /* TODO(sybren+bastien): possibly check relevant custom data layers (UV/color depending on
      * flags) and duplicate those too.
@@ -434,7 +435,7 @@ ModifierTypeInfo modifierType_MeshSequenceCache = {
     /*struct_name*/ "MeshSeqCacheModifierData",
     /*struct_size*/ sizeof(MeshSeqCacheModifierData),
     /*srna*/ &RNA_MeshSequenceCacheModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/
     static_cast<ModifierTypeFlag>(eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs),
     /*icon*/ ICON_MOD_MESHDEFORM, /* TODO: Use correct icon. */

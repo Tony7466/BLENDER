@@ -149,6 +149,73 @@ void UI_draw_roundbox_4fv(const rctf *rect, bool filled, float rad, const float 
   UI_draw_roundbox_4fv_ex(rect, (filled) ? col : nullptr, nullptr, 1.0f, col, U.pixelsize, rad);
 }
 
+void ui_draw_rounded_corners_inverted(const rcti &rect,
+                                      const float rad,
+                                      const blender::float4 color)
+{
+  GPUVertFormat *format = immVertexFormat();
+  const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  float vec[4][2] = {
+      {0.195, 0.02},
+      {0.55, 0.169},
+      {0.831, 0.45},
+      {0.98, 0.805},
+  };
+  for (int a = 0; a < 4; a++) {
+    mul_v2_fl(vec[a], rad);
+  }
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor4fv(color);
+
+  if (roundboxtype & UI_CNR_TOP_LEFT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmin, rect.ymax);
+    immVertex2f(pos, rect.xmin, rect.ymax - rad);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmin + vec[a][1], rect.ymax - rad + vec[a][0]);
+    }
+    immVertex2f(pos, rect.xmin + rad, rect.ymax);
+    immEnd();
+  }
+
+  if (roundboxtype & UI_CNR_TOP_RIGHT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmax, rect.ymax);
+    immVertex2f(pos, rect.xmax - rad, rect.ymax);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmax - rad + vec[a][0], rect.ymax - vec[a][1]);
+    }
+    immVertex2f(pos, rect.xmax, rect.ymax - rad);
+    immEnd();
+  }
+
+  if (roundboxtype & UI_CNR_BOTTOM_RIGHT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmax, rect.ymin);
+    immVertex2f(pos, rect.xmax, rect.ymin + rad);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmax - vec[a][1], rect.ymin + rad - vec[a][0]);
+    }
+    immVertex2f(pos, rect.xmax - rad, rect.ymin);
+    immEnd();
+  }
+
+  if (roundboxtype & UI_CNR_BOTTOM_LEFT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmin, rect.ymin);
+    immVertex2f(pos, rect.xmin + rad, rect.ymin);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmin + rad - vec[a][0], rect.ymin + vec[a][1]);
+    }
+    immVertex2f(pos, rect.xmin, rect.ymin + rad);
+    immEnd();
+  }
+
+  immUnbindProgram();
+}
+
 void UI_draw_text_underline(int pos_x, int pos_y, int len, int height, const float color[4])
 {
   const int ofs_y = 4 * U.pixelsize;
@@ -552,7 +619,7 @@ void ui_draw_but_WAVEFORM(ARegion * /*region*/,
   int scissor[4];
   float colors[3][3];
   const float colorsycc[3][3] = {{1, 0, 1}, {1, 1, 0}, {0, 1, 1}};
-  /* colors  pre multiplied by alpha for speed up */
+  /* Colors pre-multiplied by alpha for speed up. */
   float colors_alpha[3][3], colorsycc_alpha[3][3];
   float min, max;
 
@@ -1054,10 +1121,11 @@ static void ui_draw_colorband_handle(uint shdr_pos,
   GPU_blend(GPU_BLEND_ALPHA);
 
   /* Allow the lines to decrease as we get really small. */
-  float line_width = MAX2(MIN2(U.pixelsize / 5.0f * fabs(half_width - 4.0f), U.pixelsize), 0.5f);
+  float line_width = std::max(std::min(U.pixelsize / 5.0f * fabs(half_width - 4.0f), U.pixelsize),
+                              0.5f);
 
   /* Make things transparent as we get tiny. */
-  uchar alpha = MIN2(int(fabs(half_width - 2.0f) * 50.0f), 255);
+  uchar alpha = std::min(int(fabs(half_width - 2.0f) * 50.0f), 255);
 
   immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
 
@@ -2110,108 +2178,20 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
 
 /* ****************************************************** */
 
-/* TODO(merwin): high quality UI drop shadows using GLSL shader and single draw call
- * would replace / modify the following 3 functions. */
-
-static void ui_shadowbox(const rctf *rect, uint pos, uint color, float shadsize, uchar alpha)
+void ui_draw_dropshadow(
+    const rctf *rct, const float radius, const float width, const float aspect, const float alpha)
 {
-  /**
-   * <pre>
-   *          v1-_
-   *          |   -_v2
-   *          |     |
-   *          |     |
-   *          |     |
-   * v7_______v3____v4
-   * \        |     /
-   *  \       |   _v5
-   *  v8______v6_-
-   * </pre>
-   */
-  const float v1[2] = {rect->xmax, rect->ymax - 0.3f * shadsize};
-  const float v2[2] = {rect->xmax + shadsize, rect->ymax - 0.75f * shadsize};
-  const float v3[2] = {rect->xmax, rect->ymin};
-  const float v4[2] = {rect->xmax + shadsize, rect->ymin};
+  if (width == 0.0f) {
+    return;
+  }
 
-  const float v5[2] = {rect->xmax + 0.7f * shadsize, rect->ymin - 0.7f * shadsize};
-
-  const float v6[2] = {rect->xmax, rect->ymin - shadsize};
-  const float v7[2] = {rect->xmin + 0.3f * shadsize, rect->ymin};
-  const float v8[2] = {rect->xmin + 0.5f * shadsize, rect->ymin - shadsize};
-
-  /* right quad */
-  immAttr4ub(color, 0, 0, 0, alpha);
-  immVertex2fv(pos, v3);
-  immVertex2fv(pos, v1);
-  immAttr4ub(color, 0, 0, 0, 0);
-  immVertex2fv(pos, v2);
-
-  immVertex2fv(pos, v2);
-  immVertex2fv(pos, v4);
-  immAttr4ub(color, 0, 0, 0, alpha);
-  immVertex2fv(pos, v3);
-
-  /* corner shape */
-  // immAttr4ub(color, 0, 0, 0, alpha); /* Not needed, done above in previous tri. */
-  immVertex2fv(pos, v3);
-  immAttr4ub(color, 0, 0, 0, 0);
-  immVertex2fv(pos, v4);
-  immVertex2fv(pos, v5);
-
-  immVertex2fv(pos, v5);
-  immVertex2fv(pos, v6);
-  immAttr4ub(color, 0, 0, 0, alpha);
-  immVertex2fv(pos, v3);
-
-  /* bottom quad */
-  // immAttr4ub(color, 0, 0, 0, alpha); /* Not needed, done above in previous tri. */
-  immVertex2fv(pos, v3);
-  immAttr4ub(color, 0, 0, 0, 0);
-  immVertex2fv(pos, v6);
-  immVertex2fv(pos, v8);
-
-  immVertex2fv(pos, v8);
-  immAttr4ub(color, 0, 0, 0, alpha);
-  immVertex2fv(pos, v7);
-  immVertex2fv(pos, v3);
-}
-
-void UI_draw_box_shadow(const rctf *rect, uchar alpha)
-{
-  GPU_blend(GPU_BLEND_ALPHA);
-
-  GPUVertFormat *format = immVertexFormat();
-  const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uint color = GPU_vertformat_attr_add(
-      format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
-
-  immBindBuiltinProgram(GPU_SHADER_3D_SMOOTH_COLOR);
-
-  immBegin(GPU_PRIM_TRIS, 54);
-
-  /* accumulated outline boxes to make shade not linear, is more pleasant */
-  ui_shadowbox(rect, pos, color, 11.0, (20 * alpha) >> 8);
-  ui_shadowbox(rect, pos, color, 7.0, (40 * alpha) >> 8);
-  ui_shadowbox(rect, pos, color, 5.0, (80 * alpha) >> 8);
-
-  immEnd();
-
-  immUnbindProgram();
-
-  GPU_blend(GPU_BLEND_NONE);
-}
-
-void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha, int /*select*/)
-{
   /* This undoes the scale of the view for higher zoom factors to clamp the shadow size. */
   const float clamped_aspect = smoothminf(aspect, 1.0f, 0.5f);
+  const float shadow_width = width * clamped_aspect;
+  const float shadow_offset = min_ff(shadow_width, BLI_rctf_size_y(rct) - 2.0f * radius);
 
-  const float shadow_softness = 0.6f * U.widget_unit * clamped_aspect;
-  const float shadow_offset = 0.5f * U.widget_unit * clamped_aspect;
-  const float shadow_alpha = 0.5f * alpha;
-
-  const float max_radius = (BLI_rctf_size_y(rct) - shadow_offset) * 0.5f;
-  const float rad = min_ff(radius, max_radius);
+  const float inner_radius = max_ff(radius - U.pixelsize, 0.0);
+  const float shadow_radius = radius + shadow_width - U.pixelsize;
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -2219,13 +2199,13 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
   widget_params.recti.xmin = rct->xmin;
   widget_params.recti.ymin = rct->ymin;
   widget_params.recti.xmax = rct->xmax;
-  widget_params.recti.ymax = rct->ymax - shadow_offset;
-  widget_params.rect.xmin = rct->xmin - shadow_softness;
-  widget_params.rect.ymin = rct->ymin - shadow_softness;
-  widget_params.rect.xmax = rct->xmax + shadow_softness;
-  widget_params.rect.ymax = rct->ymax - shadow_offset + shadow_softness;
-  widget_params.radi = rad;
-  widget_params.rad = rad + shadow_softness;
+  widget_params.recti.ymax = rct->ymax;
+  widget_params.rect.xmin = rct->xmin - shadow_width;
+  widget_params.rect.ymin = rct->ymin - shadow_width;
+  widget_params.rect.xmax = rct->xmax + shadow_width;
+  widget_params.rect.ymax = rct->ymax + shadow_width - shadow_offset;
+  widget_params.radi = inner_radius;
+  widget_params.rad = shadow_radius;
   widget_params.round_corners[0] = (roundboxtype & UI_CNR_BOTTOM_LEFT) ? 1.0f : 0.0f;
   widget_params.round_corners[1] = (roundboxtype & UI_CNR_BOTTOM_RIGHT) ? 1.0f : 0.0f;
   widget_params.round_corners[2] = (roundboxtype & UI_CNR_TOP_RIGHT) ? 1.0f : 0.0f;
@@ -2235,17 +2215,8 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
   GPUBatch *batch = ui_batch_roundbox_shadow_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_SHADOW);
   GPU_batch_uniform_4fv_array(batch, "parameters", 4, (const float(*)[4]) & widget_params);
-  GPU_batch_uniform_1f(batch, "alpha", shadow_alpha);
+  GPU_batch_uniform_1f(batch, "alpha", alpha);
   GPU_batch_draw(batch);
-
-  /* outline emphasis */
-  const float color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
-  rctf rect{};
-  rect.xmin = rct->xmin - 0.5f;
-  rect.xmax = rct->xmax + 0.5f;
-  rect.ymin = rct->ymin - 0.5f;
-  rect.ymax = rct->ymax + 0.5f;
-  UI_draw_roundbox_4fv(&rect, false, radius + 0.5f, color);
 
   GPU_blend(GPU_BLEND_NONE);
 }

@@ -37,13 +37,13 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
@@ -52,7 +52,7 @@
 #include "BKE_subdiv_mesh.hh"
 #include "BKE_subdiv_modifier.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GEO_uv_pack.hh"
 #include "GEO_uv_parametrizer.hh"
@@ -607,7 +607,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
 {
   /* pointers to modifier data for unwrap control */
   SubsurfModifierData *smd_real;
-  /* Modifier initialization data, will  control what type of subdivision will happen. */
+  /* Modifier initialization data, will control what type of subdivision will happen. */
   SubsurfModifierData smd = {{nullptr}};
 
   /* Holds a map to edit-faces for every subdivision-surface face.
@@ -1223,7 +1223,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     }
   }
 
-  if (island_vector.size() == 0) {
+  if (island_vector.is_empty()) {
     return;
   }
 
@@ -1403,17 +1403,15 @@ struct UVPackIslandsData {
   blender::geometry::UVPackIsland_Params pack_island_params;
 };
 
-static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float *progress)
+static void pack_islands_startjob(void *pidv, wmJobWorkerStatus *worker_status)
 {
-  if (progress != nullptr) {
-    *progress = 0.02f;
-  }
+  worker_status->progress = 0.02f;
 
   UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
 
-  pid->pack_island_params.stop = stop;
-  pid->pack_island_params.do_update = do_update;
-  pid->pack_island_params.progress = progress;
+  pid->pack_island_params.stop = &worker_status->stop;
+  pid->pack_island_params.do_update = &worker_status->do_update;
+  pid->pack_island_params.progress = &worker_status->progress;
 
   uvedit_pack_islands_multi(pid->scene,
                             pid->objects,
@@ -1424,12 +1422,8 @@ static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float
                             !pid->use_job,
                             &pid->pack_island_params);
 
-  if (progress != nullptr) {
-    *progress = 0.99f;
-  }
-  if (do_update != nullptr) {
-    *do_update = true;
-  }
+  worker_status->progress = 0.99f;
+  worker_status->do_update = true;
 }
 
 static void pack_islands_endjob(void *pidv)
@@ -1554,7 +1548,8 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  pack_islands_startjob(pid, nullptr, nullptr, nullptr);
+  wmJobWorkerStatus worker_status = {};
+  pack_islands_startjob(pid, &worker_status);
   pack_islands_endjob(pid);
   pack_islands_freejob(pid);
 
@@ -2887,7 +2882,7 @@ static int smart_project_exec(bContext *C, wmOperator *op)
                                                    project_angle_limit_cos,
                                                    area_weight);
 
-    if (project_normal_array.size() == 0) {
+    if (project_normal_array.is_empty()) {
       MEM_freeN(thick_faces);
       continue;
     }
@@ -3246,7 +3241,7 @@ static int reset_exec(bContext *C, wmOperator * /*op*/)
       scene, view_layer, v3d, &objects_len);
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    Mesh *me = (Mesh *)obedit->data;
+    Mesh *mesh = (Mesh *)obedit->data;
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
 
     if (em->bm->totfacesel == 0) {
@@ -3258,7 +3253,7 @@ static int reset_exec(bContext *C, wmOperator * /*op*/)
       continue;
     }
 
-    ED_mesh_uv_loop_reset(C, me);
+    ED_mesh_uv_loop_reset(C, mesh);
 
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
@@ -3925,7 +3920,7 @@ void UV_OT_cube_project(wmOperatorType *ot)
 
 void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
 {
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
   bool sync_selection = (scene->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
 
   BMeshCreateParams create_params{};
@@ -3936,12 +3931,12 @@ void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
    * since we are not in edit mode we need to ensure only the uv flags are tested */
   scene->toolsettings->uv_flag &= ~UV_SYNC_SELECTION;
 
-  ED_mesh_uv_ensure(me, nullptr);
+  ED_mesh_uv_ensure(mesh, nullptr);
 
   BMeshFromMeshParams bm_from_me_params{};
   bm_from_me_params.calc_face_normal = true;
   bm_from_me_params.calc_vert_normal = true;
-  BM_mesh_bm_from_me(bm, me, &bm_from_me_params);
+  BM_mesh_bm_from_me(bm, mesh, &bm_from_me_params);
 
   /* Select all UVs for cube_project. */
   ED_uvedit_select_all(bm);
@@ -3962,7 +3957,7 @@ void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
 
   /* Write back from BMesh to Mesh. */
   BMeshToMeshParams bm_to_me_params{};
-  BM_mesh_bm_to_me(bmain, bm, me, &bm_to_me_params);
+  BM_mesh_bm_to_me(bmain, bm, mesh, &bm_to_me_params);
   BM_mesh_free(bm);
 
   if (sync_selection) {

@@ -46,8 +46,8 @@ LANGUAGES = (
     (10, "Catalan (Català)", "ca_AD"),
     (11, "Czech (Čeština)", "cs_CZ"),
     (12, "Portuguese (Português)", "pt_PT"),
-    (13, "Simplified Chinese (简体中文)", "zh_CN"),
-    (14, "Traditional Chinese (繁體中文)", "zh_TW"),
+    (13, "Simplified Chinese (简体中文)", "zh_HANS"),
+    (14, "Traditional Chinese (繁體中文)", "zh_HANT"),
     (15, "Russian (Русский)", "ru_RU"),
     (16, "Croatian (Hrvatski)", "hr_HR"),
     (17, "Serbian (Српски)", "sr_RS"),
@@ -72,9 +72,9 @@ LANGUAGES = (
     (33, "Hebrew (תירִבְעִ)", "he_IL"),
     (34, "Estonian (Eesti keel)", "et_EE"),
     (35, "Esperanto (Esperanto)", "eo"),
-    (36, "Spanish from Spain (Español de España)", "es_ES"),
+    # 36 is free, used to be 'Spanish from Spain' (`es_ES`).
     (37, "Amharic (አማርኛ)", "am_ET"),
-    (38, "Uzbek (Oʻzbek)", "uz_UZ"),
+    (38, "Uzbek (Oʻzbek)", "uz_UZ@latin"),
     (39, "Uzbek Cyrillic (Ўзбек)", "uz_UZ@cyrillic"),
     (40, "Hindi (हिन्दी)", "hi_IN"),
     (41, "Vietnamese (Tiếng Việt)", "vi_VN"),
@@ -85,6 +85,10 @@ LANGUAGES = (
     (46, "Thai (ภาษาไทย)", "th_TH"),
     (47, "Slovak (Slovenčina)", "sk_SK"),
     (48, "Georgian (ქართული)", "ka"),
+    (49, "Tamil (தமிழ்)", "ta"),
+    (50, "Khmer (ខ្មែរ)", "km"),
+    (51, "Swahili (Kiswahili)", "sw"),
+    (52, "Belarusian (беларуску)", "be"),
 )
 
 # Default context, in py (keep in sync with `BLT_translation.h`)!
@@ -95,12 +99,13 @@ DEFAULT_CONTEXT = "*"
 # Name of language file used by Blender to generate translations' menu.
 LANGUAGES_FILE = "languages"
 
-# The min level of completeness for a po file to be imported from /branches into /trunk, as a percentage.
+# The minimum level of completeness for a po file to be imported from
+# the working repository to the Blender one, as a percentage.
 IMPORT_MIN_LEVEL = 0.0
 
-# Languages in /branches we do not want to import in /trunk currently...
+# Languages in the working repository that should not be imported in the Blender one currently...
 IMPORT_LANGUAGES_SKIP = {
-    'am_ET', 'bg_BG', 'el_GR', 'et_EE', 'ne_NP', 'ro_RO', 'uz_UZ', 'uz_UZ@cyrillic', 'kk_KZ', 'es_ES',
+    'am_ET', 'et_EE', 'ro_RO', 'uz_UZ@latin', 'uz_UZ@cyrillic', 'kk_KZ',
 }
 
 # Languages that need RTL pre-processing.
@@ -271,9 +276,23 @@ PYGETTEXT_KEYWORDS = (() +
     tuple((r"\.{}\(\s*" + _msg_re + r"\s*\)").format(it)
           for it in ("description", "error_message_add")) +
 
-    # Node socket labels
+    # Node socket labels from declarations: context-less names
+    tuple((r"\.{}\(\s*" + _msg_re +
+           r"\s*\)(?![^;]*\.translation_context\()[^;]*;").format(it)
+          for it in ("short_label",)) +
+
+    # Node socket labels from declarations: names with contexts
+    tuple((r"\.{}\(\s*" + _msg_re + r"[^;]*\.translation_context\(\s*" +
+           _ctxt_re + r"\s*\)").format(it)
+          for it in ("short_label",)) +
+
+    # Dynamic node socket labels
     tuple((r"{}\(\s*[^,]+,\s*" + _msg_re + r"\s*\)").format(it)
           for it in ("node_sock_label",)) +
+
+    # Node panel declarations
+    tuple((r"\.{}\(\s*" + _msg_re + r"\s*\)").format(it)
+          for it in ("add_panel",)) +
 
     # Geometry Nodes field inputs
     ((r"FieldInput\(CPPType::get<.*?>\(\),\s*" + _msg_re + r"\s*\)"),) +
@@ -328,6 +347,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "color_index is invalid",
     "cos(A)",
     "cosh(A)",
+    "dB",                            # dB audio power unit.
     "dbl-",                          # Compacted for 'double', for keymap items.
     "description",                   # Addons' field. :/
     "dx",
@@ -385,6 +405,45 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "wmOwnerID '%s' not in workspace '%s'",
     "y",
     "y = (Ax + B)",
+    # ID plural names, defined in IDTypeInfo.
+    "armatures",
+    "brushes",
+    "cache_files",
+    "cameras",
+    "collections",
+    "curves",
+    "fonts",
+    "grease_pencils",
+    "grease_pencils_v3",
+    "hair_curves",
+    "ipos",
+    "lattices",
+    "libraries",
+    "lightprobes",
+    "lights",
+    "linestyles",
+    "link_placeholders",
+    "masks",
+    "metaballs",
+    "materials",
+    "meshes",
+    "movieclips",
+    "node_groups",
+    "objects",
+    "paint_curves",
+    "palettes",
+    "particles",
+    "pointclouds",
+    "screens",
+    "shape_keys",
+    "sounds",
+    "speakers",
+    "texts",
+    "textures",
+    "volumes",
+    "window_managers",
+    "workspaces",
+    "worlds",
     # Sub-strings.
     "all",
     "all and invert unselected",
@@ -472,6 +531,7 @@ WARN_MSGID_END_POINT_ALLOWED = {
     "Float Neg. Exp.",
     "Max Ext.",
     "Newer graphics drivers may be available to improve Blender support.",
+    "Not assigned to any bone collection.",
     "Numpad .",
     "Pad.",
     "    RNA Path: bpy.types.",
@@ -529,25 +589,15 @@ SOURCE_DIR = os.path.abspath(os.path.join("blender"))
 # The bf-translation repository (you'll have to override this in your user_settings.py).
 I18N_DIR = os.path.abspath(os.path.join("i18n"))
 
-# The /branches path (relative to I18N_DIR).
-REL_BRANCHES_DIR = os.path.join("branches")
-
-# The /trunk path (relative to I18N_DIR).
-REL_TRUNK_DIR = os.path.join("trunk")
-
-# The /trunk/po path (relative to I18N_DIR).
-REL_TRUNK_PO_DIR = os.path.join(REL_TRUNK_DIR, "po")
-
-# The /trunk/mo path (relative to I18N_DIR).
-REL_TRUNK_MO_DIR = os.path.join(REL_TRUNK_DIR, "locale")
+# The 'work' path to PO files (relative to I18N_DIR).
+REL_WORK_DIR = os.path.join("")
 
 
-# The path to the *git* translation repository (relative to SOURCE_DIR).
-REL_GIT_I18N_DIR = os.path.join("locale")
+# The path to the Blender translation directory (relative to SOURCE_DIR).
+REL_BLENDER_I18N_DIR = os.path.join("locale")
 
-
-# The /po path of the *git* translation repository (relative to REL_GIT_I18N_DIR).
-REL_GIT_I18N_PO_DIR = os.path.join("po")
+# The /po path of the Blender translation directory (relative to REL_BLENDER_I18N_DIR).
+REL_BLENDER_I18N_PO_DIR = os.path.join("po")
 
 
 # The Blender source path to check for i18n macros (relative to SOURCE_DIR).
@@ -563,13 +613,8 @@ REL_TEMPLATES_DIR = os.path.join("scripts", "startup", "bl_app_templates_system"
 ASSET_CATALOG_FILE = "blender_assets.cats.txt"
 
 # The template messages file (relative to I18N_DIR).
-REL_FILE_NAME_POT = os.path.join(REL_BRANCHES_DIR, DOMAIN + ".pot")
+REL_FILE_NAME_POT = os.path.join(REL_WORK_DIR, DOMAIN + ".pot")
 
-# Mo root data-path.
-REL_MO_PATH_ROOT = os.path.join(REL_TRUNK_DIR, "locale")
-
-# Mo path generator for a given language.
-REL_MO_PATH_TEMPLATE = os.path.join(REL_MO_PATH_ROOT, "{}", "LC_MESSAGES")
 
 # Mo path generator for a given language (relative to any "locale" dir).
 MO_PATH_ROOT_RELATIVE = os.path.join("locale")
@@ -716,18 +761,13 @@ class I18nSettings:
         else:
             fname.write(self.to_json())
 
-    BRANCHES_DIR = property(*(_gen_get_set_path("I18N_DIR", "REL_BRANCHES_DIR")))
-    TRUNK_DIR = property(*(_gen_get_set_path("I18N_DIR", "REL_TRUNK_DIR")))
-    TRUNK_PO_DIR = property(*(_gen_get_set_path("I18N_DIR", "REL_TRUNK_PO_DIR")))
-    TRUNK_MO_DIR = property(*(_gen_get_set_path("I18N_DIR", "REL_TRUNK_MO_DIR")))
-    GIT_I18N_ROOT = property(*(_gen_get_set_path("SOURCE_DIR", "REL_GIT_I18N_DIR")))
-    GIT_I18N_PO_DIR = property(*(_gen_get_set_path("GIT_I18N_ROOT", "REL_GIT_I18N_PO_DIR")))
+    WORK_DIR = property(*(_gen_get_set_path("I18N_DIR", "REL_WORK_DIR")))
+    BLENDER_I18N_ROOT = property(*(_gen_get_set_path("SOURCE_DIR", "REL_BLENDER_I18N_DIR")))
+    BLENDER_I18N_PO_DIR = property(*(_gen_get_set_path("BLENDER_I18N_ROOT", "REL_BLENDER_I18N_PO_DIR")))
     POTFILES_SOURCE_DIR = property(*(_gen_get_set_path("SOURCE_DIR", "REL_POTFILES_SOURCE_DIR")))
     PRESETS_DIR = property(*(_gen_get_set_path("SOURCE_DIR", "REL_PRESETS_DIR")))
     TEMPLATES_DIR = property(*(_gen_get_set_path("SOURCE_DIR", "REL_TEMPLATES_DIR")))
     FILE_NAME_POT = property(*(_gen_get_set_path("I18N_DIR", "REL_FILE_NAME_POT")))
-    MO_PATH_ROOT = property(*(_gen_get_set_path("I18N_DIR", "REL_MO_PATH_ROOT")))
-    MO_PATH_TEMPLATE = property(*(_gen_get_set_path("I18N_DIR", "REL_MO_PATH_TEMPLATE")))
 
     def _get_py_sys_paths(self):
         return self.INTERN_PY_SYS_PATHS

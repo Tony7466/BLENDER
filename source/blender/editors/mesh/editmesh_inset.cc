@@ -16,11 +16,11 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -217,7 +217,7 @@ static void edbm_inset_cancel(bContext *C, wmOperator *op)
       BMEditMesh *em = BKE_editmesh_from_object(obedit);
       EDBM_redo_state_restore_and_free(&opdata->ob_store[ob_index].mesh_backup, em, true);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = true;
       EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -262,7 +262,7 @@ static bool edbm_inset_calc(wmOperator *op)
       EDBM_op_init(em,
                    &bmop,
                    op,
-                   "inset_individual faces=%hf use_even_offset=%b  use_relative_offset=%b "
+                   "inset_individual faces=%hf use_even_offset=%b use_relative_offset=%b "
                    "use_interpolate=%b thickness=%f depth=%f",
                    BM_ELEM_SELECT,
                    use_even_offset,
@@ -311,7 +311,7 @@ static bool edbm_inset_calc(wmOperator *op)
     }
 
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = false;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);

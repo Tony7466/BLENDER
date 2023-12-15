@@ -16,13 +16,13 @@
 #include "BLI_blenlib.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_rand.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
 #include "RNA_access.hh"
@@ -1227,21 +1227,24 @@ static void region_overlap_fix(ScrArea *area, ARegion *region)
     if (region_iter->flag & (RGN_FLAG_POLL_FAILED | RGN_FLAG_HIDDEN)) {
       continue;
     }
+    if (!region_iter->overlap || (region_iter->alignment & RGN_SPLIT_PREV)) {
+      continue;
+    }
 
-    if (region_iter->overlap && ((region_iter->alignment & RGN_SPLIT_PREV) == 0)) {
-      if (ELEM(region_iter->alignment, RGN_ALIGN_FLOAT)) {
-        continue;
+    const int align_iter = RGN_ALIGN_ENUM_FROM_MASK(region_iter->alignment);
+    if (ELEM(align_iter, RGN_ALIGN_FLOAT)) {
+      continue;
+    }
+
+    align1 = align_iter;
+    if (BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr)) {
+      if (align1 != align) {
+        /* Left overlapping right or vice-versa, forbid this! */
+        region->flag |= RGN_FLAG_TOO_SMALL;
+        return;
       }
-      align1 = region_iter->alignment;
-      if (BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr)) {
-        if (align1 != align) {
-          /* Left overlapping right or vice-versa, forbid this! */
-          region->flag |= RGN_FLAG_TOO_SMALL;
-          return;
-        }
-        /* Else, we have our previous region on same side. */
-        break;
-      }
+      /* Else, we have our previous region on same side. */
+      break;
     }
   }
 
@@ -1272,18 +1275,19 @@ static void region_overlap_fix(ScrArea *area, ARegion *region)
     if (region_iter->flag & (RGN_FLAG_POLL_FAILED | RGN_FLAG_HIDDEN)) {
       continue;
     }
-    if (ELEM(region_iter->alignment, RGN_ALIGN_FLOAT)) {
+    if (!region_iter->overlap || (region_iter->alignment & RGN_SPLIT_PREV)) {
       continue;
     }
 
-    if (region_iter->overlap && (region_iter->alignment & RGN_SPLIT_PREV) == 0) {
-      if ((region_iter->alignment != align) &&
-          BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr))
-      {
-        /* Left overlapping right or vice-versa, forbid this! */
-        region->flag |= RGN_FLAG_TOO_SMALL;
-        return;
-      }
+    const int align_iter = RGN_ALIGN_ENUM_FROM_MASK(region_iter->alignment);
+    if (ELEM(align_iter, RGN_ALIGN_FLOAT)) {
+      continue;
+    }
+
+    if ((align_iter != align) && BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr)) {
+      /* Left overlapping right or vice-versa, forbid this! */
+      region->flag |= RGN_FLAG_TOO_SMALL;
+      return;
     }
   }
 }
@@ -1300,15 +1304,19 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
       }
     }
     else if (spacetype == SPACE_VIEW3D) {
-      if (ELEM(regiontype,
-               RGN_TYPE_TOOLS,
-               RGN_TYPE_UI,
-               RGN_TYPE_TOOL_PROPS,
-               RGN_TYPE_FOOTER,
-               RGN_TYPE_HEADER,
-               RGN_TYPE_TOOL_HEADER,
-               RGN_TYPE_ASSET_SHELF,
-               RGN_TYPE_ASSET_SHELF_HEADER))
+      if (regiontype == RGN_TYPE_HEADER) {
+        /* Do not treat as overlapped if no transparency. */
+        bTheme *theme = UI_GetTheme();
+        return theme->space_view3d.header[3] != 255;
+      }
+      else if (ELEM(regiontype,
+                    RGN_TYPE_TOOLS,
+                    RGN_TYPE_UI,
+                    RGN_TYPE_TOOL_PROPS,
+                    RGN_TYPE_FOOTER,
+                    RGN_TYPE_TOOL_HEADER,
+                    RGN_TYPE_ASSET_SHELF,
+                    RGN_TYPE_ASSET_SHELF_HEADER))
       {
         return true;
       }
@@ -1704,13 +1712,15 @@ static void area_calc_totrct(ScrArea *area, const rcti *window_rect)
   area->winy = BLI_rcti_size_y(&area->totrct) + 1;
 }
 
-/* used for area initialize below */
-static void region_subwindow(ARegion *region)
+/**
+ * Update the `ARegion::visible` flag.
+ */
+static void region_evaulate_visibility(ARegion *region)
 {
   bool hidden = (region->flag & (RGN_FLAG_POLL_FAILED | RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) !=
                 0;
 
-  if ((region->alignment & RGN_SPLIT_PREV) && region->prev) {
+  if ((region->alignment & (RGN_SPLIT_PREV | RGN_ALIGN_HIDE_WITH_PREV)) && region->prev) {
     hidden = hidden || (region->prev->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL));
   }
 
@@ -2004,7 +2014,7 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   area_azone_init(win, screen, area);
 
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    region_subwindow(region);
+    region_evaulate_visibility(region);
 
     /* region size may have changed, init does necessary adjustments */
     if (region->type->init) {
@@ -2108,7 +2118,7 @@ void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
 
   /* region windows, default and own handlers */
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    region_subwindow(region);
+    region_evaulate_visibility(region);
 
     if (region->visible) {
       /* default region handlers */
@@ -2176,7 +2186,8 @@ static void area_offscreen_exit(wmWindowManager *wm, wmWindow *win, ScrArea *are
     }
 
     WM_event_modal_handler_region_replace(win, region, nullptr);
-    WM_draw_region_free(region, true);
+    WM_draw_region_free(region);
+    region->visible = false;
 
     MEM_SAFE_FREE(region->headerstr);
 
@@ -2220,7 +2231,7 @@ void ED_region_floating_init(ARegion *region)
   BLI_assert(region->alignment == RGN_ALIGN_FLOAT);
 
   /* refresh can be called before window opened */
-  region_subwindow(region);
+  region_evaulate_visibility(region);
 
   region_update_rect(region);
 }
@@ -2818,6 +2829,14 @@ void ED_region_clear(const bContext *C, const ARegion *region, const int /*Theme
   else {
     UI_ThemeClearColor(colorid);
   }
+}
+
+static void region_clear_fully_transparent(const bContext *C)
+{
+  /* view should be in pixelspace */
+  UI_view2d_view_restore(C);
+
+  GPU_clear_color(0, 0, 0, 0);
 }
 
 BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
@@ -3464,6 +3483,31 @@ bool ED_region_property_search(const bContext *C,
   return has_result;
 }
 
+/**
+ * The drawable part of the region might be slightly smaller because of area edges. This is
+ * especially visible for header-like regions, where vertical space around widgets is small, and
+ * it's quite visible when widgets aren't centered properly.
+ */
+static void layout_coordinates_correct_for_drawable_rect(
+    const wmWindow *win, const ScrArea *area, const ARegion *region, int * /*r_xco*/, int *r_yco)
+{
+  /* Don't do corrections at the window borders where the region rectangles are clipped already. */
+  {
+    rcti win_rect;
+    WM_window_rect_calc(win, &win_rect);
+    if (region->winrct.ymin == win_rect.ymin) {
+      return;
+    }
+    if (region->winrct.ymax == (win_rect.ymax - 1)) {
+      return;
+    }
+  }
+
+  if (region->winrct.ymax == area->totrct.ymax) {
+    *r_yco -= 1;
+  }
+}
+
 void ED_region_header_layout(const bContext *C, ARegion *region)
 {
   const uiStyle *style = UI_style_get_dpi();
@@ -3478,11 +3522,8 @@ void ED_region_header_layout(const bContext *C, ARegion *region)
   int yco = buttony + (region->winy - buttony) / 2;
   int maxco = xco;
 
-  /* XXX workaround for 1 px alignment issue. Not sure what causes it...
-   * Would prefer a proper fix - Julian */
-  if (!ELEM(CTX_wm_area(C)->spacetype, SPACE_TOPBAR, SPACE_STATUSBAR)) {
-    yco -= 1;
-  }
+  layout_coordinates_correct_for_drawable_rect(
+      CTX_wm_window(C), CTX_wm_area(C), region, &xco, &yco);
 
   /* set view2d view matrix for scrolling (without scrollers) */
   UI_view2d_view_ortho(&region->v2d);
@@ -3552,11 +3593,8 @@ void ED_region_header_layout(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 }
 
-void ED_region_header_draw(const bContext *C, ARegion *region)
+static void region_draw_blocks_in_view2d(const bContext *C, const ARegion *region)
 {
-  /* clear */
-  ED_region_clear(C, region, region_background_color_id(C, region));
-
   UI_view2d_view_ortho(&region->v2d);
 
   /* View2D matrix might have changed due to dynamic sized regions. */
@@ -3569,11 +3607,44 @@ void ED_region_header_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 }
 
+void ED_region_header_draw(const bContext *C, ARegion *region)
+{
+  /* clear */
+  ED_region_clear(C, region, region_background_color_id(C, region));
+  region_draw_blocks_in_view2d(C, region);
+}
+
+void ED_region_header_draw_with_button_sections(const bContext *C,
+                                                const ARegion *region,
+                                                const uiButtonSectionsAlign align)
+{
+  const ThemeColorID bgcolorid = region_background_color_id(C, region);
+
+  /* Clear and draw button sections background when using region overlap. Otherwise clear using the
+   * background color like normal. */
+  if (region->overlap) {
+    region_clear_fully_transparent(C);
+    UI_region_button_sections_draw(region, bgcolorid, align);
+  }
+  else {
+    ED_region_clear(C, region, bgcolorid);
+  }
+  region_draw_blocks_in_view2d(C, region);
+}
+
 void ED_region_header(const bContext *C, ARegion *region)
 {
   /* TODO: remove? */
   ED_region_header_layout(C, region);
   ED_region_header_draw(C, region);
+}
+
+void ED_region_header_with_button_sections(const bContext *C,
+                                           ARegion *region,
+                                           const uiButtonSectionsAlign align)
+{
+  ED_region_header_layout(C, region);
+  ED_region_header_draw_with_button_sections(C, region, align);
 }
 
 void ED_region_header_init(ARegion *region)

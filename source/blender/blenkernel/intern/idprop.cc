@@ -345,7 +345,7 @@ static IDProperty *IDP_CopyArray(const IDProperty *prop, const int flag)
 /** \name String Functions (IDProperty String API)
  * \{ */
 
-IDProperty *IDP_NewStringMaxSize(const char *st, const char *name, int maxncpy)
+IDProperty *IDP_NewStringMaxSize(const char *st, const size_t st_maxncpy, const char *name)
 {
   IDProperty *prop = static_cast<IDProperty *>(
       MEM_callocN(sizeof(IDProperty), "IDProperty string"));
@@ -358,18 +358,17 @@ IDProperty *IDP_NewStringMaxSize(const char *st, const char *name, int maxncpy)
   }
   else {
     /* include null terminator '\0' */
-    int stlen = int(strlen(st)) + 1;
-
-    if ((maxncpy > 0) && (maxncpy < stlen)) {
-      stlen = maxncpy;
-    }
+    const int stlen = int((st_maxncpy > 0) ? BLI_strnlen(st, st_maxncpy - 1) : strlen(st)) + 1;
 
     prop->data.pointer = MEM_mallocN(size_t(stlen), "id property string 2");
     prop->len = prop->totallen = stlen;
-    if (stlen > 0) {
+
+    /* Ensured above, must always be true otherwise null terminator assignment will be invalid. */
+    BLI_assert(stlen > 0);
+    if (stlen > 1) {
       memcpy(prop->data.pointer, st, size_t(stlen));
-      IDP_String(prop)[stlen - 1] = '\0';
     }
+    IDP_String(prop)[stlen - 1] = '\0';
   }
 
   prop->type = IDP_STRING;
@@ -380,7 +379,7 @@ IDProperty *IDP_NewStringMaxSize(const char *st, const char *name, int maxncpy)
 
 IDProperty *IDP_NewString(const char *st, const char *name)
 {
-  return IDP_NewStringMaxSize(st, name, -1);
+  return IDP_NewStringMaxSize(st, 0, name);
 }
 
 static IDProperty *IDP_CopyString(const IDProperty *prop, const int flag)
@@ -398,14 +397,12 @@ static IDProperty *IDP_CopyString(const IDProperty *prop, const int flag)
   return newp;
 }
 
-void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, int maxncpy)
+void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, const size_t st_maxncpy)
 {
   BLI_assert(prop->type == IDP_STRING);
   const bool is_byte = prop->subtype == IDP_STRING_SUB_BYTE;
-  int stlen = int(strlen(st)) + (is_byte ? 0 : 1);
-  if ((maxncpy > 0) && (maxncpy < stlen)) {
-    stlen = maxncpy;
-  }
+  const int stlen = int((st_maxncpy > 0) ? BLI_strnlen(st, st_maxncpy - 1) : strlen(st)) +
+                    (is_byte ? 0 : 1);
   IDP_ResizeArray(prop, stlen);
   if (stlen > 0) {
     memcpy(prop->data.pointer, st, size_t(stlen));
@@ -783,13 +780,14 @@ void IDP_CopyPropertyContent(IDProperty *dst, const IDProperty *src)
   IDP_FreeProperty(idprop_tmp);
 }
 
-IDProperty *IDP_GetProperties(ID *id, const bool create_if_needed)
+IDProperty *IDP_GetProperties(ID *id)
 {
-  if (id->properties) {
-    return id->properties;
-  }
+  return id->properties;
+}
 
-  if (create_if_needed) {
+IDProperty *IDP_EnsureProperties(ID *id)
+{
+  if (id->properties == nullptr) {
     id->properties = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty"));
     id->properties->type = IDP_GROUP;
     /* NOTE(@ideasman42): Don't overwrite the data's name and type
@@ -1306,6 +1304,10 @@ static void IDP_DirectLinkProperty(IDProperty *prop, BlendDataReader *reader);
 static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
 {
   BLO_read_data_address(reader, &prop->ui_data);
+  if (!prop->ui_data) {
+    /* Can happen when opening more recent files with unknown types of IDProperties. */
+    return;
+  }
   BLO_read_data_address(reader, &prop->ui_data->description);
 
   switch (IDP_ui_data_type(prop)) {

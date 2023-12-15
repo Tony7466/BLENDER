@@ -17,10 +17,10 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_material.h"
 #include "BKE_report.h"
@@ -52,32 +52,33 @@ static const EnumPropertyItem prop_similar_compare_types[] = {
 };
 
 static const EnumPropertyItem prop_similar_types[] = {
-    {SIMVERT_NORMAL, "NORMAL", 0, "Normal", ""},
-    {SIMVERT_FACE, "FACE", 0, "Amount of Adjacent Faces", ""},
-    {SIMVERT_VGROUP, "VGROUP", 0, "Vertex Groups", ""},
-    {SIMVERT_EDGE, "EDGE", 0, "Amount of Connecting Edges", ""},
-    {SIMVERT_CREASE, "VCREASE", 0, "Vertex Crease", ""},
-    {SIMEDGE_LENGTH, "LENGTH", 0, "Length", ""},
-    {SIMEDGE_DIR, "DIR", 0, "Direction", ""},
-    {SIMEDGE_FACE, "FACE", 0, "Amount of Faces Around an Edge", ""},
-    {SIMEDGE_FACE_ANGLE, "FACE_ANGLE", 0, "Face Angles", ""},
-    {SIMEDGE_CREASE, "CREASE", 0, "Crease", ""},
-    {SIMEDGE_BEVEL, "BEVEL", 0, "Bevel", ""},
-    {SIMEDGE_SEAM, "SEAM", 0, "Seam", ""},
-    {SIMEDGE_SHARP, "SHARP", 0, "Sharpness", ""},
+    {SIMVERT_NORMAL, "VERT_NORMAL", 0, "Normal", ""},
+    {SIMVERT_FACE, "VERT_FACES", 0, "Amount of Adjacent Faces", ""},
+    {SIMVERT_VGROUP, "VERT_GROUPS", 0, "Vertex Groups", ""},
+    {SIMVERT_EDGE, "VERT_EDGES", 0, "Amount of Connecting Edges", ""},
+    {SIMVERT_CREASE, "VERT_CREASE", 0, "Vertex Crease", ""},
+
+    {SIMEDGE_LENGTH, "EDGE_LENGTH", 0, "Length", ""},
+    {SIMEDGE_DIR, "EDGE_DIR", 0, "Direction", ""},
+    {SIMEDGE_FACE, "EDGE_FACES", 0, "Amount of Faces Around an Edge", ""},
+    {SIMEDGE_FACE_ANGLE, "EDGE_FACE_ANGLE", 0, "Face Angles", ""},
+    {SIMEDGE_CREASE, "EDGE_CREASE", 0, "Crease", ""},
+    {SIMEDGE_BEVEL, "EDGE_BEVEL", 0, "Bevel", ""},
+    {SIMEDGE_SEAM, "EDGE_SEAM", 0, "Seam", ""},
+    {SIMEDGE_SHARP, "EDGE_SHARP", 0, "Sharpness", ""},
 #ifdef WITH_FREESTYLE
-    {SIMEDGE_FREESTYLE, "FREESTYLE_EDGE", 0, "Freestyle Edge Marks", ""},
+    {SIMEDGE_FREESTYLE, "EDGE_FREESTYLE", 0, "Freestyle Edge Marks", ""},
 #endif
 
-    {SIMFACE_MATERIAL, "MATERIAL", 0, "Material", ""},
-    {SIMFACE_AREA, "AREA", 0, "Area", ""},
-    {SIMFACE_SIDES, "SIDES", 0, "Polygon Sides", ""},
-    {SIMFACE_PERIMETER, "PERIMETER", 0, "Perimeter", ""},
-    {SIMFACE_NORMAL, "NORMAL", 0, "Normal", ""},
-    {SIMFACE_COPLANAR, "COPLANAR", 0, "Coplanar", ""},
-    {SIMFACE_SMOOTH, "SMOOTH", 0, "Flat/Smooth", ""},
+    {SIMFACE_MATERIAL, "FACE_MATERIAL", 0, "Material", ""},
+    {SIMFACE_AREA, "FACE_AREA", 0, "Area", ""},
+    {SIMFACE_SIDES, "FACE_SIDES", 0, "Polygon Sides", ""},
+    {SIMFACE_PERIMETER, "FACE_PERIMETER", 0, "Perimeter", ""},
+    {SIMFACE_NORMAL, "FACE_NORMAL", 0, "Normal", ""},
+    {SIMFACE_COPLANAR, "FACE_COPLANAR", 0, "Coplanar", ""},
+    {SIMFACE_SMOOTH, "FACE_SMOOTH", 0, "Flat/Smooth", ""},
 #ifdef WITH_FREESTYLE
-    {SIMFACE_FREESTYLE, "FREESTYLE_FACE", 0, "Freestyle Face Marks", ""},
+    {SIMFACE_FREESTYLE, "FACE_FREESTYLE", 0, "Freestyle Face Marks", ""},
 #endif
 
     {0, nullptr, 0, nullptr, nullptr},
@@ -457,7 +458,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     if (changed) {
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
@@ -483,7 +484,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
       }
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
@@ -507,11 +508,6 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 /** \name Select Similar Edge
  * \{ */
 
-/**
- * NOTE: This is not normal, but the edge direction itself and always in
- * a positive quadrant (tries z, y then x).
- * Therefore we need to use the entire object transformation matrix.
- */
 static void edge_pos_direction_worldspace_get(Object *ob, BMEdge *edge, float *r_dir)
 {
   float v1[3], v2[3];
@@ -523,22 +519,6 @@ static void edge_pos_direction_worldspace_get(Object *ob, BMEdge *edge, float *r
 
   sub_v3_v3v3(r_dir, v1, v2);
   normalize_v3(r_dir);
-
-  /* Make sure we have a consistent direction that can be checked regardless of
-   * the verts order of the edges. This spares us from storing dir and -dir in the tree_3d. */
-  if (fabs(r_dir[2]) < FLT_EPSILON) {
-    if (fabs(r_dir[1]) < FLT_EPSILON) {
-      if (r_dir[0] < 0.0f) {
-        mul_v3_fl(r_dir, -1.0f);
-      }
-    }
-    else if (r_dir[1] < 0.0f) {
-      mul_v3_fl(r_dir, -1.0f);
-    }
-  }
-  else if (r_dir[2] < 0.0f) {
-    mul_v3_fl(r_dir, -1.0f);
-  }
 }
 
 static float edge_length_squared_worldspace_get(Object *ob, BMEdge *edge)
@@ -618,7 +598,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
       tree_1d = BLI_kdtree_1d_new(tot_edges_selected_all);
       break;
     case SIMEDGE_DIR:
-      tree_3d = BLI_kdtree_3d_new(tot_edges_selected_all);
+      tree_3d = BLI_kdtree_3d_new(tot_edges_selected_all * 2);
       break;
     case SIMEDGE_FACE:
       gset = BLI_gset_ptr_new("Select similar edge: face");
@@ -686,9 +666,13 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             BLI_gset_add(gset, POINTER_FROM_INT(BM_edge_face_count(edge)));
             break;
           case SIMEDGE_DIR: {
-            float dir[3];
+            float dir[3], dir_flip[3];
             edge_pos_direction_worldspace_get(ob, edge, dir);
             BLI_kdtree_3d_insert(tree_3d, tree_index++, dir);
+            /* Also store the flipped direction so it can be checked regardless of the verts order
+             * of the edges. */
+            negate_v3_v3(dir_flip, dir);
+            BLI_kdtree_3d_insert(tree_3d, tree_index++, dir_flip);
             break;
           }
           case SIMEDGE_LENGTH: {
@@ -915,7 +899,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     if (changed) {
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
@@ -941,7 +925,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
       }
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
@@ -1275,7 +1259,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     if (changed) {
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);

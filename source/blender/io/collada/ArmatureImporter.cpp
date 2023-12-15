@@ -14,16 +14,16 @@
 #include "COLLADAFWUniqueId.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_object.h"
+#include "BKE_armature.hh"
+#include "BKE_object.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 #include "ED_armature.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ArmatureImporter.h"
 #include "collada_utils.h"
@@ -140,12 +140,13 @@ int ArmatureImporter::create_bone(SkinInfo *skin,
   float loc[3], size[3], rot[3][3];
   BoneExtensionMap &extended_bones = bone_extension_manager.getExtensionMap(arm);
   BoneExtended &be = add_bone_extended(bone, node, totchild, layer_labels, extended_bones);
-  int layer = be.get_bone_layers();
-  if (layer) {
-    ANIM_bone_set_layer_ebone(bone, layer);
+
+  for (const std::string &bcoll_name : be.get_bone_collections()) {
+    BoneCollection *bcoll = ANIM_armature_bonecoll_get_by_name(arm, bcoll_name.c_str());
+    if (bcoll) {
+      ANIM_armature_bonecoll_assign_editbone(bcoll, bone);
+    }
   }
-  /* Ensure that all populated bone layers are visible after import. */
-  ANIM_armature_enable_layers(arm, layer);
 
   float *tail = be.get_tail();
   int use_connect = be.get_use_connect();
@@ -490,8 +491,6 @@ void ArmatureImporter::create_armature_bones(Main *bmain, std::vector<Object *> 
     }
 
     ED_armature_to_edit(armature);
-    /* Layers are enabled according to imported bone set in create_bone(). */
-    ANIM_armature_bonecoll_hide_all(armature);
 
     create_bone(
         nullptr, node, nullptr, node->getChildNodes().getCount(), nullptr, armature, layer_labels);
@@ -530,7 +529,6 @@ Object *ArmatureImporter::create_armature_bones(Main *bmain, SkinInfo &skin)
    * - add edit bones and head/tail properties using matrices and parent-child info
    * - exit edit mode
    * - set a sphere shape to leaf bones */
-
   Object *ob_arm = nullptr;
 
   /*
@@ -873,7 +871,7 @@ void ArmatureImporter::link_armature(Object *ob_arm,
 
 bool ArmatureImporter::write_skin_controller_data(const COLLADAFW::SkinControllerData *data)
 {
-  /* at this stage we get vertex influence info that should go into me->verts and ob->defbase
+  /* at this stage we get vertex influence info that should go into mesh->verts and ob->defbase
    * there's no info to which object this should be long so we associate it with
    * skin controller data UID. */
 
@@ -957,14 +955,14 @@ void ArmatureImporter::make_shape_keys(bContext *C)
         /* Better to have a separate map of morph objects,
          * This will do for now since only mesh morphing is imported. */
 
-        Mesh *me = this->mesh_importer->get_mesh_by_geom_uid(morphTargetIds[i]);
+        Mesh *mesh = this->mesh_importer->get_mesh_by_geom_uid(morphTargetIds[i]);
 
-        if (me) {
-          me->key = key;
-          std::string morph_name = *this->mesh_importer->get_geometry_name(me->id.name);
+        if (mesh) {
+          mesh->key = key;
+          std::string morph_name = *this->mesh_importer->get_geometry_name(mesh->id.name);
 
           kb = BKE_keyblock_add_ctime(key, morph_name.c_str(), false);
-          BKE_keyblock_convert_from_mesh(me, key, kb);
+          BKE_keyblock_convert_from_mesh(mesh, key, kb);
 
           /* apply weights */
           weight = morphWeights.getFloatValues()->getData()[i];
@@ -1060,7 +1058,6 @@ BoneExtended &ArmatureImporter::add_bone_extended(EditBone *bone,
 
     float tail[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
     float roll = 0;
-    std::string layers;
 
     et = etit->second;
 
@@ -1072,7 +1069,7 @@ BoneExtended &ArmatureImporter::add_bone_extended(EditBone *bone,
     has_connect = et->setData("connect", &connect_type);
     bool has_roll = et->setData("roll", &roll);
 
-    layers = et->setData("layer", layers);
+    be->set_bone_collections(et->dataSplitString("collections"));
 
     if (has_tail && !has_connect) {
       /* got a bone tail definition but no connect info -> bone is not connected */
@@ -1080,7 +1077,6 @@ BoneExtended &ArmatureImporter::add_bone_extended(EditBone *bone,
       connect_type = 0;
     }
 
-    be->set_bone_layers(layers, layer_labels);
     if (has_tail) {
       be->set_tail(tail);
     }

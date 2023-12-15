@@ -45,7 +45,7 @@ class NODE_MT_category_compositor_input_constant(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeRGB")
         node_add_menu.add_node_type(layout, "CompositorNodeValue")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+        node_add_menu.draw_assets_for_catalog(layout, "Input/Constant")
 
 
 class NODE_MT_category_compositor_input_scene(Menu):
@@ -58,7 +58,7 @@ class NODE_MT_category_compositor_input_scene(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeSceneTime")
         node_add_menu.add_node_type(layout, "CompositorNodeTime")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+        node_add_menu.draw_assets_for_catalog(layout, "Input/Scene")
 
 
 class NODE_MT_category_compositor_output(Menu):
@@ -71,7 +71,6 @@ class NODE_MT_category_compositor_output(Menu):
 
         layout = self.layout
         node_add_menu.add_node_type(layout, "CompositorNodeComposite")
-        node_add_menu.add_node_type(layout, "CompositorNodeSplitViewer")
         node_add_menu.add_node_type(layout, "CompositorNodeViewer")
         layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodeOutputFile")
@@ -120,7 +119,7 @@ class NODE_MT_category_compositor_color_adjust(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeCurveRGB")
         node_add_menu.add_node_type(layout, "CompositorNodeTonemap")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+        node_add_menu.draw_assets_for_catalog(layout, "Color/Adjust")
 
 
 class NODE_MT_category_compositor_color_mix(Menu):
@@ -138,7 +137,7 @@ class NODE_MT_category_compositor_color_mix(Menu):
             layout, "CompositorNodeMixRGB",
             label=iface_("Mix Color"))
         node_add_menu.add_node_type(layout, "CompositorNodeZcombine")
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+        node_add_menu.draw_assets_for_catalog(layout, "Color/Mix")
 
 
 class NODE_MT_category_compositor_filter(Menu):
@@ -179,7 +178,7 @@ class NODE_MT_category_compositor_filter_blur(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeDBlur")
         node_add_menu.add_node_type(layout, "CompositorNodeVecBlur")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+        node_add_menu.draw_assets_for_catalog(layout, "Filter/Blur")
 
 
 class NODE_MT_category_compositor_group(Menu):
@@ -279,6 +278,7 @@ class NODE_MT_category_compositor_utilities(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeLevels")
         node_add_menu.add_node_type(layout, "CompositorNodeNormalize")
         layout.separator()
+        node_add_menu.add_node_type(layout, "CompositorNodeSplit")
         node_add_menu.add_node_type(layout, "CompositorNodeSwitch")
         node_add_menu.add_node_type(
             layout, "CompositorNodeSwitchView",

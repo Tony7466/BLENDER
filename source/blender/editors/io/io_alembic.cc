@@ -25,8 +25,8 @@
 #  include "DNA_scene_types.h"
 #  include "DNA_space_types.h"
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 
 #  include "BLI_path_util.h"
@@ -49,7 +49,7 @@
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "io_alembic.hh"
 

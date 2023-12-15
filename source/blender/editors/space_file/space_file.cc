@@ -16,13 +16,13 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -129,7 +129,7 @@ static void file_free(SpaceLink *sl)
   MEM_SAFE_FREE(sfile->params);
   MEM_SAFE_FREE(sfile->asset_params);
   if (sfile->runtime != nullptr) {
-    BKE_reports_clear(&sfile->runtime->is_blendfile_readable_reports);
+    BKE_reports_free(&sfile->runtime->is_blendfile_readable_reports);
   }
   MEM_SAFE_FREE(sfile->runtime);
 
@@ -797,7 +797,7 @@ static bool filepath_drop_poll(bContext *C, wmDrag *drag, const wmEvent * /*even
 
 static void filepath_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
 /* region dropbox definition */

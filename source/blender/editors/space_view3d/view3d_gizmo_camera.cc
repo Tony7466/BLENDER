@@ -12,7 +12,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_camera.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 
@@ -33,7 +33,7 @@
 #include "WM_message.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "view3d_intern.h" /* own include */
 

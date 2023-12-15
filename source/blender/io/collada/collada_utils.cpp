@@ -12,6 +12,7 @@
 #include "COLLADAFWGeometry.h"
 #include "COLLADAFWMeshPrimitive.h"
 #include "COLLADAFWMeshVertexData.h"
+#include "COLLADAFWNode.h"
 
 #include <set>
 #include <string>
@@ -32,10 +33,10 @@
 #include "BLI_math_matrix.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
@@ -45,8 +46,10 @@
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
+
+#include "ANIM_bone_collections.hh"
 
 #include "ED_node.hh"
 #include "ED_object.hh"
@@ -55,17 +58,18 @@
 #include "WM_api.hh" /* XXX hrm, see if we can do without this */
 #include "WM_types.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 #if 0
 #  include "NOD_common.h"
 #endif
 
 #include "BlenderContext.h"
 #include "ExportSettings.h"
+#include "ExtraTags.h"
 #include "collada_utils.h"
 
 float bc_get_float_value(const COLLADAFW::FloatOrDoubleArray &array, uint index)
@@ -207,6 +211,46 @@ Object *bc_add_object(Main *bmain, Scene *scene, ViewLayer *view_layer, int type
   return ob;
 }
 
+static void bc_add_armature_collections(COLLADAFW::Node *node,
+                                        ExtraTags *node_extra_tags,
+                                        bArmature *arm)
+{
+  if (!node_extra_tags) {
+    /* No 'extra' tags means that there are no bone collections. */
+    return;
+  }
+
+  std::vector<std::string> collection_names = node_extra_tags->dataSplitString("collections");
+  std::vector<std::string> visible_names = node_extra_tags->dataSplitString("visible_collections");
+  std::set<std::string> visible_names_set(visible_names.begin(), visible_names.end());
+  for (const std::string &name : collection_names) {
+    BoneCollection *bcoll = ANIM_armature_bonecoll_new(arm, name.c_str());
+    if (visible_names_set.find(name) == visible_names_set.end()) {
+      ANIM_bonecoll_hide(bcoll);
+    }
+    else {
+      ANIM_bonecoll_show(bcoll);
+    }
+  }
+
+  std::string active_name;
+  active_name = node_extra_tags->setData("active_collection", active_name);
+  ANIM_armature_bonecoll_active_name_set(arm, active_name.c_str());
+}
+
+Object *bc_add_armature(COLLADAFW::Node *node,
+                        ExtraTags *node_extra_tags,
+                        Main *bmain,
+                        Scene *scene,
+                        ViewLayer *view_layer,
+                        int type,
+                        const char *name)
+{
+  Object *ob = bc_add_object(bmain, scene, view_layer, type, name);
+  bc_add_armature_collections(node, node_extra_tags, reinterpret_cast<bArmature *>(ob->data));
+  return ob;
+}
+
 Mesh *bc_get_mesh_copy(BlenderContext &blender_context,
                        Object *ob,
                        BC_export_mesh_type export_mesh_type,
@@ -320,8 +364,8 @@ bool bc_is_root_bone(Bone *aBone, bool deform_bones_only)
 
 int bc_get_active_UVLayer(Object *ob)
 {
-  Mesh *me = (Mesh *)ob->data;
-  return CustomData_get_active_layer_index(&me->loop_data, CD_PROP_FLOAT2);
+  Mesh *mesh = (Mesh *)ob->data;
+  return CustomData_get_active_layer_index(&mesh->loop_data, CD_PROP_FLOAT2);
 }
 
 std::string bc_url_encode(std::string data)
@@ -400,7 +444,7 @@ void bc_rotate_from_reference_quat(float quat_to[4], float quat_from[4], float m
   mul_qt_qtqt(quat_to, qd, quat_from); /* rot is the final rotation corresponding to mat_to */
 }
 
-void bc_triangulate_mesh(Mesh *me)
+void bc_triangulate_mesh(Mesh *mesh)
 {
   bool use_beauty = false;
   bool tag_only = false;
@@ -413,12 +457,12 @@ void bc_triangulate_mesh(Mesh *me)
   BMeshFromMeshParams bm_from_me_params{};
   bm_from_me_params.calc_face_normal = true;
   bm_from_me_params.calc_vert_normal = true;
-  BM_mesh_bm_from_me(bm, me, &bm_from_me_params);
+  BM_mesh_bm_from_me(bm, mesh, &bm_from_me_params);
   BM_mesh_triangulate(bm, quad_method, use_beauty, 4, tag_only, nullptr, nullptr, nullptr);
 
   BMeshToMeshParams bm_to_me_params{};
   bm_to_me_params.calc_object_remap = false;
-  BM_mesh_bm_to_me(nullptr, bm, me, &bm_to_me_params);
+  BM_mesh_bm_to_me(nullptr, bm, mesh, &bm_to_me_params);
   BM_mesh_free(bm);
 }
 
@@ -500,7 +544,6 @@ BoneExtended::BoneExtended(EditBone *aBone)
   this->tail[2] = 0.0f;
   this->use_connect = -1;
   this->roll = 0;
-  this->bone_layers = 0;
 
   this->has_custom_tail = false;
   this->has_custom_roll = false;
@@ -582,62 +625,13 @@ inline bool isInteger(const std::string &s)
   return (*p == 0);
 }
 
-void BoneExtended::set_bone_layers(std::string layerString, std::vector<std::string> &layer_labels)
+void BoneExtended::set_bone_collections(std::vector<std::string> bone_collections)
 {
-  std::stringstream ss(layerString);
-  std::string layer;
-  int pos;
-
-  while (ss >> layer) {
-
-    /* Blender uses numbers to specify layers. */
-    if (isInteger(layer)) {
-      pos = atoi(layer.c_str());
-      if (pos >= 0 && pos < 32) {
-        this->bone_layers = bc_set_layer(this->bone_layers, pos);
-        continue;
-      }
-    }
-
-    /* Layer uses labels (not supported by blender). Map to layer numbers: */
-    pos = find(layer_labels.begin(), layer_labels.end(), layer) - layer_labels.begin();
-    if (pos >= layer_labels.size()) {
-      layer_labels.push_back(layer); /* Remember layer number for future usage. */
-    }
-
-    if (pos > 31) {
-      fprintf(stderr,
-              "Too many layers in Import. Layer %s mapped to Blender layer 31\n",
-              layer.c_str());
-      pos = 31;
-    }
-
-    /* If numeric layers and labeled layers are used in parallel (unlikely),
-     * we get a potential mix-up. Just leave as is for now. */
-    this->bone_layers = bc_set_layer(this->bone_layers, pos);
-  }
+  this->bone_collections = bone_collections;
 }
-
-std::string BoneExtended::get_bone_layers(int bitfield)
+const std::vector<std::string> &BoneExtended::get_bone_collections()
 {
-  std::string sep;
-  int bit = 1u;
-
-  std::ostringstream ss;
-  for (int i = 0; i < 32; i++) {
-    if (bit & bitfield) {
-      ss << sep << i;
-      sep = " ";
-    }
-    bit = bit << 1;
-  }
-  return ss.str();
-}
-
-int BoneExtended::get_bone_layers()
-{
-  /* ensure that the bone is in at least one bone layer! */
-  return (bone_layers == 0) ? 1 : bone_layers;
+  return this->bone_collections;
 }
 
 void BoneExtended::set_use_connect(int use_connect)
@@ -1070,11 +1064,11 @@ void bc_copy_m4d_v44(double (&r)[4][4], std::vector<std::vector<double>> &a)
 /**
  * Returns name of Active UV Layer or empty String if no active UV Layer defined
  */
-static std::string bc_get_active_uvlayer_name(Mesh *me)
+static std::string bc_get_active_uvlayer_name(Mesh *mesh)
 {
-  int num_layers = CustomData_number_of_layers(&me->loop_data, CD_PROP_FLOAT2);
+  int num_layers = CustomData_number_of_layers(&mesh->loop_data, CD_PROP_FLOAT2);
   if (num_layers) {
-    const char *layer_name = bc_CustomData_get_active_layer_name(&me->loop_data, CD_PROP_FLOAT2);
+    const char *layer_name = bc_CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2);
     if (layer_name) {
       return std::string(layer_name);
     }
@@ -1088,18 +1082,18 @@ static std::string bc_get_active_uvlayer_name(Mesh *me)
  */
 static std::string bc_get_active_uvlayer_name(Object *ob)
 {
-  Mesh *me = (Mesh *)ob->data;
-  return bc_get_active_uvlayer_name(me);
+  Mesh *mesh = (Mesh *)ob->data;
+  return bc_get_active_uvlayer_name(mesh);
 }
 
 /**
  * Returns UV Layer name or empty string if layer index is out of range
  */
-static std::string bc_get_uvlayer_name(Mesh *me, int layer)
+static std::string bc_get_uvlayer_name(Mesh *mesh, int layer)
 {
-  int num_layers = CustomData_number_of_layers(&me->loop_data, CD_PROP_FLOAT2);
+  int num_layers = CustomData_number_of_layers(&mesh->loop_data, CD_PROP_FLOAT2);
   if (num_layers && layer < num_layers) {
-    const char *layer_name = bc_CustomData_get_layer_name(&me->loop_data, CD_PROP_FLOAT2, layer);
+    const char *layer_name = bc_CustomData_get_layer_name(&mesh->loop_data, CD_PROP_FLOAT2, layer);
     if (layer_name) {
       return std::string(layer_name);
     }
@@ -1199,7 +1193,7 @@ COLLADASW::ColorOrTexture bc_get_emission(Material *ma)
     return bc_get_cot(default_color);
   }
 
-  COLLADASW::ColorOrTexture cot = bc_get_cot_from_shader(shader, "Emission", default_color);
+  COLLADASW::ColorOrTexture cot = bc_get_cot_from_shader(shader, "Emission Color", default_color);
 
   /* If using texture, emission strength is not supported. */
   COLLADASW::Color col = cot.getColor();

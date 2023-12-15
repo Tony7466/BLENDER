@@ -12,8 +12,9 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
-#include "BKE_DerivedMesh.h"
-#include "BKE_customdata.h"
+#include "BKE_DerivedMesh.hh"
+#include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -145,7 +146,7 @@ class TextureMarginMap {
 /* The map contains 2 kinds of pixels: DijkstraPixels and face indices. The top bit determines
  * what kind it is. With the top bit set, it is a 'dijkstra' pixel. The bottom 4 bits encode the
  * direction of the shortest path and the remaining 27 bits are used to store the distance. If
- * the top bit  is not set, the rest of the bits is used to store the face index.
+ * the top bit is not set, the rest of the bits is used to store the face index.
  */
 #define PackDijkstraPixel(dist, dir) (0x80000000 + ((dist) << 4) + (dir))
 #define DijkstraPixelGetDistance(dp) (((dp) ^ 0x80000000) >> 4)
@@ -251,7 +252,7 @@ class TextureMarginMap {
 
           int other_poly;
           bool found_pixel_in_polygon = false;
-          if (lookup_pixel_polygon_neighbourhood(x, y, &face, &destX, &destY, &other_poly)) {
+          if (lookup_pixel_polygon_neighborhood(x, y, &face, &destX, &destY, &other_poly)) {
 
             for (int i = 0; i < maxPolygonSteps; i++) {
               /* Force to pixel grid. */
@@ -326,7 +327,7 @@ class TextureMarginMap {
    * face we need can be the one next to the one the Dijkstra map provides. To prevent missing
    * pixels also check the neighboring polygons.
    */
-  bool lookup_pixel_polygon_neighbourhood(
+  bool lookup_pixel_polygon_neighborhood(
       float x, float y, uint32_t *r_start_poly, float *r_destx, float *r_desty, int *r_other_poly)
   {
     float found_dist;
@@ -567,15 +568,13 @@ void RE_generate_texturemargin_adjacentfaces(ImBuf *ibuf,
                                              char const *uv_layer,
                                              const float uv_offset[2])
 {
-  const blender::float2 *mloopuv;
-  if ((uv_layer == nullptr) || (uv_layer[0] == '\0')) {
-    mloopuv = static_cast<const blender::float2 *>(
-        CustomData_get_layer(&mesh->loop_data, CD_PROP_FLOAT2));
-  }
-  else {
-    mloopuv = static_cast<const blender::float2 *>(
-        CustomData_get_layer_named(&mesh->loop_data, CD_PROP_FLOAT2, uv_layer));
-  }
+  const blender::StringRef uv_map_name = (uv_layer && uv_layer[0]) ?
+                                             uv_layer :
+                                             CustomData_get_active_layer_name(&mesh->loop_data,
+                                                                              CD_PROP_FLOAT2);
+  const blender::bke::AttributeAccessor attributes = mesh->attributes();
+  const blender::VArraySpan<blender::float2> uv_map = *attributes.lookup<blender::float2>(
+      uv_map_name, ATTR_DOMAIN_CORNER);
 
   blender::render::texturemargin::generate_margin(ibuf,
                                                   mask,
@@ -585,7 +584,7 @@ void RE_generate_texturemargin_adjacentfaces(ImBuf *ibuf,
                                                   mesh->faces(),
                                                   mesh->corner_edges(),
                                                   mesh->corner_verts(),
-                                                  {mloopuv, mesh->totloop},
+                                                  uv_map,
                                                   uv_offset);
 }
 

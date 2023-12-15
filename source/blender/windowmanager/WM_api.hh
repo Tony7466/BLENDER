@@ -52,6 +52,7 @@ struct wmGizmo;
 struct wmGizmoMap;
 struct wmGizmoMapType;
 struct wmJob;
+struct wmJobWorkerStatus;
 struct wmOperator;
 struct wmOperatorType;
 struct wmPaintCursor;
@@ -109,15 +110,14 @@ void WM_init(bContext *C, int argc, const char **argv);
  *
  * \param C: The context or null, a null context implies `do_user_exit_actions == false` &
  * prevents some editor-exit operations from running.
- * \param do_python: Free all data associated with Blender's Python integration.
- * Also exit the Python interpreter (unless `WITH_PYTHON_MODULE` is enabled).
+ * \param do_python_exit: Exit the Python interpreter (unless `WITH_PYTHON_MODULE` is enabled).
  * \param do_user_exit_actions: When enabled perform actions associated with a user
  * having been using Blender then exiting. Actions such as writing the auto-save
  * and writing any changes to preferences.
  * Set to false in background mode or when exiting because of failed command line argument parsing.
  * In general automated actions where the user isn't making changes should pass in false too.
  */
-void WM_exit_ex(bContext *C, bool do_python, bool do_user_exit_actions);
+void WM_exit_ex(bContext *C, bool do_python_exit, bool do_user_exit_actions);
 
 /**
  * Main exit function to close Blender ordinarily.
@@ -172,6 +172,8 @@ enum eWM_CapabilitiesFlag {
   WM_CAPABILITY_CLIPBOARD_IMAGES = (1 << 4),
   /** Ability to sample a color outside of Blender windows. */
   WM_CAPABILITY_DESKTOP_SAMPLE = (1 << 5),
+  /** Support for IME input methods. */
+  WM_CAPABILITY_INPUT_IME = (1 << 6),
   /** The initial value, indicates the value needs to be set by inspecting GHOST. */
   WM_CAPABILITY_INITIALIZED = (1 << 31),
 };
@@ -591,6 +593,21 @@ void WM_report_banner_show(wmWindowManager *wm, wmWindow *win) ATTR_NONNULL(1);
  * Hide all currently displayed banners and abort their timer.
  */
 void WM_report_banners_cancel(Main *bmain);
+/**
+ * Move a whole list of reports to the WM ReportList, and show the banner.
+ *
+ * \note In case the given \a reports is a `nullptr`, or has its #RPT_OP_HOLD flag set, this
+ * function does nothing.
+ *
+ * \note The list of reports from given \a reports is moved into the list of WM's reports, so the
+ * given \a reports will be empty after calling this function. The \a reports #ReportList data
+ * itself is not freed or cleared though, and remains fully usable after this call.
+ *
+ * \params reports The #ReportList from which to move reports to the WM one, may be `nullptr`.
+ * \params wm the WindowManager to add given \a reports to. If `nullptr`, the first WM of current
+ * #G_MAIN will be used.
+ */
+void WM_reports_from_reports_move(wmWindowManager *wm, ReportList *reports);
 void WM_report(eReportType type, const char *message);
 void WM_reportf(eReportType type, const char *format, ...) ATTR_PRINTF_FORMAT(2, 3);
 
@@ -617,8 +634,10 @@ void WM_event_timer_free_data(wmTimer *timer);
  */
 void WM_event_timers_free_all(wmWindowManager *wm);
 
-/** Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
- * internally by the window manager code. */
+/**
+ * Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
+ * internally by the window manager code.
+ */
 void WM_event_timer_remove(wmWindowManager *wm, wmWindow *win, wmTimer *timer);
 void WM_event_timer_remove_notifier(wmWindowManager *wm, wmWindow *win, wmTimer *timer);
 /**
@@ -1370,7 +1389,7 @@ bool WM_drag_is_ID_type(const wmDrag *drag, int idcode);
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
 wmDragAsset *WM_drag_create_asset_data(const blender::asset_system::AssetRepresentation *asset,
-                                       int /* #eAssetImportMethod */ import_type);
+                                       int /* #eAssetImportMethod */ import_method);
 
 wmDragAsset *WM_drag_get_asset_data(const wmDrag *drag, int idcode);
 AssetMetaData *WM_drag_get_asset_meta_data(const wmDrag *drag, int idcode);
@@ -1405,18 +1424,38 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(wmDrag *drag);
 
-/* Path drag and drop. */
+/* Paths drag and drop. */
 /**
- * \param path: The path to drag. Value will be copied into the drag data so the passed string may
- *              be destructed.
+ * \param paths: The paths to drag. Values will be copied into the drag data so the passed strings
+ * may be destructed.
  */
-wmDragPath *WM_drag_create_path_data(const char *path);
-const char *WM_drag_get_path(const wmDrag *drag);
+wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths);
+/**
+ *  If `drag` contains path data, returns the first path int he path list.
+ */
+const char *WM_drag_get_single_path(const wmDrag *drag);
+/**
+ * If `drag` contains path data, returns the first path in the path list that matches a
+ * a `file_type`.
+ *
+ * \param drag: The drag that could contain drag path data.
+ * \param file_type: #eFileSel_File_Types bit flag.
+ */
+const char *WM_drag_get_single_path(const wmDrag *drag, int file_type);
+blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag);
+/**
+ * If `drag` contains path data, returns if any file path match a `file_type`.
+ *
+ * \param drag: The drag that could contain drag path data.
+ * \param file_type: #eFileSel_File_Types bit flag.
+ */
+bool WM_drag_has_path_file_type(const wmDrag *drag, int file_type);
 /**
  * Note that even though the enum return type uses bit-flags, this should never have multiple
- * type-bits set, so `ELEM()` like comparison is possible.
+ * type-bits set, so `ELEM()` like comparison is possible. To check all paths or to do a bit-flag
+ * check use `WM_drag_has_path_file_type(drag, file_type)` instead.
  */
-int /* eFileSel_File_Types */ WM_drag_get_path_file_type(const wmDrag *drag);
+int /* #eFileSel_File_Types */ WM_drag_get_path_file_type(const wmDrag *drag);
 
 /* Set OpenGL viewport and scissor */
 void wmViewport(const rcti *winrct);
@@ -1443,11 +1482,12 @@ enum eWM_JobFlag {
 ENUM_OPERATORS(eWM_JobFlag, WM_JOB_PROGRESS);
 
 /**
- * Identifying jobs by owner alone is unreliable, this isn't saved,
- * order can change (keep 0 for 'any').
+ * Identifying jobs by owner alone is unreliable, this isn't saved, order can change.
  */
 enum eWM_JobType {
+  /** Not a real type, use for querying any type. */
   WM_JOB_TYPE_ANY = 0,
+
   WM_JOB_TYPE_COMPOSITE,
   WM_JOB_TYPE_RENDER,
   WM_JOB_TYPE_RENDER_PREVIEW, /* UI preview */
@@ -1515,10 +1555,7 @@ void WM_jobs_customdata_set(wmJob *, void *customdata, void (*free)(void *));
 void WM_jobs_timer(wmJob *, double timestep, unsigned int note, unsigned int endnote);
 void WM_jobs_delay_start(wmJob *, double delay_time);
 
-using wm_jobs_start_callback = void (*)(void *custom_data,
-                                        bool *stop,
-                                        bool *do_update,
-                                        float *progress);
+using wm_jobs_start_callback = void (*)(void *custom_data, wmJobWorkerStatus *worker_status);
 void WM_jobs_callbacks(wmJob *,
                        wm_jobs_start_callback startjob,
                        void (*initjob)(void *),
@@ -1535,17 +1572,17 @@ void WM_jobs_callbacks_ex(wmJob *wm_job,
 
 /**
  * If job running, the same owner gave it a new job.
- * if different owner starts existing startjob, it suspends itself
+ * if different owner starts existing #wmJob::startjob, it suspends itself.
  */
 void WM_jobs_start(wmWindowManager *wm, wmJob *);
 /**
  * Signal job(s) from this owner or callback to stop, timer is required to get handled.
  */
-void WM_jobs_stop(wmWindowManager *wm, const void *owner, void *startjob);
+void WM_jobs_stop(wmWindowManager *wm, const void *owner, wm_jobs_start_callback startjob);
 /**
  * Actually terminate thread and job timer.
  */
-void WM_jobs_kill(wmWindowManager *wm, void *owner, void (*)(void *, bool *, bool *, float *));
+void WM_jobs_kill(wmWindowManager *wm, void *owner, wm_jobs_start_callback startjob);
 /**
  * Wait until every job ended.
  */
@@ -1583,20 +1620,17 @@ void WM_clipboard_text_set(const char *buf, bool selection);
 bool WM_clipboard_image_available();
 
 /**
- * Get image data from the Clipboard
- * \param r_width: the returned image width in pixels.
- * \param r_height: the returned image height in pixels.
- * \return pointer uint array in RGBA byte order. Caller must free.
+ * Get image data from the clipboard.
+ * \return The image or null when not found. Caller must free.
  */
 ImBuf *WM_clipboard_image_get();
 
 /**
- * Put image data to the Clipboard
- * \param rgba: uint array in RGBA byte order.
- * \param width: the image width in pixels.
- * \param height: the image height in pixels.
+ * Put image data to the clipboard.
+ *
+ * \param ibuf: the image to set the clipboard to.
  */
-bool WM_clipboard_image_set(ImBuf *ibuf);
+bool WM_clipboard_image_set(ImBuf *ibuf) ATTR_NONNULL(1);
 
 /* progress */
 
@@ -1607,6 +1641,16 @@ void WM_progress_clear(wmWindow *win);
 
 void *WM_draw_cb_activate(wmWindow *win, void (*draw)(const wmWindow *, void *), void *customdata);
 void WM_draw_cb_exit(wmWindow *win, void *handle);
+/**
+ * High level function to redraw windows.
+ *
+ * \warning this should be avoided by operators and low-level IO functionality
+ * because drawing relies on the event system & depsgraph preparing data for display.
+ * An explicit call to draw is error prone since it may attempt to show stale data.
+ *
+ * With some rare exceptions which require a redraw (screen-shot & sample screen color for e.g.)
+ * explicitly redrawing should be avoided, see: #92704, #93950, #97627 & #98462.
+ */
 void WM_redraw_windows(bContext *C);
 
 void WM_draw_region_viewport_ensure(Scene *scene, ARegion *region, short space_type);
@@ -1615,7 +1659,7 @@ void WM_draw_region_viewport_unbind(ARegion *region);
 
 /* Region drawing */
 
-void WM_draw_region_free(ARegion *region, bool hide);
+void WM_draw_region_free(ARegion *region);
 GPUViewport *WM_draw_region_get_viewport(ARegion *region);
 GPUViewport *WM_draw_region_get_bound_viewport(ARegion *region);
 
@@ -1732,7 +1776,7 @@ bool WM_event_is_xr(const wmEvent *event);
  * If this is a tablet event, return tablet pressure and set `*pen_flip`
  * to 1 if the eraser tool is being used, 0 otherwise.
  */
-float WM_event_tablet_data(const wmEvent *event, int *pen_flip, float tilt[2]);
+float WM_event_tablet_data(const wmEvent *event, bool *r_pen_flip, float r_tilt[2]);
 bool WM_event_is_tablet(const wmEvent *event);
 
 int WM_event_absolute_delta_x(const wmEvent *event);

@@ -11,14 +11,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_ghash.h"
 #include "BLI_hash_md5.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_system.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -47,7 +47,7 @@
 /* For SHGetSpecialFolderPath, has to be done before BLI_winstuff
  * because 'near' is disabled through BLI_windstuff */
 #  include "BLI_winstuff.h"
-#  include "utfconv.h"
+#  include "utfconv.hh"
 #  include <direct.h> /* #chdir */
 #  include <shlobj.h>
 #endif

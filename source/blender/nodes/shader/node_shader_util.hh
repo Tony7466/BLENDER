@@ -22,6 +22,13 @@
 
 #include "node_shader_register.hh"
 
+#ifdef WITH_MATERIALX
+#  include "materialx/node_parser.h"
+#else
+#  define NODE_SHADER_MATERIALX_BEGIN NodeMaterialXFunction node_shader_materialx = nullptr;
+#  define NODE_SHADER_MATERIALX_END
+#endif
+
 struct bContext;
 typedef struct bContext bContext;
 struct bNodeExecContext;
@@ -65,3 +72,7 @@ void ntreeShaderEndExecTree_internal(bNodeTreeExec *exec);
 
 void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node);
 void get_XYZ_to_RGB_for_gpu(XYZ_to_RGB *data);
+
+bool node_socket_not_zero(const GPUNodeStack &socket);
+bool node_socket_not_white(const GPUNodeStack &socket);
+bool node_socket_not_black(const GPUNodeStack &socket);

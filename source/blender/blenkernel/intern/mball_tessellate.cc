@@ -27,7 +27,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memarena.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_displist.h"
@@ -35,11 +35,11 @@
 #include "BKE_lib_id.h"
 #include "BKE_mball_tessellate.h" /* own include */
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLI_strict_flags.h"
 
@@ -963,7 +963,7 @@ static void vnormal(PROCESS *process, const float point[3], float r_no[3])
   r_no[1] = metaball(process, point[0], point[1] + delta, point[2]) - f;
   r_no[2] = metaball(process, point[0], point[1], point[2] + delta) - f;
 }
-#endif /* USE_ACCUM_NORMAL */
+#endif /* !USE_ACCUM_NORMAL */
 
 /**
  * \return the id of vertex between two corners.

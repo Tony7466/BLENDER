@@ -13,6 +13,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "BLI_array_utils.hh"
+
 #include "GEO_mesh_primitive_uv_sphere.hh"
 
 #include "node_geometry_util.hh"
@@ -126,7 +128,7 @@ static Mesh *create_circle_mesh(const float radius,
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
-  BKE_mesh_smooth_flag_set(mesh, false);
+  bke::mesh_smooth_set(*mesh, false);
 
   /* Assign vertex coordinates. */
   const float angle_delta = 2.0f * (M_PI / float(verts_num));
@@ -159,8 +161,8 @@ static Mesh *create_circle_mesh(const float radius,
     face_offsets.first() = 0;
     face_offsets.last() = corner_verts.size();
 
-    std::iota(corner_verts.begin(), corner_verts.end(), 0);
-    std::iota(corner_edges.begin(), corner_edges.end(), 0);
+    array_utils::fill_index_range<int>(corner_verts);
+    array_utils::fill_index_range<int>(corner_edges);
 
     mesh->tag_loose_edges_none();
   }
@@ -181,6 +183,7 @@ static Mesh *create_circle_mesh(const float radius,
   }
 
   mesh->tag_loose_verts_none();
+  mesh->tag_overlapping_none();
   mesh->bounds_set_eager(calculate_bounds_circle(radius, verts_num));
 
   return mesh;

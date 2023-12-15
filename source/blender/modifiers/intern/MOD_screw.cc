@@ -27,11 +27,11 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -39,8 +39,8 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -836,8 +836,13 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   /* more of an offset in this case */
   edge_offset = totedge + (totvert * (step_tot - (close ? 0 : 1)));
 
-  const int *src_material_index = BKE_mesh_material_indices(mesh);
-  int *dst_material_index = BKE_mesh_material_indices_for_write(result);
+  const bke::AttributeAccessor src_attributes = mesh->attributes();
+  const VArraySpan src_material_index = *src_attributes.lookup<int>("material_index",
+                                                                    ATTR_DOMAIN_FACE);
+
+  bke::MutableAttributeAccessor dst_attributes = result->attributes_for_write();
+  bke::SpanAttributeWriter dst_material_index = dst_attributes.lookup_or_add_for_write_span<int>(
+      "material_index", ATTR_DOMAIN_FACE);
 
   for (uint i = 0; i < totedge; i++, med_new_firstloop++) {
     const uint step_last = step_tot - (close ? 1 : 2);
@@ -858,7 +863,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     i2 = uint((*med_new_firstloop)[1]);
 
     if (has_mpoly_orig) {
-      mat_nr = src_material_index == nullptr ? 0 : src_material_index[face_index_orig];
+      mat_nr = src_material_index.is_empty() ? 0 : src_material_index[face_index_orig];
     }
     else {
       mat_nr = 0;
@@ -884,7 +889,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
       }
       else {
         origindex[face_index] = ORIGINDEX_NONE;
-        dst_material_index[face_index] = mat_nr;
+        dst_material_index.span[face_index] = mat_nr;
         sharp_faces.span[face_index] = use_flat_shading;
       }
       face_offests_new[face_index] = face_index * 4;
@@ -1026,6 +1031,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
                                          ltmd->merge_dist);
   }
 
+  dst_material_index.finish();
+
   return result;
 }
 
@@ -1126,7 +1133,7 @@ ModifierTypeInfo modifierType_Screw = {
     /*struct_name*/ "ScrewModifierData",
     /*struct_size*/ sizeof(ScrewModifierData),
     /*srna*/ &RNA_ScrewModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
 
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_EnableInEditmode,

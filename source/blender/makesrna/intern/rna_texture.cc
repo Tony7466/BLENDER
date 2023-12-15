@@ -23,7 +23,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_node.h"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_paint.hh"
 
 #include "BLT_translation.h"
@@ -133,13 +133,13 @@ static const EnumPropertyItem blend_type_items[] = {
 #  include "RNA_access.hh"
 
 #  include "BKE_colorband.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_image.h"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "ED_node.hh"
 #  include "ED_render.hh"

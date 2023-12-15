@@ -13,8 +13,8 @@
 
 #include "DNA_object_types.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
@@ -32,7 +32,7 @@
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "mesh_intern.h" /* own include */
 
@@ -41,7 +41,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -104,27 +104,25 @@ static bool edbm_preselect_or_active(bContext *C, const View3D *v3d, Base **r_ba
   return (*r_ele != nullptr);
 }
 
-static bool edbm_preselect_or_active_init_viewcontext(bContext *C,
-                                                      ViewContext *vc,
-                                                      Base **r_base,
-                                                      BMElem **r_ele)
+static ViewContext edbm_preselect_or_active_init_viewcontext(bContext *C,
+                                                             Base **r_base,
+                                                             BMElem **r_ele)
 {
-  em_setup_viewcontext(C, vc);
-  bool ok = edbm_preselect_or_active(C, vc->v3d, r_base, r_ele);
+  ViewContext vc = em_setup_viewcontext(C);
+  bool ok = edbm_preselect_or_active(C, vc.v3d, r_base, r_ele);
   if (ok) {
-    ED_view3d_viewcontext_init_object(vc, (*r_base)->object);
+    ED_view3d_viewcontext_init_object(&vc, (*r_base)->object);
   }
-  return ok;
+  return vc;
 }
 
 static int edbm_polybuild_transform_at_cursor_invoke(bContext *C,
                                                      wmOperator * /*op*/,
                                                      const wmEvent * /*event*/)
 {
-  ViewContext vc;
   Base *basact = nullptr;
   BMElem *ele_act = nullptr;
-  edbm_preselect_or_active_init_viewcontext(C, &vc, &basact, &ele_act);
+  ViewContext vc = edbm_preselect_or_active_init_viewcontext(C, &basact, &ele_act);
   BMEditMesh *em = vc.em;
   BMesh *bm = em->bm;
 
@@ -150,7 +148,7 @@ static int edbm_polybuild_transform_at_cursor_invoke(bContext *C,
   }
 
   EDBMUpdate_Params params{};
-  params.calc_looptri = true;
+  params.calc_looptris = true;
   params.calc_normals = true;
   params.is_destructive = true;
   EDBM_update(static_cast<Mesh *>(vc.obedit->data), &params);
@@ -187,11 +185,9 @@ static int edbm_polybuild_delete_at_cursor_invoke(bContext *C,
                                                   const wmEvent * /*event*/)
 {
   bool changed = false;
-
-  ViewContext vc;
   Base *basact = nullptr;
   BMElem *ele_act = nullptr;
-  edbm_preselect_or_active_init_viewcontext(C, &vc, &basact, &ele_act);
+  ViewContext vc = edbm_preselect_or_active_init_viewcontext(C, &basact, &ele_act);
   BMEditMesh *em = vc.em;
   BMesh *bm = em->bm;
 
@@ -238,7 +234,7 @@ static int edbm_polybuild_delete_at_cursor_invoke(bContext *C,
 
   if (changed) {
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = true;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(vc.obedit->data), &params);
@@ -282,10 +278,9 @@ static int edbm_polybuild_face_at_cursor_invoke(bContext *C, wmOperator *op, con
   float center[3];
   bool changed = false;
 
-  ViewContext vc;
   Base *basact = nullptr;
   BMElem *ele_act = nullptr;
-  edbm_preselect_or_active_init_viewcontext(C, &vc, &basact, &ele_act);
+  ViewContext vc = edbm_preselect_or_active_init_viewcontext(C, &basact, &ele_act);
   BMEditMesh *em = vc.em;
   BMesh *bm = em->bm;
 
@@ -406,7 +401,7 @@ static int edbm_polybuild_face_at_cursor_invoke(bContext *C, wmOperator *op, con
 
   if (changed) {
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = true;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(vc.obedit->data), &params);
@@ -460,10 +455,9 @@ static int edbm_polybuild_split_at_cursor_invoke(bContext *C,
   float center[3];
   bool changed = false;
 
-  ViewContext vc;
   Base *basact = nullptr;
   BMElem *ele_act = nullptr;
-  edbm_preselect_or_active_init_viewcontext(C, &vc, &basact, &ele_act);
+  ViewContext vc = edbm_preselect_or_active_init_viewcontext(C, &basact, &ele_act);
   BMEditMesh *em = vc.em;
   BMesh *bm = em->bm;
 
@@ -498,7 +492,7 @@ static int edbm_polybuild_split_at_cursor_invoke(bContext *C,
 
   if (changed) {
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = true;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(vc.obedit->data), &params);
@@ -544,10 +538,9 @@ static int edbm_polybuild_dissolve_at_cursor_invoke(bContext *C,
 {
   bool changed = false;
 
-  ViewContext vc;
   Base *basact = nullptr;
   BMElem *ele_act = nullptr;
-  edbm_preselect_or_active_init_viewcontext(C, &vc, &basact, &ele_act);
+  ViewContext vc = edbm_preselect_or_active_init_viewcontext(C, &basact, &ele_act);
   BMEditMesh *em = vc.em;
   BMesh *bm = em->bm;
 

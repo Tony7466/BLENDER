@@ -30,17 +30,17 @@
 
 #include "BKE_attribute.h"
 #include "BKE_collection.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h" /* free_libblock */
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node.hh"
-#include "BKE_node_tree_update.h"
-#include "BKE_object.h"
+#include "BKE_node_tree_update.hh"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
 #include "BLI_ghash.h"
@@ -50,8 +50,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "RE_pipeline.h"
 

@@ -10,11 +10,11 @@ set(INC_SYS
 )
 
 set(SRC
-  opensubdiv_capi.h
-  opensubdiv_capi_type.h
-  opensubdiv_converter_capi.h
-  opensubdiv_evaluator_capi.h
-  opensubdiv_topology_refiner_capi.h
+  opensubdiv_capi.hh
+  opensubdiv_capi_type.hh
+  opensubdiv_converter_capi.hh
+  opensubdiv_evaluator_capi.hh
+  opensubdiv_topology_refiner_capi.hh
 )
 
 set(LIB
@@ -76,7 +76,7 @@ if(WITH_OPENSUBDIV)
     ${OPENSUBDIV_LIBRARIES}
   )
 
-  if(WITH_OPENMP_STATIC)
+  if(WITH_OPENMP AND WITH_OPENMP_STATIC)
     list(APPEND LIB
       ${OpenMP_LIBRARIES}
     )

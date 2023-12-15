@@ -5,14 +5,14 @@
 #include "workbench_private.hh"
 
 #include "BKE_camera.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh_types.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_fluid_types.h"
 #include "ED_paint.hh"
 #include "ED_view3d.hh"
@@ -83,7 +83,7 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
   }
   xray_mode = shading.xray_alpha != 1.0f;
 
-  if (SHADING_XRAY_FLAG_ENABLED(shading)) {
+  if (xray_mode) {
     /* Disable shading options that aren't supported in transparency mode. */
     shading.flag &= ~(V3D_SHADING_SHADOW | V3D_SHADING_CAVITY | V3D_SHADING_DEPTH_OF_FIELD);
   }
@@ -152,6 +152,12 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
     reset_taa = true;
   }
 
+  if (assign_if_different(overlays_enabled, v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS))) {
+    /* Reset TAA when enabling overlays, since we won't have valid sample0 depth textures.
+     * (See #113741) */
+    reset_taa = true;
+  }
+
   if (reset_taa || samples_len <= 1) {
     sample = 0;
   }
@@ -205,7 +211,7 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
   sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->rv3d) &&
                 !DRW_state_is_image_render();
   draw_shadow = scene_state.draw_shadows && (ob->dtx & OB_DRAW_NO_SHADOW_CAST) == 0 &&
-                !is_active && !sculpt_pbvh && !DRW_object_use_hide_faces(ob);
+                !sculpt_pbvh && !(is_active && DRW_object_use_hide_faces(ob));
 
   color_type = (eV3DShadingColorType)scene_state.shading.color_type;
 
@@ -213,9 +219,9 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
   bool has_uv = false;
 
   if (ob->type == OB_MESH) {
-    const Mesh *me = static_cast<Mesh *>(ob->data);
-    const CustomData *cd_vdata = get_vert_custom_data(me);
-    const CustomData *cd_ldata = get_loop_custom_data(me);
+    const Mesh *mesh = static_cast<Mesh *>(ob->data);
+    const CustomData *cd_vdata = get_vert_custom_data(mesh);
+    const CustomData *cd_ldata = get_loop_custom_data(mesh);
 
     has_color = (CustomData_has_layer(cd_vdata, CD_PROP_COLOR) ||
                  CustomData_has_layer(cd_vdata, CD_PROP_BYTE_COLOR) ||

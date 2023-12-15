@@ -12,6 +12,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
+#include "GEO_randomize.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_dual_mesh_cc {
@@ -330,7 +332,7 @@ static bool sort_vertex_faces(const Span<int2> edges,
                               MutableSpan<int> r_shared_edges,
                               MutableSpan<int> r_sorted_corners)
 {
-  if (connected_faces.size() <= 2 && (!boundary_vertex || connected_faces.size() == 0)) {
+  if (connected_faces.size() <= 2 && (!boundary_vertex || connected_faces.is_empty())) {
     return true;
   }
 
@@ -888,7 +890,7 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
   }
   Mesh *mesh_out = BKE_mesh_new_nomain(
       vert_positions.size(), new_edges.size(), loop_lengths.size(), loops.size());
-  BKE_mesh_smooth_flag_set(mesh_out, false);
+  bke::mesh_smooth_set(*mesh_out, false);
 
   transfer_attributes(vertex_types,
                       keep_boundaries,
@@ -921,6 +923,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (const Mesh *mesh = geometry_set.get_mesh()) {
       Mesh *new_mesh = calc_dual_mesh(
           *mesh, keep_boundaries, params.get_output_propagation_info("Dual Mesh"));
+      geometry::debug_randomize_mesh_order(new_mesh);
       geometry_set.replace_mesh(new_mesh);
     }
   });

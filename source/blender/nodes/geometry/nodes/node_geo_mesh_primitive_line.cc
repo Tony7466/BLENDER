@@ -90,7 +90,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
   if (params.in_out() == SOCK_OUT) {
     search_link_ops_for_declarations(params, declaration.outputs);
     return;
@@ -164,7 +164,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     mesh = geometry::create_line_mesh(start, delta, count);
   }
 
-  BKE_id_material_eval_ensure_default_slot(reinterpret_cast<ID *>(mesh));
+  if (mesh) {
+    BKE_id_material_eval_ensure_default_slot(reinterpret_cast<ID *>(mesh));
+  }
 
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }

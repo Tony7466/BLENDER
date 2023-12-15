@@ -33,11 +33,11 @@
 #  include <stdio.h>
 #endif
 
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_override.hh"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -154,6 +154,12 @@ bool RNA_property_overridable_get(PointerRNA *ptr, PropertyRNA *prop)
     else if (RNA_struct_is_a(ptr->type, &RNA_CameraBackgroundImage)) {
       CameraBGImage *bgpic = static_cast<CameraBGImage *>(ptr->data);
       if (bgpic->flag & CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL) {
+        return true;
+      }
+    }
+    else if (RNA_struct_is_a(ptr->type, &RNA_BoneCollection)) {
+      BoneCollection *bcoll = static_cast<BoneCollection *>(ptr->data);
+      if (bcoll->flags & BONE_COLLECTION_OVERRIDE_LIBRARY_LOCAL) {
         return true;
       }
     }

@@ -14,14 +14,14 @@
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_view3d.hh"
 
 #include "overlay_private.hh"
 
 #include "draw_common.h"
-#include "draw_manager_text.h"
+#include "draw_manager_text.hh"
 
 void OVERLAY_edit_gpencil_legacy_cache_init(OVERLAY_Data *vedata)
 {

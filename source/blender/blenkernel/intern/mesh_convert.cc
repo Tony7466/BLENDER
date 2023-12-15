@@ -28,34 +28,35 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_DerivedMesh.h"
+#include "BKE_DerivedMesh.hh"
 #include "BKE_curves.hh"
 #include "BKE_deform.h"
 #include "BKE_displist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
+#include "BKE_object_types.hh"
 /* these 2 are only used by conversion functions */
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 /* -- */
-#include "BKE_object.h"
+#include "BKE_object.hh"
 /* -- */
 #include "BKE_pointcloud.h"
 
 #include "BKE_curve_to_mesh.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 using blender::float3;
 using blender::IndexRange;
@@ -318,12 +319,12 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
  * differently for curve and mesh, since curves use control points and handles to calculate the
  * bounding box, and mesh uses the tessellated curve.
  */
-static void mesh_copy_texture_space_from_curve_type(const Curve *cu, Mesh *me)
+static void mesh_copy_texture_space_from_curve_type(const Curve *cu, Mesh *mesh)
 {
-  me->texspace_flag = cu->texspace_flag & ~CU_TEXSPACE_FLAG_AUTO;
-  copy_v3_v3(me->texspace_location, cu->texspace_location);
-  copy_v3_v3(me->texspace_size, cu->texspace_size);
-  BKE_mesh_texspace_calc(me);
+  mesh->texspace_flag = cu->texspace_flag & ~CU_TEXSPACE_FLAG_AUTO;
+  copy_v3_v3(mesh->texspace_location, cu->texspace_location);
+  copy_v3_v3(mesh->texspace_size, cu->texspace_size);
+  BKE_mesh_texspace_calc(mesh);
 }
 
 Mesh *BKE_mesh_new_nomain_from_curve_displist(const Object *ob, const ListBase *dispbase)
@@ -342,8 +343,8 @@ Mesh *BKE_mesh_new_nomain_from_curve(const Object *ob)
 {
   ListBase disp = {nullptr, nullptr};
 
-  if (ob->runtime.curve_cache) {
-    disp = ob->runtime.curve_cache->disp;
+  if (ob->runtime->curve_cache) {
+    disp = ob->runtime->curve_cache->disp;
   }
 
   return BKE_mesh_new_nomain_from_curve_displist(ob, &disp);
@@ -373,12 +374,12 @@ static void appendPolyLineVert(ListBase *lb, uint index)
   BLI_addtail(lb, vl);
 }
 
-void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int edge_users_test)
+void BKE_mesh_to_curve_nurblist(const Mesh *mesh, ListBase *nurblist, const int edge_users_test)
 {
-  const Span<float3> positions = me->vert_positions();
-  const Span<blender::int2> mesh_edges = me->edges();
-  const blender::OffsetIndices polys = me->faces();
-  const Span<int> corner_edges = me->corner_edges();
+  const Span<float3> positions = mesh->vert_positions();
+  const Span<blender::int2> mesh_edges = mesh->edges();
+  const blender::OffsetIndices polys = mesh->faces();
+  const Span<int> corner_edges = mesh->corner_edges();
 
   /* only to detect edge polylines */
   int *edge_users;
@@ -633,7 +634,8 @@ static void object_for_curve_to_mesh_free(Object *temp_object)
   /* Only free the final object data if it is *not* stored in the #data_eval field. This is still
    * necessary because #temp_object's data could be replaced by a #Curve data-block that isn't also
    * assigned to #data_eval. */
-  const bool object_data_stored_in_data_eval = final_object_data == temp_object->runtime.data_eval;
+  const bool object_data_stored_in_data_eval = final_object_data ==
+                                               temp_object->runtime->data_eval;
 
   BKE_id_free(nullptr, temp_object);
   if (!object_data_stored_in_data_eval) {
@@ -642,7 +644,7 @@ static void object_for_curve_to_mesh_free(Object *temp_object)
 }
 
 /**
- * Populate `object->runtime.curve_cache` which is then used to create the mesh.
+ * Populate `object->runtime->curve_cache` which is then used to create the mesh.
  */
 static void curve_to_mesh_eval_ensure(Object &object)
 {
@@ -656,8 +658,12 @@ static void curve_to_mesh_eval_ensure(Object &object)
    * So we create temporary copy of the object which will use same data as the original bevel, but
    * will have no modifiers. */
   Object bevel_object = blender::dna::shallow_zero_initialize();
+  blender::bke::ObjectRuntime bevel_runtime;
   if (curve.bevobj != nullptr) {
     bevel_object = blender::dna::shallow_copy(*curve.bevobj);
+    bevel_runtime = *curve.bevobj->runtime;
+    bevel_object.runtime = &bevel_runtime;
+
     BLI_listbase_clear(&bevel_object.modifiers);
     BKE_object_runtime_reset(&bevel_object);
     curve.bevobj = &bevel_object;
@@ -665,8 +671,12 @@ static void curve_to_mesh_eval_ensure(Object &object)
 
   /* Same thing for taper. */
   Object taper_object = blender::dna::shallow_zero_initialize();
+  blender::bke::ObjectRuntime taper_runtime;
   if (curve.taperobj != nullptr) {
     taper_object = blender::dna::shallow_copy(*curve.taperobj);
+    taper_runtime = *curve.taperobj->runtime;
+    taper_object.runtime = &taper_runtime;
+
     BLI_listbase_clear(&taper_object.modifiers);
     BKE_object_runtime_reset(&taper_object);
     curve.taperobj = &taper_object;
@@ -680,13 +690,17 @@ static void curve_to_mesh_eval_ensure(Object &object)
    * Brecht says hold off with that. */
   BKE_displist_make_curveTypes(nullptr, nullptr, &object, true);
 
-  BKE_object_runtime_free_data(&bevel_object);
-  BKE_object_runtime_free_data(&taper_object);
+  if (bevel_object.runtime) {
+    BKE_object_runtime_free_data(&bevel_object);
+  }
+  if (taper_object.runtime) {
+    BKE_object_runtime_free_data(&taper_object);
+  }
 }
 
 static const Curves *get_evaluated_curves_from_object(const Object *object)
 {
-  if (blender::bke::GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval) {
+  if (blender::bke::GeometrySet *geometry_set_eval = object->runtime->geometry_set_eval) {
     return geometry_set_eval->get_curves();
   }
   return nullptr;
@@ -789,8 +803,11 @@ static Mesh *mesh_new_from_mesh_object_with_layers(Depsgraph *depsgraph,
   }
 
   Object object_for_eval = blender::dna::shallow_copy(*object);
-  if (object_for_eval.runtime.data_orig != nullptr) {
-    object_for_eval.data = object_for_eval.runtime.data_orig;
+  blender::bke::ObjectRuntime runtime = *object->runtime;
+  object_for_eval.runtime = &runtime;
+
+  if (object_for_eval.runtime->data_orig != nullptr) {
+    object_for_eval.data = object_for_eval.runtime->data_orig;
   }
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -958,6 +975,29 @@ Mesh *BKE_mesh_new_from_object_to_bmain(Main *bmain,
   return mesh_in_bmain;
 }
 
+static void copy_loose_vert_hint(const Mesh &src, Mesh &dst)
+{
+  const auto &src_cache = src.runtime->loose_verts_cache;
+  if (src_cache.is_cached() && src_cache.data().count == 0) {
+    dst.tag_loose_verts_none();
+  }
+}
+
+static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
+{
+  const auto &src_cache = src.runtime->loose_edges_cache;
+  if (src_cache.is_cached() && src_cache.data().count == 0) {
+    dst.tag_loose_edges_none();
+  }
+}
+
+static void copy_overlapping_hint(const Mesh &src, Mesh &dst)
+{
+  if (src.no_overlapping_topology()) {
+    dst.tag_overlapping_none();
+  }
+}
+
 static KeyBlock *keyblock_ensure_from_uid(Key &key, const int uid, const StringRefNull name)
 {
   if (KeyBlock *kb = BKE_keyblock_find_uid(&key, uid)) {
@@ -1060,6 +1100,13 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
       mesh_dst->key = nullptr;
     }
   }
+
+  /* Caches can have a large memory impact and aren't necessarily used, so don't indiscriminately
+   * store all of them in the #Main data-base mesh. However, some caches are quite small and
+   * copying them is "free" relative to how much work would be required if the data was needed. */
+  copy_loose_vert_hint(*mesh_src, *mesh_dst);
+  copy_loose_edge_hint(*mesh_src, *mesh_dst);
+  copy_overlapping_hint(*mesh_src, *mesh_dst);
 
   BKE_id_free(nullptr, mesh_src);
 }
