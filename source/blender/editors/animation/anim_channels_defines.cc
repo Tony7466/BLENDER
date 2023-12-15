@@ -5234,8 +5234,8 @@ static void draw_setting_widget(bAnimContext *ac,
       break;
 
     case ACHANNEL_SETTING_EXPAND: /* expanded triangle */
-      // icon = (enabled ? ICON_TRIA_DOWN : ICON_TRIA_RIGHT);
-      icon = ICON_TRIA_RIGHT;
+      // icon = (enabled ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW);
+      icon = ICON_RIGHTARROW;
       tooltip = TIP_("Make channels grouped under this channel visible");
       break;
 

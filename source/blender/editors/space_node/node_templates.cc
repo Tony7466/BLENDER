@@ -798,8 +798,7 @@ static void ui_node_draw_panel(uiLayout &layout,
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_BUT,
                                 0,
-                                panel_state.is_collapsed() ? ICON_DISCLOSURE_TRI_RIGHT :
-                                                             ICON_DISCLOSURE_TRI_DOWN,
+                                panel_state.is_collapsed() ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
                                 IFACE_(panel_decl.name.c_str()),
                                 0,
                                 0,
@@ -922,9 +921,9 @@ static void ui_node_draw_input(uiLayout &layout,
       UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
       if (lnode &&
-          (lnode->inputs.first || (lnode->typeinfo->draw_buttons && lnode->type != NODE_GROUP))) {
-        int icon = (input.flag & SOCK_COLLAPSED) ? ICON_DISCLOSURE_TRI_RIGHT :
-                                                   ICON_DISCLOSURE_TRI_DOWN;
+          (lnode->inputs.first || (lnode->typeinfo->draw_buttons && lnode->type != NODE_GROUP)))
+      {
+        int icon = (input.flag & SOCK_COLLAPSED) ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT;
         uiItemR(sub, &inputptr, "show_expanded", UI_ITEM_R_ICON_ONLY, "", icon);
       }
 
