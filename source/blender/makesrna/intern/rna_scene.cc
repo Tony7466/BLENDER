@@ -2051,7 +2051,7 @@ static void object_simplify_update(Scene *scene, Object *ob, bool update_normals
   }
 }
 
-static void use_simplify_update(Main *bmain, Scene *sce, bool update_normals)
+static void rna_Scene_simplify_update_impl(Main *bmain, Scene *sce, bool update_normals)
 {
   Scene *sce_iter;
   Base *base;
@@ -2074,13 +2074,13 @@ static void use_simplify_update(Main *bmain, Scene *sce, bool update_normals)
 static void rna_Scene_use_simplify_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   Scene *sce = (Scene *)ptr->owner_id;
-  use_simplify_update(bmain, sce, false);
+  rna_Scene_simplify_update_impl(bmain, sce, false);
 }
 
 static void rna_Scene_simplify_update(Main *bmain, Scene *scene, PointerRNA * /*ptr*/)
 {
   if (scene->r.mode & R_SIMPLIFY) {
-    use_simplify_update(bmain, scene, false);
+    rna_Scene_simplify_update_impl(bmain, scene, false);
   }
 }
 
@@ -2089,7 +2089,7 @@ static void rna_Scene_use_simplify_normals_update(Main *bmain, Scene *scene, Poi
   /* NOTE: Ideally this would just force recalculation of the draw batch cache normals.
    * That's complicated enough to not be worth it here. */
   if (scene->r.mode & R_SIMPLIFY) {
-    use_simplify_update(bmain, scene, true);
+    rna_Scene_simplify_update_impl(bmain, scene, true);
   }
 }
 
