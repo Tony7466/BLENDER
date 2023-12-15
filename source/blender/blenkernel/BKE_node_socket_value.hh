@@ -20,7 +20,7 @@ namespace blender::bke {
  * Storage for the socket value float simple types like floats, integers, strings, etc.
  * In geometry nodes, those can be either a single value or field.
  */
-struct SocketValueVariant {
+class SocketValueVariant {
  private:
   enum class Kind {
     None,
