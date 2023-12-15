@@ -174,11 +174,12 @@ class IndexSwitchFunction : public mf::MultiFunction {
 
 class LazyFunctionForIndexSwitchNode : public LazyFunction {
  private:
+  const bNode &node_;
   bool can_be_field_ = false;
   const CPPType *field_base_type_;
 
  public:
-  LazyFunctionForIndexSwitchNode(const bNode &node)
+  LazyFunctionForIndexSwitchNode(const bNode &node) : node_(node)
   {
     const NodeIndexSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
@@ -224,7 +225,7 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
 
     /* Check for an invalid index. */
     if (!IndexRange(values_num).contains(index)) {
-      params.set_default_remaining_outputs();
+      set_default_remaining_node_outputs(params, node_);
       return;
     }
 

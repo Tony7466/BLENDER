@@ -938,6 +938,8 @@ static bNodeSocketType *make_socket_type_bool()
     auto *value_variant = new (r_value) SocketValueVariant();
     value_variant->store_as(value);
   };
+  static auto default_value = SocketValueVariant::from_single(false);
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 
@@ -958,6 +960,8 @@ static bNodeSocketType *make_socket_type_rotation()
     auto *value_variant = new (r_value) SocketValueVariant();
     value_variant->store_as(value);
   };
+  static auto default_value = SocketValueVariant::from_single(math::Quaternion::identity());
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 
@@ -974,6 +978,8 @@ static bNodeSocketType *make_socket_type_float(PropertySubType subtype)
     auto *value_variant = new (r_value) SocketValueVariant();
     value_variant->store_as(value);
   };
+  static auto default_value = SocketValueVariant::from_single(0.0f);
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 
@@ -990,6 +996,8 @@ static bNodeSocketType *make_socket_type_int(PropertySubType subtype)
     auto *value_variant = new (r_value) SocketValueVariant();
     value_variant->store_as(value);
   };
+  static auto default_value = SocketValueVariant::from_single(0);
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 
@@ -1006,6 +1014,8 @@ static bNodeSocketType *make_socket_type_vector(PropertySubType subtype)
     auto *value_variant = new (r_value) SocketValueVariant();
     value_variant->store_as(value);
   };
+  static auto default_value = SocketValueVariant::from_single(blender::float3(0, 0, 0));
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 
@@ -1022,6 +1032,9 @@ static bNodeSocketType *make_socket_type_rgba()
     auto *value_variant = new (r_value) SocketValueVariant();
     value_variant->store_as(value);
   };
+  static auto default_value = SocketValueVariant::from_single(
+      blender::ColorGeometry4f(0, 0, 0, 0));
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 
@@ -1038,6 +1051,8 @@ static bNodeSocketType *make_socket_type_string()
     auto *value_variant = new (r_value) SocketValueVariant();
     value_variant->store_as(value);
   };
+  static auto default_value = SocketValueVariant::from_single(std::string());
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 

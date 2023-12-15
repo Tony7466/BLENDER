@@ -462,8 +462,11 @@ class LazyFunctionForRerouteNode : public LazyFunction {
  * nodes.
  */
 class LazyFunctionForUndefinedNode : public LazyFunction {
+  const bNode &node_;
+
  public:
   LazyFunctionForUndefinedNode(const bNode &node, MutableSpan<int> r_lf_index_by_bsocket)
+      : node_(node)
   {
     debug_name_ = "Undefined";
     Vector<lf::Input> dummy_inputs;
@@ -472,9 +475,34 @@ class LazyFunctionForUndefinedNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
-    params.set_default_remaining_outputs();
+    set_default_remaining_node_outputs(params, node_);
   }
 };
+
+void set_default_remaining_node_outputs(lf::Params &params, const bNode &node)
+{
+  const bNodeTree &ntree = node.owner_tree();
+  const Span<int> lf_index_by_bsocket =
+      ntree.runtime->geometry_nodes_lazy_function_graph_info->mapping.lf_index_by_bsocket;
+  for (const bNodeSocket *bsocket : node.output_sockets()) {
+    const int lf_index = lf_index_by_bsocket[bsocket->index_in_tree()];
+    if (lf_index == -1) {
+      continue;
+    }
+    if (params.output_was_set(lf_index)) {
+      continue;
+    }
+    const CPPType &cpp_type = *bsocket->typeinfo->geometry_nodes_cpp_type;
+    void *output_value = params.get_output_data_ptr(lf_index);
+    if (bsocket->typeinfo->geometry_nodes_default_cpp_value) {
+      cpp_type.copy_construct(bsocket->typeinfo->geometry_nodes_default_cpp_value, output_value);
+    }
+    else {
+      cpp_type.value_initialize(output_value);
+    }
+    params.output_set(lf_index);
+  }
+}
 
 /**
  * Executes a multi-function. If all inputs are single values, the results will also be single
@@ -823,7 +851,7 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
     GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
     BLI_assert(user_data != nullptr);
     if (!user_data->call_data->side_effect_nodes) {
-      params.set_default_remaining_outputs();
+      params.set_output<bool>(0, false);
       return;
     }
     const ComputeContextHash &context_hash = user_data->compute_context->hash();
@@ -852,22 +880,22 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
     const GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
     const GeoNodesCallData &call_data = *user_data.call_data;
     if (!call_data.simulation_params) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     const std::optional<FoundNestedNodeID> found_id = find_nested_node_id(
         user_data, output_bnode_->identifier);
     if (!found_id) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (found_id->is_in_loop) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     SimulationZoneBehavior *zone_behavior = call_data.simulation_params->get(found_id->id);
     if (!zone_behavior) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
 
@@ -883,6 +911,12 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
         1,
         solve_contains_side_effect ||
             std::holds_alternative<sim_output::StoreNewState>(zone_behavior->output));
+  }
+
+  void set_default_outputs(lf::Params &params) const
+  {
+    params.set_output(0, false);
+    params.set_output(1, false);
   }
 };
 

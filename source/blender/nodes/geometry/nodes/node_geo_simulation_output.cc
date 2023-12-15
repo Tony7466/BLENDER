@@ -501,26 +501,26 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
     if (!user_data.call_data->self_object()) {
       /* The self object is currently required for generating anonymous attribute names. */
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (!user_data.call_data->simulation_params) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data, node_.identifier);
     if (!found_id) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (found_id->is_in_loop) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     SimulationZoneBehavior *zone_behavior = user_data.call_data->simulation_params->get(
         found_id->id);
     if (!zone_behavior) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     sim_output::Behavior &output_behavior = zone_behavior->output;
@@ -544,6 +544,11 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     else {
       BLI_assert_unreachable();
     }
+  }
+
+  void set_default_outputs(lf::Params &params) const
+  {
+    set_default_remaining_node_outputs(params, node_);
   }
 
   void output_cached_state(lf::Params &params,

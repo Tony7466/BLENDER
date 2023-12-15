@@ -42,6 +42,13 @@ struct SocketValueVariant {
   Any<void, 16> value_;
 
  public:
+  template<typename T> static SocketValueVariant from_single(T value)
+  {
+    SocketValueVariant value_variant;
+    value_variant.store_as(std::move(value));
+    return value_variant;
+  }
+
   GPointer get_single_ptr() const;
   GMutablePointer get_single_ptr();
 

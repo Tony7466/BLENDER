@@ -379,6 +379,8 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
 std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(const bNode &node);
 
+void set_default_remaining_node_outputs(lf::Params &params, const bNode &node);
+
 struct FoundNestedNodeID {
   int id;
   bool is_in_simulation = false;

@@ -62,27 +62,27 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
     if (!user_data.call_data->simulation_params) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (!user_data.call_data->self_object()) {
       /* Self object is currently required for creating anonymous attribute names. */
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data, output_node_id_);
     if (!found_id) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (found_id->is_in_loop) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     SimulationZoneBehavior *zone_behavior = user_data.call_data->simulation_params->get(
         found_id->id);
     if (!zone_behavior) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     sim_input::Behavior &input_behavior = zone_behavior->input;
@@ -107,6 +107,11 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       delta_time_variant.store_as(delta_time);
       params.set_output(0, std::move(delta_time_variant));
     }
+  }
+
+  void set_default_outputs(lf::Params &params) const
+  {
+    set_default_remaining_node_outputs(params, node_);
   }
 
   void output_simulation_state_copy(lf::Params &params,
