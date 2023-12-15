@@ -57,7 +57,6 @@ static size_t idp_size_table[] = {
     sizeof(double),    /* #IDP_DOUBLE */
     0,                 /* #IDP_IDPARRAY (no fixed size). */
     sizeof(int8_t),    /* #IDP_BOOLEAN */
-    sizeof(int),       /* #IDP_ENUM */
 };
 
 /* -------------------------------------------------------------------- */
