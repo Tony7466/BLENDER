@@ -102,7 +102,7 @@ void main()
   vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
 
   int render_pass_id = (SC_render_pass_shadow_id >= -1) ? SC_render_pass_shadow_id :
-                                                         uniform_buf.render_pass.shadow_id;
+                                                          uniform_buf.render_pass.shadow_id;
   output_renderpass_value(render_pass_id, average(shadows));
 
   if (gbuf.closure_count > 0) {

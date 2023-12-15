@@ -47,9 +47,9 @@ void main()
   vec3 specular_light = glossy_reflect_light + glossy_refract_light;
 
   int diff_light_id = (SC_diffuse_light_id >= -1) ? SC_diffuse_light_id :
-                                                   uniform_buf.render_pass.diffuse_light_id;
+                                                    uniform_buf.render_pass.diffuse_light_id;
   int spec_light_id = (SC_specular_light_id >= -1) ? SC_specular_light_id :
-                                                    uniform_buf.render_pass.specular_light_id;
+                                                     uniform_buf.render_pass.specular_light_id;
   output_renderpass_color(diff_light_id, vec4(diffuse_light, 1.0));
   output_renderpass_color(spec_light_id, vec4(specular_light, 1.0));
   /* Combine. */

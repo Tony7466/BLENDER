@@ -63,7 +63,8 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .image_out(3, DEFERRED_RADIANCE_FORMAT, "direct_radiance_2_img")
     .image_out(4, DEFERRED_RADIANCE_FORMAT, "direct_radiance_3_img")
     .define("SPECIALIZED_SHADOW_PARAMS")
-    /* SC_render_pass_shadow_id has a valid specialized value of `-1`. Default to uniform lookup only if unassigned with default value below -1.*/
+    /* SC_render_pass_shadow_id has a valid specialized value of `-1`. Default to uniform lookup
+       only if unassigned with default value below -1.*/
     .constant_int(SC_render_pass_shadow_id_SLOT, "SC_render_pass_shadow_id", -99)
     .constant_int(SC_shadow_ray_count_SLOT, "SC_shadow_ray_count", -1)
     .constant_int(SC_shadow_ray_step_count_SLOT, "SC_shadow_ray_step_count", -1)
