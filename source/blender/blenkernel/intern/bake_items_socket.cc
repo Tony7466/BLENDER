@@ -68,47 +68,40 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       case SOCK_ROTATION:
       case SOCK_RGBA: {
         auto &value_variant = *static_cast<SocketValueVariant *>(socket_value);
-        switch (value_variant.kind) {
-          case SocketValueVariant::Kind::None: {
-            BLI_assert_unreachable();
-            break;
-          }
-          case SocketValueVariant::Kind::Single: {
-            GPointer value = value_variant.get_single();
-            bake_items[i] = std::make_unique<PrimitiveBakeItem>(*value.type(), value.get());
-            break;
-          }
-          case SocketValueVariant::Kind::Field: {
-            const fn::GField &field = value_variant.get_as<fn::GField>();
-            const eAttrDomain domain = config.domains[i];
-            const std::string attribute_name = ".bake_" + std::to_string(i);
-            const Span<int> geometry_indices = config.geometries_by_attribute[i];
-            for (const int geometry_i : geometry_indices) {
-              BLI_assert(config.types[geometry_i] == SOCK_GEOMETRY);
-              GeometrySet &geometry =
-                  static_cast<GeometryBakeItem *>(bake_items[geometry_i].get())->geometry;
-              if (geometry.has_pointcloud()) {
-                PointCloudComponent &component =
-                    geometry.get_component_for_write<PointCloudComponent>();
-                try_capture_field_on_geometry(component, attribute_name, domain, field);
-              }
-              if (geometry.has_mesh()) {
-                MeshComponent &component = geometry.get_component_for_write<MeshComponent>();
-                try_capture_field_on_geometry(component, attribute_name, domain, field);
-              }
-              if (geometry.has_curves()) {
-                CurveComponent &component = geometry.get_component_for_write<CurveComponent>();
-                try_capture_field_on_geometry(component, attribute_name, domain, field);
-              }
-              if (geometry.has_instances()) {
-                InstancesComponent &component =
-                    geometry.get_component_for_write<InstancesComponent>();
-                try_capture_field_on_geometry(component, attribute_name, domain, field);
-              }
+        if (value_variant.is_context_dependent_field()) {
+          const fn::GField &field = value_variant.get_as<fn::GField>();
+          const eAttrDomain domain = config.domains[i];
+          const std::string attribute_name = ".bake_" + std::to_string(i);
+          const Span<int> geometry_indices = config.geometries_by_attribute[i];
+          for (const int geometry_i : geometry_indices) {
+            BLI_assert(config.types[geometry_i] == SOCK_GEOMETRY);
+            GeometrySet &geometry =
+                static_cast<GeometryBakeItem *>(bake_items[geometry_i].get())->geometry;
+            if (geometry.has_pointcloud()) {
+              PointCloudComponent &component =
+                  geometry.get_component_for_write<PointCloudComponent>();
+              try_capture_field_on_geometry(component, attribute_name, domain, field);
             }
-            bake_items[i] = std::make_unique<AttributeBakeItem>(attribute_name);
-            break;
+            if (geometry.has_mesh()) {
+              MeshComponent &component = geometry.get_component_for_write<MeshComponent>();
+              try_capture_field_on_geometry(component, attribute_name, domain, field);
+            }
+            if (geometry.has_curves()) {
+              CurveComponent &component = geometry.get_component_for_write<CurveComponent>();
+              try_capture_field_on_geometry(component, attribute_name, domain, field);
+            }
+            if (geometry.has_instances()) {
+              InstancesComponent &component =
+                  geometry.get_component_for_write<InstancesComponent>();
+              try_capture_field_on_geometry(component, attribute_name, domain, field);
+            }
           }
+          bake_items[i] = std::make_unique<AttributeBakeItem>(attribute_name);
+        }
+        else {
+          value_variant.convert_to_single();
+          GPointer value = value_variant.get_single();
+          bake_items[i] = std::make_unique<PrimitiveBakeItem>(*value.type(), value.get());
         }
         break;
       }

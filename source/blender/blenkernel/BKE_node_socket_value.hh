@@ -25,21 +25,23 @@ namespace blender::bke {
  * In geometry nodes, those can be either a single value or field.
  */
 struct SocketValueVariant {
+ private:
   enum class Kind {
     None,
     Single,
     Field,
   };
 
-  Kind kind = Kind::None;
-  eNodeSocketDatatype socket_type;
+  Kind kind_ = Kind::None;
+  eNodeSocketDatatype socket_type_;
   /**
    * Either empty or contains one of the following:
    * - Simple type: `int`, `float`, `float3`, `std::string`, ...
    * - #GField
    */
-  Any<void, 16> value;
+  Any<void, 16> value_;
 
+ public:
   GPointer get_single() const;
   GMutablePointer get_single();
 

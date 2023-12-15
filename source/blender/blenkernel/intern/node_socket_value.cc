@@ -37,10 +37,10 @@ void SocketValueVariant::store_single(eNodeSocketDatatype socket_type, const voi
 
 bool SocketValueVariant::is_context_dependent_field() const
 {
-  if (!this->value.is<fn::GField>()) {
+  if (!value_.is<fn::GField>()) {
     return false;
   }
-  const fn::GField &field = this->value.get<fn::GField>();
+  const fn::GField &field = value_.get<fn::GField>();
   if (!field) {
     return false;
   }
