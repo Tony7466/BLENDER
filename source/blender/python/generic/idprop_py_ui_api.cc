@@ -214,16 +214,18 @@ static bool idprop_ui_data_update_int(IDProperty *idprop, PyObject *args, PyObje
   int min, max, soft_min, soft_max, step;
   PyObject *default_value = nullptr;
   PyObject *items = nullptr;
-  const char *kwlist[] = {"min",
-                          "max",
-                          "soft_min",
-                          "soft_max",
-                          "step",
-                          "default",
-                          "items",
-                          "subtype",
-                          "description",
-                          nullptr};
+  const char *kwlist[] = {
+      "min",
+      "max",
+      "soft_min",
+      "soft_max",
+      "step",
+      "default",
+      "items",
+      "subtype",
+      "description",
+      nullptr,
+  };
   if (!PyArg_ParseTupleAndKeywords(args,
                                    kwargs,
                                    "|$iiiiiOOzz:update",
