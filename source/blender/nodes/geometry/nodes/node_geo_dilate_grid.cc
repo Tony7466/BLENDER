@@ -59,17 +59,15 @@ static void try_dilate_grid(GeoNodeExecParams params,
     return;
   }
 
-  using GridType = typename bke::VolumeGridPtr<T>::GridType;
-  typename GridType::Ptr grid = value.grid.grid_for_write();
-  BLI_assert(grid);
+  bke::VolumeGridPtr<T> output_grid = value.grid->is_mutable() ?
+                                          value.grid :
+                                          bke::VolumeGridPtr<T>{value.grid->copy()};
 
-  openvdb::tools::dilateActiveValues(
-      grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
+  openvdb::tools::dilateActiveValues(output_grid.grid_for_write()->tree(),
+                                     iterations,
+                                     grids::get_vdb_neighbors_mode(neighbors_mode));
 
-  params.set_output(
-      "Grid",
-      bke::SocketValueVariant<T>(
-          bke::make_volume_grid_ptr(grid, VOLUME_TREE_SOURCE_GENERATED).template typed<T>()));
+  params.set_output("Grid", bke::SocketValueVariant<T>(output_grid));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
