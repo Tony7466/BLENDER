@@ -448,7 +448,7 @@ union Undetermined {
   FramebufferBind framebuffer_bind;
   SubPassTransition subpass_transition;
   PushConstant push_constant;
-  SpecializeConstant specialize_constant;
+  SpecializeConstant shader_constant_set;
   Draw draw;
   DrawMulti draw_multi;
   DrawIndirect draw_indirect;

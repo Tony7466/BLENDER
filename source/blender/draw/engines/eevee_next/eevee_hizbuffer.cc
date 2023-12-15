@@ -53,7 +53,7 @@ void HiZBuffer::sync()
     /* TODO(@fclem): There might be occasions where we might not want to
      * copy mip 0 for performance reasons if there is no need for it. */
     pass.push_constant("update_mip_0", true);
-    pass.specialize_constant(SC_update_mip_0_SLOT, update_mip_0);
+    pass.shader_constant_set(SC_update_mip_0_SLOT, update_mip_0);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
@@ -75,7 +75,7 @@ void HiZBuffer::sync()
      * copy mip 0 for performance reasons if there is no need for it. */
     pass.push_constant("update_mip_0", true);
     pass.push_constant("layer_id", &layer_id_);
-    pass.specialize_constant(SC_update_mip_0_SLOT, update_mip_0);
+    pass.shader_constant_set(SC_update_mip_0_SLOT, update_mip_0);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }

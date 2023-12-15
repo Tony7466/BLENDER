@@ -371,12 +371,12 @@ class PassBase {
    * IMPORTANT: Will keep a reference to the data and dereference it upon drawing. Make sure data
    * still alive until pass submission.
    */
-  void specialize_constant(uint constant_id, const float &data);
-  void specialize_constant(uint constant_id, const int &data);
-  void specialize_constant(uint constant_id, const bool &data);
-  void specialize_constant(uint constant_id, const float *data);
-  void specialize_constant(uint constant_id, const int *data);
-  void specialize_constant(uint constant_id, const bool *data);
+  void shader_constant_set(uint constant_id, const float &data);
+  void shader_constant_set(uint constant_id, const int &data);
+  void shader_constant_set(uint constant_id, const bool &data);
+  void shader_constant_set(uint constant_id, const float *data);
+  void shader_constant_set(uint constant_id, const int *data);
+  void shader_constant_set(uint constant_id, const bool *data);
 
   /**
    * Turn the pass into a string for inspection.
@@ -591,7 +591,7 @@ template<class T> void PassBase<T>::submit(command::RecordingState &state) const
         commands_[header.index].push_constant.execute(state);
         break;
       case command::Type::SpecializeConstant:
-        commands_[header.index].specialize_constant.execute(state);
+        commands_[header.index].shader_constant_set.execute(state);
         break;
       case command::Type::Draw:
         commands_[header.index].draw.execute(state);
@@ -1243,44 +1243,44 @@ template<class T> inline void PassBase<T>::push_constant(const char *name, const
 }
 
 template<class T>
-inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const int &value)
+inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const int &value)
 {
-  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
                                                                   value};
 }
 
 template<class T>
-inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const float &value)
+inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const float &value)
 {
-  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
                                                                   value};
 }
 
 template<class T>
-inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const bool &value)
+inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const bool &value)
 {
-  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
                                                                   value};
 }
 
 template<class T>
-inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const int *data)
+inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const int *data)
 {
-  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
                                                                   data};
 }
 
 template<class T>
-inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const float *data)
+inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const float *data)
 {
-  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
                                                                   data};
 }
 
 template<class T>
-inline void PassBase<T>::specialize_constant(uint specialization_constant_id, const bool *data)
+inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const bool *data)
 {
-  create_command(Type::SpecializeConstant).specialize_constant = {specialization_constant_id,
+  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
                                                                   data};
 }
 

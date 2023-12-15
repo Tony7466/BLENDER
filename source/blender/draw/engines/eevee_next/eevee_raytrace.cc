@@ -164,9 +164,9 @@ void RayTraceModule::sync()
     inst_.bind_uniform_data(&pass);
     inst_.sampling.bind_resources(pass);
     inst_.gbuffer.bind_resources(pass);
-    pass.specialize_constant(SC_raytrace_resolution_scale_SLOT,
+    pass.shader_constant_set(SC_raytrace_resolution_scale_SLOT,
                              &inst_.raytracing.data_.resolution_scale);
-    pass.specialize_constant(SC_raytrace_skip_denoise_SLOT, &inst_.raytracing.data_.skip_denoise);
+    pass.shader_constant_set(SC_raytrace_skip_denoise_SLOT, &inst_.raytracing.data_.skip_denoise);
     pass.dispatch(raytrace_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
