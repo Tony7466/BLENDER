@@ -31,6 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Float>("Grid").hide_value();
   b.add_input<decl::Float>("Boundary").hide_value();
+  b.add_input<decl::Int>("Max Iterations").min(0).default_value(100);
 
   b.add_output<decl::Float>("Grid");
   b.add_output<decl::Bool>("Success");
@@ -91,7 +92,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const double epsilon = openvdb::math::Delta<float>::value();
   openvdb::math::pcg::State pcg_state = openvdb::math::pcg::terminationDefaults<float>();
-  pcg_state.iterations = 200;
+  pcg_state.iterations = params.extract_input<int>("Max Iterations");
   pcg_state.relativeError = pcg_state.absoluteError = epsilon;
 
   openvdb::util::NullInterrupter interrupter;
