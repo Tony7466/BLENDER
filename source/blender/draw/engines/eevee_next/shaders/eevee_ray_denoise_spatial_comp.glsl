@@ -42,8 +42,11 @@ void main()
   const uint tile_size = RAYTRACE_GROUP_SIZE;
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
 
+  int rt_resolution_scale = (SC_raytrace_resolution_scale > -1) ?
+                                SC_raytrace_resolution_scale :
+                                uniform_buf.raytrace.resolution_scale;
   ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
-  ivec2 texel = (texel_fullres) / SC_raytrace_resolution_scale;
+  ivec2 texel = (texel_fullres) / rt_resolution_scale;
 
   if (SC_raytrace_skip_denoise) {
     imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
@@ -112,7 +115,7 @@ void main()
   /* NOTE: filter_size should never be greater than twice RAYTRACE_GROUP_SIZE. Otherwise, the
    * reconstruction can becomes ill defined since we don't know if further tiles are valid. */
   filter_size = 12.0 * sqrt(filter_size_factor);
-  if (SC_raytrace_resolution_scale > 1) {
+  if (rt_resolution_scale > 1) {
     /* Filter at least 1 trace pixel to fight the undersampling. */
     filter_size = max(filter_size, 3.0);
     sample_count = max(sample_count, 5u);

@@ -60,8 +60,9 @@ void light_shadow_single(uint l_idx,
   }
 
 #ifdef SPECIALIZED_SHADOW_PARAMS
-  int ray_count = SC_shadow_ray_count;
-  int ray_step_count = SC_shadow_ray_step_count;
+  int ray_count = (SC_shadow_ray_count > -1) ? SC_shadow_ray_count : uniform_buf.shadow.ray_count;
+  int ray_step_count = (SC_shadow_ray_step_count > -1) ? SC_shadow_ray_count :
+                                                         uniform_buf.shadow.step_count;
 #else
   int ray_count = uniform_buf.shadow.ray_count;
   int ray_step_count = uniform_buf.shadow.step_count;
@@ -139,8 +140,9 @@ void light_eval_single(uint l_idx,
   LightData light = light_buf[l_idx];
 
 #ifdef SPECIALIZED_SHADOW_PARAMS
-  int ray_count = SC_shadow_ray_count;
-  int ray_step_count = SC_shadow_ray_step_count;
+  int ray_count = (SC_shadow_ray_count > -1) ? SC_shadow_ray_count : uniform_buf.shadow.ray_count;
+  int ray_step_count = (SC_shadow_ray_step_count > -1) ? SC_shadow_ray_count :
+                                                         uniform_buf.shadow.step_count;
 #else
   int ray_count = uniform_buf.shadow.ray_count;
   int ray_step_count = uniform_buf.shadow.step_count;

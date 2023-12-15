@@ -26,50 +26,6 @@ GPU_SHADER_CREATE_INFO(eevee_film)
     .additional_info("eevee_shared")
     .additional_info("eevee_global_ubo")
     .additional_info("eevee_velocity_camera")
-    .constant(SC_display_only_SLOT,
-                             Type::INT,
-                             "SC_display_only",
-                             "uniform_buf.film.display_only")
-    .constant(SC_combined_id_SLOT,
-                             Type::INT,
-                             "SC_combined_id",
-                             "uniform_buf.film.combined_id")
-    .constant(SC_has_data_SLOT,
-                             Type::INT,
-                             "SC_has_data",
-                             "uniform_buf.film.has_data")
-    .constant(SC_use_reprojection_SLOT,
-                             Type::INT,
-                             "SC_use_reprojection",
-                             "uniform_buf.film.use_reprojection")
-    .constant(SC_use_history_SLOT,
-                             Type::INT,
-                             "SC_use_history",
-                             "uniform_buf.film.use_history")
-    .constant(SC_normal_id_SLOT,
-                             Type::INT,
-                             "SC_normal_id",
-                             "uniform_buf.film.normal_id")
-    .constant(SC_any_render_pass_1_SLOT,
-                             Type::INT,
-                             "SC_any_render_pass_1",
-                             "uniform_buf.film.any_render_pass_1")
-    .constant(SC_any_render_pass_2_SLOT,
-                             Type::INT,
-                             "SC_any_render_pass_2",
-                             "uniform_buf.film.any_render_pass_2")
-    .constant(SC_any_render_pass_3_SLOT,
-                             Type::INT,
-                             "SC_any_render_pass_3",
-                             "uniform_buf.film.any_render_pass_3")
-    .constant(SC_aov_color_len_SLOT,
-                             Type::INT,
-                             "SC_aov_color_len",
-                             "uniform_buf.film.aov_color_len")
-    .constant(SC_cryptomatte_samples_len_SLOT,
-                             Type::INT,
-                             "SC_cryptomatte_samples_len",
-                             "uniform_buf.film.cryptomatte_samples_len")
     .additional_info("draw_view");
 
 GPU_SHADER_CREATE_INFO(eevee_film_frag)

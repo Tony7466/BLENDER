@@ -38,6 +38,12 @@ struct SpecializationConstantValue {
     int value_i;
     bool value_b;
   };
+  /* Defaults. */
+  union {
+    float default_value_f;
+    int default_value_i;
+    bool default_value_b;
+  };
 };
 
 /**

@@ -882,14 +882,8 @@ static void generate_specialization_constant_declarations(const shader::ShaderCr
   for (const ShaderCreateInfo::SpecializationConstant &sc : info->specialization_constants_) {
     /* TODO(Metal): Output specialization constant chain. */
     uint function_constant_id = MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID + sc.constant_id;
-    std::string fc_constant_declaration = sc.constant_name + "_fc";
-    ss << "constant " << sc.type << " " << fc_constant_declaration << " [[function_constant("
+    ss << "constant " << sc.type << " " << sc.constant_name << " [[function_constant("
        << function_constant_id << ")]];\n";
-    ss << "#define " << sc.constant_name << " ((is_function_constant_defined("
-       << fc_constant_declaration << ")) ? (" << fc_constant_declaration << ") : ("
-       << sc.fallback_code_string << "))\n";
-    ss << "#define " << sc.constant_name << "_DEFINED (is_function_constant_defined("
-       << fc_constant_declaration << "))\n";
   }
 }
 

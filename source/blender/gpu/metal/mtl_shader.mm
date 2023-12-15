@@ -736,11 +736,13 @@ void MTLShader::set_interface(MTLShaderInterface *interface)
 
 /* -------------------------------------------------------------------- */
 /** \name Shader specialization common utilities.
+ * NOTE: Force default parameter is used for building the generic unspecialized default case.
  * \{ */
 
 static void populate_specialization_descriptor(
     const Map<uint, SpecializationConstantValue> &shader_specialization_constants,
-    SpecializationStateDescriptor &specialization_descriptor)
+    SpecializationStateDescriptor &specialization_descriptor,
+    bool force_default)
 {
   int num_specialized_constants = 0;
   if (shader_specialization_constants.size() > 0) {
@@ -748,41 +750,46 @@ static void populate_specialization_descriptor(
     MTL_LOG_INFO(" -- Fetching specailized PSO for shader with config: --\n");
     for (const SpecializationConstantValue &sc_value : shader_specialization_constants.values()) {
 
-      if (sc_value.assigned) {
-        SpecializationConstantDescriptor sc_descriptor;
-        sc_descriptor.constant_id = sc_value.constant_id;
-        switch (sc_value.type) {
-          case Type::FLOAT:
-            MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %f)}\n",
-                         sc_value.constant_id,
-                         sc_value.constant_name.c_str(),
-                         (sc_value.assigned) ? "YES" : "NO",
-                         sc_value.value_f);
-            sc_descriptor.value_f = sc_value.value_f;
-            break;
-          case Type::INT:
-            MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %i)}\n",
-                         sc_value.constant_id,
-                         sc_value.constant_name.c_str(),
-                         (sc_value.assigned) ? "YES" : "NO",
-                         sc_value.value_i);
-            sc_descriptor.value_i = sc_value.value_i;
-            break;
-          case Type::BOOL:
-            MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %u)}\n",
-                         sc_value.constant_id,
-                         sc_value.constant_name.c_str(),
-                         (sc_value.assigned) ? "YES" : "NO",
-                         sc_value.value_b ? 1 : 0);
-            sc_descriptor.value_b = sc_value.value_b;
-            break;
-          default:
-            BLI_assert_unreachable();
-            break;
-        }
+      /* Switch between either custom assigned value or default value. */
+      bool use_assigned_value = sc_value.assigned && !force_default;
 
-        specialization_descriptor.specialization_constants.append(sc_descriptor);
+      SpecializationConstantDescriptor sc_descriptor;
+      sc_descriptor.constant_id = sc_value.constant_id;
+      switch (sc_value.type) {
+        case Type::FLOAT: {
+          sc_descriptor.value_f = (use_assigned_value) ? sc_value.value_f :
+                                                         sc_value.default_value_f;
+          MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %f)}\n",
+                       sc_value.constant_id,
+                       sc_value.constant_name.c_str(),
+                       (sc_value.assigned) ? "YES" : "NO (USING DEFAULT)",
+                       sc_descriptor.value_f);
+
+        } break;
+        case Type::INT: {
+          sc_descriptor.value_i = (use_assigned_value) ? sc_value.value_i :
+                                                         sc_value.default_value_i;
+          MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %i)}\n",
+                       sc_value.constant_id,
+                       sc_value.constant_name.c_str(),
+                       (sc_value.assigned) ? "YES" : "NO (USING DEFAULT)",
+                       sc_descriptor.value_i);
+
+        } break;
+        case Type::BOOL: {
+          sc_descriptor.value_b = (use_assigned_value) ? sc_value.value_b :
+                                                         sc_value.default_value_b;
+          MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %u)}\n",
+                       sc_value.constant_id,
+                       sc_value.constant_name.c_str(),
+                       (sc_value.assigned) ? "YES" : "NO (USING DEFAULT)",
+                       sc_descriptor.value_b ? 1 : 0);
+        } break;
+        default: {
+          BLI_assert_unreachable();
+        } break;
       }
+      specialization_descriptor.specialization_constants.append(sc_descriptor);
     }
     num_specialized_constants = specialization_descriptor.specialization_constants.size();
   }
@@ -925,8 +932,8 @@ MTLRenderPipelineStateInstance *MTLShader::bake_current_pipeline_state(
       (requires_specific_topology_class) ? prim_type : MTLPrimitiveTopologyClassUnspecified;
 
   /* Specialization configuration. */
-  populate_specialization_descriptor(specialization_constants_,
-                                     pipeline_descriptor.specialization_state);
+  populate_specialization_descriptor(
+      specialization_constants_, pipeline_descriptor.specialization_state, false);
 
   /* Bake pipeline state using global descriptor. */
   return bake_pipeline_state(ctx, prim_type, pipeline_descriptor);
@@ -1473,13 +1480,9 @@ MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLConte
 
   /* Specialization configuration.
    * NOTE: If allow_specialized is disabled, we will build the base un-specialized variant. */
-  if (allow_specialized) {
-    populate_specialization_descriptor(specialization_constants_,
-                                       compute_pipeline_descriptor.specialization_state);
-  }
-  else {
-    compute_pipeline_descriptor.specialization_state.num_specialized_constants = 0;
-  }
+  populate_specialization_descriptor(specialization_constants_,
+                                     compute_pipeline_descriptor.specialization_state,
+                                     !allow_specialized);
 
   /* Check if current PSO exists in the cache. */
   pso_cache_lock_.lock();

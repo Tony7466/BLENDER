@@ -45,7 +45,8 @@ float thickness_from_shadow(vec3 P, vec3 Ng, float vPz)
 {
   /* Bias surface inward to avoid shadow map aliasing. */
 #ifdef SPECIALIZED_SHADOW_PARAMS
-  float normal_offset = SC_shadow_normal_bias;
+  float normal_offset = (SC_shadow_normal_bias >= 0.0f) ? SC_shadow_normal_bias :
+                                                          uniform_buf.shadow.normal_bias;
 #else
   float normal_offset = uniform_buf.shadow.normal_bias;
 #endif

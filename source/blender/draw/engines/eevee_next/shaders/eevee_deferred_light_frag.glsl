@@ -100,7 +100,10 @@ void main()
 
   /* TODO(fclem): Change shadow pass to be colored. */
   vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
-  output_renderpass_value(SC_render_pass_shadow_id, average(shadows));
+
+  int render_pass_id = (SC_render_pass_shadow_id >= -1) ? SC_render_pass_shadow_id :
+                                                         uniform_buf.render_pass.shadow_id;
+  output_renderpass_value(render_pass_id, average(shadows));
 
   if (gbuf.closure_count > 0) {
     /* TODO(fclem): This is waiting for fully flexible evaluation pipeline. We need to refactor the

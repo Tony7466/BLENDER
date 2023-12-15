@@ -409,6 +409,17 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
     sc_value.constant_name = sc.constant_name;
     sc_value.type = sc.type;
     sc_value.assigned = false;
+    switch (sc_value.type) {
+      case Type::INT:
+        sc_value.default_value_i = sc.default_value_i;
+        break;
+      case Type::BOOL:
+        sc_value.default_value_b = sc.default_value_b;
+        break;
+      case Type::FLOAT:
+        sc_value.default_value_f = sc.default_value_f;
+        break;
+    }
     shader->specialization_constant_add(sc.constant_id, sc_value);
   }
 

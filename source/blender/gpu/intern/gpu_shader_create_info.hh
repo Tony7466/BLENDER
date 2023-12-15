@@ -502,13 +502,18 @@ struct ShaderCreateInfo {
     int constant_id;
     Type type;
     StringRefNull constant_name;
-    StringRefNull fallback_code_string;
+    union {
+      int default_value_i;
+      bool default_value_b;
+      float default_value_f;
+    };
+
     bool operator==(const SpecializationConstant &b) const
     {
       TEST_EQUAL(*this, b, constant_id);
       TEST_EQUAL(*this, b, type);
       TEST_EQUAL(*this, b, constant_name);
-      TEST_EQUAL(*this, b, fallback_code_string);
+      TEST_EQUAL(*this, b, default_value_i);
       return true;
     }
   };
@@ -750,12 +755,39 @@ struct ShaderCreateInfo {
    * parameters (e.g. user setting parameters such as toggling of features or quality level
    * presets), or those with a low set of possible runtime permutations.
    * */
-  Self &constant(int constant_id,
-                                Type type,
-                                StringRefNull constant_name,
-                                StringRefNull fallback_code_string)
+  Self &constant_int(int constant_id, StringRefNull constant_name, int default_value = -1)
   {
-    specialization_constants_.append({constant_id, type, constant_name, fallback_code_string});
+    SpecializationConstant specialization_constant;
+    specialization_constant.constant_id = constant_id;
+    specialization_constant.type = Type::INT;
+    specialization_constant.constant_name = constant_name;
+    specialization_constant.default_value_i = default_value;
+
+    specialization_constants_.append(specialization_constant);
+    return *(Self *)this;
+  }
+
+  Self &constant_bool(int constant_id, StringRefNull constant_name, bool default_value = false)
+  {
+    SpecializationConstant specialization_constant;
+    specialization_constant.constant_id = constant_id;
+    specialization_constant.type = Type::BOOL;
+    specialization_constant.constant_name = constant_name;
+    specialization_constant.default_value_b = default_value;
+
+    specialization_constants_.append(specialization_constant);
+    return *(Self *)this;
+  }
+
+  Self &constant_float(int constant_id, StringRefNull constant_name, float default_value = -1.0f)
+  {
+    SpecializationConstant specialization_constant;
+    specialization_constant.constant_id = constant_id;
+    specialization_constant.type = Type::FLOAT;
+    specialization_constant.constant_name = constant_name;
+    specialization_constant.default_value_f = default_value;
+
+    specialization_constants_.append(specialization_constant);
     return *(Self *)this;
   }
 
