@@ -1013,6 +1013,106 @@ static eInsertKeyFlags keyingset_apply_keying_flags(const eInsertKeyFlags base_f
   return result;
 }
 
+static int insert_key_to_keying_set_path(bContext *C,
+                                         KS_Path *ksp,
+                                         KeyingSet *ks,
+                                         const eInsertKeyFlags kflag,
+                                         const eModifyKey_Modes mode,
+                                         const float cfra)
+{
+  /* Since keying settings can be defined on the paths too,
+   * apply the settings for this path first. */
+  const eInsertKeyFlags kflag2 = keyingset_apply_keying_flags(
+      kflag, eInsertKeyFlags(ksp->keyingoverride), eInsertKeyFlags(ksp->keyingflag));
+
+  const char *groupname = nullptr;
+  /* get pointer to name of group to add channels to */
+  if (ksp->groupmode == KSP_GROUP_NONE) {
+    groupname = nullptr;
+  }
+  else if (ksp->groupmode == KSP_GROUP_KSNAME) {
+    groupname = ks->name;
+  }
+  else {
+    groupname = ksp->group;
+  }
+
+  /* init arraylen and i - arraylen should be greater than i so that
+   * normal non-array entries get keyframed correctly
+   */
+  int i = ksp->array_index;
+  int arraylen = i;
+
+  /* get length of array if whole array option is enabled */
+  if (ksp->flag & KSP_FLAG_WHOLE_ARRAY) {
+    PointerRNA ptr;
+    PropertyRNA *prop;
+
+    PointerRNA id_ptr = RNA_id_pointer_create(ksp->id);
+    if (RNA_path_resolve_property(&id_ptr, ksp->rna_path, &ptr, &prop)) {
+      arraylen = RNA_property_array_length(&ptr, prop);
+      /* start from start of array, instead of the previously specified index - #48020 */
+      i = 0;
+    }
+  }
+
+  /* we should do at least one step */
+  if (arraylen == i) {
+    arraylen++;
+  }
+
+  Main *bmain = CTX_data_main(C);
+  ReportList *reports = CTX_wm_reports(C);
+  Scene *scene = CTX_data_scene(C);
+  char keytype = scene->toolsettings->keyframe_type;
+  /* for each possible index, perform operation
+   * - assume that arraylen is greater than index
+   */
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
+                                                                                    cfra);
+  int num_channels = 0;
+  for (; i < arraylen; i++) {
+    /* action to take depends on mode */
+    if (mode == MODIFYKEY_MODE_INSERT) {
+      num_channels += blender::animrig::insert_keyframe(bmain,
+                                                        reports,
+                                                        ksp->id,
+                                                        nullptr,
+                                                        groupname,
+                                                        ksp->rna_path,
+                                                        i,
+                                                        &anim_eval_context,
+                                                        eBezTriple_KeyframeType(keytype),
+                                                        kflag2);
+    }
+    else if (mode == MODIFYKEY_MODE_DELETE) {
+      num_channels += blender::animrig::delete_keyframe(
+          bmain, reports, ksp->id, nullptr, ksp->rna_path, i, cfra);
+    }
+  }
+
+  /* set recalc-flags */
+  switch (GS(ksp->id->name)) {
+    case ID_OB: /* Object (or Object-Related) Keyframes */
+    {
+      Object *ob = (Object *)ksp->id;
+
+      /* XXX: only object transforms? */
+      DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+      break;
+    }
+    default:
+      DEG_id_tag_update(ksp->id, ID_RECALC_ANIMATION_NO_FLUSH);
+      break;
+  }
+
+  /* send notifiers for updates (this doesn't require context to work!) */
+  WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
+
+  return num_channels;
+}
+
 int ANIM_apply_keyingset(
     bContext *C, blender::Vector<PointerRNA> *sources, KeyingSet *ks, short mode, float cfra)
 {
@@ -1048,13 +1148,9 @@ int ANIM_apply_keyingset(
   ReportList *reports = CTX_wm_reports(C);
   char keytype = scene->toolsettings->keyframe_type;
   int num_channels = 0;
-  const char *groupname = nullptr;
 
   /* apply the paths as specified in the KeyingSet now */
   LISTBASE_FOREACH (KS_Path *, ksp, &ks->paths) {
-    int arraylen, i;
-    eInsertKeyFlags kflag2;
-
     /* skip path if no ID pointer is specified */
     if (ksp->id == nullptr) {
       BKE_reportf(reports,
@@ -1066,89 +1162,7 @@ int ANIM_apply_keyingset(
       continue;
     }
 
-    /* Since keying settings can be defined on the paths too,
-     * apply the settings for this path first. */
-    kflag2 = keyingset_apply_keying_flags(
-        kflag, eInsertKeyFlags(ksp->keyingoverride), eInsertKeyFlags(ksp->keyingflag));
-
-    /* get pointer to name of group to add channels to */
-    if (ksp->groupmode == KSP_GROUP_NONE) {
-      groupname = nullptr;
-    }
-    else if (ksp->groupmode == KSP_GROUP_KSNAME) {
-      groupname = ks->name;
-    }
-    else {
-      groupname = ksp->group;
-    }
-
-    /* init arraylen and i - arraylen should be greater than i so that
-     * normal non-array entries get keyframed correctly
-     */
-    i = ksp->array_index;
-    arraylen = i;
-
-    /* get length of array if whole array option is enabled */
-    if (ksp->flag & KSP_FLAG_WHOLE_ARRAY) {
-      PointerRNA ptr;
-      PropertyRNA *prop;
-
-      PointerRNA id_ptr = RNA_id_pointer_create(ksp->id);
-      if (RNA_path_resolve_property(&id_ptr, ksp->rna_path, &ptr, &prop)) {
-        arraylen = RNA_property_array_length(&ptr, prop);
-        /* start from start of array, instead of the previously specified index - #48020 */
-        i = 0;
-      }
-    }
-
-    /* we should do at least one step */
-    if (arraylen == i) {
-      arraylen++;
-    }
-
-    /* for each possible index, perform operation
-     * - assume that arraylen is greater than index
-     */
-    Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-    const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
-                                                                                      cfra);
-    for (; i < arraylen; i++) {
-      /* action to take depends on mode */
-      if (mode == MODIFYKEY_MODE_INSERT) {
-        num_channels += blender::animrig::insert_keyframe(bmain,
-                                                          reports,
-                                                          ksp->id,
-                                                          nullptr,
-                                                          groupname,
-                                                          ksp->rna_path,
-                                                          i,
-                                                          &anim_eval_context,
-                                                          eBezTriple_KeyframeType(keytype),
-                                                          kflag2);
-      }
-      else if (mode == MODIFYKEY_MODE_DELETE) {
-        num_channels += blender::animrig::delete_keyframe(
-            bmain, reports, ksp->id, nullptr, ksp->rna_path, i, cfra);
-      }
-    }
-
-    /* set recalc-flags */
-    switch (GS(ksp->id->name)) {
-      case ID_OB: /* Object (or Object-Related) Keyframes */
-      {
-        Object *ob = (Object *)ksp->id;
-
-        /* XXX: only object transforms? */
-        DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-        break;
-      }
-      default:
-        DEG_id_tag_update(ksp->id, ID_RECALC_ANIMATION_NO_FLUSH);
-        break;
-    }
-
-    /* send notifiers for updates (this doesn't require context to work!) */
-    WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
+    num_channels += insert_key_to_keying_set_path(C, ksp, ks, kflag, eModifyKey_Modes(mode), cfra);
   }
 
   /* return the number of channels successfully affected */
