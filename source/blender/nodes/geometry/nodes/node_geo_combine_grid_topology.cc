@@ -45,13 +45,17 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = GEO_NODE_BOOLEAN_INTERSECT;
 }
 
-static void node_geo_exec(GeoNodeExecParams params)
-{
 #ifdef WITH_OPENVDB
+static bke::GVolumeGridPtr try_combine_grids(GeoNodeExecParams params)
+{
   const GeometryNodeBooleanOperation operation = GeometryNodeBooleanOperation(
       params.node().custom1);
 
   bke::GVolumeGridPtr primary_grid = grids::extract_grid_input(params, "Grid", DummyMaskGridType);
+  if (!primary_grid) {
+    return nullptr;
+  }
+
   if (!primary_grid->is_mutable()) {
     primary_grid = bke::GVolumeGridPtr(primary_grid->copy());
     primary_grid->tag_ensured_mutable();
@@ -59,7 +63,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   // const Vector<bke::VolumeGrid *> secondary_grids = grids::extract_grid_multi_input(
   //     params, "Grids", DummyMaskGridType);
-  const Vector<bke::GVolumeGridPtr> secondary_grids = {grids::extract_grid_input(params, "Grids", DummyMaskGridType)};
+  const Vector<bke::GVolumeGridPtr> secondary_grids = {
+      grids::extract_grid_input(params, "Grids", DummyMaskGridType)};
 
   primary_grid.grid_for_write()->apply<grids::SupportedVDBGridTypes>([&](auto &primary_grid) {
     for (const bke::GVolumeGridPtr &secondary_grid : secondary_grids) {
@@ -82,7 +87,15 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
   });
 
-  grids::set_output_grid(params, "Grid", DummyMaskGridType, bke::GVolumeGridPtr{primary_grid});
+  return primary_grid;
+}
+#endif
+
+static void node_geo_exec(GeoNodeExecParams params)
+{
+#ifdef WITH_OPENVDB
+  bke::GVolumeGridPtr output_grid = try_combine_grids(params);
+  grids::set_output_grid(params, "Grid", DummyMaskGridType, std::move(output_grid));
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,

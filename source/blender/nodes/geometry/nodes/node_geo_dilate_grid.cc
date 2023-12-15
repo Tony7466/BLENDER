@@ -59,9 +59,11 @@ static void try_dilate_grid(GeoNodeExecParams params,
     return;
   }
 
-  bke::VolumeGridPtr<T> output_grid = value.grid->is_mutable() ?
-                                          value.grid :
-                                          bke::VolumeGridPtr<T>{value.grid->copy()};
+  bke::VolumeGridPtr<T> output_grid = value.grid;
+  if (!output_grid->is_mutable()) {
+    output_grid = bke::VolumeGridPtr<T>{output_grid->copy()};
+    output_grid->tag_ensured_mutable();
+  }
 
   openvdb::tools::dilateActiveValues(output_grid.grid_for_write()->tree(),
                                      iterations,
