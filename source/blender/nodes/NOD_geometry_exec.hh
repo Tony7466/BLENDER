@@ -110,6 +110,10 @@ class GeoNodeExecParams {
       if constexpr (std::is_same_v<T, GeometrySet>) {
         this->check_input_geometry_set(identifier, value);
       }
+      if constexpr (std::is_same_v<T, SocketValueVariant>) {
+        BLI_assert(value.valid_for_socket(
+            eNodeSocketDatatype(node_.input_by_identifier(identifier).type)));
+      }
       return value;
     }
   }
@@ -137,6 +141,10 @@ class GeoNodeExecParams {
       if constexpr (std::is_same_v<T, GeometrySet>) {
         this->check_input_geometry_set(identifier, value);
       }
+      if constexpr (std::is_same_v<T, SocketValueVariant>) {
+        BLI_assert(value.valid_for_socket(
+            eNodeSocketDatatype(node_.input_by_identifier(identifier).type)));
+      }
       return value;
     }
   }
@@ -150,14 +158,17 @@ class GeoNodeExecParams {
     if constexpr (is_field_base_type_v<StoredT> || fn::is_field_v<StoredT> ||
                   std::is_same_v<StoredT, GField>)
     {
-      SocketValueVariant value_variant;
-      value_variant.store_as(std::forward<T>(value));
+      SocketValueVariant value_variant(std::forward<T>(value));
       this->set_output(identifier, std::move(value_variant));
     }
     else {
 #ifndef NDEBUG
       const CPPType &type = CPPType::get<StoredT>();
       this->check_output_access(identifier, type);
+      if constexpr (std::is_same_v<StoredT, SocketValueVariant>) {
+        BLI_assert(value.valid_for_socket(
+            eNodeSocketDatatype(node_.output_by_identifier(identifier).type)));
+      }
 #endif
       if constexpr (std::is_same_v<StoredT, GeometrySet>) {
         this->check_output_geometry_set(value);

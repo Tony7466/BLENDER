@@ -67,6 +67,8 @@ struct SocketValueVariant {
   void *new_single_for_write(eNodeSocketDatatype socket_type);
   void *new_single_for_write(const CPPType &cpp_type);
 
+  bool valid_for_socket(eNodeSocketDatatype socket_type) const;
+
   friend std::ostream &operator<<(std::ostream &stream, const SocketValueVariant &value_variant);
 
  private:

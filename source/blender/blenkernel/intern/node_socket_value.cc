@@ -220,6 +220,14 @@ std::ostream &operator<<(std::ostream &stream, const SocketValueVariant &value_v
   return stream;
 }
 
+bool SocketValueVariant::valid_for_socket(eNodeSocketDatatype socket_type) const
+{
+  if (kind_ == Kind::None) {
+    return false;
+  }
+  return socket_type_ == socket_type;
+}
+
 #define INSTANTIATE(TYPE) \
   template TYPE SocketValueVariant::extract_as(); \
   template TYPE SocketValueVariant::get_as() const; \
