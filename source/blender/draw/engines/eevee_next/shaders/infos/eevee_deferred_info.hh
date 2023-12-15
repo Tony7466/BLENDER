@@ -63,19 +63,19 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .image_out(3, DEFERRED_RADIANCE_FORMAT, "direct_radiance_2_img")
     .image_out(4, DEFERRED_RADIANCE_FORMAT, "direct_radiance_3_img")
     .define("SPECIALIZED_SHADOW_PARAMS")
-    .specialization_constant(SC_render_pass_shadow_id_SLOT,
+    .constant(SC_render_pass_shadow_id_SLOT,
                              Type::INT,
                              "SC_render_pass_shadow_id",
                              "uniform_buf.render_pass.shadow_id")
-    .specialization_constant(SC_shadow_ray_count_SLOT,
+    .constant(SC_shadow_ray_count_SLOT,
                              Type::INT,
                              "SC_shadow_ray_count",
                              "uniform_buf.shadow.ray_count")
-    .specialization_constant(SC_shadow_ray_step_count_SLOT,
+    .constant(SC_shadow_ray_step_count_SLOT,
                              Type::INT,
                              "SC_shadow_ray_step_count",
                              "uniform_buf.shadow.step_count")
-    .specialization_constant(SC_shadow_normal_bias_SLOT,
+    .constant(SC_shadow_normal_bias_SLOT,
                              Type::FLOAT,
                              "SC_shadow_normal_bias",
                              "uniform_buf.shadow.normal_bias")
@@ -123,11 +123,11 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
                      "eevee_render_pass_out",
                      "draw_fullscreen")
     .fragment_source("eevee_deferred_combine_frag.glsl")
-    .specialization_constant(SC_diffuse_light_id_SLOT,
+    .constant(SC_diffuse_light_id_SLOT,
                              Type::INT,
                              "SC_diffuse_light_id",
                              "uniform_buf.render_pass.diffuse_light_id")
-    .specialization_constant(SC_specular_light_id_SLOT,
+    .constant(SC_specular_light_id_SLOT,
                              Type::INT,
                              "SC_specular_light_id",
                              "uniform_buf.render_pass.specular_light_id")

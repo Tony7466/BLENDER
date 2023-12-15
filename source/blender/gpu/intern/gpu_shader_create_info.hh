@@ -744,7 +744,7 @@ struct ShaderCreateInfo {
   /** \} */
 
   /* -------------------------------------------------------------------- */
-  /** \name Specialization Constants
+  /** \name Shader specialization constants
    * \{ */
 
   /* Adds a specialization constant which will either fetch a statically compiled
@@ -761,7 +761,7 @@ struct ShaderCreateInfo {
    * parameters (e.g. user setting parameters such as toggling of features or quality level
    * presets), or those with a low set of possible runtime permutations.
    * */
-  Self &specialization_constant(int constant_id,
+  Self &constant(int constant_id,
                                 Type type,
                                 StringRefNull constant_name,
                                 StringRefNull fallback_code_string)

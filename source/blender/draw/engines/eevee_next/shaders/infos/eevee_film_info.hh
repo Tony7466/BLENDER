@@ -26,47 +26,47 @@ GPU_SHADER_CREATE_INFO(eevee_film)
     .additional_info("eevee_shared")
     .additional_info("eevee_global_ubo")
     .additional_info("eevee_velocity_camera")
-    .specialization_constant(SC_display_only_SLOT,
+    .constant(SC_display_only_SLOT,
                              Type::INT,
                              "SC_display_only",
                              "uniform_buf.film.display_only")
-    .specialization_constant(SC_combined_id_SLOT,
+    .constant(SC_combined_id_SLOT,
                              Type::INT,
                              "SC_combined_id",
                              "uniform_buf.film.combined_id")
-    .specialization_constant(SC_has_data_SLOT,
+    .constant(SC_has_data_SLOT,
                              Type::INT,
                              "SC_has_data",
                              "uniform_buf.film.has_data")
-    .specialization_constant(SC_use_reprojection_SLOT,
+    .constant(SC_use_reprojection_SLOT,
                              Type::INT,
                              "SC_use_reprojection",
                              "uniform_buf.film.use_reprojection")
-    .specialization_constant(SC_use_history_SLOT,
+    .constant(SC_use_history_SLOT,
                              Type::INT,
                              "SC_use_history",
                              "uniform_buf.film.use_history")
-    .specialization_constant(SC_normal_id_SLOT,
+    .constant(SC_normal_id_SLOT,
                              Type::INT,
                              "SC_normal_id",
                              "uniform_buf.film.normal_id")
-    .specialization_constant(SC_any_render_pass_1_SLOT,
+    .constant(SC_any_render_pass_1_SLOT,
                              Type::INT,
                              "SC_any_render_pass_1",
                              "uniform_buf.film.any_render_pass_1")
-    .specialization_constant(SC_any_render_pass_2_SLOT,
+    .constant(SC_any_render_pass_2_SLOT,
                              Type::INT,
                              "SC_any_render_pass_2",
                              "uniform_buf.film.any_render_pass_2")
-    .specialization_constant(SC_any_render_pass_3_SLOT,
+    .constant(SC_any_render_pass_3_SLOT,
                              Type::INT,
                              "SC_any_render_pass_3",
                              "uniform_buf.film.any_render_pass_3")
-    .specialization_constant(SC_aov_color_len_SLOT,
+    .constant(SC_aov_color_len_SLOT,
                              Type::INT,
                              "SC_aov_color_len",
                              "uniform_buf.film.aov_color_len")
-    .specialization_constant(SC_cryptomatte_samples_len_SLOT,
+    .constant(SC_cryptomatte_samples_len_SLOT,
                              Type::INT,
                              "SC_cryptomatte_samples_len",
                              "uniform_buf.film.cryptomatte_samples_len")
