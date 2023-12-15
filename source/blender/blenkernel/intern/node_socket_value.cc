@@ -20,6 +20,9 @@ namespace blender::bke {
 
 static const CPPType *socket_type_to_cpp_type(const eNodeSocketDatatype socket_type)
 {
+  if (socket_type == SOCK_STRING) {
+    return &CPPType::get<std::string>();
+  }
   if (std::optional<eCustomDataType> cd_type = socket_type_to_custom_data_type(socket_type)) {
     return custom_data_type_to_cpp_type(*cd_type);
   }
@@ -28,6 +31,9 @@ static const CPPType *socket_type_to_cpp_type(const eNodeSocketDatatype socket_t
 
 static std::optional<eNodeSocketDatatype> cpp_type_to_socket_type(const CPPType &cpp_type)
 {
+  if (cpp_type.is<std::string>()) {
+    return SOCK_STRING;
+  }
   eCustomDataType cd_type = cpp_type_to_custom_data_type(cpp_type);
   if (cd_type == CD_AUTO_FROM_NAME) {
     return std::nullopt;
