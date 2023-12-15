@@ -692,6 +692,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
             node_add_menu.add_node_type(layout, "GeometryNodeGridFilter")
             node_add_menu.add_node_type(layout, "GeometryNodeGridLevelSetFilter")
             node_add_menu.add_node_type(layout, "GeometryNodeGridPoissonSolver")
+            node_add_menu.add_node_type(layout, "GeometryNodeGridToPoints")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Operations")
 
 

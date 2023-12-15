@@ -341,6 +341,7 @@ DefNode(GeometryNode, GEO_NODE_GRID_CAPTURE, 0, "GRID_CAPTURE", GridCapture, "Ca
 DefNode(GeometryNode, GEO_NODE_GRID_FILTER, 0, "GRID_FILTER", GridFilter, "Filter", "Perform a filtering operation on a grid")
 DefNode(GeometryNode, GEO_NODE_GRID_LEVEL_SET_FILTER, 0, "GRID_LEVEL_SET_FILTER", GridLevelSetFilter, "Level Set Filter", "Perform a filtering operation on a level set grid with surface tracking")
 DefNode(GeometryNode, GEO_NODE_GRID_POISSON_SOLVER, 0, "GRID_POISSON_SOLVER", GridPoissonSolver, "Grid Poisson Solver", "Solve a Poisson equation on a grid")
+DefNode(GeometryNode, GEO_NODE_GRID_TO_POINTS, 0, "GRID_TO_POINTS", GridToPoints, "Grid to Points", "Create a point for each voxel in a grid")
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")
 DefNode(GeometryNode, GEO_NODE_INDEX_OF_NEAREST, 0, "INDEX_OF_NEAREST", IndexOfNearest, "Index of Nearest", "Find the nearest element in a group. Similar to the \"Sample Nearest\" node")

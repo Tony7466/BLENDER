@@ -150,10 +150,14 @@ namespace grids {
 using SupportedVDBGridTypes = openvdb::TypeList<openvdb::FloatGrid, openvdb::Vec3fGrid>;
 
 bool grid_type_supported(eCustomDataType data_type);
+
 const EnumPropertyItem *grid_type_items_fn(bContext *C,
                                            PointerRNA *ptr,
                                            PropertyRNA *prop,
                                            bool *r_free);
+
+float4x4 vdb_transform_to_matrix(const openvdb::math::Transform &transform);
+openvdb::math::Transform::Ptr matrix_to_vdb_transform(const float4x4 &mat);
 
 BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
                                                       eCustomDataType type,
