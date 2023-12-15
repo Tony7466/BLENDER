@@ -644,7 +644,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       /* Wait for skip input to be computed. */
       return;
     }
-    const bool skip = skip_variant->get_as<bool>();
+    const bool skip = skip_variant->get<bool>();
 
     /* Instead of outputting the values directly, convert them to a bake state and then back. This
      * ensures that some geometry processing happens on the data consistently (e.g. removing

@@ -99,7 +99,7 @@ class GeoNodeExecParams {
                   std::is_same_v<std::decay_t<T>, GField>)
     {
       SocketValueVariant value_variant = this->extract_input<SocketValueVariant>(identifier);
-      return value_variant.extract_as<T>();
+      return value_variant.extract<T>();
     }
     else {
 #ifndef NDEBUG
@@ -130,7 +130,7 @@ class GeoNodeExecParams {
                   std::is_same_v<std::decay_t<T>, GField>)
     {
       auto value_variant = this->get_input<SocketValueVariant>(identifier);
-      return value_variant.extract_as<T>();
+      return value_variant.extract<T>();
     }
     else {
 #ifndef NDEBUG

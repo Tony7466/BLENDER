@@ -183,7 +183,7 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
   else if (type.is<bke::SocketValueVariant>()) {
     bke::SocketValueVariant value_variant = *value.get<bke::SocketValueVariant>();
     if (value_variant.is_context_dependent_field()) {
-      const GField field = value_variant.extract_as<GField>();
+      const GField field = value_variant.extract<GField>();
       store_logged_value(this->allocator->construct<FieldInfoLog>(field));
     }
     else {

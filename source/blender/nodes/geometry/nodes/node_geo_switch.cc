@@ -127,10 +127,10 @@ class LazyFunctionForSwitchNode : public LazyFunction {
   {
     SocketValueVariant condition_variant = params.get_input<SocketValueVariant>(0);
     if (condition_variant.is_context_dependent_field() && can_be_field_) {
-      this->execute_field(condition_variant.get_as<Field<bool>>(), params);
+      this->execute_field(condition_variant.get<Field<bool>>(), params);
     }
     else {
-      this->execute_single(condition_variant.get_as<bool>(), params);
+      this->execute_single(condition_variant.get<bool>(), params);
     }
   }
 
@@ -169,8 +169,8 @@ class LazyFunctionForSwitchNode : public LazyFunction {
 
     const MultiFunction &switch_multi_function = this->get_switch_multi_function();
 
-    GField false_field = false_value_variant->extract_as<GField>();
-    GField true_field = true_value_variant->extract_as<GField>();
+    GField false_field = false_value_variant->extract<GField>();
+    GField true_field = true_value_variant->extract<GField>();
 
     GField output_field{FieldOperation::Create(
         switch_multi_function,

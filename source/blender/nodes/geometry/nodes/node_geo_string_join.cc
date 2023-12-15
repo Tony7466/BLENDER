@@ -20,7 +20,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   std::string output;
   for (const int i : strings.index_range()) {
-    output += strings[i].extract_as<std::string>();
+    output += strings[i].extract<std::string>();
     if (i < (strings.size() - 1)) {
       output += delim;
     }

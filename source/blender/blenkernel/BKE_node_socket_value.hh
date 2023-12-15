@@ -99,18 +99,18 @@ class SocketValueVariant {
    * This method may leave the variant empty, in a moved from state or unchanged. Therefore, this
    * should only be called once.
    */
-  template<typename T> T extract_as();
+  template<typename T> T extract();
 
   /**
-   * Same as #extract_as, but always leaves the variant unchanged. So this method can be called
+   * Same as #extract, but always leaves the variant unchanged. So this method can be called
    * multiple times.
    */
-  template<typename T> T get_as() const;
+  template<typename T> T get() const;
 
   /**
    * Replaces the stored value with a new value of potentially a different type.
    */
-  template<typename T> void store_as(T &&value);
+  template<typename T> void set(T &&value);
 
   /**
    * If true, the stored value cannot be converted to a single value without loss of information.
@@ -119,7 +119,7 @@ class SocketValueVariant {
 
   /**
    * Cnvert the stored value into a single value. For simple value access, this is not necessary,
-   * because #get_as` does the conversion implicitly. However, it is necessary if one wants to use
+   * because #get` does the conversion implicitly. However, it is necessary if one wants to use
    * #get_single_ptr.
    *
    * The caller has to make sure that the stored value is a single value or a field.
@@ -158,10 +158,10 @@ class SocketValueVariant {
 
 template<typename T> inline SocketValueVariant::SocketValueVariant(T &&value)
 {
-  this->store_as(std::forward<T>(value));
+  this->set(std::forward<T>(value));
 }
 
-template<typename T> inline void SocketValueVariant::store_as(T &&value)
+template<typename T> inline void SocketValueVariant::set(T &&value)
 {
   this->store_as_impl<std::decay_t<T>>(std::forward<T>(value));
 }

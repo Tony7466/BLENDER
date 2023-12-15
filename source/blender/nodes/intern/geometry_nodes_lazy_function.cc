@@ -525,7 +525,7 @@ static void execute_multi_function_on_value_variant(const MultiFunction &fn,
     /* Convert all inputs into fields, so that they can be used as input in the new field. */
     Vector<GField> input_fields;
     for (const int i : input_values.index_range()) {
-      input_fields.append(input_values[i]->extract_as<GField>());
+      input_fields.append(input_values[i]->extract<GField>());
     }
 
     /* Construct the new field node. */
@@ -539,7 +539,7 @@ static void execute_multi_function_on_value_variant(const MultiFunction &fn,
 
     /* Store the new fields in the output. */
     for (const int i : output_values.index_range()) {
-      output_values[i]->store_as(GField{operation, i});
+      output_values[i]->set(GField{operation, i});
     }
   }
   else {
@@ -788,7 +788,7 @@ class LazyFunctionForViewerNode : public LazyFunction {
     if (use_field_input_) {
       SocketValueVariant *value_variant = params.try_get_input_data_ptr<SocketValueVariant>(1);
       BLI_assert(value_variant != nullptr);
-      GField field = value_variant->extract_as<GField>();
+      GField field = value_variant->extract<GField>();
       const eAttrDomain domain = eAttrDomain(storage->domain);
       const StringRefNull viewer_attribute_name = ".viewer";
       if (domain == ATTR_DOMAIN_INSTANCE) {
@@ -1113,7 +1113,7 @@ class LazyFunctionForSwitchSocketUsage : public lf::LazyFunction {
       params.set_output(1, true);
     }
     else {
-      const bool value = condition_variant.get_as<bool>();
+      const bool value = condition_variant.get<bool>();
       params.set_output(0, !value);
       params.set_output(1, value);
     }
@@ -1144,7 +1144,7 @@ class LazyFunctionForIndexSwitchSocketUsage : public lf::LazyFunction {
       }
     }
     else {
-      const int value = index_variant.get_as<bool>();
+      const int value = index_variant.get<bool>();
       for (const int i : outputs_.index_range()) {
         params.set_output(i, i == value);
       }
@@ -1181,7 +1181,7 @@ class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
 
     bke::AnonymousAttributeSet attributes;
     if (value_variant->is_context_dependent_field()) {
-      const GField &field = value_variant->get_as<GField>();
+      const GField &field = value_variant->get<GField>();
       field.node().for_each_field_input_recursive([&](const FieldInput &field_input) {
         if (const auto *attr_field_input = dynamic_cast<const AnonymousAttributeFieldInput *>(
                 &field_input))
@@ -1640,7 +1640,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     /* Number of iterations to evaluate. */
     const int iterations = std::max<int>(
-        0, params.get_input<SocketValueVariant>(zone_info_.indices.inputs.main[0]).get_as<int>());
+        0, params.get_input<SocketValueVariant>(zone_info_.indices.inputs.main[0]).get<int>());
 
     /* Show a warning when the inspection index is out of range. */
     if (node_storage.inspection_index > 0) {

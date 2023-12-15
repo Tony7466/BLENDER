@@ -49,7 +49,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       }
       case SOCK_STRING: {
         auto &value_variant = *static_cast<SocketValueVariant *>(socket_value);
-        bake_items[i] = std::make_unique<StringBakeItem>(value_variant.extract_as<std::string>());
+        bake_items[i] = std::make_unique<StringBakeItem>(value_variant.extract<std::string>());
         break;
       }
       case SOCK_FLOAT:
@@ -60,7 +60,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       case SOCK_RGBA: {
         auto &value_variant = *static_cast<SocketValueVariant *>(socket_value);
         if (value_variant.is_context_dependent_field()) {
-          const fn::GField &field = value_variant.get_as<fn::GField>();
+          const fn::GField &field = value_variant.get<fn::GField>();
           const eAttrDomain domain = config.domains[i];
           const std::string attribute_name = ".bake_" + std::to_string(i);
           const Span<int> geometry_indices = config.geometries_by_attribute[i];

@@ -49,7 +49,7 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
   return std::nullopt;
 }
 
-template<typename T> T SocketValueVariant::extract_as()
+template<typename T> T SocketValueVariant::extract()
 {
   if constexpr (std::is_same_v<T, fn::GField>) {
     if (kind_ == Kind::Field) {
@@ -62,7 +62,7 @@ template<typename T> T SocketValueVariant::extract_as()
   }
   else if constexpr (fn::is_field_v<T>) {
     BLI_assert(socket_type_ == static_type_to_socket_type<typename T::base_type>());
-    return T(this->extract_as<fn::GField>());
+    return T(this->extract<fn::GField>());
   }
   else {
     BLI_assert(socket_type_ == static_type_to_socket_type<T>());
@@ -80,10 +80,10 @@ template<typename T> T SocketValueVariant::extract_as()
   return T();
 }
 
-template<typename T> T SocketValueVariant::get_as() const
+template<typename T> T SocketValueVariant::get() const
 {
   SocketValueVariant copied_variant = *this;
-  return copied_variant.extract_as<T>();
+  return copied_variant.extract<T>();
 }
 
 template<typename T> void SocketValueVariant::store_as_impl(T value)
@@ -236,8 +236,8 @@ bool SocketValueVariant::valid_for_socket(eNodeSocketDatatype socket_type) const
 }
 
 #define INSTANTIATE(TYPE) \
-  template TYPE SocketValueVariant::extract_as(); \
-  template TYPE SocketValueVariant::get_as() const; \
+  template TYPE SocketValueVariant::extract(); \
+  template TYPE SocketValueVariant::get() const; \
   template void SocketValueVariant::store_as_impl(TYPE);
 
 #define INSTANTIATE_SINGLE_AND_FIELD(TYPE) \

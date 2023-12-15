@@ -104,7 +104,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
     if (!params.output_was_set(0)) {
       SocketValueVariant delta_time_variant;
-      delta_time_variant.store_as(delta_time);
+      delta_time_variant.set(delta_time);
       params.set_output(0, std::move(delta_time_variant));
     }
   }
