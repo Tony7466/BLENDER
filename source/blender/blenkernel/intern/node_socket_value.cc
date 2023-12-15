@@ -47,7 +47,7 @@ template<typename T> T SocketValueVariant::extract_as()
     }
   }
   else if constexpr (fn::is_field_v<T>) {
-    BLI_assert(socket_type_ == cpp_type_to_socket_type(CPPType::get<T::base_type>()));
+    BLI_assert(socket_type_ == cpp_type_to_socket_type(CPPType::get<typename T::base_type>()));
     return T(this->extract_as<fn::GField>());
   }
   else {
