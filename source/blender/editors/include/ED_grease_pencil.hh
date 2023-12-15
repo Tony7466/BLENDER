@@ -26,6 +26,7 @@ struct ToolSettings;
 struct Scene;
 struct ViewDepths;
 struct View3D;
+struct ARegion;
 
 enum {
   LAYER_REORDER_ABOVE,
@@ -74,17 +75,12 @@ class DrawingPlacement {
 
  public:
   DrawingPlacement() = default;
-  DrawingPlacement(const Scene &scene,
-                   const ARegion &region,
-                   const View3D &view3d,
-                   const Object &object);
+  DrawingPlacement(const bContext *C);
   ~DrawingPlacement();
 
  public:
   bool use_project_to_surface() const;
   bool use_project_to_nearest_stroke() const;
-
-  void cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d);
   void set_origin_to_nearest_stroke(float2 co);
 
   /**
@@ -92,6 +88,9 @@ class DrawingPlacement {
    */
   float3 project(float2 co) const;
   void project(Span<float2> src, MutableSpan<float3> dst) const;
+
+ private:
+  void cache_viewport_depths(const Depsgraph &depsgraph);
 };
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,
@@ -147,8 +146,6 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
 
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
-
-float brush_radius_world_space(bContext &C, int x, int y);
 
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);

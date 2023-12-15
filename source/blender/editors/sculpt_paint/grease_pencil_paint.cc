@@ -116,11 +116,16 @@ class PaintOperation : public GreasePencilStrokeOperation {
   int active_smooth_start_index_ = 0;
 
   /* Helper class to project screen space coordinates to 3d. */
-  ed::greasepencil::DrawingPlacement placement_;
+  ed::greasepencil::DrawingPlacement *placement_;
 
   friend struct PaintOperationExecutor;
 
  public:
+  // ~PaintOperation()
+  // {
+  //   MEM_delete(placement_);
+  // }
+
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
@@ -182,7 +187,7 @@ struct PaintOperationExecutor {
     ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
                                                 CTX_data_depsgraph_pointer(&C));
     float radius = calc_brush_radius(
-        &vc, brush_, scene_, self.placement_.project(sample.mouse_position));
+        &vc, brush_, scene_, self.placement_->project(sample.mouse_position));
     if (BKE_brush_use_size_pressure(brush_)) {
       radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
     }
@@ -218,7 +223,7 @@ struct PaintOperationExecutor {
     curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
     curves.offsets_for_write().last(1) = num_old_points;
 
-    curves.positions_for_write().last() = self.placement_.project(start_coords);
+    curves.positions_for_write().last() = self.placement_->project(start_coords);
     drawing_->radii_for_write().last() = start_radius;
     drawing_->opacities_for_write().last() = start_opacity;
     drawing_->vertex_colors_for_write().last() = start_vertex_color;
@@ -335,7 +340,7 @@ struct PaintOperationExecutor {
 
       /* Update the positions in the current cache. */
       window_coords[window_i] = new_pos;
-      positions_slice[window_i] = self.placement_.project(new_pos);
+      positions_slice[window_i] = self.placement_->project(new_pos);
     }
 
     /* Remove all the converged points from the active window and shrink the window accordingly. */
@@ -364,7 +369,7 @@ struct PaintOperationExecutor {
 
     /* Overwrite last point if it's very close. */
     if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
-      curves.positions_for_write().last() = self.placement_.project(coords);
+      curves.positions_for_write().last() = self.placement_->project(coords);
       drawing_->radii_for_write().last() = math::max(radius, prev_radius);
       drawing_->opacities_for_write().last() = math::max(opacity, prev_opacity);
       return;
@@ -409,7 +414,7 @@ struct PaintOperationExecutor {
     const IndexRange smooth_window = self.screen_space_coords_orig_.index_range().drop_front(
         self.active_smooth_start_index_);
     if (smooth_window.size() < min_active_smoothing_points_num) {
-      self.placement_.project(new_screen_space_coords, new_positions);
+      self.placement_->project(new_screen_space_coords, new_positions);
     }
     else {
       /* Active smoothing is done in a window at the end of the new stroke. */
@@ -440,8 +445,6 @@ struct PaintOperationExecutor {
 
 void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
-  ARegion *region = CTX_wm_region(&C);
-  View3D *view3d = CTX_wm_view3d(&C);
   Scene *scene = CTX_data_scene(&C);
   Object *object = CTX_data_active_object(&C);
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
@@ -460,13 +463,9 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
 
   /* Initialize helper class for projecting screen space coordinates. */
-  placement_ = ed::greasepencil::DrawingPlacement(*scene, *region, *view3d, *object);
-  if (placement_.use_project_to_surface()) {
-    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
-  }
-  else if (placement_.use_project_to_nearest_stroke()) {
-    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
-    placement_.set_origin_to_nearest_stroke(start_sample.mouse_position);
+  placement_ = new ed::greasepencil::DrawingPlacement(&C);
+  if (placement_->use_project_to_nearest_stroke()) {
+    placement_->set_origin_to_nearest_stroke(start_sample.mouse_position);
   }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(

@@ -30,12 +30,11 @@
 
 namespace blender::ed::greasepencil {
 
-DrawingPlacement::DrawingPlacement(const Scene &scene,
-                                   const ARegion &region,
-                                   const View3D &view3d,
-                                   const Object &object)
-    : region_(&region), view3d_(&view3d), transforms_(object)
+DrawingPlacement::DrawingPlacement(const bContext *C)
+    : region_(CTX_wm_region(C)), view3d_(CTX_wm_view3d(C)), transforms_(*CTX_data_active_object(C))
 {
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
+  const Scene &scene = *CTX_data_scene(C);
   /* Initialize DrawingPlacementPlane from toolsettings. */
   switch (scene.toolsettings->gp_sculpt.lock_axis) {
     case GP_LOCKAXIS_VIEW:
@@ -93,6 +92,10 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
   {
     plane_from_point_normal_v3(placement_plane_, placement_loc_, placement_normal_);
   }
+
+  if (ELEM(depth_, DrawingPlacementDepth::Surface, DrawingPlacementDepth::NearestStroke)) {
+    this->cache_viewport_depths(depsgraph);
+  }
 }
 
 DrawingPlacement::~DrawingPlacement()
@@ -110,14 +113,6 @@ bool DrawingPlacement::use_project_to_surface() const
 bool DrawingPlacement::use_project_to_nearest_stroke() const
 {
   return depth_ == DrawingPlacementDepth::NearestStroke;
-}
-
-void DrawingPlacement::cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d)
-{
-  const eV3DDepthOverrideMode mode = (depth_ == DrawingPlacementDepth::Surface) ?
-                                         V3D_DEPTH_NO_GPENCIL :
-                                         V3D_DEPTH_GPENCIL_ONLY;
-  ED_view3d_depth_override(depsgraph, region, view3d, nullptr, mode, &this->depth_cache_);
 }
 
 void DrawingPlacement::set_origin_to_nearest_stroke(const float2 co)
@@ -180,59 +175,17 @@ void DrawingPlacement::project(const Span<float2> src, MutableSpan<float3> dst) 
   });
 }
 
-static float3 drawing_origin(const Scene *scene, const Object *object, char align_flag)
+void DrawingPlacement::cache_viewport_depths(const Depsgraph &depsgraph)
 {
-  BLI_assert(object != nullptr && object->type == OB_GREASE_PENCIL);
-  if (align_flag & GP_PROJECT_VIEWSPACE) {
-    if (align_flag & GP_PROJECT_CURSOR) {
-      return float3(scene->cursor.location);
-    }
-    /* Use the object location. */
-    return float3(object->object_to_world[3]);
-  }
-  return float3(scene->cursor.location);
-}
-
-static float3 screen_space_to_3d(
-    const Scene *scene, const ARegion *region, const View3D *v3d, const Object *object, float2 co)
-{
-  float3 origin = drawing_origin(scene, object, scene->toolsettings->gpencil_v3d_align);
-  float3 r_co;
-  ED_view3d_win_to_3d(v3d, region, origin, co, r_co);
-  return r_co;
-}
-
-float brush_radius_world_space(bContext &C, int x, int y)
-{
-  ARegion *region = CTX_wm_region(&C);
-  View3D *v3d = CTX_wm_view3d(&C);
-  Scene *scene = CTX_data_scene(&C);
-  Object *object = CTX_data_active_object(&C);
-  Brush *brush = scene->toolsettings->gp_paint->paint.brush;
-
-  /* Default radius. */
-  float radius = 2.0f;
-  if (brush == nullptr || object->type != OB_GREASE_PENCIL) {
-    return radius;
-  }
-
-  /* Use an (arbitrary) screen space offset in the x direction to measure the size. */
-  const int x_offest = 64;
-  const float brush_size = float(BKE_brush_size_get(scene, brush));
-
-  /* Get two 3d coordinates to measure the distance from. */
-  const float2 screen1(x, y);
-  const float2 screen2(x + x_offest, y);
-  const float3 pos1 = screen_space_to_3d(scene, region, v3d, object, screen1);
-  const float3 pos2 = screen_space_to_3d(scene, region, v3d, object, screen2);
-
-  /* Clip extreme zoom level (and avoid division by zero). */
-  const float distance = math::max(math::distance(pos1, pos2), 0.001f);
-
-  /* Calculate the radius of the brush in world space. */
-  radius = (1.0f / distance) * (brush_size / 64.0f);
-
-  return radius;
+  const eV3DDepthOverrideMode mode = (depth_ == DrawingPlacementDepth::Surface) ?
+                                         V3D_DEPTH_NO_GPENCIL :
+                                         V3D_DEPTH_GPENCIL_ONLY;
+  ED_view3d_depth_override(const_cast<Depsgraph *>(&depsgraph),
+                           const_cast<ARegion *>(this->region_),
+                           const_cast<View3D *>(this->view3d_),
+                           nullptr,
+                           mode,
+                           &this->depth_cache_);
 }
 
 static Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,

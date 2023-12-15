@@ -1514,11 +1514,7 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
     return;
   }
 
-  /* default radius and color */
-  float color[3] = {1.0f, 1.0f, 1.0f};
-  float darkcolor[3];
-  float radius = 2.0f;
-
+  float3 color(1.0f);
   const int x = pcontext->x;
   const int y = pcontext->y;
 
@@ -1540,8 +1536,15 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       return;
     }
 
-    /* Note: For now, there is only as screen space sized cursor. */
-    radius = BKE_brush_size_get(pcontext->scene, brush);
+    if (!BKE_brush_use_locked_size(pcontext->scene, brush)) {
+      pcontext->pixel_radius = BKE_brush_size_get(pcontext->scene, brush);
+    }
+    else {
+      const ed::greasepencil::DrawingPlacement placement(pcontext->C);
+      const float radius = BKE_brush_unprojected_radius_get(pcontext->scene, brush);
+      float3 location = placement.project(float2(pcontext->x, pcontext->y));
+      pcontext->pixel_radius = project_brush_radius(&pcontext->vc, radius, location);
+    }
 
     /* Get current drawing material. */
     Material *ma = BKE_grease_pencil_object_material_from_brush_get(object, brush);
@@ -1563,21 +1566,21 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
                                              ELEM(brush->gpencil_settings->vertex_mode,
                                                   GPPAINT_MODE_STROKE,
                                                   GPPAINT_MODE_BOTH);
-
-        copy_v3_v3(color, use_vertex_color_stroke ? brush->rgb : gp_style->stroke_rgba);
+        color = use_vertex_color_stroke ? float3(brush->rgb) : float4(gp_style->stroke_rgba).xyz();
       }
     }
   }
 
   GPU_line_width(1.0f);
   /* Inner Ring: Color from UI panel */
-  immUniformColor4f(color[0], color[1], color[2], 0.8f);
-  imm_draw_circle_wire_2d(pcontext->pos, x, y, radius, 32);
+  immUniformColor4f(color.x, color.y, color.z, 0.8f);
+  imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius, 32);
 
   /* Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
+  float3 darkcolor = color * 0.40f;
   mul_v3_v3fl(darkcolor, color, 0.40f);
-  immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
-  imm_draw_circle_wire_2d(pcontext->pos, x, y, radius + 1, 32);
+  immUniformColor4f(darkcolor.x, darkcolor.y, darkcolor.z, 0.8f);
+  imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius + 1, 32);
 
   /* Draw line for lazy mouse */
   /* TODO: No stabilize mode yet. */
