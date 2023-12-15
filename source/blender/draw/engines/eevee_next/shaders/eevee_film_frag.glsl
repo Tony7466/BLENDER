@@ -9,7 +9,7 @@ void main()
   ivec2 texel_film = ivec2(gl_FragCoord.xy) - uniform_buf.film.offset;
   float out_depth;
 
-  if (SC_display_only) {
+  if (uniform_buf.film.display_only) {
     out_depth = imageLoad(depth_img, texel_film).r;
 
     if (uniform_buf.film.display_id == -1) {
