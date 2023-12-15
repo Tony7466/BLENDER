@@ -1148,7 +1148,7 @@ class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
 
     bke::AnonymousAttributeSet attributes;
     if (value_variant->is_context_dependent_field()) {
-      const GField &field = value_variant->get_field();
+      const GField &field = value_variant->get_as<GField>();
       field.node().for_each_field_input_recursive([&](const FieldInput &field_input) {
         if (const auto *attr_field_input = dynamic_cast<const AnonymousAttributeFieldInput *>(
                 &field_input))

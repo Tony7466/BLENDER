@@ -79,7 +79,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
             break;
           }
           case SocketValueVariant::Kind::Field: {
-            const fn::GField &field = value_variant.get_field();
+            const fn::GField &field = value_variant.get_as<fn::GField>();
             const eAttrDomain domain = config.domains[i];
             const std::string attribute_name = ".bake_" + std::to_string(i);
             const Span<int> geometry_indices = config.geometries_by_attribute[i];
@@ -156,7 +156,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       if (const auto *item = dynamic_cast<const PrimitiveBakeItem *>(&bake_item)) {
         if (item->type() == base_type) {
           auto *value_variant = new (r_value) SocketValueVariant();
-          value_variant->copy_from_single(socket_type, item->value());
+          value_variant->store_single(socket_type, item->value());
           return true;
         }
         return false;
@@ -167,7 +167,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         const AnonymousAttributeIDPtr &attribute_id = attribute_field->anonymous_id();
         fn::GField field{attribute_field};
         auto *value_variant = new (r_value) SocketValueVariant();
-        value_variant->copy_from_field(socket_type, field);
+        value_variant->store_as(field);
         r_attribute_map.add(item->name(), attribute_id);
         return true;
       }
@@ -177,7 +177,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       if (const auto *item = dynamic_cast<const StringBakeItem *>(&bake_item)) {
         auto *value_variant = new (r_value) SocketValueVariant();
         std::string value = item->value();
-        value_variant->copy_from_single(SOCK_STRING, &value);
+        value_variant->store_single(SOCK_STRING, &value);
         return true;
       }
       return false;

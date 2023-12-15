@@ -33,16 +33,17 @@ struct SocketValueVariant {
 
   Kind kind = Kind::None;
   eNodeSocketDatatype socket_type;
+  /**
+   * Either empty or contains one of the following:
+   * - Simple type: `int`, `float`, `float3`, `std::string`, ...
+   * - #GField
+   */
   Any<void, 16> value;
 
   GPointer get_single() const;
   GMutablePointer get_single();
 
-  const fn::GField &get_field() const;
-  fn::GField &get_field();
-
-  void copy_from_single(eNodeSocketDatatype socket_type, const void *value);
-  void copy_from_field(eNodeSocketDatatype socket_type, const fn::GField &field);
+  void store_single(eNodeSocketDatatype socket_type, const void *value);
 
   template<typename T> T extract_as();
   template<typename T> T get_as() const;
