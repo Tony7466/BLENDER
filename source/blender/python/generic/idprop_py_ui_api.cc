@@ -302,8 +302,10 @@ static bool idprop_ui_data_update_int(IDProperty *idprop, PyObject *args, PyObje
           PyErr_SetString(PyExc_ValueError, msg);
         }))
     {
+      Py_DECREF(items_fast);
       return false;
     }
+    Py_DECREF(items_fast);
     ui_data.enum_items = idprop_items;
     ui_data.enum_items_num = idprop_items_num;
   }
