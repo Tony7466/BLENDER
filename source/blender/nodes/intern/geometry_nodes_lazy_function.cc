@@ -347,8 +347,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
         *bsocket.typeinfo->base_cpp_type,
         fmt::format(TIP_("{} node"), std::string_view(node_.label_or_name())))};
     void *r_value = params.get_output_data_ptr(lf_index);
-    auto *value_variant = new (r_value) SocketValueVariant();
-    value_variant->store_as(std::move(output_field));
+    new (r_value) SocketValueVariant(std::move(output_field));
     params.output_set(lf_index);
   }
 

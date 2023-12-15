@@ -159,8 +159,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
             base_type);
         const AnonymousAttributeIDPtr &attribute_id = attribute_field->anonymous_id();
         fn::GField field{attribute_field};
-        auto *value_variant = new (r_value) SocketValueVariant();
-        value_variant->store_as(field);
+        new (r_value) SocketValueVariant(std::move(field));
         r_attribute_map.add(item->name(), attribute_id);
         return true;
       }
@@ -168,9 +167,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
     }
     case SOCK_STRING: {
       if (const auto *item = dynamic_cast<const StringBakeItem *>(&bake_item)) {
-        auto *value_variant = new (r_value) SocketValueVariant();
-        std::string value = item->value();
-        value_variant->store_single(SOCK_STRING, &value);
+        new (r_value) SocketValueVariant(std::string(item->value()));
         return true;
       }
       return false;

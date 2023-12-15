@@ -177,8 +177,7 @@ class LazyFunctionForSwitchNode : public LazyFunction {
         {std::move(condition), std::move(false_field), std::move(true_field)})};
 
     void *output_ptr = params.get_output_data_ptr(0);
-    auto *output_value_variant = new (output_ptr) SocketValueVariant();
-    output_value_variant->store_as(output_field);
+    new (output_ptr) SocketValueVariant(std::move(output_field));
     params.output_set(0);
   }
 
