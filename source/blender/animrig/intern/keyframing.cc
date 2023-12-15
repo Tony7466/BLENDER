@@ -28,6 +28,7 @@
 #include "BKE_report.h"
 
 #include "BLI_dynstr.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
 
@@ -872,6 +873,98 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
+static short rna_path_to_protectflag(const std::string rna_path, const int property_index)
+{
+  if (BLI_str_endswith(rna_path.c_str(), "location") || strcmp(rna_path.c_str(), "location") == 0)
+  {
+    switch (property_index) {
+      case 0:
+        return OB_LOCK_LOCX;
+      case 1:
+        return OB_LOCK_LOCY;
+      case 2:
+        return OB_LOCK_LOCZ;
+      default:
+        break;
+    }
+  }
+  else if (BLI_str_endswith(rna_path.c_str(), "rotation_euler") ||
+           strcmp(rna_path.c_str(), "rotation_euler") == 0)
+  {
+    switch (property_index) {
+      case 0:
+        return OB_LOCK_ROTX;
+      case 1:
+        return OB_LOCK_ROTY;
+      case 2:
+        return OB_LOCK_ROTZ;
+      default:
+        break;
+    }
+  }
+  else if (BLI_str_endswith(rna_path.c_str(), "rotation_quaternion") ||
+           strcmp(rna_path.c_str(), "rotation_quaternion") == 0)
+  {
+    switch (property_index) {
+      case 0:
+        return OB_LOCK_ROTW;
+      case 1:
+        return OB_LOCK_ROTX;
+      case 2:
+        return OB_LOCK_ROTY;
+      case 3:
+        return OB_LOCK_ROTZ;
+      default:
+        break;
+    }
+  }
+  else if (BLI_str_endswith(rna_path.c_str(), "rotation_axis_angle") ||
+           strcmp(rna_path.c_str(), "rotation_axis_angle") == 0)
+  {
+    switch (property_index) {
+      case 0:
+        return OB_LOCK_ROTW;
+      case 1:
+        return OB_LOCK_ROTX;
+      case 2:
+        return OB_LOCK_ROTY;
+      case 3:
+        return OB_LOCK_ROTZ;
+      default:
+        break;
+    }
+  }
+  else if (BLI_str_endswith(rna_path.c_str(), "scale") || strcmp(rna_path.c_str(), "scale") == 0) {
+    switch (property_index) {
+      case 0:
+        return OB_LOCK_SCALEX;
+      case 1:
+        return OB_LOCK_SCALEY;
+      case 2:
+        return OB_LOCK_SCALEZ;
+      default:
+        break;
+    }
+  }
+
+  return 0;
+}
+
+static bool is_property_protected(PointerRNA *ptr, const short protectflag)
+{
+  if (ptr->type == &RNA_PoseBone) {
+    bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr->data);
+    return pchan->protectflag & protectflag;
+  }
+  else if (ptr->type == &RNA_Object) {
+    Object *ob = static_cast<Object *>(ptr->data);
+    return ob->protectflag & protectflag;
+  }
+  else {
+    return false;
+  }
+}
+
 int insert_key_action(Main *bmain,
                       bAction *action,
                       PointerRNA *ptr,
@@ -896,6 +989,11 @@ int insert_key_action(Main *bmain,
   int property_array_index = 0;
   int inserted_keys = 0;
   for (float value : values) {
+    const short protectflag = rna_path_to_protectflag(rna_path, property_array_index);
+    if (is_property_protected(ptr, protectflag)) {
+      property_array_index++;
+      continue;
+    }
     FCurve *fcurve = action_fcurve_ensure(
         bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
     const bool inserted_key = insert_keyframe_value(
