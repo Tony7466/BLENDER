@@ -14,7 +14,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_node_socket_value_cpp_type.hh"
+#include "BKE_node_socket_value.hh"
 
 #include "DNA_node_types.h"
 
@@ -95,23 +95,11 @@ class GeoNodeExecParams {
    */
   template<typename T> T extract_input(StringRef identifier)
   {
-    if constexpr (is_field_base_type_v<T>) {
-      SocketValueVariant<T> value_variant = this->extract_input<SocketValueVariant<T>>(identifier);
-      return value_variant.as_value();
-    }
-    else if constexpr (fn::is_field_v<T>) {
-      using BaseType = typename T::base_type;
-      SocketValueVariant<BaseType> value_variant =
-          this->extract_input<SocketValueVariant<BaseType>>(identifier);
-      return value_variant.as_field();
-    }
-    else if constexpr (std::is_same_v<std::decay_t<T>, GField>) {
-      const int index = this->get_input_index(identifier);
-      const bNodeSocket &input_socket = node_.input_by_identifier(identifier);
-      const CPPType &value_type = *input_socket.typeinfo->geometry_nodes_cpp_type;
-      const bke::SocketValueVariantCPPType &value_variant_type =
-          *bke::SocketValueVariantCPPType::get_from_self(value_type);
-      return value_variant_type.as_field(params_.try_get_input_data_ptr(index));
+    if constexpr (is_field_base_type_v<T> || fn::is_field_v<T> ||
+                  std::is_same_v<std::decay_t<T>, GField>)
+    {
+      SocketValueVariant value_variant = this->extract_input<SocketValueVariant>(identifier);
+      return value_variant.extract_as<T>();
     }
     else {
 #ifndef NDEBUG
@@ -134,15 +122,11 @@ class GeoNodeExecParams {
    */
   template<typename T> T get_input(StringRef identifier) const
   {
-    if constexpr (is_field_base_type_v<T>) {
-      SocketValueVariant<T> value_variant = this->get_input<SocketValueVariant<T>>(identifier);
-      return value_variant.as_value();
-    }
-    else if constexpr (fn::is_field_v<T>) {
-      using BaseType = typename T::base_type;
-      SocketValueVariant<BaseType> value_variant = this->get_input<SocketValueVariant<BaseType>>(
-          identifier);
-      return value_variant.as_field();
+    if constexpr (is_field_base_type_v<T> || fn::is_field_v<T> ||
+                  std::is_same_v<std::decay_t<T>, GField>)
+    {
+      auto value_variant = this->get_input<SocketValueVariant>(identifier);
+      return value_variant.extract_as<T>();
     }
     else {
 #ifndef NDEBUG
@@ -163,19 +147,12 @@ class GeoNodeExecParams {
   template<typename T> void set_output(StringRef identifier, T &&value)
   {
     using StoredT = std::decay_t<T>;
-    if constexpr (is_field_base_type_v<StoredT>) {
-      this->set_output(identifier, SocketValueVariant<StoredT>(std::forward<T>(value)));
-    }
-    else if constexpr (fn::is_field_v<StoredT>) {
-      using BaseType = typename StoredT::base_type;
-      this->set_output(identifier, SocketValueVariant<BaseType>(std::forward<T>(value)));
-    }
-    else if constexpr (std::is_same_v<std::decay_t<StoredT>, GField>) {
-      bke::attribute_math::convert_to_static_type(value.cpp_type(), [&](auto dummy) {
-        using ValueT = decltype(dummy);
-        Field<ValueT> value_typed(std::forward<T>(value));
-        this->set_output(identifier, SocketValueVariant<ValueT>(std::move(value_typed)));
-      });
+    if constexpr (is_field_base_type_v<StoredT> || fn::is_field_v<StoredT> ||
+                  std::is_same_v<StoredT, GField>)
+    {
+      SocketValueVariant value_variant;
+      value_variant.store_as(std::forward<T>(value));
+      this->set_output(identifier, std::move(value_variant));
     }
     else {
 #ifndef NDEBUG

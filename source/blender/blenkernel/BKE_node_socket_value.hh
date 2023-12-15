@@ -8,61 +8,57 @@
 
 #pragma once
 
-#include "FN_field.hh"
+#include "DNA_node_types.h"
+
+#include "BLI_any.hh"
+#include "BLI_cpp_type.hh"
+#include "BLI_generic_pointer.hh"
+
+namespace blender::fn {
+class GField;
+}
 
 namespace blender::bke {
 
-/* -------------------------------------------------------------------- */
-/** \name Value or Field Class
- *
- * Utility class that wraps a single value and a field, to simplify accessing both of the types.
- * \{ */
+/**
+ * Storage for the socket value float simple types like floats, integers, strings, etc.
+ * In geometry nodes, those can be either a single value or field.
+ */
+struct SocketValueVariant {
+  enum class Kind {
+    None,
+    Single,
+    Field,
+  };
 
-template<typename T> struct SocketValueVariant {
-  /** Value that is used when the field is empty. */
-  T value{};
-  fn::Field<T> field;
+  Kind kind = Kind::None;
+  eNodeSocketDatatype socket_type;
+  Any<void, 16> value;
 
-  SocketValueVariant() = default;
+  GPointer get_single() const;
+  GMutablePointer get_single();
 
-  SocketValueVariant(T value) : value(std::move(value)) {}
+  const fn::GField &get_field() const;
+  fn::GField &get_field();
 
-  SocketValueVariant(fn::Field<T> field) : field(std::move(field)) {}
+  void copy_from_single(eNodeSocketDatatype socket_type, const void *value);
+  void copy_from_field(eNodeSocketDatatype socket_type, const fn::GField &field);
 
-  bool is_field() const
+  template<typename T> T extract_as();
+  template<typename T> T get_as() const;
+  template<typename T> void store_as(T &&value)
   {
-    return bool(this->field);
+    this->store_as_impl<std::decay_t<T>>(std::decay_t<T>(std::forward<T>(value)));
   }
 
-  fn::Field<T> as_field() const
-  {
-    if (this->field) {
-      return this->field;
-    }
-    return fn::make_constant_field(this->value);
-  }
+  bool is_context_dependent_field() const;
 
-  T as_value() const
-  {
-    if (this->field) {
-      /* This returns a default value when the field is not constant. */
-      return fn::evaluate_constant_field(this->field);
-    }
-    return this->value;
-  }
+  void convert_to_single();
+  void *ensure_uninitialized_single(eNodeSocketDatatype socket_type);
+  void *ensure_uninitialized_single(const CPPType &cpp_type);
 
-  friend std::ostream &operator<<(std::ostream &stream, const SocketValueVariant<T> &value_variant)
-  {
-    if (value_variant.field) {
-      stream << "SocketValueVariant<T>";
-    }
-    else {
-      stream << value_variant.value;
-    }
-    return stream;
-  }
+ private:
+  template<typename T> void store_as_impl(T value);
 };
-
-/** \} */
 
 }  // namespace blender::bke

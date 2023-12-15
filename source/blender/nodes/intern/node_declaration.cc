@@ -888,26 +888,26 @@ namespace implicit_field_inputs {
 
 void position(const bNode & /*node*/, void *r_value)
 {
-  new (r_value)
-      bke::SocketValueVariant<float3>(bke::AttributeFieldInput::Create<float3>("position"));
+  auto *value_variant = new (r_value) bke::SocketValueVariant();
+  value_variant->store_as(bke::AttributeFieldInput::Create<float3>("position"));
 }
 
 void normal(const bNode & /*node*/, void *r_value)
 {
-  new (r_value) bke::SocketValueVariant<float3>(
-      fn::Field<float3>(std::make_shared<bke::NormalFieldInput>()));
+  auto *value_variant = new (r_value) bke::SocketValueVariant();
+  value_variant->store_as(fn::Field<float3>(std::make_shared<bke::NormalFieldInput>()));
 }
 
 void index(const bNode & /*node*/, void *r_value)
 {
-  new (r_value)
-      bke::SocketValueVariant<int>(fn::Field<int>(std::make_shared<fn::IndexFieldInput>()));
+  auto *value_variant = new (r_value) bke::SocketValueVariant();
+  value_variant->store_as(fn::Field<int>(std::make_shared<fn::IndexFieldInput>()));
 }
 
 void id_or_index(const bNode & /*node*/, void *r_value)
 {
-  new (r_value)
-      bke::SocketValueVariant<int>(fn::Field<int>(std::make_shared<bke::IDAttributeFieldInput>()));
+  auto *value_variant = new (r_value) bke::SocketValueVariant();
+  value_variant->store_as(fn::Field<int>(std::make_shared<bke::IDAttributeFieldInput>()));
 }
 
 }  // namespace implicit_field_inputs

@@ -15,7 +15,7 @@
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
 #include "BKE_modifier.hh"
-#include "BKE_node_socket_value_cpp_type.hh"
+#include "BKE_node_socket_value.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
 
@@ -405,16 +405,22 @@ void mix_baked_data_item(const eNodeSocketDatatype socket_type,
     case SOCK_ROTATION:
     case SOCK_RGBA: {
       const CPPType &type = get_simulation_item_cpp_type(socket_type);
-      const bke::SocketValueVariantCPPType &value_variant_type =
-          *bke::SocketValueVariantCPPType::get_from_self(type);
-      if (value_variant_type.is_field(prev) || value_variant_type.is_field(next)) {
+      SocketValueVariant prev_value_variant = *static_cast<const SocketValueVariant *>(prev);
+      SocketValueVariant next_value_variant = *static_cast<const SocketValueVariant *>(next);
+      if (prev_value_variant.is_context_dependent_field() ||
+          next_value_variant.is_context_dependent_field())
+      {
         /* Fields are evaluated on geometries and are mixed there. */
         break;
       }
 
-      void *prev_value = value_variant_type.get_value_ptr(prev);
-      const void *next_value = value_variant_type.get_value_ptr(next);
-      bke::attribute_math::convert_to_static_type(value_variant_type.value, [&](auto dummy) {
+      prev_value_variant.convert_to_single();
+      next_value_variant.convert_to_single();
+
+      void *prev_value = prev_value_variant.get_single().get();
+      const void *next_value = next_value_variant.get_single().get();
+
+      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);
         *static_cast<T *>(prev_value) = bke::attribute_math::mix2(
             factor, *static_cast<T *>(prev_value), *static_cast<const T *>(next_value));
