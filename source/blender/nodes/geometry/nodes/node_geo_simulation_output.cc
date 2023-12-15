@@ -417,8 +417,8 @@ void mix_baked_data_item(const eNodeSocketDatatype socket_type,
       prev_value_variant.convert_to_single();
       next_value_variant.convert_to_single();
 
-      void *prev_value = prev_value_variant.get_single().get();
-      const void *next_value = next_value_variant.get_single().get();
+      void *prev_value = prev_value_variant.get_single_ptr().get();
+      const void *next_value = next_value_variant.get_single_ptr().get();
 
       bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);

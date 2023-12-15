@@ -188,7 +188,7 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
     }
     else {
       value_variant.convert_to_single();
-      const GPointer value = value_variant.get_single();
+      const GPointer value = value_variant.get_single_ptr();
       log_generic_value(*value.type(), value.get());
     }
   }

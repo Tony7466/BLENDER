@@ -42,8 +42,8 @@ struct SocketValueVariant {
   Any<void, 16> value_;
 
  public:
-  GPointer get_single() const;
-  GMutablePointer get_single();
+  GPointer get_single_ptr() const;
+  GMutablePointer get_single_ptr();
 
   void store_single(eNodeSocketDatatype socket_type, const void *value);
 
@@ -57,8 +57,8 @@ struct SocketValueVariant {
   bool is_context_dependent_field() const;
 
   void convert_to_single();
-  void *ensure_uninitialized_single(eNodeSocketDatatype socket_type);
-  void *ensure_uninitialized_single(const CPPType &cpp_type);
+  void *new_single_for_write(eNodeSocketDatatype socket_type);
+  void *new_single_for_write(const CPPType &cpp_type);
 
  private:
   template<typename T> void store_as_impl(T value);

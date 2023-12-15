@@ -100,7 +100,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         }
         else {
           value_variant.convert_to_single();
-          GPointer value = value_variant.get_single();
+          GPointer value = value_variant.get_single_ptr();
           bake_items[i] = std::make_unique<PrimitiveBakeItem>(*value.type(), value.get());
         }
         break;
