@@ -638,17 +638,19 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                        GeoNodesLFUserData &user_data,
                        const sim_output::StoreNewState &info) const
   {
-    const bool *skip = params.try_get_input_data_ptr_or_request<bool>(skip_input_index_);
-    if (skip == nullptr) {
+    const SocketValueVariant *skip_variant =
+        params.try_get_input_data_ptr_or_request<SocketValueVariant>(skip_input_index_);
+    if (skip_variant == nullptr) {
       /* Wait for skip input to be computed. */
       return;
     }
+    const bool skip = skip_variant->get_as<bool>();
 
     /* Instead of outputting the values directly, convert them to a bake state and then back. This
      * ensures that some geometry processing happens on the data consistently (e.g. removing
      * anonymous attributes). */
     std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
-                                                                                      *skip);
+                                                                                      skip);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
