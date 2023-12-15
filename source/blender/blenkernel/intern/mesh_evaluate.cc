@@ -402,7 +402,6 @@ void BKE_mesh_calc_volume(const float (*vert_positions)[3],
                           float *r_volume,
                           float r_center[3])
 {
-  const blender::int3 *lt;
   float center[3];
   float totvol;
   int i;

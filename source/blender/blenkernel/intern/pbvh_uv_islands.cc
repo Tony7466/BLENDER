@@ -659,7 +659,7 @@ struct Fan {
   bool contains_vertex_on_outside(const MeshData &mesh_data, const int vertex_index) const
   {
     for (const FanSegment &segment : segments) {
-      int v2 = mesh_data.corner_verts[segment.tri->tri[segment.vert_order[1]]];
+      int v2 = mesh_data.corner_verts[segment.tri[segment.vert_order[1]]];
       if (vertex_index == v2) {
         return true;
       }

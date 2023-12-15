@@ -415,8 +415,8 @@ const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *mesh)
 }
 
 void mesh_render_data_update_corner_tris(MeshRenderData &mr,
-                                      const eMRIterType iter_type,
-                                      const eMRDataType data_flag)
+                                         const eMRIterType iter_type,
+                                         const eMRDataType data_flag)
 {
   if (mr.extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
@@ -429,7 +429,7 @@ void mesh_render_data_update_corner_tris(MeshRenderData &mr,
     /* #BMesh */
     if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
       /* Edit mode ensures this is valid, no need to calculate. */
-      BLI_assert((mr.bm->totloop == 0) || (mr.edit_bmesh->corner_tris != nullptr));
+      BLI_assert((mr.bm->totloop == 0) || (mr.edit_bmesh->looptris != nullptr));
     }
   }
 }

@@ -2769,7 +2769,6 @@ static void mesh_faces_to_scratch(Object *ob)
 {
   SoftBody *sb = ob->soft;
   const Mesh *mesh = static_cast<const Mesh *>(ob->data);
-  blender::int3 *lt;
   BodyFace *bodyface;
   int a;
   const blender::Span<int> corner_verts = mesh->corner_verts();
