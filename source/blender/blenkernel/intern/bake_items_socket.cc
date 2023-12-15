@@ -5,7 +5,7 @@
 #include "BKE_bake_items_socket.hh"
 
 #include "BKE_geometry_fields.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "BKE_node_socket_value.hh"
 
@@ -18,15 +18,6 @@ static const CPPType &get_socket_cpp_type(const eNodeSocketDatatype socket_type)
   BLI_assert(typeinfo);
   BLI_assert(typeinfo->geometry_nodes_cpp_type);
   return *typeinfo->geometry_nodes_cpp_type;
-}
-
-static const CPPType &get_base_cpp_type(const eNodeSocketDatatype socket_type)
-{
-  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
-  BLI_assert(typeinfo);
-  BLI_assert(typeinfo->base_cpp_type);
-  return *typeinfo->base_cpp_type;
 }
 
 Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<void *> socket_values,
@@ -145,7 +136,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
     case SOCK_RGBA: {
-      const CPPType &base_type = get_base_cpp_type(socket_type);
+      const CPPType &base_type = *socket_type_to_geo_nodes_base_cpp_type(socket_type);
       if (const auto *item = dynamic_cast<const PrimitiveBakeItem *>(&bake_item)) {
         if (item->type() == base_type) {
           auto *value_variant = new (r_value) SocketValueVariant();

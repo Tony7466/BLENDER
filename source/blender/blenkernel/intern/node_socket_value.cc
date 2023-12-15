@@ -20,29 +20,6 @@
 
 namespace blender::bke {
 
-static const CPPType *socket_type_to_cpp_type(const eNodeSocketDatatype socket_type)
-{
-  if (socket_type == SOCK_STRING) {
-    return &CPPType::get<std::string>();
-  }
-  if (std::optional<eCustomDataType> cd_type = socket_type_to_custom_data_type(socket_type)) {
-    return custom_data_type_to_cpp_type(*cd_type);
-  }
-  return nullptr;
-}
-
-static std::optional<eNodeSocketDatatype> cpp_type_to_socket_type(const CPPType &cpp_type)
-{
-  if (cpp_type.is<std::string>()) {
-    return SOCK_STRING;
-  }
-  eCustomDataType cd_type = cpp_type_to_custom_data_type(cpp_type);
-  if (cd_type == CD_AUTO_FROM_NAME) {
-    return std::nullopt;
-  }
-  return custom_data_type_to_socket_type(cd_type);
-}
-
 template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_socket_type()
 {
   if constexpr (is_same_any_v<T, int, fn::Field<int>>) {
@@ -109,8 +86,8 @@ template<typename T> T SocketValueVariant::get_as() const
 template<typename T> void SocketValueVariant::store_as_impl(T value)
 {
   if constexpr (std::is_same_v<T, fn::GField>) {
-    const std::optional<eNodeSocketDatatype> new_socket_type = cpp_type_to_socket_type(
-        value.cpp_type());
+    const std::optional<eNodeSocketDatatype> new_socket_type =
+        geo_nodes_base_cpp_type_to_socket_type(value.cpp_type());
     BLI_assert(new_socket_type);
     socket_type_ = *new_socket_type;
     kind_ = Kind::Field;
@@ -183,7 +160,7 @@ bool SocketValueVariant::is_context_dependent_field() const
 
 void *SocketValueVariant::new_single_for_write(const eNodeSocketDatatype socket_type)
 {
-  const CPPType *cpp_type = socket_type_to_cpp_type(socket_type);
+  const CPPType *cpp_type = socket_type_to_geo_nodes_base_cpp_type(socket_type);
   BLI_assert(cpp_type != nullptr);
   BUFFER_FOR_CPP_TYPE_VALUE(*cpp_type, buffer);
   cpp_type->value_initialize(buffer);
@@ -193,7 +170,8 @@ void *SocketValueVariant::new_single_for_write(const eNodeSocketDatatype socket_
 
 void *SocketValueVariant::new_single_for_write(const CPPType &cpp_type)
 {
-  const std::optional<eNodeSocketDatatype> socket_type = cpp_type_to_socket_type(cpp_type);
+  const std::optional<eNodeSocketDatatype> socket_type = geo_nodes_base_cpp_type_to_socket_type(
+      cpp_type);
   BLI_assert(socket_type);
   return this->new_single_for_write(*socket_type);
 }
@@ -216,7 +194,7 @@ void SocketValueVariant::convert_to_single()
 GPointer SocketValueVariant::get_single_ptr() const
 {
   BLI_assert(kind_ == Kind::Single);
-  const CPPType *type = socket_type_to_cpp_type(socket_type_);
+  const CPPType *type = socket_type_to_geo_nodes_base_cpp_type(socket_type_);
   BLI_assert(type != nullptr);
   const void *data = value_.get();
   return GPointer(*type, data);
