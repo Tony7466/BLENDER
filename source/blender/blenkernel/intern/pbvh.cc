@@ -146,8 +146,6 @@ static void update_node_vb(PBVH *pbvh, PBVHNode *node)
   }
 }
 
-}  // namespace blender::bke::pbvh
-
 static bool face_materials_match(const Span<int> material_indices,
                                  const Span<bool> sharp_faces,
                                  const int a,
@@ -168,7 +166,7 @@ static bool face_materials_match(const Span<int> material_indices,
 
 /* Adapted from BLI_kdopbvh.c */
 /* Returns the index of the first element on the right of the partition */
-static int partition_prim_indices(blender::MutableSpan<int> prim_indices,
+static int partition_prim_indices(MutableSpan<int> prim_indices,
                                   int *prim_scratch,
                                   int lo,
                                   int hi,
@@ -177,7 +175,6 @@ static int partition_prim_indices(blender::MutableSpan<int> prim_indices,
                                   const Span<Bounds<float3>> prim_bounds,
                                   const Span<int> prim_to_face_map)
 {
-  using namespace blender;
   for (int i = lo; i < hi; i++) {
     prim_scratch[i - lo] = prim_indices[i];
   }
@@ -231,14 +228,9 @@ static int partition_indices_material_faces(MutableSpan<int> indices,
   }
 }
 
-void pbvh_grow_nodes(PBVH *pbvh, int totnode)
-{
-  pbvh->nodes.resize(totnode);
-}
-
 /* Add a vertex to the map, with a positive value for unique vertices and
  * a negative value for additional vertices */
-static int map_insert_vert(blender::Map<int, int> &map,
+static int map_insert_vert(Map<int, int> &map,
                            MutableSpan<bool> vert_bitmap,
                            int *face_verts,
                            int *uniq_verts,
@@ -271,7 +263,7 @@ static void build_mesh_leaf_node(const Span<int> corner_verts,
   const Span<int> prim_indices = node->prim_indices;
 
   /* reserve size is rough guess */
-  blender::Map<int, int> map;
+  Map<int, int> map;
   map.reserve(prim_indices.size());
 
   node->face_vert_indices.reinitialize(prim_indices.size());
@@ -287,7 +279,7 @@ static void build_mesh_leaf_node(const Span<int> corner_verts,
   node->vert_indices.reinitialize(node->uniq_verts + node->face_verts);
 
   /* Build the vertex list, unique verts first */
-  for (const blender::MapItem<int, int> item : map.items()) {
+  for (const MapItem<int, int> item : map.items()) {
     int value = item.value;
     if (value < 0) {
       value = -value + node->uniq_verts - 1;
@@ -319,7 +311,6 @@ static void update_vb(const Span<int> prim_indices,
                       int offset,
                       int count)
 {
-  using namespace blender;
   node->vb = prim_bounds[prim_indices[offset]];
   for (const int i : IndexRange(offset, count).drop_front(1)) {
     node->vb = bounds::merge(node->vb, prim_bounds[prim_indices[i]]);
@@ -327,15 +318,14 @@ static void update_vb(const Span<int> prim_indices,
   node->orig_vb = node->vb;
 }
 
-int BKE_pbvh_count_grid_quads(const BitGroupVector<> &grid_hidden,
-                              const int *grid_indices,
-                              int totgrid,
-                              int gridsize,
-                              int display_gridsize)
+int count_grid_quads(const BitGroupVector<> &grid_hidden,
+                     const Span<int> grid_indices,
+                     int gridsize,
+                     int display_gridsize)
 {
   const int gridarea = (gridsize - 1) * (gridsize - 1);
   if (grid_hidden.is_empty()) {
-    return gridarea * totgrid;
+    return gridarea * grid_indices.size();
   }
 
   /* grid hidden layer is present, so have to check each grid for
@@ -347,8 +337,8 @@ int BKE_pbvh_count_grid_quads(const BitGroupVector<> &grid_hidden,
   int skip = depth2 < depth1 ? 1 << (depth1 - depth2 - 1) : 1;
 
   int totquad = 0;
-  for (int i = 0; i < totgrid; i++) {
-    const blender::BoundedBitSpan gh = grid_hidden[grid_indices[i]];
+  for (const int grid : grid_indices) {
+    const blender::BoundedBitSpan gh = grid_hidden[grid];
     /* grid hidden are present, have to check each element */
     for (int y = 0; y < gridsize - skip; y += skip) {
       for (int x = 0; x < gridsize - skip; x += skip) {
@@ -364,11 +354,10 @@ int BKE_pbvh_count_grid_quads(const BitGroupVector<> &grid_hidden,
 
 static void build_grid_leaf_node(PBVH *pbvh, PBVHNode *node)
 {
-  int totquads = BKE_pbvh_count_grid_quads(pbvh->subdiv_ccg->grid_hidden,
-                                           node->prim_indices.data(),
-                                           node->prim_indices.size(),
-                                           pbvh->gridkey.grid_size,
-                                           pbvh->gridkey.grid_size);
+  int totquads = count_grid_quads(pbvh->subdiv_ccg->grid_hidden,
+                                  node->prim_indices,
+                                  pbvh->gridkey.grid_size,
+                                  pbvh->gridkey.grid_size);
   BKE_pbvh_node_fully_hidden_set(node, (totquads == 0));
   BKE_pbvh_node_mark_rebuild_draw(node);
 }
@@ -499,7 +488,6 @@ static void build_sub(PBVH *pbvh,
                       int *prim_scratch,
                       int depth)
 {
-  using namespace blender;
   const Span<int> prim_to_face_map = pbvh->header.type == PBVH_FACES ?
                                          looptri_faces :
                                          pbvh->subdiv_ccg->grid_to_face_map;
@@ -536,7 +524,7 @@ static void build_sub(PBVH *pbvh,
 
   /* Add two child nodes */
   pbvh->nodes[node_index].children_offset = pbvh->nodes.size();
-  pbvh_grow_nodes(pbvh, pbvh->nodes.size() + 2);
+  pbvh->nodes.resize(pbvh->nodes.size() + 2);
 
   /* Update parent node bounding box */
   update_vb(pbvh->prim_indices, &pbvh->nodes[node_index], prim_bounds, offset, count);
@@ -629,7 +617,7 @@ static void pbvh_build(PBVH *pbvh,
     pbvh->nodes.clear_and_shrink();
 
     pbvh->prim_indices.reinitialize(totprim);
-    blender::array_utils::fill_index_range<int>(pbvh->prim_indices);
+    array_utils::fill_index_range<int>(pbvh->prim_indices);
   }
 
   pbvh->nodes.resize(1);
@@ -718,7 +706,7 @@ static void pbvh_validate_node_prims(PBVH *pbvh, const Span<int> looptri_faces)
 }
 #endif
 
-void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
+void update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
 {
   BLI_assert(pbvh->header.type == PBVH_FACES);
   pbvh->faces = mesh->faces();
@@ -733,24 +721,24 @@ void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
   }
 }
 
-void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
+PBVH *build_mesh(Mesh *mesh)
 {
-  using namespace blender;
-  using namespace blender::bke;
+  std::unique_ptr<PBVH> pbvh = std::make_unique<PBVH>();
+  pbvh->header.type = PBVH_FACES;
+
   const int totvert = mesh->totvert;
   const int looptris_num = poly_to_tri_count(mesh->faces_num, mesh->totloop);
   MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
-  const blender::OffsetIndices<int> faces = mesh->faces();
+  const OffsetIndices<int> faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
 
   pbvh->looptris.reinitialize(looptris_num);
-  blender::bke::mesh::looptris_calc(vert_positions, faces, corner_verts, pbvh->looptris);
+  mesh::looptris_calc(vert_positions, faces, corner_verts, pbvh->looptris);
   const Span<MLoopTri> looptris = pbvh->looptris;
 
   pbvh->mesh = mesh;
-  pbvh->header.type = PBVH_FACES;
 
-  BKE_pbvh_update_mesh_pointers(pbvh, mesh);
+  update_mesh_pointers(pbvh.get(), mesh);
   const Span<int> looptri_faces = pbvh->looptri_faces;
 
   Array<bool> vert_bitmap(totvert, false);
@@ -793,7 +781,7 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
     const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
     const VArraySpan material_index = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
     const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
-    pbvh_build(pbvh,
+    pbvh_build(pbvh.get(),
                corner_verts,
                looptris,
                looptri_faces,
@@ -810,37 +798,38 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
 #endif
   }
 
-  BKE_pbvh_update_active_vcol(pbvh, mesh);
+  BKE_pbvh_update_active_vcol(pbvh.get(), mesh);
 
 #ifdef VALIDATE_UNIQUE_NODE_FACES
   pbvh_validate_node_prims(pbvh);
 #endif
+
+  return pbvh.release();
 }
 
-void BKE_pbvh_build_grids(PBVH *pbvh, const CCGKey *key, Mesh *mesh, SubdivCCG *subdiv_ccg)
+PBVH *build_grids(const CCGKey *key, Mesh *mesh, SubdivCCG *subdiv_ccg)
 {
-  using namespace blender;
-  using namespace blender::bke;
-  const int gridsize = key->grid_size;
-  const Span<CCGElem *> grids = subdiv_ccg->grids;
-
+  std::unique_ptr<PBVH> pbvh = std::make_unique<PBVH>();
   pbvh->header.type = PBVH_GRIDS;
+
   pbvh->gridkey = *key;
   pbvh->subdiv_ccg = subdiv_ccg;
   pbvh->faces_num = mesh->faces_num;
 
   /* Find maximum number of grids per face. */
   int max_grids = 1;
-  const blender::OffsetIndices faces = mesh->faces();
+  const OffsetIndices faces = mesh->faces();
   for (const int i : faces.index_range()) {
     max_grids = max_ii(max_grids, faces[i].size());
   }
+
+  const Span<CCGElem *> grids = subdiv_ccg->grids;
 
   /* Ensure leaf limit is at least 4 so there's room
    * to split at original face boundaries.
    * Fixes #102209.
    */
-  pbvh->leaf_limit = max_ii(LEAF_LIMIT / (gridsize * gridsize), max_grids);
+  pbvh->leaf_limit = max_ii(LEAF_LIMIT / (key->grid_area), max_grids);
 
   /* We also need the base mesh for PBVH draw. */
   pbvh->mesh = mesh;
@@ -871,8 +860,17 @@ void BKE_pbvh_build_grids(PBVH *pbvh, const CCGKey *key, Mesh *mesh, SubdivCCG *
     const AttributeAccessor attributes = mesh->attributes();
     const VArraySpan material_index = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
     const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
-    pbvh_build(
-        pbvh, {}, {}, {}, {}, material_index, sharp_face, {}, &cb, prim_bounds, grids.size());
+    pbvh_build(pbvh.get(),
+               {},
+               {},
+               {},
+               {},
+               material_index,
+               sharp_face,
+               {},
+               &cb,
+               prim_bounds,
+               grids.size());
 
 #ifdef TEST_PBVH_FACE_SPLIT
     test_face_boundaries(pbvh);
@@ -882,20 +880,11 @@ void BKE_pbvh_build_grids(PBVH *pbvh, const CCGKey *key, Mesh *mesh, SubdivCCG *
 #ifdef VALIDATE_UNIQUE_NODE_FACES
   pbvh_validate_node_prims(pbvh);
 #endif
+
+  return pbvh.release();
 }
 
-PBVH *BKE_pbvh_new(PBVHType type)
-{
-  PBVH *pbvh = MEM_new<PBVH>(__func__);
-  pbvh->draw_cache_invalid = true;
-  pbvh->header.type = type;
-
-  /* Initialize this to true, instead of waiting for a draw engine
-   * to set it.  Prevents a crash in draw manager instancing code.
-   */
-  pbvh->is_drawing = true;
-  return pbvh;
-}
+}  // namespace blender::bke::pbvh
 
 void BKE_pbvh_free(PBVH *pbvh)
 {
@@ -913,7 +902,7 @@ void BKE_pbvh_free(PBVH *pbvh)
 
   pbvh_pixels_free(pbvh);
 
-  MEM_delete(pbvh);
+  delete pbvh;
 }
 
 static void pbvh_iter_begin(PBVHIter *iter, PBVH *pbvh, blender::FunctionRef<bool(PBVHNode &)> scb)
