@@ -2317,7 +2317,30 @@ static void scale_from_neighbor_graph_keys(bAnimContext *ac,
 
 static void scale_from_neighbor_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
-  common_draw_status_header(C, gso, "Scale from Left Keys");
+  char status_str[UI_MAX_DRAW_STR];
+  char mode_str[32];
+  char slider_string[UI_MAX_DRAW_STR];
+
+  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
+
+  /* Operator specific functionality that extends beyond the slider. */
+  char op_slider_string[UI_MAX_DRAW_STR];
+  SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Toggle Anchor Key");
+
+  STRNCPY(mode_str, TIP_("Scale from Neighbor Keys"));
+
+  if (hasNumInput(&gso->num)) {
+    char str_ofs[NUM_STR_REP_LEN];
+
+    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
+
+    SNPRINTF(status_str, "%s: %s", mode_str, str_ofs);
+  }
+  else {
+    SNPRINTF(status_str, "%s: %s", mode_str, op_slider_string);
+  }
+
+  ED_workspace_status_text(C, status_str);
 }
 
 static void scale_from_neighbor_modal_update(bContext *C, wmOperator *op)
