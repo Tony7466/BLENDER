@@ -9,8 +9,8 @@
  */
 
 bool BM_mesh_boolean(BMesh *bm,
-                     struct BMLoop *(*corner_tris)[3],
-                     int corner_tris_tot,
+                     struct BMLoop *(*looptris)[3],
+                     int looptris_tot,
                      int (*test_fn)(BMFace *f, void *user_data),
                      void *user_data,
                      int nshapes,
@@ -30,8 +30,8 @@ bool BM_mesh_boolean(BMesh *bm,
  * to the intersection result faces.
  */
 bool BM_mesh_boolean_knife(BMesh *bm,
-                           struct BMLoop *(*corner_tris)[3],
-                           int corner_tris_tot,
+                           struct BMLoop *(*looptris)[3],
+                           int looptris_tot,
                            int (*test_fn)(BMFace *f, void *user_data),
                            void *user_data,
                            int nshapes,
