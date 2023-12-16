@@ -34,9 +34,9 @@ class SequenceCheckNdarray(np.ndarray):
     __getitem__ and __setitem__ are called by PySequence_GetItem and PySequence_SetItem (and also PyObject_GetItem
     and PyObject_SetItem).
 
-    Once Python 3.12 is in use, this class could be replaced with a wrapper around any buffer that redirects all python
-    calls other than __getitem__ and __setitem__ to the wrapped buffer and defines a __buffer__ method that returns the
-    wrapped buffer.
+    Once Python 3.12 is in use, it may be possible to replace this class with a wrapper around any buffer that redirects
+    all python calls other than __getitem__ and __setitem__ to the wrapped buffer and defines a __buffer__ method that
+    returns the wrapped buffer.
     """
 
     def __array_finalize__(self, obj):
@@ -65,8 +65,9 @@ class SequenceCheckNdarray(np.ndarray):
 
 def get_enum_item_value(enum_prop_rna, item_identifier):
     """
-    Get the enum value of an enum identifier. This may not work for some dynamic enum properties, such as
-    `bpy.types.ColorManagedDisplaySettings.display_device`.
+    Get the enum value of an enum identifier.
+
+    Note: This may not be able to find the value for dynamic enum properties that require context.
 
     Returns -1 when the item_identifier could not be found in the EnumProperty's `.enum_items`.
     """
@@ -77,9 +78,10 @@ def get_enum_item_value(enum_prop_rna, item_identifier):
         return item.value
 
 
-def prop_as_sequence(collection, prop_rna):
+def collection_item_prop_as_flat_sequence(collection, prop_rna):
     """
-    Helper to get a flat sequence of a specific property through iteration instead of foreach_get.
+    Helper to get a flat sequence of a specific collection item property through iteration and attribute access, instead
+    of using foreach_get.
     """
     prop_name = prop_rna.identifier
     if getattr(prop_rna, "is_array", False):
@@ -101,6 +103,9 @@ def prop_as_sequence(collection, prop_rna):
 # Tests
 
 class BaseTestForeachGetSet(unittest.TestCase):
+    """
+    Base class for testing bpy_prop_collection.foreach_get/foreach_set.
+    """
     # `new_order` arguments for standard-size, explicit byteorder dtypes with numpy.dtype.newbyteorder.
     # Implicit native byteorder would be specified with '='.
     EXPLICIT_NATIVE_ENDIAN_STANDARD_SIZE = '<' if sys.byteorder == 'little' else '>'
@@ -134,6 +139,13 @@ class BaseTestForeachGetSet(unittest.TestCase):
 
     @staticmethod
     def sequence_generator(collection, prop_rna, is_set, dtype_modifier=None):
+        """
+        Returns a function that generates sequences suitable for testing the specified collection and collection item
+        property with foreach_get/foreach_set.
+
+        When is_set=True, each successive generated sequence will be filled with different values to the previous
+        generated sequence to prevent false positives in foreach_set tests.
+        """
         item_length = prop_rna.array_length if getattr(prop_rna, "is_array", False) else 1
         sequence_length = len(collection) * item_length
 
@@ -144,9 +156,13 @@ class BaseTestForeachGetSet(unittest.TestCase):
                 return np.full(sequence_length, next_fill_value,
                                dtype=dtype_modifier(dtype) if dtype_modifier else dtype)
 
+        # Find the initial value(s) in the collection.
         if collection:
             initial_value = getattr(collection[0], prop_rna.identifier)
             if getattr(prop_rna, "is_array", False):
+                # Get the first element of the last dimension. This is not ideal because the rest of the array could be
+                # set to the same value as the fill value that is going to be used, meaning that those values won't be
+                # reliably tested, but this should be a rare occurrence.
                 for dim_size in prop_rna.array_dimensions:
                     if dim_size == 0:
                         break
@@ -158,43 +174,67 @@ class BaseTestForeachGetSet(unittest.TestCase):
             # The collection is empty, so the initial value is irrelevant.
             initial_value = 0
 
-        # To correctly handle all properties with the same test setup ('BOOLEAN' and 'ENUM' being the most restrictive),
-        # we can only use `0` and `1` as fill values.
         if is_set:
-            last_fill_value = initial_value
             # When setting values, each time we set, we need to set to different values from before so that we can check
             # that setting the values worked.
+            last_fill_value = initial_value
+
+            if prop_rna.type == 'ENUM':
+                enum_values = [item.value for item in prop_rna.enum_items]
+                if len(enum_values) < 2:
+                    raise RuntimeError("At least two enum items are required to test foreach_set with enum properties,"
+                                       " but %s only has %i items." % (prop_rna, len(prop_rna.enum_items)))
+                fill_value1 = enum_values[0]
+                fill_value2 = enum_values[1]
+            else:
+                # To correctly handle all other property types with the same test setup (BOOLEAN properties being the
+                # most restrictive), `0` and `1` are the only fill values used.
+                fill_value1 = 0
+                fill_value2 = 1
 
             def generate(dtype):
                 nonlocal last_fill_value
-                if last_fill_value == 0:
-                    last_fill_value = 1
+                if last_fill_value == fill_value1:
+                    last_fill_value = fill_value2
+                    return next_sequence(fill_value2, dtype)
                 else:
-                    last_fill_value = 0
-                return next_sequence(last_fill_value, dtype)
+                    last_fill_value = fill_value1
+                    return next_sequence(fill_value1, dtype)
 
             return generate
         else:
             # When getting values, the initial values in the sequence must differ from the default values of the
             # properties, so that we can check that getting the values worked.
-            fill_value = 1 if initial_value == 0 else 0
+            if prop_rna.type == 'ENUM':
+                fill_value = next((item.value for item in prop_rna.enum_items if item.value != initial_value), None)
+                if fill_value is None:
+                    raise RuntimeError("No suitable fill value could be found for testing")
+            else:
+                # To correctly handle all other property types with the same test setup (BOOLEAN properties being the
+                # most restrictive), `0` and `1` are the only fill values used.
+                fill_value = 1 if initial_value == 0 else 0
             return lambda dtype: next_sequence(fill_value, dtype)
 
     @staticmethod
-    def make_sequences_buffer_float(next_sequence):
+    def make_sequences_buffer_float(sequence_generator):
+        """
+        Generate a list of floating-point sequences supporting the buffer protocol that each have a different buffer
+        format when exposed as a buffer.
+        """
         return [
-            next_sequence(np.half),        # "e", 16-bit-precision floating-point (no corresponding C type)
-            next_sequence(np.single),      # "f", float
-            next_sequence(np.double),      # "d", double
-            # Note: NumPy can only expose `long double` as a buffer when in native byteorder, size and alignment.
-            next_sequence(np.longdouble),  # "g", long double
+            sequence_generator(np.half),        # "e", 16-bit-precision floating-point (no corresponding C type)
+            sequence_generator(np.single),      # "f", float
+            sequence_generator(np.double),      # "d", double
+            # Note: NumPy can only expose `long double` as a buffer with native size ("@", "^" or no format prefix).
+            sequence_generator(np.longdouble),  # "g", long double
         ]
 
     @staticmethod
-    def make_sequences_buffer_int_extra_native_mv(next_sequence):
+    def make_sequences_buffer_int_extra_native_non_np(next_sequence):
         """
-        Extra integer type buffers that cannot be represented by NumPy, but can be constructed with ctypes and cast to
-        a memoryview with the expected native buffer format.
+        Generate a list of extra integer sequences supporting the buffer protocol that each have a different buffer
+        format when exposed as a buffer. These extra buffer formats cannot be represented by NumPy, but can be
+        constructed with ctypes and cast to a memoryview with the expected native buffer format.
         """
         sequences = []
 
@@ -232,43 +272,59 @@ class BaseTestForeachGetSet(unittest.TestCase):
 
     @staticmethod
     def make_sequences_buffer_int(next_sequence, ndarray_only):
+        """
+        Generate a list of integer sequences supporting the buffer protocol that each have a different buffer format
+        when exposed as a buffer.
+        """
         sequences = []
 
         if not ndarray_only:
-            sequences.extend(BaseTestForeachGetSet.make_sequences_buffer_int_extra_native_mv(next_sequence))
+            sequences.extend(BaseTestForeachGetSet.make_sequences_buffer_int_extra_native_non_np(next_sequence))
 
         return sequences + [
             next_sequence(np.byte),       # "b", signed char
             next_sequence(np.short),      # "h", short
             next_sequence(np.intc),       # "i", int
             next_sequence(np.int_),       # "l", long
+            # Note: `long long` larger than 64-bits can only be exposed as a buffer with native size ("@", "^" or no
+            # format prefix) because the largest standard size signed integer format is 64-bit.
             next_sequence(np.longlong),   # "q", long long
             next_sequence(np.ubyte),      # "B", unsigned char
             next_sequence(np.ushort),     # "H", unsigned short
             next_sequence(np.uintc),      # "I", unsigned int
             next_sequence(np.uint),       # "L", unsigned long
+            # Note: `unsigned long long` larger than 64-bits can only be exposed as a buffer with native size ("@", "^"
+            # or no format prefix) because the largest standard size unsigned signed integer format is 64-bit.
             next_sequence(np.ulonglong),  # "Q", unsigned long long
         ]
 
     @staticmethod
-    def make_sequences_buffer_bool(next_sequence, ndarray_only):
-        # BOOLEAN properties that have no raw array access (e.g. they use a bitmask), are considered compatible with
-        # bool buffers.
-        sequences = [next_sequence(np.bool_)]  # "?", bool
-        # However, BOOLEAN properties that do have raw array access are only considered compatible with buffers that
-        # match the property's raw type, which is likely to be a single byte numeric/char type.
-        sequences.extend(BaseTestForeachGetSet.make_sequences_buffer_int(next_sequence, ndarray_only))
-        return sequences
+    def make_sequences_buffer_bool(next_sequence):
+        """
+        Generate a list of bool sequences supporting the buffer protocol that each have a different buffer format
+        when exposed as a buffer.
+        """
+        return [next_sequence(np.bool_)]  # "?", bool
 
     def make_subtest_sequences(self, collection, prop_rna, is_set, make_buffers, dtype_modifier):
         generate_sequence = self.sequence_generator(collection, prop_rna, is_set, dtype_modifier)
 
-        ndarray_only = dtype_modifier is not None
-
         if make_buffers:
+            # The modifier functions used to change the buffer format prefix to ">" or "<" can only be used when
+            # generating np.ndarray, so buffer formats not supported by NumPy must be skipped when a modifier function
+            # is used.
+            ndarray_only = dtype_modifier is not None
             match prop_rna.type:
                 case 'BOOLEAN':
-                    return self.make_sequences_buffer_bool(generate_sequence, ndarray_only)
+                    return (
+                        # BOOLEAN properties that have no raw array access (e.g. they use a bitmask), are considered
+                        # compatible with bool buffers.
+                        self.make_sequences_buffer_bool(generate_sequence)
+                        # However, BOOLEAN properties that do have raw array access are only considered compatible with
+                        # buffers that match the property's raw type, which is likely to be a single byte numeric/char
+                        # type because DNA does not currently support the `bool` type.
+                        + self.make_sequences_buffer_int(generate_sequence, ndarray_only)
+                    )
                 case 'INT' | 'ENUM':
                     return self.make_sequences_buffer_int(generate_sequence, ndarray_only)
                 case 'FLOAT':
@@ -287,12 +343,18 @@ class BaseTestForeachGetSet(unittest.TestCase):
                     raise TypeError("Unsupported property type '%s'" % prop_rna.type)
             sequences = [list(map(py_type, generate_sequence(list)))]
             if is_set:
+                # A Tuple is immutable, so the property can be set from a Tuple, but not the other way around.
                 sequences.append(tuple(map(py_type, generate_sequence(list))))
             return sequences
 
     def do_get_subtest(self, collection, prop_rna, seq):
+        """
+        Perform a foreach_get subtest and check the results.
+
+        Returns whether the tested sequences was accessed as a buffer.
+        """
         prop_name = prop_rna.identifier
-        expected_sequence = prop_as_sequence(collection, prop_rna)
+        expected_sequence = collection_item_prop_as_flat_sequence(collection, prop_rna)
 
         accessed_as_buffer = False
         if isinstance(seq, np.ndarray):
@@ -329,6 +391,12 @@ class BaseTestForeachGetSet(unittest.TestCase):
         return accessed_as_buffer
 
     def do_set_subtest(self, collection, prop_rna, seq):
+        """
+        Perform a foreach_set subtest and check the results.
+
+        Returns whether the tested sequence was accessed as a buffer. An exception is when the tested sequence is a
+        memoryview object, which always returns False because it is not possible to know if it was accessed as a buffer.
+        """
         prop_name = prop_rna.identifier
         accessed_as_buffer = False
         if isinstance(seq, np.ndarray):
@@ -339,7 +407,7 @@ class BaseTestForeachGetSet(unittest.TestCase):
             # If the sequence wasn't used at all, this can result in a false positive, but other assertions should fail
             # in that case.
             accessed_as_buffer = not ndarray_with_sequence_check.used_as_sequence
-        elif 0:  # isinstance(seq, memoryview):
+        elif isinstance(seq, memoryview):
             # There is currently no way to tell if a memoryview was accessed as a sequence or as a buffer. Once Python
             # 3.12 is in use, this may become possible because Python 3.12 makes the buffer protocol accessible to
             # Python.
@@ -347,7 +415,7 @@ class BaseTestForeachGetSet(unittest.TestCase):
         else:
             collection.foreach_set(prop_name, seq)
 
-        result_sequence = prop_as_sequence(collection, prop_rna)
+        result_sequence = collection_item_prop_as_flat_sequence(collection, prop_rna)
         expected_sequence = seq
 
         if prop_rna.type == 'FLOAT':
@@ -392,9 +460,9 @@ class BaseTestForeachGetSet(unittest.TestCase):
         sequence_descriptions = [self.get_sequence_description(seq) for seq in sequences]
 
         with self.subTest(prop_name=prop_rna.identifier, sequence_type=sequence_type):
-            # Due to varying itemsizes of C types depending on the current system, and the itemsize of a
-            # property not being exposed to Blender's Python API, we only check that at least one sequence
-            # was considered a compatible buffer.
+            # Due to varying itemsizes of C types depending on the current system, and the itemsize of a property not
+            # being exposed to Blender's Python API, we only check that at least one sequence was considered a
+            # compatible buffer.
             at_least_one_accessed_as_buffer = False
             for seq, description in zip(sequences, sequence_descriptions):
                 with self.subTest(sequence_description=description):
@@ -461,6 +529,7 @@ class TestPropCollectionIDPropForeachGetSet(BaseTestForeachGetSet):
     These properties are expected to not have raw array access because they are runtime properties.
     """
     def setUp(self):
+        # Register a PropertyGroup subclass with properties to be tested.
         class TestPropertyGroup(bpy.types.PropertyGroup):
             VECTOR_SIZE = 3
             _ENUM_ITEMS = (("0", "Item 0", ""), ("1", "Item 1", ""))
@@ -479,10 +548,12 @@ class TestPropCollectionIDPropForeachGetSet(BaseTestForeachGetSet):
             test_unsigned_int: IntProperty(subtype='UNSIGNED', default=DEFAULT_INT)
             test_enum: EnumProperty(items=_ENUM_ITEMS, default=_ENUM_ITEMS[DEFAULT_INT][0])
 
+        bpy.utils.register_class(TestPropertyGroup)
         self.property_group_class = TestPropertyGroup
 
-        bpy.utils.register_class(TestPropertyGroup)
+        # Assign a Collection Property using the newly registered PropertyGroup.
         id_type.test_collection = CollectionProperty(type=TestPropertyGroup)
+        # Add at least one element to the collection.
         for _ in range(5):
             id_inst.test_collection.add()
 
@@ -539,7 +610,9 @@ class TestPropCollectionForeachGetSetMeshAttributes(BaseTestForeachGetSet):
     The properties of these collections' elements commonly have raw array access.
     """
     def setUp(self):
+        # Create a mesh and add an attribute of each type that can be used with foreach_get/foreach_set.
         self.mesh = bpy.data.meshes.new("")
+        # Add at least one vertex so that the attributes' collections will be non-empty.
         self.mesh.vertices.add(5)
         mesh_attributes = self.mesh.attributes
         # Attribute data types and the name of the property to use with foreach_get/foreach_set.
@@ -556,11 +629,12 @@ class TestPropCollectionForeachGetSetMeshAttributes(BaseTestForeachGetSet):
             'INT32_2D': "value",
             'QUATERNION': "value",
         }
-        # Attribute pointers are not stable when adding additional attributes, so get the names first. See #107500.
+        # Attribute pointers are not stable when adding additional attributes, so get their names first. See #107500.
         int_attribute_names = []
         float_attribute_names = []
         bool_attribute_names = []
         for data_type, prop_name in self.attribute_type_to_prop_name.items():
+            # Create new attributes with the 'POINT' domain because the mesh only has vertices.
             attr = mesh_attributes.new("test_%s" % data_type.lower(), data_type, 'POINT')
             collection_rna = attr.bl_rna.properties["data"]
             collection_element_rna = collection_rna.fixed_type
@@ -684,10 +758,13 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
 
     # Test methods
 
+    # As many types of non-runtime properties are tested as possible to increase coverage. Not all properties of a
+    # specific type are tested, because some may restrict the values that can be set or may have side effects.
+
     def test_foreach_get_bool(self):
         self.check_get(
             "runtime_bool",
-            "runtime_bool_vector",
+            "runtime_bool_vector",  # 1D array
 
             "show_bounds",
             "is_missing",  # read-only
@@ -696,7 +773,7 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
     def test_foreach_set_bool(self):
         self.check_set(
             "runtime_bool",
-            "runtime_bool_vector",
+            "runtime_bool_vector",  # 1D array
 
             "show_bounds",
         )
@@ -706,7 +783,6 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
             "runtime_float",
             "runtime_float_vector",  # 1D array
 
-            "color",  # 1D array
             "location",  # 1D array
             "matrix_world",  # 2D array
             "bound_box",  # read-only, 2D array
@@ -717,7 +793,6 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
             "runtime_float",
             "runtime_float_vector",  # 1D array
 
-            "color",  # 1D array
             "location",  # 1D array
             "matrix_world",  # 2D array
         )
@@ -725,7 +800,7 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
     def test_foreach_get_int(self):
         self.check_get(
             "runtime_int",
-            "runtime_int_vector",
+            "runtime_int_vector",  # 1D array
             "runtime_unsigned_int",
 
             "active_material_index",
@@ -735,7 +810,7 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
     def test_foreach_set_int(self):
         self.check_set(
             "runtime_int",
-            "runtime_int_vector",
+            "runtime_int_vector",  # 1D array
             "runtime_unsigned_int",
 
             "active_material_index",
@@ -762,8 +837,9 @@ class TestPropCollectionForeachGetSetNoItemPropertyPointer(BaseTestForeachGetSet
     Test the case where no item property pointer can be retrieved from the collection. This usually occurs when the
     collection's item type is defined dynamically.
 
-    `ShapeKey.data` can be a collection of `ShapeKeyPoint`, `ShapeKeyCurvePoint` or `ShapeKeyBezierPoint`, with Curve
-    instances allowing a mix of both `ShapeKeyCurvePoint` and `ShapeKeyBezierPoint` in the same collection.
+    Internally in RNA, the collection item type of `ShapeKey.data` is `UnknownType`, but `ShapeKey.data` can be a
+    collection of `ShapeKeyPoint`, `ShapeKeyCurvePoint` or `ShapeKeyBezierPoint`, with Curve ShapeKey instances allowing
+    a mix of both `ShapeKeyCurvePoint` and `ShapeKeyBezierPoint` in the same collection.
     """
     def setUp(self):
         self.mixed_curve = bpy.data.curves.new("", 'CURVE')
