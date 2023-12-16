@@ -15,6 +15,7 @@
 #include "BKE_pointcloud.h"
 
 #include "BLI_index_range.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_virtual_array.hh"
 
 #include "DNA_curve_types.h"
@@ -148,6 +149,26 @@ void overlay_text_viewer_attribute<blender::float4>(
   }
 }
 
+template<>
+void overlay_text_viewer_attribute<blender::math::Quaternion>(
+    const blender::VArray<blender::math::Quaternion> &attribute_values,
+    const blender::VArraySpan<blender::float3> &positions,
+    const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr,
+                               "(%.3f, %.3f, %.3f, %.3f)",
+                               attribute_values.get(i).x,
+                               attribute_values.get(i).y,
+                               attribute_values.get(i).z,
+                               attribute_values.get(i).w);
+    overlay_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
 static void add_data_based_on_type(const blender::GVArray &attributes,
                                    const blender::VArraySpan<float3> &positions,
                                    const float4x4 &modelMatrix)
@@ -170,6 +191,10 @@ static void add_data_based_on_type(const blender::GVArray &attributes,
   }
   if (type == CD_PROP_COLOR) {
     overlay_text_viewer_attribute(attributes.typed<float4>(), positions, modelMatrix);
+  }
+  if (type == CD_PROP_QUATERNION) {
+    overlay_text_viewer_attribute(
+        attributes.typed<blender::math::Quaternion>(), positions, modelMatrix);
   }
 }
 
