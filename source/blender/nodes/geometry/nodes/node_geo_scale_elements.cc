@@ -333,7 +333,7 @@ static int face_to_vert_islands(const Mesh &mesh,
   AtomicDisjointSet disjoint_set(vert_mask.size());
   const GroupedSpan<int> face_verts(mesh.face_offsets(), mesh.corner_verts());
 
-  face_mask.foreach_index_optimized<int>(GrainSize(4098), [&](const int face_i) {
+  face_mask.foreach_index_optimized<int>(GrainSize(4096), [&](const int face_i) {
     const Span<int> verts = face_verts[face_i];
     const int v1 = verts_pos[verts.first()];
     for (const int vert_i : verts.drop_front(1)) {
@@ -344,7 +344,7 @@ static int face_to_vert_islands(const Mesh &mesh,
 
   disjoint_set.calc_reduced_ids(vert_island_indices);
 
-  face_mask.foreach_index(GrainSize(4098), [&](const int face_i, const int face_pos) {
+  face_mask.foreach_index(GrainSize(4096), [&](const int face_i, const int face_pos) {
     const int face_vert_i = face_verts[face_i].first();
     const int vert_pos = verts_pos[face_vert_i];
     const int vert_island = vert_island_indices[vert_pos];
@@ -376,10 +376,10 @@ static void gather_face_islands(const Mesh &mesh,
 
   /* If result indices is for gathered array, map than back into global indices. */
   if (face_mask.size() != mesh.faces_num) {
-    parallel_transform<int>(r_item_indices, 4098, [&](const int pos) { return face_mask[pos]; });
+    parallel_transform<int>(r_item_indices, 4096, [&](const int pos) { return face_mask[pos]; });
   }
   if (vert_mask.size() != mesh.totvert) {
-    parallel_transform<int>(r_vert_indices, 4098, [&](const int pos) { return vert_mask[pos]; });
+    parallel_transform<int>(r_vert_indices, 4096, [&](const int pos) { return vert_mask[pos]; });
   }
 }
 
@@ -395,7 +395,7 @@ static int edge_to_vert_islands(const Mesh &mesh,
   AtomicDisjointSet disjoint_set(vert_mask.size());
   const Span<int2> edges = mesh.edges();
 
-  edge_mask.foreach_index_optimized<int>(GrainSize(4098), [&](const int edge_i) {
+  edge_mask.foreach_index_optimized<int>(GrainSize(4096), [&](const int edge_i) {
     const int2 edge = edges[edge_i];
     const int v1 = verts_pos[edge[0]];
     const int v2 = verts_pos[edge[1]];
@@ -404,7 +404,7 @@ static int edge_to_vert_islands(const Mesh &mesh,
 
   disjoint_set.calc_reduced_ids(vert_island_indices);
 
-  edge_mask.foreach_index(GrainSize(4098), [&](const int edge_i, const int edge_pos) {
+  edge_mask.foreach_index(GrainSize(4096), [&](const int edge_i, const int edge_pos) {
     const int2 edge = edges[edge_i];
     const int edge_vert_i = edge[0];
     const int vert_pos = verts_pos[edge_vert_i];
@@ -437,10 +437,10 @@ static void gather_edge_islands(const Mesh &mesh,
 
   /* If result indices is for gathered array, map than back into global indices. */
   if (edge_mask.size() != mesh.totedge) {
-    parallel_transform<int>(r_item_indices, 4098, [&](const int pos) { return edge_mask[pos]; });
+    parallel_transform<int>(r_item_indices, 4096, [&](const int pos) { return edge_mask[pos]; });
   }
   if (vert_mask.size() != mesh.totvert) {
-    parallel_transform<int>(r_vert_indices, 4098, [&](const int pos) { return vert_mask[pos]; });
+    parallel_transform<int>(r_vert_indices, 4096, [&](const int pos) { return vert_mask[pos]; });
   }
 }
 
@@ -492,21 +492,21 @@ static void node_geo_exec(GeoNodeExecParams params)
       const GroupedSpan<int> item_islands(item_offsets.as_span(), item_indices);
       const GroupedSpan<int> vert_islands(vert_offsets.as_span(), vert_indices);
 
-      const VArray<float> &scale_varray = evaluator.get_evaluated<float>(0);
-      const VArray<float3> &center_varray = evaluator.get_evaluated<float3>(1);
+      const VArray<float> scale_varray = evaluator.get_evaluated<float>(0);
+      const VArray<float3> center_varray = evaluator.get_evaluated<float3>(1);
 
       switch (scale_mode) {
         case GEO_NODE_SCALE_ELEMENTS_UNIFORM:
           scale_uniformly(item_islands, vert_islands, scale_varray, center_varray, *mesh);
           break;
         case GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS: {
-          const VArray<float3> &axis_varray = evaluator.get_evaluated<float3>(2);
+          const VArray<float3> axis_varray = evaluator.get_evaluated<float3>(2);
           scale_on_axis(
               item_islands, vert_islands, scale_varray, center_varray, axis_varray, *mesh);
           break;
         }
       }
-      BKE_mesh_tag_positions_changed(mesh);
+      mesh->tag_positions_changed();
     }
   });
 
