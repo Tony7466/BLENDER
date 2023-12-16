@@ -13,6 +13,7 @@ set(INC
   ../../draw
   ../../functions
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../modifiers
   ../../nodes
@@ -89,7 +90,6 @@ set(LIB
   bf_editor_curves
   bf_editor_lattice
   bf_editor_mesh
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
 )
 
