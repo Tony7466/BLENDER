@@ -313,6 +313,7 @@ class Any {
    */
   template<typename T> T &get()
   {
+    /* Use const-cast to be able to reuse the const method above. */
     return const_cast<T &>(const_cast<const Any *>(this)->get<T>());
   }
 
