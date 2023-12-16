@@ -6,12 +6,10 @@
  * \ingroup draw
  */
 
-#include "GPU_shader_shared_utils.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
-#include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memiter.h"
@@ -216,121 +214,6 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *region, View3D *v3d)
     }
 
     drw_text_cache_draw_ex(dt, region);
-  }
-}
-
-static void DRW_text_viewer_attribute_ex(char *numstr, size_t numstr_len, blender::float3 position)
-{
-  DRWTextStore *dt = DRW_text_cache_ensure();
-  const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
-
-  uchar col[4];
-  UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
-
-  DRW_text_cache_add(dt, position, numstr, numstr_len, 0, 0, txt_flag, col);
-}
-
-template<>
-void DRW_text_viewer_attribute<bool>(const blender::VArray<bool> &attribute_values,
-                                     const blender::VArraySpan<blender::float3> &positions,
-                                     const float4x4 modelMatrix)
-{
-  char numstr[32];
-  size_t numstr_len;
-
-  for (const int i : positions.index_range()) {
-    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
-    numstr_len = SNPRINTF_RLEN(numstr, "%s", attribute_values.get(i) ? "True" : "False");
-    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-  }
-}
-
-template<>
-void DRW_text_viewer_attribute<float>(const blender::VArray<float> &attribute_values,
-                                      const blender::VArraySpan<blender::float3> &positions,
-                                      const float4x4 modelMatrix)
-{
-  char numstr[32];
-  size_t numstr_len;
-
-  for (const int i : positions.index_range()) {
-    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
-    numstr_len = SNPRINTF_RLEN(numstr, "%g", attribute_values.get(i));
-    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-  }
-}
-
-template<>
-void DRW_text_viewer_attribute<int>(const blender::VArray<int> &attribute_values,
-                                    const blender::VArraySpan<blender::float3> &positions,
-                                    const float4x4 modelMatrix)
-{
-
-  char numstr[32];
-  size_t numstr_len;
-
-  for (const int i : positions.index_range()) {
-    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
-    numstr_len = SNPRINTF_RLEN(numstr, "%d", attribute_values.get(i));
-    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-  }
-}
-
-template<>
-void DRW_text_viewer_attribute<blender::float2>(
-    const blender::VArray<blender::float2> &attribute_values,
-    const blender::VArraySpan<blender::float3> &positions,
-    const float4x4 modelMatrix)
-{
-  char numstr[32];
-  size_t numstr_len;
-
-  for (const int i : positions.index_range()) {
-    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
-    numstr_len = SNPRINTF_RLEN(
-        numstr, "(%g, %g)", attribute_values.get(i).x, attribute_values.get(i).y);
-    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-  }
-}
-
-template<>
-void DRW_text_viewer_attribute<blender::float3>(
-    const blender::VArray<blender::float3> &attribute_values,
-    const blender::VArraySpan<blender::float3> &positions,
-    const float4x4 modelMatrix)
-{
-  char numstr[32];
-  size_t numstr_len;
-
-  for (const int i : positions.index_range()) {
-    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
-    numstr_len = SNPRINTF_RLEN(numstr,
-                               "(%g, %g, %g)",
-                               attribute_values.get(i).x,
-                               attribute_values.get(i).y,
-                               attribute_values.get(i).z);
-    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
-  }
-}
-
-template<>
-void DRW_text_viewer_attribute<blender::float4>(
-    const blender::VArray<blender::float4> &attribute_values,
-    const blender::VArraySpan<blender::float3> &positions,
-    const float4x4 modelMatrix)
-{
-  char numstr[32];
-  size_t numstr_len;
-
-  for (const int i : positions.index_range()) {
-    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
-    numstr_len = SNPRINTF_RLEN(numstr,
-                               "(%.3f, %.3f, %.3f, %.3f)",
-                               attribute_values.get(i).x,
-                               attribute_values.get(i).y,
-                               attribute_values.get(i).z,
-                               attribute_values.get(i).w);
-    DRW_text_viewer_attribute_ex(numstr, numstr_len, position);
   }
 }
 

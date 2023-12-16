@@ -7006,7 +7006,6 @@ class VIEW3D_PT_overlay_geometry(Panel):
         # Even when the Fade Inactive Geometry overlay is not affecting the
         # current active object depending on its mode, it will always affect
         # the rest of the scene.
-
         if context.mode != 'OBJECT':
             row.prop(overlay, "show_fade_inactive", text="")
             sub = row.row()

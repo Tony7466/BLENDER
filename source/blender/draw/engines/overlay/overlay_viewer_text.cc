@@ -23,7 +23,130 @@
 #include "DNA_object_types.h"
 
 #include "DRW_render.h"
+#include "UI_resources.hh"
 #include "draw_manager_text.h"
+
+static void overlay_text_viewer_attribute_ex(char *numstr,
+                                             size_t numstr_len,
+                                             blender::float3 position)
+{
+  DRWTextStore *dt = DRW_text_cache_ensure();
+  const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
+
+  uchar col[4];
+  UI_GetThemeColor4ubv(TH_DRAWEXTRA_FACEANG, col);
+
+  DRW_text_cache_add(dt, position, numstr, numstr_len, 0, 0, txt_flag, col);
+}
+
+template<typename T>
+static void overlay_text_viewer_attribute(const blender::VArray<T> &attribute_values,
+                                          const blender::VArraySpan<blender::float3> &positions,
+                                          const float4x4 modelMatrix);
+
+template<>
+void overlay_text_viewer_attribute<bool>(const blender::VArray<bool> &attribute_values,
+                                         const blender::VArraySpan<blender::float3> &positions,
+                                         const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr, "%s", attribute_values.get(i) ? "True" : "False");
+    overlay_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
+
+template<>
+void overlay_text_viewer_attribute<float>(const blender::VArray<float> &attribute_values,
+                                          const blender::VArraySpan<blender::float3> &positions,
+                                          const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr, "%g", attribute_values.get(i));
+    overlay_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
+
+template<>
+void overlay_text_viewer_attribute<int>(const blender::VArray<int> &attribute_values,
+                                        const blender::VArraySpan<blender::float3> &positions,
+                                        const float4x4 modelMatrix)
+{
+
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr, "%d", attribute_values.get(i));
+    overlay_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
+
+template<>
+void overlay_text_viewer_attribute<blender::float2>(
+    const blender::VArray<blender::float2> &attribute_values,
+    const blender::VArraySpan<blender::float3> &positions,
+    const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(
+        numstr, "(%g, %g)", attribute_values.get(i).x, attribute_values.get(i).y);
+    overlay_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
+
+template<>
+void overlay_text_viewer_attribute<blender::float3>(
+    const blender::VArray<blender::float3> &attribute_values,
+    const blender::VArraySpan<blender::float3> &positions,
+    const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr,
+                               "(%g, %g, %g)",
+                               attribute_values.get(i).x,
+                               attribute_values.get(i).y,
+                               attribute_values.get(i).z);
+    overlay_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
+
+template<>
+void overlay_text_viewer_attribute<blender::float4>(
+    const blender::VArray<blender::float4> &attribute_values,
+    const blender::VArraySpan<blender::float3> &positions,
+    const float4x4 modelMatrix)
+{
+  char numstr[32];
+  size_t numstr_len;
+
+  for (const int i : positions.index_range()) {
+    float3 position = blender::math::transform_point(modelMatrix, positions[i]);
+    numstr_len = SNPRINTF_RLEN(numstr,
+                               "(%.3f, %.3f, %.3f, %.3f)",
+                               attribute_values.get(i).x,
+                               attribute_values.get(i).y,
+                               attribute_values.get(i).z,
+                               attribute_values.get(i).w);
+    overlay_text_viewer_attribute_ex(numstr, numstr_len, position);
+  }
+}
 
 static void add_data_based_on_type(const blender::GVArray &attributes,
                                    const blender::VArraySpan<float3> &positions,
@@ -31,22 +154,22 @@ static void add_data_based_on_type(const blender::GVArray &attributes,
 {
   const eCustomDataType type = blender::bke::cpp_type_to_custom_data_type(attributes.type());
   if (type == CD_PROP_BOOL) {
-    DRW_text_viewer_attribute(attributes.typed<bool>(), positions, modelMatrix);
+    overlay_text_viewer_attribute(attributes.typed<bool>(), positions, modelMatrix);
   }
   if (type == CD_PROP_FLOAT) {
-    DRW_text_viewer_attribute(attributes.typed<float>(), positions, modelMatrix);
+    overlay_text_viewer_attribute(attributes.typed<float>(), positions, modelMatrix);
   }
   if (type == CD_PROP_INT32) {
-    DRW_text_viewer_attribute(attributes.typed<int>(), positions, modelMatrix);
+    overlay_text_viewer_attribute(attributes.typed<int>(), positions, modelMatrix);
   }
   if (type == CD_PROP_FLOAT2) {
-    DRW_text_viewer_attribute(attributes.typed<float2>(), positions, modelMatrix);
+    overlay_text_viewer_attribute(attributes.typed<float2>(), positions, modelMatrix);
   }
   if (type == CD_PROP_FLOAT3) {
-    DRW_text_viewer_attribute(attributes.typed<float3>(), positions, modelMatrix);
+    overlay_text_viewer_attribute(attributes.typed<float3>(), positions, modelMatrix);
   }
   if (type == CD_PROP_COLOR) {
-    DRW_text_viewer_attribute(attributes.typed<float4>(), positions, modelMatrix);
+    overlay_text_viewer_attribute(attributes.typed<float4>(), positions, modelMatrix);
   }
 }
 

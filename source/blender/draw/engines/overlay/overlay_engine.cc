@@ -8,7 +8,6 @@
  * Engine for drawing a selection map where the pixels indicate the selection indices.
  */
 
-#include "DNA_view3d_types.h"
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
@@ -27,7 +26,6 @@
 #include "DNA_space_types.h"
 
 #include "draw_manager.hh"
-#include "draw_manager_text.h"
 #include "overlay_next_instance.hh"
 
 #include "overlay_engine.h"
