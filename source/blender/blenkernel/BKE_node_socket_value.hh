@@ -17,9 +17,9 @@
 namespace blender::bke {
 
 /**
- * #SocketValueVariant is used by geometry nodes to pass data between nodes. Specifically, it is
- * the container type for the following socket types: bool, float, integer, vector, rotation, color
- * and string.
+ * #SocketValueVariant is used by geometry nodes in the lazy-function evaluator to pass data
+ * between nodes. Specifically, it is the container type for the following socket types: bool,
+ * float, integer, vector, rotation, color and string.
  *
  * The data passed through e.g. an integer socket can be a single value or a field (and in the
  * future potentially grids, lists and images). Each of those is stored differently, but this
@@ -118,7 +118,7 @@ class SocketValueVariant {
   bool is_context_dependent_field() const;
 
   /**
-   * Cnvert the stored value into a single value. For simple value access, this is not necessary,
+   * Convert the stored value into a single value. For simple value access, this is not necessary,
    * because #get` does the conversion implicitly. However, it is necessary if one wants to use
    * #get_single_ptr.
    *
