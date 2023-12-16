@@ -681,7 +681,7 @@ static void text_update_text_search(SpaceText *st, Text *text)
   if (!text_search) {
     return;
   }
-  auto search_result = text_find_srting_matches(text, findstr, match_case);
+  auto search_result = text_find_string_matches(text, findstr, match_case);
   auto &string_matches = text_search->string_matches();
   if (search_result != string_matches) {
     string_matches = search_result;
