@@ -75,6 +75,22 @@ struct BoundaryOp {
   }
 };
 
+struct DirichletBoundaryOp {
+  using ValueType = openvdb::tools::poisson::LaplacianMatrix::ValueType;
+
+  void operator()(
+      const openvdb::Coord &ijk,           // coordinates of a boundary voxel
+      const openvdb::Coord &ijk_neighbor,  // coordinates of an exterior neighbor of ijk
+      ValueType &source,                   // element of b corresponding to ijk
+      ValueType &diagonal                  // element of Laplacian matrix corresponding to ijk
+  ) const
+  {
+    /* Open boundary, remove interaction with neighbor voxel. */
+    diagonal -= 1;
+    UNUSED_VARS(ijk, ijk_neighbor, source);
+  }
+};
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
@@ -88,8 +104,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const openvdb::FloatTree &input_tree = input_grid.grid()->tree();
 
-  BoundaryOp boundary_op{boundary_grid.grid()->getAccessor()};
-
   const double epsilon = openvdb::math::Delta<float>::value();
   openvdb::math::pcg::State pcg_state = openvdb::math::pcg::terminationDefaults<float>();
   pcg_state.iterations = params.extract_input<int>("Max Iterations");
@@ -100,9 +114,19 @@ static void node_geo_exec(GeoNodeExecParams params)
   using PreconditionerType = openvdb::math::pcg::IncompleteCholeskyPreconditioner<
       openvdb::tools::poisson::LaplacianMatrix>;
 
-  openvdb::FloatTree::Ptr output_tree =
-      openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
-          input_tree, boundary_op, pcg_state, interrupter, staggered);
+  openvdb::FloatTree::Ptr output_tree; 
+  if (boundary_grid) {
+    BoundaryOp boundary_op{boundary_grid.grid()->getAccessor()};
+    output_tree =
+        openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
+            input_tree, boundary_op, pcg_state, interrupter, staggered);
+  }
+  else {
+    DirichletBoundaryOp boundary_op;
+    output_tree =
+        openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
+            input_tree, boundary_op, pcg_state, interrupter, staggered);
+  }
 
   openvdb::FloatGrid::Ptr output_grid_vdb = input_grid.grid()->copyWithNewTree();
   output_grid_vdb->setTree(output_tree);
