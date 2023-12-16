@@ -192,7 +192,7 @@ PyDoc_STRVAR(py_blf_dimensions_doc,
              "   :arg text: the text to draw.\n"
              "   :type text: string\n"
              "   :return: the width and height of the text.\n"
-             "   :rtype: tuple of 2 floats\n");
+             "   :rtype: tuple of floats\n");
 static PyObject *py_blf_dimensions(PyObject * /*self*/, PyObject *args)
 {
   const char *text;

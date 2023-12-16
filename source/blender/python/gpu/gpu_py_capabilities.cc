@@ -181,7 +181,7 @@ PyDoc_STRVAR(pygpu_extensions_get_doc,
              "   Get supported extensions in the current context.\n"
              "\n"
              "   :return: Extensions.\n"
-             "   :rtype: tuple of string\n");
+             "   :rtype: tuple of strs\n");
 static PyObject *pygpu_extensions_get(PyObject * /*self*/)
 {
   int extensions_len = GPU_extensions_len();

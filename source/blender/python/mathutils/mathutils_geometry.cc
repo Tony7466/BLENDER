@@ -157,7 +157,7 @@ PyDoc_STRVAR(M_Geometry_intersect_line_line_doc,
              "   :type v3: :class:`mathutils.Vector`\n"
              "   :arg v4: Second point of the second line\n"
              "   :type v4: :class:`mathutils.Vector`\n"
-             "   :rtype: tuple of :class:`mathutils.Vector`'s\n");
+             "   :rtype: tuple of :class:`mathutils.Vector`\n");
 static PyObject *M_Geometry_intersect_line_line(PyObject * /*self*/, PyObject *args)
 {
   const char *error_prefix = "intersect_line_line";
@@ -337,7 +337,7 @@ PyDoc_STRVAR(M_Geometry_normal_doc,
              "   Returns the normal of a 3D polygon.\n"
              "\n"
              "   :arg vectors: Vectors to calculate normals with\n"
-             "   :type vectors: sequence of 3 or more 3d vector\n"
+             "   :type vectors: sequence of floats or `mathutils.Vector`\n"
              "   :rtype: :class:`mathutils.Vector`\n");
 static PyObject *M_Geometry_normal(PyObject * /*self*/, PyObject *args)
 {
@@ -620,7 +620,7 @@ PyDoc_STRVAR(
     "   :arg sphere_co: The center of the sphere\n"
     "   :type sphere_co: :class:`mathutils.Vector`\n"
     "   :arg sphere_radius: Radius of the sphere\n"
-    "   :type sphere_radius: sphere_radius\n"
+    "   :type sphere_radius: float\n"
     "   :return: The intersection points as a pair of vectors or None when there is no "
     "intersection\n"
     "   :rtype: A tuple pair containing :class:`mathutils.Vector` or None\n");
@@ -710,7 +710,7 @@ PyDoc_STRVAR(
     "   :arg sphere_co: The center of the sphere\n"
     "   :type sphere_co: :class:`mathutils.Vector`\n"
     "   :arg sphere_radius: Radius of the sphere\n"
-    "   :type sphere_radius: sphere_radius\n"
+    "   :type sphere_radius: float\n"
     "   :return: The intersection points as a pair of vectors or None when there is no "
     "intersection\n"
     "   :rtype: A tuple pair containing :class:`mathutils.Vector` or None\n");

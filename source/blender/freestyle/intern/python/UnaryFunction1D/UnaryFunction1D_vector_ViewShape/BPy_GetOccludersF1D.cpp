@@ -37,7 +37,7 @@ static char GetOccludersF1D___doc__[] =
     "   :arg inter: An Interface1D object.\n"
     "   :type inter: :class:`freestyle.types.Interface1D`\n"
     "   :return: A list of occluding shapes that cover the Interface1D.\n"
-    "   :rtype: list of :class:`freestyle.types.ViewShape` objects\n";
+    "   :rtype: list of :class:`freestyle.types.ViewShape`\n";
 
 static int GetOccludersF1D___init__(BPy_GetOccludersF1D *self, PyObject *args, PyObject *kwds)
 {

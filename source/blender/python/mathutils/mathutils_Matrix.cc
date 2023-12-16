@@ -3094,7 +3094,7 @@ static int Matrix_translation_set(MatrixObject *self, PyObject *value, void * /*
 }
 
 PyDoc_STRVAR(Matrix_row_doc,
-             "Access the matrix by rows (default), (read-only).\n\n:type: Matrix Access");
+             "Access the matrix by rows (default), (read-only).\n\n:type: :class:`Matrix`");
 static PyObject *Matrix_row_get(MatrixObject *self, void * /*closure*/)
 {
   return MatrixAccess_CreatePyObject(self, MAT_ACCESS_ROW);
@@ -3102,7 +3102,7 @@ static PyObject *Matrix_row_get(MatrixObject *self, void * /*closure*/)
 
 PyDoc_STRVAR(
     Matrix_col_doc,
-    "Access the matrix by columns, 3x3 and 4x4 only, (read-only).\n\n:type: Matrix Access");
+    "Access the matrix by columns, 3x3 and 4x4 only, (read-only).\n\n:type: :class:`Matrix`");
 static PyObject *Matrix_col_get(MatrixObject *self, void * /*closure*/)
 {
   return MatrixAccess_CreatePyObject(self, MAT_ACCESS_COL);

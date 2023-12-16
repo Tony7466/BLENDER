@@ -69,7 +69,7 @@ PyDoc_STRVAR(bpy_script_paths_doc,
              "   Return 2 paths to blender scripts directories.\n"
              "\n"
              "   :return: (system, user) strings will be empty when not found.\n"
-             "   :rtype: tuple of strings\n");
+             "   :rtype: tuple of strs\n");
 static PyObject *bpy_script_paths(PyObject * /*self*/)
 {
   PyObject *ret = PyTuple_New(2);

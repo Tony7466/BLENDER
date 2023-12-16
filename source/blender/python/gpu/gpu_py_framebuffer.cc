@@ -407,7 +407,7 @@ PyDoc_STRVAR(pygpu_framebuffer_clear_doc,
              "   Common values: color=(0.0, 0.0, 0.0, 1.0), depth=1.0, stencil=0.\n"
              "\n"
              "   :arg color: float sequence each representing ``(r, g, b, a)``.\n"
-             "   :type color: sequence of 3 or 4 floats\n"
+             "   :type color: sequence of floats\n"
              "   :arg depth: depth value.\n"
              "   :type depth: float\n"
              "   :arg stencil: stencil value.\n"

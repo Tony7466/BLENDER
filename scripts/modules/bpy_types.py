@@ -879,7 +879,7 @@ class Gizmo(StructRNA):
         :arg type: The type of shape to create in (POINTS, LINES, TRIS, LINE_STRIP).
         :type type: string
         :arg verts: Coordinates.
-        :type verts: sequence of of 2D or 3D coordinates.
+        :type verts: sequence of sequence of floats.
         :arg display_name: Optional callback that takes the full path, returns the name to display.
         :type display_name: Callable that takes a string and returns a string.
         :return: The newly created shape.
