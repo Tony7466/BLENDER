@@ -2004,21 +2004,18 @@ void BKE_library_make_local(Main *bmain,
 #endif
 }
 
-void BLI_libblock_ensure_unique_name(Main *bmain, const char *name)
+void BLI_libblock_ensure_unique_name(Main *bmain, ID *id)
 {
   ListBase *lb;
-  ID *idtest;
 
-  lb = which_libbase(bmain, GS(name));
+  lb = which_libbase(bmain, GS(id->name));
   if (lb == nullptr) {
     return;
   }
 
-  /* search for id */
-  idtest = static_cast<ID *>(BLI_findstring(lb, name + 2, offsetof(ID, name) + 2));
-  if (idtest != nullptr && !ID_IS_LINKED(idtest)) {
+  if (!ID_IS_LINKED(id)) {
     /* BKE_id_new_name_validate also takes care of sorting. */
-    BKE_id_new_name_validate(bmain, lb, idtest, nullptr, false);
+    BKE_id_new_name_validate(bmain, lb, id, nullptr, false);
     bmain->is_memfile_undo_written = false;
   }
 }
