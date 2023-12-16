@@ -558,6 +558,7 @@ static void execute_multi_function_on_value_variant(const MultiFunction &fn,
       SocketValueVariant &output_variant = *output_values[i];
       const CPPType &cpp_type = fn.param_type(params.next_param_index()).data_type().single_type();
       void *value = output_variant.new_single_for_write(cpp_type);
+      cpp_type.destruct(value);
       params.add_uninitialized_single_output(GMutableSpan{cpp_type, value, 1});
     }
     fn.call(mask, params, context);
