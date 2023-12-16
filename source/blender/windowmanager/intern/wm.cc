@@ -474,10 +474,14 @@ void WM_check(bContext *C)
     wm->message_bus = WM_msgbus_create();
   }
 
+  /* Case: file-read. */
+  if ((wm->init_flag & WM_INIT_FLAG_KEYCONFIG) == 0) {
+    WM_keyconfig_init(C);
+  }
+
   if (!G.background) {
     /* Case: file-read. */
     if ((wm->init_flag & WM_INIT_FLAG_WINDOW) == 0) {
-      WM_keyconfig_init(C);
       WM_file_autosave_init(wm);
     }
 
