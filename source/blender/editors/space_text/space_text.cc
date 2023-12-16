@@ -399,13 +399,13 @@ static void text_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper
   BKE_id_remapper_apply(mappings, (ID **)&stext->text, ID_REMAP_APPLY_ENSURE_REAL);
 
   auto &texts_search = stext->runtime->texts_search;
-  for (auto &ts : texts_search) {
-    BKE_id_remapper_apply(mappings, (ID **)&ts.text, ID_REMAP_APPLY_ENSURE_REAL);
+  for (auto &ts_ptr : texts_search) {
+    BKE_id_remapper_apply(mappings, (ID **)(*ts_ptr).text, ID_REMAP_APPLY_ENSURE_REAL);
   }
-  auto test_removed = [](const TextSearch &ts) { return ts.text == nullptr; };
-  const auto itr = std::remove_if(texts_search.begin(), texts_search.end(), test_removed);
-  const int64_t removed = texts_search.end() - itr;
-  texts_search.remove(texts_search.size() - removed, removed);
+  auto test_removed = [](const std::unique_ptr<TextSearch> &ts_ptr) {
+    return (*ts_ptr).text == nullptr;
+  };
+  texts_search.remove_if(test_removed);
 }
 
 static void text_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
@@ -506,61 +506,38 @@ void ED_spacetype_text()
   ED_text_format_register_pov_ini();
 }
 
+/** Initializes a text search if is not already initialized. */
 static void text_init_text_search(const SpaceText *st, Text *text)
 {
+  if (ED_text_get_text_search(st, st->text)) {
+    return;
+  }
   auto &texts_search = st->runtime->texts_search;
-  texts_search.append({text});
+  texts_search.append(std::make_unique<TextSearch>(text));
 }
 
 const TextSearch *ED_text_get_text_search(const SpaceText *st, const Text *text)
 {
   auto &texts_search = st->runtime->texts_search;
-
-  auto itr = std::find_if(texts_search.begin(), texts_search.end(), [text](const TextSearch &tm) {
-    return tm.text == text;
-  });
-
+  auto itr = std::find_if(
+      texts_search.begin(), texts_search.end(), [text](const std::unique_ptr<TextSearch> &ts_ptr) {
+        return (*ts_ptr).text == text;
+      });
   if (itr != texts_search.end()) {
-    return itr;
+    return itr->get();
   }
   else {
     return nullptr;
   }
 }
 
-static bool equal_case(const char *s1, const char *s2, const size_t len)
-{
-  for (int i = 0; i < len; i++) {
-    const char c1 = (char)tolower(s1[i]);
-    const char c2 = (char)tolower(s2[i]);
-    if (c1 != c2) {
-      return false;
-    }
-  }
-  return true;
-}
-
-static const char *strstr_case(const char *s, const char *find, const int find_lend)
-{
-  BLI_assert(s && find && strlen(find) == find_lend);
-  for (; s[0] != '\0'; s++) {
-    if (equal_case(s, find, find_lend)) {
-      return s;
-    }
-  }
-  return nullptr;
-}
-
-static const char *find_match(const char *src,
-                              const char *find,
-                              const int find_lend,
-                              bool match_case)
+static const char *find_str(const char *src, const char *find, const bool match_case)
 {
   if (match_case) {
     return strstr(src, find);
   }
   else {
-    return strstr_case(src, find, find_lend);
+    return BLI_strcasestr(src, find);
   }
 }
 
@@ -569,12 +546,12 @@ static blender::Vector<StringMatch> text_find_string_matches(const Text *text,
                                                              const bool match_case)
 {
   blender::Vector<StringMatch> string_matches;
-  const int findstr_len = strlen(findstr);
+  const size_t findstr_len = strlen(findstr);
   int line_index = 0;
   TextLine *text_line = static_cast<TextLine *>(text->lines.first);
   const char *text_line_str = text_line ? text_line->line : nullptr;
   while (text_line) {
-    const char *s = find_match(text_line_str, findstr, findstr_len, match_case);
+    const char *s = find_str(text_line_str, findstr, match_case);
     if (s) {
       const int start = int(s - text_line->line);
       const int end = start + findstr_len;
@@ -592,26 +569,17 @@ static blender::Vector<StringMatch> text_find_string_matches(const Text *text,
   return string_matches;
 }
 
-static void remove_texts_search_but_active(const SpaceText *st)
-{
-  auto &texts_search = st->runtime->texts_search;
-  auto test_not_active = [st](const TextSearch &ts) { return ts.text != st->text; };
-  auto itr = std::remove_if(texts_search.begin(), texts_search.end(), test_not_active);
-  const int64_t removed = texts_search.end() - itr;
-  texts_search.remove(texts_search.size() - removed, removed);
-}
-
-static void text_add_missing_texts_search(const bContext *C, const SpaceText *st, const bool all)
+/**
+ * Initilaizes the text search for all Text data-blocks, if `search_all==false` just initializes
+ * the text search for the active text in the space.
+ */
+static void text_init_texts_search(const bContext *C, const SpaceText *st, const bool search_all)
 {
   Main *bmain = CTX_data_main(C);
-
+  if (!search_all) {
+    text_init_text_search(st, st->text);
+  }
   LISTBASE_FOREACH (Text *, text, &bmain->texts) {
-    if (!(all || st->text == text)) {
-      continue;
-    }
-    if (ED_text_get_text_search(st, text)) {
-      continue;
-    }
     text_init_text_search(st, text);
   }
 }
@@ -619,40 +587,43 @@ static void text_add_missing_texts_search(const bContext *C, const SpaceText *st
 void ED_text_update_search(const bContext *C, const SpaceText *st)
 {
   auto &texts_search = st->runtime->texts_search;
-
   const char *findstr = st->findstr;
-
   if (findstr[0] == '\0') {
     texts_search.clear();
     return;
   }
 
   const bool find_all = bool(st->flags & ST_FIND_ALL);
-
   if (!find_all) {
-    remove_texts_search_but_active(st);
+    /* remove all text search except for the active text in the space. */
+    auto &texts_search = st->runtime->texts_search;
+    auto test_not_active = [st](const std::unique_ptr<TextSearch> &ts_ptr) {
+      return (*ts_ptr).text != st->text;
+    };
+    texts_search.remove_if(test_not_active);
   }
 
-  text_add_missing_texts_search(C, st, find_all);
-
+  text_init_texts_search(C, st, find_all);
   const bool match_case = bool(st->flags & ST_MATCH_CASE);
 
   using namespace blender;
-  threading::parallel_for_each(texts_search, [st, findstr, match_case](TextSearch &ts) {
-    auto search_result = text_find_string_matches(ts.text, findstr, match_case);
-    auto &string_matches = ts.string_matches();
-    if (search_result != string_matches) {
-      string_matches = search_result;
-    }
-  });
+  threading::parallel_for_each(
+      texts_search, [st, findstr, match_case](std::unique_ptr<TextSearch> &ts_ptr) {
+        auto search_result = text_find_string_matches((*ts_ptr).text, findstr, match_case);
+        auto &string_matches = (*ts_ptr).string_matches();
+        if (search_result != string_matches) {
+          string_matches = search_result;
+        }
+      });
 }
 
 int ED_text_get_active_text_search(const SpaceText *st)
 {
   auto &texts_search = st->runtime->texts_search;
-  auto it = std::find_if(texts_search.begin(), texts_search.end(), [st](const TextSearch &ts) {
-    return ts.text == st->text;
-  });
+  auto it = std::find_if(
+      texts_search.begin(), texts_search.end(), [st](const std::unique_ptr<TextSearch> &ts_ptr) {
+        return (*ts_ptr).text == st->text;
+      });
   if (it == texts_search.end()) {
     return -1;
   }
@@ -703,15 +674,14 @@ static void text_update_text_search(SpaceText *st, Text *text)
   }
   const bool match_case = bool(st->flags & ST_MATCH_CASE);
   const bool find_all = bool(st->flags & ST_FIND_ALL);
-  auto *text_search = ED_text_get_text_search(st, text);
-  if (!text_search && (find_all || st->text == text)) {
+  if (find_all || st->text == text) {
     text_init_text_search(st, text);
-    text_search = ED_text_get_text_search(st, text);
   }
+  auto *text_search = ED_text_get_text_search(st, text);
   if (!text_search) {
     return;
   }
-  auto search_result = text_find_string_matches(text, findstr, match_case);
+  auto search_result = text_find_srting_matches(text, findstr, match_case);
   auto &string_matches = text_search->string_matches();
   if (search_result != string_matches) {
     string_matches = search_result;

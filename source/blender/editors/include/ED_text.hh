@@ -58,7 +58,7 @@ int ED_text_get_active_string_match(const SpaceText *st);
 /* Updates the search result done in the space text. */
 void ED_text_update_search(const bContext *C, const SpaceText *st);
 
-/* Get the #text search result from the space text. */
+/* Get the search result from the `text` in the `st` Space Text. */
 const TextSearch *ED_text_get_text_search(const SpaceText *st, const Text *text);
 
 struct SpaceText_Runtime {
@@ -95,5 +95,5 @@ struct SpaceText_Runtime {
   void *drawcache;
 
   /** Search result in text data-blocks. */
-  blender::Vector<TextSearch> texts_search;
+  blender::Vector<std::unique_ptr<TextSearch>> texts_search;
 };

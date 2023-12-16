@@ -1243,13 +1243,11 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
     const auto &string_matches = text_search->string_matches();
     set_alpha_color(TH_WIRE_INNER, 0.5f);
     auto string_match_itr = std::lower_bound(
-        string_matches.begin(),
-        string_matches.end(),
-        st->top,
-        [](const StringMatch &match, int top) { return match.line_index < top; });
+        string_matches.begin(), string_matches.end(), st->top, [](const StringMatch &sm, int top) {
+          return sm.line_index < top;
+        });
 
     for (; string_match_itr < string_matches.end(); string_match_itr++) {
-      const StringMatch &sm = *string_match_itr;
       if (st->top + st->runtime->viewlines < string_match_itr->line_index) {
         break;
       }

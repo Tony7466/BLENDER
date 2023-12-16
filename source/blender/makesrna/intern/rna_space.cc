@@ -1961,7 +1961,14 @@ static void rna_SpaceText_texts_search_begin(CollectionPropertyIterator *iter, P
 {
   SpaceText *st = static_cast<SpaceText *>(ptr->data);
   auto &ts = st->runtime->texts_search;
-  rna_iterator_array_begin(iter, ts.begin(), sizeof(TextSearch), ts.size(), 0, nullptr);
+  rna_iterator_array_begin(
+      iter, ts.begin(), sizeof(std::unique_ptr<TextSearch>), ts.size(), 0, nullptr);
+}
+
+PointerRNA rna_SpaceText_texts_search_get(CollectionPropertyIterator *iter)
+{
+  auto &ts_ptr = *static_cast<std::unique_ptr<TextSearch> *>(rna_iterator_array_get(iter));
+  return rna_pointer_inherit_refine(&iter->parent, &RNA_TextSearch, ts_ptr.get());
 }
 
 static int rna_SpaceText_texts_search_length(PointerRNA *ptr)
@@ -6242,7 +6249,7 @@ static void rna_def_space_text(BlenderRNA *brna)
                                     "rna_SpaceText_texts_search_begin",
                                     "rna_iterator_array_next",
                                     "rna_iterator_array_end",
-                                    "rna_iterator_array_get",
+                                    "rna_SpaceText_texts_search_get",
                                     "rna_SpaceText_texts_search_length",
                                     nullptr,
                                     nullptr,

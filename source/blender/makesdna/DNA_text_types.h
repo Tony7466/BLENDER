@@ -78,7 +78,6 @@ struct StringMatch {
   int line_index;
   /** Start and end position in #tex_line where the `SpaceText.findstr` string was found. */
   int start, end;
-
   int flags;
 
 #ifdef __cplusplus
@@ -90,43 +89,27 @@ struct StringMatch {
 #endif
 };
 
+/** #StringMatch.flags */
+enum {
+  /** Set if a mathc is selected for replace. */
+  TXT_SM_SELECTED = 1 << 0,
+};
+
 typedef struct TextSearch {
-  /** Text data block. */
+  /** Text data-block. */
   struct Text *text;
   /* Pointer to `blender::Vector<StringMatch>` match vector. */
   void *_string_matches;
 #ifdef __cplusplus
-  TextSearch(Text *text) : text(text)
+  TextSearch(Text *_text) : text(_text)
   {
     _string_matches = MEM_new<blender::Vector<StringMatch>>(__func__);
   };
 
-  TextSearch(TextSearch &&other)
-  {
-    text = other.text;
-    _string_matches = other._string_matches;
-    other._string_matches = nullptr;
-    other.text = nullptr;
-  };
-
-  TextSearch &operator=(TextSearch &&other)
-  {
-    text = other.text;
-    string_matches_free();
-    _string_matches = other._string_matches;
-    other._string_matches = nullptr;
-    other.text = nullptr;
-    return *this;
-  };
-
-  void string_matches_free()
+  ~TextSearch()
   {
     MEM_delete(static_cast<blender::Vector<StringMatch> *>(_string_matches));
     _string_matches = nullptr;
-  }
-  ~TextSearch()
-  {
-    string_matches_free();
   }
 
   blender::Vector<StringMatch> &string_matches() const
@@ -136,9 +119,3 @@ typedef struct TextSearch {
   }
 #endif
 } TextMatch;
-
-/** #StringMatch.flags */
-enum {
-  /** Set if the occurrence is selected for replace. */
-  TXT_SM_SELECTED = 1 << 0,
-};
