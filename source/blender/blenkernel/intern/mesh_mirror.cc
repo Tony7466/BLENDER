@@ -406,7 +406,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     transpose_m4(mtx_nor);
 
     /* calculate custom normals into loop_normals, then mirror first half into second half */
-    const bke::AttributeAccessor attributes = mesh->attributes();
+    const bke::AttributeAccessor attributes = result->attributes();
     const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", ATTR_DOMAIN_EDGE);
     const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
     blender::bke::mesh::normals_calc_loop(result->vert_positions(),
@@ -447,7 +447,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   /* handle vgroup stuff */
   if (BKE_object_supports_vertex_groups(ob)) {
     if ((mmd->flag & MOD_MIR_VGROUP) && CustomData_has_layer(&result->vert_data, CD_MDEFORMVERT)) {
-      MDeformVert *dvert = BKE_mesh_deform_verts_for_write(result) + src_verts_num;
+      MDeformVert *dvert = result->deform_verts_for_write().data() + src_verts_num;
       int flip_map_len = 0;
       int *flip_map = BKE_object_defgroup_flip_map(ob, false, &flip_map_len);
       if (flip_map) {

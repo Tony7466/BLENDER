@@ -35,6 +35,7 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
+#include "BLI_math_rotation_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
@@ -2432,7 +2433,11 @@ bNode *nodeAddNode(const bContext *C, bNodeTree *ntree, const char *idname)
 
   BKE_ntree_update_tag_node_new(ntree, node);
 
-  if (ELEM(node->type, GEO_NODE_INPUT_SCENE_TIME, GEO_NODE_SELF_OBJECT, GEO_NODE_SIMULATION_INPUT))
+  if (ELEM(node->type,
+           GEO_NODE_INPUT_SCENE_TIME,
+           GEO_NODE_INPUT_ACTIVE_CAMERA,
+           GEO_NODE_SELF_OBJECT,
+           GEO_NODE_SIMULATION_INPUT))
   {
     DEG_relations_tag_update(CTX_data_main(C));
   }
@@ -4188,6 +4193,69 @@ std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataTy
     default:
       return std::nullopt;
   }
+}
+
+static const CPPType *slow_socket_type_to_geo_nodes_base_cpp_type(const eNodeSocketDatatype type)
+{
+  const char *socket_idname = nodeStaticSocketType(type, 0);
+  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  return typeinfo->base_cpp_type;
+}
+
+const CPPType *socket_type_to_geo_nodes_base_cpp_type(const eNodeSocketDatatype type)
+{
+  const CPPType *cpp_type;
+  switch (type) {
+    case SOCK_FLOAT:
+      cpp_type = &CPPType::get<float>();
+      break;
+    case SOCK_INT:
+      cpp_type = &CPPType::get<int>();
+      break;
+    case SOCK_RGBA:
+      cpp_type = &CPPType::get<ColorGeometry4f>();
+      break;
+    case SOCK_BOOLEAN:
+      cpp_type = &CPPType::get<bool>();
+      break;
+    case SOCK_VECTOR:
+      cpp_type = &CPPType::get<float3>();
+      break;
+    case SOCK_ROTATION:
+      cpp_type = &CPPType::get<math::Quaternion>();
+      break;
+    default:
+      cpp_type = slow_socket_type_to_geo_nodes_base_cpp_type(type);
+      break;
+  }
+  BLI_assert(cpp_type == slow_socket_type_to_geo_nodes_base_cpp_type(type));
+  return cpp_type;
+}
+
+std::optional<eNodeSocketDatatype> geo_nodes_base_cpp_type_to_socket_type(const CPPType &type)
+{
+  if (type.is<float>()) {
+    return SOCK_FLOAT;
+  }
+  if (type.is<int>()) {
+    return SOCK_INT;
+  }
+  if (type.is<float3>()) {
+    return SOCK_VECTOR;
+  }
+  if (type.is<ColorGeometry4f>()) {
+    return SOCK_RGBA;
+  }
+  if (type.is<bool>()) {
+    return SOCK_BOOLEAN;
+  }
+  if (type.is<math::Quaternion>()) {
+    return SOCK_ROTATION;
+  }
+  if (type.is<std::string>()) {
+    return SOCK_STRING;
+  }
+  return std::nullopt;
 }
 
 struct SocketTemplateIdentifierCallbackData {
