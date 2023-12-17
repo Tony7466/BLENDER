@@ -626,7 +626,7 @@ bool BKE_volume_is_points_only(const Volume *volume)
 
   for (int i = 0; i < num_grids; i++) {
     const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
-    if (BKE_volume_grid_type(grid) != VOLUME_GRID_POINTS) {
+    if (grid->grid_type() != VOLUME_GRID_POINTS) {
       return false;
     }
   }
@@ -883,7 +883,7 @@ const blender::bke::VolumeGridData *BKE_volume_grid_find(const Volume *volume, c
   int num_grids = BKE_volume_num_grids(volume);
   for (int i = 0; i < num_grids; i++) {
     const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
-    if (BKE_volume_grid_name(grid) == name) {
+    if (grid->name() == name) {
       return grid;
     }
   }
@@ -896,7 +896,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, con
   int num_grids = BKE_volume_num_grids(volume);
   for (int i = 0; i < num_grids; i++) {
     const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
-    if (BKE_volume_grid_name(grid) == name) {
+    if (grid->name() == name) {
       return BKE_volume_grid_get_for_write(volume, i);
     }
   }
@@ -912,18 +912,6 @@ void BKE_volume_grid_unload(const Volume * /*volume*/, const blender::bke::Volum
   grid->unload_tree_if_possible();
 #else
   UNUSED_VARS(grid);
-#endif
-}
-
-/* Grid Metadata */
-
-std::string BKE_volume_grid_name(const blender::bke::VolumeGridData *volume_grid)
-{
-#ifdef WITH_OPENVDB
-  return volume_grid->name();
-#else
-  UNUSED_VARS(volume_grid);
-  return "density";
 #endif
 }
 
@@ -983,38 +971,6 @@ VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid)
   return VOLUME_GRID_UNKNOWN;
 }
 #endif
-
-VolumeGridType BKE_volume_grid_type(const blender::bke::VolumeGridData *volume_grid)
-{
-#ifdef WITH_OPENVDB
-  return volume_grid->grid_type();
-#else
-  UNUSED_VARS(volume_grid);
-#endif
-  return VOLUME_GRID_UNKNOWN;
-}
-
-int BKE_volume_grid_channels(const blender::bke::VolumeGridData *grid)
-{
-  switch (BKE_volume_grid_type(grid)) {
-    case VOLUME_GRID_BOOLEAN:
-    case VOLUME_GRID_FLOAT:
-    case VOLUME_GRID_DOUBLE:
-    case VOLUME_GRID_INT:
-    case VOLUME_GRID_INT64:
-    case VOLUME_GRID_MASK:
-      return 1;
-    case VOLUME_GRID_VECTOR_FLOAT:
-    case VOLUME_GRID_VECTOR_DOUBLE:
-    case VOLUME_GRID_VECTOR_INT:
-      return 3;
-    case VOLUME_GRID_POINTS:
-    case VOLUME_GRID_UNKNOWN:
-      return 0;
-  }
-
-  return 0;
-}
 
 void BKE_volume_grid_transform_matrix(const blender::bke::VolumeGridData *volume_grid,
                                       float mat[4][4])

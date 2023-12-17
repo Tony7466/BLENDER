@@ -303,4 +303,49 @@ VolumeGridData &GVolumeGrid::get_for_write()
   return const_cast<VolumeGridData &>(*data_);
 }
 
+namespace volume_grid_fwd {
+
+std::string get_name(const VolumeGridData &volume_grid)
+{
+#ifdef WITH_OPENVDB
+  return volume_grid.name();
+#else
+  UNUSED_VARS(volume_grid);
+  return "density";
+#endif
+}
+
+VolumeGridType get_type(const VolumeGridData &volume_grid)
+{
+#ifdef WITH_OPENVDB
+  return volume_grid.grid_type();
+#else
+  UNUSED_VARS(volume_grid);
+#endif
+  return VOLUME_GRID_UNKNOWN;
+}
+
+int get_channels_num(const VolumeGridType type)
+{
+  switch (type) {
+    case VOLUME_GRID_BOOLEAN:
+    case VOLUME_GRID_FLOAT:
+    case VOLUME_GRID_DOUBLE:
+    case VOLUME_GRID_INT:
+    case VOLUME_GRID_INT64:
+    case VOLUME_GRID_MASK:
+      return 1;
+    case VOLUME_GRID_VECTOR_FLOAT:
+    case VOLUME_GRID_VECTOR_DOUBLE:
+    case VOLUME_GRID_VECTOR_INT:
+      return 3;
+    case VOLUME_GRID_POINTS:
+    case VOLUME_GRID_UNKNOWN:
+      return 0;
+  }
+  return 0;
+}
+
+}  // namespace volume_grid_fwd
+
 }  // namespace blender::bke

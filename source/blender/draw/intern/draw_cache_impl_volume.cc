@@ -293,7 +293,8 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
   BKE_volume_load(volume, G.main);
 
   /* Test if we support textures with the number of channels. */
-  size_t channels = BKE_volume_grid_channels(grid);
+  size_t channels = blender::bke::volume_grid_fwd::get_channels_num(
+      blender::bke::volume_grid_fwd::get_type(*grid));
   if (!ELEM(channels, 1, 3)) {
     return cache_grid;
   }

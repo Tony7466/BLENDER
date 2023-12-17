@@ -8,6 +8,10 @@
  * \ingroup bke
  */
 
+#include <string>
+
+#include "BKE_volume_enums.hh"
+
 namespace blender::bke {
 
 class VolumeGridData;
@@ -19,5 +23,13 @@ class VolumeTreeUser;
 
 template<typename T> static constexpr bool is_VolumeGrid_v = false;
 template<typename T> static constexpr bool is_VolumeGrid_v<VolumeGrid<T>> = true;
+
+namespace volume_grid_fwd {
+
+std::string get_name(const VolumeGridData &grid);
+VolumeGridType get_type(const VolumeGridData &grid);
+int get_channels_num(VolumeGridType type);
+
+}  // namespace volume_grid_fwd
 
 }  // namespace blender::bke

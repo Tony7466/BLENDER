@@ -109,7 +109,7 @@ bool BKE_volume_grid_dense_floats(const Volume *volume,
   const openvdb::Vec3i resolution = bbox.dim().asVec3i();
   const int64_t num_voxels = int64_t(resolution[0]) * int64_t(resolution[1]) *
                              int64_t(resolution[2]);
-  const int channels = BKE_volume_grid_channels(volume_grid);
+  const int channels = blender::bke::volume_grid_fwd::get_channels_num(grid_type);
   const int elem_size = sizeof(float) * channels;
   float *voxels = static_cast<float *>(MEM_malloc_arrayN(num_voxels, elem_size, __func__));
   if (voxels == nullptr) {
@@ -352,7 +352,7 @@ void BKE_volume_grid_wireframe(const Volume *volume,
   }
   else {
     blender::Vector<openvdb::CoordBBox> boxes = get_bounding_boxes(
-        BKE_volume_grid_type(volume_grid),
+        volume_grid->grid_type(),
         grid,
         volume->display.wireframe_detail == VOLUME_WIREFRAME_COARSE);
 
@@ -415,7 +415,7 @@ void BKE_volume_grid_selection_surface(const Volume * /*volume*/,
   blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();
   const openvdb::GridBase &grid = volume_grid->grid(tree_user);
   blender::Vector<openvdb::CoordBBox> boxes = get_bounding_boxes(
-      BKE_volume_grid_type(volume_grid), grid, true);
+      volume_grid->grid_type(), grid, true);
 
   blender::Vector<blender::float3> verts;
   blender::Vector<std::array<int, 3>> tris;

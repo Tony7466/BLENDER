@@ -87,11 +87,6 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
 
 void BKE_volume_grid_unload(const Volume *volume, const blender::bke::VolumeGridData *grid);
 
-/* Metadata */
-
-std::string BKE_volume_grid_name(const blender::bke::VolumeGridData *grid);
-VolumeGridType BKE_volume_grid_type(const blender::bke::VolumeGridData *grid);
-int BKE_volume_grid_channels(const blender::bke::VolumeGridData *grid);
 /**
  * Transformation from index space to object space.
  */
