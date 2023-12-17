@@ -15,7 +15,7 @@
 #include "BLI_math_vector_types.hh"
 
 namespace blender::gpu {
-static VkFormat to_vk_dummy_format(const shader::Type type)
+static VkFormat to_vk_format_unused_binding(const shader::Type type)
 {
   switch (type) {
     case shader::Type::FLOAT:
@@ -289,7 +289,7 @@ void VKVertexAttributeObject::fill_unused_bindings(const VKShaderInterface &inte
       attribute_description.binding = binding;
       attribute_description.location = location + location_offset;
       attribute_description.offset = 0;
-      attribute_description.format = to_vk_dummy_format(attribute_type);
+      attribute_description.format = to_vk_format_unused_binding(attribute_type);
       attributes.append(attribute_description);
 
       VkVertexInputBindingDescription vk_binding_descriptor = {};

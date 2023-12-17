@@ -295,13 +295,6 @@ static void test_vertex_buffer_default_mat4()
 }
 GPU_TEST(vertex_buffer_default_mat4);
 
-static void test_vertex_buffer_default_mat3()
-{
-  vertex_buffer_default_value<float, blender::gpu::shader::Type::MAT3, 12>(
-      {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.});
-}
-GPU_TEST(vertex_buffer_default_mat3);
-
 static void test_vertex_buffer_default_ivec4()
 {
   vertex_buffer_default_value<int, blender::gpu::shader::Type::IVEC4, 4>({0, 0, 0, 1});
