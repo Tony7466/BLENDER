@@ -14,8 +14,8 @@
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "gpu_testing.hh"
 #include "gpu_shader_create_info.hh"
+#include "gpu_testing.hh"
 
 namespace blender::gpu::tests {
 
@@ -148,24 +148,19 @@ static inline const char *to_string(const blender::gpu::shader::Type type)
   }
 }
 
-template<typename CompType,blender::gpu::shader::Type Type,
-         size_t item_size>
+template<typename CompType, blender::gpu::shader::Type Type, size_t item_size>
 static void vertex_buffer_default_value(Vector<CompType> data)
 {
   using namespace blender::gpu::shader;
-  
+
   size_t out_size = sizeof(CompType) * item_size;
   GPU_render_begin();
   out_size = (out_size % 16 != 0) ? out_size + (16 - (out_size % 16)) : out_size;
-  GPUStorageBuf *out_value = GPU_storagebuf_create_ex(out_size,
-                                                           nullptr,
-                                                           GPU_USAGE_STATIC,
-                                                           "out_value");
-
+  GPUStorageBuf *out_value = GPU_storagebuf_create_ex(
+      out_size, nullptr, GPU_USAGE_STATIC, "out_value");
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
-  GPUTexture *texture = GPU_texture_create_2d(
-      __func__, 1,1, 1, GPU_RGBA32F, usage, nullptr);
+  GPUTexture *texture = GPU_texture_create_2d(__func__, 1, 1, 1, GPU_RGBA32F, usage, nullptr);
 
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
   GPU_framebuffer_ensure_config(&framebuffer,
@@ -176,9 +171,8 @@ static void vertex_buffer_default_value(Vector<CompType> data)
   create_info.builtins(BuiltinBits::POINT_SIZE);
   create_info.vertex_source("gpu_vertex_input_default_test.glsl");
   create_info.vertex_in(0, Type, "in_value");
-  create_info.storage_buf(0, Qualifier::WRITE,to_string(Type), "out_value");
+  create_info.storage_buf(0, Qualifier::WRITE, to_string(Type), "out_value");
   create_info.fragment_source("gpu_vertex_input_default_test.glsl");
-
 
   GPUShader *shader = GPU_shader_create_from_info(
       reinterpret_cast<GPUShaderCreateInfo *>(&create_info));
@@ -210,9 +204,9 @@ static void vertex_buffer_default_value(Vector<CompType> data)
   GPU_shader_free(shader);
   GPU_texture_free(texture);
   GPU_render_end();
-  }
+}
 
-  static void test_vertex_buffer_fetch_mode__GPU_COMP_I8__GPU_FETCH_INT_TO_FLOAT()
+static void test_vertex_buffer_fetch_mode__GPU_COMP_I8__GPU_FETCH_INT_TO_FLOAT()
 {
   vertex_buffer_fetch_mode<GPU_COMP_I8, GPU_FETCH_INT_TO_FLOAT, char4>(char4(4, 5, 6, 1));
 }

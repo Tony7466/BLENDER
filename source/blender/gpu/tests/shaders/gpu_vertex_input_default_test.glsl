@@ -5,7 +5,7 @@
 #ifdef GPU_VERTEX_SHADER
 void main()
 {
-  gl_PointSize =1.f;
+  gl_PointSize = 1.f;
   out_value = in_value;
 }
 #endif
