@@ -23,6 +23,7 @@
 #include "BKE_object_types.hh"
 
 #include "BLI_bounds.hh"
+#include "BLI_delaunay_2d.hh"
 #include "BLI_map.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -303,132 +304,228 @@ Drawing::~Drawing()
   this->runtime = nullptr;
 }
 
+Array<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
+{
+  const CurvesGeometry &curves = this->strokes();
+  const bke::AttributeAccessor attributes = curves.attributes();
+
+  const int num_curves = curves.curves_num();
+
+  const VArray<int> shape_ids = *attributes.lookup<int>("shape_id", ATTR_DOMAIN_CURVE);
+
+  if (!shape_ids) {
+    /* If the attribute does not exist then the default is each shape containing one curve. */
+    Array<IndexMask> data(num_curves);
+    IndexMask::from_groups<int>(
+        IndexMask(num_curves), memory, [&](const int i) { return i; }, data);
+
+    return data;
+  }
+
+  int max_shape_id = 0;
+  for (const int i : shape_ids.index_range()) {
+    max_shape_id = std::max(max_shape_id, shape_ids[i]);
+  }
+
+  Array<IndexMask> data(max_shape_id + 1);
+  IndexMask::from_groups<int>(
+      IndexRange(num_curves), memory, [&](const int i) { return shape_ids[i]; }, data);
+
+  return data;
+}
+
 Span<uint32_t> Drawing::triangles_offsets() const
 {
-  // this->runtime->triangles_offsets_cache.ensure([&](Vector<uint32_t> &r_data) {
-  //   const CurvesGeometry &curves = this->strokes();
-  //   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-
-  //   r_data.resize(2);
-  //   r_data[0] = 0;
-
-  //   IndexRange points = points_by_curve[0];
-  //   r_data[1] = points.size();
-  // });
-  //
-  this->runtime->triangles_offsets_cache.ensure([&](Vector<uint32_t> &r_data) {
-    const CurvesGeometry &curves = this->strokes();
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-
-    int total_triangles = 0;
-    r_data.resize(curves.curves_num() + 1);
-    for (int curve_i : curves.curves_range()) {
-      r_data[curve_i] = total_triangles;
-
-      // if (curve_i != 0) {
-      //   continue;
-      // }
-
-      IndexRange points = points_by_curve[curve_i];
-      if (points.size() > 2) {
-        total_triangles += points.size() - 2;
-      }
-    }
-    r_data[curves.curves_num()] = total_triangles;
-  });
+  if (this->runtime->triangles_offsets_cache.is_dirty()) {
+    this->runtime->triangles_cache.tag_dirty();
+    this->triangles();
+  }
 
   return this->runtime->triangles_offsets_cache.data().as_span();
 }
 
 Span<uint3> Drawing::triangles() const
 {
-  Span<uint32_t> triangles_offsets = this->triangles_offsets();
-
   this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
     MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
 
     const CurvesGeometry &curves = this->strokes();
     const Span<float3> positions = curves.positions();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const Array<int> point_to_curve_map = curves.point_to_curve_map();
 
-    int total_triangles = triangles_offsets[triangles_offsets.size() - 1];
-    r_data.resize(total_triangles);
+    /* TODO: calculate axis_mat properly. */
+    float3x3 axis_mat;
+    axis_dominant_v3_to_m3(axis_mat.ptr(), float3(0.0f, -1.0f, 0.0f));
 
-    /* TODO: use threading. */
-    for (const int curve_i : curves.curves_range()) {
-      const IndexRange points = points_by_curve[curve_i];
+    IndexMaskMemory memory;
+    const Array<IndexMask> groups = this->get_shapes_index_masks(memory);
 
-      // if (curve_i != 0) {
-      //   continue;
-      // }
+    Array<uint32_t> triangles_offsets(groups.size() + 1);
 
-      if (points.size() < 3) {
+    int triangles_offset = 0;
+    for (const int group_id : groups.index_range()) {
+      const IndexMask group = groups[group_id];
+
+      int num_points = 0;
+      group.foreach_index([&](const int64_t curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        num_points += points.size();
+      });
+
+      float(*projverts)[2] = static_cast<float(*)[2]>(
+          BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(num_points)));
+
+      int offset = 0;
+      group.foreach_index([&](const int64_t curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        for (const int p_id : points.index_range()) {
+          mul_v2_m3v3(projverts[p_id + offset], axis_mat.ptr(), positions[points[p_id]]);
+        }
+        offset += points.size();
+      });
+
+      offset = 0; /* Reuse `offset`. */
+      bool is_invalid = false;
+      /* Check if self intersect. */
+      group.foreach_index([&](const int64_t curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        for (const int e2_id : points.index_range()) {
+          for (const int e1_id : points.index_range()) {
+            if (e2_id >= e1_id) {
+              continue;
+            }
+            const int p1 = e1_id;
+            const int p2 = (e1_id + 1) % points.size();
+            const int p3 = e2_id;
+            const int p4 = (e2_id + 1) % points.size();
+            if (p1 == p4) {
+              continue;
+            }
+            if (p2 == p3) {
+              continue;
+            }
+
+            // is_invalid |= isect_seg_seg_v2_simple(projverts[offset + p1],
+            //                                       projverts[offset + p2],
+            //                                       projverts[offset + p3],
+            //                                       projverts[offset + p4]);
+            is_invalid |= isect_seg_seg_v2_simple(float2(projverts[offset + p1]),
+                                                  float2(projverts[offset + p2]),
+                                                  float2(projverts[offset + p3]),
+                                                  float2(projverts[offset + p4]));
+            if (is_invalid) {
+              return;
+            }
+          }
+        }
+
+        offset += points.size();
+      });
+
+      if (is_invalid) {
+        triangles_offsets[group_id] = triangles_offset;
         continue;
       }
 
-      const int num_triangles = points.size() - 2;
-      MutableSpan<uint3> r_tris = r_data.as_mutable_span().slice(triangles_offsets[curve_i],
-                                                                 num_triangles);
+      int offset1 = 0;
+      /* Check if other intersect. */
+      group.foreach_index([&](const int64_t curve_i1, const int64_t pos1) {
+        const IndexRange points1 = points_by_curve[curve_i1];
+        if (is_invalid) {
+          return;
+        }
 
-      float(*projverts)[2] = static_cast<float(*)[2]>(
-          BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(points.size())));
+        int offset2 = 0;
+        group.foreach_index([&](const int64_t curve_i2, const int64_t pos2) {
+          if (is_invalid) {
+            return;
+          }
+          const IndexRange points2 = points_by_curve[curve_i2];
 
-      /* TODO: calculate axis_mat properly. */
-      float3x3 axis_mat;
-      axis_dominant_v3_to_m3(axis_mat.ptr(), float3(0.0f, -1.0f, 0.0f));
+          if (pos2 >= pos1) {
+            offset2 += points2.size();
+            return;
+          }
+          for (const int e1_id : points1.index_range()) {
+            for (const int e2_id : points2.index_range()) {
+              const int p11 = e1_id;
+              const int p12 = (e1_id + 1) % points1.size();
+              const int p21 = e2_id;
+              const int p22 = (e2_id + 1) % points2.size();
 
-      for (const int i : IndexRange(points.size())) {
-        mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
+              is_invalid |= isect_seg_seg_v2_simple(float2(projverts[offset1 + p11]),
+                                                    float2(projverts[offset1 + p12]),
+                                                    float2(projverts[offset2 + p21]),
+                                                    float2(projverts[offset2 + p22]));
+              if (is_invalid) {
+                return;
+              }
+            }
+          }
+          offset2 += points2.size();
+        });
+        offset1 += points1.size();
+      });
+
+      if (is_invalid) {
+        triangles_offsets[group_id] = triangles_offset;
+        continue;
       }
 
-      BLI_polyfill_calc_arena(
-          projverts, points.size(), 0, reinterpret_cast<uint32_t(*)[3]>(r_tris.data()), pf_arena);
+      const int nverts = num_points;
+      const int nedges = num_points;
+      const int nfaces = group.size();
+      Array<double2> verts(nverts);
+      Array<std::pair<int, int>> edges(nedges);
+      Array<Vector<int>> faces(nfaces);
+
+      Array<int> vert_to_point_map(nverts);
+
+      offset = 0; /* Reuse `offset`. */
+      group.foreach_index([&](const int64_t curve_i, const int64_t pos) {
+        const IndexRange points = points_by_curve[curve_i];
+        for (const int p_id : points.index_range()) {
+          vert_to_point_map[p_id + offset] = points[p_id];
+          verts[p_id + offset] = double2(projverts[p_id + offset]);
+          edges[p_id + offset] = std::pair<int, int>(p_id + offset,
+                                                     (p_id + 1) % points.size() + offset);
+          faces[pos].append(p_id + offset);
+        }
+        offset += points.size();
+      });
+
+      meshintersect::CDT_input<double> input;
+      input.vert = verts;
+      input.edge = edges;
+      input.face = faces;
+      input.need_ids = false;
+
+      meshintersect::CDT_result<double> result = delaunay_2d_calc(input, CDT_INSIDE_WITH_HOLES);
+
+      r_data.resize(triangles_offset + result.face.size());
+
+      for (const int i : result.face.index_range()) {
+        BLI_assert(result.face[i].size() == 3);
+        r_data[i + triangles_offset] = uint3(vert_to_point_map[result.face[i][0]],
+                                             vert_to_point_map[result.face[i][1]],
+                                             vert_to_point_map[result.face[i][2]]);
+      }
+
+      triangles_offsets[group_id] = triangles_offset;
+      triangles_offset += result.face.size();
+
       BLI_memarena_clear(pf_arena);
     }
+    triangles_offsets.last() = triangles_offset;
 
     BLI_memarena_free(pf_arena);
+
+    this->runtime->triangles_offsets_cache.update([&](Vector<uint32_t> &r_data) {
+      r_data.resize(triangles_offsets.size());
+      array_utils::copy(triangles_offsets.as_span(), r_data.as_mutable_span());
+    });
   });
-
-  // this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
-  //   MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
-
-  //   const CurvesGeometry &curves = this->strokes();
-  //   const Span<float3> positions = curves.positions();
-  //   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-
-  //   int total_triangles = triangles_offsets[triangles_offsets.size() - 1];
-  //   r_data.resize(total_triangles);
-
-  //   const int curve_i = 0;
-  //   const IndexRange points = points_by_curve[curve_i];
-
-  //   if (points.size() < 3) {
-  //     return;
-  //   }
-
-  //   // normal_poly_v3
-
-  //   const int num_triangles = points.size() - 2;
-  //   MutableSpan<uint3> r_tris = r_data.as_mutable_span().slice(triangles_offsets[curve_i],
-  //                                                              num_triangles);
-
-  //   float(*projverts)[2] = static_cast<float(*)[2]>(
-  //       BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(points.size())));
-
-  //   /* TODO: calculate axis_mat properly. */
-  //   float3x3 axis_mat;
-  //   axis_dominant_v3_to_m3(axis_mat.ptr(), float3(0.0f, -1.0f, 0.0f));
-
-  //   for (const int i : IndexRange(points.size())) {
-  //     mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
-  //   }
-
-  //   BLI_polyfill_calc_arena(
-  //       projverts, points.size(), 0, reinterpret_cast<uint32_t(*)[3]>(r_tris.data()), pf_arena);
-  //   BLI_memarena_clear(pf_arena);
-
-  //   BLI_memarena_free(pf_arena);
-  // });
 
   return this->runtime->triangles_cache.data().as_span();
 }
@@ -485,12 +582,12 @@ void Drawing::tag_positions_changed()
 {
   this->strokes_for_write().tag_positions_changed();
   this->runtime->triangles_cache.tag_dirty();
+  this->runtime->triangles_offsets_cache.tag_dirty();
 }
 
 void Drawing::tag_topology_changed()
 {
   this->tag_positions_changed();
-  this->runtime->triangles_offsets_cache.tag_dirty();
 }
 
 DrawingReference::DrawingReference()

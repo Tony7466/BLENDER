@@ -484,6 +484,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
+    const Array<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
+    const Array<int> point_to_curve_map = curves.point_to_curve_map();
 
     auto populate_point = [&](IndexRange verts_range,
                               int curve_i,
@@ -517,11 +519,34 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
     };
 
+    /* Add the triangle indices to the index buffer. */
+    for (const int group_id : groups.index_range()) {
+      const int tris_start_offset = triangles_offsets[group_id];
+      const int tris_next_offset = triangles_offsets[group_id + 1];
+
+      if (tris_start_offset == tris_next_offset) {
+        continue;
+      }
+
+      const Span<uint3> tris_slice = triangles.slice(tris_start_offset,
+                                                     tris_next_offset - tris_start_offset);
+
+      auto point_to_id = [&](uint32_t p) {
+        const int curve_ = point_to_curve_map[p];
+        const IndexRange points_ = points_by_curve[curve_];
+        return (1 + (p - points_.first()) + verts_start_offsets[curve_]) << GP_VERTEX_ID_SHIFT;
+      };
+
+      for (const uint3 tri : tris_slice) {
+        const uint3 tri_verts = uint3(point_to_id(tri.x), point_to_id(tri.y), point_to_id(tri.z));
+        GPU_indexbuf_add_tri_verts(&ibo, tri_verts.x, tri_verts.y, tri_verts.z);
+      }
+    }
+
     visible_strokes.foreach_index([&](const int curve_i, const int pos) {
       IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
       const int verts_start_offset = verts_start_offsets[pos];
-      const int tris_start_offset = triangles_offsets[curve_i];
       const int num_verts = 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
       IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
       MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
@@ -529,17 +554,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
       /* First vertex is not drawn. */
       verts_slice.first().mat = -1;
-
-      /* If the stroke has more than 2 points, add the triangle indices to the index buffer. */
-      if (points.size() >= 3) {
-        const Span<uint3> tris_slice = triangles.slice(tris_start_offset, points.size() - 2);
-        for (const uint3 tri : tris_slice) {
-          GPU_indexbuf_add_tri_verts(&ibo,
-                                     (verts_range[1] + tri.x) << GP_VERTEX_ID_SHIFT,
-                                     (verts_range[1] + tri.y) << GP_VERTEX_ID_SHIFT,
-                                     (verts_range[1] + tri.z) << GP_VERTEX_ID_SHIFT);
-        }
-      }
 
       /* Write all the point attributes to the vertex buffers. Create a quad for each point. */
       for (const int i : IndexRange(points.size())) {
