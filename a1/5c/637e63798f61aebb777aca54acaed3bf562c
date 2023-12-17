@@ -1,0 +1,1 @@
+Referenced by issue #116280, bpy.ops.wm.url_open() can no longer open html files in the filesystem
