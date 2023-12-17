@@ -531,6 +531,25 @@ bool ED_view3d_camera_view_zoom_scale(RegionView3D *rv3d, const float scale)
   return (rv3d->camzoom != camzoom_init);
 }
 
+bool ED_view3d_camera_level_horizon(RegionView3D *rv3d)
+{
+  constexpr float up_vec[3] = {0, 0, 1};
+  float cam_mat[4][4], cam_direction[3];
+
+  ED_view3d_to_m4(cam_mat, rv3d->ofs, rv3d->viewquat, rv3d->dist);
+  sub_v3_v3v3(cam_direction, rv3d->ofs, cam_mat[3]);
+
+  float new_quat[4];
+  lookat_quat(new_quat, cam_direction, up_vec);
+
+  invert_qt(new_quat);
+  const bool ret_val = equals_v4v4(rv3d->viewquat, new_quat);
+
+  copy_qt_qt(rv3d->viewquat, new_quat);
+
+  return ret_val;
+}
+
 bool ED_view3d_camera_view_pan(ARegion *region, const float event_ofs[2])
 {
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
