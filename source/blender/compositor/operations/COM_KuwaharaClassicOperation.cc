@@ -148,22 +148,13 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
   output[3] = mean_of_color[min_index].w; /* Also apply filter to alpha channel. */
 }
 
-void KuwaharaClassicOperation::update_memory_buffer_started(MemoryBuffer *output,
-                                                            const rcti & /* area */,
-                                                            Span<MemoryBuffer *> inputs)
-{
-  MemoryBuffer *image = inputs[0];
-  if(image->is_a_single_elem()) {
-    copy_v4_v4(output->get_elem(0, 0), image->get_elem(0, 0));
-  }
-}
-
 void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                             const rcti &area,
                                                             Span<MemoryBuffer *> inputs)
 {
   MemoryBuffer *image = inputs[0];
   if(image->is_a_single_elem()) {
+    copy_v4_v4(output->get_elem(0, 0), image->get_elem(0, 0));
     return;
   }
   MemoryBuffer *size_image = inputs[1];

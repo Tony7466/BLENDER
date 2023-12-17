@@ -106,22 +106,13 @@ void FlipOperation::get_area_of_interest(const int input_idx,
   }
 }
 
-void FlipOperation::update_memory_buffer_started(MemoryBuffer *output,
-                                                 const rcti & /* area */,
-                                                 Span<MemoryBuffer *> inputs)
-{
-  const MemoryBuffer *input_img = inputs[0];
-  if(input_img->is_a_single_elem()) {
-    copy_v4_v4(output->get_elem(0, 0), input_img->get_elem(0, 0));
-  }
-}
-
 void FlipOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                  const rcti &area,
                                                  Span<MemoryBuffer *> inputs)
 {
   const MemoryBuffer *input_img = inputs[0];
   if(input_img->is_a_single_elem()) {
+    copy_v4_v4(output->get_elem(0, 0), input_img->get_elem(0, 0));
     return;
   }
   const int input_offset_x = input_img->get_rect().xmin;
