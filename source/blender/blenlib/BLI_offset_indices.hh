@@ -6,7 +6,13 @@
 
 #include <algorithm>
 
-#include "BLI_index_mask.hh"
+namespace blender {
+namespace index_mask {
+class IndexMask;
+}
+using index_mask::IndexMask;
+}  // namespace blender
+
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 
@@ -85,8 +91,8 @@ template<typename T> class OffsetIndices {
    */
   OffsetIndices slice(const IndexRange range) const
   {
-    BLI_assert(offsets_.index_range().drop_back(1).contains(range.last()));
-    return OffsetIndices(offsets_.slice(range.start(), range.one_after_last()));
+    BLI_assert(range.is_empty() || offsets_.index_range().drop_back(1).contains(range.last()));
+    return OffsetIndices(offsets_.slice(range.start(), range.size() + 1));
   }
 
   Span<T> data() const
@@ -140,8 +146,6 @@ template<typename T> struct GroupedSpan {
 OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets,
                                                 int start_offset = 0);
 
-void reduce_offsets_to_counts(MutableSpan<int> offsets_to_counts);
-
 /** Create offsets where every group has the same size. */
 void fill_constant_group_size(int size, int start_offset, MutableSpan<int> offsets);
 
@@ -158,7 +162,14 @@ void gather_group_sizes(OffsetIndices<int> offsets,
 /** Build new offsets that contains only the groups chosen by \a selection. */
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
+                                           int start_offset,
                                            MutableSpan<int> dst_offsets);
+inline OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
+                                                  const IndexMask &selection,
+                                                  MutableSpan<int> dst_offsets)
+{
+  return gather_selected_offsets(src_offsets, selection, 0, dst_offsets);
+}
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array
  * to the smaller array.

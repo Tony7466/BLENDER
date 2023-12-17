@@ -165,7 +165,8 @@ static void reorder_mesh(const Mesh &src_mesh,
     default:
       break;
   }
-  BKE_mesh_tag_topology_changed(&dst_mesh);
+  dst_mesh.tag_positions_changed();
+  dst_mesh.tag_topology_changed();
 }
 
 static void reorder_points(const PointCloud &src_pointcloud,
@@ -226,7 +227,8 @@ bke::GeometryComponent &reordered_component_copy(const bke::GeometryComponent &s
                                                  const eAttrDomain domain)
 {
   BLI_assert(!src_component.is_empty());
-  bke::GeometryComponent &dst_component = *src_component.copy();
+  bke::GeometryComponent &dst_component = const_cast<bke::GeometryComponent &>(
+      *src_component.copy().release());
 
   if (const bke::MeshComponent *src_mesh_component = dynamic_cast<const bke::MeshComponent *>(
           &src_component))

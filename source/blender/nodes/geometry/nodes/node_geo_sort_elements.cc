@@ -11,6 +11,9 @@
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
 
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
 #include "DNA_mesh_types.h"
 
 #include "GEO_reorder.hh"
@@ -102,6 +105,17 @@ static void parallel_transform(MutableSpan<T> values, const int64_t grain_size, 
   });
 }
 
+static Array<int> invert_permutation(const Span<int> permutation)
+{
+  Array<int> data(permutation.size());
+  threading::parallel_for(permutation.index_range(), 2048, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      data[permutation[i]] = i;
+    }
+  });
+  return data;
+}
+
 static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
 {
   const VectorSet<int> deduplicated_identifiers(r_identifiers_to_indices);
@@ -114,9 +128,9 @@ static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
   parallel_sort(indices.begin(), indices.end(), [&](const int index_a, const int index_b) {
     return deduplicated_identifiers[index_a] < deduplicated_identifiers[index_b];
   });
-
+  Array<int> permutation = invert_permutation(indices);
   parallel_transform(
-      r_identifiers_to_indices, 2048, [&](const int index) { return indices[index]; });
+      r_identifiers_to_indices, 4096, [&](const int index) { return permutation[index]; });
   return deduplicated_identifiers.size();
 }
 
@@ -148,25 +162,37 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
     return std::nullopt;
   }
 
-  Array<float> weight_span(domain_size);
-  array_utils::copy(weight, mask, weight_span.as_mutable_span());
-
+  Array<float> weight_span;
   Array<int> gathered_indices(mask.size());
 
   if (group_id.is_single()) {
     mask.to_indices<int>(gathered_indices);
+
+    weight_span.reinitialize(domain_size);
+    array_utils::copy(weight, mask, weight_span.as_mutable_span());
+
     grouped_sort(Span({0, int(mask.size())}), weight_span, gathered_indices);
   }
   else {
     Array<int> gathered_group_id(mask.size());
     array_utils::gather(group_id, mask, gathered_group_id.as_mutable_span());
     const int total_groups = identifiers_to_indices(gathered_group_id);
-    Array<int> gathered_offsets(total_groups + 1, 0);
-    find_points_by_group_index(gathered_group_id, gathered_offsets, gathered_indices);
+    Array<int> offsets_to_sort(total_groups + 1, 0);
+    find_points_by_group_index(gathered_group_id, offsets_to_sort, gathered_indices);
     parallel_transform<int>(gathered_indices, 2048, [&](const int pos) { return mask[pos]; });
     if (!weight.is_single()) {
-      grouped_sort(OffsetIndices<int>(gathered_offsets), weight_span, gathered_indices);
+      weight_span.reinitialize(domain_size);
+      array_utils::gather(weight, gathered_indices.as_span(), weight_span.as_mutable_span());
+      grouped_sort(offsets_to_sort.as_span(), weight_span, gathered_indices);
     }
+  }
+
+  if (indices_are_range(gathered_indices, IndexRange(domain_size))) {
+    return std::nullopt;
+  }
+
+  if (mask.size() == domain_size) {
+    return gathered_indices;
   }
 
   IndexMaskMemory memory;

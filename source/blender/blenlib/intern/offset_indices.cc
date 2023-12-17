@@ -11,17 +11,15 @@ namespace blender::offset_indices {
 OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets,
                                                 const int start_offset)
 {
-  counts_to_offsets.last() = 0;
-  std::exclusive_scan(
-      counts_to_offsets.begin(), counts_to_offsets.end(), counts_to_offsets.begin(), start_offset);
+  int offset = start_offset;
+  for (const int i : counts_to_offsets.index_range().drop_back(1)) {
+    const int count = counts_to_offsets[i];
+    BLI_assert(count >= 0);
+    counts_to_offsets[i] = offset;
+    offset += count;
+  }
+  counts_to_offsets.last() = offset;
   return OffsetIndices<int>(counts_to_offsets);
-}
-
-void reduce_offsets_to_counts(MutableSpan<int> offsets_to_counts)
-{
-  std::adjacent_difference(
-      offsets_to_counts.drop_front(1).begin(), offsets_to_counts.end(), offsets_to_counts.begin());
-  offsets_to_counts.last() = 0;
 }
 
 void fill_constant_group_size(const int size, const int start_offset, MutableSpan<int> offsets)
@@ -63,14 +61,18 @@ void gather_group_sizes(const OffsetIndices<int> offsets,
 
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
+                                           const int start_offset,
                                            MutableSpan<int> dst_offsets)
 {
   if (selection.is_empty()) {
     return {};
   }
-  BLI_assert(selection.size() == (dst_offsets.size() - 1));
-  gather_group_sizes(src_offsets, selection, dst_offsets);
-  accumulate_counts_to_offsets(dst_offsets);
+  int offset = start_offset;
+  selection.foreach_index_optimized<int>([&](const int i, const int pos) {
+    dst_offsets[pos] = offset;
+    offset += src_offsets[i].size();
+  });
+  dst_offsets.last() = offset;
   return OffsetIndices<int>(dst_offsets);
 }
 
