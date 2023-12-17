@@ -5,6 +5,7 @@
 #include "node_geometry_util.hh"
 
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "RNA_enum_types.hh"
@@ -54,9 +55,12 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
+  const bNode &node = params.node();
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
   const std::string grid_name = params.extract_input<std::string>("Name");
   const bool remove_grid = params.extract_input<bool>("Remove");
+  const VolumeGridType grid_type = *bke::custom_data_type_to_volume_grid_type(
+      eCustomDataType(node.custom1));
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
     if (const bke::VolumeGridData *grid = BKE_volume_grid_find(volume, grid_name.c_str())) {
@@ -72,7 +76,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
   }
 
-  params.set_output("Grid", bke::GVolumeGrid());
+  params.set_output("Grid", bke::GVolumeGrid(grid_type));
   params.set_output("Volume", geometry_set);
 #else
   params.set_default_remaining_outputs();

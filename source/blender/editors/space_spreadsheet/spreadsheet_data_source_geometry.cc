@@ -22,6 +22,7 @@
 #include "BKE_node_socket_value.hh"
 #include "BKE_object_types.hh"
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "DNA_ID.h"

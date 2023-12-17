@@ -34,6 +34,23 @@ VolumeGridData::VolumeGridData()
   tree_user_token_ = std::make_shared<TreeUserToken>();
 }
 
+struct CreateGridOp {
+  template<typename GridT> openvdb::GridBase::Ptr operator()() const
+  {
+    return GridT::create();
+  }
+};
+
+static openvdb::GridBase::Ptr create_grid_for_type(const VolumeGridType grid_type)
+{
+  return BKE_volume_grid_type_operation(grid_type, CreateGridOp{});
+}
+
+VolumeGridData::VolumeGridData(const VolumeGridType grid_type)
+    : VolumeGridData(create_grid_for_type(grid_type))
+{
+}
+
 VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
     : grid_(std::move(grid)), tree_loaded_(true), transform_loaded_(true), meta_data_loaded_(true)
 {
@@ -267,6 +284,11 @@ void VolumeGridData::ensure_grid_loaded() const
 GVolumeGrid::GVolumeGrid(std::shared_ptr<openvdb::GridBase> grid)
 {
   data_ = ImplicitSharingPtr(MEM_new<VolumeGridData>(__func__, std::move(grid)));
+}
+
+GVolumeGrid::GVolumeGrid(const VolumeGridType grid_type)
+    : GVolumeGrid(create_grid_for_type(grid_type))
+{
 }
 
 VolumeGridData &GVolumeGrid::get_for_write()

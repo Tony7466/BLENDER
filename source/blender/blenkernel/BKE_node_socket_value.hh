@@ -53,6 +53,10 @@ class SocketValueVariant {
      * Indicates that there is a `GField` stored.
      */
     Field,
+    /**
+     * Indicates that there is a `GVolumeGrid` stored.
+     */
+    Grid,
   };
 
   /**
@@ -122,7 +126,7 @@ class SocketValueVariant {
    * because #get` does the conversion implicitly. However, it is necessary if one wants to use
    * #get_single_ptr.
    *
-   * The caller has to make sure that the stored value is a single value or a field.
+   * The caller has to make sure that the stored value is a single value, field or grid.
    */
   void convert_to_single();
 

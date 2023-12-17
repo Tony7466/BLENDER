@@ -12,6 +12,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "BKE_volume_grid.hh"
+
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/Morphology.h>
 #endif

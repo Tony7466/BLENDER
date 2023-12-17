@@ -46,6 +46,7 @@ class VolumeGridData : public ImplicitSharingMixin {
   VolumeGridData();
 
  public:
+  explicit VolumeGridData(VolumeGridType grid_type);
   explicit VolumeGridData(std::shared_ptr<openvdb::GridBase> grid);
   explicit VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
                           std::shared_ptr<openvdb::GridBase> meta_data_and_transform_grid = {});
@@ -97,6 +98,7 @@ class GVolumeGrid {
   GVolumeGrid() = default;
   explicit GVolumeGrid(const VolumeGridData *data);
   explicit GVolumeGrid(std::shared_ptr<openvdb::GridBase> grid);
+  explicit GVolumeGrid(VolumeGridType grid_type);
 
   const VolumeGridData &get() const;
   VolumeGridData &get_for_write();
@@ -192,3 +194,10 @@ inline bool VolumeTreeUser::valid_for(const VolumeGridData &grid) const
 }
 
 }  // namespace blender::bke
+
+#include "BLI_cpp_type.hh"
+
+namespace blender {
+template<> const CPPType &CPPType::get<bke::GVolumeGrid>() = delete;
+
+}
