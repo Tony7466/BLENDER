@@ -346,6 +346,41 @@ int get_channels_num(const VolumeGridType type)
   return 0;
 }
 
+void unload_tree_if_possible(const VolumeGridData &grid)
+{
+  grid.unload_tree_if_possible();
+}
+
+float4x4 get_transform_matrix(const VolumeGridData &grid)
+{
+  const openvdb::math::Transform &transform = grid.transform();
+
+  /* Perspective not supported for now, getAffineMap() will leave out the
+   * perspective part of the transform. */
+  openvdb::math::Mat4f matrix = transform.baseMap()->getAffineMap()->getMat4();
+  /* Blender column-major and OpenVDB right-multiplication conventions match. */
+  float4x4 result;
+  for (int col = 0; col < 4; col++) {
+    for (int row = 0; row < 4; row++) {
+      result[col][row] = matrix(col, row);
+    }
+  }
+  return result;
+}
+
+void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix)
+{
+  openvdb::math::Mat4f matrix_openvdb;
+  for (int col = 0; col < 4; col++) {
+    for (int row = 0; row < 4; row++) {
+      matrix_openvdb(col, row) = matrix[col][row];
+    }
+  }
+
+  grid.transform_for_write() = openvdb::math::Transform(
+      std::make_shared<openvdb::math::AffineMap>(matrix_openvdb));
+}
+
 }  // namespace volume_grid_fwd
 
 }  // namespace blender::bke

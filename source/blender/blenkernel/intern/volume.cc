@@ -904,17 +904,6 @@ blender::bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, con
   return nullptr;
 }
 
-/* Grid Loading */
-
-void BKE_volume_grid_unload(const Volume * /*volume*/, const blender::bke::VolumeGridData *grid)
-{
-#ifdef WITH_OPENVDB
-  grid->unload_tree_if_possible();
-#else
-  UNUSED_VARS(grid);
-#endif
-}
-
 #ifdef WITH_OPENVDB
 struct ClearGridOp {
   openvdb::GridBase &grid;
@@ -971,46 +960,6 @@ VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid)
   return VOLUME_GRID_UNKNOWN;
 }
 #endif
-
-void BKE_volume_grid_transform_matrix(const blender::bke::VolumeGridData *volume_grid,
-                                      float mat[4][4])
-{
-#ifdef WITH_OPENVDB
-  const openvdb::math::Transform &transform = volume_grid->transform();
-
-  /* Perspective not supported for now, getAffineMap() will leave out the
-   * perspective part of the transform. */
-  openvdb::math::Mat4f matrix = transform.baseMap()->getAffineMap()->getMat4();
-  /* Blender column-major and OpenVDB right-multiplication conventions match. */
-  for (int col = 0; col < 4; col++) {
-    for (int row = 0; row < 4; row++) {
-      mat[col][row] = matrix(col, row);
-    }
-  }
-#else
-  unit_m4(mat);
-  UNUSED_VARS(volume_grid);
-#endif
-}
-
-void BKE_volume_grid_transform_matrix_set(const Volume * /*volume*/,
-                                          blender::bke::VolumeGridData *volume_grid,
-                                          const float mat[4][4])
-{
-#ifdef WITH_OPENVDB
-  openvdb::math::Mat4f mat_openvdb;
-  for (int col = 0; col < 4; col++) {
-    for (int row = 0; row < 4; row++) {
-      mat_openvdb(col, row) = mat[col][row];
-    }
-  }
-
-  volume_grid->transform_for_write() = openvdb::math::Transform(
-      std::make_shared<openvdb::math::AffineMap>(mat_openvdb));
-#else
-  UNUSED_VARS(volume, volume_grid, mat);
-#endif
-}
 
 /* Grid Tree and Voxels */
 

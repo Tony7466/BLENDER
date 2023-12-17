@@ -83,18 +83,6 @@ blender::bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, con
  * Return false if neither finding with the base name nor with the post-fixes succeeded. */
 bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name);
 
-/* Grid */
-
-void BKE_volume_grid_unload(const Volume *volume, const blender::bke::VolumeGridData *grid);
-
-/**
- * Transformation from index space to object space.
- */
-void BKE_volume_grid_transform_matrix(const blender::bke::VolumeGridData *grid, float mat[4][4]);
-void BKE_volume_grid_transform_matrix_set(const Volume *volume,
-                                          blender::bke::VolumeGridData *volume_grid,
-                                          const float mat[4][4]);
-
 /* Volume Editing
  *
  * These are intended for modifiers to use on evaluated data-blocks.
