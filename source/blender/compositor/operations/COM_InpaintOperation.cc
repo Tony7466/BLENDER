@@ -284,7 +284,7 @@ void InpaintSimpleOperation::update_memory_buffer(MemoryBuffer *output,
   /* TODO(manzanilla): once tiled implementation is removed, run multi-threaded where possible. */
   MemoryBuffer *input = inputs[0];
 
-  if(input->is_a_single_elem()) {
+  if (input->is_a_single_elem()) {
     copy_v4_v4(output->get_elem(0, 0), input->get_elem(0, 0));
     return;
   }

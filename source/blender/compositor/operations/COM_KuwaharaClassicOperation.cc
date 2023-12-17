@@ -153,7 +153,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
                                                             Span<MemoryBuffer *> inputs)
 {
   MemoryBuffer *image = inputs[0];
-  if(image->is_a_single_elem()) {
+  if (image->is_a_single_elem()) {
     copy_v4_v4(output->get_elem(0, 0), image->get_elem(0, 0));
     return;
   }
