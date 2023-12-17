@@ -14,7 +14,7 @@
 
 #include "BLI_math_matrix_types.hh"
 
-namespace blender::bke {
+namespace blender::bke::volume_grid {
 
 class VolumeGridData;
 
@@ -26,8 +26,6 @@ class VolumeTreeUser;
 template<typename T> static constexpr bool is_VolumeGrid_v = false;
 template<typename T> static constexpr bool is_VolumeGrid_v<VolumeGrid<T>> = true;
 
-namespace volume_grid_fwd {
-
 std::string get_name(const VolumeGridData &grid);
 VolumeGridType get_type(const VolumeGridData &grid);
 int get_channels_num(VolumeGridType type);
@@ -36,6 +34,12 @@ float4x4 get_transform_matrix(const VolumeGridData &grid);
 void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix);
 void clear_tree(VolumeGridData &grid);
 
-}  // namespace volume_grid_fwd
+}  // namespace blender::bke::volume_grid
 
+namespace blender::bke {
+using volume_grid::GVolumeGrid;
+using volume_grid::is_VolumeGrid_v;
+using volume_grid::VolumeGrid;
+using volume_grid::VolumeGridData;
+using volume_grid::VolumeTreeUser;
 }  // namespace blender::bke

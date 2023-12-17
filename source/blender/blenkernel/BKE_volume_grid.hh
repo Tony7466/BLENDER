@@ -23,7 +23,7 @@
 
 #include <openvdb/openvdb.h>
 
-namespace blender::bke {
+namespace blender::bke::volume_grid {
 
 class VolumeGridData : public ImplicitSharingMixin {
  private:
@@ -193,11 +193,4 @@ inline bool VolumeTreeUser::valid_for(const VolumeGridData &grid) const
   return grid.tree_user_token_ == token_;
 }
 
-}  // namespace blender::bke
-
-#include "BLI_cpp_type.hh"
-
-namespace blender {
-template<> const CPPType &CPPType::get<bke::GVolumeGrid>() = delete;
-
-}
+}  // namespace blender::bke::volume_grid

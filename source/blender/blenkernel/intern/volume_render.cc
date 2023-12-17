@@ -109,7 +109,7 @@ bool BKE_volume_grid_dense_floats(const Volume *volume,
   const openvdb::Vec3i resolution = bbox.dim().asVec3i();
   const int64_t num_voxels = int64_t(resolution[0]) * int64_t(resolution[1]) *
                              int64_t(resolution[2]);
-  const int channels = blender::bke::volume_grid_fwd::get_channels_num(grid_type);
+  const int channels = blender::bke::volume_grid::get_channels_num(grid_type);
   const int elem_size = sizeof(float) * channels;
   float *voxels = static_cast<float *>(MEM_malloc_arrayN(num_voxels, elem_size, __func__));
   if (voxels == nullptr) {

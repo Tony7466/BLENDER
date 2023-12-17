@@ -108,32 +108,31 @@ static void rna_Volume_velocity_grid_set(PointerRNA *ptr, const char *value)
 static void rna_VolumeGrid_name_get(PointerRNA *ptr, char *value)
 {
   auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
-  strcpy(value, blender::bke::volume_grid_fwd::get_name(*grid).c_str());
+  strcpy(value, blender::bke::volume_grid::get_name(*grid).c_str());
 }
 
 static int rna_VolumeGrid_name_length(PointerRNA *ptr)
 {
   auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
-  return blender::bke::volume_grid_fwd::get_name(*grid).size();
+  return blender::bke::volume_grid::get_name(*grid).size();
 }
 
 static int rna_VolumeGrid_data_type_get(PointerRNA *ptr)
 {
   const auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
-  return blender::bke::volume_grid_fwd::get_type(*grid);
+  return blender::bke::volume_grid::get_type(*grid);
 }
 
 static int rna_VolumeGrid_channels_get(PointerRNA *ptr)
 {
   const auto *grid = static_cast<blender::bke::VolumeGridData *>(ptr->data);
-  return blender::bke::volume_grid_fwd::get_channels_num(
-      blender::bke::volume_grid_fwd::get_type(*grid));
+  return blender::bke::volume_grid::get_channels_num(blender::bke::volume_grid::get_type(*grid));
 }
 
 static void rna_VolumeGrid_matrix_object_get(PointerRNA *ptr, float *value)
 {
   auto *grid = static_cast<const blender::bke::VolumeGridData *>(ptr->data);
-  *(blender::float4x4 *)value = blender::bke::volume_grid_fwd::get_transform_matrix(*grid);
+  *(blender::float4x4 *)value = blender::bke::volume_grid::get_transform_matrix(*grid);
 }
 
 static bool rna_VolumeGrid_load(ID * /*id*/, DummyVolumeGrid * /*grid*/)
@@ -144,7 +143,7 @@ static bool rna_VolumeGrid_load(ID * /*id*/, DummyVolumeGrid * /*grid*/)
 
 static void rna_VolumeGrid_unload(ID * /*id*/, DummyVolumeGrid *grid)
 {
-  blender::bke::volume_grid_fwd::unload_tree_if_possible(
+  blender::bke::volume_grid::unload_tree_if_possible(
       *reinterpret_cast<const blender::bke::VolumeGridData *>(grid));
 }
 

@@ -9,7 +9,7 @@
 
 #include <openvdb/Grid.h>
 
-namespace blender::bke {
+namespace blender::bke::volume_grid {
 
 class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
  private:
@@ -303,8 +303,6 @@ VolumeGridData &GVolumeGrid::get_for_write()
   return const_cast<VolumeGridData &>(*data_);
 }
 
-namespace volume_grid_fwd {
-
 std::string get_name(const VolumeGridData &volume_grid)
 {
 #ifdef WITH_OPENVDB
@@ -387,6 +385,4 @@ void clear_tree(VolumeGridData &grid)
   grid.grid_for_write(tree_user).clear();
 }
 
-}  // namespace volume_grid_fwd
-
-}  // namespace blender::bke
+}  // namespace blender::bke::volume_grid
