@@ -210,33 +210,28 @@ class LazyFunctionForSwitchNode : public LazyFunction {
 
 static void node_rna(StructRNA *srna)
 {
-  RNA_def_node_enum(
-      srna,
-      "input_type",
-      "Input Type",
-      "",
-      rna_enum_node_socket_data_type_items,
-      NOD_storage_enum_accessors(input_type),
-      SOCK_GEOMETRY,
-      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
-        *r_free = true;
-        return enum_items_filter(rna_enum_node_socket_data_type_items,
-                                 [](const EnumPropertyItem &item) -> bool {
-                                   return ELEM(item.value,
-                                               SOCK_FLOAT,
-                                               SOCK_INT,
-                                               SOCK_BOOLEAN,
-                                               SOCK_ROTATION,
-                                               SOCK_VECTOR,
-                                               SOCK_STRING,
-                                               SOCK_RGBA,
-                                               SOCK_GEOMETRY,
-                                               SOCK_OBJECT,
-                                               SOCK_COLLECTION,
-                                               SOCK_MATERIAL,
-                                               SOCK_IMAGE);
-                                 });
-      });
+  const Span<EnumPropertyItem> items = enums::static_items_with_values_from<eNodeSocketDatatype>(
+      enums::items_as_span(rna_enum_node_socket_data_type_items),
+      {SOCK_FLOAT,
+       SOCK_INT,
+       SOCK_BOOLEAN,
+       SOCK_ROTATION,
+       SOCK_VECTOR,
+       SOCK_STRING,
+       SOCK_RGBA,
+       SOCK_GEOMETRY,
+       SOCK_OBJECT,
+       SOCK_COLLECTION,
+       SOCK_MATERIAL,
+       SOCK_IMAGE});
+
+  RNA_def_node_enum(srna,
+                    "input_type",
+                    "Input Type",
+                    "",
+                    items.data(),
+                    NOD_storage_enum_accessors(input_type),
+                    SOCK_GEOMETRY);
 }
 
 static void register_node()

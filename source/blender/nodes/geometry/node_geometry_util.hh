@@ -9,6 +9,9 @@
 #include "BKE_node.hh"
 #include "BKE_node_socket_value.hh"
 
+#include "BLI_function_ref.hh"
+#include "BLI_span.hh"
+
 #include "NOD_geometry_exec.hh"
 #include "NOD_register.hh"
 #include "NOD_socket_declarations.hh"
@@ -123,6 +126,23 @@ void mix_baked_data_item(eNodeSocketDatatype socket_type,
                          const float factor);
 
 namespace enums {
+
+Span<EnumPropertyItem> items_as_span(const EnumPropertyItem *items);
+
+namespace details {
+Span<EnumPropertyItem> static_items_from_predicat(Span<EnumPropertyItem> univers,
+                                                  FunctionRef<bool(EnumPropertyItem)> predicate);
+}
+
+template<typename T>
+Span<EnumPropertyItem> static_items_with_values_from(Span<EnumPropertyItem> univers,
+                                                     Span<T> values)
+{
+  const auto predicate = [&](const EnumPropertyItem &item) -> bool {
+    return values.contains(T(item.value));
+  };
+  return details::static_items_from_predicat(univers, predicate);
+}
 
 const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
                                                            PointerRNA * /*ptr*/,

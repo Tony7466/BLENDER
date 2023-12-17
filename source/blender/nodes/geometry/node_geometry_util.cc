@@ -5,6 +5,9 @@
 #include "node_geometry_util.hh"
 #include "node_util.hh"
 
+#include "BLI_linear_allocator.hh"
+#include "BLI_span.hh"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_space_types.h"
@@ -18,6 +21,7 @@
 #include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
 
+#include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
 namespace blender::nodes {
@@ -40,6 +44,25 @@ void search_link_ops_for_tool_node(GatherLinkSearchOpParams &params)
 }
 
 namespace enums {
+
+namespace details {
+Span<EnumPropertyItem> static_items_from_predicat(Span<EnumPropertyItem> univers,
+                                                  FunctionRef<bool(EnumPropertyItem)> predicate)
+{
+  static LinearAllocator allocator;
+
+  const int64_t total = std::count_if(univers.begin(), univers.end(), predicate);
+  MutableSpan<EnumPropertyItem> items = allocator.allocate_array<EnumPropertyItem>(total + 1);
+  std::copy_if(univers.begin(), univers.end(), items.begin(), predicate);
+  items.last() = *rna_enum_dummy_NULL_items;
+  return items;
+}
+}  // namespace details
+
+Span<EnumPropertyItem> items_as_span(const EnumPropertyItem *items)
+{
+  return Span(items, RNA_enum_items_count(items));
+}
 
 const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
                                                            PointerRNA * /*ptr*/,
