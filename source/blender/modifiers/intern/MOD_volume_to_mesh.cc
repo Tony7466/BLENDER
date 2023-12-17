@@ -13,7 +13,6 @@
 #include "BKE_modifier.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
-#include "BKE_volume_openvdb.hh"
 #include "BKE_volume_to_mesh.hh"
 
 #include "BLT_translation.h"

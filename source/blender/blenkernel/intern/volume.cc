@@ -904,44 +904,6 @@ blender::bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, con
   return nullptr;
 }
 
-#ifdef WITH_OPENVDB
-
-VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid)
-{
-  if (grid.isType<openvdb::FloatGrid>()) {
-    return VOLUME_GRID_FLOAT;
-  }
-  if (grid.isType<openvdb::Vec3fGrid>()) {
-    return VOLUME_GRID_VECTOR_FLOAT;
-  }
-  if (grid.isType<openvdb::BoolGrid>()) {
-    return VOLUME_GRID_BOOLEAN;
-  }
-  if (grid.isType<openvdb::DoubleGrid>()) {
-    return VOLUME_GRID_DOUBLE;
-  }
-  if (grid.isType<openvdb::Int32Grid>()) {
-    return VOLUME_GRID_INT;
-  }
-  if (grid.isType<openvdb::Int64Grid>()) {
-    return VOLUME_GRID_INT64;
-  }
-  if (grid.isType<openvdb::Vec3IGrid>()) {
-    return VOLUME_GRID_VECTOR_INT;
-  }
-  if (grid.isType<openvdb::Vec3dGrid>()) {
-    return VOLUME_GRID_VECTOR_DOUBLE;
-  }
-  if (grid.isType<openvdb::MaskGrid>()) {
-    return VOLUME_GRID_MASK;
-  }
-  if (grid.isType<openvdb::points::PointDataGrid>()) {
-    return VOLUME_GRID_POINTS;
-  }
-  return VOLUME_GRID_UNKNOWN;
-}
-#endif
-
 /* Grid Tree and Voxels */
 
 /* Volume Editing */
@@ -986,7 +948,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_add_vdb(Volume &volume,
 {
   VolumeGridVector &grids = *volume.runtime.grids;
   BLI_assert(BKE_volume_grid_find(&volume, name.data()) == nullptr);
-  BLI_assert(BKE_volume_grid_type_openvdb(*vdb_grid) != VOLUME_GRID_UNKNOWN);
+  BLI_assert(blender::bke::volume_grid::get_type(*vdb_grid) != VOLUME_GRID_UNKNOWN);
 
   vdb_grid->setName(name);
   grids.emplace_back(GVolumeGrid(std::move(vdb_grid)));

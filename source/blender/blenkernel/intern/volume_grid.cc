@@ -174,7 +174,7 @@ VolumeGridType VolumeGridData::grid_type() const
   if (!meta_data_loaded_) {
     this->ensure_grid_loaded();
   }
-  return BKE_volume_grid_type_openvdb(*grid_);
+  return get_type(*grid_);
 }
 
 openvdb::GridClass VolumeGridData::grid_class() const
@@ -320,6 +320,41 @@ VolumeGridType get_type(const VolumeGridData &volume_grid)
 #else
   UNUSED_VARS(volume_grid);
 #endif
+  return VOLUME_GRID_UNKNOWN;
+}
+
+VolumeGridType get_type(const openvdb::GridBase &grid)
+{
+  if (grid.isType<openvdb::FloatGrid>()) {
+    return VOLUME_GRID_FLOAT;
+  }
+  if (grid.isType<openvdb::Vec3fGrid>()) {
+    return VOLUME_GRID_VECTOR_FLOAT;
+  }
+  if (grid.isType<openvdb::BoolGrid>()) {
+    return VOLUME_GRID_BOOLEAN;
+  }
+  if (grid.isType<openvdb::DoubleGrid>()) {
+    return VOLUME_GRID_DOUBLE;
+  }
+  if (grid.isType<openvdb::Int32Grid>()) {
+    return VOLUME_GRID_INT;
+  }
+  if (grid.isType<openvdb::Int64Grid>()) {
+    return VOLUME_GRID_INT64;
+  }
+  if (grid.isType<openvdb::Vec3IGrid>()) {
+    return VOLUME_GRID_VECTOR_INT;
+  }
+  if (grid.isType<openvdb::Vec3dGrid>()) {
+    return VOLUME_GRID_VECTOR_DOUBLE;
+  }
+  if (grid.isType<openvdb::MaskGrid>()) {
+    return VOLUME_GRID_MASK;
+  }
+  if (grid.isType<openvdb::points::PointDataGrid>()) {
+    return VOLUME_GRID_POINTS;
+  }
   return VOLUME_GRID_UNKNOWN;
 }
 

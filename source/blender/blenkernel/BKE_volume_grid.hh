@@ -17,6 +17,7 @@
 #include "BKE_volume_grid_type_traits.hh"
 
 #include "BLI_implicit_sharing_ptr.hh"
+#include "BLI_parameter_pack_utils.hh"
 #include "BLI_string_ref.hh"
 
 #include "openvdb_fwd.hh"
@@ -124,6 +125,8 @@ template<typename T> class VolumeGrid : public GVolumeGrid {
  private:
   void assert_correct_type() const;
 };
+
+VolumeGridType get_type(const openvdb::GridBase &grid);
 
 inline GVolumeGrid::GVolumeGrid(const VolumeGridData *data) : data_(data) {}
 

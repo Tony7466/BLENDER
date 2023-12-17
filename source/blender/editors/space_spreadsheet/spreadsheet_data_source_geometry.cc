@@ -23,7 +23,6 @@
 #include "BKE_object_types.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
-#include "BKE_volume_openvdb.hh"
 
 #include "DNA_ID.h"
 #include "DNA_mesh_types.h"

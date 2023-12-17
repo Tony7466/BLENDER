@@ -5,7 +5,6 @@
 #include "BKE_type_conversions.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
-#include "BKE_volume_openvdb.hh"
 
 #include "BLI_index_mask.hh"
 #include "BLI_virtual_array.hh"
