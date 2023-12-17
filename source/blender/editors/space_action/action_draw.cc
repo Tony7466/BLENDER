@@ -30,7 +30,7 @@
 
 #include "BKE_action.h"
 #include "BKE_bake_geometry_nodes_modifier.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_pointcache.h"
 
@@ -280,7 +280,7 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
       immRectf(pos, ac->scene->r.sfra, ymin, ac->scene->r.efra, ymax);
 
       /* Color overlay outside the start/end frame range get a more transparent overlay. */
-      immUniformColor3ubvAlpha(color, MIN2(255, color[3] / 2));
+      immUniformColor3ubvAlpha(color, std::min(255, color[3] / 2));
       immRectf(pos, v2d->cur.xmin, ymin, ac->scene->r.sfra, ymax);
       immRectf(pos, ac->scene->r.efra, ymin, v2d->cur.xmax + EXTRA_SCROLL_PAD, ymax);
     }
@@ -299,7 +299,7 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
       immRectf(pos, ac->scene->r.sfra, ymin, ac->scene->r.efra, ymax);
 
       /* Color overlay outside the start/end frame range get a more transparent overlay. */
-      immUniformColor3ubvAlpha(color, MIN2(255, color[3] / 2));
+      immUniformColor3ubvAlpha(color, std::min(255, color[3] / 2));
       immRectf(pos, v2d->cur.xmin, ymin, ac->scene->r.sfra, ymax);
       immRectf(pos, ac->scene->r.efra, ymin, v2d->cur.xmax + EXTRA_SCROLL_PAD, ymax);
     }
@@ -886,10 +886,10 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
       const blender::bke::bake::ModifierCache &modifier_cache = *nmd->runtime->cache;
       {
         std::lock_guard lock{modifier_cache.mutex};
-        for (const std::unique_ptr<blender::bke::bake::NodeCache> &node_cache_ptr :
-             modifier_cache.cache_by_id.values())
+        for (const std::unique_ptr<blender::bke::bake::SimulationNodeCache> &node_cache_ptr :
+             modifier_cache.simulation_cache_by_id.values())
         {
-          const blender::bke::bake::NodeCache &node_cache = *node_cache_ptr;
+          const blender::bke::bake::SimulationNodeCache &node_cache = *node_cache_ptr;
           if (node_cache.frame_caches.is_empty()) {
             all_simulations_baked = false;
             continue;

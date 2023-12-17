@@ -8,7 +8,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
@@ -121,7 +121,7 @@ Mesh *convert_ply_to_mesh(PlyData &data, const PLYImportParams &params)
   }
   else {
     /* No vertex normals: set faces to sharp. */
-    BKE_mesh_smooth_flag_set(mesh, false);
+    bke::mesh_smooth_set(*mesh, false);
   }
 
   /* Custom attributes: add them after anything above. */

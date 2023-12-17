@@ -10,8 +10,8 @@
 
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
-#include "BKE_volume.h"
+#include "BKE_modifier.hh"
+#include "BKE_volume.hh"
 #include "BKE_volume_openvdb.hh"
 #include "BKE_volume_to_mesh.hh"
 
@@ -131,6 +131,7 @@ static Mesh *create_empty_mesh(const Mesh *input_mesh)
 
 static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *input_mesh)
 {
+  using namespace blender;
 #ifdef WITH_OPENVDB
   VolumeToMeshModifierData *vmmd = reinterpret_cast<VolumeToMeshModifierData *>(md);
   if (vmmd->object == nullptr) {
@@ -171,7 +172,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   /* Create a temporary transformed grid. The underlying tree is shared. */
   openvdb::GridBase::ConstPtr transformed_grid = local_grid->copyGridReplacingTransform(transform);
 
-  blender::bke::VolumeToMeshResolution resolution;
+  bke::VolumeToMeshResolution resolution;
   resolution.mode = (VolumeToMeshResolutionMode)vmmd->resolution_mode;
   if (resolution.mode == VOLUME_TO_MESH_RESOLUTION_MODE_VOXEL_AMOUNT) {
     resolution.settings.voxel_amount = vmmd->voxel_amount;
@@ -180,7 +181,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     resolution.settings.voxel_size = vmmd->voxel_size;
   }
 
-  Mesh *mesh = blender::bke::volume_to_mesh(
+  Mesh *mesh = bke::volume_to_mesh(
       *transformed_grid, resolution, vmmd->threshold, vmmd->adaptivity);
   if (mesh == nullptr) {
     BKE_modifier_set_error(ctx->object, md, "Could not generate mesh from grid");
@@ -188,7 +189,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   }
 
   BKE_mesh_copy_parameters_for_eval(mesh, input_mesh);
-  BKE_mesh_smooth_flag_set(mesh, vmmd->flag & VOLUME_TO_MESH_USE_SMOOTH_SHADE);
+  bke::mesh_smooth_set(*mesh, vmmd->flag & VOLUME_TO_MESH_USE_SMOOTH_SHADE);
   return mesh;
 #else
   UNUSED_VARS(md);
@@ -203,7 +204,7 @@ ModifierTypeInfo modifierType_VolumeToMesh = {
     /*struct_name*/ "VolumeToMeshModifierData",
     /*struct_size*/ sizeof(VolumeToMeshModifierData),
     /*srna*/ &RNA_VolumeToMeshModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh,
     /*icon*/ ICON_VOLUME_DATA, /* TODO: Use correct icon. */
 

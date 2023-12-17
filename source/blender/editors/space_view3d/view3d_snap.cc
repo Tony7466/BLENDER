@@ -17,11 +17,11 @@
 #include "BLI_vector.hh"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mball.h"
 #include "BKE_object.hh"
 #include "BKE_report.h"
@@ -42,7 +42,7 @@
 #include "ED_screen.hh"
 #include "ED_transverts.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 #include "ANIM_keyframing.hh"
 
 #include "view3d_intern.h"
@@ -517,7 +517,7 @@ static bool snap_selected_to_location(bContext *C,
       if (ob->parent) {
         float originmat[3][3], parentmat[4][4];
         /* Use the evaluated object here because sometimes
-         * `ob->parent->runtime.curve_cache` is required. */
+         * `ob->parent->runtime->curve_cache` is required. */
         BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
         Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
 

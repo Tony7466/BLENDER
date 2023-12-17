@@ -51,21 +51,22 @@ static const EnumPropertyItem space_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_bvhutils.h"
+#  include "BKE_bvhutils.hh"
 #  include "BKE_constraint.h"
-#  include "BKE_context.h"
-#  include "BKE_crazyspace.h"
-#  include "BKE_customdata.h"
+#  include "BKE_context.hh"
+#  include "BKE_crazyspace.hh"
+#  include "BKE_customdata.hh"
 #  include "BKE_global.h"
 #  include "BKE_layer.h"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #  include "BKE_mball.h"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.hh"
-#  include "BKE_modifier.h"
+#  include "BKE_modifier.hh"
 #  include "BKE_object.hh"
+#  include "BKE_object_types.hh"
 #  include "BKE_report.h"
-#  include "BKE_vfont.h"
+#  include "BKE_vfont.hh"
 
 #  include "ED_object.hh"
 #  include "ED_screen.hh"
@@ -521,7 +522,7 @@ static void rna_Mesh_assign_verts_to_group(
     return;
   }
 
-  Mesh *me = (Mesh *)ob->data;
+  Mesh *mesh = (Mesh *)ob->data;
   int group_index = BLI_findlink(&ob->defbase, group);
   if (group_index == -1) {
     BKE_report(reports, RPT_ERROR, "No vertex groups assigned to mesh");
@@ -534,13 +535,13 @@ static void rna_Mesh_assign_verts_to_group(
   }
 
   /* makes a set of dVerts corresponding to the mVerts */
-  if (!me->dvert) {
-    create_dverts(&me->id);
+  if (!mesh->dvert) {
+    create_dverts(&mesh->id);
   }
 
   /* Loop list adding verts to group. */
   for (i = 0; i < totindex; i++) {
-    if (i < 0 || i >= me->totvert) {
+    if (i < 0 || i >= mesh->totvert) {
       BKE_report(reports, RPT_ERROR, "Bad vertex index in list");
       return;
     }
@@ -567,7 +568,7 @@ static Object *eval_object_ensure(Object *ob,
                                   ReportList *reports,
                                   PointerRNA *rnaptr_depsgraph)
 {
-  if (ob->runtime.data_eval == nullptr) {
+  if (ob->runtime->data_eval == nullptr) {
     Object *ob_orig = ob;
     Depsgraph *depsgraph = rnaptr_depsgraph != nullptr ?
                                static_cast<Depsgraph *>(rnaptr_depsgraph->data) :
@@ -607,24 +608,28 @@ static void rna_Object_ray_cast(Object *ob,
     return;
   }
 
-  /* Test BoundBox first (efficiency) */
-  const std::optional<BoundBox> bb = BKE_object_boundbox_get(ob);
+  Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
+
+  /* Test bounding box first (efficiency) */
+  const std::optional<blender::Bounds<blender::float3>> bounds = mesh_eval->bounds_min_max();
+  if (!bounds) {
+    return;
+  }
   float distmin;
 
   /* Needed for valid distance check from #isect_ray_aabb_v3_simple() call. */
   float direction_unit[3];
   normalize_v3_v3(direction_unit, direction);
 
-  if (!bb || (isect_ray_aabb_v3_simple(
-                  origin, direction_unit, bb->vec[0], bb->vec[6], &distmin, nullptr) &&
-              distmin <= distance))
+  if ((isect_ray_aabb_v3_simple(
+           origin, direction_unit, bounds->min, bounds->max, &distmin, nullptr) &&
+       distmin <= distance))
   {
     BVHTreeFromMesh treeData = {nullptr};
 
     /* No need to managing allocation or freeing of the BVH data.
      * This is generated and freed as needed. */
-    Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
-    BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_LOOPTRI, 4);
+    BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_LOOPTRIS, 4);
 
     /* may fail if the mesh has no faces, in that case the ray-cast misses */
     if (treeData.tree != nullptr) {
@@ -682,7 +687,7 @@ static void rna_Object_closest_point_on_mesh(Object *ob,
   /* No need to managing allocation or freeing of the BVH data.
    * this is generated and freed as needed. */
   Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
-  BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_LOOPTRI, 4);
+  BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_LOOPTRIS, 4);
 
   if (treeData.tree == nullptr) {
     BKE_reportf(reports,
@@ -757,7 +762,7 @@ void rna_Object_me_eval_info(
       }
       break;
     case 1:
-      me_eval = ob->runtime.mesh_deform_eval;
+      me_eval = ob->runtime->mesh_deform_eval;
       break;
     case 2:
       me_eval = BKE_object_get_evaluated_mesh(ob);
@@ -1339,7 +1344,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_parameter_flags(
       parm, PROP_THICK_WRAP, ParameterFlag(0)); /* needed for string return value */
   RNA_def_function_output(func, parm);
-#  endif /* NDEBUG */
+#  endif /* !NDEBUG */
 
   func = RNA_def_function(srna, "update_from_editmode", "rna_Object_update_from_editmode");
   RNA_def_function_ui_description(func, "Load the objects edit-mode data into the object data");

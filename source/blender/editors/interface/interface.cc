@@ -33,13 +33,13 @@
 #include "BLO_readfile.h"
 
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "ED_asset.hh"
 
@@ -79,7 +79,7 @@
 using blender::Vector;
 
 /* prototypes. */
-static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p);
+static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p);
 static void ui_def_but_rna__panel_type(bContext * /*C*/, uiLayout *layout, void *but_p);
 static void ui_def_but_rna__menu_type(bContext * /*C*/, uiLayout *layout, void *but_p);
 
@@ -540,8 +540,8 @@ static void ui_block_bounds_calc_popup(
   const int height = BLI_rctf_size_y(&block->rect);
 
   /* avoid divide by zero below, caused by calling with no UI, but better not crash */
-  oldwidth = oldwidth > 0 ? oldwidth : MAX2(1, width);
-  oldheight = oldheight > 0 ? oldheight : MAX2(1, height);
+  oldwidth = oldwidth > 0 ? oldwidth : std::max(1, width);
+  oldheight = oldheight > 0 ? oldheight : std::max(1, height);
 
   /* offset block based on mouse position, user offset is scaled
    * along in case we resized the block in ui_block_bounds_calc_text */
@@ -1284,7 +1284,7 @@ static bool ui_but_event_operator_string_from_menu(const bContext *C,
   /* annoying, create a property */
   const IDPropertyTemplate val = {0};
   IDProperty *prop_menu = IDP_New(IDP_GROUP, &val, __func__); /* Dummy, name is unimportant. */
-  IDP_AddToGroup(prop_menu, IDP_NewStringMaxSize(mt->idname, "name", sizeof(mt->idname)));
+  IDP_AddToGroup(prop_menu, IDP_NewStringMaxSize(mt->idname, sizeof(mt->idname), "name"));
 
   if (WM_key_event_operator_string(
           C, "WM_OT_call_menu", WM_OP_INVOKE_REGION_WIN, prop_menu, true, buf, buf_maxncpy))
@@ -1311,7 +1311,7 @@ static bool ui_but_event_operator_string_from_panel(const bContext *C,
   const IDPropertyTemplate group_val = {0};
   IDProperty *prop_panel = IDP_New(
       IDP_GROUP, &group_val, __func__); /* Dummy, name is unimportant. */
-  IDP_AddToGroup(prop_panel, IDP_NewStringMaxSize(pt->idname, "name", sizeof(pt->idname)));
+  IDP_AddToGroup(prop_panel, IDP_NewStringMaxSize(pt->idname, sizeof(pt->idname), "name"));
   IDPropertyTemplate space_type_val = {0};
   space_type_val.i = pt->space_type;
   IDP_AddToGroup(prop_panel, IDP_New(IDP_INT, &space_type_val, "space_type"));
@@ -2452,6 +2452,9 @@ bool ui_but_is_bool(const uiBut *but)
            UI_BTYPE_TOGGLE_N,
            UI_BTYPE_ICON_TOGGLE,
            UI_BTYPE_ICON_TOGGLE_N,
+           UI_BTYPE_CHECKBOX,
+           UI_BTYPE_CHECKBOX_N,
+           UI_BTYPE_BUT_TOGGLE,
            UI_BTYPE_TAB))
   {
     return true;
@@ -2932,7 +2935,7 @@ void ui_but_string_get_ex(uiBut *but,
           BLI_snprintf(str, str_maxncpy, "%.*f", prec, value);
         }
         else {
-          BLI_snprintf(str, str_maxncpy, "%.*f", MAX2(0, prec - 2), value * 100);
+          BLI_snprintf(str, str_maxncpy, "%.*f", std::max(0, prec - 2), value * 100);
         }
       }
       else {
@@ -3756,7 +3759,7 @@ static void ui_but_build_drawstr_float(uiBut *but, double value)
       STR_CONCATF(but->drawstr, slen, "%.*f", precision, value);
     }
     else {
-      STR_CONCATF(but->drawstr, slen, "%.*f%%", MAX2(0, precision - 2), value * 100);
+      STR_CONCATF(but->drawstr, slen, "%.*f%%", std::max(0, precision - 2), value * 100);
     }
   }
   else if (ui_but_is_unit(but)) {
@@ -4297,7 +4300,7 @@ void ui_def_but_icon_clear(uiBut *but)
   but->drawflag &= ~UI_BUT_ICON_LEFT;
 }
 
-static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p)
+static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
 {
   uiBlock *block = uiLayoutGetBlock(layout);
   uiPopupBlockHandle *handle = block->handle;
@@ -4322,39 +4325,61 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
 
   int totitems = 0;
   int categories = 0;
-  int entries_nosepr_count = 0;
   bool has_item_with_icon = false;
+  int columns = 1;
+  int rows = 0;
+
+  const wmWindow *win = CTX_wm_window(C);
+  const int row_height = int(float(UI_UNIT_Y) / but->block->aspect);
+  /* Calculate max_rows from how many rows can fit in this window. */
+  const int max_rows = (win->sizey - (4 * row_height)) / row_height;
+  float text_width = 0.0f;
+
+  BLF_size(BLF_default(), UI_style_get()->widgetlabel.points * UI_SCALE_FAC);
+  int col_rows = 0;
+  float col_width = 0.0f;
+
   for (const EnumPropertyItem *item = item_array; item->identifier; item++, totitems++) {
-    if (!item->identifier[0]) {
-      /* inconsistent, but menus with categories do not look good flipped */
-      if (item->name) {
-        categories++;
-        entries_nosepr_count++;
-      }
-      /* We do not want simple separators in `entries_nosepr_count`. */
-      continue;
+    col_rows++;
+    if (col_rows > 1 && (col_rows > max_rows || (!item->identifier[0] && item->name))) {
+      columns++;
+      text_width += col_width;
+      col_width = 0;
+      col_rows = 0;
+    }
+    if (!item->identifier[0] && item->name) {
+      categories++;
+      /* The category name adds to the column length. */
+      col_rows++;
     }
     if (item->icon) {
       has_item_with_icon = true;
     }
-    entries_nosepr_count++;
+    if (item->name && item->name[0]) {
+      float item_width = BLF_width(BLF_default(), item->name, BLF_DRAW_STR_DUMMY_MAX);
+      col_width = std::max(col_width, item_width + (100.0f * UI_SCALE_FAC));
+    }
+    rows = std::max(rows, col_rows);
+  }
+  text_width += col_width;
+  text_width /= but->block->aspect;
+
+  /* Wrap long single-column lists. */
+  if (categories == 0) {
+    columns = std::max((totitems + 20) / 20, 1);
+    if (columns > 8) {
+      columns = (totitems + 25) / 25;
+    }
+    rows = std::max(totitems / columns, 1);
+    while (rows * columns < totitems) {
+      rows++;
+    }
   }
 
-  /* Columns and row estimation. Ignore simple separators here. */
-  int columns = (entries_nosepr_count + 20) / 20;
-  if (columns < 1) {
+  /* If the estimated width is greater than available size, collapse to one column. */
+  if (columns > 1 && text_width > win->sizex) {
     columns = 1;
-  }
-  if (columns > 8) {
-    columns = (entries_nosepr_count + 25) / 25;
-  }
-
-  int rows = totitems / columns;
-  if (rows < 1) {
-    rows = 1;
-  }
-  while (rows * columns < totitems) {
-    rows++;
+    rows = totitems;
   }
 
   const char *title = RNA_property_ui_name(but->rnaprop);
@@ -4363,7 +4388,7 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
   const bool prior_label = but->prev && but->prev->type == UI_BTYPE_LABEL && but->prev->str[0] &&
                            but->prev->alignnr == but->alignnr;
 
-  if (title[0] && (categories == 0) && (!but->str[0] || !prior_label)) {
+  if (title && title[0] && (categories == 0) && (!but->str[0] || !prior_label)) {
     /* Show title when no categories and calling button has no text or prior label. */
     uiDefBut(block,
              UI_BTYPE_LABEL,
@@ -4402,7 +4427,7 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
         const EnumPropertyItem *item = &item_array[b];
 
         /* new column on N rows or on separation label */
-        if (((b - a) % rows == 0) || (!item->identifier[0] && item->name)) {
+        if (((b - a) % rows == 0) || (columns > 1 && !item->identifier[0] && item->name)) {
           column_end = b;
           break;
         }
@@ -4413,17 +4438,17 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
 
     const EnumPropertyItem *item = &item_array[a];
 
-    if (new_column && (categories > 0) && item->identifier[0]) {
+    if (new_column && (categories > 0) && (columns > 1) && item->identifier[0]) {
       uiItemL(column, "", ICON_NONE);
       uiItemS(column);
     }
 
     if (!item->identifier[0]) {
-      if (item->name) {
+      if (item->name || columns > 1) {
         if (item->icon) {
           uiItemL(column, item->name, item->icon);
         }
-        else {
+        else if (item->name) {
           /* Do not use uiItemL here, as our root layout is a menu one,
            * it will add a fake blank icon! */
           uiDefBut(block,
@@ -6357,7 +6382,7 @@ void UI_but_func_search_set(uiBut *but,
   search_but->arg_free_fn = search_arg_free_fn;
 
   if (search_exec_fn) {
-#ifdef DEBUG
+#ifndef NDEBUG
     if (but->func) {
       /* watch this, can be cause of much confusion, see: #47691 */
       printf("%s: warning, overwriting button callback with search function callback!\n",

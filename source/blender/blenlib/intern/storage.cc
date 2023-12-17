@@ -172,7 +172,7 @@ double BLI_dir_free_space(const char *dir)
   }
 #  endif
 
-  return ((double(disk.f_bsize)) * (double(disk.f_bfree)));
+  return double(disk.f_bsize) * double(disk.f_bfree);
 #endif
 }
 
@@ -444,10 +444,10 @@ bool BLI_is_file(const char *path)
 /**
  * Use for both text and binary file reading.
  */
-static void *file_read_data_as_mem_impl(FILE *fp,
-                                        bool read_size_exact,
-                                        size_t pad_bytes,
-                                        size_t *r_size)
+void *BLI_file_read_data_as_mem_from_handle(FILE *fp,
+                                            bool read_size_exact,
+                                            size_t pad_bytes,
+                                            size_t *r_size)
 {
   BLI_stat_t st;
   if (BLI_fstat(fileno(fp), &st) == -1) {
@@ -504,7 +504,7 @@ void *BLI_file_read_text_as_mem(const char *filepath, size_t pad_bytes, size_t *
   FILE *fp = BLI_fopen(filepath, "r");
   void *mem = nullptr;
   if (fp) {
-    mem = file_read_data_as_mem_impl(fp, false, pad_bytes, r_size);
+    mem = BLI_file_read_data_as_mem_from_handle(fp, false, pad_bytes, r_size);
     fclose(fp);
   }
   return mem;
@@ -515,7 +515,7 @@ void *BLI_file_read_binary_as_mem(const char *filepath, size_t pad_bytes, size_t
   FILE *fp = BLI_fopen(filepath, "rb");
   void *mem = nullptr;
   if (fp) {
-    mem = file_read_data_as_mem_impl(fp, true, pad_bytes, r_size);
+    mem = BLI_file_read_data_as_mem_from_handle(fp, true, pad_bytes, r_size);
     fclose(fp);
   }
   return mem;
@@ -563,7 +563,7 @@ LinkNode *BLI_file_read_as_lines(const char *filepath)
   }
 
   BLI_fseek(fp, 0, SEEK_END);
-  size = (size_t)BLI_ftell(fp);
+  size = size_t(BLI_ftell(fp));
   BLI_fseek(fp, 0, SEEK_SET);
 
   if (UNLIKELY(size == size_t(-1))) {

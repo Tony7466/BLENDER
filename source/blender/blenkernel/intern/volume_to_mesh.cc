@@ -13,7 +13,7 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_mesh.hh"
-#include "BKE_volume.h"
+#include "BKE_volume.hh"
 #include "BKE_volume_openvdb.hh"
 
 #ifdef WITH_OPENVDB
@@ -163,8 +163,8 @@ Mesh *volume_to_mesh(const openvdb::GridBase &grid,
                      const float threshold,
                      const float adaptivity)
 {
-  const bke::OpenVDBMeshData mesh_data = volume_to_mesh_data(
-      grid, resolution, threshold, adaptivity);
+  using namespace blender::bke;
+  const OpenVDBMeshData mesh_data = volume_to_mesh_data(grid, resolution, threshold, adaptivity);
 
   const int tot_loops = 3 * mesh_data.tris.size() + 4 * mesh_data.quads.size();
   const int tot_faces = mesh_data.tris.size() + mesh_data.quads.size();
@@ -181,7 +181,9 @@ Mesh *volume_to_mesh(const openvdb::GridBase &grid,
                               mesh->corner_verts_for_write());
 
   BKE_mesh_calc_edges(mesh, false, false);
-  BKE_mesh_smooth_flag_set(mesh, false);
+  mesh_smooth_set(*mesh, false);
+
+  mesh->tag_overlapping_none();
 
   return mesh;
 }

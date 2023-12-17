@@ -17,8 +17,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
@@ -36,7 +36,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "ED_gizmo_library.hh"
 #include "ED_mesh.hh"

@@ -70,17 +70,17 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_collection.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_material.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node.h"
 
 #include "ED_anim_api.hh"
@@ -89,7 +89,7 @@
 #include "SEQ_sequencer.hh"
 #include "SEQ_utils.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "UI_resources.hh" /* for TH_KEYFRAME_SCALE lookup */
 
@@ -729,10 +729,10 @@ static bAnimListElem *make_new_animlistelem(void *data,
         break;
       }
       case ANIMTYPE_DSMESH: {
-        Mesh *me = (Mesh *)data;
-        AnimData *adt = me->adt;
+        Mesh *mesh = (Mesh *)data;
+        AnimData *adt = mesh->adt;
 
-        ale->flag = FILTER_MESH_OBJD(me);
+        ale->flag = FILTER_MESH_OBJD(mesh);
 
         ale->key_data = (adt) ? adt->action : nullptr;
         ale->datatype = ALE_ACT;
@@ -1822,7 +1822,7 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
     size_t tmp_items = 0;
 
     /* Add grease pencil layer channels. */
-    BEGIN_ANIMFILTER_SUBCHANNELS ((layer_group.base.flag & GP_LAYER_TREE_NODE_EXPANDED)) {
+    BEGIN_ANIMFILTER_SUBCHANNELS (layer_group.base.flag &GP_LAYER_TREE_NODE_EXPANDED) {
       LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
         tmp_items += animdata_filter_grease_pencil_layer_node_recursive(
             &tmp_data, ads, grease_pencil, node_->wrap(), filter_mode);
@@ -2799,14 +2799,14 @@ static size_t animdata_filter_ds_obdata(
     }
     case OB_MESH: /* ------- Mesh ---------- */
     {
-      Mesh *me = (Mesh *)ob->data;
+      Mesh *mesh = (Mesh *)ob->data;
 
       if (ads->filterflag & ADS_FILTER_NOMESH) {
         return 0;
       }
 
       type = ANIMTYPE_DSMESH;
-      expanded = FILTER_MESH_OBJD(me);
+      expanded = FILTER_MESH_OBJD(mesh);
       break;
     }
     case OB_LATTICE: /* ---- Lattice ---- */

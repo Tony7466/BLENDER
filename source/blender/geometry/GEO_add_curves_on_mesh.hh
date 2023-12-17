@@ -9,7 +9,7 @@
 #include "BLI_math_vector.hh"
 #include "BLI_span.hh"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_curves.hh"
 
 #include "DNA_mesh_types.h"
@@ -60,8 +60,8 @@ struct AddCurvesOnMeshOutputs {
 AddCurvesOnMeshOutputs add_curves_on_mesh(bke::CurvesGeometry &curves,
                                           const AddCurvesOnMeshInputs &inputs);
 
-float3 compute_surface_point_normal(const MLoopTri &looptri,
+float3 compute_surface_point_normal(const MLoopTri &lt,
                                     const float3 &bary_coord,
-                                    const Span<float3> corner_normals);
+                                    Span<float3> corner_normals);
 
 }  // namespace blender::geometry

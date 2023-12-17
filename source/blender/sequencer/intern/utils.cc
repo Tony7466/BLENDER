@@ -18,12 +18,13 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_vector_set.hh"
 
 #include "BLT_translation.h"
 
 #include "BKE_animsys.h"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_scene.h"
 
 #include "SEQ_animation.hh"
@@ -386,17 +387,15 @@ ListBase *SEQ_get_seqbase_by_seq(const Scene *scene, Sequence *seq)
 
 Sequence *SEQ_get_meta_by_seqbase(ListBase *seqbase_main, ListBase *meta_seqbase)
 {
-  SeqCollection *strips = SEQ_query_all_strips_recursive(seqbase_main);
+  blender::VectorSet strips = SEQ_query_all_meta_strips_recursive(seqbase_main);
 
-  Sequence *seq = nullptr;
-  SEQ_ITERATOR_FOREACH (seq, strips) {
-    if (seq->type == SEQ_TYPE_META && &seq->seqbase == meta_seqbase) {
-      break;
+  for (Sequence *seq : strips) {
+    if (&seq->seqbase == meta_seqbase) {
+      return seq;
     }
   }
 
-  SEQ_collection_free(strips);
-  return seq;
+  return nullptr;
 }
 
 Sequence *SEQ_sequence_from_strip_elem(ListBase *seqbase, StripElem *se)

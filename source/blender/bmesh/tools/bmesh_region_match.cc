@@ -29,9 +29,9 @@
 #include "BLI_mempool.h"
 #include "MEM_guardedalloc.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "tools/bmesh_region_match.h" /* own include */
+#include "tools/bmesh_region_match.hh" /* own include */
 
 /* avoid re-creating ghash and pools for each search */
 #define USE_WALKER_REUSE
@@ -382,8 +382,8 @@ static void bm_uuidwalk_rehash(UUIDWalk *uuidwalk)
   UUID_Int *uuid_store;
   uint i;
 
-  uint rehash_store_len_new = MAX2(BLI_ghash_len(uuidwalk->verts_uuid),
-                                   BLI_ghash_len(uuidwalk->faces_uuid));
+  uint rehash_store_len_new = std::max(BLI_ghash_len(uuidwalk->verts_uuid),
+                                       BLI_ghash_len(uuidwalk->faces_uuid));
 
   bm_uuidwalk_rehash_reserve(uuidwalk, rehash_store_len_new);
   uuid_store = uuidwalk->cache.rehash_store;
@@ -740,8 +740,8 @@ static BMFace **bm_mesh_region_match_pair(
     goto finally;
   }
 
-  bm_uuidwalk_rehash_reserve(w_src, MAX2(faces_src_region_len, verts_src_region_len));
-  bm_uuidwalk_rehash_reserve(w_dst, MAX2(faces_src_region_len, verts_src_region_len));
+  bm_uuidwalk_rehash_reserve(w_src, std::max(faces_src_region_len, verts_src_region_len));
+  bm_uuidwalk_rehash_reserve(w_dst, std::max(faces_src_region_len, verts_src_region_len));
 
   while (true) {
     bool ok = false;

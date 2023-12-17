@@ -29,7 +29,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_blender_version.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_screen.hh"
 
 #include "BLT_translation.h"
@@ -127,7 +127,7 @@ static void wm_block_splash_image_roundcorners_add(ImBuf *ibuf)
     }
   }
 }
-#endif /* WITH_HEADLESS */
+#endif /* !WITH_HEADLESS */
 
 static ImBuf *wm_block_splash_image(int width, int *r_height)
 {
@@ -262,7 +262,7 @@ void WM_OT_splash(wmOperatorType *ot)
 static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
-  const int text_points_max = MAX2(style->widget.points, style->widgetlabel.points);
+  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
   const int dialog_width = text_points_max * 42 * UI_SCALE_FAC;
 
   uiBlock *block = UI_block_begin(C, region, "about", UI_EMBOSS);
@@ -304,7 +304,7 @@ static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg
     row = uiLayoutRow(layout, false);
     uiItemS_ex(row, 2.7f);
   }
-#endif /* WITH_HEADLESS */
+#endif /* !WITH_HEADLESS */
 
   uiLayout *col = uiLayoutColumn(layout, true);
 

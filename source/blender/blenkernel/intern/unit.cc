@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include <algorithm> /* For `min/max`. */
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -19,7 +20,7 @@
 
 #include "DNA_scene_types.h"
 
-#include "BKE_unit.h" /* own include */
+#include "BKE_unit.hh" /* own include */
 
 #ifdef WIN32
 #  include "BLI_winstuff.h"
@@ -1673,17 +1674,17 @@ static const bUnitDef *get_preferred_display_unit_if_used(int type, PreferredUni
       if (units.length == USER_UNIT_ADAPTIVE) {
         return nullptr;
       }
-      return usys->units + MIN2(units.length, max_offset);
+      return usys->units + std::min(units.length, max_offset);
     case B_UNIT_MASS:
       if (units.mass == USER_UNIT_ADAPTIVE) {
         return nullptr;
       }
-      return usys->units + MIN2(units.mass, max_offset);
+      return usys->units + std::min(units.mass, max_offset);
     case B_UNIT_TIME:
       if (units.time == USER_UNIT_ADAPTIVE) {
         return nullptr;
       }
-      return usys->units + MIN2(units.time, max_offset);
+      return usys->units + std::min(units.time, max_offset);
     case B_UNIT_ROTATION:
       if (units.rotation == 0) {
         return usys->units + 0;
@@ -1696,7 +1697,7 @@ static const bUnitDef *get_preferred_display_unit_if_used(int type, PreferredUni
       if (units.temperature == USER_UNIT_ADAPTIVE) {
         return nullptr;
       }
-      return usys->units + MIN2(units.temperature, max_offset);
+      return usys->units + std::min(units.temperature, max_offset);
     default:
       break;
   }

@@ -16,17 +16,18 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_linklist_stack.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
 
-#include "intern/bmesh_private.h"
+#include "intern/bmesh_private.hh"
 
 /* Smooth angle to use when tagging edges is disabled entirely. */
 #define EDGE_TAG_FROM_SPLIT_ANGLE_BYPASS -FLT_MAX
@@ -72,7 +73,7 @@ BLI_INLINE void bm_vert_calc_normals_accum_loop(const BMLoop *l_iter,
   if ((l_iter->prev->e->v1 == l_iter->prev->v) ^ (l_iter->e->v1 == l_iter->v)) {
     dotprod = -dotprod;
   }
-  const float fac = saacos(-dotprod);
+  const float fac = blender::math::safe_acos_approx(-dotprod);
   /* Shouldn't happen as normalizing edge-vectors cause degenerate values to be zeroed out. */
   BLI_assert(!isnan(fac));
   madd_v3_v3fl(v_no, f_no, fac);
@@ -95,7 +96,7 @@ static void bm_vert_calc_normals_impl(BMVert *v)
    * so face loops that share an edge would not calculate it multiple times.
    * From my tests the performance improvements are so small they're difficult to measure,
    * the time saved removing `sqrtf` calls is lost on storing and looking up the information,
-   * even in the case of `BLI_smallhash.h` & small inline lookup tables.
+   * even in the case of small inline lookup tables.
    *
    * Further, local data structures would need to support cases where
    * stack memory isn't sufficient - adding additional complexity for corner-cases
@@ -211,7 +212,7 @@ static void bm_mesh_verts_calc_normals(BMesh *bm,
 
   TaskParallelSettings settings;
   BLI_parallel_mempool_settings_defaults(&settings);
-  settings.use_threading = bm->totvert >= BM_OMP_LIMIT;
+  settings.use_threading = bm->totvert >= BM_THREAD_LIMIT;
 
   if (vcos == nullptr) {
     BM_iter_parallel(bm, BM_VERTS_OF_MESH, bm_vert_calc_normals_cb, nullptr, &settings);
@@ -241,7 +242,7 @@ void BM_mesh_normals_update_ex(BMesh *bm, const BMeshNormalsUpdate_Params *param
     /* Calculate all face normals. */
     TaskParallelSettings settings;
     BLI_parallel_mempool_settings_defaults(&settings);
-    settings.use_threading = bm->totedge >= BM_OMP_LIMIT;
+    settings.use_threading = bm->totedge >= BM_THREAD_LIMIT;
 
     BM_iter_parallel(bm, BM_FACES_OF_MESH, bm_face_calc_normals_cb, nullptr, &settings);
   }
@@ -642,7 +643,7 @@ static int bm_mesh_loops_calc_normals_for_loop(BMesh *bm,
         /* Code similar to accumulate_vertex_normals_poly_v3. */
         /* Calculate angle between the two face edges incident on this vertex. */
         const BMFace *f = lfan_pivot->f;
-        const float fac = saacos(dot_v3v3(vec_next, vec_curr));
+        const float fac = blender::math::safe_acos_approx(dot_v3v3(vec_next, vec_curr));
         const float *no = fnos ? fnos[BM_elem_index_get(f)] : f->no;
         /* Accumulate */
         madd_v3_v3fl(lnor, no, fac);
@@ -1355,7 +1356,7 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
                                        const bool do_rebuild,
                                        const float split_angle_cos)
 {
-  if (bm->totloop < BM_OMP_LIMIT) {
+  if (bm->totloop < BM_THREAD_LIMIT) {
     bm_mesh_loops_calc_normals__single_threaded(bm,
                                                 vcos,
                                                 fnos,

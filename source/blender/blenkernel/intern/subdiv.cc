@@ -14,17 +14,17 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_subdiv_modifier.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "subdiv_converter.hh"
 
-#include "opensubdiv_capi.h"
-#include "opensubdiv_converter_capi.h"
-#include "opensubdiv_evaluator_capi.h"
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_capi.hh"
+#include "opensubdiv_converter_capi.hh"
+#include "opensubdiv_evaluator_capi.hh"
+#include "opensubdiv_topology_refiner_capi.hh"
 
 /* --------------------------------------------------------------------
  * Module.

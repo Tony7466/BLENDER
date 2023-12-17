@@ -670,10 +670,10 @@ const EnumPropertyItem rna_enum_subdivision_boundary_smooth_items[] = {
 #  include "DNA_particle_types.h"
 
 #  include "BKE_cachefile.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_deform.h"
 #  include "BKE_mesh_runtime.hh"
-#  include "BKE_modifier.h"
+#  include "BKE_modifier.hh"
 #  include "BKE_object.hh"
 #  include "BKE_particle.h"
 
@@ -1070,9 +1070,9 @@ static void rna_MultiresModifier_level_range(
 static bool rna_MultiresModifier_external_get(PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-  return CustomData_external_test(&me->loop_data, CD_MDISPS);
+  return CustomData_external_test(&mesh->loop_data, CD_MDISPS);
 }
 
 static void rna_MultiresModifier_filepath_get(PointerRNA *ptr, char *value)

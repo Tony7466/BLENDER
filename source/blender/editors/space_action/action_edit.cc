@@ -32,7 +32,7 @@
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
@@ -43,6 +43,8 @@
 
 #include "UI_view2d.hh"
 
+#include "ANIM_animdata.hh"
+#include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
 #include "ED_anim_api.hh"
 #include "ED_gpencil_legacy.hh"
@@ -794,7 +796,7 @@ static void insert_grease_pencil_key(bAnimContext *ac,
   bool changed = false;
   if (hold_previous) {
     const FramesMapKey active_frame_number = layer->frame_key_at(current_frame_number);
-    if ((active_frame_number == -1) || (layer->frames().lookup(active_frame_number).is_null())) {
+    if ((active_frame_number == -1) || layer->frames().lookup(active_frame_number).is_null()) {
       /* There is no active frame to hold to, or it's a null frame. Therefore just insert a blank
        * frame. */
       changed = grease_pencil->insert_blank_frame(
@@ -822,6 +824,7 @@ static void insert_fcurve_key(bAnimContext *ac,
                               const AnimationEvalContext anim_eval_context,
                               eInsertKeyFlags flag)
 {
+  using namespace blender::animrig;
   FCurve *fcu = (FCurve *)ale->key_data;
 
   ReportList *reports = ac->reports;
@@ -838,16 +841,16 @@ static void insert_fcurve_key(bAnimContext *ac,
    *   (TODO: add the full-blown PointerRNA relative parsing case here...)
    */
   if (ale->id && !ale->owner) {
-    blender::animrig::insert_keyframe(ac->bmain,
-                                      reports,
-                                      ale->id,
-                                      nullptr,
-                                      ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                                      fcu->rna_path,
-                                      fcu->array_index,
-                                      &anim_eval_context,
-                                      eBezTriple_KeyframeType(ts->keyframe_type),
-                                      flag);
+    insert_keyframe(ac->bmain,
+                    reports,
+                    ale->id,
+                    nullptr,
+                    ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
+                    fcu->rna_path,
+                    fcu->array_index,
+                    &anim_eval_context,
+                    eBezTriple_KeyframeType(ts->keyframe_type),
+                    flag);
   }
   else {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -859,8 +862,9 @@ static void insert_fcurve_key(bAnimContext *ac,
     }
 
     const float curval = evaluate_fcurve(fcu, cfra);
-    insert_vert_fcurve(
-        fcu, cfra, curval, eBezTriple_KeyframeType(ts->keyframe_type), eInsertKeyFlags(0));
+    KeyframeSettings settings = get_keyframe_settings(true);
+    settings.keyframe_type = eBezTriple_KeyframeType(ts->keyframe_type);
+    insert_vert_fcurve(fcu, {cfra, curval}, settings, eInsertKeyFlags(0));
   }
 
   ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1109,7 +1113,7 @@ static bool delete_action_keys(bAnimContext *ac)
 
       /* Only delete curve too if it won't be doing anything anymore */
       if (BKE_fcurve_is_empty(fcu)) {
-        ANIM_fcurve_delete_from_animdata(ac, adt, fcu);
+        blender::animrig::animdata_fcurve_delete(ac, adt, fcu);
         ale->key_data = nullptr;
       }
     }
