@@ -162,7 +162,7 @@ static SnapCache_EditMesh *snap_object_data_editmesh_get(SnapObjectContext *sctx
   }
 
   if (init) {
-    /* Operators only update the editmesh corner_tris of the original mesh. */
+    /* Operators only update the editmesh looptris of the original mesh. */
     BLI_assert(em == BKE_editmesh_from_object(DEG_get_original_object(ob_eval)));
 
     em_cache->em = em;
@@ -184,14 +184,13 @@ static void snap_cache_tri_ensure(SnapCache_EditMesh *em_cache, SnapObjectContex
       BLI_assert(poly_to_tri_count(bm->totface, bm->totloop) == em->tottri);
 
       blender::BitVector<> elem_mask(em->tottri);
-      int corner_tris_num_active = BM_iter_mesh_bitmap_from_filter_tessface(
+      int looptris_num_active = BM_iter_mesh_bitmap_from_filter_tessface(
           bm,
           elem_mask,
           sctx->callbacks.edit_mesh.test_face_fn,
           sctx->callbacks.edit_mesh.user_data);
 
-      bvhtree_from_editmesh_corner_tris_ex(
-          &treedata, em, elem_mask, corner_tris_num_active, 0.0f, 4, 6);
+      bvhtree_from_editmesh_looptris_ex(&treedata, em, elem_mask, looptris_num_active, 0.0f, 4, 6);
     }
     else {
       /* Only cache if BVH-tree is created without a mask.
@@ -199,7 +198,7 @@ static void snap_cache_tri_ensure(SnapCache_EditMesh *em_cache, SnapObjectContex
       BKE_bvhtree_from_editmesh_get(&treedata,
                                     em,
                                     4,
-                                    BVHTREE_FROM_EM_corner_triS,
+                                    BVHTREE_FROM_EM_LOOPTRIS,
                                     /* WORKAROUND: avoid updating while transforming. */
                                     G.moving ? nullptr : &em_cache->mesh_runtime->bvh_cache,
                                     &em_cache->mesh_runtime->eval_mutex);
@@ -262,10 +261,10 @@ static SnapCache_EditMesh *editmesh_snapdata_init(SnapObjectContext *sctx,
  * \{ */
 
 /* Callback to ray-cast with back-face culling (#EditMesh). */
-static void editmesh_corner_tris_raycast_backface_culling_cb(void *userdata,
-                                                             int index,
-                                                             const BVHTreeRay *ray,
-                                                             BVHTreeRayHit *hit)
+static void editmesh_looptris_raycast_backface_culling_cb(void *userdata,
+                                                          int index,
+                                                          const BVHTreeRay *ray,
+                                                          BVHTreeRayHit *hit)
 {
   BMEditMesh *em = static_cast<BMEditMesh *>(userdata);
   const BMLoop **ltri = (const BMLoop **)em->looptris[index];
@@ -373,7 +372,7 @@ static bool raycastEditMesh(SnapCache_EditMesh *em_cache,
                              0.0f,
                              &hit,
                              sctx->runtime.params.use_backface_culling ?
-                                 editmesh_corner_tris_raycast_backface_culling_cb :
+                                 editmesh_looptris_raycast_backface_culling_cb :
                                  em_cache->raycast_callback,
                              em) != -1)
     {
