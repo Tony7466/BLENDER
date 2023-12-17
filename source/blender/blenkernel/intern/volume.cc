@@ -905,25 +905,6 @@ blender::bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, con
 }
 
 #ifdef WITH_OPENVDB
-struct ClearGridOp {
-  openvdb::GridBase &grid;
-
-  template<typename Grid> void operator()()
-  {
-    static_cast<Grid &>(grid).clear();
-  }
-};
-void BKE_volume_grid_clear_tree(openvdb::GridBase &grid)
-{
-  const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(grid);
-  ClearGridOp op{grid};
-  BKE_volume_grid_type_operation(grid_type, op);
-}
-void BKE_volume_grid_clear_tree(Volume & /*volume*/, blender::bke::VolumeGridData &volume_grid)
-{
-  blender::bke::VolumeTreeUser tree_user;
-  BKE_volume_grid_clear_tree(volume_grid.grid_for_write(tree_user));
-}
 
 VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid)
 {

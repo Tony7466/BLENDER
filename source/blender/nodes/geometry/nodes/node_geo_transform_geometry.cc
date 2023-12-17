@@ -165,7 +165,7 @@ static void transform_volume(GeoNodeExecParams &params,
     if (!BKE_volume_grid_determinant_valid(determinant)) {
       found_too_small_scale = true;
       /* Clear the tree because it is too small. */
-      BKE_volume_grid_clear_tree(volume, *volume_grid);
+      bke::volume_grid_fwd::clear_tree(*volume_grid);
       if (determinant == 0) {
         /* Reset rotation and scale. */
         grid_matrix.x_axis() = float3(1, 0, 0);

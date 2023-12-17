@@ -381,6 +381,12 @@ void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix)
       std::make_shared<openvdb::math::AffineMap>(matrix_openvdb));
 }
 
+void clear_tree(VolumeGridData &grid)
+{
+  VolumeTreeUser tree_user = grid.tree_user();
+  grid.grid_for_write(tree_user).clear();
+}
+
 }  // namespace volume_grid_fwd
 
 }  // namespace blender::bke

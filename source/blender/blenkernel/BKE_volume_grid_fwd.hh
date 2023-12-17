@@ -34,6 +34,7 @@ int get_channels_num(VolumeGridType type);
 void unload_tree_if_possible(const VolumeGridData &grid);
 float4x4 get_transform_matrix(const VolumeGridData &grid);
 void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix);
+void clear_tree(VolumeGridData &grid);
 
 }  // namespace volume_grid_fwd
 

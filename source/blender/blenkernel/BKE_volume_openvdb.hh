@@ -34,9 +34,6 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_grid_bounds(
 openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase::ConstPtr grid,
                                                               const blender::float4x4 &transform);
 
-void BKE_volume_grid_clear_tree(Volume &volume, blender::bke::VolumeGridData &volume_grid);
-void BKE_volume_grid_clear_tree(openvdb::GridBase &grid);
-
 VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid);
 
 template<typename OpType>
