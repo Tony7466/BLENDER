@@ -22,19 +22,18 @@
 
 namespace blender::geometry {
 
-const MultiValueMap<bke::GeometryComponent::Type, eAttrDomain> &reorder_supports()
+const MultiValueMap<bke::GeometryComponent::Type, eAttrDomain> &components_supported_reordering()
 {
-  const static MultiValueMap<bke::GeometryComponent::Type, eAttrDomain>
-      supported_types_and_domains = []() {
-        MultiValueMap<bke::GeometryComponent::Type, eAttrDomain> supported_types_and_domains;
+  using namespace bke;
+  const static MultiValueMap<GeometryComponent::Type, eAttrDomain> supported_types_and_domains =
+      []() {
+        MultiValueMap<GeometryComponent::Type, eAttrDomain> supported_types_and_domains;
         supported_types_and_domains.add_multiple(
-            bke::GeometryComponent::Type::Mesh,
+            GeometryComponent::Type::Mesh,
             {ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE});
-        supported_types_and_domains.add(bke::GeometryComponent::Type::Curve, ATTR_DOMAIN_CURVE);
-        supported_types_and_domains.add(bke::GeometryComponent::Type::PointCloud,
-                                        ATTR_DOMAIN_POINT);
-        supported_types_and_domains.add(bke::GeometryComponent::Type::Instance,
-                                        ATTR_DOMAIN_INSTANCE);
+        supported_types_and_domains.add(GeometryComponent::Type::Curve, ATTR_DOMAIN_CURVE);
+        supported_types_and_domains.add(GeometryComponent::Type::PointCloud, ATTR_DOMAIN_POINT);
+        supported_types_and_domains.add(GeometryComponent::Type::Instance, ATTR_DOMAIN_INSTANCE);
         return supported_types_and_domains;
       }();
   return supported_types_and_domains;
@@ -71,15 +70,6 @@ static void reorder_attributes_group_to_group(const bke::AttributeAccessor src_a
       });
 }
 
-static void reorder_offset_indices(const Span<int> old_offsets,
-                                   const Span<int> old_by_new_map,
-                                   MutableSpan<int> new_offsets)
-{
-
-  offset_indices::gather_group_sizes(old_offsets, old_by_new_map, new_offsets);
-  offset_indices::accumulate_counts_to_offsets(new_offsets);
-}
-
 static void reorder_attributes(const bke::AttributeAccessor src_attributes,
                                const eAttrDomain domain,
                                const Span<int> old_by_new_map,
@@ -103,11 +93,13 @@ static void reorder_mesh_verts(const Mesh &src_mesh,
                                const Span<int> old_by_new_map,
                                Mesh &dst_mesh)
 {
-  reorder_attributes(
-      src_mesh.attributes(), ATTR_DOMAIN_POINT, old_by_new_map, dst_mesh.attributes_for_write());
-
+  bke::gather_attributes(src_mesh.attributes(),
+                         ATTR_DOMAIN_POINT,
+                         {},
+                         {},
+                         old_by_new_map,
+                         dst_mesh.attributes_for_write());
   const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
-
   array_utils::gather(new_by_old_map.as_span(),
                       dst_mesh.edges().cast<int>(),
                       dst_mesh.edges_for_write().cast<int>());
@@ -119,11 +111,13 @@ static void reorder_mesh_edges(const Mesh &src_mesh,
                                const Span<int> old_by_new_map,
                                Mesh &dst_mesh)
 {
-  reorder_attributes(
-      src_mesh.attributes(), ATTR_DOMAIN_EDGE, old_by_new_map, dst_mesh.attributes_for_write());
-
+  bke::gather_attributes(src_mesh.attributes(),
+                         ATTR_DOMAIN_EDGE,
+                         {},
+                         {},
+                         old_by_new_map,
+                         dst_mesh.attributes_for_write());
   const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
-
   array_utils::gather(
       new_by_old_map.as_span(), dst_mesh.corner_edges(), dst_mesh.corner_edges_for_write());
 }
@@ -132,13 +126,16 @@ static void reorder_mesh_faces(const Mesh &src_mesh,
                                const Span<int> old_by_new_map,
                                Mesh &dst_mesh)
 {
-  reorder_attributes(
-      src_mesh.attributes(), ATTR_DOMAIN_FACE, old_by_new_map, dst_mesh.attributes_for_write());
-
+  bke::gather_attributes(src_mesh.attributes(),
+                         ATTR_DOMAIN_FACE,
+                         {},
+                         {},
+                         old_by_new_map,
+                         dst_mesh.attributes_for_write());
   const Span<int> old_offsets = src_mesh.face_offsets();
   MutableSpan<int> new_offsets = dst_mesh.face_offsets_for_write();
-  reorder_offset_indices(old_offsets, old_by_new_map, new_offsets);
-
+  offset_indices::gather_group_sizes(old_offsets, old_by_new_map, new_offsets);
+  offset_indices::accumulate_counts_to_offsets(new_offsets);
   reorder_attributes_group_to_group(src_mesh.attributes(),
                                     ATTR_DOMAIN_CORNER,
                                     old_offsets,
@@ -173,11 +170,12 @@ static void reorder_points(const PointCloud &src_pointcloud,
                            const Span<int> old_by_new_map,
                            PointCloud &dst_pointcloud)
 {
-  reorder_attributes(src_pointcloud.attributes(),
-                     ATTR_DOMAIN_POINT,
-                     old_by_new_map,
-                     dst_pointcloud.attributes_for_write());
-
+  bke::gather_attributes(src_pointcloud.attributes(),
+                         ATTR_DOMAIN_POINT,
+                         {},
+                         {},
+                         old_by_new_map,
+                         dst_pointcloud.attributes_for_write());
   dst_pointcloud.tag_positions_changed();
   dst_pointcloud.tag_radii_changed();
 }
@@ -186,14 +184,17 @@ static void reorder_curves(const bke::CurvesGeometry &src_curves,
                            const Span<int> old_by_new_map,
                            bke::CurvesGeometry &dst_curves)
 {
-  reorder_attributes(src_curves.attributes(),
-                     ATTR_DOMAIN_CURVE,
-                     old_by_new_map,
-                     dst_curves.attributes_for_write());
+  bke::gather_attributes(src_curves.attributes(),
+                         ATTR_DOMAIN_CURVE,
+                         {},
+                         {},
+                         old_by_new_map,
+                         dst_curves.attributes_for_write());
 
   const Span<int> old_offsets = src_curves.offsets();
   MutableSpan<int> new_offsets = dst_curves.offsets_for_write();
-  reorder_offset_indices(old_offsets, old_by_new_map, new_offsets);
+  offset_indices::gather_group_sizes(old_offsets, old_by_new_map, new_offsets);
+  offset_indices::accumulate_counts_to_offsets(new_offsets);
 
   reorder_attributes_group_to_group(src_curves.attributes(),
                                     ATTR_DOMAIN_POINT,
@@ -208,10 +209,12 @@ static void reorder_instaces(const bke::Instances &src_instances,
                              const Span<int> old_by_new_map,
                              bke::Instances &dst_instances)
 {
-  reorder_attributes(src_instances.attributes(),
-                     ATTR_DOMAIN_INSTANCE,
-                     old_by_new_map,
-                     dst_instances.attributes_for_write());
+  bke::gather_attributes(src_instances.attributes(),
+                         ATTR_DOMAIN_INSTANCE,
+                         {},
+                         {},
+                         old_by_new_map,
+                         dst_instances.attributes_for_write());
 
   const Span<int> old_reference_handles = src_instances.reference_handles();
   MutableSpan<int> new_reference_handles = dst_instances.reference_handles();

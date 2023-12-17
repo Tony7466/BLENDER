@@ -167,10 +167,8 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
 
   if (group_id.is_single()) {
     mask.to_indices<int>(gathered_indices);
-
     weight_span.reinitialize(domain_size);
     array_utils::copy(weight, mask, weight_span.as_mutable_span());
-
     grouped_sort(Span({0, int(mask.size())}), weight_span, gathered_indices);
   }
   else {
@@ -222,7 +220,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eAttrDomain domain = eAttrDomain(params.node().custom1);
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    for (const auto [type, domains] : geometry::reorder_supports().items()) {
+    for (const auto [type, domains] : geometry::components_supported_reordering().items()) {
       if (!domains.contains(domain)) {
         continue;
       }
