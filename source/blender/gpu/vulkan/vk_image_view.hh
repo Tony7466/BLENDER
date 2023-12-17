@@ -28,7 +28,7 @@ class VKImageView : NonCopyable {
   IndexRange layer_range_;
 
  public:
-  VKImageView(VkImageViewCreateInfo &vk_image_view_info_,
+  VKImageView(const VkImageViewCreateInfo &vk_image_view_info_,
               bool use_stencil,
               IndexRange mip_range,
               IndexRange layer_range);
@@ -47,7 +47,7 @@ class VKImageView : NonCopyable {
   }
 
  protected:
-  bool check_srgb(VkFormat vk_format) const
+  bool has_format(VkFormat vk_format) const
   {
     return vk_format_ == vk_format;
   }
@@ -67,5 +67,8 @@ class VKImageView : NonCopyable {
     return mip_range_ == range;
   }
 };
-
+void vk_image_view_info_fill(VkImageViewCreateInfo &vk_image_view_info,
+                                    bool use_stencil,
+                                    IndexRange mip_range,
+                                    IndexRange layer_range);
 }  // namespace blender::gpu

@@ -429,10 +429,8 @@ void VKFrameBuffer::render_pass_create()
   GPUAttachmentType first_attachment = GPU_FB_MAX_ATTACHMENT;
 
   std::array<VkAttachmentDescription, GPU_FB_MAX_ATTACHMENT> attachment_descriptions;
-  Vector<VkImageView> attachment_views_;
+  Vector<VkImageView> attachment_views;
   std::array<VkAttachmentReference, GPU_FB_MAX_ATTACHMENT> attachment_references;
-  attachment_views_.clear();
-
   bool has_depth_attachment = false;
   bool found_attachment = false;
   int depth_location = -1;
@@ -470,7 +468,7 @@ void VKFrameBuffer::render_pass_create()
       /* Ensure texture is allocated to ensure the image view. */
       VKTexture &texture = *static_cast<VKTexture *>(unwrap(attachment.tex));
       image_view_ensure(attachment, ++view_order);
-      attachment_views_.append(image_views_[view_order].lock()->vk_handle());
+      attachment_views.append(image_views_[view_order].lock()->vk_handle());
 
       VkAttachmentDescription &attachment_description = attachment_descriptions[view_order];
       attachment_description.flags = 0;
@@ -539,7 +537,7 @@ void VKFrameBuffer::render_pass_create()
   framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   framebuffer_create_info.renderPass = vk_render_pass_;
   framebuffer_create_info.attachmentCount = view_order;
-  framebuffer_create_info.pAttachments = attachment_views_.data();
+  framebuffer_create_info.pAttachments = attachment_views.data();
   framebuffer_create_info.width = width_;
   framebuffer_create_info.height = height_;
   framebuffer_create_info.layers = 1;

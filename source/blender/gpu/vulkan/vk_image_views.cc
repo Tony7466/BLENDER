@@ -85,7 +85,7 @@ std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
     need_create = true;
   }
   else {
-    need_create |= !image_view->check_srgb(vk_image_view_info_.format);
+    need_create |= !image_view->has_format(vk_image_view_info_.format);
     need_create |= !image_view->check_eq(use_stencil);
     if (image_type_ & IMAGE_TYPE_ARRAY) {
       need_create |= !image_view->check_eq(vk_image_view_info_.viewType);
@@ -100,6 +100,7 @@ std::weak_ptr<VKImageView> VKImageViews::lookup_vk_handle(VKTexture &texture,
 
   if (need_create) {
     vk_image_view_info_.image = vk_image_ref_;
+    vk_image_view_info_fill(vk_image_view_info_, use_stencil, mip_range, layer_range);
     image_views_[location] = std::shared_ptr<VKImageView>(
         new VKImageView(vk_image_view_info_, use_stencil, mip_range, layer_range));
     debug::object_label(image_views_[location]->vk_handle(), name.c_str());

@@ -29,7 +29,7 @@ class VKImageView;
  */
 class VKImageViews {
  private:
-  enum class Location : uint8_t { SHADER_BINDING, ATTCHMENT, LOCATION_ALL };
+  enum class Location : uint8_t { SHADER_BINDING, ATTCHMENT, VK_IMAGE_VIEW_LOCATION_MAX };
   /**
    * Types for restriction
    *
@@ -40,14 +40,14 @@ class VKImageViews {
    * ARRAY : there is a variation of the Viewtype
    */
   enum ImageType {
-    IMAGE_TYPE_BASIC,
+    IMAGE_TYPE_BASIC = 0,
     IMAGE_TYPE_MULTI_LAYERS = 1,
     IMAGE_TYPE_MIPMAPS = 1 << 2,
     IMAGE_TYPE_ARRAY = 1 << 3
   };
   VkImage vk_image_ref_ = VK_NULL_HANDLE;
   ImageType image_type_;
-  std::array<std::shared_ptr<VKImageView>, static_cast<size_t>(Location::LOCATION_ALL)>
+  std::array<std::shared_ptr<VKImageView>, static_cast<size_t>(Location::VK_IMAGE_VIEW_LOCATION_MAX)>
       image_views_;
   VkComponentMapping vk_component_mapping_ = {VK_COMPONENT_SWIZZLE_IDENTITY,
                                               VK_COMPONENT_SWIZZLE_IDENTITY,
