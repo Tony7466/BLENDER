@@ -15,7 +15,6 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_node_socket_value.hh"
-#include "BKE_volume_grid_fwd.hh"
 
 #include "DNA_node_types.h"
 
@@ -89,11 +88,6 @@ class GeoNodeExecParams {
   static inline constexpr bool is_field_base_type_v =
       is_same_any_v<T, float, int, bool, ColorGeometry4f, float3, std::string, math::Quaternion>;
 
-  template<typename T>
-  static inline constexpr bool stored_as_SocketValueVariant_v =
-      is_field_base_type_v<T> || fn::is_field_v<T> || bke::is_VolumeGrid_v<T> ||
-      is_same_any_v<T, GField, bke::GVolumeGrid>;
-
   /**
    * Get the input value for the input socket with the given identifier.
    *
@@ -101,7 +95,9 @@ class GeoNodeExecParams {
    */
   template<typename T> T extract_input(StringRef identifier)
   {
-    if constexpr (stored_as_SocketValueVariant_v<T>) {
+    if constexpr (is_field_base_type_v<T> || fn::is_field_v<T> ||
+                  std::is_same_v<std::decay_t<T>, GField>)
+    {
       SocketValueVariant value_variant = this->extract_input<SocketValueVariant>(identifier);
       return value_variant.extract<T>();
     }
@@ -130,7 +126,9 @@ class GeoNodeExecParams {
    */
   template<typename T> T get_input(StringRef identifier) const
   {
-    if constexpr (stored_as_SocketValueVariant_v<T>) {
+    if constexpr (is_field_base_type_v<T> || fn::is_field_v<T> ||
+                  std::is_same_v<std::decay_t<T>, GField>)
+    {
       auto value_variant = this->get_input<SocketValueVariant>(identifier);
       return value_variant.extract<T>();
     }
@@ -157,7 +155,9 @@ class GeoNodeExecParams {
   template<typename T> void set_output(StringRef identifier, T &&value)
   {
     using StoredT = std::decay_t<T>;
-    if constexpr (stored_as_SocketValueVariant_v<StoredT>) {
+    if constexpr (is_field_base_type_v<StoredT> || fn::is_field_v<StoredT> ||
+                  std::is_same_v<StoredT, GField>)
+    {
       SocketValueVariant value_variant(std::forward<T>(value));
       this->set_output(identifier, std::move(value_variant));
     }

@@ -22,10 +22,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-namespace blender::nodes::node_geo_points_to_volume_cc {
-
 #ifdef WITH_OPENVDB
-
+namespace blender::nodes {
 static void gather_point_data_from_component(Field<float> radius_field,
                                              const GeometryComponent &component,
                                              Vector<float3> &r_positions,
@@ -82,14 +80,10 @@ static void convert_to_grid_index_space(const float voxel_size,
   }
 }
 
-/**
- * Initializes the VolumeComponent of a GeometrySet with a new Volume from points.
- * The grid class should be either openvdb::GRID_FOG_VOLUME or openvdb::GRID_LEVEL_SET.
- */
-static void initialize_volume_component_from_points(GeoNodeExecParams &params,
-                                                    const NodeGeometryPointsToVolume &storage,
-                                                    GeometrySet &r_geometry_set,
-                                                    openvdb::GridClass gridClass)
+void initialize_volume_component_from_points(GeoNodeExecParams &params,
+                                             const NodeGeometryPointsToVolume &storage,
+                                             GeometrySet &r_geometry_set,
+                                             openvdb::GridClass gridClass)
 {
   Vector<float3> positions;
   Vector<float> radii;
@@ -143,8 +137,10 @@ static void initialize_volume_component_from_points(GeoNodeExecParams &params,
   r_geometry_set.keep_only_during_modify({GeometryComponent::Type::Volume});
   r_geometry_set.replace_volume(volume);
 }
+}  // namespace blender::nodes
+#endif
 
-#endif /* WITH_OPENVDB */
+namespace blender::nodes::node_geo_points_to_volume_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryPointsToVolume)
 
@@ -213,7 +209,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
   params.set_output("Volume", std::move(geometry_set));
 #else
-  node_geo_exec_with_missing_openvdb(params);
+  params.set_default_remaining_outputs();
+  params.error_message_add(NodeWarningType::Error,
+                           TIP_("Disabled, Blender was compiled without OpenVDB"));
 #endif
 }
 

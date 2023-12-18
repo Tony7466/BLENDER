@@ -1882,13 +1882,6 @@ typedef struct NodeGeometryDistributePointsInVolume {
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
 
-typedef struct NodeGeometrySampleGrid {
-  /** #eCustomDataType. */
-  int8_t data_type;
-  /** #GeometryNodeSampleGridInterpolationMode */
-  int8_t interpolation_mode;
-} NodeGeometrySampleGrid;
-
 typedef struct NodeFunctionCompare {
   /** #NodeCompareOperation */
   int8_t operation;
@@ -2807,18 +2800,6 @@ typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_UNIFORM = 0,
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
-
-typedef enum GeometryNodeSampleGridInterpolationMode {
-  GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST = 0,
-  GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR = 1,
-  GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRIQUADRATIC = 2,
-} GeometryNodeSampleGridInterpolationMode;
-
-typedef enum GeometryNodeGridNeighborTopology {
-  GEO_NODE_GRID_NEIGHBOR_FACE = 0,
-  GEO_NODE_GRID_NEIGHBOR_FACE_EDGE = 1,
-  GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX = 2,
-} GeometryNodeGridNeighborTopology;
 
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,

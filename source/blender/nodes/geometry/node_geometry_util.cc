@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
-#include "node_geometry_openvdb_util.hh"
 #include "node_util.hh"
 
 #include "DNA_mesh_types.h"
@@ -15,7 +14,6 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
 #include "BKE_pointcloud.h"
-#include "BKE_volume.hh"
 
 #include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
@@ -94,48 +92,6 @@ const EnumPropertyItem *domain_without_corner_experimental_grease_pencil_version
 }
 
 }  // namespace enums
-
-bool grid_type_supported(const eCustomDataType data_type)
-{
-  return ELEM(data_type, CD_PROP_FLOAT, CD_PROP_FLOAT3);
-}
-
-const EnumPropertyItem *grid_type_items_fn(bContext * /*C*/,
-                                           PointerRNA * /*ptr*/,
-                                           PropertyRNA * /*prop*/,
-                                           bool *r_free)
-{
-  *r_free = true;
-  return enum_items_filter(rna_enum_attribute_type_items,
-                           [](const EnumPropertyItem &item) -> bool {
-                             return enums::generic_attribute_type_supported(item) &&
-                                    grid_type_supported(eCustomDataType(item.value));
-                           });
-}
-
-#ifdef WITH_OPENVDB
-openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
-    GeometryNodeGridNeighborTopology neighbors_mode)
-{
-  switch (neighbors_mode) {
-    case GEO_NODE_GRID_NEIGHBOR_FACE:
-      return openvdb::tools::NearestNeighbors::NN_FACE;
-    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE:
-      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE;
-    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX:
-      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE_VERTEX;
-  }
-  BLI_assert_unreachable();
-  return openvdb::tools::NearestNeighbors::NN_FACE;
-}
-#endif /* WITH_OPENVDB */
-
-void node_geo_exec_with_missing_openvdb(GeoNodeExecParams &params)
-{
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
-}
 
 }  // namespace blender::nodes
 
