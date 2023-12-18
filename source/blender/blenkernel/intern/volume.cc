@@ -587,7 +587,6 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
         result = blender::bounds::merge(result,
                                         BKE_volume_grid_bounds(volume_grid->grid_ptr(tree_user)));
       }
-      volume_grid->unload_tree_if_possible();
     }
     return result;
   }
