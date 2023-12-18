@@ -3903,10 +3903,20 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bCont
   return items;
 }
 
-static bNode *find_node_by_enum_item(PointerRNA *ptr)
+static bNode *find_node_by_enum_definition(bNodeTree *ntree, const NodeEnumDefinition *enum_def)
 {
-  const NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ntree->ensure_topology_cache();
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
+    NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
+    if (&storage->enum_definition == enum_def) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+static bNode *find_node_by_enum_item(bNodeTree *ntree, const NodeEnumItem *item)
+{
   ntree->ensure_topology_cache();
   for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
     NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
@@ -3917,10 +3927,8 @@ static bNode *find_node_by_enum_item(PointerRNA *ptr)
   return nullptr;
 }
 
-static NodeEnumDefinition *find_enum_definition_by_item(PointerRNA *ptr)
+static NodeEnumDefinition *find_enum_definition_by_item(bNodeTree *ntree, const NodeEnumItem *item)
 {
-  const NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   ntree->ensure_topology_cache();
   for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
     NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
@@ -3931,19 +3939,30 @@ static NodeEnumDefinition *find_enum_definition_by_item(PointerRNA *ptr)
   return nullptr;
 }
 
+/* Tag the node owning the enum definition to ensure propagation of the enum. */
+static void rna_NodeEnumDefinition_tag_changed(bNodeTree *ntree, NodeEnumDefinition *enum_def)
+{
+  bNode *node = find_node_by_enum_definition(ntree, enum_def);
+  BLI_assert(node != nullptr);
+  BKE_ntree_update_tag_node_property(ntree, node);
+}
+
 static void rna_NodeEnumItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = find_node_by_enum_item(ptr);
+  const NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
+  bNode *node = find_node_by_enum_item(ntree, item);
   BLI_assert(node != nullptr);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
 static void rna_NodeEnumItem_name_set(PointerRNA *ptr, const char *value)
 {
-  NodeEnumDefinition *enum_def = find_enum_definition_by_item(ptr);
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
+  NodeEnumDefinition *enum_def = find_enum_definition_by_item(ntree, item);
   enum_def->set_item_name(*item, value);
+  rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
 }
 
 static NodeEnumItem *rna_NodeEnumDefinition_new(
@@ -3955,6 +3974,7 @@ static NodeEnumItem *rna_NodeEnumDefinition_new(
   }
   else {
     bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
@@ -3969,6 +3989,7 @@ static void rna_NodeEnumDefinition_remove(
   }
   else {
     bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
@@ -3978,6 +3999,7 @@ static void rna_NodeEnumDefinition_clear(ID *id, NodeEnumDefinition *enum_def, M
 {
   enum_def->clear();
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
@@ -3987,6 +4009,7 @@ static void rna_NodeEnumDefinition_move(
 {
   enum_def->move_item(from_index, to_index);
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }

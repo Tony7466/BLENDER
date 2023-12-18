@@ -43,7 +43,6 @@ NodeEnumItem *NodeEnumDefinition::add_item(blender::StringRef name)
   this->items_num++;
   MEM_SAFE_FREE(old_items);
 
-  this->flag |= NODE_ENUM_DEFINITION_CHANGED;
   return &new_item;
 }
 
@@ -64,7 +63,6 @@ bool NodeEnumDefinition::remove_item(NodeEnumItem &item)
   this->items_num--;
   MEM_SAFE_FREE(old_items);
 
-  this->flag |= NODE_ENUM_DEFINITION_CHANGED;
   return true;
 }
 
@@ -75,8 +73,6 @@ void NodeEnumDefinition::clear()
   }
   this->items_num = 0;
   MEM_SAFE_FREE(this->items_array);
-
-  this->flag |= NODE_ENUM_DEFINITION_CHANGED;
 }
 
 bool NodeEnumDefinition::move_item(uint16_t from_index, uint16_t to_index)
@@ -98,7 +94,6 @@ bool NodeEnumDefinition::move_item(uint16_t from_index, uint16_t to_index)
   }
   this->items_array[to_index] = tmp;
 
-  this->flag |= NODE_ENUM_DEFINITION_CHANGED;
   return true;
 }
 
@@ -154,6 +149,4 @@ void NodeEnumDefinition::set_item_name(NodeEnumItem &item, blender::StringRef na
 
   MEM_SAFE_FREE(item.name);
   item.name = BLI_strdup(unique_name);
-
-  this->flag |= NODE_ENUM_DEFINITION_CHANGED;
 }
