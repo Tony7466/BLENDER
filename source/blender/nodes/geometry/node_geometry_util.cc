@@ -130,6 +130,13 @@ openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
 }
 #endif /* WITH_OPENVDB */
 
+void node_geo_exec_with_missing_openvdb(GeoNodeExecParams &params)
+{
+  params.set_default_remaining_outputs();
+  params.error_message_add(NodeWarningType::Error,
+                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+}
+
 }  // namespace blender::nodes
 
 bool geo_node_poll_default(const bNodeType * /*ntype*/,

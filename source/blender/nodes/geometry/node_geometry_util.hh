@@ -132,4 +132,6 @@ const EnumPropertyItem *grid_type_items_fn(bContext *C,
                                            PropertyRNA *prop,
                                            bool *r_free);
 
+void node_geo_exec_with_missing_openvdb(GeoNodeExecParams &params);
+
 }  // namespace blender::nodes

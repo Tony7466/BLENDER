@@ -51,6 +51,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = CD_PROP_FLOAT;
 }
 
+#ifdef WITH_OPENVDB
+
 static void try_store_grid(GeoNodeExecParams params, Volume *volume)
 {
   BLI_assert(volume);
@@ -72,7 +74,6 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-#ifdef WITH_OPENVDB
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
   Volume *volume = geometry_set.get_volume_for_write();
   if (!volume) {
@@ -83,12 +84,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   try_store_grid(params, volume);
 
   params.set_output("Volume", geometry_set);
-#else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
-#endif
 }
+
+#else /* WITH_OPENVDB */
+
+static void node_geo_exec(GeoNodeExecParams params)
+{
+  node_geo_exec_with_missing_openvdb(params);
+}
+
+#endif /* WITH_OPENVDB */
 
 static void node_rna(StructRNA *srna)
 {

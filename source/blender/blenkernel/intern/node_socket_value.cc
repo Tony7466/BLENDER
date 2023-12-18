@@ -22,8 +22,14 @@
 namespace blender::bke {
 
 template<typename T, typename U>
-static constexpr bool is_single_or_field_or_grid_v =
-    is_same_any_v<T, U, fn::Field<U>, VolumeGrid<U>>;
+static constexpr bool is_single_or_field_or_grid_v = is_same_any_v<T,
+                                                                   U,
+                                                                   fn::Field<U>
+#ifdef WITH_OPENVDB
+                                                                   ,
+                                                                   VolumeGrid<U>
+#endif
+                                                                   >;
 
 /**
  * Very fast (compile-time) conversion from a static C++ type to the corresponding socket type.
@@ -54,6 +60,7 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
   return std::nullopt;
 }
 
+#ifdef WITH_OPENVDB
 static std::optional<eNodeSocketDatatype> grid_type_to_socket_type(const VolumeGridType grid_type)
 {
   switch (grid_type) {
@@ -86,6 +93,7 @@ static std::optional<VolumeGridType> socket_type_to_grid_type(
       return std::nullopt;
   }
 }
+#endif /* WITH_OPENVDB */
 
 template<typename T> T SocketValueVariant::extract()
 {
@@ -113,6 +121,7 @@ template<typename T> T SocketValueVariant::extract()
     BLI_assert(socket_type_ == static_type_to_socket_type<typename T::base_type>());
     return T(this->extract<fn::GField>());
   }
+#ifdef WITH_OPENVDB
   else if constexpr (std::is_same_v<T, GVolumeGrid>) {
     switch (kind_) {
       case Kind::Grid: {
@@ -134,6 +143,7 @@ template<typename T> T SocketValueVariant::extract()
     BLI_assert(socket_type_ == static_type_to_socket_type<typename T::base_type>());
     return this->extract<GVolumeGrid>().typed<typename T::base_type>();
   }
+#endif
   else {
     BLI_assert(socket_type_ == static_type_to_socket_type<T>());
     if (kind_ == Kind::Single) {
@@ -172,6 +182,7 @@ template<typename T> void SocketValueVariant::store_impl(T value)
     /* Always store #Field<T> as #GField. */
     this->store_impl<fn::GField>(std::move(value));
   }
+#ifdef WITH_OPENVDB
   else if constexpr (std::is_same_v<T, GVolumeGrid>) {
     const VolumeGridType volume_grid_type = value->grid_type();
     const std::optional<eNodeSocketDatatype> new_socket_type = grid_type_to_socket_type(
@@ -184,6 +195,7 @@ template<typename T> void SocketValueVariant::store_impl(T value)
   else if constexpr (is_VolumeGrid_v<T>) {
     this->store_impl<GVolumeGrid>(std::move(value));
   }
+#endif
   else {
     const std::optional<eNodeSocketDatatype> new_socket_type = static_type_to_socket_type<T>();
     BLI_assert(new_socket_type);
@@ -340,10 +352,16 @@ bool SocketValueVariant::valid_for_socket(eNodeSocketDatatype socket_type) const
   template TYPE SocketValueVariant::get() const; \
   template void SocketValueVariant::store_impl(TYPE);
 
-#define INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(TYPE) \
-  INSTANTIATE(TYPE) \
-  INSTANTIATE(fn::Field<TYPE>) \
-  INSTANTIATE(VolumeGrid<TYPE>)
+#ifdef WITH_OPENVDB
+#  define INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(TYPE) \
+    INSTANTIATE(TYPE) \
+    INSTANTIATE(fn::Field<TYPE>) \
+    INSTANTIATE(VolumeGrid<TYPE>)
+#else
+#  define INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(TYPE) \
+    INSTANTIATE(TYPE) \
+    INSTANTIATE(fn::Field<TYPE>)
+#endif
 
 INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(int)
 INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(bool)
@@ -354,6 +372,9 @@ INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(blender::math::Quaternion)
 
 INSTANTIATE(std::string)
 INSTANTIATE(fn::GField)
+
+#ifdef WITH_OPENVDB
 INSTANTIATE(GVolumeGrid)
+#endif
 
 }  // namespace blender::bke

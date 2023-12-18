@@ -2,14 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_volume_grid_file_cache.hh"
-#include "BKE_volume_openvdb.hh"
-
-#include "BLI_map.hh"
-
 #ifdef WITH_OPENVDB
+
+#  include "BKE_volume_grid_file_cache.hh"
+#  include "BKE_volume_openvdb.hh"
+
+#  include "BLI_map.hh"
+
 #  include <openvdb/openvdb.h>
-#endif
 
 namespace blender::bke::volume_grid::file_cache {
 
@@ -225,3 +225,5 @@ void unload_unused()
 }
 
 }  // namespace blender::bke::volume_grid::file_cache
+
+#endif /* WITH_OPENVDB */

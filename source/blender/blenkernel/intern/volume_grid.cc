@@ -7,9 +7,13 @@
 
 #include "BLI_task.hh"
 
-#include <openvdb/Grid.h>
+#ifdef WITH_OPENVDB
+#  include <openvdb/Grid.h>
+#endif
 
 namespace blender::bke::volume_grid {
+
+#ifdef WITH_OPENVDB
 
 /**
  * Multiple #VolumeDataGrid can implictly share the same underlying tree with different
@@ -324,26 +328,6 @@ VolumeGridData &GVolumeGrid::get_for_write()
   return const_cast<VolumeGridData &>(*data_);
 }
 
-std::string get_name(const VolumeGridData &volume_grid)
-{
-#ifdef WITH_OPENVDB
-  return volume_grid.name();
-#else
-  UNUSED_VARS(volume_grid);
-  return "density";
-#endif
-}
-
-VolumeGridType get_type(const VolumeGridData &volume_grid)
-{
-#ifdef WITH_OPENVDB
-  return volume_grid.grid_type();
-#else
-  UNUSED_VARS(volume_grid);
-#endif
-  return VOLUME_GRID_UNKNOWN;
-}
-
 VolumeGridType get_type(const openvdb::GridBase &grid)
 {
   if (grid.isType<openvdb::FloatGrid>()) {
@@ -379,6 +363,28 @@ VolumeGridType get_type(const openvdb::GridBase &grid)
   return VOLUME_GRID_UNKNOWN;
 }
 
+#endif /* WITH_OPENVDB */
+
+std::string get_name(const VolumeGridData &volume_grid)
+{
+#ifdef WITH_OPENVDB
+  return volume_grid.name();
+#else
+  UNUSED_VARS(volume_grid);
+  return "density";
+#endif
+}
+
+VolumeGridType get_type(const VolumeGridData &volume_grid)
+{
+#ifdef WITH_OPENVDB
+  return volume_grid.grid_type();
+#else
+  UNUSED_VARS(volume_grid);
+#endif
+  return VOLUME_GRID_UNKNOWN;
+}
+
 int get_channels_num(const VolumeGridType type)
 {
   switch (type) {
@@ -402,11 +408,16 @@ int get_channels_num(const VolumeGridType type)
 
 void unload_tree_if_possible(const VolumeGridData &grid)
 {
+#ifdef WITH_OPENVDB
   grid.unload_tree_if_possible();
+#else
+  UNUSED_VARS(grid);
+#endif
 }
 
 float4x4 get_transform_matrix(const VolumeGridData &grid)
 {
+#ifdef WITH_OPENVDB
   const openvdb::math::Transform &transform = grid.transform();
 
   /* Perspective not supported for now, getAffineMap() will leave out the
@@ -420,10 +431,15 @@ float4x4 get_transform_matrix(const VolumeGridData &grid)
     }
   }
   return result;
+#else
+  UNUSED_VARS(grid);
+  return float4x4::identity();
+#endif
 }
 
 void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix)
 {
+#ifdef WITH_OPENVDB
   openvdb::math::Mat4f matrix_openvdb;
   for (int col = 0; col < 4; col++) {
     for (int row = 0; row < 4; row++) {
@@ -433,29 +449,50 @@ void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix)
 
   grid.transform_for_write() = openvdb::math::Transform(
       std::make_shared<openvdb::math::AffineMap>(matrix_openvdb));
+#else
+  UNUSED_VARS(grid, matrix);
+#endif
 }
 
 void clear_tree(VolumeGridData &grid)
 {
+#ifdef WITH_OPENVDB
   VolumeTreeAccessToken access_token = grid.tree_access_token();
   grid.grid_for_write(access_token).clear();
+#else
+  UNUSED_VARS(grid);
+#endif
 }
 
 bool is_loaded(const VolumeGridData &grid)
 {
+#ifdef WITH_OPENVDB
   return grid.is_loaded();
+#else
+  UNUSED_VARS(grid);
+  return false;
+#endif
 }
 
 void load(const VolumeGridData &grid)
 {
+#ifdef WITH_OPENVDB
   VolumeTreeAccessToken access_token = grid.tree_access_token();
   /* Just "touch" the grid, so that it is loaded. */
   grid.grid(access_token);
+#else
+  UNUSED_VARS(grid);
+#endif
 }
 
 std::string error_message_from_load(const VolumeGridData &grid)
 {
+#ifdef WITH_OPENVDB
   return grid.error_message();
+#else
+  UNUSED_VARS(grid);
+  return "";
+#endif
 }
 
 }  // namespace blender::bke::volume_grid

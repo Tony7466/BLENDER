@@ -399,7 +399,6 @@ if(WITH_OPENSUBDIV)
   )
   add_definitions(-DWITH_OPENSUBDIV)
 endif()
-
 if(WITH_OPENVDB)
   list(APPEND INC
     ../../../../intern/openvdb
@@ -407,8 +406,11 @@ if(WITH_OPENVDB)
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
-
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+endif()
+
+if(WITH_OPENVDB)
+  add_definitions(-DWITH_OPENVDB)
 
   if(WITH_OPENVDB_BLOSC)
     add_definitions(-DWITH_OPENVDB_BLOSC)
@@ -439,10 +441,6 @@ if(WITH_GMP)
   add_definitions(-DWITH_GMP)
 endif()
 
-if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
-endif()
-
 # Build makesrna executable
 add_cc_flags_custom_test(makesrna)
 
@@ -456,13 +454,6 @@ target_link_libraries(makesrna PRIVATE bf_dna)
 target_link_libraries(makesrna PRIVATE bf::intern::atomic)
 target_link_libraries(makesrna PRIVATE bf::intern::guardedalloc)
 target_link_libraries(makesrna PRIVATE bf_dna_blenlib)
-
-if(WITH_TBB)
-  target_link_libraries(makesrna PRIVATE ${TBB_LIBRARIES})
-endif()
-if(WITH_OPENVDB)
-  target_link_libraries(makesrna PRIVATE ${OPENVDB_LIBRARIES})
-endif()
 
 if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)

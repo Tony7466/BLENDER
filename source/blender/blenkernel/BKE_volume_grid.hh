@@ -8,6 +8,8 @@
  * \ingroup bke
  */
 
+#include "BKE_volume_grid_fwd.hh"
+
 #ifdef WITH_OPENVDB
 
 #  include <atomic>
@@ -15,7 +17,6 @@
 #  include <mutex>
 
 #  include "BKE_volume_enums.hh"
-#  include "BKE_volume_grid_fwd.hh"
 #  include "BKE_volume_grid_type_traits.hh"
 
 #  include "BLI_implicit_sharing_ptr.hh"

@@ -274,7 +274,7 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
                                             const blender::bke::VolumeGridData *grid,
                                             VolumeBatchCache *cache)
 {
-  const std::string name = grid->name();
+  const std::string name = blender::bke::volume_grid::get_name(*grid);
 
   /* Return cached grid. */
   LISTBASE_FOREACH (DRWVolumeGrid *, cache_grid, &cache->grids) {
@@ -299,7 +299,7 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
     return cache_grid;
   }
 
-  const bool was_loaded = grid->is_loaded();
+  const bool was_loaded = blender::bke::volume_grid::is_loaded(*grid);
 
   DenseFloatVolumeGrid dense_grid;
   if (BKE_volume_grid_dense_floats(volume, grid, &dense_grid)) {
@@ -329,7 +329,7 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
 
   /* Free grid from memory if it wasn't previously loaded. */
   if (!was_loaded) {
-    grid->unload_tree_if_possible();
+    blender::bke::volume_grid::unload_tree_if_possible(*grid);
   }
 
   return cache_grid;

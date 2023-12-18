@@ -55,6 +55,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom2 = GEO_NODE_GRID_NEIGHBOR_FACE;
 }
 
+#ifdef WITH_OPENVDB
+
 template<typename T>
 static void try_erode_grid(GeoNodeExecParams params,
                            const int iterations,
@@ -76,7 +78,6 @@ static void try_erode_grid(GeoNodeExecParams params,
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-#ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
   const GeometryNodeGridNeighborTopology neighbors_mode = GeometryNodeGridNeighborTopology(
       params.node().custom2);
@@ -96,12 +97,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   params.set_default_remaining_outputs();
-#else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
-#endif
 }
+
+#else /* WITH_OPENVDB */
+
+static void node_geo_exec(GeoNodeExecParams params)
+{
+  node_geo_exec_with_missing_openvdb(params);
+}
+
+#endif /* WITH_OPENVDB */
 
 static void node_rna(StructRNA *srna)
 {

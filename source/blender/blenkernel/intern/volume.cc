@@ -626,7 +626,7 @@ bool BKE_volume_is_points_only(const Volume *volume)
 
   for (int i = 0; i < num_grids; i++) {
     const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
-    if (grid->grid_type() != VOLUME_GRID_POINTS) {
+    if (blender::bke::volume_grid::get_type(*grid) != VOLUME_GRID_POINTS) {
       return false;
     }
   }
@@ -655,7 +655,7 @@ static void volume_update_simplify_level(Main *bmain, Volume *volume, const Deps
     grids.swap(new_grids);
   }
 #else
-  UNUSED_VARS(volume, depsgraph);
+  UNUSED_VARS(bmain, volume, depsgraph);
 #endif
 }
 
@@ -884,7 +884,7 @@ const blender::bke::VolumeGridData *BKE_volume_grid_find(const Volume *volume, c
   int num_grids = BKE_volume_num_grids(volume);
   for (int i = 0; i < num_grids; i++) {
     const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
-    if (grid->name() == name) {
+    if (blender::bke::volume_grid::get_name(*grid) == name) {
       return grid;
     }
   }
@@ -897,7 +897,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, con
   int num_grids = BKE_volume_num_grids(volume);
   for (int i = 0; i < num_grids; i++) {
     const blender::bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
-    if (grid->name() == name) {
+    if (blender::bke::volume_grid::get_name(*grid) == name) {
       return BKE_volume_grid_get_for_write(volume, i);
     }
   }

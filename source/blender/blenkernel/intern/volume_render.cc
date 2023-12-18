@@ -428,7 +428,7 @@ void BKE_volume_grid_selection_surface(const Volume * /*volume*/,
 
   cb(cb_userdata, (float(*)[3])verts.data(), (int(*)[3])tris.data(), verts.size(), tris.size());
 #else
-  UNUSED_VARS(volume, volume_grid);
+  UNUSED_VARS(volume_grid);
   cb(cb_userdata, nullptr, nullptr, 0, 0);
 #endif
 }
