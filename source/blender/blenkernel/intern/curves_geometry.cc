@@ -894,7 +894,7 @@ Span<float3> CurvesGeometry::evaluated_normals() const
                                                     cyclic[curve_index],
                                                     evaluated_normals.slice(evaluated_points));
             break;
-          case NORMAL_MODE_CUSTOM:
+          case NORMAL_MODE_FREE:
             if (custom_normal_span.is_empty()) {
               curves::poly::calculate_normals_z_up(evaluated_tangents.slice(evaluated_points),
                                                    evaluated_normals.slice(evaluated_points));

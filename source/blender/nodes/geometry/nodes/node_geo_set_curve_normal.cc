@@ -22,7 +22,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   if (const bNode *node = b.node_or_null()) {
-    if (node->custom1 == NORMAL_MODE_CUSTOM) {
+    if (node->custom1 == NORMAL_MODE_FREE) {
       b.add_input<decl::Vector>("Normal").default_value({0.0f, 0.0f, 1.0f}).field_on_all();
     }
   }
@@ -53,7 +53,7 @@ static void set_curve_normal(bke::CurvesGeometry &curves,
                                      selection_field,
                                      fn::make_constant_field<int8_t>(mode));
 
-  if (mode == NORMAL_MODE_CUSTOM) {
+  if (mode == NORMAL_MODE_FREE) {
     bke::try_capture_field_on_geometry(
         curves.attributes_for_write(),
         point_context,
@@ -94,7 +94,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<float3> custom_normal;
-  if (mode == NORMAL_MODE_CUSTOM) {
+  if (mode == NORMAL_MODE_FREE) {
     custom_normal = params.extract_input<Field<float3>>("Normal");
   }
 
