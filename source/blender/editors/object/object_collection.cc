@@ -17,11 +17,15 @@
 
 #include "BKE_collection.h"
 #include "BKE_context.hh"
+#include "BKE_file_handler.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
+#include "BKE_screen.hh"
+
+#include "BLT_translation.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -37,6 +41,7 @@
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
+#include "UI_interface.hh"
 #include "UI_interface_icons.hh"
 
 #include "object_intern.h"
@@ -414,6 +419,124 @@ void COLLECTION_OT_create(wmOperatorType *ot)
   RNA_def_string(
       ot->srna, "name", "Collection", MAX_ID_NAME - 2, "Name", "Name of the new collection");
 }
+
+static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
+  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+
+  char name[MAX_ID_NAME - 2]; /* id name */
+  RNA_string_get(op->ptr, "name", name);
+
+  FileHandlerType *fh = BKE_file_handler_find(name);
+  if (!fh) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Add a new #IOHandlerData item to the list and fill it with #FileHandlerType information.
+   * Also load in the operator's properties now as well. */
+  IOHandlerData *data = MEM_cnew<IOHandlerData>("IOHandlerData");
+  STRNCPY(data->fh_idname, fh->idname);
+
+  WM_operator_properties_alloc(&data->export_ptr, &data->export_properties, fh->export_operator);
+  WM_operator_properties_sanitize(data->export_ptr, true);
+  data->export_ptr->owner_id = nullptr;
+
+  BLI_addtail(io_handlers, data);
+
+  WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+void COLLECTION_OT_io_handler_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add New IO Handler";
+  ot->description = "Add New IO Handler";
+  ot->idname = "COLLECTION_OT_io_handler_add";
+
+  /* api callbacks */
+  ot->exec = collection_io_handler_add_exec;
+  ot->poll = ED_operator_objectmode;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_string(ot->srna, "name", nullptr, MAX_ID_NAME - 2, "Name", "FileHandler idname");
+}
+
+static int collection_debug_io_exec(bContext *C, wmOperator * /*op*/)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
+  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+
+  LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
+    FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
+    if (!fh) {
+      continue;
+    }
+
+    printf("DEBUG: Invoking %s\n", fh->export_operator);
+
+    /* Invoke operator with the properties stored on the Collection. */
+    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+    WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, data->export_ptr, nullptr);
+
+    /* TODO: Only do the first one for now ... */
+    break;
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void COLLECTION_OT_debug_io(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "debug: execute handlers";
+  ot->description = "debug: execute handlers";
+  ot->idname = "COLLECTION_OT_debug_io";
+
+  /* api callbacks */
+  ot->exec = collection_debug_io_exec;
+  ot->poll = ED_operator_objectmode;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static void collection_io_handler_menu_draw(const bContext * /*C*/, Menu *menu)
+{
+  uiLayout *layout = menu->layout;
+  const auto &file_handlers = BKE_file_handlers();
+  if (file_handlers.is_empty()) {
+    uiItemL(layout, "No file handlers available", ICON_NONE);
+  }
+  else {
+    for (const auto &fh : BKE_file_handlers()) {
+      uiItemStringO(
+          layout, fh->label, ICON_NONE, "COLLECTION_OT_io_handler_add", "name", fh->idname);
+    }
+  }
+}
+
+namespace blender::ed::object {
+
+void collection_io_handler_register()
+{
+  MenuType *mt = MEM_cnew<MenuType>(__func__);
+  STRNCPY(mt->idname, "COLLECTION_MT_io_handler_add");
+  STRNCPY(mt->label, N_("Add IO Handler"));
+  mt->draw = collection_io_handler_menu_draw;
+
+  WM_menutype_add(mt);
+  WM_operatortype_append(COLLECTION_OT_io_handler_add);
+  WM_operatortype_append(COLLECTION_OT_debug_io);
+}
+
+}  // namespace blender::ed::object
 
 /****************** properties window operators *********************/
 

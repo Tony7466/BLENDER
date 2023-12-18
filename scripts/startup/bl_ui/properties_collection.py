@@ -51,6 +51,16 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
         col.prop(vlc, "indirect_only", toggle=False)
 
 
+class COLLECTION_PT_io_handlers(CollectionButtonsPanel, Panel):
+    bl_label = "IO Handlers"
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.operator("wm.call_menu", text="Add IO Handler", icon='ADD').name = "COLLECTION_MT_io_handler_add"
+        layout.operator("COLLECTION_OT_debug_io") # DEBUG: temporary button to trigger exporting everything
+        layout.template_collection_exporters()
+
+
 class COLLECTION_MT_context_menu_instance_offset(Menu):
     bl_label = "Instance Offset"
 
@@ -116,6 +126,7 @@ classes = (
     COLLECTION_PT_instancing,
     COLLECTION_PT_lineart_collection,
     COLLECTION_PT_collection_custom_props,
+    COLLECTION_PT_io_handlers,
 )
 
 if __name__ == "__main__":  # only for live edit.

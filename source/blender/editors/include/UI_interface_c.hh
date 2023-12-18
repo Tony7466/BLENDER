@@ -2712,6 +2712,8 @@ void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
 
 void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
 
+void uiTemplateCollectionExporters(uiLayout *layout, bContext *C);
+
 /**
  * \return: A RNA pointer for the operator properties.
  */

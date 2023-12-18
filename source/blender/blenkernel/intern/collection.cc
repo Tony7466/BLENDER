@@ -142,14 +142,29 @@ static void collection_copy_data(Main *bmain, ID *id_dst, const ID *id_src, cons
 
   BLI_listbase_clear(&collection_dst->gobject);
   BLI_listbase_clear(&collection_dst->children);
+  BLI_listbase_clear(&collection_dst->io_handlers);
   BLI_listbase_clear(&collection_dst->runtime.parents);
   collection_dst->runtime.gobject_hash = nullptr;
+
+  /* TODO: Copy over io_handlers */
 
   LISTBASE_FOREACH (CollectionChild *, child, &collection_src->children) {
     collection_child_add(collection_dst, child->collection, &child->light_linking, flag, false);
   }
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, &cob->light_linking, flag, false);
+  }
+}
+
+static void io_handler_item_free(IOHandlerData *data)
+{
+  if (data->export_properties) {
+    IDP_FreeProperty(data->export_properties);
+    data->export_properties = nullptr;
+  }
+  if (data->export_ptr) {
+    MEM_freeN(data->export_ptr);
+    data->export_ptr = nullptr;
   }
 }
 
@@ -168,6 +183,11 @@ static void collection_free_data(ID *id)
 
   BLI_freelistN(&collection->children);
   BLI_freelistN(&collection->runtime.parents);
+
+  LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
+    io_handler_item_free(data);
+  }
+  BLI_freelistN(&collection->io_handlers);
 
   collection_object_cache_free(collection);
 }
@@ -256,6 +276,13 @@ void BKE_collection_blend_write_nolib(BlendWriter *writer, Collection *collectio
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     BLO_write_struct(writer, CollectionChild, child);
   }
+
+  LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
+    BLO_write_struct(writer, IOHandlerData, data);
+    if (data->export_properties) {
+      IDP_BlendWrite(writer, data->export_properties);
+    }
+  }
 }
 
 static void collection_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -305,6 +332,9 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
 
   BLO_read_list(reader, &collection->gobject);
   BLO_read_list(reader, &collection->children);
+
+  /* TODO: This doesn't seem to read in correctly */
+  BLO_read_list(reader, &collection->io_handlers);
 
   BLO_read_data_address(reader, &collection->preview);
   BKE_previewimg_blend_read(reader, collection->preview);

@@ -51,6 +51,7 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_curveprofile.h"
+#include "BKE_file_handler.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
@@ -2343,6 +2344,74 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 
       panel = panel->next;
     }
+  }
+}
+
+#ifdef _MSC_VER
+#  pragma optimize("", off)
+#endif
+void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
+{
+  ARegion *region = CTX_wm_region(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
+  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+
+  LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
+    FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
+    if (!fh) {
+      continue;
+    }
+
+    if (!data->export_ptr) {
+      data->export_ptr = MEM_cnew<PointerRNA>("wmOpItemPtr");
+      WM_operator_properties_create(data->export_ptr, fh->export_operator);
+      data->export_ptr->data = data->export_properties;
+    }
+
+    /* TEMP: Just draw the properties like the KeyMap editor for debugging. */
+    PointerRNA *ptr = data->export_ptr;
+    uiLayout *flow = uiLayoutColumnFlow(layout, 2, false);
+
+    RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (ptr, prop) {
+      const bool is_set = RNA_property_is_set(ptr, prop);
+      uiBut *but;
+
+      /* recurse for nested properties */
+      if (RNA_property_type(prop) == PROP_POINTER) {
+        /* TEMP: Not needed */
+      }
+
+      uiLayout *box = uiLayoutBox(flow);
+      uiLayoutSetActive(box, is_set);
+      uiLayout *row = uiLayoutRow(box, false);
+
+      /* property value */
+      uiItemFullR(row, ptr, prop, -1, 0, UI_ITEM_NONE, nullptr, ICON_NONE);
+
+      if (is_set) {
+        /* unset operator */
+        uiBlock *block = uiLayoutGetBlock(row);
+        UI_block_emboss_set(block, UI_EMBOSS_NONE);
+        but = uiDefIconButO(block,
+                            UI_BTYPE_BUT,
+                            "UI_OT_unset_property_button",
+                            WM_OP_EXEC_DEFAULT,
+                            ICON_X,
+                            0,
+                            0,
+                            UI_UNIT_X,
+                            UI_UNIT_Y,
+                            nullptr);
+        but->rnapoin = *ptr;
+        but->rnaprop = prop;
+        UI_block_emboss_set(block, UI_EMBOSS);
+      }
+    }
+    RNA_STRUCT_END;
+
+    /* TODO: Only do the first one for now ... */
+    break;
   }
 }
 

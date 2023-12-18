@@ -167,6 +167,7 @@ void COLLECTION_OT_objects_remove_all(struct wmOperatorType *ot);
 void COLLECTION_OT_objects_remove(struct wmOperatorType *ot);
 void COLLECTION_OT_objects_add_active(struct wmOperatorType *ot);
 void COLLECTION_OT_objects_remove_active(struct wmOperatorType *ot);
+void COLLECTION_OT_io_handler_add(struct wmOperatorType *ot);
 
 /* object_light_linking_ops.cc */
 
@@ -379,6 +380,8 @@ namespace blender::ed::object {
 
 void object_modifier_add_asset_register();
 
-}
+void collection_io_handler_register();
+
+}  // namespace blender::ed::object
 
 #endif

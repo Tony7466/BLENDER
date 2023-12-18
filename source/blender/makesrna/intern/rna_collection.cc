@@ -564,6 +564,15 @@ static void rna_def_collection_child(BlenderRNA *brna)
       prop, "Light Linking", "Light linking settings of the collection object");
 }
 
+static void rna_def_io_handler_data(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "IOHandlerData", nullptr);
+  RNA_def_struct_sdna(srna, "IOHandlerData");
+  RNA_def_struct_ui_text(srna, "IO Handler Data", "IO Handlers configured for the collection");
+}
+
 void RNA_def_collections(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -649,6 +658,14 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Collection Children",
                            "Children collections their parent-collection-specific settings");
+
+  /* IO Handlers. */
+  prop = RNA_def_property(srna, "io_handlers", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "IOHandlerData");
+  RNA_def_property_collection_sdna(prop, nullptr, "io_handlers", nullptr);
+  RNA_def_property_ui_text(
+      prop, "Collection IO Handlers", "IO Handlers configured for the collection");
+
   /* TODO(sergey): Functions to link and unlink collections. */
 
   /* Flags */
@@ -751,6 +768,7 @@ void RNA_def_collections(BlenderRNA *brna)
   rna_def_collection_light_linking(brna);
   rna_def_collection_object(brna);
   rna_def_collection_child(brna);
+  rna_def_io_handler_data(brna);
 }
 
 #endif
