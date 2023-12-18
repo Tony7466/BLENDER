@@ -893,6 +893,17 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   BLO_read_data_address(reader, &sock->default_value);
   BLO_read_data_address(reader, &sock->default_attribute_name);
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
+
+  switch (eNodeSocketDatatype(sock->type)) {
+    case SOCK_MENU: {
+      bNodeSocketValueMenu &default_value = *sock->default_value_typed<bNodeSocketValueMenu>();
+      /* Clear runtime data. */
+      default_value.enum_items = nullptr;
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 static void direct_link_node_socket_list(BlendDataReader *reader, ListBase *socket_list)

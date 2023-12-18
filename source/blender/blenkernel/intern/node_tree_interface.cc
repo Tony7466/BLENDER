@@ -334,6 +334,12 @@ template<typename T> void socket_data_read_data_impl(BlendDataReader *reader, T 
 {
   BLO_read_data_address(reader, data);
 }
+template<> void socket_data_read_data_impl(BlendDataReader *reader, bNodeSocketValueMenu **data)
+{
+  BLO_read_data_address(reader, data);
+  /* Clear runtime data. */
+  (*data)->enum_items = nullptr;
+}
 
 static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSocket &socket)
 {
