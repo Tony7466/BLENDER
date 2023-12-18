@@ -1162,7 +1162,7 @@ class NODE_PT_bake_node_items(bpy.types.Panel):
         if snode is None:
             return False
         node = context.active_node
-        if node is None :
+        if node is None:
             return False
         if node.bl_idname != "GeometryNodeBake":
             return False

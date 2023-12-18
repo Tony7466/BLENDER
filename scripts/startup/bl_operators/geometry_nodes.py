@@ -351,6 +351,7 @@ class NodeOperator:
             return False
         return True
 
+
 class SocketItemAddOperator:
     items_name = None
     active_index_name = None
