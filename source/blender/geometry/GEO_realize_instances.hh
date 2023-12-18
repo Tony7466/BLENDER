@@ -22,6 +22,17 @@ struct RealizeInstancesOptions {
    */
   bool realize_instance_attributes = true;
 
+  /**
+   * Selection of top-level instances to realize.
+   */
+  IndexMask selection;
+
+  /**
+   * Depth of realize instances for each selected top-level instance.
+   */
+  VArray<int> depths;
+
+
   bke::AnonymousAttributePropagationInfo propagation_info;
 };
 
