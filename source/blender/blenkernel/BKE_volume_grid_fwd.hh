@@ -87,6 +87,24 @@ void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix);
  */
 void clear_tree(VolumeGridData &grid);
 
+/**
+ * Makes sure that the volume grid is loaded afterwards. This is necessary to call this for
+ * correctness, because the grid will be loaded on demand anyway. Sometimes it may be benefitial
+ * for performance to load the grid eagerly though.
+ */
+void load(const VolumeGridData &grid);
+
+/**
+ * Returns a non-empty string if there was some error when the grid was loaded.
+ */
+std::string error_message_from_load(const VolumeGridData &grid);
+
+/**
+ * True if the full grid (including meta-data, transform and the tree) is already available and
+ * does not have to be loaded lazily anymore.
+ */
+bool is_loaded(const VolumeGridData &grid);
+
 }  // namespace blender::bke::volume_grid
 
 /**

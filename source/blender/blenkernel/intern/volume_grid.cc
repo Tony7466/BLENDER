@@ -203,6 +203,12 @@ bool VolumeGridData::is_loaded() const
   return tree_loaded_ && transform_loaded_ && meta_data_loaded_;
 }
 
+std::string VolumeGridData::error_message() const
+{
+  std::lock_guard lock{mutex_};
+  return error_message_;
+}
+
 void VolumeGridData::unload_tree_if_possible() const
 {
   std::lock_guard lock{mutex_};
@@ -433,6 +439,23 @@ void clear_tree(VolumeGridData &grid)
 {
   VolumeTreeAccessToken access_token = grid.tree_access_token();
   grid.grid_for_write(access_token).clear();
+}
+
+bool is_loaded(const VolumeGridData &grid)
+{
+  return grid.is_loaded();
+}
+
+void load(const VolumeGridData &grid)
+{
+  VolumeTreeAccessToken access_token = grid.tree_access_token();
+  /* Just "touch" the grid, so that it is loaded. */
+  grid.grid(access_token);
+}
+
+std::string error_message_from_load(const VolumeGridData &grid)
+{
+  return grid.error_message();
 }
 
 }  // namespace blender::bke::volume_grid

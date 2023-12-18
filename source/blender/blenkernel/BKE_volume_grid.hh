@@ -210,6 +210,11 @@ class VolumeGridData : public ImplicitSharingMixin {
   bool is_loaded() const;
 
   /**
+   * Non-empty string if there was some error when trying to load the volume.
+   */
+  std::string error_message() const;
+
+  /**
    * Tree if the tree can be loaded again after it has been unloaded.
    */
   bool can_be_reloaded() const;
