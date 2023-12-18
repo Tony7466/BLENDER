@@ -16,7 +16,7 @@ file per execution it needs to define the following property:
 .. code-block:: python
     filepath: bpy.props.StringProperty(subtype='FILE_PATH')
 
-This ``filepath`` property nows will be used by the ``FileHandler`` to
+This ``filepath`` property now will be used by the ``FileHandler`` to
 set the 'drag-and-drop' filepath data.
 
 """
