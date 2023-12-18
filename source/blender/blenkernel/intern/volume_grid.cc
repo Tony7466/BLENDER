@@ -189,6 +189,15 @@ VolumeGridType VolumeGridData::grid_type() const
   return get_type(*grid_);
 }
 
+std::optional<VolumeGridType> VolumeGridData::grid_type_without_load() const
+{
+  std::lock_guard lock{mutex_};
+  if (!meta_data_loaded_) {
+    return std::nullopt;
+  }
+  return get_type(*grid_);
+}
+
 openvdb::GridClass VolumeGridData::grid_class() const
 {
   std::lock_guard lock{mutex_};
