@@ -12,8 +12,8 @@
 
 #  include <cstring>
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 
 #  include "BLI_blenlib.h"
@@ -39,7 +39,7 @@
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "io_usd.hh"
 #  include "usd.h"
@@ -91,6 +91,26 @@ const EnumPropertyItem rna_enum_usd_tex_name_collision_mode_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
+    {USD_SUBDIV_IGNORE,
+     "IGNORE",
+     0,
+     "Ignore",
+     "Subdivision scheme = None, export base mesh without subdivision"},
+    {USD_SUBDIV_TESSELLATE,
+     "TESSELLATE",
+     0,
+     "Tessellate",
+     "Subdivision scheme = None, export subdivided mesh"},
+    {USD_SUBDIV_BEST_MATCH,
+     "BEST_MATCH",
+     0,
+     "Best Match",
+     "Subdivision scheme = Catmull-Clark, when possible. "
+     "Reverts to exporting the subdivided mesh for the Simple subdivision type"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
 enum { AS_BACKGROUND_JOB = 1 };
@@ -108,8 +128,15 @@ static void process_prim_path(char *prim_path)
 
   /* The absolute root "/" path indicates a no-op,
    * so clear the string. */
-  if (prim_path[0] == '/' && strlen(prim_path) == 1) {
+  if (prim_path[0] == '/' && prim_path[1] == '\0') {
     prim_path[0] = '\0';
+  }
+
+  /* If a prim path doesn't start with a "/" it
+   * is invalid when creating the prim. */
+  if (prim_path[0] != '/') {
+    const std::string prim_path_copy = std::string(prim_path);
+    BLI_snprintf(prim_path, FILE_MAX, "/%s", prim_path_copy.c_str());
   }
 }
 
@@ -148,6 +175,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_mesh_colors = RNA_boolean_get(op->ptr, "export_mesh_colors");
   const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
+  const eSubdivExportMode export_subdiv = eSubdivExportMode(
+      RNA_enum_get(op->ptr, "export_subdivision"));
   const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
@@ -167,6 +196,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_normals,
       export_mesh_colors,
       export_materials,
+      export_subdiv,
       selected_objects_only,
       visible_objects_only,
       use_instancing,
@@ -179,7 +209,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   STRNCPY(params.root_prim_path, root_prim_path);
 
-  bool ok = USD_export(C, filepath, &params, as_background_job);
+  bool ok = USD_export(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -204,6 +234,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
@@ -328,6 +359,14 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Export viewport settings of materials as USD preview materials, and export "
                   "material assignments as geometry subsets");
 
+  RNA_def_enum(ot->srna,
+               "export_subdivision",
+               rna_enum_usd_export_subdiv_mode_items,
+               USD_SUBDIV_BEST_MATCH,
+               "Subdivision Scheme",
+               "Choose how subdivision modifiers will be mapped to the USD subdivision scheme "
+               "during export");
+
   RNA_def_boolean(ot->srna,
                   "use_instancing",
                   false,
@@ -371,7 +410,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
 
   RNA_def_string(ot->srna,
                  "root_prim_path",
-                 nullptr,
+                 "/root",
                  FILE_MAX,
                  "Root Prim",
                  "If set, add a transform primitive with the given path to the stage "
@@ -515,7 +554,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   STRNCPY(params.import_textures_dir, import_textures_dir);
 
-  const bool ok = USD_import(C, filepath, &params, as_background_job);
+  const bool ok = USD_import(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }

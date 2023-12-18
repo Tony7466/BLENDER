@@ -25,14 +25,14 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -40,7 +40,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -165,16 +165,16 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
   /* -------------------------------------------------------------------- */
   /* tricky shape key integration (slow!) */
   if (mcmd->deform_mode == MOD_MESHCACHE_DEFORM_INTEGRATE) {
-    Mesh *me = static_cast<Mesh *>(ob->data);
+    Mesh *mesh = static_cast<Mesh *>(ob->data);
 
     /* we could support any object type */
     if (UNLIKELY(ob->type != OB_MESH)) {
       BKE_modifier_set_error(ob, &mcmd->modifier, "'Integrate' only valid for Mesh objects");
     }
-    else if (UNLIKELY(me->totvert != verts_num)) {
+    else if (UNLIKELY(mesh->totvert != verts_num)) {
       BKE_modifier_set_error(ob, &mcmd->modifier, "'Integrate' original mesh vertex mismatch");
     }
-    else if (UNLIKELY(me->faces_num == 0)) {
+    else if (UNLIKELY(mesh->faces_num == 0)) {
       BKE_modifier_set_error(ob, &mcmd->modifier, "'Integrate' requires faces");
     }
     else {
@@ -182,15 +182,15 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
           MEM_malloc_arrayN(verts_num, sizeof(*vertexCos_New), __func__));
 
       BKE_mesh_calc_relative_deform(
-          me->face_offsets().data(),
-          me->faces_num,
-          me->corner_verts().data(),
-          me->totvert,
+          mesh->face_offsets().data(),
+          mesh->faces_num,
+          mesh->corner_verts().data(),
+          mesh->totvert,
           reinterpret_cast<const float(*)[3]>(
-              me->vert_positions().data()),  /* From the original Mesh. */
-          (const float(*)[3])vertexCos_Real, /* the input we've been given (shape keys!) */
-          (const float(*)[3])vertexCos,      /* The result of this modifier. */
-          vertexCos_New                      /* The result of this function. */
+              mesh->vert_positions().data()), /* From the original Mesh. */
+          (const float(*)[3])vertexCos_Real,  /* the input we've been given (shape keys!) */
+          (const float(*)[3])vertexCos,       /* The result of this modifier. */
+          vertexCos_New                       /* The result of this function. */
       );
 
       /* write the corrected locations back into the result */
@@ -248,7 +248,7 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
         const float global_offset = (mcmd->flag & MOD_MESHCACHE_INVERT_VERTEX_GROUP) ?
                                         mcmd->factor :
                                         0.0f;
-        if (BKE_mesh_deform_verts(mesh) != nullptr) {
+        if (!mesh->deform_verts().is_empty()) {
           for (int i = 0; i < verts_num; i++) {
             /* For each vertex, compute its blending factor between the mesh cache (for `fac = 0`)
              * and the former position of the vertex (for `fac = 1`). */
@@ -278,13 +278,17 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
 static void deform_verts(ModifierData *md,
                          const ModifierEvalContext *ctx,
                          Mesh *mesh,
-                         float (*vertexCos)[3],
-                         int verts_num)
+                         blender::MutableSpan<blender::float3> positions)
 {
   MeshCacheModifierData *mcmd = (MeshCacheModifierData *)md;
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
 
-  meshcache_do(mcmd, scene, ctx->object, mesh, vertexCos, verts_num);
+  meshcache_do(mcmd,
+               scene,
+               ctx->object,
+               mesh,
+               reinterpret_cast<float(*)[3]>(positions.data()),
+               positions.size());
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -374,7 +378,7 @@ ModifierTypeInfo modifierType_MeshCache = {
     /*struct_name*/ "MeshCacheModifierData",
     /*struct_size*/ sizeof(MeshCacheModifierData),
     /*srna*/ &RNA_MeshCacheModifier,
-    /*type*/ eModifierTypeType_OnlyDeform,
+    /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsVertexCosOnly |
         eModifierTypeFlag_SupportsEditmode,
     /*icon*/ ICON_MOD_MESHDEFORM, /* TODO: Use correct icon. */

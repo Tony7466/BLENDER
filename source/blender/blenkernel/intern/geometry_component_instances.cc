@@ -37,14 +37,14 @@ InstancesComponent::~InstancesComponent()
   this->clear();
 }
 
-GeometryComponent *InstancesComponent::copy() const
+GeometryComponentPtr InstancesComponent::copy() const
 {
   InstancesComponent *new_component = new InstancesComponent();
   if (instances_ != nullptr) {
     new_component->instances_ = new Instances(*instances_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
-  return new_component;
+  return GeometryComponentPtr(new_component);
 }
 
 void InstancesComponent::clear()
@@ -169,11 +169,11 @@ static ComponentAttributeProviders create_attribute_providers_for_instances()
   static CustomDataAccessInfo instance_custom_data_access = {
       [](void *owner) -> CustomData * {
         Instances *instances = static_cast<Instances *>(owner);
-        return &instances->custom_data_attributes().data;
+        return &instances->custom_data_attributes();
       },
       [](const void *owner) -> const CustomData * {
         const Instances *instances = static_cast<const Instances *>(owner);
-        return &instances->custom_data_attributes().data;
+        return &instances->custom_data_attributes();
       },
       [](const void *owner) -> int {
         const Instances *instances = static_cast<const Instances *>(owner);

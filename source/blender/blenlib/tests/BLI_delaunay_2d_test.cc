@@ -15,7 +15,6 @@
 #include <type_traits>
 
 #define DO_CPP_TESTS 1
-#define DO_C_TESTS 1
 #define DO_TEXT_TESTS 0
 #define DO_RANDOM_TESTS 0
 
@@ -25,7 +24,7 @@
 #include "BLI_math_vector_mpq_types.hh"
 #include "BLI_vector.hh"
 
-#include "BLI_delaunay_2d.h"
+#include "BLI_delaunay_2d.hh"
 
 namespace blender::meshintersect {
 
@@ -284,7 +283,7 @@ void graph_draw(const std::string &label,
   constexpr bool draw_vert_labels = false;
   constexpr bool draw_edge_labels = false;
 
-  if (verts.size() == 0) {
+  if (verts.is_empty()) {
     return;
   }
   vec2<double> vmin(1e10, 1e10);
@@ -1735,56 +1734,6 @@ TEST(delaunay_m, RepeatTri)
 #  endif
 #endif
 
-#if DO_C_TESTS
-
-TEST(delaunay_d, CintTwoFace)
-{
-  float vert_coords[][2] = {
-      {0.0, 0.0}, {1.0, 0.0}, {0.5, 1.0}, {1.1, 1.0}, {1.1, 0.0}, {1.6, 1.0}};
-  int faces[] = {0, 1, 2, 3, 4, 5};
-  int faces_len[] = {3, 3};
-  int faces_start[] = {0, 3};
-
-  ::CDT_input input;
-  input.verts_len = 6;
-  input.edges_len = 0;
-  input.faces_len = 2;
-  input.vert_coords = vert_coords;
-  input.edges = nullptr;
-  input.faces = faces;
-  input.faces_len_table = faces_len;
-  input.faces_start_table = faces_start;
-  input.epsilon = 1e-5f;
-  input.need_ids = false;
-  ::CDT_result *output = BLI_delaunay_2d_cdt_calc(&input, CDT_FULL);
-  BLI_delaunay_2d_cdt_free(output);
-}
-
-TEST(delaunay_d, CintTwoFaceNoIds)
-{
-  float vert_coords[][2] = {
-      {0.0, 0.0}, {1.0, 0.0}, {0.5, 1.0}, {1.1, 1.0}, {1.1, 0.0}, {1.6, 1.0}};
-  int faces[] = {0, 1, 2, 3, 4, 5};
-  int faces_len[] = {3, 3};
-  int faces_start[] = {0, 3};
-
-  ::CDT_input input;
-  input.verts_len = 6;
-  input.edges_len = 0;
-  input.faces_len = 2;
-  input.vert_coords = vert_coords;
-  input.edges = nullptr;
-  input.faces = faces;
-  input.faces_len_table = faces_len;
-  input.faces_start_table = faces_start;
-  input.epsilon = 1e-5f;
-  input.need_ids = true;
-  ::CDT_result *output = BLI_delaunay_2d_cdt_calc(&input, CDT_FULL);
-  BLI_delaunay_2d_cdt_free(output);
-}
-
-#endif
-
 #if DO_TEXT_TESTS
 template<typename T>
 void text_test(
@@ -2087,17 +2036,20 @@ void rand_delaunay_test(int test_kind,
         case RANDOM_PTS: {
           npts = size;
           test_label = std::to_string(npts) + "Random points";
-        } break;
+          break;
+        }
         case RANDOM_SEGS: {
           npts = size;
           nedges = npts - 1;
           test_label = std::to_string(nedges) + "Random edges";
-        } break;
+          break;
+        }
         case RANDOM_POLY: {
           npts = size;
           nedges = npts;
           test_label = "Random poly with " + std::to_string(nedges) + " edges";
-        } break;
+          break;
+        }
         case RANDOM_TILTED_GRID: {
           /* A 'size' x 'size' grid of points, tilted by angle 'param'.
            * Edges will go from left ends to right ends and tops to bottoms,
@@ -2110,7 +2062,8 @@ void rand_delaunay_test(int test_kind,
           nedges = 2 * size;
           test_label = "Tilted grid " + std::to_string(npts) + "x" + std::to_string(npts) +
                        " (tilt=" + std::to_string(param) + ")";
-        } break;
+          break;
+        }
         case RANDOM_CIRCLE: {
           /* A circle with 'size' points, a random start angle,
            * and equal spacing thereafter. Will be input as one face.
@@ -2118,7 +2071,8 @@ void rand_delaunay_test(int test_kind,
           npts = size;
           nfaces = 1;
           test_label = "Circle with " + std::to_string(npts) + " points";
-        } break;
+          break;
+        }
         case RANDOM_TRI_BETWEEN_CIRCLES: {
           /* A set of 'size' triangles, each has two random points on the unit circle,
            * and the third point is a random point on the circle with radius 'param'.
@@ -2128,7 +2082,8 @@ void rand_delaunay_test(int test_kind,
           nfaces = size;
           test_label = "Random " + std::to_string(nfaces) +
                        " triangles between circles (inner radius=" + std::to_string(param) + ")";
-        } break;
+          break;
+        }
         default:
           std::cout << "unknown delaunay test type\n";
           return;
@@ -2173,8 +2128,8 @@ void rand_delaunay_test(int test_kind,
             in.edge[size - 1].first = size - 1;
             in.edge[size - 1].second = 0;
           }
-        } break;
-
+          break;
+        }
         case RANDOM_TILTED_GRID: {
           for (int i = 0; i < size; ++i) {
             for (int j = 0; j < size; ++j) {
@@ -2190,8 +2145,8 @@ void rand_delaunay_test(int test_kind,
             in.edge[size + i].first = i;
             in.edge[size + i].second = (size - 1) * size + i;
           }
-        } break;
-
+          break;
+        }
         case RANDOM_CIRCLE: {
           double start_angle = BLI_rng_get_double(rng) * 2.0 * M_PI;
           double angle_delta = 2.0 * M_PI / size;
@@ -2200,8 +2155,8 @@ void rand_delaunay_test(int test_kind,
             in.vert[i][1] = T(sin(start_angle + i * angle_delta));
             in.face[0].append(i);
           }
-        } break;
-
+          break;
+        }
         case RANDOM_TRI_BETWEEN_CIRCLES: {
           for (int i = 0; i < size; i++) {
             /* Get three random angles in [0, 2pi). */
@@ -2229,7 +2184,8 @@ void rand_delaunay_test(int test_kind,
               in.face[i].append(ib);
             }
           }
-        } break;
+          break;
+        }
       }
 
       /* Run the test. */

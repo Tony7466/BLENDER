@@ -19,6 +19,12 @@
 
 #include "MEM_guardedalloc.h"
 
+/* Quiet warnings when dealing with allocated data written into the blend file.
+ * This also rounds up and causes warnings which we don't consider bugs in practice. */
+#ifdef WITH_MEM_VALGRIND
+#  include "valgrind/memcheck.h"
+#endif
+
 /* to ensure strict conversions */
 #include "../../source/blender/blenlib/BLI_strict_flags.h"
 
@@ -47,9 +53,31 @@
  * twice, once here, and once by LSAN.
  */
 #if defined(_MSC_VER)
-#  define DEBUG_BACKTRACE
+#  ifdef WITH_ASAN
+#    define DEBUG_BACKTRACE
+#  endif
 #else
-//#define DEBUG_BACKTRACE
+/* Un-comment to report back-traces with leaks, uses ASAN when enabled.
+ * NOTE: The default linking options cause the stack traces only to include addresses.
+ * Use `addr2line` to expand into file, line & function identifiers,
+ * see: `tools/utils/addr2line_backtrace.py` convenience utility. */
+// #  define DEBUG_BACKTRACE
+#endif
+
+#ifdef DEBUG_BACKTRACE
+#  ifdef WITH_ASAN
+/* Rely on address sanitizer. */
+#  else
+#    if defined(__linux__) || defined(__APPLE__)
+#      define DEBUG_BACKTRACE_EXECINFO
+#    else
+#      error "DEBUG_BACKTRACE: not supported for this platform!"
+#    endif
+#  endif
+#endif
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
+#  define BACKTRACE_SIZE 100
 #endif
 
 #ifdef DEBUG_MEMCOUNTER
@@ -94,6 +122,12 @@ typedef struct MemHead {
 #ifdef DEBUG_MEMDUPLINAME
   int need_free_name, pad;
 #endif
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
+  void *backtrace[BACKTRACE_SIZE];
+  int backtrace_size;
+#endif
+
 } MemHead;
 
 typedef MemHead MemHeadAligned;
@@ -101,6 +135,10 @@ typedef MemHead MemHeadAligned;
 typedef struct MemTail {
   int tag3, pad;
 } MemTail;
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
+#  include <execinfo.h>
+#endif
 
 /* --------------------------------------------------------------------- */
 /* local functions                                                       */
@@ -354,6 +392,26 @@ void *MEM_guarded_recallocN_id(void *vmemh, size_t len, const char *str)
   return newp;
 }
 
+#ifdef DEBUG_BACKTRACE_EXECINFO
+static void make_memhead_backtrace(MemHead *memh)
+{
+  memh->backtrace_size = backtrace(memh->backtrace, BACKTRACE_SIZE);
+}
+
+static void print_memhead_backtrace(MemHead *memh)
+{
+  char **strings;
+  int i;
+
+  strings = backtrace_symbols(memh->backtrace, memh->backtrace_size);
+  for (i = 0; i < memh->backtrace_size; i++) {
+    print_error("  %s\n", strings[i]);
+  }
+
+  free(strings);
+}
+#endif /* DEBUG_BACKTRACE_EXECINFO */
+
 static void make_memhead_header(MemHead *memh, size_t len, const char *str)
 {
   MemTail *memt;
@@ -368,6 +426,10 @@ static void make_memhead_header(MemHead *memh, size_t len, const char *str)
 
 #ifdef DEBUG_MEMDUPLINAME
   memh->need_free_name = 0;
+#endif
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
+  make_memhead_backtrace(memh);
 #endif
 
   memt = (MemTail *)(((char *)memh) + sizeof(MemHead) + len);
@@ -389,14 +451,28 @@ void *MEM_guarded_mallocN(size_t len, const char *str)
 {
   MemHead *memh;
 
+#ifdef WITH_MEM_VALGRIND
+  const size_t len_unaligned = len;
+#endif
   len = SIZET_ALIGN_4(len);
 
   memh = (MemHead *)malloc(len + sizeof(MemHead) + sizeof(MemTail));
 
   if (LIKELY(memh)) {
     make_memhead_header(memh, len, str);
-    if (UNLIKELY(malloc_debug_memset && len)) {
-      memset(memh + 1, 255, len);
+
+    if (LIKELY(len)) {
+      if (UNLIKELY(malloc_debug_memset)) {
+        memset(memh + 1, 255, len);
+      }
+#ifdef WITH_MEM_VALGRIND
+      if (malloc_debug_memset) {
+        VALGRIND_MAKE_MEM_UNDEFINED(memh + 1, len_unaligned);
+      }
+      else {
+        VALGRIND_MAKE_MEM_DEFINED((const char *)(memh + 1) + len_unaligned, len - len_unaligned);
+      }
+#endif /* WITH_MEM_VALGRIND */
     }
 
 #ifdef DEBUG_MEMCOUNTER
@@ -454,6 +530,9 @@ void *MEM_guarded_mallocN_aligned(size_t len, size_t alignment, const char *str)
    */
   assert(alignment < 1024);
 
+#ifdef WITH_MEM_VALGRIND
+  const size_t len_unaligned = len;
+#endif
   len = SIZET_ALIGN_4(len);
 
   MemHead *memh = (MemHead *)aligned_malloc(
@@ -468,8 +547,18 @@ void *MEM_guarded_mallocN_aligned(size_t len, size_t alignment, const char *str)
 
     make_memhead_header(memh, len, str);
     memh->alignment = (short)alignment;
-    if (UNLIKELY(malloc_debug_memset && len)) {
-      memset(memh + 1, 255, len);
+    if (LIKELY(len)) {
+      if (UNLIKELY(malloc_debug_memset)) {
+        memset(memh + 1, 255, len);
+      }
+#ifdef WITH_MEM_VALGRIND
+      if (malloc_debug_memset) {
+        VALGRIND_MAKE_MEM_UNDEFINED(memh + 1, len_unaligned);
+      }
+      else {
+        VALGRIND_MAKE_MEM_DEFINED((const char *)(memh + 1) + len_unaligned, len - len_unaligned);
+      }
+#endif /* WITH_MEM_VALGRIND */
     }
 
 #ifdef DEBUG_MEMCOUNTER
@@ -720,10 +809,11 @@ static void MEM_guarded_printmemlist_internal(int pydict)
                   SIZET_ARG(membl->len),
                   (void *)(membl + 1));
 #endif
-#ifdef DEBUG_BACKTRACE
-#  ifdef WITH_ASAN
+
+#ifdef DEBUG_BACKTRACE_EXECINFO
+      print_memhead_backtrace(membl);
+#elif defined(DEBUG_BACKTRACE) && defined(WITH_ASAN)
       __asan_describe_address(membl);
-#  endif
 #endif
     }
     if (membl->next) {
@@ -1175,4 +1265,4 @@ void MEM_guarded_name_ptr_set(void *vmemh, const char *str)
     MEMNEXT(memh->prev)->nextname = str;
   }
 }
-#endif /* NDEBUG */
+#endif /* !NDEBUG */

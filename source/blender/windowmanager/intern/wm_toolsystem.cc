@@ -26,11 +26,11 @@
 #include "DNA_workspace_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_workspace.h"
 
@@ -748,11 +748,11 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
     case SPACE_SEQ: {
       switch (tkey->mode) {
         case SEQ_VIEW_SEQUENCE:
-          return "builtin.select_box";
+          return "builtin.select";
         case SEQ_VIEW_PREVIEW:
           return "builtin.sample";
         case SEQ_VIEW_SEQUENCE_PREVIEW:
-          return "builtin.select_box";
+          return "builtin.select";
       }
       return "builtin.select_box";
     }

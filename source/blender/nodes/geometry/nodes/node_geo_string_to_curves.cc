@@ -5,11 +5,11 @@
 #include "DNA_curve_types.h"
 #include "DNA_vfont_types.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_curve_legacy_convert.hh"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "BLI_bounds.hh"
 #include "BLI_hash.h"
@@ -19,6 +19,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -296,6 +298,8 @@ static Map<int, int> create_curve_instances(GeoNodeExecParams &params,
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     BKE_nurbList_free(&cu.nurb);
 
+    geometry::debug_randomize_curve_order(&curves);
+
     float4x4 size_matrix = math::from_scale<float4x4>(float3(layout.final_font_size));
     curves.transform(size_matrix);
 
@@ -369,7 +373,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_output("Remainder", std::move(layout->truncated_text));
   }
 
-  if (layout->positions.size() == 0) {
+  if (layout->positions.is_empty()) {
     params.set_output("Curve Instances", GeometrySet());
     params.set_default_remaining_outputs();
     return;

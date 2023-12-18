@@ -8,6 +8,7 @@
  * Method of smoothing deformation, also known as 'delta-mush'.
  */
 
+#include "BLI_math_base.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
@@ -23,13 +24,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -43,7 +44,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 // #define DEBUG_TIME
 
@@ -470,7 +471,8 @@ static void calc_tangent_spaces(const Mesh *mesh,
 
       if (calc_tangent_loop(v_dir_prev, v_dir_next, ts)) {
         if (r_tangent_weights != nullptr) {
-          const float weight = fabsf(acosf(dot_v3v3(v_dir_next, v_dir_prev)));
+          const float weight = fabsf(
+              blender::math::safe_acos_approx(dot_v3v3(v_dir_next, v_dir_prev)));
           r_tangent_weights[curr_corner] = weight;
           r_tangent_weights_per_vertex[corner_verts[curr_corner]] += weight;
         }
@@ -665,9 +667,9 @@ static void correctivesmooth_modifier_do(ModifierData *md,
         is_rest_coords_alloc = true;
       }
       else {
-        const Mesh *me = static_cast<const Mesh *>(ob->data);
-        rest_coords = reinterpret_cast<const float(*)[3]>(me->vert_positions().data());
-        me_numVerts = me->totvert;
+        const Mesh *object_mesh = static_cast<const Mesh *>(ob->data);
+        rest_coords = reinterpret_cast<const float(*)[3]>(object_mesh->vert_positions().data());
+        me_numVerts = object_mesh->totvert;
       }
 
       BLI_assert(me_numVerts == int(vertexCos.size()));
@@ -747,15 +749,9 @@ error:
 static void deform_verts(ModifierData *md,
                          const ModifierEvalContext *ctx,
                          Mesh *mesh,
-                         float (*vertexCos)[3],
-                         int verts_num)
+                         blender::MutableSpan<blender::float3> positions)
 {
-  correctivesmooth_modifier_do(md,
-                               ctx->depsgraph,
-                               ctx->object,
-                               mesh,
-                               {reinterpret_cast<blender::float3 *>(vertexCos), verts_num},
-                               nullptr);
+  correctivesmooth_modifier_do(md, ctx->depsgraph, ctx->object, mesh, positions, nullptr);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -835,7 +831,7 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /*struct_name*/ "CorrectiveSmoothModifierData",
     /*struct_size*/ sizeof(CorrectiveSmoothModifierData),
     /*srna*/ &RNA_CorrectiveSmoothModifier,
-    /*type*/ eModifierTypeType_OnlyDeform,
+    /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
     /*icon*/ ICON_MOD_SMOOTH,
 

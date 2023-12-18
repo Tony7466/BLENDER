@@ -12,6 +12,9 @@
 /* allow readfile to use deprecated functionality */
 #define DNA_DEPRECATED_ALLOW
 
+/* Define macros in `DNA_genfile.h`. */
+#define DNA_GENFILE_VERSIONING_MACROS
+
 #include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
@@ -36,44 +39,46 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
+#undef DNA_GENFILE_VERSIONING_MACROS
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BLT_translation.h"
 
 #include "BKE_anim_visualization.h"
 #include "BKE_image.h"
-#include "BKE_main.h"  /* for Main */
+#include "BKE_main.hh" /* for Main */
 #include "BKE_mesh.hh" /* for ME_ defines (patching) */
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_text.h" /* for txt_extended_ascii_as_utf8 */
 #include "BKE_texture.h"
 #include "BKE_tracking.h"
 
-#include "SEQ_iterator.h"
-#include "SEQ_modifier.h"
-#include "SEQ_utils.h"
+#include "SEQ_iterator.hh"
+#include "SEQ_modifier.hh"
+#include "SEQ_utils.hh"
 
 #ifdef WITH_FFMPEG
-#  include "BKE_writeffmpeg.h"
+#  include "BKE_writeffmpeg.hh"
 #endif
 
 #include "IMB_imbuf.h" /* for proxy / time-code versioning stuff. */
 
 #include "NOD_common.h"
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_texture.h"
 
 #include "BLO_readfile.h"
@@ -345,14 +350,14 @@ static void do_versions_nodetree_multi_file_output_format_2_62_1(Scene *sce, bNo
 }
 
 /* blue and red are swapped pre 2.62.1, be sane (red == red) now! */
-static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *me)
+static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *mesh)
 {
-  for (int a = 0; a < me->loop_data.totlayer; a++) {
-    CustomDataLayer *layer = &me->loop_data.layers[a];
+  for (int a = 0; a < mesh->loop_data.totlayer; a++) {
+    CustomDataLayer *layer = &mesh->loop_data.layers[a];
 
     if (layer->type == CD_PROP_BYTE_COLOR) {
       MLoopCol *mloopcol = static_cast<MLoopCol *>(layer->data);
-      for (int i = 0; i < me->totloop; i++, mloopcol++) {
+      for (int i = 0; i < mesh->totloop; i++, mloopcol++) {
         SWAP(uchar, mloopcol->r, mloopcol->b);
       }
     }
@@ -609,7 +614,7 @@ static const char *node_get_static_idname(int type, int treetype)
         return "ShaderNodeTexMagic";
       case SH_NODE_TEX_WAVE:
         return "ShaderNodeTexWave";
-      case SH_NODE_TEX_MUSGRAVE:
+      case SH_NODE_TEX_MUSGRAVE_DEPRECATED:
         return "ShaderNodeTexMusgrave";
       case SH_NODE_TEX_VORONOI:
         return "ShaderNodeTexVoronoi";
@@ -703,7 +708,7 @@ static const char *node_get_static_idname(int type, int treetype)
         return "CompositorNodeChannelMatte";
       case CMP_NODE_FLIP:
         return "CompositorNodeFlip";
-      case CMP_NODE_SPLITVIEWER:
+      case CMP_NODE_SPLITVIEWER__DEPRECATED:
         return "CompositorNodeSplitViewer";
       case CMP_NODE_MAP_UV:
         return "CompositorNodeMapUV";
@@ -1053,8 +1058,8 @@ static bNodeSocket *version_make_socket_stub(const char *idname,
 
   socket->limit = (in_out == SOCK_IN ? 1 : 0xFFF);
 
-  BLI_strncpy(socket->identifier, identifier, sizeof(socket->identifier));
-  BLI_strncpy(socket->name, name, sizeof(socket->name));
+  STRNCPY(socket->identifier, identifier);
+  STRNCPY(socket->name, name);
   socket->storage = nullptr;
   socket->flag |= SOCK_COLLAPSED;
 
@@ -2410,7 +2415,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (bmain->versionfile < 267) {
-    // if (!DNA_struct_elem_find(fd->filesdna, "Brush", "int", "stencil_pos")) {
+    // if (!DNA_struct_member_exists(fd->filesdna, "Brush", "int", "stencil_pos")) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       if (brush->stencil_dimension[0] == 0) {
         brush->stencil_dimension[0] = 256;
@@ -2428,10 +2433,10 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /**
      * TIP: to initialize new variables added, use the new function:
-     * `DNA_struct_elem_find(fd->filesdna, "structname", "typename", "varname")`, example:
+     * `DNA_struct_member_exists(fd->filesdna, "structname", "typename", "varname")`, example:
      *
      * \code{.cc}
-     * if (!DNA_struct_elem_find(fd->filesdna, "UserDef", "short", "image_gpubuffer_limit")) {
+     * if (!DNA_struct_member_exists(fd->filesdna, "UserDef", "short", "image_gpubuffer_limit")) {
      *     user->image_gpubuffer_limit = 10;
      * }
      * \endcode
@@ -2552,7 +2557,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 268, 1)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-      brush->spacing = MAX2(1, brush->spacing);
+      brush->spacing = std::max(1, brush->spacing);
     }
   }
 
@@ -2717,7 +2722,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingTrack", "float", "weight")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "MovieTrackingTrack", "float", "weight")) {
       LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
         const MovieTracking *tracking = &clip->tracking;
         LISTBASE_FOREACH (MovieTrackingObject *, tracking_object, &tracking->objects) {
@@ -2731,7 +2736,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "TriangulateModifierData", "int", "quad_method")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "TriangulateModifierData", "int", "quad_method")) {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
           if (md->type == eModifierType_Triangulate) {
@@ -2817,7 +2822,8 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
       FOREACH_NODETREE_END;
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingPlaneTrack", "float", "image_opacity")) {
+    if (!DNA_struct_member_exists(
+            fd->filesdna, "MovieTrackingPlaneTrack", "float", "image_opacity")) {
       LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
         LISTBASE_FOREACH (
             MovieTrackingPlaneTrack *, plane_track, &clip->tracking.plane_tracks_legacy) {

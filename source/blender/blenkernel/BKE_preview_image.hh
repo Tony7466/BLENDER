@@ -16,8 +16,8 @@ struct ID;
 struct ImBuf;
 struct PreviewImage;
 
-void BKE_preview_images_init(void);
-void BKE_preview_images_free(void);
+void BKE_preview_images_init();
+void BKE_preview_images_free();
 
 /**
  * Free the preview image for use in list.
@@ -63,7 +63,7 @@ void BKE_previewimg_id_free(ID *id);
 /**
  * Create a new preview image.
  */
-PreviewImage *BKE_previewimg_create(void);
+PreviewImage *BKE_previewimg_create();
 
 /**
  * Create a copy of the preview image.
@@ -92,7 +92,7 @@ std::optional<int> BKE_previewimg_deferred_thumb_source_get(const PreviewImage *
 
 /**
  * Create an #ImBuf holding a copy of the preview image buffer in \a prv.
- * \note The returned image buffer has to be free'd (#IMB_freeImBuf()).
+ * \note The returned image buffer has to be freed (#IMB_freeImBuf()).
  */
 ImBuf *BKE_previewimg_to_imbuf(PreviewImage *prv, int size);
 

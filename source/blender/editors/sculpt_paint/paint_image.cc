@@ -28,23 +28,26 @@
 #include "DNA_mesh_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
 #include "BKE_colorband.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
+#include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 
 #include "NOD_texture.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
@@ -809,16 +812,22 @@ static blender::float3 paint_init_pivot_mesh(Object *ob)
   return math::midpoint(bounds->min, bounds->max);
 }
 
-static void paint_init_pivot_curves(Object *ob, float location[3])
+static blender::float3 paint_init_pivot_curves(Object *ob)
 {
-  const BoundBox *bbox = BKE_object_boundbox_get(ob);
-  interp_v3_v3v3(location, bbox->vec[0], bbox->vec[6], 0.5f);
+  const Curves &curves = *static_cast<const Curves *>(ob->data);
+  const blender::Bounds<blender::float3> bounds = *curves.geometry.wrap().bounds_min_max();
+  return blender::math::midpoint(bounds.min, bounds.max);
 }
 
-static void paint_init_pivot_grease_pencil(Object *ob, float location[3])
+static blender::float3 paint_init_pivot_grease_pencil(Object *ob, const int frame)
 {
-  const BoundBox *bbox = BKE_object_boundbox_get(ob);
-  interp_v3_v3v3(location, bbox->vec[0], bbox->vec[6], 0.5f);
+  using namespace blender;
+  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(ob->data);
+  const std::optional<Bounds<float3>> bounds = grease_pencil.bounds_min_max(frame);
+  if (bounds.has_value()) {
+    return blender::math::midpoint(bounds->min, bounds->max);
+  }
+  return float3(0.0f);
 }
 
 void paint_init_pivot(Object *ob, Scene *scene)
@@ -831,10 +840,10 @@ void paint_init_pivot(Object *ob, Scene *scene)
       location = paint_init_pivot_mesh(ob);
       break;
     case OB_CURVES:
-      paint_init_pivot_curves(ob, location);
+      location = paint_init_pivot_curves(ob);
       break;
     case OB_GREASE_PENCIL:
-      paint_init_pivot_grease_pencil(ob, location);
+      location = paint_init_pivot_grease_pencil(ob, scene->r.cfra);
       break;
     default:
       BLI_assert_unreachable();
@@ -893,9 +902,9 @@ void ED_object_texture_paint_mode_enter_ex(Main *bmain,
 
   toggle_paint_cursor(scene, true);
 
-  Mesh *me = BKE_mesh_from_object(ob);
-  BLI_assert(me != nullptr);
-  DEG_id_tag_update(&me->id, ID_RECALC_COPY_ON_WRITE);
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  BLI_assert(mesh != nullptr);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
 
   /* Ensure we have evaluated data for bounding box. */
   BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
@@ -927,9 +936,9 @@ void ED_object_texture_paint_mode_exit_ex(Main *bmain, Scene *scene, Object *ob)
   BKE_image_paint_set_mipmap(bmain, true);
   toggle_paint_cursor(scene, false);
 
-  Mesh *me = BKE_mesh_from_object(ob);
-  BLI_assert(me != nullptr);
-  DEG_id_tag_update(&me->id, ID_RECALC_COPY_ON_WRITE);
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  BLI_assert(mesh != nullptr);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
   WM_main_add_notifier(NC_SCENE | ND_MODE, scene);
 }
 

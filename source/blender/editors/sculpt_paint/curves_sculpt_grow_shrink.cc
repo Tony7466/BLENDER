@@ -13,11 +13,11 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_paint.hh"
 
@@ -191,7 +191,7 @@ class ScaleCurvesEffect : public CurvesEffect {
       const float length_diff = scale_up_ ? move_distance_cu : -move_distance_cu;
       const float min_length = brush_.curves_sculpt_settings->minimum_length;
       const float new_length = std::max(min_length, old_length + length_diff);
-      const float scale_factor = safe_divide(new_length, old_length);
+      const float scale_factor = math::safe_divide(new_length, old_length);
 
       const float3 &root_pos_cu = positions_cu[points[0]];
       for (float3 &pos_cu : positions_cu.slice(points.drop_front(1))) {
@@ -341,8 +341,7 @@ struct CurvesEffectOperationExecutor {
         bke::crazyspace::get_evaluated_curves_deformation(*ctx_.depsgraph, *object_);
     const OffsetIndices points_by_curve = curves_->points_by_curve();
 
-    float4x4 projection;
-    ED_view3d_ob_project_mat_get(ctx_.rv3d, object_, projection.ptr());
+    const float4x4 projection = ED_view3d_ob_project_mat_get(ctx_.rv3d, object_);
 
     const Vector<float4x4> symmetry_brush_transforms = get_symmetry_brush_transforms(
         eCurvesSymmetryType(curves_id_->symmetry));
@@ -367,9 +366,8 @@ struct CurvesEffectOperationExecutor {
           const float3 p2_cu = math::transform_point(brush_transform_inv,
                                                      deformation.positions[segment_i + 1]);
 
-          float2 p1_re, p2_re;
-          ED_view3d_project_float_v2_m4(ctx_.region, p1_cu, p1_re, projection.ptr());
-          ED_view3d_project_float_v2_m4(ctx_.region, p2_cu, p2_re, projection.ptr());
+          const float2 p1_re = ED_view3d_project_float_v2_m4(ctx_.region, p1_cu, projection);
+          const float2 p2_re = ED_view3d_project_float_v2_m4(ctx_.region, p2_cu, projection);
 
           float2 closest_on_brush_re;
           float2 closest_on_segment_re;

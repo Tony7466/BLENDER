@@ -26,16 +26,16 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -51,7 +51,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "armature_intern.h"
 
@@ -297,7 +297,7 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
   /* Index bone collections by name.  This is also used later to keep track
    * of collections added from other armatures. */
   blender::Map<std::string, BoneCollection *> bone_collection_by_name;
-  LISTBASE_FOREACH (BoneCollection *, bcoll, &arm->collections) {
+  for (BoneCollection *bcoll : arm->collections_span()) {
     bone_collection_by_name.add(bcoll->name, bcoll);
   }
 
@@ -335,15 +335,12 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
        * already broken in that situation.  When that gets fixed, this should
        * also get fixed.  Note that copying the collections should include
        * copying their custom properties. (Nathan Vegdahl) */
-      LISTBASE_FOREACH_MUTABLE (BoneCollection *, bcoll, &curarm->collections) {
+      for (BoneCollection *bcoll : curarm->collections_span()) {
         BoneCollection *mapped = bone_collection_by_name.lookup_default(bcoll->name, nullptr);
-
         if (!mapped) {
-          BLI_remlink(&curarm->collections, bcoll);
-          BLI_addtail(&arm->collections, bcoll);
-
-          bone_collection_by_name.add(bcoll->name, bcoll);
-          mapped = bcoll;
+          BoneCollection *new_bcoll = ANIM_armature_bonecoll_new(arm, bcoll->name);
+          bone_collection_by_name.add(bcoll->name, new_bcoll);
+          mapped = new_bcoll;
         }
 
         bone_collection_remap.add(bcoll, mapped);

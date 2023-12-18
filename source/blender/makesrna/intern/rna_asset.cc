@@ -19,11 +19,23 @@
 
 #include "rna_internal.h"
 
-const EnumPropertyItem rna_enum_aset_library_type_items[] = {
-    {ASSET_LIBRARY_LOCAL, "LOCAL", 0, "Local", ""},
-    {ASSET_LIBRARY_ALL, "ALL", 0, "All", ""},
-    {ASSET_LIBRARY_ESSENTIALS, "ESSENTIALS", 0, "Essentials", ""},
-    {ASSET_LIBRARY_CUSTOM, "CUSTOM", 0, "Custom", ""},
+const EnumPropertyItem rna_enum_asset_library_type_items[] = {
+    {ASSET_LIBRARY_ALL, "ALL", 0, "All", "Show assets from all of the listed asset libraries"},
+    {ASSET_LIBRARY_LOCAL,
+     "LOCAL",
+     0,
+     "Current File",
+     "Show the assets currently available in this Blender session"},
+    {ASSET_LIBRARY_ESSENTIALS,
+     "ESSENTIALS",
+     0,
+     "Essentials",
+     "Show the basic building blocks and utilities coming with Blender"},
+    {ASSET_LIBRARY_CUSTOM,
+     "CUSTOM",
+     0,
+     "Custom",
+     "Show assets from the asset libraries configured in the Preferences"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -32,8 +44,8 @@ const EnumPropertyItem rna_enum_aset_library_type_items[] = {
 #  include "AS_asset_library.h"
 #  include "AS_asset_representation.hh"
 
-#  include "BKE_asset.h"
-#  include "BKE_context.h"
+#  include "BKE_asset.hh"
+#  include "BKE_context.hh"
 #  include "BKE_idprop.h"
 
 #  include "BLI_listbase.h"
@@ -425,6 +437,20 @@ static int rna_AssetRepresentation_full_library_path_length(PointerRNA *ptr)
   return full_library_path.size();
 }
 
+static void rna_AssetRepresentation_full_path_get(PointerRNA *ptr, char *value)
+{
+  const AssetRepresentation *asset = static_cast<const AssetRepresentation *>(ptr->data);
+  const std::string full_path = asset->get_identifier().full_path();
+  BLI_strncpy(value, full_path.c_str(), full_path.size() + 1);
+}
+
+static int rna_AssetRepresentation_full_path_length(PointerRNA *ptr)
+{
+  const AssetRepresentation *asset = static_cast<const AssetRepresentation *>(ptr->data);
+  const std::string full_path = asset->get_identifier().full_path();
+  return full_path.size();
+}
+
 const EnumPropertyItem *rna_asset_library_reference_itemf(bContext * /*C*/,
                                                           PointerRNA * /*ptr*/,
                                                           PropertyRNA * /*prop*/,
@@ -651,9 +677,20 @@ static void rna_def_asset_representation(BlenderRNA *brna)
                                 "rna_AssetRepresentation_full_library_path_get",
                                 "rna_AssetRepresentation_full_library_path_length",
                                 nullptr);
+
+  RNA_def_property_ui_text(
+      prop, "Full Library Path", "Absolute path to the .blend file containing this asset");
+
+  prop = RNA_def_property(srna, "full_path", PROP_STRING, PROP_FILENAME);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_AssetRepresentation_full_path_get",
+                                "rna_AssetRepresentation_full_path_length",
+                                nullptr);
+
   RNA_def_property_ui_text(
       prop,
-      "Full Library Path",
+      "Full Path",
       "Absolute path to the .blend file containing this asset extended with the path "
       "of the asset inside the file");
 }
@@ -676,10 +713,29 @@ PropertyRNA *rna_def_asset_library_reference_common(StructRNA *srna,
                                                     const char *set)
 {
   PropertyRNA *prop = RNA_def_property(srna, "asset_library_reference", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items);
+  RNA_def_property_enum_items(prop, rna_enum_asset_library_type_items);
   RNA_def_property_enum_funcs(prop, get, set, "rna_asset_library_reference_itemf");
 
   return prop;
+}
+
+static void rna_def_asset_weak_reference(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "AssetWeakReference", nullptr);
+  RNA_def_struct_ui_text(srna, "Asset Weak Reference", "Weak reference to some asset");
+
+  prop = RNA_def_property(srna, "asset_library_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_asset_library_type_items);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "asset_library_identifier", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "relative_asset_identifier", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 void RNA_def_asset(BlenderRNA *brna)
@@ -692,6 +748,7 @@ void RNA_def_asset(BlenderRNA *brna)
   rna_def_asset_handle(brna);
   rna_def_asset_representation(brna);
   rna_def_asset_catalog_path(brna);
+  rna_def_asset_weak_reference(brna);
 
   RNA_define_animate_sdna(true);
 }

@@ -25,13 +25,13 @@
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_screen.hh"
 #include "ED_transform.hh"
@@ -737,8 +737,8 @@ static bool uv_rip_pairs_calc_center_and_direction(UVRipPairs *rip,
  */
 static bool uv_rip_object(Scene *scene, Object *obedit, const float co[2], const float aspect_y)
 {
-  Mesh *me = (Mesh *)obedit->data;
-  BMEditMesh *em = me->edit_mesh;
+  Mesh *mesh = (Mesh *)obedit->data;
+  BMEditMesh *em = mesh->edit_mesh;
   BMesh *bm = em->bm;
   const char *active_uv_name = CustomData_get_active_layer_name(&bm->ldata, CD_PROP_FLOAT2);
   BM_uv_map_ensure_vert_select_attr(bm, active_uv_name);

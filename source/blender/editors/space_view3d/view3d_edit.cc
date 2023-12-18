@@ -21,16 +21,16 @@
 #include "BLI_math_vector.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_camera.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"

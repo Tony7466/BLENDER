@@ -5,12 +5,10 @@
 set(INC
   .
   intern
-  ../blenfont
   ../blenkernel
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../editors/include
   ../functions
   ../geometry
@@ -107,8 +105,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PUBLIC bf::dna
   PRIVATE bf::intern::guardedalloc
 )
@@ -119,7 +119,7 @@ if(WITH_ALEMBIC)
     ../io/alembic
   )
   list(APPEND LIB
-    bf_alembic
+    bf_io_alembic
   )
 endif()
 
@@ -129,7 +129,7 @@ if(WITH_USD)
     ../io/usd
   )
   list(APPEND LIB
-    bf_usd
+    bf_io_usd
   )
 endif()
 

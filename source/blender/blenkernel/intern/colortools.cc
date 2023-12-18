@@ -23,7 +23,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_colortools.h"
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_fcurve.h"
 
 #include "IMB_colormanagement.h"
@@ -1406,7 +1406,7 @@ void BKE_histogram_update_sample_line(Histogram *hist,
   hist->channels = 3;
   hist->x_resolution = 256;
   hist->xmax = 1.0f;
-  /* hist->ymax = 1.0f; */ /* now do this on the operator _only_ */
+  // hist->ymax = 1.0f; /* now do this on the operator _only_ */
 
   if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
     return;

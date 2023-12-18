@@ -12,10 +12,10 @@
 
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"

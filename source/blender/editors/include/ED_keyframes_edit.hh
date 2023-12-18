@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
 #include "ED_anim_api.hh" /* for enum eAnimFilter_Flags */
 
 struct BezTriple;
@@ -427,11 +428,15 @@ struct FCurveSegment {
  * The caller is responsible for freeing the memory.
  */
 ListBase find_fcurve_segments(FCurve *fcu);
-void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool cleardefault);
+void clean_fcurve(bAnimContext *ac,
+                  bAnimListElem *ale,
+                  float thresh,
+                  bool cleardefault,
+                  bool only_selected_keys);
 void blend_to_neighbor_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
-void scale_average_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
-
+void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
+void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 /**
  * Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
  * \param sigma: The shape of the gauss distribution.
@@ -463,8 +468,8 @@ enum tShearDirection {
   SHEAR_FROM_LEFT = 1,
   SHEAR_FROM_RIGHT,
 };
-void shear_fcurve_segment(struct FCurve *fcu,
-                          struct FCurveSegment *segment,
+void shear_fcurve_segment(FCurve *fcu,
+                          FCurveSegment *segment,
                           float factor,
                           tShearDirection direction);
 /**
@@ -476,6 +481,7 @@ void shear_fcurve_segment(struct FCurve *fcu,
  */
 void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
+void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float frame_offset);
 bool decimate_fcurve(bAnimListElem *ale, float remove_ratio, float error_sq_max);
 bool match_slope_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 
@@ -492,7 +498,14 @@ void bake_fcurve_segments(FCurve *fcu);
  * \param sample_rate: indicates how many samples per frame should be generated.
  */
 void sample_fcurve_segment(
-    FCurve *fcu, float start_frame, int sample_rate, float *r_samples, int sample_count);
+    FCurve *fcu, float start_frame, float sample_rate, float *r_samples, int sample_count);
+
+enum class BakeCurveRemove { REMOVE_NONE, REMOVE_IN_RANGE, REMOVE_OUT_RANGE, REMOVE_ALL };
+/** Creates keyframes in the given range at the given step interval.
+ * \param range: start and end frame to bake. Is inclusive on both ends.
+ * \param remove_existing: choice which keys to remove in relation to the given range.
+ */
+void bake_fcurve(FCurve *fcu, blender::int2 range, float step, BakeCurveRemove remove_existing);
 
 /* ----------- */
 

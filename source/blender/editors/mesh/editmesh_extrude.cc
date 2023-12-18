@@ -14,8 +14,8 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_report.h"
 
@@ -308,7 +308,7 @@ static int edbm_extrude_repeat_exec(bContext *C, wmOperator *op)
     }
 
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = true;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -449,7 +449,7 @@ static int edbm_extrude_region_exec(bContext *C, wmOperator *op)
     /* This normally happens when pushing undo but modal operators
      * like this one don't push undo data until after modal mode is done. */
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = true;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -507,7 +507,7 @@ static int edbm_extrude_context_exec(bContext *C, wmOperator *op)
     /* This normally happens when pushing undo but modal operators
      * like this one don't push undo data until after modal mode is done. */
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = true;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -559,7 +559,7 @@ static int edbm_extrude_verts_exec(bContext *C, wmOperator *op)
     edbm_extrude_verts_indiv(em, op, BM_ELEM_SELECT);
 
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = false;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -612,7 +612,7 @@ static int edbm_extrude_edges_exec(bContext *C, wmOperator *op)
     edbm_extrude_edges_indiv(em, op, BM_ELEM_SELECT, use_normal_flip);
 
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = false;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -665,7 +665,7 @@ static int edbm_extrude_faces_exec(bContext *C, wmOperator *op)
     edbm_extrude_discrete_faces(em, op, BM_ELEM_SELECT);
 
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = false;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -703,18 +703,18 @@ void MESH_OT_extrude_faces_indiv(wmOperatorType *ot)
 static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   BMVert *v1;
   BMIter iter;
   float center[3];
   uint verts_len;
 
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   const Object *object_active = vc.obact;
 
   const bool rot_src = RNA_boolean_get(op->ptr, "rotate_source");
   const bool use_proj = ((vc.scene->toolsettings->snap_flag & SCE_SNAP) &&
-                         (vc.scene->toolsettings->snap_mode == SCE_SNAP_TO_FACE));
+                         (vc.scene->toolsettings->snap_mode &
+                          (SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_PROJECT)));
 
   /* First calculate the center of transformation. */
   zero_v3(center);
@@ -904,7 +904,7 @@ static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const w
     /* This normally happens when pushing undo but modal operators
      * like this one don't push undo data until after modal mode is done. */
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = true;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(vc.obedit->data), &params);
@@ -914,7 +914,9 @@ static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const w
   }
   MEM_freeN(objects);
 
-  return OPERATOR_FINISHED;
+  /* Support dragging to move after extrude, see: #114282. */
+  const int retval = OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+  return WM_operator_flag_only_pass_through_on_press(retval, event);
 }
 
 void MESH_OT_dupli_extrude_cursor(wmOperatorType *ot)

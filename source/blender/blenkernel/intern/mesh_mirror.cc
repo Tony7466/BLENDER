@@ -15,15 +15,16 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mirror.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -123,6 +124,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
                                                         int **r_vert_merge_map,
                                                         int *r_vert_merge_map_len)
 {
+  using namespace blender;
   const float tolerance_sq = mmd->tolerance * mmd->tolerance;
   const bool do_vtargetmap = (mmd->flag & MOD_MIR_NO_MERGE) == 0 && r_vert_merge_map != nullptr;
 
@@ -389,8 +391,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   }
 
   /* handle custom split normals */
-  if (ob->type == OB_MESH && (((Mesh *)ob->data)->flag & ME_AUTOSMOOTH) &&
-      CustomData_has_layer(&result->loop_data, CD_CUSTOMLOOPNORMAL) && result->faces_num > 0)
+  if (ob->type == OB_MESH && CustomData_has_layer(&result->loop_data, CD_CUSTOMLOOPNORMAL) &&
+      result->faces_num > 0)
   {
     blender::Array<blender::float3> loop_normals(result_corner_verts.size());
     blender::short2 *clnors = static_cast<blender::short2 *>(
@@ -404,11 +406,9 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     transpose_m4(mtx_nor);
 
     /* calculate custom normals into loop_normals, then mirror first half into second half */
-
-    const bool *sharp_edges = static_cast<const bool *>(
-        CustomData_get_layer_named(&result->edge_data, CD_PROP_BOOL, "sharp_edge"));
-    const bool *sharp_faces = static_cast<const bool *>(
-        CustomData_get_layer_named(&result->face_data, CD_PROP_BOOL, "sharp_face"));
+    const bke::AttributeAccessor attributes = result->attributes();
+    const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", ATTR_DOMAIN_EDGE);
+    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
     blender::bke::mesh::normals_calc_loop(result->vert_positions(),
                                           result_edges,
                                           result_faces,
@@ -420,8 +420,6 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
                                           sharp_edges,
                                           sharp_faces,
                                           clnors,
-                                          true,
-                                          result->smoothresh,
                                           &lnors_spacearr,
                                           loop_normals);
 
@@ -449,7 +447,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   /* handle vgroup stuff */
   if (BKE_object_supports_vertex_groups(ob)) {
     if ((mmd->flag & MOD_MIR_VGROUP) && CustomData_has_layer(&result->vert_data, CD_MDEFORMVERT)) {
-      MDeformVert *dvert = BKE_mesh_deform_verts_for_write(result) + src_verts_num;
+      MDeformVert *dvert = result->deform_verts_for_write().data() + src_verts_num;
       int flip_map_len = 0;
       int *flip_map = BKE_object_defgroup_flip_map(ob, false, &flip_map_len);
       if (flip_map) {

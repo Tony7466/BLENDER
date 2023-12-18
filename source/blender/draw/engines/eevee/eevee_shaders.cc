@@ -12,7 +12,7 @@
 #include "BKE_node.hh"
 
 #include "BLI_dynstr.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "DNA_world_types.h"
 
@@ -1138,7 +1138,7 @@ bNodeTree *EEVEE_shader_default_surface_nodetree(Material *ma)
     e_data.surface.roughness_socket = static_cast<bNodeSocketValueFloat *>(
         nodeFindSocket(bsdf, SOCK_IN, "Roughness")->default_value);
     e_data.surface.specular_socket = static_cast<bNodeSocketValueFloat *>(
-        nodeFindSocket(bsdf, SOCK_IN, "Specular")->default_value);
+        nodeFindSocket(bsdf, SOCK_IN, "Specular IOR Level")->default_value);
     e_data.surface.ntree = ntree;
   }
   /* Update */
@@ -1384,11 +1384,13 @@ static GPUMaterial *eevee_material_get_ex(
 
   if (ma) {
     bNodeTree *ntree = !is_default ? ma->nodetree : EEVEE_shader_default_surface_nodetree(ma);
-    mat = DRW_shader_from_material(ma, ntree, options, is_volume, deferred, cbfn, nullptr);
+    mat = DRW_shader_from_material(
+        ma, ntree, GPU_MAT_EEVEE_LEGACY, options, is_volume, deferred, cbfn, nullptr);
   }
   else {
     bNodeTree *ntree = !is_default ? wo->nodetree : EEVEE_shader_default_world_nodetree(wo);
-    mat = DRW_shader_from_world(wo, ntree, options, is_volume, deferred, cbfn, nullptr);
+    mat = DRW_shader_from_world(
+        wo, ntree, GPU_MAT_EEVEE_LEGACY, options, is_volume, deferred, cbfn, nullptr);
   }
   return mat;
 }
@@ -1427,7 +1429,8 @@ GPUMaterial *EEVEE_material_get(
       if (optimization_status == GPU_MAT_OPTIMIZATION_QUEUED) {
         vedata->stl->g_data->queued_optimise_shaders_count++;
       }
-    } break;
+      break;
+    }
     case GPU_MAT_QUEUED: {
       vedata->stl->g_data->queued_shaders_count++;
       GPUMaterial *default_mat = EEVEE_material_default_get(scene, ma, options);
@@ -1435,7 +1438,8 @@ GPUMaterial *EEVEE_material_get(
       GPU_material_set_default(mat, default_mat);
       /* Return default material. */
       mat = default_mat;
-    } break;
+      break;
+    }
     case GPU_MAT_FAILED:
     default:
       ma = EEVEE_material_default_error_get();

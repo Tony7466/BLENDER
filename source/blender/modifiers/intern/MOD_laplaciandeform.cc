@@ -22,16 +22,16 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_particle.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -65,18 +65,34 @@ struct LaplacianSystem {
   int tris_num;
   int anchors_num;
   int repeat;
-  char anchor_grp_name[64]; /* Vertex Group name */
-  float (*co)[3];           /* Original vertex coordinates */
-  float (*no)[3];           /* Original vertex normal */
-  float (*delta)[3];        /* Differential Coordinates */
-  uint (*tris)[3];          /* Copy of MLoopTri (tessellation triangle) v1-v3 */
-  int *index_anchors;       /* Static vertex index list */
-  int *unit_verts;          /* Unit vectors of projected edges onto the plane orthogonal to n */
-  int *ringf_indices;       /* Indices of faces per vertex */
-  int *ringv_indices;       /* Indices of neighbors(vertex) per vertex */
-  LinearSolver *context;    /* System for solve general implicit rotations */
-  MeshElemMap *ringf_map;   /* Map of faces per vertex */
-  MeshElemMap *ringv_map;   /* Map of vertex per vertex */
+  /** Vertex Group name */
+  char anchor_grp_name[64];
+  /** Original vertex coordinates. */
+  float (*co)[3];
+  /** Original vertex normal. */
+  float (*no)[3];
+  /** Differential Coordinates. */
+  float (*delta)[3];
+  /**
+   * An array of triangles, each triangle represents 3 vertex indices.
+   *
+   * \note This is derived from the meshes #MLoopTri array.
+   */
+  uint (*tris)[3];
+  /** Static vertex index list. */
+  int *index_anchors;
+  /** Unit vectors of projected edges onto the plane orthogonal to n. */
+  int *unit_verts;
+  /** Indices of faces per vertex. */
+  int *ringf_indices;
+  /** Indices of neighbors(vertex) per vertex. */
+  int *ringv_indices;
+  /** System for solve general implicit rotations. */
+  LinearSolver *context;
+  /** Map of faces per vertex. */
+  MeshElemMap *ringf_map;
+  /** Map of vertex per vertex. */
+  MeshElemMap *ringv_map;
 };
 
 static LaplacianSystem *newLaplacianSystem()
@@ -151,9 +167,9 @@ static void createFaceRingMap(const int mvert_tot,
   MeshElemMap *map = MEM_cnew_array<MeshElemMap>(mvert_tot, __func__);
 
   for (const int i : looptris.index_range()) {
-    const MLoopTri &mlt = looptris[i];
+    const MLoopTri &lt = looptris[i];
     for (int j = 0; j < 3; j++) {
-      const int v_index = corner_verts[mlt.tri[j]];
+      const int v_index = corner_verts[lt.tri[j]];
       map[v_index].count++;
       indices_num++;
     }
@@ -166,9 +182,9 @@ static void createFaceRingMap(const int mvert_tot,
     map[i].count = 0;
   }
   for (const int i : looptris.index_range()) {
-    const MLoopTri &mlt = looptris[i];
+    const MLoopTri &lt = looptris[i];
     for (int j = 0; j < 3; j++) {
-      const int v_index = corner_verts[mlt.tri[j]];
+      const int v_index = corner_verts[lt.tri[j]];
       map[v_index].indices[map[v_index].count] = i;
       map[v_index].count++;
     }
@@ -747,11 +763,13 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
 static void deform_verts(ModifierData *md,
                          const ModifierEvalContext *ctx,
                          Mesh *mesh,
-                         float (*vertexCos)[3],
-                         int verts_num)
+                         blender::MutableSpan<blender::float3> positions)
 {
-  LaplacianDeformModifier_do(
-      (LaplacianDeformModifierData *)md, ctx->object, mesh, vertexCos, verts_num);
+  LaplacianDeformModifier_do((LaplacianDeformModifierData *)md,
+                             ctx->object,
+                             mesh,
+                             reinterpret_cast<float(*)[3]>(positions.data()),
+                             positions.size());
 }
 
 static void free_data(ModifierData *md)
@@ -836,7 +854,7 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
     /*struct_name*/ "LaplacianDeformModifierData",
     /*struct_size*/ sizeof(LaplacianDeformModifierData),
     /*srna*/ &RNA_LaplacianDeformModifier,
-    /*type*/ eModifierTypeType_OnlyDeform,
+    /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
     /*icon*/ ICON_MOD_MESHDEFORM,
     /*copy_data*/ copy_data,

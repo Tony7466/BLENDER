@@ -18,6 +18,7 @@
 #include "BLI_utildefines.h"
 
 #ifdef __cplusplus
+#  include "BLI_span.hh"
 namespace blender::animrig {
 class BoneColor;
 }
@@ -122,6 +123,9 @@ typedef struct Bone {
   int layer;
   /** For B-bones. */
   short segments;
+  /** Vertex to segment mapping mode. */
+  char bbone_mapping_mode;
+  char _pad2[7];
 
   /** Type of next/prev bone handles. */
   char bbone_prev_type;
@@ -184,8 +188,17 @@ typedef struct bArmature {
   short deformflag;
   short pathflag;
 
-  /* BoneCollection. */
-  ListBase collections;
+  /** This is used only for reading/writing BoneCollections in blend
+   * files, for forwards/backwards compatibility with Blender 4.0. It
+   * should always be empty at runtime. Use collection_array for
+   * everything other than file reading/writing.
+   * TODO: remove this in Blender 5.0, and instead write the contents of
+   * collection_array to blend files directly. */
+  ListBase collections_legacy; /* BoneCollection. */
+
+  struct BoneCollection **collection_array; /* Array of `collection_array_num` BoneCollections. */
+  int collection_array_num;
+  char _pad2[4];
 
   /** Do not directly assign, use `ANIM_armature_bonecoll_active_set` instead.
    * This is stored as a string to make it possible for the library overrides system to understand
@@ -203,6 +216,12 @@ typedef struct bArmature {
 
   /** Keep last, for consistency with the position of other DNA runtime structures. */
   struct bArmature_Runtime runtime;
+
+#ifdef __cplusplus
+  /* Collection array access for convenient for-loop iteration. */
+  blender::Span<const BoneCollection *> collections_span() const;
+  blender::Span<BoneCollection *> collections_span();
+#endif
 } bArmature;
 
 /**
@@ -394,6 +413,12 @@ typedef enum eBone_BBoneHandleType {
   BBONE_HANDLE_RELATIVE = 2, /* Custom handle in relative position mode. */
   BBONE_HANDLE_TANGENT = 3,  /* Custom handle in tangent mode (use direction, not location). */
 } eBone_BBoneHandleType;
+
+/* bone->bbone_mapping_mode */
+typedef enum eBone_BBoneMappingMode {
+  BBONE_MAPPING_STRAIGHT = 0, /* Default mode that ignores the rest pose curvature. */
+  BBONE_MAPPING_CURVED = 1,   /* Mode that takes the rest pose curvature into account. */
+} eBone_BBoneMappingMode;
 
 /* bone->bbone_flag */
 typedef enum eBone_BBoneFlag {

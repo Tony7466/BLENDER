@@ -12,6 +12,7 @@
 #include "BKE_mesh_mapping.hh"
 
 #include "GEO_mesh_split_edges.hh"
+#include "GEO_randomize.hh"
 
 namespace blender::geometry {
 
@@ -192,15 +193,19 @@ static Vector<CornerGroup> calc_corner_groups_for_vertex(const OffsetIndices<int
   return groups;
 }
 
-/* Calculate groups of corners that are contiguously connected to each input vertex. */
-static Array<Vector<CornerGroup>> calc_all_corner_groups(const OffsetIndices<int> faces,
-                                                         const Span<int> corner_verts,
-                                                         const Span<int> corner_edges,
-                                                         const GroupedSpan<int> vert_to_corner_map,
-                                                         const GroupedSpan<int> edge_to_corner_map,
-                                                         const Span<int> corner_to_face_map,
-                                                         const BitSpan split_edges,
-                                                         const IndexMask &affected_verts)
+/* Calculate groups of corners that are contiguously connected to each input vertex.
+ * BLI_NOINLINE because MSVC 17.7 has a codegen bug here, given there is only a single call to this
+ * function, not inlining it for all platforms won't affect performance. See
+ * https://developercommunity.visualstudio.com/t/10448291 for details. */
+BLI_NOINLINE static Array<Vector<CornerGroup>> calc_all_corner_groups(
+    const OffsetIndices<int> faces,
+    const Span<int> corner_verts,
+    const Span<int> corner_edges,
+    const GroupedSpan<int> vert_to_corner_map,
+    const GroupedSpan<int> edge_to_corner_map,
+    const Span<int> corner_to_face_map,
+    const BitSpan split_edges,
+    const IndexMask &affected_verts)
 {
   Array<Vector<CornerGroup>> corner_groups(affected_verts.size(), NoInitialization());
   affected_verts.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
@@ -590,7 +595,10 @@ void split_edges(Mesh &mesh,
   const Array<int> vert_map = offsets_to_map(affected_verts, new_verts_by_affected_vert);
   propagate_vert_attributes(mesh, vert_map);
 
-  BKE_mesh_tag_edges_split(&mesh);
+  mesh.tag_edges_split();
+
+  debug_randomize_vert_order(&mesh);
+  debug_randomize_edge_order(&mesh);
 }
 
 }  // namespace blender::geometry

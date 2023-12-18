@@ -18,11 +18,11 @@
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_remap.hh"
 #include "BKE_outliner_treehash.hh"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -123,11 +123,14 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
             ED_region_tag_redraw_no_rebuild(region);
           }
           break;
+        case ND_FRAME:
+          /* Rebuilding the outliner tree is expensive and shouldn't be done when scrubbing. */
+          ED_region_tag_redraw_no_rebuild(region);
+          break;
         case ND_OB_VISIBLE:
         case ND_OB_RENDER:
         case ND_MODE:
         case ND_KEYINGSET:
-        case ND_FRAME:
         case ND_RENDER_OPTIONS:
         case ND_SEQUENCER:
         case ND_LAYER_CONTENT:
@@ -211,8 +214,12 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
     case NC_GEOM:
       switch (wmn->data) {
         case ND_VERTEX_GROUP:
-        case ND_DATA:
           ED_region_tag_redraw(region);
+          break;
+        case ND_DATA:
+          if (wmn->action == NA_RENAME) {
+            ED_region_tag_redraw(region);
+          }
           break;
       }
       break;
@@ -263,6 +270,13 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
       }
       break;
     case NC_NODE:
+      if (ELEM(wmn->action, NA_ADDED, NA_REMOVED) &&
+          ELEM(space_outliner->outlinevis, SO_LIBRARIES, SO_DATA_API))
+      {
+        ED_region_tag_redraw(region);
+      }
+      break;
+    case NC_IMAGE:
       if (ELEM(wmn->action, NA_ADDED, NA_REMOVED) &&
           ELEM(space_outliner->outlinevis, SO_LIBRARIES, SO_DATA_API))
       {
@@ -618,7 +632,6 @@ void ED_spacetype_outliner()
   st->id_remap = outliner_id_remap;
   st->foreach_id = outliner_foreach_id;
   st->deactivate = outliner_deactivate;
-  st->context = outliner_context;
   st->blend_read_data = outliner_space_blend_read_data;
   st->blend_read_after_liblink = outliner_space_blend_read_after_liblink;
   st->blend_write = outliner_space_blend_write;
@@ -633,6 +646,7 @@ void ED_spacetype_outliner()
   art->free = outliner_main_region_free;
   art->listener = outliner_main_region_listener;
   art->message_subscribe = outliner_main_region_message_subscribe;
+  art->context = outliner_main_region_context;
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */

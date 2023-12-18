@@ -62,18 +62,18 @@ constexpr int COLOR_SETS_MAX_THEMED_INDEX = 20;
 #  include "BLI_math_vector.h"
 
 #  include "BKE_action.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_global.h"
 #  include "BKE_idprop.h"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 
-#  include "BKE_armature.h"
+#  include "BKE_armature.hh"
 #  include "ED_armature.hh"
 
-#  include "ANIM_bone_collections.h"
+#  include "ANIM_bone_collections.hh"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  ifndef NDEBUG
 #    include "ANIM_armature_iter.hh"
@@ -185,6 +185,23 @@ static void rna_Armature_edit_bone_remove(bArmature *arm,
   RNA_POINTER_INVALIDATE(ebone_ptr);
 }
 
+static void rna_iterator_bone_collections_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  bArmature *arm = (bArmature *)ptr->data;
+  rna_iterator_array_begin(iter,
+                           arm->collection_array,
+                           sizeof(BoneCollection *),
+                           arm->collection_array_num,
+                           false,
+                           nullptr);
+}
+
+static int rna_iterator_bone_collections_length(PointerRNA *ptr)
+{
+  bArmature *arm = (bArmature *)ptr->data;
+  return arm->collection_array_num;
+}
+
 static void rna_BoneCollections_active_set(PointerRNA *ptr,
                                            PointerRNA value,
                                            struct ReportList * /*reports*/)
@@ -216,22 +233,21 @@ static void rna_BoneCollections_active_index_range(
   // TODO: Figure out what this function actually is used for, as we may want to protect the first
   // collection (i.e. the default collection that should remain first).
   *min = 0;
-  *max = max_ii(0, BLI_listbase_count(&arm->collections) - 1);
+  *max = max_ii(0, arm->collection_array_num - 1);
 }
 
 static void rna_BoneCollections_active_name_set(PointerRNA *ptr, const char *name)
 {
   bArmature *arm = (bArmature *)ptr->data;
-  BoneCollection *bcoll = ANIM_armature_bonecoll_get_by_name(arm, name);
-  ANIM_armature_bonecoll_active_set(arm, bcoll);
+  ANIM_armature_bonecoll_active_name_set(arm, name);
   WM_main_add_notifier(NC_OBJECT | ND_BONE_COLLECTION, ptr->data);
 }
 
 static void rna_BoneCollections_move(bArmature *arm, ReportList *reports, int from, int to)
 {
-  const int count = BLI_listbase_count(&arm->collections);
+  const int count = arm->collection_array_num;
   if (from < 0 || from >= count || to < 0 || to >= count ||
-      (from != to && !BLI_listbase_move_index(&arm->collections, from, to)))
+      (from != to && !ANIM_armature_bonecoll_move_to_index(arm, from, to)))
   {
     BKE_reportf(reports, RPT_ERROR, "Cannot move collection from index '%d' to '%d'", from, to);
   }
@@ -283,7 +299,7 @@ static void rna_BoneCollection_bones_begin(CollectionPropertyIterator *iter, Poi
   bArmature *arm = (bArmature *)ptr->owner_id;
   if (arm->edbo) {
     iter->valid = false;
-    BKE_reportf(nullptr, RPT_WARNING, "collection.bones is not available in armature edit mode");
+    BKE_reportf(nullptr, RPT_WARNING, "`Collection.bones` is not available in armature edit mode");
     return;
   }
 
@@ -518,8 +534,8 @@ static void rna_Bone_update_renamed(Main * /*bmain*/, Scene * /*scene*/, Pointer
 {
   ID *id = ptr->owner_id;
 
-  /* redraw view */
-  WM_main_add_notifier(NC_GEOM | ND_DATA, id);
+  /* Redraw Outliner / Dopesheet. */
+  WM_main_add_notifier(NC_GEOM | ND_DATA | NA_RENAME, id);
 
   /* update animation channels */
   WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN, id);
@@ -593,40 +609,6 @@ static IDProperty **rna_EditBone_idprops(PointerRNA *ptr)
 {
   EditBone *ebone = static_cast<EditBone *>(ptr->data);
   return &ebone->prop;
-}
-
-/* TODO: remove the deprecation stubs. */
-static bool rna_use_inherit_scale_get(char inherit_scale_mode)
-{
-  return inherit_scale_mode <= BONE_INHERIT_SCALE_FIX_SHEAR;
-}
-
-static void rna_use_inherit_scale_set(char *inherit_scale_mode, bool value)
-{
-  bool cur_value = (*inherit_scale_mode <= BONE_INHERIT_SCALE_FIX_SHEAR);
-  if (value != cur_value) {
-    *inherit_scale_mode = (value ? BONE_INHERIT_SCALE_FULL : BONE_INHERIT_SCALE_NONE);
-  }
-}
-
-static bool rna_EditBone_use_inherit_scale_get(PointerRNA *ptr)
-{
-  return rna_use_inherit_scale_get(((EditBone *)ptr->data)->inherit_scale_mode);
-}
-
-static void rna_EditBone_use_inherit_scale_set(PointerRNA *ptr, bool value)
-{
-  rna_use_inherit_scale_set(&((EditBone *)ptr->data)->inherit_scale_mode, value);
-}
-
-static bool rna_Bone_use_inherit_scale_get(PointerRNA *ptr)
-{
-  return rna_use_inherit_scale_get(((Bone *)ptr->data)->inherit_scale_mode);
-}
-
-static void rna_Bone_use_inherit_scale_set(PointerRNA *ptr, bool value)
-{
-  rna_use_inherit_scale_set(&((Bone *)ptr->data)->inherit_scale_mode, value);
 }
 
 static void rna_EditBone_name_set(PointerRNA *ptr, const char *value)
@@ -967,6 +949,7 @@ static void rna_def_bonecolor(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_color_palettes_items);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_BoneColor_palette_index_set", nullptr);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Color Set", "Color palette to use");
   RNA_def_property_update(prop, 0, "rna_BoneColor_update");
 
@@ -982,6 +965,7 @@ static void rna_def_bonecolor(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_struct_type(prop, "ThemeBoneColorSet");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop, "Custom", "The custom bone colors, used when palette is 'CUSTOM'");
   RNA_def_property_update(prop, 0, "rna_BoneColor_update");
@@ -1139,6 +1123,22 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem prop_bbone_mapping_mode[] = {
+      {BBONE_MAPPING_STRAIGHT,
+       "STRAIGHT",
+       0,
+       "Straight",
+       "Fast mapping that is good for most situations, but ignores the rest pose "
+       "curvature of the B-Bone"},
+      {BBONE_MAPPING_CURVED,
+       "CURVED",
+       0,
+       "Curved",
+       "Slower mapping that gives better deformation for B-Bones that are sharply "
+       "curved in rest pose"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem prop_inherit_scale_mode[] = {
       {BONE_INHERIT_SCALE_FULL, "FULL", 0, "Full", "Inherit all effects of parent scaling"},
       {BONE_INHERIT_SCALE_FIX_SHEAR,
@@ -1230,20 +1230,6 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
   RNA_def_property_enum_items(prop, prop_inherit_scale_mode);
   RNA_def_property_update(prop, 0, "rna_Armature_update_data");
 
-  /* TODO: remove the compatibility stub. */
-  prop = RNA_def_property(srna, "use_inherit_scale", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop, "Inherit Scale", "DEPRECATED: Bone inherits scaling from parent bone");
-  if (editbone) {
-    RNA_def_property_boolean_funcs(
-        prop, "rna_EditBone_use_inherit_scale_get", "rna_EditBone_use_inherit_scale_set");
-  }
-  else {
-    RNA_def_property_boolean_funcs(
-        prop, "rna_Bone_use_inherit_scale_get", "rna_Bone_use_inherit_scale_set");
-  }
-  RNA_def_property_update(prop, 0, "rna_Armature_update_data");
-
   prop = RNA_def_property(srna, "use_local_location", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Local Location", "Bone location is set in local space");
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", BONE_NO_LOCAL_LOCATION);
@@ -1308,7 +1294,7 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
     RNA_def_property_update(prop, 0, "rna_Armature_update_data");
   }
   RNA_def_property_float_sdna(prop, nullptr, "rad_head");
-  /* XXX range is 0 to limit, where limit = 10000.0f * MAX2(1.0, view3d->grid); */
+  /* XXX: range is 0 to limit, where `limit = 10000.0f * MAX2(1.0, view3d->grid)`. */
   // RNA_def_property_range(prop, 0, 1000);
   RNA_def_property_ui_range(prop, 0.01, 100, 0.1, 3);
   RNA_def_property_ui_text(
@@ -1322,7 +1308,7 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
     RNA_def_property_update(prop, 0, "rna_Armature_update_data");
   }
   RNA_def_property_float_sdna(prop, nullptr, "rad_tail");
-  /* XXX range is 0 to limit, where limit = 10000.0f * MAX2(1.0, view3d->grid); */
+  /* XXX range is 0 to limit, where limit = `10000.0f * MAX2(1.0, view3d->grid)`. */
   // RNA_def_property_range(prop, 0, 1000);
   RNA_def_property_ui_range(prop, 0.01, 100, 0.1, 3);
   RNA_def_property_ui_text(
@@ -1340,6 +1326,16 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
   RNA_def_property_range(prop, 1, 32);
   RNA_def_property_ui_text(
       prop, "B-Bone Segments", "Number of subdivisions of bone (for B-Bones only)");
+
+  prop = RNA_def_property(srna, "bbone_mapping_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "bbone_mapping_mode");
+  RNA_def_property_enum_items(prop, prop_bbone_mapping_mode);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "B-Bone Vertex Mapping Mode",
+      "Selects how the vertices are mapped to B-Bone segments based on their position");
+  RNA_def_property_update(prop, 0, "rna_Armature_update_data");
 
   prop = RNA_def_property(srna, "bbone_x", PROP_FLOAT, PROP_NONE);
   if (editbone) {
@@ -1737,8 +1733,8 @@ static void rna_def_armature_bones(BlenderRNA *brna, PropertyRNA *cprop)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  /*  FunctionRNA *func; */
-  /*  PropertyRNA *parm; */
+  // FunctionRNA *func;
+  // PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "ArmatureBones");
   srna = RNA_def_struct(brna, "ArmatureBones", nullptr);
@@ -1754,7 +1750,7 @@ static void rna_def_armature_bones(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_update(prop, 0, "rna_Armature_update");
 
   /* TODO: redraw. */
-  /*      RNA_def_property_collection_active(prop, prop_act); */
+  // RNA_def_property_collection_active(prop, prop_act);
 }
 
 /* armature.bones.* */
@@ -1781,7 +1777,7 @@ static void rna_def_armature_edit_bones(BlenderRNA *brna, PropertyRNA *cprop)
       prop, nullptr, "rna_Armature_act_edit_bone_set", nullptr, nullptr);
 
   /* TODO: redraw. */
-  /*      RNA_def_property_collection_active(prop, prop_act); */
+  // RNA_def_property_collection_active(prop, prop_act);
 
   /* add target */
   func = RNA_def_function(srna, "new", "rna_Armature_edit_bone_new");
@@ -1973,8 +1969,16 @@ static void rna_def_armature(BlenderRNA *brna)
   rna_def_armature_edit_bones(brna, prop);
 
   prop = RNA_def_property(srna, "collections", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "collections", nullptr);
   RNA_def_property_struct_type(prop, "BoneCollection");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_bone_collections_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    "rna_iterator_bone_collections_length",
+                                    nullptr, /* TODO */
+                                    nullptr, /* TODO */
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Bone Collections", "");
   RNA_def_property_override_funcs(
       prop, nullptr, nullptr, "rna_Armature_collections_override_apply");
@@ -2084,7 +2088,6 @@ static void rna_def_bonecollection(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, nullptr);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "is_local_override", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flags", BONE_COLLECTION_OVERRIDE_LIBRARY_LOCAL);
@@ -2119,7 +2122,7 @@ static void rna_def_bonecollection(BlenderRNA *brna)
                            "Bones",
                            "Bones assigned to this bone collection. In armature edit mode this "
                            "will always return an empty list of bones, as the bone collection "
-                           "memberships are only synchronised when exiting edit mode");
+                           "memberships are only synchronized when exiting edit mode");
 
   RNA_api_bonecollection(srna);
 }

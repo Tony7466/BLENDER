@@ -145,8 +145,8 @@ class MTLRenderPassState {
   /* Buffer binding (RenderCommandEncoder). */
   void bind_vertex_buffer(id<MTLBuffer> buffer, uint64_t buffer_offset, uint index);
   void bind_fragment_buffer(id<MTLBuffer> buffer, uint64_t buffer_offset, uint index);
-  void bind_vertex_bytes(void *bytes, uint64_t length, uint index);
-  void bind_fragment_bytes(void *bytes, uint64_t length, uint index);
+  void bind_vertex_bytes(const void *bytes, uint64_t length, uint index);
+  void bind_fragment_bytes(const void *bytes, uint64_t length, uint index);
 };
 
 /* Metal Context Compute Pass State -- Used to track active ComputeCommandEncoder state. */
@@ -184,7 +184,7 @@ class MTLComputeState {
                            uint64_t buffer_offset,
                            uint index,
                            bool writeable = false);
-  void bind_compute_bytes(void *bytes, uint64_t length, uint index);
+  void bind_compute_bytes(const void *bytes, uint64_t length, uint index);
 };
 
 /* Depth Stencil State */
@@ -640,7 +640,7 @@ class MTLCommandBufferManager {
   bool end_active_command_encoder();
   id<MTLRenderCommandEncoder> ensure_begin_render_command_encoder(MTLFrameBuffer *ctx_framebuffer,
                                                                   bool force_begin,
-                                                                  bool *new_pass);
+                                                                  bool *r_new_pass);
   id<MTLBlitCommandEncoder> ensure_begin_blit_encoder();
   id<MTLComputeCommandEncoder> ensure_begin_compute_encoder();
 
@@ -771,7 +771,7 @@ class MTLContext : public Context {
   void flush() override;
   void finish() override;
 
-  void memory_statistics_get(int *total_mem, int *free_mem) override;
+  void memory_statistics_get(int *r_total_mem, int *r_free_mem) override;
 
   static MTLContext *get()
   {
