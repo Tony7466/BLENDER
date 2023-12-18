@@ -528,6 +528,7 @@ class TestPropCollectionIDPropForeachGetSet(BaseTestForeachGetSet):
 
     These properties are expected to not have raw array access because they are runtime properties.
     """
+
     def setUp(self):
         # Register a PropertyGroup subclass with properties to be tested.
         class TestPropertyGroup(bpy.types.PropertyGroup):
@@ -609,6 +610,7 @@ class TestPropCollectionForeachGetSetMeshAttributes(BaseTestForeachGetSet):
 
     The properties of these collections' elements commonly have raw array access.
     """
+
     def setUp(self):
         # Create a mesh and add an attribute of each type that can be used with foreach_get/foreach_set.
         self.mesh = bpy.data.meshes.new("")
@@ -701,6 +703,7 @@ class TestPropCollectionForeachGetSetNoRawAccess(BaseTestForeachGetSet):
     The properties of this collection's elements are expected to never have raw array access because the Objects in the
     collection are not stored in contiguous memory.
     """
+
     def setUp(self):
         vector_size = 3
 
@@ -841,6 +844,7 @@ class TestPropCollectionForeachGetSetNoItemPropertyPointer(BaseTestForeachGetSet
     collection of `ShapeKeyPoint`, `ShapeKeyCurvePoint` or `ShapeKeyBezierPoint`, with Curve ShapeKey instances allowing
     a mix of both `ShapeKeyCurvePoint` and `ShapeKeyBezierPoint` in the same collection.
     """
+
     def setUp(self):
         self.mixed_curve = bpy.data.curves.new("", 'CURVE')
         bezier_spline = self.mixed_curve.splines.new('BEZIER')
