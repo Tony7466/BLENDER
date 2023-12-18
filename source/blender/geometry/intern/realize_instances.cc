@@ -637,7 +637,8 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
           // gather_info.instances_components_to_merge.append(instances_component);
           // gather_info.instances_components_transforms.append(base_transform);
-            }
+          }
+        else{
           const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
           const Instances *instances = instances_component.get();
           if (instances != nullptr && instances->instances_num() > 0) {
@@ -648,6 +649,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                 base_transform,
                                                 base_instance_context);
           }
+        }
           break;
       }
       case bke::GeometryComponent::Type::Volume: {
