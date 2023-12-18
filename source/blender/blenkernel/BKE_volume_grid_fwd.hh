@@ -39,6 +39,12 @@ class GVolumeGrid;
 template<typename T> class VolumeGrid;
 
 /**
+ * Access token required to use the tree stored in a volume grid. This allows detecting whether a
+ * tree is currently used or not, for the purpose of safely freeing unused trees.
+ */
+class VolumeTreeUser;
+
+/**
  * Compile time check to see of a type is a #VolumeGrid. This is false for e.g. `float` or
  * `GVolumeGrid` and true for e.g. `VolumeGrid<int>` and `VolumeGrid<float>`.
  */

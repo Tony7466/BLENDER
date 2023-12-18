@@ -494,7 +494,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
     return false;
   }
 
-  grids.metadata = std::move(grids_from_file.meta_data);
+  grids.metadata = std::move(grids_from_file.file_meta_data);
   for (GVolumeGrid &volume_grid : grids_from_file.grids) {
     grids.emplace_back(std::move(volume_grid));
   }

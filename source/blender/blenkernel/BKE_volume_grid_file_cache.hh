@@ -8,9 +8,11 @@
  * \ingroup bke
  */
 
-#include "BLI_vector.hh"
+#ifdef WITH_OPENVDB
 
-#include "BKE_volume_grid.hh"
+#  include "BLI_vector.hh"
+
+#  include "BKE_volume_grid.hh"
 
 /**
  * The global volume grid file cache makes it easy to load volumes only once from disk and to then
@@ -53,3 +55,5 @@ GridsFromFile get_all_grids_from_file(StringRef file_path, int simplify_level = 
 void unload_unused();
 
 }  // namespace blender::bke::volume_grid::file_cache
+
+#endif

@@ -8,22 +8,42 @@
  * \ingroup bke
  */
 
-#include "BLI_math_quaternion_types.hh"
-#include "BLI_math_vector_types.hh"
-
 #ifdef WITH_OPENVDB
+
+#  include "BLI_math_quaternion_types.hh"
+#  include "BLI_math_vector_types.hh"
+
+#  include "BKE_volume_enums.hh"
 #  include "openvdb_fwd.hh"
-#endif
 
-#include "BKE_volume_enums.hh"
-
-#ifdef WITH_OPENVDB
 namespace blender::bke {
 
+/**
+ * We uses the native math types from OpenVDB when working with grids. For example, vector grids
+ * contain `openvdb::Vec3f`. #VolumeGridTraits allows mapping between Blender's math types and the
+ * ones from OpenVDB. This allows e.g. using `VolumeGrid<float3>` when the actual grid is a
+ * `openvdb::Vec3SGrid`. The benefit of this is that most places in Blender can keep using our own
+ * types, while only the code that deals with OpenVDB specifically has to care about the mapping
+ * between math type representations.
+ *
+ * \param T The Blender type that we want to get the grid traits for (e.g. `blender::float3`).
+ */
 template<typename T> struct VolumeGridTraits {
+  /**
+   * The type that Blender uses to represent values of the voxel type (e.g. `blender::float3`).
+   */
   using BlenderType = void;
+  /**
+   * The type that OpenVDB uses.
+   */
   using PrimitiveType = void;
+  /**
+   * The standard tree type we use for grids of the given type.
+   */
   using TreeType = void;
+  /**
+   * The corresponding #VolumeGridType for the type.
+   */
   static constexpr VolumeGridType EnumType = VOLUME_GRID_UNKNOWN;
 };
 
