@@ -694,16 +694,12 @@ static int startffmpeg(anim *anim)
         1);
   }
 
-  anim->img_convert_ctx = sws_getContext(anim->x,
-                                         anim->y,
-                                         anim->pCodecCtx->pix_fmt,
-                                         anim->x,
-                                         anim->y,
-                                         AV_PIX_FMT_RGBA,
-                                         SWS_BILINEAR | SWS_PRINT_INFO | SWS_FULL_CHR_H_INT,
-                                         nullptr,
-                                         nullptr,
-                                         nullptr);
+  anim->img_convert_ctx = sws_getContext_threaded(anim->x,
+                                                  anim->y,
+                                                  anim->pCodecCtx->pix_fmt,
+                                                  AV_PIX_FMT_RGBA,
+                                                  SWS_BILINEAR | SWS_PRINT_INFO |
+                                                      SWS_FULL_CHR_H_INT);
 
   if (!anim->img_convert_ctx) {
     fprintf(stderr, "Can't transform color space??? Bailing out...\n");
@@ -846,13 +842,7 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
     }
   }
 
-  sws_scale(anim->img_convert_ctx,
-            (const uint8_t *const *)input->data,
-            input->linesize,
-            0,
-            anim->y,
-            anim->pFrameRGB->data,
-            anim->pFrameRGB->linesize);
+  sws_scale_frame_threaded(anim->img_convert_ctx, anim->pFrameRGB, input);
 
   /* Copy the valid bytes from the aligned buffer vertically flipped into ImBuf */
   int aligned_stride = anim->pFrameRGB->linesize[0];

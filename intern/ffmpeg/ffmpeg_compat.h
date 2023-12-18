@@ -16,7 +16,10 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/opt.h>
 #include <libswscale/swscale.h>
+
+#include "BLI_threads.h"
 
 /* Check if our ffmpeg is new enough, avoids user complaints.
  * Minimum supported version is currently 3.2.0 which mean the following library versions:
@@ -45,11 +48,6 @@
  * If it sticks around any longer, then we should consider refactoring this.
  */
 #  define FFMPEG_USE_OLD_CHANNEL_VARS
-#endif
-
-/* Threaded sws_scale_frame was added in ffmpeg 5.0 (swscale version 6.1). */
-#if (LIBSWSCALE_VERSION_INT >= AV_VERSION_INT(6, 1, 100))
-#  define FFMPEG_SWSCALE_THREADING
 #endif
 
 /* AV_CODEC_CAP_AUTO_THREADS was renamed to AV_CODEC_CAP_OTHER_THREADS with
@@ -138,6 +136,51 @@ int64_t av_get_frame_duration_in_pts_units(const AVFrame *picture)
   return picture->pkt_duration;
 #else
   return picture->duration;
+#endif
+}
+
+/* Threaded sws_scale_frame was added in ffmpeg 5.0 (swscale version 6.1). */
+#if (LIBSWSCALE_VERSION_INT >= AV_VERSION_INT(6, 1, 100))
+#  define FFMPEG_SWSCALE_THREADING
+#endif
+
+FFMPEG_INLINE SwsContext *sws_getContext_threaded(
+    int width, int height, AVPixelFormat src_format, AVPixelFormat dst_format, int sws_flags)
+{
+#if defined(FFMPEG_SWSCALE_THREADING)
+  /* sws_getContext does not allow passing flags that ask for multi-threaded
+   * scaling context, so do it the hard way. */
+  SwsContext *c = sws_alloc_context();
+  if (c == nullptr) {
+    return nullptr;
+  }
+  av_opt_set_int(c, "srcw", width, 0);
+  av_opt_set_int(c, "srch", height, 0);
+  av_opt_set_int(c, "src_format", src_format, 0);
+  av_opt_set_int(c, "dstw", width, 0);
+  av_opt_set_int(c, "dsth", height, 0);
+  av_opt_set_int(c, "dst_format", dst_format, 0);
+  av_opt_set_int(c, "sws_flags", sws_flags, 0);
+  av_opt_set_int(c, "threads", BLI_system_thread_count(), 0);
+
+  if (sws_init_context(c, nullptr, nullptr) < 0) {
+    sws_freeContext(c);
+    return nullptr;
+  }
+#else
+  SwsContext *c = sws_getContext(
+      width, height, src_format, width, height, dst_format, sws_flags, nullptr, nullptr, nullptr);
+#endif
+
+  return c;
+}
+
+FFMPEG_INLINE void sws_scale_frame_threaded(SwsContext *ctx, AVFrame *dst, const AVFrame *src)
+{
+#if defined(FFMPEG_SWSCALE_THREADING)
+  sws_scale_frame(ctx, dst, src);
+#else
+  sws_scale(ctx, src->data, src->linesize, 0, src->height, dst->data, dst->linesize);
 #endif
 }
 
