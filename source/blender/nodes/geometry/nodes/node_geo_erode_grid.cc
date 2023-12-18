@@ -64,8 +64,8 @@ static void try_erode_grid(GeoNodeExecParams params,
     return;
   }
 
-  bke::VolumeTreeUser tree_user = volume_grid->tree_user();
-  bke::OpenvdbGridType<T> &grid = volume_grid.grid_for_write(tree_user);
+  bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
+  bke::OpenvdbGridType<T> &grid = volume_grid.grid_for_write(access_token);
 
   openvdb::tools::erodeActiveValues(
       grid.tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));

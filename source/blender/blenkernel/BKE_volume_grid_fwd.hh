@@ -42,7 +42,7 @@ template<typename T> class VolumeGrid;
  * Access token required to use the tree stored in a volume grid. This allows detecting whether a
  * tree is currently used or not, for the purpose of safely freeing unused trees.
  */
-class VolumeTreeUser;
+class VolumeTreeAccessToken;
 
 /**
  * Compile time check to see of a type is a #VolumeGrid. This is false for e.g. `float` or
@@ -97,5 +97,5 @@ using volume_grid::GVolumeGrid;
 using volume_grid::is_VolumeGrid_v;
 using volume_grid::VolumeGrid;
 using volume_grid::VolumeGridData;
-using volume_grid::VolumeTreeUser;
+using volume_grid::VolumeTreeAccessToken;
 }  // namespace blender::bke

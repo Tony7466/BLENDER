@@ -154,8 +154,8 @@ template<typename T> class SampleGridFunction : public mf::MultiFunction {
     const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
     MutableSpan<T> dst = params.uninitialized_single_output<T>(1, "Value");
 
-    const bke::VolumeTreeUser tree_user = volume_grid_->tree_user();
-    sample_grid<T>(volume_grid_.grid(tree_user), positions, mask, dst, interpolation_mode_);
+    const bke::VolumeTreeAccessToken access_token = volume_grid_->tree_access_token();
+    sample_grid<T>(volume_grid_.grid(access_token), positions, mask, dst, interpolation_mode_);
   }
 };
 

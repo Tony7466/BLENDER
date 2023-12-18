@@ -547,10 +547,10 @@ bool BKE_volume_save(const Volume *volume,
   openvdb::GridCPtrVec vdb_grids;
 
   /* Tree users need to be kept alive for as long as the grids may be accessed. */
-  blender::Vector<blender::bke::VolumeTreeUser> tree_users;
+  blender::Vector<blender::bke::VolumeTreeAccessToken> tree_users;
 
   for (const GVolumeGrid &grid : grids) {
-    tree_users.append(grid->tree_user());
+    tree_users.append(grid->tree_access_token());
     vdb_grids.push_back(grid->grid_ptr(tree_users.last()));
   }
 
@@ -585,9 +585,9 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
     std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
-      blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();
+      blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
       result = blender::bounds::merge(result,
-                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(tree_user)));
+                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(access_token)));
     }
     return result;
   }

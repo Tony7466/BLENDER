@@ -54,9 +54,9 @@ namespace blender::bke::volume_grid {
 class VolumeGridData : public ImplicitSharingMixin {
  private:
   /**
-   * Empty struct that exists so that it can be used as token in #VolumeTreeUser.
+   * Empty struct that exists so that it can be used as token in #VolumeTreeAccessToken.
    */
-  struct TreeUserToken {
+  struct AccessToken {
   };
 
   /**
@@ -104,9 +104,9 @@ class VolumeGridData : public ImplicitSharingMixin {
    * not. If this variable is the only owner of the `shared_ptr`, no one else has access to the
    * tree.
    */
-  std::shared_ptr<TreeUserToken> tree_user_token_;
+  std::shared_ptr<AccessToken> tree_access_token_;
 
-  friend class VolumeTreeUser;
+  friend class VolumeTreeAccessToken;
 
   /** Private default constructor for internal purposes. */
   VolumeGridData();
@@ -142,7 +142,7 @@ class VolumeGridData : public ImplicitSharingMixin {
    * Get an access token for the underlying tree. This is necessary to be able to detect whether
    * the grid is currently unused so that it can be safely unloaded.
    */
-  VolumeTreeUser tree_user() const;
+  VolumeTreeAccessToken tree_access_token() const;
 
   /**
    * Create a copy of the volume grid. This should generally only be done when the current grid is
@@ -157,20 +157,22 @@ class VolumeGridData : public ImplicitSharingMixin {
    * Get the underlying OpenVDB grid for read-only access. This may load the tree lazily if it's
    * not loaded already.
    */
-  const openvdb::GridBase &grid(const VolumeTreeUser &tree_user) const;
+  const openvdb::GridBase &grid(const VolumeTreeAccessToken &tree_access_token) const;
   /**
    * Get the underlying OpenVDB grid for read and write access. This may load the tree lazily if
    * it's not loaded already. It may also make a copy of the tree if it's currently shared.
    */
-  openvdb::GridBase &grid_for_write(const VolumeTreeUser &tree_user);
+  openvdb::GridBase &grid_for_write(const VolumeTreeAccessToken &tree_access_token);
 
   /**
    * Same as #grid and #grid_for_write but returns the grid as a `shared_ptr` so that it can be
    * used with APIs that only support grids wrapped into one. This method is not supposed to
    * actually transfer ownership of the grid.
    */
-  std::shared_ptr<const openvdb::GridBase> grid_ptr(const VolumeTreeUser &tree_user) const;
-  std::shared_ptr<openvdb::GridBase> grid_ptr_for_write(const VolumeTreeUser &tree_user);
+  std::shared_ptr<const openvdb::GridBase> grid_ptr(
+      const VolumeTreeAccessToken &tree_access_token) const;
+  std::shared_ptr<openvdb::GridBase> grid_ptr_for_write(
+      const VolumeTreeAccessToken &tree_access_token);
 
   /**
    * Get the name of the grid that's stored in the grid meta-data.
@@ -222,9 +224,9 @@ class VolumeGridData : public ImplicitSharingMixin {
   void delete_self();
 };
 
-class VolumeTreeUser {
+class VolumeTreeAccessToken {
  private:
-  std::shared_ptr<VolumeGridData::TreeUserToken> token_;
+  std::shared_ptr<VolumeGridData::AccessToken> token_;
 
   friend VolumeGridData;
 
@@ -260,8 +262,8 @@ template<typename T> class VolumeGrid : public GVolumeGrid {
   explicit VolumeGrid(const VolumeGridData *data);
   explicit VolumeGrid(std::shared_ptr<OpenvdbGridType<T>> grid);
 
-  const OpenvdbGridType<T> &grid(const VolumeTreeUser &tree_user) const;
-  OpenvdbGridType<T> &grid_for_write(const VolumeTreeUser &tree_user);
+  const OpenvdbGridType<T> &grid(const VolumeTreeAccessToken &tree_access_token) const;
+  OpenvdbGridType<T> &grid_for_write(const VolumeTreeAccessToken &tree_access_token);
 
  private:
   void assert_correct_type() const;
@@ -310,15 +312,18 @@ inline VolumeGrid<T>::VolumeGrid(std::shared_ptr<OpenvdbGridType<T>> grid)
 }
 
 template<typename T>
-inline const OpenvdbGridType<T> &VolumeGrid<T>::grid(const VolumeTreeUser &tree_user) const
+inline const OpenvdbGridType<T> &VolumeGrid<T>::grid(
+    const VolumeTreeAccessToken &tree_access_token) const
 {
-  return static_cast<const OpenvdbGridType<T> &>(data_->grid(tree_user));
+  return static_cast<const OpenvdbGridType<T> &>(data_->grid(tree_access_token));
 }
 
 template<typename T>
-inline OpenvdbGridType<T> &VolumeGrid<T>::grid_for_write(const VolumeTreeUser &tree_user)
+inline OpenvdbGridType<T> &VolumeGrid<T>::grid_for_write(
+    const VolumeTreeAccessToken &tree_access_token)
 {
-  return static_cast<OpenvdbGridType<T> &>(this->get_for_write().grid_for_write(tree_user));
+  return static_cast<OpenvdbGridType<T> &>(
+      this->get_for_write().grid_for_write(tree_access_token));
 }
 
 template<typename T> inline void VolumeGrid<T>::assert_correct_type() const
@@ -332,9 +337,9 @@ template<typename T> inline void VolumeGrid<T>::assert_correct_type() const
 #  endif
 }
 
-inline bool VolumeTreeUser::valid_for(const VolumeGridData &grid) const
+inline bool VolumeTreeAccessToken::valid_for(const VolumeGridData &grid) const
 {
-  return grid.tree_user_token_ == token_;
+  return grid.tree_access_token_ == token_;
 }
 
 }  // namespace blender::bke::volume_grid

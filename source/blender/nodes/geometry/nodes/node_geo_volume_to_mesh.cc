@@ -183,12 +183,12 @@ static Mesh *create_mesh_from_volume(GeometrySet &geometry_set, GeoNodeExecParam
   const Main *bmain = DEG_get_bmain(params.depsgraph());
   BKE_volume_load(volume, bmain);
 
-  Vector<bke::VolumeTreeUser> tree_users;
+  Vector<bke::VolumeTreeAccessToken> access_tokens;
   Vector<const openvdb::GridBase *> grids;
   for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
     const bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
-    tree_users.append(volume_grid->tree_user());
-    grids.append(&volume_grid->grid(tree_users.last()));
+    access_tokens.append(volume_grid->tree_access_token());
+    grids.append(&volume_grid->grid(access_tokens.last()));
   }
 
   if (grids.is_empty()) {

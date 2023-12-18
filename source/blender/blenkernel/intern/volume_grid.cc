@@ -35,7 +35,7 @@ class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
 
 VolumeGridData::VolumeGridData()
 {
-  tree_user_token_ = std::make_shared<TreeUserToken>();
+  tree_access_token_ = std::make_shared<AccessToken>();
 }
 
 struct CreateGridOp {
@@ -63,7 +63,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
   BLI_assert(grid_->isTreeUnique());
 
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
-  tree_user_token_ = std::make_shared<TreeUserToken>();
+  tree_access_token_ = std::make_shared<AccessToken>();
 }
 
 VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
@@ -74,7 +74,7 @@ VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>(
     transform_loaded_ = true;
     meta_data_loaded_ = true;
   }
-  tree_user_token_ = std::make_shared<TreeUserToken>();
+  tree_access_token_ = std::make_shared<AccessToken>();
 }
 
 VolumeGridData::~VolumeGridData()
@@ -89,38 +89,38 @@ void VolumeGridData::delete_self()
   MEM_delete(this);
 }
 
-VolumeTreeUser VolumeGridData::tree_user() const
+VolumeTreeAccessToken VolumeGridData::tree_access_token() const
 {
-  VolumeTreeUser user;
-  user.token_ = tree_user_token_;
+  VolumeTreeAccessToken user;
+  user.token_ = tree_access_token_;
   return user;
 }
 
-const openvdb::GridBase &VolumeGridData::grid(const VolumeTreeUser &tree_user) const
+const openvdb::GridBase &VolumeGridData::grid(const VolumeTreeAccessToken &access_token) const
 {
-  return *this->grid_ptr(tree_user);
+  return *this->grid_ptr(access_token);
 }
 
-openvdb::GridBase &VolumeGridData::grid_for_write(const VolumeTreeUser &tree_user)
+openvdb::GridBase &VolumeGridData::grid_for_write(const VolumeTreeAccessToken &access_token)
 {
-  return *this->grid_ptr_for_write(tree_user);
+  return *this->grid_ptr_for_write(access_token);
 }
 
 std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr(
-    const VolumeTreeUser &tree_user) const
+    const VolumeTreeAccessToken &access_token) const
 {
-  BLI_assert(tree_user.valid_for(*this));
-  UNUSED_VARS_NDEBUG(tree_user);
+  BLI_assert(access_token.valid_for(*this));
+  UNUSED_VARS_NDEBUG(access_token);
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
   return grid_;
 }
 
 std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
-    const VolumeTreeUser &tree_user)
+    const VolumeTreeAccessToken &access_token)
 {
-  BLI_assert(tree_user.valid_for(*this));
-  UNUSED_VARS_NDEBUG(tree_user);
+  BLI_assert(access_token.valid_for(*this));
+  UNUSED_VARS_NDEBUG(access_token);
   BLI_assert(this->is_mutable());
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
@@ -212,7 +212,7 @@ void VolumeGridData::unload_tree_if_possible() const
   if (!this->can_be_reloaded()) {
     return;
   }
-  if (!tree_user_token_.unique()) {
+  if (!tree_access_token_.unique()) {
     /* Some code is using the tree currently, so it can't be freed. */
     return;
   }
@@ -431,8 +431,8 @@ void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix)
 
 void clear_tree(VolumeGridData &grid)
 {
-  VolumeTreeUser tree_user = grid.tree_user();
-  grid.grid_for_write(tree_user).clear();
+  VolumeTreeAccessToken access_token = grid.tree_access_token();
+  grid.grid_for_write(access_token).clear();
 }
 
 }  // namespace blender::bke::volume_grid

@@ -224,8 +224,8 @@ static void node_geo_exec(GeoNodeExecParams params)
         continue;
       }
 
-      bke::VolumeTreeUser tree_user = volume_grid->tree_user();
-      const openvdb::GridBase &base_grid = volume_grid->grid(tree_user);
+      bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
+      const openvdb::GridBase &base_grid = volume_grid->grid(access_token);
 
       if (!base_grid.isType<openvdb::FloatGrid>()) {
         continue;

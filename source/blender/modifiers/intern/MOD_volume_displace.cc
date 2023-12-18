@@ -290,8 +290,8 @@ static void displace_volume(ModifierData *md, const ModifierEvalContext *ctx, Vo
     blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get_for_write(volume, grid_index);
     BLI_assert(volume_grid);
 
-    blender::bke::VolumeTreeUser tree_user = volume_grid->tree_user();
-    openvdb::GridBase &grid = volume_grid->grid_for_write(tree_user);
+    blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
+    openvdb::GridBase &grid = volume_grid->grid_for_write(access_token);
     VolumeGridType grid_type = volume_grid->grid_type();
 
     DisplaceGridOp displace_grid_op{grid, *vdmd, *ctx};
