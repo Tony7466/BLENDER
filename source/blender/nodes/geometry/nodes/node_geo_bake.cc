@@ -170,25 +170,25 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         context.local_user_data);
     if (!user_data.call_data->self_object()) {
       /* The self object is currently required for generating anonymous attribute names. */
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (!user_data.call_data->bake_params) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data, node_.identifier);
     if (!found_id) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (found_id->is_in_loop) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     BakeNodeBehavior *behavior = user_data.call_data->bake_params->get(found_id->id);
     if (!behavior) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (auto *info = std::get_if<sim_output::ReadSingle>(behavior)) {
@@ -214,11 +214,16 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         tree_logger->node_warnings.append(
             {node_.identifier, {NodeWarningType::Error, info->message}});
       }
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
     }
     else {
       BLI_assert_unreachable();
     }
+  }
+
+  void set_default_outputs(lf::Params &params) const
+  {
+    set_default_remaining_node_outputs(params, node_);
   }
 
   void pass_through(lf::Params &params, GeoNodesLFUserData &user_data) const

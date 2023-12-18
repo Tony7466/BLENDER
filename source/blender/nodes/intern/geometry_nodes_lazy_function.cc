@@ -935,27 +935,32 @@ class LazyFunctionForBakeInputsUsage : public LazyFunction {
   {
     const GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
     if (!user_data.call_data->bake_params) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     const std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data,
                                                                           bnode_->identifier);
     if (!found_id) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     if (found_id->is_in_loop || found_id->is_in_simulation) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     BakeNodeBehavior *behavior = user_data.call_data->bake_params->get(found_id->id);
     if (!behavior) {
-      params.set_default_remaining_outputs();
+      this->set_default_outputs(params);
       return;
     }
     const bool need_inputs = std::holds_alternative<sim_output::PassThrough>(*behavior) ||
                              std::holds_alternative<sim_output::StoreNewState>(*behavior);
     params.set_output(0, need_inputs);
+  }
+
+  void set_default_outputs(lf::Params &params) const
+  {
+    params.set_output(0, false);
   }
 };
 
