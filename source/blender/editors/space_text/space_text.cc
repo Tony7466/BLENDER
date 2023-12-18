@@ -115,7 +115,10 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
   return (SpaceLink *)stextn;
 }
 
-static void text_update_text_search(SpaceText *st, Text *Text);
+/**
+ * Update text search when the `text` data-block has been changed.
+ */
+static void text_update_text_search(SpaceText *st, Text *text);
 
 static void text_listener(const wmSpaceTypeListenerParams *params)
 {
@@ -126,10 +129,14 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
   /* context changes */
   switch (wmn->category) {
     case NC_TEXT:
-      /* check if active text was changed, no need to redraw if text isn't active
-       * (reference == nullptr) means text was unlinked, should update anyway for this
-       * case -- no way to know was text active before unlinking or not */
-      if (wmn->reference && wmn->reference != st->text) {
+      /**
+       * Check if active text was changed, no need to redraw if text isn't active and there is no a
+       * active search in all files, `reference == nullptr` means text was unlinked, should update
+       * anyway for this case -- no way to know was text active before unlinking or not
+       */
+      if (wmn->reference && wmn->reference != st->text &&
+          !(st->flags & ST_FIND_ALL && st->findstr[0] != '\0'))
+      {
         break;
       }
 
@@ -282,7 +289,6 @@ static void text_main_region_draw(const bContext *C, ARegion *region)
 {
   /* draw entirely, view changes should be handled here */
   SpaceText *st = CTX_wm_space_text(C);
-
   // View2D *v2d = &region->v2d;
 
   /* clear and setup matrix */
@@ -399,7 +405,7 @@ static void text_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper
   BKE_id_remapper_apply(mappings, (ID **)&stext->text, ID_REMAP_APPLY_ENSURE_REAL);
 
   auto &texts_search = stext->runtime->texts_search;
-  for (auto &ts_ptr : texts_search) {
+  for (std::unique_ptr<TextSearch> &ts_ptr : texts_search) {
     BKE_id_remapper_apply(mappings, (ID **)(*ts_ptr).text, ID_REMAP_APPLY_ENSURE_REAL);
   }
   auto test_removed = [](const std::unique_ptr<TextSearch> &ts_ptr) {
@@ -418,6 +424,10 @@ static void text_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *
 {
   SpaceText *st = (SpaceText *)sl;
   st->runtime = MEM_new<SpaceText_Runtime>(__func__);
+  /**
+   * For text spaces that are not in the active workspace, it is not possible to keep the search
+   * updated if a changes occurs. Reset search now to avoid an outdated texts search.
+   */
   st->findstr[0] = '\0';
 }
 
@@ -430,6 +440,10 @@ static void text_space_exit(wmWindowManager * /*wm*/, ScrArea *area)
 {
   SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
   st->runtime->texts_search.clear();
+  /**
+   * For text spaces that are not in the active workspace, it is not possible to keep the search
+   * updated if a changes occurs. Reset search now to avoid an outdated texts search.
+   */
   st->findstr[0] = '\0';
 }
 /********************* registration ********************/
