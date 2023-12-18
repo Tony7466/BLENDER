@@ -634,14 +634,14 @@ bool BKE_volume_is_points_only(const Volume *volume)
 
 /* Dependency Graph */
 
-static void volume_update_simplify_level(Volume *volume, const Depsgraph *depsgraph)
+static void volume_update_simplify_level(Main *bmain, Volume *volume, const Depsgraph *depsgraph)
 {
 #ifdef WITH_OPENVDB
   const int simplify_level = BKE_volume_simplify_level(depsgraph);
   volume->runtime.default_simplify_level = simplify_level;
 
   /* Replace grids with the new simplify level variants from the cache. */
-  if (volume->runtime.grids && BKE_volume_is_loaded(volume)) {
+  if (BKE_volume_load(volume, bmain)) {
     VolumeGridVector &grids = *volume->runtime.grids;
     std::list<GVolumeGrid> new_grids;
     for (const GVolumeGrid &old_grid : grids) {
@@ -694,7 +694,8 @@ static void volume_evaluate_modifiers(Depsgraph *depsgraph,
 
 void BKE_volume_eval_geometry(Depsgraph *depsgraph, Volume *volume)
 {
-  volume_update_simplify_level(volume, depsgraph);
+  Main *bmain = DEG_get_bmain(depsgraph);
+  volume_update_simplify_level(bmain, volume, depsgraph);
 
   /* TODO: can we avoid modifier re-evaluation when frame did not change? */
   int frame = volume_sequence_frame(depsgraph, volume);

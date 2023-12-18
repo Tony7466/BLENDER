@@ -136,7 +136,6 @@ static GVolumeGrid get_cached_grid(const StringRef file_path,
     return BKE_volume_grid_create_with_changed_resolution(
         grid_type, main_grid->grid(tree_user), resolution_factor);
   };
-  /*  */
   openvdb::GridBase::Ptr meta_data_and_transform_grid;
   if (simplify_level == 0) {
     /* Only pass the meta-data grid when there is no simplification for now. For simplified grids,
