@@ -173,9 +173,9 @@ set(OPENMP_URI https://github.com/llvm/llvm-project/releases/download/llvmorg-${
 set(OPENMP_HASH_TYPE MD5)
 set(OPENMP_FILE openmp-${OPENMP_VERSION}.src.tar.xz)
 
-set(OPENIMAGEIO_VERSION v2.4.15.0)
+set(OPENIMAGEIO_VERSION v2.5.6.0)
 set(OPENIMAGEIO_URI https://github.com/AcademySoftwareFoundation/OpenImageIO/archive/refs/tags/${OPENIMAGEIO_VERSION}.tar.gz)
-set(OPENIMAGEIO_HASH 784391406ee309075a3f82e60a42f023)
+set(OPENIMAGEIO_HASH d02db17716a20a71a446bdc6de57bd9c)
 set(OPENIMAGEIO_HASH_TYPE MD5)
 set(OPENIMAGEIO_FILE OpenImageIO-${OPENIMAGEIO_VERSION}.tar.gz)
 
