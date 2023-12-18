@@ -834,7 +834,7 @@ class NodeTreeMainUpdater {
         continue;
       }
       bNodeSocketValueMenu &default_value = *socket->default_value_typed<bNodeSocketValueMenu>();
-      reset_enum_ptr(default_value);
+      this->reset_enum_ptr(default_value);
       default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
     }
   }
@@ -848,7 +848,7 @@ class NodeTreeMainUpdater {
       }
       bNodeSocketValueMenu &default_value = *static_cast<bNodeSocketValueMenu *>(
           socket->socket_data);
-      reset_enum_ptr(default_value);
+      this->reset_enum_ptr(default_value);
       default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
     }
   }
@@ -863,16 +863,16 @@ class NodeTreeMainUpdater {
 
     if (src.has_conflict()) {
       /* Target conflict if any source enum has a conflict. */
-      reset_enum_ptr(dst);
+      this->reset_enum_ptr(dst);
       dst.flag |= NODE_MENU_ITEMS_CONFLICT;
     }
     else if (!dst.enum_items) {
       /* First connection, set the reference. */
-      set_enum_ptr(dst, src.enum_items);
+      this->set_enum_ptr(dst, src.enum_items);
     }
     else if (src.enum_items && dst.enum_items != src.enum_items) {
       /* Error if enum ref does not match other connections. */
-      reset_enum_ptr(dst);
+      this->reset_enum_ptr(dst);
       dst.flag |= NODE_MENU_ITEMS_CONFLICT;
     }
   }
@@ -885,8 +885,8 @@ class NodeTreeMainUpdater {
     }
     for (const bNodeSocket *src : src_span) {
       if (src->is_available() && src->type == SOCK_MENU) {
-        update_socket_enum_definition(*dst.default_value_typed<bNodeSocketValueMenu>(),
-                                      *src->default_value_typed<bNodeSocketValueMenu>());
+        this->update_socket_enum_definition(*dst.default_value_typed<bNodeSocketValueMenu>(),
+                                            *src->default_value_typed<bNodeSocketValueMenu>());
       }
     }
   }
@@ -915,7 +915,7 @@ class NodeTreeMainUpdater {
     ntree.ensure_interface_cache();
 
     /* Reset enum references in the interface. */
-    clear_enum_definitions(ntree.interface_inputs());
+    this->clear_enum_definitions(ntree.interface_inputs());
 
     /* Propagation from right to left to determine which enum
      * definition to use for enum sockets. */
@@ -926,20 +926,20 @@ class NodeTreeMainUpdater {
         BLI_assert(input->type == SOCK_MENU);
         if (input->is_available()) {
           const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
-          const RuntimeNodeEnumItems *enum_items = create_runtime_enum_items(
+          const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
               storage.enum_definition);
-          set_enum_ptr(*input->default_value_typed<bNodeSocketValueMenu>(), enum_items);
+          this->set_enum_ptr(*input->default_value_typed<bNodeSocketValueMenu>(), enum_items);
         }
       }
       else {
         /* Reset enum references. */
-        clear_enum_definitions(node->input_sockets());
-        clear_enum_definitions(node->output_sockets());
+        this->clear_enum_definitions(node->input_sockets());
+        this->clear_enum_definitions(node->output_sockets());
       }
 
       /* Propagate enum references from output links. */
       for (bNodeSocket *output : node->output_sockets()) {
-        propagate_enum_definitions_from_sockets(*output, output->directly_linked_sockets());
+        this->propagate_enum_definitions_from_sockets(*output, output->directly_linked_sockets());
       }
 
       if (node->is_group_input()) {
@@ -951,8 +951,9 @@ class NodeTreeMainUpdater {
           if (!output.is_available() || output.type != SOCK_MENU) {
             continue;
           }
-          update_socket_enum_definition(*static_cast<bNodeSocketValueMenu *>(iosocket.socket_data),
-                                        *output.default_value_typed<bNodeSocketValueMenu>());
+          this->update_socket_enum_definition(
+              *static_cast<bNodeSocketValueMenu *>(iosocket.socket_data),
+              *output.default_value_typed<bNodeSocketValueMenu>());
         }
       }
       else if (node->is_group()) {
@@ -967,7 +968,7 @@ class NodeTreeMainUpdater {
             if (!input.is_available() || input.type != SOCK_MENU) {
               continue;
             }
-            update_socket_enum_definition(
+            this->update_socket_enum_definition(
                 *input.default_value_typed<bNodeSocketValueMenu>(),
                 *static_cast<bNodeSocketValueMenu *>(iosocket.socket_data));
           }
@@ -979,7 +980,7 @@ class NodeTreeMainUpdater {
          * to all inputs for built-in nodes This could perhaps use
          * input/output relations to handle propagation generically? */
         for (bNodeSocket *input : node->input_sockets()) {
-          propagate_enum_definitions_from_sockets(*input, node->output_sockets());
+          this->propagate_enum_definitions_from_sockets(*input, node->output_sockets());
         }
       }
     }
