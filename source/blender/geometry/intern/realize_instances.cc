@@ -1552,7 +1552,30 @@ static void remove_id_attribute_from_instances(bke::GeometrySet &geometry_set)
     }
   });
 }
+/** Propagate instances from the old geometry set to the new geometry set if they are not realized.
+ */
+static void propagate_instances_to_keep(
+    const bke::GeometrySet &geometry_set,
+    IndexMask selection,
+    bke::GeometrySet &new_geometry_set,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  const Instances &instances = *geometry_set.get_instances();
+  IndexMaskMemory inverse_selection_indices;
+  const IndexMask inverse_selection = selection.complement(IndexRange(instances.instances_num()),
+                                                       inverse_selection_indices);
+  /* Check not all instances are being realized. */
+  if (inverse_selection.is_empty()) {
+    return;
+  }
 
+  bke::InstancesComponent &new_instances_components =
+      new_geometry_set.get_component_for_write<bke::InstancesComponent>();
+
+  std::unique_ptr<Instances> new_instances = std::make_unique<Instances>(instances);
+  new_instances->remove(inverse_selection, propagation_info);
+  new_instances_components.replace(new_instances.release(), bke::GeometryOwnershipType::Owned);
+}
 bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                    const RealizeInstancesOptions &options)
 {
