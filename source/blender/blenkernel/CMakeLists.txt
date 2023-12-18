@@ -510,12 +510,12 @@ set(SRC
   BKE_vfontdata.hh
   BKE_viewer_path.hh
   BKE_volume.hh
+  BKE_volume_enums.hh
   BKE_volume_grid.hh
   BKE_volume_grid_file_cache.hh
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
-  BKE_volume_enums.hh
   BKE_workspace.h
   BKE_world.h
   BKE_writeavi.h

@@ -67,7 +67,7 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume)
   }
   grid.get_for_write().set_name(grid_name);
   grid->add_user();
-  BKE_volume_grid_add(volume, &grid.get());
+  BKE_volume_grid_add(volume, grid.get());
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

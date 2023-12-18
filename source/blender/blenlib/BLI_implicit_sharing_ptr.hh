@@ -8,7 +8,6 @@
  * \ingroup bli
  */
 
-#include "BLI_allocator.hh"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_struct_equality_utils.hh"
 

@@ -11,7 +11,6 @@
 
 #include "BKE_material.h"
 #include "BKE_volume.hh"
-
 #include "BLI_index_range.hh"
 #include "DNA_volume_types.h"
 
