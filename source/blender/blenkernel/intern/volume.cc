@@ -174,6 +174,7 @@ static void volume_free_data(ID *id)
 #ifdef WITH_OPENVDB
   MEM_delete(volume->runtime.grids);
   volume->runtime.grids = nullptr;
+  /* Deleting the volume might have made some grids completely unused, so they can be freed. */
   blender::bke::volume_grid::file_cache::unload_unused();
 #endif
 }
@@ -545,6 +546,7 @@ bool BKE_volume_save(const Volume *volume,
   VolumeGridVector &grids = *volume->runtime.grids;
   openvdb::GridCPtrVec vdb_grids;
 
+  /* Tree users need to be kept alive for as long as the grids may be accessed. */
   blender::Vector<blender::bke::VolumeTreeUser> tree_users;
 
   for (const GVolumeGrid &grid : grids) {

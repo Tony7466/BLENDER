@@ -256,6 +256,7 @@ class BlenderVolumeLoader : public VDBImageLoader {
   }
 
   BL::Volume b_volume;
+  /* Store tree user so that the openvdb grid that is shared with Blender is not unloaded. */
   blender::bke::VolumeTreeUser tree_user_;
 };
 

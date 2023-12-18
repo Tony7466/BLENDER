@@ -11,6 +11,10 @@
 
 namespace blender::bke::volume_grid {
 
+/**
+ * Multiple #VolumeDataGrid can implictly share the same underlying tree with different
+ * meta-data/transforms.
+ */
 class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
  private:
   std::shared_ptr<openvdb::tree::TreeBase> tree_;
@@ -105,7 +109,7 @@ openvdb::GridBase &VolumeGridData::grid_for_write(const VolumeTreeUser &tree_use
 std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr(
     const VolumeTreeUser &tree_user) const
 {
-  tree_user.valid_for(*this);
+  BLI_assert(tree_user.valid_for(*this));
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
   return grid_;
@@ -114,7 +118,7 @@ std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr(
 std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
     const VolumeTreeUser &tree_user)
 {
-  tree_user.valid_for(*this);
+  BLI_assert(tree_user.valid_for(*this));
   BLI_assert(this->is_mutable());
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
@@ -242,6 +246,7 @@ void VolumeGridData::ensure_grid_loaded() const
   }
   BLI_assert(lazy_load_grid_);
   std::shared_ptr<openvdb::GridBase> loaded_grid;
+  /* Isolate because the a mutex is locked. */
   threading::isolate_task([&]() {
     error_message_.clear();
     try {
@@ -255,8 +260,14 @@ void VolumeGridData::ensure_grid_loaded() const
     }
   });
   if (!loaded_grid) {
-    /* TODO: Create empty grid (potentially of correct type). */
-    BLI_assert_unreachable();
+    if (grid_) {
+      /* Create a dummy grid of the expected type. */
+      loaded_grid = grid_->createGrid("");
+    }
+    else {
+      /* Create a dummy grid. We can't really know the expected data type here. */
+      loaded_grid = openvdb::FloatGrid::create();
+    }
   }
   BLI_assert(loaded_grid);
   BLI_assert(loaded_grid.unique());

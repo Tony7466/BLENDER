@@ -21,9 +21,9 @@ namespace blender::bke {
  * between nodes. Specifically, it is the container type for the following socket types: bool,
  * float, integer, vector, rotation, color and string.
  *
- * The data passed through e.g. an integer socket can be a single value or a field (and in the
- * future potentially grids, lists and images). Each of those is stored differently, but this
- * container can store them all.
+ * The data passed through e.g. an integer socket can be a single value, a field or a grid (and in
+ * the lists and images). Each of those is stored differently, but this container can store them
+ * all.
  *
  * A key requirement for this container is that it is type-erased, i.e. not all code that uses it
  * has to include all the headers required to process the other storage types. This is achieved by
@@ -124,7 +124,7 @@ class SocketValueVariant {
   /**
    * Convert the stored value into a single value. For simple value access, this is not necessary,
    * because #get` does the conversion implicitly. However, it is necessary if one wants to use
-   * #get_single_ptr.
+   * #get_single_ptr. Context-dependend fields or grids will just result in a fallback value.
    *
    * The caller has to make sure that the stored value is a single value, field or grid.
    */
