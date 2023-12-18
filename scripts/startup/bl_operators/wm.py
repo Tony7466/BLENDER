@@ -1030,7 +1030,7 @@ class WM_OT_url_open(Operator):
         import urllib.parse
 
         # Make sure we have a scheme otherwise we can't parse the url.
-        if not url.startswith(("http://", "https://")):
+        if "://" not in url:
             url = "https://" + url
 
         # Parse the URL to get its domain and query parameters.
