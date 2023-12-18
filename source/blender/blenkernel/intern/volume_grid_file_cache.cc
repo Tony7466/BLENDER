@@ -11,7 +11,7 @@
 #  include <openvdb/openvdb.h>
 #endif
 
-namespace blender::bke::volume_grid {
+namespace blender::bke::volume_grid::file_cache {
 
 struct GridCacheKey {
   std::string file_path;
@@ -193,4 +193,4 @@ void unload_unused()
   }
 }
 
-}  // namespace blender::bke::volume_grid
+}  // namespace blender::bke::volume_grid::file_cache
