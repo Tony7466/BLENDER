@@ -390,6 +390,8 @@ static void create_result_ids(const RealizeInstancesOptions &options,
 
 /* Forward declaration. */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
+                                           const int current_depth,
+                                           const int target_depth,
                                            const bke::GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context);
@@ -485,6 +487,8 @@ static void foreach_geometry_in_reference(
 }
 
 static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
+                                               const int current_depth,
+                                               const int target_depth,
                                                const Instances &instances,
                                                const float4x4 &base_transform,
                                                const InstanceContext &base_instance_context)
@@ -510,7 +514,14 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   Vector<std::pair<int, GSpan>> curve_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.curves.attributes);
 
-  for (const int i : transforms.index_range()) {
+
+  /* If at top level, get instance indices from selection field, else use all instances. */
+  const IndexMask indices = current_depth == 0 ? gather_info.selection :IndexMask(IndexRange(instances.instances_num()));
+  for (const int mask_index : indices.index_range()) {
+    const int i = indices[mask_index];
+
+    /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
+    const int depth_target = current_depth == 0 ? gather_info.depths[mask_index] : target_depth;
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
@@ -547,6 +558,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
                                       const uint32_t id) {
                                     instance_context.id = id;
                                     gather_realize_tasks_recursive(gather_info,
+                                                                   current_depth + 1,
+                                                                   depth_target,
                                                                    instance_geometry_set,
                                                                    transform,
                                                                    instance_context);
@@ -558,6 +571,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
  * Gather tasks for all geometries in the #geometry_set.
  */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
+                                           const int current_depth,
+                                           const int target_depth,
                                            const bke::GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context)
@@ -618,13 +633,22 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case bke::GeometryComponent::Type::Instance: {
-        const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
-        const Instances *instances = instances_component.get();
-        if (instances != nullptr && instances->instances_num() > 0) {
-          gather_realize_tasks_for_instances(
-              gather_info, *instances, base_transform, base_instance_context);
-        }
-        break;
+        if (current_depth == target_depth) {
+          const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
+          // gather_info.instances_components_to_merge.append(instances_component);
+          // gather_info.instances_components_transforms.append(base_transform);
+            }
+          const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
+          const Instances *instances = instances_component.get();
+          if (instances != nullptr && instances->instances_num() > 0) {
+              gather_realize_tasks_for_instances(gather_info,
+                                                current_depth,
+                                                target_depth,
+                                                *instances,
+                                                base_transform,
+                                                base_instance_context);
+          }
+          break;
       }
       case bke::GeometryComponent::Type::Volume: {
         const auto *volume_component = static_cast<const bke::VolumeComponent *>(component);
@@ -1562,8 +1586,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                  temporary_arrays};
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
-  gather_realize_tasks_recursive(gather_info, geometry_set, transform, attribute_fallbacks);
-
+  gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
   bke::GeometrySet new_geometry_set;
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
