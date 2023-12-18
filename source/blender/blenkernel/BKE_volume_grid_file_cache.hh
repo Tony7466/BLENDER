@@ -8,10 +8,9 @@
  * \ingroup bke
  */
 
-#include "BKE_volume_grid.hh"
-
-#include "BLI_hash.hh"
 #include "BLI_vector.hh"
+
+#include "BKE_volume_grid.hh"
 
 namespace blender::bke::volume_grid::file_cache {
 
