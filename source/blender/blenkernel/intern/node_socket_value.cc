@@ -43,6 +43,9 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
   if constexpr (is_same_any_v<T, math::Quaternion, fn::Field<math::Quaternion>>) {
     return SOCK_ROTATION;
   }
+  if constexpr (is_same_any_v<T, float4x4, fn::Field<float4x4>>) {
+    return SOCK_MATRIX;
+  }
   if constexpr (is_same_any_v<T, std::string>) {
     return SOCK_STRING;
   }
@@ -134,6 +137,10 @@ void SocketValueVariant::store_single(const eNodeSocketDatatype socket_type, con
     }
     case SOCK_ROTATION: {
       value_.emplace<math::Quaternion>(*static_cast<const math::Quaternion *>(value));
+      break;
+    }
+    case SOCK_MATRIX: {
+      value_.emplace<float4x4>(*static_cast<const float4x4 *>(value));
       break;
     }
     case SOCK_RGBA: {
@@ -252,6 +259,7 @@ INSTANTIATE_SINGLE_AND_FIELD(int)
 INSTANTIATE_SINGLE_AND_FIELD(bool)
 INSTANTIATE_SINGLE_AND_FIELD(float)
 INSTANTIATE_SINGLE_AND_FIELD(blender::float3)
+INSTANTIATE_SINGLE_AND_FIELD(blender::float4x4)
 INSTANTIATE_SINGLE_AND_FIELD(blender::ColorGeometry4f)
 INSTANTIATE_SINGLE_AND_FIELD(blender::math::Quaternion)
 

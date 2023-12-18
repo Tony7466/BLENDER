@@ -4279,6 +4279,9 @@ std::optional<eNodeSocketDatatype> geo_nodes_base_cpp_type_to_socket_type(const 
   if (type.is<math::Quaternion>()) {
     return SOCK_ROTATION;
   }
+  if (type.is<float4x4>()) {
+    return SOCK_MATRIX;
+  }
   if (type.is<std::string>()) {
     return SOCK_STRING;
   }

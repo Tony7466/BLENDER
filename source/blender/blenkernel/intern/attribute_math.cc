@@ -200,7 +200,7 @@ float4x4Mixer::float4x4Mixer(MutableSpan<float4x4> buffer)
 {
 }
 
-float4x4Mixer::float4x4Mixer(MutableSpan<float4x4> buffer, const IndexMask &mask)
+float4x4Mixer::float4x4Mixer(MutableSpan<float4x4> buffer, const IndexMask & /*mask*/)
     : buffer_(buffer),
       total_weights_(buffer.size(), 0.0f),
       location_buffer_(buffer.size(), float3(0)),
