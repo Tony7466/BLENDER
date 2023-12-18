@@ -424,10 +424,8 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
     return OPERATOR_CANCELLED;
   }
 
-  nodes::update_input_properties_from_node_tree(
-      *node_tree, op->properties, true, true, *op->properties);
-  nodes::update_output_properties_from_node_tree(
-      *node_tree, op->properties, true, *op->properties);
+  nodes::update_input_properties_from_node_tree(*node_tree, op->properties, true, *op->properties);
+  nodes::update_output_properties_from_node_tree(*node_tree, op->properties, *op->properties);
 
   return run_node_group_exec(C, op);
 }
@@ -507,7 +505,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
   bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
 
-  /* The property should be created in #MOD_nodes_update_interface with the correct type. */
+  /* The property should be created in #MOD_nodes_update_properties with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(op_properties, socket.identifier);
 
   /* IDProperties can be removed with python, so there could be a situation where

@@ -294,7 +294,7 @@ static bool logging_enabled(const ModifierEvalContext *ctx)
   return true;
 }
 
-static void update_id_properties_from_node_group(NodesModifierData *nmd, bool allow_slow_updates)
+static void update_id_properties_from_node_group(NodesModifierData *nmd)
 {
   if (nmd->node_group == nullptr) {
     if (nmd->settings.properties) {
@@ -312,9 +312,9 @@ static void update_id_properties_from_node_group(NodesModifierData *nmd, bool al
   IDProperty *new_properties = nmd->settings.properties;
 
   nodes::update_input_properties_from_node_tree(
-      *nmd->node_group, old_properties, false, allow_slow_updates, *new_properties);
+      *nmd->node_group, old_properties, false, *new_properties);
   nodes::update_output_properties_from_node_tree(
-      *nmd->node_group, old_properties, allow_slow_updates, *new_properties);
+      *nmd->node_group, old_properties, *new_properties);
 
   if (old_properties != nullptr) {
     IDP_FreeProperty(old_properties);
@@ -429,17 +429,16 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
 
 }  // namespace blender
 
-void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd, bool recalc)
+void MOD_nodes_update_properties(NodesModifierData *nmd)
 {
-  using namespace blender;
+  blender::update_id_properties_from_node_group(nmd);
+}
 
-  update_id_properties_from_node_group(nmd, /*allow_slow_updates=*/recalc);
-
-  if (recalc) {
-    update_bakes_from_node_group(*nmd);
-
-    DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
-  }
+void MOD_nodes_update_properties_and_recalc(Object *object, NodesModifierData *nmd)
+{
+  blender::update_id_properties_from_node_group(nmd);
+  blender::update_bakes_from_node_group(*nmd);
+  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 }
 
 NodesModifierBake *NodesModifierData::find_bake(const int id)
@@ -1750,7 +1749,7 @@ static void draw_property_for_socket(const bContext &C,
                                      const int socket_index)
 {
   const StringRefNull identifier = socket.identifier;
-  /* The property should be created in #MOD_nodes_update_interface with the correct type. */
+  /* The property should be created in #MOD_nodes_update_properties with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, identifier.c_str());
 
   /* IDProperties can be removed with python, so there could be a situation where

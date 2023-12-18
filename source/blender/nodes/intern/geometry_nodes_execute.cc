@@ -884,7 +884,6 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
 void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const IDProperty *old_properties,
                                             const bool use_bool_for_use_attribute,
-                                            const bool allow_slow_updates,
                                             IDProperty &properties)
 {
   tree.ensure_interface_cache();
@@ -895,13 +894,6 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
     const bNodeSocketType *typeinfo = socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;
-
-    /* Enum sockets get updated every time, because enum item changes do not trigger a full
-     * interface update. */
-    if (!allow_slow_updates && socket_type != SOCK_MENU) {
-      continue;
-    }
-
     IDProperty *new_prop = nodes::id_property_create_from_socket(socket).release();
     if (new_prop == nullptr) {
       /* Out of the set of supported input sockets, only
@@ -977,7 +969,6 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
 
 void update_output_properties_from_node_tree(const bNodeTree &tree,
                                              const IDProperty *old_properties,
-                                             const bool allow_slow_updates,
                                              IDProperty &properties)
 {
   tree.ensure_topology_cache();
@@ -988,11 +979,6 @@ void update_output_properties_from_node_tree(const bNodeTree &tree,
     const bNodeSocketType *typeinfo = socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;
-    /* Enum sockets get updated every time, because enum item changes do not trigger a full
-     * interface update. */
-    if (!allow_slow_updates && socket_type != SOCK_MENU) {
-      continue;
-    }
     if (!nodes::socket_type_has_attribute_toggle(socket_type)) {
       continue;
     }

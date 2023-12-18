@@ -3065,7 +3065,7 @@ static int drop_geometry_nodes_invoke(bContext *C, wmOperator *op, const wmEvent
 
   nmd->node_group = node_tree;
   id_us_plus(&node_tree->id);
-  MOD_nodes_update_interface(ob, nmd, true);
+  MOD_nodes_update_properties_and_recalc(ob, nmd);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, nullptr);

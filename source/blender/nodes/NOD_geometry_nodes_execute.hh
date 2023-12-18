@@ -65,23 +65,12 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
                                                     GeoNodesCallData &call_data,
                                                     bke::GeometrySet input_geometry);
 
-/**
- * \param allow_slow_updates: Perform updates that might be expensive and should not be executed
- *        after every change.
- */
 void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const IDProperty *old_properties,
                                             bool use_bool_for_use_attribute,
-                                            bool allow_slow_updates,
                                             IDProperty &properties);
-
-/**
- * \param allow_slow_updates: Perform updates that might be expensive and should not be executed
- *        after every change.
- */
 void update_output_properties_from_node_tree(const bNodeTree &tree,
                                              const IDProperty *old_properties,
-                                             bool allow_slow_updates,
                                              IDProperty &properties);
 
 }  // namespace blender::nodes

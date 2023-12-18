@@ -308,7 +308,7 @@ static int modifier_add_asset_exec(bContext *C, wmOperator *op)
 
   nmd->node_group = node_group;
   id_us_plus(&node_group->id);
-  MOD_nodes_update_interface(object, nmd, true);
+  MOD_nodes_update_properties_and_recalc(object, nmd);
 
   /* By default, don't show the data-block selector since it's not usually necessary for assets. */
   nmd->flag |= NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;

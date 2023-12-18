@@ -368,8 +368,12 @@ class NodeTreeMainUpdater {
           ModifierData *md = pair.second;
 
           if (md->type == eModifierType_Nodes) {
-            MOD_nodes_update_interface(
-                object, (NodesModifierData *)md, /*recalc=*/result.interface_changed);
+            if (result.interface_changed) {
+              MOD_nodes_update_properties_and_recalc(object, (NodesModifierData *)md);
+            }
+            else {
+              MOD_nodes_update_properties((NodesModifierData *)md);
+            }
           }
         }
       }
