@@ -22,8 +22,6 @@
 
 #include "openvdb_fwd.hh"
 
-#include <openvdb/openvdb.h>
-
 namespace blender::bke::volume_grid {
 
 class VolumeGridData : public ImplicitSharingMixin {

@@ -19,7 +19,7 @@ GVolumeGrid get_grid_from_file(StringRef file_path, StringRef grid_name, int sim
 
 struct GridsFromFile {
   std::string error_message;
-  openvdb::MetaMap::Ptr meta_data;
+  std::shared_ptr<openvdb::MetaMap> meta_data;
   Vector<GVolumeGrid> grids;
 };
 
