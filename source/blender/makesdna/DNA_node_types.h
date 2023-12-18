@@ -857,35 +857,6 @@ typedef enum eNodeTreeRuntimeFlag {
   NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE = 1 << 2,
 } eNodeTreeRuntimeFlag;
 
-/* Weak reference to a node that defines enum items. */
-typedef struct NodeEnumDefinitionRef {
-  bNodeTree *node_tree;
-  int32_t node_identifier;
-  char _pad[4];
-
-#ifdef __cplusplus
-  /* Special reference used when the definition cannot be resolved. */
-  static inline NodeEnumDefinitionRef invalid_ref()
-  {
-    return {nullptr, INT_MAX};
-  }
-
-  void set(bNodeTree &node_tree, bNode &node);
-  void set_invalid();
-  void reset();
-  /* True if the reference has been set. */
-  bool is_set() const;
-  /* True if the enum reference can be resolved.
-   * Otherwise there is a conflict and the reference is invalid. */
-  bool is_valid() const;
-  /* Get a pointer to the actual enum definition. */
-  NodeEnumDefinition *get_definition() const;
-
-  bool operator==(const NodeEnumDefinitionRef &other) const;
-  bool operator!=(const NodeEnumDefinitionRef &other) const;
-#endif
-} NodeEnumDefinitionRef;
-
 /* socket value structs for input buttons
  * DEPRECATED now using ID properties
  */
@@ -951,12 +922,24 @@ typedef struct bNodeSocketValueMaterial {
 } bNodeSocketValueMaterial;
 
 typedef struct bNodeSocketValueMenu {
-  /* Weak runtime reference to a node enum definition. */
-  NodeEnumDefinitionRef enum_ref;
   /* Default input enum identifier. */
-  int32_t value;
-  char _pad[4];
+  int value;
+  /* #NodeSocketValueMenuFlag */
+  int flag;
+  /* Immutable runtime enum definition. */
+  const struct RuntimeNodeEnumItems *enum_items;
+
+#ifdef __cplusplus
+  bool has_conflict() const;
+#endif
 } bNodeSocketValueMenu;
+
+/* Flags for #bNodeSocketValueMenu. */
+typedef enum NodeSocketValueMenuFlag {
+  /* Socket has conflicting menu connections and cannot resolve items. */
+  NODE_MENU_ITEMS_CONFLICT = (1 << 0),
+} NodeSocketValueMenuFlag;
+ENUM_OPERATORS(NodeSocketValueMenuFlag, NODE_MENU_ITEMS_CONFLICT);
 
 typedef struct GeometryNodeAssetTraits {
   int flag;

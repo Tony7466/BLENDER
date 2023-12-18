@@ -21,6 +21,7 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_idprop.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_type_conversions.hh"
@@ -171,19 +172,20 @@ static void id_property_int_update_enum_items(const bNodeSocketValueMenu *value,
   int idprop_items_num = 0;
   IDPropertyUIDataEnumItem *idprop_items = nullptr;
 
-  if (const NodeEnumDefinition *enum_def = value->enum_ref.get_definition()) {
-    idprop_items_num = enum_def->items_num;
-    idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(enum_def->items_num, __func__);
-    for (const int i : enum_def->items().index_range()) {
-      const NodeEnumItem &item = enum_def->items()[i];
+  if (value->enum_items && !value->enum_items->is_expired()) {
+    const Span<RuntimeNodeEnumItem> items = value->enum_items->items;
+    idprop_items_num = items.size();
+    idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(items.size(), __func__);
+    for (const int i : items.index_range()) {
+      const RuntimeNodeEnumItem &item = items[i];
       IDPropertyUIDataEnumItem &idprop_item = idprop_items[i];
       idprop_item.value = item.identifier;
       /* TODO: The name may not be unique!
        * We require a unique identifier string for IDProperty and RNA enums,
        * so node enums should probably have this too. */
-      idprop_item.identifier = BLI_strdup_null(item.name);
-      idprop_item.name = BLI_strdup_null(item.name);
-      idprop_item.description = BLI_strdup_null(item.description);
+      idprop_item.identifier = BLI_strdup_null(item.name.c_str());
+      idprop_item.name = BLI_strdup_null(item.name.c_str());
+      idprop_item.description = BLI_strdup_null(item.description.c_str());
       idprop_item.icon = ICON_NONE;
     }
   }
@@ -470,7 +472,7 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
     }
     case SOCK_MENU: {
       int value = IDP_Int(&property);
-      new (r_value) bke::SocketValueVariant<int>(std::move(value));
+      new (r_value) bke::SocketValueVariant(std::move(value));
       break;
     }
     case SOCK_OBJECT: {

@@ -176,7 +176,7 @@ template<> void socket_data_init_impl(bNodeSocketValueMaterial &data)
 template<> void socket_data_init_impl(bNodeSocketValueMenu &data)
 {
   data.value = -1;
-  data.enum_ref.reset();
+  data.enum_items = nullptr;
 }
 
 static void *make_socket_data(const StringRef socket_type)
@@ -375,11 +375,6 @@ template<>
 void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueMaterial &data)
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
-}
-template<> void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueMenu &data)
-{
-  /* This is a weak reference that gets updated at runtime and should be ignored when loading. */
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.enum_ref.node_tree, IDWALK_CB_READFILE_IGNORE);
 }
 
 static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfaceSocket &socket)

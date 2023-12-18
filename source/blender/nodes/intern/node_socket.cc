@@ -1074,10 +1074,10 @@ static bNodeSocketType *make_socket_type_enum()
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(int *)r_value = ((bNodeSocketValueMenu *)socket_value)->value;
   };
-  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<SocketValueVariant<int>>();
+  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<SocketValueVariant>();
   socktype->get_geometry_nodes_cpp_value = [](const void *socket_value, void *r_value) {
     const int value = ((bNodeSocketValueMenu *)socket_value)->value;
-    new (r_value) SocketValueVariant<int>(value);
+    new (r_value) SocketValueVariant(value);
   };
   return socktype;
 }

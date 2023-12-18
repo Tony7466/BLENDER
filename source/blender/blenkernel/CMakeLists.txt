@@ -455,6 +455,7 @@ set(SRC
   BKE_nla.h
   BKE_node.h
   BKE_node.hh
+  BKE_node_enum.hh
   BKE_node_runtime.hh
   BKE_node_socket_value.hh
   BKE_node_tree_anonymous_attributes.hh

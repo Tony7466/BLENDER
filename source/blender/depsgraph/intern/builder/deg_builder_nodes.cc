@@ -1884,9 +1884,6 @@ void DepsgraphNodeBuilder::build_nodetree_socket(bNodeSocket *socket)
   else if (socket->type == SOCK_MATERIAL) {
     build_id((ID *)((bNodeSocketValueMaterial *)socket->default_value)->value);
   }
-  else if (socket->type == SOCK_MENU) {
-    build_id((ID *)((bNodeSocketValueMenu *)socket->default_value)->enum_ref.node_tree);
-  }
 }
 
 void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)

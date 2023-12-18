@@ -347,14 +347,6 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.value, IDWALK_CB_USER);
       break;
     }
-    case SOCK_MENU: {
-      /* This is a weak reference that gets updated at runtime and should be ignored when loading.
-       */
-      bNodeSocketValueMenu &default_value = *sock->default_value_typed<bNodeSocketValueMenu>();
-      BKE_LIB_FOREACHID_PROCESS_IDSUPER(
-          data, default_value.enum_ref.node_tree, IDWALK_CB_READFILE_IGNORE);
-      break;
-    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -365,6 +357,7 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_MENU:
       break;
   }
 }

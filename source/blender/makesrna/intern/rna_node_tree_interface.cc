@@ -30,6 +30,7 @@ static const EnumPropertyItem node_tree_interface_socket_in_out_items[] = {
 
 #  include "BKE_attribute.h"
 #  include "BKE_node.h"
+#  include "BKE_node_enum.hh"
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.hh"
@@ -891,13 +892,12 @@ const EnumPropertyItem *RNA_node_tree_interface_socket_menu_itemf(bContext * /*C
     *r_free = false;
     return rna_enum_dummy_NULL_items;
   }
-  const NodeEnumDefinition *enum_def =
-      static_cast<bNodeSocketValueMenu *>(socket->socket_data)->enum_ref.get_definition();
-  if (!enum_def) {
+  const bNodeSocketValueMenu *data = static_cast<bNodeSocketValueMenu *>(socket->socket_data);
+  if (!data->enum_items || data->enum_items->is_expired()) {
     *r_free = false;
     return rna_enum_dummy_NULL_items;
   }
-  return RNA_node_enum_definition_itemf(*enum_def, r_free);
+  return RNA_node_enum_definition_itemf(*data->enum_items, r_free);
 }
 
 #else

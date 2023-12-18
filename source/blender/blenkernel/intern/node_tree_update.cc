@@ -21,6 +21,7 @@
 #include "BKE_image.h"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_update.hh"
@@ -801,6 +802,26 @@ class NodeTreeMainUpdater {
     }
   }
 
+  void reset_enum_ptr(bNodeSocketValueMenu &dst)
+  {
+    if (dst.enum_items) {
+      dst.enum_items->remove_weak_user_and_delete_if_last();
+      dst.enum_items = nullptr;
+    }
+  }
+
+  void set_enum_ptr(bNodeSocketValueMenu &dst, const RuntimeNodeEnumItems *enum_items)
+  {
+    if (dst.enum_items) {
+      dst.enum_items->remove_weak_user_and_delete_if_last();
+      dst.enum_items = nullptr;
+    }
+    if (enum_items) {
+      enum_items->add_weak_user();
+      dst.enum_items = enum_items;
+    }
+  }
+
   /* Reset enum references. */
   void clear_enum_definitions(const Span<bNodeSocket *> sockets)
   {
@@ -809,7 +830,8 @@ class NodeTreeMainUpdater {
         continue;
       }
       bNodeSocketValueMenu &default_value = *socket->default_value_typed<bNodeSocketValueMenu>();
-      default_value.enum_ref.reset();
+      reset_enum_ptr(default_value);
+      default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
     }
   }
 
@@ -822,28 +844,32 @@ class NodeTreeMainUpdater {
       }
       bNodeSocketValueMenu &default_value = *static_cast<bNodeSocketValueMenu *>(
           socket->socket_data);
-      default_value.enum_ref.reset();
+      reset_enum_ptr(default_value);
+      default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
     }
   }
 
   void update_socket_enum_definition(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu &src)
   {
-    if (!dst.enum_ref.is_valid()) {
-      /* Enum ref already has a conflict. */
+    if (!dst.has_conflict()) {
+      /* Target enum already has a conflict. */
+      BLI_assert(dst.enum_items == nullptr);
       return;
     }
 
-    if (!src.enum_ref.is_valid()) {
-      /* Invalid if any source enum ref is invalid. */
-      dst.enum_ref.set_invalid();
+    if (!src.has_conflict()) {
+      /* Target conflict if any source enum has a conflict. */
+      reset_enum_ptr(dst);
+      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
     }
-    else if (!dst.enum_ref.is_set()) {
+    else if (!dst.enum_items) {
       /* First connection, set the reference. */
-      dst.enum_ref = src.enum_ref;
+      set_enum_ptr(dst, src.enum_items);
     }
-    else if (src.enum_ref.is_set() && dst.enum_ref != src.enum_ref) {
+    else if (src.enum_items && dst.enum_items != src.enum_items) {
       /* Error if enum ref does not match other connections. */
-      dst.enum_ref.set_invalid();
+      reset_enum_ptr(dst);
+      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
     }
   }
 
@@ -853,18 +879,31 @@ class NodeTreeMainUpdater {
     if (!dst.is_available() || dst.type != SOCK_MENU) {
       return;
     }
-    /* Skip destination if it's already undefined (conflicting references). */
-    bNodeSocketValueMenu &dst_default_value = *dst.default_value_typed<bNodeSocketValueMenu>();
-    if (!dst_default_value.enum_ref.is_valid()) {
-      return;
-    }
-
     for (const bNodeSocket *src : src_span) {
       if (src->is_available() && src->type == SOCK_MENU) {
         update_socket_enum_definition(*dst.default_value_typed<bNodeSocketValueMenu>(),
                                       *src->default_value_typed<bNodeSocketValueMenu>());
       }
     }
+  }
+
+  /**
+   * Make a runtime copy of the DNA enum items.
+   * The runtime items list is shared by sockets.
+   */
+  const RuntimeNodeEnumItems *create_runtime_enum_items(const NodeEnumDefinition &enum_def)
+  {
+    RuntimeNodeEnumItems *enum_items = new RuntimeNodeEnumItems();
+    enum_items->items.reinitialize(enum_def.items_num);
+    for (const int i : enum_def.items().index_range()) {
+      const NodeEnumItem &src = enum_def.items()[i];
+      RuntimeNodeEnumItem &dst = enum_items->items[i];
+
+      dst.identifier = src.identifier;
+      dst.name = src.name ? src.name : "";
+      dst.description = src.description ? src.description : "";
+    }
+    return enum_items;
   }
 
   void propagate_enum_definitions(bNodeTree &ntree)
@@ -882,7 +921,10 @@ class NodeTreeMainUpdater {
         bNodeSocket *input = node->input_sockets()[0];
         BLI_assert(input->type == SOCK_MENU);
         if (input->is_available()) {
-          input->default_value_typed<bNodeSocketValueMenu>()->enum_ref.set(ntree, *node);
+          const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
+          const RuntimeNodeEnumItems *enum_items = create_runtime_enum_items(
+              storage.enum_definition);
+          set_enum_ptr(*input->default_value_typed<bNodeSocketValueMenu>(), enum_items);
         }
       }
       else {
@@ -953,7 +995,7 @@ class NodeTreeMainUpdater {
     /* Tests if enum references are undefined. */
     const auto is_invalid_enum_ref = [](const bNodeSocket &socket) -> bool {
       return socket.type == SOCK_MENU &&
-             !socket.default_value_typed<bNodeSocketValueMenu>()->enum_ref.is_valid();
+             socket.default_value_typed<bNodeSocketValueMenu>()->enum_items;
     };
 
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {

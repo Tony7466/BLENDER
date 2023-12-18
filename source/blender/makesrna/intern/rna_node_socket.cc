@@ -43,6 +43,7 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 #  include "DNA_material_types.h"
 
 #  include "BKE_node.h"
+#  include "BKE_node_enum.hh"
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_update.hh"
 
@@ -415,23 +416,23 @@ bool rna_NodeSocketMaterial_default_value_poll(PointerRNA * /*ptr*/, PointerRNA 
   return ma->gp_style == nullptr;
 }
 
-const EnumPropertyItem *RNA_node_enum_definition_itemf(const NodeEnumDefinition &enum_def,
+const EnumPropertyItem *RNA_node_enum_definition_itemf(const RuntimeNodeEnumItems &enum_items,
                                                        bool *r_free)
 {
   EnumPropertyItem tmp = {0};
   EnumPropertyItem *result = nullptr;
   int totitem = 0;
 
-  for (const NodeEnumItem &item : enum_def.items()) {
+  for (const RuntimeNodeEnumItem &item : enum_items.items) {
     tmp.value = item.identifier;
     /* Item name is unique and used as the RNA identitifier as well.
      * The integer value is persistent and unique and should be used
      * when storing the enum value. */
-    tmp.identifier = item.name;
+    tmp.identifier = item.name.c_str();
     /* TODO support icons in enum definition. */
     tmp.icon = ICON_NONE;
-    tmp.name = item.name;
-    tmp.description = item.description;
+    tmp.name = item.name.c_str();
+    tmp.description = item.description.c_str();
 
     RNA_enum_item_add(&result, &totitem, &tmp);
   }
@@ -457,13 +458,12 @@ const EnumPropertyItem *RNA_node_socket_menu_itemf(bContext * /*C*/,
     *r_free = false;
     return rna_enum_dummy_NULL_items;
   }
-  const NodeEnumDefinition *enum_def =
-      static_cast<bNodeSocketValueMenu *>(socket->default_value)->enum_ref.get_definition();
-  if (!enum_def) {
+  const bNodeSocketValueMenu *data = static_cast<bNodeSocketValueMenu *>(socket->default_value);
+  if (!data->enum_items || data->enum_items->is_expired()) {
     *r_free = false;
     return rna_enum_dummy_NULL_items;
   }
-  return RNA_node_enum_definition_itemf(*enum_def, r_free);
+  return RNA_node_enum_definition_itemf(*data->enum_items, r_free);
 }
 
 #else

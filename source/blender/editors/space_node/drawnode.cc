@@ -23,6 +23,7 @@
 #include "BKE_image.h"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_scene.h"
@@ -1376,15 +1377,8 @@ static void std_node_socket_draw(
     case SOCK_MENU: {
       const bNodeSocketValueMenu *default_value =
           sock->default_value_typed<bNodeSocketValueMenu>();
-      if (!default_value->enum_ref.is_valid()) {
-        uiItemL(layout, IFACE_("Menu Error"), ICON_ERROR);
-      }
-      else {
-        const NodeEnumDefinition *enum_def = default_value->enum_ref.get_definition();
-        if (enum_def == nullptr) {
-          uiItemL(layout, IFACE_("Menu Undefined"), ICON_QUESTION);
-        }
-        else if (enum_def->items_num == 0) {
+      if (default_value->enum_items) {
+        if (default_value->enum_items->items.is_empty()) {
           uiLayout *row = uiLayoutSplit(layout, 0.4f, false);
           uiItemL(row, text, ICON_NONE);
           uiItemL(row, "No Items", ICON_NONE);
@@ -1392,6 +1386,12 @@ static void std_node_socket_draw(
         else {
           uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
         }
+      }
+      else if (default_value->has_conflict()) {
+        uiItemL(layout, IFACE_("Menu Error"), ICON_ERROR);
+      }
+      else {
+        uiItemL(layout, IFACE_("Menu Undefined"), ICON_QUESTION);
       }
       break;
     }
