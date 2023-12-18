@@ -1933,7 +1933,7 @@ static LineartEdgeNeighbor *lineart_build_edge_neighbor(Mesh *mesh, int total_ed
   en_data.edge_nabr = edge_nabr;
   en_data.corner_verts = mesh->corner_verts();
   en_data.corner_tris = mesh->corner_tris();
-  en_data.tri_faces = mesh->tri_faces();
+  en_data.tri_faces = mesh->corner_tri_faces();
 
   BLI_task_parallel_range(0, total_edges, &en_data, lineart_edge_neighbor_init_task, &en_settings);
 
@@ -2068,7 +2068,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   tri_data.ob_info = ob_info;
   tri_data.positions = mesh->vert_positions();
   tri_data.corner_tris = corner_tris;
-  tri_data.tri_faces = mesh->tri_faces();
+  tri_data.tri_faces = mesh->corner_tri_faces();
   tri_data.corner_verts = mesh->corner_verts();
   tri_data.material_indices = material_indices;
   tri_data.vert_arr = la_v_arr;
@@ -2107,7 +2107,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   edge_feat_data.corner_verts = mesh->corner_verts();
   edge_feat_data.corner_edges = mesh->corner_edges();
   edge_feat_data.corner_tris = corner_tris;
-  edge_feat_data.tri_faces = mesh->tri_faces();
+  edge_feat_data.tri_faces = mesh->corner_tri_faces();
   edge_feat_data.sharp_edges = sharp_edges;
   edge_feat_data.sharp_faces = sharp_faces;
   edge_feat_data.edge_nabr = lineart_build_edge_neighbor(mesh, total_edges);

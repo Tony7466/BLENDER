@@ -334,7 +334,7 @@ static int rna_MeshLoopTriangle_polygon_index_get(PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
   const int index = rna_MeshLoopTriangle_index_get(ptr);
-  return mesh->tri_faces()[index];
+  return mesh->corner_tri_faces()[index];
 }
 
 static void rna_Mesh_loop_triangles_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -373,7 +373,7 @@ static void rna_Mesh_loop_triangle_polygons_begin(CollectionPropertyIterator *it
 {
   const Mesh *mesh = rna_mesh(ptr);
   rna_iterator_array_begin(iter,
-                           const_cast<int *>(mesh->tri_faces().data()),
+                           const_cast<int *>(mesh->corner_tri_faces().data()),
                            sizeof(int),
                            BKE_mesh_runtime_corner_tris_len(mesh),
                            false,
@@ -389,7 +389,7 @@ int rna_Mesh_loop_triangle_polygons_lookup_int(PointerRNA *ptr, int index, Point
   /* Casting away const is okay because this RNA type doesn't allow changing the value. */
   r_ptr->owner_id = (ID *)&mesh->id;
   r_ptr->type = &RNA_ReadOnlyInteger;
-  r_ptr->data = const_cast<int *>(&mesh->tri_faces()[index]);
+  r_ptr->data = const_cast<int *>(&mesh->corner_tri_faces()[index]);
   return true;
 }
 

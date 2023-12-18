@@ -125,8 +125,8 @@ struct MeshRuntime {
 
   /** Cache for derived triangulation of the mesh, accessed with #Mesh::corner_tris(). */
   SharedCache<Array<int3>> corner_tris_cache;
-  /** Cache for triangle to original face index map, accessed with #Mesh::tri_faces(). */
-  SharedCache<Array<int>> tri_faces_cache;
+  /** Cache for triangle to original face index map, accessed with #Mesh::corner_tri_faces(). */
+  SharedCache<Array<int>> corner_tri_faces_cache;
 
   /** Cache for BVH trees generated for the mesh. Defined in 'BKE_bvhutil.c' */
   BVHCache *bvh_cache = nullptr;

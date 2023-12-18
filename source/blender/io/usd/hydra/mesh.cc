@@ -372,7 +372,7 @@ void MeshData::write_submeshes(const Mesh *mesh)
   const Span<float3> vert_positions = mesh->vert_positions();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<int3> corner_tris = mesh->corner_tris();
-  const Span<int> tri_faces = mesh->tri_faces();
+  const Span<int> tri_faces = mesh->corner_tri_faces();
   const std::pair<bke::MeshNormalDomain, Span<float3>> normals = get_mesh_normals(*mesh);
   const bke::AttributeAccessor attributes = mesh->attributes();
   const StringRef active_uv = CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2);

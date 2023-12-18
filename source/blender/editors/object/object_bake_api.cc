@@ -1082,7 +1082,7 @@ static void bake_targets_populate_pixels_color_attributes(BakeTargets *targets,
   const blender::Span<int> corner_verts = me_eval->corner_verts();
   blender::bke::mesh::corner_tris_calc(
       me_eval->vert_positions(), me_eval->faces(), corner_verts, {corner_tris, corner_tris_num});
-  const blender::Span<int> tri_faces = me_eval->tri_faces();
+  const blender::Span<int> tri_faces = me_eval->corner_tri_faces();
 
   /* For mapping back to original mesh in case there are modifiers. */
   const int *vert_origindex = static_cast<const int *>(

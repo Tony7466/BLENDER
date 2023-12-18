@@ -302,7 +302,7 @@ typedef struct Mesh {
   /**
    * A map containing the face index that each cached triangle from #Mesh::corner_tris() came from.
    */
-  blender::Span<int> tri_faces() const;
+  blender::Span<int> corner_tri_faces() const;
 
   /**
    * Calculate the largest and smallest position values of vertices.

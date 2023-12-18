@@ -4111,7 +4111,7 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   ps->totloop_eval = ps->me_eval->totloop;
 
   ps->corner_tris_eval = ps->me_eval->corner_tris();
-  ps->tri_faces_eval = ps->me_eval->tri_faces();
+  ps->tri_faces_eval = ps->me_eval->corner_tri_faces();
 
   ps->poly_to_loop_uv = static_cast<const float(**)[2]>(
       MEM_mallocN(ps->faces_num_eval * sizeof(float(*)[2]), "proj_paint_mtfaces"));

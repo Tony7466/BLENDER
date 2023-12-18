@@ -559,7 +559,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
       const blender::Span<int> corner_verts_src = me_src->corner_verts();
       const blender::Span<blender::float3> positions_src = me_src->vert_positions();
       const blender::Span<blender::float3> vert_normals_dst = me_dst->vert_normals();
-      const blender::Span<int> tri_faces = me_src->tri_faces();
+      const blender::Span<int> tri_faces = me_src->corner_tri_faces();
 
       size_t tmp_buff_size = MREMAP_DEFAULT_BUFSIZE;
       float(*vcos)[3] = static_cast<float(*)[3]>(
@@ -858,7 +858,7 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
       const blender::OffsetIndices faces_src = me_src->faces();
       const blender::Span<int> corner_edges_src = me_src->corner_edges();
       const blender::Span<blender::float3> positions_src = me_src->vert_positions();
-      const blender::Span<int> tri_faces = me_src->tri_faces();
+      const blender::Span<int> tri_faces = me_src->corner_tri_faces();
 
       BKE_bvhtree_from_mesh_get(&treedata, me_src, BVHTREE_FROM_CORNER_TRIS, 2);
 
@@ -1443,7 +1443,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     else { /* We use faces. */
       if (use_islands) {
         corner_tris_src = me_src->corner_tris();
-        tri_faces_src = me_src->tri_faces();
+        tri_faces_src = me_src->corner_tri_faces();
         blender::BitVector<> corner_tris_active(corner_tris_src.size());
 
         for (tindex = 0; tindex < num_trees; tindex++) {
@@ -1480,7 +1480,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
       islands_res[tindex] = static_cast<IslandResult *>(
           MEM_mallocN(sizeof(**islands_res) * islands_res_buff_size, __func__));
     }
-    const blender::Span<int> tri_faces = me_src->tri_faces();
+    const blender::Span<int> tri_faces = me_src->corner_tri_faces();
 
     for (pidx_dst = 0; pidx_dst < faces_dst.size(); pidx_dst++) {
       const blender::IndexRange face_dst = faces_dst[pidx_dst];
@@ -2067,7 +2067,7 @@ void BKE_mesh_remap_calc_faces_from_mesh(const int mode,
     BVHTreeNearest nearest = {0};
     BVHTreeRayHit rayhit = {0};
     float hit_dist;
-    const blender::Span<int> tri_faces = me_src->tri_faces();
+    const blender::Span<int> tri_faces = me_src->corner_tri_faces();
 
     BKE_bvhtree_from_mesh_get(&treedata, me_src, BVHTREE_FROM_CORNER_TRIS, 2);
 

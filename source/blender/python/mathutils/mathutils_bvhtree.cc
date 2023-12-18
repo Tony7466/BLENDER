@@ -1146,7 +1146,7 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
 
   const blender::Span<int> corner_verts = mesh->corner_verts();
   const blender::Span<blender::int3> corner_tris = mesh->corner_tris();
-  const blender::Span<int> tri_faces = mesh->tri_faces();
+  const blender::Span<int> tri_faces = mesh->corner_tri_faces();
 
   /* Get data for tessellation */
 

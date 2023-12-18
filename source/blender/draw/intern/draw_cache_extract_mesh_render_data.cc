@@ -422,7 +422,7 @@ void mesh_render_data_update_corner_tris(MeshRenderData &mr,
     /* Mesh */
     if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
       mr.corner_tris = mr.mesh->corner_tris();
-      mr.tri_faces = mr.mesh->tri_faces();
+      mr.tri_faces = mr.mesh->corner_tri_faces();
     }
   }
   else {

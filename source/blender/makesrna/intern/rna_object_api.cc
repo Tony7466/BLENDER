@@ -553,7 +553,7 @@ static void rna_Mesh_assign_verts_to_group(
 /* don't call inside a loop */
 static int mesh_corner_tri_to_face_index(Mesh *me_eval, const int tri_index)
 {
-  const blender::Span<int> tri_faces = me_eval->tri_faces();
+  const blender::Span<int> tri_faces = me_eval->corner_tri_faces();
   const int face_i = tri_faces[tri_index];
   const int *index_mp_to_orig = static_cast<const int *>(
       CustomData_get_layer(&me_eval->face_data, CD_ORIGINDEX));

@@ -617,7 +617,7 @@ static void bvhtree_from_mesh_setup_data(BVHTree *tree,
       break;
     case BVHTREE_FROM_EM_LOOSEVERTS:
     case BVHTREE_FROM_EM_EDGES:
-    case BVHTREE_FROM_EM_corner_triS:
+    case BVHTREE_FROM_EM_LOOPTRIS:
     case BVHTREE_MAX_ITEM:
       BLI_assert(false);
       break;
@@ -641,7 +641,7 @@ static void bvhtree_from_editmesh_setup_data(BVHTree *tree,
       r_data->nearest_callback = nullptr; /* TODO */
       r_data->raycast_callback = nullptr; /* TODO */
       break;
-    case BVHTREE_FROM_EM_corner_triS:
+    case BVHTREE_FROM_EM_LOOPTRIS:
       r_data->nearest_callback = editmesh_corner_tris_nearest_point;
       r_data->raycast_callback = editmesh_corner_tris_spherecast;
       break;
@@ -1022,7 +1022,7 @@ static BVHTree *bvhtree_from_mesh_corner_tris_create_tree(float epsilon,
   return tree;
 }
 
-BVHTree *bvhtree_from_editmesh_corner_tris_ex(BVHTreeFromEditMesh *data,
+BVHTree *bvhtree_from_editmesh_looptris_ex(BVHTreeFromEditMesh *data,
                                               BMEditMesh *em,
                                               const BitSpan corner_tris_mask,
                                               int corner_tris_num_active,
@@ -1038,7 +1038,7 @@ BVHTree *bvhtree_from_editmesh_corner_tris_ex(BVHTreeFromEditMesh *data,
   bvhtree_balance(tree, false);
 
   if (data) {
-    bvhtree_from_editmesh_setup_data(tree, BVHTREE_FROM_EM_corner_triS, data);
+    bvhtree_from_editmesh_setup_data(tree, BVHTREE_FROM_EM_LOOPTRIS, data);
   }
   return tree;
 }
@@ -1046,7 +1046,7 @@ BVHTree *bvhtree_from_editmesh_corner_tris_ex(BVHTreeFromEditMesh *data,
 BVHTree *bvhtree_from_editmesh_corner_tris(
     BVHTreeFromEditMesh *data, BMEditMesh *em, float epsilon, int tree_type, int axis)
 {
-  return bvhtree_from_editmesh_corner_tris_ex(data, em, {}, -1, epsilon, tree_type, axis);
+  return bvhtree_from_editmesh_looptris_ex(data, em, {}, -1, epsilon, tree_type, axis);
 }
 
 BVHTree *bvhtree_from_mesh_corner_tris_ex(BVHTreeFromMesh *data,
@@ -1210,7 +1210,7 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
     }
     case BVHTREE_FROM_EM_LOOSEVERTS:
     case BVHTREE_FROM_EM_EDGES:
-    case BVHTREE_FROM_EM_corner_triS:
+    case BVHTREE_FROM_EM_LOOPTRIS:
     case BVHTREE_MAX_ITEM:
       BLI_assert_unreachable();
       break;
@@ -1289,7 +1289,7 @@ BVHTree *BKE_bvhtree_from_editmesh_get(BVHTreeFromEditMesh *data,
     case BVHTREE_FROM_EM_EDGES:
       data->tree = bvhtree_from_editmesh_edges_create_tree(0.0f, tree_type, 6, em, {}, -1);
       break;
-    case BVHTREE_FROM_EM_corner_triS:
+    case BVHTREE_FROM_EM_LOOPTRIS:
       data->tree = bvhtree_from_editmesh_corner_tris_create_tree(0.0f, tree_type, 6, em, {}, -1);
       break;
     case BVHTREE_FROM_VERTS:

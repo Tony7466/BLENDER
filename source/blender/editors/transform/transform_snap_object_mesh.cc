@@ -134,7 +134,7 @@ static bool raycastMesh(SnapObjectContext *sctx,
   BVHTreeFromMesh treedata;
   snap_object_data_mesh_get(me_eval, use_hide, &treedata);
 
-  const blender::Span<int> tri_faces = me_eval->tri_faces();
+  const blender::Span<int> tri_faces = me_eval->corner_tri_faces();
 
   if (treedata.tree == nullptr) {
     return retval;

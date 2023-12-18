@@ -395,7 +395,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    const blender::OffsetIndices<int> faces,
                                    const int *corner_verts,
                                    const blender::int3 *corner_tris,
-                                   const int *tri_faces,
+                                   const int *corner_tri_faces,
                                    const uint corner_tris_len,
                                    const blender::Span<bool> sharp_faces,
 
@@ -470,7 +470,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
       for (k = 0, j = 0; j < int(corner_tris_len); k++, j++) {
         face_as_quad_map[k] = j;
         /* step over all quads */
-        if (faces[tri_faces[j]].size() == 4) {
+        if (faces[corner_tri_faces[j]].size() == 4) {
           j++; /* Skips the next corner_tri. */
         }
       }
@@ -503,7 +503,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
         mesh2tangent->faces = faces;
         mesh2tangent->corner_verts = corner_verts;
         mesh2tangent->corner_tris = corner_tris;
-        mesh2tangent->tri_faces = tri_faces;
+        mesh2tangent->tri_faces = corner_tri_faces;
         mesh2tangent->sharp_faces = sharp_faces;
         /* NOTE: we assume we do have tessellated loop normals at this point
          * (in case it is object-enabled), have to check this is valid. */
@@ -592,7 +592,7 @@ void BKE_mesh_calc_loop_tangents(Mesh *me_eval,
       me_eval->faces(),
       me_eval->corner_verts().data(),
       corner_tris.data(),
-      me_eval->tri_faces().data(),
+      me_eval->corner_tri_faces().data(),
       uint(corner_tris.size()),
       sharp_face,
       &me_eval->loop_data,

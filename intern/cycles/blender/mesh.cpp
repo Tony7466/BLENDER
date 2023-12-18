@@ -273,7 +273,7 @@ static void attr_create_generic(Scene *scene,
   blender::Span<int> tri_faces;
   if (!subdivision) {
     corner_tris = b_mesh.corner_tris();
-    tri_faces = b_mesh.tri_faces();
+    tri_faces = b_mesh.corner_tri_faces();
   }
   const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
   AttributeSet &attributes = (subdivision) ? mesh->subd_attributes : mesh->attributes;
@@ -922,7 +922,7 @@ static void create_mesh(Scene *scene,
     }
 
     if (!material_indices.is_empty()) {
-      const blender::Span<int> tri_faces = b_mesh.tri_faces();
+      const blender::Span<int> tri_faces = b_mesh.corner_tri_faces();
       for (const int i : corner_tris.index_range()) {
         shader[i] = clamp_material_index(material_indices[tri_faces[i]]);
       }
@@ -932,7 +932,7 @@ static void create_mesh(Scene *scene,
     }
 
     if (!sharp_faces.is_empty() && !(use_loop_normals && !corner_normals.is_empty())) {
-      const blender::Span<int> tri_faces = b_mesh.tri_faces();
+      const blender::Span<int> tri_faces = b_mesh.corner_tri_faces();
       for (const int i : corner_tris.index_range()) {
         smooth[i] = !sharp_faces[tri_faces[i]];
       }

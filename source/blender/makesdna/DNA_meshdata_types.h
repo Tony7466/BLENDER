@@ -63,7 +63,7 @@ enum {
  * Storing corner indices (instead of vertex indices) gives more flexibility for accessing mesh
  * data stored per-corner, though it does often add an extra level of indirection. The index of the
  * corresponding face for each triangle is stored in a separate array, accessed with
- * #Mesh::tri_faces().
+ * #Mesh::corner_tri_faces().
  *
  * Examples:
  * \code{.cc}

@@ -550,7 +550,7 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
     }
 
     if (!corner_ids.is_empty()) {
-      const Span<int> src_tri_faces = src.tri_faces();
+      const Span<int> src_tri_faces = src.corner_tri_faces();
       Array<int> map(dst.totloop);
       find_nearest_corners(src_positions,
                            src_faces,
@@ -567,7 +567,7 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
   if (!edge_ids.is_empty()) {
     const Span<int2> src_edges = src.edges();
     const Span<int> src_corner_edges = src.corner_edges();
-    const Span<int> src_tri_faces = src.tri_faces();
+    const Span<int> src_tri_faces = src.corner_tri_faces();
     const Span<int2> dst_edges = dst.edges();
     Array<int> map(dst.totedge);
     find_nearest_edges(src_positions,
@@ -583,7 +583,7 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
   }
 
   if (!face_ids.is_empty()) {
-    const Span<int> src_tri_faces = src.tri_faces();
+    const Span<int> src_tri_faces = src.corner_tri_faces();
     Array<int> map(dst.faces_num);
     find_nearest_faces(src_tri_faces, dst_positions, dst_faces, dst_corner_verts, bvhtree, map);
     gather_attributes(face_ids, src_attributes, ATTR_DOMAIN_FACE, map, dst_attributes);

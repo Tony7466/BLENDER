@@ -273,7 +273,7 @@ static void try_convert_single_object(Object &curves_ob,
   BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh); });
 
   const Span<float3> positions_cu = curves.positions();
-  const Span<int> tri_faces = surface_me.tri_faces();
+  const Span<int> tri_faces = surface_me.corner_tri_faces();
 
   if (tri_faces.is_empty()) {
     *r_could_not_convert_some_curves = true;

@@ -145,7 +145,7 @@ void BKE_mesh_origindex_map_create(
 void BKE_mesh_origindex_map_create_corner_tri(MeshElemMap **r_map,
                                               int **r_mem,
                                               blender::OffsetIndices<int> faces,
-                                              const int *tri_faces,
+                                              const int *corner_tri_faces,
                                               int corner_tris_num);
 
 /* islands */

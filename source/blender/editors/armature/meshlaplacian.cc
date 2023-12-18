@@ -1625,7 +1625,7 @@ static void harmonic_coordinates_bind(MeshDeformModifierData *mmd, MeshDeformBin
     mdb->cagemesh_cache.faces = mesh->faces();
     mdb->cagemesh_cache.corner_verts = mesh->corner_verts();
     mdb->cagemesh_cache.corner_tris = mesh->corner_tris();
-    mdb->cagemesh_cache.tri_faces = mesh->tri_faces();
+    mdb->cagemesh_cache.tri_faces = mesh->corner_tri_faces();
     mdb->cagemesh_cache.face_normals = mesh->face_normals();
   }
 

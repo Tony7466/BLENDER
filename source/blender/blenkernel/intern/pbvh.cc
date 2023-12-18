@@ -709,7 +709,7 @@ void update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
   BLI_assert(pbvh->header.type == PBVH_FACES);
   pbvh->faces = mesh->faces();
   pbvh->corner_verts = mesh->corner_verts();
-  pbvh->tri_faces = mesh->tri_faces();
+  pbvh->tri_faces = mesh->corner_tri_faces();
   if (!pbvh->deformed) {
     /* Deformed data not matching the original mesh are owned directly by the PBVH, and are
      * set separately by #BKE_pbvh_vert_coords_apply. */
@@ -2638,7 +2638,7 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
       args.hide_poly = *pbvh.mesh->attributes().lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
 
       args.prim_indices = node.prim_indices;
-      args.tri_faces = mesh.tri_faces();
+      args.tri_faces = mesh.corner_tri_faces();
       break;
     case PBVH_GRIDS:
       args.vert_data = &pbvh.mesh->vert_data;

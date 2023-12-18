@@ -1260,7 +1260,7 @@ static bool surfacedeformBind(Object *ob,
   data.corner_verts = corner_verts;
   data.corner_edges = corner_edges;
   data.corner_tris = target->corner_tris();
-  data.tri_faces = target->tri_faces();
+  data.tri_faces = target->corner_tri_faces();
   data.targetCos = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(target_verts_num, sizeof(float[3]), "SDefTargetBindVertArray"));
   data.bind_verts = smd_orig->verts;

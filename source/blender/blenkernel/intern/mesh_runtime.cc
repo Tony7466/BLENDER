@@ -251,7 +251,7 @@ blender::Span<blender::int3> Mesh::corner_tris() const
   return this->runtime->corner_tris_cache.data();
 }
 
-blender::Span<int> Mesh::tri_faces() const
+blender::Span<int> Mesh::corner_tri_faces() const
 {
   using namespace blender;
   this->runtime->tri_faces_cache.ensure([&](blender::Array<int> &r_data) {

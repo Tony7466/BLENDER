@@ -72,7 +72,7 @@ enum BVHCacheType {
 
   BVHTREE_FROM_EM_LOOSEVERTS,
   BVHTREE_FROM_EM_EDGES,
-  BVHTREE_FROM_EM_corner_triS,
+  BVHTREE_FROM_EM_LOOPTRIS,
 
   /* Keep `BVHTREE_MAX_ITEM` as last item. */
   BVHTREE_MAX_ITEM,
@@ -155,13 +155,13 @@ BVHTree *bvhtree_from_editmesh_corner_tris(
 /**
  * Builds a BVH-tree where nodes are triangles faces (#MLoopTri) of the given `bm`.
  */
-BVHTree *bvhtree_from_editmesh_corner_tris_ex(BVHTreeFromEditMesh *data,
-                                              BMEditMesh *em,
-                                              blender::BitSpan corner_tris_mask,
-                                              int corner_tris_num_active,
-                                              float epsilon,
-                                              int tree_type,
-                                              int axis);
+BVHTree *bvhtree_from_editmesh_looptris_ex(BVHTreeFromEditMesh *data,
+                                           BMEditMesh *em,
+                                           blender::BitSpan corner_tris_mask,
+                                           int corner_tris_num_active,
+                                           float epsilon,
+                                           int tree_type,
+                                           int axis);
 
 /**
  * Builds a BVH-tree where nodes are the triangle faces (#MLoopTri) of the given mesh.

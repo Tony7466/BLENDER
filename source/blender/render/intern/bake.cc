@@ -502,7 +502,7 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *me_ev
   }
 
   const blender::Span<blender::float3> vert_normals = mesh->vert_normals();
-  const blender::Span<int> tri_faces = mesh->tri_faces();
+  const blender::Span<int> tri_faces = mesh->corner_tri_faces();
   for (i = 0; i < tottri; i++) {
     const int3 &tri = corner_tris[i];
     const int face_i = tri_faces[i];
@@ -757,7 +757,7 @@ void RE_bake_pixels_populate(Mesh *mesh,
   blender::bke::mesh::corner_tris_calc(
       mesh->vert_positions(), mesh->faces(), mesh->corner_verts(), {corner_tris, tottri});
 
-  const blender::Span<int> tri_faces = mesh->tri_faces();
+  const blender::Span<int> tri_faces = mesh->corner_tri_faces();
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArraySpan material_indices = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
 

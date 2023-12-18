@@ -159,7 +159,7 @@ static void get_closest_mesh_faces(const Mesh &mesh,
   Array<int> tri_indices(positions.size());
   get_closest_mesh_tris(mesh, positions, mask, tri_indices, r_distances_sq, r_positions);
 
-  const Span<int> tri_faces = mesh.tri_faces();
+  const Span<int> tri_faces = mesh.corner_tri_faces();
 
   mask.foreach_index([&](const int i) { r_face_indices[i] = tri_faces[tri_indices[i]]; });
 }

@@ -274,7 +274,7 @@ void BKE_mesh_origindex_map_create(MeshElemMap **r_map,
 void BKE_mesh_origindex_map_create_corner_tri(MeshElemMap **r_map,
                                               int **r_mem,
                                               const blender::OffsetIndices<int> faces,
-                                              const int *tri_faces,
+                                              const int *corner_tri_faces,
                                               const int corner_tris_num)
 {
   MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(faces.size()), __func__);
@@ -290,7 +290,7 @@ void BKE_mesh_origindex_map_create_corner_tri(MeshElemMap **r_map,
 
   /* Assign face-tessellation users. */
   for (int i = 0; i < corner_tris_num; i++) {
-    MeshElemMap *map_ele = &map[tri_faces[i]];
+    MeshElemMap *map_ele = &map[corner_tri_faces[i]];
     map_ele->indices[map_ele->count++] = i;
   }
 

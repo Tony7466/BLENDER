@@ -275,7 +275,7 @@ static void imapaint_pick_uv(const Mesh *me_eval,
   const ePaintCanvasSource mode = ePaintCanvasSource(scene->toolsettings->imapaint.mode);
 
   const blender::Span<blender::int3> tris = me_eval->corner_tris();
-  const blender::Span<int> tri_faces = me_eval->tri_faces();
+  const blender::Span<int> tri_faces = me_eval->corner_tri_faces();
 
   const blender::Span<blender::float3> positions = me_eval->vert_positions();
   const blender::Span<int> corner_verts = me_eval->corner_verts();

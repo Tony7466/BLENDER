@@ -1171,7 +1171,7 @@ void BKE_shrinkwrap_compute_smooth_normal(const ShrinkwrapTreeData *tree,
   using namespace blender;
   const BVHTreeFromMesh *treeData = &tree->treeData;
   const int3 &tri = treeData->corner_tris[corner_tri_idx];
-  const int face_i = tree->mesh->tri_faces()[corner_tri_idx];
+  const int face_i = tree->mesh->corner_tri_faces()[corner_tri_idx];
 
   /* Interpolate smooth normals if enabled. */
   if (!(tree->sharp_faces && tree->sharp_faces[face_i])) {

@@ -49,7 +49,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    blender::OffsetIndices<int> faces,
                                    const int *corner_verts,
                                    const blender::int3 *corner_tris,
-                                   const int *tri_faces,
+                                   const int *corner_tri_faces,
                                    uint corner_tris_len,
                                    const blender::Span<bool> sharp_faces,
 

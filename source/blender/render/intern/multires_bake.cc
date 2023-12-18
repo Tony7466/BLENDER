@@ -515,7 +515,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
   const blender::Span<blender::float3> vert_normals = temp_mesh->vert_normals();
   const blender::Span<blender::float3> face_normals = temp_mesh->face_normals();
   const blender::Span<blender::int3> corner_tris = temp_mesh->corner_tris();
-  const blender::Span<int> tri_faces = temp_mesh->tri_faces();
+  const blender::Span<int> tri_faces = temp_mesh->corner_tri_faces();
 
   if (require_tangent) {
     if (CustomData_get_layer_index(&dm->loopData, CD_TANGENT) == -1) {
