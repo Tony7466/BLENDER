@@ -26,10 +26,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (!node) {
     return;
   }
-
-  b.add_input<decl::Float>("Grid");
+  const eCustomDataType data_type = eCustomDataType(node->custom1);
+  b.add_input(data_type, "Grid");
   b.add_input<decl::Int>("Iterations").default_value(1).min(0);
-  b.add_output<decl::Float>("Grid");
+  b.add_output(data_type, "Grid");
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)

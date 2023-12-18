@@ -17,6 +17,7 @@
 #include "node_util.hh"
 
 #ifdef WITH_OPENVDB
+/* TODO */
 #  include <openvdb/openvdb.h>
 #  include <openvdb/tools/Morphology.h>
 #endif

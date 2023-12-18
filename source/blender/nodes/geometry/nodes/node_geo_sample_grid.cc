@@ -36,24 +36,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input(data_type, "Grid");
   b.add_input<decl::Vector>("Position").implicit_field(implicit_field_inputs::position);
-
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      b.add_output<decl::Float>("Value").dependent_field({1});
-      break;
-    case CD_PROP_FLOAT3:
-      b.add_output<decl::Vector>("Value").dependent_field({1});
-      break;
-    case CD_PROP_BOOL:
-      b.add_output<decl::Bool>("Value").dependent_field({1});
-      break;
-    case CD_PROP_INT32:
-      b.add_output<decl::Int>("Value").dependent_field({1});
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
+  b.add_output(data_type, "Value").dependent_field({1});
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)

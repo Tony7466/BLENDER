@@ -52,10 +52,6 @@
 #include <fmt/format.h>
 #include <sstream>
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-#endif
-
 namespace blender::nodes {
 
 namespace aai = bke::anonymous_attribute_inferencing;
