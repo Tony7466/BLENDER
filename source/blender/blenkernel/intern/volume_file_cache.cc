@@ -136,8 +136,16 @@ static GVolumeGrid get_cached_grid(const StringRef file_path,
     return BKE_volume_grid_create_with_changed_resolution(
         grid_type, main_grid->grid(tree_user), resolution_factor);
   };
-  GVolumeGrid grid{
-      MEM_new<VolumeGridData>(__func__, load_grid_fn, grid_cache.meta_data_grid->copyGrid())};
+  /*  */
+  openvdb::GridBase::Ptr meta_data_and_transform_grid;
+  if (simplify_level == 0) {
+    /* Only pass the meta-data grid when there is no simplification for now. For simplified grids,
+     * the transform would have to be updated here already. */
+    meta_data_and_transform_grid = grid_cache.meta_data_grid->copyGrid();
+  }
+  VolumeGridData *grid_data = MEM_new<VolumeGridData>(
+      __func__, load_grid_fn, meta_data_and_transform_grid);
+  GVolumeGrid grid{grid_data};
   grid_cache.grid_by_simplify_level.add(simplify_level, grid);
   return grid;
 }
