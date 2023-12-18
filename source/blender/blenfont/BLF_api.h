@@ -78,11 +78,24 @@ char *BLF_display_name_from_id(int fontid);
  */
 bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale);
 
+typedef struct GlyphData {
+  uint32_t index;
+  uint32_t cluster;
+  int logical_position;
+  int32_t x_advance;
+  int32_t y_advance;
+  int32_t x_offset;
+  int32_t y_offset;
+} GlyphData;
+
+//int BLF_glyph_data(int fontid, const char32_t *str, int len, struct GlyphData **r_glyphs);
+
 /**
  * Convert a character's outlines into curves.
  */
 float BLF_character_to_curves(int fontid,
-                              unsigned int unicode,
+                              unsigned int codepoint,
+                              unsigned int glyphid,
                               struct ListBase *nurbsbase,
                               const float scale);
 

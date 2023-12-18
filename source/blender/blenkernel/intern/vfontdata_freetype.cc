@@ -52,6 +52,7 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
   BLF_get_vfont_metrics(fontid, &vfd->ascender, &vfd->em_height, &vfd->scale);
 
   vfd->characters = BLI_ghash_int_new_ex(__func__, 255);
+  vfd->glyphs = BLI_ghash_int_new_ex(__func__, 255);
 
   BLF_unload_id(fontid);
 
@@ -71,11 +72,15 @@ VFontData *BKE_vfontdata_copy(const VFontData *vfont_src, const int /*flag*/)
     vfont_dst->characters = BLI_ghash_copy(
         vfont_src->characters, nullptr, vfontdata_copy_characters_value_cb);
   }
+  if (vfont_src->glyphs != nullptr) {
+    vfont_dst->glyphs = BLI_ghash_copy(
+        vfont_src->glyphs, nullptr, vfontdata_copy_characters_value_cb);
+  }
 
   return vfont_dst;
 }
 
-VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
+VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong codepoint, ulong glyphid)
 {
   if (!vfont) {
     return nullptr;
@@ -99,14 +104,26 @@ VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
   }
 
   VChar *che = (VChar *)MEM_callocN(sizeof(VChar), "objfnt_char");
-  che->index = character;
 
   /* need to set a size for embolden, etc. */
   BLF_size(font_id, 16);
 
-  che->width = BLF_character_to_curves(font_id, character, &che->nurbsbase, vfont->data->scale);
+  che->advance_x = BLF_character_to_curves(
+      font_id, codepoint, glyphid, &che->nurbsbase, vfont->data->scale);
 
-  BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(che->index), che);
+  che->codepoint = codepoint;
+  che->glyphid = glyphid;
+  che->advance_y = 0;
+  che->offset_x = 0;
+  che->offset_y = 0;
+
+  if (glyphid) {
+    BLI_ghash_insert(vfont->data->glyphs, POINTER_FROM_UINT(che->glyphid), che);
+  }
+  else {
+    BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(che->codepoint), che);
+  }
+
   BLF_unload_id(font_id);
   return che;
 }

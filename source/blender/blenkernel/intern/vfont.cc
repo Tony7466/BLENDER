@@ -204,11 +204,26 @@ void BKE_vfont_free_data(VFont *vfont)
           }
           BLI_freelinkN(&che->nurbsbase, nu);
         }
-
         MEM_freeN(che);
       }
-
       BLI_ghash_free(vfont->data->characters, nullptr, nullptr);
+    }
+
+    if (vfont->data->glyphs) {
+      GHashIterator gh_iter;
+      GHASH_ITER (gh_iter, vfont->data->glyphs) {
+        VChar *che = static_cast<VChar *>(BLI_ghashIterator_getValue(&gh_iter));
+
+        while (che->nurbsbase.first) {
+          Nurb *nu = static_cast<Nurb *>(che->nurbsbase.first);
+          if (nu->bezt) {
+            MEM_freeN(nu->bezt);
+          }
+          BLI_freelinkN(&che->nurbsbase, nu);
+        }
+        MEM_freeN(che);
+      }
+      BLI_ghash_free(vfont->data->glyphs, nullptr, nullptr);
     }
 
     MEM_freeN(vfont->data);
@@ -427,9 +442,25 @@ VFont *BKE_vfont_builtin_get()
   return vfont;
 }
 
-static VChar *find_vfont_char(VFontData *vfd, uint character)
+static VChar *find_vfont_char(VFontData *vfd, uint codepoint, uint glyphid = 0)
 {
-  return static_cast<VChar *>(BLI_ghash_lookup(vfd->characters, POINTER_FROM_UINT(character)));
+  VChar *che = nullptr;
+
+  if (glyphid) {
+    che = static_cast<VChar *>(BLI_ghash_lookup(vfd->glyphs, POINTER_FROM_UINT(glyphid)));
+    if (che) {
+      return che;
+    }
+  }
+
+  if (codepoint) {
+    che = static_cast<VChar *>(BLI_ghash_lookup(vfd->characters, POINTER_FROM_UINT(codepoint)));
+    if (che) {
+      return che;
+    }
+  }
+
+  return che;
 }
 
 static void build_underline(Curve *cu,
@@ -678,10 +709,10 @@ static float char_width(Curve *cu, VChar *che, CharInfo *info)
     return 0.0f;
   }
   if (info->flag & CU_CHINFO_SMALLCAPS_CHECK) {
-    return che->width * cu->smallcaps_scale;
+    return che->advance_x * cu->smallcaps_scale;
   }
 
-  return che->width;
+  return che->advance_x;
 }
 
 static void textbox_scale(TextBox *tb_dst, const TextBox *tb_src, float scale)

@@ -1005,16 +1005,14 @@ bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, flo
   return true;
 }
 
-float BLF_character_to_curves(int fontid,
-                              unsigned int unicode,
-                              ListBase *nurbsbase,
-                              const float scale)
+float BLF_character_to_curves(
+    int fontid, uint codepoint, uint glyphid, ListBase *nurbsbase, const float scale)
 {
   FontBLF *font = blf_get(fontid);
   if (!font) {
     return 0.0f;
   }
-  return blf_character_to_curves(font, unicode, nurbsbase, scale);
+  return blf_character_to_curves(font, codepoint, glyphid, nurbsbase, scale);
 }
 
 #ifndef NDEBUG
