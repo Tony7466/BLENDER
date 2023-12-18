@@ -1017,8 +1017,10 @@ class NodeTreeMainUpdater {
 
     /* Tests if enum references are undefined. */
     const auto is_invalid_enum_ref = [](const bNodeSocket &socket) -> bool {
-      return socket.type == SOCK_MENU &&
-             socket.default_value_typed<bNodeSocketValueMenu>()->enum_items;
+      if (socket.type == SOCK_MENU) {
+        return socket.default_value_typed<bNodeSocketValueMenu>()->enum_items == nullptr;
+      }
+      return false;
     };
 
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
