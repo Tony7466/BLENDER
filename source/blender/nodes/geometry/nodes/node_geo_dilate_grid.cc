@@ -78,7 +78,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
   const GeometryNodeGridNeighborTopology neighbors_mode = GeometryNodeGridNeighborTopology(
       params.node().custom2);
-  BLI_assert(grids::grid_type_supported(data_type));
+  BLI_assert(grid_type_supported(data_type));
   const int iterations = params.extract_input<int>("Iterations");
 
   switch (data_type) {
@@ -110,7 +110,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_type_items_fn);
 
   RNA_def_node_enum(srna,
                     "neighbors_mode",

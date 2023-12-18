@@ -94,8 +94,6 @@ const EnumPropertyItem *domain_without_corner_experimental_grease_pencil_version
 
 }  // namespace enums
 
-namespace grids {
-
 bool grid_type_supported(const eCustomDataType data_type)
 {
   return ELEM(data_type, CD_PROP_FLOAT, CD_PROP_FLOAT3);
@@ -113,6 +111,8 @@ const EnumPropertyItem *grid_type_items_fn(bContext * /*C*/,
                                     grid_type_supported(eCustomDataType(item.value));
                            });
 }
+
+namespace grids {
 
 openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
     GeometryNodeGridNeighborTopology neighbors_mode)

@@ -143,13 +143,13 @@ const EnumPropertyItem *domain_without_corner_experimental_grease_pencil_version
 
 }  // namespace enums
 
-namespace grids {
-
 bool grid_type_supported(eCustomDataType data_type);
 const EnumPropertyItem *grid_type_items_fn(bContext *C,
                                            PointerRNA *ptr,
                                            PropertyRNA *prop,
                                            bool *r_free);
+
+namespace grids {
 
 template<typename OpT> auto apply(const eCustomDataType data_type, OpT &op)
 {
