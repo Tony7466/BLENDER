@@ -523,7 +523,7 @@ void ED_spacetype_text()
 /** Initializes a text search if is not already initialized. */
 static void text_init_text_search(const SpaceText *st, Text *text)
 {
-  if (ED_text_get_text_search(st, st->text)) {
+  if (ED_text_get_text_search(st, text)) {
     return;
   }
   auto &texts_search = st->runtime->texts_search;
@@ -592,6 +592,7 @@ static void text_init_texts_search(const bContext *C, const SpaceText *st, const
   Main *bmain = CTX_data_main(C);
   if (!search_all) {
     text_init_text_search(st, st->text);
+    return;
   }
   LISTBASE_FOREACH (Text *, text, &bmain->texts) {
     text_init_text_search(st, text);
