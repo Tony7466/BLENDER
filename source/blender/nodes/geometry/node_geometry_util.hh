@@ -132,24 +132,4 @@ const EnumPropertyItem *grid_type_items_fn(bContext *C,
                                            PropertyRNA *prop,
                                            bool *r_free);
 
-namespace grids {
-
-template<typename OpT> auto apply(const eCustomDataType data_type, OpT &op)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      return op.template operator()<float>();
-    case CD_PROP_FLOAT3:
-      return op.template operator()<float3>();
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
-  BLI_assert_unreachable();
-  /* Dummy output value for compiler, should never get here. */
-  return op.template operator()<float>();
-}
-
-}  // namespace grids
-
 }  // namespace blender::nodes

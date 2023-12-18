@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute_math.hh"
 #include "BKE_type_conversions.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
@@ -175,7 +176,15 @@ static void node_geo_exec(GeoNodeExecParams params)
       GeometryNodeSampleGridInterpolationMode(storage.interpolation_mode);
 
   SampleGridOp sample_op = {params, interpolation_mode};
-  grids::apply(data_type, sample_op);
+  bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+    using T = decltype(dummy);
+    if constexpr (is_same_any_v<T, float, float3>) {
+      sample_op.template operator()<T>();
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+  });
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,
