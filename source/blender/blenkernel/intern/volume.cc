@@ -972,11 +972,11 @@ void BKE_volume_grid_remove(Volume *volume, const blender::bke::VolumeGridData *
 #endif
 }
 
-void BKE_volume_grid_add(Volume *volume, const blender::bke::VolumeGridData *grid)
+void BKE_volume_grid_add(Volume *volume, const blender::bke::VolumeGridData &grid)
 {
 #ifdef WITH_OPENVDB
   VolumeGridVector &grids = *volume->runtime.grids;
-  grids.push_back(GVolumeGrid(grid));
+  grids.push_back(GVolumeGrid(&grid));
 #else
   UNUSED_VARS(volume, grid);
 #endif

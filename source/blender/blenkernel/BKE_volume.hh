@@ -14,7 +14,6 @@
 #include "BLI_bounds_types.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "BKE_volume_enums.hh"
 #include "BKE_volume_grid_fwd.hh"
 
 struct Depsgraph;
@@ -97,7 +96,12 @@ Volume *BKE_volume_new_for_eval(const Volume *volume_src);
 Volume *BKE_volume_copy_for_eval(const Volume *volume_src);
 
 void BKE_volume_grid_remove(Volume *volume, const blender::bke::VolumeGridData *grid);
-void BKE_volume_grid_add(Volume *volume, const blender::bke::VolumeGridData *grid);
+
+/**
+ * Adds a new grid to the volume with the name stored in the grid. The caller is responsible for
+ * making sure that the user count already contains the volume as a user.
+ */
+void BKE_volume_grid_add(Volume *volume, const blender::bke::VolumeGridData &grid);
 
 /**
  * OpenVDB crashes when the determinant of the transform matrix becomes too small.
