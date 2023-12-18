@@ -1628,11 +1628,21 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   }
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
 
-  // geometry::join_transform_instance_components(gather_info.instances_components_to_merge,
-  //                                              gather_info.instances_components_transforms,
-  //                                              new_geometry_set);
-  // geometry::join_instances(gather_info.instances_components_to_merge, new_geometry_set);
-  
+  Vector<bke::GeometrySet>  geometries_to_merge;
+  for (const auto &instances_component : gather_info.instances_components_to_merge) {
+    // Assuming InstancesComponent is implicitly convertible to GeometryComponent
+    const bke::GeometryComponent *geometry_component = static_cast<const bke::GeometryComponent *>(instances_component);
+
+    // Create a new GeometrySet and add the geometry component to it
+    bke::GeometrySet new_geometry_se;
+    new_geometry_se.add(*geometry_component);
+
+    // Add the new GeometrySet to the Vector
+    geometries_to_merge.append(new_geometry_se);
+}
+
+  new_geometry_set = geometry::join_geometries(geometries_to_merge, options.propagation_info);
+
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
