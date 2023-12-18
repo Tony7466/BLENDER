@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifdef WITH_OPENVDB
+
+#  include "DNA_node_types.h"
+
 #  include <openvdb/openvdb.h>
 #  include <openvdb/tools/Morphology.h>
 
