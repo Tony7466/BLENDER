@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
 
 #include "DNA_collection_types.h"
@@ -247,6 +248,12 @@ struct GatherTasksInfo {
   const AllCurvesInfo &curves;
   bool create_id_attribute_on_any_component = false;
 
+  /** Selection for top-level instances to realize. */
+  IndexMask selection;
+
+  /** Depth to realize instances for each selected top-level instance. */
+  const VArray<int> &depths;
+  
   /**
    * Under some circumstances, temporary arrays need to be allocated during the gather operation.
    * For example, when an instance attribute has to be realized as a different data type. This
@@ -1542,6 +1549,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                  all_meshes_info,
                                  all_curves_info,
                                  create_id_attribute,
+                                 options.selection,
+                                 options.depths,
                                  temporary_arrays};
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
