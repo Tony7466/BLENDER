@@ -1,2 +1,3 @@
 Referenced by issue #114260, Alpha channel interpretation difference between compositors
 Referenced by issue #116255, Blender crashes every time I add a Cryptomatte node in Compositor
+Referenced by issue #116205, composition on opening -> no response
