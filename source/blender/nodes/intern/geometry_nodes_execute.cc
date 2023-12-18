@@ -160,6 +160,12 @@ bool socket_type_has_attribute_toggle(const eNodeSocketDatatype type)
 
 bool input_has_attribute_toggle(const bNodeTree &node_tree, const int socket_index)
 {
+  node_tree.ensure_interface_cache();
+  const bNodeSocketType *typeinfo = node_tree.interface_inputs()[socket_index]->socket_typeinfo();
+  if (ELEM(typeinfo->type, SOCK_MENU)) {
+    return false;
+  }
+
   BLI_assert(node_tree.runtime->field_inferencing_interface);
   const nodes::FieldInferencingInterface &field_interface =
       *node_tree.runtime->field_inferencing_interface;
