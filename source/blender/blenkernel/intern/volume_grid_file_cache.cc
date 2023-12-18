@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_volume_file_cache.hh"
+#include "BKE_volume_grid_file_cache.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLI_map.hh"
@@ -11,7 +11,7 @@
 #  include <openvdb/openvdb.h>
 #endif
 
-namespace blender::bke::volume_file_cache {
+namespace blender::bke::volume_grid {
 
 struct GridCacheKey {
   std::string file_path;
@@ -129,7 +129,7 @@ static GVolumeGrid get_cached_grid(const StringRef file_path,
     if (simplify_level == 0) {
       return load_single_grid_from_disk(file_path, grid_name);
     }
-    const GVolumeGrid main_grid = volume_file_cache::get_grid_from_file(file_path, grid_name, 0);
+    const GVolumeGrid main_grid = get_grid_from_file(file_path, grid_name, 0);
     const VolumeGridType grid_type = main_grid->grid_type();
     const float resolution_factor = 1.0f / (1 << simplify_level);
     const VolumeTreeUser tree_user = main_grid->tree_user();
@@ -193,4 +193,4 @@ void unload_unused()
   }
 }
 
-}  // namespace blender::bke::volume_file_cache
+}  // namespace blender::bke::volume_grid

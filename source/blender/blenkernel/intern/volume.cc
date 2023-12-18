@@ -45,8 +45,8 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_volume.hh"
-#include "BKE_volume_file_cache.hh"
 #include "BKE_volume_grid.hh"
+#include "BKE_volume_grid_file_cache.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
@@ -483,8 +483,8 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
     return false;
   }
 
-  blender::bke::volume_file_cache::GridsFromFile grids_from_file =
-      blender::bke::volume_file_cache::get_all_grids_from_file(filepath, 0);
+  blender::bke::volume_grid::GridsFromFile grids_from_file =
+      blender::bke::volume_grid::get_all_grids_from_file(filepath, 0);
 
   if (!grids_from_file.error_message.empty()) {
     grids.error_msg = grids_from_file.error_message;
@@ -644,7 +644,7 @@ static void volume_update_simplify_level(Volume *volume, const Depsgraph *depsgr
     VolumeGridVector &grids = *volume->runtime.grids;
     std::list<GVolumeGrid> new_grids;
     for (const GVolumeGrid &old_grid : grids) {
-      GVolumeGrid simple_grid = blender::bke::volume_file_cache::get_grid_from_file(
+      GVolumeGrid simple_grid = blender::bke::volume_grid::get_grid_from_file(
           grids.filepath, old_grid->name(), simplify_level);
       BLI_assert(simple_grid);
       new_grids.push_back(std::move(simple_grid));
