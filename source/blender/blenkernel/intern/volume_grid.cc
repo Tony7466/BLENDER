@@ -110,6 +110,7 @@ std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr(
     const VolumeTreeUser &tree_user) const
 {
   BLI_assert(tree_user.valid_for(*this));
+  UNUSED_VARS_NDEBUG(tree_user);
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
   return grid_;
@@ -119,6 +120,7 @@ std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
     const VolumeTreeUser &tree_user)
 {
   BLI_assert(tree_user.valid_for(*this));
+  UNUSED_VARS_NDEBUG(tree_user);
   BLI_assert(this->is_mutable());
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
