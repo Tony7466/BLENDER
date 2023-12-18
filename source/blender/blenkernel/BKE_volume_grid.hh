@@ -218,7 +218,7 @@ class VolumeGridData : public ImplicitSharingMixin {
   /**
    * Tree if the tree can be loaded again after it has been unloaded.
    */
-  bool can_be_reloaded() const;
+  bool is_reloadable() const;
 
   /**
    * Unloads the tree data if it's reloadable and no one is using it right now.
@@ -239,6 +239,9 @@ class VolumeTreeAccessToken {
  public:
   /** True if the access token can be used with the given grid. */
   bool valid_for(const VolumeGridData &grid) const;
+
+  /** Revoke the access token to indicating that the tree is not used anymore. */
+  void reset();
 };
 
 /**
@@ -279,6 +282,11 @@ class GVolumeGrid {
    * grid data is shared.
    */
   VolumeGridData &get_for_write();
+
+  /**
+   * Move ownership of the underlying grid data to the caller.
+   */
+  const VolumeGridData *release();
 
   /** Makes it more convenient to retrieve data from the grid. */
   const VolumeGridData *operator->() const;
@@ -327,6 +335,11 @@ inline const VolumeGridData &GVolumeGrid::get() const
 {
   BLI_assert(*this);
   return *data_.get();
+}
+
+inline const VolumeGridData *GVolumeGrid::release()
+{
+  return data_.release();
 }
 
 inline GVolumeGrid::operator bool() const
@@ -390,6 +403,11 @@ template<typename T> inline void VolumeGrid<T>::assert_correct_type() const
 inline bool VolumeTreeAccessToken::valid_for(const VolumeGridData &grid) const
 {
   return grid.tree_access_token_ == token_;
+}
+
+inline void VolumeTreeAccessToken::reset()
+{
+  token_.reset();
 }
 
 /** \} */

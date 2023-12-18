@@ -137,6 +137,8 @@ std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
     tree_sharing_info_->remove_user_and_delete_if_last();
     tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, std::move(tree_copy));
   }
+  /* Can't reload the grid anymore if it has been changed. */
+  lazy_load_grid_ = {};
   return grid_;
 }
 
@@ -196,7 +198,7 @@ openvdb::GridClass VolumeGridData::grid_class() const
   return grid_->getGridClass();
 }
 
-bool VolumeGridData::can_be_reloaded() const
+bool VolumeGridData::is_reloadable() const
 {
   return bool(lazy_load_grid_);
 }
@@ -219,7 +221,7 @@ void VolumeGridData::unload_tree_if_possible() const
   if (!grid_) {
     return;
   }
-  if (!this->can_be_reloaded()) {
+  if (!this->is_reloadable()) {
     return;
   }
   if (!tree_access_token_.unique()) {
