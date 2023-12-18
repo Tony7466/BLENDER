@@ -212,6 +212,8 @@ void VolumeGridData::unload_tree_if_possible() const
   }
   grid_->newTree();
   tree_loaded_ = false;
+  tree_sharing_info_->remove_user_and_delete_if_last();
+  tree_sharing_info_ = nullptr;
 }
 
 GVolumeGrid VolumeGridData::copy() const
@@ -239,7 +241,6 @@ void VolumeGridData::ensure_grid_loaded() const
     return;
   }
   BLI_assert(lazy_load_grid_);
-  /* TODO: exception handling, reuse old transform/meta-data*/
   std::shared_ptr<openvdb::GridBase> loaded_grid;
   threading::isolate_task([&]() {
     error_message_.clear();
@@ -274,6 +275,7 @@ void VolumeGridData::ensure_grid_loaded() const
     grid_ = std::move(loaded_grid);
   }
 
+  BLI_assert(tree_sharing_info_ == nullptr);
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
 
   tree_loaded_ = true;
