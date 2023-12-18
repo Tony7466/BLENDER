@@ -4,6 +4,7 @@
 
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
+// #include "BKE_geometry_set.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
@@ -261,6 +262,13 @@ struct GatherTasksInfo {
    * Use #std::unique_ptr to avoid depending on whether #GArray has an inline buffer or not.
    */
   Vector<std::unique_ptr<GArray<>>> &r_temporary_arrays;
+
+
+  // /** Instance components to merge for output geometry. */
+  // Vector<const InstancesComponent *> instances_components_to_merge;
+  // /** Base transform for each instance component. */
+  // Vector<float4x4> instances_components_transforms;
+
 
   /** All gathered tasks. */
   GatherTasks r_tasks;
