@@ -848,7 +848,13 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
    * to do a separate flip. */
   const int ibuf_linesize = ibuf->x * 4;
   const int rgb_linesize = anim->pFrameRGB->linesize[0];
-  const bool scale_to_ibuf = (rgb_linesize == ibuf_linesize);
+  bool scale_to_ibuf = (rgb_linesize == ibuf_linesize);
+  /* swscale on arm64 before ffmpeg 6.0 (libswscale major version 7)
+   * could not handle negative line sizes. That has been fixed in all major
+   * ffmpeg releases in early 2023, but easier to just check for "below 7". */
+#  if (defined(__aarch64__) || defined(_M_ARM64)) && (LIBSWSCALE_VERSION_MAJOR < 7)
+  scale_to_ibuf = false;
+#  endif
   uint8_t *rgb_data = anim->pFrameRGB->data[0];
 
   if (scale_to_ibuf) {
