@@ -114,9 +114,4 @@ bool BKE_volume_save(const Volume *volume,
                      ReportList *reports,
                      const char *filepath);
 
-/* OpenVDB Grid Access
- *
- * Access to OpenVDB grid for C++. These will automatically load grids from
- * file or copy shared grids to make them writeable. */
-
 std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume *volume);
