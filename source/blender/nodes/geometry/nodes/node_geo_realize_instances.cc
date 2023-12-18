@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
-#include "GEO_join_geometries.hh"
+
+#include "BKE_instances.hh"
+
 #include "GEO_realize_instances.hh"
 
 #include "UI_interface.hh"
@@ -19,7 +21,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .hide_value()
       .supports_field()
       .description(("Which top-level instances to realize"));
-  b.add_input<decl::Float>("Depth")
+  b.add_input<decl::Int>("Depth")
       .default_value(0)
       .supports_field()
       .description(
@@ -30,7 +32,24 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
+  if (!geometry_set.has_instances()) {
+  params.set_output("Geometry", std::move(geometry_set));
+  return;
+  }
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
+  Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+  Field<int> depth_field = params.extract_input<Field<int>>("Depth");
+
+  const bke::Instances &instances = *geometry_set.get_instances();
+  const bke::InstancesFieldContext field_context{instances};
+  fn::FieldEvaluator evaluator{field_context, instances.instances_num()};
+  evaluator.set_selection(selection_field);
+  evaluator.add(depth_field);
+  evaluator.evaluate();
+  const VArray<int> depths = evaluator.get_evaluated<int>(0);
+  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  // bke::AnonymousAttributePropagationInfo propagation_info = params.get_output_propagation_info("Geometry");
+
   geometry::RealizeInstancesOptions options;
   options.keep_original_ids = false;
   options.realize_instance_attributes = true;
