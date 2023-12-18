@@ -29,7 +29,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Remove").default_value(true);
 
   b.add_output<decl::Geometry>("Volume");
-  grids::declare_grid_type_output(b, eCustomDataType(node->custom1), "Grid");
+  b.add_output(eCustomDataType(node->custom1), "Grid");
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)

@@ -114,40 +114,6 @@ const EnumPropertyItem *grid_type_items_fn(bContext * /*C*/,
                            });
 }
 
-BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
-                                                      const eCustomDataType type,
-                                                      const StringRef name,
-                                                      const StringRef identifier)
-{
-  switch (type) {
-    case CD_PROP_FLOAT:
-      return b.add_input<decl::Float>(name, identifier).hide_value();
-    case CD_PROP_FLOAT3:
-      return b.add_input<decl::Vector>(name, identifier).hide_value();
-    default:
-      break;
-  }
-  BLI_assert_unreachable();
-  return b.add_input<decl::Float>(name, identifier);
-}
-
-BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b,
-                                                       const eCustomDataType type,
-                                                       const StringRef name,
-                                                       const StringRef identifier)
-{
-  switch (type) {
-    case CD_PROP_FLOAT:
-      return b.add_output<decl::Float>(name, identifier);
-    case CD_PROP_FLOAT3:
-      return b.add_output<decl::Vector>(name, identifier);
-    default:
-      break;
-  }
-  BLI_assert_unreachable();
-  return b.add_output<decl::Float>(name, identifier);
-}
-
 openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
     GeometryNodeGridNeighborTopology neighbors_mode)
 {

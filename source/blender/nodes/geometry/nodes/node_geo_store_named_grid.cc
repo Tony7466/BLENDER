@@ -27,7 +27,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Geometry>("Volume");
   b.add_input<decl::String>("Name");
-  grids::declare_grid_type_input(b, eCustomDataType(node->custom1), "Grid");
+  b.add_input(eCustomDataType(node->custom1), "Grid");
 
   b.add_output<decl::Geometry>("Volume");
 }

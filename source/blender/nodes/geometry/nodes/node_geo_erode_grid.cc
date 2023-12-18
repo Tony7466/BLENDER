@@ -27,10 +27,9 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
 
-  grids::declare_grid_type_input(b, CD_PROP_FLOAT, "Grid");
+  b.add_input<decl::Float>("Grid");
   b.add_input<decl::Int>("Iterations").default_value(1).min(0);
-
-  grids::declare_grid_type_output(b, CD_PROP_FLOAT, "Grid");
+  b.add_output<decl::Float>("Grid");
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)

@@ -150,15 +150,6 @@ const EnumPropertyItem *grid_type_items_fn(bContext *C,
                                            PropertyRNA *prop,
                                            bool *r_free);
 
-BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
-                                                      eCustomDataType type,
-                                                      StringRef name,
-                                                      StringRef identifier = "");
-BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b,
-                                                       eCustomDataType type,
-                                                       StringRef name,
-                                                       StringRef identifier = "");
-
 template<typename OpT> auto apply(const eCustomDataType data_type, OpT &op)
 {
   switch (data_type) {
