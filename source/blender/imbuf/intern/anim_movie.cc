@@ -63,6 +63,7 @@
 
 #ifdef WITH_FFMPEG
 #  include "BKE_global.h" /* ENDIAN_ORDER */
+#  include "BKE_writeffmpeg.hh"
 
 extern "C" {
 #  include <libavcodec/avcodec.h>
@@ -694,12 +695,12 @@ static int startffmpeg(anim *anim)
         1);
   }
 
-  anim->img_convert_ctx = sws_getContext_threaded(anim->x,
-                                                  anim->y,
-                                                  anim->pCodecCtx->pix_fmt,
-                                                  AV_PIX_FMT_RGBA,
-                                                  SWS_BILINEAR | SWS_PRINT_INFO |
-                                                      SWS_FULL_CHR_H_INT);
+  anim->img_convert_ctx = BKE_ffmpeg_sws_get_context(anim->x,
+                                                     anim->y,
+                                                     anim->pCodecCtx->pix_fmt,
+                                                     AV_PIX_FMT_RGBA,
+                                                     SWS_BILINEAR | SWS_PRINT_INFO |
+                                                         SWS_FULL_CHR_H_INT);
 
   if (!anim->img_convert_ctx) {
     fprintf(stderr, "Can't transform color space??? Bailing out...\n");
@@ -863,14 +864,14 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
     anim->pFrameRGB->linesize[0] = -ibuf_linesize;
     anim->pFrameRGB->data[0] = ibuf->byte_buffer.data + (ibuf->y - 1) * ibuf_linesize;
 
-    sws_scale_frame_threaded(anim->img_convert_ctx, anim->pFrameRGB, input);
+    BKE_ffmpeg_sws_scale_frame(anim->img_convert_ctx, anim->pFrameRGB, input);
 
     anim->pFrameRGB->linesize[0] = rgb_linesize;
     anim->pFrameRGB->data[0] = rgb_data;
   }
   else {
     /* Decode, then do vertical flip into destination. */
-    sws_scale_frame_threaded(anim->img_convert_ctx, anim->pFrameRGB, input);
+    BKE_ffmpeg_sws_scale_frame(anim->img_convert_ctx, anim->pFrameRGB, input);
 
     /* Use negative line size to do vertical image flip. */
     const int src_linesize[4] = {-rgb_linesize, 0, 0, 0};
