@@ -1078,6 +1078,15 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
   });
 }
 
+static void transform_directions(MutableSpan<float3> directions, const float4x4 &matrix)
+{
+  threading::parallel_for(directions.index_range(), 1024, [&](const IndexRange range) {
+    for (float3 &direction : directions.slice(range)) {
+      direction = math::transform_direction(matrix, direction);
+    }
+  });
+}
+
 void CurvesGeometry::calculate_bezier_auto_handles()
 {
   if (!this->has_curve_with_type(CURVE_TYPE_BEZIER)) {
@@ -1145,6 +1154,11 @@ void CurvesGeometry::transform(const float4x4 &matrix)
   }
   if (!this->handle_positions_right().is_empty()) {
     transform_positions(this->handle_positions_right_for_write(), matrix);
+  }
+  MutableAttributeAccessor attributes = this->attributes_for_write();
+  if (SpanAttributeWriter normals = attributes.lookup_for_write_span<float3>("custom_normal")) {
+    transform_directions(normals.span, matrix);
+    normals.finish();
   }
   this->tag_positions_changed();
 }
