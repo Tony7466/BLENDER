@@ -14,6 +14,16 @@ namespace blender::nodes::node_geo_realize_instances_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
+  b.add_input<decl::Bool>("Selection")
+      .default_value(true)
+      .hide_value()
+      .supports_field()
+      .description(("Which top-level instances to realize"));
+  b.add_input<decl::Float>("Depth")
+      .default_value(0)
+      .supports_field()
+      .description(
+      ("Number of levels of nested instances to realize for each top-level instance"));
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
