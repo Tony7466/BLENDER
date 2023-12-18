@@ -159,7 +159,6 @@ struct SculptUndoStep {
 };
 
 static UndoSculpt *get_nodes();
-static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b);
 static void sculpt_save_active_attribute(Object *ob, SculptAttrRef *attr);
 static UndoSculpt *sculpt_undosys_step_get_nodes(UndoStep *us_p);
 
@@ -291,101 +290,99 @@ struct PartialUpdateData {
   Span<bool> modified_face_set_faces;
 };
 
-static void update_modified_node_mesh(PBVHNode *node, void *userdata)
+static void update_modified_node_mesh(PBVHNode &node, PartialUpdateData &data)
 {
-  PartialUpdateData *data = static_cast<PartialUpdateData *>(userdata);
-  if (BKE_pbvh_node_has_vert_with_normal_update_tag(data->pbvh, node)) {
-    BKE_pbvh_node_mark_update(node);
+  if (BKE_pbvh_node_has_vert_with_normal_update_tag(data.pbvh, &node)) {
+    BKE_pbvh_node_mark_update(&node);
   }
-  const Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
-  if (!data->modified_mask_verts.is_empty()) {
+  const Span<int> verts = BKE_pbvh_node_get_vert_indices(&node);
+  if (!data.modified_mask_verts.is_empty()) {
     for (const int vert : verts) {
-      if (data->modified_mask_verts[vert]) {
-        BKE_pbvh_node_mark_update_mask(node);
+      if (data.modified_mask_verts[vert]) {
+        BKE_pbvh_node_mark_update_mask(&node);
         break;
       }
     }
   }
-  if (!data->modified_color_verts.is_empty()) {
+  if (!data.modified_color_verts.is_empty()) {
     for (const int vert : verts) {
-      if (data->modified_color_verts[vert]) {
-        BKE_pbvh_node_mark_update_color(node);
+      if (data.modified_color_verts[vert]) {
+        BKE_pbvh_node_mark_update_color(&node);
         break;
       }
     }
   }
-  if (!data->modified_hidden_verts.is_empty()) {
+  if (!data.modified_hidden_verts.is_empty()) {
     for (const int vert : verts) {
-      if (data->modified_hidden_verts[vert]) {
-        BKE_pbvh_node_mark_update_visibility(node);
+      if (data.modified_hidden_verts[vert]) {
+        BKE_pbvh_node_mark_update_visibility(&node);
         break;
       }
     }
   }
 
   Vector<int> faces;
-  if (!data->modified_face_set_faces.is_empty()) {
+  if (!data.modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_mesh(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_face_set_faces[face]) {
-        BKE_pbvh_node_mark_update_face_sets(node);
+      if (data.modified_face_set_faces[face]) {
+        BKE_pbvh_node_mark_update_face_sets(&node);
         break;
       }
     }
   }
-  if (!data->modified_hidden_faces.is_empty()) {
+  if (!data.modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_mesh(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_hidden_faces[face]) {
-        BKE_pbvh_node_mark_update_visibility(node);
+      if (data.modified_hidden_faces[face]) {
+        BKE_pbvh_node_mark_update_visibility(&node);
         break;
       }
     }
   }
 }
 
-static void update_modified_node_grids(PBVHNode *node, void *userdata)
+static void update_modified_node_grids(PBVHNode &node, PartialUpdateData &data)
 {
-  PartialUpdateData *data = static_cast<PartialUpdateData *>(userdata);
-  const Span<int> grid_indices = BKE_pbvh_node_get_grid_indices(*node);
+  const Span<int> grid_indices = BKE_pbvh_node_get_grid_indices(node);
   if (std::any_of(grid_indices.begin(), grid_indices.end(), [&](const int grid) {
-        return data->modified_grids[grid];
+        return data.modified_grids[grid];
       }))
   {
-    if (data->changed_position) {
-      BKE_pbvh_node_mark_update(node);
+    if (data.changed_position) {
+      BKE_pbvh_node_mark_update(&node);
     }
-    if (data->changed_mask) {
-      BKE_pbvh_node_mark_update_mask(node);
+    if (data.changed_mask) {
+      BKE_pbvh_node_mark_update_mask(&node);
     }
-    if (data->changed_hide_vert) {
-      BKE_pbvh_node_mark_update_visibility(node);
+    if (data.changed_hide_vert) {
+      BKE_pbvh_node_mark_update_visibility(&node);
     }
   }
 
   Vector<int> faces;
-  if (!data->modified_face_set_faces.is_empty()) {
+  if (!data.modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_grids(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_face_set_faces[face]) {
-        BKE_pbvh_node_mark_update_face_sets(node);
+      if (data.modified_face_set_faces[face]) {
+        BKE_pbvh_node_mark_update_face_sets(&node);
         break;
       }
     }
   }
-  if (!data->modified_hidden_faces.is_empty()) {
+  if (!data.modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      faces = BKE_pbvh_node_calc_face_indices(*data->pbvh, *node);
+      bke::pbvh::node_face_indices_calc_grids(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_hidden_faces[face]) {
-        BKE_pbvh_node_mark_update_visibility(node);
+      if (data.modified_hidden_faces[face]) {
+        BKE_pbvh_node_mark_update_visibility(&node);
         break;
       }
     }
@@ -1032,28 +1029,30 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
   data.modified_color_verts = modified_verts_color;
   data.modified_face_set_faces = modified_faces_face_set;
   if (use_multires_undo) {
-    BKE_pbvh_search_callback(ss->pbvh, {}, update_modified_node_grids, &data);
+    bke::pbvh::search_callback(
+        *ss->pbvh, {}, [&](PBVHNode &node) { update_modified_node_grids(node, data); });
   }
   else {
-    BKE_pbvh_search_callback(ss->pbvh, {}, update_modified_node_mesh, &data);
+    bke::pbvh::search_callback(
+        *ss->pbvh, {}, [&](PBVHNode &node) { update_modified_node_mesh(node, data); });
   }
 
   if (changed_position) {
-    BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
+    bke::pbvh::update_bounds(*ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
   }
   if (changed_mask) {
-    BKE_pbvh_update_mask(ss->pbvh);
+    bke::pbvh::update_mask(*ss->pbvh);
   }
   if (changed_hide_face) {
     hide::sync_all_from_faces(*ob);
-    BKE_pbvh_update_visibility(ss->pbvh);
+    bke::pbvh::update_visibility(*ss->pbvh);
   }
   if (changed_hide_vert) {
     if (ELEM(BKE_pbvh_type(ss->pbvh), PBVH_FACES, PBVH_GRIDS)) {
       Mesh &mesh = *static_cast<Mesh *>(ob->data);
       BKE_pbvh_sync_visibility_from_verts(ss->pbvh, &mesh);
     }
-    BKE_pbvh_update_visibility(ss->pbvh);
+    bke::pbvh::update_visibility(*ss->pbvh);
   }
 
   if (BKE_sculpt_multires_active(scene, ob)) {
@@ -1589,11 +1588,6 @@ Node *push_node(Object *ob, PBVHNode *node, Type type)
   return unode;
 }
 
-static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b)
-{
-  return a->domain == b->domain && a->type == b->type && STREQ(a->name, b->name);
-}
-
 static void sculpt_save_active_attribute(Object *ob, SculptAttrRef *attr)
 {
   Mesh *mesh = BKE_object_get_original_mesh(ob);
@@ -1738,10 +1732,6 @@ static void set_active_layer(bContext *C, SculptAttrRef *attr)
 
     if (ob->sculpt && ob->sculpt->pbvh) {
       BKE_pbvh_update_active_vcol(ob->sculpt->pbvh, mesh);
-
-      if (!sculpt_attribute_ref_equals(&existing, attr)) {
-        BKE_pbvh_update_vertex_data(ob->sculpt->pbvh, PBVH_UpdateColor);
-      }
     }
   }
 }
