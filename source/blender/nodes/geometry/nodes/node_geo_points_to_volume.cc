@@ -23,7 +23,7 @@
 #include "UI_resources.hh"
 
 #ifdef WITH_OPENVDB
-namespace blender::nodes {
+namespace blender::nodes::node_geo_points_to_volume_cc {
 static void gather_point_data_from_component(Field<float> radius_field,
                                              const GeometryComponent &component,
                                              Vector<float3> &r_positions,
@@ -80,10 +80,14 @@ static void convert_to_grid_index_space(const float voxel_size,
   }
 }
 
-void initialize_volume_component_from_points(GeoNodeExecParams &params,
-                                             const NodeGeometryPointsToVolume &storage,
-                                             GeometrySet &r_geometry_set,
-                                             openvdb::GridClass gridClass)
+/**
+ * Initializes the VolumeComponent of a GeometrySet with a new Volume from points.
+ * The grid class should be either openvdb::GRID_FOG_VOLUME or openvdb::GRID_LEVEL_SET.
+ */
+static void initialize_volume_component_from_points(GeoNodeExecParams &params,
+                                                    const NodeGeometryPointsToVolume &storage,
+                                                    GeometrySet &r_geometry_set,
+                                                    openvdb::GridClass gridClass)
 {
   Vector<float3> positions;
   Vector<float> radii;
@@ -137,10 +141,7 @@ void initialize_volume_component_from_points(GeoNodeExecParams &params,
   r_geometry_set.keep_only_during_modify({GeometryComponent::Type::Volume});
   r_geometry_set.replace_volume(volume);
 }
-}  // namespace blender::nodes
 #endif
-
-namespace blender::nodes::node_geo_points_to_volume_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryPointsToVolume)
 

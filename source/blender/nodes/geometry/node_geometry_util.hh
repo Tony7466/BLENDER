@@ -16,12 +16,6 @@
 
 #include "node_util.hh"
 
-#ifdef WITH_OPENVDB
-/* TODO */
-#  include <openvdb/openvdb.h>
-#  include <openvdb/tools/Morphology.h>
-#endif
-
 struct BVHTreeFromMesh;
 struct GeometrySet;
 namespace blender::nodes {
@@ -66,17 +60,6 @@ void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
                             MutableSpan<float3> r_positions);
 
 int apply_offset_in_cyclic_range(IndexRange range, int start_index, int offset);
-
-#ifdef WITH_OPENVDB
-/**
- * Initializes the VolumeComponent of a GeometrySet with a new Volume from points.
- * The grid class should be either openvdb::GRID_FOG_VOLUME or openvdb::GRID_LEVEL_SET.
- */
-void initialize_volume_component_from_points(GeoNodeExecParams &params,
-                                             const NodeGeometryPointsToVolume &storage,
-                                             GeometrySet &r_geometry_set,
-                                             openvdb::GridClass gridClass);
-#endif
 
 class EvaluateAtIndexInput final : public bke::GeometryFieldInput {
  private:
@@ -166,11 +149,6 @@ template<typename OpT> auto apply(const eCustomDataType data_type, OpT &op)
   /* Dummy output value for compiler, should never get here. */
   return op.template operator()<float>();
 }
-
-#ifdef WITH_OPENVDB
-openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
-    GeometryNodeGridNeighborTopology neighbors_mode);
-#endif
 
 }  // namespace grids
 

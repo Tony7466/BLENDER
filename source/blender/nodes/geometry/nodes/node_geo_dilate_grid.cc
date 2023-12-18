@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "node_geometry_openvdb_util.hh"
 #include "node_geometry_util.hh"
 
 #include "RNA_enum_types.hh"
@@ -67,7 +68,7 @@ static void try_dilate_grid(GeoNodeExecParams params,
   bke::OpenvdbGridType<T> &grid = volume_grid.grid_for_write(access_token);
 
   openvdb::tools::dilateActiveValues(
-      grid.tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
+      grid.tree(), iterations, get_vdb_neighbors_mode(neighbors_mode));
 
   params.set_output("Grid", std::move(volume_grid));
 }

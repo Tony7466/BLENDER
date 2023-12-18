@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
+#include "node_geometry_openvdb_util.hh"
 #include "node_util.hh"
 
 #include "DNA_mesh_types.h"
@@ -112,8 +113,7 @@ const EnumPropertyItem *grid_type_items_fn(bContext * /*C*/,
                            });
 }
 
-namespace grids {
-
+#ifdef WITH_OPENVDB
 openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
     GeometryNodeGridNeighborTopology neighbors_mode)
 {
@@ -128,8 +128,7 @@ openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
   BLI_assert_unreachable();
   return openvdb::tools::NearestNeighbors::NN_FACE;
 }
-
-}  // namespace grids
+#endif /* WITH_OPENVDB */
 
 }  // namespace blender::nodes
 
