@@ -24,6 +24,8 @@
 
 namespace blender::bke::volume_grid {
 
+class VolumeTreeUser;
+
 class VolumeGridData : public ImplicitSharingMixin {
  private:
   struct TreeUserToken {
