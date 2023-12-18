@@ -6,7 +6,13 @@
 
 #include <algorithm>
 
-#include "BLI_index_mask.hh"
+namespace blender {
+namespace index_mask {
+class IndexMask;
+}
+using index_mask::IndexMask;
+}  // namespace blender
+
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 
@@ -156,7 +162,14 @@ OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            int start_offset = 0);
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMaskSegment mask,
-                                           MutableSpan<int> dst_offsets);
+                                           MutableSpan<int> dst_offsets,
+                                           int start_offset = 0);
+inline OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
+                                                  const IndexMask &selection,
+                                                  MutableSpan<int> dst_offsets)
+{
+  return gather_selected_offsets(src_offsets, selection, 0, dst_offsets);
+}
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array
  * to the smaller array.

@@ -50,8 +50,8 @@ void gather_group_sizes(const OffsetIndices<int> offsets,
 
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
-                                           MutableSpan<int> dst_offsets,
-                                           const int start_offset)
+                                           const int start_offset,
+                                           MutableSpan<int> dst_offsets)
 {
   if (selection.is_empty()) {
     return {};
@@ -69,6 +69,13 @@ OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
     dst[i] = src[mask[i]].size();
   }
   return offset_indices::accumulate_counts_to_offsets(dst);
+  int offset = start_offset;
+  selection.foreach_index_optimized<int>([&](const int i, const int pos) {
+    dst_offsets[pos] = offset;
+    offset += src_offsets[i].size();
+  });
+  dst_offsets.last() = offset;
+  return OffsetIndices<int>(dst_offsets);
 }
 
 void build_reverse_map(OffsetIndices<int> offsets, MutableSpan<int> r_map)

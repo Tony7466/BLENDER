@@ -10,7 +10,7 @@
 
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_report.h"
@@ -119,12 +119,6 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
                             pxr::UsdShadeInput &usd_input,
                             const pxr::TfToken &default_uv,
                             ReportList *reports);
-static void create_uvmap_shader(const USDExporterContext &usd_export_context,
-                                bNode *tex_node,
-                                pxr::UsdShadeMaterial &usd_material,
-                                pxr::UsdShadeShader &usd_tex_shader,
-                                const pxr::TfToken &default_uv,
-                                ReportList *reports);
 static void export_texture(const USDExporterContext &usd_export_context, bNode *node);
 static bNode *find_bsdf_node(Material *material);
 static void get_absolute_path(Image *ima, char *r_path);

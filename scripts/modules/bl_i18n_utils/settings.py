@@ -88,6 +88,7 @@ LANGUAGES = (
     (49, "Tamil (தமிழ்)", "ta"),
     (50, "Khmer (ខ្មែរ)", "km"),
     (51, "Swahili (Kiswahili)", "sw"),
+    (52, "Belarusian (беларуску)", "be"),
 )
 
 # Default context, in py (keep in sync with `BLT_translation.h`)!
