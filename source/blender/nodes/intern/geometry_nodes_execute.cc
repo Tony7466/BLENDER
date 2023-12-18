@@ -172,7 +172,7 @@ static void id_property_int_update_enum_items(const bNodeSocketValueMenu *value,
   int idprop_items_num = 0;
   IDPropertyUIDataEnumItem *idprop_items = nullptr;
 
-  if (value->enum_items && !value->enum_items->is_expired()) {
+  if (value->enum_items) {
     const Span<RuntimeNodeEnumItem> items = value->enum_items->items;
     idprop_items_num = items.size();
     idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(items.size(), __func__);

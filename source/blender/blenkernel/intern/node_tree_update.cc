@@ -805,7 +805,7 @@ class NodeTreeMainUpdater {
   void reset_enum_ptr(bNodeSocketValueMenu &dst)
   {
     if (dst.enum_items) {
-      dst.enum_items->remove_weak_user_and_delete_if_last();
+      dst.enum_items->remove_user_and_delete_if_last();
       dst.enum_items = nullptr;
     }
   }
@@ -813,11 +813,11 @@ class NodeTreeMainUpdater {
   void set_enum_ptr(bNodeSocketValueMenu &dst, const RuntimeNodeEnumItems *enum_items)
   {
     if (dst.enum_items) {
-      dst.enum_items->remove_weak_user_and_delete_if_last();
+      dst.enum_items->remove_user_and_delete_if_last();
       dst.enum_items = nullptr;
     }
     if (enum_items) {
-      enum_items->add_weak_user();
+      enum_items->add_user();
       dst.enum_items = enum_items;
     }
   }

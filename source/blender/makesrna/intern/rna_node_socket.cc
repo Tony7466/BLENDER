@@ -459,7 +459,7 @@ const EnumPropertyItem *RNA_node_socket_menu_itemf(bContext * /*C*/,
     return rna_enum_dummy_NULL_items;
   }
   const bNodeSocketValueMenu *data = static_cast<bNodeSocketValueMenu *>(socket->default_value);
-  if (!data->enum_items || data->enum_items->is_expired()) {
+  if (!data->enum_items) {
     *r_free = false;
     return rna_enum_dummy_NULL_items;
   }
