@@ -231,29 +231,63 @@ class VolumeTreeAccessToken {
   friend VolumeGridData;
 
  public:
+  /** True if the access token can be used with the given grid. */
   bool valid_for(const VolumeGridData &grid) const;
 };
 
+/**
+ * A #GVolumeGrid owns a volume grid. Semantically, each #GVolumeGrid is independent but implicit
+ * sharing is used to avoid unnecessary deep copies.
+ */
 class GVolumeGrid {
  protected:
   ImplicitSharingPtr<VolumeGridData> data_;
 
  public:
+  /**
+   * Constructs a #GVolumeGrid that does not contain any data.
+   */
   GVolumeGrid() = default;
+  /**
+   * Take (shared) ownership of the given grid data. The caller is responsible for making sure that
+   * the user count includes a user for the newly constructed #GVolumeGrid.
+   */
   explicit GVolumeGrid(const VolumeGridData *data);
+  /**
+   * Constructs a new volume grid that takes unique ownership of the passed in OpenVDB grid.
+   */
   explicit GVolumeGrid(std::shared_ptr<openvdb::GridBase> grid);
+  /**
+   * Constructs an empty grid of the given type, where all voxels are inactive and the background
+   * is the default value (generally zero).
+   */
   explicit GVolumeGrid(VolumeGridType grid_type);
 
+  /**
+   * Get the underlying (potentially shared) volume grid data for read-only access.
+   */
   const VolumeGridData &get() const;
+
+  /**
+   * Get the underlying volume grid data for read and write access. This may make a copy of the
+   * grid data is shared.
+   */
   VolumeGridData &get_for_write();
 
+  /** Makes it more convenient to retrieve data from the grid. */
   const VolumeGridData *operator->() const;
 
+  /** True if this contains a grid. */
   operator bool() const;
 
+  /** Converts to a typed VolumeGrid. This asserts if the type is wrong. */
   template<typename T> VolumeGrid<T> typed() const;
 };
 
+/**
+ * Same as #GVolumeGrid but makes it easier to work with the grid if the type is known at compile
+ * time.
+ */
 template<typename T> class VolumeGrid : public GVolumeGrid {
  public:
   using base_type = T;
@@ -262,6 +296,9 @@ template<typename T> class VolumeGrid : public GVolumeGrid {
   explicit VolumeGrid(const VolumeGridData *data);
   explicit VolumeGrid(std::shared_ptr<OpenvdbGridType<T>> grid);
 
+  /**
+   * Wraps the same methods on #VolumeGridData but casts to the correct OpenVDB type.
+   */
   const OpenvdbGridType<T> &grid(const VolumeTreeAccessToken &tree_access_token) const;
   OpenvdbGridType<T> &grid_for_write(const VolumeTreeAccessToken &tree_access_token);
 
@@ -269,7 +306,14 @@ template<typename T> class VolumeGrid : public GVolumeGrid {
   void assert_correct_type() const;
 };
 
+/**
+ * Get the volume grid type based on the tree type in the grid.
+ */
 VolumeGridType get_type(const openvdb::GridBase &grid);
+
+/* -------------------------------------------------------------------- */
+/** \name Inline Methods
+ * \{ */
 
 inline GVolumeGrid::GVolumeGrid(const VolumeGridData *data) : data_(data) {}
 
@@ -341,6 +385,8 @@ inline bool VolumeTreeAccessToken::valid_for(const VolumeGridData &grid) const
 {
   return grid.tree_access_token_ == token_;
 }
+
+/** \} */
 
 }  // namespace blender::bke::volume_grid
 
