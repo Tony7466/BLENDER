@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
-
+#include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
 
 #include "UI_interface.hh"
