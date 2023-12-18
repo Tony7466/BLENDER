@@ -264,10 +264,10 @@ struct GatherTasksInfo {
   Vector<std::unique_ptr<GArray<>>> &r_temporary_arrays;
 
 
-  // /** Instance components to merge for output geometry. */
-  // Vector<const InstancesComponent *> instances_components_to_merge;
-  // /** Base transform for each instance component. */
-  // Vector<float4x4> instances_components_transforms;
+  /** Instance components to merge for output geometry. */
+  Vector<const bke::InstancesComponent *> instances_components_to_merge;
+  /** Base transform for each instance component. */
+  Vector<float4x4> instances_components_transforms;
 
 
   /** All gathered tasks. */
@@ -634,9 +634,9 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       }
       case bke::GeometryComponent::Type::Instance: {
         if (current_depth == target_depth) {
-          const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
-          // gather_info.instances_components_to_merge.append(instances_component);
-          // gather_info.instances_components_transforms.append(base_transform);
+          const auto &instances_component = static_cast<const bke::InstancesComponent *>(component);
+          gather_info.instances_components_to_merge.append(instances_component);
+          gather_info.instances_components_transforms.append(base_transform);
           }
         else{
           const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
@@ -1552,6 +1552,7 @@ static void remove_id_attribute_from_instances(bke::GeometrySet &geometry_set)
     }
   });
 }
+
 /** Propagate instances from the old geometry set to the new geometry set if they are not realized.
  */
 static void propagate_instances_to_keep(
@@ -1576,6 +1577,7 @@ static void propagate_instances_to_keep(
   new_instances->remove(inverse_selection, propagation_info);
   new_instances_components.replace(new_instances.release(), bke::GeometryOwnershipType::Owned);
 }
+
 bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                    const RealizeInstancesOptions &options)
 {
@@ -1589,6 +1591,10 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   if (!geometry_set.has_instances()) {
     return geometry_set;
   }
+
+  bke::GeometrySet temp_geometry_set;
+  propagate_instances_to_keep(
+      geometry_set, options.selection, temp_geometry_set, options.propagation_info);
 
   if (options.keep_original_ids) {
     remove_id_attribute_from_instances(geometry_set);
@@ -1609,10 +1615,24 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                  options.selection,
                                  options.depths,
                                  temporary_arrays};
+
+  bke::GeometrySet new_geometry_set;
+  
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
+
+  if (temp_geometry_set.has_instances()) {
+    gather_info.instances_components_to_merge.append(
+        &temp_geometry_set.get_component_for_write<bke::InstancesComponent>());
+    gather_info.instances_components_transforms.append(float4x4::identity());
+  }
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
-  bke::GeometrySet new_geometry_set;
+
+  // geometry::join_transform_instance_components(gather_info.instances_components_to_merge,
+  //                                              gather_info.instances_components_transforms,
+  //                                              new_geometry_set);
+  // geometry::join_instances(gather_info.instances_components_to_merge, new_geometry_set);
+  
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
