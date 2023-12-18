@@ -50,13 +50,13 @@ static void add_values_to_text_cache(const GVArray &values,
       if constexpr (std::is_same_v<T, bool>) {
         numstr_len = SNPRINTF_RLEN(numstr, "%s", value ? "True" : "False");
       }
-      if constexpr (std::is_same_v<T, int8_t>) {
+      else if constexpr (std::is_same_v<T, int8_t>) {
         numstr_len = SNPRINTF_RLEN(numstr, "%d", int(value));
       }
-      if constexpr (std::is_same_v<T, int>) {
+      else if constexpr (std::is_same_v<T, int>) {
         numstr_len = SNPRINTF_RLEN(numstr, "%d", value);
       }
-      if constexpr (std::is_same_v<T, int2>) {
+      else if constexpr (std::is_same_v<T, int2>) {
         numstr_len = SNPRINTF_RLEN(numstr, "(%d, %d)", value.x, value.y);
       }
       else if constexpr (std::is_same_v<T, float>) {
