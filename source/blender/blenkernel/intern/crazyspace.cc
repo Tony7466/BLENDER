@@ -130,6 +130,7 @@ void BKE_crazyspace_set_quats_editmesh(BMEditMesh *em,
   BMFace *f;
   BMIter iter;
   int index;
+  const bool has_origcos = !origcos.is_empty();
 
   {
     BMVert *v;
@@ -160,12 +161,12 @@ void BKE_crazyspace_set_quats_editmesh(BMEditMesh *em,
         const int i_curr = BM_elem_index_get(l_iter->v);
         const int i_next = BM_elem_index_get(l_iter->next->v);
 
-        /* retrieve mapped coordinates */
+        /* Retrieve mapped coordinates. */
         vd_prev = mappedcos[i_prev];
         vd_curr = mappedcos[i_curr];
         vd_next = mappedcos[i_next];
 
-        if (!origcos.is_empty()) {
+        if (has_origcos) {
           co_prev = origcos[i_prev];
           co_curr = origcos[i_curr];
           co_next = origcos[i_next];
@@ -184,60 +185,56 @@ void BKE_crazyspace_set_quats_editmesh(BMEditMesh *em,
   }
 }
 
-void BKE_crazyspace_set_quats_mesh(Mesh *me,
+void BKE_crazyspace_set_quats_mesh(Mesh *mesh,
                                    const blender::Span<blender::float3> origcos,
                                    const blender::Span<blender::float3> mappedcos,
                                    float (*quats)[4])
 {
   using namespace blender;
   using namespace blender::bke;
-  BLI_bitmap *vert_tag = BLI_BITMAP_NEW(me->totvert, __func__);
+  BitVector<> vert_tag(mesh->totvert);
 
   /* first store two sets of tangent vectors in vertices, we derive it just from the face-edges */
-  const Span<float3> positions = me->vert_positions();
-  const OffsetIndices faces = me->faces();
-  const Span<int> corner_verts = me->corner_verts();
+  const Span<float3> positions = mesh->vert_positions();
+  const OffsetIndices<int> faces = mesh->faces();
+  const Span<int> corner_verts = mesh->corner_verts();
+  const bool has_origcos = !origcos.is_empty();
 
-  for (int i = 0; i < me->faces_num; i++) {
+  for (const int i : faces.index_range()) {
     const IndexRange face = faces[i];
-    const int *corner_vert_next = &corner_verts[face.start()];
-    const int *corner_vert_curr = &corner_vert_next[face.size() - 1];
-    const int *corner_vert_prev = &corner_vert_next[face.size() - 2];
 
-    for (int j = 0; j < face.size(); j++) {
-      if (!BLI_BITMAP_TEST(vert_tag, *corner_vert_curr)) {
-        const float *co_prev, *co_curr, *co_next; /* orig */
-        const float *vd_prev, *vd_curr, *vd_next; /* deform */
+    for (const int corner : face) {
+      const int i_curr = corner_verts[corner];
+      if (vert_tag[i_curr]) {
+        continue;
+      }
+      const int i_prev = corner_verts[mesh::face_corner_prev(face, corner)];
+      const int i_next = corner_verts[mesh::face_corner_next(face, corner)];
 
-        /* retrieve mapped coordinates */
-        vd_prev = mappedcos[*corner_vert_prev];
-        vd_curr = mappedcos[*corner_vert_curr];
-        vd_next = mappedcos[*corner_vert_next];
+      const float *co_prev, *co_curr, *co_next; /* orig */
+      const float *vd_prev, *vd_curr, *vd_next; /* deform */
 
-        if (!origcos.is_empty()) {
-          co_prev = origcos[*corner_vert_prev];
-          co_curr = origcos[*corner_vert_curr];
-          co_next = origcos[*corner_vert_next];
-        }
-        else {
-          co_prev = positions[*corner_vert_prev];
-          co_curr = positions[*corner_vert_curr];
-          co_next = positions[*corner_vert_next];
-        }
+      /* Retrieve mapped coordinates. */
+      vd_prev = mappedcos[i_prev];
+      vd_curr = mappedcos[i_curr];
+      vd_next = mappedcos[i_next];
 
-        set_crazy_vertex_quat(
-            quats[*corner_vert_curr], co_curr, co_next, co_prev, vd_curr, vd_next, vd_prev);
-
-        BLI_BITMAP_ENABLE(vert_tag, *corner_vert_curr);
+      if (has_origcos) {
+        co_prev = origcos[i_prev];
+        co_curr = origcos[i_curr];
+        co_next = origcos[i_next];
+      }
+      else {
+        co_prev = positions[i_prev];
+        co_curr = positions[i_curr];
+        co_next = positions[i_next];
       }
 
-      corner_vert_prev = corner_vert_curr;
-      corner_vert_curr = corner_vert_next;
-      corner_vert_next++;
+      set_crazy_vertex_quat(quats[i_curr], co_curr, co_next, co_prev, vd_curr, vd_next, vd_prev);
+
+      vert_tag[i_curr].set();
     }
   }
-
-  MEM_freeN(vert_tag);
 }
 
 int BKE_crazyspace_get_first_deform_matrices_editbmesh(
@@ -250,7 +247,7 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(
 {
   ModifierData *md;
   Mesh *me_input = static_cast<Mesh *>(ob->data);
-  Mesh *me = nullptr;
+  Mesh *mesh = nullptr;
   int i, modifiers_left_num = 0;
   const int verts_num = em->bm->totvert;
   int cageIndex = BKE_modifiers_get_cage_index(scene, ob, nullptr, true);
@@ -267,7 +264,7 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(
   for (i = 0; md && i <= cageIndex; i++, md = md->next) {
     const ModifierTypeInfo *mti = BKE_modifier_get_info(static_cast<ModifierType>(md->type));
 
-    if (!editbmesh_modifier_is_enabled(scene, ob, md, me != nullptr)) {
+    if (!editbmesh_modifier_is_enabled(scene, ob, md, mesh != nullptr)) {
       continue;
     }
 
@@ -276,17 +273,17 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(
         const int required_mode = eModifierMode_Realtime | eModifierMode_Editmode;
         CustomData_MeshMasks cd_mask_extra = CD_MASK_BAREMESH;
         CDMaskLink *datamasks = BKE_modifier_calc_data_masks(
-            scene, md, &cd_mask_extra, required_mode, nullptr, nullptr);
+            scene, md, &cd_mask_extra, required_mode);
         cd_mask_extra = datamasks->mask;
         BLI_linklist_free((LinkNode *)datamasks, nullptr);
 
-        me = BKE_mesh_wrapper_from_editmesh(em, &cd_mask_extra, me_input);
+        mesh = BKE_mesh_wrapper_from_editmesh(em, &cd_mask_extra, me_input);
         deformcos.reinitialize(verts_num);
-        BKE_mesh_wrapper_vert_coords_copy(me, deformcos);
+        BKE_mesh_wrapper_vert_coords_copy(mesh, deformcos);
         deformmats.reinitialize(verts_num);
         deformmats.fill(blender::float3x3::identity());
       }
-      mti->deform_matrices_EM(md, &mectx, em, me, deformcos, deformmats);
+      mti->deform_matrices_EM(md, &mectx, em, mesh, deformcos, deformmats);
     }
     else {
       break;
@@ -294,15 +291,15 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(
   }
 
   for (; md && i <= cageIndex; md = md->next, i++) {
-    if (editbmesh_modifier_is_enabled(scene, ob, md, me != nullptr) &&
+    if (editbmesh_modifier_is_enabled(scene, ob, md, mesh != nullptr) &&
         BKE_modifier_is_correctable_deformed(md))
     {
       modifiers_left_num++;
     }
   }
 
-  if (me) {
-    BKE_id_free(nullptr, me);
+  if (mesh) {
+    BKE_id_free(nullptr, mesh);
   }
 
   return modifiers_left_num;
@@ -377,10 +374,10 @@ int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
       const ModifierTypeInfo *mti = BKE_modifier_get_info(static_cast<ModifierType>(md->type));
       if (deformmats.is_empty()) {
         /* NOTE: Evaluated object is re-set to its original un-deformed state. */
-        Mesh *me = static_cast<Mesh *>(object_eval.data);
-        me_eval = BKE_mesh_copy_for_eval(me);
-        deformcos = me->vert_positions();
-        deformmats.reinitialize(me->totvert);
+        Mesh *mesh = static_cast<Mesh *>(object_eval.data);
+        me_eval = BKE_mesh_copy_for_eval(mesh);
+        deformcos = mesh->vert_positions();
+        deformmats.reinitialize(mesh->totvert);
         deformmats.fill(blender::float3x3::identity());
       }
 
