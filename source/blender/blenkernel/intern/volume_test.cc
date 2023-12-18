@@ -106,6 +106,28 @@ TEST_F(VolumeTest, lazy_load_grid)
   EXPECT_FALSE(volume_grid->is_reloadable());
 }
 
+TEST_F(VolumeTest, lazy_load_tree_only)
+{
+  bool load_run = false;
+  auto load_grid = [&]() {
+    load_run = true;
+    return openvdb::FloatGrid::create(10.0f);
+  };
+  VolumeGrid<float> volume_grid{
+      MEM_new<VolumeGridData>(__func__, load_grid, openvdb::FloatGrid::create(0.0f))};
+  EXPECT_FALSE(volume_grid->is_loaded());
+  EXPECT_EQ(volume_grid->name(), "");
+  EXPECT_FALSE(load_run);
+  volume_grid.get_for_write().set_name("Test");
+  EXPECT_FALSE(load_run);
+  EXPECT_EQ(volume_grid->name(), "Test");
+  VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
+  volume_grid.grid_for_write(access_token);
+  EXPECT_TRUE(load_run);
+  EXPECT_EQ(volume_grid->name(), "Test");
+  EXPECT_EQ(volume_grid.grid(access_token).background(), 10.0f);
+}
+
 }  // namespace blender::bke::tests
 
 #endif /* WITH_OPENVDB */
