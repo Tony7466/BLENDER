@@ -76,5 +76,4 @@ void ED_operatortypes_io()
   WM_operatortype_append(WM_OT_stl_export);
 #endif
   WM_operatortype_append(WM_OT_drop_import_file);
-  ED_dropbox_drop_import_file();
 }

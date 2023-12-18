@@ -3,15 +3,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_path_util.h"
-#include "BLI_string.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_file_handler.hh"
 
 #include "CLG_log.h"
-
-#include "DNA_space_types.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -110,9 +107,9 @@ static PointerRNA file_handler_import_operator_create_ptr(const FileHandlerType 
 
   if (!has_any_filepath_prop || has_missing_filepath_prop) {
     const char *message =
-        "%s: import operator '%s' dont meet requires file path properties for drag and drop, see "
-        "File Handler documentation to know more about it.";
-    CLOG_WARN(&LOG, TIP_(message), file_handler->idname, ot->idname);
+        "Expected operator properties filepath or files and directory not found. Refer to "
+        "FileHandler documentation for details.";
+    CLOG_WARN(&LOG, TIP_(message));
   }
   return props;
 }
@@ -191,62 +188,4 @@ void WM_OT_drop_import_file(wmOperatorType *ot)
 
   prop = RNA_def_collection_runtime(ot->srna, "files", &RNA_OperatorFileListElement, "Files", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-}
-
-void drop_import_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
-{
-  const auto paths = WM_drag_get_paths(drag);
-
-  char dir[FILE_MAX];
-  BLI_path_split_dir_part(paths[0].c_str(), dir, sizeof(dir));
-  RNA_string_set(drop->ptr, "directory", dir);
-
-  RNA_collection_clear(drop->ptr, "files");
-  for (const auto &path : paths) {
-    char file[FILE_MAX];
-    BLI_path_split_file_part(path.c_str(), file, sizeof(file));
-
-    PointerRNA itemptr{};
-    RNA_collection_add(drop->ptr, "files", &itemptr);
-    RNA_string_set(&itemptr, "name", file);
-  }
-}
-
-static bool drop_import_file_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
-{
-  if (drag->type != WM_DRAG_PATH) {
-    return false;
-  }
-
-  const auto paths = WM_drag_get_paths(drag);
-
-  return !drop_import_file_poll_file_handlers(C, paths, true).is_empty();
-}
-
-static char *drop_import_file_tooltip(bContext *C,
-                                      wmDrag *drag,
-                                      const int /*xy*/[2],
-                                      wmDropBox * /*drop*/)
-{
-  const auto paths = WM_drag_get_paths(drag);
-
-  const auto file_handlers = drop_import_file_poll_file_handlers(C, paths, true);
-
-  if (file_handlers.size() == 1) {
-    wmOperatorType *ot = WM_operatortype_find(file_handlers[0]->import_operator, false);
-    return BLI_strdup(TIP_(ot->name));
-  }
-
-  return BLI_strdup(TIP_("Multiple file handlers can be used, drop to pick which to use"));
-}
-
-void ED_dropbox_drop_import_file()
-{
-  ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
-  WM_dropbox_add(lb,
-                 "WM_OT_drop_import_file",
-                 drop_import_file_poll,
-                 drop_import_file_copy,
-                 nullptr,
-                 drop_import_file_tooltip);
 }

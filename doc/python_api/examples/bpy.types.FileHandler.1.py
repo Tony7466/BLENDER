@@ -1,7 +1,24 @@
 """
-File Handler: Operator that only imports one file
-+++++++++++++++
-Todo
+Basic FileHandler for Operator that imports just one file
+-----------------
+
+When creating a ``Operator`` that imports files, you may want to
+add them 'drag-and-drop' support, File Handlers helps to define
+a set of files extensions (:class:`FileHandler.bl_file_extensions`)
+that the ``Operator`` support and a :class:`FileHandler.poll_drop`
+function that can be used to check in what specific context the ``Operator``
+can be invoked with 'drag-and-drop' filepath data.
+
+Same as operators that uses the file select window, this operators
+required a set of properties, when the ``Operator`` can import just one
+file per execution it needs to define the following property:
+
+.. code-block:: python
+    filepath: bpy.props.StringProperty(subtype='FILE_PATH')
+
+This ``filepath`` property nows will be used by the ``FileHandler`` to
+set the 'drag-and-drop' filepath data.
+
 """
 
 import bpy
@@ -23,7 +40,7 @@ class CurveTextImport(bpy.types.Operator):
         return (context.area and context.area.type == "VIEW_3D")
 
     def execute(self, context):
-        """ Calls to this Operator can send unfiltered filepaths, ensure the file extension is .txt. """
+        """ Calls to this Operator can set unfiltered filepaths, ensure the file extension is .txt. """
         if not self.filepath or not self.filepath.endswith(".txt"):
             return {'CANCELLED'}
 
@@ -32,14 +49,14 @@ class CurveTextImport(bpy.types.Operator):
             text_curve.body = ''.join(file.readlines())
             text_object = bpy.data.objects.new(name="Text", object_data=text_curve)
             bpy.context.scene.collection.objects.link(text_object)
-        self.filepath = ''
         return {'FINISHED'}
 
     """
-    By default the file handler invokes the operator with the filepath property set,
-    so if this property is set we can show a menu or just execute the operator.
-    This specific behavior requires to set 'options={'SKIP_SAVE'}' in the property options so we can avoid
-    reused data from previous operator calls and check if the operator is called with new drag&drop path data or not.
+    By default the file handler invokes the operator with the filepath property set.
+    In this example if this property is set the operator is executed, if not the
+    file select window is invoked.
+    This depends on setting 'options={'SKIP_SAVE'}' to the property options to avoid
+    to reuse filepath data between operator calls.
     """
 
     def invoke(self, context, event):
