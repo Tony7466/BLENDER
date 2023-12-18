@@ -851,13 +851,13 @@ class NodeTreeMainUpdater {
 
   void update_socket_enum_definition(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu &src)
   {
-    if (!dst.has_conflict()) {
+    if (dst.has_conflict()) {
       /* Target enum already has a conflict. */
       BLI_assert(dst.enum_items == nullptr);
       return;
     }
 
-    if (!src.has_conflict()) {
+    if (src.has_conflict()) {
       /* Target conflict if any source enum has a conflict. */
       reset_enum_ptr(dst);
       dst.flag |= NODE_MENU_ITEMS_CONFLICT;
