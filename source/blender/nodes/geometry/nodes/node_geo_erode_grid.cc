@@ -29,7 +29,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   }
 
   const eCustomDataType data_type = eCustomDataType(node->custom1);
-  b.add_input(data_type, "Grid");
+  b.add_input(data_type, "Grid").hide_value();
   b.add_input<decl::Int>("Iterations").default_value(1).min(0);
   b.add_output(data_type, "Grid");
 }

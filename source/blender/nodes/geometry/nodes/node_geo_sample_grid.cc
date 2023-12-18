@@ -35,7 +35,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   const NodeGeometrySampleGrid &storage = node_storage(*node);
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
-  b.add_input(data_type, "Grid");
+  b.add_input(data_type, "Grid").hide_value();
   b.add_input<decl::Vector>("Position").implicit_field(implicit_field_inputs::position);
   b.add_output(data_type, "Value").dependent_field({1});
 }
