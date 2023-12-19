@@ -518,36 +518,6 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
   }
 }
 
-void id_property_update_ui_from_socket(IDProperty *idprop, const bNodeTreeInterfaceSocket &socket)
-{
-  const bNodeSocketType *typeinfo = socket.socket_typeinfo();
-  const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
-  switch (type) {
-    case SOCK_MENU: {
-      const bNodeSocketValueMenu *value = static_cast<const bNodeSocketValueMenu *>(
-          socket.socket_data);
-      IDPropertyUIDataInt *ui_data = (IDPropertyUIDataInt *)IDP_ui_data_ensure(idprop);
-      id_property_int_update_enum_items(value, ui_data);
-    }
-    case SOCK_FLOAT:
-    case SOCK_INT:
-    case SOCK_VECTOR:
-    case SOCK_RGBA:
-    case SOCK_BOOLEAN:
-    case SOCK_ROTATION:
-    case SOCK_STRING:
-    case SOCK_OBJECT:
-    case SOCK_COLLECTION:
-    case SOCK_TEXTURE:
-    case SOCK_IMAGE:
-    case SOCK_MATERIAL:
-    case SOCK_CUSTOM:
-    case SOCK_GEOMETRY:
-    case SOCK_SHADER:
-      break;
-  }
-}
-
 std::optional<StringRef> input_attribute_name_get(const IDProperty &props,
                                                   const bNodeTreeInterfaceSocket &io_input)
 {

@@ -429,15 +429,12 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
 
 }  // namespace blender
 
-void MOD_nodes_update_properties(NodesModifierData *nmd)
+void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
 {
-  blender::update_id_properties_from_node_group(nmd);
-}
+  using namespace blender;
+  update_id_properties_from_node_group(nmd);
+  update_bakes_from_node_group(*nmd);
 
-void MOD_nodes_update_properties_and_recalc(Object *object, NodesModifierData *nmd)
-{
-  blender::update_id_properties_from_node_group(nmd);
-  blender::update_bakes_from_node_group(*nmd);
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 }
 
@@ -1749,7 +1746,7 @@ static void draw_property_for_socket(const bContext &C,
                                      const int socket_index)
 {
   const StringRefNull identifier = socket.identifier;
-  /* The property should be created in #MOD_nodes_update_properties with the correct type. */
+  /* The property should be created in #MOD_nodes_update_interface with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, identifier.c_str());
 
   /* IDProperties can be removed with python, so there could be a situation where

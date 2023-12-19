@@ -19,12 +19,7 @@ class GeoModifierLog;
  * inputs. If any properties correspond to the old properties by name and type, carry over
  * the values.
  */
-void MOD_nodes_update_properties(NodesModifierData *nmd);
-
-/**
- * Recalculate the modifier after interface changes.
- */
-void MOD_nodes_update_properties_and_recalc(Object *object, NodesModifierData *nmd);
+void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd);
 
 namespace blender {
 

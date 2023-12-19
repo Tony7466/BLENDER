@@ -57,7 +57,6 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
 
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeTreeInterfaceSocket &socket);
-void id_property_update_ui_from_socket(IDProperty *idprop, const bNodeTreeInterfaceSocket &socket);
 
 bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
                                                     const IDProperty *properties,
