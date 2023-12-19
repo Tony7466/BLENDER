@@ -52,7 +52,6 @@ struct ImagePool;
 struct ImageUser;
 struct KeyBlock;
 struct ListBase;
-struct MLoopTri;
 struct Main;
 struct Mesh;
 struct MDeformVert;
@@ -789,27 +788,6 @@ void BKE_sculpt_attribute_destroy_temporary_all(Object *ob);
 void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob);
 
 BLI_INLINE void *BKE_sculpt_vertex_attr_get(const PBVHVertRef vertex, const SculptAttribute *attr)
-{
-  if (attr->data) {
-    char *p = (char *)attr->data;
-    int idx = (int)vertex.i;
-
-    if (attr->data_for_bmesh) {
-      BMElem *v = (BMElem *)vertex.i;
-      idx = v->head.index;
-    }
-
-    return p + attr->elem_size * (int)idx;
-  }
-  else {
-    BMElem *v = (BMElem *)vertex.i;
-    return BM_ELEM_CD_GET_VOID_P(v, attr->bmesh_cd_offset);
-  }
-
-  return NULL;
-}
-
-BLI_INLINE void *BKE_sculpt_face_attr_get(const PBVHFaceRef vertex, const SculptAttribute *attr)
 {
   if (attr->data) {
     char *p = (char *)attr->data;

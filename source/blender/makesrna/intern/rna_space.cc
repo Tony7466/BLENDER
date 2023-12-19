@@ -2157,13 +2157,16 @@ static void rna_ConsoleLine_body_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static void rna_ConsoleLine_cursor_index_range(
-    PointerRNA *ptr, int *min, int *max, int * /*softmin*/, int * /*softmax*/)
+static int rna_ConsoleLine_current_character_get(PointerRNA *ptr)
+{
+  const ConsoleLine *ci = (ConsoleLine *)ptr->data;
+  return BLI_str_utf8_offset_to_index(ci->line, ci->len, ci->cursor);
+}
+
+static void rna_ConsoleLine_current_character_set(PointerRNA *ptr, const int index)
 {
   ConsoleLine *ci = (ConsoleLine *)ptr->data;
-
-  *min = 0;
-  *max = ci->len; /* intentionally _not_ -1 */
+  ci->cursor = BLI_str_utf8_offset_from_index(ci->line, ci->len, index);
 }
 
 /* Space Dopesheet */
@@ -4559,6 +4562,13 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
+  prop = RNA_def_property(srna, "show_viewer_text", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "overlay.flag", V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop, "View Attribute Text", "Show attribute values as text in viewport");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
   prop = RNA_def_property(srna, "show_paint_wire", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "overlay.paint_flag", V3D_OVERLAY_PAINT_WIRE);
   RNA_def_property_ui_text(prop, "Show Wire", "Use wireframe display in painting modes");
@@ -4664,7 +4674,8 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_statvis", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "overlay.edit_flag", V3D_OVERLAY_EDIT_STATVIS);
-  RNA_def_property_ui_text(prop, "Stat Vis", "Display statistical information about the mesh");
+  RNA_def_property_ui_text(
+      prop, "Mesh Analysis", "Display statistical information about the mesh");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   prop = RNA_def_property(srna, "show_extra_edge_length", PROP_BOOLEAN, PROP_NONE);
@@ -6558,8 +6569,10 @@ static void rna_def_console_line(BlenderRNA *brna)
 
   prop = RNA_def_property(
       srna, "current_character", PROP_INT, PROP_NONE); /* copied from text editor */
-  RNA_def_property_int_sdna(prop, nullptr, "cursor");
-  RNA_def_property_int_funcs(prop, nullptr, nullptr, "rna_ConsoleLine_cursor_index_range");
+  RNA_def_property_int_funcs(prop,
+                             "rna_ConsoleLine_current_character_get",
+                             "rna_ConsoleLine_current_character_set",
+                             nullptr);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CONSOLE, nullptr);
 
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);

@@ -186,22 +186,25 @@ struct Node {
   char idname[MAX_ID_NAME]; /* Name instead of pointer. */
   void *node;               /* only during push, not valid afterwards! */
 
-  Array<float3> co;
-  Array<float3> orig_co;
-  Array<float3> no;
+  Array<float3> position;
+  Array<float3> orig_position;
+  Array<float3> normal;
   Array<float4> col;
   Array<float> mask;
-  int totvert;
 
   Array<float4> loop_col;
   Array<float4> orig_loop_col;
-  int totloop;
 
   /* non-multires */
-  int maxvert;      /* to verify if totvert it still the same */
-  Array<int> index; /* Unique vertex indices, to restore into right location */
-  int maxloop;
-  Array<int> loop_index;
+
+  /* to verify if totvert it still the same */
+  int mesh_verts_num;
+  int mesh_corners_num;
+
+  Array<int> vert_indices;
+  int unique_verts_num;
+
+  Array<int> corner_indices;
 
   BitVector<> vert_hidden;
   BitVector<> face_hidden;
@@ -1883,4 +1886,3 @@ int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex);
 /* Make SCULPT_ alias to a few blenkernel sculpt methods. */
 
 #define SCULPT_vertex_attr_get BKE_sculpt_vertex_attr_get
-#define SCULPT_face_attr_get BKE_sculpt_face_attr_get

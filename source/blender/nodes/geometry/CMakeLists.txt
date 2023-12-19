@@ -31,6 +31,7 @@ set(SRC
   nodes/node_geo_attribute_capture.cc
   nodes/node_geo_attribute_domain_size.cc
   nodes/node_geo_attribute_statistic.cc
+  nodes/node_geo_bake.cc
   nodes/node_geo_blur_attribute.cc
   nodes/node_geo_boolean.cc
   nodes/node_geo_bounding_box.cc
@@ -82,6 +83,7 @@ set(SRC
   nodes/node_geo_image_texture.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
+  nodes/node_geo_input_active_camera.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
   nodes/node_geo_input_edge_smooth.cc

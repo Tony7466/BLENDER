@@ -55,6 +55,7 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 
 #  include "BLI_math_vector.h"
 
+#  include "BKE_attribute.hh"
 #  include "BKE_customdata.hh"
 #  include "BKE_main.hh"
 #  include "BKE_mesh.hh"
@@ -266,7 +267,7 @@ static void rna_Mesh_update_facemask(Main *bmain, Scene *scene, PointerRNA *ptr)
 static void rna_Mesh_update_positions_tag(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Mesh *mesh = rna_mesh(ptr);
-  BKE_mesh_tag_positions_changed(mesh);
+  mesh->tag_positions_changed();
   rna_Mesh_update_data_legacy_deg_tag_all(bmain, scene, ptr);
 }
 
@@ -322,10 +323,10 @@ static int rna_MeshLoop_index_get(PointerRNA *ptr)
 static int rna_MeshLoopTriangle_index_get(PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
-  const MLoopTri *tri = static_cast<const MLoopTri *>(ptr->data);
-  const int index = int(tri - mesh->looptris().data());
+  const blender::int3 *tri = static_cast<const blender::int3 *>(ptr->data);
+  const int index = int(tri - mesh->corner_tris().data());
   BLI_assert(index >= 0);
-  BLI_assert(index < BKE_mesh_runtime_looptri_len(mesh));
+  BLI_assert(index < BKE_mesh_runtime_corner_tris_len(mesh));
   return index;
 }
 
@@ -333,17 +334,17 @@ static int rna_MeshLoopTriangle_polygon_index_get(PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
   const int index = rna_MeshLoopTriangle_index_get(ptr);
-  return mesh->looptri_faces()[index];
+  return mesh->corner_tri_faces()[index];
 }
 
 static void rna_Mesh_loop_triangles_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
-  const blender::Span<MLoopTri> looptris = mesh->looptris();
+  const blender::Span<blender::int3> corner_tris = mesh->corner_tris();
   rna_iterator_array_begin(iter,
-                           const_cast<MLoopTri *>(looptris.data()),
-                           sizeof(MLoopTri),
-                           looptris.size(),
+                           const_cast<blender::int3 *>(corner_tris.data()),
+                           sizeof(blender::int3),
+                           corner_tris.size(),
                            false,
                            nullptr);
 }
@@ -351,19 +352,19 @@ static void rna_Mesh_loop_triangles_begin(CollectionPropertyIterator *iter, Poin
 static int rna_Mesh_loop_triangles_length(PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
-  return BKE_mesh_runtime_looptri_len(mesh);
+  return BKE_mesh_runtime_corner_tris_len(mesh);
 }
 
 int rna_Mesh_loop_triangles_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
-  if (index < 0 || index >= BKE_mesh_runtime_looptri_len(mesh)) {
+  if (index < 0 || index >= BKE_mesh_runtime_corner_tris_len(mesh)) {
     return false;
   }
   /* Casting away const is okay because this RNA type doesn't allow changing the value. */
   r_ptr->owner_id = (ID *)&mesh->id;
   r_ptr->type = &RNA_MeshLoopTriangle;
-  r_ptr->data = const_cast<MLoopTri *>(&mesh->looptris()[index]);
+  r_ptr->data = const_cast<blender::int3 *>(&mesh->corner_tris()[index]);
   return true;
 }
 
@@ -372,9 +373,9 @@ static void rna_Mesh_loop_triangle_polygons_begin(CollectionPropertyIterator *it
 {
   const Mesh *mesh = rna_mesh(ptr);
   rna_iterator_array_begin(iter,
-                           const_cast<int *>(mesh->looptri_faces().data()),
+                           const_cast<int *>(mesh->corner_tri_faces().data()),
                            sizeof(int),
-                           BKE_mesh_runtime_looptri_len(mesh),
+                           BKE_mesh_runtime_corner_tris_len(mesh),
                            false,
                            nullptr);
 }
@@ -382,13 +383,13 @@ static void rna_Mesh_loop_triangle_polygons_begin(CollectionPropertyIterator *it
 int rna_Mesh_loop_triangle_polygons_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
-  if (index < 0 || index >= BKE_mesh_runtime_looptri_len(mesh)) {
+  if (index < 0 || index >= BKE_mesh_runtime_corner_tris_len(mesh)) {
     return false;
   }
   /* Casting away const is okay because this RNA type doesn't allow changing the value. */
   r_ptr->owner_id = (ID *)&mesh->id;
   r_ptr->type = &RNA_ReadOnlyInteger;
-  r_ptr->data = const_cast<int *>(&mesh->looptri_faces()[index]);
+  r_ptr->data = const_cast<int *>(&mesh->corner_tri_faces()[index]);
   return true;
 }
 
@@ -596,7 +597,7 @@ static void rna_MeshPolygon_use_smooth_set(PointerRNA *ptr, bool value)
   const int index = rna_MeshPolygon_index_get(ptr);
   if (value == sharp_faces[index]) {
     sharp_faces[index] = !value;
-    BKE_mesh_tag_sharpness_changed(mesh);
+    mesh->tag_sharpness_changed();
   }
 }
 
@@ -628,18 +629,23 @@ static void rna_MeshPolygon_select_set(PointerRNA *ptr, bool value)
 
 static int rna_MeshPolygon_material_index_get(PointerRNA *ptr)
 {
+  using namespace blender;
   const Mesh *mesh = rna_mesh(ptr);
-  const int *material_indices = BKE_mesh_material_indices(mesh);
-  const int index = rna_MeshPolygon_index_get(ptr);
-  return material_indices == nullptr ? 0 : material_indices[index];
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArray material_index = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_FACE, 0);
+  return material_index[rna_MeshPolygon_index_get(ptr)];
 }
 
 static void rna_MeshPolygon_material_index_set(PointerRNA *ptr, int value)
 {
+  using namespace blender;
   Mesh *mesh = rna_mesh(ptr);
-  int *material_indices = BKE_mesh_material_indices_for_write(mesh);
-  const int index = rna_MeshPolygon_index_get(ptr);
-  material_indices[index] = max_ii(0, value);
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::AttributeWriter material_index = attributes.lookup_or_add_for_write<int>("material_index",
+                                                                                ATTR_DOMAIN_FACE);
+  material_index.varray.set(rna_MeshPolygon_index_get(ptr), max_ii(0, value));
+  material_index.finish();
 }
 
 static void rna_MeshPolygon_center_get(PointerRNA *ptr, float *values)
@@ -677,21 +683,21 @@ static void rna_MeshLoopTriangle_verts_get(PointerRNA *ptr, int *values)
 {
   Mesh *mesh = rna_mesh(ptr);
   const blender::Span<int> corner_verts = mesh->corner_verts();
-  MLoopTri *lt = (MLoopTri *)ptr->data;
-  values[0] = corner_verts[lt->tri[0]];
-  values[1] = corner_verts[lt->tri[1]];
-  values[2] = corner_verts[lt->tri[2]];
+  blender::int3 tri = *(blender::int3 *)ptr->data;
+  values[0] = corner_verts[tri[0]];
+  values[1] = corner_verts[tri[1]];
+  values[2] = corner_verts[tri[2]];
 }
 
 static void rna_MeshLoopTriangle_normal_get(PointerRNA *ptr, float *values)
 {
   Mesh *mesh = rna_mesh(ptr);
-  MLoopTri *lt = (MLoopTri *)ptr->data;
+  blender::int3 tri = *(blender::int3 *)ptr->data;
   const blender::Span<blender::float3> positions = mesh->vert_positions();
   const blender::Span<int> corner_verts = mesh->corner_verts();
-  const int v1 = corner_verts[lt->tri[0]];
-  const int v2 = corner_verts[lt->tri[1]];
-  const int v3 = corner_verts[lt->tri[2]];
+  const int v1 = corner_verts[tri[0]];
+  const int v2 = corner_verts[tri[1]];
+  const int v3 = corner_verts[tri[2]];
 
   normal_tri_v3(values, positions[v1], positions[v2], positions[v3]);
 }
@@ -700,21 +706,21 @@ static void rna_MeshLoopTriangle_split_normals_get(PointerRNA *ptr, float *value
 {
   Mesh *mesh = rna_mesh(ptr);
   const blender::Span<blender::float3> loop_normals = mesh->corner_normals();
-  const MLoopTri *lt = (const MLoopTri *)ptr->data;
-  copy_v3_v3(values + 0, loop_normals[lt->tri[0]]);
-  copy_v3_v3(values + 3, loop_normals[lt->tri[1]]);
-  copy_v3_v3(values + 6, loop_normals[lt->tri[2]]);
+  const blender::int3 tri = *(const blender::int3 *)ptr->data;
+  copy_v3_v3(values + 0, loop_normals[tri[0]]);
+  copy_v3_v3(values + 3, loop_normals[tri[1]]);
+  copy_v3_v3(values + 6, loop_normals[tri[2]]);
 }
 
 static float rna_MeshLoopTriangle_area_get(PointerRNA *ptr)
 {
   Mesh *mesh = rna_mesh(ptr);
-  MLoopTri *lt = (MLoopTri *)ptr->data;
+  blender::int3 tri = *(blender::int3 *)ptr->data;
   const blender::Span<blender::float3> positions = mesh->vert_positions();
   const blender::Span<int> corner_verts = mesh->corner_verts();
-  const int v1 = corner_verts[lt->tri[0]];
-  const int v2 = corner_verts[lt->tri[1]];
-  const int v3 = corner_verts[lt->tri[2]];
+  const int v1 = corner_verts[tri[0]];
+  const int v2 = corner_verts[tri[1]];
+  const int v3 = corner_verts[tri[2]];
   return area_tri_v3(positions[v1], positions[v2], positions[v3]);
 }
 
@@ -765,7 +771,7 @@ static void rna_Mesh_texspace_location_get(PointerRNA *ptr, float values[3])
 static void rna_MeshVertex_groups_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Mesh *mesh = rna_mesh(ptr);
-  MDeformVert *dverts = (MDeformVert *)BKE_mesh_deform_verts(mesh);
+  MDeformVert *dverts = mesh->deform_verts_for_write().data();
   if (dverts) {
     const int index = rna_MeshVertex_index_get(ptr);
     MDeformVert *dvert = &dverts[index];
@@ -1344,7 +1350,7 @@ static void rna_MeshEdge_use_edge_sharp_set(PointerRNA *ptr, bool value)
   const int index = rna_MeshEdge_index_get(ptr);
   if (value != sharp_edge[index]) {
     sharp_edge[index] = value;
-    BKE_mesh_tag_sharpness_changed(mesh);
+    mesh->tag_sharpness_changed();
   }
 }
 
@@ -1384,10 +1390,12 @@ static bool rna_MeshEdge_is_loose_get(PointerRNA *ptr)
 
 static int rna_MeshLoopTriangle_material_index_get(PointerRNA *ptr)
 {
+  using namespace blender;
   const Mesh *mesh = rna_mesh(ptr);
-  const int face_i = rna_MeshLoopTriangle_polygon_index_get(ptr);
-  const int *material_indices = BKE_mesh_material_indices(mesh);
-  return material_indices == nullptr ? 0 : material_indices[face_i];
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArray material_indices = *attributes.lookup_or_default<int>(
+      "material_index", ATTR_DOMAIN_FACE, 0);
+  return material_indices[rna_MeshLoopTriangle_polygon_index_get(ptr)];
 }
 
 static bool rna_MeshLoopTriangle_use_smooth_get(PointerRNA *ptr)
@@ -1405,7 +1413,7 @@ static char *rna_VertexGroupElement_path(const PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr); /* XXX not always! */
   const MDeformWeight *dw = (MDeformWeight *)ptr->data;
-  const MDeformVert *dvert = BKE_mesh_deform_verts(mesh);
+  const MDeformVert *dvert = mesh->deform_verts().data();
   int a, b;
 
   for (a = 0; a < mesh->totvert; a++, dvert++) {
@@ -2098,7 +2106,7 @@ static void rna_def_mlooptri(BlenderRNA *brna)
   const int splitnor_dim[] = {3, 3};
 
   srna = RNA_def_struct(brna, "MeshLoopTriangle", nullptr);
-  RNA_def_struct_sdna(srna, "MLoopTri");
+  RNA_def_struct_sdna(srna, "vec3i");
   RNA_def_struct_ui_text(srna, "Mesh Loop Triangle", "Tessellated triangle in a Mesh data-block");
   RNA_def_struct_path_func(srna, "rna_MeshLoopTriangle_path");
   RNA_def_struct_ui_icon(srna, ICON_FACESEL);
@@ -2110,7 +2118,7 @@ static void rna_def_mlooptri(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "loops", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "tri");
+  RNA_def_property_int_sdna(prop, nullptr, "x");
   RNA_def_property_ui_text(prop, "Loops", "Indices of mesh loops that make up the triangle");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
