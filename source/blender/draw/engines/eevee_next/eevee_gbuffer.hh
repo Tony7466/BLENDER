@@ -127,7 +127,7 @@ struct GBuffer {
   /* TODO(fclem): Use texture from pool once they support texture array and layer views. */
   Texture header_tx = {"GBufferHeader"};
   Texture closure_tx = {"GBufferClosure"};
-  Texture normal_tx = {"GBufferColor"};
+  Texture normal_tx = {"GBufferNormal"};
   /* References to the GBuffer layer range [1..max]. */
   GPUTexture *closure_img_tx = nullptr;
   GPUTexture *normal_img_tx = nullptr;
