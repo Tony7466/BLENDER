@@ -1,1 +1,2 @@
 Referenced by issue #116308, Regression: The color ramp node behaves strangely in geometry nodes
+Referenced by issue #116348, Geometry Nodes: Crash when adding data socket to Bake node after baking
