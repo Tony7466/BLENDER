@@ -105,7 +105,9 @@ void MeshComponent::ensure_owns_direct_data()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
-    mesh_ = BKE_mesh_copy_for_eval(mesh_);
+    if (mesh_) {
+      mesh_ = BKE_mesh_copy_for_eval(mesh_);
+    }
     ownership_ = GeometryOwnershipType::Owned;
   }
 }
@@ -776,7 +778,7 @@ static GVArray adapt_mesh_attribute_domain(const Mesh &mesh,
   if (!varray) {
     return {};
   }
-  if (varray.size() == 0) {
+  if (varray.is_empty()) {
     return {};
   }
   if (from_domain == to_domain) {
@@ -854,14 +856,14 @@ static void tag_component_positions_changed(void *owner)
 {
   Mesh *mesh = static_cast<Mesh *>(owner);
   if (mesh != nullptr) {
-    BKE_mesh_tag_positions_changed(mesh);
+    mesh->tag_positions_changed();
   }
 }
 
 static void tag_component_sharpness_changed(void *owner)
 {
   if (Mesh *mesh = static_cast<Mesh *>(owner)) {
-    BKE_mesh_tag_sharpness_changed(mesh);
+    mesh->tag_sharpness_changed();
   }
 }
 

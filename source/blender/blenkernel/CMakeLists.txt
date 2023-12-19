@@ -197,8 +197,8 @@ set(SRC
   intern/mesh.cc
   intern/mesh_boolean_convert.cc
   intern/mesh_calc_edges.cc
-  intern/mesh_convert.cc
   intern/mesh_compare.cc
+  intern/mesh_convert.cc
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
@@ -233,7 +233,7 @@ set(SRC
   intern/nla.cc
   intern/node.cc
   intern/node_runtime.cc
-  intern/node_socket_value_cpp_type.cc
+  intern/node_socket_value.cc
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
@@ -341,8 +341,8 @@ set(SRC
   BKE_blender_undo.h
   BKE_blender_user_menu.h
   BKE_blender_version.h
-  BKE_blendfile.h
-  BKE_blendfile_link_append.h
+  BKE_blendfile.hh
+  BKE_blendfile_link_append.hh
   BKE_boids.h
   BKE_bpath.h
   BKE_brush.hh
@@ -456,15 +456,14 @@ set(SRC
   BKE_node.hh
   BKE_node_runtime.hh
   BKE_node_socket_value.hh
-  BKE_node_socket_value_cpp_type.hh
   BKE_node_tree_anonymous_attributes.hh
   BKE_node_tree_dot_export.hh
   BKE_node_tree_interface.hh
   BKE_node_tree_update.hh
   BKE_node_tree_zones.hh
   BKE_object.hh
-  BKE_object_types.hh
   BKE_object_deform.h
+  BKE_object_types.hh
   BKE_ocean.h
   BKE_outliner_treehash.hh
   BKE_packedFile.h
@@ -841,6 +840,7 @@ if(WITH_GTESTS)
     intern/cryptomatte_test.cc
     intern/curves_geometry_test.cc
     intern/fcurve_test.cc
+    intern/file_handler_test.cc
     intern/grease_pencil_test.cc
     intern/idprop_serialize_test.cc
     intern/image_partial_update_test.cc
@@ -853,7 +853,6 @@ if(WITH_GTESTS)
     intern/main_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
-    intern/file_handler_test.cc
   )
   set(TEST_INC
     ../editors/include
