@@ -1023,12 +1023,12 @@ static BVHTree *bvhtree_from_mesh_corner_tris_create_tree(float epsilon,
 }
 
 BVHTree *bvhtree_from_editmesh_looptris_ex(BVHTreeFromEditMesh *data,
-                                              BMEditMesh *em,
-                                              const BitSpan corner_tris_mask,
-                                              int corner_tris_num_active,
-                                              float epsilon,
-                                              int tree_type,
-                                              int axis)
+                                           BMEditMesh *em,
+                                           const BitSpan corner_tris_mask,
+                                           int corner_tris_num_active,
+                                           float epsilon,
+                                           int tree_type,
+                                           int axis)
 {
   /* BMESH specific check that we have tessfaces,
    * we _could_ tessellate here but rather not - campbell */

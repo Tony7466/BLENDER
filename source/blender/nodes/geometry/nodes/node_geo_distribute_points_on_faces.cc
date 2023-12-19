@@ -275,8 +275,11 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_FACE: {
-      bke::mesh_surface_sample::sample_face_attribute(
-          mesh.corner_tri_faces(), tri_indices, source_data, IndexMask(output_data.size()), output_data);
+      bke::mesh_surface_sample::sample_face_attribute(mesh.corner_tri_faces(),
+                                                      tri_indices,
+                                                      source_data,
+                                                      IndexMask(output_data.size()),
+                                                      output_data);
       break;
     }
     default: {
