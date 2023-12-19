@@ -160,6 +160,7 @@ struct RealizeCurveInfo {
    */
   Span<float> nurbs_weight;
 
+  /** Custom normals are rotated based on each instance's transformation. */
   Span<float3> custom_normal;
 };
 
