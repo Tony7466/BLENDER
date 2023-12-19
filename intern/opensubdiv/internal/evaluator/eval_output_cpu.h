@@ -9,12 +9,18 @@
 
 #include "internal/evaluator/eval_output.h"
 
-#include <opensubdiv/osd/cpuEvaluator.h>
 #include <opensubdiv/osd/cpuPatchTable.h>
 #include <opensubdiv/osd/cpuVertexBuffer.h>
 
+#ifdef WITH_TBB
+#  include <opensubdiv/osd/tbbEvaluator.h>
+using OsdEvaluator = OpenSubdiv::Osd::TbbEvaluator;
+#else
+#  include <opensubdiv/osd/cpuEvaluator.h>
+using OsdEvaluator = OpenSubdiv::Osd::CpuEvaluator;
+#endif
+
 using OpenSubdiv::Far::StencilTable;
-using OpenSubdiv::Osd::CpuEvaluator;
 using OpenSubdiv::Osd::CpuVertexBuffer;
 
 namespace blender {
@@ -26,7 +32,7 @@ class CpuEvalOutput : public VolatileEvalOutput<CpuVertexBuffer,
                                                 CpuVertexBuffer,
                                                 StencilTable,
                                                 CpuPatchTable,
-                                                CpuEvaluator> {
+                                                OsdEvaluator> {
  public:
   CpuEvalOutput(const StencilTable *vertex_stencils,
                 const StencilTable *varying_stencils,
@@ -38,7 +44,7 @@ class CpuEvalOutput : public VolatileEvalOutput<CpuVertexBuffer,
                            CpuVertexBuffer,
                            StencilTable,
                            CpuPatchTable,
-                           CpuEvaluator>(vertex_stencils,
+                           OsdEvaluator>(vertex_stencils,
                                          varying_stencils,
                                          all_face_varying_stencils,
                                          face_varying_width,
