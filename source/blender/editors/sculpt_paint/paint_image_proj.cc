@@ -1159,7 +1159,7 @@ static bool check_seam(const ProjPaintState *ps,
 {
   const int3 &orig_tri = ps->corner_tris_eval[orig_face];
   const int orig_poly_i = ps->corner_tri_faces_eval[orig_face];
-  const float *orig_lt_tri_uv[3] = {
+  const float *orig_tri_uv[3] = {
       PS_CORNER_TRI_AS_UV_3(ps->poly_to_loop_uv, orig_poly_i, orig_tri)};
   /* vert indices from face vert order indices */
   const uint i1 = ps->corner_verts_eval[orig_tri[orig_i1_fidx]];
@@ -1190,7 +1190,7 @@ static bool check_seam(const ProjPaintState *ps,
         Image *tpage = project_paint_face_paint_image(ps, tri_index);
         Image *orig_tpage = project_paint_face_paint_image(ps, orig_face);
         int tile = project_paint_face_paint_tile(tpage, tri_uv[0]);
-        int orig_tile = project_paint_face_paint_tile(orig_tpage, orig_lt_tri_uv[0]);
+        int orig_tile = project_paint_face_paint_tile(orig_tpage, orig_tri_uv[0]);
 
         BLI_assert(i1_fidx != -1);
 
@@ -1209,8 +1209,8 @@ static bool check_seam(const ProjPaintState *ps,
 
         /* first test if they have the same image */
         if ((orig_tpage == tpage) && (orig_tile == tile) &&
-            cmp_uv(orig_lt_tri_uv[orig_i1_fidx], tri_uv[i1_fidx]) &&
-            cmp_uv(orig_lt_tri_uv[orig_i2_fidx], tri_uv[i2_fidx]))
+            cmp_uv(orig_tri_uv[orig_i1_fidx], tri_uv[i1_fidx]) &&
+            cmp_uv(orig_tri_uv[orig_i2_fidx], tri_uv[i2_fidx]))
         {
           /* if faces don't have the same winding in uv space,
            * they are on the same side so edge is boundary */
