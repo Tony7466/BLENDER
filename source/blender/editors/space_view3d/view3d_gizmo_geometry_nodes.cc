@@ -391,6 +391,11 @@ static Vector<DerivedFloatTargetProperty> find_gizmo_target_properties(
 
 static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
 {
+  ScrArea *area = CTX_wm_area(C);
+  View3D *v3d = static_cast<View3D *>(area->spacedata.first);
+  if (v3d->gizmo_flag & V3D_GIZMO_HIDE_MODIFIER) {
+    return false;
+  }
   if (Object *object = CTX_data_active_object(C)) {
     if (ModifierData *md = BKE_object_active_modifier(object)) {
       if (md->type == eModifierType_Nodes) {
