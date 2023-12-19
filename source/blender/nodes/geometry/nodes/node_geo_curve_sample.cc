@@ -33,6 +33,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Color>("Value", "Value_Color").hide_value().field_on_all();
   b.add_input<decl::Bool>("Value", "Value_Bool").hide_value().field_on_all();
   b.add_input<decl::Rotation>("Value", "Value_Rotation").hide_value().field_on_all();
+  b.add_input<decl::Matrix>("Value", "Value_Matrix").hide_value().field_on_all();
 
   b.add_input<decl::Float>("Factor")
       .min(0.0f)
@@ -55,6 +56,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Color>("Value", "Value_Color").dependent_field({7, 8, 9});
   b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({7, 8, 9});
   b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({7, 8, 9});
+  b.add_output<decl::Matrix>("Value", "Value_Matrix").dependent_field({7, 8, 9});
 
   b.add_output<decl::Vector>("Position").dependent_field({7, 8, 9});
   b.add_output<decl::Vector>("Tangent").dependent_field({7, 8, 9});

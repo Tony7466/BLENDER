@@ -450,7 +450,8 @@ bNodeSocket &Matrix::build(bNodeTree &ntree, bNode &node) const
                                              this->name.c_str());
   this->set_common_flags(socket);
   bNodeSocketValueMatrix &value = *static_cast<bNodeSocketValueMatrix *>(socket.default_value);
-  new (&value.value) float4x4(this->default_value);
+  /* Use #memcpy rather than in-place new because the default value may not be properly aligned. */
+  memcpy(value.value, &this->default_value, sizeof(float4x4));
   return socket;
 }
 
