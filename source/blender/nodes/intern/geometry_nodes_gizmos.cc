@@ -284,6 +284,15 @@ static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
   GizmoPropagationResult result;
   propagate_gizmos_from_builtin_nodes(result, tree);
   propagate_gizmos_from_group_nodes(result, tree);
+
+  /* Tag sockets for exposed gizmos in all group input nodes. */
+  const Span<const bNode *> group_input_nodes = tree.nodes_by_type("NodeGroupInput");
+  for (const GroupInputRef ref : result.gizmo_inputs_for_interface_inputs.keys()) {
+    for (const bNode *node : group_input_nodes) {
+      node->output_socket(ref.input_index).runtime->has_gizmo = true;
+    }
+  }
+
   return result;
 }
 
