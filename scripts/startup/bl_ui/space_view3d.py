@@ -702,7 +702,7 @@ class VIEW3D_HT_header(Header):
                     icon = snap_items[elem].icon
                     break
             else:
-                text = "Mix"
+                text = iface_("Mix", i18n_contexts.editor_view3d)
                 icon = 'NONE'
             del snap_items, snap_elements
 
@@ -714,6 +714,7 @@ class VIEW3D_HT_header(Header):
                 panel="VIEW3D_PT_snapping",
                 icon=icon,
                 text=text,
+                translate=False,
             )
 
         # Proportional editing
@@ -7022,6 +7023,7 @@ class VIEW3D_PT_overlay_geometry(Panel):
 
         # sub.prop(overlay, "show_onion_skins")
 
+
 class VIEW3D_PT_overlay_viewer_node(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
@@ -7047,6 +7049,7 @@ class VIEW3D_PT_overlay_viewer_node(Panel):
         row = col.row(align=True)
         row.active = view.show_viewer
         row.prop(overlay, "show_viewer_text", text="Attribute Text")
+
 
 class VIEW3D_PT_overlay_motion_tracking(Panel):
     bl_space_type = 'VIEW_3D'
