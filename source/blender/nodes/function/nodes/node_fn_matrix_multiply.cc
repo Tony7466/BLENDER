@@ -19,14 +19,14 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   static auto fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
-      "Matrix Multiply", [](float4x4 a, float4x4 b) { return a * b; });
+      "Multiply Matrices", [](float4x4 a, float4x4 b) { return a * b; });
   builder.set_matching_fn(fn);
 }
 
 static void node_register()
 {
   static bNodeType ntype;
-  fn_node_type_base(&ntype, FN_NODE_MATRIX_MULTIPLY, "Matrix Multiply", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_MATRIX_MULTIPLY, "Multiply Matrices", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
