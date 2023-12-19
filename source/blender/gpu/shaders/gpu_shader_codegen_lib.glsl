@@ -167,7 +167,7 @@ struct ClosureUndetermined {
 ClosureUndetermined closure_new(ClosureType type)
 {
   ClosureUndetermined cl;
-  cl.type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
+  cl.type = type;
   return cl;
 }
 
