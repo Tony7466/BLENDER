@@ -695,7 +695,7 @@ void update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
   BLI_assert(pbvh->header.type == PBVH_FACES);
   pbvh->faces = mesh->faces();
   pbvh->corner_verts = mesh->corner_verts();
-  pbvh->tri_faces = mesh->corner_tri_faces();
+  pbvh->corner_tri_faces = mesh->corner_tri_faces();
   if (!pbvh->deformed) {
     /* Deformed data not matching the original mesh are owned directly by the PBVH, and are
      * set separately by #BKE_pbvh_vert_coords_apply. */
@@ -723,7 +723,7 @@ PBVH *build_mesh(Mesh *mesh)
   pbvh->mesh = mesh;
 
   update_mesh_pointers(pbvh.get(), mesh);
-  const Span<int> tri_faces = pbvh->tri_faces;
+  const Span<int> tri_faces = pbvh->corner_tri_faces;
 
   pbvh->vert_bitmap = blender::Array<bool>(totvert, false);
   pbvh->totvert = totvert;
@@ -1754,7 +1754,7 @@ namespace blender::bke::pbvh {
 Span<int> node_face_indices_calc_mesh(const PBVH &pbvh, const PBVHNode &node, Vector<int> &faces)
 {
   faces.clear();
-  const Span<int> tri_faces = pbvh.tri_faces;
+  const Span<int> tri_faces = pbvh.corner_tri_faces;
   int prev_face = -1;
   for (const int tri : node.prim_indices) {
     const int face = tri_faces[tri];
@@ -2034,7 +2034,7 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
     const int3 &tri = pbvh->corner_tris[tri_i];
     const int3 face_verts = node->face_vert_indices[i];
 
-    if (!hide_poly.is_empty() && hide_poly[pbvh->tri_faces[tri_i]]) {
+    if (!hide_poly.is_empty() && hide_poly[pbvh->corner_tri_faces[tri_i]]) {
       continue;
     }
 
@@ -2070,7 +2070,7 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
               len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co)) {
             copy_v3_v3(nearest_vertex_co, co[j]);
             r_active_vertex->i = corner_verts[tri[j]];
-            *r_active_face_index = pbvh->tri_faces[tri_i];
+            *r_active_face_index = pbvh->corner_tri_faces[tri_i];
           }
         }
       }
@@ -2385,7 +2385,7 @@ static bool pbvh_faces_node_nearest_to_ray(PBVH *pbvh,
     const int3 &corner_tri = pbvh->corner_tris[tri_i];
     const int3 face_verts = node->face_vert_indices[i];
 
-    if (!hide_poly.is_empty() && hide_poly[pbvh->tri_faces[tri_i]]) {
+    if (!hide_poly.is_empty() && hide_poly[pbvh->corner_tri_faces[tri_i]]) {
       continue;
     }
 

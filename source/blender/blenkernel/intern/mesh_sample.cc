@@ -136,7 +136,7 @@ void sample_face_attribute(const Span<int> tri_faces,
   });
 }
 
-void sample_face_attribute(const Span<int> tri_faces,
+void sample_face_attribute(const Span<int> corner_tri_faces,
                            const Span<int> tri_indices,
                            const GVArray &src,
                            const IndexMask &mask,
@@ -147,7 +147,7 @@ void sample_face_attribute(const Span<int> tri_faces,
   const CPPType &type = src.type();
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
-    sample_face_attribute<T>(tri_faces, tri_indices, src.typed<T>(), mask, dst.typed<T>());
+    sample_face_attribute<T>(corner_tri_faces, tri_indices, src.typed<T>(), mask, dst.typed<T>());
   });
 }
 

@@ -94,7 +94,7 @@ struct MeshRenderData {
   BMFace *efa_act_uv;
   /* The triangulation of #Mesh faces, owned by the mesh. */
   blender::Span<blender::int3> corner_tris;
-  blender::Span<int> tri_faces;
+  blender::Span<int> corner_tri_faces;
   blender::VArraySpan<int> material_indices;
 
   blender::bke::MeshNormalDomain normals_domain;

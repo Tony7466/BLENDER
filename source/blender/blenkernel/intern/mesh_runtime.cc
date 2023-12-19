@@ -254,12 +254,12 @@ blender::Span<blender::int3> Mesh::corner_tris() const
 blender::Span<int> Mesh::corner_tri_faces() const
 {
   using namespace blender;
-  this->runtime->tri_faces_cache.ensure([&](blender::Array<int> &r_data) {
+  this->runtime->corner_tri_faces_cache.ensure([&](blender::Array<int> &r_data) {
     const OffsetIndices faces = this->faces();
     r_data.reinitialize(poly_to_tri_count(faces.size(), this->totloop));
     bke::mesh::corner_tris_calc_face_indices(faces, r_data);
   });
-  return this->runtime->tri_faces_cache.data();
+  return this->runtime->corner_tri_faces_cache.data();
 }
 
 int BKE_mesh_runtime_corner_tris_len(const Mesh *mesh)
@@ -312,7 +312,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
   mesh->runtime->corner_tris_cache.tag_dirty();
-  mesh->runtime->tri_faces_cache.tag_dirty();
+  mesh->runtime->corner_tri_faces_cache.tag_dirty();
   mesh->runtime->subsurf_face_dot_tags.clear_and_shrink();
   mesh->runtime->subsurf_optimal_display_edges.clear_and_shrink();
   mesh->runtime->shrinkwrap_data.reset();

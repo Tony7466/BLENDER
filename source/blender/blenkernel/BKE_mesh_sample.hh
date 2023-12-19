@@ -57,7 +57,7 @@ void sample_corner_normals(Span<int3> corner_tris,
                            const IndexMask &mask,
                            MutableSpan<float3> dst);
 
-void sample_face_attribute(Span<int> tri_faces,
+void sample_face_attribute(Span<int> corner_tri_faces,
                            Span<int> tri_indices,
                            const GVArray &src,
                            const IndexMask &mask,

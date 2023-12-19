@@ -131,7 +131,7 @@ static void extract_lines_adjacency_iter_corner_tri_mesh(const MeshRenderData &m
                                                          void *_data)
 {
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(_data);
-  const int face_i = mr.tri_faces[elt_index];
+  const int face_i = mr.corner_tri_faces[elt_index];
   const bool hidden = mr.use_hide && !mr.hide_poly.is_empty() && mr.hide_poly[face_i];
   if (hidden) {
     return;

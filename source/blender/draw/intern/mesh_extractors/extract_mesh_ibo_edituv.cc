@@ -60,7 +60,7 @@ static void extract_edituv_tris_iter_corner_tri_mesh(const MeshRenderData &mr,
                                                      void *_data)
 {
   MeshExtract_EditUvElem_Data *data = static_cast<MeshExtract_EditUvElem_Data *>(_data);
-  const int face_i = mr.tri_faces[elt_index];
+  const int face_i = mr.corner_tri_faces[elt_index];
   const BMFace *efa = bm_original_face_get(mr, face_i);
   const bool mp_hidden = (efa) ? BM_elem_flag_test_bool(efa, BM_ELEM_HIDDEN) : true;
   const bool mp_select = (efa) ? BM_elem_flag_test_bool(efa, BM_ELEM_SELECT) : false;
