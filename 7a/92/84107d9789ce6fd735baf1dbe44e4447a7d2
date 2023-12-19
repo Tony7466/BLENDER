@@ -1,3 +1,4 @@
 Referenced by issue #113311, inconsistent conversion for USD Camera attributes
 Referenced by issue #116346, USD importer ignores camera near clipping plane
 Referenced by pull request #116353, Fix #116346: USD importer ignores camera near clipping plane
+Referenced by commit 55963c2811eef93b0e0e30843ec871cbd3409773, Fix #116346: USD importer ignores camera near clipping plane
