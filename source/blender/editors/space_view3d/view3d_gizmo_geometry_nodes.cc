@@ -762,6 +762,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         struct UserData {
           bContext *C;
+          /**
+           * This is used when the gizmo transform matrix is not orthonormal. Then an additional
+           * factor has to be applied to map from changes in the gizmo to changes in the target
+           * value.
+           */
+          float factor_from_transform = 1.0f;
           Vector<float> initial_values;
           Vector<DerivedFloatTargetProperty> variables;
           float gizmo_value = 0.0f;
@@ -775,20 +781,34 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           for (const int i : user_data->variables.index_range()) {
             const DerivedFloatTargetProperty &new_variable = variables[i];
             DerivedFloatTargetProperty &variable = user_data->variables[i];
-            variable.factor = new_variable.factor;
+            variable.factor = new_variable.factor / user_data->factor_from_transform;
           }
         }
         else {
+          const auto correct_matrix = [](float4x4 &m) {
+            /* Make it orthonormal without changing the direction of the z axis. Without this, the
+             * gizmos may be skewed. */
+            m.x_axis() = math::normalize(math::cross(m.y_axis(), m.z_axis()));
+            m.y_axis() = math::normalize(math::cross(m.z_axis(), m.x_axis()));
+            m.z_axis() = math::normalize(m.z_axis());
+          };
+
           /* Update gizmo base transform. */
-          const float4x4 current_gizmo_transform = object_to_world * geometry_transform *
-                                                   *base_gizmo_transform;
+          float4x4 current_gizmo_transform = object_to_world * geometry_transform *
+                                             *base_gizmo_transform;
+          const float z_scale = math::length(current_gizmo_transform.z_axis());
+          correct_matrix(current_gizmo_transform);
           copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, current_gizmo_transform.ptr());
 
           UserData *user_data = MEM_new<UserData>(__func__);
           /* The code that calls `value_set_fn` has the context, but its not passed into the
            * callback currently. */
           user_data->C = const_cast<bContext *>(C);
+          if (gizmo_node.type == GEO_NODE_GIZMO_LINEAR && z_scale != 0.0f) {
+            user_data->factor_from_transform = z_scale;
+          }
           for (DerivedFloatTargetProperty &variable : variables) {
+            variable.factor /= user_data->factor_from_transform;
             user_data->initial_values.append(variable.property.get());
           }
           user_data->variables = std::move(variables);
