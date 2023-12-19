@@ -412,50 +412,36 @@ static bool leaf_needs_material_split(PBVH *pbvh,
 }
 
 #ifdef TEST_PBVH_FACE_SPLIT
-static void test_face_boundaries(PBVH *pbvh)
+static void test_face_boundaries(PBVH *pbvh, const Mesh &mesh)
 {
-  int faces_num = BKE_pbvh_num_faces(pbvh);
-  int *node_map = MEM_calloc_arrayN(faces_num, sizeof(int), __func__);
-  for (int i = 0; i < faces_num; i++) {
-    node_map[i] = -1;
-  }
-
-  for (int i = 0; i < pbvh->totnode; i++) {
-    PBVHNode *node = pbvh->nodes + i;
-
-    if (!(node->flag & PBVH_Leaf)) {
-      continue;
-    }
-
-    switch (BKE_pbvh_type(pbvh)) {
-      case PBVH_FACES: {
-        for (int j = 0; j < node->totprim; j++) {
-          int face_i = tri_faces[node->prim_indices[j]];
-
-          if (node_map[face_i] >= 0 && node_map[face_i] != i) {
-            int old_i = node_map[face_i];
-            int prim_i = node->prim_indices - pbvh->prim_indices + j;
-
-            printf("PBVH split error; face: %d, prim_i: %d, node1: %d, node2: %d, totprim: %d\n",
-                   face_i,
-                   prim_i,
-                   old_i,
-                   i,
-                   node->totprim);
-          }
-
-          node_map[face_i] = i;
-        }
-        break;
+  if (BKE_pbvh_type(pbvh) == PBVH_FACES) {
+    int faces_num = mesh.faces_num;
+    Array<int> node_map(faces_num, -1);
+    for (int i = 0; i < pbvh->totnode; i++) {
+      PBVHNode *node = pbvh->nodes + i;
+      if (!(node->flag & PBVH_Leaf)) {
+        continue;
       }
-      case PBVH_GRIDS:
-        break;
-      case PBVH_BMESH:
-        break;
+
+      for (int j = 0; j < node->totprim; j++) {
+        int face_i = mesh.corner_tri_faces()[node->prim_indices[j]];
+
+        if (node_map[face_i] >= 0 && node_map[face_i] != i) {
+          int old_i = node_map[face_i];
+          int prim_i = node->prim_indices - pbvh->prim_indices + j;
+
+          printf("PBVH split error; face: %d, prim_i: %d, node1: %d, node2: %d, totprim: %d\n",
+                 face_i,
+                 prim_i,
+                 old_i,
+                 i,
+                 node->totprim);
+        }
+
+        node_map[face_i] = i;
+      }
     }
   }
-
-  MEM_SAFE_FREE(node_map);
 }
 #endif
 
@@ -751,8 +737,6 @@ PBVH *build_mesh(Mesh *mesh)
   pbvh->leaf_limit = LEAF_LIMIT;
 #endif
 
-  pbvh->faces_num = mesh->faces_num;
-
   /* For each face, store the AABB and the AABB centroid */
   Array<Bounds<float3>> prim_bounds(corner_tris_num);
   const Bounds<float3> cb = threading::parallel_reduce(
@@ -815,7 +799,6 @@ PBVH *build_grids(const CCGKey *key, Mesh *mesh, SubdivCCG *subdiv_ccg)
 
   pbvh->gridkey = *key;
   pbvh->subdiv_ccg = subdiv_ccg;
-  pbvh->faces_num = mesh->faces_num;
 
   /* Find maximum number of grids per face. */
   int max_grids = 1;
@@ -872,10 +855,6 @@ PBVH *build_grids(const CCGKey *key, Mesh *mesh, SubdivCCG *subdiv_ccg)
                &cb,
                prim_bounds,
                grids.size());
-
-#ifdef TEST_PBVH_FACE_SPLIT
-    test_face_boundaries(pbvh);
-#endif
   }
 
 #ifdef VALIDATE_UNIQUE_NODE_FACES
@@ -1257,7 +1236,7 @@ void update_normals(PBVH &pbvh, SubdivCCG *subdiv_ccg)
   }
   else if (pbvh.header.type == PBVH_GRIDS) {
     IndexMaskMemory memory;
-    const IndexMask faces_to_update = BKE_pbvh_get_grid_updates(&pbvh, nodes, memory);
+    const IndexMask faces_to_update = nodes_to_face_selection_grids(*subdiv_ccg, nodes, memory);
     BKE_subdiv_ccg_update_normals(*subdiv_ccg, faces_to_update);
     for (PBVHNode *node : nodes) {
       node->flag &= ~PBVH_UpdateNormals;
@@ -1585,16 +1564,17 @@ Bounds<float3> BKE_pbvh_redraw_BB(PBVH *pbvh)
   return bounds;
 }
 
-blender::IndexMask BKE_pbvh_get_grid_updates(const PBVH *pbvh,
-                                             const Span<const PBVHNode *> nodes,
-                                             blender::IndexMaskMemory &memory)
+namespace blender::bke::pbvh {
+
+IndexMask nodes_to_face_selection_grids(const SubdivCCG &subdiv_ccg,
+                                        const Span<const PBVHNode *> nodes,
+                                        IndexMaskMemory &memory)
 {
-  using namespace blender;
-  const Span<int> grid_to_face_map = pbvh->subdiv_ccg->grid_to_face_map;
+  const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
   /* Using a #VectorSet for index deduplication would also work, but the performance gets much
    * worse with large selections since the loop would be single-threaded. A boolean array has an
    * overhead regardless of selection size, but that is small. */
-  Array<bool> faces_to_update(pbvh->faces_num, false);
+  Array<bool> faces_to_update(subdiv_ccg.faces.size(), false);
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const PBVHNode *node : nodes.slice(range)) {
       for (const int grid : node->prim_indices) {
@@ -1605,6 +1585,8 @@ blender::IndexMask BKE_pbvh_get_grid_updates(const PBVH *pbvh,
   return IndexMask::from_bools(faces_to_update, memory);
 }
 
+}  // namespace blender::bke::pbvh
+
 /***************************** PBVH Access ***********************************/
 
 bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, eAttrDomain *r_domain)
@@ -1613,15 +1595,6 @@ bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, eAttrDomain
       &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
   *r_domain = *r_layer ? BKE_id_attribute_domain(&mesh->id, *r_layer) : ATTR_DOMAIN_POINT;
   return *r_layer != nullptr;
-}
-
-bool BKE_pbvh_has_faces(const PBVH *pbvh)
-{
-  if (pbvh->header.type == PBVH_BMESH) {
-    return (pbvh->header.bm->totface != 0);
-  }
-
-  return (pbvh->totprim != 0);
 }
 
 Bounds<float3> BKE_pbvh_bounding_box(const PBVH *pbvh)
@@ -1764,20 +1737,6 @@ void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex)
 blender::Span<int> BKE_pbvh_node_get_loops(const PBVHNode *node)
 {
   return node->loop_indices;
-}
-
-int BKE_pbvh_num_faces(const PBVH *pbvh)
-{
-  switch (pbvh->header.type) {
-    case PBVH_GRIDS:
-    case PBVH_FACES:
-      return pbvh->faces_num;
-    case PBVH_BMESH:
-      return pbvh->header.bm->totface;
-  }
-
-  BLI_assert_unreachable();
-  return 0;
 }
 
 blender::Span<int> BKE_pbvh_node_get_vert_indices(const PBVHNode *node)
@@ -3068,11 +3027,6 @@ void BKE_pbvh_subdiv_cgg_set(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 bool BKE_pbvh_is_drawing(const PBVH *pbvh)
 {
   return pbvh->is_drawing;
-}
-
-bool BKE_pbvh_draw_cache_invalid(const PBVH *pbvh)
-{
-  return pbvh->draw_cache_invalid;
 }
 
 void BKE_pbvh_is_drawing_set(PBVH *pbvh, bool val)
