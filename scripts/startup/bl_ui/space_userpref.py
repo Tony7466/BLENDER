@@ -650,6 +650,8 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
             else:
                 addon.preferences.draw_impl(col, context)
             del addon
+        else:
+            layout.label(text="Cycles is disabled in this build", icon='INFO')
 
 
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
