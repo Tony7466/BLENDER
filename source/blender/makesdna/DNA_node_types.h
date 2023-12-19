@@ -1908,6 +1908,7 @@ typedef struct NodeShaderMix {
 } NodeShaderMix;
 
 typedef struct NodeGeometryArrowGizmo {
+  /** #GeometryNodeGizmoColor. */
   int color_id;
   /** #GeometryNodeArrowGizmoDrawStyle. */
   int draw_style;

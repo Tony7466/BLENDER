@@ -900,7 +900,7 @@ class LazyFunctionForGizmoNode : public LazyFunction {
     const auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
 
     if (!user_data.call_data->side_effect_nodes) {
-      params.set_default_remaining_outputs();
+      set_default_remaining_node_outputs(params, bnode_);
       return;
     }
     const Span<const lf::FunctionNode *> nodes_with_side_effects =
@@ -908,7 +908,7 @@ class LazyFunctionForGizmoNode : public LazyFunction {
             user_data.compute_context->hash());
     const bool is_used = nodes_with_side_effects.contains(this->self_node);
     if (!is_used) {
-      params.set_default_remaining_outputs();
+      set_default_remaining_node_outputs(params, bnode_);
       return;
     }
     if (!params.output_was_set(0)) {
