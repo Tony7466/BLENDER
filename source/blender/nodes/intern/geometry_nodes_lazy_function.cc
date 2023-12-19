@@ -892,7 +892,8 @@ class LazyFunctionForGizmoNode : public LazyFunction {
       r_lf_index_by_bsocket[socket->index_in_tree()] = inputs_.append_and_get_index_as(
           socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
     }
-    outputs_.append_as("Transform", CPPType::get<GeometrySet>());
+    r_lf_index_by_bsocket[bnode.output_socket(0).index_in_tree()] =
+        outputs_.append_and_get_index_as("Transform", CPPType::get<GeometrySet>());
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override

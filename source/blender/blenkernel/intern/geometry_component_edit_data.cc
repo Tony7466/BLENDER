@@ -13,9 +13,9 @@ GeometryComponentEditData::GeometryComponentEditData() : GeometryComponent(Type:
 GeometryComponentPtr GeometryComponentEditData::copy() const
 {
   GeometryComponentEditData *new_component = new GeometryComponentEditData();
+  new_component->gizmo_transforms_ = gizmo_transforms_;
   if (curves_edit_hints_) {
     new_component->curves_edit_hints_ = std::make_unique<CurvesEditHints>(*curves_edit_hints_);
-    new_component->gizmo_transforms_ = gizmo_transforms_;
   }
   if (grease_pencil_edit_hints_) {
     new_component->grease_pencil_edit_hints_ = std::make_unique<GreasePencilEditHints>(
