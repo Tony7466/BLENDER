@@ -221,24 +221,29 @@ void gbuffer_register_closure(inout GBufferData gbuf, ClosureUndetermined cl)
       break;
     case CLOSURE_BSSRDF_BURLEY_ID:
       /* TODO(fclem): BSSSRDF closure. */
+      gbuf.diffuse.N = cl.N;
       gbuf.diffuse.color = cl.color;
       gbuf.diffuse.sss_radius = cl.data.xyz;
       gbuf.has_sss = true;
       break;
     case CLOSURE_BSDF_DIFFUSE_ID:
+      gbuf.diffuse.N = cl.N;
       gbuf.diffuse.color = cl.color;
       gbuf.has_diffuse = true;
       break;
     case CLOSURE_BSDF_TRANSLUCENT_ID:
+      gbuf.translucent.N = cl.N;
       gbuf.translucent.color = cl.color;
       gbuf.has_translucent = true;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+      gbuf.refraction.N = cl.N;
       gbuf.reflection.color = cl.color;
       gbuf.refraction.roughness = cl.data.x;
       gbuf.has_reflection = true;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      gbuf.refraction.N = cl.N;
       gbuf.refraction.color = cl.color;
       gbuf.refraction.roughness = cl.data.x;
       gbuf.refraction.ior = cl.data.y;
@@ -632,13 +637,15 @@ GBufferData gbuffer_read(usampler2D header_tx,
   gbuf.has_translucent = false;
   gbuf.thickness = 0.0;
   gbuf.closure_count = 0u;
+  gbuf.layer_data = 0;
+  gbuf.layer_normal = 0;
 
   if (!gbuf.has_any_surface) {
     return gbuf;
   }
 
   /* First closure is always written. */
-  gbuf.surface_N = gbuffer_normal_unpack(texelFetch(closure_tx, ivec3(texel, 0), 0).xy);
+  gbuf.surface_N = gbuffer_normal_unpack(texelFetch(normal_tx, ivec3(texel, 0), 0).xy);
 
   /* Default values. */
   gbuf.refraction.color = vec3(0.0);
