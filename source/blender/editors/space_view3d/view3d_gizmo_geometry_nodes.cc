@@ -797,6 +797,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           float4x4 current_gizmo_transform = object_to_world * geometry_transform *
                                              *base_gizmo_transform;
           const float z_scale = math::length(current_gizmo_transform.z_axis());
+          const bool is_negative_transform = math::determinant(current_gizmo_transform) < 0.0f;
           correct_matrix(current_gizmo_transform);
           copy_m4_m4(node_gizmo_data->gizmo->matrix_basis, current_gizmo_transform.ptr());
 
@@ -806,6 +807,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           user_data->C = const_cast<bContext *>(C);
           if (gizmo_node.type == GEO_NODE_GIZMO_LINEAR && z_scale != 0.0f) {
             user_data->factor_from_transform = z_scale;
+          }
+          else if (gizmo_node.type == GEO_NODE_GIZMO_DIAL && is_negative_transform) {
+            user_data->factor_from_transform = -1.0f;
           }
           for (DerivedFloatTargetProperty &variable : variables) {
             variable.factor /= user_data->factor_from_transform;
