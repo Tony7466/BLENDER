@@ -36,7 +36,6 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_fcurve.h"
-#include "BKE_file_handler.hh"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_lib_id.h"
@@ -5964,6 +5963,7 @@ void ED_keymap_screen(wmKeyConfig *keyconf)
   WM_dropbox_add(
       lb, "WM_OT_drop_blend_file", blend_file_drop_poll, blend_file_drop_copy, nullptr, nullptr);
   WM_dropbox_add(lb, "UI_OT_drop_color", UI_drop_color_poll, UI_drop_color_copy, nullptr, nullptr);
+
   keymap_modal_set(keyconf);
 }
 
