@@ -588,14 +588,13 @@ class NODE_MT_category_utilities_matrix(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        node_add_menu.add_node_type(layout, "FunctionNodeTransformVector")
-        node_add_menu.add_node_type(layout, "FunctionNodeTransformDirection")
-        node_add_menu.add_node_type(layout, "FunctionNodeProjectVector")
-        node_add_menu.add_node_type(layout, "FunctionNodeMatrixMultiply")
-        node_add_menu.add_node_type(layout, "FunctionNodeLocationToTransform")
-        node_add_menu.add_node_type(layout, "FunctionNodeRotationToTransform")
-        node_add_menu.add_node_type(layout, "FunctionNodeScaleToTransform")
+        node_add_menu.add_node_type(layout, "FunctionNodeCombineTransform")
         node_add_menu.add_node_type(layout, "FunctionNodeInvertMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrixMultiply")
+        node_add_menu.add_node_type(layout, "FunctionNodeProjectVector")
+        node_add_menu.add_node_type(layout, "FunctionNodeSeparateTransform")
+        node_add_menu.add_node_type(layout, "FunctionNodeTransformDirection")
+        node_add_menu.add_node_type(layout, "FunctionNodeTransformVector")
         node_add_menu.add_node_type(layout, "FunctionNodeTransposeMatrix")
         node_add_menu.draw_assets_for_catalog(layout, "Utilities/Matrix")
 
