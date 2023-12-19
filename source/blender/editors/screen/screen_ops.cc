@@ -1688,7 +1688,7 @@ static void area_move_set_limits(wmWindow *win,
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     if (dir_axis == SCREEN_AXIS_H) {
-      int areamin = ED_area_headersize();
+      int areamin = ED_area_headersize() + BORDERWIDTH;
 
       if (area->v1->vec.y > window_rect.ymin) {
         areamin += U.pixelsize;

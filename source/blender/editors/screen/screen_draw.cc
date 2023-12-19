@@ -95,31 +95,16 @@ void ED_screen_draw_edges(wmWindow *win)
   immUniformThemeColor(TH_EDITOR_OUTLINE);
   immUniformColor4fv(color);
 
-  float border_highlight[4] = {1.0f, 1.0f, 1.0f, 0.06f};
-  float border_lowlight[4] = {0.0f, 0.0f, 0.0f, 0.2f};
-
-  float border_highlight2[4] = {1.0f, 1.0f, 1.0f, 0.12f};
-  float border_lowlight2[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+  float border_highlight[4] = {1.0f, 1.0f, 1.0f, 0.05f};
+  float border_highlight2[4] = {1.0f, 1.0f, 1.0f, 0.1f};
 
   float half_line = U.pixelsize / 2.0f;
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
 
-     rctf rectf = {float(area->totrct.xmin) - 2.0f,
-                  float(area->totrct.xmax) + half_line,
-                  float(area->totrct.ymin) - half_line,
-                  float(area->totrct.ymax) + 2.0f};
-     UI_draw_roundbox_4fv_ex(&rectf,
-                             nullptr,
-                             nullptr,
-                             1.0f,
-                             (area == active_area) ? border_lowlight2 : border_lowlight,
-                             U.pixelsize,
-                             5.0f * UI_SCALE_FAC);
-
      rctf rectf2 = {float(area->totrct.xmin) - half_line,
-                   float(area->totrct.xmax) + 2.0f,
-                   float(area->totrct.ymin) - 2.0f,
+                   float(area->totrct.xmax) + 1.0f,
+                   float(area->totrct.ymin) - 0.5f,
                     float(area->totrct.ymax) + half_line};
      UI_draw_roundbox_4fv_ex(&rectf2,
                              nullptr,
