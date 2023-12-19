@@ -56,24 +56,25 @@ OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
   if (selection.is_empty()) {
     return {};
   }
-  BLI_assert(selection.size() == (dst_offsets.size() - 1));
-  gather_group_sizes(src_offsets, selection, dst_offsets);
-  return accumulate_counts_to_offsets(dst_offsets, start_offset);
-}
-
-OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
-                                           const IndexMaskSegment mask,
-                                           MutableSpan<int> dst)
-{
-  for (const int i : mask.index_range()) {
-    dst[i] = src[mask[i]].size();
-  }
-  return offset_indices::accumulate_counts_to_offsets(dst);
   int offset = start_offset;
   selection.foreach_index_optimized<int>([&](const int i, const int pos) {
     dst_offsets[pos] = offset;
     offset += src_offsets[i].size();
   });
+  dst_offsets.last() = offset;
+  return OffsetIndices<int>(dst_offsets);
+}
+
+OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
+                                           IndexMaskSegment selection,
+                                           MutableSpan<int> dst_offsets,
+                                           int start_offset = 0)
+{
+  int offset = start_offset;
+  for (const int64_t i : selection.index_range()) {
+    dst_offsets[i] = offset;
+    offset += src_offsets[selection[i]].size();
+  }
   dst_offsets.last() = offset;
   return OffsetIndices<int>(dst_offsets);
 }
