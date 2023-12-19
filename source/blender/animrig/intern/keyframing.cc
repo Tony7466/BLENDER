@@ -68,7 +68,7 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop)
 }
 
 /** Used to make curves newly added to a cyclic Action cycle with the correct period. */
-static void make_new_fcurve_cyclic(const bAction *act, FCurve *fcu)
+static void make_new_fcurve_cyclic(const bAction *act, FCurve *fcu, const eInsertKeyFlags flag)
 {
   /* The curve must contain one (newly-added) keyframe. */
   if (fcu->totvert != 1 || !fcu->bezt) {
@@ -81,22 +81,15 @@ static void make_new_fcurve_cyclic(const bAction *act, FCurve *fcu)
     return;
   }
 
-  /* Move the keyframe into the range. */
-  const float frame_offset = fcu->bezt[0].vec[1][0] - act->frame_start;
-  const float fix = floorf(frame_offset / period) * period;
+  const float key_y = fcu->bezt[0].vec[1][0];
+  KeyframeSettings settings = get_keyframe_settings((flag & INSERTKEY_NO_USERPREF) == 0);
+  if (fcu->bezt[0].vec[1][0] > act->frame_start) {
+    insert_vert_fcurve(fcu, {act->frame_start, key_y}, settings, flag);
+  }
 
-  fcu->bezt[0].vec[0][0] -= fix;
-  fcu->bezt[0].vec[1][0] -= fix;
-  fcu->bezt[0].vec[2][0] -= fix;
-
-  /* Duplicate and offset the keyframe. */
-  fcu->bezt = static_cast<BezTriple *>(MEM_reallocN(fcu->bezt, sizeof(BezTriple) * 2));
-  fcu->totvert = 2;
-
-  fcu->bezt[1] = fcu->bezt[0];
-  fcu->bezt[1].vec[0][0] += period;
-  fcu->bezt[1].vec[1][0] += period;
-  fcu->bezt[1].vec[2][0] += period;
+  if (fcu->bezt[fcu->totvert - 1].vec[1][0] < act->frame_end) {
+    insert_vert_fcurve(fcu, {act->frame_end, key_y}, settings, flag);
+  }
 
   if (!fcu->modifiers.first) {
     add_fmodifier(&fcu->modifiers, FMODIFIER_TYPE_CYCLES, fcu);
@@ -470,7 +463,7 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
   const bool is_cyclic_action = (flag & INSERTKEY_CYCLE_AWARE) && BKE_action_is_cyclic(act);
 
   if (is_cyclic_action && fcu->totvert == 1) {
-    make_new_fcurve_cyclic(act, fcu);
+    make_new_fcurve_cyclic(act, fcu, flag);
   }
 
   /* Update F-Curve flags to ensure proper behavior for property type. */
@@ -494,7 +487,7 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
 
   /* If the curve is new, make it cyclic if appropriate. */
   if (is_cyclic_action && is_new_curve) {
-    make_new_fcurve_cyclic(act, fcu);
+    make_new_fcurve_cyclic(act, fcu, flag);
   }
 
   return success;
