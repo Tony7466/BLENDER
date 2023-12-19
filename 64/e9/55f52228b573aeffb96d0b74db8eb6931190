@@ -1,1 +1,2 @@
 Referenced by pull request #116345, Fix #116325: crash assigning non-valid `material.paint_active_slot`
+Referenced by commit 85bf6814c798ff634dd4d7c409e17b04dfab5dea, Fix #116325: crash assigning non-valid `material.paint_active_slot`
