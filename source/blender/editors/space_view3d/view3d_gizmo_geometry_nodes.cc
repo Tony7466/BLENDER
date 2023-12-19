@@ -735,8 +735,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                           int(ED_GIZMO_ARROW_STYLE_BOX));
             static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_CROSS) ==
                           int(ED_GIZMO_ARROW_STYLE_CROSS));
-            static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_PLANE) ==
-                          int(ED_GIZMO_ARROW_STYLE_PLANE));
             RNA_enum_set(
                 gz->ptr,
                 "draw_style",
