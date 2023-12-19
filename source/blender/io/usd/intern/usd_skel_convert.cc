@@ -356,12 +356,7 @@ void import_blendshapes(Main *bmain,
     return;
   }
 
-  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim);
-
-  if (!skel_api) {
-    /* No skel binding. */
-    return;
-  }
+  pxr::UsdSkelBindingAPI skel_api(prim);
 
   /* Get the blend shape targets, which are the USD paths to the
    * blend shape primitives. */
@@ -540,11 +535,7 @@ void import_blendshapes(Main *bmain,
     return;
   }
 
-  skel_api = pxr::UsdSkelBindingAPI::Apply(skel_prim.GetPrim());
-
-  if (!skel_api) {
-    return;
-  }
+  skel_api = pxr::UsdSkelBindingAPI(skel_prim.GetPrim());
 
   pxr::UsdPrim anim_prim = skel_api.GetInheritedAnimationSource();
 
@@ -898,11 +889,7 @@ void import_mesh_skel_bindings(Main *bmain,
     return;
   }
 
-  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim);
-
-  if (!skel_api) {
-    return;
-  }
+  pxr::UsdSkelBindingAPI skel_api(prim);
 
   pxr::UsdSkelSkeleton skel = skel_api.GetInheritedSkeleton();
 
