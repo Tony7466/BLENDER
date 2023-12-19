@@ -323,13 +323,11 @@ class InsertAvailableTest(AbstractKeyframingTest, unittest.TestCase):
         self.assertTrue(_fcurve_paths_match(action.fcurves, ["location", "rotation_euler"]))
 
         for fcurve in action.fcurves:
-            if "location" in fcurve.data_path:
-                self.assertEqual(len(fcurve.keyframe_points), 2)
-            elif "rotation" in fcurve.data_path:
-                # Moving the bone would also add rotation keys as long as "Only Insert Needed" is off.
+            # Translating the bone would also add rotation keys as long as "Only Insert Needed" is off.
+            if "location" in fcurve.data_path or "rotation" in fcurve.data_path:
                 self.assertEqual(len(fcurve.keyframe_points), 2)
             else:
-                raise AssertionError("Did not expect keys other than location and rotation")
+                raise AssertionError(f"Did not expect keys other than location and rotation, got {fcurve.data_path}.")
 
         bpy.context.preferences.edit.use_keyframe_insert_available = False
         bpy.data.objects.remove(keyed_object, do_unlink=True)
@@ -362,13 +360,11 @@ class InsertAvailableTest(AbstractKeyframingTest, unittest.TestCase):
         self.assertTrue(_fcurve_paths_match(action.fcurves, expected_paths))
 
         for fcurve in action.fcurves:
-            if "location" in fcurve.data_path:
-                self.assertEqual(len(fcurve.keyframe_points), 2)
-            elif "rotation" in fcurve.data_path:
-                # Moving the bone would also add rotation keys as long as "Only Insert Needed" is off.
+            # Translating the bone would also add rotation keys as long as "Only Insert Needed" is off.
+            if "location" in fcurve.data_path or "rotation" in fcurve.data_path:
                 self.assertEqual(len(fcurve.keyframe_points), 2)
             else:
-                raise AssertionError("Did not expect keys other than location and rotation")
+                raise AssertionError(f"Did not expect keys other than location and rotation, got {fcurve.data_path}.")
 
         bpy.data.objects.remove(armature_obj, do_unlink=True)
 
@@ -381,7 +377,7 @@ class InsertAvailableTest(AbstractKeyframingTest, unittest.TestCase):
         with bpy.context.temp_override(**_get_view3d_context()):
             self.assertRaises(RuntimeError, bpy.ops.anim.keyframe_insert_by_name, type="Available")
 
-        self.assertTrue(keyed_object.animation_data is None)
+        self.assertIsNone(keyed_object.animation_data)
 
         with bpy.context.temp_override(**_get_view3d_context()):
             bpy.context.scene.frame_set(1)
