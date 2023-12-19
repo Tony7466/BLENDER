@@ -32,7 +32,7 @@ static void init_curve(
 static int finish_curve_or_shallow_copy(CurveCopy &copy,
                                         int ins,
                                         const int prev_i,
-                                        const Span<int> &offsets,
+                                        const Span<int> offsets,
                                         const int curve_index,
                                         int *&intervals)
 {
@@ -69,13 +69,13 @@ static int finish_curve_or_shallow_copy(CurveCopy &copy,
   return copy.points_in_curve;
 }
 
-static int sel_to_copy_ints(const IndexMask selection,
-                            const Span<int> &offsets,
-                            int *all_copy_intervals,
+static int sel_to_copy_ints(const IndexMask &selection,
+                            const Span<int> offsets,
+                            blender::Array<int> &all_copy_intervals,
                             CurveCopy *copies)
 {
   int curve_index = 0;
-  int *copy_intervals = all_copy_intervals;
+  int *copy_intervals = all_copy_intervals.data();
   int total_points = 0;
 
   int prev_i;
@@ -144,72 +144,72 @@ static int curves_extrude_exec(bContext *C, wmOperator *op)
   Object *obedit = CTX_data_edit_object(C);
   Curves *curves_id = static_cast<Curves *>(obedit->data);
   const eAttrDomain selection_domain = eAttrDomain(curves_id->selection_domain);
-  if (selection_domain == ATTR_DOMAIN_POINT) {
+  if (selection_domain != ATTR_DOMAIN_POINT) {
+    return OPERATOR_FINISHED;
+  }
 
-    IndexMaskMemory memory;
-    const IndexMask selection = retrieve_selected_points(*curves_id, memory);
-    if (!selection.is_empty()) {
-      bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  IndexMaskMemory memory;
+  const IndexMask extruded_points = retrieve_selected_points(*curves_id, memory);
+  if (extruded_points.is_empty()) {
+    return OPERATOR_FINISHED;
+  }
 
-      const int max = selection.size() * 2 + curves.curves_num() * 2;
-      int *const all_copy_intervals = static_cast<int *>(
-          MEM_malloc_arrayN(max + 2, sizeof(int), __func__));
+  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
-      CurveCopy *const curve_copies = static_cast<CurveCopy *>(
-          MEM_malloc_arrayN(curves.curves_num(), sizeof(CurveCopy), __func__));
+  const int max = extruded_points.size() * 2 + curves.curves_num() * 2;
+  blender::Array<int> all_copy_intervals(max);
 
-      const Span<int> old_offsets = curves.offsets();
-      const int new_points_count = sel_to_copy_ints(
-          selection, old_offsets, all_copy_intervals, curve_copies);
+  CurveCopy *const curve_copies = static_cast<CurveCopy *>(
+      MEM_malloc_arrayN(curves.curves_num(), sizeof(CurveCopy), __func__));
 
-      bke::CurvesGeometry new_curves(new_points_count, curves.curves_num());
-      MutableSpan<int> offsets = new_curves.offsets_for_write();
-      const MutableSpan<int8_t> new_types = new_curves.curve_types_for_write();
-      const VArray<int8_t> old_types = curves.curve_types();
+  const Span<int> old_offsets = curves.offsets();
+  const int new_points_count = sel_to_copy_ints(
+      extruded_points, old_offsets, all_copy_intervals, curve_copies);
 
-      CustomData_copy(
-          &curves.curve_data, &new_curves.curve_data, CD_MASK_ALL, new_curves.curves_num());
-      new_curves.update_curve_types();
+  bke::CurvesGeometry new_curves(new_points_count, curves.curves_num());
+  MutableSpan<int> offsets = new_curves.offsets_for_write();
+  const VArray<int8_t> old_types = curves.curve_types();
 
-      int new_offset = old_offsets[0];
-      offsets[0] = new_offset;
-      for (const int c : curves.curves_range()) {
-        new_offset += curve_copies[c].points_in_curve;
-        offsets[c + 1] = new_offset;
-      }
+  CustomData_copy(
+      &curves.curve_data, &new_curves.curve_data, CD_MASK_ALL, new_curves.curves_num());
+  new_curves.update_curve_types();
 
-      bke::MutableAttributeAccessor new_attributes = new_curves.attributes_for_write();
-      bke::MutableAttributeAccessor old_attributes = curves.attributes_for_write();
+  int new_offset = old_offsets[0];
+  offsets[0] = new_offset;
+  for (const int c : curves.curves_range()) {
+    new_offset += curve_copies[c].points_in_curve;
+    offsets[c + 1] = new_offset;
+  }
 
-      int d = 0;
+  bke::MutableAttributeAccessor new_attributes = new_curves.attributes_for_write();
+  bke::MutableAttributeAccessor old_attributes = curves.attributes_for_write();
 
-      bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-          new_curves, selection_domain, CD_PROP_BOOL);
-      for (const int c : curves.curves_range()) {
-        CurveCopy &copy = curve_copies[c];
-        bool is_selected = copy.is_first_selected;
-        for (const int i : IndexRange(copy.count)) {
-          const int first = copy.intervals[i];
-          const int last = copy.intervals[i + 1];
-          const int size = last - first + 1;
+  int d = 0;
 
-          copy_attributes(old_attributes, new_attributes, first, d, size);
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      new_curves, selection_domain, CD_PROP_BOOL);
+  for (const int c : curves.curves_range()) {
+    CurveCopy &copy = curve_copies[c];
+    bool is_selected = copy.is_first_selected;
+    for (const int i : IndexRange(copy.count)) {
+      const int first = copy.intervals[i];
+      const int last = copy.intervals[i + 1];
+      const int size = last - first + 1;
 
-          GMutableSpan selection_span = selection.span.slice(IndexRange(d, size));
-          fill_selection(selection_span, is_selected);
+      copy_attributes(old_attributes, new_attributes, first, d, size);
 
-          d += size;
-          is_selected = !is_selected;
-        }
-      }
-      selection.finish();
+      GMutableSpan selection_span = selection.span.slice(IndexRange(d, size));
+      fill_selection(selection_span, is_selected);
 
-      MEM_freeN(curve_copies);
-      MEM_freeN(all_copy_intervals);
-
-      curves_id->geometry.wrap() = new_curves;
+      d += size;
+      is_selected = !is_selected;
     }
   }
+  selection.finish();
+
+  MEM_freeN(curve_copies);
+
+  curves_id->geometry.wrap() = new_curves;
 
   return OPERATOR_FINISHED;
 }
@@ -217,6 +217,7 @@ static int curves_extrude_exec(bContext *C, wmOperator *op)
 void CURVES_OT_extrude(wmOperatorType *ot)
 {
   ot->name = "Extrude";
+  ot->description = "Extrude selected control point(s)";
   ot->idname = __func__;
 
   ot->exec = curves_extrude_exec;
