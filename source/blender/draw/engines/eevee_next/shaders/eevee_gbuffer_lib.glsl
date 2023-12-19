@@ -508,57 +508,6 @@ void gbuffer_closure_metal_clear_coat_load(inout GBufferData gbuf,
  *
  * \{ */
 
-/* Return true if any layer of the gbuffer match the given closure. */
-bool gbuffer_has_closure(uint header, eClosureBits closure)
-{
-  for (int layer = 0; layer < 4; layer++) {
-    GBufferMode mode = gbuffer_header_unpack(header, layer);
-    switch (mode) {
-      case GBUF_NONE:
-        break;
-
-      case GBUF_DIFFUSE:
-        if (closure == eClosureBits(CLOSURE_DIFFUSE)) {
-          return true;
-        }
-        break;
-
-      case GBUF_TRANSLUCENT:
-        if (closure == eClosureBits(CLOSURE_TRANSLUCENT)) {
-          return true;
-        }
-        break;
-
-      case GBUF_REFLECTION:
-      case GBUF_REFLECTION_COLORLESS:
-        if (closure == eClosureBits(CLOSURE_REFLECTION)) {
-          return true;
-        }
-        break;
-
-      case GBUF_REFRACTION:
-      case GBUF_REFRACTION_COLORLESS:
-        if (closure == eClosureBits(CLOSURE_REFRACTION)) {
-          return true;
-        }
-        break;
-
-      case GBUF_SUBSURFACE:
-        if (closure == eClosureBits(CLOSURE_SSS)) {
-          return true;
-        }
-        break;
-
-      case GBUF_METAL_CLEARCOAT:
-        if (closure == eClosureBits(CLOSURE_REFLECTION)) {
-          return true;
-        }
-        break;
-    }
-  }
-  return false;
-}
-
 GBufferDataPacked gbuffer_pack(ClosureUndetermined diffuse,
                                ClosureUndetermined translucent,
                                ClosureUndetermined reflection,
@@ -625,6 +574,49 @@ GBufferDataPacked gbuffer_pack(ClosureUndetermined diffuse,
   return gbuf;
 }
 
+/* Populate the GBufferData only based on the header. The rest of the data is undefined. */
+GBufferData gbuffer_read_header(uint header)
+{
+  GBufferData gbuf;
+  gbuf.header = header;
+  gbuf.has_any_surface = (header != 0u);
+  gbuf.has_diffuse = false;
+  gbuf.has_reflection = false;
+  gbuf.has_refraction = false;
+  gbuf.has_translucent = false;
+  gbuf.thickness = 0.0;
+  gbuf.closure_count = 0u;
+
+  for (int layer = 0; layer < 4; layer++) {
+    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
+    switch (mode) {
+      case GBUF_NONE:
+        break;
+      case GBUF_DIFFUSE:
+        gbuf.has_diffuse = true;
+        break;
+      case GBUF_TRANSLUCENT:
+        gbuf.has_translucent = true;
+        break;
+      case GBUF_SUBSURFACE:
+        gbuf.has_diffuse = true;
+        gbuf.has_sss = true;
+        break;
+      case GBUF_METAL_CLEARCOAT:
+      case GBUF_REFLECTION_COLORLESS:
+      case GBUF_REFLECTION:
+        gbuf.has_reflection = true;
+        break;
+      case GBUF_REFRACTION_COLORLESS:
+      case GBUF_REFRACTION:
+        gbuf.has_refraction = true;
+        break;
+    }
+  }
+
+  return gbuf;
+}
+
 GBufferData gbuffer_read(usampler2D header_tx,
                          sampler2DArray closure_tx,
                          sampler2DArray normal_tx,
@@ -638,20 +630,15 @@ GBufferData gbuffer_read(usampler2D header_tx,
   gbuf.has_reflection = false;
   gbuf.has_refraction = false;
   gbuf.has_translucent = false;
+  gbuf.thickness = 0.0;
+  gbuf.closure_count = 0u;
 
   if (!gbuf.has_any_surface) {
     return gbuf;
   }
 
-  gbuf.thickness = 0.0;
-  gbuf.closure_count = 0u;
-
   /* First closure is always written. */
   gbuf.surface_N = gbuffer_normal_unpack(texelFetch(closure_tx, ivec3(texel, 0), 0).xy);
-
-  int layer = 0;
-  int layer_data = 0;
-  int layer_normal = 0;
 
   /* Default values. */
   gbuf.refraction.color = vec3(0.0);

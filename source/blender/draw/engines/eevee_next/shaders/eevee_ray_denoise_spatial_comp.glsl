@@ -80,7 +80,16 @@ void main()
 
   bool valid_texel = in_texture_range(texel_fullres, gbuf_header_tx);
   uint header = (!valid_texel) ? 0u : texelFetch(gbuf_header_tx, texel_fullres, 0).r;
-  if (!gbuffer_has_closure(header, eClosureBits(CLOSURE_ACTIVE))) {
+  GBufferData gbuf_header = gbuffer_read_header(header);
+
+#if defined(RAYTRACE_DIFFUSE)
+  bool has_closure = gbuf_header.has_diffuse;
+#elif defined(RAYTRACE_REFRACT)
+  bool has_closure = gbuf_header.has_refraction;
+#elif defined(RAYTRACE_REFLECT)
+  bool has_closure = gbuf_header.has_reflection;
+#endif
+  if (!has_closure) {
     imageStore(out_radiance_img, texel_fullres, vec4(FLT_11_11_10_MAX, 0.0));
     imageStore(out_variance_img, texel_fullres, vec4(0.0));
     imageStore(out_hit_depth_img, texel_fullres, vec4(0.0));
