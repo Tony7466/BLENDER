@@ -5948,67 +5948,6 @@ static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop
   RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
-void drop_import_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
-{
-  const auto paths = WM_drag_get_paths(drag);
-
-  char dir[FILE_MAX];
-  BLI_path_split_dir_part(paths[0].c_str(), dir, sizeof(dir));
-  RNA_string_set(drop->ptr, "directory", dir);
-
-  RNA_collection_clear(drop->ptr, "files");
-  for (const auto &path : paths) {
-    char file[FILE_MAX];
-    BLI_path_split_file_part(path.c_str(), file, sizeof(file));
-
-    PointerRNA itemptr{};
-    RNA_collection_add(drop->ptr, "files", &itemptr);
-    RNA_string_set(&itemptr, "name", file);
-  }
-}
-/**
- * Return a vector of file handlers that support any file path in `paths` and the call to
- * `poll_drop` returns #true. Unlike `BKE_file_handlers_poll_file_drop`, it ensures that file
- * handlers have a valid import operator.
- */
-static blender::Vector<FileHandlerType *> drop_import_file_poll_file_handlers(
-    const bContext *C, const blender::Span<std::string> paths, const bool quiet = true)
-{
-  auto file_handlers = BKE_file_handlers_poll_file_drop(C, paths);
-  file_handlers.remove_if([quiet](const FileHandlerType *file_handler) {
-    return WM_operatortype_find(file_handler->import_operator, quiet) == nullptr;
-  });
-  return file_handlers;
-}
-
-static bool drop_import_file_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
-{
-  if (drag->type != WM_DRAG_PATH) {
-    return false;
-  }
-
-  const auto paths = WM_drag_get_paths(drag);
-
-  return !drop_import_file_poll_file_handlers(C, paths, true).is_empty();
-}
-
-static char *drop_import_file_tooltip(bContext *C,
-                                      wmDrag *drag,
-                                      const int /*xy*/[2],
-                                      wmDropBox * /*drop*/)
-{
-  const auto paths = WM_drag_get_paths(drag);
-
-  const auto file_handlers = drop_import_file_poll_file_handlers(C, paths, true);
-
-  if (file_handlers.size() == 1) {
-    wmOperatorType *ot = WM_operatortype_find(file_handlers[0]->import_operator, false);
-    return BLI_strdup(TIP_(ot->name));
-  }
-
-  return BLI_strdup(TIP_("Multiple file handlers can be used, drop to pick which to use"));
-}
-
 void ED_keymap_screen(wmKeyConfig *keyconf)
 {
   /* Screen Editing ------------------------------------------------ */
@@ -6025,12 +5964,6 @@ void ED_keymap_screen(wmKeyConfig *keyconf)
   WM_dropbox_add(
       lb, "WM_OT_drop_blend_file", blend_file_drop_poll, blend_file_drop_copy, nullptr, nullptr);
   WM_dropbox_add(lb, "UI_OT_drop_color", UI_drop_color_poll, UI_drop_color_copy, nullptr, nullptr);
-  WM_dropbox_add(lb,
-                 "WM_OT_drop_import_file",
-                 drop_import_file_poll,
-                 drop_import_file_copy,
-                 nullptr,
-                 drop_import_file_tooltip);
   keymap_modal_set(keyconf);
 }
 
