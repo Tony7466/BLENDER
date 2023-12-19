@@ -30,7 +30,7 @@ static Curves *edge_paths_to_curves_convert(
 
   /* Do not create curves from first point with incorrect index. */
   IndexMaskMemory memory;
-  const IndexMask valid_start_verts = IndexMask::from_predicate(
+  IndexMask valid_start_verts = IndexMask::from_predicate(
       start_verts_mask, GrainSize(4096), memory, [&](const int vert_i) {
         return vert_range.contains(next_indices[vert_i]);
       });
@@ -46,32 +46,48 @@ static Curves *edge_paths_to_curves_convert(
     }
   });
 
+  /* Make sure it is okay to subtract `in_progress` value as nothing. */
+  const constexpr int in_progress = 0;
   const constexpr int non_checked = -1;
 
   Array<int> rank(mesh.totvert, non_checked);
-  Array<bool> visited(mesh.totvert, false);
   const auto rank_for_vertex = [&](const int vertex) -> int {
     if (rank[vertex] != non_checked) {
       return rank[vertex];
     }
 
     int total_rank = 0;
-    for (int current_vert = vertex; !visited[current_vert];
-         current_vert = next_indices[current_vert]) {
-      if (rank[current_vert] != non_checked) {
-        total_rank += rank[current_vert];
-        break;
-      }
-      visited[current_vert] = true;
+    int last_index = vertex;
+    for (; rank[last_index] == non_checked; last_index = next_indices[last_index]) {
+      rank[last_index] = in_progress;
       total_rank++;
     }
 
-    for (int current_vert = vertex; visited[current_vert];
-         current_vert = next_indices[current_vert]) {
-      if (rank[current_vert] != non_checked) {
-        break;
+    /* End of list is a loop that is larger than single point. Count rank of the whole loop as a
+     * single one. */
+    if (UNLIKELY(last_index != next_indices[last_index] && rank[last_index] == in_progress)) {
+      /* Size of loop can be deduced in loop above, but this is not really important to be
+       * supported in general. This shouldn't impact regular use case. */
+      int rank_of_loop = 1;
+      for (int current_vert = next_indices[last_index]; current_vert != last_index;
+           current_vert = next_indices[current_vert])
+      {
+        rank_of_loop++;
       }
-      visited[current_vert] = false;
+      rank[last_index] = rank_of_loop;
+      for (int current_vert = next_indices[last_index]; current_vert != last_index;
+           current_vert = next_indices[current_vert])
+      {
+        /* For any start point, whole loops have to be gathered. */
+        rank[current_vert] = rank_of_loop;
+      }
+      total_rank -= rank_of_loop;
+    }
+    total_rank += rank[last_index];
+
+    for (int current_vert = vertex; rank[current_vert] == in_progress;
+         current_vert = next_indices[current_vert])
+    {
       rank[current_vert] = total_rank;
       total_rank--;
     }
@@ -83,7 +99,7 @@ static Curves *edge_paths_to_curves_convert(
     curve_offsets[vert_pos] = rank_for_vertex(first_vert);
   });
 
-  const OffsetIndices<int> curves = offset_indices::accumulate_counts_to_offsets(curve_offsets);
+  OffsetIndices<int> curves = offset_indices::accumulate_counts_to_offsets(curve_offsets);
   if (curves.is_empty()) {
     return nullptr;
   }
