@@ -189,17 +189,17 @@ static void extract_tris_single_mat_iter_looptri_bm(const MeshRenderData & /*mr*
 
 static void extract_tris_single_mat_iter_corner_tri_mesh(const MeshRenderData &mr,
                                                          const int3 &tri,
-                                                         const int lt_index,
+                                                         const int tri_index,
                                                          void *_data)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_data);
-  const int face_i = mr.corner_tri_faces[lt_index];
+  const int face_i = mr.corner_tri_faces[tri_index];
   const bool hidden = mr.use_hide && !mr.hide_poly.is_empty() && mr.hide_poly[face_i];
   if (hidden) {
-    GPU_indexbuf_set_tri_restart(elb, lt_index);
+    GPU_indexbuf_set_tri_restart(elb, tri_index);
   }
   else {
-    GPU_indexbuf_set_tri_verts(elb, lt_index, tri[0], tri[1], tri[2]);
+    GPU_indexbuf_set_tri_verts(elb, tri_index, tri[0], tri[1], tri[2]);
   }
 }
 

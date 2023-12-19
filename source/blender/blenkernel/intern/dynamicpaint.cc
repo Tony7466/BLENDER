@@ -2580,33 +2580,33 @@ static void dynamic_paint_find_island_border(const DynamicPaintCreateUVSurfaceDa
     float ouv0[2], ouv1[2];
 
     for (int i = 0; i < map->count && !found_other; i++) {
-      const int lt_index = map->indices[i];
+      const int tri_other_index = map->indices[i];
 
-      if (lt_index == tri_index) {
+      if (tri_other_index == tri_index) {
         continue;
       }
 
-      const int3 other_loop_idx = corner_tris[lt_index];
+      const int3 other_tri = corner_tris[tri_other_index];
 
       /* Check edges for match, looping in the same order as the outer loop. */
       for (int j = 0; j < 3; j++) {
-        const int overt0 = corner_verts[other_loop_idx[(j + 0)]];
-        const int overt1 = corner_verts[other_loop_idx[(j + 1) % 3]];
+        const int overt0 = corner_verts[other_tri[(j + 0)]];
+        const int overt1 = corner_verts[other_tri[(j + 1) % 3]];
 
         /* Allow for swapped vertex order */
         if (overt0 == vert0 && overt1 == vert1) {
           found_other = true;
-          copy_v2_v2(ouv0, mloopuv[other_loop_idx[(j + 0)]]);
-          copy_v2_v2(ouv1, mloopuv[other_loop_idx[(j + 1) % 3]]);
+          copy_v2_v2(ouv0, mloopuv[other_tri[(j + 0)]]);
+          copy_v2_v2(ouv1, mloopuv[other_tri[(j + 1) % 3]]);
         }
         else if (overt0 == vert1 && overt1 == vert0) {
           found_other = true;
-          copy_v2_v2(ouv1, mloopuv[other_loop_idx[(j + 0)]]);
-          copy_v2_v2(ouv0, mloopuv[other_loop_idx[(j + 1) % 3]]);
+          copy_v2_v2(ouv1, mloopuv[other_tri[(j + 0)]]);
+          copy_v2_v2(ouv0, mloopuv[other_tri[(j + 1) % 3]]);
         }
 
         if (found_other) {
-          target_tri = lt_index;
+          target_tri = tri_other_index;
           target_edge = j;
           break;
         }
