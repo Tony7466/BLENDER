@@ -1,1 +1,2 @@
 Referenced by issue #116342, GP3: Blender crashes when moving grease pencil keyframe in timeline
+Referenced by commit 9fbc0965225dac3ee060f781cb9c4ac1b37579a8, Fix #116342: crash when moving GP3 keyframe
