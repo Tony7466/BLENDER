@@ -23,7 +23,7 @@ void main(void)
 
   barrier();
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
   if (gbuf.has_sss) {
     vec3 radiance = imageLoad(direct_light_img, texel).rgb +

@@ -139,20 +139,20 @@ typedef enum ClosureType {
   CLOSURE_BSDF_TRANSLUCENT_ID = 6u,
 
   /* Glossy */
-  CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID,
-  // CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID, /* TODO */
-  // CLOSURE_BSDF_ASHIKHMIN_VELVET_ID, /* TODO */
-  // CLOSURE_BSDF_GLOSSY_TOON_ID, /* TODO */
-  // CLOSURE_BSDF_HAIR_REFLECTION_ID, /* TODO */
+  CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID = 7u,
+  // CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID = 8u, /* TODO */
+  // CLOSURE_BSDF_ASHIKHMIN_VELVET_ID = 9u, /* TODO */
+  // CLOSURE_BSDF_GLOSSY_TOON_ID = 10u, /* TODO */
+  // CLOSURE_BSDF_HAIR_REFLECTION_ID = 11u, /* TODO */
 
   /* Transmission */
-  CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID,
+  CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID = 12u,
 
   /* Glass */
-  // CLOSURE_BSDF_HAIR_HUANG_ID, /* TODO */
+  // CLOSURE_BSDF_HAIR_HUANG_ID = 13u, /* TODO */
 
   /* BSSRDF */
-  CLOSURE_BSSRDF_BURLEY_ID,
+  CLOSURE_BSSRDF_BURLEY_ID = 14u,
 } ClosureType;
 
 struct ClosureUndetermined {
@@ -163,6 +163,13 @@ struct ClosureUndetermined {
   /* Additional data different for each closure type. */
   vec4 data;
 };
+
+ClosureUndetermined closure_new(ClosureType type)
+{
+  ClosureUndetermined cl;
+  cl.type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
+  return cl;
+}
 
 struct ClosureOcclusion {
   vec3 N;

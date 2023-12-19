@@ -92,7 +92,7 @@ void main()
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
 #if defined(RAYTRACE_DIFFUSE)
   ClosureDiffuse closure = gbuf.diffuse;

@@ -55,7 +55,7 @@ vec3 from_accumulation_space(vec3 color)
 
 vec3 load_normal(ivec2 texel)
 {
-  return gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel).surface_N;
+  return gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel).surface_N;
 }
 
 void main()
@@ -80,7 +80,7 @@ void main()
     return;
   }
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
   vec3 center_N = gbuf.diffuse.N;
   float roughness = 1.0;

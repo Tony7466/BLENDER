@@ -19,7 +19,7 @@ void main()
                         uniform_buf.raytrace.resolution_bias;
 
   /* Load Gbuffer. */
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
   /* Export normal. */
   /* TODO(fclem): Export the most visible normal. */

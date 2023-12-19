@@ -188,12 +188,14 @@ struct DeferredLayerBase {
   /* Return the amount of gbuffer layer needed. */
   int closure_layer_count() const
   {
-    return count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION |
-                                         CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT | CLOSURE_SSS));
+    /* TODO(fclem): We can save some layers in some cases (e.g: diffuse and translucent use only
+     * 1 layer). */
+    return 2 * count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION |
+                                             CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
   }
 
   /* Return the amount of gbuffer layer needed. */
-  int color_layer_count() const
+  int normal_layer_count() const
   {
     return count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION |
                                          CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
@@ -307,9 +309,9 @@ class DeferredPipeline {
   }
 
   /* Return the maximum amount of gbuffer layer needed. */
-  int color_layer_count() const
+  int normal_layer_count() const
   {
-    return max_ii(opaque_layer_.color_layer_count(), refraction_layer_.color_layer_count());
+    return max_ii(opaque_layer_.normal_layer_count(), refraction_layer_.normal_layer_count());
   }
 
   void debug_draw(draw::View &view, GPUFrameBuffer *combined_fb);
@@ -523,9 +525,9 @@ class DeferredProbePipeline {
   }
 
   /* Return the maximum amount of gbuffer layer needed. */
-  int color_layer_count() const
+  int normal_layer_count() const
   {
-    return opaque_layer_.color_layer_count();
+    return opaque_layer_.normal_layer_count();
   }
 };
 

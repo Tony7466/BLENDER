@@ -15,7 +15,7 @@ void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
   vec3 glossy_reflect_light = vec3(0.0);
   vec3 glossy_refract_light = vec3(0.0);

@@ -32,7 +32,7 @@ void main()
     return;
   }
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
   HorizonScanContext ctx;
 #ifdef HORIZON_DIFFUSE

@@ -17,7 +17,7 @@ void main()
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
   if (!gbuf.has_reflection && !gbuf.has_reflection && !gbuf.has_refraction) {
     return;

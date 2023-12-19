@@ -16,7 +16,7 @@ void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
   if (gbuf.header == 0u) {
     discard;
@@ -30,7 +30,7 @@ void main()
   float eval_cost = reduce_add(vec4(equal(closure_types, uvec4(GBUF_REFLECTION)))) * 1.0 +
                     reduce_add(vec4(equal(closure_types, uvec4(GBUF_REFRACTION)))) * 1.0 +
                     reduce_add(vec4(equal(closure_types, uvec4(GBUF_DIFFUSE)))) * 1.0 +
-                    reduce_add(vec4(equal(closure_types, uvec4(GBUF_SSS)))) * 1.0;
+                    reduce_add(vec4(equal(closure_types, uvec4(GBUF_SUBSURFACE)))) * 1.0;
 
   switch (eDebugMode(debug_mode)) {
     default:

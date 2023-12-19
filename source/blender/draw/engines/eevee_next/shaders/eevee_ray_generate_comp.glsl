@@ -22,7 +22,7 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
 #if defined(RAYTRACE_DIFFUSE)
   bool valid_pixel = gbuf.has_diffuse;

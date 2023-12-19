@@ -78,7 +78,7 @@ void main(void)
   float depth = texelFetch(depth_tx, texel, 0).r;
   vec3 vP = drw_point_screen_to_view(vec3(center_uv, depth));
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
   if (gbuf.diffuse.sss_id == 0u) {
     return;

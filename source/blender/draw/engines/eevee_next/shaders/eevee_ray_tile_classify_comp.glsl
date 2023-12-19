@@ -38,7 +38,7 @@ void main()
   bool valid_texel = in_texture_range(texel, gbuf_header_tx);
 
   if (valid_texel) {
-    GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+    GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
     /* TODO(fclem): Arbitrary closure stack. */
     for (int i = 0; i < 3; i++) {

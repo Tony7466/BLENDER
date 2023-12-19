@@ -18,7 +18,7 @@ void main()
   ivec2 texel = ivec2(gl_FragCoord.xy);
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
+  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
   if (gbuf.closure_count == 0) {
     return;
