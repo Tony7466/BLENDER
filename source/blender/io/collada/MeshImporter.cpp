@@ -485,8 +485,11 @@ void MeshImporter::allocate_poly_data(COLLADAFW::Mesh *collada_mesh, Mesh *mesh)
         COLLADAFW::MeshVertexData::InputInfos *info =
             collada_mesh->getColors().getInputInfosArray()[i];
         COLLADAFW::String colname = extract_vcolname(info->mName);
-        CustomData_add_layer_named(
-            &mesh->loop_data, CD_PROP_BYTE_COLOR, CD_SET_DEFAULT, mesh->corners_num, colname.c_str());
+        CustomData_add_layer_named(&mesh->loop_data,
+                                   CD_PROP_BYTE_COLOR,
+                                   CD_SET_DEFAULT,
+                                   mesh->corners_num,
+                                   colname.c_str());
       }
       BKE_id_attributes_active_color_set(
           &mesh->id, CustomData_get_layer_name(&mesh->loop_data, CD_PROP_BYTE_COLOR, 0));
@@ -719,8 +722,10 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
              uvset_index++) {
           COLLADAFW::IndexList &index_list = *index_list_array_uvcoord[uvset_index];
           blender::float2 *mloopuv = static_cast<blender::float2 *>(
-              CustomData_get_layer_named_for_write(
-                  &mesh->loop_data, CD_PROP_FLOAT2, index_list.getName().c_str(), mesh->corners_num));
+              CustomData_get_layer_named_for_write(&mesh->loop_data,
+                                                   CD_PROP_FLOAT2,
+                                                   index_list.getName().c_str(),
+                                                   mesh->corners_num));
           if (mloopuv == nullptr) {
             fprintf(stderr,
                     "Collada import: Mesh [%s] : Unknown reference to TEXCOORD [#%s].\n",

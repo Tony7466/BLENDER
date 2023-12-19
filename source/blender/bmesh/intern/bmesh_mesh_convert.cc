@@ -241,19 +241,22 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *mesh, const BMeshFromMeshParams *
     BKE_uv_map_vert_select_name_get(
         CustomData_get_layer_name(&mesh_ldata, CD_PROP_FLOAT2, layer_index), name);
     if (CustomData_get_named_layer_index(&mesh_ldata, CD_PROP_BOOL, name) < 0) {
-      CustomData_add_layer_named(&mesh_ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->corners_num, name);
+      CustomData_add_layer_named(
+          &mesh_ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->corners_num, name);
       temporary_layers_to_delete.append(std::string(name));
     }
     BKE_uv_map_edge_select_name_get(
         CustomData_get_layer_name(&mesh_ldata, CD_PROP_FLOAT2, layer_index), name);
     if (CustomData_get_named_layer_index(&mesh_ldata, CD_PROP_BOOL, name) < 0) {
-      CustomData_add_layer_named(&mesh_ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->corners_num, name);
+      CustomData_add_layer_named(
+          &mesh_ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->corners_num, name);
       temporary_layers_to_delete.append(std::string(name));
     }
     BKE_uv_map_pin_name_get(CustomData_get_layer_name(&mesh_ldata, CD_PROP_FLOAT2, layer_index),
                             name);
     if (CustomData_get_named_layer_index(&mesh_ldata, CD_PROP_BOOL, name) < 0) {
-      CustomData_add_layer_named(&mesh_ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->corners_num, name);
+      CustomData_add_layer_named(
+          &mesh_ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->corners_num, name);
       temporary_layers_to_delete.append(std::string(name));
     }
   }
@@ -1459,9 +1462,12 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *mesh, const BMeshToMeshParam
   {
     CustomData_MeshMasks mask = CD_MASK_MESH;
     CustomData_MeshMasks_update(&mask, &params->cd_mask_extra);
-    CustomData_copy_layout(&bm->vdata, &mesh->vert_data, mask.vmask, CD_CONSTRUCT, mesh->verts_num);
-    CustomData_copy_layout(&bm->edata, &mesh->edge_data, mask.emask, CD_CONSTRUCT, mesh->edges_num);
-    CustomData_copy_layout(&bm->ldata, &mesh->loop_data, mask.lmask, CD_CONSTRUCT, mesh->corners_num);
+    CustomData_copy_layout(
+        &bm->vdata, &mesh->vert_data, mask.vmask, CD_CONSTRUCT, mesh->verts_num);
+    CustomData_copy_layout(
+        &bm->edata, &mesh->edge_data, mask.emask, CD_CONSTRUCT, mesh->edges_num);
+    CustomData_copy_layout(
+        &bm->ldata, &mesh->loop_data, mask.lmask, CD_CONSTRUCT, mesh->corners_num);
     CustomData_copy_layout(
         &bm->pdata, &mesh->face_data, mask.pmask, CD_CONSTRUCT, mesh->faces_num);
   }
@@ -1685,7 +1691,8 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *mesh, const CustomData_MeshMasks
   mask.vmask &= ~CD_MASK_SHAPEKEY;
   CustomData_merge_layout(&bm->vdata, &mesh->vert_data, mask.vmask, CD_CONSTRUCT, mesh->verts_num);
   CustomData_merge_layout(&bm->edata, &mesh->edge_data, mask.emask, CD_CONSTRUCT, mesh->edges_num);
-  CustomData_merge_layout(&bm->ldata, &mesh->loop_data, mask.lmask, CD_CONSTRUCT, mesh->corners_num);
+  CustomData_merge_layout(
+      &bm->ldata, &mesh->loop_data, mask.lmask, CD_CONSTRUCT, mesh->corners_num);
   CustomData_merge_layout(&bm->pdata, &mesh->face_data, mask.pmask, CD_CONSTRUCT, mesh->faces_num);
 
   /* Add optional mesh attributes before parallel iteration. */

@@ -338,7 +338,8 @@ void clothModifier_do(ClothModifierData *clmd,
   clmd->sim_parms->timescale = timescale * clmd->sim_parms->time_scale;
 
   if (clmd->sim_parms->reset ||
-      (clmd->clothObject && mesh->verts_num != clmd->clothObject->mvert_num)) {
+      (clmd->clothObject && mesh->verts_num != clmd->clothObject->mvert_num))
+  {
     clmd->sim_parms->reset = 0;
     cache->flag |= PTCACHE_OUTDATED;
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);

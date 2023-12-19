@@ -220,7 +220,8 @@ void BKE_mesh_calc_edges_legacy(Mesh *mesh)
   MEdge *edges;
   int totedge = 0;
   const Span<MVert> verts(
-      static_cast<const MVert *>(CustomData_get_layer(&mesh->vert_data, CD_MVERT)), mesh->verts_num);
+      static_cast<const MVert *>(CustomData_get_layer(&mesh->vert_data, CD_MVERT)),
+      mesh->verts_num);
 
   mesh_calc_edges_mdata(
       verts.data(),
@@ -285,9 +286,11 @@ void BKE_mesh_do_versions_cd_flag_init(Mesh *mesh)
   }
 
   const Span<MVert> verts(
-      static_cast<const MVert *>(CustomData_get_layer(&mesh->vert_data, CD_MVERT)), mesh->verts_num);
+      static_cast<const MVert *>(CustomData_get_layer(&mesh->vert_data, CD_MVERT)),
+      mesh->verts_num);
   const Span<MEdge> edges(
-      static_cast<const MEdge *>(CustomData_get_layer(&mesh->edge_data, CD_MEDGE)), mesh->edges_num);
+      static_cast<const MEdge *>(CustomData_get_layer(&mesh->edge_data, CD_MEDGE)),
+      mesh->edges_num);
 
   for (const MVert &vert : verts) {
     if (vert.bweight_legacy != 0) {
@@ -2021,7 +2024,8 @@ void BKE_mesh_legacy_convert_loops_to_corners(Mesh *mesh)
     return;
   }
   const Span<MLoop> loops(
-      static_cast<const MLoop *>(CustomData_get_layer(&mesh->loop_data, CD_MLOOP)), mesh->corners_num);
+      static_cast<const MLoop *>(CustomData_get_layer(&mesh->loop_data, CD_MLOOP)),
+      mesh->corners_num);
   MutableSpan<int> corner_verts(
       static_cast<int *>(CustomData_add_layer_named(
           &mesh->loop_data, CD_PROP_INT32, CD_CONSTRUCT, mesh->corners_num, ".corner_vert")),

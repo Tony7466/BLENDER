@@ -355,7 +355,8 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *mesh)
   if (use_clnors) {
     /* If custom normals are present and the option is turned on calculate the split
      * normals and clear flag so the normals get interpolated to the result mesh. */
-    void *data = CustomData_add_layer(&mesh->loop_data, CD_NORMAL, CD_CONSTRUCT, mesh->corners_num);
+    void *data = CustomData_add_layer(
+        &mesh->loop_data, CD_NORMAL, CD_CONSTRUCT, mesh->corners_num);
     memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
   }
 

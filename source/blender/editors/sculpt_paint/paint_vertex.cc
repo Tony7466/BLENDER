@@ -249,8 +249,8 @@ void init_session_data(const ToolSettings *ts, Object *ob)
   if (ob->mode == OB_MODE_WEIGHT_PAINT) {
     if (!vwpaint::brush_use_accumulate(ts->wpaint)) {
       if (ob->sculpt->mode.wpaint.alpha_weight == nullptr) {
-        ob->sculpt->mode.wpaint.alpha_weight = (float *)MEM_callocN(mesh->verts_num * sizeof(float),
-                                                                    __func__);
+        ob->sculpt->mode.wpaint.alpha_weight = (float *)MEM_callocN(
+            mesh->verts_num * sizeof(float), __func__);
       }
       if (ob->sculpt->mode.wpaint.dvert_prev == nullptr) {
         ob->sculpt->mode.wpaint.dvert_prev = (MDeformVert *)MEM_callocN(

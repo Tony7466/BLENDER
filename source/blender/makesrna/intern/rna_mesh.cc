@@ -873,8 +873,8 @@ static void rna_MEdge_freestyle_edge_mark_set(PointerRNA *ptr, bool value)
       CustomData_get_layer_for_write(&mesh->edge_data, CD_FREESTYLE_EDGE, mesh->edges_num));
 
   if (!fed) {
-    fed = static_cast<FreestyleEdge *>(
-        CustomData_add_layer(&mesh->edge_data, CD_FREESTYLE_EDGE, CD_SET_DEFAULT, mesh->edges_num));
+    fed = static_cast<FreestyleEdge *>(CustomData_add_layer(
+        &mesh->edge_data, CD_FREESTYLE_EDGE, CD_SET_DEFAULT, mesh->edges_num));
   }
   if (value) {
     fed[index].flag |= FREESTYLE_EDGE_MARK;

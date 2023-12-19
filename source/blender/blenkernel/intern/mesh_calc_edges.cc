@@ -42,7 +42,8 @@ static void reserve_hash_maps(const Mesh *mesh,
                               const bool keep_existing_edges,
                               MutableSpan<EdgeMap> edge_maps)
 {
-  const int totedge_guess = std::max(keep_existing_edges ? mesh->edges_num : 0, mesh->faces_num * 2);
+  const int totedge_guess = std::max(keep_existing_edges ? mesh->edges_num : 0,
+                                     mesh->faces_num * 2);
   threading::parallel_for_each(
       edge_maps, [&](EdgeMap &edge_map) { edge_map.reserve(totedge_guess / edge_maps.size()); });
 }

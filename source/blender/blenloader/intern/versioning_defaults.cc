@@ -358,7 +358,8 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 
   /* Correct default startup UVs. */
   Mesh *mesh = static_cast<Mesh *>(BLI_findstring(&bmain->meshes, "Cube", offsetof(ID, name) + 2));
-  if (mesh && (mesh->corners_num == 24) && CustomData_has_layer(&mesh->loop_data, CD_PROP_FLOAT2)) {
+  if (mesh && (mesh->corners_num == 24) && CustomData_has_layer(&mesh->loop_data, CD_PROP_FLOAT2))
+  {
     const float uv_values[24][2] = {
         {0.625, 0.50}, {0.875, 0.50}, {0.875, 0.75}, {0.625, 0.75}, {0.375, 0.75}, {0.625, 0.75},
         {0.625, 1.00}, {0.375, 1.00}, {0.375, 0.00}, {0.625, 0.00}, {0.625, 0.25}, {0.375, 0.25},

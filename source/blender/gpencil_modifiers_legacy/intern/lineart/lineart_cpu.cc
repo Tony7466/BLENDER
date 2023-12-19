@@ -1982,8 +1982,8 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   /* If we allow duplicated edges, one edge should get added multiple times if is has been
    * classified as more than one edge type. This is so we can create multiple different line type
    * chains containing the same edge. */
-  LineartVert *la_v_arr = static_cast<LineartVert *>(
-      lineart_mem_acquire_thread(&la_data->render_data_pool, sizeof(LineartVert) * mesh->verts_num));
+  LineartVert *la_v_arr = static_cast<LineartVert *>(lineart_mem_acquire_thread(
+      &la_data->render_data_pool, sizeof(LineartVert) * mesh->verts_num));
   LineartTriangle *la_tri_arr = static_cast<LineartTriangle *>(lineart_mem_acquire_thread(
       &la_data->render_data_pool, corner_tris.size() * la_data->sizeof_triangle));
 

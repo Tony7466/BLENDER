@@ -393,8 +393,11 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
   float *result_edge_bweight = static_cast<float *>(CustomData_get_layer_named_for_write(
       &result->edge_data, CD_PROP_FLOAT, "bevel_weight_edge", result->edges_num));
   if (!result_edge_bweight && (do_bevel_convex || orig_vert_bweight)) {
-    result_edge_bweight = static_cast<float *>(CustomData_add_layer_named(
-        &result->edge_data, CD_PROP_FLOAT, CD_SET_DEFAULT, result->edges_num, "bevel_weight_edge"));
+    result_edge_bweight = static_cast<float *>(CustomData_add_layer_named(&result->edge_data,
+                                                                          CD_PROP_FLOAT,
+                                                                          CD_SET_DEFAULT,
+                                                                          result->edges_num,
+                                                                          "bevel_weight_edge"));
   }
 
   /* Initializes: (`i_end`, `do_shell_align`, `vert_index`). */

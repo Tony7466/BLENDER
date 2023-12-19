@@ -22,7 +22,8 @@ static void propagate_vert_attributes(Mesh &mesh, const Span<int> new_to_old_ver
   CustomData_free_layers(&mesh.vert_data, CD_SHAPEKEY, mesh.verts_num);
   CustomData_free_layers(&mesh.vert_data, CD_CLOTH_ORCO, mesh.verts_num);
   CustomData_free_layers(&mesh.vert_data, CD_MVERT_SKIN, mesh.verts_num);
-  CustomData_realloc(&mesh.vert_data, mesh.verts_num, mesh.verts_num + new_to_old_verts_map.size());
+  CustomData_realloc(
+      &mesh.vert_data, mesh.verts_num, mesh.verts_num + new_to_old_verts_map.size());
   mesh.verts_num += new_to_old_verts_map.size();
 
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();

@@ -104,12 +104,12 @@ static void subdiv_mesh_ctx_cache_custom_data_layers(SubdivMeshContext *ctx)
   ctx->subdiv_corner_verts = subdiv_mesh->corner_verts_for_write();
   ctx->subdiv_corner_edges = subdiv_mesh->corner_edges_for_write();
   /* Pointers to original indices layers. */
-  ctx->vert_origindex = static_cast<int *>(
-      CustomData_get_layer_for_write(&subdiv_mesh->vert_data, CD_ORIGINDEX, subdiv_mesh->verts_num));
-  ctx->edge_origindex = static_cast<int *>(
-      CustomData_get_layer_for_write(&subdiv_mesh->edge_data, CD_ORIGINDEX, subdiv_mesh->edges_num));
-  ctx->loop_origindex = static_cast<int *>(
-      CustomData_get_layer_for_write(&subdiv_mesh->loop_data, CD_ORIGINDEX, subdiv_mesh->corners_num));
+  ctx->vert_origindex = static_cast<int *>(CustomData_get_layer_for_write(
+      &subdiv_mesh->vert_data, CD_ORIGINDEX, subdiv_mesh->verts_num));
+  ctx->edge_origindex = static_cast<int *>(CustomData_get_layer_for_write(
+      &subdiv_mesh->edge_data, CD_ORIGINDEX, subdiv_mesh->edges_num));
+  ctx->loop_origindex = static_cast<int *>(CustomData_get_layer_for_write(
+      &subdiv_mesh->loop_data, CD_ORIGINDEX, subdiv_mesh->corners_num));
   ctx->face_origindex = static_cast<int *>(CustomData_get_layer_for_write(
       &subdiv_mesh->face_data, CD_ORIGINDEX, subdiv_mesh->faces_num));
   /* UV layers interpolation. */
