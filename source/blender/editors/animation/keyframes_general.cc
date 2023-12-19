@@ -957,11 +957,13 @@ void scale_from_fcurve_segment_neighbor(FCurve *fcu,
                                         const FCurveSegmentAnchor anchor)
 {
   const BezTriple *reference_key;
-  if (anchor == FCurveSegmentAnchor::LEFT) {
-    reference_key = fcurve_segment_start_get(fcu, segment->start_index);
-  }
-  else {
-    reference_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+  switch (anchor) {
+    case FCurveSegmentAnchor::LEFT:
+      reference_key = fcurve_segment_start_get(fcu, segment->start_index);
+      break;
+    case FCurveSegmentAnchor::RIGHT:
+      reference_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+      break;
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {

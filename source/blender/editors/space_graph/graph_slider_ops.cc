@@ -2315,17 +2315,27 @@ static void scale_from_neighbor_graph_keys(bAnimContext *ac,
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void scale_from_neighbor_draw_status_header(bContext *C, tGraphSliderOp *gso)
+static void scale_from_neighbor_draw_status_header(bContext *C, wmOperator *op)
 {
   char status_str[UI_MAX_DRAW_STR];
   char mode_str[32];
   char slider_string[UI_MAX_DRAW_STR];
 
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
 
   /* Operator specific functionality that extends beyond the slider. */
   char op_slider_string[UI_MAX_DRAW_STR];
-  SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Toggle Anchor Key");
+  const FCurveSegmentAnchor anchor = FCurveSegmentAnchor(RNA_enum_get(op->ptr, "anchor"));
+  switch (anchor) {
+    case FCurveSegmentAnchor::LEFT:
+      SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Scale From Right End");
+      break;
+
+    case FCurveSegmentAnchor::RIGHT:
+      SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Scale From Left End");
+      break;
+  }
 
   STRNCPY(mode_str, TIP_("Scale from Neighbor Keys"));
 
@@ -2347,7 +2357,7 @@ static void scale_from_neighbor_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
-  scale_from_neighbor_draw_status_header(C, gso);
+  scale_from_neighbor_draw_status_header(C, op);
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
@@ -2366,20 +2376,21 @@ static int scale_from_neighbor_modal(bContext *C, wmOperator *op, const wmEvent 
   switch (event->type) {
     case EVT_DKEY: {
       FCurveSegmentAnchor anchor = FCurveSegmentAnchor(RNA_enum_get(op->ptr, "anchor"));
-      if (anchor == FCurveSegmentAnchor::LEFT) {
-        RNA_enum_set(op->ptr, "anchor", int(FCurveSegmentAnchor::RIGHT));
-      }
-      else {
-        RNA_enum_set(op->ptr, "anchor", int(FCurveSegmentAnchor::LEFT));
-      }
+      switch (anchor) {
+        case FCurveSegmentAnchor::LEFT:
+          RNA_enum_set(op->ptr, "anchor", int(FCurveSegmentAnchor::RIGHT));
+          break;
 
+        case FCurveSegmentAnchor::RIGHT:
+          RNA_enum_set(op->ptr, "anchor", int(FCurveSegmentAnchor::LEFT));
+          break;
+      }
       scale_from_neighbor_modal_update(C, op);
       break;
     }
 
     default:
       return graph_slider_modal(C, op, event);
-      break;
   }
   return OPERATOR_RUNNING_MODAL;
 }
@@ -2389,13 +2400,13 @@ static int scale_from_neighbor_invoke(bContext *C, wmOperator *op, const wmEvent
   const int invoke_result = graph_slider_invoke(C, op, event);
 
   if (invoke_result == OPERATOR_CANCELLED) {
-    return invoke_result;
+    return OPERATOR_CANCELLED;
   }
 
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = scale_from_neighbor_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  scale_from_neighbor_draw_status_header(C, gso);
+  scale_from_neighbor_draw_status_header(C, op);
   ED_slider_factor_bounds_set(gso->slider, 0, 2);
   ED_slider_factor_set(gso->slider, 1.0f);
 
