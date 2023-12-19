@@ -37,7 +37,7 @@ namespace blender::bke::volume_grid {
  *
  * Features:
  * - Implicit sharing of the #VolumeGridData: This makes it cheap to copy e.g. a #VolumeGrid<T>,
- *   because it just increases the number of users. On actual copy is only done, when the grid is
+ *   because it just increases the number of users. An actual copy is only done when the grid is
  *   modified.
  * - Implicit sharing of the referenced OpenVDB tree (not grid): The tree is the heavy piece of
  *   data that contains all the voxel values. Multiple #VolumeGridData can reference the same tree
@@ -103,7 +103,8 @@ class VolumeGridData : public ImplicitSharingMixin {
   /**
    * A token that allows detecting whether some code is currently accessing the tree (not grid) or
    * not. If this variable is the only owner of the `shared_ptr`, no one else has access to the
-   * tree.
+   * tree. `shared_ptr` is used here because it makes it very easy to manage a user-count without
+   * much boilerplate.
    */
   std::shared_ptr<AccessToken> tree_access_token_;
 

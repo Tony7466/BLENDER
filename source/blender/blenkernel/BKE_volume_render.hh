@@ -14,6 +14,7 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_volume_enums.hh"
+#include "BKE_volume_grid_fwd.hh"
 
 struct Volume;
 

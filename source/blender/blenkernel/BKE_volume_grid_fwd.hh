@@ -34,7 +34,7 @@ class VolumeGridData;
 class GVolumeGrid;
 
 /**
- * Same as #GVolumeGrid but makes sure that the contained grid is of a specific type.
+ * Same as #GVolumeGrid but means that the contained grid is of a specific type.
  */
 template<typename T> class VolumeGrid;
 
