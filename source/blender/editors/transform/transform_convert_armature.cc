@@ -1267,37 +1267,48 @@ static void restoreMirrorPoseBones(TransDataContainer *tc)
   }
 }
 
-static blender::Vector<std::string> get_modified_rna_paths(const eTfmMode tmode,
-                                                           ToolSettings *toolsettings,
-                                                           std::string &rotation_path,
-                                                           const bool targetless_ik)
+/* Given the transform mode `tmode` return a Vector of RNA paths that were possibly modified during
+ * that transformation. */
+static blender::Vector<std::string> get_affected_rna_paths_from_transform_mode(
+    const eTfmMode tmode,
+    ToolSettings *toolsettings,
+    const blender::StringRef rotation_path,
+    const bool targetless_ik)
 {
   blender::Vector<std::string> rna_paths;
-  if (tmode == TFM_TRANSLATION) {
-    if (targetless_ik) {
-      rna_paths.append(rotation_path);
-    }
-    else {
-      rna_paths.append("location");
-    }
-  }
-  else if (ELEM(tmode, TFM_ROTATION, TFM_TRACKBALL)) {
-    if (ELEM(toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
-      rna_paths.append("location");
-    }
+  switch (tmode) {
+    case TFM_TRANSLATION:
+      if (targetless_ik) {
+        rna_paths.append(rotation_path);
+      }
+      else {
+        rna_paths.append("location");
+      }
+      break;
 
-    if ((toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
-      rna_paths.append(rotation_path);
-    }
-  }
-  else if (tmode == TFM_RESIZE) {
-    if (ELEM(toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
-      rna_paths.append("location");
-    }
+    case TFM_ROTATION:
+    case TFM_TRACKBALL:
+      if (ELEM(toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
+        rna_paths.append("location");
+      }
 
-    if ((toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
-      rna_paths.append("scale");
-    }
+      if ((toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
+        rna_paths.append(rotation_path);
+      }
+      break;
+
+    case TFM_RESIZE:
+      if (ELEM(toolsettings->transform_pivot_point, V3D_AROUND_CURSOR, V3D_AROUND_ACTIVE)) {
+        rna_paths.append("location");
+      }
+
+      if ((toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) == 0) {
+        rna_paths.append("scale");
+      }
+      break;
+
+    default:
+      break;
   }
   return rna_paths;
 }
@@ -1315,11 +1326,12 @@ static void autokeyframe_pose(
     }
 
     blender::Vector<std::string> rna_paths;
-    std::string rotation_path = blender::animrig::get_rotation_mode_path(
+    const blender::StringRef rotation_path = blender::animrig::get_rotation_mode_path(
         eRotationModes(pchan->rotmode));
 
     if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
-      rna_paths = get_modified_rna_paths(tmode, scene->toolsettings, rotation_path, targetless_ik);
+      rna_paths = get_affected_rna_paths_from_transform_mode(
+          tmode, scene->toolsettings, rotation_path, targetless_ik);
     }
     else {
       rna_paths = {"location", rotation_path, "scale"};
