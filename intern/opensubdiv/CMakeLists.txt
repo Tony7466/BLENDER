@@ -82,6 +82,18 @@ if(WITH_OPENSUBDIV)
     )
   endif()
 
+  if(WITH_TBB)
+    add_definitions(-DWITH_TBB)
+
+    list(APPEND INC_SYS
+      ${TBB_INCLUDE_DIRS}
+    )
+
+    list(APPEND LIB
+      ${TBB_LIBRARIES}
+    )
+  endif()
+
   if(WIN32)
     add_definitions(-DNOMINMAX)
     add_definitions(-D_USE_MATH_DEFINES)
