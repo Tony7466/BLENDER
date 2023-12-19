@@ -26,6 +26,13 @@
 
 namespace blender::geometry {
 
+static void gather(const Span<int> src, const Span<int16_t> indices, MutableSpan<int> dst)
+{
+  for (const int i : indices.index_range()) {
+    dst[i] = src[indices[i]];
+  }
+}
+
 static Span<int> gather_or_reference(const Span<int> src,
                                      const Span<int16_t> indices,
                                      Vector<int> &dst)
@@ -34,9 +41,7 @@ static Span<int> gather_or_reference(const Span<int> src,
     return src.slice(indices[0], indices.size());
   }
   dst.reinitialize(indices.size());
-  for (const int i : indices.index_range()) {
-    dst[i] = src[indices[i]];
-  }
+  gather(src, indices, dst);
   return dst.as_span();
 }
 
@@ -103,9 +108,11 @@ static OffsetIndices<int> calc_faces(const OffsetIndices<int> src_faces,
   MutableSpan<int> new_tri_offsets = offsets.drop_back(unselected.size());
   offset_indices::fill_constant_group_size(3, new_tri_offsets.first(), new_tri_offsets);
   offset_indices::gather_selected_offsets(
-      src_faces, unselected, offsets.take_back(unselected.size() + 1), new_tri_offsets.last());
+      src_faces, unselected, new_tri_offsets.last(), offsets.take_back(unselected.size() + 1));
   return OffsetIndices<int>(offsets);
 }
+
+namespace quad {
 
 /**
  *  #Edge_0_2       #Edge_1_3
@@ -146,7 +153,6 @@ static void calc_quad_directions(const Span<float3> positions,
                                  const Span<int> face_offsets,
                                  const Span<int> corner_verts,
                                  const TriangulateQuadMode quad_mode,
-                                 Vector<float2> &distances,
                                  MutableSpan<QuadDirection> directions)
 {
   if (quad_mode == TriangulateQuadMode::Fixed) {
@@ -155,40 +161,32 @@ static void calc_quad_directions(const Span<float3> positions,
   else if (quad_mode == TriangulateQuadMode::Alternate) {
     directions.fill(QuadDirection::Edge_1_3);
   }
-  else {
-    distances.reinitialize(face_offsets.size());
+  else if (quad_mode == TriangulateQuadMode::Beauty) {
     for (const int i : face_offsets.index_range()) {
-      const Span<int> face_verts = corner_verts.slice(face_offsets[i], 4);
-      distances[i][0] = math::distance_squared(positions[face_verts[0]], positions[face_verts[2]]);
-      distances[i][1] = math::distance_squared(positions[face_verts[1]], positions[face_verts[3]]);
-    }
-    if (quad_mode == TriangulateQuadMode::ShortEdge) {
-      for (const int i : face_offsets.index_range()) {
-        directions[i] = distances[i][0] < distances[i][1] ? QuadDirection::Edge_0_2 :
-                                                            QuadDirection::Edge_1_3;
-      }
-    }
-    else if (quad_mode == TriangulateQuadMode::LongEdge) {
-      for (const int i : face_offsets.index_range()) {
-        directions[i] = distances[i][0] < distances[i][1] ? QuadDirection::Edge_1_3 :
-                                                            QuadDirection::Edge_0_2;
-      }
+      const Span<int> verts = corner_verts.slice(face_offsets[i], 4);
+      directions[i] = calc_quad_direction_beauty(
+          positions[verts[0]], positions[verts[1]], positions[verts[2]], positions[verts[3]]);
     }
   }
-  if (quad_mode == TriangulateQuadMode::Beauty) {
+  else {
+    const QuadDirection long_dir = quad_mode == TriangulateQuadMode::ShortEdge ?
+                                       QuadDirection::Edge_0_2 :
+                                       QuadDirection::Edge_1_3;
+    const QuadDirection short_dir = quad_mode == TriangulateQuadMode::ShortEdge ?
+                                        QuadDirection::Edge_1_3 :
+                                        QuadDirection::Edge_0_2;
     for (const int i : face_offsets.index_range()) {
-      const Span<int> face_verts = corner_verts.slice(face_offsets[i], 4);
-      directions[i] = calc_quad_direction_beauty(positions[face_verts[0]],
-                                                 positions[face_verts[1]],
-                                                 positions[face_verts[2]],
-                                                 positions[face_verts[3]]);
+      const Span<int> verts = corner_verts.slice(face_offsets[i], 4);
+      const float dist_0_2 = math::distance_squared(positions[verts[0]], positions[verts[2]]);
+      const float dist_1_3 = math::distance_squared(positions[verts[1]], positions[verts[3]]);
+      directions[i] = dist_0_2 < dist_1_3 ? long_dir : short_dir;
     }
   }
 }
 
-static void calc_quad_corner_maps(const Span<int> face_offsets,
-                                  const Span<QuadDirection> directions,
-                                  MutableSpan<int> corner_map)
+static void calc_corner_maps(const Span<int> face_offsets,
+                             const Span<QuadDirection> directions,
+                             MutableSpan<int> corner_map)
 {
   for (const int i : face_offsets.index_range()) {
     MutableSpan<int> quad_map = corner_map.slice(6 * i, 6);
@@ -208,16 +206,15 @@ static void calc_quad_corner_maps(const Span<int> face_offsets,
   }
 }
 
-static void calc_quad_corner_maps(const Span<float3> positions,
-                                  const OffsetIndices<int> src_faces,
-                                  const Span<int> src_corner_verts,
-                                  const IndexMask &quads,
-                                  const TriangulateQuadMode quad_mode,
-                                  MutableSpan<int> corner_map)
+static void calc_corner_maps(const Span<float3> positions,
+                             const OffsetIndices<int> src_faces,
+                             const Span<int> src_corner_verts,
+                             const IndexMask &quads,
+                             const TriangulateQuadMode quad_mode,
+                             MutableSpan<int> corner_map)
 {
   struct TLS {
     Vector<int> offsets;
-    Vector<float2> distances;
     Vector<QuadDirection> directions;
   };
   threading::EnumerableThreadSpecific<TLS> tls;
@@ -227,13 +224,12 @@ static void calc_quad_corner_maps(const Span<float3> positions,
     data.directions.reinitialize(quads.size());
 
     /* Find the offsets of each face in the local selection. We can gather them together even if
-     * they arnen't contiguous because we only need to know the start of each face; the size is
+     * they aren't contiguous because we only need to know the start of each face; the size is
      * just four. */
     const Span<int> offsets = gather_or_reference(src_faces.data(), quads, data.offsets);
-    calc_quad_directions(
-        positions, offsets, src_corner_verts, quad_mode, data.distances, data.directions);
+    calc_quad_directions(positions, offsets, src_corner_verts, quad_mode, data.directions);
     const IndexRange corners(pos * 6, offsets.size() * 6);
-    calc_quad_corner_maps(offsets, data.directions, corner_map.slice(corners));
+    quad::calc_corner_maps(offsets, data.directions, corner_map.slice(corners));
   });
 }
 
@@ -242,13 +238,13 @@ static void calc_quad_corner_maps(const Span<float3> positions,
  * triangles. The corner_verts are just the corners of the quads, and the edges are just the new
  * edges for these quads.
  */
-static void calc_quad_edges(const Span<int> corner_verts, MutableSpan<int2> edges)
+static void calc_edges(const Span<int> quad_corner_verts, MutableSpan<int2> edges)
 {
-  const int quads_num = corner_verts.size() / 6;
+  const int quads_num = quad_corner_verts.size() / 6;
   for (const int quad : IndexRange(quads_num)) {
-    const Span<int> quad_verts = corner_verts.slice(6 * quad, 6);
+    const Span<int> verts = quad_corner_verts.slice(6 * quad, 6);
     /* Use the first vertex of each triangle. */
-    edges[quad] = int2(quad_verts[0], quad_verts[1]);
+    edges[quad] = int2(verts[0], verts[1]);
   }
 }
 
@@ -267,23 +263,44 @@ static void calc_quad_corner_edges(const Span<int> src_corner_edges,
   }
 }
 
-static void calc_quad_edges(const Span<int> src_corner_edges,
-                            const Span<int> corner_map,
-                            const Span<int> corner_verts,
-                            const int edges_start,
-                            MutableSpan<int2> edges,
-                            MutableSpan<int> quad_corner_edges)
+static void calc_edges(const Span<int> src_corner_edges,
+                       const Span<int> corner_map,
+                       const Span<int> corner_verts,
+                       const int edges_start,
+                       MutableSpan<int2> edges,
+                       MutableSpan<int> quad_corner_edges)
 {
   const int quads_num = corner_map.size() / 6;
   threading::parallel_for(IndexRange(quads_num), 1024, [&](const IndexRange quads) {
     const IndexRange corners(quads.start() * 6, quads.size() * 6);
-    calc_quad_edges(corner_verts.slice(corners), edges.slice(quads));
+    calc_edges(corner_verts.slice(corners), edges.slice(quads));
     calc_quad_corner_edges(src_corner_edges,
                            corner_map.slice(corners),
                            edges_start + quads.start(),
                            quad_corner_edges.slice(corners));
   });
 }
+
+template<typename T>
+static void copy_face_data_to_tris(const Span<T> src, const IndexMask &quads, MutableSpan<T> dst)
+{
+  quads.foreach_index_optimized<int>([&](const int src_i, const int dst_i) {
+    dst[2 * dst_i + 0] = src[src_i];
+    dst[2 * dst_i + 1] = src[src_i];
+  });
+}
+
+static void copy_face_data_to_tris(const GSpan src, const IndexMask &quads, GMutableSpan dst)
+{
+  bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    copy_face_data_to_tris(src.typed<T>(), quads, dst.typed<T>());
+  });
+}
+
+}  // namespace quad
+
+namespace ngon {
 
 static OffsetIndices<int> calc_tris_by_ngon(const OffsetIndices<int> src_faces,
                                             const IndexMask &ngons,
@@ -306,14 +323,14 @@ static OffsetIndices<int> calc_edges_by_ngon(const OffsetIndices<int> src_faces,
   return offset_indices::accumulate_counts_to_offsets(edge_offset_data);
 }
 
-static void calc_ngon_corner_maps(const Span<float3> positions,
-                                  const OffsetIndices<int> src_faces,
-                                  const Span<int> src_corner_verts,
-                                  const Span<float3> face_normals,
-                                  const IndexMask &ngons,
-                                  const OffsetIndices<int> tris_by_ngon,
-                                  const TriangulateNGonMode ngon_mode,
-                                  MutableSpan<int> corner_map)
+static void calc_corner_maps(const Span<float3> positions,
+                             const OffsetIndices<int> src_faces,
+                             const Span<int> src_corner_verts,
+                             const Span<float3> face_normals,
+                             const IndexMask &ngons,
+                             const OffsetIndices<int> tris_by_ngon,
+                             const TriangulateNGonMode ngon_mode,
+                             MutableSpan<int> corner_map)
 {
   struct TLS {
     Vector<float3x3> projections;
@@ -323,8 +340,6 @@ static void calc_ngon_corner_maps(const Span<float3> positions,
     /* Only used for the "Beauty" method. */
     MemArena *arena = nullptr;
     Heap *heap = nullptr;
-
-    Set<int> duplicate_faces;
 
     ~TLS()
     {
@@ -419,7 +434,7 @@ static void calc_ngon_corner_maps(const Span<float3> positions,
   });
 }
 
-static void calc_inner_triangles(const IndexRange src_face,
+static void calc_inner_tri_edges(const IndexRange src_face,
                                  const Span<int> src_corner_verts,
                                  const Span<int> src_corner_edges,
                                  const Span<int3> corner_tris,
@@ -448,17 +463,17 @@ static void calc_inner_triangles(const IndexRange src_face,
   }
 }
 
-static void calc_ngon_edges(const OffsetIndices<int> src_faces,
-                            const Span<int> src_corner_verts,
-                            const Span<int> src_corner_edges,
-                            const IndexMask &ngons,
-                            const OffsetIndices<int> tris_by_ngon,
-                            const OffsetIndices<int> edges_by_ngon,
-                            const OffsetIndices<int> faces,
-                            const int edges_start,
-                            const Span<int> corner_verts,
-                            MutableSpan<int2> inner_edges,
-                            MutableSpan<int> corner_edges)
+static void calc_edges(const OffsetIndices<int> src_faces,
+                       const Span<int> src_corner_verts,
+                       const Span<int> src_corner_edges,
+                       const IndexMask &ngons,
+                       const OffsetIndices<int> tris_by_ngon,
+                       const OffsetIndices<int> edges_by_ngon,
+                       const OffsetIndices<int> faces,
+                       const int edges_start,
+                       const Span<int> corner_verts,
+                       MutableSpan<int2> inner_edges,
+                       MutableSpan<int> corner_edges)
 {
   threading::EnumerableThreadSpecific<VectorSet<OrderedEdge>> tls;
   ngons.foreach_segment(GrainSize(128), [&](const IndexMaskSegment ngons, const int pos) {
@@ -467,7 +482,7 @@ static void calc_ngon_edges(const OffsetIndices<int> src_faces,
       const IndexRange edges = edges_by_ngon[pos + i];
       const IndexRange corners = faces[tris_by_ngon[pos + i]];
       deduplication.clear();
-      calc_inner_triangles(src_faces[ngons[i]],
+      calc_inner_tri_edges(src_faces[ngons[i]],
                            src_corner_verts,
                            src_corner_edges,
                            corner_verts.slice(corners).cast<int3>(),
@@ -478,6 +493,10 @@ static void calc_ngon_edges(const OffsetIndices<int> src_faces,
     }
   });
 }
+
+}  // namespace ngon
+
+namespace deduplication {
 
 struct TriangleRef {
   const int *verts;
@@ -579,24 +598,7 @@ static IndexMask calc_unselected_faces(const Mesh &mesh,
   });
 }
 
-template<typename T>
-static void copy_quad_face_data_to_tris(const Span<T> src,
-                                        const IndexMask &quads,
-                                        MutableSpan<T> dst)
-{
-  quads.foreach_index_optimized<int>([&](const int src_i, const int dst_i) {
-    dst[2 * dst_i + 0] = src[src_i];
-    dst[2 * dst_i + 1] = src[src_i];
-  });
-}
-
-static void copy_quad_face_data_to_tris(const GSpan src, const IndexMask &quads, GMutableSpan dst)
-{
-  bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    copy_quad_face_data_to_tris(src.typed<T>(), quads, dst.typed<T>());
-  });
-}
+}  // namespace deduplication
 
 std::optional<Mesh *> mesh_triangulate(
     const Mesh &src_mesh,
@@ -632,7 +634,7 @@ std::optional<Mesh *> mesh_triangulate(
   /* Calculate group of triangle indices for each selected Ngon to facilitate calculating them in
    * parallel later. */
   Array<int> tri_offsets(ngons.size() + 1);
-  const OffsetIndices tris_by_ngon = calc_tris_by_ngon(src_faces, ngons, tri_offsets);
+  const OffsetIndices tris_by_ngon = ngon::calc_tris_by_ngon(src_faces, ngons, tri_offsets);
   const int ngon_tris_num = tris_by_ngon.total_size();
   const int quad_tris_num = quads.size() * 2;
   const IndexRange tris_range(ngon_tris_num + quad_tris_num);
@@ -648,7 +650,7 @@ std::optional<Mesh *> mesh_triangulate(
   /* Calculate groups of new inner edges for each selected Ngon so they can be filled in parallel
    * later. */
   Array<int> edge_offset_data(ngons.size() + 1);
-  const OffsetIndices edges_by_ngon = calc_edges_by_ngon(src_faces, ngons, edge_offset_data);
+  const OffsetIndices edges_by_ngon = ngon::calc_edges_by_ngon(src_faces, ngons, edge_offset_data);
   const int ngon_edges_num = edges_by_ngon.total_size();
   const int quad_edges_num = quads.size();
   const IndexRange src_edges_range(0, src_edges.size());
@@ -664,25 +666,25 @@ std::optional<Mesh *> mesh_triangulate(
   Array<int> corner_map(tri_corners_range.size());
 
   if (!ngons.is_empty()) {
-    calc_ngon_corner_maps(positions,
-                          src_faces,
-                          src_corner_verts,
-                          face_normals_if_worthwhile(src_mesh, ngons.size()),
-                          ngons,
-                          tris_by_ngon,
-                          ngon_mode,
-                          corner_map.as_mutable_span().slice(ngon_corners_range));
+    ngon::calc_corner_maps(positions,
+                           src_faces,
+                           src_corner_verts,
+                           face_normals_if_worthwhile(src_mesh, ngons.size()),
+                           ngons,
+                           tris_by_ngon,
+                           ngon_mode,
+                           corner_map.as_mutable_span().slice(ngon_corners_range));
   }
   if (!quads.is_empty()) {
-    calc_quad_corner_maps(positions,
-                          src_faces,
-                          src_corner_verts,
-                          quads,
-                          quad_mode,
-                          corner_map.as_mutable_span().slice(quad_corners_range));
+    quad::calc_corner_maps(positions,
+                           src_faces,
+                           src_corner_verts,
+                           quads,
+                           quad_mode,
+                           corner_map.as_mutable_span().slice(quad_corners_range));
   }
 
-  const IndexMask unselected = calc_unselected_faces(
+  const IndexMask unselected = deduplication::calc_unselected_faces(
       src_mesh, src_faces, src_corner_verts, selection, corner_map, memory);
   const IndexRange unselected_range(tris_range.one_after_last(), unselected.size());
 
@@ -712,26 +714,26 @@ std::optional<Mesh *> mesh_triangulate(
   bke::attribute_math::gather(src_corner_verts, corner_map, corner_verts.slice(tri_corners_range));
 
   if (!ngons.is_empty()) {
-    calc_ngon_edges(src_faces,
-                    src_corner_verts,
-                    src_corner_edges,
-                    ngons,
-                    tris_by_ngon,
-                    edges_by_ngon,
-                    faces.slice(ngon_tris_range),
-                    ngon_edges_range.start(),
-                    corner_map.as_mutable_span().slice(ngon_corners_range),
-                    edges.slice(ngon_edges_range),
-                    corner_edges);
+    ngon::calc_edges(src_faces,
+                     src_corner_verts,
+                     src_corner_edges,
+                     ngons,
+                     tris_by_ngon,
+                     edges_by_ngon,
+                     faces.slice(ngon_tris_range),
+                     ngon_edges_range.start(),
+                     corner_map.as_mutable_span().slice(ngon_corners_range),
+                     edges.slice(ngon_edges_range),
+                     corner_edges);
   }
 
   if (!quads.is_empty()) {
-    calc_quad_edges(src_corner_edges,
-                    corner_map.as_mutable_span().slice(quad_corners_range),
-                    corner_verts,
-                    quad_edges_range.start(),
-                    edges.slice(quad_edges_range),
-                    corner_edges.slice(quad_corners_range));
+    quad::calc_edges(src_corner_edges,
+                     corner_map.as_mutable_span().slice(quad_corners_range),
+                     corner_verts,
+                     quad_edges_range.start(),
+                     edges.slice(quad_edges_range),
+                     corner_edges.slice(quad_corners_range));
   }
 
   /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
@@ -767,7 +769,7 @@ std::optional<Mesh *> mesh_triangulate(
   {
     bke::attribute_math::gather_to_groups(
         tris_by_ngon, ngons, attribute.src, attribute.dst.span.slice(ngon_tris_range));
-    copy_quad_face_data_to_tris(attribute.src, quads, attribute.dst.span.slice(quad_tris_range));
+    quad::copy_face_data_to_tris(attribute.src, quads, attribute.dst.span.slice(quad_tris_range));
     array_utils::gather(attribute.src, unselected, attribute.dst.span.slice(unselected_range));
     attribute.dst.finish();
   }
@@ -780,7 +782,7 @@ std::optional<Mesh *> mesh_triangulate(
                         &mesh->face_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->faces_num)),
                     mesh->faces_num);
     bke::attribute_math::gather_to_groups(tris_by_ngon, ngons, src, dst.slice(ngon_tris_range));
-    copy_quad_face_data_to_tris(src, quads, dst.slice(quad_tris_range));
+    quad::copy_face_data_to_tris(src, quads, dst.slice(quad_tris_range));
     array_utils::gather(src, unselected, dst.slice(unselected_range));
   }
 

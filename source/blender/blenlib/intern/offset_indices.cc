@@ -65,10 +65,10 @@ OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
   return OffsetIndices<int>(dst_offsets);
 }
 
-OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
-                                           IndexMaskSegment selection,
-                                           MutableSpan<int> dst_offsets,
-                                           int start_offset = 0)
+OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
+                                           const IndexMaskSegment selection,
+                                           const int start_offset,
+                                           MutableSpan<int> dst_offsets)
 {
   int offset = start_offset;
   for (const int64_t i : selection.index_range()) {
