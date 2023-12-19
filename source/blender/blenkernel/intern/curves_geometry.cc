@@ -1080,9 +1080,10 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
 
 static void transform_directions(MutableSpan<float3> directions, const float4x4 &matrix)
 {
+  const float3x3 normal_transform = math::transpose(math::invert(float3x3(matrix)));
   threading::parallel_for(directions.index_range(), 1024, [&](const IndexRange range) {
     for (float3 &direction : directions.slice(range)) {
-      direction = math::transform_direction(matrix, direction);
+      direction = math::transform_direction(normal_transform, direction);
     }
   });
 }

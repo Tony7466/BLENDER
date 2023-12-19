@@ -13,6 +13,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.hh"
 #include "BLI_noise.hh"
 #include "BLI_task.hh"
 
@@ -301,11 +302,17 @@ static void copy_transformed_directions(const Span<float3> src,
                                         const float4x4 &transform,
                                         MutableSpan<float3> dst)
 {
-  threading::parallel_for(src.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst[i] = math::transform_direction(transform, src[i]);
-    }
-  });
+  const float3x3 normal_transform = math::transpose(math::invert(float3x3(transform)));
+  if (math::is_equal(normal_transform, float3x3::identity(), 1e-6f)) {
+    dst.copy_from(src);
+  }
+  else {
+    threading::parallel_for(src.index_range(), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        dst[i] = math::transform_direction(normal_transform, src[i]);
+      }
+    });
+  }
 }
 
 static void threaded_copy(const GSpan src, GMutableSpan dst)
