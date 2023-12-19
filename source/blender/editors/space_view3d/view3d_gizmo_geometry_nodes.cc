@@ -415,9 +415,9 @@ static void WIDGETGROUP_geometry_nodes_setup(const bContext * /*C*/, wmGizmoGrou
 static GeometryNodeGizmoColor get_gizmo_color_id(const bNode &gizmo_node)
 {
   switch (gizmo_node.type) {
-    case GEO_NODE_GIZMO_ARROW:
+    case GEO_NODE_GIZMO_LINEAR:
       return GeometryNodeGizmoColor(
-          static_cast<const NodeGeometryArrowGizmo *>(gizmo_node.storage)->color_id);
+          static_cast<const NodeGeometryLinearGizmo *>(gizmo_node.storage)->color_id);
     case GEO_NODE_GIZMO_DIAL:
       return GeometryNodeGizmoColor(
           static_cast<const NodeGeometryDialGizmo *>(gizmo_node.storage)->color_id);
@@ -539,9 +539,9 @@ static float4x4 matrix_from_position_and_up_direction(const float3 &position,
   return mat;
 }
 
-static std::optional<float4x4> get_arrow_gizmo_base_transform(const bNode &gizmo_node,
-                                                              geo_eval_log::GeoTreeLog &tree_log,
-                                                              bool &r_missing_socket_logs)
+static std::optional<float4x4> get_linear_gizmo_base_transform(const bNode &gizmo_node,
+                                                               geo_eval_log::GeoTreeLog &tree_log,
+                                                               bool &r_missing_socket_logs)
 {
   const bNodeSocket &position_input = gizmo_node.input_socket(1);
   const bNodeSocket &direction_input = gizmo_node.input_socket(2);
@@ -659,8 +659,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         std::optional<float4x4> base_gizmo_transform;
         bool missing_socket_logs = false;
         switch (gizmo_node.type) {
-          case GEO_NODE_GIZMO_ARROW: {
-            base_gizmo_transform = get_arrow_gizmo_base_transform(
+          case GEO_NODE_GIZMO_LINEAR: {
+            base_gizmo_transform = get_linear_gizmo_base_transform(
                 gizmo_node, tree_log, missing_socket_logs);
             break;
           }
@@ -699,7 +699,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           node_gizmo_data = std::make_unique<NodeGizmoData>();
           wmGizmo *gz;
           switch (gizmo_node.type) {
-            case GEO_NODE_GIZMO_ARROW: {
+            case GEO_NODE_GIZMO_LINEAR: {
               gz = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, nullptr);
               WM_gizmo_set_line_width(gz, 1.0f);
               break;
@@ -727,20 +727,20 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         UI_GetThemeColor3fv(color_id, gz->color);
         UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
         switch (gizmo_node.type) {
-          case GEO_NODE_GIZMO_ARROW: {
+          case GEO_NODE_GIZMO_LINEAR: {
             /* Make sure the enum values are in sync. */
-            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_ARROW) ==
+            static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_ARROW) ==
                           int(ED_GIZMO_ARROW_STYLE_NORMAL));
-            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_BOX) ==
+            static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_BOX) ==
                           int(ED_GIZMO_ARROW_STYLE_BOX));
-            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_CROSS) ==
+            static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_CROSS) ==
                           int(ED_GIZMO_ARROW_STYLE_CROSS));
-            static_assert(int(GEO_NODE_ARROW_GIZMO_DRAW_STYLE_PLANE) ==
+            static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_PLANE) ==
                           int(ED_GIZMO_ARROW_STYLE_PLANE));
             RNA_enum_set(
                 gz->ptr,
                 "draw_style",
-                static_cast<const NodeGeometryArrowGizmo *>(gizmo_node.storage)->draw_style);
+                static_cast<const NodeGeometryLinearGizmo *>(gizmo_node.storage)->draw_style);
             break;
           }
           case GEO_NODE_GIZMO_DIAL: {

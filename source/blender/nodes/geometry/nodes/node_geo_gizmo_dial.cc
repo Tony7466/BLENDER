@@ -25,7 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometryArrowGizmo *storage = MEM_cnew<NodeGeometryArrowGizmo>(__func__);
+  NodeGeometryDialGizmo *storage = MEM_cnew<NodeGeometryDialGizmo>(__func__);
   node->storage = storage;
 }
 

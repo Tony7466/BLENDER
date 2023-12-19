@@ -1325,7 +1325,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INDEX_SWITCH 2118
 #define GEO_NODE_INPUT_ACTIVE_CAMERA 2119
 #define GEO_NODE_BAKE 2120
-#define GEO_NODE_GIZMO_ARROW 2121
+#define GEO_NODE_GIZMO_LINEAR 2121
 #define GEO_NODE_GIZMO_DIAL 2122
 
 /** \} */

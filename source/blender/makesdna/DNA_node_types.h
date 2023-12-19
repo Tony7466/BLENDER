@@ -1907,12 +1907,12 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
-typedef struct NodeGeometryArrowGizmo {
+typedef struct NodeGeometryLinearGizmo {
   /** #GeometryNodeGizmoColor. */
   int color_id;
-  /** #GeometryNodeArrowGizmoDrawStyle. */
+  /** #GeometryNodeLinearGizmoDrawStyle. */
   int draw_style;
-} NodeGeometryArrowGizmo;
+} NodeGeometryLinearGizmo;
 
 typedef struct NodeGeometryDialGizmo {
   /** #GeometryNodeGizmoColor. */
@@ -2826,9 +2826,9 @@ typedef enum GeometryNodeGizmoColor {
   GEO_NODE_GIZMO_COLOR_Z = 4,
 } GeometryNodeGizmoColor;
 
-typedef enum GeometryNodeArrowGizmoDrawStyle {
-  GEO_NODE_ARROW_GIZMO_DRAW_STYLE_ARROW = 0,
-  GEO_NODE_ARROW_GIZMO_DRAW_STYLE_CROSS = 1,
-  GEO_NODE_ARROW_GIZMO_DRAW_STYLE_BOX = 2,
-  GEO_NODE_ARROW_GIZMO_DRAW_STYLE_PLANE = 4,
-} GeometryNodeArrowGizmoDrawStyle;
+typedef enum GeometryNodeLinearGizmoDrawStyle {
+  GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_ARROW = 0,
+  GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_CROSS = 1,
+  GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_BOX = 2,
+  GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_PLANE = 4,
+} GeometryNodeLinearGizmoDrawStyle;

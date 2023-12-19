@@ -11,9 +11,9 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-namespace blender::nodes::node_geo_gizmo_arrow_cc {
+namespace blender::nodes::node_geo_gizmo_linear_cc {
 
-NODE_STORAGE_FUNCS(NodeGeometryArrowGizmo)
+NODE_STORAGE_FUNCS(NodeGeometryLinearGizmo)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -25,7 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometryArrowGizmo *storage = MEM_cnew<NodeGeometryArrowGizmo>(__func__);
+  NodeGeometryLinearGizmo *storage = MEM_cnew<NodeGeometryLinearGizmo>(__func__);
   node->storage = storage;
 }
 
@@ -47,16 +47,16 @@ static void node_rna(StructRNA *srna)
                     "draw_style",
                     "Draw Style",
                     "",
-                    rna_enum_geometry_nodes_arrow_gizmo_draw_style_items,
+                    rna_enum_geometry_nodes_linear_gizmo_draw_style_items,
                     NOD_storage_enum_accessors(draw_style));
 }
 
 static void node_register()
 {
   static bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_GIZMO_ARROW, "Arrow Gizmo", NODE_CLASS_INTERFACE);
+  geo_node_type_base(&ntype, GEO_NODE_GIZMO_LINEAR, "Linear Gizmo", NODE_CLASS_INTERFACE);
   node_type_storage(
-      &ntype, "NodeGeometryArrowGizmo", node_free_standard_storage, node_copy_standard_storage);
+      &ntype, "NodeGeometryLinearGizmo", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
@@ -66,4 +66,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_gizmo_arrow_cc
+}  // namespace blender::nodes::node_geo_gizmo_linear_cc

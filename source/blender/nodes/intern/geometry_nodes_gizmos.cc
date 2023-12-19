@@ -209,7 +209,7 @@ static void add_propagated_gizmo(GizmoPropagationResult &result,
 static void propagate_gizmos_from_builtin_nodes(GizmoPropagationResult &result,
                                                 const bNodeTree &tree)
 {
-  for (const StringRefNull idname : {"GeometryNodeGizmoArrow", "GeometryNodeGizmoDial"}) {
+  for (const StringRefNull idname : {"GeometryNodeGizmoLinear", "GeometryNodeGizmoDial"}) {
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
       const bNodeSocket &gizmo_value_input = gizmo_node->input_socket(0);
       gizmo_value_input.runtime->has_gizmo = true;
@@ -345,7 +345,7 @@ static void foreach_gizmo_for_input(
     /* Gizmos in zones are not supported yet. */
     return;
   }
-  if (ELEM(node.type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
+  if (ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL)) {
     /* Found an actual built-in gizmo node. */
     fn(*compute_context_builder.current(), node);
   }
@@ -460,7 +460,7 @@ void foreach_active_gizmo(
             }
           }
           for (const bNode *node : gizmo_inferencing.nodes_with_gizmos_inside) {
-            if (ELEM(node->type, GEO_NODE_GIZMO_ARROW, GEO_NODE_GIZMO_DIAL)) {
+            if (ELEM(node->type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL)) {
               fn(*compute_context_builder.current(), *node);
             }
             else if (node->is_group()) {
