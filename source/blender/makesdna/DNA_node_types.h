@@ -1908,7 +1908,6 @@ typedef struct NodeShaderMix {
 } NodeShaderMix;
 
 typedef struct NodeGeometryArrowGizmo {
-  /** #GeometryNodeGizmoColor. */
   int color_id;
   /** #GeometryNodeArrowGizmoDrawStyle. */
   int draw_style;
@@ -1918,6 +1917,27 @@ typedef struct NodeGeometryDialGizmo {
   /** #GeometryNodeGizmoColor. */
   int color_id;
 } NodeGeometryDialGizmo;
+
+typedef struct NodeGeometryBakeItem {
+  char *name;
+  int16_t socket_type;
+  int16_t attribute_domain;
+  int identifier;
+  int32_t flag;
+  char _pad[4];
+} NodeGeometryBakeItem;
+
+typedef enum NodeGeometryBakeItemFlag {
+  GEO_NODE_BAKE_ITEM_IS_ATTRIBUTE = (1 << 0),
+} NodeGeometryBakeItemFlag;
+
+typedef struct NodeGeometryBake {
+  NodeGeometryBakeItem *items;
+  int items_num;
+  int next_identifier;
+  int active_index;
+  char _pad[4];
+} NodeGeometryBake;
 
 /* script node mode */
 enum {
