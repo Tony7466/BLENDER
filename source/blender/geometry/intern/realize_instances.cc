@@ -1381,7 +1381,7 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
 
   if (all_curves_info.create_custom_normal_attribute) {
     if (curves_info.custom_normal.is_empty()) {
-      all_handle_right.slice(dst_point_range).fill(float3(0, 0, 1));
+      all_custom_normals.slice(dst_point_range).fill(float3(0, 0, 1));
     }
     else {
       copy_transformed_directions(
