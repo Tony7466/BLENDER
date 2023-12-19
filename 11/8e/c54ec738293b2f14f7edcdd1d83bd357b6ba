@@ -1,2 +1,3 @@
 Referenced by pull request #113402, Fix #113387: Memory leak with Separate by Loose Parts
 Referenced by commit 4a57a56f873ef1beed6e49c5c346704800fd4ef0, Fix #113387: Memory leak with Separate by Loose Parts
+Referenced by issue #116339, "Show Hidden Objects" operator's options missing, which is inconsistent with "Reveal Hidden" operator
