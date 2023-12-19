@@ -189,8 +189,10 @@ struct GlyphBLF *blf_glyph_ensure_subpixel(struct FontBLF *font,
 /**
  * Convert a character's outlines into curves.
  */
-float blf_character_to_curves(
-    FontBLF *font, uint codepoint, uint glyphid, struct ListBase *nurbsbase, const float scale);
+bool blf_character_to_curves(FontBLF *font,
+                             const float scale,
+                             struct GlyphData *rw_glyph_data,
+                             struct ListBase *nurbsbase);
 
 void blf_glyph_free(struct GlyphBLF *g);
 void blf_glyph_draw(

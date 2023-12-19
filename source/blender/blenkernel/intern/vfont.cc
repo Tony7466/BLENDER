@@ -196,15 +196,12 @@ void BKE_vfont_free_data(VFont *vfont)
       GHashIterator gh_iter;
       GHASH_ITER (gh_iter, vfont->data->characters) {
         VChar *che = static_cast<VChar *>(BLI_ghashIterator_getValue(&gh_iter));
-
-        while (che->nurbsbase.first) {
+        while (che && che->nurbsbase.first) {
           Nurb *nu = static_cast<Nurb *>(che->nurbsbase.first);
-          if (nu->bezt) {
-            MEM_freeN(nu->bezt);
-          }
+          MEM_SAFE_FREE(nu->bezt);          
           BLI_freelinkN(&che->nurbsbase, nu);
         }
-        MEM_freeN(che);
+        MEM_SAFE_FREE(che);
       }
       BLI_ghash_free(vfont->data->characters, nullptr, nullptr);
     }
@@ -213,15 +210,12 @@ void BKE_vfont_free_data(VFont *vfont)
       GHashIterator gh_iter;
       GHASH_ITER (gh_iter, vfont->data->glyphs) {
         VChar *che = static_cast<VChar *>(BLI_ghashIterator_getValue(&gh_iter));
-
-        while (che->nurbsbase.first) {
+        while (che && che->nurbsbase.first) {
           Nurb *nu = static_cast<Nurb *>(che->nurbsbase.first);
-          if (nu->bezt) {
-            MEM_freeN(nu->bezt);
-          }
+          MEM_SAFE_FREE(nu->bezt);
           BLI_freelinkN(&che->nurbsbase, nu);
         }
-        MEM_freeN(che);
+        MEM_SAFE_FREE(che);
       }
       BLI_ghash_free(vfont->data->glyphs, nullptr, nullptr);
     }
@@ -529,7 +523,8 @@ static void build_underline(Curve *cu,
 
 void BKE_vfont_build_char(Curve *cu,
                           ListBase *nubase,
-                          uint character,
+                          uint codepoint,
+                          uint glyphid,
                           CharInfo *info,
                           float ofsx,
                           float ofsy,
@@ -547,7 +542,7 @@ void BKE_vfont_build_char(Curve *cu,
   float si = sinf(rot);
   float co = cosf(rot);
 
-  VChar *che = find_vfont_char(vfd, character);
+  VChar *che = find_vfont_char(vfd, codepoint, glyphid);
 
   /* Select the glyph data */
   Nurb *nu1 = nullptr;
@@ -1719,7 +1714,7 @@ static bool vfont_to_curve(Object *ob,
       }
       /* We don't want to see any character for '\n'. */
       if (cha != '\n') {
-        BKE_vfont_build_char(cu, r_nubase, cha, info, ct->xof, ct->yof, ct->rot, i, font_size);
+        BKE_vfont_build_char(cu, r_nubase, cha, 0, info, ct->xof, ct->yof, ct->rot, i, font_size);
       }
 
       if ((info->flag & CU_CHINFO_UNDERLINE) && (cha != '\n')) {

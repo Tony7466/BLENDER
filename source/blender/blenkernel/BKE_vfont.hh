@@ -110,7 +110,8 @@ int BKE_vfont_cursor_to_text_index(Object *ob, float cursor_location[2]);
 bool BKE_vfont_to_curve(Object *ob, eEditFontMode mode);
 void BKE_vfont_build_char(Curve *cu,
                           ListBase *nubase,
-                          unsigned int character,
+                          uint codepoint,
+                          uint glyphid,
                           CharInfo *info,
                           float ofsx,
                           float ofsy,

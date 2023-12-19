@@ -1836,16 +1836,27 @@ static FT_GlyphSlot blf_glyphslot_ensure_outline(FontBLF *font, const uint charc
   return glyph;
 }
 
-float blf_character_to_curves(
-    FontBLF *font, uint codepoint, uint glyphid, ListBase *nurbsbase, const float scale)
+bool blf_character_to_curves(FontBLF *font,
+                              const float scale,
+                              GlyphData *rw_glyph_data,
+                              ListBase *nurbsbase)
+
 {
-  FT_GlyphSlot glyph = blf_glyphslot_ensure_outline(font, codepoint, glyphid);
+  FT_GlyphSlot glyph = blf_glyphslot_ensure_outline(
+      font, rw_glyph_data->codepoint, rw_glyph_data->glyphid);
   if (!glyph) {
-    return 0.0f;
+    return false;
   }
 
   blf_glyph_to_curves(glyph->outline, nurbsbase, scale);
-  return float(glyph->advance.x) * scale;
+
+  rw_glyph_data->glyphid = glyph->glyph_index;
+  rw_glyph_data->advance_x = float(glyph->advance.x) * scale;
+  rw_glyph_data->advance_y = float(glyph->advance.y) * scale;
+  rw_glyph_data->offset_x = 0.0f;
+  rw_glyph_data->offset_y = 0.0f;
+
+  return true;
 }
 
 /** \} */

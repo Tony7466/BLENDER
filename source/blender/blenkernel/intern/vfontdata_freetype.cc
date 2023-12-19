@@ -108,20 +108,24 @@ VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong codepoint, ulong
   /* need to set a size for embolden, etc. */
   BLF_size(font_id, 16);
 
-  che->advance_x = BLF_character_to_curves(
-      font_id, codepoint, glyphid, &che->nurbsbase, vfont->data->scale);
+  GlyphData glyph_data;
+  glyph_data.codepoint = codepoint;
+  glyph_data.glyphid = glyphid;
 
-  che->codepoint = codepoint;
-  che->glyphid = glyphid;
-  che->advance_y = 0;
-  che->offset_x = 0;
-  che->offset_y = 0;
+  if (BLF_character_to_curves(font_id, vfont->data->scale, &glyph_data, &che->nurbsbase)) {
+    che->codepoint = glyph_data.codepoint;
+    che->glyphid = glyph_data.glyphid;
+    che->advance_x = glyph_data.advance_x;
+    che->advance_y = glyph_data.advance_y;
+    che->offset_x = glyph_data.offset_x;
+    che->offset_y = glyph_data.offset_y;
 
-  if (glyphid) {
-    BLI_ghash_insert(vfont->data->glyphs, POINTER_FROM_UINT(che->glyphid), che);
-  }
-  else {
-    BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(che->codepoint), che);
+    if (codepoint) {
+      BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(che->codepoint), che);
+    }
+    else if (che->glyphid) {
+      BLI_ghash_insert(vfont->data->glyphs, POINTER_FROM_UINT(che->glyphid), che);
+    }
   }
 
   BLF_unload_id(font_id);
