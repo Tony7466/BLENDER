@@ -833,15 +833,6 @@ class NodeTreeMainUpdater {
     default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
   }
 
-  void clear_enum_reference(bNodeTreeInterfaceSocket &iosocket)
-  {
-    BLI_assert(STREQ(iosocket.socket_type, "NodeSocketMenu"));
-    bNodeSocketValueMenu &default_value = *static_cast<bNodeSocketValueMenu *>(
-        iosocket.socket_data);
-    this->reset_enum_ptr(default_value);
-    default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
-  }
-
   void update_socket_enum_definition(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu &src)
   {
     if (dst.has_conflict()) {
@@ -866,52 +857,6 @@ class NodeTreeMainUpdater {
     }
   }
 
-  /* Propagate enum definition from a list of connected sockets. */
-  void propagate_enum_definition_to_socket(bNodeSocket &dst,
-                                           const bNodeSocket &src,
-                                           Set<int32_t> &changed_sockets)
-  {
-    BLI_assert(dst.is_available() && dst.type == SOCK_MENU);
-    BLI_assert(src.is_available() && src.type == SOCK_MENU);
-    if (changed_sockets.add(dst.index_in_tree())) {
-      /* Clear existing enum pointer when first updating the socket. */
-      this->clear_enum_reference(dst);
-    }
-    this->update_socket_enum_definition(*dst.default_value_typed<bNodeSocketValueMenu>(),
-                                        *src.default_value_typed<bNodeSocketValueMenu>());
-  }
-
-  /* Propagate enum definition from a matching node group interface. */
-  void propagate_enum_definition_to_socket(bNodeSocket &dst,
-                                           const bNodeTreeInterfaceSocket &src,
-                                           Set<int32_t> &changed_sockets)
-  {
-    BLI_assert(dst.is_available() && dst.type == SOCK_MENU);
-    BLI_assert(STREQ(src.socket_type, "NodeSocketMenu"));
-    if (changed_sockets.add(dst.index_in_tree())) {
-      /* Clear existing enum pointer when first updating the socket. */
-      this->clear_enum_reference(dst);
-    }
-    this->update_socket_enum_definition(*dst.default_value_typed<bNodeSocketValueMenu>(),
-                                        *static_cast<bNodeSocketValueMenu *>(src.socket_data));
-  }
-
-  /* Propagate enum definition to the node group interface. */
-  void propagate_enum_definition_to_interface(bNodeTreeInterfaceSocket &dst,
-                                              const bNodeSocket &src,
-                                              bool &changed_interface_socket)
-  {
-    BLI_assert(STREQ(dst.socket_type, "NodeSocketMenu"));
-    BLI_assert(src.is_available() && src.type == SOCK_MENU);
-    if (!changed_interface_socket) {
-      /* Clear existing enum pointer when first updating the socket. */
-      this->clear_enum_reference(dst);
-    }
-    this->update_socket_enum_definition(*static_cast<bNodeSocketValueMenu *>(dst.socket_data),
-                                        *src.default_value_typed<bNodeSocketValueMenu>());
-    changed_interface_socket = true;
-  }
-
   /**
    * Make a runtime copy of the DNA enum items.
    * The runtime items list is shared by sockets.
@@ -933,22 +878,44 @@ class NodeTreeMainUpdater {
 
   bool propagate_enum_definitions(bNodeTree &ntree)
   {
+    std::cout << "UPDATE TREE " << ntree.id.name << std::endl;
     ntree.ensure_interface_cache();
 
-    /* Set of sockets that have been touched by enum changes. */
-    Set<int32_t> changed_sockets;
-    /* Change flag for each interface socket. */
-    Vector<bool> changed_interface_sockets(ntree.interface_inputs().size(), false);
-
     /* Propagation from right to left to determine which enum
-     * definition to use for enum sockets. */
+     * definition to use for menu sockets. */
     for (bNode *node : ntree.toposort_right_to_left()) {
-      if (!this->should_update_individual_node(ntree, *node)) {
-        continue;
+      const bool node_updated = this->should_update_individual_node(ntree, *node);
+
+      /* Clear current enum references. */
+      for (bNodeSocket *socket : node->input_sockets()) {
+        if (socket->is_available() && socket->type == SOCK_MENU) {
+          clear_enum_reference(*socket);
+        }
+      }
+      for (bNodeSocket *socket : node->output_sockets()) {
+        if (socket->is_available() && socket->type == SOCK_MENU) {
+          clear_enum_reference(*socket);
+        }
       }
 
-      /* Enum definition source nodes. */
+      /* Propagate enum references from output links. */
+      for (bNodeSocket *output : node->output_sockets()) {
+        if (output->is_available() && output->type == SOCK_MENU) {
+          for (const bNodeSocket *input : output->directly_linked_sockets()) {
+            this->update_socket_enum_definition(
+                *output->default_value_typed<bNodeSocketValueMenu>(),
+                *input->default_value_typed<bNodeSocketValueMenu>());
+            std::cout << "PROPAGATE " << node->name << ":" << output->name
+                      << " <- -:" << input->name << std::endl;
+          }
+        }
+      }
+
       if (node->typeinfo->type == GEO_NODE_MENU_SWITCH) {
+        /* Generate new enum items when the node has changed. */
+        if (!node_updated) {
+          continue;
+        }
         const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
         const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
             storage.enum_definition);
@@ -956,38 +923,9 @@ class NodeTreeMainUpdater {
         bNodeSocket &input = *node->input_sockets()[0];
         BLI_assert(input.is_available() && input.type == SOCK_MENU);
         this->set_enum_ptr(*input.default_value_typed<bNodeSocketValueMenu>(), enum_items);
-        changed_sockets.add_new(input.index_in_tree());
-        continue;
-      }
-
-      /* Propagate enum references from output links. */
-      for (bNodeSocket *output : node->output_sockets()) {
-        if (output->is_available() && output->type == SOCK_MENU) {
-          for (const bNodeSocket *input : output->directly_linked_sockets()) {
-            if (changed_sockets.contains(input->index_in_tree())) {
-              this->propagate_enum_definition_to_socket(*output, *input, changed_sockets);
-            }
-          }
-        }
-      }
-
-      if (node->is_group_input()) {
-        /* Propagate group input enum definitions to the interface. */
-        for (const int socket_i : ntree.interface_inputs().index_range()) {
-          bNodeTreeInterfaceSocket &iosocket = *ntree.interface_inputs()[socket_i];
-          const bNodeSocket &output = *node->output_sockets()[socket_i];
-          BLI_assert(STREQ(iosocket.identifier, output.identifier));
-
-          if (output.is_available() && output.type == SOCK_MENU) {
-            if (changed_sockets.contains(output.index_in_tree())) {
-              this->propagate_enum_definition_to_interface(
-                  iosocket, output, changed_interface_sockets[socket_i]);
-            }
-          }
-        }
       }
       else if (node->is_group()) {
-        /* Node groups also expose internal enum definitions. */
+        /* Node groups expose internal enum definitions. */
         if (node->id == nullptr) {
           continue;
         }
@@ -999,7 +937,10 @@ class NodeTreeMainUpdater {
           const bNodeTreeInterfaceSocket &iosocket = *group_tree->interface_inputs()[socket_i];
           BLI_assert(STREQ(input.identifier, iosocket.identifier));
           if (input.is_available() && input.type == SOCK_MENU) {
-            this->propagate_enum_definition_to_socket(input, iosocket, changed_sockets);
+            BLI_assert(STREQ(iosocket.socket_type, "NodeSocketMenu"));
+            this->update_socket_enum_definition(
+                *input.default_value_typed<bNodeSocketValueMenu>(),
+                *static_cast<bNodeSocketValueMenu *>(iosocket.socket_data));
           }
         }
       }
@@ -1011,16 +952,49 @@ class NodeTreeMainUpdater {
         for (bNodeSocket *input : node->input_sockets()) {
           if (input->is_available() && input->type == SOCK_MENU) {
             for (const bNodeSocket *output : node->output_sockets()) {
-              if (changed_sockets.contains(output->index_in_tree())) {
-                this->propagate_enum_definition_to_socket(*input, *output, changed_sockets);
-              }
+              this->update_socket_enum_definition(
+                  *input->default_value_typed<bNodeSocketValueMenu>(),
+                  *output->default_value_typed<bNodeSocketValueMenu>());
             }
           }
         }
       }
     }
 
-    return changed_interface_sockets.contains(true);
+    /* Build list of new enum items for the node tree interface. */
+    Vector<bNodeSocketValueMenu> interface_enum_items(ntree.interface_inputs().size(), {0});
+    for (const bNode *group_input_node : ntree.group_input_nodes()) {
+      for (const int socket_i : ntree.interface_inputs().index_range()) {
+        const bNodeSocket &output = *group_input_node->output_sockets()[socket_i];
+
+        if (output.is_available() && output.type == SOCK_MENU) {
+          this->update_socket_enum_definition(interface_enum_items[socket_i],
+                                              *output.default_value_typed<bNodeSocketValueMenu>());
+        }
+      }
+    }
+
+    /* Move enum items to the interface and detect if anything changed. */
+    bool changed = false;
+    for (const int socket_i : ntree.interface_inputs().index_range()) {
+      bNodeTreeInterfaceSocket &iosocket = *ntree.interface_inputs()[socket_i];
+      if (STREQ(iosocket.socket_type, "NodeSocketMenu")) {
+        bNodeSocketValueMenu &dst = *static_cast<bNodeSocketValueMenu *>(iosocket.socket_data);
+        const bNodeSocketValueMenu &src = interface_enum_items[socket_i];
+        if (dst.enum_items != src.enum_items || dst.has_conflict() != src.has_conflict()) {
+          changed = true;
+          if (dst.enum_items) {
+            dst.enum_items->remove_user_and_delete_if_last();
+          }
+          /* Items are moved, no need to change user count. */
+          dst.enum_items = src.enum_items;
+          SET_FLAG_FROM_TEST(dst.flag, src.has_conflict(), NODE_MENU_ITEMS_CONFLICT);
+        }
+      }
+    }
+
+    std::cout << "TREE CHANGED? " << (changed ? "true" : "false") << std::endl;
+    return changed;
   }
 
   void update_link_validation(bNodeTree &ntree)
@@ -1073,8 +1047,8 @@ class NodeTreeMainUpdater {
   {
     tree.ensure_topology_cache();
 
-    /* Compute a hash that represents the node topology connected to the output. This always has to
-     * be updated even if it is not used to detect changes right now. Otherwise
+    /* Compute a hash that represents the node topology connected to the output. This always has
+     * to be updated even if it is not used to detect changes right now. Otherwise
      * #btree.runtime.output_topology_hash will go out of date. */
     const Vector<const bNodeSocket *> tree_output_sockets = this->find_output_sockets(tree);
     const uint32_t old_topology_hash = tree.runtime->output_topology_hash;
@@ -1088,8 +1062,8 @@ class NodeTreeMainUpdater {
        * be used without causing updates all the time currently. In the future we could try to
        * handle other drivers better as well.
        * Note that this optimization only works in practice when the depsgraph didn't also get a
-       * copy-on-write tag for the node tree (which happens when changing node properties). It does
-       * work in a few situations like adding reroutes and duplicating nodes though. */
+       * copy-on-write tag for the node tree (which happens when changing node properties). It
+       * does work in a few situations like adding reroutes and duplicating nodes though. */
       LISTBASE_FOREACH (const FCurve *, fcurve, &adt->drivers) {
         const ChannelDriver *driver = fcurve->driver;
         const StringRef expression = driver->expression;
@@ -1112,7 +1086,8 @@ class NodeTreeMainUpdater {
       return true;
     }
 
-    /* The topology hash can only be used when only topology-changing operations have been done. */
+    /* The topology hash can only be used when only topology-changing operations have been done.
+     */
     if (tree.runtime->changed_flag ==
         (tree.runtime->changed_flag & (NTREE_CHANGED_LINK | NTREE_CHANGED_REMOVED_NODE)))
     {
@@ -1165,15 +1140,15 @@ class NodeTreeMainUpdater {
   }
 
   /**
-   * Computes a hash that changes when the node tree topology connected to an output node changes.
-   * Adding reroutes does not have an effect on the hash.
+   * Computes a hash that changes when the node tree topology connected to an output node
+   * changes. Adding reroutes does not have an effect on the hash.
    */
   uint32_t get_combined_socket_topology_hash(const bNodeTree &tree,
                                              Span<const bNodeSocket *> sockets)
   {
     if (tree.has_available_link_cycle()) {
-      /* Return dummy value when the link has any cycles. The algorithm below could be improved to
-       * handle cycles more gracefully. */
+      /* Return dummy value when the link has any cycles. The algorithm below could be improved
+       * to handle cycles more gracefully. */
       return 0;
     }
     Array<uint32_t> hashes = this->get_socket_topology_hashes(tree, sockets);
@@ -1357,8 +1332,8 @@ class NodeTreeMainUpdater {
             }
           }
         }
-        /* The Normal node has a special case, because the value stored in the first output socket
-         * is used as input in the node. */
+        /* The Normal node has a special case, because the value stored in the first output
+         * socket is used as input in the node. */
         if (node.type == SH_NODE_NORMAL && socket.index() == 1) {
           BLI_assert(STREQ(socket.name, "Dot"));
           const bNodeSocket &normal_output = node.output_socket(0);
