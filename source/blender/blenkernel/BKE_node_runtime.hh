@@ -309,6 +309,12 @@ class bNodeRuntime : NonCopyable, NonMovable {
   /** Used to avoid running forward compatibility code more often than necessary. */
   bool forward_compatible_versioning_done = false;
 
+  /**
+   * For gizmo nodes that indicates that the value input is connected to the same value more than
+   * once, which is not allowed.
+   */
+  bool has_duplicate_gizmo_target = false;
+
   /** Only valid if #topology_cache_is_dirty is false. */
   Vector<bNodeSocket *> inputs;
   Vector<bNodeSocket *> outputs;

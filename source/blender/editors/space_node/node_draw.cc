@@ -2678,6 +2678,16 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
     }
   }
 
+  if (ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL)) {
+    if (node.runtime->has_duplicate_gizmo_target) {
+      NodeExtraInfoRow row;
+      row.text = TIP_("Duplicate value");
+      row.tooltip = TIP_("One value can not be controlled by the gizmo multiple times");
+      row.icon = ICON_ERROR;
+      rows.append(std::move(row));
+    }
+  }
+
   return rows;
 }
 

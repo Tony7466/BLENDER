@@ -213,19 +213,33 @@ static void propagate_gizmos_from_builtin_nodes(GizmoPropagationResult &result,
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
       const bNodeSocket &gizmo_value_input = gizmo_node->input_socket(0);
       gizmo_value_input.runtime->has_gizmo = true;
+      Vector<GizmoTarget> gizmo_targets;
+      bool found_duplicate_targets = false;
       for (const bNodeLink *link : gizmo_value_input.directly_linked_links()) {
         if (!is_valid_gizmo_link(*link)) {
           continue;
         }
         LocalPropagationPath propagation_path;
-        if (const std::optional<GizmoTarget> gizmo_target = find_local_gizmo_target(
+        if (std::optional<GizmoTarget> gizmo_target = find_local_gizmo_target(
                 *link->fromsock, ValueElem{}, propagation_path))
         {
-          add_propagated_gizmo(
-              result, InputSocketRef{&gizmo_value_input, ValueElem{}}, *gizmo_target);
+          for (const GizmoTarget &other_target : gizmo_targets) {
+            if (other_target == *gizmo_target) {
+              found_duplicate_targets = true;
+              break;
+            }
+          }
+          gizmo_targets.append(std::move(*gizmo_target));
         }
       }
-      result.nodes_with_gizmos_inside.append(gizmo_node);
+      gizmo_node->runtime->has_duplicate_gizmo_target = found_duplicate_targets;
+      if (!found_duplicate_targets) {
+        for (const GizmoTarget &gizmo_target : gizmo_targets) {
+          add_propagated_gizmo(
+              result, InputSocketRef{&gizmo_value_input, ValueElem{}}, gizmo_target);
+        }
+        result.nodes_with_gizmos_inside.append(gizmo_node);
+      }
     }
   }
 }

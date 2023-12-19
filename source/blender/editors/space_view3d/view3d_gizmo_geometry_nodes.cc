@@ -67,6 +67,12 @@ struct FloatTargetProperty {
   PropertyRNA *property;
   std::optional<int> index;
 
+  friend bool operator==(const FloatTargetProperty &a, const FloatTargetProperty &b)
+  {
+    return a.owner.owner_id == b.owner.owner_id && a.owner.data == b.owner.data &&
+           a.owner.type == b.owner.type && a.property == b.property && a.index == b.index;
+  }
+
   float get()
   {
     const PropertyType prop_type = RNA_property_type(this->property);
