@@ -963,7 +963,7 @@ static void vnormal(PROCESS *process, const float point[3], float r_no[3])
   r_no[1] = metaball(process, point[0], point[1] + delta, point[2]) - f;
   r_no[2] = metaball(process, point[0], point[1], point[2] + delta) - f;
 }
-#endif /* USE_ACCUM_NORMAL */
+#endif /* !USE_ACCUM_NORMAL */
 
 /**
  * \return the id of vertex between two corners.
@@ -1488,7 +1488,7 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   }
   MEM_freeN(process.indices);
 
-  for (int i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->verts_num; i++) {
     normalize_v3(process.no[i]);
   }
   blender::bke::mesh_vert_normals_assign(*mesh, std::move(process.no));

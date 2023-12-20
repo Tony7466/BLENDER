@@ -25,8 +25,8 @@
 
 #include "BIF_glutil.hh"
 
-#include "BKE_blendfile.h"
-#include "BKE_context.h"
+#include "BKE_blendfile.hh"
+#include "BKE_context.hh"
 #include "BKE_report.h"
 
 #include "BLT_translation.h"
@@ -743,7 +743,8 @@ static void draw_columnheader_columns(const FileSelectParams *params,
   int sx = v2d->cur.xmin, sy = v2d->cur.ymax;
 
   for (int column_type = 0; column_type < ATTRIBUTE_COLUMN_MAX; column_type++) {
-    if (!file_attribute_column_type_enabled(params, FileAttributeColumnType(column_type))) {
+    if (!file_attribute_column_type_enabled(params, FileAttributeColumnType(column_type), layout))
+    {
       continue;
     }
     const FileAttributeColumn *column = &layout->attribute_columns[column_type];
@@ -806,22 +807,24 @@ static void draw_columnheader_columns(const FileSelectParams *params,
 static const char *filelist_get_details_column_string(
     FileAttributeColumnType column,
     /* Generated string will be cached in the file, so non-const. */
-    FileDirEntry *file)
+    FileDirEntry *file,
+    const bool compact,
+    const bool update_stat_strings)
 {
   switch (column) {
     case COLUMN_DATETIME:
       if (!(file->typeflag & FILE_TYPE_BLENDERLIB) && !FILENAME_IS_CURRPAR(file->relpath)) {
-        if (file->draw_data.datetime_str[0] == '\0') {
+        if (file->draw_data.datetime_str[0] == '\0' || update_stat_strings) {
           char date[FILELIST_DIRENTRY_DATE_LEN], time[FILELIST_DIRENTRY_TIME_LEN];
           bool is_today, is_yesterday;
 
           BLI_filelist_entry_datetime_to_string(
-              nullptr, file->time, false, time, date, &is_today, &is_yesterday);
+              nullptr, file->time, compact, time, date, &is_today, &is_yesterday);
 
-          if (is_today || is_yesterday) {
+          if (!compact && (is_today || is_yesterday)) {
             STRNCPY(date, is_today ? IFACE_("Today") : IFACE_("Yesterday"));
           }
-          SNPRINTF(file->draw_data.datetime_str, "%s %s", date, time);
+          SNPRINTF(file->draw_data.datetime_str, compact ? "%s" : "%s %s", date, time);
         }
 
         return file->draw_data.datetime_str;
@@ -831,8 +834,9 @@ static const char *filelist_get_details_column_string(
       if ((file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) ||
           !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB)))
       {
-        if (file->draw_data.size_str[0] == '\0') {
-          BLI_filelist_entry_size_to_string(nullptr, file->size, false, file->draw_data.size_str);
+        if (file->draw_data.size_str[0] == '\0' || update_stat_strings) {
+          BLI_filelist_entry_size_to_string(
+              nullptr, file->size, compact, file->draw_data.size_str);
         }
 
         return file->draw_data.size_str;
@@ -851,6 +855,8 @@ static void draw_details_columns(const FileSelectParams *params,
                                  const rcti *tile_draw_rect,
                                  const uchar text_col[4])
 {
+  const bool compact = FILE_LAYOUT_COMPACT(layout);
+  const bool update_stat_strings = layout->width != layout->curr_size;
   int sx = tile_draw_rect->xmin - layout->tile_border_x - (UI_UNIT_X * 0.1f);
 
   for (int column_type = 0; column_type < ATTRIBUTE_COLUMN_MAX; column_type++) {
@@ -861,12 +867,13 @@ static void draw_details_columns(const FileSelectParams *params,
       sx += column->width;
       continue;
     }
-    if (!file_attribute_column_type_enabled(params, FileAttributeColumnType(column_type))) {
+    if (!file_attribute_column_type_enabled(params, FileAttributeColumnType(column_type), layout))
+    {
       continue;
     }
 
-    const char *str = filelist_get_details_column_string(FileAttributeColumnType(column_type),
-                                                         file);
+    const char *str = filelist_get_details_column_string(
+        FileAttributeColumnType(column_type), file, compact, update_stat_strings);
 
     if (str) {
       file_draw_string(sx + ATTRIBUTE_COLUMN_PADDING,
@@ -1159,6 +1166,29 @@ void file_draw_list(const bContext *C, ARegion *region)
     }
   }
 
+  if (numfiles == 0) {
+    const rcti tile_draw_rect = tile_draw_rect_get(
+        v2d, layout, eFileDisplayType(params->display), 0, 0);
+    const uiStyle *style = UI_style_get();
+
+    const bool is_filtered = params->filter_search[0] != '\0';
+
+    uchar text_col[4];
+    UI_GetThemeColor4ubv(TH_TEXT, text_col);
+    if (!is_filtered) {
+      text_col[3] /= 2;
+    }
+
+    const char *message = is_filtered ? IFACE_("No results match the search filter") :
+                                        IFACE_("No items");
+
+    UI_fontstyle_draw_simple(&style->widget,
+                             tile_draw_rect.xmin + UI_UNIT_X,
+                             tile_draw_rect.ymax - UI_UNIT_Y,
+                             message,
+                             text_col);
+  }
+
   BLF_batch_draw_end();
 
   UI_block_end(C, block);
@@ -1170,7 +1200,10 @@ void file_draw_list(const bContext *C, ARegion *region)
     draw_columnheader_columns(params, layout, v2d, text_col);
   }
 
-  layout->curr_size = params->thumbnail_size;
+  if (numfiles != -1) {
+    /* Only save current size if there is something to show. */
+    layout->curr_size = layout->width;
+  }
 }
 
 static void file_draw_invalid_asset_library_hint(const bContext *C,

@@ -10,7 +10,7 @@
 #include <pxr/usdImaging/usdVolImaging/tokens.h>
 
 #include "BKE_material.h"
-#include "BKE_volume.h"
+#include "BKE_volume.hh"
 #include "BLI_index_range.hh"
 #include "DNA_volume_types.h"
 
@@ -41,8 +41,8 @@ void VolumeData::init()
     const int num_grids = BKE_volume_num_grids(volume);
     if (num_grids) {
       for (const int i : IndexRange(num_grids)) {
-        const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, i);
-        const std::string grid_name = BKE_volume_grid_name(grid);
+        const bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
+        const std::string grid_name = bke::volume_grid::get_name(*grid);
 
         field_descriptors_.emplace_back(pxr::TfToken(grid_name),
                                         pxr::UsdVolImagingTokens->openvdbAsset,
