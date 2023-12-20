@@ -5,6 +5,8 @@
 
 #include "usd.h"
 
+#include "WM_types.hh"
+
 #include "BLI_map.hh"
 
 #include <pxr/usd/usdShade/material.h>
@@ -86,6 +88,12 @@ class USDMaterialReader {
 
   Material *add_material(const pxr::UsdShadeMaterial &usd_material) const;
 
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return params_.worker_status ? params_.worker_status->reports : nullptr;
+  }
+
  protected:
   /** Create the Principled BSDF shader node network. */
   void import_usd_preview(Material *mtl, const pxr::UsdShadeShader &usd_shader) const;
@@ -100,7 +108,8 @@ class USDMaterialReader {
                       const char *dest_socket_name,
                       bNodeTree *ntree,
                       int column,
-                      NodePlacementContext *r_ctx) const;
+                      NodePlacementContext *r_ctx,
+                      bool is_color_corrected) const;
 
   /**
    * Follow the connected source of the USD input to create corresponding inputs
@@ -111,7 +120,8 @@ class USDMaterialReader {
                          const char *dest_socket_name,
                          bNodeTree *ntree,
                          int column,
-                         NodePlacementContext *r_ctx) const;
+                         NodePlacementContext *r_ctx,
+                         bool is_color_corrected = false) const;
 
   void convert_usd_uv_texture(const pxr::UsdShadeShader &usd_shader,
                               const pxr::TfToken &usd_source_name,
@@ -119,13 +129,23 @@ class USDMaterialReader {
                               const char *dest_socket_name,
                               bNodeTree *ntree,
                               int column,
-                              NodePlacementContext *r_ctx) const;
+                              NodePlacementContext *r_ctx,
+                              bool is_color_corrected = false) const;
+
+  void convert_usd_transform_2d(const pxr::UsdShadeShader &usd_shader,
+                                bNode *dest_node,
+                                const char *dest_socket_name,
+                                bNodeTree *ntree,
+                                int column,
+                                NodePlacementContext *r_ctx) const;
 
   /**
    * Load the texture image node's texture from the path given by the USD shader's
    * file input value.
    */
-  void load_tex_image(const pxr::UsdShadeShader &usd_shader, bNode *tex_image) const;
+  void load_tex_image(const pxr::UsdShadeShader &usd_shader,
+                      bNode *tex_image,
+                      bool is_color_corrected = false) const;
 
   /**
    * This function creates a Blender UV Map node, under the simplifying assumption that

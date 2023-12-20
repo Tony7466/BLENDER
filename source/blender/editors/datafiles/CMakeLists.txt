@@ -319,9 +319,6 @@ set(ICON_NAMES
   curve_ncurve
   curve_ncircle
   curve_path
-  lightprobe_cubemap
-  lightprobe_planar
-  lightprobe_grid
   mod_dash
   color_red
   color_green
@@ -345,6 +342,10 @@ set(ICON_NAMES
   force_fluidflow
   rigid_body
   rigid_body_constraint
+  area_join
+  area_swap
+  split_horizontal
+  split_vertical
   image_plane
   image_background
   image_reference
@@ -905,6 +906,7 @@ if(WITH_BLENDER)
     # Blend files.
     data_to_c_simple(../../../../release/datafiles/preview.blend SRC)
     data_to_c_simple(../../../../release/datafiles/preview_grease_pencil.blend SRC)
+    data_to_c_simple(../../../../release/datafiles/preview_grease_pencil_legacy.blend SRC)
 
     # Images.
     data_to_c_simple(../../../../release/datafiles/splash.png SRC)

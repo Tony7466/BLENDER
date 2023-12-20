@@ -54,12 +54,25 @@ typedef struct IDPropertyUIData {
   char _pad[4];
 } IDPropertyUIData;
 
+/* DNA version of #EnumPropertyItem. */
+typedef struct IDPropertyUIDataEnumItem {
+  /* Unique identifier, used for string lookup. */
+  char *identifier;
+  /* UI name of the item. */
+  char *name;
+  /* Optional description. */
+  char *description;
+  /* Unique integer value, should never change. */
+  int value;
+  /* Optional icon. */
+  int icon;
+} IDPropertyUIDataEnumItem;
+
 /* IDP_UI_DATA_TYPE_INT */
 typedef struct IDPropertyUIDataInt {
   IDPropertyUIData base;
   int *default_array; /* Only for array properties. */
   int default_array_len;
-  char _pad[4];
 
   int min;
   int max;
@@ -67,6 +80,9 @@ typedef struct IDPropertyUIDataInt {
   int soft_max;
   int step;
   int default_value;
+
+  int enum_items_num;
+  IDPropertyUIDataEnumItem *enum_items;
 } IDPropertyUIDataInt;
 
 /** For #IDP_UI_DATA_TYPE_BOOLEAN Use `int8_t` because DNA does not support `bool`. */
@@ -933,7 +949,7 @@ enum {
   LIB_TAG_TEMP_MAIN = 1 << 20,
   /** General ID management info, for freeing or copying behavior e.g. */
   /**
-   * ID is not listed/stored in Main database.
+   * ID is not listed/stored in any #Main database.
    *
    * RESET_NEVER
    */

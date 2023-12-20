@@ -17,9 +17,9 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 using Alembic::AbcGeom::kWrapExisting;
 using Alembic::AbcGeom::N3fArraySamplePtr;
@@ -136,7 +136,7 @@ Mesh *AbcPointsReader::read_mesh(Mesh *existing_mesh,
 
   Mesh *new_mesh = nullptr;
 
-  if (existing_mesh->totvert != positions->size()) {
+  if (existing_mesh->verts_num != positions->size()) {
     new_mesh = BKE_mesh_new_nomain(positions->size(), 0, 0, 0);
   }
 

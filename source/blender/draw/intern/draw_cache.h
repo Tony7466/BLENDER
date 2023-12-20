@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_volume_grid_fwd.hh"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,9 +22,9 @@ struct Object;
 struct PTCacheEdit;
 struct ParticleSystem;
 struct Volume;
-struct VolumeGrid;
 struct bGPDstroke;
 struct bGPdata;
+struct Scene;
 
 /**
  * Shape resolution level of detail.
@@ -71,7 +73,7 @@ struct GPUBatch **DRW_cache_object_surface_material_get(struct Object *ob,
                                                         struct GPUMaterial **gpumat_array,
                                                         uint gpumat_array_len);
 struct GPUBatch *DRW_cache_object_face_wireframe_get(struct Object *ob);
-int DRW_cache_object_material_count_get(struct Object *ob);
+int DRW_cache_object_material_count_get(const struct Object *ob);
 
 /**
  * Returns the vertbuf used by shaded surface batch.
@@ -250,7 +252,7 @@ typedef struct DRWVolumeGrid {
 } DRWVolumeGrid;
 
 DRWVolumeGrid *DRW_volume_batch_cache_get_grid(struct Volume *volume,
-                                               const struct VolumeGrid *grid);
+                                               const blender::bke::VolumeGridData *grid);
 struct GPUBatch *DRW_cache_volume_face_wireframe_get(struct Object *ob);
 struct GPUBatch *DRW_cache_volume_selection_surface_get(struct Object *ob);
 
@@ -267,7 +269,7 @@ struct GPUBatch *DRW_cache_gpencil_sbuffer_get(struct Object *ob, bool show_fill
 struct GPUVertBuf *DRW_cache_gpencil_sbuffer_position_buffer_get(struct Object *ob,
                                                                  bool show_fill);
 struct GPUVertBuf *DRW_cache_gpencil_sbuffer_color_buffer_get(struct Object *ob, bool show_fill);
-int DRW_gpencil_material_count_get(struct bGPdata *gpd);
+int DRW_gpencil_material_count_get(const struct bGPdata *gpd);
 
 struct GPUBatch *DRW_cache_gpencil_face_wireframe_get(struct Object *ob);
 
@@ -279,10 +281,15 @@ void DRW_cache_gpencil_sbuffer_clear(struct Object *ob);
 
 /* Grease Pencil */
 
-struct GPUBatch *DRW_cache_grease_pencil_get(struct Object *ob, int cfra);
-struct GPUBatch *DRW_cache_grease_pencil_edit_points_get(struct Object *ob, int cfra);
-struct GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(struct Object *ob, int cfra);
-struct GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(struct Object *ob, int cfra);
+struct GPUBatch *DRW_cache_grease_pencil_get(const struct Scene *scene, struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_points_get(const struct Scene *scene,
+                                                         struct Object *ob);
+struct GPUBatch *DRW_cache_grease_pencil_edit_lines_get(const struct Scene *scene,
+                                                        struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(const struct Scene *scene,
+                                                               struct Object *ob);
+struct GPUVertBuf *DRW_cache_grease_pencil_color_buffer_get(const struct Scene *scene,
+                                                            struct Object *ob);
 
 #ifdef __cplusplus
 }

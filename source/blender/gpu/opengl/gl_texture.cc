@@ -40,7 +40,7 @@ GLTexture::GLTexture(const char *name) : Texture(name)
 GLTexture::~GLTexture()
 {
   if (framebuffer_) {
-    GPU_framebuffer_free(framebuffer_);
+    GPU_framebuffer_free(wrap(framebuffer_));
   }
   GLContext *ctx = GLContext::get();
   if (ctx != nullptr && is_bound_) {
@@ -400,7 +400,7 @@ void GLTexture::clear(eGPUDataFormat data_format, const void *data)
     /* Fallback for older GL. */
     GPUFrameBuffer *prev_fb = GPU_framebuffer_active_get();
 
-    FrameBuffer *fb = reinterpret_cast<FrameBuffer *>(this->framebuffer_get());
+    FrameBuffer *fb = this->framebuffer_get();
     fb->bind(true);
     fb->clear_attachment(this->attachment_type(0), data_format, data);
 
@@ -418,22 +418,13 @@ void GLTexture::copy_to(Texture *dst_)
   BLI_assert((dst->w_ == src->w_) && (dst->h_ == src->h_) && (dst->d_ == src->d_));
   BLI_assert(dst->format_ == src->format_);
   BLI_assert(dst->type_ == src->type_);
-  /* TODO: support array / 3D textures. */
-  BLI_assert(dst->d_ == 0);
 
-  if (GLContext::copy_image_support) {
-    int mip = 0;
-    /* NOTE: mip_size_get() won't override any dimension that is equal to 0. */
-    int extent[3] = {1, 1, 1};
-    this->mip_size_get(mip, extent);
-    glCopyImageSubData(
-        src->tex_id_, target_, mip, 0, 0, 0, dst->tex_id_, target_, mip, 0, 0, 0, UNPACK3(extent));
-  }
-  else {
-    /* Fallback for older GL. */
-    GPU_framebuffer_blit(
-        src->framebuffer_get(), 0, dst->framebuffer_get(), 0, to_framebuffer_bits(format_));
-  }
+  int mip = 0;
+  /* NOTE: mip_size_get() won't override any dimension that is equal to 0. */
+  int extent[3] = {1, 1, 1};
+  this->mip_size_get(mip, extent);
+  glCopyImageSubData(
+      src->tex_id_, target_, mip, 0, 0, 0, dst->tex_id_, target_, mip, 0, 0, 0, UNPACK3(extent));
 
   has_pixels_ = true;
 }
@@ -528,16 +519,14 @@ void GLTexture::mip_range_set(int min, int max)
   }
 }
 
-GPUFrameBuffer *GLTexture::framebuffer_get()
+FrameBuffer *GLTexture::framebuffer_get()
 {
   if (framebuffer_) {
     return framebuffer_;
   }
-  BLI_assert(!(type_ & (GPU_TEXTURE_ARRAY | GPU_TEXTURE_CUBE | GPU_TEXTURE_1D | GPU_TEXTURE_3D)));
-  /* TODO(fclem): cleanup this. Don't use GPU object but blender::gpu ones. */
-  GPUTexture *gputex = reinterpret_cast<GPUTexture *>(static_cast<Texture *>(this));
-  framebuffer_ = GPU_framebuffer_create(name_);
-  GPU_framebuffer_texture_attach(framebuffer_, gputex, 0, 0);
+  BLI_assert(!(type_ & GPU_TEXTURE_1D));
+  framebuffer_ = unwrap(GPU_framebuffer_create(name_));
+  framebuffer_->attachment_set(this->attachment_type(0), GPU_ATTACHMENT_TEXTURE(wrap(this)));
   has_pixels_ = true;
   return framebuffer_;
 }

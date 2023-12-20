@@ -63,6 +63,7 @@
 
 #ifdef WITH_FFMPEG
 #  include "BKE_global.h" /* ENDIAN_ORDER */
+#  include "BKE_writeffmpeg.hh"
 
 extern "C" {
 #  include <libavcodec/avcodec.h>
@@ -558,10 +559,20 @@ static int startffmpeg(anim *anim)
       }
     }
   }
-  /* Fall back to manually estimating the video stream duration.
-   * This is because the video stream duration can be shorter than the pFormatCtx->duration.
-   */
-  if (anim->duration_in_frames == 0) {
+
+  if (anim->duration_in_frames != 0) {
+    /* Pass (already valid). */
+  }
+  else if (pFormatCtx->duration == AV_NOPTS_VALUE) {
+    /* The duration has not been set, happens for single JPEG2000 images.
+     * NOTE: Leave the duration zeroed, although it could set to 1 so the file is recognized
+     * as a movie with 1 frame, leave as-is since image loading code-paths are preferred
+     * in this case. */
+  }
+  else {
+    /* Fall back to manually estimating the video stream duration.
+     * This is because the video stream duration can be shorter than the `pFormatCtx->duration`. */
+    BLI_assert(anim->duration_in_frames == 0);
     double stream_dur;
 
     if (video_stream->duration != AV_NOPTS_VALUE) {
@@ -629,7 +640,6 @@ static int startffmpeg(anim *anim)
   anim->framesize = anim->x * anim->y * 4;
 
   anim->cur_position = 0;
-  anim->cur_frame_final = nullptr;
   anim->cur_pts = -1;
   anim->cur_key_frame_pts = -1;
   anim->cur_packet = av_packet_alloc();
@@ -685,16 +695,12 @@ static int startffmpeg(anim *anim)
         1);
   }
 
-  anim->img_convert_ctx = sws_getContext(anim->x,
-                                         anim->y,
-                                         anim->pCodecCtx->pix_fmt,
-                                         anim->x,
-                                         anim->y,
-                                         AV_PIX_FMT_RGBA,
-                                         SWS_BILINEAR | SWS_PRINT_INFO | SWS_FULL_CHR_H_INT,
-                                         nullptr,
-                                         nullptr,
-                                         nullptr);
+  anim->img_convert_ctx = BKE_ffmpeg_sws_get_context(anim->x,
+                                                     anim->y,
+                                                     anim->pCodecCtx->pix_fmt,
+                                                     AV_PIX_FMT_RGBA,
+                                                     SWS_BILINEAR | SWS_PRINT_INFO |
+                                                         SWS_FULL_CHR_H_INT);
 
   if (!anim->img_convert_ctx) {
     fprintf(stderr, "Can't transform color space??? Bailing out...\n");
@@ -798,11 +804,10 @@ static AVFrame *ffmpeg_double_buffer_frame_fallback_get(anim *anim)
 /**
  * Postprocess the image in anim->pFrame and do color conversion and de-interlacing stuff.
  *
- * Output is `anim->cur_frame_final`.
+ * \param ibuf: The frame just read by `ffmpeg_fetchibuf`, processed in-place.
  */
-static void ffmpeg_postprocess(anim *anim, AVFrame *input)
+static void ffmpeg_postprocess(anim *anim, AVFrame *input, ImBuf *ibuf)
 {
-  ImBuf *ibuf = anim->cur_frame_final;
   int filter_y = 0;
 
   /* This means the data wasn't read properly,
@@ -838,32 +843,48 @@ static void ffmpeg_postprocess(anim *anim, AVFrame *input)
     }
   }
 
-  sws_scale(anim->img_convert_ctx,
-            (const uint8_t *const *)input->data,
-            input->linesize,
-            0,
-            anim->y,
-            anim->pFrameRGB->data,
-            anim->pFrameRGB->linesize);
+  /* If final destination image layout matches that of decoded RGB frame (including
+   * any line padding done by ffmpeg for SIMD alignment), we can directly
+   * decode into that, doing the vertical flip in the same step. Otherwise have
+   * to do a separate flip. */
+  const int ibuf_linesize = ibuf->x * 4;
+  const int rgb_linesize = anim->pFrameRGB->linesize[0];
+  bool scale_to_ibuf = (rgb_linesize == ibuf_linesize);
+  /* swscale on arm64 before ffmpeg 6.0 (libswscale major version 7)
+   * could not handle negative line sizes. That has been fixed in all major
+   * ffmpeg releases in early 2023, but easier to just check for "below 7". */
+#  if (defined(__aarch64__) || defined(_M_ARM64)) && (LIBSWSCALE_VERSION_MAJOR < 7)
+  scale_to_ibuf = false;
+#  endif
+  uint8_t *rgb_data = anim->pFrameRGB->data[0];
 
-  /* Copy the valid bytes from the aligned buffer vertically flipped into ImBuf */
-  int aligned_stride = anim->pFrameRGB->linesize[0];
-  const uint8_t *const src[4] = {
-      anim->pFrameRGB->data[0] + (anim->y - 1) * aligned_stride, nullptr, nullptr, nullptr};
-  /* NOTE: Negative linesize is used to copy and flip image at once with function
-   * `av_image_copy_to_buffer`. This could cause issues in future and image may need to be flipped
-   * explicitly. */
-  const int src_linesize[4] = {-anim->pFrameRGB->linesize[0], 0, 0, 0};
-  int dst_size = av_image_get_buffer_size(
-      AVPixelFormat(anim->pFrameRGB->format), anim->pFrameRGB->width, anim->pFrameRGB->height, 1);
-  av_image_copy_to_buffer((uint8_t *)ibuf->byte_buffer.data,
-                          dst_size,
-                          src,
-                          src_linesize,
-                          AV_PIX_FMT_RGBA,
-                          anim->x,
-                          anim->y,
-                          1);
+  if (scale_to_ibuf) {
+    /* Decode RGB and do vertical flip directly into destination image, by using negative
+     * line size. */
+    anim->pFrameRGB->linesize[0] = -ibuf_linesize;
+    anim->pFrameRGB->data[0] = ibuf->byte_buffer.data + (ibuf->y - 1) * ibuf_linesize;
+
+    BKE_ffmpeg_sws_scale_frame(anim->img_convert_ctx, anim->pFrameRGB, input);
+
+    anim->pFrameRGB->linesize[0] = rgb_linesize;
+    anim->pFrameRGB->data[0] = rgb_data;
+  }
+  else {
+    /* Decode, then do vertical flip into destination. */
+    BKE_ffmpeg_sws_scale_frame(anim->img_convert_ctx, anim->pFrameRGB, input);
+
+    /* Use negative line size to do vertical image flip. */
+    const int src_linesize[4] = {-rgb_linesize, 0, 0, 0};
+    const uint8_t *const src[4] = {
+        rgb_data + (anim->y - 1) * rgb_linesize, nullptr, nullptr, nullptr};
+    int dst_size = av_image_get_buffer_size(AVPixelFormat(anim->pFrameRGB->format),
+                                            anim->pFrameRGB->width,
+                                            anim->pFrameRGB->height,
+                                            1);
+    av_image_copy_to_buffer(
+        ibuf->byte_buffer.data, dst_size, src, src_linesize, AV_PIX_FMT_RGBA, anim->x, anim->y, 1);
+  }
+
   if (filter_y) {
     IMB_filtery(ibuf);
   }
@@ -1381,8 +1402,6 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
   anim->x = anim->pCodecCtx->width;
   anim->y = anim->pCodecCtx->height;
 
-  IMB_freeImBuf(anim->cur_frame_final);
-
   /* Certain versions of FFmpeg have a bug in libswscale which ends up in crash
    * when destination buffer is not properly aligned. For example, this happens
    * in FFmpeg 4.3.1. It got fixed later on, but for compatibility reasons is
@@ -1409,15 +1428,14 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
     planes = R_IMF_PLANES_RGB;
   }
 
-  anim->cur_frame_final = IMB_allocImBuf(anim->x, anim->y, planes, 0);
+  ImBuf *cur_frame_final = IMB_allocImBuf(anim->x, anim->y, planes, 0);
 
   /* Allocate the storage explicitly to ensure the memory is aligned. */
   uint8_t *buffer_data = static_cast<uint8_t *>(
       MEM_mallocN_aligned(size_t(4) * anim->x * anim->y, 32, "ffmpeg ibuf"));
-  IMB_assign_byte_buffer(anim->cur_frame_final, buffer_data, IB_TAKE_OWNERSHIP);
+  IMB_assign_byte_buffer(cur_frame_final, buffer_data, IB_TAKE_OWNERSHIP);
 
-  anim->cur_frame_final->byte_buffer.colorspace = colormanage_colorspace_get_named(
-      anim->colorspace);
+  cur_frame_final->byte_buffer.colorspace = colormanage_colorspace_get_named(anim->colorspace);
 
   AVFrame *final_frame = ffmpeg_frame_by_pts_get(anim, pts_to_search);
   if (final_frame == nullptr) {
@@ -1429,14 +1447,12 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
   /* Even with the fallback from above it is possible that the current decode frame is nullptr. In
    * this case skip post-processing and return current image buffer. */
   if (final_frame != nullptr) {
-    ffmpeg_postprocess(anim, final_frame);
+    ffmpeg_postprocess(anim, final_frame, cur_frame_final);
   }
 
   anim->cur_position = position;
 
-  IMB_refImBuf(anim->cur_frame_final);
-
-  return anim->cur_frame_final;
+  return cur_frame_final;
 }
 
 static void free_anim_ffmpeg(anim *anim)
@@ -1456,7 +1472,6 @@ static void free_anim_ffmpeg(anim *anim)
     av_frame_free(&anim->pFrameDeinterlaced);
 
     sws_freeContext(anim->img_convert_ctx);
-    IMB_freeImBuf(anim->cur_frame_final);
   }
   anim->duration_in_frames = 0;
 }
@@ -1647,33 +1662,33 @@ double IMD_anim_get_offset(anim *anim)
   return anim->start_offset;
 }
 
-bool IMB_anim_get_fps(anim *anim, short *frs_sec, float *frs_sec_base, bool no_av_base)
+bool IMB_anim_get_fps(const anim *anim, bool no_av_base, short *r_frs_sec, float *r_frs_sec_base)
 {
   double frs_sec_base_double;
   if (anim->frs_sec) {
     if (anim->frs_sec > SHRT_MAX) {
       /* We cannot store original rational in our short/float format,
        * we need to approximate it as best as we can... */
-      *frs_sec = SHRT_MAX;
+      *r_frs_sec = SHRT_MAX;
       frs_sec_base_double = anim->frs_sec_base * double(SHRT_MAX) / double(anim->frs_sec);
     }
     else {
-      *frs_sec = anim->frs_sec;
+      *r_frs_sec = anim->frs_sec;
       frs_sec_base_double = anim->frs_sec_base;
     }
 #ifdef WITH_FFMPEG
     if (no_av_base) {
-      *frs_sec_base = float(frs_sec_base_double / AV_TIME_BASE);
+      *r_frs_sec_base = float(frs_sec_base_double / AV_TIME_BASE);
     }
     else {
-      *frs_sec_base = float(frs_sec_base_double);
+      *r_frs_sec_base = float(frs_sec_base_double);
     }
 #else
     UNUSED_VARS(no_av_base);
-    *frs_sec_base = float(frs_sec_base_double);
+    *r_frs_sec_base = float(frs_sec_base_double);
 #endif
-    BLI_assert(*frs_sec > 0);
-    BLI_assert(*frs_sec_base > 0.0f);
+    BLI_assert(*r_frs_sec > 0);
+    BLI_assert(*r_frs_sec_base > 0.0f);
 
     return true;
   }

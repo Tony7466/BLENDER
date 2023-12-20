@@ -670,11 +670,11 @@ const EnumPropertyItem rna_enum_subdivision_boundary_smooth_items[] = {
 #  include "DNA_particle_types.h"
 
 #  include "BKE_cachefile.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_deform.h"
 #  include "BKE_mesh_runtime.hh"
-#  include "BKE_modifier.h"
-#  include "BKE_object.h"
+#  include "BKE_modifier.hh"
+#  include "BKE_object.hh"
 #  include "BKE_particle.h"
 
 #  include "BLI_sort_utils.h"
@@ -1070,15 +1070,15 @@ static void rna_MultiresModifier_level_range(
 static bool rna_MultiresModifier_external_get(PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-  return CustomData_external_test(&me->loop_data, CD_MDISPS);
+  return CustomData_external_test(&mesh->corner_data, CD_MDISPS);
 }
 
 static void rna_MultiresModifier_filepath_get(PointerRNA *ptr, char *value)
 {
   Object *ob = (Object *)ptr->owner_id;
-  CustomDataExternal *external = ((Mesh *)ob->data)->loop_data.external;
+  CustomDataExternal *external = ((Mesh *)ob->data)->corner_data.external;
 
   strcpy(value, (external) ? external->filepath : "");
 }
@@ -1086,7 +1086,7 @@ static void rna_MultiresModifier_filepath_get(PointerRNA *ptr, char *value)
 static void rna_MultiresModifier_filepath_set(PointerRNA *ptr, const char *value)
 {
   Object *ob = (Object *)ptr->owner_id;
-  CustomDataExternal *external = ((Mesh *)ob->data)->loop_data.external;
+  CustomDataExternal *external = ((Mesh *)ob->data)->corner_data.external;
 
   if (external && !STREQ(external->filepath, value)) {
     STRNCPY(external->filepath, value);
@@ -1097,7 +1097,7 @@ static void rna_MultiresModifier_filepath_set(PointerRNA *ptr, const char *value
 static int rna_MultiresModifier_filepath_length(PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  CustomDataExternal *external = ((Mesh *)ob->data)->loop_data.external;
+  CustomDataExternal *external = ((Mesh *)ob->data)->corner_data.external;
 
   return strlen((external) ? external->filepath : "");
 }
@@ -1359,14 +1359,14 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
         return item;
       }
 
-      num_data = CustomData_number_of_layers(&me_eval->loop_data, CD_PROP_FLOAT2);
+      num_data = CustomData_number_of_layers(&me_eval->corner_data, CD_PROP_FLOAT2);
 
       RNA_enum_item_add_separator(&item, &totitem);
 
       for (i = 0; i < num_data; i++) {
         tmp_item.value = i;
         tmp_item.identifier = tmp_item.name = CustomData_get_layer_name(
-            &me_eval->loop_data, CD_PROP_FLOAT2, i);
+            &me_eval->corner_data, CD_PROP_FLOAT2, i);
         RNA_enum_item_add(&item, &totitem, &tmp_item);
       }
     }
@@ -1400,7 +1400,7 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
         cdata = &mesh_eval->vert_data;
       }
       else {
-        cdata = &mesh_eval->loop_data;
+        cdata = &mesh_eval->corner_data;
       }
 
       eCustomDataType types[2] = {CD_PROP_COLOR, CD_PROP_BYTE_COLOR};
@@ -1476,19 +1476,19 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_dst_itemf(
 
       if (ob_dst && ob_dst->data) {
         Mesh *me_dst;
-        CustomData *loop_data;
+        CustomData *corner_data;
         int num_data, i;
 
         me_dst = static_cast<Mesh *>(ob_dst->data);
-        loop_data = &me_dst->loop_data;
-        num_data = CustomData_number_of_layers(loop_data, CD_PROP_FLOAT2);
+        corner_data = &me_dst->corner_data;
+        num_data = CustomData_number_of_layers(corner_data, CD_PROP_FLOAT2);
 
         RNA_enum_item_add_separator(&item, &totitem);
 
         for (i = 0; i < num_data; i++) {
           tmp_item.value = i;
           tmp_item.identifier = tmp_item.name = CustomData_get_layer_name(
-              loop_data, CD_PROP_FLOAT2, i);
+              corner_data, CD_PROP_FLOAT2, i);
           RNA_enum_item_add(&item, &totitem, &tmp_item);
         }
       }
@@ -1511,7 +1511,7 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_dst_itemf(
         Mesh *me_dst = static_cast<Mesh *>(ob_dst->data);
         CustomData *cdata = STREQ(RNA_property_identifier(prop), "layers_vcol_vert_select_dst") ?
                                 &me_dst->vert_data :
-                                &me_dst->loop_data;
+                                &me_dst->corner_data;
 
         int idx = 0;
         for (int i = 0; i < 2; i++) {
@@ -7061,6 +7061,12 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
 
 static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
 {
+  static EnumPropertyItem bake_mode_items[] = {
+      {NODES_MODIFIER_BAKE_MODE_ANIMATION, "ANIMATION", 0, "Animation", "Bake a frame range"},
+      {NODES_MODIFIER_BAKE_MODE_STILL, "STILL", 0, "Still", "Bake a single frame"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   StructRNA *srna;
   PropertyRNA *prop;
 
@@ -7090,6 +7096,11 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODES_MODIFIER_BAKE_CUSTOM_PATH);
   RNA_def_property_ui_text(
       prop, "Custom Path", "Specify a path where the baked data should be stored manually");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "bake_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, bake_mode_items);
+  RNA_def_property_ui_text(prop, "Bake Mode", "");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
@@ -7125,7 +7136,7 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, 0, "rna_NodesModifier_node_group_update");
 
-  prop = RNA_def_property(srna, "simulation_bake_directory", PROP_STRING, PROP_DIRPATH);
+  prop = RNA_def_property(srna, "bake_directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_ui_text(
       prop, "Simulation Bake Directory", "Location on disk where the bake data is stored");
   RNA_def_property_update(prop, 0, nullptr);

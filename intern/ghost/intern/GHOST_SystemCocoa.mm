@@ -338,14 +338,14 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar)
 
 #define FIRSTFILEBUFLG 512
 static bool g_hasFirstFile = false;
-static char g_firstFileBuf[512];
+static char g_firstFileBuf[FIRSTFILEBUFLG];
 
-// TODO: Need to investigate this.
-// Function called too early in creator.c to have g_hasFirstFile == true
+/* TODO: Need to investigate this.
+ * Function called too early in creator.c to have g_hasFirstFile == true */
 extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 {
   if (g_hasFirstFile) {
-    strncpy(buf, g_firstFileBuf, FIRSTFILEBUFLG - 1);
+    memcpy(buf, g_firstFileBuf, FIRSTFILEBUFLG);
     buf[FIRSTFILEBUFLG - 1] = '\0';
     return 1;
   }
@@ -376,6 +376,8 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 - (void)applicationWillBecomeActive:(NSNotification *)aNotification;
 - (void)toggleFullScreen:(NSNotification *)notification;
 - (void)windowWillClose:(NSNotification *)notification;
+
+- (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app;
 @end
 
 @implementation CocoaAppDelegate : NSObject
@@ -462,9 +464,24 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 // key window from here if the closing one is not in the orderedWindows. This
 // saves lack of key windows when closing "About", but does not interfere with
 // Blender's window manager when closing Blender's windows.
+//
+// NOTE: It also receives notifiers when menus are closed on macOS 14.
+// Presumably it considers menus to be windows.
 - (void)windowWillClose:(NSNotification *)notification
 {
   NSWindow *closing_window = (NSWindow *)[notification object];
+
+  if (![closing_window isKeyWindow]) {
+    /* If the window wasn't key then its either none of the windows are key or another window
+     * is a key. The former situation is a bit strange, but probably forcing a key window is not
+     * something desirable. The latter situation is when we definitely do not want to change the
+     * key window.
+     *
+     * Ignoring non-key windows also avoids the code which ensures ordering below from running
+     * when the notifier is received for menus on macOS 14. */
+    return;
+  }
+
   NSInteger index = [[NSApp orderedWindows] indexOfObject:closing_window];
   if (index != NSNotFound) {
     return;
@@ -493,6 +510,19 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
   }
 }
 
+/* Explicitly opt-in to the secure coding for the restorable state.
+ *
+ * This is something that only has affect on macOS 12+, and is implicitly
+ * enabled on macOS 14.
+ *
+ * For the details see
+ *   https://sector7.computest.nl/post/2022-08-process-injection-breaking-all-macos-security-layers-with-a-single-vulnerability/
+ */
+- (BOOL)applicationSupportsSecureRestorableState:(NSApplication *)app
+{
+  return YES;
+}
+
 @end
 
 #pragma mark initialization/finalization
@@ -519,7 +549,7 @@ GHOST_SystemCocoa::GHOST_SystemCocoa()
   sysctl(mib, 2, &boottime, &len, nullptr, 0);
   m_start_time = ((boottime.tv_sec * 1000) + (boottime.tv_usec / 1000));
 
-  /* Detect multi-touch track-pad. */
+  /* Detect multi-touch trackpad. */
   mib[0] = CTL_HW;
   mib[1] = HW_MODEL;
   sysctl(mib, 2, nullptr, &len, nullptr, 0);
@@ -858,6 +888,71 @@ GHOST_TSuccess GHOST_SystemCocoa::setCursorPosition(int32_t x, int32_t y)
   return GHOST_kSuccess;
 }
 
+GHOST_TSuccess GHOST_SystemCocoa::getPixelAtCursor(float r_color[3]) const
+{
+  /* NOTE: There are known issues/limitations at the moment:
+   *
+   * - User needs to allow screen capture permission for Blender.
+   * - Blender has no control of the cursor outside of its window, so it is
+   *   not going to be the eyedropper icon.
+   * - GHOST does not report click events from outside of the window, so the
+   *   user needs to press Enter instead.
+   *
+   * Ref #111303.
+   */
+
+  @autoreleasepool {
+    /* Check for screen capture access permission early to prevent issues.
+     * Without permission, macOS may capture only the Blender window, wallpaper, and taskbar.
+     * This behavior could confuse users, especially when trying to pick a color from another app,
+     * potentially capturing the wallpaper under that app window.
+     */
+    if (@available(macOS 11.0, *)) {
+      /* Although these methods are documented as available for macOS 10.15, they are not actually
+       * shipped, leading to a crash if used on macOS 10.15.
+       *
+       * Ref: https://developer.apple.com/forums/thread/683860?answerId=684400022#684400022
+       */
+      if (!CGPreflightScreenCaptureAccess()) {
+        CGRequestScreenCaptureAccess();
+        return GHOST_kFailure;
+      }
+    }
+
+    CGEventRef event = CGEventCreate(nil);
+    if (!event) {
+      return GHOST_kFailure;
+    }
+    CGPoint mouseLocation = CGEventGetLocation(event);
+    CFRelease(event);
+
+    CGRect rect = CGRectMake(mouseLocation.x, mouseLocation.y, 1, 1);
+    CGImageRef image = CGWindowListCreateImage(
+        rect, kCGWindowListOptionOnScreenOnly, kCGNullWindowID, kCGWindowImageDefault);
+    if (!image) {
+      return GHOST_kFailure;
+    }
+    NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
+    CGImageRelease(image);
+
+    NSColor *color = [bitmap colorAtX:0 y:0];
+    if (!color) {
+      return GHOST_kFailure;
+    }
+    NSColor *srgbColor = [color colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+    if (!srgbColor) {
+      return GHOST_kFailure;
+    }
+
+    CGFloat red = 0.0, green = 0.0, blue = 0.0;
+    [color getRed:&red green:&green blue:&blue alpha:nil];
+    r_color[0] = red;
+    r_color[1] = green;
+    r_color[2] = blue;
+  }
+  return GHOST_kSuccess;
+}
+
 GHOST_TSuccess GHOST_SystemCocoa::setMouseCursorPosition(int32_t x, int32_t y)
 {
   float xf = (float)x, yf = (float)y;
@@ -923,8 +1018,6 @@ GHOST_TCapabilityFlag GHOST_SystemCocoa::getCapabilities() const
       ~(
           /* Cocoa has no support for a primary selection clipboard. */
           GHOST_kCapabilityPrimaryClipboard |
-          /* Cocoa has no support for sampling colors from the desktop. */
-          GHOST_kCapabilityDesktopSample |
           /* This Cocoa back-end has not yet implemented image copy/paste. */
           GHOST_kCapabilityClipboardImages));
 }
@@ -1189,7 +1282,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
       NSArray *droppedArray;
       size_t pastedTextSize;
       NSString *droppedStr;
-      GHOST_TEventDataPtr eventData;
+      GHOST_TDragnDropDataPtr eventData;
       int i;
 
       if (!data) {
@@ -1224,15 +1317,14 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
               break;
             }
 
-            strncpy((char *)temp_buff,
-                    [droppedStr cStringUsingEncoding:NSUTF8StringEncoding],
-                    pastedTextSize);
+            memcpy(
+                temp_buff, [droppedStr cStringUsingEncoding:NSUTF8StringEncoding], pastedTextSize);
             temp_buff[pastedTextSize] = '\0';
 
             strArray->strings[i] = temp_buff;
           }
 
-          eventData = (GHOST_TEventDataPtr)strArray;
+          eventData = (GHOST_TDragnDropDataPtr)strArray;
           break;
 
         case GHOST_kDragnDropTypeString:
@@ -1245,13 +1337,11 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
             return GHOST_kFailure;
           }
 
-          strncpy((char *)temp_buff,
-                  [droppedStr cStringUsingEncoding:NSUTF8StringEncoding],
-                  pastedTextSize);
-
+          memcpy(
+              temp_buff, [droppedStr cStringUsingEncoding:NSUTF8StringEncoding], pastedTextSize);
           temp_buff[pastedTextSize] = '\0';
 
-          eventData = (GHOST_TEventDataPtr)temp_buff;
+          eventData = (GHOST_TDragnDropDataPtr)temp_buff;
           break;
 
         case GHOST_kDragnDropTypeBitmap: {
@@ -1383,7 +1473,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
             [droppedImg release];
           }
 
-          eventData = (GHOST_TEventDataPtr)ibuf;
+          eventData = (GHOST_TDragnDropDataPtr)ibuf;
 
           break;
         }
@@ -1454,7 +1544,7 @@ bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
     return GHOST_kFailure;
   }
 
-  strncpy(temp_buff, [filepath cStringUsingEncoding:NSUTF8StringEncoding], filenameTextSize);
+  memcpy(temp_buff, [filepath cStringUsingEncoding:NSUTF8StringEncoding], filenameTextSize);
   temp_buff[filenameTextSize] = '\0';
 
   pushEvent(new GHOST_EventString(
@@ -2009,8 +2099,7 @@ char *GHOST_SystemCocoa::getClipboard(bool /*selection*/) const
       return nullptr;
     }
 
-    strncpy(temp_buff, [textPasted cStringUsingEncoding:NSUTF8StringEncoding], pastedTextSize);
-
+    memcpy(temp_buff, [textPasted cStringUsingEncoding:NSUTF8StringEncoding], pastedTextSize);
     temp_buff[pastedTextSize] = '\0';
 
     if (temp_buff) {

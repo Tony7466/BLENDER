@@ -11,6 +11,7 @@
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
+#include "BLI_struct_equality_utils.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
 #include "BKE_attribute.h"
@@ -50,7 +51,8 @@ class AttributeIDRef {
   StringRef name() const;
   const AnonymousAttributeID &anonymous_id() const;
 
-  friend bool operator==(const AttributeIDRef &a, const AttributeIDRef &b);
+  BLI_STRUCT_EQUALITY_OPERATORS_1(AttributeIDRef, name_)
+
   friend std::ostream &operator<<(std::ostream &stream, const AttributeIDRef &attribute_id);
 };
 
@@ -63,10 +65,7 @@ struct AttributeMetaData {
   eAttrDomain domain;
   eCustomDataType data_type;
 
-  constexpr friend bool operator==(AttributeMetaData a, AttributeMetaData b)
-  {
-    return (a.domain == b.domain) && (a.data_type == b.data_type);
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(AttributeMetaData, domain, data_type)
 };
 
 struct AttributeKind {
@@ -785,15 +784,15 @@ struct AttributeTransferData {
   /* Expect that if an attribute exists, it is stored as a contiguous array internally anyway. */
   GVArraySpan src;
   AttributeMetaData meta_data;
-  bke::GSpanAttributeWriter dst;
+  GSpanAttributeWriter dst;
 };
 /**
  * Retrieve attribute arrays and writers for attributes that should be transferred between
  * data-blocks of the same type.
  */
 Vector<AttributeTransferData> retrieve_attributes_for_transfer(
-    const bke::AttributeAccessor src_attributes,
-    bke::MutableAttributeAccessor dst_attributes,
+    const AttributeAccessor src_attributes,
+    MutableAttributeAccessor dst_attributes,
     eAttrDomainMask domain_mask,
     const AnonymousAttributePropagationInfo &propagation_info,
     const Set<std::string> &skip = {});
@@ -807,60 +806,6 @@ eCustomDataType attribute_data_type_highest_complexity(Span<eCustomDataType> dat
  * in order to choose a domain that will not lose data through domain conversion.
  */
 eAttrDomain attribute_domain_highest_priority(Span<eAttrDomain> domains);
-
-/**
- * A basic container around DNA CustomData so that its users
- * don't have to implement special copy and move constructors.
- */
-class CustomDataAttributes {
-  /**
-   * #CustomData needs a size to be freed, and unfortunately it isn't stored in the struct
-   * itself, so keep track of the size here so this class can implement its own destructor.
-   * If the implementation of the attribute storage changes, this could be removed.
-   */
-  int size_;
-
- public:
-  CustomData data;
-
-  CustomDataAttributes();
-  ~CustomDataAttributes();
-  CustomDataAttributes(const CustomDataAttributes &other);
-  CustomDataAttributes(CustomDataAttributes &&other);
-
-  CustomDataAttributes &operator=(const CustomDataAttributes &other);
-  CustomDataAttributes &operator=(CustomDataAttributes &&other);
-
-  void reallocate(int size);
-
-  void clear();
-
-  std::optional<blender::GSpan> get_for_read(const AttributeIDRef &attribute_id) const;
-
-  /**
-   * Return a virtual array for a stored attribute, or a single value virtual array with the
-   * default value if the attribute doesn't exist. If no default value is provided, the default
-   * value for the type will be used.
-   */
-  blender::GVArray get_for_read(const AttributeIDRef &attribute_id,
-                                eCustomDataType data_type,
-                                const void *default_value) const;
-
-  template<typename T>
-  blender::VArray<T> get_for_read(const AttributeIDRef &attribute_id, const T &default_value) const
-  {
-    const blender::CPPType &cpp_type = blender::CPPType::get<T>();
-    const eCustomDataType type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
-    GVArray varray = this->get_for_read(attribute_id, type, &default_value);
-    return varray.typed<T>();
-  }
-
-  std::optional<blender::GMutableSpan> get_for_write(const AttributeIDRef &attribute_id);
-  bool create(const AttributeIDRef &attribute_id, eCustomDataType data_type);
-  bool remove(const AttributeIDRef &attribute_id);
-
-  bool foreach_attribute(const AttributeForeachCallback callback, eAttrDomain domain) const;
-};
 
 /* -------------------------------------------------------------------- */
 /** \name #AttributeIDRef Inline Methods
@@ -887,11 +832,6 @@ inline AttributeIDRef::AttributeIDRef(const AnonymousAttributeID *anonymous_id)
     : AttributeIDRef(anonymous_id ? anonymous_id->name() : "")
 {
   anonymous_id_ = anonymous_id;
-}
-
-inline bool operator==(const AttributeIDRef &a, const AttributeIDRef &b)
-{
-  return a.name_ == b.name_;
 }
 
 inline AttributeIDRef::operator bool() const
@@ -934,7 +874,7 @@ void gather_attributes(AttributeAccessor src_attributes,
                        eAttrDomain domain,
                        const AnonymousAttributePropagationInfo &propagation_info,
                        const Set<std::string> &skip,
-                       const Span<int> indices,
+                       Span<int> indices,
                        MutableAttributeAccessor dst_attributes);
 
 /**
@@ -951,10 +891,32 @@ void gather_attributes_group_to_group(AttributeAccessor src_attributes,
                                       const IndexMask &selection,
                                       MutableAttributeAccessor dst_attributes);
 
+void gather_attributes_to_groups(AttributeAccessor src_attributes,
+                                 eAttrDomain domain,
+                                 const AnonymousAttributePropagationInfo &propagation_info,
+                                 const Set<std::string> &skip,
+                                 OffsetIndices<int> dst_offsets,
+                                 const IndexMask &src_selection,
+                                 MutableAttributeAccessor dst_attributes);
+
 void copy_attributes(const AttributeAccessor src_attributes,
                      const eAttrDomain domain,
                      const AnonymousAttributePropagationInfo &propagation_info,
                      const Set<std::string> &skip,
                      MutableAttributeAccessor dst_attributes);
+
+void copy_attributes_group_to_group(AttributeAccessor src_attributes,
+                                    eAttrDomain domain,
+                                    const AnonymousAttributePropagationInfo &propagation_info,
+                                    const Set<std::string> &skip,
+                                    OffsetIndices<int> src_offsets,
+                                    OffsetIndices<int> dst_offsets,
+                                    const IndexMask &selection,
+                                    MutableAttributeAccessor dst_attributes);
+
+void fill_attribute_range_default(MutableAttributeAccessor dst_attributes,
+                                  eAttrDomain domain,
+                                  const Set<std::string> &skip,
+                                  IndexRange range);
 
 }  // namespace blender::bke

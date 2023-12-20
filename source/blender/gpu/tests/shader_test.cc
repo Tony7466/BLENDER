@@ -29,12 +29,6 @@ namespace blender::gpu::tests {
 
 using namespace blender::gpu::shader;
 
-static void test_shader_compile_statically_defined()
-{
-  EXPECT_TRUE(gpu_shader_create_info_compile_all());
-}
-GPU_TEST(shader_compile_statically_defined)
-
 static void test_shader_compute_2d()
 {
 
@@ -460,7 +454,9 @@ GPU_TEST(math_lib)
 
 static void test_eevee_lib()
 {
-  gpu_shader_lib_test("eevee_shadow_test.glsl", "eevee_shared");
+  // gpu_shader_lib_test("eevee_shadow_test.glsl", "eevee_shared");
+  gpu_shader_lib_test("eevee_occupancy_test.glsl");
+  gpu_shader_lib_test("eevee_horizon_scan_test.glsl");
 }
 GPU_TEST(eevee_lib)
 

@@ -26,7 +26,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 
 #include "DEG_depsgraph.hh"
@@ -118,9 +118,7 @@ void DepsgraphRelationBuilder::build_view_layer(Scene *scene,
 
   build_view_layer_collections(view_layer);
 
-  if (scene->camera != nullptr) {
-    build_object(scene->camera);
-  }
+  build_scene_camera(scene);
   /* Rigidbody. */
   if (scene->rigidbody_world != nullptr) {
     build_rigidbody(scene);

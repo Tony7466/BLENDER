@@ -6,12 +6,14 @@
  * \ingroup draw
  */
 
+#include "DNA_meshdata_types.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
 
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 #include "extract_mesh.hh"
 
 namespace blender::draw {
@@ -107,7 +109,7 @@ static void extract_weights_init(const MeshRenderData &mr,
     data->cd_ofs = CustomData_get_offset(&mr.bm->vdata, CD_MDEFORMVERT);
   }
   else {
-    data->dvert = mr.me->deform_verts().data();
+    data->dvert = mr.mesh->deform_verts().data();
     data->cd_ofs = -1;
   }
 }
