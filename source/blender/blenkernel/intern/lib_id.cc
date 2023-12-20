@@ -1632,6 +1632,7 @@ bool BKE_id_new_name_validate(
   }
 
   result = BKE_main_namemap_get_name(bmain, id, name, false);
+  result |= !STREQ(id->name + 2, name);
 
   BLI_strncpy(id->name + 2, name, sizeof(id->name) - 2);
   id_sort_by_name(lb, id, nullptr);
@@ -2013,9 +2014,8 @@ void BLI_libblock_ensure_unique_name(Main *bmain, ID *id)
     return;
   }
 
-  if (!ID_IS_LINKED(id)) {
     /* BKE_id_new_name_validate also takes care of sorting. */
-    BKE_id_new_name_validate(bmain, lb, id, nullptr, false);
+  if (!ID_IS_LINKED(id) && BKE_id_new_name_validate(bmain, lb, id, nullptr, false)) {
     bmain->is_memfile_undo_written = false;
   }
 }
