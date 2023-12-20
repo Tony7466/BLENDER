@@ -50,7 +50,6 @@ struct Key;
 struct MCol;
 struct MEdge;
 struct MFace;
-struct MLoopTri;
 struct Material;
 
 typedef struct Mesh {
@@ -72,13 +71,13 @@ typedef struct Mesh {
   struct Material **mat;
 
   /** The number of vertices in the mesh, and the size of #vert_data. */
-  int totvert;
+  int verts_num;
   /** The number of edges in the mesh, and the size of #edge_data. */
-  int totedge;
+  int edges_num;
   /** The number of polygons/faces in the mesh, and the size of #face_data. */
   int faces_num;
   /** The number of face corners in the mesh, and the size of #loop_data. */
-  int totloop;
+  int corners_num;
 
   /**
    * Array owned by mesh. See #Mesh::faces() and #OffsetIndices.
@@ -298,12 +297,12 @@ typedef struct Mesh {
   /**
    * Cached triangulation of mesh faces, depending on the face topology and the vertex positions.
    */
-  blender::Span<MLoopTri> looptris() const;
+  blender::Span<blender::int3> corner_tris() const;
 
   /**
-   * A map containing the face index that each cached triangle from #Mesh::looptris() came from.
+   * A map containing the face index that each cached triangle from #Mesh::corner_tris() came from.
    */
-  blender::Span<int> looptri_faces() const;
+  blender::Span<int> corner_tri_faces() const;
 
   /**
    * Calculate the largest and smallest position values of vertices.

@@ -18,7 +18,6 @@
 #  include "MEM_guardedalloc.h"
 
 #  include "DNA_mesh_types.h"
-#  include "DNA_meshdata_types.h"
 #  include "DNA_object_types.h"
 
 #  include "BLI_utildefines.h"
@@ -38,8 +37,8 @@ char *BKE_mesh_debug_info(const Mesh *mesh)
 
   BLI_dynstr_append(dynstr, "{\n");
   BLI_dynstr_appendf(dynstr, "    'ptr': '%p',\n", (void *)mesh);
-  BLI_dynstr_appendf(dynstr, "    'totvert': %d,\n", mesh->totvert);
-  BLI_dynstr_appendf(dynstr, "    'totedge': %d,\n", mesh->totedge);
+  BLI_dynstr_appendf(dynstr, "    'totvert': %d,\n", mesh->verts_num);
+  BLI_dynstr_appendf(dynstr, "    'totedge': %d,\n", mesh->edges_num);
   BLI_dynstr_appendf(dynstr, "    'totface': %d,\n", mesh->totface_legacy);
   BLI_dynstr_appendf(dynstr, "    'faces_num': %d,\n", mesh->faces_num);
 
