@@ -60,41 +60,6 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
   return std::nullopt;
 }
 
-#ifdef WITH_OPENVDB
-static std::optional<eNodeSocketDatatype> grid_type_to_socket_type(const VolumeGridType grid_type)
-{
-  switch (grid_type) {
-    case VOLUME_GRID_BOOLEAN:
-      return SOCK_BOOLEAN;
-    case VOLUME_GRID_FLOAT:
-      return SOCK_FLOAT;
-    case VOLUME_GRID_INT:
-      return SOCK_INT;
-    case VOLUME_GRID_VECTOR_FLOAT:
-      return SOCK_VECTOR;
-    default:
-      return std::nullopt;
-  }
-}
-
-static std::optional<VolumeGridType> socket_type_to_grid_type(
-    const eNodeSocketDatatype socket_type)
-{
-  switch (socket_type) {
-    case SOCK_BOOLEAN:
-      return VOLUME_GRID_BOOLEAN;
-    case SOCK_FLOAT:
-      return VOLUME_GRID_FLOAT;
-    case SOCK_INT:
-      return VOLUME_GRID_INT;
-    case SOCK_VECTOR:
-      return VOLUME_GRID_VECTOR_FLOAT;
-    default:
-      return std::nullopt;
-  }
-}
-#endif /* WITH_OPENVDB */
-
 template<typename T> T SocketValueVariant::extract()
 {
   if constexpr (std::is_same_v<T, fn::GField>) {

@@ -31,7 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
 
-  b.add_output(eCustomDataType(node->custom1), "Grid");
+  b.add_output(eNodeSocketDatatype(node->custom1), "Grid");
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)
@@ -50,7 +50,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = CD_PROP_FLOAT;
+  node->custom1 = SOCK_FLOAT;
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -60,8 +60,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
   const std::string grid_name = params.extract_input<std::string>("Name");
   const bool remove_grid = params.extract_input<bool>("Remove");
-  const VolumeGridType grid_type = *bke::custom_data_type_to_volume_grid_type(
-      eCustomDataType(node.custom1));
+  const VolumeGridType grid_type = *bke::socket_type_to_grid_type(
+      eNodeSocketDatatype(node.custom1));
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
     if (const bke::VolumeGridData *grid = BKE_volume_grid_find(volume, grid_name.c_str())) {
@@ -90,10 +90,10 @@ static void node_rna(StructRNA *srna)
                     "data_type",
                     "Data Type",
                     "Type of grid data",
-                    rna_enum_attribute_type_items,
+                    rna_enum_node_socket_data_type_items,
                     NOD_inline_enum_accessors(custom1),
-                    CD_PROP_FLOAT,
-                    grid_type_items_fn);
+                    SOCK_FLOAT,
+                    grid_socket_type_items_filter_fn);
 }
 
 static void node_register()

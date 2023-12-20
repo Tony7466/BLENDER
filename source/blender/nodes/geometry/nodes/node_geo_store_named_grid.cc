@@ -102,7 +102,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 }
 
 static void node_register()
