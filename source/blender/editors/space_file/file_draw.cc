@@ -1179,8 +1179,8 @@ void file_draw_list(const bContext *C, ARegion *region)
       text_col[3] /= 2;
     }
 
-    const char *message = is_filtered ? IFACE_("No results match your search filter") :
-                                        IFACE_("No Items");
+    const char *message = is_filtered ? IFACE_("No results match the search filter") :
+                                        IFACE_("No items");
 
     UI_fontstyle_draw_simple(&style->widget,
                              tile_draw_rect.xmin + UI_UNIT_X,
