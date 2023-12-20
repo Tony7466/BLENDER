@@ -634,9 +634,10 @@ class NODE_MT_category_GEO_VOLUME(Menu):
 
     def draw(self, context):
         layout = self.layout
-        layout.menu("NODE_MT_geometry_node_GEO_VOLUME_READ")
-        layout.menu("NODE_MT_geometry_node_GEO_VOLUME_WRITE")
-        layout.separator()
+        if context.preferences.experimental.use_new_volume_nodes:
+            layout.menu("NODE_MT_geometry_node_GEO_VOLUME_READ")
+            layout.menu("NODE_MT_geometry_node_GEO_VOLUME_WRITE")
+            layout.separator()
         layout.menu("NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS")
         layout.menu("NODE_MT_geometry_node_GEO_VOLUME_PRIMITIVES")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
@@ -648,8 +649,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_READ(Menu):
 
     def draw(self, context):
         layout = self.layout
-        if context.preferences.experimental.use_new_volume_nodes:
-            node_add_menu.add_node_type(layout, "GeometryNodeGetNamedGrid")
+        node_add_menu.add_node_type(layout, "GeometryNodeGetNamedGrid")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Read")
 
 
@@ -659,8 +659,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_WRITE(Menu):
 
     def draw(self, context):
         layout = self.layout
-        if context.preferences.experimental.use_new_volume_nodes:
-            node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedGrid")
+        node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedGrid")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Write")
 
 
