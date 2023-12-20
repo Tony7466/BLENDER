@@ -2111,7 +2111,7 @@ void OUTLINER_OT_keyingset_remove_selected(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Purge Orphan Data-Blocks Operator
+/** \name Remove Orphan Data-Blocks Operator
  * \{ */
 
 static bool ed_operator_outliner_id_orphans_active(bContext *C)
@@ -2140,12 +2140,12 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
   RNA_int_set(op->ptr, "num_deleted", num_tagged[INDEX_ID_NULL]);
 
   if (num_tagged[INDEX_ID_NULL] == 0) {
-    BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks to purge");
+    BKE_report(op->reports, RPT_INFO, "No unused data-blocks to remove");
     return OPERATOR_CANCELLED;
   }
 
   DynStr *dyn_str = BLI_dynstr_new();
-  BLI_dynstr_appendf(dyn_str, TIP_("Purging %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
+  BLI_dynstr_appendf(dyn_str, TIP_("Removing %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
   bool is_first = true;
   for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
     if (num_tagged[i] != 0) {
@@ -2188,7 +2188,7 @@ static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
         bmain, LIB_TAG_DOIT, do_local_ids, do_linked_ids, do_recursive_cleanup, num_tagged);
 
     if (num_tagged[INDEX_ID_NULL] == 0) {
-      BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks to purge");
+      BKE_report(op->reports, RPT_INFO, "No unused data-blocks to remove");
       return OPERATOR_CANCELLED;
     }
   }
@@ -2218,8 +2218,8 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
 {
   /* identifiers */
   ot->idname = "OUTLINER_OT_orphans_purge";
-  ot->name = "Purge All";
-  ot->description = "Clear all orphaned data-blocks without any users from the file";
+  ot->name = "Remove All";
+  ot->description = "Remove all data-blocks without any users from the file";
 
   /* callbacks */
   ot->invoke = outliner_orphans_purge_invoke;
@@ -2248,7 +2248,7 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
                   "do_recursive",
                   false,
                   "Recursive Delete",
-                  "Recursively check for indirectly unused data-blocks, ensuring that no orphaned "
+                  "Recursively check for indirectly unused data-blocks, ensuring that no unused "
                   "data-blocks remain after execution");
 }
 
@@ -2285,7 +2285,7 @@ static void wm_block_orphans_purge(bContext *C, void *arg_block, void *arg_data)
                                num_tagged);
 
   if (num_tagged[INDEX_ID_NULL] == 0) {
-    BKE_report(op->reports, RPT_INFO, "No unused data to purge");
+    BKE_report(op->reports, RPT_INFO, "No unused data to remove");
   }
   else {
     BKE_id_multi_tagged_delete(bmain);
@@ -2348,7 +2348,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
   uiLayout *layout = uiItemsAlertBox(block, 40, ALERT_ICON_WARNING);
 
   /* Title. */
-  uiItemL_ex(layout, TIP_("Clean Up Unused Data in This File"), 0, true, false);
+  uiItemL_ex(layout, TIP_("Remove Unused Data in This File"), 0, true, false);
 
   uiItemS(layout);
 
@@ -2411,7 +2411,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                0,
                0,
-               "Recursively check for indirectly unused data, ensuring that no orphaned data "
+               "Recursively check for indirectly unused data, ensuring that no unused data "
                "remains after execution");
 
   BLI_dynstr_free(dyn_str);
@@ -2457,8 +2457,8 @@ void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot)
 {
   /* identifiers */
   ot->idname = "OUTLINER_OT_orphans_cleanup";
-  ot->name = "Purge Unused Data...";
-  ot->description = "Purge Unused data in the file";
+  ot->name = "Remove Unused Data...";
+  ot->description = "Remove Unused data in the file";
 
   /* callbacks */
   ot->exec = outliner_orphans_cleanup_exec;
