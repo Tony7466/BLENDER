@@ -886,15 +886,30 @@ class NodeTreeMainUpdater {
     for (bNode *node : ntree.toposort_right_to_left()) {
       const bool node_updated = this->should_update_individual_node(ntree, *node);
 
-      /* Clear current enum references. */
-      for (bNodeSocket *socket : node->input_sockets()) {
-        if (socket->is_available() && socket->type == SOCK_MENU) {
-          clear_enum_reference(*socket);
+      if (node->typeinfo->type == GEO_NODE_MENU_SWITCH) {
+        /* Generate new enum items when the node has changed, otherwise keep existing items. */
+        if (node_updated) {
+          const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
+          const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
+              storage.enum_definition);
+
+          bNodeSocket &input = *node->input_sockets()[0];
+          BLI_assert(input.is_available() && input.type == SOCK_MENU);
+          this->set_enum_ptr(*input.default_value_typed<bNodeSocketValueMenu>(), enum_items);
         }
+        continue;
       }
-      for (bNodeSocket *socket : node->output_sockets()) {
-        if (socket->is_available() && socket->type == SOCK_MENU) {
-          clear_enum_reference(*socket);
+      else {
+        /* Clear current enum references. */
+        for (bNodeSocket *socket : node->input_sockets()) {
+          if (socket->is_available() && socket->type == SOCK_MENU) {
+            clear_enum_reference(*socket);
+          }
+        }
+        for (bNodeSocket *socket : node->output_sockets()) {
+          if (socket->is_available() && socket->type == SOCK_MENU) {
+            clear_enum_reference(*socket);
+          }
         }
       }
 
@@ -911,20 +926,7 @@ class NodeTreeMainUpdater {
         }
       }
 
-      if (node->typeinfo->type == GEO_NODE_MENU_SWITCH) {
-        /* Generate new enum items when the node has changed. */
-        if (!node_updated) {
-          continue;
-        }
-        const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
-        const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
-            storage.enum_definition);
-
-        bNodeSocket &input = *node->input_sockets()[0];
-        BLI_assert(input.is_available() && input.type == SOCK_MENU);
-        this->set_enum_ptr(*input.default_value_typed<bNodeSocketValueMenu>(), enum_items);
-      }
-      else if (node->is_group()) {
+      if (node->is_group()) {
         /* Node groups expose internal enum definitions. */
         if (node->id == nullptr) {
           continue;
