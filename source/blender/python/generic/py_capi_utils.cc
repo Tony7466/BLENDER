@@ -1636,6 +1636,51 @@ bool PyC_RunString_AsString(const char *imports[],
 #  pragma GCC diagnostic ignored "-Wtype-limits"
 #endif
 
+ulong PyC_Long_AsUnsignedLong(PyObject *value)
+{
+  if (value == nullptr) {
+    /* Let PyLong_AsUnsignedLong handle error raising. */
+    return PyLong_AsUnsignedLong(value);
+  }
+
+  if (PyLong_Check(value)) {
+    return PyLong_AsUnsignedLong(value);
+  }
+
+  /* Call `__index__` like PyLong_AsLong. */
+  PyObject *value_converted = PyNumber_Index(value);
+  if (value_converted == nullptr) {
+    /* A `TypeError` will have been raised. */
+    return ulong(-1);
+  }
+  ulong to_return = PyLong_AsUnsignedLong(value_converted);
+  Py_DECREF(value_converted);
+  return to_return;
+}
+
+unsigned long long PyC_Long_AsUnsignedLongLong(PyObject *value)
+{
+  if (value == nullptr) {
+    /* Let PyLong_AsUnsignedLongLong handle error raising. */
+    return PyLong_AsUnsignedLongLong(value);
+  }
+
+  if (PyLong_Check(value)) {
+    return PyLong_AsUnsignedLongLong(value);
+  }
+
+  /* Call `__index__` like PyLong_AsLongLong. */
+  PyObject *value_converted = PyNumber_Index(value);
+  if (value_converted == nullptr) {
+    /* A `TypeError` will have been raised. */
+    return unsigned long long(-1);
+  }
+
+  unsigned long long to_return = PyLong_AsUnsignedLongLong(value_converted);
+  Py_DECREF(value_converted);
+  return to_return;
+}
+
 int PyC_Long_AsBool(PyObject *value)
 {
   const int test = _PyLong_AsInt(value);

@@ -5507,13 +5507,13 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
             ((int8_t *)array)[i] = int8_t(PyLong_AsLong(item));
             break;
           case PROP_RAW_UINT8:
-            ((uint8_t *)array)[i] = uint8_t(PyLong_AsUnsignedLong(item));
+            ((uint8_t *)array)[i] = uint8_t(PyC_Long_AsUnsignedLong(item));
             break;
           case PROP_RAW_SHORT:
             ((short *)array)[i] = short(PyLong_AsLong(item));
             break;
           case PROP_RAW_UINT16:
-            ((uint16_t *)array)[i] = uint16_t(PyLong_AsUnsignedLong(item));
+            ((uint16_t *)array)[i] = uint16_t(PyC_Long_AsUnsignedLong(item));
             break;
           case PROP_RAW_INT:
             ((int *)array)[i] = int(PyLong_AsLong(item));
@@ -5531,7 +5531,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
             ((int64_t *)array)[i] = int64_t(PyLong_AsLongLong(item));
             break;
           case PROP_RAW_UINT64:
-            ((uint64_t *)array)[i] = uint64_t(PyLong_AsUnsignedLongLong(item));
+            ((uint64_t *)array)[i] = uint64_t(PyC_Long_AsUnsignedLongLong(item));
             break;
           case PROP_RAW_UNSET:
             /* Should never happen. */

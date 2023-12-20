@@ -268,6 +268,17 @@ const char *PyC_StringEnum_FindIDFromValue(const struct PyC_StringEnumItems *ite
  */
 int PyC_CheckArgs_DeepCopy(PyObject *args);
 
+/* Unsigned integer parsing that calls `__index__` like signed integer parsing. */
+/**
+ * #PyLong_AsLong and #PyLong_AsLongLong call the Python `__index__` method of the input `value` if
+ * it is not a `PyLongObject`.
+ *
+ * #PyLong_AsUnsignedLong and #PyLong_AsUnsignedLongLong, however, do not call `__index__`, which
+ * means they cannot parse NumPy scalars and other numeric types.
+ */
+ulong PyC_Long_AsUnsignedLong(PyObject *value);
+unsigned long long PyC_Long_AsUnsignedLongLong(PyObject *value);
+
 /* Integer parsing (with overflow checks), -1 on error. */
 /**
  * Comparison with #PyObject_IsTrue
