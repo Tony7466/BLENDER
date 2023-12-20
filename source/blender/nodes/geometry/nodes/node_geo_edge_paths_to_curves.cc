@@ -26,7 +26,7 @@ static Curves *edge_paths_to_curves_convert(
     const AnonymousAttributePropagationInfo &propagation_info,
     MutableSpan<int> next_indices)
 {
-  const IndexRange vert_range(mesh.totvert);
+  const IndexRange vert_range(mesh.verts_num);
 
   /* Do not create curves from first point with incorrect index. */
   IndexMaskMemory memory;
@@ -46,11 +46,10 @@ static Curves *edge_paths_to_curves_convert(
     }
   });
 
-  /* Make sure it is okay to subtract `in_progress` value as nothing. */
-  const constexpr int in_progress = 0;
   const constexpr int non_checked = -1;
+  const constexpr int in_progress = 0;
 
-  Array<int> rank(mesh.totvert, non_checked);
+  Array<int> rank(mesh.verts_num, non_checked);
   const auto rank_for_vertex = [&](const int vertex) -> int {
     if (rank[vertex] != non_checked) {
       return rank[vertex];
@@ -63,11 +62,9 @@ static Curves *edge_paths_to_curves_convert(
       total_rank++;
     }
 
-    /* End of list is a loop that is larger than single point. Count rank of the whole loop as a
-     * single one. */
-    if (UNLIKELY(last_index != next_indices[last_index] && rank[last_index] == in_progress)) {
-      /* Size of loop can be deduced in loop above, but this is not really important to be
-       * supported in general. This shouldn't impact regular use case. */
+    const bool end_is_loop = last_index != next_indices[last_index];
+    const bool end_is_open = rank[last_index] == in_progress;
+    if (UNLIKELY(end_is_loop && end_is_open)) {
       int rank_of_loop = 1;
       for (int current_vert = next_indices[last_index]; current_vert != last_index;
            current_vert = next_indices[current_vert])
@@ -78,12 +75,12 @@ static Curves *edge_paths_to_curves_convert(
       for (int current_vert = next_indices[last_index]; current_vert != last_index;
            current_vert = next_indices[current_vert])
       {
-        /* For any start point, whole loops have to be gathered. */
         rank[current_vert] = rank_of_loop;
       }
-      total_rank -= rank_of_loop;
     }
-    total_rank += rank[last_index];
+    else if (LIKELY(!ELEM(rank[last_index], in_progress, non_checked))) {
+      total_rank += rank[last_index];
+    }
 
     for (int current_vert = vertex; rank[current_vert] == in_progress;
          current_vert = next_indices[current_vert])
@@ -135,8 +132,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
 
     const bke::MeshFieldContext context{*mesh, ATTR_DOMAIN_POINT};
-    fn::FieldEvaluator evaluator{context, mesh->totvert};
-    Array<int> next_vert(mesh->totvert);
+    fn::FieldEvaluator evaluator{context, mesh->verts_num};
+    Array<int> next_vert(mesh->verts_num);
     evaluator.add_with_destination(params.get_input<Field<int>>("Next Vertex Index"),
                                    next_vert.as_mutable_span());
     evaluator.add(params.get_input<Field<bool>>("Start Vertices"));

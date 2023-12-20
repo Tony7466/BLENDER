@@ -710,8 +710,8 @@ PBVH *build_mesh(Mesh *mesh)
   std::unique_ptr<PBVH> pbvh = std::make_unique<PBVH>();
   pbvh->header.type = PBVH_FACES;
 
-  const int totvert = mesh->totvert;
-  const int corner_tris_num = poly_to_tri_count(mesh->faces_num, mesh->totloop);
+  const int totvert = mesh->verts_num;
+  const int corner_tris_num = poly_to_tri_count(mesh->faces_num, mesh->corners_num);
   MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
   const OffsetIndices<int> faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
@@ -2586,7 +2586,7 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
   switch (pbvh.header.type) {
     case PBVH_FACES:
       args.vert_data = &mesh.vert_data;
-      args.loop_data = &mesh.loop_data;
+      args.corner_data = &mesh.corner_data;
       args.face_data = &mesh.face_data;
       args.mesh = pbvh.mesh;
       args.vert_positions = pbvh.vert_positions;
@@ -2604,7 +2604,7 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
       break;
     case PBVH_GRIDS:
       args.vert_data = &pbvh.mesh->vert_data;
-      args.loop_data = &pbvh.mesh->loop_data;
+      args.corner_data = &pbvh.mesh->corner_data;
       args.face_data = &pbvh.mesh->face_data;
       args.ccg_key = pbvh.gridkey;
       args.mesh = pbvh.mesh;
@@ -2616,7 +2616,7 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
     case PBVH_BMESH:
       args.bm = pbvh.header.bm;
       args.vert_data = &args.bm->vdata;
-      args.loop_data = &args.bm->ldata;
+      args.corner_data = &args.bm->ldata;
       args.face_data = &args.bm->pdata;
       args.bm_faces = &node.bm_faces;
       args.cd_mask_layer = CustomData_get_offset_named(
