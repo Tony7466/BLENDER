@@ -53,10 +53,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 #ifdef WITH_OPENVDB
 
-static void try_store_grid(GeoNodeExecParams params, Volume *volume)
+static void try_store_grid(GeoNodeExecParams params, Volume &volume)
 {
-  BLI_assert(volume);
-
   const std::string grid_name = params.extract_input<std::string>("Name");
 
   bke::GVolumeGrid grid = params.extract_input<bke::GVolumeGrid>("Grid");
@@ -64,12 +62,12 @@ static void try_store_grid(GeoNodeExecParams params, Volume *volume)
     return;
   }
 
-  if (const bke::VolumeGridData *existing_grid = BKE_volume_grid_find(volume, grid_name.data())) {
-    BKE_volume_grid_remove(volume, existing_grid);
+  if (const bke::VolumeGridData *existing_grid = BKE_volume_grid_find(&volume, grid_name.data())) {
+    BKE_volume_grid_remove(&volume, existing_grid);
   }
   grid.get_for_write().set_name(grid_name);
   grid->add_user();
-  BKE_volume_grid_add(volume, grid.get());
+  BKE_volume_grid_add(&volume, grid.get());
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -81,7 +79,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     geometry_set.replace_volume(volume);
   }
 
-  try_store_grid(params, volume);
+  try_store_grid(params, *volume);
 
   params.set_output("Volume", geometry_set);
 }
