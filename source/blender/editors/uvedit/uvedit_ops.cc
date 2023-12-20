@@ -91,7 +91,7 @@ static int UNUSED_FUNCTION(ED_operator_uvmap_mesh)(bContext *C)
   if (ob && ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (CustomData_get_layer(&mesh->loop_data, CD_PROP_FLOAT2) != nullptr) {
+    if (CustomData_get_layer(&mesh->corner_data, CD_PROP_FLOAT2) != nullptr) {
       return 1;
     }
   }
@@ -1322,7 +1322,7 @@ static int uv_hide_exec(bContext *C, wmOperator *op)
       if (EDBM_mesh_hide(em, swap)) {
         Mesh *mesh = static_cast<Mesh *>(ob->data);
         EDBMUpdate_Params params = {0};
-        params.calc_looptri = true;
+        params.calc_looptris = true;
         params.calc_normals = false;
         params.is_destructive = false;
         EDBM_update(mesh, &params);
@@ -1499,7 +1499,7 @@ static int uv_reveal_exec(bContext *C, wmOperator *op)
       if (EDBM_mesh_reveal(em, select)) {
         Mesh *mesh = static_cast<Mesh *>(ob->data);
         EDBMUpdate_Params params = {0};
-        params.calc_looptri = true;
+        params.calc_looptris = true;
         params.calc_normals = false;
         params.is_destructive = false;
         EDBM_update(mesh, &params);

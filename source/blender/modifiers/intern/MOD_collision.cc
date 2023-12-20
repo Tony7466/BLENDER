@@ -118,7 +118,7 @@ static void deform_verts(ModifierData *md,
       printf("current_time %f, collmd->time_xnew %f\n", current_time, collmd->time_xnew);
     }
 
-    mvert_num = mesh->totvert;
+    mvert_num = mesh->verts_num;
 
     if (current_time < collmd->time_xnew) {
       free_data((ModifierData *)collmd);
@@ -136,7 +136,7 @@ static void deform_verts(ModifierData *md,
 
     if (collmd->time_xnew == -1000) { /* first time */
 
-      mvert_num = mesh->totvert;
+      mvert_num = mesh->verts_num;
       collmd->x = static_cast<float(*)[3]>(
           MEM_malloc_arrayN(mvert_num, sizeof(float[3]), __func__));
       blender::MutableSpan(reinterpret_cast<blender::float3 *>(collmd->x), mvert_num)
@@ -155,12 +155,12 @@ static void deform_verts(ModifierData *md,
       collmd->mvert_num = mvert_num;
 
       {
-        const blender::Span<MLoopTri> looptris = mesh->looptris();
-        collmd->tri_num = looptris.size();
+        const blender::Span<blender::int3> corner_tris = mesh->corner_tris();
+        collmd->tri_num = corner_tris.size();
         MVertTri *tri = static_cast<MVertTri *>(
             MEM_mallocN(sizeof(*tri) * collmd->tri_num, __func__));
-        BKE_mesh_runtime_verttri_from_looptri(
-            tri, mesh->corner_verts().data(), looptris.data(), collmd->tri_num);
+        BKE_mesh_runtime_verttris_from_corner_tris(
+            tri, mesh->corner_verts().data(), corner_tris.data(), collmd->tri_num);
         collmd->tri = tri;
       }
 

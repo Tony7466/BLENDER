@@ -561,7 +561,7 @@ void DeferredLayer::end_sync()
         sub.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
         sub.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
         /* Submit the more costly ones first to avoid long tail in occupancy.
-         * See page 78 of "Siggraph 2023: Unreal Engine Substrate" by Hillaire & de Rousiers. */
+         * See page 78 of "SIGGRAPH 2023: Unreal Engine Substrate" by Hillaire & de Rousiers. */
         for (int i = ARRAY_SIZE(closure_bufs_) - 1; i >= 0; i--) {
           sub.shader_set(inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i)));
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
@@ -574,7 +574,17 @@ void DeferredLayer::end_sync()
           inst_.sampling.bind_resources(sub);
           inst_.hiz_buffer.bind_resources(sub);
           sub.state_stencil(0xFFu, 1u << i, 0xFFu);
-          sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+          if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+            /* WORKAROUND: On Apple silicon the stencil test is broken. Only issue one expensive
+             * lighting evaluation. */
+            if (i == 2) {
+              sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
+              sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+            }
+          }
+          else {
+            sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+          }
         }
       }
     }
@@ -684,7 +694,9 @@ void DeferredLayer::render(View &main_view,
   inst_.shadows.set_view(render_view, inst_.render_buffers.depth_tx);
 
   if (/* FIXME(fclem): Vulkan doesn't implement load / store config yet. */
-      GPU_backend_get_type() == GPU_BACKEND_VULKAN)
+      GPU_backend_get_type() == GPU_BACKEND_VULKAN ||
+      /* FIXME(fclem): Metal has bug in backend. */
+      GPU_backend_get_type() == GPU_BACKEND_METAL)
   {
     inst_.gbuffer.header_tx.clear(int4(0));
   }
@@ -710,14 +722,21 @@ void DeferredLayer::render(View &main_view,
   tile_mask_tx_.ensure_2d_array(GPU_R8UI, tile_mask_size, 4, usage_rw);
   tile_mask_tx_.clear(uint4(0));
 
-  GPU_framebuffer_bind_ex(gbuffer_fb,
-                          {
-                              {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Depth */
-                              {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Combined */
-                              {GPU_LOADACTION_CLEAR, GPU_STOREACTION_STORE, {0}}, /* GBuf Header */
-                              {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, /* GBuf Closure */
-                              {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, /* GBuf Color */
-                          });
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    /* TODO(fclem): Load/store action is broken on Metal. */
+    GPU_framebuffer_bind(gbuffer_fb);
+  }
+  else {
+    GPU_framebuffer_bind_ex(
+        gbuffer_fb,
+        {
+            {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Depth */
+            {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Combined */
+            {GPU_LOADACTION_CLEAR, GPU_STOREACTION_STORE, {0}}, /* GBuf Header */
+            {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Closure */
+            {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Color */
+        });
+  }
 
   inst_.manager->submit(gbuffer_ps_, render_view);
 
