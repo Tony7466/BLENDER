@@ -237,9 +237,9 @@ void gbuffer_register_closure(inout GBufferData gbuf, ClosureUndetermined cl)
       gbuf.has_translucent = true;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-      gbuf.refraction.N = cl.N;
+      gbuf.reflection.N = cl.N;
       gbuf.reflection.color = cl.color;
-      gbuf.refraction.roughness = cl.data.x;
+      gbuf.reflection.roughness = cl.data.x;
       gbuf.has_reflection = true;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
