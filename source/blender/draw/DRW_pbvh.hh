@@ -22,7 +22,6 @@
 struct GPUBatch;
 struct PBVHNode;
 struct Mesh;
-struct MLoopTri;
 struct CustomData;
 struct SubdivCCG;
 struct BMesh;
@@ -62,7 +61,7 @@ struct PBVH_GPU_Args {
   Span<int> corner_verts;
   Span<int> corner_edges;
   const CustomData *vert_data;
-  const CustomData *loop_data;
+  const CustomData *corner_data;
   const CustomData *face_data;
   Span<float3> vert_normals;
   Span<float3> face_normals;
@@ -82,8 +81,8 @@ struct PBVH_GPU_Args {
 
   VArraySpan<bool> hide_poly;
 
-  Span<MLoopTri> looptris;
-  Span<int> looptri_faces;
+  Span<int3> corner_tris;
+  Span<int> tri_faces;
 
   /* BMesh. */
   const Set<BMFace *, 0> *bm_faces;

@@ -119,10 +119,10 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
   const bke::AttributeAccessor attributes = mesh->attributes();
 
   char *active_set_name = nullptr;
-  const int active_uv_set_index = CustomData_get_render_layer_index(&mesh->loop_data,
+  const int active_uv_set_index = CustomData_get_render_layer_index(&mesh->corner_data,
                                                                     CD_PROP_FLOAT2);
   if (active_uv_set_index != -1) {
-    active_set_name = mesh->loop_data.layers[active_uv_set_index].name;
+    active_set_name = mesh->corner_data.layers[active_uv_set_index].name;
   }
 
   attributes.for_all(
@@ -768,7 +768,7 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
   pxr::UsdTimeCode timecode = get_export_time_code();
 
   pxr::VtVec3fArray loop_normals;
-  loop_normals.resize(mesh->totloop);
+  loop_normals.resize(mesh->corners_num);
 
   MutableSpan dst_normals(reinterpret_cast<float3 *>(loop_normals.data()), loop_normals.size());
 
@@ -814,9 +814,9 @@ void USDGenericMeshWriter::write_surface_velocity(const Mesh *mesh, pxr::UsdGeom
 
   /* Export per-vertex velocity vectors. */
   pxr::VtVec3fArray usd_velocities;
-  usd_velocities.reserve(mesh->totvert);
+  usd_velocities.reserve(mesh->verts_num);
 
-  for (int vertex_idx = 0, totvert = mesh->totvert; vertex_idx < totvert; ++vertex_idx) {
+  for (int vertex_idx = 0, totvert = mesh->verts_num; vertex_idx < totvert; ++vertex_idx) {
     usd_velocities.push_back(pxr::GfVec3f(velocities[vertex_idx]));
   }
 

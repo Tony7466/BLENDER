@@ -290,101 +290,99 @@ struct PartialUpdateData {
   Span<bool> modified_face_set_faces;
 };
 
-static void update_modified_node_mesh(PBVHNode *node, void *userdata)
+static void update_modified_node_mesh(PBVHNode &node, PartialUpdateData &data)
 {
-  PartialUpdateData *data = static_cast<PartialUpdateData *>(userdata);
-  if (BKE_pbvh_node_has_vert_with_normal_update_tag(data->pbvh, node)) {
-    BKE_pbvh_node_mark_update(node);
+  if (BKE_pbvh_node_has_vert_with_normal_update_tag(data.pbvh, &node)) {
+    BKE_pbvh_node_mark_update(&node);
   }
-  const Span<int> verts = BKE_pbvh_node_get_vert_indices(node);
-  if (!data->modified_mask_verts.is_empty()) {
+  const Span<int> verts = BKE_pbvh_node_get_vert_indices(&node);
+  if (!data.modified_mask_verts.is_empty()) {
     for (const int vert : verts) {
-      if (data->modified_mask_verts[vert]) {
-        BKE_pbvh_node_mark_update_mask(node);
+      if (data.modified_mask_verts[vert]) {
+        BKE_pbvh_node_mark_update_mask(&node);
         break;
       }
     }
   }
-  if (!data->modified_color_verts.is_empty()) {
+  if (!data.modified_color_verts.is_empty()) {
     for (const int vert : verts) {
-      if (data->modified_color_verts[vert]) {
-        BKE_pbvh_node_mark_update_color(node);
+      if (data.modified_color_verts[vert]) {
+        BKE_pbvh_node_mark_update_color(&node);
         break;
       }
     }
   }
-  if (!data->modified_hidden_verts.is_empty()) {
+  if (!data.modified_hidden_verts.is_empty()) {
     for (const int vert : verts) {
-      if (data->modified_hidden_verts[vert]) {
-        BKE_pbvh_node_mark_update_visibility(node);
+      if (data.modified_hidden_verts[vert]) {
+        BKE_pbvh_node_mark_update_visibility(&node);
         break;
       }
     }
   }
 
   Vector<int> faces;
-  if (!data->modified_face_set_faces.is_empty()) {
+  if (!data.modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      bke::pbvh::node_face_indices_calc_mesh(*data->pbvh, *node, faces);
+      bke::pbvh::node_face_indices_calc_mesh(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_face_set_faces[face]) {
-        BKE_pbvh_node_mark_update_face_sets(node);
+      if (data.modified_face_set_faces[face]) {
+        BKE_pbvh_node_mark_update_face_sets(&node);
         break;
       }
     }
   }
-  if (!data->modified_hidden_faces.is_empty()) {
+  if (!data.modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      bke::pbvh::node_face_indices_calc_mesh(*data->pbvh, *node, faces);
+      bke::pbvh::node_face_indices_calc_mesh(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_hidden_faces[face]) {
-        BKE_pbvh_node_mark_update_visibility(node);
+      if (data.modified_hidden_faces[face]) {
+        BKE_pbvh_node_mark_update_visibility(&node);
         break;
       }
     }
   }
 }
 
-static void update_modified_node_grids(PBVHNode *node, void *userdata)
+static void update_modified_node_grids(PBVHNode &node, PartialUpdateData &data)
 {
-  PartialUpdateData *data = static_cast<PartialUpdateData *>(userdata);
-  const Span<int> grid_indices = BKE_pbvh_node_get_grid_indices(*node);
+  const Span<int> grid_indices = BKE_pbvh_node_get_grid_indices(node);
   if (std::any_of(grid_indices.begin(), grid_indices.end(), [&](const int grid) {
-        return data->modified_grids[grid];
+        return data.modified_grids[grid];
       }))
   {
-    if (data->changed_position) {
-      BKE_pbvh_node_mark_update(node);
+    if (data.changed_position) {
+      BKE_pbvh_node_mark_update(&node);
     }
-    if (data->changed_mask) {
-      BKE_pbvh_node_mark_update_mask(node);
+    if (data.changed_mask) {
+      BKE_pbvh_node_mark_update_mask(&node);
     }
-    if (data->changed_hide_vert) {
-      BKE_pbvh_node_mark_update_visibility(node);
+    if (data.changed_hide_vert) {
+      BKE_pbvh_node_mark_update_visibility(&node);
     }
   }
 
   Vector<int> faces;
-  if (!data->modified_face_set_faces.is_empty()) {
+  if (!data.modified_face_set_faces.is_empty()) {
     if (faces.is_empty()) {
-      bke::pbvh::node_face_indices_calc_grids(*data->pbvh, *node, faces);
+      bke::pbvh::node_face_indices_calc_grids(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_face_set_faces[face]) {
-        BKE_pbvh_node_mark_update_face_sets(node);
+      if (data.modified_face_set_faces[face]) {
+        BKE_pbvh_node_mark_update_face_sets(&node);
         break;
       }
     }
   }
-  if (!data->modified_hidden_faces.is_empty()) {
+  if (!data.modified_hidden_faces.is_empty()) {
     if (faces.is_empty()) {
-      bke::pbvh::node_face_indices_calc_grids(*data->pbvh, *node, faces);
+      bke::pbvh::node_face_indices_calc_grids(*data.pbvh, node, faces);
     }
     for (const int face : faces) {
-      if (data->modified_hidden_faces[face]) {
-        BKE_pbvh_node_mark_update_visibility(node);
+      if (data.modified_hidden_faces[face]) {
+        BKE_pbvh_node_mark_update_visibility(&node);
         break;
       }
     }
@@ -596,7 +594,7 @@ static bool restore_color(Object *ob, Node &unode, MutableSpan<bool> modified_ve
 
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
-  if (!unode.loop_col.is_empty() && unode.mesh_corners_num == mesh->totloop) {
+  if (!unode.loop_col.is_empty() && unode.mesh_corners_num == mesh->corners_num) {
     BKE_pbvh_swap_colors(ss->pbvh, unode.corner_indices, unode.loop_col);
     modified = true;
   }
@@ -753,18 +751,19 @@ static void store_geometry_data(NodeGeometry *geometry, Object *object)
   BLI_assert(!geometry->is_initialized);
   geometry->is_initialized = true;
 
-  CustomData_copy(&mesh->vert_data, &geometry->vert_data, CD_MASK_MESH.vmask, mesh->totvert);
-  CustomData_copy(&mesh->edge_data, &geometry->edge_data, CD_MASK_MESH.emask, mesh->totedge);
-  CustomData_copy(&mesh->loop_data, &geometry->loop_data, CD_MASK_MESH.lmask, mesh->totloop);
+  CustomData_copy(&mesh->vert_data, &geometry->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
+  CustomData_copy(&mesh->edge_data, &geometry->edge_data, CD_MASK_MESH.emask, mesh->edges_num);
+  CustomData_copy(
+      &mesh->corner_data, &geometry->corner_data, CD_MASK_MESH.lmask, mesh->corners_num);
   CustomData_copy(&mesh->face_data, &geometry->face_data, CD_MASK_MESH.pmask, mesh->faces_num);
   implicit_sharing::copy_shared_pointer(mesh->face_offset_indices,
                                         mesh->runtime->face_offsets_sharing_info,
                                         &geometry->face_offset_indices,
                                         &geometry->face_offsets_sharing_info);
 
-  geometry->totvert = mesh->totvert;
-  geometry->totedge = mesh->totedge;
-  geometry->totloop = mesh->totloop;
+  geometry->totvert = mesh->verts_num;
+  geometry->totedge = mesh->edges_num;
+  geometry->totloop = mesh->corners_num;
   geometry->faces_num = mesh->faces_num;
 }
 
@@ -776,15 +775,16 @@ static void restore_geometry_data(NodeGeometry *geometry, Object *object)
 
   BKE_mesh_clear_geometry(mesh);
 
-  mesh->totvert = geometry->totvert;
-  mesh->totedge = geometry->totedge;
-  mesh->totloop = geometry->totloop;
+  mesh->verts_num = geometry->totvert;
+  mesh->edges_num = geometry->totedge;
+  mesh->corners_num = geometry->totloop;
   mesh->faces_num = geometry->faces_num;
   mesh->totface_legacy = 0;
 
   CustomData_copy(&geometry->vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, geometry->totvert);
   CustomData_copy(&geometry->edge_data, &mesh->edge_data, CD_MASK_MESH.emask, geometry->totedge);
-  CustomData_copy(&geometry->loop_data, &mesh->loop_data, CD_MASK_MESH.lmask, geometry->totloop);
+  CustomData_copy(
+      &geometry->corner_data, &mesh->corner_data, CD_MASK_MESH.lmask, geometry->totloop);
   CustomData_copy(&geometry->face_data, &mesh->face_data, CD_MASK_MESH.pmask, geometry->faces_num);
   implicit_sharing::copy_shared_pointer(geometry->face_offset_indices,
                                         geometry->face_offsets_sharing_info,
@@ -796,7 +796,7 @@ static void geometry_free_data(NodeGeometry *geometry)
 {
   CustomData_free(&geometry->vert_data, geometry->totvert);
   CustomData_free(&geometry->edge_data, geometry->totedge);
-  CustomData_free(&geometry->loop_data, geometry->totloop);
+  CustomData_free(&geometry->corner_data, geometry->totloop);
   CustomData_free(&geometry->face_data, geometry->faces_num);
   implicit_sharing::free_shared_data(&geometry->face_offset_indices,
                                      &geometry->face_offsets_sharing_info);
@@ -1031,10 +1031,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
   data.modified_color_verts = modified_verts_color;
   data.modified_face_set_faces = modified_faces_face_set;
   if (use_multires_undo) {
-    BKE_pbvh_search_callback(ss->pbvh, {}, update_modified_node_grids, &data);
+    bke::pbvh::search_callback(
+        *ss->pbvh, {}, [&](PBVHNode &node) { update_modified_node_grids(node, data); });
   }
   else {
-    BKE_pbvh_search_callback(ss->pbvh, {}, update_modified_node_mesh, &data);
+    bke::pbvh::search_callback(
+        *ss->pbvh, {}, [&](PBVHNode &node) { update_modified_node_mesh(node, data); });
   }
 
   if (changed_position) {
@@ -1194,7 +1196,7 @@ static Node *alloc_node(Object *ob, PBVHNode *node, Type type)
 
   if (need_loops) {
     unode->corner_indices = BKE_pbvh_node_get_loops(node);
-    unode->mesh_corners_num = static_cast<Mesh *>(ob->data)->totloop;
+    unode->mesh_corners_num = static_cast<Mesh *>(ob->data)->corners_num;
 
     usculpt->undo_size += unode->corner_indices.as_span().size_in_bytes();
   }
@@ -1431,7 +1433,6 @@ static Node *bmesh_push(Object *ob, PBVHNode *node, Type type)
 {
   UndoSculpt *usculpt = get_nodes();
   SculptSession *ss = ob->sculpt;
-  PBVHVertexIter vd;
 
   Node *unode = usculpt->nodes.is_empty() ? nullptr : usculpt->nodes.first().get();
 
@@ -1465,26 +1466,29 @@ static Node *bmesh_push(Object *ob, PBVHNode *node, Type type)
   }
 
   if (node) {
+    const int cd_vert_mask_offset = CustomData_get_offset_named(
+        &ss->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+
     switch (type) {
       case Type::Position:
       case Type::Mask:
         /* Before any vertex values get modified, ensure their
          * original positions are logged. */
         for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(node)) {
-          BM_log_vert_before_modified(ss->bm_log, vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm_log, vert, cd_vert_mask_offset);
         }
         for (BMVert *vert : BKE_pbvh_bmesh_node_other_verts(node)) {
-          BM_log_vert_before_modified(ss->bm_log, vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm_log, vert, cd_vert_mask_offset);
         }
         break;
 
       case Type::HideFace:
       case Type::HideVert: {
         for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(node)) {
-          BM_log_vert_before_modified(ss->bm_log, vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm_log, vert, cd_vert_mask_offset);
         }
         for (BMVert *vert : BKE_pbvh_bmesh_node_other_verts(node)) {
-          BM_log_vert_before_modified(ss->bm_log, vert, vd.cd_vert_mask_offset);
+          BM_log_vert_before_modified(ss->bm_log, vert, cd_vert_mask_offset);
         }
 
         for (BMFace *f : BKE_pbvh_bmesh_node_faces(node)) {

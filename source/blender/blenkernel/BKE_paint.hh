@@ -52,7 +52,6 @@ struct ImagePool;
 struct ImageUser;
 struct KeyBlock;
 struct ListBase;
-struct MLoopTri;
 struct Main;
 struct Mesh;
 struct MDeformVert;
@@ -384,12 +383,6 @@ struct SculptClothSimulation {
   /** #PBVHNode pointer as a key, index in #SculptClothSimulation.node_state as value. */
   GHash *node_state_index;
   eSculptClothNodeSimState *node_state;
-};
-
-struct SculptPersistentBase {
-  blender::float3 co;
-  blender::float3 no;
-  float disp;
 };
 
 struct SculptVertexInfo {
@@ -864,9 +857,7 @@ bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d)
 /**
  * Fills the object's active color attribute layer with the fill color.
  *
- * \param[in] ob: The object.
- * \param[in] fill_color: The fill color.
- * \param[in] only_selected: Limit the fill to selected faces or vertices.
+ * \param only_selected: Limit the fill to selected faces or vertices.
  *
  * \return #true if successful.
  */

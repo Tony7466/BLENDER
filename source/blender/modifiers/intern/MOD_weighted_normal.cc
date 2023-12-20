@@ -480,7 +480,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   Mesh *result;
   result = (Mesh *)BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE);
 
-  const int verts_num = result->totvert;
+  const int verts_num = result->verts_num;
   const blender::Span<blender::float3> positions = mesh->vert_positions();
   const blender::Span<int2> edges = mesh->edges();
   const OffsetIndices faces = result->faces();
@@ -504,15 +504,15 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     weight = (weight - 1) * 25;
   }
 
-  blender::short2 *clnors = static_cast<blender::short2 *>(
-      CustomData_get_layer_for_write(&result->loop_data, CD_CUSTOMLOOPNORMAL, mesh->totloop));
+  blender::short2 *clnors = static_cast<blender::short2 *>(CustomData_get_layer_for_write(
+      &result->corner_data, CD_CUSTOMLOOPNORMAL, mesh->corners_num));
 
   /* Keep info whether we had clnors,
    * it helps when generating clnor spaces and default normals. */
   const bool has_clnors = clnors != nullptr;
   if (!clnors) {
     clnors = static_cast<blender::short2 *>(CustomData_add_layer(
-        &result->loop_data, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, corner_verts.size()));
+        &result->corner_data, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, corner_verts.size()));
   }
 
   const MDeformVert *dvert;
@@ -536,7 +536,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   wn_data.corner_verts = corner_verts;
   wn_data.corner_edges = corner_edges;
   wn_data.loop_to_face = loop_to_face_map;
-  wn_data.clnors = {clnors, mesh->totloop};
+  wn_data.clnors = {clnors, mesh->corners_num};
   wn_data.has_clnors = has_clnors;
 
   wn_data.faces = faces;

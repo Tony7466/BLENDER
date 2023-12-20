@@ -269,11 +269,11 @@ static void attr_create_generic(Scene *scene,
                                 const bool need_motion,
                                 const float motion_scale)
 {
-  blender::Span<MLoopTri> looptris;
-  blender::Span<int> looptri_faces;
+  blender::Span<blender::int3> corner_tris;
+  blender::Span<int> tri_faces;
   if (!subdivision) {
-    looptris = b_mesh.looptris();
-    looptri_faces = b_mesh.looptri_faces();
+    corner_tris = b_mesh.corner_tris();
+    tri_faces = b_mesh.corner_tri_faces();
   }
   const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
   AttributeSet &attributes = (subdivision) ? mesh->subd_attributes : mesh->attributes;
@@ -325,14 +325,14 @@ static void attr_create_generic(Scene *scene,
         }
       }
       else {
-        for (const int i : looptris.index_range()) {
-          const MLoopTri &lt = looptris[i];
+        for (const int i : corner_tris.index_range()) {
+          const blender::int3 &tri = corner_tris[i];
           data[i * 3 + 0] = make_uchar4(
-              src[lt.tri[0]][0], src[lt.tri[0]][1], src[lt.tri[0]][2], src[lt.tri[0]][3]);
+              src[tri[0]][0], src[tri[0]][1], src[tri[0]][2], src[tri[0]][3]);
           data[i * 3 + 1] = make_uchar4(
-              src[lt.tri[1]][0], src[lt.tri[1]][1], src[lt.tri[1]][2], src[lt.tri[1]][3]);
+              src[tri[1]][0], src[tri[1]][1], src[tri[1]][2], src[tri[1]][3]);
           data[i * 3 + 2] = make_uchar4(
-              src[lt.tri[2]][0], src[lt.tri[2]][1], src[lt.tri[2]][2], src[lt.tri[2]][3]);
+              src[tri[2]][0], src[tri[2]][1], src[tri[2]][2], src[tri[2]][3]);
         }
       }
       return true;
@@ -375,11 +375,11 @@ static void attr_create_generic(Scene *scene,
               }
             }
             else {
-              for (const int i : looptris.index_range()) {
-                const MLoopTri &lt = looptris[i];
-                data[i * 3 + 0] = Converter::convert(src[lt.tri[0]]);
-                data[i * 3 + 1] = Converter::convert(src[lt.tri[1]]);
-                data[i * 3 + 2] = Converter::convert(src[lt.tri[2]]);
+              for (const int i : corner_tris.index_range()) {
+                const blender::int3 &tri = corner_tris[i];
+                data[i * 3 + 0] = Converter::convert(src[tri[0]]);
+                data[i * 3 + 1] = Converter::convert(src[tri[1]]);
+                data[i * 3 + 2] = Converter::convert(src[tri[2]]);
               }
             }
             break;
@@ -397,8 +397,8 @@ static void attr_create_generic(Scene *scene,
               }
             }
             else {
-              for (const int i : looptris.index_range()) {
-                data[i] = Converter::convert(src[looptri_faces[i]]);
+              for (const int i : corner_tris.index_range()) {
+                data[i] = Converter::convert(src[tri_faces[i]]);
               }
             }
             break;
@@ -435,9 +435,9 @@ static void attr_create_uv_map(Scene *scene,
                                const ::Mesh &b_mesh,
                                const set<ustring> &blender_uv_names)
 {
-  const blender::Span<MLoopTri> looptris = b_mesh.looptris();
+  const blender::Span<blender::int3> corner_tris = b_mesh.corner_tris();
   const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
-  const ustring render_name(CustomData_get_render_layer_name(&b_mesh.loop_data, CD_PROP_FLOAT2));
+  const ustring render_name(CustomData_get_render_layer_name(&b_mesh.corner_data, CD_PROP_FLOAT2));
   if (!blender_uv_names.empty()) {
     for (const ustring &uv_name : blender_uv_names) {
       const bool active_render = uv_name == render_name;
@@ -468,11 +468,11 @@ static void attr_create_uv_map(Scene *scene,
         const blender::VArraySpan b_uv_map = *b_attributes.lookup<blender::float2>(
             uv_name.c_str(), ATTR_DOMAIN_CORNER);
         float2 *fdata = uv_attr->data_float2();
-        for (const int i : looptris.index_range()) {
-          const MLoopTri &lt = looptris[i];
-          fdata[i * 3 + 0] = make_float2(b_uv_map[lt.tri[0]][0], b_uv_map[lt.tri[0]][1]);
-          fdata[i * 3 + 1] = make_float2(b_uv_map[lt.tri[1]][0], b_uv_map[lt.tri[1]][1]);
-          fdata[i * 3 + 2] = make_float2(b_uv_map[lt.tri[2]][0], b_uv_map[lt.tri[2]][1]);
+        for (const int i : corner_tris.index_range()) {
+          const blender::int3 &tri = corner_tris[i];
+          fdata[i * 3 + 0] = make_float2(b_uv_map[tri[0]][0], b_uv_map[tri[0]][1]);
+          fdata[i * 3 + 1] = make_float2(b_uv_map[tri[1]][0], b_uv_map[tri[1]][1]);
+          fdata[i * 3 + 2] = make_float2(b_uv_map[tri[2]][0], b_uv_map[tri[2]][1]);
         }
       }
 
@@ -512,7 +512,8 @@ static void attr_create_subd_uv_map(Scene *scene,
 
   if (!blender_uv_names.empty()) {
     const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
-    const ustring render_name(CustomData_get_render_layer_name(&b_mesh.loop_data, CD_PROP_FLOAT2));
+    const ustring render_name(
+        CustomData_get_render_layer_name(&b_mesh.corner_data, CD_PROP_FLOAT2));
     for (const ustring &uv_name : blender_uv_names) {
       const bool active_render = uv_name == render_name;
       AttributeStandard uv_std = (active_render) ? ATTR_STD_UV : ATTR_STD_NONE;
@@ -764,11 +765,11 @@ static void attr_create_random_per_island(Scene *scene,
     return;
   }
 
-  if (b_mesh.totvert == 0) {
+  if (b_mesh.verts_num == 0) {
     return;
   }
 
-  DisjointSet vertices_sets(b_mesh.totvert);
+  DisjointSet vertices_sets(b_mesh.verts_num);
 
   const blender::Span<blender::int2> edges = b_mesh.edges();
   const blender::Span<int> corner_verts = b_mesh.corner_verts();
@@ -782,10 +783,10 @@ static void attr_create_random_per_island(Scene *scene,
   float *data = attribute->data_float();
 
   if (!subdivision) {
-    const blender::Span<MLoopTri> looptris = b_mesh.looptris();
-    if (!looptris.is_empty()) {
-      for (const int i : looptris.index_range()) {
-        const int vert = corner_verts[looptris[i].tri[0]];
+    const blender::Span<blender::int3> corner_tris = b_mesh.corner_tris();
+    if (!corner_tris.is_empty()) {
+      for (const int i : corner_tris.index_range()) {
+        const int vert = corner_verts[corner_tris[i][0]];
         data[i] = hash_uint_to_float(vertices_sets.find(vert));
       }
     }
@@ -817,7 +818,7 @@ static void create_mesh(Scene *scene,
   const blender::Span<int> corner_verts = b_mesh.corner_verts();
   const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
   const blender::bke::MeshNormalDomain normals_domain = b_mesh.normals_domain();
-  int numfaces = (!subdivision) ? b_mesh.looptris().size() : faces.size();
+  int numfaces = (!subdivision) ? b_mesh.corner_tris().size() : faces.size();
 
   bool use_loop_normals = normals_domain == blender::bke::MeshNormalDomain::Corner &&
                           (mesh->get_subdivision_type() != Mesh::SUBDIVISION_CATMULL_CLARK);
@@ -913,18 +914,18 @@ static void create_mesh(Scene *scene,
     bool *smooth = mesh->get_smooth().data();
     int *shader = mesh->get_shader().data();
 
-    const blender::Span<MLoopTri> looptris = b_mesh.looptris();
-    for (const int i : looptris.index_range()) {
-      const MLoopTri &lt = looptris[i];
-      triangles[i * 3 + 0] = corner_verts[lt.tri[0]];
-      triangles[i * 3 + 1] = corner_verts[lt.tri[1]];
-      triangles[i * 3 + 2] = corner_verts[lt.tri[2]];
+    const blender::Span<blender::int3> corner_tris = b_mesh.corner_tris();
+    for (const int i : corner_tris.index_range()) {
+      const blender::int3 &tri = corner_tris[i];
+      triangles[i * 3 + 0] = corner_verts[tri[0]];
+      triangles[i * 3 + 1] = corner_verts[tri[1]];
+      triangles[i * 3 + 2] = corner_verts[tri[2]];
     }
 
     if (!material_indices.is_empty()) {
-      const blender::Span<int> looptri_faces = b_mesh.looptri_faces();
-      for (const int i : looptris.index_range()) {
-        shader[i] = clamp_material_index(material_indices[looptri_faces[i]]);
+      const blender::Span<int> tri_faces = b_mesh.corner_tri_faces();
+      for (const int i : corner_tris.index_range()) {
+        shader[i] = clamp_material_index(material_indices[tri_faces[i]]);
       }
     }
     else {
@@ -932,9 +933,9 @@ static void create_mesh(Scene *scene,
     }
 
     if (!sharp_faces.is_empty() && !(use_loop_normals && !corner_normals.is_empty())) {
-      const blender::Span<int> looptri_faces = b_mesh.looptri_faces();
-      for (const int i : looptris.index_range()) {
-        smooth[i] = !sharp_faces[looptri_faces[i]];
+      const blender::Span<int> tri_faces = b_mesh.corner_tri_faces();
+      for (const int i : corner_tris.index_range()) {
+        smooth[i] = !sharp_faces[tri_faces[i]];
       }
     }
     else {
@@ -943,10 +944,10 @@ static void create_mesh(Scene *scene,
     }
 
     if (use_loop_normals && !corner_normals.is_empty()) {
-      for (const int i : looptris.index_range()) {
-        const MLoopTri &lt = looptris[i];
+      for (const int i : corner_tris.index_range()) {
+        const blender::int3 &tri = corner_tris[i];
         for (int i = 0; i < 3; i++) {
-          const int corner = lt.tri[i];
+          const int corner = tri[i];
           const int vert = corner_verts[corner];
           const float *normal = corner_normals[corner];
           N[vert] = make_float3(normal[0], normal[1], normal[2]);
@@ -1205,7 +1206,7 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph b_depsgraph,
   /* TODO(sergey): Perform preliminary check for number of vertices. */
   if (b_mesh_rna) {
     const ::Mesh &b_mesh = *static_cast<const ::Mesh *>(b_mesh_rna.ptr.data);
-    const int b_verts_num = b_mesh.totvert;
+    const int b_verts_num = b_mesh.verts_num;
     const blender::Span<blender::float3> positions = b_mesh.vert_positions();
     if (positions.is_empty()) {
       free_object_to_mesh(b_data, b_ob_info, b_mesh_rna);
