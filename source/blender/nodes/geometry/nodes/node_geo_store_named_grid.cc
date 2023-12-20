@@ -20,16 +20,16 @@ namespace blender::nodes::node_geo_store_named_grid_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.add_input<decl::Geometry>("Volume");
+  b.add_input<decl::String>("Name");
+  b.add_output<decl::Geometry>("Volume");
+
   const bNode *node = b.node_or_null();
   if (!node) {
     return;
   }
 
-  b.add_input<decl::Geometry>("Volume");
-  b.add_input<decl::String>("Name");
   b.add_input(eCustomDataType(node->custom1), "Grid").hide_value();
-
-  b.add_output<decl::Geometry>("Volume");
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)

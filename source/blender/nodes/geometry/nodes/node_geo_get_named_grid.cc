@@ -19,16 +19,18 @@ namespace blender::nodes::node_geo_get_named_grid_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  const bNode *node = b.node_or_null();
-  if (!node) {
-    return;
-  }
-
   b.add_input<decl::Geometry>("Volume");
   b.add_input<decl::String>("Name");
   b.add_input<decl::Bool>("Remove").default_value(true);
 
   b.add_output<decl::Geometry>("Volume");
+
+  const bNode *node = b.node_or_null();
+  if (!node) {
+
+    return;
+  }
+
   b.add_output(eCustomDataType(node->custom1), "Grid");
 }
 
@@ -78,9 +80,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Grid", bke::GVolumeGrid(grid_type));
   params.set_output("Volume", geometry_set);
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 

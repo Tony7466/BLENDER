@@ -635,7 +635,6 @@ class NODE_MT_category_GEO_VOLUME(Menu):
     def draw(self, context):
         layout = self.layout
         layout.menu("NODE_MT_geometry_node_GEO_VOLUME_READ")
-        layout.menu("NODE_MT_geometry_node_GEO_VOLUME_SAMPLE")
         layout.menu("NODE_MT_geometry_node_GEO_VOLUME_WRITE")
         layout.separator()
         layout.menu("NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS")
@@ -652,17 +651,6 @@ class NODE_MT_geometry_node_GEO_VOLUME_READ(Menu):
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeGetNamedGrid")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Read")
-
-
-class NODE_MT_geometry_node_GEO_VOLUME_SAMPLE(Menu):
-    bl_idname = "NODE_MT_geometry_node_GEO_VOLUME_SAMPLE"
-    bl_label = "Sample"
-
-    def draw(self, context):
-        layout = self.layout
-        if context.preferences.experimental.use_new_volume_nodes:
-            node_add_menu.add_node_type(layout, "GeometryNodeSampleGrid")
-        node_add_menu.draw_assets_for_catalog(layout, "Volume/Sample")
 
 
 class NODE_MT_geometry_node_GEO_VOLUME_WRITE(Menu):
@@ -683,9 +671,6 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
-        if context.preferences.experimental.use_new_volume_nodes:
-            node_add_menu.add_node_type(layout, "GeometryNodeDilateGrid")
-            node_add_menu.add_node_type(layout, "GeometryNodeErodeGrid")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Operations")
 
 
@@ -771,7 +756,6 @@ classes = (
     NODE_MT_category_simulation,
     NODE_MT_category_GEO_VOLUME,
     NODE_MT_geometry_node_GEO_VOLUME_READ,
-    NODE_MT_geometry_node_GEO_VOLUME_SAMPLE,
     NODE_MT_geometry_node_GEO_VOLUME_WRITE,
     NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS,
     NODE_MT_geometry_node_GEO_VOLUME_PRIMITIVES,

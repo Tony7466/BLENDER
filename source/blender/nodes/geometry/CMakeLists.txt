@@ -65,7 +65,6 @@ set(SRC
   nodes/node_geo_curve_trim.cc
   nodes/node_geo_deform_curves_on_surface.cc
   nodes/node_geo_delete_geometry.cc
-  nodes/node_geo_dilate_grid.cc
   nodes/node_geo_distribute_points_in_volume.cc
   nodes/node_geo_distribute_points_on_faces.cc
   nodes/node_geo_dual_mesh.cc
@@ -74,7 +73,6 @@ set(SRC
   nodes/node_geo_edge_paths_to_selection.cc
   nodes/node_geo_edge_split.cc
   nodes/node_geo_edges_to_face_groups.cc
-  nodes/node_geo_erode_grid.cc
   nodes/node_geo_evaluate_at_index.cc
   nodes/node_geo_evaluate_on_domain.cc
   nodes/node_geo_extrude_mesh.cc
@@ -158,7 +156,6 @@ set(SRC
   nodes/node_geo_repeat_input.cc
   nodes/node_geo_repeat_output.cc
   nodes/node_geo_rotate_instances.cc
-  nodes/node_geo_sample_grid.cc
   nodes/node_geo_sample_index.cc
   nodes/node_geo_sample_nearest.cc
   nodes/node_geo_sample_nearest_surface.cc
