@@ -1125,10 +1125,7 @@ static void sculpt_gesture_face_set_apply_for_symmetry_pass(bContext * /*C*/,
   }
 }
 
-static void sculpt_gesture_face_set_end(bContext * /*C*/, SculptGestureContext *sgcontext)
-{
-  BKE_pbvh_update_visibility(sgcontext->ss->pbvh);
-}
+static void sculpt_gesture_face_set_end(bContext * /*C*/, SculptGestureContext * /*sgcontext*/) {}
 
 static void sculpt_gesture_init_face_set_properties(SculptGestureContext *sgcontext,
                                                     wmOperator * /*op*/)
@@ -1224,7 +1221,7 @@ static void sculpt_gesture_mask_end(bContext *C, SculptGestureContext *sgcontext
   if (BKE_pbvh_type(sgcontext->ss->pbvh) == PBVH_GRIDS) {
     multires_mark_as_modified(depsgraph, sgcontext->vc.obact, MULTIRES_COORDS_MODIFIED);
   }
-  BKE_pbvh_update_mask(sgcontext->ss->pbvh);
+  blender::bke::pbvh::update_mask(*sgcontext->ss->pbvh);
 }
 
 static void sculpt_gesture_init_mask_properties(bContext *C,
@@ -1686,10 +1683,10 @@ static void sculpt_gesture_apply_trim(SculptGestureContext *sgcontext)
   BM_mesh_bm_from_me(bm, trim_mesh, &bm_from_me_params);
   BM_mesh_bm_from_me(bm, sculpt_mesh, &bm_from_me_params);
 
-  const int looptris_tot = poly_to_tri_count(bm->totface, bm->totloop);
-  BMLoop *(*looptris)[3] = static_cast<BMLoop *(*)[3]>(
-      MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__));
-  BM_mesh_calc_tessellation_beauty(bm, looptris);
+  const int corner_tris_tot = poly_to_tri_count(bm->totface, bm->totloop);
+  BMLoop *(*corner_tris)[3] = static_cast<BMLoop *(*)[3]>(
+      MEM_malloc_arrayN(corner_tris_tot, sizeof(*corner_tris), __func__));
+  BM_mesh_calc_tessellation_beauty(bm, corner_tris);
 
   BMIter iter;
   int i;
@@ -1737,8 +1734,8 @@ static void sculpt_gesture_apply_trim(SculptGestureContext *sgcontext)
         break;
     }
     BM_mesh_boolean(bm,
-                    looptris,
-                    looptris_tot,
+                    corner_tris,
+                    corner_tris_tot,
                     bm_face_isect_pair,
                     nullptr,
                     2,
@@ -1748,7 +1745,7 @@ static void sculpt_gesture_apply_trim(SculptGestureContext *sgcontext)
                     boolean_mode);
   }
 
-  MEM_freeN(looptris);
+  MEM_freeN(corner_tris);
 
   BMeshToMeshParams convert_params{};
   convert_params.calc_object_remap = false;

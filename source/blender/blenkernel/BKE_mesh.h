@@ -12,7 +12,6 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 struct BMesh;
 struct BMeshCreateParams;
@@ -27,16 +26,11 @@ struct ListBase;
 struct MDeformVert;
 struct MDisps;
 struct MFace;
-struct MLoopTri;
 struct Main;
 struct MemArena;
 struct Mesh;
 struct Object;
 struct Scene;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* TODO: Move to `BKE_mesh_types.hh` when possible. */
 typedef enum eMeshBatchDirtyMode {
@@ -414,8 +408,8 @@ bool BKE_mesh_center_of_volume(const struct Mesh *mesh, float r_cent[3]);
  */
 void BKE_mesh_calc_volume(const float (*vert_positions)[3],
                           int mverts_num,
-                          const struct MLoopTri *mlooptri,
-                          int looptri_num,
+                          const blender::int3 *corner_tris,
+                          int corner_tris_num,
                           const int *corner_verts,
                           float *r_volume,
                           float r_center[3]);
@@ -558,9 +552,5 @@ void BKE_mesh_debug_print(const struct Mesh *mesh) ATTR_NONNULL(1);
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
  * \{ */
-
-#ifdef __cplusplus
-}
-#endif
 
 /** \} */
