@@ -56,7 +56,7 @@ static void mesh_render_data_loose_geom_mesh(const MeshRenderData &mr, MeshBuffe
   const bool no_loose_edge_hint = mesh.runtime->loose_edges_cache.is_cached() &&
                                   mesh.runtime->loose_edges_cache.data().count == 0;
   threading::parallel_invoke(
-      mesh.totedge > 4096 && !no_loose_vert_hint && !no_loose_edge_hint,
+      mesh.edges_num > 4096 && !no_loose_vert_hint && !no_loose_edge_hint,
       [&]() {
         const bke::LooseEdgeCache &loose_edges = mesh.loose_edges();
         if (loose_edges.count > 0) {
@@ -355,7 +355,7 @@ const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *mesh)
   switch (mesh->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      return &mesh->loop_data;
+      return &mesh->corner_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
       return &mesh->edit_mesh->bm->ldata;
@@ -363,7 +363,7 @@ const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *mesh)
   }
 
   BLI_assert(0);
-  return &mesh->loop_data;
+  return &mesh->corner_data;
 }
 
 const CustomData *mesh_cd_pdata_get_from_mesh(const Mesh *mesh)
@@ -414,20 +414,20 @@ const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *mesh)
   return &mesh->vert_data;
 }
 
-void mesh_render_data_update_looptris(MeshRenderData &mr,
-                                      const eMRIterType iter_type,
-                                      const eMRDataType data_flag)
+void mesh_render_data_update_corner_tris(MeshRenderData &mr,
+                                         const eMRIterType iter_type,
+                                         const eMRDataType data_flag)
 {
   if (mr.extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
-    if ((iter_type & MR_ITER_LOOPTRI) || (data_flag & MR_DATA_LOOPTRI)) {
-      mr.looptris = mr.mesh->looptris();
-      mr.looptri_faces = mr.mesh->looptri_faces();
+    if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
+      mr.corner_tris = mr.mesh->corner_tris();
+      mr.corner_tri_faces = mr.mesh->corner_tri_faces();
     }
   }
   else {
     /* #BMesh */
-    if ((iter_type & MR_ITER_LOOPTRI) || (data_flag & MR_DATA_LOOPTRI)) {
+    if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
       /* Edit mode ensures this is valid, no need to calculate. */
       BLI_assert((mr.bm->totloop == 0) || (mr.edit_bmesh->looptris != nullptr));
     }
@@ -660,9 +660,9 @@ MeshRenderData *mesh_render_data_create(Object *object,
 
   if (mr->extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
-    mr->vert_len = mr->mesh->totvert;
-    mr->edge_len = mr->mesh->totedge;
-    mr->loop_len = mr->mesh->totloop;
+    mr->vert_len = mr->mesh->verts_num;
+    mr->edge_len = mr->mesh->edges_num;
+    mr->loop_len = mr->mesh->corners_num;
     mr->face_len = mr->mesh->faces_num;
     mr->tri_len = poly_to_tri_count(mr->face_len, mr->loop_len);
 

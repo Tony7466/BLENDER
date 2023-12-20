@@ -12,9 +12,9 @@
 
 #ifdef WITH_OPENVDB
 
-#  include <atomic>
 #  include <functional>
 #  include <mutex>
+#  include <optional>
 
 #  include "BKE_volume_enums.hh"
 #  include "BKE_volume_grid_type_traits.hh"
@@ -37,7 +37,7 @@ namespace blender::bke::volume_grid {
  *
  * Features:
  * - Implicit sharing of the #VolumeGridData: This makes it cheap to copy e.g. a #VolumeGrid<T>,
- *   because it just increases the number of users. On actual copy is only done, when the grid is
+ *   because it just increases the number of users. An actual copy is only done when the grid is
  *   modified.
  * - Implicit sharing of the referenced OpenVDB tree (not grid): The tree is the heavy piece of
  *   data that contains all the voxel values. Multiple #VolumeGridData can reference the same tree
@@ -103,7 +103,8 @@ class VolumeGridData : public ImplicitSharingMixin {
   /**
    * A token that allows detecting whether some code is currently accessing the tree (not grid) or
    * not. If this variable is the only owner of the `shared_ptr`, no one else has access to the
-   * tree.
+   * tree. `shared_ptr` is used here because it makes it very easy to manage a user-count without
+   * much boilerplate.
    */
   std::shared_ptr<AccessToken> tree_access_token_;
 
@@ -199,6 +200,12 @@ class VolumeGridData : public ImplicitSharingMixin {
    * Grid type that's derived from the OpenVDB tree type.
    */
   VolumeGridType grid_type() const;
+
+  /**
+   * Same as #grid_type() but does not potentially call the lazy-load function to figure out the
+   * grid type. This can be used e.g. by asserts.
+   */
+  std::optional<VolumeGridType> grid_type_without_load() const;
 
   /**
    * Grid class that is stored in the grid's meta data.
@@ -394,8 +401,9 @@ template<typename T> inline void VolumeGrid<T>::assert_correct_type() const
 #  ifndef NDEBUG
   if (data_) {
     const VolumeGridType expected_type = VolumeGridTraits<T>::EnumType;
-    const VolumeGridType actual_type = data_->grid_type();
-    BLI_assert(expected_type == actual_type);
+    if (const std::optional<VolumeGridType> actual_type = data_->grid_type_without_load()) {
+      BLI_assert(expected_type == *actual_type);
+    }
   }
 #  endif
 }
