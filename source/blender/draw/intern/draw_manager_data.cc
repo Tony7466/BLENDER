@@ -644,11 +644,15 @@ static void drw_call_calc_orco(const Object *ob, float (*r_orcofacs)[4])
     switch (GS(ob_data->name)) {
       case ID_VO: {
         const Volume &volume = *reinterpret_cast<const Volume *>(ob_data);
-        const blender::Bounds<blender::float3> bounds = *BKE_volume_min_max(&volume);
-        mid_v3_v3v3(static_buf.texspace_location, bounds.max, bounds.min);
-        sub_v3_v3v3(static_buf.texspace_size, bounds.max, bounds.min);
+        const std::optional<blender::Bounds<blender::float3>> bounds = BKE_volume_min_max(&volume);
+        if (bounds) {
+          mid_v3_v3v3(static_buf.texspace_location, bounds->max, bounds->min);
+          sub_v3_v3v3(static_buf.texspace_size, bounds->max, bounds->min);
+        }
+        static_buf.texspace_size[0] = std::max(static_buf.texspace_size[0], 0.001f);
+        static_buf.texspace_size[1] = std::max(static_buf.texspace_size[1], 0.001f);
+        static_buf.texspace_size[2] = std::max(static_buf.texspace_size[2], 0.001f);
         texspace_location = static_buf.texspace_location;
-        texspace_size = static_buf.texspace_size;
         break;
       }
       case ID_ME:
@@ -1428,7 +1432,7 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
   }
 
   if (use_uv) {
-    if (const char *name = CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2)) {
+    if (const char *name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2)) {
       attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER});
     }
   }
@@ -1470,8 +1474,8 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
   /* UV maps are not in attribute requests. */
   for (uint i = 0; i < 32; i++) {
     if (cd_needed.uv & (1 << i)) {
-      int layer_i = CustomData_get_layer_index_n(&mesh->loop_data, CD_PROP_FLOAT2, i);
-      CustomDataLayer *layer = layer_i != -1 ? mesh->loop_data.layers + layer_i : nullptr;
+      int layer_i = CustomData_get_layer_index_n(&mesh->corner_data, CD_PROP_FLOAT2, i);
+      CustomDataLayer *layer = layer_i != -1 ? mesh->corner_data.layers + layer_i : nullptr;
       if (layer) {
         attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER});
       }

@@ -16,10 +16,6 @@
 
 #include "node_util.hh"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/Types.h>
-#endif
-
 struct BVHTreeFromMesh;
 struct GeometrySet;
 namespace blender::nodes {
@@ -64,17 +60,6 @@ void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
                             MutableSpan<float3> r_positions);
 
 int apply_offset_in_cyclic_range(IndexRange range, int start_index, int offset);
-
-#ifdef WITH_OPENVDB
-/**
- * Initializes the VolumeComponent of a GeometrySet with a new Volume from points.
- * The grid class should be either openvdb::GRID_FOG_VOLUME or openvdb::GRID_LEVEL_SET.
- */
-void initialize_volume_component_from_points(GeoNodeExecParams &params,
-                                             const NodeGeometryPointsToVolume &storage,
-                                             GeometrySet &r_geometry_set,
-                                             openvdb::GridClass gridClass);
-#endif
 
 class EvaluateAtIndexInput final : public bke::GeometryFieldInput {
  private:
@@ -156,5 +141,7 @@ const EnumPropertyItem *domain_without_corner_experimental_grease_pencil_version
     bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free);
 
 }  // namespace enums
+
+void node_geo_exec_with_missing_openvdb(GeoNodeExecParams &params);
 
 }  // namespace blender::nodes
