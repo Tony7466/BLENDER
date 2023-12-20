@@ -8,7 +8,7 @@
 #include "DNA_curve_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_curves.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_fields.hh"
@@ -32,14 +32,14 @@ CurveComponent::~CurveComponent()
   this->clear();
 }
 
-GeometryComponent *CurveComponent::copy() const
+GeometryComponentPtr CurveComponent::copy() const
 {
   CurveComponent *new_component = new CurveComponent();
   if (curves_ != nullptr) {
     new_component->curves_ = BKE_curves_copy_for_eval(curves_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
-  return new_component;
+  return GeometryComponentPtr(new_component);
 }
 
 void CurveComponent::clear()
@@ -110,7 +110,9 @@ void CurveComponent::ensure_owns_direct_data()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
-    curves_ = BKE_curves_copy_for_eval(curves_);
+    if (curves_) {
+      curves_ = BKE_curves_copy_for_eval(curves_);
+    }
     ownership_ = GeometryOwnershipType::Owned;
   }
 }

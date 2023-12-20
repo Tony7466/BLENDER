@@ -15,12 +15,12 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
 #include "DNA_meshdata_types.h"
 
-#include "bmesh.h"
-#include "intern/bmesh_operators_private.h"
+#include "bmesh.hh"
+#include "intern/bmesh_operators_private.hh"
 
 /* ************************ primitives ******************* */
 

@@ -26,23 +26,24 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_deform.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_armature.hh"
 #include "ED_view3d.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 #include "ANIM_bonecolor.hh"
 
 #include "UI_resources.hh"
 
 #include "draw_common.h"
-#include "draw_manager_text.h"
+#include "draw_manager_text.hh"
 
 #include "overlay_private.hh"
 
@@ -2553,7 +2554,7 @@ static void draw_armature_edit(ArmatureDrawContext *ctx)
   const ArmatureBoneDrawStrategy &draw_strat = strategy_for_armature_drawtype(
       eArmature_Drawtype(arm->drawtype));
 
-  for (eBone = static_cast<EditBone *>(arm->edbo->first), index = ob_orig->runtime.select_id;
+  for (eBone = static_cast<EditBone *>(arm->edbo->first), index = ob_orig->runtime->select_id;
        eBone;
        eBone = eBone->next, index += 0x10000)
   {
@@ -2643,7 +2644,7 @@ static void draw_armature_pose(ArmatureDrawContext *ctx)
 
     if (is_pose_select) {
       const Object *ob_orig = DEG_get_original_object(ob);
-      index = ob_orig->runtime.select_id;
+      index = ob_orig->runtime->select_id;
     }
   }
 

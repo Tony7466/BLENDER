@@ -12,10 +12,10 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
-#include "bmesh.h"
-#include "intern/bmesh_walkers_private.h"
+#include "bmesh.hh"
+#include "intern/bmesh_walkers_private.hh"
 
 /* Pop into stack memory (common operation). */
 #define BMW_state_remove_r(walker, owalk) \
