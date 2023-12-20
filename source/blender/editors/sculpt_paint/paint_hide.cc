@@ -260,7 +260,7 @@ static void partialvis_update_mesh(Object &object,
       if (action == VisAction::Show && mask.is_empty()) {
         mesh_show_all(object, nodes);
       }
-      else {
+      else if (!mask.is_empty()) {
         vert_hide_update(object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
           for (const int i : verts.index_range()) {
             if (mask[verts[i]] > 0.5f) {
@@ -659,10 +659,14 @@ void PAINT_OT_hide_show(wmOperatorType *ot)
                "action",
                action_items,
                int(VisAction::Hide),
-               "VisAction",
+               "Visibility Action",
                "Whether to hide or show vertices");
-  RNA_def_enum(
-      ot->srna, "area", area_items, VisArea::Inside, "VisArea", "Which vertices to hide or show");
+  RNA_def_enum(ot->srna,
+               "area",
+               area_items,
+               VisArea::Inside,
+               "Visibility Area",
+               "Which vertices to hide or show");
   WM_operator_properties_border(ot);
 }
 
