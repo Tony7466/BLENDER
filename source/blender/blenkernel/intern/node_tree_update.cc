@@ -878,7 +878,6 @@ class NodeTreeMainUpdater {
 
   bool propagate_enum_definitions(bNodeTree &ntree)
   {
-    std::cout << "UPDATE TREE " << ntree.id.name << std::endl;
     ntree.ensure_interface_cache();
 
     /* Propagation from right to left to determine which enum
@@ -920,8 +919,6 @@ class NodeTreeMainUpdater {
             this->update_socket_enum_definition(
                 *output->default_value_typed<bNodeSocketValueMenu>(),
                 *input->default_value_typed<bNodeSocketValueMenu>());
-            std::cout << "PROPAGATE " << node->name << ":" << output->name
-                      << " <- -:" << input->name << std::endl;
           }
         }
       }
@@ -995,7 +992,6 @@ class NodeTreeMainUpdater {
       }
     }
 
-    std::cout << "TREE CHANGED? " << (changed ? "true" : "false") << std::endl;
     return changed;
   }
 
