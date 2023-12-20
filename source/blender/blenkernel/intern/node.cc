@@ -66,6 +66,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_interface.hh"
@@ -2212,6 +2213,13 @@ static void node_socket_free(bNodeSocket *sock, const bool do_id_user)
     if (do_id_user) {
       socket_id_user_decrement(sock);
     }
+    if (sock->type == SOCK_MENU) {
+      auto &default_value_menu = *sock->default_value_typed<bNodeSocketValueMenu>();
+      if (default_value_menu.enum_items) {
+        /* Copy of shared data pointer. */
+        default_value_menu.enum_items->remove_user_and_delete_if_last();
+      }
+    }
     MEM_freeN(sock->default_value);
   }
   if (sock->default_attribute_name) {
@@ -2539,6 +2547,14 @@ static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src,
 
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
       socket_id_user_increment(sock_dst);
+    }
+
+    if (sock_src->type == SOCK_MENU) {
+      auto &default_value_menu = *sock_dst->default_value_typed<bNodeSocketValueMenu>();
+      if (default_value_menu.enum_items) {
+        /* Copy of shared data pointer. */
+        default_value_menu.enum_items->add_user();
+      }
     }
   }
 
