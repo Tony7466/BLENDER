@@ -12,6 +12,7 @@
 #include "draw_manager.h"
 #include "draw_pbvh.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_curve.hh"
 #include "BKE_duplilist.h"
 #include "BKE_global.h"
@@ -1433,7 +1434,7 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
 
   if (use_uv) {
     if (const char *name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2)) {
-      attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER});
+      attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
     }
   }
 
@@ -1447,6 +1448,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
                                             int num_shgroups,
                                             const Object *ob)
 {
+  using namespace blender;
   using namespace blender::draw;
   DRW_Attributes draw_attrs;
   DRW_MeshCDMask cd_needed;
@@ -1477,7 +1479,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
       int layer_i = CustomData_get_layer_index_n(&mesh->corner_data, CD_PROP_FLOAT2, i);
       CustomDataLayer *layer = layer_i != -1 ? mesh->corner_data.layers + layer_i : nullptr;
       if (layer) {
-        attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER});
+        attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
       }
     }
   }

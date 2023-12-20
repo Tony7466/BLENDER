@@ -28,6 +28,7 @@ using bke::AnonymousAttributeFieldInput;
 using bke::AnonymousAttributeID;
 using bke::AnonymousAttributeIDPtr;
 using bke::AnonymousAttributePropagationInfo;
+using bke::AttrDomain;
 using bke::AttributeAccessor;
 using bke::AttributeFieldInput;
 using bke::AttributeIDRef;

@@ -18,7 +18,6 @@
 #include "BLI_math_matrix.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
@@ -255,7 +254,7 @@ int BKE_object_data_transfer_dttype_to_srcdst_index(const int dtdata_type)
  * is set).
  */
 static void data_transfer_mesh_attributes_transfer_active_color_string(
-    Mesh *mesh_dst, const Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
+    Mesh *mesh_dst, const Mesh *mesh_src, const AttrDomainMask mask_domain, const int data_type)
 {
   if (mesh_dst->active_color_attribute) {
     return;
@@ -306,7 +305,7 @@ static void data_transfer_mesh_attributes_transfer_active_color_string(
  * is set).
  */
 static void data_transfer_mesh_attributes_transfer_default_color_string(
-    Mesh *mesh_dst, const Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
+    Mesh *mesh_dst, const Mesh *mesh_src, const AttrDomainMask mask_domain, const int data_type)
 {
   if (mesh_dst->default_color_attribute) {
     return;
@@ -377,8 +376,8 @@ static void data_transfer_dtdata_type_postprocess(Mesh *me_dst,
 
     bke::MutableAttributeAccessor attributes = me_dst->attributes_for_write();
     bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
-        "sharp_edge", ATTR_DOMAIN_EDGE);
-    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+        "sharp_edge", bke::AttrDomain::Edge);
+    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
     /* Note loop_nors_dst contains our custom normals as transferred from source... */
     blender::bke::mesh::normals_loop_custom_set(me_dst->vert_positions(),
                                                 me_dst->edges(),
