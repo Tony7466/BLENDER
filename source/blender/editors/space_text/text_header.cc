@@ -85,27 +85,16 @@ static int text_text_search_exec(bContext *C, wmOperator * /*op*/)
       }
     }
 
-    bool draw = false;
-
     if (region->flag & RGN_FLAG_HIDDEN) {
       ED_region_toggle_hidden(C, region);
-      draw = true;
     }
 
     const char *active_category = UI_panel_category_active_get(region, false);
     if (active_category && !STREQ(active_category, "Text")) {
       UI_panel_category_active_set(region, "Text");
-      draw = true;
     }
 
-    /* Build the layout and draw so `find_text` text button can be activated. */
-    if (draw) {
-      ED_region_do_layout(C, region);
-      ED_region_do_draw(C, region);
-    }
-
-    UI_textbutton_activate_rna(C, region, st, "find_text");
-
+    st->flags |= ST_FIND_ACTIVATE;
     ED_region_tag_redraw(region);
   }
   return OPERATOR_FINISHED;
