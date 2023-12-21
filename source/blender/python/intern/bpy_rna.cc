@@ -5501,25 +5501,25 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
         item = PySequence_GetItem(seq, i);
         switch (raw_type) {
           case PROP_RAW_CHAR:
-            ((char *)array)[i] = char(PyLong_AsLong(item));
+            ((char *)array)[i] = char(PyC_Long_AsU8(item));
             break;
           case PROP_RAW_INT8:
-            ((int8_t *)array)[i] = int8_t(PyLong_AsLong(item));
+            ((int8_t *)array)[i] = PyC_Long_AsI8(item);
             break;
           case PROP_RAW_UINT8:
-            ((uint8_t *)array)[i] = uint8_t(PyC_Long_AsUnsignedLong(item));
+            ((uint8_t *)array)[i] = PyC_Long_AsU8(item);
             break;
           case PROP_RAW_SHORT:
-            ((short *)array)[i] = short(PyLong_AsLong(item));
+            ((short *)array)[i] = short(PyC_Long_AsI16(item));
             break;
           case PROP_RAW_UINT16:
-            ((uint16_t *)array)[i] = uint16_t(PyC_Long_AsUnsignedLong(item));
+            ((uint16_t *)array)[i] = PyC_Long_AsU16(item);
             break;
           case PROP_RAW_INT:
-            ((int *)array)[i] = int(PyLong_AsLong(item));
+            ((int *)array)[i] = int(PyC_Long_AsI32(item));
             break;
           case PROP_RAW_BOOLEAN:
-            ((bool *)array)[i] = int(PyLong_AsLong(item)) != 0;
+            ((bool *)array)[i] = bool(PyC_Long_AsBool(item));
             break;
           case PROP_RAW_FLOAT:
             ((float *)array)[i] = float(PyFloat_AsDouble(item));
@@ -5528,10 +5528,10 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
             ((double *)array)[i] = double(PyFloat_AsDouble(item));
             break;
           case PROP_RAW_INT64:
-            ((int64_t *)array)[i] = int64_t(PyLong_AsLongLong(item));
+            ((int64_t *)array)[i] = PyC_Long_AsI64(item);
             break;
           case PROP_RAW_UINT64:
-            ((uint64_t *)array)[i] = uint64_t(PyC_Long_AsUnsignedLongLong(item));
+            ((uint64_t *)array)[i] = PyC_Long_AsU64(item);
             break;
           case PROP_RAW_UNSET:
             /* Should never happen. */
