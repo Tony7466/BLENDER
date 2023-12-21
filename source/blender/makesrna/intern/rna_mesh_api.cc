@@ -93,8 +93,8 @@ static void rna_Mesh_calc_smooth_groups(
   using namespace blender;
   *r_poly_group_num = mesh->faces_num;
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", ATTR_DOMAIN_EDGE);
-  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+  const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", bke::AttrDomain::Edge);
+  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
   *r_poly_group = BKE_mesh_calc_smoothgroups(mesh->edges_num,
                                              mesh->faces(),
                                              mesh->corner_edges(),
@@ -168,7 +168,7 @@ static void rna_Mesh_update(Mesh *mesh,
                             const bool calc_edges_loose)
 {
   if (calc_edges || ((mesh->faces_num || mesh->totface_legacy) && mesh->edges_num == 0)) {
-    BKE_mesh_calc_edges(mesh, calc_edges, true);
+    blender::bke::mesh_calc_edges(*mesh, calc_edges, true);
   }
 
   if (calc_edges_loose) {

@@ -19,8 +19,6 @@
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
@@ -167,7 +165,7 @@ static int voxel_remesh_exec(bContext *C, wmOperator *op)
   }
   else {
     const VArray<bool> sharp_face = *mesh->attributes().lookup_or_default<bool>(
-        "sharp_face", ATTR_DOMAIN_FACE, false);
+        "sharp_face", bke::AttrDomain::Face, false);
     bke::mesh_smooth_set(*new_mesh, !sharp_face[0]);
   }
 

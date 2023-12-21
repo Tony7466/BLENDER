@@ -12,7 +12,6 @@
 
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -167,7 +166,7 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
     else {
       const bke::AttributeAccessor attributes = mesh->attributes();
       const VArraySpan material_indices = *attributes.lookup<int>("material_index",
-                                                                  ATTR_DOMAIN_FACE);
+                                                                  bke::AttrDomain::Face);
       a = mesh->faces_num;
       while (ok && a--) {
         Image *ima = bake_object_image_get(ob,
