@@ -51,77 +51,70 @@ class TestPropArray(unittest.TestCase):
     def setUp(self):
         id_type.test_array_f = FloatVectorProperty(size=10)
         id_type.test_array_i = IntVectorProperty(size=10)
+        id_type.test_array_f_multidim = FloatVectorProperty(size=(3, 3, 3))
+        id_type.test_array_i_multidim = IntVectorProperty(size=(3, 3, 3))
         scene = bpy.context.scene
         self.array_f = scene.test_array_f
         self.array_i = scene.test_array_i
+        self.array_f_multidim = scene.test_array_f_multidim
+        self.array_i_multidim = scene.test_array_i_multidim
 
     def tearDown(self):
         del id_type.test_array_f
         del id_type.test_array_i
 
+    def do_test_foreach_getset(self, prop_array, is_int, expected_length):
+        if is_int:
+            expected_dtype = np.int32
+            wrong_kind_dtype = np.float32
+            too_large_dtype = np.int64
+        else:
+            expected_dtype = np.float32
+            wrong_kind_dtype = np.int32
+            too_large_dtype = np.float64
+
+        assert expected_length > 0
+
+        too_short_length = expected_length - 1
+
+        with self.assertRaises(TypeError):
+            prop_array.foreach_set(range(too_short_length))
+
+        prop_array.foreach_set(range(5, 5 + expected_length))
+
+        with self.assertRaises(TypeError):
+            prop_array.foreach_set(np.arange(too_short_length, dtype=expected_dtype))
+
+        with self.assertRaises(TypeError):
+            prop_array.foreach_set(np.arange(expected_length, dtype=too_large_dtype))
+
+        with self.assertRaises(TypeError):
+            prop_array.foreach_get(np.arange(expected_length, dtype=wrong_kind_dtype))
+
+        a = np.arange(expected_length, dtype=expected_dtype)
+        prop_array.foreach_set(a)
+
+        with self.assertRaises(TypeError):
+            prop_array.foreach_set(a[:too_short_length])
+
+        for v1, v2 in zip(a, prop_array[:]):
+            self.assertEqual(v1, v2)
+
+        b = np.empty(expected_length, dtype=expected_dtype)
+        prop_array.foreach_get(b)
+        for v1, v2 in zip(a, b):
+            self.assertEqual(v1, v2)
+
+        b = [None] * expected_length
+        prop_array.foreach_get(b)
+        for v1, v2 in zip(a, b):
+            self.assertEqual(v1, v2)
+
     def test_foreach_getset_i(self):
-        with self.assertRaises(TypeError):
-            self.array_i.foreach_set(range(5))
-
-        self.array_i.foreach_set(range(5, 15))
-
-        with self.assertRaises(TypeError):
-            self.array_i.foreach_set(np.arange(5, dtype=np.int32))
-
-        with self.assertRaises(TypeError):
-            self.array_i.foreach_set(np.arange(10, dtype=np.int64))
-
-        with self.assertRaises(TypeError):
-            self.array_i.foreach_get(np.arange(10, dtype=np.float32))
-
-        a = np.arange(10, dtype=np.int32)
-        self.array_i.foreach_set(a)
-
-        with self.assertRaises(TypeError):
-            self.array_i.foreach_set(a[:5])
-
-        for v1, v2 in zip(a, self.array_i[:]):
-            self.assertEqual(v1, v2)
-
-        b = np.empty(10, dtype=np.int32)
-        self.array_i.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
-
-        b = [None] * 10
-        self.array_i.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
+        self.do_test_foreach_getset(self.array_i, is_int=True, expected_length=10)
 
     def test_foreach_getset_f(self):
-        with self.assertRaises(TypeError):
-            self.array_f.foreach_set(range(5))
-
-        self.array_f.foreach_set(range(5, 15))
-
-        with self.assertRaises(TypeError):
-            self.array_f.foreach_set(np.arange(5, dtype=np.float32))
-
-        with self.assertRaises(TypeError):
-            self.array_f.foreach_set(np.arange(10, dtype=np.int32))
-
-        with self.assertRaises(TypeError):
-            self.array_f.foreach_get(np.arange(10, dtype=np.float64))
-
-        a = np.arange(10, dtype=np.float32)
-        self.array_f.foreach_set(a)
-        for v1, v2 in zip(a, self.array_f[:]):
-            self.assertEqual(v1, v2)
-
-        b = np.empty(10, dtype=np.float32)
-        self.array_f.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
-
-        b = [None] * 10
-        self.array_f.foreach_get(b)
-        for v1, v2 in zip(a, b):
-            self.assertEqual(v1, v2)
+        self.do_test_foreach_getset(self.array_f, is_int=False, expected_length=10)
 
 
 class TestPropArrayMultiDimensional(unittest.TestCase):
