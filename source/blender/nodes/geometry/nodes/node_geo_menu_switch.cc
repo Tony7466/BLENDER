@@ -379,7 +379,6 @@ static void node_rna(StructRNA *srna)
                                                SOCK_GEOMETRY,
                                                SOCK_OBJECT,
                                                SOCK_COLLECTION,
-                                               SOCK_TEXTURE,
                                                SOCK_MATERIAL,
                                                SOCK_IMAGE);
                                  });
