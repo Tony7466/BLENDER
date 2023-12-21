@@ -272,6 +272,7 @@ void gbuffer_register_closure(inout GBufferReader gbuf, ClosureUndetermined cl)
       gbuf.data.diffuse.N = cl.N;
       gbuf.data.diffuse.color = cl.color;
       gbuf.data.diffuse.sss_radius = cl.data.xyz;
+      gbuf.has_diffuse = true;
       gbuf.has_sss = true;
       break;
     case CLOSURE_BSDF_DIFFUSE_ID:
@@ -603,7 +604,7 @@ GBufferWriter gbuffer_pack(GBufferDataUndetermined data_in)
   }
 
   if (has_translucent) {
-    gbuffer_closure_diffuse_pack(gbuf, data_in.translucent);
+    gbuffer_closure_translucent_pack(gbuf, data_in.translucent);
   }
 
   if (gbuf.layer_normal == 0) {
