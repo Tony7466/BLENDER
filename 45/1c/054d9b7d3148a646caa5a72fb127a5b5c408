@@ -1,1 +1,2 @@
 Referenced by issue #116069, Data Transfer's modifier Face Corner Custom Normals Tranfer don't work as expected
+Referenced by commit 78c3253553fd33daa593fd54038077fc2590d8de, Fix #116069: Incorrect data transfer custom normals behavior
