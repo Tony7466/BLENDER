@@ -89,13 +89,13 @@ class TestPropArray(unittest.TestCase):
             self.assertEqual(v1, v2)
 
         b = [None] * 10
-        self.array_f.foreach_get(b)
+        self.array_i.foreach_get(b)
         for v1, v2 in zip(a, b):
             self.assertEqual(v1, v2)
 
     def test_foreach_getset_f(self):
         with self.assertRaises(TypeError):
-            self.array_i.foreach_set(range(5))
+            self.array_f.foreach_set(range(5))
 
         self.array_f.foreach_set(range(5, 15))
 
