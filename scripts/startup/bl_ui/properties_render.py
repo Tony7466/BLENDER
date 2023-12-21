@@ -467,7 +467,7 @@ class RENDER_PT_eevee_next_volumes(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_eevee_next_volumes_lighting(RenderButtonsPanel, Panel):
-    bl_label = "Volumes Lighting"
+    bl_label = "Volume Lighting"
     bl_parent_id = "RENDER_PT_eevee_next_volumes"
     COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
 
@@ -482,7 +482,7 @@ class RENDER_PT_eevee_next_volumes_lighting(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_eevee_next_volumes_shadows(RenderButtonsPanel, Panel):
-    bl_label = "Volumes Shadows"
+    bl_label = "Volume Shadows"
     bl_parent_id = "RENDER_PT_eevee_next_volumes"
     COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
 
@@ -1161,6 +1161,9 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
         if context.engine in 'BLENDER_EEVEE_NEXT':
             col = flow.column()
             col.prop(rd, "simplify_shadows", text="Shadow Resolution")
+
+        col = flow.column()
+        col.prop(rd, "use_simplify_normals", text="Normals")
 
 
 class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):
