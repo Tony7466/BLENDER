@@ -310,6 +310,8 @@ set(SRC
   intern/vfontdata_freetype.cc
   intern/viewer_path.cc
   intern/volume.cc
+  intern/volume_grid.cc
+  intern/volume_grid_file_cache.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
   intern/workspace.cc
@@ -356,8 +358,8 @@ set(SRC
   BKE_cloth.hh
   BKE_collection.h
   BKE_collision.h
-  BKE_colorband.h
-  BKE_colortools.h
+  BKE_colorband.hh
+  BKE_colortools.hh
   BKE_compute_contexts.hh
   BKE_constraint.h
   BKE_context.hh
@@ -510,6 +512,9 @@ set(SRC
   BKE_vfontdata.hh
   BKE_viewer_path.hh
   BKE_volume.hh
+  BKE_volume_enums.hh
+  BKE_volume_grid.hh
+  BKE_volume_grid_file_cache.hh
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
@@ -855,6 +860,7 @@ if(WITH_GTESTS)
     intern/main_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
+    intern/volume_test.cc
   )
   set(TEST_INC
     ../editors/include
