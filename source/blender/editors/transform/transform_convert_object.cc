@@ -817,7 +817,7 @@ static void autokeyframe_object(bContext *C, Scene *scene, Object *ob, const eTf
 {
   blender::Vector<std::string> rna_paths;
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  const blender::StringRef rotation_path = blender::animrig::get_rotation_mode_path(
+  const std::string rotation_path = blender::animrig::get_rotation_mode_path(
       eRotationModes(ob->rotmode));
 
   if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
