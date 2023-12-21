@@ -100,7 +100,7 @@ class MapUVOperation : public NodeOperation {
  private:
   char const *get_shader_name()
   {
-    return get_nearest_neighbour() ? "compositor_map_uv_nearest_neighbour" : "compositor_map_uv";
+    return get_nearest_neighbour() ? "compositor_map_uv_nearest_neighbour" : "compositor_map_uv_anisotropic";
   }
 };
 
