@@ -14,6 +14,7 @@
 #include "UI_resources.hh"
 
 #include "NOD_rna_define.hh"
+#include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "RNA_access.hh"
@@ -25,127 +26,6 @@ namespace blender::nodes::node_geo_menu_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeMenuSwitch)
 
-static void add_input_for_enum_item(NodeDeclarationBuilder &b,
-                                    const eNodeSocketDatatype type,
-                                    const NodeEnumItem &enum_item)
-{
-  const StringRef name = enum_item.name;
-  const std::string identifier = "Item" + std::to_string(enum_item.identifier);
-
-  switch (type) {
-    case SOCK_CUSTOM:
-      break;
-    case SOCK_FLOAT:
-      b.add_input<decl::Float>(name, identifier).supports_field();
-      break;
-    case SOCK_VECTOR:
-      b.add_input<decl::Vector>(name, identifier).supports_field();
-      break;
-    case SOCK_RGBA:
-      b.add_input<decl::Color>(name, identifier)
-          .default_value({0.8f, 0.8f, 0.8f, 1.0f})
-          .supports_field();
-      break;
-    case SOCK_SHADER:
-      b.add_input<decl::Shader>(name, identifier);
-      break;
-    case SOCK_BOOLEAN:
-      b.add_input<decl::Bool>(name, identifier).default_value(false).supports_field();
-      break;
-    case SOCK_INT:
-      b.add_input<decl::Int>(name, identifier).min(-100000).max(100000).supports_field();
-      break;
-    case SOCK_STRING:
-      b.add_input<decl::String>(name, identifier).supports_field();
-      break;
-    case SOCK_OBJECT:
-      b.add_input<decl::Object>(name, identifier);
-      break;
-    case SOCK_IMAGE:
-      b.add_input<decl::Image>(name, identifier);
-      break;
-    case SOCK_GEOMETRY:
-      b.add_input<decl::Geometry>(name, identifier);
-      break;
-    case SOCK_COLLECTION:
-      b.add_input<decl::Collection>(name, identifier);
-      break;
-    case SOCK_TEXTURE:
-      b.add_input<decl::Texture>(name, identifier);
-      break;
-    case SOCK_MATERIAL:
-      b.add_input<decl::Material>(name, identifier);
-      break;
-    case SOCK_ROTATION:
-      b.add_input<decl::Rotation>(name, identifier);
-      break;
-
-    case SOCK_MENU:
-      /* Technically possible perhaps to select an enum based on
-       * another enum, but not supported for now. */
-      BLI_assert_unreachable();
-      break;
-  }
-}
-
-static void add_output(NodeDeclarationBuilder &b, const eNodeSocketDatatype type)
-{
-  StringRef name = "Output";
-
-  switch (type) {
-    case SOCK_CUSTOM:
-      break;
-    case SOCK_FLOAT:
-      b.add_output<decl::Float>(name).dependent_field().reference_pass_all();
-      break;
-    case SOCK_VECTOR:
-      b.add_output<decl::Vector>(name).dependent_field().reference_pass_all();
-      break;
-    case SOCK_RGBA:
-      b.add_output<decl::Color>(name);
-      break;
-    case SOCK_SHADER:
-      b.add_output<decl::Shader>(name);
-      break;
-    case SOCK_BOOLEAN:
-      b.add_output<decl::Bool>(name).dependent_field().reference_pass_all();
-      break;
-    case SOCK_INT:
-      b.add_output<decl::Int>(name).dependent_field().reference_pass_all();
-      break;
-    case SOCK_STRING:
-      b.add_output<decl::String>(name).dependent_field().reference_pass_all();
-      break;
-    case SOCK_OBJECT:
-      b.add_output<decl::Object>(name);
-      break;
-    case SOCK_IMAGE:
-      b.add_output<decl::Image>(name);
-      break;
-    case SOCK_GEOMETRY:
-      b.add_output<decl::Geometry>(name).propagate_all();
-      break;
-    case SOCK_COLLECTION:
-      b.add_output<decl::Collection>(name);
-      break;
-    case SOCK_TEXTURE:
-      b.add_output<decl::Texture>(name);
-      break;
-    case SOCK_MATERIAL:
-      b.add_output<decl::Material>(name);
-      break;
-    case SOCK_ROTATION:
-      b.add_output<decl::Rotation>(name).dependent_field().reference_pass_all();
-      break;
-
-    case SOCK_MENU:
-      /* Technically possible perhaps to select an enum based on
-       * another enum, but not supported for now. */
-      BLI_assert_unreachable();
-      break;
-  }
-}
-
 static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
 {
   const bNode *node = b.node_or_null();
@@ -154,30 +34,29 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
   }
   const NodeMenuSwitch &storage = node_storage(*node);
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
+  const bool supports_fields = socket_type_supports_fields(data_type);
 
-  /* Remove outdated sockets. */
-  b.declaration().skip_updating_sockets = false;
-  /* Allow the node group interface to define the socket order. */
-  b.use_custom_socket_order();
-
-  const bool fields_type = ELEM(data_type,
-                                SOCK_FLOAT,
-                                SOCK_INT,
-                                SOCK_BOOLEAN,
-                                SOCK_VECTOR,
-                                SOCK_RGBA,
-                                SOCK_STRING,
-                                SOCK_ROTATION);
-
-  add_output(b, data_type);
-  {
-    auto sb = b.add_input<decl::Menu>("Menu").default_value(false);
-    if (fields_type) {
-      sb.supports_field();
-    }
+  auto &menu = b.add_input<decl::Menu>("Menu").default_value(false);
+  if (supports_fields) {
+    menu.supports_field();
   }
+
   for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
-    add_input_for_enum_item(b, data_type, enum_item);
+    const std::string identifier = "Item" + std::to_string(enum_item.identifier);
+    auto &input = b.add_input(data_type, enum_item.name, std::move(identifier));
+    if (supports_fields) {
+      input.supports_field();
+    }
+    /* Labels are ugly in combination with data-block pickers and are usually disabled. */
+    input.hide_label(ELEM(data_type, SOCK_OBJECT, SOCK_IMAGE, SOCK_COLLECTION, SOCK_MATERIAL));
+  }
+
+  auto &output = b.add_output(data_type, "Output");
+  if (supports_fields) {
+    output.dependent_field().reference_pass_all();
+  }
+  else if (data_type == SOCK_GEOMETRY) {
+    output.propagate_all();
   }
 }
 
