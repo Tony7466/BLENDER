@@ -416,14 +416,14 @@ bool rna_NodeSocketMaterial_default_value_poll(PointerRNA * /*ptr*/, PointerRNA 
   return ma->gp_style == nullptr;
 }
 
-const EnumPropertyItem *RNA_node_enum_definition_itemf(const RuntimeNodeEnumItems &enum_items,
-                                                       bool *r_free)
+const EnumPropertyItem *RNA_node_enum_definition_itemf(
+    const blender::bke::RuntimeNodeEnumItems &enum_items, bool *r_free)
 {
   EnumPropertyItem tmp = {0};
   EnumPropertyItem *result = nullptr;
   int totitem = 0;
 
-  for (const RuntimeNodeEnumItem &item : enum_items.items) {
+  for (const blender::bke::RuntimeNodeEnumItem &item : enum_items.items) {
     tmp.value = item.identifier;
     /* Item name is unique and used as the RNA identitifier as well.
      * The integer value is persistent and unique and should be used

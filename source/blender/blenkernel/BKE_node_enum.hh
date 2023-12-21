@@ -9,6 +9,8 @@
 #include "BLI_implicit_sharing.hh"
 #include "BLI_vector.hh"
 
+namespace blender::bke {
+
 /* -------------------------------------------------------------------- */
 /** \name Runtime enum items list.
  * \{ */
@@ -37,3 +39,5 @@ struct RuntimeNodeEnumItems : blender::ImplicitSharingMixin {
 };
 
 /** \} */
+
+}  // namespace blender::bke

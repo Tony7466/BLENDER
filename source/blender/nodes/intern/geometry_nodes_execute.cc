@@ -179,11 +179,11 @@ static void id_property_int_update_enum_items(const bNodeSocketValueMenu *value,
   IDPropertyUIDataEnumItem *idprop_items = nullptr;
 
   if (value->enum_items) {
-    const Span<RuntimeNodeEnumItem> items = value->enum_items->items;
+    const Span<bke::RuntimeNodeEnumItem> items = value->enum_items->items;
     idprop_items_num = items.size();
     idprop_items = MEM_cnew_array<IDPropertyUIDataEnumItem>(items.size(), __func__);
     for (const int i : items.index_range()) {
-      const RuntimeNodeEnumItem &item = items[i];
+      const bke::RuntimeNodeEnumItem &item = items[i];
       IDPropertyUIDataEnumItem &idprop_item = idprop_items[i];
       idprop_item.value = item.identifier;
       /* TODO: The name may not be unique!
