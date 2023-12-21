@@ -127,7 +127,3 @@ const EnumPropertyItem *RNA_enum_node_tree_types_itemf_impl(bContext *C, bool *r
 
 const EnumPropertyItem *RNA_node_enum_definition_itemf(
     const blender::bke::RuntimeNodeEnumItems &enum_items, bool *r_free);
-const EnumPropertyItem *RNA_node_socket_enum_itemf(bContext *C,
-                                                   PointerRNA *ptr,
-                                                   PropertyRNA *prop,
-                                                   bool *r_free);
