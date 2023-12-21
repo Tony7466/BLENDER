@@ -259,7 +259,7 @@ class AbstractHierarchyIterator {
   /* Given a HierarchyContext of some Object *, return an export path that is valid for its
    * object->data. Overriding is necessary when the exported format does NOT expect the object's
    * data to be a child of the object. */
-  virtual std::string get_object_data_path(const HierarchyContext *context);
+  virtual std::string get_object_data_path(const HierarchyContext *context) const;
 
   /* Returns the export path computed for the object with the given ID.
    * This should be called after only all writers have been created for the

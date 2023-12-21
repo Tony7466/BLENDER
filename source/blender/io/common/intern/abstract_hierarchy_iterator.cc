@@ -799,12 +799,12 @@ void AbstractHierarchyIterator::make_writers_particle_systems(
   }
 }
 
-std::string AbstractHierarchyIterator::get_object_name(const Object *object)
+std::string AbstractHierarchyIterator::get_object_name(const Object *object) const
 {
   return get_id_name(&object->id);
 }
 
-std::string AbstractHierarchyIterator::get_object_data_name(const Object *object)
+std::string AbstractHierarchyIterator::get_object_data_name(const Object *object) const
 {
   ID *object_data = static_cast<ID *>(object->data);
   return get_id_name(object_data);
