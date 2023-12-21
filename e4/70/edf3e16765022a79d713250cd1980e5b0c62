@@ -1,1 +1,1 @@
-Referenced by issue #116422, Crash after bpy.ops.mesh.bevel() called
+Referenced by issue #116422, Calling modal oparators (e.g. bpy.ops.mesh.bevel via INVOKE_DEFAULT), then switching to object mode crashes
