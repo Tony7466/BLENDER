@@ -1,2 +1,2 @@
 Referenced by issue #116308, The color ramp node behaves strangely in geometry nodes
-Referenced by issue #116426, Regression: Can no longer rename Shape Key, AOVs, ...
+Referenced by issue #116426, Regression: Renaming in UILists (Shape Key, AOVs, ...) is broken
