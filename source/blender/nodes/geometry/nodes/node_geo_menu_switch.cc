@@ -163,8 +163,10 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-/* Multifunction which evaluates the switch input for each enum item and partially fills the output
- * array with values from the input array where the identifier matches. */
+/**
+ * Multifunction which evaluates the switch input for each enum item and partially fills the output
+ * array with values from the input array where the identifier matches.
+ */
 template<typename T> class MenuSwitchFn : public mf::MultiFunction {
   const NodeEnumDefinition &enum_def_;
   mf::Signature signature_;
