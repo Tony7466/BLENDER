@@ -558,7 +558,7 @@ static int sequencer_slip_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   return OPERATOR_RUNNING_MODAL;
 }
 
-static void sequencer_slip_recursively(Scene *scene, SlipData *data, int delta)
+static void sequencer_slip_strips(Scene *scene, SlipData *data, int delta)
 {
   for (int i = data->num_seq - 1; i >= 0; i--) {
     Sequence *seq = data->seq_array[i];
@@ -625,7 +625,7 @@ static int sequencer_slip_exec(bContext *C, wmOperator *op)
   slip_add_sequences(ed->seqbasep, data->seq_array);
 
   sequencer_slip_apply_limits(scene, data, &offset);
-  sequencer_slip_recursively(scene, data, offset);
+  sequencer_slip_strips(scene, data, offset);
 
   MEM_freeN(data->seq_array);
   MEM_freeN(data);
@@ -672,7 +672,7 @@ static int sequencer_slip_modal(bContext *C, wmOperator *op, const wmEvent *even
 
     RNA_int_set(op->ptr, "offset", offset);
 
-    sequencer_slip_recursively(scene, data, delta_offset);
+    sequencer_slip_strips(scene, data, delta_offset);
 
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
@@ -705,7 +705,7 @@ static int sequencer_slip_modal(bContext *C, wmOperator *op, const wmEvent *even
 
         RNA_int_set(op->ptr, "offset", offset);
 
-        sequencer_slip_recursively(scene, data, delta_offset);
+        sequencer_slip_strips(scene, data, delta_offset);
 
         WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
       }
@@ -729,7 +729,7 @@ static int sequencer_slip_modal(bContext *C, wmOperator *op, const wmEvent *even
     case EVT_ESCKEY:
     case RIGHTMOUSE: {
       int offset = RNA_int_get(op->ptr, "offset");
-      sequencer_slip_recursively(scene, data, -offset);
+      sequencer_slip_strips(scene, data, -offset);
 
       MEM_freeN(data->seq_array);
       MEM_freeN(data);
@@ -773,7 +773,7 @@ static int sequencer_slip_modal(bContext *C, wmOperator *op, const wmEvent *even
 
     RNA_int_set(op->ptr, "offset", offset);
 
-    sequencer_slip_recursively(scene, data, delta_offset);
+    sequencer_slip_strips(scene, data, delta_offset);
 
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   }

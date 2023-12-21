@@ -601,10 +601,7 @@ static void seq_time_slip_strip_ex(const Scene *scene, Sequence *seq, int delta,
     if (BLI_listbase_is_empty(&seq->seqbase)) {
       return;
     }
-    Sequence *seq_child;
-    for (seq_child = static_cast<Sequence *>(seq->seqbase.first); seq_child;
-         seq_child = seq_child->next)
-    {
+    LISTBASE_FOREACH (Sequence *, seq_child, &seq->seqbase) {
       seq_time_slip_strip_ex(scene, seq_child, delta, true);
     }
   }
