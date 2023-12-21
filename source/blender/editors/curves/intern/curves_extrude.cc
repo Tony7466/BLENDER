@@ -211,10 +211,6 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   bke::CurvesGeometry new_curves(curves_copy.curve_offsets().last(), curves.curves_num());
   MutableSpan<int> offsets = new_curves.offsets_for_write();
 
-  CustomData_copy(
-      &curves.curve_data, &new_curves.curve_data, CD_MASK_ALL, new_curves.curves_num());
-  new_curves.update_curve_types();
-
   offsets.copy_from(curves_copy.curve_offsets());
 
   int d = 0;
@@ -239,30 +235,36 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
 
   bke::MutableAttributeAccessor dst_attributes = new_curves.attributes_for_write();
   bke::AttributeAccessor src_attributes = curves.attributes();
-  src_attributes.for_all([&](const bke::AttributeIDRef &id,
-                             const bke::AttributeMetaData &meta_data) {
-    if (meta_data.domain == ATTR_DOMAIN_POINT && std::string(".selection") != id.name()) {
-      bke::GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
-          id, meta_data.domain, meta_data.data_type);
-      GMutableSpan dst = dst_attribute.span;
-      const CPPType &type = dst.type();
-      const GVArraySpan src = (*src_attributes.lookup(id, meta_data.domain));
-      d = 0;
+  src_attributes.for_all(
+      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData &meta_data) {
+        if (meta_data.domain == ATTR_DOMAIN_POINT && std::string(".selection") == id.name()) {
+          return true;
+        }
+        bke::GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
+            id, meta_data.domain, meta_data.data_type);
+        GMutableSpan dst = dst_attribute.span;
+        const CPPType &type = dst.type();
+        const GVArraySpan src = (*src_attributes.lookup(id, meta_data.domain));
 
-      for (const int i : IndexRange(intervals.size() - 1)) {
-        const int first = intervals[i];
-        const int size = intervals[i + 1] - first + 1;
+        if (meta_data.domain == ATTR_DOMAIN_POINT) {
+          d = 0;
+          for (const int i : IndexRange(intervals.size() - 1)) {
+            const int first = intervals[i];
+            const int size = intervals[i + 1] - first + 1;
 
-        type.copy_assign_n(src.slice(IndexRange(first, size)).data(),
-                           dst.slice(IndexRange(d, size)).data(),
-                           size);
-        d += size;
-      }
-
-      dst_attribute.finish();
-    }
-    return true;
-  });
+            type.copy_assign_n(src.slice(IndexRange(first, size)).data(),
+                               dst.slice(IndexRange(d, size)).data(),
+                               size);
+            d += size;
+          }
+        }
+        else {
+          type.copy_assign_n(src.data(), dst.data(), src.size());
+        }
+        dst_attribute.finish();
+        return true;
+      });
+  new_curves.update_curve_types();
 
   curves_id->geometry.wrap() = new_curves;
 
