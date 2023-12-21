@@ -198,6 +198,13 @@ static void *make_socket_data(const StringRef socket_type)
  * \{ */
 
 template<typename T> void socket_data_free_impl(T & /*data*/, const bool /*do_id_user*/) {}
+template<> void socket_data_free_impl(bNodeSocketValueMenu &dst, const bool /*do_id_user*/)
+{
+  if (dst.enum_items) {
+    /* Release shared data pointer. */
+    dst.enum_items->remove_user_and_delete_if_last();
+  }
+}
 
 static void socket_data_free(bNodeTreeInterfaceSocket &socket, const bool do_id_user)
 {
@@ -217,6 +224,13 @@ static void socket_data_free(bNodeTreeInterfaceSocket &socket, const bool do_id_
  * \{ */
 
 template<typename T> void socket_data_copy_impl(T & /*dst*/, const T & /*src*/) {}
+template<> void socket_data_copy_impl(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu & /*src*/)
+{
+  /* Copy of shared data pointer. */
+  if (dst.enum_items) {
+    dst.enum_items->add_user();
+  }
+}
 
 static void socket_data_copy(bNodeTreeInterfaceSocket &dst,
                              const bNodeTreeInterfaceSocket &src,

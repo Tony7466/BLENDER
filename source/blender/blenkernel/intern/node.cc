@@ -2216,7 +2216,7 @@ static void node_socket_free(bNodeSocket *sock, const bool do_id_user)
     if (sock->type == SOCK_MENU) {
       auto &default_value_menu = *sock->default_value_typed<bNodeSocketValueMenu>();
       if (default_value_menu.enum_items) {
-        /* Copy of shared data pointer. */
+        /* Release shared data pointer. */
         default_value_menu.enum_items->remove_user_and_delete_if_last();
       }
     }
