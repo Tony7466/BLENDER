@@ -308,8 +308,8 @@ class AbstractHierarchyIterator {
   /* Convenience wrappers around get_id_name(). */
   virtual std::string get_object_name(const Object *object) const;
   virtual std::string get_object_data_name(const Object *object) const;
-  virtual std::string get_object_computed_name(const Object* object) const;
-  virtual std::string get_object_data_computed_name(const Object* object) const;
+  virtual std::string get_object_computed_name(const Object *object) const;
+  virtual std::string get_object_data_computed_name(const Object *object) const;
 
   typedef AbstractHierarchyWriter *(AbstractHierarchyIterator::*create_writer_func)(
       const HierarchyContext *);
@@ -383,8 +383,8 @@ class AbstractHierarchyIterator {
   virtual std::vector<std::string> get_computed_material_names(const Material **materials,
                                                                const size_t count) const;
 
-  const Material** get_materials_from_data(const Object* object) const;
-  size_t get_materials_count_from_data(const Object* object) const;
+  const Material **get_materials_from_data(const Object *object) const;
+  size_t get_materials_count_from_data(const Object *object) const;
 };
 
 }  // namespace blender::io

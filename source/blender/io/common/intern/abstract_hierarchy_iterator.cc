@@ -453,11 +453,11 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   context->original_export_path = "";
   context->higher_up_export_path = "";
 
-  context->object_material_names = get_computed_material_names(const_cast<const Material**>(object->mat),
-                                                               object->totcol);
+  context->object_material_names = get_computed_material_names(
+      const_cast<const Material **>(object->mat), object->totcol);
   if (object->data) {
-    context->data_material_names = get_computed_material_names(get_materials_from_data(object),
-                                                               get_materials_count_from_data(object));
+    context->data_material_names = get_computed_material_names(
+        get_materials_from_data(object), get_materials_count_from_data(object));
   }
 
   copy_m4_m4(context->matrix_world, object->object_to_world);
@@ -810,23 +810,25 @@ std::string AbstractHierarchyIterator::get_object_data_name(const Object *object
   return get_id_name(object_data);
 }
 
-std::string AbstractHierarchyIterator::get_object_computed_name(const Object* object) const {
-    (void)object;
-    return "";
+std::string AbstractHierarchyIterator::get_object_computed_name(const Object *object) const
+{
+  (void)object;
+  return "";
 }
 
-std::string AbstractHierarchyIterator::get_object_data_computed_name(const Object* object) const {
-    (void)object;
-    return "";
+std::string AbstractHierarchyIterator::get_object_data_computed_name(const Object *object) const
+{
+  (void)object;
+  return "";
 }
 
 std::vector<std::string> AbstractHierarchyIterator::get_computed_material_names(
-    const Material **materials, const size_t count) const {
-    (void)materials;
-    (void)count;
-    return {};
+    const Material **materials, const size_t count) const
+{
+  (void)materials;
+  (void)count;
+  return {};
 }
-
 
 AbstractHierarchyWriter *AbstractHierarchyIterator::get_writer(
     const std::string &export_path) const
@@ -873,21 +875,22 @@ bool AbstractHierarchyIterator::should_visit_dupli_object(const DupliObject *dup
   return !dupli_object->no_draw;
 }
 
-const Material** AbstractHierarchyIterator::get_materials_from_data(const Object* object) const {
-  switch(object->type) {
+const Material **AbstractHierarchyIterator::get_materials_from_data(const Object *object) const
+{
+  switch (object->type) {
     case OB_MESH: {
       const Mesh *mesh = reinterpret_cast<const Mesh *>(object->data);
-      return const_cast<const Material**>(mesh->mat);
+      return const_cast<const Material **>(mesh->mat);
     }
 
     case OB_CURVES:
     case OB_CURVES_LEGACY: {
       const Curves *curves = reinterpret_cast<const Curves *>(object->data);
-      return const_cast<const Material**>(curves->mat);
+      return const_cast<const Material **>(curves->mat);
     }
 
       /*
-     * !TODO: Additional supported object types
+       * !TODO: Additional supported object types
        */
 
     default: {
@@ -896,8 +899,9 @@ const Material** AbstractHierarchyIterator::get_materials_from_data(const Object
   }
 }
 
-size_t AbstractHierarchyIterator::get_materials_count_from_data(const Object* object) const {
-  switch(object->type) {
+size_t AbstractHierarchyIterator::get_materials_count_from_data(const Object *object) const
+{
+  switch (object->type) {
     case OB_MESH: {
       const Mesh *mesh = reinterpret_cast<const Mesh *>(object->data);
       return mesh->totcol;

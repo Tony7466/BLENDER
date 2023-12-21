@@ -39,7 +39,7 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   ObjExportMap skinned_mesh_export_map_;
   ObjExportMap shape_key_mesh_export_map_;
 
-  Map<const void*, const std::string> prim_names_map_;
+  Map<const void *, const std::string> prim_names_map_;
   Set<const std::string> prim_names_;
 
  public:
@@ -54,11 +54,11 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
 
   void process_usd_skel() const;
 
-  bool id_needs_display_name(const ID* id) const;
-  bool object_needs_display_name(const Object* object) const;
-  bool object_data_needs_display_name(const Object* object) const;
+  bool id_needs_display_name(const ID *id) const;
+  bool object_needs_display_name(const Object *object) const;
+  bool object_data_needs_display_name(const Object *object) const;
 
-  std::string find_name(const void* pointer) const;
+  std::string find_name(const void *pointer) const;
 
  protected:
   virtual bool mark_as_weak_export(const Object *object) const override;
@@ -84,15 +84,15 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   void add_usd_skel_export_mapping(const Object *obj, const pxr::SdfPath &usd_path);
 
   std::string generate_unique_name(const std::string token);
-  void store_name(const void* pointer, const std::string name);
-  void process_names_for_object(const Object* object);
+  void store_name(const void *pointer, const std::string name);
+  void process_names_for_object(const Object *object);
 
-  void process_materials(const Material** materials, const size_t count);
+  void process_materials(const Material **materials, const size_t count);
 
   virtual std::string get_object_name(const Object *object) const override;
   virtual std::string get_object_data_name(const Object *object) const override;
-  virtual std::string get_object_computed_name(const Object* object) const override;
-  virtual std::string get_object_data_computed_name(const Object* object) const override;
+  virtual std::string get_object_computed_name(const Object *object) const override;
+  virtual std::string get_object_data_computed_name(const Object *object) const override;
 };
 
 }  // namespace blender::io::usd

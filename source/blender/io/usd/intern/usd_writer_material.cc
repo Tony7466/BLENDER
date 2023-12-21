@@ -2589,16 +2589,13 @@ void export_texture(bNode *node,
   }
 
   if (is_in_memory_texture(ima)) {
-    export_in_memory_texture(
-        ima, dest_dir, allow_overwrite, reports);
+    export_in_memory_texture(ima, dest_dir, allow_overwrite, reports);
   }
   else if (ima->source == IMA_SRC_TILED) {
-    copy_tiled_textures(
-        ima, dest_dir, allow_overwrite, reports);
+    copy_tiled_textures(ima, dest_dir, allow_overwrite, reports);
   }
   else {
-    copy_single_file(
-        ima, dest_dir, allow_overwrite, reports);
+    copy_single_file(ima, dest_dir, allow_overwrite, reports);
   }
 }
 
@@ -2645,8 +2642,10 @@ pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_c
   if (material->use_nodes && usd_export_context.export_params.generate_mdl) {
     create_mdl_material(usd_export_context, material, usd_material);
     if (usd_export_context.export_params.export_textures) {
-      export_textures(
-          material, usd_export_context.stage, usd_export_context.export_params.overwrite_textures, reports);
+      export_textures(material,
+                      usd_export_context.stage,
+                      usd_export_context.export_params.overwrite_textures,
+                      reports);
       textures_exported = true;
     }
   }
@@ -2654,8 +2653,10 @@ pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_c
     create_usd_cycles_material(
         usd_export_context.stage, material, usd_material, usd_export_context.export_params);
     if (!textures_exported && usd_export_context.export_params.export_textures) {
-      export_textures(
-          material, usd_export_context.stage, usd_export_context.export_params.overwrite_textures, reports);
+      export_textures(material,
+                      usd_export_context.stage,
+                      usd_export_context.export_params.overwrite_textures,
+                      reports);
       textures_exported = true;
     }
   }

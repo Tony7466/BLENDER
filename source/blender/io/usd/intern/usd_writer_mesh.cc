@@ -30,7 +30,6 @@
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_key.h"
-#include "BKE_customdata.hh"
 #include "BKE_lib_id.h"
 #include "BKE_library.hh"
 #include "BKE_material.h"

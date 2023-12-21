@@ -125,7 +125,7 @@ void USDCameraWriter::do_write(HierarchyContext &context)
   }
 
   if (!context.data_computed_name.empty()) {
-    usd_camera.GetPrim().SetDisplayName(static_cast<ID*>(context.object->data)->name + 2);
+    usd_camera.GetPrim().SetDisplayName(static_cast<ID *>(context.object->data)->name + 2);
   }
 
   if (usd_export_context_.export_params.export_custom_properties && camera) {
