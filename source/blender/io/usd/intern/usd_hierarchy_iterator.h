@@ -56,6 +56,8 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   bool object_needs_display_name(const Object* object) const;
   bool object_data_needs_display_name(const Object* object) const;
 
+  std::string find_name(const void* pointer) const;
+
  protected:
   virtual bool mark_as_weak_export(const Object *object) const override;
 
@@ -71,6 +73,9 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   virtual bool include_data_writers(const HierarchyContext *context) const override;
   virtual bool include_child_writers(const HierarchyContext *context) const override;
 
+  virtual std::vector<std::string> get_computed_material_names(const Material **materials,
+                                                               const size_t count) const override;
+
  private:
   USDExporterContext create_usd_export_context(const HierarchyContext *context);
 
@@ -78,13 +83,14 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
 
   std::string generate_unique_name(const std::string token);
   void store_name(const void* pointer, const std::string name);
-  std::optional<std::string> find_name(const void* pointer) const;
   void process_names_for_object(const Object* object);
 
-  const Material** get_materials_from_data(const Object* object) const;
-  size_t get_material_count_from_data(const Object* object) const;
-
   void process_materials(const Material** materials, const size_t count);
+
+  virtual std::string get_object_name(const Object *object) const override;
+  virtual std::string get_object_data_name(const Object *object) const override;
+  virtual std::string get_object_computed_name(const Object* object) const override;
+  virtual std::string get_object_data_computed_name(const Object* object) const override;
 };
 
 }  // namespace blender::io::usd

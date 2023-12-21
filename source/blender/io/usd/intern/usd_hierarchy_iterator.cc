@@ -57,10 +57,6 @@ USDHierarchyIterator::USDHierarchyIterator(Main *bmain,
     process_names_for_object(object);
   }
   DEG_OBJECT_ITER_END;
-
-  for (auto name: prim_names_map_.values()) {
-    std::cerr << name << std::endl;
-  }
 }
 
 bool USDHierarchyIterator::mark_as_weak_export(const Object *object) const
@@ -340,13 +336,8 @@ void USDHierarchyIterator::store_name(const void* pointer, const std::string nam
   prim_names_.add(name);
 }
 
-std::optional<std::string> USDHierarchyIterator::find_name(const void* pointer) const {
-  const std::string result = prim_names_map_.lookup(pointer);
-  if (result.empty()) {
-    return std::nullopt;
-  }
-
-  return result;
+std::string USDHierarchyIterator::find_name(const void* pointer) const {
+  return prim_names_map_.lookup(pointer);
 }
 
 void USDHierarchyIterator::process_names_for_object(const Object* object) {
@@ -373,53 +364,10 @@ void USDHierarchyIterator::process_names_for_object(const Object* object) {
     }
 
     const Material** data_mats = get_materials_from_data(object);
-    size_t data_count = get_material_count_from_data(object);
+    size_t data_count = get_materials_count_from_data(object);
     process_materials(data_mats, data_count);
   }
 }
-
-const Material** USDHierarchyIterator::get_materials_from_data(const Object* object) const {
-  switch(object->type) {
-    case OB_MESH: {
-      const Mesh *mesh = reinterpret_cast<const Mesh *>(object->data);
-      return const_cast<const Material**>(mesh->mat);
-    }
-
-    case OB_CURVES:
-    case OB_CURVES_LEGACY: {
-      const Curves *curves = reinterpret_cast<const Curves *>(object->data);
-      return const_cast<const Material**>(curves->mat);
-    }
-
-    /*
-     * !TODO: Additional supported object types
-     */
-
-    default: {
-      return nullptr;
-    }
-  }
-}
-
-size_t USDHierarchyIterator::get_material_count_from_data(const Object* object) const {
-  switch(object->type) {
-    case OB_MESH: {
-      const Mesh *mesh = reinterpret_cast<const Mesh *>(object->data);
-      return mesh->totcol;
-    }
-
-    case OB_CURVES:
-    case OB_CURVES_LEGACY: {
-      const Curves *curves = reinterpret_cast<const Curves *>(object->data);
-      return curves->totcol;
-    }
-
-    default: {
-      return 0;
-    }
-  }
-}
-
 
 void USDHierarchyIterator::process_materials(const Material** materials, const size_t count) {
   for (int m = 0; m < count; m++) {
@@ -434,6 +382,66 @@ void USDHierarchyIterator::process_materials(const Material** materials, const s
       store_name(material_void, data_name);
     }
   }
+}
+
+std::string USDHierarchyIterator::get_object_name(const Object *object) const {
+  const void* ob_void = static_cast<const void*>(object);
+  const std::string result = find_name(ob_void);
+  if (!result.empty()) {
+    return result;
+  }
+
+  return object->id.name + 2;
+}
+
+std::string USDHierarchyIterator::get_object_data_name(const Object *object) const {
+  if (!object->data) {
+    return "";
+  }
+
+  const void* ob_void = static_cast<const void*>(object);
+  const std::string result = find_name(ob_void);
+  if (!result.empty()) {
+    return result;
+  }
+
+  const ID* data_id = static_cast<const ID*>(object->data);
+  return data_id->name + 2;
+}
+
+std::string USDHierarchyIterator::get_object_computed_name(const Object* object) const {
+  const void* ob_void = static_cast<const void*>(object);
+  return find_name(ob_void);
+}
+
+std::string USDHierarchyIterator::get_object_data_computed_name(const Object* object) const {
+  if (!object->data) {
+    return "";
+  }
+
+  const void* data_void = static_cast<const void*>(object->data);
+  return find_name(data_void);
+}
+
+std::vector<std::string> USDHierarchyIterator::get_computed_material_names(
+    const Material **materials, const size_t count) const {
+  std::vector<std::string> result;
+
+  if (!materials || !count) {
+    return result;
+  }
+
+  result.resize(count);
+
+  for (size_t m = 0; m < count; m++) {
+    if (!materials[m]) {
+      continue;
+    }
+
+    result[m] = find_name(static_cast<const void*>(materials[m]));
+  }
+
+  return result;
 }
 
 }  // namespace blender::io::usd

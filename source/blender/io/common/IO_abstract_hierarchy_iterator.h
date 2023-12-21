@@ -86,6 +86,16 @@ struct HierarchyContext {
    * refers to a different object). */
   std::string higher_up_export_path;
 
+  /*
+   * Display Name Support-- used when the names contain UTF8 characters.
+   */
+
+  std::string data_name;
+  std::string computed_name;
+  std::string data_computed_name;
+  std::vector<std::string> object_material_names;
+  std::vector<std::string> data_material_names;
+
   bool operator<(const HierarchyContext &other) const;
 
   /* Return a HierarchyContext representing the root of the export hierarchy. */
@@ -291,8 +301,10 @@ class AbstractHierarchyIterator {
   HierarchyContext context_for_object_data(const HierarchyContext *object_context) const;
 
   /* Convenience wrappers around get_id_name(). */
-  std::string get_object_name(const Object *object) const;
-  std::string get_object_data_name(const Object *object) const;
+  virtual std::string get_object_name(const Object *object) const;
+  virtual std::string get_object_data_name(const Object *object) const;
+  virtual std::string get_object_computed_name(const Object* object) const;
+  virtual std::string get_object_data_computed_name(const Object* object) const;
 
   typedef AbstractHierarchyWriter *(AbstractHierarchyIterator::*create_writer_func)(
       const HierarchyContext *);
@@ -362,6 +374,12 @@ class AbstractHierarchyIterator {
 
   AbstractHierarchyWriter *get_writer(const std::string &export_path) const;
   ExportChildren &graph_children(const HierarchyContext *context);
+
+  virtual std::vector<std::string> get_computed_material_names(const Material **materials,
+                                                               const size_t count) const;
+
+  const Material** get_materials_from_data(const Object* object) const;
+  size_t get_materials_count_from_data(const Object* object) const;
 };
 
 }  // namespace blender::io
