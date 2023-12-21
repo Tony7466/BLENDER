@@ -59,7 +59,7 @@
 #include "BKE_bpath.h"
 #include "BKE_cachefile.h"
 #include "BKE_collection.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.hh"
@@ -116,7 +116,7 @@
 
 #include "DRW_engine.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 CurveMapping *BKE_sculpt_default_cavity_curve()
 

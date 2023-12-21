@@ -493,7 +493,7 @@ static float *get_ss_weights(WeightTable *wtable, int gridCuts, int faceLen)
           w2 = (1.0f - fx + fac2 * fx * -fac) * (fy);
           w4 = (fx) * (1.0f - fy + -fac2 * fy * fac);
 
-          /* these values aren't used for tri's and cause divide by zero */
+          /* These values aren't used for triangles and cause divide by zero. */
           if (faceLen > 3) {
             fac2 = 1.0f - (w1 + w2 + w4);
             fac2 = fac2 / float(faceLen - 3);
@@ -1820,7 +1820,7 @@ DerivedMesh *subsurf_make_derived_from_derived(DerivedMesh *dm,
   return (DerivedMesh *)result;
 }
 
-void subsurf_calculate_limit_positions(Mesh *me, float (*r_positions)[3])
+void subsurf_calculate_limit_positions(Mesh *mesh, float (*r_positions)[3])
 {
   /* Finds the subsurf limit positions for the verts in a mesh
    * and puts them in an array of floats. Please note that the
@@ -1830,7 +1830,7 @@ void subsurf_calculate_limit_positions(Mesh *me, float (*r_positions)[3])
   CCGSubSurf *ss = _getSubSurf(nullptr, 1, 3, CCG_USE_ARENA);
   float edge_sum[3], face_sum[3];
   CCGVertIterator vi;
-  DerivedMesh *dm = CDDM_from_mesh(me);
+  DerivedMesh *dm = CDDM_from_mesh(mesh);
 
   ss_sync_from_derivedmesh(ss, dm, nullptr, 0, false);
 

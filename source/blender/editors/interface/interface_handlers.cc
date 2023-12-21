@@ -37,8 +37,8 @@
 #include "BKE_animsys.h"
 #include "BKE_blender_undo.h"
 #include "BKE_brush.hh"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_movieclip.h"
@@ -9222,7 +9222,7 @@ static bool ui_handle_button_activate_by_type(bContext *C, ARegion *region, uiBu
     ui_handle_button_activate(C, region, but, BUTTON_ACTIVATE);
   }
   else {
-#ifdef DEBUG
+#ifndef NDEBUG
     printf("%s: error, unhandled type: %d\n", __func__, but->type);
 #endif
     return false;
