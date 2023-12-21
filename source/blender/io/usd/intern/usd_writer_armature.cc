@@ -180,7 +180,7 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
     }
   }
 
-  Map<const char *, const Bone *> *use_deform = usd_export_context_.export_params.use_deform ?
+  Map<const char *, const Bone *> *use_deform = usd_export_context_.export_params.deform_bones_only ?
                                                     &deform_map_ :
                                                     nullptr;
 
