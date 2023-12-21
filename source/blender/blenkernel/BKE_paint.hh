@@ -47,7 +47,6 @@ namespace filter {
 struct Cache;
 }
 struct StrokeCache;
-struct TopologyIslandCache;
 }  // namespace ed::sculpt_paint
 }  // namespace blender
 struct GHash;

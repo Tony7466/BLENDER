@@ -1874,7 +1874,7 @@ void ensure_cache(Object &object);
 void invalidate(SculptSession &ss);
 
 /** Get vertex island key. */
-int vert_id_get(const SculptSession &ss, PBVHVertRef vertex);
+int vert_id_get(const SculptSession &ss, int vert);
 
 }
 

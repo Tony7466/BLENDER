@@ -71,7 +71,7 @@ static void mask_init_task(Object *ob,
         break;
       }
       case SCULPT_MASK_INIT_RANDOM_PER_LOOSE_PART:
-        mask = BLI_hash_int_01(islands::vert_id_get(*ss, vd.vertex) + seed);
+        mask = BLI_hash_int_01(islands::vert_id_get(*ss, vd.index) + seed);
         break;
     }
     SCULPT_mask_vert_set(BKE_pbvh_type(ss->pbvh), mask_write, mask, vd);

@@ -5849,7 +5849,7 @@ static void do_fake_neighbor_search_task(SculptSession *ss,
   using namespace blender::ed::sculpt_paint;
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    int vd_topology_id = islands::vert_id_get(*ss, vd.vertex);
+    int vd_topology_id = islands::vert_id_get(*ss, vd.index);
     if (vd_topology_id != nvtd->current_topology_id &&
         ss->fake_neighbors.fake_neighbor_index[vd.index] == FAKE_NEIGHBOR_NONE)
     {
@@ -5892,7 +5892,7 @@ static PBVHVertRef SCULPT_fake_neighbor_search(Sculpt *sd,
   NearestVertexFakeNeighborData nvtd;
   nvtd.nearest_vertex.i = -1;
   nvtd.nearest_vertex_distance_sq = FLT_MAX;
-  nvtd.current_topology_id = islands::vert_id_get(*ss, vertex);
+  nvtd.current_topology_id = islands::vert_id_get(*ss, BKE_pbvh_vertex_to_index(ss->pbvh, vertex));
 
   nvtd = threading::parallel_reduce(
       nodes.index_range(),
@@ -6096,14 +6096,16 @@ void SCULPT_stroke_id_ensure(Object *ob)
 
 namespace blender::ed::sculpt_paint::islands {
 
-int vert_id_get(const SculptSession &ss, PBVHVertRef vertex)
+int vert_id_get(const SculptSession &ss, const int vert)
 {
-  BLI_assert(ss.topology_island_cache);
-  if (ss.topology_island_cache) {
-    return ss.topology_island_cache->vert_island_ids[vertex.i];
+  const SculptTopologyIslandCache &cache = *ss.topology_island_cache;
+  if (!cache.small_vert_island_ids.is_empty()) {
+    return cache.small_vert_island_ids[vert];
   }
-
-  return -1;
+  if (!cache.vert_island_ids.is_empty()) {
+    return cache.vert_island_ids[vert];
+  }
+  return 0;
 }
 
 void invalidate(SculptSession &ss)
@@ -6129,11 +6131,12 @@ static SculptTopologyIslandCache vert_disjoint_set_to_islands(const AtomicDisjoi
   Array<int8_t> small_island_ids(island_ids.size());
   threading::parallel_for(island_ids.index_range(), 4096, [&](const IndexRange range) {
     for (const int i : range) {
-      small_island_ids[i] = island_ids[i];
+      small_island_ids[i] = int8_t(island_ids[i]);
     }
   });
 
   cache.small_vert_island_ids = std::move(small_island_ids);
+  return cache;
 }
 
 static AtomicDisjointSet mesh_vert_disjoint_set_calc(const Mesh &mesh)
@@ -6154,6 +6157,7 @@ static AtomicDisjointSet mesh_vert_disjoint_set_calc(const Mesh &mesh)
       }
     }
   });
+  return disjoint_set;
 }
 
 static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
@@ -6162,19 +6166,16 @@ static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
   return vert_disjoint_set_to_islands(vert_set, mesh.verts_num);
 }
 
-static SculptTopologyIslandCache calc_topology_islands_grids(const SubdivCCG &subdiv_ccg,
-                                                             const Mesh &base_mesh)
+static SculptTopologyIslandCache calc_topology_islands_grids(SculptSession &ss)
 {
-  if (subdiv_ccg.grid_hidden.is_empty()) {
-    /* Store topology island per base mesh face. */
-    const AtomicDisjointSet vert_set = mesh_vert_disjoint_set_calc(base_mesh);
-  }
   SculptTopologyIslandCache cache;
 
   int totvert = SCULPT_vertex_count_get(&ss);
   Set<PBVHVertRef> visit;
   Vector<PBVHVertRef> stack;
   uint8_t island_nr = 0;
+
+  cache.small_vert_island_ids.reinitialize(totvert);
 
   for (int i = 0; i < totvert; i++) {
     PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss.pbvh, i);
@@ -6205,6 +6206,8 @@ static SculptTopologyIslandCache calc_topology_islands_grids(const SubdivCCG &su
 
     island_nr++;
   }
+
+  return cache;
 }
 
 static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &object)
@@ -6240,13 +6243,12 @@ static SculptTopologyIslandCache calculate_cache(Object &object)
     case PBVH_FACES:
       return calc_topology_islands_mesh(*static_cast<const Mesh *>(object.data));
     case PBVH_GRIDS:
-      return calc_topology_islands_grids(*static_cast<const Mesh *>(object.data));
-    case PBVH_BMESH: {
+      return calc_topology_islands_grids(ss);
+    case PBVH_BMESH:
       return calc_topology_islands_bmesh(object);
-
-      break;
-    }
   }
+  BLI_assert_unreachable();
+  return {};
 }
 
 void ensure_cache(Object &object)
