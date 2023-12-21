@@ -237,14 +237,16 @@ void MapUVOperation::update_memory_buffer_partial(MemoryBuffer *output,
 
     if (nearest_neighbour_) {
       input_image->read_elem_sampled(uv[0], uv[1], PixelSampler::Nearest, it.out);
-    } else {
+    }
+    else {
       /* EWA filtering. */
       input_image->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], it.out);
 
       /* UV to alpha threshold. */
       const float threshold = alpha_ * 0.05f;
       /* XXX alpha threshold is used to fade out pixels on boundaries with invalid derivatives.
-       * this calculation is not very well defined, should be looked into if it becomes a problem ...
+       * this calculation is not very well defined, should be looked into if it becomes a problem
+       * ...
        */
       const float du = len_v2(deriv[0]);
       const float dv = len_v2(deriv[1]);

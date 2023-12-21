@@ -97,10 +97,12 @@ class MapUVOperation : public NodeOperation {
   {
     return bnode().custom2 == CMP_NODE_MAPUV_NEARESTNEIGHBOUR;
   }
+
  private:
   char const *get_shader_name()
   {
-    return get_nearest_neighbour() ? "compositor_map_uv_nearest_neighbour" : "compositor_map_uv_anisotropic";
+    return get_nearest_neighbour() ? "compositor_map_uv_nearest_neighbour" :
+                                     "compositor_map_uv_anisotropic";
   }
 };
 
