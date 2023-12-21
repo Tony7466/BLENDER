@@ -175,7 +175,7 @@ void init_deform_bones_map(const Object *obj, Map<const char *, const Bone *> *d
     }
 
     const bool deform = !(bone->flag & BONE_NO_DEFORM);
-    if (deform && deform_map) {
+    if (deform) {
       deform_map->add(bone->name, bone);
     }
   };
@@ -184,12 +184,9 @@ void init_deform_bones_map(const Object *obj, Map<const char *, const Bone *> *d
 
   /* Get deform parents */
   for (const auto &item : deform_map->items()) {
-    if (item.value) {
-      const Bone *parent = item.value->parent;
-      while (parent) {
-        deform_map->add(parent->name, parent);
-        parent = parent->parent;
-      }
+    BLI_assert(item.value);
+    for (const Bone *parent = item.value->parent; parent; parent = parent->parent) {
+      deform_map->add(parent->name, parent);
     }
   }
 }

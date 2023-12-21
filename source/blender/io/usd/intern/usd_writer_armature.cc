@@ -124,10 +124,7 @@ static void add_anim_sample(pxr::UsdSkelAnimation &skel_anim,
 
   LISTBASE_FOREACH (const bPoseChannel *, pchan, &pose->chanbase) {
 
-    if (!pchan->bone) {
-      printf("WARNING: pchan %s is missing bone.\n", pchan->name);
-      continue;
-    }
+    BLI_assert(pchan->bone);
 
     if (deform_map && !deform_map->contains(pchan->bone->name)) {
       /* If deform_map is passed in, assume we're going deform-only.
@@ -158,8 +155,7 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
 
   if (!skel) {
     CLOG_WARN(&LOG,
-              "%s: couldn't define UsdSkelSkeleton %s\n",
-              __func__,
+              "Couldn't define UsdSkelSkeleton %s",
               usd_export_context_.usd_path.GetString().c_str());
     return;
   }
@@ -172,25 +168,21 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
     skel_anim = pxr::UsdSkelAnimation::Define(stage, anim_path);
 
     if (!skel_anim) {
-      CLOG_WARN(&LOG,
-                "%s: couldn't define UsdSkelAnimation %s\n",
-                __func__,
-                anim_path.GetString().c_str());
+      CLOG_WARN(&LOG, "Couldn't define UsdSkelAnimation %s", anim_path.GetString().c_str());
       return;
     }
   }
 
-  Map<const char *, const Bone *> *use_deform = usd_export_context_.export_params.deform_bones_only ?
-                                                    &deform_map_ :
-                                                    nullptr;
+  Map<const char *, const Bone *> *deform_map =
+      usd_export_context_.export_params.deform_bones_only ? &deform_map_ : nullptr;
 
   if (!this->frame_has_been_written_) {
-    init_deform_bones_map(context.object, use_deform);
-    initialize(context.object, skel, skel_anim, use_deform);
+    init_deform_bones_map(context.object, deform_map);
+    initialize(context.object, skel, skel_anim, deform_map);
   }
 
   if (usd_export_context_.export_params.export_animation) {
-    add_anim_sample(skel_anim, context.object, get_export_time_code(), use_deform);
+    add_anim_sample(skel_anim, context.object, get_export_time_code(), deform_map);
   }
 }
 
