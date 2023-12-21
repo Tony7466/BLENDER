@@ -36,7 +36,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
 
   ClosureLight cl_reflection;
   cl_reflection.N = g_reflection_data.N;
-  cl_reflection.ltc_mat = LTC_GGX_MAT(dot(g_reflection_data.N, V), g_reflection_data.roughness);
+  cl_reflection.ltc_mat = LTC_GGX_MAT(dot(g_reflection_data.N, V), g_reflection_data.data.x);
   cl_reflection.type = LIGHT_SPECULAR;
 
   int cl_layer = 0;

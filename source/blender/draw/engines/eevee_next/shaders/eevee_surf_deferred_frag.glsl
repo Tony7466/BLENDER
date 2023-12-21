@@ -82,13 +82,16 @@ void main()
 
   /* ----- GBuffer output ----- */
 
-  GBufferDataPacked gbuf = gbuffer_pack(g_diffuse_data,
-                                        g_translucent_data,
-                                        g_reflection_data,
-                                        g_refraction_data,
-                                        out_normal,
-                                        thickness,
-                                        resource_id);
+  GBufferDataUndetermined gbuf_data;
+  gbuf_data.diffuse = g_diffuse_data;
+  gbuf_data.translucent = g_translucent_data;
+  gbuf_data.reflection = g_reflection_data;
+  gbuf_data.refraction = g_refraction_data;
+  gbuf_data.surface_N = g_data.N;
+  gbuf_data.thickness = thickness;
+  gbuf_data.object_id = resource_id;
+
+  GBufferWriter gbuf = gbuffer_pack(gbuf_data);
 
   /* Output header and first closure using frame-buffer attachment. */
   out_gbuf_header = gbuf.header;

@@ -18,7 +18,7 @@ void main()
 
   ivec2 tile_co = texel >> closure_tile_size_shift;
 
-  GBufferData gbuf = gbuffer_read_header(in_gbuffer_header);
+  GBufferReader gbuf = gbuffer_read_header(in_gbuffer_header);
 
   if (gbuf.has_diffuse) {
     imageStore(tile_mask_img, ivec3(tile_co, 0), uvec4(1u));

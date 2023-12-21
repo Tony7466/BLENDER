@@ -22,7 +22,8 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
 #if defined(RAYTRACE_DIFFUSE)
   bool valid_pixel = gbuf.has_diffuse;
@@ -43,11 +44,11 @@ void main()
   vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).rg;
 
 #if defined(RAYTRACE_DIFFUSE)
-  ClosureDiffuse closure = gbuf.diffuse;
+  ClosureDiffuse closure = gbuf.data.diffuse;
 #elif defined(RAYTRACE_REFLECT)
-  ClosureReflection closure = gbuf.reflection;
+  ClosureReflection closure = gbuf.data.reflection;
 #elif defined(RAYTRACE_REFRACT)
-  ClosureRefraction closure = gbuf.refraction;
+  ClosureRefraction closure = gbuf.data.refraction;
 #endif
 
   float pdf;
