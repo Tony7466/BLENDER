@@ -805,77 +805,6 @@ class NodeTreeMainUpdater {
     }
   }
 
-  void reset_enum_ptr(bNodeSocketValueMenu &dst)
-  {
-    if (dst.enum_items) {
-      dst.enum_items->remove_user_and_delete_if_last();
-      dst.enum_items = nullptr;
-    }
-  }
-
-  void set_enum_ptr(bNodeSocketValueMenu &dst, const RuntimeNodeEnumItems *enum_items)
-  {
-    if (dst.enum_items) {
-      dst.enum_items->remove_user_and_delete_if_last();
-      dst.enum_items = nullptr;
-    }
-    if (enum_items) {
-      enum_items->add_user();
-      dst.enum_items = enum_items;
-    }
-  }
-
-  void clear_enum_reference(bNodeSocket &socket)
-  {
-    BLI_assert(socket.is_available() && socket.type == SOCK_MENU);
-    bNodeSocketValueMenu &default_value = *socket.default_value_typed<bNodeSocketValueMenu>();
-    this->reset_enum_ptr(default_value);
-    default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
-  }
-
-  void update_socket_enum_definition(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu &src)
-  {
-    if (dst.has_conflict()) {
-      /* Target enum already has a conflict. */
-      BLI_assert(dst.enum_items == nullptr);
-      return;
-    }
-
-    if (src.has_conflict()) {
-      /* Target conflict if any source enum has a conflict. */
-      this->reset_enum_ptr(dst);
-      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
-    }
-    else if (!dst.enum_items) {
-      /* First connection, set the reference. */
-      this->set_enum_ptr(dst, src.enum_items);
-    }
-    else if (src.enum_items && dst.enum_items != src.enum_items) {
-      /* Error if enum ref does not match other connections. */
-      this->reset_enum_ptr(dst);
-      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
-    }
-  }
-
-  /**
-   * Make a runtime copy of the DNA enum items.
-   * The runtime items list is shared by sockets.
-   */
-  const RuntimeNodeEnumItems *create_runtime_enum_items(const NodeEnumDefinition &enum_def)
-  {
-    RuntimeNodeEnumItems *enum_items = new RuntimeNodeEnumItems();
-    enum_items->items.reinitialize(enum_def.items_num);
-    for (const int i : enum_def.items().index_range()) {
-      const NodeEnumItem &src = enum_def.items()[i];
-      RuntimeNodeEnumItem &dst = enum_items->items[i];
-
-      dst.identifier = src.identifier;
-      dst.name = src.name ? src.name : "";
-      dst.description = src.description ? src.description : "";
-    }
-    return enum_items;
-  }
-
   bool propagate_enum_definitions(bNodeTree &ntree)
   {
     ntree.ensure_interface_cache();
@@ -993,6 +922,77 @@ class NodeTreeMainUpdater {
     }
 
     return changed;
+  }
+
+  /**
+   * Make a runtime copy of the DNA enum items.
+   * The runtime items list is shared by sockets.
+   */
+  const RuntimeNodeEnumItems *create_runtime_enum_items(const NodeEnumDefinition &enum_def)
+  {
+    RuntimeNodeEnumItems *enum_items = new RuntimeNodeEnumItems();
+    enum_items->items.reinitialize(enum_def.items_num);
+    for (const int i : enum_def.items().index_range()) {
+      const NodeEnumItem &src = enum_def.items()[i];
+      RuntimeNodeEnumItem &dst = enum_items->items[i];
+
+      dst.identifier = src.identifier;
+      dst.name = src.name ? src.name : "";
+      dst.description = src.description ? src.description : "";
+    }
+    return enum_items;
+  }
+
+  void clear_enum_reference(bNodeSocket &socket)
+  {
+    BLI_assert(socket.is_available() && socket.type == SOCK_MENU);
+    bNodeSocketValueMenu &default_value = *socket.default_value_typed<bNodeSocketValueMenu>();
+    this->reset_enum_ptr(default_value);
+    default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
+  }
+
+  void update_socket_enum_definition(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu &src)
+  {
+    if (dst.has_conflict()) {
+      /* Target enum already has a conflict. */
+      BLI_assert(dst.enum_items == nullptr);
+      return;
+    }
+
+    if (src.has_conflict()) {
+      /* Target conflict if any source enum has a conflict. */
+      this->reset_enum_ptr(dst);
+      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
+    }
+    else if (!dst.enum_items) {
+      /* First connection, set the reference. */
+      this->set_enum_ptr(dst, src.enum_items);
+    }
+    else if (src.enum_items && dst.enum_items != src.enum_items) {
+      /* Error if enum ref does not match other connections. */
+      this->reset_enum_ptr(dst);
+      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
+    }
+  }
+
+  void reset_enum_ptr(bNodeSocketValueMenu &dst)
+  {
+    if (dst.enum_items) {
+      dst.enum_items->remove_user_and_delete_if_last();
+      dst.enum_items = nullptr;
+    }
+  }
+
+  void set_enum_ptr(bNodeSocketValueMenu &dst, const RuntimeNodeEnumItems *enum_items)
+  {
+    if (dst.enum_items) {
+      dst.enum_items->remove_user_and_delete_if_last();
+      dst.enum_items = nullptr;
+    }
+    if (enum_items) {
+      enum_items->add_user();
+      dst.enum_items = enum_items;
+    }
   }
 
   void update_link_validation(bNodeTree &ntree)
