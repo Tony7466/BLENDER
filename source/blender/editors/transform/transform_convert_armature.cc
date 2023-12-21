@@ -1326,7 +1326,7 @@ static void autokeyframe_pose(
     }
 
     blender::Vector<std::string> rna_paths;
-    const std::string rotation_path = blender::animrig::get_rotation_mode_path(
+    const blender::StringRef rotation_path = blender::animrig::get_rotation_mode_path(
         eRotationModes(pchan->rotmode));
 
     if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
