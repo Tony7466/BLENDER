@@ -11,6 +11,7 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
@@ -195,6 +196,27 @@ void separate_geometry(GeometrySet &geometry_set,
       std::optional<Mesh *> dst_mesh = file_ns::separate_mesh_selection(
           *mesh, selection, domain, mode, propagation_info);
       if (dst_mesh) {
+        if (*dst_mesh) {
+          const char *active_layer = CustomData_get_active_layer_name(&mesh->corner_data,
+                                                                      CD_PROP_FLOAT2);
+          if (active_layer != nullptr) {
+            int id = CustomData_get_named_layer(
+                &((*dst_mesh)->corner_data), CD_PROP_FLOAT2, active_layer);
+            if (id >= 0) {
+              CustomData_set_layer_active(&((*dst_mesh)->corner_data), CD_PROP_FLOAT2, id);
+            }
+          }
+
+          const char *render_layer = CustomData_get_render_layer_name(&mesh->corner_data,
+                                                                      CD_PROP_FLOAT2);
+          if (render_layer != nullptr) {
+            int id = CustomData_get_named_layer(
+                &((*dst_mesh)->corner_data), CD_PROP_FLOAT2, render_layer);
+            if (id >= 0) {
+              CustomData_set_layer_render(&((*dst_mesh)->corner_data), CD_PROP_FLOAT2, id);
+            }
+          }
+        }
         geometry_set.replace_mesh(*dst_mesh);
       }
       some_valid_domain = true;
