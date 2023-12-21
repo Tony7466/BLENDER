@@ -433,8 +433,6 @@ class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
                 raise AssertionError(f"Did not expect a key on {fcurve.data_path}")
             self.assertEqual(expected_keys[fcurve.data_path][fcurve.array_index], len(fcurve.keyframe_points))
 
-        bpy.data.objects.remove(keyed_object, do_unlink=True)
-
     def test_insert_needed_bone(self):
         armature_obj = _create_armature()
 
@@ -464,8 +462,6 @@ class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
             if fcurve.data_path not in expected_keys:
                 raise AssertionError(f"Did not expect a key on {fcurve.data_path}")
             self.assertEqual(expected_keys[fcurve.data_path][fcurve.array_index], len(fcurve.keyframe_points))
-
-        bpy.data.objects.remove(armature_obj, do_unlink=True)
 
 
 def main():
