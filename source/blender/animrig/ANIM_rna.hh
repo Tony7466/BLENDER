@@ -19,6 +19,6 @@ namespace blender::animrig {
 Vector<float> get_rna_values(PointerRNA *ptr, PropertyRNA *prop);
 
 /** Get the rna path for the given rotation mode. */
-blender::StringRef get_rotation_mode_path(eRotationModes rotation_mode);
+StringRef get_rotation_mode_path(eRotationModes rotation_mode);
 
 }  // namespace blender::animrig
