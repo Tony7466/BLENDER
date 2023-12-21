@@ -297,9 +297,9 @@ static void copy_transformed_positions(const Span<float3> src,
   });
 }
 
-static void copy_transformed_directions(const Span<float3> src,
-                                        const float4x4 &transform,
-                                        MutableSpan<float3> dst)
+static void copy_transformed_normals(const Span<float3> src,
+                                     const float4x4 &transform,
+                                     MutableSpan<float3> dst)
 {
   const float3x3 normal_transform = math::transpose(math::invert(float3x3(transform)));
   if (math::is_equal(normal_transform, float3x3::identity(), 1e-6f)) {
@@ -308,7 +308,7 @@ static void copy_transformed_directions(const Span<float3> src,
   else {
     threading::parallel_for(src.index_range(), 1024, [&](const IndexRange range) {
       for (const int i : range) {
-        dst[i] = math::transform_direction(normal_transform, src[i]);
+        dst[i] = normal_transform * src[i];
       }
     });
   }
@@ -1318,8 +1318,8 @@ static AllCurvesInfo preprocess_curves(const bke::GeometrySet &geometry_set,
       info.create_handle_postion_attributes = true;
     }
     if (attributes.contains("custom_normal")) {
-      curve_info.custom_normal =
-          attributes.lookup<float3>("custom_normal", ATTR_DOMAIN_POINT).varray.get_internal_span();
+      curve_info.custom_normal = attributes.lookup<float3>("custom_normal", bke::AttrDomain::Point)
+                                     .varray.get_internal_span();
       info.create_custom_normal_attribute = true;
     }
   }
@@ -1393,7 +1393,7 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
       all_custom_normals.slice(dst_point_range).fill(float3(0, 0, 1));
     }
     else {
-      copy_transformed_directions(
+      copy_transformed_normals(
           curves_info.custom_normal, task.transform, all_custom_normals.slice(dst_point_range));
     }
   }
@@ -1501,8 +1501,8 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
   }
   SpanAttributeWriter<float3> custom_normal;
   if (all_curves_info.create_custom_normal_attribute) {
-    custom_normal = dst_attributes.lookup_or_add_for_write_only_span<float3>("custom_normal",
-                                                                             ATTR_DOMAIN_POINT);
+    custom_normal = dst_attributes.lookup_or_add_for_write_only_span<float3>(
+        "custom_normal", bke::AttrDomain::Point);
   }
 
   /* Actually execute all tasks. */
