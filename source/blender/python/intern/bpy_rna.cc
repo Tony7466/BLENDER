@@ -5390,7 +5390,6 @@ static bool foreach_compat_buffer(RawPropertyType raw_type, int attr_signed, con
   const char f = format ? *format : 'B'; /* B is assumed when not set */
 
   switch (raw_type) {
-    case PROP_RAW_CHAR:
     case PROP_RAW_INT8:
       if (attr_signed) {
         return (f == 'b') ? true : false;
@@ -5398,6 +5397,7 @@ static bool foreach_compat_buffer(RawPropertyType raw_type, int attr_signed, con
       else {
         return (f == 'B') ? true : false;
       }
+    case PROP_RAW_CHAR:
     case PROP_RAW_UINT8:
       return (f == 'B') ? true : false;
     case PROP_RAW_SHORT:
