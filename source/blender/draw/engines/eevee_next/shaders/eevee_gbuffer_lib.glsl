@@ -20,35 +20,6 @@
 #define GBUFFER_LAYER_MAX 8
 #define GBUFFER_NORMAL_MAX 4
 
-/* Allows unit testing using in shader read/write. */
-#ifdef GBUFFER_LOAD
-#  define samplerGBufferHeader usampler2D
-#  define samplerGBufferClosure sampler2DArray
-#  define samplerGBufferNormal sampler2DArray
-
-uint fetchGBuffer(usampler2D tx, ivec2 texel)
-{
-  return texelFetch(tx, texel, 0).r;
-}
-vec4 fetchGBuffer(sampler2DArray tx, ivec2 texel, int layer)
-{
-  return texelFetch(tx, ivec3(texel, layer), 0);
-}
-
-#else
-#  define samplerGBufferHeader int
-#  define samplerGBufferClosure uint
-#  define samplerGBufferNormal float
-
-#  ifndef GPU_METAL
-/* Prototypes. */
-uint fetchGBuffer(samplerGBufferHeader tx, ivec2 texel);
-vec4 fetchGBuffer(samplerGBufferClosure tx, ivec2 texel, int layer);
-vec4 fetchGBuffer(samplerGBufferNormal tx, ivec2 texel, int layer);
-#  endif
-
-#endif
-
 /* Structure used as input and output of the packing & read functions. */
 struct GBufferData {
   /* Only valid (or null) if `has_diffuse`, `has_reflection` or `has_refraction` is true. */
@@ -108,6 +79,69 @@ struct GBufferReader {
   /* Texel of the gbuffer being read. */
   ivec2 texel;
 };
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Load / Store macros
+ *
+ * This allows for writting unit tests that read and write during the same shader invocation.
+ * \{ */
+
+#ifdef GBUFFER_LOAD
+/* Read only shader. Use correct types and functions. */
+#  define samplerGBufferHeader usampler2D
+#  define samplerGBufferClosure sampler2DArray
+#  define samplerGBufferNormal sampler2DArray
+
+uint fetchGBuffer(usampler2D tx, ivec2 texel)
+{
+  return texelFetch(tx, texel, 0).r;
+}
+vec4 fetchGBuffer(sampler2DArray tx, ivec2 texel, int layer)
+{
+  return texelFetch(tx, ivec3(texel, layer), 0);
+}
+
+#else
+#  define samplerGBufferHeader int
+#  define samplerGBufferClosure uint
+#  define samplerGBufferNormal float
+
+#  ifdef GBUFFER_WRITE
+/* Write only shader. Use dummy load functions. */
+uint fetchGBuffer(samplerGBufferHeader tx, ivec2 texel)
+{
+  return uint(0);
+}
+vec4 fetchGBuffer(samplerGBufferClosure tx, ivec2 texel, int layer)
+{
+  return vec4(0.0);
+}
+vec4 fetchGBuffer(samplerGBufferNormal tx, ivec2 texel, int layer)
+{
+  return vec4(0.0);
+}
+
+#  else
+/* Unit testing setup. Allow read and write in the same shader. */
+GBufferWriter g_data_packed;
+
+uint fetchGBuffer(samplerGBufferHeader tx, ivec2 texel)
+{
+  return g_data_packed.header;
+}
+vec4 fetchGBuffer(samplerGBufferClosure tx, ivec2 texel, int layer)
+{
+  return g_data_packed.data[layer];
+}
+vec4 fetchGBuffer(samplerGBufferNormal tx, ivec2 texel, int layer)
+{
+  return g_data_packed.N[layer].xyyy;
+}
+
+#  endif
+#endif
 
 /** \} */
 

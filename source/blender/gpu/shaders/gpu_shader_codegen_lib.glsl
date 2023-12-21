@@ -234,6 +234,43 @@ struct ClosureTransparency {
   float holdout;
 };
 
+ClosureDiffuse to_closure_diffuse(ClosureUndetermined cl)
+{
+  ClosureDiffuse closure;
+  closure.N = cl.N;
+  closure.color = cl.color;
+  /* TODO(fclem): BSSSRDF closure. */
+  closure.sss_radius = cl.data.xyz;
+  return closure;
+}
+
+ClosureTranslucent to_closure_translucent(ClosureUndetermined cl)
+{
+  ClosureTranslucent closure;
+  closure.N = cl.N;
+  closure.color = cl.color;
+  return closure;
+}
+
+ClosureReflection to_closure_reflection(ClosureUndetermined cl)
+{
+  ClosureReflection closure;
+  closure.N = cl.N;
+  closure.color = cl.color;
+  closure.roughness = cl.data.x;
+  return closure;
+}
+
+ClosureRefraction to_closure_refraction(ClosureUndetermined cl)
+{
+  ClosureRefraction closure;
+  closure.N = cl.N;
+  closure.color = cl.color;
+  closure.roughness = cl.data.x;
+  closure.ior = cl.data.y;
+  return closure;
+}
+
 struct GlobalData {
   /** World position. */
   vec3 P;

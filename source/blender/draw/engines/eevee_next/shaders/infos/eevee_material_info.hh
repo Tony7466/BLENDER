@@ -150,6 +150,7 @@ GPU_SHADER_CREATE_INFO(eevee_cryptomatte_out)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_deferred_base)
     .define("MAT_DEFERRED")
+    .define("GBUFFER_WRITE")
     /* NOTE: This removes the possibility of using gl_FragDepth. */
     .early_fragment_test(true)
     /* Direct output. (Emissive, Holdout) */
