@@ -221,6 +221,7 @@ set(SRC
   engines/overlay/overlay_sculpt_curves.cc
   engines/overlay/overlay_shader.cc
   engines/overlay/overlay_viewer_attribute.cc
+  engines/overlay/overlay_viewer_text.cc
   engines/overlay/overlay_volume.cc
   engines/overlay/overlay_wireframe.cc
 
@@ -911,6 +912,20 @@ if(WITH_OPENSUBDIV)
   list(APPEND INC_SYS
     ${OPENSUBDIV_INCLUDE_DIRS}
   )
+endif()
+
+if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../intern/openvdb
+  )
+  list(APPEND INC_SYS
+    ${OPENVDB_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    bf_intern_openvdb
+    ${OPENVDB_LIBRARIES}
+  )
+  add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
 endif()
 
 if(WITH_MOD_FLUID)

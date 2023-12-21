@@ -879,7 +879,7 @@ typedef struct CollisionModifierData {
   /** (xnew - x) at the actual inter-frame step. */
   float (*current_v)[3];
 
-  struct MVertTri *tri;
+  int (*vert_tris)[3];
 
   unsigned int mvert_num;
   unsigned int tri_num;
@@ -2285,7 +2285,7 @@ enum {
 
 /** Surface Deform vertex bind modes. */
 enum {
-  MOD_SDEF_MODE_LOOPTRIS = 0,
+  MOD_SDEF_MODE_CORNER_TRIS = 0,
   MOD_SDEF_MODE_NGONS = 1,
   MOD_SDEF_MODE_CENTROID = 2,
 };
