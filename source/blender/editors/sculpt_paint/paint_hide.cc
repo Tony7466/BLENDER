@@ -235,7 +235,7 @@ static void partialvis_update_mesh(Object &object,
       const Span<float3> positions = BKE_pbvh_get_vert_positions(&pbvh);
       vert_hide_update(object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
         for (const int i : verts.index_range()) {
-          if (isect_point_planes_v3(planes, 4, positions[verts[i]])) {
+          if (is_effected(area, planes, positions[verts[i]], 0)) {
             hide[i] = value;
           }
         }
