@@ -161,8 +161,8 @@ void USDTransformWriter::do_write(HierarchyContext &context)
     }
   }
 
-  if (context.display_name.has_value()) {
-    xform.GetPrim().SetDisplayName(context.display_name.value());
+  if (!context.computed_name.empty()) {
+    xform.GetPrim().SetDisplayName(context.object->id.name + 2);
   }
 
   if (usd_export_context_.export_params.export_custom_properties && context.object) {

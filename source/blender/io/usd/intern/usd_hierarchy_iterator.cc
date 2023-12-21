@@ -29,6 +29,7 @@
 #include "BKE_material.h"
 
 #include "BLI_assert.h"
+#include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
@@ -49,6 +50,14 @@ USDHierarchyIterator::USDHierarchyIterator(Main *bmain,
                                            const USDExportParams &params)
     : AbstractHierarchyIterator(bmain, depsgraph), stage_(stage), params_(params)
 {
+  DEGObjectIterSettings deg_iter_settings{};
+  deg_iter_settings.depsgraph = depsgraph_;
+  deg_iter_settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                            DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
+  DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, object) {
+    process_names_for_object(object);
+  }
+  DEG_OBJECT_ITER_END;
 }
 
 bool USDHierarchyIterator::mark_as_weak_export(const Object *object) const
@@ -279,119 +288,161 @@ void USDHierarchyIterator::add_usd_skel_export_mapping(const Object *obj, const 
   }
 }
 
-std::string USDHierarchyIterator::find_unique_name(const char *token)
+bool USDHierarchyIterator::id_needs_display_name(const ID* id) const
 {
-  char result[66];
-  strncpy(result, token, 66);
-  int count = 1;
-  while (computed_names_.contains(result)) {
-    sprintf(result, "%s_%03i", token, count);
-    count += 1;
-  }
-
-  return result;
-}
-
-std::string USDHierarchyIterator::find_unique_object_name(const Object *object,
-                                                          const bool is_data = false)
-{
-  const char *type_as_string = [](int type) {
-    switch (type) {
-      case OB_EMPTY:
-        return "Empty";
-      case OB_MESH:
-        return "Mesh";
-      case OB_CURVES:
-      case OB_CURVES_LEGACY:
-        return "Curves";
-      case OB_LAMP:
-        return "Light";
-      case OB_CAMERA:
-        return "Camera";
-      case OB_ARMATURE:
-        return "Armature";
-      case OB_POINTCLOUD:
-        return "PointCloud";
-      case OB_VOLUME:
-        return "Volume";
-      case OB_GREASE_PENCIL:
-        return "GreasePencil";
-      default:
-        return "";
-    }
-  }(object->type);
-
-  return find_unique_name(type_as_string);
-}
-
-std::string USDHierarchyIterator::find_unique_material_name()
-{
-  return find_unique_name("Material");
-}
-
-std::string USDHierarchyIterator::get_computed_name(const Object *object, const bool is_data)
-{
-  std::string result;
-
   size_t length_in_bytes = 0;
-  const char *original_name = is_data ? static_cast<ID *>(object->data)->name + 2 :
-                                        object->id.name + 2;
-  const size_t length_in_characters = BLI_strlen_utf8_ex(original_name, &length_in_bytes);
+  const std::string id_name(id->name + 2);
+  const size_t length_in_characters = BLI_strlen_utf8_ex(id_name.c_str(), &length_in_bytes);
   if (length_in_bytes != length_in_characters) {
-    result = find_unique_object_name(object, is_data);
-  }
-  else {
-    result = pxr::TfMakeValidIdentifier(original_name);
+    /* Length is shorter likely due to unicode characters. */
+    return true;
   }
 
-  computed_names_map_.add(object, result);
-  computed_names_.add(result);
-  return result;
-}
-
-std::string USDHierarchyIterator::get_object_name(const Object *object)
-{
-  return get_computed_name(object);
-}
-
-std::string USDHierarchyIterator::get_object_data_name(const Object *object)
-{
-  return get_computed_name(object, true);
-}
-
-std::optional<std::string> USDHierarchyIterator::get_display_name(const void *object)
-{
-  const std::string result = computed_names_map_.lookup(object);
-  if (result.size()) {
-    return {static_cast<const ID*>(object)->name + 2};
+  if (id_name != pxr::TfMakeValidIdentifier(id_name)) {
+    /* Something invalid was converted into an underscore. */
+    return true;
   }
-  return std::nullopt;
+
+  return false;
 }
 
-void USDHierarchyIterator::precompute_material_names(Object *object,
-                                                     Map<Material *, std::string> &names_map)
+bool USDHierarchyIterator::object_needs_display_name(const Object* object) const
 {
-  for (int mat_num = 0; mat_num < object->totcol; mat_num++) {
-    Material *material = BKE_object_material_get(object, mat_num + 1);
-    if (material == nullptr) {
+  return id_needs_display_name(reinterpret_cast<const ID*>(object));
+}
+
+bool USDHierarchyIterator::object_data_needs_display_name(const Object* object) const {
+  if (!object->data) {
+    return false;
+  }
+
+  return id_needs_display_name(reinterpret_cast<const ID*>(object->data));
+}
+
+std::string USDHierarchyIterator::generate_unique_name(const std::string token) {
+  char name[64];
+  int count = 0;
+  BLI_snprintf(name, 64, "%s", token.c_str());
+
+  while(prim_names_.contains(name)) {
+    count += 1;
+    BLI_snprintf(name, 64, "%s_%03d", token.c_str(), count);
+  }
+
+  return std::string(name);
+}
+
+void USDHierarchyIterator::store_name(const void* pointer, const std::string name) {
+  prim_names_map_.add(pointer, name);
+  prim_names_.add(name);
+}
+
+std::string USDHierarchyIterator::find_name(const void* pointer) const {
+  return prim_names_map_.lookup(pointer);
+}
+
+void USDHierarchyIterator::process_names_for_object(const Object* object) {
+  const short id_code = (object->data
+                             ? GS(reinterpret_cast<const ID*>(object->data)->name)
+                             : GS(object->id.name));
+  const std::string token(BKE_idtype_idcode_to_name(id_code));
+
+  if (object_needs_display_name(object)) {
+    const void* ob_void = reinterpret_cast<const void*>(object);
+    const std::string obj_name = generate_unique_name(token);
+    store_name(ob_void, obj_name);
+
+    if (object->totcol) {
+      process_materials(const_cast<const Material**>(object->mat), object->totcol);
+    }
+  }
+
+  if (object->data) {
+    if (object_data_needs_display_name(object)) {
+      const void* data_void = reinterpret_cast<const void*>(object->data);
+      const std::string data_name = generate_unique_name(token+"_Data");
+      store_name(data_void, data_name);
+    }
+
+    const Material** data_mats = get_materials_from_data(object);
+    size_t data_count = get_materials_count_from_data(object);
+    process_materials(data_mats, data_count);
+  }
+}
+
+void USDHierarchyIterator::process_materials(const Material** materials, const size_t count) {
+  for (int m = 0; m < count; m++) {
+    const Material* mat = materials[m];
+    if (!mat) {
       continue;
     }
 
-    std::string result;
-
-    size_t length_in_bytes = 0;
-    const char *material_name = material->id.name + 2;
-    const size_t length_in_characters = BLI_strlen_utf8_ex(material_name, &length_in_bytes);
-    if (length_in_bytes != length_in_characters) {
-      result = find_unique_material_name();
+    if (id_needs_display_name(reinterpret_cast<const ID*>(mat))) {
+      const void* material_void = reinterpret_cast<const void*>(mat);
+      const std::string data_name = generate_unique_name("Material");
+      store_name(material_void, data_name);
     }
-    else {
-      result = pxr::TfMakeValidIdentifier(material_name);
-    }
-
-    names_map.add(material, result);
-    computed_names_.add(result);
   }
+}
+
+std::string USDHierarchyIterator::get_object_name(const Object *object) const {
+  const void* ob_void = static_cast<const void*>(object);
+  const std::string result = find_name(ob_void);
+  if (!result.empty()) {
+    return result;
+  }
+
+  return object->id.name + 2;
+}
+
+std::string USDHierarchyIterator::get_object_data_name(const Object *object) const {
+  if (!object->data) {
+    return "";
+  }
+
+  const void* ob_void = static_cast<const void*>(object);
+  const std::string result = find_name(ob_void);
+  if (!result.empty()) {
+    return result;
+  }
+
+  const ID* data_id = static_cast<const ID*>(object->data);
+  return data_id->name + 2;
+}
+
+std::string USDHierarchyIterator::get_object_computed_name(const Object* object) const {
+  const void* ob_void = static_cast<const void*>(object);
+  return find_name(ob_void);
+}
+
+std::string USDHierarchyIterator::get_object_data_computed_name(const Object* object) const {
+  if (!object->data) {
+    return "";
+  }
+
+  const void* data_void = static_cast<const void*>(object->data);
+  return find_name(data_void);
+}
+
+std::vector<std::string> USDHierarchyIterator::get_computed_material_names(
+    const Material **materials, const size_t count) const {
+  std::vector<std::string> result;
+
+  if (!materials || !count) {
+    return result;
+  }
+
+  result.resize(count);
+
+  for (size_t m = 0; m < count; m++) {
+    if (!materials[m]) {
+      continue;
+    }
+
+    result[m] = find_name(static_cast<const void*>(materials[m]));
+  }
+
+  return result;
 }
 
 }  // namespace blender::io::usd

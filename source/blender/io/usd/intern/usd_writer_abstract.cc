@@ -243,11 +243,10 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
 
   /* Construct the material. */
-  std::string computed_name = context.material_names.lookup(material);
-  std::string material_name = pxr::TfMakeValidIdentifier(
-      !computed_name.empty() ? computed_name : std::string(material->id.name + 2));
-  pxr::SdfPath usd_path = get_material_library_path(context).AppendChild(
-      pxr::TfToken(material_name));
+  std::string computed_name = hierarchy_iterator_->find_name(material);
+  pxr::TfToken material_name(pxr::TfMakeValidIdentifier(
+      !computed_name.empty() ? computed_name : std::string(material->id.name + 2)));
+  pxr::SdfPath usd_path = get_material_library_path(context).AppendChild(material_name);
 
   pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Get(stage, usd_path);
   if (usd_material) {
@@ -257,6 +256,13 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   std::string active_uv = get_mesh_active_uvlayer_name(context.object);
 
   usd_material = create_usd_material(usd_export_context_, usd_path, material, active_uv);
+
+  if (!computed_name.empty()) {
+    /* Write the displayName here, allowing for it to be
+     * overridden below through a custom id property. */
+    auto prim = usd_material.GetPrim();
+    prim.SetDisplayName(material->id.name + 2);
+  }
 
   if (usd_export_context_.export_params.export_custom_properties && material) {
     auto prim = usd_material.GetPrim();
