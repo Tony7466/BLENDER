@@ -6916,15 +6916,23 @@ static void def_cmp_map_uv(StructRNA *srna)
 {
   PropertyRNA *prop;
 
+  static const EnumPropertyItem sampling_mode_items[] = {
+      {CMP_NODE_MAPUV_ANISOTROPIC, "ANISOTROPIC", 0, "Anisotropic", ""},
+      {CMP_NODE_MAPUV_NEARESTNEIGHBOUR, "NEARESTNEIGHBOUR", 0, "Nearest Neighbour", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   prop = RNA_def_property(srna, "alpha", PROP_INT, PROP_FACTOR);
   RNA_def_property_int_sdna(prop, nullptr, "custom1");
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_text(prop, "Alpha", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
-  prop = RNA_def_property(srna, "nearest_neighbour", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "custom2", CMP_NODE_MAPUV_ANISOTROPIC);
-  RNA_def_property_ui_text(prop, "Nearest Neighbour", "");
+  prop = RNA_def_property(srna, "sampling_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
+  RNA_def_property_enum_items(prop, sampling_mode_items);
+  RNA_def_property_ui_text(prop, "Sampling Mode", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_NODETREE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
