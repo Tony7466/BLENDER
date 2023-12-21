@@ -268,17 +268,6 @@ const char *PyC_StringEnum_FindIDFromValue(const struct PyC_StringEnumItems *ite
  */
 int PyC_CheckArgs_DeepCopy(PyObject *args);
 
-/* Unsigned integer parsing that calls `__index__` like signed integer parsing. */
-/**
- * #PyLong_AsLong and #PyLong_AsLongLong call the Python `__index__` method of the input `value` if
- * it is not a `PyLongObject`.
- *
- * #PyLong_AsUnsignedLong and #PyLong_AsUnsignedLongLong, however, do not call `__index__`, which
- * means they cannot parse NumPy scalars and other numeric types.
- */
-ulong PyC_Long_AsUnsignedLong(PyObject *value);
-unsigned long long PyC_Long_AsUnsignedLongLong(PyObject *value);
-
 /* Integer parsing (with overflow checks), -1 on error. */
 /**
  * Comparison with #PyObject_IsTrue
@@ -313,12 +302,14 @@ int32_t PyC_Long_AsI32(PyObject *value);
 int64_t PyC_Long_AsI64(PyObject *value);
 #endif
 
+/* Unlike Python's #PyLong_AsUnsignedLong and #PyLong_AsUnsignedLongLong, these unsigned integer
+ * parsing functions fall back to calling #PyNumber_Index when their argument is not a
+ * `PyLongObject`. This matches Python's signed integer parsing functions which also fall back to
+ * calling #PyNumber_Index. */
 uint8_t PyC_Long_AsU8(PyObject *value);
 uint16_t PyC_Long_AsU16(PyObject *value);
 uint32_t PyC_Long_AsU32(PyObject *value);
-#if 0 /* inline */
 uint64_t PyC_Long_AsU64(PyObject *value);
-#endif
 
 /* inline so type signatures match as expected */
 Py_LOCAL_INLINE(int32_t) PyC_Long_AsI32(PyObject *value)
@@ -328,10 +319,6 @@ Py_LOCAL_INLINE(int32_t) PyC_Long_AsI32(PyObject *value)
 Py_LOCAL_INLINE(int64_t) PyC_Long_AsI64(PyObject *value)
 {
   return (int64_t)PyLong_AsLongLong(value);
-}
-Py_LOCAL_INLINE(uint64_t) PyC_Long_AsU64(PyObject *value)
-{
-  return (uint64_t)PyLong_AsUnsignedLongLong(value);
 }
 
 /* utils for format string in `struct` module style syntax */
