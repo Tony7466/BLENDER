@@ -333,8 +333,12 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
   BLO_read_list(reader, &collection->gobject);
   BLO_read_list(reader, &collection->children);
 
-  /* TODO: This doesn't seem to read in correctly */
   BLO_read_list(reader, &collection->io_handlers);
+  LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
+    data->export_ptr = nullptr;
+    BLO_read_data_address(reader, &data->export_properties);
+    IDP_BlendDataRead(reader, &data->export_properties);
+  }
 
   BLO_read_data_address(reader, &collection->preview);
   BKE_previewimg_blend_read(reader, collection->preview);

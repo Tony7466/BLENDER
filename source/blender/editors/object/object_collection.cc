@@ -434,8 +434,12 @@ static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Add a new #IOHandlerData item to the list and fill it with #FileHandlerType information.
-   * Also load in the operator's properties now as well. */
+  if (!WM_operatortype_find(fh->export_operator, true)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Add a new #IOHandlerData item to our handler list and fill it with #FileHandlerType
+   * information. Also load in the operator's properties now as well. */
   IOHandlerData *data = MEM_cnew<IOHandlerData>("IOHandlerData");
   STRNCPY(data->fh_idname, fh->idname);
 
@@ -485,8 +489,8 @@ static int collection_debug_io_exec(bContext *C, wmOperator * /*op*/)
     wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
     WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, data->export_ptr, nullptr);
 
-    /* TODO: Only do the first one for now ... */
-    break;
+    /* TODO: Should we continue calling operators if one fails? */
+    /* TODO: What's the best way to surface the problem? Reports? */
   }
 
   return OPERATOR_FINISHED;
@@ -510,15 +514,19 @@ void COLLECTION_OT_debug_io(wmOperatorType *ot)
 static void collection_io_handler_menu_draw(const bContext * /*C*/, Menu *menu)
 {
   uiLayout *layout = menu->layout;
-  const auto &file_handlers = BKE_file_handlers();
-  if (file_handlers.is_empty()) {
-    uiItemL(layout, "No file handlers available", ICON_NONE);
-  }
-  else {
-    for (const auto &fh : BKE_file_handlers()) {
+
+  /* Add all file handlers capable of being exported to the menu. */
+  bool at_least_one = false;
+  for (const auto &fh : BKE_file_handlers()) {
+    if (WM_operatortype_find(fh->export_operator, true)) {
       uiItemStringO(
           layout, fh->label, ICON_NONE, "COLLECTION_OT_io_handler_add", "name", fh->idname);
+      at_least_one = true;
     }
+  }
+
+  if (!at_least_one) {
+    uiItemL(layout, "No file handlers available", ICON_NONE);
   }
 }
 

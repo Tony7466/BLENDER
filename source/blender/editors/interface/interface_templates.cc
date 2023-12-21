@@ -2377,9 +2377,16 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       const bool is_set = RNA_property_is_set(ptr, prop);
       uiBut *but;
 
-      /* recurse for nested properties */
+      /* TEMP: Just filter out some extra stuff for better debug layout. */
       if (RNA_property_type(prop) == PROP_POINTER) {
-        /* TEMP: Not needed */
+        continue;
+      }
+      const char *prop_name = RNA_property_identifier(prop);
+      if (STRPREFIX(prop_name, "filter_") || STRPREFIX(prop_name, "check_") ||
+          STRPREFIX(prop_name, "sort_") || STREQ(prop_name, "display_type") ||
+          STREQ(prop_name, "filemode"))
+      {
+        continue;
       }
 
       uiLayout *box = uiLayoutBox(flow);
@@ -2409,9 +2416,6 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       }
     }
     RNA_STRUCT_END;
-
-    /* TODO: Only do the first one for now ... */
-    break;
   }
 }
 
