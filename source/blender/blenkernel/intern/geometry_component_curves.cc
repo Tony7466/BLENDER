@@ -151,7 +151,7 @@ static Array<float3> curve_normal_point_domain(const bke::CurvesGeometry &curves
   const VArray<bool> curves_cyclic = curves.cyclic();
   const bke::AttributeAccessor attributes = curves.attributes();
   const VArray<float3> custom_normals = *attributes.lookup_or_default<float3>(
-      "custom_normal", ATTR_DOMAIN_POINT, float3(0, 0, 1));
+      "custom_normal", AttrDomain::Point, float3(0, 0, 1));
 
   const Span<float3> positions = curves.positions();
   const VArray<int8_t> normal_modes = curves.normal_mode();
@@ -589,7 +589,7 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                     AttributeValidator{&normal_mode_clamp});
 
   static BuiltinCustomDataLayerProvider custom_normal("custom_normal",
-                                                      ATTR_DOMAIN_POINT,
+                                                      AttrDomain::Point,
                                                       CD_PROP_FLOAT3,
                                                       CD_PROP_FLOAT3,
                                                       BuiltinAttributeProvider::Creatable,

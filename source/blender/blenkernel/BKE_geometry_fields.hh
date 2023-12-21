@@ -425,7 +425,7 @@ class CurveLengthFieldInput final : public CurvesFieldInput {
 bool try_capture_field_on_geometry(MutableAttributeAccessor attributes,
                                    const fn::FieldContext &field_context,
                                    const AttributeIDRef &attribute_id,
-                                   const eAttrDomain domain,
+                                   AttrDomain domain,
                                    const fn::Field<bool> &selection,
                                    const fn::GField &field);
 
