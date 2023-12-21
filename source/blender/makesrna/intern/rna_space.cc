@@ -4330,6 +4330,14 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
   RNA_def_property_update(prop,
                           NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING,
                           "rna_SpaceView3D_shading_use_compositor_update");
+
+  prop = RNA_def_property(srna, "apply_compositor_on_grease_pencil", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", V3D_SHADING_COMPOSITOR_APPLY_ON_GREASE_PENCIL);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop, "Apply Compositor on Grease Pencil", "Apply the compositor on grease pencil objects");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, nullptr);
 }
 
 static void rna_def_space_view3d_overlay(BlenderRNA *brna)

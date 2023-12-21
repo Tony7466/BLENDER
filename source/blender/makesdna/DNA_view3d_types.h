@@ -522,6 +522,8 @@ enum {
   V3D_SHADING_SCENE_LIGHTS_RENDER = (1 << 12),
   V3D_SHADING_SCENE_WORLD_RENDER = (1 << 13),
   V3D_SHADING_STUDIOLIGHT_VIEW_ROTATION = (1 << 14),
+  /* Specifies if the compositor should be applied on grease pencil objects. */
+  V3D_SHADING_COMPOSITOR_APPLY_ON_GREASE_PENCIL = (1 << 15),
 };
 
 /** #View3D.debug_flag */

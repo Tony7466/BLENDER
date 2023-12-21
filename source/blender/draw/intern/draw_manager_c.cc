@@ -1275,13 +1275,29 @@ static void drw_engines_enable(ViewLayer * /*view_layer*/,
   const bool use_xray = XRAY_ENABLED(v3d);
 
   drw_engines_enable_from_engine(engine_type, drawtype);
-  if (gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray)) {
-    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                               &draw_engine_gpencil_type);
-  }
 
-  if (is_compositor_enabled()) {
-    use_drw_engine(&draw_engine_compositor_type);
+  const bool use_gpencil = gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray);
+  DrawEngineType *gpencil_draw_engine_type = U.experimental.use_grease_pencil_version3 ?
+                                                 &draw_engine_gpencil_next_type :
+                                                 &draw_engine_gpencil_type;
+
+  /* Switch the order of engines such that the compositor gets applied before or after grease
+   * pencil. */
+  if (DST.draw_ctx.v3d->shading.flag & V3D_SHADING_COMPOSITOR_APPLY_ON_GREASE_PENCIL) {
+    if (use_gpencil) {
+      use_drw_engine(gpencil_draw_engine_type);
+    }
+    if (is_compositor_enabled()) {
+      use_drw_engine(&draw_engine_compositor_type);
+    }
+  }
+  else {
+    if (is_compositor_enabled()) {
+      use_drw_engine(&draw_engine_compositor_type);
+    }
+    if (use_gpencil) {
+      use_drw_engine(gpencil_draw_engine_type);
+    }
   }
 
   drw_engines_enable_overlays();

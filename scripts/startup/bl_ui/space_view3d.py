@@ -6810,6 +6810,8 @@ class VIEW3D_PT_shading_compositor(Panel):
         row.prop(shading, "use_compositor", expand=True)
         if shading.use_compositor != 'DISABLED' and not is_supported:
             self.layout.label(text="Compositor not supported on this platform", icon='ERROR')
+        else:
+            self.layout.prop(shading, "apply_compositor_on_grease_pencil")
 
 
 class VIEW3D_PT_gizmo_display(Panel):
