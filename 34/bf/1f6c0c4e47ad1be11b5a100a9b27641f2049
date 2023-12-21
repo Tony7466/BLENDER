@@ -1,1 +1,2 @@
 Referenced by issue #116372, Crash after opening file with specific boolean node setup
+Referenced by commit 66409b3860297f181d41a351ba3e2f8f61ef2595, Fix #116372: Crash in boolean triangulation after recent cleanup
