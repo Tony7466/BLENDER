@@ -916,7 +916,7 @@ class NodeTreeMainUpdater {
           }
           /* Items are moved, no need to change user count. */
           dst.enum_items = src.enum_items;
-          SET_FLAG_FROM_TEST(dst.flag, src.has_conflict(), NODE_MENU_ITEMS_CONFLICT);
+          SET_FLAG_FROM_TEST(dst.runtime_flag, src.has_conflict(), NODE_MENU_ITEMS_CONFLICT);
         }
       }
     }
@@ -948,7 +948,7 @@ class NodeTreeMainUpdater {
     BLI_assert(socket.is_available() && socket.type == SOCK_MENU);
     bNodeSocketValueMenu &default_value = *socket.default_value_typed<bNodeSocketValueMenu>();
     this->reset_enum_ptr(default_value);
-    default_value.flag &= ~NODE_MENU_ITEMS_CONFLICT;
+    default_value.runtime_flag &= ~NODE_MENU_ITEMS_CONFLICT;
   }
 
   void update_socket_enum_definition(bNodeSocketValueMenu &dst, const bNodeSocketValueMenu &src)
@@ -962,7 +962,7 @@ class NodeTreeMainUpdater {
     if (src.has_conflict()) {
       /* Target conflict if any source enum has a conflict. */
       this->reset_enum_ptr(dst);
-      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
+      dst.runtime_flag |= NODE_MENU_ITEMS_CONFLICT;
     }
     else if (!dst.enum_items) {
       /* First connection, set the reference. */
@@ -971,7 +971,7 @@ class NodeTreeMainUpdater {
     else if (src.enum_items && dst.enum_items != src.enum_items) {
       /* Error if enum ref does not match other connections. */
       this->reset_enum_ptr(dst);
-      dst.flag |= NODE_MENU_ITEMS_CONFLICT;
+      dst.runtime_flag |= NODE_MENU_ITEMS_CONFLICT;
     }
   }
 

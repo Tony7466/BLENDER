@@ -929,8 +929,8 @@ typedef struct bNodeSocketValueMaterial {
 typedef struct bNodeSocketValueMenu {
   /* Default input enum identifier. */
   int value;
-  /* #NodeSocketValueMenuFlag */
-  int flag;
+  /* #NodeSocketValueMenuRuntimeFlag */
+  int runtime_flag;
   /* Immutable runtime enum definition. */
   const RuntimeNodeEnumItemsHandle *enum_items;
 
@@ -938,13 +938,6 @@ typedef struct bNodeSocketValueMenu {
   bool has_conflict() const;
 #endif
 } bNodeSocketValueMenu;
-
-/* Flags for #bNodeSocketValueMenu. */
-typedef enum NodeSocketValueMenuFlag {
-  /* Socket has conflicting menu connections and cannot resolve items. */
-  NODE_MENU_ITEMS_CONFLICT = (1 << 0),
-} NodeSocketValueMenuFlag;
-ENUM_OPERATORS(NodeSocketValueMenuFlag, NODE_MENU_ITEMS_CONFLICT);
 
 typedef struct GeometryNodeAssetTraits {
   int flag;

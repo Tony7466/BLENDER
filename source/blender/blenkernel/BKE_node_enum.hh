@@ -11,6 +11,12 @@
 
 namespace blender::bke {
 
+/* Flags for #bNodeSocketValueMenu. */
+enum NodeSocketValueMenuRuntimeFlag {
+  /* Socket has conflicting menu connections and cannot resolve items. */
+  NODE_MENU_ITEMS_CONFLICT = (1 << 0),
+};
+
 /* -------------------------------------------------------------------- */
 /** \name Runtime enum items list.
  * \{ */

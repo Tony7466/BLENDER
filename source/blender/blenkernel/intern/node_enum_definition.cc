@@ -8,11 +8,14 @@
 #include "BLI_string_utils.hh"
 
 #include "BKE_node.h"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
+
+using blender::bke::NodeSocketValueMenuRuntimeFlag;
 
 bool bNodeSocketValueMenu::has_conflict() const
 {
-  return this->flag & NODE_MENU_ITEMS_CONFLICT;
+  return this->runtime_flag & NodeSocketValueMenuRuntimeFlag::NODE_MENU_ITEMS_CONFLICT;
 }
 
 blender::Span<NodeEnumItem> NodeEnumDefinition::items() const

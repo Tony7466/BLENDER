@@ -6,6 +6,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_tree_interface.hh"
 
 #include "BLI_math_vector.h"
@@ -177,6 +178,7 @@ template<> void socket_data_init_impl(bNodeSocketValueMenu &data)
 {
   data.value = -1;
   data.enum_items = nullptr;
+  data.runtime_flag = 0;
 }
 
 static void *make_socket_data(const StringRef socket_type)
@@ -353,6 +355,7 @@ template<> void socket_data_read_data_impl(BlendDataReader *reader, bNodeSocketV
   BLO_read_data_address(reader, data);
   /* Clear runtime data. */
   (*data)->enum_items = nullptr;
+  (*data)->runtime_flag = 0;
 }
 
 static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSocket &socket)

@@ -903,6 +903,7 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
       bNodeSocketValueMenu &default_value = *sock->default_value_typed<bNodeSocketValueMenu>();
       /* Clear runtime data. */
       default_value.enum_items = nullptr;
+      default_value.runtime_flag = 0;
       break;
     }
     default:
