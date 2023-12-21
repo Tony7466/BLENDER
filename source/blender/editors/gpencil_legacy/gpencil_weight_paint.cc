@@ -1837,6 +1837,18 @@ static int gpencil_weight_gradient_vertex_count_total_get(bContext *C,
   return vertex_tot;
 }
 
+static void gpencil_weight_gradient_finish(tGPWeightGradient_data *tool_data)
+{
+  if (tool_data == nullptr) {
+    return;
+  }
+
+  MEM_SAFE_FREE(tool_data->vertex_cache);
+  MEM_SAFE_FREE(tool_data->vgroup_bone_deformed);
+  MEM_SAFE_FREE(tool_data->vgroup_locked);
+  MEM_SAFE_FREE(tool_data);
+}
+
 static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -2019,7 +2031,11 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
   const float line_segment_len_sq = dot_v2v2(line_segment, line_segment);
   const float line_segment_radius = sqrtf(line_segment_len_sq);
   if (line_segment_len_sq == 0.0f) {
-    goto finally;
+    if (!is_interactive) {
+      gpencil_weight_gradient_finish(tool_data);
+    }
+    MEM_SAFE_FREE(gso);
+    return OPERATOR_FINISHED;
   }
 
   /* Update vertex weights based on interactive gradient. */
@@ -2107,28 +2123,12 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 
   /* Clean up. */
-finally:
   if (!is_interactive) {
-    MEM_SAFE_FREE(tool_data->vertex_cache);
-    MEM_SAFE_FREE(tool_data->vgroup_bone_deformed);
-    MEM_SAFE_FREE(tool_data->vgroup_locked);
-    MEM_SAFE_FREE(tool_data);
+    gpencil_weight_gradient_finish(tool_data);
   }
   MEM_SAFE_FREE(gso);
 
   return OPERATOR_FINISHED;
-}
-
-static void gpencil_weight_gradient_finish(tGPWeightGradient_data *tool_data)
-{
-  if (tool_data == nullptr) {
-    return;
-  }
-
-  MEM_SAFE_FREE(tool_data->vertex_cache);
-  MEM_SAFE_FREE(tool_data->vgroup_bone_deformed);
-  MEM_SAFE_FREE(tool_data->vgroup_locked);
-  MEM_SAFE_FREE(tool_data);
 }
 
 static void gpencil_weight_gradient_cancel(tGPWeightGradient_data *tool_data)
