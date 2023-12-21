@@ -115,10 +115,12 @@ class DefocusOperation : public NodeOperation {
 
     Result radius = compute_defocus_radius();
 
-    /* The special zero value indicate a circle, in which case, the roundness should be set to 1,
-     * and the number of sides can be anything and is arbitrarily set to 3. */
+    const int maximum_defocus_radius = compute_maximum_defocus_radius();
+
+    /* The special zero value indicate a circle, in which case, the roundness should be set to
+     * 1, and the number of sides can be anything and is arbitrarily set to 3. */
     const bool is_circle = node_storage(bnode()).bktype == 0;
-    const int2 kernel_size = int2(node_storage(bnode()).maxblur);
+    const int2 kernel_size = int2(maximum_defocus_radius * 2);
     const int sides = is_circle ? 3 : node_storage(bnode()).bktype;
     const float rotation = node_storage(bnode()).rotation;
     const float roundness = is_circle ? 1.0f : 0.0f;
@@ -129,13 +131,14 @@ class DefocusOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "gamma_correct", node_storage(bnode()).gamco);
-    GPU_shader_uniform_1i(shader, "search_radius", node_storage(bnode()).maxblur);
+    GPU_shader_uniform_1i(shader, "search_radius", maximum_defocus_radius);
 
     input.bind_as_texture(shader, "input_tx");
 
     radius.bind_as_texture(shader, "radius_tx");
 
     bokeh_kernel.bind_as_texture(shader, "weights_tx");
+    GPU_texture_filter_mode(bokeh_kernel.texture(), true);
 
     const Domain domain = compute_domain();
     output.allocate_texture(domain);
@@ -213,8 +216,11 @@ class DefocusOperation : public NodeOperation {
     input_depth.unbind_as_texture();
     output_radius.unbind_as_image();
 
-    /* See the compute_morphological_radius method for more information on this step. */
-    const float morphological_radius = compute_morphological_radius();
+    /* We apply a dilate morphological operator on the radius computed from depth, the operator
+     * radius is the maximum possible defocus radius. This is done such that objects in
+     * focus---that is, objects whose defocus radius is small---are not affected by nearby out of
+     * focus objects, hence the use of dilation. */
+    const float morphological_radius = compute_maximum_defocus_radius();
     Result eroded_radius = context().create_temporary_result(ResultType::Float);
     morphological_blur(context(), output_radius, eroded_radius, float2(morphological_radius));
     output_radius.release();
@@ -222,11 +228,8 @@ class DefocusOperation : public NodeOperation {
     return eroded_radius;
   }
 
-  /* We apply a dilate morphological operator on the radius computed from depth, the operator
-   * radius is the maximum possible defocus radius. This is done such that objects in focus---that
-   * is, objects whose defocus radius is small---are not affected by nearby out of focus objects,
-   * hence the use of dilation. */
-  float compute_morphological_radius()
+  /* Computes the maximum possible defocus radius in pixels. */
+  float compute_maximum_defocus_radius()
   {
     const float maximum_diameter = compute_maximum_diameter_of_circle_of_confusion();
     const float pixels_per_meter = compute_pixels_per_meter();
