@@ -26,6 +26,22 @@ namespace blender::nodes::node_geo_menu_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeMenuSwitch)
 
+static bool is_supported_socket_type(const eNodeSocketDatatype data_type) {
+  return ELEM(data_type,
+              SOCK_FLOAT,
+              SOCK_INT,
+              SOCK_BOOLEAN,
+              SOCK_ROTATION,
+              SOCK_VECTOR,
+              SOCK_STRING,
+              SOCK_RGBA,
+              SOCK_GEOMETRY,
+              SOCK_OBJECT,
+              SOCK_COLLECTION,
+              SOCK_MATERIAL,
+              SOCK_IMAGE);
+}
+
 static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
 {
   const bNode *node = b.node_or_null();
@@ -129,18 +145,21 @@ static void node_update(bNodeTree * /*ntree*/, bNode * /*node*/) {}
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  if (params.in_out() == SOCK_OUT) {
+  if (params.in_out() == SOCK_IN) {
+    const eNodeSocketDatatype data_type = eNodeSocketDatatype(params.other_socket().type);
+    if (data_type == SOCK_MENU) {
+      params.add_item(IFACE_("Menu"), [](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("GeometryNodeMenuSwitch");
+        params.update_and_connect_available_socket(node, "Menu");
+      });
+    }
+  }
+  else {
     params.add_item(IFACE_("Output"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeMenuSwitch");
       node_storage(node).data_type = params.socket.type;
       params.update_and_connect_available_socket(node, "Output");
     });
-  }
-  else {
-    /* No sensible way to connect inputs currently:
-     * Switch socket connection will always create a conflicting enum ref.
-     * Case input sockets don't existing without an actual enum definition.
-     */
   }
 }
 
@@ -366,22 +385,10 @@ static void node_rna(StructRNA *srna)
       SOCK_GEOMETRY,
       [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
         *r_free = true;
-        return enum_items_filter(rna_enum_node_socket_data_type_items,
-                                 [](const EnumPropertyItem &item) -> bool {
-                                   return ELEM(item.value,
-                                               SOCK_FLOAT,
-                                               SOCK_INT,
-                                               SOCK_BOOLEAN,
-                                               SOCK_ROTATION,
-                                               SOCK_VECTOR,
-                                               SOCK_STRING,
-                                               SOCK_RGBA,
-                                               SOCK_GEOMETRY,
-                                               SOCK_OBJECT,
-                                               SOCK_COLLECTION,
-                                               SOCK_MATERIAL,
-                                               SOCK_IMAGE);
-                                 });
+        return enum_items_filter(
+            rna_enum_node_socket_data_type_items, [](const EnumPropertyItem &item) -> bool {
+              return is_supported_socket_type(eNodeSocketDatatype(item.value));
+            });
       });
 }
 
