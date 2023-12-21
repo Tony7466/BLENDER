@@ -853,22 +853,6 @@ void USDMeshWriter::init_blend_shapes(const HierarchyContext &context)
   }
 
   create_blend_shapes(this->usd_export_context_.stage, context.object, mesh_prim);
-
-  if (!has_animated_mesh_shape_key(context.object)) {
-    return;
-  }
-
-  /* Create the skeleton animation. */
-  pxr::SdfPath anim_path = mesh_prim.GetPath().AppendChild(usdtokens::Anim);
-  const pxr::UsdSkelAnimation anim = pxr::UsdSkelAnimation::Define(stage, anim_path);
-
-  pxr::VtTokenArray blend_shape_names = get_blend_shapes_attr_value(mesh_prim);
-
-  if (!blend_shape_names.empty()) {
-    if (pxr::UsdAttribute blend_shapes_attr = anim.CreateBlendShapesAttr()) {
-      blend_shapes_attr.Set(blend_shape_names);
-    }
-  }
 }
 
 void USDMeshWriter::do_write(HierarchyContext &context)
