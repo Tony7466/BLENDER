@@ -871,7 +871,7 @@ Span<float3> CurvesGeometry::evaluated_normals() const
     }
     VArraySpan<float3> custom_normal_span;
     if (const VArray<float3> custom_normal = *attributes.lookup<float3>("custom_normal",
-                                                                        ATTR_DOMAIN_POINT))
+                                                                        AttrDomain::Point))
     {
       custom_normal_span = custom_normal;
     }
@@ -1079,12 +1079,12 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
   });
 }
 
-static void transform_directions(MutableSpan<float3> directions, const float4x4 &matrix)
+static void transform_normals(MutableSpan<float3> normals, const float4x4 &matrix)
 {
   const float3x3 normal_transform = math::transpose(math::invert(float3x3(matrix)));
-  threading::parallel_for(directions.index_range(), 1024, [&](const IndexRange range) {
-    for (float3 &direction : directions.slice(range)) {
-      direction = math::transform_direction(normal_transform, direction);
+  threading::parallel_for(normals.index_range(), 1024, [&](const IndexRange range) {
+    for (float3 &normal : normals.slice(range)) {
+      normal = normal_transform * normal;
     }
   });
 }
@@ -1159,7 +1159,7 @@ void CurvesGeometry::transform(const float4x4 &matrix)
   }
   MutableAttributeAccessor attributes = this->attributes_for_write();
   if (SpanAttributeWriter normals = attributes.lookup_for_write_span<float3>("custom_normal")) {
-    transform_directions(normals.span, matrix);
+    transform_normals(normals.span, matrix);
     normals.finish();
   }
   this->tag_positions_changed();
