@@ -397,12 +397,18 @@ class InsertAvailableTest(AbstractKeyframingTest, unittest.TestCase):
 
 class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
 
-    def test_insert_needed_object(self):
-        keyed_object = _create_animation_object()
-
+    def setUp(self):
+        super().setUp()
         bpy.context.scene.tool_settings.use_keyframe_insert_auto = True
         bpy.context.preferences.edit.use_keyframe_insert_needed = True
         bpy.context.preferences.edit.use_keyframe_insert_available = False
+
+    def tearDown(self):
+        bpy.context.scene.tool_settings.use_keyframe_insert_auto = False
+        bpy.context.preferences.edit.use_keyframe_insert_needed = False
+
+    def test_insert_needed_object(self):
+        keyed_object = _create_animation_object()
 
         with bpy.context.temp_override(**_get_view3d_context()):
             bpy.context.scene.frame_set(1)
@@ -420,21 +426,17 @@ class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
             "location": (2, 1, 1)
         }
 
+        self.assertEqual(len(action.fcurves), 3)
+
         for fcurve in action.fcurves:
             if fcurve.data_path not in expected_keys:
                 raise AssertionError(f"Did not expect a key on {fcurve.data_path}")
             self.assertEqual(expected_keys[fcurve.data_path][fcurve.array_index], len(fcurve.keyframe_points))
 
         bpy.data.objects.remove(keyed_object, do_unlink=True)
-        bpy.context.scene.tool_settings.use_keyframe_insert_auto = False
-        bpy.context.preferences.edit.use_keyframe_insert_needed = False
 
     def test_insert_needed_bone(self):
         armature_obj = _create_armature()
-
-        bpy.context.scene.tool_settings.use_keyframe_insert_auto = True
-        bpy.context.preferences.edit.use_keyframe_insert_needed = True
-        bpy.context.preferences.edit.use_keyframe_insert_available = False
 
         bpy.ops.object.mode_set(mode='POSE')
         with bpy.context.temp_override(**_get_view3d_context()):
@@ -456,14 +458,14 @@ class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
             f"{bone_path}.location": (2, 1, 1)
         }
 
+        self.assertEqual(len(action.fcurves), 3)
+
         for fcurve in action.fcurves:
             if fcurve.data_path not in expected_keys:
                 raise AssertionError(f"Did not expect a key on {fcurve.data_path}")
             self.assertEqual(expected_keys[fcurve.data_path][fcurve.array_index], len(fcurve.keyframe_points))
 
         bpy.data.objects.remove(armature_obj, do_unlink=True)
-        bpy.context.scene.tool_settings.use_keyframe_insert_auto = False
-        bpy.context.preferences.edit.use_keyframe_insert_needed = False
 
 
 def main():
