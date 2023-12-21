@@ -170,7 +170,7 @@ void WM_event_print(const wmEvent *event)
 /** \name Event Modifier/Type Queries
  * \{ */
 
-bool WM_event_type_mask_test(const int event_type, const enum eEventType_Mask mask)
+bool WM_event_type_mask_test(const int event_type, const eEventType_Mask mask)
 {
   /* Keyboard. */
   if (mask & EVT_TYPE_MASK_KEYBOARD) {
@@ -215,7 +215,50 @@ bool WM_event_type_mask_test(const int event_type, const enum eEventType_Mask ma
     }
   }
 
+  /* Timer. */
+  if (mask & EVT_TYPE_MASK_TIMER) {
+    if (ISTIMER(event_type)) {
+      return true;
+    }
+  }
+
   return false;
+}
+
+eEventType_Mask WM_event_type_mask_get(const int event_type)
+{
+  eEventType_Mask type_mask = EVT_TYPE_MASK_NONE;
+  if (ISKEYBOARD(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_KEYBOARD);
+  }
+  if (ISKEYMODIFIER(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_KEYBOARD_MODIFIER);
+  }
+  if (ISMOUSE(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_MOUSE);
+  }
+  if (ISMOUSE_WHEEL(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_MOUSE_WHEEL);
+  }
+  if (ISMOUSE_GESTURE(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_MOUSE_GESTURE);
+  }
+  if (IS_EVENT_TABLET(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_TABLET);
+  }
+  if (IS_EVENT_MOUSE_OR_TABLET(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_MOUSE_OR_TABLET);
+  }
+  if (ISNDOF(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_NDOF);
+  }
+  if (IS_EVENT_ACTIONZONE(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_ACTIONZONE);
+  }
+  if (ISTIMER(event_type)) {
+    type_mask = eEventType_Mask(type_mask | EVT_TYPE_MASK_TIMER);
+  }
+  return type_mask;
 }
 
 /** \} */

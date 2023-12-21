@@ -417,6 +417,10 @@ enum {
 #define ISMOUSE_WHEEL(event_type) ((event_type) >= WHEELUPMOUSE && (event_type) <= WHEELOUTMOUSE)
 /** Test whether the event is a mouse (trackpad) gesture. */
 #define ISMOUSE_GESTURE(event_type) ((event_type) >= MOUSEPAN && (event_type) <= MOUSESMARTZOOM)
+/** Test whether the event is a tablet/stylus event. */
+#define IS_EVENT_TABLET(event_type) ELEM((event_type), TABLET_STYLUS, TABLET_ERASER)
+/** Combine #ISMOUSE and #IS_EVENT_TABLET tests. */
+#define IS_EVENT_MOUSE_OR_TABLET(event_type) (ISMOUSE(event_type) || IS_EVENT_TABLET(event_type))
 
 /** Test whether the event is a NDOF event. */
 #define ISNDOF(event_type) ((event_type) >= _NDOF_MIN && (event_type) <= _NDOF_MAX)
@@ -433,6 +437,8 @@ enum {
    (ISKEYMODIFIER(event_type) == false))
 
 enum eEventType_Mask {
+  /** No matching mask. */
+  EVT_TYPE_MASK_NONE = 0,
   /** #ISKEYMODIFIER */
   EVT_TYPE_MASK_KEYBOARD_MODIFIER = (1 << 0),
   /** #ISKEYBOARD */
@@ -449,6 +455,10 @@ enum eEventType_Mask {
   EVT_TYPE_MASK_NDOF = (1 << 6),
   /** #IS_EVENT_ACTIONZONE */
   EVT_TYPE_MASK_ACTIONZONE = (1 << 7),
+  EVT_TYPE_MASK_TABLET = (1 << 8),
+  EVT_TYPE_MASK_MOUSE_OR_TABLET = (1 << 9),
+  /** #ISTIMER */
+  EVT_TYPE_MASK_TIMER = (1 << 10),
 };
 #define EVT_TYPE_MASK_ALL \
   (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF | EVT_TYPE_MASK_ACTIONZONE)
@@ -459,7 +469,8 @@ enum eEventType_Mask {
 
 #define NDOF_BUTTON_INDEX_AS_EVENT(i) (_NDOF_BUTTON_MIN + (i))
 
-bool WM_event_type_mask_test(int event_type, enum eEventType_Mask mask);
+bool WM_event_type_mask_test(const int event_type, const eEventType_Mask mask);
+eEventType_Mask WM_event_type_mask_get(const int event_type);
 
 /** \} */
 

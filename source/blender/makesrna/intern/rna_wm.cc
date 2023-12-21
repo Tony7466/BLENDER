@@ -367,14 +367,19 @@ const EnumPropertyItem rna_enum_event_type_items[] = {
 #if 0 /* Never used (converted to keyboard events by GHOST). */
     /* keyboard emulation */
     {NDOF_BUTTON_ESC, "NDOF_BUTTON_ESC", 0, "NDOF Esc", "NdofEsc"},
+    {NDOF_BUTTON_ENTER, "NDOF_BUTTON_ENTER", 0, "NDOF Enter", "NdofEnter"},
+    {NDOF_BUTTON_DELETE, "NDOF_BUTTON_DELETE", 0, "NDOF Delete", "NdofDel"},
+    {NDOF_BUTTON_TAB, "NDOF_BUTTON_TAB", 0, "NDOF Tab", , "NdofTab"},
+    {NDOF_BUTTON_SPACE, "NDOF_BUTTON_SPACE", 0, "NDOF Space", "NdofSpace"},
     {NDOF_BUTTON_ALT, "NDOF_BUTTON_ALT", 0, "NDOF Alt", "NdofAlt"},
     {NDOF_BUTTON_SHIFT, "NDOF_BUTTON_SHIFT", 0, "NDOF Shift", "NdofShift"},
     {NDOF_BUTTON_CTRL, "NDOF_BUTTON_CTRL", 0, "NDOF Ctrl", "NdofCtrl"},
+    /* keyboard emulation */
 #endif
     /* View buttons. */
-    {NDOF_BUTTON_V1, "NDOF_BUTTON_V1", 0, "NDOF View 1", ""},
-    {NDOF_BUTTON_V2, "NDOF_BUTTON_V2", 0, "NDOF View 2", ""},
-    {NDOF_BUTTON_V3, "NDOF_BUTTON_V3", 0, "NDOF View 3", ""},
+    {NDOF_BUTTON_V1, "NDOF_BUTTON_V1", 0, "NDOF View 1", "Ndof V1"},
+    {NDOF_BUTTON_V2, "NDOF_BUTTON_V2", 0, "NDOF View 2", "Ndof V2"},
+    {NDOF_BUTTON_V3, "NDOF_BUTTON_V3", 0, "NDOF View 3", "Ndof V3"},
     /* general-purpose buttons */
     {NDOF_BUTTON_1, "NDOF_BUTTON_1", 0, "NDOF Button 1", "NdofB1"},
     {NDOF_BUTTON_2, "NDOF_BUTTON_2", 0, "NDOF Button 2", "NdofB2"},
@@ -986,25 +991,69 @@ static void rna_wmKeyMapItem_keymodifier_set(PointerRNA *ptr, int value)
 static const EnumPropertyItem *rna_KeyMapItem_type_itemf(bContext * /*C*/,
                                                          PointerRNA *ptr,
                                                          PropertyRNA * /*prop*/,
-                                                         bool * /*r_free*/)
+                                                         bool *r_free)
 {
-  int map_type = rna_wmKeyMapItem_map_type_get(ptr);
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(ptr->data);
+  const int map_type = WM_keymap_item_map_type_get(kmi);
 
-  if (map_type == KMI_TYPE_MOUSE) {
-    return event_mouse_type_items;
-  }
-  if (map_type == KMI_TYPE_TIMER) {
-    return event_timer_type_items;
-  }
-  if (map_type == KMI_TYPE_NDOF) {
-    return event_ndof_type_items;
-  }
-  if (map_type == KMI_TYPE_TEXTINPUT) {
-    return event_textinput_type_items;
-  }
-  else {
+  /* Default common case, return the whole enum of event types. */
+  if (!ELEM(map_type, KMI_TYPE_MOUSE, KMI_TYPE_TIMER, KMI_TYPE_NDOF, KMI_TYPE_TEXTINPUT)) {
+    *r_free = false;
     return rna_enum_event_type_items;
   }
+
+  EnumPropertyItem *item = nullptr;
+  int totitem = 0;
+  *r_free = true;
+
+  /* Special case, only has one entry, which is not a 'real' event (and does not match to any
+   * #eEventType_Mask values). */
+  if (map_type == KMI_TYPE_TEXTINPUT) {
+    for (const EnumPropertyItem *item_iter = rna_enum_event_type_items; item_iter->identifier;
+         item_iter++)
+    {
+      if (item_iter->value == KM_TEXTINPUT) {
+        RNA_enum_item_add(&item, &totitem, item_iter);
+        RNA_enum_item_end(&item, &totitem);
+        return item;
+      }
+    }
+    BLI_assert_unreachable();
+  }
+
+  /* The loop below gather all items from #rna_enum_event_type_items that match the given event
+   * type mask.
+   *
+   * NOTE: events of a given mask are expected to be stored in a contiguous way inside of
+   * #rna_enum_event_type_items. */
+  const eEventType_Mask event_type_mask = WM_event_type_mask_get(kmi->type);
+  bool is_matching_event_group = false;
+  const EnumPropertyItem *item_iter_prev = nullptr;
+  for (const EnumPropertyItem *item_iter = rna_enum_event_type_items; item_iter->identifier;
+       item_iter_prev = item_iter, item_iter++)
+  {
+    if (WM_event_type_mask_test(item_iter->value, event_type_mask)) {
+      if (is_matching_event_group) {
+        /* If already in a event-matching group of items, add a potential previous separator item,
+         * if any. */
+        BLI_assert(item_iter_prev && item_iter_prev->identifier);
+        if (item_iter_prev->identifier[0] == '\0') {
+          RNA_enum_item_add_separator(&item, &totitem);
+        }
+      }
+      else {
+        is_matching_event_group = true;
+      }
+      RNA_enum_item_add(&item, &totitem, item_iter);
+    }
+    else if (item_iter->identifier && item_iter->identifier[0] != '\0') {
+      /* If the current item does not match the expected mask, and is not a separator, the current
+       * event-matching group of items is done. */
+      is_matching_event_group = false;
+    }
+  }
+  RNA_enum_item_end(&item, &totitem);
+  return item;
 }
 
 static const EnumPropertyItem *rna_KeyMapItem_propvalue_itemf(bContext *C,
