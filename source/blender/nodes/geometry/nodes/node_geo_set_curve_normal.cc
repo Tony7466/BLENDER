@@ -52,7 +52,7 @@ static void set_curve_normal(bke::CurvesGeometry &curves,
   bke::try_capture_field_on_geometry(curves.attributes_for_write(),
                                      curve_context,
                                      "normal_mode",
-                                     ATTR_DOMAIN_CURVE,
+                                     AttrDomain::Curve,
                                      selection_field,
                                      fn::make_constant_field<int8_t>(mode));
 
@@ -61,8 +61,8 @@ static void set_curve_normal(bke::CurvesGeometry &curves,
         curves.attributes_for_write(),
         point_context,
         "custom_normal",
-        ATTR_DOMAIN_POINT,
-        Field<bool>(std::make_shared<EvaluateOnDomainInput>(selection_field, ATTR_DOMAIN_CURVE)),
+        AttrDomain::Point,
+        Field<bool>(std::make_shared<EvaluateOnDomainInput>(selection_field, AttrDomain::Curve)),
         custom_normal);
   }
 
@@ -83,8 +83,8 @@ static void set_grease_pencil_normal(GreasePencil &grease_pencil,
     set_curve_normal(
         drawing->strokes_for_write(),
         mode,
-        bke::GreasePencilLayerFieldContext(grease_pencil, ATTR_DOMAIN_CURVE, layer_index),
-        bke::GreasePencilLayerFieldContext(grease_pencil, ATTR_DOMAIN_POINT, layer_index),
+        bke::GreasePencilLayerFieldContext(grease_pencil, AttrDomain::Curve, layer_index),
+        bke::GreasePencilLayerFieldContext(grease_pencil, AttrDomain::Point, layer_index),
         selection_field,
         custom_normal);
   }
@@ -106,8 +106,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       bke::CurvesGeometry &curves = curves_id->geometry.wrap();
       set_curve_normal(curves,
                        mode,
-                       bke::CurvesFieldContext(curves, ATTR_DOMAIN_CURVE),
-                       bke::CurvesFieldContext(curves, ATTR_DOMAIN_POINT),
+                       bke::CurvesFieldContext(curves, AttrDomain::Curve),
+                       bke::CurvesFieldContext(curves, AttrDomain::Point),
                        selection_field,
                        custom_normal);
     }
