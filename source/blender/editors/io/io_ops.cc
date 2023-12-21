@@ -16,7 +16,7 @@
 
 #include "BLI_listbase.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_screen.hh"
 #include "WM_api.hh"
 
@@ -119,5 +119,6 @@ void ED_operatortypes_io(void)
 
 #ifdef WITH_IO_STL
   WM_operatortype_append(WM_OT_stl_import);
+  WM_operatortype_append(WM_OT_stl_export);
 #endif
 }

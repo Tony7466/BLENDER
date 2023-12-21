@@ -43,12 +43,6 @@ enum_feature_set = (
      1),
 )
 
-enum_displacement_methods = (
-    ('BUMP', "Bump Only", "Bump mapping to simulate the appearance of displacement"),
-    ('DISPLACEMENT', "Displacement Only", "Use true displacement of surface only, requires fine subdivision"),
-    ('BOTH', "Displacement and Bump", "Combination of true displacement and bump mapping for finer detail"),
-)
-
 enum_bvh_layouts = (
     ('BVH2', "BVH2", "", 1),
     ('EMBREE', "Embree", "", 4),
@@ -222,7 +216,8 @@ enum_guiding_directional_sampling_types = (
 def enum_openimagedenoise_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise:
-        return [('OPENIMAGEDENOISE', "OpenImageDenoise", "Use Intel OpenImageDenoise AI denoiser running on the CPU", 4)]
+        return [('OPENIMAGEDENOISE', "OpenImageDenoise",
+                 "Use Intel OpenImageDenoise AI denoiser", 4)]
     return []
 
 
@@ -1013,10 +1008,9 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         default="AUTO",
     )
 
-    use_transparent_shadow: BoolProperty(
-        name="Transparent Shadows",
-        description="Use transparent shadows for this material if it contains a Transparent BSDF, "
-        "disabling will render faster but not give accurate shadows",
+    use_bump_map_correction: BoolProperty(
+        name="Bump Map Correction",
+        description="Apply corrections to solve shadow terminator artifacts caused by bump mapping",
         default=True,
     )
     homogeneous_volume: BoolProperty(
@@ -1045,13 +1039,6 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
                     "(lower values give more accurate and detailed results, but also increased render time)",
         default=1.0,
         min=0.001, max=1000.0, soft_min=0.1, soft_max=10.0, precision=4
-    )
-
-    displacement_method: EnumProperty(
-        name="Displacement Method",
-        description="Method to use for the displacement",
-        items=enum_displacement_methods,
-        default='BUMP',
     )
 
     @classmethod
@@ -1472,11 +1459,16 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         default=False,
     )
 
-    use_metalrt: BoolProperty(
-        name="MetalRT (Experimental)",
+    metalrt: EnumProperty(
+        name="MetalRT",
         description="MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better "
-                    "performance in specific cases. However this support is experimental and some scenes may render incorrectly",
-        default=False,
+                    "performance in specific cases",
+        default='AUTO',
+        items=(
+            ('OFF', "Off", "Disable MetalRT (uses BVH2 layout for intersection queries)"),
+            ('ON', "On", "Enable MetalRT for intersection queries"),
+            ('AUTO', "Auto", "Automatically pick the fastest intersection method"),
+        ),
     )
 
     use_hiprt: BoolProperty(
@@ -1638,7 +1630,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
             elif device_type == 'ONEAPI':
                 import sys
                 if sys.platform.startswith("win"):
-                    driver_version = "XX.X.101.4644"
+                    driver_version = "XX.X.101.4824"
                     col.label(text="Requires Intel GPU with Xe-HPG architecture", icon='BLANK1')
                     col.label(text=iface_("and Windows driver version %s or newer") % driver_version,
                               icon='BLANK1', translate=False)
@@ -1711,7 +1703,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                 if is_arm64:
                     col.prop(self, "kernel_optimization_level")
                 if has_rt_api_support:
-                    col.prop(self, "use_metalrt")
+                    col.prop(self, "metalrt")
 
         if compute_device_type == 'HIP':
             has_cuda, has_optix, has_hip, has_metal, has_oneapi, has_hiprt = _cycles.get_device_types()

@@ -20,9 +20,9 @@
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_node.hh"
 #include "BLI_fileops.h"
@@ -214,7 +214,7 @@ TEST_F(UsdExportTest, usd_export_rain_mesh)
   params.export_uvmaps = false;
   params.visible_objects_only = true;
 
-  bool result = USD_export(context, output_filename.c_str(), &params, false);
+  bool result = USD_export(context, output_filename.c_str(), &params, false, nullptr);
   ASSERT_TRUE(result) << "Writing to " << output_filename << " failed!";
 
   pxr::UsdStageRefPtr stage = pxr::UsdStage::Open(output_filename);
@@ -227,7 +227,7 @@ TEST_F(UsdExportTest, usd_export_rain_mesh)
     const Mesh *mesh = static_cast<Mesh *>(object->data);
     const StringRefNull object_name(object->id.name + 2);
 
-    const pxr::SdfPath sdf_path("/" + pxr::TfMakeValidIdentifier(object_name.c_str()));
+    const pxr::SdfPath sdf_path("/root/" + pxr::TfMakeValidIdentifier(object_name.c_str()));
     pxr::UsdPrim prim = stage->GetPrimAtPath(sdf_path);
     EXPECT_TRUE(bool(prim));
 
@@ -280,7 +280,7 @@ TEST_F(UsdExportTest, usd_export_material)
   params.generate_preview_surface = true;
   params.relative_paths = false;
 
-  const bool result = USD_export(context, output_filename.c_str(), &params, false);
+  const bool result = USD_export(context, output_filename.c_str(), &params, false, nullptr);
   ASSERT_TRUE(result) << "Unable to export stage to " << output_filename;
 
   pxr::UsdStageRefPtr stage = pxr::UsdStage::Open(output_filename);
@@ -291,8 +291,9 @@ TEST_F(UsdExportTest, usd_export_material)
                                                        "ShaderNodeBsdfPrincipled");
 
   const std::string prim_name = pxr::TfMakeValidIdentifier(bsdf_node->name);
+  pxr::SdfPath path = pxr::SdfPath("/root/materials/Material/preview_" + prim_name);
   const pxr::UsdPrim bsdf_prim = stage->GetPrimAtPath(
-      pxr::SdfPath("/_materials/Material/" + prim_name));
+      pxr::SdfPath("/root/materials/Material/preview_" + prim_name));
 
   compare_blender_node_to_usd_prim(bsdf_node, bsdf_prim);
 
@@ -303,7 +304,7 @@ TEST_F(UsdExportTest, usd_export_material)
   const std::string image_prim_name = pxr::TfMakeValidIdentifier(image_node->name);
 
   const pxr::UsdPrim image_prim = stage->GetPrimAtPath(
-      pxr::SdfPath("/_materials/Material/" + image_prim_name));
+      pxr::SdfPath("/root/materials/Material/preview_" + image_prim_name));
 
   ASSERT_TRUE(bool(image_prim)) << "Unable to find Material prim from exported stage "
                                 << output_filename;

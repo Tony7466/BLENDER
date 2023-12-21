@@ -88,8 +88,9 @@ typedef struct BatchBLF {
   struct FontBLF *font;
   struct GPUBatch *batch;
   struct GPUVertBuf *verts;
-  struct GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step;
-  unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc;
+  struct GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
+      glyph_mode_step;
+  unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc, glyph_mode_loc;
   unsigned int glyph_len;
   /** Copy of `font->pos`. */
   int ofs[2];
@@ -116,7 +117,7 @@ typedef struct GlyphCacheBLF {
   /** Font size. */
   float size;
 
-  float char_weight;
+  int char_weight;
   float char_slant;
   float char_width;
   float char_spacing;
@@ -174,6 +175,10 @@ typedef struct GlyphBLF {
   /** Glyph width and height. */
   int dims[2];
   int pitch;
+  int depth;
+
+  /** Render mode (FT_Render_Mode). */
+  int render_mode;
 
   /**
    * X and Y bearing of the glyph.
@@ -208,6 +213,72 @@ typedef struct FontBufInfoBLF {
   float col_float[4];
 
 } FontBufInfoBLF;
+
+typedef struct FontMetrics {
+  /** Indicate that these values have been properly loaded. */
+  bool valid;
+  /** This font's default weight, 100-900, 400 is normal. */
+  short weight;
+  /** This font's default width, 1 is normal, 2 is twice as wide. */
+  float width;
+  /** This font's slant in clockwise degrees, 0 being upright. */
+  float slant;
+  /** This font's default spacing, 1 is normal. */
+  float spacing;
+
+  /** Number of font units in an EM square. 2048, 1024, 1000 are typical. */
+  short units_per_EM; /* */
+  /** Design classification from OS/2 sFamilyClass. */
+  short family_class;
+  /** Style classification from OS/2 fsSelection. */
+  short selection_flags;
+  /** Total number of glyphs in the font. */
+  int num_glyphs;
+  /** Minimum Unicode index, typically 0x0020. */
+  short first_charindex;
+  /** Maximum Unicode index, or 0xFFFF if greater than. */
+  short last_charindex;
+
+  /**
+   * Positive number of font units from baseline to top of typical capitals. Can be slightly more
+   * than cap height when head serifs, terminals, or apexes extend above cap line. */
+  short ascender;
+  /** Negative (!) number of font units from baseline to bottom of letters like `gjpqy`. */
+  short descender;
+  /** Positive number of font units between consecutive baselines. */
+  short line_height;
+  /** Font units from baseline to lowercase mean line, typically to top of "x". */
+  short x_height;
+  /** Font units from baseline to top of capital letters, specifically "H". */
+  short cap_height;
+  /** Ratio width to height of lowercase "O". Reliable indication of font proportion. */
+  float o_proportion;
+  /** Font unit maximum horizontal advance for all glyphs in font. Can help with wrapping. */
+  short max_advance_width;
+  /** As above but only for vertical layout fonts, otherwise is set to line_height value. */
+  short max_advance_height;
+
+  /** Negative (!) number of font units below baseline to center (!) of underlining stem. */
+  short underline_position;
+  /** thickness of the underline in font units. */
+  short underline_thickness;
+  /** Positive number of font units above baseline to the top (!) of strikeout stroke. */
+  short strikeout_position;
+  /** thickness of the strikeout line in font units. */
+  short strikeout_thickness;
+  /** EM size font units of recommended subscript letters. */
+  short subscript_size;
+  /** Horizontal offset before first subscript character, typically 0. */
+  short subscript_xoffset;
+  /** Positive number of font units above baseline for subscript characters. */
+  short subscript_yoffset;
+  /** EM size font units of recommended superscript letters. */
+  short superscript_size;
+  /** Horizontal offset before first superscript character, typically 0. */
+  short superscript_xoffset;
+  /** Positive (!) number of font units below baseline for subscript characters. */
+  short superscript_yoffset;
+} FontMetrics;
 
 typedef struct FontBLF {
   /** Full path to font file or NULL if from memory. */
@@ -258,7 +329,7 @@ typedef struct FontBLF {
 
   /**
    * Multiplied this matrix with the current one before draw the text!
-   * see #blf_draw_gl__start.
+   * see #blf_draw_gpu__start.
    */
   float m[16];
 
@@ -274,11 +345,11 @@ typedef struct FontBLF {
   /** Axes data for Adobe MM, TrueType GX, or OpenType variation fonts. */
   FT_MM_Var *variations;
 
-  /** Character variation; 0=default, -1=min, +1=max. */
-  float char_weight;
-  float char_slant;
-  float char_width;
-  float char_spacing;
+  /** Character variations. */
+  int char_weight;    /* 100 - 900, 400 = normal. */
+  float char_slant;   /* Slant in clockwise degrees. 0.0 = upright. */
+  float char_width;   /* Factor of normal character width. 1.0 = normal. */
+  float char_spacing; /* Factor of normal character spacing. 0.0 = normal. */
 
   /** Max texture size. */
   int tex_size_max;
@@ -306,6 +377,9 @@ typedef struct FontBLF {
 
   /** Copy of the font->face->face_flags, in case we don't have a face loaded. */
   FT_Long face_flags;
+
+  /** Details about the font's design and style and sizes (in un-sized font units). */
+  FontMetrics metrics;
 
   /** Data for buffer usage (drawing into a texture buffer) */
   FontBufInfoBLF buf_info;

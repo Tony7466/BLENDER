@@ -13,8 +13,8 @@
 
 #  include <cstring>
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 #  include "BKE_screen.hh"
 
@@ -198,6 +198,26 @@ const EnumPropertyItem rna_enum_usd_tex_name_collision_mode_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
+    {USD_SUBDIV_IGNORE,
+     "IGNORE",
+     0,
+     "Ignore",
+     "Subdivision scheme = None, export base mesh without subdivision"},
+    {USD_SUBDIV_TESSELLATE,
+     "TESSELLATE",
+     0,
+     "Tessellate",
+     "Subdivision scheme = None, export subdivided mesh"},
+    {USD_SUBDIV_BEST_MATCH,
+     "BEST_MATCH",
+     0,
+     "Best Match",
+     "Subdivision scheme = Catmull-Clark, when possible. "
+     "Reverts to exporting the subdivided mesh for the Simple subdivision type"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
 enum { AS_BACKGROUND_JOB = 1 };
@@ -233,8 +253,15 @@ static void process_prim_path(char *prim_path)
 
   /* The absolute root "/" path indicates a no-op,
    * so clear the string. */
-  if (prim_path[0] == '/' && strlen(prim_path) == 1) {
+  if (prim_path[0] == '/' && prim_path[1] == '\0') {
     prim_path[0] = '\0';
+  }
+
+  /* If a prim path doesn't start with a "/" it
+   * is invalid when creating the prim. */
+  if (prim_path[0] != '/') {
+    const std::string prim_path_copy = std::string(prim_path);
+    BLI_snprintf(prim_path, FILE_MAX, "/%s", prim_path_copy.c_str());
   }
 }
 
@@ -279,6 +306,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
   const bool export_transforms = RNA_boolean_get(op->ptr, "export_transforms");
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
+  const eSubdivExportMode export_subdiv = eSubdivExportMode(
+      RNA_enum_get(op->ptr, "export_subdivision"));
   const bool export_meshes = RNA_boolean_get(op->ptr, "export_meshes");
   const bool export_lights = RNA_boolean_get(op->ptr, "export_lights");
   const bool export_cameras = RNA_boolean_get(op->ptr, "export_cameras");
@@ -295,7 +324,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_custom_properties = RNA_boolean_get(op->ptr, "export_custom_properties");
   const bool add_properties_namespace = RNA_boolean_get(op->ptr, "add_properties_namespace");
   const bool export_identity_transforms = RNA_boolean_get(op->ptr, "export_identity_transforms");
-  const bool apply_subdiv = RNA_boolean_get(op->ptr, "apply_subdiv");
   const bool author_blender_name = RNA_boolean_get(op->ptr, "author_blender_name");
   const bool vertex_data_as_face_varying = RNA_boolean_get(op->ptr, "vertex_data_as_face_varying");
   const float frame_step = RNA_float_get(op->ptr, "frame_step");
@@ -367,8 +395,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   /* USDKind support. */
   const bool export_usd_kind = RNA_boolean_get(op->ptr, "export_usd_kind");
   const int default_prim_kind = RNA_enum_get(op->ptr, "default_prim_kind");
-  char *default_prim_custom_kind = RNA_string_get_alloc(
-      op->ptr, "default_prim_custom_kind", nullptr, 0, nullptr);
+  char default_prim_custom_kind[128];
+  RNA_string_get(op->ptr, "default_prim_custom_kind", default_prim_custom_kind);
 
   const double start = static_cast<double>(RNA_int_get(op->ptr, "start"));
   const double end = static_cast<double>(RNA_int_get(op->ptr, "end"));
@@ -385,6 +413,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                                    export_mesh_attributes,
                                    export_transforms,
                                    export_materials,
+                                   export_subdiv,
                                    export_meshes,
                                    export_lights,
                                    export_cameras,
@@ -405,7 +434,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                                    export_custom_properties,
                                    add_properties_namespace,
                                    export_identity_transforms,
-                                   apply_subdiv,
                                    author_blender_name,
                                    vertex_data_as_face_varying,
                                    frame_step,
@@ -436,8 +464,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                                    quad_method,
                                    ngon_method,
                                    export_usd_kind,
-                                   eUSDDefaultPrimKind(default_prim_kind),
-                                   default_prim_custom_kind};
+                                   eUSDDefaultPrimKind(default_prim_kind)};
+
+  BLI_strncpy(params.default_prim_custom_kind, default_prim_custom_kind, 128);
 
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
@@ -455,7 +484,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   STRNCPY(params.default_prim_path, default_prim_path);
   STRNCPY(params.material_prim_path, material_prim_path);
 
-  bool ok = USD_export(C, filepath, &params, as_background_job);
+  bool ok = USD_export(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -664,6 +693,14 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   false,
                   "Only Deform Bones",
                   "Only export Deform bones and their parents");
+
+  RNA_def_enum(ot->srna,
+               "export_subdivision",
+               rna_enum_usd_export_subdiv_mode_items,
+               USD_SUBDIV_BEST_MATCH,
+               "Subdivision Scheme",
+               "Choose how subdivision modifiers will be mapped to the USD subdivision scheme "
+               "during export");
 
   RNA_def_boolean(ot->srna,
                   "use_instancing",
@@ -1160,7 +1197,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   STRNCPY(params.import_textures_dir, import_textures_dir);
 
-  const bool ok = USD_import(C, filepath, &params, as_background_job);
+  const bool ok = USD_import(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -1490,7 +1527,7 @@ static void usd_export_panel_geometry_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(panel->layout, false);
 
   uiLayoutSetPropSep(col, true);
-  uiItemR(col, ptr, "apply_subdiv", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_mesh_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);

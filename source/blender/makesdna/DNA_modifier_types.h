@@ -2141,7 +2141,7 @@ typedef struct DataTransferModifierData {
   /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.hh. */
   int layers_select_dst[5];
 
-  /** See CDT_MIX_ enum in BKE_customdata.h. */
+  /** See CDT_MIX_ enum in BKE_customdata.hh. */
   int mix_mode;
   float mix_factor;
   /** #MAX_VGROUP_NAME. */
@@ -2285,8 +2285,8 @@ enum {
 
 /** Surface Deform vertex bind modes. */
 enum {
-  MOD_SDEF_MODE_LOOPTRI = 0,
-  MOD_SDEF_MODE_NGON = 1,
+  MOD_SDEF_MODE_CORNER_TRIS = 0,
+  MOD_SDEF_MODE_NGONS = 1,
   MOD_SDEF_MODE_CENTROID = 2,
 };
 
@@ -2330,6 +2330,9 @@ typedef struct NodesModifierBake {
   int id;
   /** #NodesModifierBakeFlag. */
   uint32_t flag;
+  /** #NodesModifierBakeMode. */
+  uint8_t bake_mode;
+  char _pad[7];
   /**
    * Directory where the baked data should be stored. This is only used when
    * `NODES_MODIFIER_BAKE_CUSTOM_PATH` is set.
@@ -2348,6 +2351,11 @@ typedef enum NodesModifierBakeFlag {
   NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
 } NodesModifierBakeFlag;
 
+typedef enum NodesModifierBakeMode {
+  NODES_MODIFIER_BAKE_MODE_ANIMATION = 0,
+  NODES_MODIFIER_BAKE_MODE_STILL = 1,
+} NodesModifierBakeMode;
+
 typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
@@ -2355,7 +2363,7 @@ typedef struct NodesModifierData {
   /**
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
-  char *simulation_bake_directory;
+  char *bake_directory;
   /** NodesModifierFlag. */
   int8_t flag;
 

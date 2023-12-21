@@ -10,7 +10,9 @@
 #include <pxr/usd/usd/modelAPI.h>
 #include <pxr/usd/usdGeom/bboxCache.h>
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
+#include "BKE_report.h"
+
 #include "BLI_assert.h"
 #include "BLI_string_utf8.h"
 #include "DNA_mesh_types.h"
@@ -65,9 +67,9 @@ static std::string get_mesh_active_uvlayer_name(const Object *ob)
     return "";
   }
 
-  const Mesh *me = static_cast<Mesh *>(ob->data);
+  const Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-  const char *name = CustomData_get_active_layer_name(&me->loop_data, CD_PROP_FLOAT2);
+  const char *name = CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2);
 
   return name ? name : "";
 }
@@ -255,7 +257,8 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
 
   std::string active_uv = get_mesh_active_uvlayer_name(context.object);
 
-  usd_material = create_usd_material(usd_export_context_, usd_path, material, active_uv);
+  usd_material = create_usd_material(
+      usd_export_context_, usd_path, material, active_uv, reports());
 
   if (!computed_name.empty()) {
     /* Write the displayName here, allowing for it to be
@@ -449,9 +452,10 @@ void USDAbstractWriter::author_extent(const pxr::UsdTimeCode timecode, pxr::UsdG
   pxr::GfBBox3d bounds = bboxCache.ComputeLocalBound(prim.GetPrim());
   if (pxr::GfBBox3d() == bounds) {
     /* This will occur, for example, if a mesh does not have any vertices. */
-    WM_reportf(RPT_WARNING,
-               "USD Export: no bounds could be computed for %s",
-               prim.GetPrim().GetName().GetText());
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "USD Export: no bounds could be computed for %s",
+                prim.GetPrim().GetName().GetText());
     return;
   }
 

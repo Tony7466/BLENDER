@@ -127,13 +127,15 @@ typedef enum eSeqRetimingKeyFlag {
 } eSeqRetimingKeyFlag;
 
 typedef struct SeqRetimingKey {
-  int strip_frame_index;
+  double strip_frame_index;
   int flag; /* eSeqRetimingKeyFlag */
   int _pad0;
   float retiming_factor; /* Value between 0-1 mapped to original content range. */
 
-  int original_strip_frame_index; /* Used for transition keys only. */
-  float original_retiming_factor; /* Used for transition keys only. */
+  char _pad1[4];
+  double original_strip_frame_index; /* Used for transition keys only. */
+  float original_retiming_factor;    /* Used for transition keys only. */
+  char _pad2[4];
 } SeqRetimingKey;
 
 typedef struct SequenceRuntime {
@@ -225,6 +227,7 @@ typedef struct Sequence {
 
   /** The linked "bSound" object. */
   struct bSound *sound;
+  /** Handle to #AUD_SequenceEntry*/
   void *scene_sound;
   float volume;
 
@@ -613,7 +616,7 @@ enum {
   SEQ_AUTO_PLAYBACK_RATE = (1 << 17),
   SEQ_SINGLE_FRAME_CONTENT = (1 << 18),
   SEQ_SHOW_RETIMING = (1 << 19),
-  SEQ_FLAG_UNUSED_21 = (1 << 21), /* cleared */
+  SEQ_MULTIPLY_ALPHA = (1 << 21),
 
   SEQ_USE_EFFECT_DEFAULT_FADE = (1 << 22),
   SEQ_USE_LINEAR_MODIFIERS = (1 << 23),

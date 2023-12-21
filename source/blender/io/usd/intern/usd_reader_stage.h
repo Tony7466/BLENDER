@@ -5,6 +5,8 @@
 
 struct Main;
 
+#include "WM_types.hh"
+
 #include "usd.h"
 #include "usd_reader_prim.h"
 
@@ -89,6 +91,12 @@ class USDStageReader {
     return settings_;
   }
 
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return params_.worker_status ? params_.worker_status->reports : nullptr;
+  }
+
   void clear_readers();
 
   void clear_proto_readers();
@@ -136,7 +144,7 @@ class USDStageReader {
 
   bool merge_with_parent(USDPrimReader *reader) const;
 
-  /*
+  /**
    * Returns true if the specified UsdPrim is a UsdGeom primitive,
    * procedural shape, such as UsdGeomCube.
    */

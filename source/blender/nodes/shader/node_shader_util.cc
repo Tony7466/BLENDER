@@ -12,7 +12,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_node_runtime.hh"
 
 #include "IMB_colormanagement.h"
@@ -164,6 +164,9 @@ void node_gpu_stack_from_data(GPUNodeStack *gs, int type, bNodeStack *ns)
     else if (type == SOCK_INT) {
       gs->type = GPU_FLOAT; /* HACK: Support as float. */
     }
+    else if (type == SOCK_BOOLEAN) {
+      gs->type = GPU_FLOAT; /* HACK: Support as float. */
+    }
     else if (type == SOCK_VECTOR) {
       gs->type = GPU_VEC3;
     }
@@ -208,7 +211,9 @@ static void data_from_gpu_stack_list(ListBase *sockets, bNodeStack **ns, GPUNode
 {
   int i = 0;
   LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
-    if (ELEM(socket->type, SOCK_FLOAT, SOCK_INT, SOCK_VECTOR, SOCK_RGBA, SOCK_SHADER)) {
+    if (ELEM(
+            socket->type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_SHADER))
+    {
       node_data_from_gpu_stack(ns[i], &gs[i]);
       i++;
     }
@@ -395,4 +400,17 @@ void get_XYZ_to_RGB_for_gpu(XYZ_to_RGB *data)
   data->b[0] = xyz_to_rgb[2];
   data->b[1] = xyz_to_rgb[5];
   data->b[2] = xyz_to_rgb[8];
+}
+
+bool node_socket_not_zero(const GPUNodeStack &socket)
+{
+  return socket.link || socket.vec[0] > 1e-5f;
+}
+bool node_socket_not_white(const GPUNodeStack &socket)
+{
+  return socket.link || socket.vec[0] < 1.0f || socket.vec[1] < 1.0f || socket.vec[2] < 1.0f;
+}
+bool node_socket_not_black(const GPUNodeStack &socket)
+{
+  return socket.link || socket.vec[0] > 1e-5f || socket.vec[1] > 1e-5f || socket.vec[2] > 1e-5f;
 }

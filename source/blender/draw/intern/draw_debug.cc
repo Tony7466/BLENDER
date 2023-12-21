@@ -8,7 +8,7 @@
  * \brief Simple API to draw debug shapes in the viewport.
  */
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BLI_link_utils.h"
 #include "BLI_math_matrix.hh"
 #include "GPU_batch.h"
@@ -24,7 +24,7 @@
 #include <iomanip>
 #include <sstream>
 
-#if defined(DEBUG) || defined(WITH_DRAW_DEBUG)
+#if defined(_DEBUG) || defined(WITH_DRAW_DEBUG)
 #  define DRAW_DEBUG
 #else
 /* Uncomment to forcibly enable debug draw in release mode. */

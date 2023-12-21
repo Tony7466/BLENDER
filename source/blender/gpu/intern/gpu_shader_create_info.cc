@@ -243,7 +243,37 @@ std::string ShaderCreateInfo::check_error() const
     }
   }
 
-#ifdef DEBUG
+  if (!this->geometry_source_.is_empty()) {
+    if (bool(this->builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses barycentric coordinates. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+    if (bool(this->builtins_ & BuiltinBits::VIEWPORT_INDEX)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses multi-viewport. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+    if (bool(this->builtins_ & BuiltinBits::LAYER)) {
+      error += "Shader " + this->name_ +
+               " has geometry stage and uses layer output. This is not allowed as "
+               "fallback injects a geometry stage.\n";
+    }
+  }
+
+#ifndef NDEBUG
+  if (bool(this->builtins_ &
+           (BuiltinBits::BARYCENTRIC_COORD | BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)))
+  {
+    for (const StageInterfaceInfo *interface : this->vertex_out_interfaces_) {
+      if (interface->instance_name.is_empty()) {
+        error += "Shader " + this->name_ + " uses interface " + interface->name +
+                 " that doesn't contain an instance name, but is required for the fallback "
+                 "geometry shader.\n";
+      }
+    }
+  }
+
   if (!this->is_vulkan_compatible()) {
     error += this->name_ +
              " contains a stage interface using an instance name and mixed interpolation modes. "
@@ -473,6 +503,14 @@ void gpu_shader_create_info_init()
 
     /* GPencil stroke. */
     gpu_shader_gpencil_stroke = gpu_shader_gpencil_stroke_no_geom;
+
+    /* NOTE: As atomic data types can alter shader gen if native atomics are unsupported, we need
+     * to use differing create info's to handle the tile optimized check. This does prevent
+     * the shadow techniques from being dynamically switchable . */
+    const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
+    if (is_tile_based_arch) {
+      eevee_shadow_data = eevee_shadow_data_non_atomic;
+    }
   }
 #endif
 
@@ -482,7 +520,7 @@ void gpu_shader_create_info_init()
     info->builtins_ |= gpu_shader_dependency_get_builtins(info->geometry_source_);
     info->builtins_ |= gpu_shader_dependency_get_builtins(info->compute_source_);
 
-#ifdef DEBUG
+#ifndef NDEBUG
     /* Automatically amend the create info for ease of use of the debug feature. */
     if ((info->builtins_ & BuiltinBits::USE_DEBUG_DRAW) == BuiltinBits::USE_DEBUG_DRAW) {
       info->additional_info("draw_debug_draw");
@@ -494,7 +532,7 @@ void gpu_shader_create_info_init()
   }
 
   /* TEST */
-  // gpu_shader_create_info_compile_all();
+  // gpu_shader_create_info_compile(nullptr);
 }
 
 void gpu_shader_create_info_exit()
@@ -510,19 +548,27 @@ void gpu_shader_create_info_exit()
   delete g_interfaces;
 }
 
-bool gpu_shader_create_info_compile_all()
+bool gpu_shader_create_info_compile(const char *name_starts_with_filter)
 {
   using namespace blender::gpu;
   int success = 0;
+  int skipped_filter = 0;
   int skipped = 0;
   int total = 0;
   for (ShaderCreateInfo *info : g_create_infos->values()) {
     info->finalize();
     if (info->do_static_compilation_) {
+      if (name_starts_with_filter &&
+          !info->name_.startswith(blender::StringRefNull(name_starts_with_filter)))
+      {
+        skipped_filter++;
+        continue;
+      }
       if ((info->metal_backend_only_ && GPU_backend_get_type() != GPU_BACKEND_METAL) ||
           (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
-          (GPU_shader_image_load_store_support() == false && info->has_resource_image()))
+          (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
+          (GPU_transform_feedback_support() == false && info->tf_type_ != GPU_SHADER_TFB_NONE))
       {
         skipped++;
         continue;
@@ -583,6 +629,9 @@ bool gpu_shader_create_info_compile_all()
     }
   }
   printf("Shader Test compilation result: %d / %d passed", success, total);
+  if (skipped_filter > 0) {
+    printf(" (skipped %d when filtering)", skipped_filter);
+  }
   if (skipped > 0) {
     printf(" (skipped %d for compatibility reasons)", skipped);
   }

@@ -6,6 +6,7 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "DNA_modifier_types.h"
 #include "RNA_types.hh"
 
 #ifdef __cplusplus
@@ -61,8 +62,13 @@ typedef enum eUSDZTextureDownscaleSize {
 static const USD_global_forward_axis USD_DEFAULT_FORWARD = USD_GLOBAL_FORWARD_MINUS_Z;
 static const USD_global_up_axis USD_DEFAULT_UP = USD_GLOBAL_UP_Y;
 
-/* Behavior when the name of an imported material
- * conflicts with an existing material. */
+struct bContext;
+struct wmJobWorkerStatus;
+
+/**
+ * Behavior when the name of an imported material
+ * conflicts with an existing material.
+ */
 typedef enum eUSDMtlNameCollisionMode {
   USD_MTL_NAME_COLLISION_MAKE_UNIQUE = 0,
   USD_MTL_NAME_COLLISION_REFERENCE_EXISTING = 1,
@@ -82,91 +88,111 @@ typedef enum eUSDDefaultPrimKind {
   USD_KIND_CUSTOM
 } eUSDDefaultPrimKind;
 
-/* Behavior when importing textures from a package
- * (e.g., USDZ archive) or from a URI path. */
+/**
+ * Behavior when importing textures from a package
+ * (e.g., USDZ archive) or from a URI path.
+ */
 typedef enum eUSDTexImportMode {
   USD_TEX_IMPORT_NONE = 0,
   USD_TEX_IMPORT_PACK,
   USD_TEX_IMPORT_COPY,
 } eUSDTexImportMode;
 
-/* Behavior when the name of an imported texture
- * file conflicts with an existing file. */
+/**
+ * Behavior when the name of an imported texture
+ * file conflicts with an existing file.
+ */
 typedef enum eUSDTexNameCollisionMode {
   USD_TEX_NAME_COLLISION_USE_EXISTING = 0,
   USD_TEX_NAME_COLLISION_OVERWRITE = 1,
 } eUSDTexNameCollisionMode;
 
-struct USDExportParams {
-  double frame_start;
-  double frame_end;
+typedef enum eSubdivExportMode {
+  /** Subdivision scheme = None, export base mesh without subdivision. */
+  USD_SUBDIV_IGNORE = 0,
+  /** Subdivision scheme = None, export subdivided mesh. */
+  USD_SUBDIV_TESSELLATE = 1,
+  /**
+   * Apply the USD subdivision scheme that is the closest match to Blender.
+   * Reverts to #USD_SUBDIV_TESSELLATE if the subdivision method is not supported.
+   */
+  USD_SUBDIV_BEST_MATCH = 2,
+} eSubdivExportMode;
 
-  bool export_animation;
-  bool export_hair;
-  bool export_vertices;
-  bool export_mesh_colors;
-  bool export_vertex_groups;
-  bool export_uvmaps;
-  bool export_normals;
-  bool export_mesh_attributes;
-  bool export_transforms;
-  bool export_materials;
-  bool export_meshes;
-  bool export_lights;
-  bool export_cameras;
-  bool export_curves;
-  bool export_particles;
-  bool selected_objects_only;
-  bool visible_objects_only;
-  bool use_instancing;
-  enum eEvaluationMode evaluation_mode;
-  bool generate_preview_surface;
-  bool convert_uv_to_st;
-  bool convert_orientation;
-  enum USD_global_forward_axis forward_axis;
-  enum USD_global_up_axis up_axis;
-  bool export_child_particles;
-  bool export_as_overs;
-  bool merge_transform_and_shape;
-  bool export_custom_properties;
-  bool add_properties_namespace;
-  bool export_identity_transforms;
-  bool apply_subdiv;
-  bool author_blender_name;
-  bool vertex_data_as_face_varying;
-  float frame_step;
-  bool override_shutter;
-  double shutter_open;
-  double shutter_close;
-  bool export_textures;
-  bool relative_paths;
-  bool backward_compatible;
-  float light_intensity_scale;
-  bool generate_mdl;
-  bool convert_to_cm;
-  bool convert_light_to_nits;
-  bool scale_light_radius;
-  bool convert_world_material;
-  bool generate_cycles_shaders;
-  bool export_armatures;
-  eUSDXformOpMode xform_op_mode;
-  bool fix_skel_root;
-  bool overwrite_textures;
-  bool export_shapekeys;
-  bool use_deform;
-  eUSDZTextureDownscaleSize usdz_downscale_size;
-  int usdz_downscale_custom_size;
-  bool usdz_is_arkit;
-  bool export_blender_metadata;
-  bool triangulate_meshes;
-  int quad_method;
-  int ngon_method;
-  bool export_usd_kind;
-  eUSDDefaultPrimKind default_prim_kind;
-  char *default_prim_custom_kind;
-  char root_prim_path[1024] = "";     /* FILE_MAX */
-  char default_prim_path[1024] = "";  /* FILE_MAX */
-  char material_prim_path[1024] = ""; /* FILE_MAX */
+struct USDExportParams {
+  double frame_start = 0.0;
+  double frame_end = 0.0;
+
+  bool export_animation = false;
+  bool export_hair = true;
+  bool export_vertices = true;
+  bool export_mesh_colors = true;
+  bool export_vertex_groups = true;
+  bool export_uvmaps = true;
+  bool export_normals = true;
+  bool export_mesh_attributes = true;
+  bool export_transforms = true;
+  bool export_materials = true;
+  eSubdivExportMode export_subdiv = USD_SUBDIV_BEST_MATCH;
+  bool export_meshes = true;
+  bool export_lights = true;
+  bool export_cameras = true;
+  bool export_curves = true;
+  bool export_particles = true;
+  bool selected_objects_only = false;
+  bool visible_objects_only = true;
+  bool use_instancing = false;
+  enum eEvaluationMode evaluation_mode = DAG_EVAL_VIEWPORT;
+  bool generate_preview_surface = true;
+  bool convert_uv_to_st = true;
+  bool convert_orientation = false;
+  enum USD_global_forward_axis forward_axis = USD_global_forward_axis::USD_GLOBAL_FORWARD_MINUS_Z;
+  enum USD_global_up_axis up_axis = USD_global_up_axis::USD_GLOBAL_UP_Y;
+  bool export_child_particles = false;
+  bool export_as_overs = false;
+  bool merge_transform_and_shape = false;
+  bool export_custom_properties = true;
+  bool add_properties_namespace = true;
+  bool export_identity_transforms = true;
+  bool author_blender_name = true;
+  bool vertex_data_as_face_varying = true;
+  float frame_step = 1.0f;
+  bool override_shutter = false;
+  double shutter_open = 0.25;
+  double shutter_close = 0.75;
+  bool export_textures = true;
+  bool relative_paths = true;
+  bool backward_compatible = true;
+  float light_intensity_scale = 1.0f;
+  bool generate_mdl = false;
+  bool convert_to_cm = true;
+  bool convert_light_to_nits = true;
+  bool scale_light_radius = true;
+  bool convert_world_material = true;
+  bool generate_cycles_shaders = false;
+  bool export_armatures = true;
+  eUSDXformOpMode xform_op_mode = eUSDXformOpMode::USD_XFORM_OP_SRT;
+  bool fix_skel_root = true;
+  bool overwrite_textures = false;
+  bool export_shapekeys = true;
+  bool use_deform = false;
+  eUSDZTextureDownscaleSize usdz_downscale_size = eUSDZTextureDownscaleSize::USD_TEXTURE_SIZE_KEEP;
+  int usdz_downscale_custom_size = 128;
+  bool usdz_is_arkit = false;
+  bool export_blender_metadata = true;
+  bool triangulate_meshes = false;
+  int quad_method = MOD_TRIANGULATE_QUAD_SHORTEDGE;
+  int ngon_method = MOD_TRIANGULATE_NGON_BEAUTY;
+  bool export_usd_kind = true;
+  eUSDDefaultPrimKind default_prim_kind = eUSDDefaultPrimKind::USD_KIND_NONE;
+  char default_prim_custom_kind[128] = "";
+  char root_prim_path[1024] = "/root";               /* FILE_MAX */
+  char default_prim_path[1024] = "/root";            /* FILE_MAX */
+  char material_prim_path[1024] = "/root/materials"; /* FILE_MAX */
+
+  /** Communication structure between the wmJob management code and the worker code. Currently used
+   * to generate safely reports from the worker thread. */
+  wmJobWorkerStatus *worker_status;
 };
 
 struct USDImportParams {
@@ -210,10 +236,17 @@ struct USDImportParams {
   char import_textures_dir[768] = ""; /* FILE_MAXDIR */
   eUSDTexNameCollisionMode tex_name_collision_mode;
   bool import_all_materials;
+
+  /**
+   * Communication structure between the wmJob management code and the worker code. Currently used
+   * to generate safely reports from the worker thread.
+   */
+  wmJobWorkerStatus *worker_status;
 };
 
-/* This struct is in place to store the mesh sequence parameters needed when reading a data from a
- * usd file for the mesh sequence cache.
+/**
+ * This struct is in place to store the mesh sequence parameters needed when reading a data from a
+ * USD file for the mesh sequence cache.
  */
 typedef struct USDMeshReadParams {
   double motion_sample_time; /* USD TimeCode in frames. */
@@ -222,24 +255,26 @@ typedef struct USDMeshReadParams {
 
 USDMeshReadParams create_mesh_read_params(double motion_sample_time, int read_flags);
 
-/* The USD_export takes a as_background_job parameter, and returns a boolean.
+/**
+ * The USD_export takes a `as_background_job` parameter, and returns a boolean.
  *
- * When as_background_job=true, returns false immediately after scheduling
+ * When `as_background_job=true`, returns false immediately after scheduling
  * a background job.
  *
- * When as_background_job=false, performs the export synchronously, and returns
+ * When `as_background_job=false`, performs the export synchronously, and returns
  * true when the export was ok, and false if there were any errors.
  */
-
 bool USD_export(struct bContext *C,
                 const char *filepath,
                 const struct USDExportParams *params,
-                bool as_background_job);
+                bool as_background_job,
+                ReportList *reports);
 
 bool USD_import(struct bContext *C,
                 const char *filepath,
                 const struct USDImportParams *params,
-                bool as_background_job);
+                bool as_background_job,
+                ReportList *reports);
 
 int USD_get_version(void);
 
@@ -261,7 +296,7 @@ void USD_free_handle(struct CacheArchiveHandle *handle);
 
 void USD_get_transform(struct CacheReader *reader, float r_mat[4][4], float time, float scale);
 
-/* Either modifies current_mesh in-place or constructs a new mesh. */
+/** Either modifies current_mesh in-place or constructs a new mesh. */
 struct Mesh *USD_read_mesh(struct CacheReader *reader,
                            struct Object *ob,
                            struct Mesh *existing_mesh,
@@ -282,7 +317,7 @@ struct CacheReader *CacheReader_open_usd_object(struct CacheArchiveHandle *handl
 void USD_CacheReader_incref(struct CacheReader *reader);
 void USD_CacheReader_free(struct CacheReader *reader);
 
-/* Data for registering USD IO hooks. */
+/** Data for registering USD IO hooks. */
 typedef struct USDHook {
 
   /* Identifier used for class name. */
@@ -297,10 +332,11 @@ typedef struct USDHook {
 } USDHook;
 
 void USD_register_hook(struct USDHook *hook);
-/* Remove the given entry from the list of registered hooks.
+/**
+ * Remove the given entry from the list of registered hooks.
  * Note that this does not free the allocated memory for the
- * hook instance, so a separate call to MEM_freeN(hook) is
- * required.  */
+ * hook instance, so a separate call to `MEM_freeN(hook)` is required.
+ */
 void USD_unregister_hook(struct USDHook *hook);
 USDHook *USD_find_hook_name(const char name[]);
 

@@ -112,7 +112,7 @@ class GRAPH_PT_snapping(Panel):
         col.label(text="Snap To")
         tool_settings = context.tool_settings
         col.prop(tool_settings, "snap_anim_element", expand=True)
-        if tool_settings.snap_anim_element not in ('MARKER', ):
+        if tool_settings.snap_anim_element != 'MARKER':
             col.prop(tool_settings, "use_snap_time_absolute")
 
 
@@ -295,6 +295,7 @@ class GRAPH_MT_channel(Menu):
         layout.operator("graph.keys_to_samples")
         layout.operator("graph.samples_to_keys")
         layout.operator("graph.sound_to_samples")
+        layout.operator("anim.channels_bake")
 
         layout.separator()
         layout.operator("graph.euler_filter", text="Discontinuity (Euler) Filter")

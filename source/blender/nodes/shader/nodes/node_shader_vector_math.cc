@@ -67,12 +67,12 @@ static void sh_node_vector_math_gather_link_searches(GatherLinkSearchOpParams &p
                                                 NODE_VECTOR_MATH_DISTANCE,
                                                 NODE_VECTOR_MATH_DOT_PRODUCT))
       {
-        params.add_item(IFACE_(item->name),
+        params.add_item(CTX_IFACE_(BLT_I18NCONTEXT_ID_NODETREE, item->name),
                         SocketSearchOp{"Value", (NodeVectorMathOperation)item->value},
                         weight);
       }
       else {
-        params.add_item(IFACE_(item->name),
+        params.add_item(CTX_IFACE_(BLT_I18NCONTEXT_ID_NODETREE, item->name),
                         SocketSearchOp{"Vector", (NodeVectorMathOperation)item->value},
                         weight);
       }
@@ -223,7 +223,7 @@ static void node_shader_update_vector_math(bNodeTree *ntree, bNode *node)
       node_sock_label(sockB, "Increment");
       break;
     case NODE_VECTOR_MATH_REFRACT:
-      node_sock_label(sockScale, "Ior");
+      node_sock_label(sockScale, "IOR");
       break;
     case NODE_VECTOR_MATH_SCALE:
       node_sock_label(sockScale, "Scale");

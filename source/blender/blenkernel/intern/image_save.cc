@@ -31,7 +31,7 @@
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -165,10 +165,10 @@ bool BKE_image_save_options_init(ImageSaveOptions *opts,
 
     /* check for empty path */
     if (guess_path && opts->filepath[0] == 0) {
-      const bool is_prev_save = !STREQ(G.ima, "//");
+      const bool is_prev_save = !STREQ(G.filepath_last_image, "//");
       if (opts->save_as_render) {
         if (is_prev_save) {
-          STRNCPY(opts->filepath, G.ima);
+          STRNCPY(opts->filepath, G.filepath_last_image);
         }
         else {
           BLI_path_join(opts->filepath, sizeof(opts->filepath), "//", DATA_("untitled"));
@@ -178,7 +178,8 @@ bool BKE_image_save_options_init(ImageSaveOptions *opts,
       else {
         BLI_path_join(opts->filepath, sizeof(opts->filepath), "//", ima->id.name + 2);
         BLI_path_make_safe(opts->filepath);
-        BLI_path_abs(opts->filepath, is_prev_save ? G.ima : BKE_main_blendfile_path(bmain));
+        BLI_path_abs(opts->filepath,
+                     is_prev_save ? G.filepath_last_image : BKE_main_blendfile_path(bmain));
       }
 
       /* append UDIM marker if not present */
@@ -784,6 +785,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
   /* Other render layers. */
   int nr = (rr->have_combined) ? 1 : 0;
+  const bool has_multiple_layers = BLI_listbase_count_at_most(&rr->layers, 2) > 1;
   LISTBASE_FOREACH (RenderLayer *, rl, &rr->layers) {
     /* Skip other render layers if requested. */
     if (!multi_layer && nr != layer) {
@@ -829,8 +831,18 @@ bool BKE_image_render_write_exr(ReportList *reports,
         char layname[EXR_PASS_MAXNAME];
 
         if (multi_layer) {
-          RE_render_result_full_channel_name(passname, nullptr, rp->name, nullptr, rp->chan_id, a);
-          STRNCPY(layname, rl->name);
+          /* A single unnamed layer indicates that the pass name should be used as the layer name,
+           * while the pass name should be the channel ID. */
+          if (!has_multiple_layers && rl->name[0] == '\0') {
+            passname[0] = rp->chan_id[a];
+            passname[1] = '\0';
+            STRNCPY(layname, rp->name);
+          }
+          else {
+            RE_render_result_full_channel_name(
+                passname, nullptr, rp->name, nullptr, rp->chan_id, a);
+            STRNCPY(layname, rl->name);
+          }
         }
         else {
           passname[0] = rp->chan_id[a];
@@ -919,7 +931,9 @@ bool BKE_image_render_write(ReportList *reports,
                             RenderResult *rr,
                             const Scene *scene,
                             const bool stamp,
-                            const char *filepath_basis)
+                            const char *filepath_basis,
+                            const ImageFormatData *format,
+                            bool save_as_render)
 {
   bool ok = true;
 
@@ -928,7 +942,7 @@ bool BKE_image_render_write(ReportList *reports,
   }
 
   ImageFormatData image_format;
-  BKE_image_format_init_for_write(&image_format, scene, nullptr);
+  BKE_image_format_init_for_write(&image_format, scene, format);
 
   const bool is_mono = BLI_listbase_count_at_most(&rr->views, 2) < 2;
   const bool is_exr_rr = ELEM(
@@ -937,7 +951,8 @@ bool BKE_image_render_write(ReportList *reports,
   const float dither = scene->r.dither_intensity;
 
   if (image_format.views_format == R_IMF_VIEWS_MULTIVIEW && is_exr_rr) {
-    ok = BKE_image_render_write_exr(reports, rr, filepath_basis, &image_format, true, nullptr, -1);
+    ok = BKE_image_render_write_exr(
+        reports, rr, filepath_basis, &image_format, save_as_render, nullptr, -1);
     image_render_print_save_message(reports, filepath_basis, ok, errno);
   }
 
@@ -955,7 +970,8 @@ bool BKE_image_render_write(ReportList *reports,
       }
 
       if (is_exr_rr) {
-        ok = BKE_image_render_write_exr(reports, rr, filepath, &image_format, true, rv->name, -1);
+        ok = BKE_image_render_write_exr(
+            reports, rr, filepath, &image_format, save_as_render, rv->name, -1);
         image_render_print_save_message(reports, filepath, ok, errno);
 
         /* optional preview images for exr */
@@ -970,7 +986,7 @@ bool BKE_image_render_write(ReportList *reports,
 
           ImBuf *ibuf = RE_render_result_rect_to_ibuf(rr, &image_format, dither, view_id);
           ibuf->planes = 24;
-          IMB_colormanagement_imbuf_for_write(ibuf, true, false, &image_format);
+          IMB_colormanagement_imbuf_for_write(ibuf, save_as_render, false, &image_format);
 
           ok = image_render_write_stamp_test(
               reports, scene, rr, ibuf, filepath, &image_format, stamp);
@@ -981,7 +997,7 @@ bool BKE_image_render_write(ReportList *reports,
       else {
         ImBuf *ibuf = RE_render_result_rect_to_ibuf(rr, &image_format, dither, view_id);
 
-        IMB_colormanagement_imbuf_for_write(ibuf, true, false, &image_format);
+        IMB_colormanagement_imbuf_for_write(ibuf, save_as_render, false, &image_format);
 
         ok = image_render_write_stamp_test(
             reports, scene, rr, ibuf, filepath, &image_format, stamp);
@@ -1008,7 +1024,7 @@ bool BKE_image_render_write(ReportList *reports,
       for (i = 0; i < 2; i++) {
         int view_id = BLI_findstringindex(&rr->views, names[i], offsetof(RenderView, name));
         ibuf_arr[i] = RE_render_result_rect_to_ibuf(rr, &image_format, dither, view_id);
-        IMB_colormanagement_imbuf_for_write(ibuf_arr[i], true, false, &image_format);
+        IMB_colormanagement_imbuf_for_write(ibuf_arr[i], save_as_render, false, &image_format);
       }
 
       ibuf_arr[2] = IMB_stereo3d_ImBuf(&image_format, ibuf_arr[0], ibuf_arr[1]);

@@ -10,7 +10,7 @@
 
 #include "GEO_randomize.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include "node_geometry_util.hh"
 
@@ -65,6 +65,8 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
                                     const AttributeIDRef &uv_map_id)
 {
   if (subdivisions >= 3) {
+    /* Most nodes don't need this because they internally use multi-threading which triggers
+     * lazy-threading without any extra code. */
     lazy_threading::send_hint();
   }
 

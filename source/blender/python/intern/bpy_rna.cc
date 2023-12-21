@@ -50,11 +50,11 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h" /* evil G.* */
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
 /* Only for types. */
@@ -5460,7 +5460,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     buffer_is_compat = false;
     if (PyObject_CheckBuffer(seq)) {
       Py_buffer buf;
-      if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+      if (PyObject_GetBuffer(seq, &buf, PyBUF_ND | PyBUF_FORMAT) == -1) {
         /* Request failed. A `PyExc_BufferError` will have been raised,
          * so clear it to silently fall back to accessing as a sequence. */
         PyErr_Clear();
@@ -5521,7 +5521,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     buffer_is_compat = false;
     if (PyObject_CheckBuffer(seq)) {
       Py_buffer buf;
-      if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+      if (PyObject_GetBuffer(seq, &buf, PyBUF_ND | PyBUF_FORMAT) == -1) {
         /* Request failed. A `PyExc_BufferError` will have been raised,
          * so clear it to silently fall back to accessing as a sequence. */
         PyErr_Clear();
@@ -5665,7 +5665,7 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
   }
 
   Py_buffer buf;
-  if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+  if (PyObject_GetBuffer(seq, &buf, PyBUF_ND | PyBUF_FORMAT) == -1) {
     PyErr_Clear();
 
     switch (prop_type) {
@@ -6277,13 +6277,17 @@ static PyObject *pyrna_param_to_py(PointerRNA *ptr, PropertyRNA *prop, void *dat
  */
 static PyObject *small_dict_get_item_string(PyObject *dict, const char *key_lookup)
 {
+  /* Comparing the size then `memcmp` the string gives ~20-30% speedup. */
+  const Py_ssize_t key_lookup_len = strlen(key_lookup);
   PyObject *key = nullptr;
   Py_ssize_t pos = 0;
   PyObject *value = nullptr;
 
   while (PyDict_Next(dict, &pos, &key, &value)) {
     if (PyUnicode_Check(key)) {
-      if (STREQ(key_lookup, PyUnicode_AsUTF8(key))) {
+      Py_ssize_t key_buf_len;
+      const char *key_buf = PyUnicode_AsUTF8AndSize(key, &key_buf_len);
+      if ((key_lookup_len == key_buf_len) && (memcmp(key_lookup, key_buf, key_lookup_len) == 0)) {
         return value;
       }
     }
@@ -6613,7 +6617,7 @@ static PyObject *pyrna_func_call(BPy_FunctionRNA *self, PyObject *args, PyObject
 #ifdef DEBUG_STRING_FREE
 #  if 0
   if (PyList_GET_SIZE(string_free_ls)) {
-    printf("%.200s.%.200s():  has %d strings\n",
+    printf("%.200s.%.200s(): has %d strings\n",
            RNA_struct_identifier(self_ptr->type),
            RNA_function_identifier(self_func),
            int(PyList_GET_SIZE(string_free_ls)));
@@ -8710,7 +8714,7 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
     else if (ret_len == 1) {
       err = pyrna_py_to_prop(&funcptr, pret_single, retdata_single, ret, "");
 
-      /* When calling operator functions only gives `Function.result` with  no line number
+      /* When calling operator functions only gives `Function.result` with no line number
        * since the function has finished calling on error, re-raise the exception with more
        * information since it would be slow to create prefix on every call
        * (when there are no errors). */
@@ -8781,18 +8785,8 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
       reports = CTX_wm_reports(C);
     }
 
-    /* Typically null reports are sent to the output,
-     * in this case however PyErr_Print is responsible for that,
-     * so only run this if reports are non-null. */
     if (reports) {
-      /* Create a temporary report list so none of the reports are printed (only stored).
-       * Only do this when reports is non-null because the error is printed to the `stderr`
-       * #PyErr_Print below. */
-      ReportList reports_temp = {{0}};
-      BKE_reports_init(&reports_temp, reports->flag | RPT_PRINT_HANDLED_BY_OWNER);
-      reports_temp.storelevel = reports->storelevel;
-      BPy_errors_to_report(&reports_temp);
-      BLI_movelisttolist(&reports->list, &reports_temp.list);
+      BPy_errors_to_report(reports);
     }
 
     /* Also print in the console for Python. */
@@ -8839,7 +8833,7 @@ void pyrna_alloc_types()
    * But keep running in debug mode so we get immediate notification of bad class hierarchy
    * or any errors in "bpy_types.py" at load time, so errors don't go unnoticed. */
 
-#ifdef DEBUG
+#ifndef NDEBUG
   PyGILState_STATE gilstate;
 
   PropertyRNA *prop;
@@ -8865,7 +8859,7 @@ void pyrna_alloc_types()
   RNA_PROP_END;
 
   PyGILState_Release(gilstate);
-#endif /* DEBUG */
+#endif /* !NDEBUG */
 }
 
 void pyrna_free_types()
@@ -8910,7 +8904,8 @@ PyDoc_STRVAR(pyrna_register_class_doc,
              "      :class:`bpy.types.Panel`, :class:`bpy.types.UIList`,\n"
              "      :class:`bpy.types.Menu`, :class:`bpy.types.Header`,\n"
              "      :class:`bpy.types.Operator`, :class:`bpy.types.KeyingSetInfo`,\n"
-             "      :class:`bpy.types.RenderEngine`, :class:`bpy.types.AssetShelf`\n"
+             "      :class:`bpy.types.RenderEngine`, :class:`bpy.types.AssetShelf`,\n"
+             "      :class:`bpy.types.FileHandler`\n"
              "   :type cls: class\n"
              "   :raises ValueError:\n"
              "      if the class is not a subclass of a registerable blender class.\n"
@@ -9006,11 +9001,12 @@ static PyObject *pyrna_register_class(PyObject * /*self*/, PyObject *py_class)
     if (!has_error) {
       BPy_reports_write_stdout(&reports, error_prefix);
     }
-    BKE_reports_clear(&reports);
     if (has_error) {
+      BKE_reports_free(&reports);
       return nullptr;
     }
   }
+  BKE_reports_free(&reports);
 
   /* Python errors validating are not converted into reports so the check above will fail.
    * the cause for returning nullptr will be printed as an error */
@@ -9089,8 +9085,15 @@ PyDoc_STRVAR(pyrna_unregister_class_doc,
              "\n"
              "   Unload the Python class from blender.\n"
              "\n"
-             "   If the class has an *unregister* class method it will be called\n"
-             "   before unregistering.\n");
+             "   :arg cls: Blender type class, \n"
+             "      see :mod:`bpy.utils.register_class` for classes which can \n"
+             "      be registered.\n"
+             "   :type cls: class\n"
+             "\n"
+             "   .. note::\n"
+             "\n"
+             "      If the class has an *unregister* class method it will be called\n"
+             "      before unregistering.\n");
 PyMethodDef meth_bpy_unregister_class = {
     "unregister_class",
     pyrna_unregister_class,

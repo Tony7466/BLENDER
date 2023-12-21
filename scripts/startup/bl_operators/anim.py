@@ -4,12 +4,6 @@
 
 from __future__ import annotations
 
-if "bpy" in locals():
-    from importlib import reload
-    if "anim_utils" in locals():
-        reload(anim_utils)
-    del reload
-
 
 import bpy
 from bpy.types import Operator
@@ -19,7 +13,10 @@ from bpy.props import (
     EnumProperty,
     StringProperty,
 )
-from bpy.app.translations import pgettext_tip as tip_
+from bpy.app.translations import (
+    pgettext_tip as tip_,
+    contexts as i18n_contexts,
+)
 
 
 class ANIM_OT_keying_set_export(Operator):
@@ -207,7 +204,7 @@ class NLA_OT_bake(Operator):
     )
     step: IntProperty(
         name="Frame Step",
-        description="Frame Step",
+        description="Number of frames to skip forward while baking each frame",
         min=1, max=120,
         default=1,
     )
@@ -244,6 +241,7 @@ class NLA_OT_bake(Operator):
     )
     bake_types: EnumProperty(
         name="Bake Data",
+        translation_context=i18n_contexts.id_action,
         description="Which data's transformations to bake",
         options={'ENUM_FLAG'},
         items=(
@@ -260,7 +258,7 @@ class NLA_OT_bake(Operator):
             ('LOCATION', "Location", "Bake location channels"),
             ('ROTATION', "Rotation", "Bake rotation channels"),
             ('SCALE', "Scale", "Bake scale channels"),
-            ('BBONE', "B-Bone", "Bake b-bone channels"),
+            ('BBONE', "B-Bone", "Bake B-Bone channels"),
         ),
         default={'LOCATION', 'ROTATION', 'SCALE', 'BBONE'},
     )
@@ -447,15 +445,15 @@ class UpdateAnimatedTransformConstraint(Operator):
         return {'FINISHED'}
 
 
-class ARMATURE_OT_sync_bone_color_to_selected(Operator):
+class ARMATURE_OT_copy_bone_color_to_selected(Operator):
     """Copy the bone color of the active bone to all selected bones"""
-    bl_idname = "armature.sync_bone_color_to_selected"
-    bl_label = "Sync to Selected"
+    bl_idname = "armature.copy_bone_color_to_selected"
+    bl_label = "Copy Colors to Selected"
     bl_options = {'REGISTER', 'UNDO'}
 
     _bone_type_enum = [
-        ('EDIT', 'Edit Bone', 'Copy Edit Bone colors from the active bone to all selected bones'),
-        ('POSE', 'Pose Bone', 'Copy Pose Bone colors from the active bone to all selected bones'),
+        ('EDIT', 'Bone', 'Copy Bone colors from the active bone to all selected bones'),
+        ('POSE', 'Pose Bone', 'Copy Pose Bone colors from the active pose bone to all selected pose bones'),
     ]
 
     bone_type: EnumProperty(
@@ -467,22 +465,22 @@ class ARMATURE_OT_sync_bone_color_to_selected(Operator):
         return context.mode in {'EDIT_ARMATURE', 'POSE'}
 
     def execute(self, context):
-        match (self.bone_type, context.mode):
+        match(self.bone_type, context.mode):
             # Armature in edit mode:
-            case ('POSE', 'EDIT_ARMATURE'):
+            case('POSE', 'EDIT_ARMATURE'):
                 self.report({'ERROR'}, "Go to pose mode to copy pose bone colors")
                 return {'OPERATOR_CANCELLED'}
-            case ('EDIT', 'EDIT_ARMATURE'):
+            case('EDIT', 'EDIT_ARMATURE'):
                 bone_source = context.active_bone
                 bones_dest = context.selected_bones
                 pose_bones_to_check = []
 
             # Armature in pose mode:
-            case ('POSE', 'POSE'):
+            case('POSE', 'POSE'):
                 bone_source = context.active_pose_bone
                 bones_dest = context.selected_pose_bones
                 pose_bones_to_check = []
-            case ('EDIT', 'POSE'):
+            case('EDIT', 'POSE'):
                 bone_source = context.active_bone
                 pose_bones_to_check = context.selected_pose_bones
                 bones_dest = [posebone.bone for posebone in pose_bones_to_check]
@@ -493,17 +491,17 @@ class ARMATURE_OT_sync_bone_color_to_selected(Operator):
                 return {'CANCELLED'}
 
         if not bone_source:
-            self.report({'ERROR'}, "No active bone to copy from.")
+            self.report({'ERROR'}, "No active bone to copy from")
             return {'CANCELLED'}
 
         if not bones_dest:
-            self.report({'ERROR'}, "No selected bones to copy to.")
+            self.report({'ERROR'}, "No selected bones to copy to")
             return {'CANCELLED'}
 
         num_pose_color_overrides = 0
         for index, bone_dest in enumerate(bones_dest):
             bone_dest.color.palette = bone_source.color.palette
-            for custom_field in ('normal', 'select', 'active'):
+            for custom_field in ("normal", "select", "active"):
                 color = getattr(bone_source.color.custom, custom_field)
                 setattr(bone_dest.color.custom, custom_field, color)
 
@@ -565,7 +563,7 @@ classes = (
     NLA_OT_bake,
     ClearUselessActions,
     UpdateAnimatedTransformConstraint,
-    ARMATURE_OT_sync_bone_color_to_selected,
+    ARMATURE_OT_copy_bone_color_to_selected,
     ARMATURE_OT_collection_solo_visibility,
     ARMATURE_OT_collection_show_all,
 )

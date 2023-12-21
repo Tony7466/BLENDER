@@ -13,7 +13,7 @@
 #include "BLI_math_base.h"
 
 #include "BKE_camera.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include <pxr/pxr.h>
 #include <pxr/usd/usdGeom/camera.h>
@@ -55,9 +55,10 @@ void USDCameraReader::read_object_data(Main *bmain, const double motionSampleTim
   /*
    * For USD, these camera properties are in tenths of a world unit.
    * https://graphics.pixar.com/usd/release/api/class_usd_geom_camera.html#UsdGeom_CameraUnits
-   * tenth_of_unit      = stage_meters_per_unit / 10
-   * val_in_meters      = val.Get<float>() * tenth_of_unit
-   * val_in_millimeters = val_in_meters * 1000
+   *
+   * tenth_unit_to_meters  = stage_meters_per_unit / 10
+   * tenth_unit_to_millimeters = 1000 * unit_to_tenth_unit
+   *                           = 100 * stage_meters_per_unit
    */
   const double scale_to_mm = 100.0 * settings_->stage_meters_per_unit;
 
@@ -70,7 +71,8 @@ void USDCameraReader::read_object_data(Main *bmain, const double motionSampleTim
   bcam->shifty = v_film_offset / apperture_y / film_aspect;
 
   pxr::GfRange1f usd_clip_range = usd_cam.GetClippingRange();
-  bcam->clip_start = usd_clip_range.GetMin() * settings_->scale;
+  /* Clamp to 1e-6 matching range defined in RNA. */
+  bcam->clip_start = max_ff(1e-6f, usd_clip_range.GetMin() * settings_->scale);
   bcam->clip_end = usd_clip_range.GetMax() * settings_->scale;
 
   bcam->dof.focus_distance = usd_cam.GetFocusDistance() * settings_->scale;

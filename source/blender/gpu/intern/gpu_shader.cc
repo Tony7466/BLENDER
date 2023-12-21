@@ -10,7 +10,7 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_debug.h"
@@ -64,7 +64,7 @@ Shader::~Shader()
 
 static void standard_defines(Vector<const char *> &sources)
 {
-  BLI_assert(sources.size() == 0);
+  BLI_assert(sources.is_empty());
   /* Version needs to be first. Exact values will be added by implementation. */
   sources.append("version");
   /* Define to identify code usage in shading language. */
@@ -636,6 +636,16 @@ int GPU_shader_get_program(GPUShader *shader)
   return unwrap(shader)->program_handle_get();
 }
 
+int GPU_shader_get_ssbo_vertex_fetch_num_verts_per_prim(GPUShader *shader)
+{
+  return unwrap(shader)->get_ssbo_vertex_fetch_output_num_verts();
+}
+
+bool GPU_shader_uses_ssbo_vertex_fetch(GPUShader *shader)
+{
+  return unwrap(shader)->get_uses_ssbo_vertex_fetch();
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -724,6 +734,12 @@ void GPU_shader_uniform_mat3_as_mat4(GPUShader *sh, const char *name, const floa
   float matrix[4][4];
   copy_m4_m3(matrix, data);
   GPU_shader_uniform_mat4(sh, name, matrix);
+}
+
+void GPU_shader_uniform_1f_array(GPUShader *sh, const char *name, int len, const float *val)
+{
+  const int loc = GPU_shader_get_uniform(sh, name);
+  GPU_shader_uniform_float_ex(sh, loc, 1, len, val);
 }
 
 void GPU_shader_uniform_2fv_array(GPUShader *sh, const char *name, int len, const float (*val)[2])

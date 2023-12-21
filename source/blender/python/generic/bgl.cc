@@ -51,7 +51,7 @@ static void report_deprecated_call(const char *function_name)
   }
   char message[256];
   SNPRINTF(message,
-           "'bgl.gl%s' is deprecated and will be removed in Blender 4.0. Report or update your "
+           "'bgl.gl%s' is deprecated and will not work on all platforms. Report or update your "
            "script to use 'gpu' module.",
            function_name);
   CLOG_WARN(&LOG, "%s", message);
@@ -686,7 +686,7 @@ PyTypeObject BGL_bufferType = {
 };
 
 static Buffer *BGL_MakeBuffer_FromData(
-    PyObject *parent, int type, int ndimensions, int *dimensions, void *buf)
+    PyObject *parent, int type, int ndimensions, const int *dimensions, void *buf)
 {
   Buffer *buffer = (Buffer *)PyObject_NEW(Buffer, &BGL_bufferType);
 
@@ -702,7 +702,7 @@ static Buffer *BGL_MakeBuffer_FromData(
   return buffer;
 }
 
-Buffer *BGL_MakeBuffer(int type, int ndimensions, int *dimensions, void *initbuffer)
+Buffer *BGL_MakeBuffer(int type, int ndimensions, const int *dimensions, const void *initbuffer)
 {
   Buffer *buffer;
   void *buf = nullptr;
@@ -2675,7 +2675,7 @@ PyObject *BPyInit_bgl()
   if (GPU_backend_get_type() != GPU_BACKEND_OPENGL) {
     CLOG_WARN(&LOG,
               "'bgl' imported without an OpenGL backend. Please update your add-ons to use the "
-              "'gpu' module. In Blender 4.0 'bgl' will be removed.");
+              "'gpu' module.");
   }
 #endif
 

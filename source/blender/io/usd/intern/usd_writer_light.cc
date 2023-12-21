@@ -31,6 +31,18 @@ bool USDLightWriter::is_supported(const HierarchyContext *context) const
   return ELEM(light->type, LA_AREA, LA_LOCAL, LA_SUN, LA_SPOT);
 }
 
+static void set_light_extents(const pxr::UsdPrim &prim, const pxr::UsdTimeCode time)
+{
+  if (auto boundable = pxr::UsdGeomBoundable(prim)) {
+    pxr::VtArray<pxr::GfVec3f> extent;
+    pxr::UsdGeomBoundable::ComputeExtentFromPlugins(boundable, time, &extent);
+    boundable.CreateExtentAttr().Set(extent, time);
+  }
+
+  /* We're intentionally not setting an error on non-boundable lights,
+   * because overly noisy errors are annoying. */
+}
+
 void USDLightWriter::do_write(HierarchyContext &context)
 {
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
@@ -193,6 +205,8 @@ void USDLightWriter::do_write(HierarchyContext &context)
     auto prim = usd_light_api.GetPrim();
     write_id_properties(prim, light->id, timecode);
   }
+
+  set_light_extents(usd_light_api.GetPrim(), timecode);
 }
 
 }  // namespace blender::io::usd

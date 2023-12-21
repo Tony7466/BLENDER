@@ -33,11 +33,12 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
+#include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -53,14 +54,14 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_particle.h"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_cloth.hh"
 #include "BKE_collection.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
 
@@ -319,7 +320,7 @@ void psys_calc_dmcache(Object *ob, Mesh *mesh_final, Mesh *mesh_original, Partic
    * nodearray: the array of nodes aligned with the base mesh's elements, so
    *            each original elements can reference its derived elements
    */
-  Mesh *me = (Mesh *)ob->data;
+  Mesh *mesh = (Mesh *)ob->data;
   bool use_modifier_stack = psys->part->use_modifier_stack;
   PARTICLE_P;
 
@@ -338,7 +339,7 @@ void psys_calc_dmcache(Object *ob, Mesh *mesh_final, Mesh *mesh_original, Partic
         origindex = nullptr;
       }
       else {
-        totelem = me->totvert;
+        totelem = mesh->totvert;
         origindex = static_cast<const int *>(
             CustomData_get_layer(&mesh_final->vert_data, CD_ORIGINDEX));
       }
@@ -1132,7 +1133,7 @@ void reset_particle(ParticleSimulationData *sim, ParticleData *pa, float dtime, 
       (sim->psys->pointcache->mem_cache.first))
   {
     float dietime = psys_get_dietime_from_cache(sim->psys->pointcache, p);
-    pa->dietime = MIN2(pa->dietime, dietime);
+    pa->dietime = std::min(pa->dietime, dietime);
   }
 
   if (pa->time > cfra) {
@@ -1573,8 +1574,7 @@ static void integrate_particle(
  * Authors: Simon Clavet, Philippe Beaudoin and Pierre Poulin
  * Website: http://www.iro.umontreal.ca/labs/infographie/papers/Clavet-2005-PVFS/
  *
- * Presented at Siggraph, (2005)
- *
+ * Presented at SIGGRAPH, (2005)
  * \{ */
 
 #define PSYS_FLUID_SPRINGS_INITIAL_SIZE 256
@@ -1806,7 +1806,7 @@ static void sph_force_cb(void *sphdata_v, ParticleKey *state, float *force, floa
   SPHRangeData pfr;
   SPHNeighbor *pfn;
   float *gravity = sphdata->gravity;
-  const blender::Map<blender::OrderedEdge, int> &springhash = sphdata->eh;
+  const std::optional<blender::Map<blender::OrderedEdge, int>> &springhash = sphdata->eh;
 
   float q, u, rij, dv[3];
   float pressure, near_pressure;
@@ -1890,9 +1890,9 @@ static void sph_force_cb(void *sphdata_v, ParticleKey *state, float *force, floa
 
     if (spring_constant > 0.0f) {
       /* Viscoelastic spring force */
-      if (pfn->psys == psys[0] && fluid->flag & SPH_VISCOELASTIC_SPRINGS && !springhash.is_empty())
+      if (pfn->psys == psys[0] && fluid->flag & SPH_VISCOELASTIC_SPRINGS && springhash.has_value())
       {
-        spring_index = springhash.lookup({index, pfn->index});
+        spring_index = springhash->lookup_default({index, pfn->index}, 0);
 
         if (spring_index) {
           spring = psys[0]->fluid_springs + spring_index - 1;
@@ -2369,7 +2369,7 @@ static void basic_rotate(ParticleSettings *part, ParticleData *pa, float dfra, f
       cross_v3_v3v3(pa->state.ave, pa->prev_state.vel, pa->state.vel);
       normalize_v3(pa->state.ave);
       angle = dot_v3v3(pa->prev_state.vel, pa->state.vel) / (len1 * len2);
-      mul_v3_fl(pa->state.ave, saacos(angle) / dtime);
+      mul_v3_fl(pa->state.ave, safe_acosf(angle) / dtime);
     }
 
     get_angular_velocity_vector(part->avemode, &pa->state, vec);
@@ -3004,7 +3004,7 @@ static int collision_response(ParticleSimulationData *sim,
 
       /* Convert to angular velocity. */
       cross_v3_v3v3(ave, vr_tan, pce->nor);
-      mul_v3_fl(ave, 1.0f / MAX2(pa->size, 0.001f));
+      mul_v3_fl(ave, 1.0f / std::max(pa->size, 0.001f));
 
       /* only friction will cause change in linear & angular velocity */
       interp_v3_v3v3(pa->state.ave, pa->state.ave, ave, frict);
@@ -3352,7 +3352,7 @@ static void hair_create_input_mesh(ParticleSimulationData *sim,
   }
   blender::MutableSpan<blender::float3> positions = mesh->vert_positions_for_write();
   blender::int2 *edge = mesh->edges_for_write().data();
-  dvert = BKE_mesh_deform_verts_for_write(mesh);
+  dvert = mesh->deform_verts_for_write().data();
 
   if (psys->clmd->hairdata == nullptr) {
     psys->clmd->hairdata = static_cast<ClothHairData *>(
@@ -3534,7 +3534,7 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
       sim->ob,
       psys->hair_in_mesh,
       reinterpret_cast<float(*)[3]>(psys->hair_out_mesh->vert_positions_for_write().data()));
-  BKE_mesh_tag_positions_changed(psys->hair_out_mesh);
+  psys->hair_out_mesh->tag_positions_changed();
 
   /* restore cloth effector weights */
   psys->clmd->sim_parms->effector_weights = clmd_effweights;
@@ -4689,8 +4689,8 @@ void psys_changed_type(Object *ob, ParticleSystem *psys)
   else {
     free_hair(ob, psys, 1);
 
-    CLAMP(part->path_start, 0.0f, MAX2(100.0f, part->end + part->lifetime));
-    CLAMP(part->path_end, 0.0f, MAX2(100.0f, part->end + part->lifetime));
+    CLAMP(part->path_start, 0.0f, std::max(100.0f, part->end + part->lifetime));
+    CLAMP(part->path_end, 0.0f, std::max(100.0f, part->end + part->lifetime));
   }
 
   psys_reset(psys, PSYS_RESET_ALL);

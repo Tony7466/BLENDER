@@ -15,7 +15,11 @@
 #include <vector>
 
 #include "DEG_depsgraph_query.hh"
+
+#include "WM_types.hh"
+
 #include "DNA_material_types.h"
+#include "DNA_windowmanager_types.h"
 
 struct Main;
 struct Material;
@@ -56,6 +60,12 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   void set_iterator(const USDHierarchyIterator *iter);
 
   bool is_prototype(const Object *obj) const;
+
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return usd_export_context_.export_params.worker_status->reports;
+  }
 
  protected:
   virtual void do_write(HierarchyContext &context) = 0;

@@ -15,6 +15,7 @@ struct bNodeTree;
 struct Material;
 struct USDExportParams;
 struct Material;
+struct ReportList;
 
 namespace blender::io::usd {
 
@@ -34,7 +35,8 @@ struct USDExporterContext;
 pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_context,
                                           pxr::SdfPath usd_path,
                                           Material *material,
-                                          const std::string &active_uv);
+                                          const std::string &active_uv,
+                                          ReportList *reports);
 
 /* Returns a USDPreviewSurface token name for a given Blender shader Socket name,
  * or an empty TfToken if the input name is not found in the map. */
@@ -42,7 +44,8 @@ const pxr::TfToken token_for_input(const char *input_name);
 
 void export_texture(bNode *node,
                     const pxr::UsdStageRefPtr stage,
-                    const bool allow_overwrite = false);
+                    const bool allow_overwrite = false,
+                    ReportList *reports = nullptr);
 
 std::string get_tex_image_asset_filepath(bNode *node,
                                          const pxr::UsdStageRefPtr stage,
