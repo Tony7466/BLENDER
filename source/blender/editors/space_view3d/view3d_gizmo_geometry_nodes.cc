@@ -165,18 +165,14 @@ static std::optional<float> apply_reverse_function_to_factor(const float target_
       const float second_value =
           tree_log.find_primitive_socket_value<float>(second_input_socket).value_or(0.0f);
       switch (mode) {
-        case NODE_MATH_MULTIPLY: {
+        case NODE_MATH_MULTIPLY:
           return safe_divide(target_factor, second_value);
-        }
-        case NODE_MATH_DIVIDE: {
+        case NODE_MATH_DIVIDE:
           return target_factor * second_value;
-        }
-        case NODE_MATH_RADIANS: {
+        case NODE_MATH_RADIANS:
           return RAD2DEG(target_factor);
-        }
-        case NODE_MATH_DEGREES: {
+        case NODE_MATH_DEGREES:
           return DEG2RAD(target_factor);
-        }
         default:
           return std::nullopt;
       }
