@@ -430,40 +430,50 @@ static void panel_draw(const bContext *C, Panel *panel)
   }
 
   modifier_panel_end(layout, ptr);
+}
 
-  if (uiLayout *panel_layout = uiLayoutPanel(C, layout, "Advanced", ptr, "open_advanced_panel")) {
-    bool ob_use_adaptive_subdivision = false;
-    bool show_adaptive_options = false;
+static void advanced_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ob_ptr;
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
+
+  bool ob_use_adaptive_subdivision = false;
+  bool show_adaptive_options = false;
 #ifdef WITH_CYCLES
-    Scene *scene = CTX_data_scene(C);
-    if (BKE_scene_uses_cycles(scene)) {
-      PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
-      if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
-        ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
-        show_adaptive_options = get_show_adaptive_options(C, panel);
-      }
+  Scene *scene = CTX_data_scene(C);
+  if (BKE_scene_uses_cycles(scene)) {
+    PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
+    if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
+      ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
+      show_adaptive_options = get_show_adaptive_options(C, panel);
     }
+  }
 #else
-    UNUSED_VARS(C);
+  UNUSED_VARS(C);
 #endif
 
-    uiLayoutSetActive(panel_layout, !(show_adaptive_options && ob_use_adaptive_subdivision));
-    uiItemR(panel_layout, ptr, "use_limit_surface", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-    uiLayout *col = uiLayoutColumn(panel_layout, true);
-    uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_limit_surface"));
-    uiItemR(col, ptr, "quality", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiLayoutSetActive(layout, !(show_adaptive_options && ob_use_adaptive_subdivision));
+  uiItemR(layout, ptr, "use_limit_surface", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-    uiItemR(panel_layout, ptr, "uv_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(panel_layout, ptr, "boundary_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(panel_layout, ptr, "use_creases", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(panel_layout, ptr, "use_custom_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
+  uiLayout *col = uiLayoutColumn(layout, true);
+  uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_limit_surface"));
+  uiItemR(col, ptr, "quality", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  uiItemR(layout, ptr, "uv_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "boundary_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_creases", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_custom_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_Subsurf, panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Subsurf, panel_draw);
+  modifier_subpanel_register(
+      region_type, "advanced", "Advanced", nullptr, advanced_panel_draw, panel_type);
 }
 
 static void blend_read(BlendDataReader * /*reader*/, ModifierData *md)
