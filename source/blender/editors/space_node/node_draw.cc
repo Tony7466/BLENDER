@@ -497,7 +497,9 @@ static bool node_update_basis_socket(const bContext &C,
         (bContext *)&C, row, &sockptr, &nodeptr, node_socket_get_label(input_socket, panel_label));
     if (input_socket->runtime->has_gizmo) {
       if (input_socket->is_directly_linked() || input_socket->flag & SOCK_HIDE_VALUE) {
-        uiItemL(row, "", ICON_GIZMO);
+        uiLayout *subrow = uiLayoutRow(row, true);
+        uiLayoutSetEnabled(subrow, input_socket->runtime->gizmo_valid);
+        uiItemL(subrow, "", ICON_GIZMO);
       }
       else {
         uiItemR(row, &sockptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);

@@ -205,6 +205,10 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    * during socket drawing.
    */
   bool has_gizmo = false;
+  /**
+   * Is set to true for sockets that have gizmos which have a valid target within the node group.
+   */
+  bool gizmo_valid = false;
 
   /**
    * The location of the socket in the tree, calculated while drawing the nodes and invalid if the

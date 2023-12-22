@@ -62,14 +62,17 @@ struct LocalPropagationPath {
  * Propagates a gizmo controlling the given socket to its "real" linked target within the current
  * node group. Also keeps track of the nodes the modify the gizmo-to-value-mapping.
  */
-static std::optional<GizmoTarget> find_local_gizmo_target(const bNodeSocket &initial_socket,
-                                                          const ValueElem &initial_elem,
-                                                          LocalPropagationPath &r_propagation_path)
+static std::optional<GizmoTarget> find_local_gizmo_target(
+    const bNodeSocket &initial_socket,
+    const ValueElem &initial_elem,
+    LocalPropagationPath &r_propagation_path,
+    Vector<const bNodeSocket *, 16> &r_sockets_on_propagation_path)
 {
   const bNodeSocket *current_socket = &initial_socket;
   ValueElem current_elem = initial_elem;
   while (true) {
     current_socket->runtime->has_gizmo = true;
+    r_sockets_on_propagation_path.append(current_socket);
     if (current_socket->is_input()) {
       const bNodeSocket &input_socket = *current_socket;
       const Span<const bNodeLink *> links = input_socket.directly_linked_links();
@@ -220,14 +223,19 @@ static void propagate_gizmos_from_builtin_nodes(GizmoPropagationResult &result,
           continue;
         }
         LocalPropagationPath propagation_path;
+        Vector<const bNodeSocket *, 16> sockets_on_propagation_path;
         if (std::optional<GizmoTarget> gizmo_target = find_local_gizmo_target(
-                *link->fromsock, ValueElem{}, propagation_path))
+                *link->fromsock, ValueElem{}, propagation_path, sockets_on_propagation_path))
         {
           for (const GizmoTarget &other_target : gizmo_targets) {
             if (other_target == *gizmo_target) {
               found_duplicate_targets = true;
               break;
             }
+          }
+          gizmo_value_input.runtime->gizmo_valid = true;
+          for (const bNodeSocket *socket : sockets_on_propagation_path) {
+            socket->runtime->gizmo_valid = true;
           }
           gizmo_targets.append(std::move(*gizmo_target));
         }
@@ -262,10 +270,14 @@ static void propagate_gizmos_from_group_nodes(GizmoPropagationResult &result,
       const InputSocketRef gizmo_input{&input_socket, group_input_ref.elem};
 
       LocalPropagationPath propagation_path;
+      Vector<const bNodeSocket *, 16> sockets_on_propagation_path;
       if (const std::optional<GizmoTarget> gizmo_target_opt = find_local_gizmo_target(
-              input_socket, group_input_ref.elem, propagation_path))
+              input_socket, group_input_ref.elem, propagation_path, sockets_on_propagation_path))
       {
         add_propagated_gizmo(result, gizmo_input, *gizmo_target_opt);
+        for (const bNodeSocket *socket : sockets_on_propagation_path) {
+          socket->runtime->gizmo_valid = true;
+        }
       }
     }
     if (group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.size() > 0) {
@@ -279,6 +291,7 @@ static GizmoPropagationResult propagate_gizmos(const bNodeTree &tree)
   for (const bNodeSocket *socket : tree.all_sockets()) {
     /* Reset gizmo state of sockets. */
     socket->runtime->has_gizmo = false;
+    socket->runtime->gizmo_valid = false;
   }
 
   GizmoPropagationResult result;
@@ -535,8 +548,9 @@ static std::optional<GizmoTarget> find_propagated_gizmo_target_recursive(
     PropagationPath &r_path)
 {
   LocalPropagationPath local_propagation_path;
+  Vector<const bNodeSocket *, 16> sockets_on_propagation_path;
   std::optional<GizmoTarget> gizmo_target_opt = find_local_gizmo_target(
-      gizmo_socket, elem, local_propagation_path);
+      gizmo_socket, elem, local_propagation_path, sockets_on_propagation_path);
   if (!gizmo_target_opt) {
     return std::nullopt;
   }
