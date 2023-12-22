@@ -1212,8 +1212,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
         UI_draw_roundbox_corner_set(UI_CNR_NONE);
       }
 
-      rcti panel_pixelspace;
-      ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace, &panel_pixelspace);
+      rcti panel_pixelspace = ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace);
       rctf panel_pixelspacef;
       BLI_rctf_rcti_copy(&panel_pixelspacef, &panel_pixelspace);
       UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);

@@ -644,10 +644,7 @@ void ui_but_to_pixelrect(rcti *rect,
                          const ARegion *region,
                          const uiBlock *block,
                          const uiBut *but);
-void ui_to_pixelrect(const ARegion *region,
-                     const uiBlock *block,
-                     const rctf *src_rect,
-                     rcti *r_rect);
+rcti ui_to_pixelrect(const ARegion *region, const uiBlock *block, const rctf *src_rect);
 
 void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y);
 void ui_block_to_window_fl(const ARegion *region, const uiBlock *block, float *x, float *y);

@@ -2070,19 +2070,17 @@ void ui_fontscale(float *points, float aspect)
 
 void ui_but_to_pixelrect(rcti *rect, const ARegion *region, const uiBlock *block, const uiBut *but)
 {
-  ui_to_pixelrect(region, block, (but) ? &but->rect : &block->rect, rect);
+  *rect = ui_to_pixelrect(region, block, (but) ? &but->rect : &block->rect);
 }
 
-void ui_to_pixelrect(const ARegion *region,
-                     const uiBlock *block,
-                     const rctf *src_rect,
-                     rcti *r_rect)
+rcti ui_to_pixelrect(const ARegion *region, const uiBlock *block, const rctf *src_rect)
 {
   rctf rectf;
-
   ui_block_to_window_rctf(region, block, &rectf, src_rect);
-  BLI_rcti_rctf_copy_round(r_rect, &rectf);
-  BLI_rcti_translate(r_rect, -region->winrct.xmin, -region->winrct.ymin);
+  rcti recti;
+  BLI_rcti_rctf_copy_round(&recti, &rectf);
+  BLI_rcti_translate(&recti, -region->winrct.xmin, -region->winrct.ymin);
+  return recti;
 }
 
 static bool ui_but_pixelrect_in_view(const ARegion *region, const rcti *rect)
