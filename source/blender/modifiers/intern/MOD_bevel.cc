@@ -248,17 +248,20 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
 
 static void profile_panel_draw(uiLayout *layout, PointerRNA *ptr)
 {
-  uiLayout *row;
-
   int profile_type = RNA_enum_get(ptr, "profile_type");
   int miter_inner = RNA_enum_get(ptr, "miter_inner");
   int miter_outer = RNA_enum_get(ptr, "miter_outer");
   bool edge_bevel = RNA_enum_get(ptr, "affect") != MOD_BEVEL_AFFECT_VERTICES;
 
-  uiItemR(uiLayoutRow(layout, false), ptr, "profile_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+  {
+    uiLayout *row = uiLayoutRow(layout, false);
+    uiLayoutSetPropSep(row, false);
+    uiItemR(row, ptr, "profile_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+  }
 
   uiLayoutSetPropSep(layout, true);
 
+  uiLayout *row;
   if (ELEM(profile_type, MOD_BEVEL_PROFILE_SUPERELLIPSE, MOD_BEVEL_PROFILE_CUSTOM)) {
     row = uiLayoutRow(layout, false);
     uiLayoutSetActive(
