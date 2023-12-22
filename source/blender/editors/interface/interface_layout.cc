@@ -3954,16 +3954,29 @@ static void ui_litem_layout_row(uiLayout *litem)
   litem->y = y;
 }
 
-static bool add_space_after_column_item(uiLayout *litem, uiItem *item, const bool is_box)
+static int spaces_after_column_item(uiLayout *litem, uiItem *item, const bool is_box)
 {
   uiItem *next_item = item->next;
   if (next_item == nullptr) {
-    return false;
+    return 0;
   }
   if (item->type == ITEM_LAYOUT_PANEL_HEADER && next_item->type == ITEM_LAYOUT_PANEL_HEADER) {
-    return false;
+    /* No extra space between layout panel headers. */
+    return 0;
   }
-  return !is_box || item != litem->items.first;
+  if (item->type == ITEM_LAYOUT_PANEL_BODY &&
+      !ELEM(next_item->type, ITEM_LAYOUT_PANEL_HEADER, ITEM_LAYOUT_PANEL_BODY))
+  {
+    /* One for the end of the panel and one at the start of the parent panel. */
+    return 2;
+  }
+  if (!is_box) {
+    return 1;
+  }
+  if (item != litem->items.first) {
+    return 1;
+  }
+  return 0;
 }
 
 /* single-column layout */
@@ -3983,9 +3996,8 @@ static void ui_litem_estimate_column(uiLayout *litem, bool is_box)
     litem->w = std::max(litem->w, itemw);
     litem->h += itemh;
 
-    if (add_space_after_column_item(litem, item, is_box)) {
-      litem->h += litem->space;
-    }
+    const int spaces_num = spaces_after_column_item(litem, item, is_box);
+    litem->h += spaces_num * litem->space;
   }
 
   if (min_size_flag) {
@@ -4005,9 +4017,8 @@ static void ui_litem_layout_column(uiLayout *litem, bool is_box, bool is_menu)
     y -= itemh;
     ui_item_position(item, x, y, is_menu ? itemw : litem->w, itemh);
 
-    if (add_space_after_column_item(litem, item, is_box)) {
-      y -= litem->space;
-    }
+    const int spaces_num = spaces_after_column_item(litem, item, is_box);
+    y -= spaces_num * litem->space;
 
     if (is_box) {
       item->flag |= UI_ITEM_BOX_ITEM;
