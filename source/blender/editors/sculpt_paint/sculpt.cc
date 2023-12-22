@@ -6220,7 +6220,7 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
   BLI_assert(verts.size() == r_factors.size());
 
   const bke::AttributeAccessor attributes = mesh.attributes();
-  if (const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT)) {
+  if (const VArray mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point)) {
     const VArraySpan span(mask);
     for (const int i : verts.index_range()) {
       r_factors[i] = 1.0f - mask[verts[i]];
@@ -6230,7 +6230,7 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
     r_factors.fill(1.0f);
   }
 
-  if (const VArray<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT)) {
+  if (const VArray hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point)) {
     const VArraySpan span(hide_vert);
     for (const int i : verts.index_range()) {
       r_factors[i] = span[verts[i]] ? 0.0f : r_factors[i];

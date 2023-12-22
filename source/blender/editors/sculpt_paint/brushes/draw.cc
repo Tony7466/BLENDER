@@ -9,7 +9,6 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_colortools.h"
 #include "BKE_key.h"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
@@ -188,10 +187,6 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
   SCULPT_tilt_effective_normal_get(&ss, &brush, effective_normal);
 
   const float3 offset = effective_normal * ss.cache->radius * ss.cache->scale * bstrength;
-
-  /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
-   * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_init(brush.curve);
 
   switch (BKE_pbvh_type(object.sculpt->pbvh)) {
     case PBVH_FACES: {

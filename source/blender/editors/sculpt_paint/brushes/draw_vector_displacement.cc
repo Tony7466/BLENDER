@@ -9,7 +9,6 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_colortools.h"
 #include "BKE_key.h"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
@@ -174,10 +173,6 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
 void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
-   * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_init(brush.curve);
 
   switch (BKE_pbvh_type(object.sculpt->pbvh)) {
     case PBVH_FACES: {
