@@ -715,7 +715,7 @@ PBVH *build_mesh(Mesh *mesh)
   const Span<int> corner_verts = mesh->corner_verts();
 
   pbvh->corner_tris.reinitialize(corner_tris_num);
-  mesh::corner_tris_calc(vert_positions, faces, corner_verts, pbvh->corner_tris);
+  bke::mesh::corner_tris_calc(vert_positions, faces, corner_verts, pbvh->corner_tris);
   const Span<int3> corner_tris = pbvh->corner_tris;
 
   pbvh->mesh = mesh;
@@ -1137,7 +1137,7 @@ static void normals_calc_faces(const Span<float3> positions,
 {
   threading::parallel_for(mask.index_range(), 512, [&](const IndexRange range) {
     for (const int i : mask.slice(range)) {
-      face_normals[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
+      face_normals[i] = bke::mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
     }
   });
 }
