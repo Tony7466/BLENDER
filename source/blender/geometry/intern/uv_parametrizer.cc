@@ -4485,6 +4485,35 @@ static bool p_validate_corrected_coords(const PEdge *corr_e,
   return true;
 }
 
+static bool p_validate_corrected_coords_zero_area(
+                                        const PVert *corr_v,
+                                        const float corr_co[3],
+                                        float min_area,
+                                        std::vector<PFace *> &r_faces)
+{
+  /* Check whether the given corrected coordinates don't result in any other triangle with area lower than min_area.
+   */
+
+  r_faces.clear();
+  const PEdge *e = corr_v->edge;
+
+  do {
+    r_faces.push_back(e->face);
+
+    const PVert *other_v1 = e->next->vert;
+    const PVert *other_v2 = e->next->next->vert;
+
+    float area = area_tri_v3(corr_co, other_v1->co, other_v2->co);
+
+    if (area < min_area) {
+      return false;
+    }
+
+  } while ((e = p_wheel_edge_next(e)) && (e != corr_v->edge));
+
+  return true;
+}
+
 static bool p_edge_matrix(float R[3][3], const PEdge *e)
 {
   static const float eps = 1.0e-5;
@@ -4532,6 +4561,109 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   R[2][2] = tangent_dir[2];
 
   return true;
+}
+
+static bool p_chart_correct_zero_area2(PChart *chart, float min_area)
+{
+  std::vector<PFace*> faces;
+  faces.reserve(4);
+  static const float EPS = 1.0e-5;
+
+  for (PFace *f = chart->faces; f; f = f->nextlink) {
+    if (f->flag & PFACE_DONE) {
+      continue;
+    }
+
+    float face_area = p_face_area(f);
+    if (face_area > min_area) {
+      continue;
+    }
+
+    PEdge* max_edge = nullptr;
+    float max_edge_len = -1.0;
+
+    PEdge* e = f->edge;
+    do {
+      float len = p_edge_length(e);
+
+      if (len > max_edge_len) {
+        max_edge = e;
+        max_edge_len = len;
+      }
+
+      e = e->next;
+    } while (e != f->edge);
+
+    BLI_assert(max_edge);
+
+    if (max_edge_len < EPS) {
+      continue;
+    }
+
+    float M[3][3];
+    if (!p_edge_matrix(M, max_edge)) {
+      continue;
+    }
+
+    float corr_len = min_area / max_edge_len;
+    PVert* corr_v = max_edge->next->next->vert;
+
+    /* check 4 distinct directions */
+    static const int DIR_COUNT = 4;
+    static const int LEN_MULTIPLIER_COUNT = 2;
+    float corr_co[3];
+    bool corr_co_found = false;
+
+    for (int m = 0; m < LEN_MULTIPLIER_COUNT; m++) {
+      for (int d = 0; d < DIR_COUNT; d++) {
+        float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
+        float corr_dir[3] = {0.0f, cos(angle), sin(angle)};
+
+        float corr_len_multiplied = corr_len * (m + 1);
+
+        mul_m3_v3(M, corr_dir);
+        mul_v3_fl(corr_dir, corr_len_multiplied);
+
+        copy_v3_v3(corr_co, corr_v->co);
+        add_v3_v3(corr_co, corr_dir);
+
+        if (p_validate_corrected_coords_zero_area(corr_v, corr_co, min_area, faces)) {
+          corr_co_found = true;
+          break;
+        }
+      }
+
+      if (corr_co_found) {
+        break;
+      }
+    }
+
+    if (!corr_co_found) {
+      continue;
+    }
+
+    copy_v3_v3(corr_v->co, corr_co);
+    for (PFace *other_f : faces) {
+      other_f->flag |= PFACE_DONE;
+    }
+  }
+
+  return true;
+}
+
+static bool p_chart_correct_zero_area(PChart *chart, float min_area)
+{
+  bool ret = p_chart_correct_zero_area2(chart, min_area);
+
+  for (PFace *f = chart->faces; f; f = f->nextlink) {
+    if (!(f->flag & PFACE_DONE)) {
+      ret = false;
+    }
+
+    f->flag &= ~PFACE_DONE;
+  }
+
+  return ret;
 }
 
 static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
@@ -4851,7 +4983,7 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
 {
   static const float SLIM_COLLAPSE_THRESHOLD = 1.0e-5f;
   /* 0.1 degree */
-  static const float SLIM_CORR_MIN_ANGLE = 0.1f * M_PI / 180.0f;
+  static const float SLIM_CORR_MIN_AREA = 1.0e-5;
 
   mt->charts.resize(phandle->ncharts);
 
@@ -4861,7 +4993,7 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
 
     p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
 
-    if (!p_chart_correct_zero_angles(chart, SLIM_CORR_MIN_ANGLE)) {
+    if (!p_chart_correct_zero_area(chart, SLIM_CORR_MIN_AREA)) {
       mt_chart->succeeded = false;
       continue;
     }
