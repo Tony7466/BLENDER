@@ -2348,7 +2348,7 @@ typedef struct NodesModifierBake {
 
 typedef struct NodesModifierPanel {
   /** ID of the corresponding panel from #bNodeTreeInterfacePanel::identifier. */
-  int panel_id;
+  int id;
   /** #NodesModifierPanelFlag. */
   uint32_t flag;
 } NodesModifierPanel;

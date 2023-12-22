@@ -427,6 +427,49 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
   update_existing_bake_caches(nmd);
 }
 
+static void update_panels_from_node_group(NodesModifierData &nmd)
+{
+  Map<int, NodesModifierPanel *> old_panel_by_id;
+  for (NodesModifierPanel &panel : MutableSpan(nmd.panels, nmd.panels_num)) {
+    old_panel_by_id.add(panel.id, &panel);
+  }
+
+  Vector<const bNodeTreeInterfacePanel *> interface_panels;
+  if (nmd.node_group) {
+    nmd.node_group->ensure_interface_cache();
+    nmd.node_group->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+      if (item.item_type != NODE_INTERFACE_PANEL) {
+        return true;
+      }
+      interface_panels.append(reinterpret_cast<const bNodeTreeInterfacePanel *>(&item));
+      return true;
+    });
+  }
+
+  NodesModifierPanel *new_panels = MEM_cnew_array<NodesModifierPanel>(interface_panels.size(),
+                                                                      __func__);
+
+  for (const int i : interface_panels.index_range()) {
+    const bNodeTreeInterfacePanel &interface_panel = *interface_panels[i];
+    const int id = interface_panel.identifier;
+    NodesModifierPanel *old_panel = old_panel_by_id.lookup_default(id, nullptr);
+    NodesModifierPanel &new_panel = new_panels[i];
+    if (old_panel) {
+      new_panel = *old_panel;
+    }
+    else {
+      new_panel.id = id;
+      const bool default_closed = interface_panel.flag & NODE_INTERFACE_PANEL_DEFAULT_CLOSED;
+      SET_FLAG_FROM_TEST(new_panel.flag, default_closed, NODES_MODIFIER_PANEL_OPEN);
+    }
+  }
+
+  MEM_SAFE_FREE(nmd.panels);
+
+  nmd.panels = new_panels;
+  nmd.panels_num = interface_panels.size();
+}
+
 }  // namespace blender
 
 void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
@@ -434,6 +477,7 @@ void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
   using namespace blender;
   update_id_properties_from_node_group(nmd);
   update_bakes_from_node_group(*nmd);
+  update_panels_from_node_group(*nmd);
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 }
@@ -1834,10 +1878,57 @@ static void draw_property_for_output_socket(const bContext &C,
   add_attribute_search_button(C, row, nmd, md_ptr, rna_path_attribute_name, socket, true);
 }
 
+static NodesModifierPanel *find_panel_by_id(const NodesModifierData &nmd, const int id)
+{
+  for (const int i : IndexRange(nmd.panels_num)) {
+    if (nmd.panels[i].id == id) {
+      return &nmd.panels[i];
+    }
+  }
+  return nullptr;
+}
+
+static void draw_interface_panel_content(const bContext *C,
+                                         uiLayout *layout,
+                                         PointerRNA *modifier_ptr,
+                                         NodesModifierData &nmd,
+                                         const bNodeTreeInterfacePanel &interface_panel,
+                                         int &next_input_index)
+{
+  Main *bmain = CTX_data_main(C);
+  PointerRNA bmain_ptr = RNA_main_pointer_create(bmain);
+
+  for (const bNodeTreeInterfaceItem *item : interface_panel.items()) {
+    if (item->item_type == NODE_INTERFACE_PANEL) {
+      const bNodeTreeInterfacePanel &sub_interface_panel =
+          *reinterpret_cast<const bNodeTreeInterfacePanel *>(item);
+      NodesModifierPanel *panel = find_panel_by_id(nmd, sub_interface_panel.identifier);
+      PointerRNA panel_ptr = RNA_pointer_create(
+          modifier_ptr->owner_id, &RNA_NodesModifierPanel, panel);
+      if (uiLayout *panel_layout = uiLayoutPanel(
+              C, layout, sub_interface_panel.name, &panel_ptr, "is_open"))
+      {
+        draw_interface_panel_content(
+            C, panel_layout, modifier_ptr, nmd, sub_interface_panel, next_input_index);
+      }
+    }
+    else {
+      const bNodeTreeInterfaceSocket &interface_socket =
+          *reinterpret_cast<const bNodeTreeInterfaceSocket *>(item);
+      if (interface_socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
+        if (!(interface_socket.flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
+          draw_property_for_socket(
+              *C, layout, &nmd, &bmain_ptr, modifier_ptr, interface_socket, next_input_index);
+        }
+        next_input_index++;
+      }
+    }
+  }
+}
+
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
-  Main *bmain = CTX_data_main(C);
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
@@ -1861,17 +1952,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   }
 
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
-    PointerRNA bmain_ptr = RNA_main_pointer_create(bmain);
-
     nmd->node_group->ensure_interface_cache();
-
-    for (const int socket_index : nmd->node_group->interface_inputs().index_range()) {
-      const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_inputs()[socket_index];
-      if (is_layer_selection_field(*socket) ||
-          !(socket->flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
-        draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
-      }
-    }
+    int next_input_index = 0;
+    draw_interface_panel_content(
+        C, layout, ptr, *nmd, nmd->node_group->tree_interface.root_panel, next_input_index);
   }
 
   /* Draw node warnings. */
@@ -1994,19 +2078,19 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
 static void panel_register(ARegionType *region_type)
 {
   using namespace blender;
-  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
-  modifier_subpanel_register(region_type,
-                             "output_attributes",
-                             N_("Output Attributes"),
-                             nullptr,
-                             output_attribute_panel_draw,
-                             panel_type);
-  modifier_subpanel_register(region_type,
-                             "internal_dependencies",
-                             N_("Internal Dependencies"),
-                             nullptr,
-                             internal_dependencies_panel_draw,
-                             panel_type);
+  modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
+  // modifier_subpanel_register(region_type,
+  //                            "output_attributes",
+  //                            N_("Output Attributes"),
+  //                            nullptr,
+  //                            output_attribute_panel_draw,
+  //                            panel_type);
+  // modifier_subpanel_register(region_type,
+  //                            "internal_dependencies",
+  //                            N_("Internal Dependencies"),
+  //                            nullptr,
+  //                            internal_dependencies_panel_draw,
+  //                            panel_type);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -2041,6 +2125,7 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
     for (const NodesModifierBake &bake : Span(nmd->bakes, nmd->bakes_num)) {
       BLO_write_string(writer, bake.directory);
     }
+    BLO_write_struct_array(writer, NodesModifierPanel, nmd->panels_num, nmd->panels);
 
     if (!BLO_write_is_undo(writer)) {
       LISTBASE_FOREACH (IDProperty *, prop, &nmd->settings.properties->data.group) {
@@ -2073,6 +2158,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     BLO_read_data_address(reader, &bake.directory);
   }
+  BLO_read_data_address(reader, &nmd->panels);
 
   nmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
   nmd->runtime->cache = std::make_shared<bake::ModifierCache>();
@@ -2093,6 +2179,10 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
         bake.directory = BLI_strdup(bake.directory);
       }
     }
+  }
+
+  if (nmd->panels) {
+    tnmd->panels = static_cast<NodesModifierPanel *>(MEM_dupallocN(nmd->panels));
   }
 
   tnmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
@@ -2127,6 +2217,8 @@ static void free_data(ModifierData *md)
     MEM_SAFE_FREE(bake.directory);
   }
   MEM_SAFE_FREE(nmd->bakes);
+
+  MEM_SAFE_FREE(nmd->panels);
 
   MEM_SAFE_FREE(nmd->bake_directory);
   MEM_delete(nmd->runtime);
