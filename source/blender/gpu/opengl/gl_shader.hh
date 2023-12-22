@@ -38,6 +38,8 @@ class GLShader : public Shader {
 
   eGPUShaderTFBType transform_feedback_type_ = GPU_SHADER_TFB_NONE;
 
+  std::string debug_source;
+
  public:
   GLShader(const char *name);
   ~GLShader();

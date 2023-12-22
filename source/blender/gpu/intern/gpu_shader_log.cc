@@ -13,6 +13,8 @@
 #include "BLI_string_utils.hh"
 #include "BLI_vector.hh"
 
+#include "BKE_global.h"
+
 #include "gpu_shader_dependency_private.h"
 #include "gpu_shader_private.hh"
 
@@ -235,7 +237,9 @@ void Shader::print_log(Span<const char *> sources,
     log_line = line_end + 1;
     previous_location = log_item.cursor;
   }
-  // printf("%s", sources_combined);
+  if (error && (G.debug & G_DEBUG_GPU)) {
+    printf("%s", sources_combined);
+  }
   MEM_freeN(sources_combined);
 
   CLG_Severity severity = error ? CLG_SEVERITY_ERROR : CLG_SEVERITY_WARN;

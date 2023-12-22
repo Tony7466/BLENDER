@@ -1152,6 +1152,30 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage, MutableSpan<const char *> 
   /* Patch the shader code using the first source slot. */
   sources[0] = glsl_patch_get(gl_stage);
 
+  if (G.debug & G_DEBUG_GPU) {
+    /* Store the generated source for printing in case the link fails. */
+    StringRefNull source_type;
+    switch (gl_stage) {
+      case GL_VERTEX_SHADER:
+        source_type = "VertShader";
+        break;
+      case GL_GEOMETRY_SHADER:
+        source_type = "GeomShader";
+        break;
+      case GL_FRAGMENT_SHADER:
+        source_type = "FragShader";
+        break;
+      case GL_COMPUTE_SHADER:
+        source_type = "ComputeShader";
+        break;
+    }
+
+    debug_source += "\n\n----------" + source_type + "----------\n\n";
+    for (const char *source : sources) {
+      debug_source.append(source);
+    }
+  }
+
   glShaderSource(shader, sources.size(), sources.data(), nullptr);
   glCompileShader(shader);
 
@@ -1231,7 +1255,7 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
   if (!status) {
     char log[5000];
     glGetProgramInfoLog(shader_program_, sizeof(log), nullptr, log);
-    Span<const char *> sources;
+    Span<const char *> sources = {debug_source.c_str()};
     GLLogParser parser;
     this->print_log(sources, log, "Linking", true, &parser);
     return false;
