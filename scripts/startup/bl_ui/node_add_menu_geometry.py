@@ -298,8 +298,8 @@ class NODE_MT_geometry_node_GEO_INPUT_SCENE(Menu):
         node_add_menu.draw_assets_for_catalog(layout, "Input/Scene")
 
 
-class NODE_MT_category_GEO_INPUT_GIZMO(Menu):
-    bl_idname = "NODE_MT_category_GEO_INPUT_GIZMO"
+class NODE_MT_geometry_node_GEO_INPUT_GIZMO(Menu):
+    bl_idname = "NODE_MT_geometry_node_GEO_INPUT_GIZMO"
     bl_label = "Gizmo"
 
     def draw(self, context):
@@ -729,7 +729,6 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_category_GEO_TEXTURE")
         layout.menu("NODE_MT_category_GEO_UTILITIES")
         layout.separator()
-        layout.menu("NODE_MT_category_GEO_INPUT_GIZMO")
         layout.menu("NODE_MT_category_GEO_GROUP")
         layout.menu("NODE_MT_category_layout")
         node_add_menu.draw_root_assets(layout)
@@ -780,7 +779,7 @@ classes = (
     NODE_MT_category_GEO_UTILITIES_FIELD,
     NODE_MT_category_GEO_UTILITIES_MATH,
     NODE_MT_category_GEO_UTILITIES_ROTATION,
-    NODE_MT_category_GEO_INPUT_GIZMO,
+    NODE_MT_geometry_node_GEO_INPUT_GIZMO,
     NODE_MT_category_GEO_GROUP,
 )
 
