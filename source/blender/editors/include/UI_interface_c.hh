@@ -2308,6 +2308,9 @@ uiLayout *uiLayoutPanel(const bContext *C,
                         const char *name,
                         PointerRNA *open_prop_owner,
                         const char *open_prop_name);
+
+bool uiLayoutEndsWithPanelHeader(const uiLayout &layout);
+
 /**
  * See #uiLayoutColumnWithHeading().
  */

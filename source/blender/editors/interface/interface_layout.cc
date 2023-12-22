@@ -5023,6 +5023,15 @@ uiLayout *uiLayoutPanel(const bContext *C,
   return litem;
 }
 
+bool uiLayoutEndsWithPanelHeader(const uiLayout &layout)
+{
+  if (BLI_listbase_is_empty(&layout.items)) {
+    return false;
+  }
+  const uiItem *item = static_cast<const uiItem *>(layout.items.last);
+  return item->type == ITEM_LAYOUT_PANEL_HEADER;
+}
+
 uiLayout *uiLayoutRowWithHeading(uiLayout *layout, bool align, const char *heading)
 {
   uiLayout *litem = uiLayoutRow(layout, align);

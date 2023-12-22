@@ -2981,12 +2981,19 @@ static void ed_panel_draw(const bContext *C,
 
     pt->draw(C, panel);
 
+    const bool ends_with_layout_panel_header = uiLayoutEndsWithPanelHeader(*panel->layout);
+
     UI_block_apply_search_filter(block, search_filter);
     UI_block_layout_resolve(block, &xco, &yco);
     panel->layout = nullptr;
 
     if (yco != 0) {
-      h = -yco + 2 * style->panelspace;
+      h = -yco;
+      h += style->panelspace;
+      if (!ends_with_layout_panel_header) {
+        /* Last layout panel header ends together with the panel.*/
+        h += style->panelspace;
+      }
     }
   }
 
