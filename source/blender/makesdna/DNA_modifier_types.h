@@ -2346,6 +2346,17 @@ typedef struct NodesModifierBake {
   int frame_end;
 } NodesModifierBake;
 
+typedef struct NodesModifierPanel {
+  /** ID of the corresponding panel from #bNodeTreeInterfacePanel::identifier. */
+  int panel_id;
+  /** #NodesModifierPanelFlag. */
+  uint32_t flag;
+} NodesModifierPanel;
+
+typedef enum NodesModifierPanelFlag {
+  NODES_MODIFIER_PANEL_OPEN = 1 << 0,
+} NodesModifierPanelFlag;
+
 typedef enum NodesModifierBakeFlag {
   NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
   NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
@@ -2370,7 +2381,9 @@ typedef struct NodesModifierData {
   char _pad[3];
   int bakes_num;
   NodesModifierBake *bakes;
-  void *_pad2;
+  char _pad2[4];
+  int panels_num;
+  NodesModifierPanel *panels;
 
   NodesModifierRuntimeHandle *runtime;
 
