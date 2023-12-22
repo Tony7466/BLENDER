@@ -173,7 +173,7 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
     }
   }
 
-  Map<StringRef, const Bone *> *deform_map = usd_export_context_.export_params.deform_bones_only ?
+  Map<StringRef, const Bone *> *deform_map = usd_export_context_.export_params.only_deform_bones ?
                                                  &deform_map_ :
                                                  nullptr;
 
