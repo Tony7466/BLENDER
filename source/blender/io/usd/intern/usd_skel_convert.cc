@@ -378,7 +378,6 @@ void add_skinned_mesh_bindings(const pxr::UsdSkelSkeleton &skel,
   else {
     CLOG_WARN(&LOG,
               "Couldn't create geom bind transform attribute for skinned mesh %s",
-              __func__,
               mesh_prim.GetPath().GetAsString().c_str());
   }
 }
