@@ -50,23 +50,22 @@ def seq_items_as_dims(data):
 class TestPropArray(unittest.TestCase):
     def setUp(self):
         id_type.test_array_f = FloatVectorProperty(size=10)
+        id_type.test_array_f_2d = FloatVectorProperty(size=(4, 1))
+        id_type.test_array_f_3d = FloatVectorProperty(size=(3, 2, 4))
         id_type.test_array_i = IntVectorProperty(size=10)
-        id_type.test_array_f_multidim = FloatVectorProperty(size=(3, 2, 4))
-        id_type.test_array_i_multidim = IntVectorProperty(size=(3, 2, 4))
-        scene = bpy.context.scene
-        self.array_f = scene.test_array_f
-        self.array_i = scene.test_array_i
-        self.array_f_multidim = scene.test_array_f_multidim
-        self.array_i_multidim = scene.test_array_i_multidim
+        id_type.test_array_i_2d = IntVectorProperty(size=(4, 1))
+        id_type.test_array_i_3d = IntVectorProperty(size=(3, 2, 4))
 
     def tearDown(self):
         del id_type.test_array_f
+        del id_type.test_array_f_2d
+        del id_type.test_array_f_3d
         del id_type.test_array_i
-        del id_type.test_array_f_multidim
-        del id_type.test_array_i_multidim
+        del id_type.test_array_i_2d
+        del id_type.test_array_i_3d
 
     @staticmethod
-    def parse_test_args(prop_array, prop_type, prop_size):
+    def parse_test_args(prop_array_first_dim, prop_type, prop_size):
         match prop_type:
             case 'INT':
                 expected_dtype = np.int32
@@ -79,41 +78,33 @@ class TestPropArray(unittest.TestCase):
             case _:
                 raise AssertionError("Unexpected property type '%s'" % prop_type)
 
-        if isinstance(prop_size, (tuple, list)):
-            expected_length = np.prod(prop_size)
-            num_dims = len(prop_size)
-        else:
-            expected_length = prop_size
-            num_dims = 1
+        expected_length = np.prod(prop_size)
+        num_dims = len(prop_size)
 
         assert expected_length > 0
         too_short_length = expected_length - 1
 
         match num_dims:
             case 1:
-                def get_flat_iterable():
-                    return prop_array[:]
+                def get_flat_iterable_all_dimensions():
+                    return prop_array_first_dim[:]
             case 2:
-                def get_flat_iterable():
-                    return (flat_elem for array_1d in prop_array[:] for flat_elem in array_1d[:])
+                def get_flat_iterable_all_dimensions():
+                    return (flat_elem for array_1d in prop_array_first_dim[:] for flat_elem in array_1d[:])
             case 3:
-                def get_flat_iterable():
+                def get_flat_iterable_all_dimensions():
                     return (flat_elem
-                            for array_2d in prop_array[:]
+                            for array_2d in prop_array_first_dim[:]
                             for array_1d in array_2d[:]
                             for flat_elem in array_1d[:])
             case _:
                 raise AssertionError("Number of dimensions must be 1, 2 or 3, but was %i", num_dims)
 
-        return (expected_dtype, wrong_kind_dtype, wrong_size_dtype,
-                expected_length, too_short_length,
-                get_flat_iterable)
+        return (expected_dtype, wrong_kind_dtype, wrong_size_dtype, expected_length, too_short_length,
+                get_flat_iterable_all_dimensions)
 
-    def do_test_foreach_getset(self, prop_array, prop_type, prop_size):
-        (expected_dtype, wrong_kind_dtype, wrong_size_dtype,
-         expected_length, too_short_length,
-         get_flat_iterable) = self.parse_test_args(prop_array, prop_type, prop_size)
-
+    def do_test_foreach_getset_current_dimension(self, prop_array, expected_dtype, wrong_kind_dtype, wrong_size_dtype,
+                                                 expected_length, too_short_length, get_flat_iterable_all_dimensions):
         with self.assertRaises(TypeError):
             prop_array.foreach_set(range(too_short_length))
 
@@ -134,7 +125,7 @@ class TestPropArray(unittest.TestCase):
         with self.assertRaises(TypeError):
             prop_array.foreach_set(a[:too_short_length])
 
-        for v1, v2 in zip(a, get_flat_iterable()):
+        for v1, v2 in zip(a, get_flat_iterable_all_dimensions()):
             self.assertEqual(v1, v2)
 
         b = np.empty(expected_length, dtype=expected_dtype)
@@ -147,17 +138,40 @@ class TestPropArray(unittest.TestCase):
         for v1, v2 in zip(a, b):
             self.assertEqual(v1, v2)
 
+    def do_test_foreach_getset(self, prop_array, prop_type, prop_size):
+        if not isinstance(prop_size, (tuple, list)):
+            prop_size = (prop_size,)
+        num_dimensions = len(prop_size)
+
+        test_args = self.parse_test_args(prop_array, prop_type, prop_size)
+
+        # Test that foreach_get/foreach_set work, and work the same regardless of the current dimension/sub-array being
+        # accessed.
+        self.do_test_foreach_getset_current_dimension(prop_array, *test_args)
+        if num_dimensions > 1:
+            for i in range(prop_size[0]):
+                self.do_test_foreach_getset_current_dimension(prop_array[i], *test_args)
+                if num_dimensions > 2:
+                    for j in range(prop_size[1]):
+                        self.do_test_foreach_getset_current_dimension(prop_array[i][j], *test_args)
+
     def test_foreach_getset_i(self):
-        self.do_test_foreach_getset(self.array_i, prop_type='INT', prop_size=10)
+        self.do_test_foreach_getset(id_inst.test_array_i, 'INT', 10)
 
     def test_foreach_getset_f(self):
-        self.do_test_foreach_getset(self.array_f, prop_type='FLOAT', prop_size=10)
+        self.do_test_foreach_getset(id_inst.test_array_f, 'FLOAT', 10)
 
-    def test_foreach_getset_i_multidimensional(self):
-        self.do_test_foreach_getset(self.array_i_multidim, prop_type='INT', prop_size=(3, 2, 4))
+    def test_foreach_getset_i_2d(self):
+        self.do_test_foreach_getset(id_inst.test_array_i_2d, 'INT', (4, 1))
 
-    def test_foreach_getset_f_multidimensional(self):
-        self.do_test_foreach_getset(self.array_f_multidim, prop_type='FLOAT', prop_size=(3, 2, 4))
+    def test_foreach_getset_f_2d(self):
+        self.do_test_foreach_getset(id_inst.test_array_f_2d, 'FLOAT', (4, 1))
+
+    def test_foreach_getset_i_3d(self):
+        self.do_test_foreach_getset(id_inst.test_array_i_3d, 'INT', (3, 2, 4))
+
+    def test_foreach_getset_f_3d(self):
+        self.do_test_foreach_getset(id_inst.test_array_f_3d, 'FLOAT', (3, 2, 4))
 
 
 class TestPropArrayMultiDimensional(unittest.TestCase):
