@@ -2539,10 +2539,10 @@ typedef enum CMPNodeCombSepColorMode {
   CMP_NODE_COMBSEP_COLOR_YUV = 4,
 } CMPNodeCombSepColorMode;
 
-/* Filtering modes Compositor MapUV node */
+/* Filtering modes Compositor MapUV node, stored in custom2. */
 typedef enum CMPNodeMapUVFiltering {
-  CMP_NODE_MAPUV_ANISOTROPIC = 0,
-  CMP_NODE_MAPUV_NEARESTNEIGHBOUR = 1,
+  CMP_NODE_MAP_UV_ANISOTROPIC = 0,
+  CMP_NODE_MAP_UV_NEAREST_NEIGHBOUR = 1,
 } CMPNodeMapUVFiltering;
 
 /* Cryptomatte node source. */

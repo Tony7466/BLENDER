@@ -61,7 +61,7 @@ class MapUVOperation : public MultiThreadedOperation {
     alpha_ = alpha;
   }
 
-  void set_nearestNeighbour(bool nearest_neighbour)
+  void set_nearest_neighbour(bool nearest_neighbour)
   {
     nearest_neighbour_ = nearest_neighbour;
   }

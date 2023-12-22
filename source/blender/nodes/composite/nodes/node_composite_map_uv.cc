@@ -95,7 +95,7 @@ class MapUVOperation : public NodeOperation {
 
   bool get_nearest_neighbour()
   {
-    return bnode().custom2 == CMP_NODE_MAPUV_NEARESTNEIGHBOUR;
+    return bnode().custom2 == CMP_NODE_MAP_UV_NEAREST_NEIGHBOUR;
   }
 
  private:

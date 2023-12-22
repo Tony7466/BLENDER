@@ -6917,8 +6917,8 @@ static void def_cmp_map_uv(StructRNA *srna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem sampling_mode_items[] = {
-      {CMP_NODE_MAPUV_ANISOTROPIC, "ANISOTROPIC", 0, "Anisotropic", ""},
-      {CMP_NODE_MAPUV_NEARESTNEIGHBOUR, "NEARESTNEIGHBOUR", 0, "Nearest Neighbour", ""},
+      {CMP_NODE_MAP_UV_ANISOTROPIC, "ANISOTROPIC", 0, "Anisotropic", ""},
+      {CMP_NODE_MAP_UV_NEAREST_NEIGHBOUR, "NEARESTNEIGHBOUR", 0, "Nearest Neighbour", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
