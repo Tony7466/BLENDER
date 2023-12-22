@@ -4485,6 +4485,46 @@ static bool p_validate_corrected_coords(const PEdge *corr_e,
   return true;
 }
 
+static bool p_validate_corrected_coords_zero_area_point(
+                                        const PEdge *corr_e,
+                                        const float corr_co1[3],
+                                        const float corr_co2[3],
+                                        float min_area,
+                                        std::vector<PFace *> &r_faces)
+{
+  /* Check whether the given corrected coordinates don't result in any other triangle with area lower than min_area.
+   */
+
+  r_faces.clear();
+  const PVert * corr_v = corr_e->vert;
+  const PEdge *e = corr_v->edge;
+
+  do {
+    float area;
+
+    if (e == corr_e) {
+      continue;
+    }
+
+    if (e->next->next == corr_e->pair) {
+      PVert* other_v = e->next->next->vert;
+      area = area_tri_v3(corr_co1, corr_co2, other_v->co);
+    } else {
+      const PVert *other_v1 = e->next->vert;
+      const PVert *other_v2 = e->next->next->vert;
+      area = area_tri_v3(corr_co1, other_v1->co, other_v2->co);
+    }
+
+    if (area < min_area) {
+      return false;
+    }
+
+    r_faces.push_back(e->face);
+  } while ((e = p_wheel_edge_next(e)) && (e != corr_v->edge));
+
+  return true;
+}
+
 static bool p_validate_corrected_coords_zero_area(
                                         const PVert *corr_v,
                                         const float corr_co[3],
@@ -4498,8 +4538,6 @@ static bool p_validate_corrected_coords_zero_area(
   const PEdge *e = corr_v->edge;
 
   do {
-    r_faces.push_back(e->face);
-
     const PVert *other_v1 = e->next->vert;
     const PVert *other_v2 = e->next->next->vert;
 
@@ -4509,33 +4547,33 @@ static bool p_validate_corrected_coords_zero_area(
       return false;
     }
 
+    r_faces.push_back(e->face);
   } while ((e = p_wheel_edge_next(e)) && (e != corr_v->edge));
 
   return true;
 }
 
-static bool p_edge_matrix(float R[3][3], const PEdge *e)
+static bool p_edge_matrix(float R[3][3], const float edge_dir[3])
 {
   static const float eps = 1.0e-5;
   static const float n1[3] = {0.0f, 0.0f, 1.0f};
   static const float n2[3] = {0.0f, 1.0f, 0.0f};
 
-  float edge_dir[3];
-  copy_v3_v3(edge_dir, e->next->vert->co);
-  sub_v3_v3(edge_dir, e->vert->co);
-
   float edge_len = len_v3(edge_dir);
   if (edge_len < eps) {
     return false;
   }
-  mul_v3_fl(edge_dir, 1.0f / edge_len);
+
+  float edge_dir_norm[3];
+  copy_v3_v3(edge_dir_norm, edge_dir);
+  mul_v3_fl(edge_dir_norm, 1.0f / edge_len);
 
   float normal_dir[3];
-  cross_v3_v3v3(normal_dir, edge_dir, n1);
+  cross_v3_v3v3(normal_dir, edge_dir_norm, n1);
   float normal_len = len_v3(normal_dir);
 
   if (normal_len < eps) {
-    cross_v3_v3v3(normal_dir, edge_dir, n2);
+    cross_v3_v3v3(normal_dir, edge_dir_norm, n2);
     normal_len = len_v3(normal_dir);
 
     if (normal_len < eps) {
@@ -4546,11 +4584,11 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   mul_v3_fl(normal_dir, 1.0f / normal_len);
 
   float tangent_dir[3];
-  cross_v3_v3v3(tangent_dir, edge_dir, normal_dir);
+  cross_v3_v3v3(tangent_dir, edge_dir_norm, normal_dir);
 
-  R[0][0] = edge_dir[0];
-  R[1][0] = edge_dir[1];
-  R[2][0] = edge_dir[2];
+  R[0][0] = edge_dir_norm[0];
+  R[1][0] = edge_dir_norm[1];
+  R[2][0] = edge_dir_norm[2];
 
   R[0][1] = normal_dir[0];
   R[1][1] = normal_dir[1];
@@ -4559,6 +4597,73 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   R[0][2] = tangent_dir[0];
   R[1][2] = tangent_dir[1];
   R[2][2] = tangent_dir[2];
+
+  return true;
+}
+
+static bool p_edge_matrix(float R[3][3], const PEdge *e)
+{
+  float edge_dir[3];
+  copy_v3_v3(edge_dir, e->next->vert->co);
+  sub_v3_v3(edge_dir, e->vert->co);
+
+  return p_edge_matrix(R, edge_dir);
+}
+
+static bool p_chart_correct_zero_area_point(PFace* f, float min_area, std::vector<PFace *> &faces)
+{
+  static const float ref_edges[][3] = {
+    {1.0f, 0.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f},
+    {0.0f, 0.0f, 1.0f},
+    {0.0f, 1.0f, 1.0f},
+    {1.0f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 0.0f}
+  };
+  static const int ref_edge_count = sizeof(ref_edges) / sizeof(ref_edges[0]);
+
+  float corr_len = 0.1f;
+  for (int re = 0; re < ref_edge_count; re++) {
+    float M[3][3];
+
+    if (!p_edge_matrix(M, ref_edges[re])) {
+      continue;
+    }
+
+    float corr_co[3][3];
+    PEdge* e = f->edge;
+
+    for (int i = 0; i < 3; i++) {
+      float angle = (float)i / 3.0 * 2.0 * M_PI;
+      float corr_dir[3] = {0.0f, cos(angle), sin(angle)};
+
+      float corr_len_multiplied = corr_len;
+
+      mul_m3_v3(M, corr_dir);
+      mul_v3_fl(corr_dir, corr_len_multiplied);
+
+      copy_v3_v3(corr_co[i], e->vert->co);
+      add_v3_v3(corr_co[i], corr_dir);
+      e = e->next;
+    }
+
+    e = f->edge;
+    for (int i = 0; i < 3; i++) {
+      if (!p_validate_corrected_coords_zero_area_point(e, corr_co[i], corr_co[(i+1)%3], min_area, faces)) {
+        return false;
+      }
+
+      e = e->next;
+    }
+
+    e = f->edge;
+    for (int i = 0; i < 3; i++) {
+      copy_v3_v3(e->vert->co, corr_co[i]);
+      e = e->next;
+    }
+
+    break;
+  }
 
   return true;
 }
@@ -4597,6 +4702,11 @@ static bool p_chart_correct_zero_area2(PChart *chart, float min_area)
     BLI_assert(max_edge);
 
     if (max_edge_len < EPS) {
+      p_chart_correct_zero_area_point(f, min_area, faces);
+      for (PFace *other_f : faces) {
+        other_f->flag |= PFACE_DONE;
+      }
+
       continue;
     }
 
@@ -4658,6 +4768,8 @@ static bool p_chart_correct_zero_area(PChart *chart, float min_area)
   for (PFace *f = chart->faces; f; f = f->nextlink) {
     if (!(f->flag & PFACE_DONE)) {
       ret = false;
+    } else {
+      BLI_assert(p_face_area(f) > min_area);
     }
 
     f->flag &= ~PFACE_DONE;
@@ -4994,6 +5106,7 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
     p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
 
     if (!p_chart_correct_zero_area(chart, SLIM_CORR_MIN_AREA)) {
+      BLI_assert(false);
       mt_chart->succeeded = false;
       continue;
     }
