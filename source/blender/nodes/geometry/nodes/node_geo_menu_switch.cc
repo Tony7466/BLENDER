@@ -2,10 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <algorithm>
+
 #include "node_geometry_util.hh"
 
 #include "DNA_node_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_string.h"
 
 #include "FN_multi_function.hh"
@@ -167,48 +170,71 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
  * Multifunction which evaluates the switch input for each enum item and partially fills the output
  * array with values from the input array where the identifier matches.
  */
-template<typename T> class MenuSwitchFn : public mf::MultiFunction {
+class MenuSwitchFn : public mf::MultiFunction {
   const NodeEnumDefinition &enum_def_;
+  const CPPType &type_;
   mf::Signature signature_;
 
  public:
-  MenuSwitchFn(const NodeEnumDefinition &enum_def) : enum_def_(enum_def)
+  MenuSwitchFn(const NodeEnumDefinition &enum_def, const CPPType &type)
+      : enum_def_(enum_def), type_(type)
   {
     mf::SignatureBuilder builder{"Menu Switch", signature_};
     builder.single_input<int>("Switch");
-    for (const NodeEnumItem enum_item : enum_def.items()) {
-      builder.single_input<T>(enum_item.name);
+    for (const NodeEnumItem &enum_item : enum_def.items()) {
+      builder.single_input(enum_item.name, type);
     }
-    builder.single_output<T>("Output");
+    builder.single_output("Output", type);
 
     this->set_signature(&signature_);
   }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const
   {
-    MutableSpan<T> outputs = params.uninitialized_single_output<T>(enum_def_.items_num + 1,
-                                                                   "Output");
-    /* Fill outputs with the default value, so that any index without a match uses the default.
-     * This causes duplicate writes but is still cheaper than keeping track of which indices are
-     * uninitialized in the end. */
-    outputs.fill(*static_cast<const T *>(CPPType::get<T>().default_value()));
+    const int value_inputs_start = 1;
+    const int inputs_num = enum_def_.items_num;
+    const VArray<int> values = params.readonly_single_input<int>(0, "Menu");
+    /* Use one extra mask at the end for invalid indices. */
+    const int invalid_index = inputs_num;
 
-    VArray<int> conditions = params.readonly_single_input<int>(0, "Switch");
-    devirtualize_varray(conditions, [&](const auto conditions) {
-      for (const int enum_i : IndexRange(enum_def_.items_num)) {
-        const NodeEnumItem &enum_item = enum_def_.items()[enum_i];
+    GMutableSpan output = params.uninitialized_single_output(
+        signature_.params.index_range().last(), "Output");
 
-        const VArray<T> inputs = params.readonly_single_input<T>(enum_i + 1, enum_item.name);
-        devirtualize_varray(inputs, [&](const auto inputs) {
-          mask.foreach_index([&](const int i) {
-            const int condition = conditions[i];
-            if (condition == enum_item.identifier) {
-              outputs[i] = inputs[i];
-            }
-          });
-        });
+    auto find_item_index = [&](const int value) -> int {
+      for (const int i : enum_def_.items().index_range()) {
+        const NodeEnumItem &item = enum_def_.items()[i];
+        if (item.identifier == value) {
+          return i;
+        }
       }
-    });
+      return invalid_index;
+    };
+
+    if (const std::optional<int> value = values.get_if_single()) {
+      const int index = find_item_index(*value);
+      if (index < inputs_num) {
+        const GVArray inputs = params.readonly_single_input(value_inputs_start + index);
+        inputs.materialize_to_uninitialized(mask, output.data());
+      }
+      else {
+        type_.fill_construct_indices(type_.default_value(), output.data(), mask);
+      }
+      return;
+    }
+
+    IndexMaskMemory memory;
+    Array<IndexMask> masks(inputs_num + 1);
+    IndexMask::from_groups<int64_t>(
+        mask, memory, [&](const int64_t i) { return find_item_index(values[i]); }, masks);
+
+    for (const int i : IndexRange(inputs_num)) {
+      if (!masks[i].is_empty()) {
+        const GVArray inputs = params.readonly_single_input(value_inputs_start + i);
+        inputs.materialize_to_uninitialized(masks[i], output.data());
+      }
+    }
+
+    type_.fill_construct_indices(type_.default_value(), output.data(), masks[invalid_index]);
   }
 };
 
@@ -233,8 +259,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     const CPPType &field_base_type = *socket_type->base_cpp_type;
 
     /* Construct multifunction if needed. */
-    multi_function_ = std::unique_ptr<MultiFunction>(
-        this->create_multi_function(field_base_type, enum_def_));
+    multi_function_ = std::unique_ptr<MultiFunction>(new MenuSwitchFn(enum_def_, field_base_type));
 
     debug_name_ = node.name;
     inputs_.append_as("Switch", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
@@ -315,25 +340,6 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     void *output_ptr = params.get_output_data_ptr(0);
     new (output_ptr) SocketValueVariant(std::move(output_field));
     params.output_set(0);
-  }
-
-  MultiFunction *create_multi_function(const CPPType &type,
-                                       const NodeEnumDefinition &enum_def) const
-  {
-    MultiFunction *multi_function = nullptr;
-    type.to_static_type_tag<float,
-                            int,
-                            bool,
-                            float3,
-                            ColorGeometry4f,
-                            std::string,
-                            math::Quaternion>([&](auto type_tag) {
-      using T = typename decltype(type_tag)::type;
-      if constexpr (!std::is_void_v<T>) {
-        multi_function = new MenuSwitchFn<T>(enum_def);
-      }
-    });
-    return multi_function;
   }
 };
 
