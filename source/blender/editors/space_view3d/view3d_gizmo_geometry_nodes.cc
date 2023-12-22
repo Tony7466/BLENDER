@@ -82,7 +82,7 @@ struct FloatTargetProperty {
       if (prop_type == PROP_FLOAT) {
         return RNA_property_float_get_index(&this->owner, this->property, *this->index);
       }
-      else if (prop_type == PROP_INT) {
+      if (prop_type == PROP_INT) {
         return RNA_property_int_get_index(&this->owner, this->property, *this->index);
       }
     }
@@ -90,7 +90,7 @@ struct FloatTargetProperty {
       if (prop_type == PROP_FLOAT) {
         return RNA_property_float_get(&this->owner, this->property);
       }
-      else if (prop_type == PROP_INT) {
+      if (prop_type == PROP_INT) {
         return RNA_property_int_get(&this->owner, this->property);
       }
     }
