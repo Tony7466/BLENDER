@@ -180,7 +180,7 @@ class MenuSwitchFn : public mf::MultiFunction {
       : enum_def_(enum_def), type_(type)
   {
     mf::SignatureBuilder builder{"Menu Switch", signature_};
-    builder.single_input<int>("Switch");
+    builder.single_input<int>("Menu");
     for (const NodeEnumItem &enum_item : enum_def.items()) {
       builder.single_input(enum_item.name, type);
     }
