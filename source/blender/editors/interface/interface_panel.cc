@@ -1157,9 +1157,6 @@ static void panel_draw_aligned_widgets(const uiStyle *style,
   }
 }
 
-/* Not entirely sure why this offset is necessary. */
-static constexpr float layout_panel_y_offset = 8;
-
 static void panel_draw_aligned_backdrop(const ARegion *region,
                                         const Panel *panel,
                                         const rcti *rect,
@@ -1216,6 +1213,8 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
       ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace, &panel_pixelspace);
       rctf panel_pixelspacef;
       BLI_rctf_rcti_copy(&panel_pixelspacef, &panel_pixelspace);
+      /* Extend the area down to make up for the top padding. */
+      panel_pixelspacef.ymin -= layout_panel_y_padding / panel->runtime->block->aspect;
       UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);
     }
   }
