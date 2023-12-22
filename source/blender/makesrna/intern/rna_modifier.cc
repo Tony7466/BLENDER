@@ -1706,6 +1706,18 @@ static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
 }
 #else
 
+static void rna_def_modifier_panel_open_prop(StructRNA *srna, const char *identifier, const int id)
+{
+  BLI_assert(id >= 0);
+  BLI_assert(id < sizeof(ModifierData::layout_panel_open_flag) * 8);
+
+  PropertyRNA *prop;
+  prop = RNA_def_property(srna, identifier, PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "modifier.layout_panel_open_flag", (1 << id));
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
+}
+
 static void rna_def_property_subdivision_common(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -7186,6 +7198,9 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Node Group", "");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
+
+  rna_def_modifier_panel_open_prop(srna, "open_output_attributes_panel", 0);
+  rna_def_modifier_panel_open_prop(srna, "open_internal_dependencies_panel", 1);
 
   RNA_define_lib_overridable(false);
 }

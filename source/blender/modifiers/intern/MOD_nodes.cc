@@ -1926,71 +1926,20 @@ static void draw_interface_panel_content(const bContext *C,
   }
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void draw_output_attributes_panel(const bContext *C,
+                                         uiLayout *layout,
+                                         const NodesModifierData &nmd,
+                                         PointerRNA *ptr)
 {
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
-
-  uiLayoutSetPropSep(layout, true);
-  /* Decorators are added manually for supported properties because the
-   * attribute/value toggle requires a manually built layout anyway. */
-  uiLayoutSetPropDecorate(layout, false);
-
-  if (!(nmd->flag & NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR)) {
-    uiTemplateID(layout,
-                 C,
-                 ptr,
-                 "node_group",
-                 "node.new_geometry_node_group_assign",
-                 nullptr,
-                 nullptr,
-                 0,
-                 false,
-                 nullptr);
-  }
-
-  if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
-    nmd->node_group->ensure_interface_cache();
-    int next_input_index = 0;
-    draw_interface_panel_content(
-        C, layout, ptr, *nmd, nmd->node_group->tree_interface.root_panel, next_input_index);
-  }
-
-  /* Draw node warnings. */
-  geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
-  if (tree_log != nullptr) {
-    tree_log->ensure_node_warnings();
-    for (const geo_log::NodeWarning &warning : tree_log->all_warnings) {
-      if (warning.type != geo_log::NodeWarningType::Info) {
-        uiItemL(layout, warning.message.c_str(), ICON_ERROR);
-      }
-    }
-  }
-
-  modifier_panel_end(layout, ptr);
-}
-
-static void output_attribute_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
-
-  uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, true);
-
   bool has_output_attribute = false;
-  if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
-    for (const bNodeTreeInterfaceSocket *socket : nmd->node_group->interface_outputs()) {
+  if (nmd.node_group != nullptr && nmd.settings.properties != nullptr) {
+    for (const bNodeTreeInterfaceSocket *socket : nmd.node_group->interface_outputs()) {
       const bNodeSocketType *typeinfo = socket->socket_typeinfo();
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
       if (nodes::socket_type_has_attribute_toggle(type)) {
         has_output_attribute = true;
-        draw_property_for_output_socket(*C, layout, *nmd, ptr, *socket);
+        draw_property_for_output_socket(*C, layout, nmd, ptr, *socket);
       }
     }
   }
@@ -1999,19 +1948,16 @@ static void output_attribute_panel_draw(const bContext *C, Panel *panel)
   }
 }
 
-static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *panel)
+static void draw_internal_dependencies_panel(uiLayout *layout,
+                                             PointerRNA *ptr,
+                                             const NodesModifierData &nmd)
 {
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
-
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetPropDecorate(col, false);
   uiItemR(col, ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake"), ICON_NONE);
 
-  geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
+  geo_log::GeoTreeLog *tree_log = get_root_tree_log(nmd);
   if (tree_log == nullptr) {
     return;
   }
@@ -2075,22 +2021,67 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   }
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+
+  uiLayoutSetPropSep(layout, true);
+  /* Decorators are added manually for supported properties because the
+   * attribute/value toggle requires a manually built layout anyway. */
+  uiLayoutSetPropDecorate(layout, false);
+
+  if (!(nmd->flag & NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR)) {
+    uiTemplateID(layout,
+                 C,
+                 ptr,
+                 "node_group",
+                 "node.new_geometry_node_group_assign",
+                 nullptr,
+                 nullptr,
+                 0,
+                 false,
+                 nullptr);
+  }
+
+  if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
+    nmd->node_group->ensure_interface_cache();
+    int next_input_index = 0;
+    draw_interface_panel_content(
+        C, layout, ptr, *nmd, nmd->node_group->tree_interface.root_panel, next_input_index);
+  }
+
+  /* Draw node warnings. */
+  geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
+  if (tree_log != nullptr) {
+    tree_log->ensure_node_warnings();
+    for (const geo_log::NodeWarning &warning : tree_log->all_warnings) {
+      if (warning.type != geo_log::NodeWarningType::Info) {
+        uiItemL(layout, warning.message.c_str(), ICON_ERROR);
+      }
+    }
+  }
+
+  modifier_panel_end(layout, ptr);
+
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, TIP_("Output Attributes"), ptr, "open_output_attributes_panel"))
+  {
+    draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
+  }
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, TIP_("Internal Dependencies"), ptr, "open_internal_dependencies_panel"))
+  {
+    draw_internal_dependencies_panel(panel_layout, ptr, *nmd);
+  }
+}
+
 static void panel_register(ARegionType *region_type)
 {
   using namespace blender;
   modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
-  // modifier_subpanel_register(region_type,
-  //                            "output_attributes",
-  //                            N_("Output Attributes"),
-  //                            nullptr,
-  //                            output_attribute_panel_draw,
-  //                            panel_type);
-  // modifier_subpanel_register(region_type,
-  //                            "internal_dependencies",
-  //                            N_("Internal Dependencies"),
-  //                            nullptr,
-  //                            internal_dependencies_panel_draw,
-  //                            panel_type);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
