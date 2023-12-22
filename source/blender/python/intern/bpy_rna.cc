@@ -5612,10 +5612,10 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
             item = PyBool_FromLong(long(((bool *)array)[i]));
             break;
           case PROP_RAW_INT64:
-            item = PyLong_FromLongLong(long long(((int64_t *)array)[i]));
+            item = PyLong_FromLongLong(((int64_t *)array)[i]);
             break;
           case PROP_RAW_UINT64:
-            item = PyLong_FromUnsignedLongLong(unsigned long long(((uint64_t *)array)[i]));
+            item = PyLong_FromUnsignedLongLong(((uint64_t *)array)[i]);
             break;
           default: /* PROP_RAW_UNSET */
             /* Should never happen. */
