@@ -22,6 +22,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_key_types.h"
 #include "DNA_meta_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
@@ -1292,7 +1293,7 @@ void export_deform_verts(const Mesh *mesh,
   /* elem_size will specify the number of
    * joints that can influence a given point. */
   const int element_size = max_totweight;
-  int num_points = mesh->totvert;
+  int num_points = mesh->verts_num;
 
   pxr::VtArray<int> joint_indices(num_points * element_size, 0);
   pxr::VtArray<float> joint_weights(num_points * element_size, 0.0f);

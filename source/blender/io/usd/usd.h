@@ -65,13 +65,10 @@ struct USDExportParams {
   bool export_normals = true;
   bool export_mesh_colors = true;
   bool export_materials = true;
-<<<<<<< HEAD
   bool export_armatures = true;
   bool export_shapekeys = true;
   bool deform_bones_only = false;
-=======
   eSubdivExportMode export_subdiv = USD_SUBDIV_BEST_MATCH;
->>>>>>> main
   bool selected_objects_only = false;
   bool visible_objects_only = true;
   bool use_instancing = false;

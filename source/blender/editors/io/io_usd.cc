@@ -200,13 +200,10 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_normals,
       export_mesh_colors,
       export_materials,
-<<<<<<< HEAD
       export_armatures,
       export_shapekeys,
       deform_bones_only,
-=======
       export_subdiv,
->>>>>>> main
       selected_objects_only,
       visible_objects_only,
       use_instancing,
@@ -244,7 +241,6 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
-<<<<<<< HEAD
 
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Rigging"));
   uiItemR(col, ptr, "export_armatures", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -254,9 +250,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "export_shapekeys", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
-=======
   uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
->>>>>>> main
   uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);

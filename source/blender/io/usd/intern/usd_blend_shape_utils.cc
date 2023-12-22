@@ -521,7 +521,7 @@ Mesh *get_shape_key_basis_mesh(Object *obj)
 
   KeyBlock *basis = reinterpret_cast<KeyBlock *>(mesh->key->block.first);
 
-  if (mesh->totvert != basis->totelem) {
+  if (mesh->verts_num != basis->totelem) {
     CLOG_WARN(&LOG, "Vertex and shape key element count mismatch for mesh %s", obj->id.name + 2);
     return nullptr;
   }
@@ -533,7 +533,7 @@ Mesh *get_shape_key_basis_mesh(Object *obj)
   BKE_keyblock_convert_to_mesh(
       basis,
       reinterpret_cast<float(*)[3]>(temp_mesh->vert_positions_for_write().data()),
-      temp_mesh->totvert);
+      temp_mesh->verts_num);
 
   return temp_mesh;
 }

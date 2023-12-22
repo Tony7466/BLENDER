@@ -10,14 +10,12 @@
 
 #include <pxr/usd/usdGeom/mesh.h>
 
-<<<<<<< HEAD
 struct Key;
-=======
+
 namespace blender::bke {
 class AttributeIDRef;
 struct AttributeMetaData;
 }  // namespace blender::bke
->>>>>>> main
 
 namespace blender::io::usd {
 

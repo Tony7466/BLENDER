@@ -25,12 +25,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 
-<<<<<<< HEAD
 #include "BKE_armature.hh"
-#include "BKE_attribute.h"
-=======
 #include "BKE_attribute.hh"
->>>>>>> main
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_key.h"
@@ -546,12 +542,9 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
         attr_corner_sharpnesses, pxr::VtValue(usd_mesh_data.crease_sharpnesses), timecode);
   }
 
-<<<<<<< HEAD
+
   write_custom_data(context.object, mesh, usd_mesh);
-=======
-  write_custom_data(mesh, usd_mesh);
   write_surface_velocity(mesh, usd_mesh);
->>>>>>> main
 
   const pxr::TfToken subdiv_scheme = get_subdiv_scheme(subsurfData);
 
