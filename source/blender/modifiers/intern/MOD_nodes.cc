@@ -704,6 +704,37 @@ static void find_side_effect_nodes_for_baking(const NodesModifierData &nmd,
   }
 }
 
+static void find_side_effect_nodes_for_active_gizmos(
+    const NodesModifierData &nmd,
+    const ModifierEvalContext &ctx,
+    const wmWindowManager &wm,
+    nodes::GeoNodesSideEffectNodes &r_side_effect_nodes,
+    Set<ComputeContextHash> &r_socket_log_contexts)
+{
+  Object *object_orig = DEG_get_original_object(ctx.object);
+  const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
+      BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
+  nodes::gizmos::foreach_active_gizmo(
+      *object_orig,
+      nmd_orig,
+      wm,
+      [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+        try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
+        r_socket_log_contexts.add(compute_context.hash());
+
+        const Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
+            nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
+        for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
+          for (const nodes::gizmos::PropagationPath::PathElem &elem :
+               gizmo_target.propagation_path.path) {
+            try_add_side_effect_node(
+                *elem.compute_context, elem.node->identifier, nmd, r_side_effect_nodes);
+            r_socket_log_contexts.add(elem.compute_context->hash());
+          }
+        }
+      });
+}
+
 static void find_side_effect_nodes(const NodesModifierData &nmd,
                                    const ModifierEvalContext &ctx,
                                    nodes::GeoNodesSideEffectNodes &r_side_effect_nodes,
@@ -733,30 +764,8 @@ static void find_side_effect_nodes(const NodesModifierData &nmd,
   }
 
   find_side_effect_nodes_for_baking(nmd, ctx, r_side_effect_nodes);
-
-  /* Add side effects required for active gizmos. */
-  Object *object_orig = DEG_get_original_object(ctx.object);
-  const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
-      BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
-  nodes::gizmos::foreach_active_gizmo(
-      *object_orig,
-      nmd_orig,
-      *wm,
-      [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
-        try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
-        r_socket_log_contexts.add(compute_context.hash());
-
-        const Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
-            nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
-        for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
-          for (const nodes::gizmos::PropagationPath::PathElem &elem :
-               gizmo_target.propagation_path.path) {
-            try_add_side_effect_node(
-                *elem.compute_context, elem.node->identifier, nmd, r_side_effect_nodes);
-            r_socket_log_contexts.add(elem.compute_context->hash());
-          }
-        }
-      });
+  find_side_effect_nodes_for_active_gizmos(
+      nmd, ctx, *wm, r_side_effect_nodes, r_socket_log_contexts);
 }
 
 static void find_socket_log_contexts(const NodesModifierData &nmd,
