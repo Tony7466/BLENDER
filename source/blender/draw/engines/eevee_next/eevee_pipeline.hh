@@ -190,17 +190,26 @@ struct DeferredLayerBase {
   /* Return the amount of gbuffer layer needed. */
   int closure_layer_count() const
   {
-    /* TODO(fclem): We can save some layers in some cases (e.g: diffuse and translucent use only
-     * 1 layer). */
-    return 2 * count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION |
-                                             CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
+    /* Diffuse and translucent require only one layer. */
+    int count = count_bits_i(closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
+    /* SSS require an additional layer compared to diffuse. */
+    count += count_bits_i(closure_bits_ & CLOSURE_SSS);
+    /* Reflection and refraction can have at most two layers. */
+    count += 2 * count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION));
+    return count;
   }
 
   /* Return the amount of gbuffer layer needed. */
   int normal_layer_count() const
   {
-    return count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION |
-                                         CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
+    /* TODO(fclem): We could count the number of different tangent frame in the shader and use
+     * min(tangent_frame_count, closure_count) once we have the normal reuse optimization.
+     * For now, allocate a split normal layer for each Closure. */
+    int count = count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION |
+                                              CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
+    /* Count the additional infos layer needed by some closures. */
+    count += count_bits_i(closure_bits_ & (CLOSURE_SSS | CLOSURE_TRANSLUCENT));
+    return count;
   }
 
   void gbuffer_pass_sync(Instance &inst);
