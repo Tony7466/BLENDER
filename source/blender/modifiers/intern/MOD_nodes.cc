@@ -460,7 +460,7 @@ static void update_panels_from_node_group(NodesModifierData &nmd)
     else {
       new_panel.id = id;
       const bool default_closed = interface_panel.flag & NODE_INTERFACE_PANEL_DEFAULT_CLOSED;
-      SET_FLAG_FROM_TEST(new_panel.flag, default_closed, NODES_MODIFIER_PANEL_OPEN);
+      SET_FLAG_FROM_TEST(new_panel.flag, !default_closed, NODES_MODIFIER_PANEL_OPEN);
     }
   }
 
