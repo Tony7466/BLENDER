@@ -1197,7 +1197,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
       rctf panel_blockspace = panel->runtime->block->rect;
       panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y;
       panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y;
-      BLI_rctf_translate(&panel_blockspace, 0, -layout_panel_y_offset);
+      BLI_rctf_translate(&panel_blockspace, 0, -UI_LAYOUT_PANEL_Y_OFFSET);
 
       /* If the layout panel is at the end of the root panel, it's bottom corners are rounded. */
       const bool is_main_panel_end = panel_blockspace.ymin - panel->runtime->block->rect.ymin < 10;
@@ -1214,7 +1214,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
       rctf panel_pixelspacef;
       BLI_rctf_rcti_copy(&panel_pixelspacef, &panel_pixelspace);
       /* Extend the area down to make up for the top padding. */
-      panel_pixelspacef.ymin -= layout_panel_y_padding / panel->runtime->block->aspect;
+      panel_pixelspacef.ymin -= UI_LAYOUT_PANEL_Y_PADDING / panel->runtime->block->aspect;
       UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);
     }
   }
@@ -1924,7 +1924,7 @@ static LayoutPanelHeader *get_layout_panel_header_under_mouse(const Panel &panel
   /* Expand clickable area a bit because there is some padding around the header. */
   const float padding = 4;
   for (LayoutPanelHeader &header : panel.runtime->layout_panels.headers) {
-    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + layout_panel_y_offset),
+    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + UI_LAYOUT_PANEL_Y_OFFSET),
                  header.start_y - padding,
                  header.end_y + padding))
     {
@@ -1994,8 +1994,8 @@ static void ui_panel_drag_collapse(const bContext *C,
 
     for (LayoutPanelHeader &header : panel->runtime->layout_panels.headers) {
       rctf rect = block->rect;
-      rect.ymin = block->rect.ymax + header.start_y + layout_panel_y_offset;
-      rect.ymax = block->rect.ymax + header.end_y + layout_panel_y_offset;
+      rect.ymin = block->rect.ymax + header.start_y + UI_LAYOUT_PANEL_Y_OFFSET;
+      rect.ymax = block->rect.ymax + header.end_y + UI_LAYOUT_PANEL_Y_OFFSET;
 
       if (BLI_rctf_isect_segment(&rect, xy_a_block, xy_b_block)) {
         RNA_boolean_set(
