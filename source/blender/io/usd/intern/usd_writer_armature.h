@@ -22,7 +22,7 @@ class USDArmatureWriter : public USDAbstractWriter {
   virtual bool check_is_animated(const HierarchyContext &context) const override;
 
  private:
-  Map<const char *, const Bone *> deform_map_;
+  Map<StringRef, const Bone *> deform_map_;
 };
 
 }  // namespace blender::io::usd

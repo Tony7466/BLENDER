@@ -339,9 +339,6 @@ pxr::VtTokenArray get_blend_shape_names(const Key *key)
   pxr::VtTokenArray blendshape_names;
 
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
-    if (!kb) {
-      continue;
-    }
 
     if (kb == basis_key) {
       /* Skip the basis. */

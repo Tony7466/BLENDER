@@ -55,7 +55,7 @@ static pxr::GfMatrix4d parent_relative_pose_mat(const bPoseChannel *pchan)
 static void initialize(const Object *obj,
                        pxr::UsdSkelSkeleton &skel,
                        pxr::UsdSkelAnimation &skel_anim,
-                       const blender::Map<const char *, const Bone *> *deform_bones)
+                       const blender::Map<blender::StringRef, const Bone *> *deform_bones)
 {
   using namespace blender::io::usd;
 
@@ -104,7 +104,7 @@ static void initialize(const Object *obj,
   if (skel_anim) {
     usd_skel_api.CreateAnimationSourceRel().SetTargets(
         pxr::SdfPathVector({pxr::SdfPath(usdtokens::Anim)}));
-    create_pose_joints(skel_anim, obj, deform_bones);
+    create_pose_joints(skel_anim, *obj, deform_bones);
   }
 }
 
@@ -112,7 +112,7 @@ static void initialize(const Object *obj,
 static void add_anim_sample(pxr::UsdSkelAnimation &skel_anim,
                             const Object *obj,
                             const pxr::UsdTimeCode time,
-                            const blender::Map<const char *, const Bone *> *deform_map)
+                            const blender::Map<blender::StringRef, const Bone *> *deform_map)
 {
   if (!(skel_anim && obj && obj->pose)) {
     return;
@@ -173,8 +173,9 @@ void USDArmatureWriter::do_write(HierarchyContext &context)
     }
   }
 
-  Map<const char *, const Bone *> *deform_map =
-      usd_export_context_.export_params.deform_bones_only ? &deform_map_ : nullptr;
+  Map<StringRef, const Bone *> *deform_map = usd_export_context_.export_params.deform_bones_only ?
+                                                 &deform_map_ :
+                                                 nullptr;
 
   if (!this->frame_has_been_written_) {
     init_deform_bones_map(context.object, deform_map);

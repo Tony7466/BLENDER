@@ -70,7 +70,7 @@ void visit_bones(const Object *ob_arm, FunctionRef<void(const Bone *)> visitor)
 
   bArmature *armature = (bArmature *)ob_arm->data;
 
-  for (Bone *bone = (Bone *)armature->bonebase.first; bone; bone = bone->next) {
+  LISTBASE_FOREACH (const Bone *, bone, &armature->bonebase) {
     visit_bones(bone, visitor);
   }
 }
@@ -79,7 +79,7 @@ void get_armature_bone_names(const Object *ob_arm,
                              const bool use_deform,
                              Vector<std::string> &r_names)
 {
-  Map<const char *, const Bone *> deform_map;
+  Map<StringRef, const Bone *> deform_map;
   if (use_deform) {
     init_deform_bones_map(ob_arm, &deform_map);
   }
@@ -109,16 +109,14 @@ pxr::TfToken build_usd_joint_path(const Bone *bone)
 }
 
 void create_pose_joints(pxr::UsdSkelAnimation &skel_anim,
-                        const Object *obj,
-                        const Map<const char *, const Bone *> *deform_map)
+                        const Object &obj,
+                        const Map<StringRef, const Bone *> *deform_map)
 {
-  if (!(skel_anim && obj && obj->pose)) {
-    return;
-  }
+  BLI_assert(obj.pose);
 
   pxr::VtTokenArray joints;
 
-  const bPose *pose = obj->pose;
+  const bPose *pose = obj.pose;
 
   LISTBASE_FOREACH (const bPoseChannel *, pchan, &pose->chanbase) {
     if (pchan->bone) {
@@ -161,7 +159,7 @@ bool can_export_skinned_mesh(const Object &obj, const Depsgraph *depsgraph)
   return get_enabled_modifier(obj, eModifierType_Armature, depsgraph) != nullptr;
 }
 
-void init_deform_bones_map(const Object *obj, Map<const char *, const Bone *> *deform_map)
+void init_deform_bones_map(const Object *obj, Map<StringRef, const Bone *> *deform_map)
 {
   if (!deform_map) {
     return;

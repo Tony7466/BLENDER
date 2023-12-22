@@ -65,8 +65,8 @@ pxr::TfToken build_usd_joint_path(const Bone *bone);
  *                    skipped
  */
 void create_pose_joints(pxr::UsdSkelAnimation &skel_anim,
-                        const Object *obj,
-                        const Map<const char *, const Bone *> *deform_map);
+                        const Object &obj,
+                        const Map<StringRef, const Bone *> *deform_map);
 
 /**
  * Return the modifier of the given type enabled for the given dependency graph's
@@ -124,6 +124,6 @@ bool can_export_skinned_mesh(const Object &obj, const Depsgraph *depsgraph);
  * \param deform_map: A pointer to the deform_map to fill with deform bones and
  *                    their parents found on the object
  */
-void init_deform_bones_map(const Object *obj, Map<const char *, const Bone *> *deform_map);
+void init_deform_bones_map(const Object *obj, Map<StringRef, const Bone *> *deform_map);
 
 }  // namespace blender::io::usd
