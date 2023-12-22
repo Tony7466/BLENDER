@@ -7,3 +7,4 @@ Referenced by issue #115188, Right click tweak don't select vert/ege/face when a
 Referenced by issue #115181, Right click select sometimes failed to select armature in pose mode
 Referenced by commit 09bd04697529950bce69efff2f681493b5619e3a, Fix #115181: RMB Select sometimes to enter pose mode when selected
 Referenced by issue #115887, Fallback Tools are only tweaking single elements
+Referenced by issue #116402, Curve Hook modifier broken?
