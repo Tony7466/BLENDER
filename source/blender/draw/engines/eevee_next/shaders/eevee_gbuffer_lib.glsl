@@ -664,6 +664,7 @@ GBufferReader gbuffer_read_header(uint header)
   gbuf.has_reflection = false;
   gbuf.has_refraction = false;
   gbuf.has_translucent = false;
+  gbuf.has_sss = false;
   gbuf.closure_count = 0u;
 
   for (int layer = 0; layer < 4; layer++) {
@@ -709,6 +710,7 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
   gbuf.has_reflection = false;
   gbuf.has_refraction = false;
   gbuf.has_translucent = false;
+  gbuf.has_sss = false;
   gbuf.data.thickness = 0.0;
   gbuf.closure_count = 0u;
   gbuf.layer_data = 0;
