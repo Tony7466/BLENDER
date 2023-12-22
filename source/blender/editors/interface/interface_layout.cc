@@ -3954,6 +3954,18 @@ static void ui_litem_layout_row(uiLayout *litem)
   litem->y = y;
 }
 
+static bool add_space_after_column_item(uiLayout *litem, uiItem *item, const bool is_box)
+{
+  uiItem *next_item = item->next;
+  if (next_item == nullptr) {
+    return false;
+  }
+  if (item->type == ITEM_LAYOUT_PANEL_HEADER && next_item->type == ITEM_LAYOUT_PANEL_HEADER) {
+    return false;
+  }
+  return !is_box || item != litem->items.first;
+}
+
 /* single-column layout */
 static void ui_litem_estimate_column(uiLayout *litem, bool is_box)
 {
@@ -3971,7 +3983,7 @@ static void ui_litem_estimate_column(uiLayout *litem, bool is_box)
     litem->w = std::max(litem->w, itemw);
     litem->h += itemh;
 
-    if (item->next && (!is_box || item != litem->items.first)) {
+    if (add_space_after_column_item(litem, item, is_box)) {
       litem->h += litem->space;
     }
   }
@@ -3993,7 +4005,7 @@ static void ui_litem_layout_column(uiLayout *litem, bool is_box, bool is_menu)
     y -= itemh;
     ui_item_position(item, x, y, is_menu ? itemw : litem->w, itemh);
 
-    if (item->next && (!is_box || item != litem->items.first)) {
+    if (add_space_after_column_item(litem, item, is_box)) {
       y -= litem->space;
     }
 
@@ -4163,14 +4175,28 @@ static void ui_litem_layout_root(uiLayout *litem)
 /* panel header layout */
 static void ui_litem_estimate_panel_header(uiLayout *litem)
 {
-  ui_litem_estimate_column(litem, false);
+  BLI_assert(litem->items.first == litem->items.last);
+  uiItem *item = static_cast<uiItem *>(litem->items.first);
+
+  int w, h;
+  ui_item_size(item, &w, &h);
+  litem->w = w;
+  litem->h = h;
 }
 
 static void ui_litem_layout_panel_header(uiLayout *litem)
 {
   uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
   Panel *panel = litem->root->block->panel;
-  ui_litem_layout_column(litem, false, false);
+
+  BLI_assert(litem->items.first == litem->items.last);
+  uiItem *item = static_cast<uiItem *>(litem->items.first);
+
+  int w, h;
+  ui_item_size(item, &w, &h);
+  litem->y -= h;
+  ui_item_position(item, litem->x, litem->y, w, h);
+
   panel->runtime->layout_panels.headers.append({float(litem->y),
                                                 float(litem->y + litem->h),
                                                 header_litem->open_prop_owner,
@@ -4187,7 +4213,8 @@ static void ui_litem_layout_panel_body(uiLayout *litem)
 {
   Panel *panel = litem->root->block->panel;
   ui_litem_layout_column(litem, false, false);
-  panel->runtime->layout_panels.bodies.append({float(litem->y), float(litem->y + litem->h)});
+  panel->runtime->layout_panels.bodies.append(
+      {float(litem->y - litem->space), float(litem->y + litem->h + litem->space)});
 }
 
 /* box layout */
@@ -4979,6 +5006,7 @@ uiLayout *uiLayoutPanel(const bContext *C,
   uiLayoutItemPanelBody *body_litem = MEM_cnew<uiLayoutItemPanelBody>(__func__);
   uiLayout *litem = &body_litem->litem;
   litem->item.type = ITEM_LAYOUT_PANEL_BODY;
+  litem->space = layout->root->style->templatespace;
   ui_litem_init_from_parent(litem, layout, false);
   UI_block_layout_set_current(layout->root->block, litem);
   return litem;
