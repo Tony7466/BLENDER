@@ -25,8 +25,12 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 
+<<<<<<< HEAD
 #include "BKE_armature.hh"
 #include "BKE_attribute.h"
+=======
+#include "BKE_attribute.hh"
+>>>>>>> main
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_key.h"
@@ -44,8 +48,6 @@
 #include "DNA_armature_types.h"
 #include "DNA_key_types.h"
 #include "DNA_layer_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_fluidsim_types.h"
 #include "DNA_particle_types.h"
@@ -77,6 +79,35 @@ bool USDGenericMeshWriter::is_supported(const HierarchyContext *context) const
   return true;
 }
 
+/* Get the last subdiv modifier, regardless of enable/disable status */
+static const SubsurfModifierData *get_last_subdiv_modifier(eEvaluationMode eval_mode, Object *obj)
+{
+  BLI_assert(obj);
+
+  /* Return the subdiv modifier if it is the last modifier and has
+   * the required mode enabled. */
+
+  ModifierData *md = (ModifierData *)(obj->modifiers.last);
+
+  if (!md) {
+    return nullptr;
+  }
+
+  /* Determine if the modifier is enabled for the current evaluation mode. */
+  ModifierMode mod_mode = (eval_mode == DAG_EVAL_RENDER) ? eModifierMode_Render :
+                                                           eModifierMode_Realtime;
+
+  if ((md->mode & mod_mode) != mod_mode) {
+    return nullptr;
+  }
+
+  if (md->type == eModifierType_Subsurf) {
+    return reinterpret_cast<SubsurfModifierData *>(md);
+  }
+
+  return nullptr;
+}
+
 void USDGenericMeshWriter::do_write(HierarchyContext &context)
 {
   Object *object_eval = context.object;
@@ -88,7 +119,11 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
   }
 
   try {
-    write_mesh(context, mesh);
+    /* Fetch the subdiv modifier, if one exists and it is the last modifier. */
+    const SubsurfModifierData *subsurfData = get_last_subdiv_modifier(
+        usd_export_context_.export_params.evaluation_mode, object_eval);
+
+    write_mesh(context, mesh, subsurfData);
 
     if (needsfree) {
       free_export_mesh(mesh);
@@ -109,10 +144,10 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
   const bke::AttributeAccessor attributes = mesh->attributes();
 
   char *active_set_name = nullptr;
-  const int active_uv_set_index = CustomData_get_render_layer_index(&mesh->loop_data,
+  const int active_uv_set_index = CustomData_get_render_layer_index(&mesh->corner_data,
                                                                     CD_PROP_FLOAT2);
   if (active_uv_set_index != -1) {
-    active_set_name = mesh->loop_data.layers[active_uv_set_index].name;
+    active_set_name = mesh->corner_data.layers[active_uv_set_index].name;
   }
 
   attributes.for_all(
@@ -122,7 +157,7 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
          * edge domain because USD doesn't have a good
          * conversion for them. */
         if (attribute_id.name()[0] == '.' || attribute_id.is_anonymous() ||
-            meta_data.domain == ATTR_DOMAIN_EDGE ||
+            meta_data.domain == bke::AttrDomain::Edge ||
             ELEM(attribute_id.name(), "position", "material_index"))
         {
           return true;
@@ -151,14 +186,14 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
         }
 
         /* UV Data. */
-        if (meta_data.domain == ATTR_DOMAIN_CORNER && meta_data.data_type == CD_PROP_FLOAT2) {
+        if (meta_data.domain == bke::AttrDomain::Corner && meta_data.data_type == CD_PROP_FLOAT2) {
           if (usd_export_context_.export_params.export_uvmaps) {
             write_uv_data(mesh, usd_mesh, attribute_id, active_set_name);
           }
         }
 
         /* Color data. */
-        else if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
+        else if (ELEM(meta_data.domain, bke::AttrDomain::Corner, bke::AttrDomain::Point) &&
                  ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
         {
           if (usd_export_context_.export_params.export_mesh_colors) {
@@ -200,14 +235,14 @@ static std::optional<pxr::SdfValueTypeName> convert_blender_type_to_usd(
 }
 
 static const std::optional<pxr::TfToken> convert_blender_domain_to_usd(
-    const eAttrDomain blender_domain, ReportList *reports)
+    const bke::AttrDomain blender_domain, ReportList *reports)
 {
   switch (blender_domain) {
-    case ATTR_DOMAIN_CORNER:
+    case bke::AttrDomain::Corner:
       return pxr::UsdGeomTokens->faceVarying;
-    case ATTR_DOMAIN_POINT:
+    case bke::AttrDomain::Point:
       return pxr::UsdGeomTokens->vertex;
-    case ATTR_DOMAIN_FACE:
+    case bke::AttrDomain::Face:
       return pxr::UsdGeomTokens->uniform;
 
     /* Notice: Edge types are not supported in USD! */
@@ -346,7 +381,7 @@ void USDGenericMeshWriter::write_uv_data(const Mesh *mesh,
       primvar_name, pxr::SdfValueTypeNames->TexCoord2fArray, pxr::UsdGeomTokens->faceVarying);
 
   const VArraySpan<float2> buffer = *mesh->attributes().lookup<float2>(attribute_id,
-                                                                       ATTR_DOMAIN_CORNER);
+                                                                       bke::AttrDomain::Corner);
   if (buffer.is_empty()) {
     return;
   }
@@ -364,7 +399,7 @@ void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
   const pxr::UsdGeomPrimvarsAPI pvApi = pxr::UsdGeomPrimvarsAPI(usd_mesh);
 
   /* Varying type depends on original domain. */
-  const pxr::TfToken prim_varying = meta_data.domain == ATTR_DOMAIN_CORNER ?
+  const pxr::TfToken prim_varying = meta_data.domain == bke::AttrDomain::Corner ?
                                         pxr::UsdGeomTokens->faceVarying :
                                         pxr::UsdGeomTokens->vertex;
 
@@ -378,8 +413,8 @@ void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
   }
 
   switch (meta_data.domain) {
-    case ATTR_DOMAIN_CORNER:
-    case ATTR_DOMAIN_POINT:
+    case bke::AttrDomain::Corner:
+    case bke::AttrDomain::Point:
       copy_blender_buffer_to_prim<ColorGeometry4f, pxr::GfVec3f>(buffer, timecode, colors_pv);
       break;
     default:
@@ -421,7 +456,9 @@ struct USDMeshData {
   pxr::VtFloatArray corner_sharpnesses;
 };
 
-void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
+void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
+                                      Mesh *mesh,
+                                      const SubsurfModifierData *subsurfData)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
@@ -509,19 +546,31 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
         attr_corner_sharpnesses, pxr::VtValue(usd_mesh_data.crease_sharpnesses), timecode);
   }
 
+<<<<<<< HEAD
   write_custom_data(context.object, mesh, usd_mesh);
+=======
+  write_custom_data(mesh, usd_mesh);
+  write_surface_velocity(mesh, usd_mesh);
+>>>>>>> main
 
-  if (usd_export_context_.export_params.export_normals) {
+  const pxr::TfToken subdiv_scheme = get_subdiv_scheme(subsurfData);
+
+  /* Normals can be animated, so ensure these are written for each frame,
+   * unless a subdiv modifier is used, in which case normals are computed,
+   * not stored with the mesh. */
+  if (usd_export_context_.export_params.export_normals &&
+      subdiv_scheme == pxr::UsdGeomTokens->none) {
     write_normals(mesh, usd_mesh);
   }
-  write_surface_velocity(mesh, usd_mesh);
 
   /* TODO(Sybren): figure out what happens when the face groups change. */
   if (frame_has_been_written_) {
     return;
   }
 
-  usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->none);
+  /* The subdivision scheme is a uniform according to spec,
+   * so this value cannot be animated. */
+  write_subdiv(subdiv_scheme, usd_mesh, subsurfData);
 
   if (usd_export_context_.export_params.export_materials) {
     assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
@@ -533,6 +582,80 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
         pxr::GfVec3f{bounds->min[0], bounds->min[1], bounds->min[2]},
         pxr::GfVec3f{bounds->max[0], bounds->max[1], bounds->max[2]}};
     usd_mesh.CreateExtentAttr().Set(extent);
+  }
+}
+
+pxr::TfToken USDGenericMeshWriter::get_subdiv_scheme(const SubsurfModifierData *subsurfData)
+{
+  /* Default to setting the subdivision scheme to None. */
+  pxr::TfToken subdiv_scheme = pxr::UsdGeomTokens->none;
+
+  if (subsurfData) {
+    if (subsurfData->subdivType == SUBSURF_TYPE_CATMULL_CLARK) {
+      if (usd_export_context_.export_params.export_subdiv == USD_SUBDIV_BEST_MATCH) {
+        /* If a subdivision modifier exists, and it uses Catmull-Clark, then apply Catmull-Clark
+         * SubD scheme. */
+        subdiv_scheme = pxr::UsdGeomTokens->catmullClark;
+      }
+    }
+    else {
+      /* "Simple" is currently the only other subdivision type provided by Blender, */
+      /* and we do not yet provide a corresponding representation for USD export. */
+      BKE_reportf(reports(),
+                  RPT_WARNING,
+                  "USD export: Simple subdivision not supported, exporting subdivided mesh");
+    }
+  }
+
+  return subdiv_scheme;
+}
+
+void USDGenericMeshWriter::write_subdiv(const pxr::TfToken &subdiv_scheme,
+                                        pxr::UsdGeomMesh &usd_mesh,
+                                        const SubsurfModifierData *subsurfData)
+{
+  usd_mesh.CreateSubdivisionSchemeAttr().Set(subdiv_scheme);
+  if (subdiv_scheme == pxr::UsdGeomTokens->catmullClark) {
+    /* For Catmull-Clark, also consider the various interpolation modes. */
+    /* For reference, see
+     * https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#face-varying-interpolation-rules
+     */
+    switch (subsurfData->uv_smooth) {
+      case SUBSURF_UV_SMOOTH_NONE:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->all);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_CORNERS:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->cornersOnly);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_AND_JUNCTIONS:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->cornersPlus1);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->cornersPlus2);
+        break;
+      case SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->boundaries);
+        break;
+      case SUBSURF_UV_SMOOTH_ALL:
+        usd_mesh.CreateFaceVaryingLinearInterpolationAttr().Set(pxr::UsdGeomTokens->none);
+        break;
+      default:
+        BLI_assert_msg(0, "Unsupported UV smoothing mode.");
+    }
+
+    /* For reference, see
+     * https://graphics.pixar.com/opensubdiv/docs/subdivision_surfaces.html#boundary-interpolation-rules
+     */
+    switch (subsurfData->boundary_smooth) {
+      case SUBSURF_BOUNDARY_SMOOTH_ALL:
+        usd_mesh.CreateInterpolateBoundaryAttr().Set(pxr::UsdGeomTokens->edgeOnly);
+        break;
+      case SUBSURF_BOUNDARY_SMOOTH_PRESERVE_CORNERS:
+        usd_mesh.CreateInterpolateBoundaryAttr().Set(pxr::UsdGeomTokens->edgeAndCorner);
+        break;
+      default:
+        BLI_assert_msg(0, "Unsupported boundary smoothing mode.");
+    }
   }
 }
 
@@ -548,7 +671,7 @@ static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
    * assignments. */
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_FACE, 0);
+      "material_index", bke::AttrDomain::Face, 0);
   if (!material_indices.is_single() && mesh->totcol > 1) {
     const VArraySpan<int> indices_span(material_indices);
     for (const int i : indices_span.index_range()) {
@@ -570,7 +693,8 @@ static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
 static void get_edge_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const bke::AttributeReader attribute = attributes.lookup<float>("crease_edge", ATTR_DOMAIN_EDGE);
+  const bke::AttributeReader attribute = attributes.lookup<float>("crease_edge",
+                                                                  bke::AttrDomain::Edge);
   if (!attribute) {
     return;
   }
@@ -595,7 +719,7 @@ static void get_vert_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
   const bke::AttributeAccessor attributes = mesh->attributes();
   const bke::AttributeReader attribute = attributes.lookup<float>("crease_vert",
-                                                                  ATTR_DOMAIN_POINT);
+                                                                  bke::AttrDomain::Point);
   if (!attribute) {
     return;
   }
@@ -696,7 +820,7 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
   pxr::UsdTimeCode timecode = get_export_time_code();
 
   pxr::VtVec3fArray loop_normals;
-  loop_normals.resize(mesh->totloop);
+  loop_normals.resize(mesh->corners_num);
 
   MutableSpan dst_normals(reinterpret_cast<float3 *>(loop_normals.data()), loop_normals.size());
 
@@ -732,7 +856,7 @@ void USDGenericMeshWriter::write_surface_velocity(const Mesh *mesh, pxr::UsdGeom
   /* Export velocity attribute output by fluid sim, sequence cache modifier
    * and geometry nodes. */
   CustomDataLayer *velocity_layer = BKE_id_attribute_find(
-      &mesh->id, "velocity", CD_PROP_FLOAT3, ATTR_DOMAIN_POINT);
+      &mesh->id, "velocity", CD_PROP_FLOAT3, bke::AttrDomain::Point);
 
   if (velocity_layer == nullptr) {
     return;
@@ -742,9 +866,9 @@ void USDGenericMeshWriter::write_surface_velocity(const Mesh *mesh, pxr::UsdGeom
 
   /* Export per-vertex velocity vectors. */
   pxr::VtVec3fArray usd_velocities;
-  usd_velocities.reserve(mesh->totvert);
+  usd_velocities.reserve(mesh->verts_num);
 
-  for (int vertex_idx = 0, totvert = mesh->totvert; vertex_idx < totvert; ++vertex_idx) {
+  for (int vertex_idx = 0, totvert = mesh->verts_num; vertex_idx < totvert; ++vertex_idx) {
     usd_velocities.push_back(pxr::GfVec3f(velocities[vertex_idx]));
   }
 

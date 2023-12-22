@@ -22,7 +22,6 @@
 #include "DNA_brush_enums.h"
 #include "DNA_object_enums.h"
 
-#include "BKE_attribute.h"
 #include "BKE_pbvh.hh"
 
 #include "bmesh.hh"
@@ -36,8 +35,20 @@ struct Brush;
 struct CurveMapping;
 struct Depsgraph;
 struct EnumPropertyItem;
-struct ExpandCache;
-struct FilterCache;
+namespace blender {
+namespace bke {
+enum class AttrDomain : int8_t;
+}
+namespace ed::sculpt_paint {
+namespace expand {
+struct Cache;
+}
+namespace filter {
+struct Cache;
+}
+struct StrokeCache;
+}  // namespace ed::sculpt_paint
+}  // namespace blender
 struct GHash;
 struct GridPaintMask;
 struct Image;
@@ -45,7 +56,6 @@ struct ImagePool;
 struct ImageUser;
 struct KeyBlock;
 struct ListBase;
-struct MLoopTri;
 struct Main;
 struct Mesh;
 struct MDeformVert;
@@ -61,7 +71,6 @@ struct Palette;
 struct PaletteColor;
 struct RegionView3D;
 struct Scene;
-struct StrokeCache;
 struct Sculpt;
 struct SculptSession;
 struct SubdivCCG;
@@ -196,7 +205,6 @@ const Brush *BKE_paint_brush_for_read(const Paint *p);
 void BKE_paint_brush_set(Paint *paint, Brush *br);
 Palette *BKE_paint_palette(Paint *paint);
 void BKE_paint_palette_set(Paint *p, Palette *palette);
-void BKE_paint_curve_set(Brush *br, PaintCurve *pc);
 void BKE_paint_curve_clamp_endpoint_add_index(PaintCurve *pc, int add_index);
 
 /**
@@ -381,12 +389,6 @@ struct SculptClothSimulation {
   eSculptClothNodeSimState *node_state;
 };
 
-struct SculptPersistentBase {
-  blender::float3 co;
-  blender::float3 no;
-  float disp;
-};
-
 struct SculptVertexInfo {
   /* Indexed by base mesh vertex index, stores if that vertex is a boundary. */
   blender::BitVector<> boundary;
@@ -495,7 +497,7 @@ struct SculptAttributeParams {
 
 struct SculptAttribute {
   /* Domain, data type and name */
-  eAttrDomain domain;
+  blender::bke::AttrDomain domain;
   eCustomDataType proptype;
   char name[MAX_CUSTOMDATA_LAYER_NAME];
 
@@ -546,7 +548,7 @@ struct SculptAttributePointers {
   SculptAttribute *persistent_disp;
 
   /* Precomputed auto-mask factor indexed by vertex, owned by the auto-masking system and
-   * initialized in #SCULPT_automasking_cache_init when needed. */
+   * initialized in #auto_mask::cache_init when needed. */
   SculptAttribute *automasking_factor;
   SculptAttribute *automasking_occlusion; /* CD_PROP_INT8. */
   SculptAttribute *automasking_stroke_id;
@@ -582,7 +584,7 @@ struct SculptSession {
   MPropCol *vcol;
   MLoopCol *mcol;
 
-  eAttrDomain vcol_domain;
+  blender::bke::AttrDomain vcol_domain;
   eCustomDataType vcol_type;
 
   /* Mesh connectivity maps. */
@@ -607,12 +609,12 @@ struct SculptSession {
    * geometry (the trim tool, for example) to detect which geometry was just added, so it can be
    * assigned a valid Face Set after creation. Tools are not intended to run with Face Sets IDs set
    * to 0. */
-  int *face_sets;
+  const int *face_sets;
   /**
    * A reference to the ".hide_poly" attribute, to store whether (base) faces are hidden.
    * May be null.
    */
-  bool *hide_poly;
+  const bool *hide_poly;
 
   /* BMesh for dynamic topology sculpting */
   BMesh *bm;
@@ -637,9 +639,9 @@ struct SculptSession {
   /* Pool for texture evaluations. */
   ImagePool *tex_pool;
 
-  StrokeCache *cache;
-  FilterCache *filter_cache;
-  ExpandCache *expand_cache;
+  blender::ed::sculpt_paint::StrokeCache *cache;
+  blender::ed::sculpt_paint::filter::Cache *filter_cache;
+  blender::ed::sculpt_paint::expand::Cache *expand_cache;
 
   /* Cursor data and active vertex for tools */
   PBVHVertRef active_vertex;
@@ -764,21 +766,16 @@ int BKE_sculptsession_vertex_count(const SculptSession *ss);
 
 /* Ensure an attribute layer exists. */
 SculptAttribute *BKE_sculpt_attribute_ensure(Object *ob,
-                                             eAttrDomain domain,
+                                             blender::bke::AttrDomain domain,
                                              eCustomDataType proptype,
                                              const char *name,
                                              const SculptAttributeParams *params);
 
 /* Returns nullptr if attribute does not exist. */
 SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
-                                          eAttrDomain domain,
+                                          blender::bke::AttrDomain domain,
                                           eCustomDataType proptype,
                                           const char *name);
-
-bool BKE_sculpt_attribute_exists(Object *ob,
-                                 eAttrDomain domain,
-                                 eCustomDataType proptype,
-                                 const char *name);
 
 bool BKE_sculpt_attribute_destroy(Object *ob, SculptAttribute *attr);
 
@@ -789,27 +786,6 @@ void BKE_sculpt_attribute_destroy_temporary_all(Object *ob);
 void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob);
 
 BLI_INLINE void *BKE_sculpt_vertex_attr_get(const PBVHVertRef vertex, const SculptAttribute *attr)
-{
-  if (attr->data) {
-    char *p = (char *)attr->data;
-    int idx = (int)vertex.i;
-
-    if (attr->data_for_bmesh) {
-      BMElem *v = (BMElem *)vertex.i;
-      idx = v->head.index;
-    }
-
-    return p + attr->elem_size * (int)idx;
-  }
-  else {
-    BMElem *v = (BMElem *)vertex.i;
-    return BM_ELEM_CD_GET_VOID_P(v, attr->bmesh_cd_offset);
-  }
-
-  return NULL;
-}
-
-BLI_INLINE void *BKE_sculpt_face_attr_get(const PBVHFaceRef vertex, const SculptAttribute *attr)
 {
   if (attr->data) {
     char *p = (char *)attr->data;
@@ -848,13 +824,11 @@ void BKE_sculpt_update_object_after_eval(Depsgraph *depsgraph, Object *ob_eval);
  * it's the last modifier on the stack and it is not on the first level.
  */
 MultiresModifierData *BKE_sculpt_multires_active(const Scene *scene, Object *ob);
-int *BKE_sculpt_face_sets_ensure(Object *ob);
 /**
- * Create the attribute used to store face visibility and retrieve its data.
- * Note that changes to the face visibility have to be propagated to other domains
- * (see #SCULPT_visibility_sync_all_from_faces).
+ * Update the pointer to the ".hide_poly" attribute. This is necessary because it is dynamically
+ * created, removed, and made mutable.
  */
-bool *BKE_sculpt_hide_poly_ensure(Mesh *mesh);
+void BKE_sculpt_hide_poly_pointer_update(Object &object);
 
 /**
  * Ensures a mask layer exists. If depsgraph and bmain are non-null,
@@ -874,7 +848,6 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob);
 
 void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg);
 
-void BKE_sculpt_ensure_orig_mesh_data(Scene *scene, Object *object);
 void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
 
 /**
@@ -888,9 +861,7 @@ bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d)
 /**
  * Fills the object's active color attribute layer with the fill color.
  *
- * \param[in] ob: The object.
- * \param[in] fill_color: The fill color.
- * \param[in] only_selected: Limit the fill to selected faces or vertices.
+ * \param only_selected: Limit the fill to selected faces or vertices.
  *
  * \return #true if successful.
  */

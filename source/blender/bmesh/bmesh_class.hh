@@ -329,7 +329,7 @@ typedef struct BMesh {
   int etable_tot;
   int ftable_tot;
 
-  /* operator api stuff (must be all NULL or all alloc'd) */
+  /* Operator API stuff (must be all null or all allocated). */
   struct BLI_mempool *vtoolflagpool, *etoolflagpool, *ftoolflagpool;
 
   uint use_toolflags : 1;
@@ -664,9 +664,5 @@ typedef bool (*BMLoopPairFilterFunc)(const BMLoop *, const BMLoop *, void *user_
 #define BM_LOOP_RADIAL_MAX 10000
 #define BM_NGON_MAX 100000
 
-/* setting zero so we can catch bugs in OpenMP/BMesh */
-#ifdef DEBUG
-#  define BM_OMP_LIMIT 0
-#else
-#  define BM_OMP_LIMIT 10000
-#endif
+/* Minimum number of elements before using threading. */
+#define BM_THREAD_LIMIT 10000
