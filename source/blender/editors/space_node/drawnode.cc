@@ -2136,14 +2136,8 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
 
   const bool field_link = node_link_is_field_link(snode, link);
 
-  if (field_link) {
-    draw_config.dash_factor = 0.75f;
-    draw_config.dash_length = 10.0f * UI_SCALE_FAC;
-  }
-  else {
-    draw_config.dash_factor = 1.0f;
-    draw_config.dash_length = 10.0f * UI_SCALE_FAC;
-  }
+  draw_config.dash_factor = field_link ? 0.75f : 1.0f;
+  draw_config.dash_length = 10.0f * UI_SCALE_FAC;
 
   const float scale = UI_view2d_scale_get_x(&v2d);
   /* Clamp the thickness to make the links more readable when zooming out. */
