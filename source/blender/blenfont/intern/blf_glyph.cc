@@ -1837,9 +1837,9 @@ static FT_GlyphSlot blf_glyphslot_ensure_outline(FontBLF *font, const uint charc
 }
 
 bool blf_character_to_curves(FontBLF *font,
-                              const float scale,
-                              GlyphData *rw_glyph_data,
-                              ListBase *nurbsbase)
+                             const float scale,
+                             GlyphData *rw_glyph_data,
+                             ListBase *nurbsbase)
 
 {
   FT_GlyphSlot glyph = blf_glyphslot_ensure_outline(
