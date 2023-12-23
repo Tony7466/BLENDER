@@ -6833,8 +6833,8 @@ class VIEW3D_PT_gizmo_display(Panel):
         colsub = col.column()
         colsub.prop(view, "show_gizmo_navigate", text="Navigate")
         colsub.prop(view, "show_gizmo_tool", text="Active Tools")
-        colsub.prop(view, "show_gizmo_context", text="Active Object")
         colsub.prop(view, "show_gizmo_modifier", text="Active Modifier")
+        colsub.prop(view, "show_gizmo_context", text="Active Object")
 
         layout.separator()
 
