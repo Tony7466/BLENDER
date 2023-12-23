@@ -304,6 +304,44 @@ Drawing::~Drawing()
   this->runtime = nullptr;
 }
 
+void Drawing::ensure_shape_id_order()
+{
+  bke::CurvesGeometry &curves = this->strokes_for_write();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
+
+  /* If the attribute does not exist then the default is alread in order. */
+  if (!shape_ids) {
+    return;
+  }
+
+  /*
+   *
+   */
+  int current_shape_id = 0;
+  int last_min_shape_id = -1;
+  while (last_min_shape_id != std::numeric_limits<int>::max()) {
+    int current_min_shape_id = std::numeric_limits<int>::max();
+    for (const int i : shape_ids.span.index_range()) {
+      if (shape_ids.span[i] > last_min_shape_id) {
+        current_min_shape_id = std::min(current_min_shape_id, shape_ids.span[i]);
+      }
+    }
+
+    for (const int i : shape_ids.span.index_range()) {
+      if (shape_ids.span[i] == current_min_shape_id) {
+        shape_ids.span[i] = current_shape_id;
+      }
+    }
+
+    last_min_shape_id = current_min_shape_id;
+    current_shape_id++;
+  }
+  shape_ids.finish();
+
+  return;
+}
+
 Array<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
 {
   const CurvesGeometry &curves = this->strokes();
@@ -587,6 +625,7 @@ void Drawing::tag_positions_changed()
 
 void Drawing::tag_topology_changed()
 {
+  this->ensure_shape_id_order();
   this->tag_positions_changed();
 }
 

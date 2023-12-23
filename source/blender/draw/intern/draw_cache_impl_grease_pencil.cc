@@ -523,14 +523,12 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     for (const int group_id : groups.index_range()) {
       const int tris_start_offset = triangles_offsets[group_id];
       const int tris_next_offset = triangles_offsets[group_id + 1];
-
-      if (tris_start_offset == tris_next_offset) {
+      const int tris_length = tris_next_offset - tris_start_offset;
+      if (tris_length == 0) {
         continue;
       }
 
-      const Span<uint3> tris_slice = triangles.slice(tris_start_offset,
-                                                     tris_next_offset - tris_start_offset);
-
+      const Span<uint3> tris_slice = triangles.slice(tris_start_offset, tris_length);
       auto point_to_id = [&](uint32_t p) {
         const int curve_ = point_to_curve_map[p];
         const IndexRange points_ = points_by_curve[curve_];
