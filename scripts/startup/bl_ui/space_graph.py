@@ -144,8 +144,8 @@ class GRAPH_MT_view(Menu):
         layout.prop(st, "show_region_channels")
 
         layout.separator()
-        layout.operator("graph.view_all")
         layout.operator("graph.view_selected")
+        layout.operator("graph.view_all")
         layout.operator("graph.view_frame")
         layout.operator("view2d.zoom_border", text="Zoom")
 

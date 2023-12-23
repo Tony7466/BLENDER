@@ -1332,8 +1332,8 @@ class CLIP_MT_view(Menu):
 
             layout.separator()
 
-            layout.operator("clip.view_all")
             layout.operator("clip.view_selected")
+            layout.operator("clip.view_all")
             layout.operator("clip.view_all", text="View Fit").fit_view = True
             layout.operator("clip.view_center_cursor")
             layout.menu("CLIP_MT_view_zoom")

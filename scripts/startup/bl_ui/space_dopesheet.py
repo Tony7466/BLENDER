@@ -366,8 +366,8 @@ class DOPESHEET_MT_view(Menu):
         layout.prop(st, "show_region_channels")
 
         layout.separator()
-        layout.operator("action.view_all")
         layout.operator("action.view_selected")
+        layout.operator("action.view_all")
         layout.operator("action.view_frame")
         layout.operator("view2d.zoom_border", text="Zoom")
 

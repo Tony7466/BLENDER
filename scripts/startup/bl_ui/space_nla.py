@@ -117,8 +117,8 @@ class NLA_MT_view(Menu):
         layout.prop(st, "show_region_channels")
 
         layout.separator()
-        layout.operator("nla.view_all")
         layout.operator("nla.view_selected")
+        layout.operator("nla.view_all")
         layout.operator("nla.view_frame")
         layout.operator("view2d.zoom_border", text="Zoom")
 
