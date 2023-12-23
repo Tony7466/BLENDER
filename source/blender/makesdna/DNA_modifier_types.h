@@ -2325,6 +2325,31 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
+/**
+ * Maps a name (+ optional library name) to a data-block. The name can be stored on disk and is
+ * remapped to the data-block when the data is loaded.
+ *
+ * At run-time, #BakeDataBlockKey is used to pair up the data-block and library name.
+ */
+typedef struct NodesModifierDataBlockMapItem {
+  /**
+   * Name of the data-block. Can be empty in which case the name of the `id` below is used.
+   * This only needs to be set manually when the name stored on disk does not exist in the .blend
+   * file anymore, because e.g. the ID has been renamed.
+   */
+  char *id_name;
+  /**
+   * Name of the library the ID is in. Can be empty when the ID is not linked or when `id_name` is
+   * empty as well and thus the names from the `id` below are used.
+   */
+  char *lib_name;
+  /** ID that this is mapped to. */
+  struct ID *id;
+  /** Type of ID that is referenced by this mapping. */
+  int id_type;
+  char _pad[4];
+} NodesModifierDataBlockMapItem;
+
 typedef struct NodesModifierBake {
   /** An id that references a nested node in the node tree. Also see #bNestedNodeRef. */
   int id;
@@ -2370,7 +2395,16 @@ typedef struct NodesModifierData {
   char _pad[3];
   int bakes_num;
   NodesModifierBake *bakes;
-  void *_pad2;
+
+  /**
+   * Maps data-block names to actual data-blocks, so that names stored in caches or on disk can be
+   * remapped to actual IDs on load. The mapping also makes sure that IDs referenced by baked data
+   * are not automatically removed because they are not referenced anymore. Furthermore, it allows
+   * the us to add all required IDs to the dependency graph before actually loading the baked data.
+   */
+  int data_block_map_items_num;
+  int active_data_block_map_item;
+  NodesModifierDataBlockMapItem *data_block_map_items;
 
   NodesModifierRuntimeHandle *runtime;
 

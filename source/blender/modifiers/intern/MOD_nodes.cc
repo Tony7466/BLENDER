@@ -265,6 +265,12 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
             settings->user_data, settings->ob, (ID **)&id_prop->data.pointer, IDWALK_CB_USER);
       },
       &settings);
+
+  for (NodesModifierDataBlockMapItem &item :
+       MutableSpan(nmd->data_block_map_items, nmd->data_block_map_items_num))
+  {
+    walk(user_data, ob, &item.id, IDWALK_CB_USER);
+  }
 }
 
 static void foreach_tex_link(ModifierData *md, Object *ob, TexWalkFunc walk, void *user_data)
@@ -2037,6 +2043,17 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
      * and don't necessarily need to be written, but we can't just free them. */
     IDP_BlendWrite(writer, nmd->settings.properties);
 
+    BLO_write_struct_array(writer,
+                           NodesModifierDataBlockMapItem,
+                           nmd->data_block_map_items_num,
+                           nmd->data_block_map_items);
+    for (const NodesModifierDataBlockMapItem &item :
+         Span(nmd->data_block_map_items, nmd->data_block_map_items_num))
+    {
+      BLO_write_string(writer, item.id_name);
+      BLO_write_string(writer, item.lib_name);
+    }
+
     BLO_write_struct_array(writer, NodesModifierBake, nmd->bakes_num, nmd->bakes);
     for (const NodesModifierBake &bake : Span(nmd->bakes, nmd->bakes_num)) {
       BLO_write_string(writer, bake.directory);
@@ -2069,6 +2086,14 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
 
+  BLO_read_data_address(reader, &nmd->data_block_map_items);
+  for (NodesModifierDataBlockMapItem &item :
+       MutableSpan(nmd->data_block_map_items, nmd->data_block_map_items_num))
+  {
+    BLO_read_data_address(reader, &item.id_name);
+    BLO_read_data_address(reader, &item.lib_name);
+  }
+
   BLO_read_data_address(reader, &nmd->bakes);
   for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     BLO_read_data_address(reader, &bake.directory);
@@ -2084,6 +2109,20 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   NodesModifierData *tnmd = reinterpret_cast<NodesModifierData *>(target);
 
   BKE_modifier_copydata_generic(md, target, flag);
+
+  if (nmd->data_block_map_items) {
+    tnmd->data_block_map_items = static_cast<NodesModifierDataBlockMapItem *>(
+        MEM_dupallocN(nmd->data_block_map_items));
+    for (const int i : IndexRange(nmd->data_block_map_items_num)) {
+      NodesModifierDataBlockMapItem &item = tnmd->data_block_map_items[i];
+      if (item.id_name) {
+        item.id_name = BLI_strdup(item.id_name);
+      }
+      if (item.lib_name) {
+        item.lib_name = BLI_strdup(item.lib_name);
+      }
+    }
+  }
 
   if (nmd->bakes) {
     tnmd->bakes = static_cast<NodesModifierBake *>(MEM_dupallocN(nmd->bakes));
@@ -2122,6 +2161,14 @@ static void free_data(ModifierData *md)
     IDP_FreeProperty_ex(nmd->settings.properties, false);
     nmd->settings.properties = nullptr;
   }
+
+  for (NodesModifierDataBlockMapItem &item :
+       MutableSpan(nmd->data_block_map_items, nmd->data_block_map_items_num))
+  {
+    MEM_SAFE_FREE(item.id_name);
+    MEM_SAFE_FREE(item.lib_name);
+  }
+  MEM_SAFE_FREE(nmd->data_block_map_items);
 
   for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     MEM_SAFE_FREE(bake.directory);
