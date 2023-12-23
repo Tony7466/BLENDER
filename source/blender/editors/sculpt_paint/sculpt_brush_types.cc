@@ -956,6 +956,8 @@ static void do_clay_strips_brush_task(Object *ob,
   const bool flip = (ss->cache->bstrength < 0.0f);
   const float bstrength = flip ? -ss->cache->bstrength : ss->cache->bstrength;
 
+  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, &test, brush->falloff_shape);
   SCULPT_brush_test_init(ss, &test);
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no_sp);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
@@ -963,6 +965,10 @@ static void do_clay_strips_brush_task(Object *ob,
   auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+      continue;
+    }
+
     if (!SCULPT_brush_test_cube(&test, vd.co, mat, brush->tip_roundness, brush->tip_scale_x)) {
       continue;
     }
