@@ -129,6 +129,16 @@ class TIME_MT_view(Menu):
 
         layout.separator()
 
+        layout.prop(st.dopesheet, "use_multi_word_filter", text="Multi-Word Match Search")
+
+        layout.separator()
+
+        layout.prop(st, "use_realtime_update")
+        layout.prop(st, "show_sliders")
+        layout.prop(st, "use_auto_merge_keyframes")
+
+        layout.separator()
+
         layout.prop(st, "show_markers")
         layout.prop(st, "show_seconds")
         layout.prop(st, "show_locked_time")

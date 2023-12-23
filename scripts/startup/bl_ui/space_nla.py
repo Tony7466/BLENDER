@@ -121,15 +121,13 @@ class NLA_MT_view(Menu):
         layout.prop(st, "use_realtime_update")
 
         layout.separator()
+        layout.prop(st, "show_markers")
+        layout.prop(st, "show_local_markers")
 
         layout.prop(st, "show_seconds")
         layout.prop(st, "show_locked_time")
 
         layout.prop(st, "show_strip_curves")
-
-        layout.separator()
-        layout.prop(st, "show_markers")
-        layout.prop(st, "show_local_markers")
 
         layout.separator()
         layout.operator("anim.previewrange_set")
