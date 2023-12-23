@@ -556,7 +556,7 @@ void DeferredLayer::end_sync()
         }
       }
       {
-        PassSimple::Sub &sub = pass.sub("Eval");
+        PassSimple::Sub &sub = pass.sub("Eval.Light");
         /* Use depth test to reject background pixels which have not been stencil cleared. */
         /* WORKAROUND: Avoid rasterizer discard by enabling stencil write, but the shaders actually
          * use no fragment output. */
@@ -591,6 +591,24 @@ void DeferredLayer::end_sync()
             sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
           }
         }
+      }
+      if (true) {
+        PassSimple::Sub &sub = pass.sub("Eval.LightProbe");
+        /* Use depth test to reject background pixels which have not been stencil cleared. */
+        /* WORKAROUND: Avoid rasterizer discard by enabling stencil write, but the shaders actually
+         * use no fragment output. */
+        sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
+        sub.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHTPROBE));
+        sub.bind_image("indirect_diffuse_img", &indirect_diffuse_tx_);
+        sub.bind_image("indirect_reflection_img", &indirect_reflect_tx_);
+        sub.bind_image("indirect_refraction_img", &indirect_refract_tx_);
+        inst_.bind_uniform_data(&sub);
+        inst_.gbuffer.bind_resources(sub);
+        inst_.reflection_probes.bind_resources(sub);
+        inst_.irradiance_cache.bind_resources(sub);
+        inst_.sampling.bind_resources(sub);
+        inst_.hiz_buffer.bind_resources(sub);
+        sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
       }
     }
     {
@@ -752,21 +770,41 @@ void DeferredLayer::render(View &main_view,
         (closure_count > 1) ? extent : int2(1), GPU_R11F_G11F_B10F, usage_rw);
   }
 
+  bool use_tracing = false;
+
+  if (!use_tracing) {
+    int indirect_closure_count = count_bits_i(
+        closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_DIFFUSE | CLOSURE_REFRACTION));
+    for (int i = 0; i < ARRAY_SIZE(indirect_radiance_txs_); i++) {
+      indirect_radiance_txs_[i].acquire(
+          (indirect_closure_count > 1) ? extent : int2(1), RAYTRACE_RADIANCE_FORMAT, usage_rw);
+    }
+    int i = 0;
+    indirect_diffuse_tx_ = indirect_radiance_txs_[i++];
+    indirect_reflect_tx_ = indirect_radiance_txs_[i++];
+    indirect_refract_tx_ = indirect_radiance_txs_[i++];
+  }
+
+
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, render_view);
+  GPU_flush();
 
-  RayTraceResult indirect_result = inst_.raytracing.render(rt_buffer,
-                                                           radiance_behind_tx_,
-                                                           radiance_feedback_tx_,
-                                                           radiance_feedback_persmat_,
-                                                           closure_bits_,
-                                                           main_view,
-                                                           render_view,
-                                                           do_screen_space_refraction);
+  RayTraceResult indirect_result;
+  if (use_tracing) {
+    indirect_result = inst_.raytracing.render(rt_buffer,
+                                              radiance_behind_tx_,
+                                              radiance_feedback_tx_,
+                                              radiance_feedback_persmat_,
+                                              closure_bits_,
+                                              main_view,
+                                              render_view,
+                                              do_screen_space_refraction);
 
-  indirect_diffuse_tx_ = indirect_result.diffuse.get();
-  indirect_reflect_tx_ = indirect_result.reflect.get();
-  indirect_refract_tx_ = indirect_result.refract.get();
+    indirect_diffuse_tx_ = indirect_result.diffuse.get();
+    indirect_reflect_tx_ = indirect_result.reflect.get();
+    indirect_refract_tx_ = indirect_result.refract.get();
+  }
 
   inst_.subsurface.render(
       direct_radiance_txs_[0], indirect_diffuse_tx_, closure_bits_, render_view);
@@ -774,7 +812,14 @@ void DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
-  indirect_result.release();
+  if (use_tracing) {
+    indirect_result.release();
+  }
+  else {
+    for (int i = 0; i < ARRAY_SIZE(indirect_radiance_txs_); i++) {
+      indirect_radiance_txs_[i].release();
+    }
+  }
 
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
     direct_radiance_txs_[i].release();

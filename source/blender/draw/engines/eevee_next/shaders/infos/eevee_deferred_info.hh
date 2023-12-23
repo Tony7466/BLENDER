@@ -91,6 +91,24 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light_triple)
     .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .do_static_compilation(true);
 
+GPU_SHADER_CREATE_INFO(eevee_deferred_lightprobe)
+    .do_static_compilation(true)
+    .fragment_source("eevee_deferred_lightprobe_frag.glsl")
+    /* Early fragment test is needed to avoid processing background fragments. */
+    .early_fragment_test(true)
+    /* Chaining to next pass. */
+    .image_out(2, RAYTRACE_RADIANCE_FORMAT, "indirect_diffuse_img")
+    .image_out(3, RAYTRACE_RADIANCE_FORMAT, "indirect_reflection_img")
+    .image_out(4, RAYTRACE_RADIANCE_FORMAT, "indirect_refraction_img")
+    .additional_info("eevee_shared",
+                     "eevee_gbuffer_data",
+                     "eevee_sampling_data",
+                     "eevee_lightprobe_data",
+                     "eevee_hiz_data",
+                     "eevee_render_pass_out",
+                     "draw_fullscreen",
+                     "draw_view");
+
 GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     /* Early fragment test is needed to avoid processing fragments background fragments. */
     .early_fragment_test(true)
