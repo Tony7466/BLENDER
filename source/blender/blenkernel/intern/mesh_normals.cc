@@ -17,9 +17,6 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BLI_array_utils.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_linklist.h"
@@ -215,7 +212,7 @@ blender::bke::MeshNormalDomain Mesh::normals_domain() const
 
   const AttributeAccessor attributes = this->attributes();
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
-      "sharp_face", ATTR_DOMAIN_FACE, false);
+      "sharp_face", AttrDomain::Face, false);
 
   const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
   if (face_mix == array_utils::BooleanMix::AllTrue) {
@@ -223,7 +220,7 @@ blender::bke::MeshNormalDomain Mesh::normals_domain() const
   }
 
   const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
-      "sharp_edge", ATTR_DOMAIN_EDGE, false);
+      "sharp_edge", AttrDomain::Edge, false);
   const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
   if (edge_mix == array_utils::BooleanMix::AllTrue) {
     return MeshNormalDomain::Face;
@@ -292,8 +289,8 @@ blender::Span<blender::float3> Mesh::corner_normals() const
       }
       case MeshNormalDomain::Corner: {
         const AttributeAccessor attributes = this->attributes();
-        const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", ATTR_DOMAIN_EDGE);
-        const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+        const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", AttrDomain::Edge);
+        const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
         const short2 *custom_normals = static_cast<const short2 *>(
             CustomData_get_layer(&this->corner_data, CD_CUSTOMLOOPNORMAL));
         mesh::normals_calc_loop(this->vert_positions(),
@@ -659,12 +656,11 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> faces,
                                  const Span<float3> face_normals,
                                  const Span<bool> sharp_faces,
                                  const Span<bool> sharp_edges,
-                                 const bool check_angle,
                                  const float split_angle,
                                  MutableSpan<int2> edge_to_loops,
                                  MutableSpan<bool> r_sharp_edges)
 {
-  const float split_angle_cos = check_angle ? cosf(split_angle) : -1.0f;
+  const float split_angle_cos = cosf(split_angle);
   auto face_is_smooth = [&](const int face_i) {
     return sharp_faces.is_empty() || !sharp_faces[face_i];
   };
@@ -684,9 +680,8 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> faces,
         e2l[1] = face_is_smooth(face_i) ? INDEX_UNSET : INDEX_INVALID;
       }
       else if (e2l[1] == INDEX_UNSET) {
-        const bool is_angle_sharp = (check_angle &&
-                                     math::dot(face_normals[loop_to_face_map[e2l[0]]],
-                                               face_normals[face_i]) < split_angle_cos);
+        const bool is_angle_sharp = math::dot(face_normals[loop_to_face_map[e2l[0]]],
+                                              face_normals[face_i]) < split_angle_cos;
 
         /* Second loop using this edge, time to test its sharpness.
          * An edge is sharp if it is tagged as such, or its face is not smooth,
@@ -799,7 +794,6 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> faces,
                        face_normals,
                        sharp_faces,
                        sharp_edges,
-                       true,
                        split_angle,
                        edge_to_loops,
                        sharp_edges);
@@ -1558,8 +1552,8 @@ static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const
   }
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
-      "sharp_edge", ATTR_DOMAIN_EDGE);
-  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+      "sharp_edge", AttrDomain::Edge);
+  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
 
   mesh_normals_loop_custom_set(mesh->vert_positions(),
                                mesh->edges(),

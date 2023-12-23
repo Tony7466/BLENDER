@@ -15,8 +15,10 @@
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_struct_equality_utils.hh"
+#include "BLI_virtual_array.hh"
 
-#include "BKE_attribute.hh"
+#include "DNA_customdata_types.h"
+
 #include "BKE_ccg.h"
 
 struct GPUBatch;
@@ -26,6 +28,9 @@ struct CustomData;
 struct SubdivCCG;
 struct BMesh;
 struct BMFace;
+namespace blender::bke {
+enum class AttrDomain : int8_t;
+}
 
 namespace blender::draw::pbvh {
 
@@ -33,8 +38,8 @@ class GenericRequest {
  public:
   std::string name;
   eCustomDataType type;
-  eAttrDomain domain;
-  GenericRequest(const StringRef name, const eCustomDataType type, const eAttrDomain domain)
+  bke::AttrDomain domain;
+  GenericRequest(const StringRef name, const eCustomDataType type, const bke::AttrDomain domain)
       : name(name), type(type), domain(domain)
   {
   }

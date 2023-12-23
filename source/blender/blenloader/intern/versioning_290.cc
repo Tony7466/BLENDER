@@ -47,9 +47,9 @@
 
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_collection.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_cryptomatte.h"
 #include "BKE_curve.hh"
 #include "BKE_fcurve.h"

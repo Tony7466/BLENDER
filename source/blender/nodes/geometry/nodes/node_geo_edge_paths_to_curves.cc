@@ -281,7 +281,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    const bke::MeshFieldContext context{*mesh, ATTR_DOMAIN_POINT};
+    const bke::MeshFieldContext context{*mesh, AttrDomain::Point};
     fn::FieldEvaluator evaluator{context, mesh->verts_num};
     Array<int> next_vert(mesh->verts_num);
     evaluator.add_with_destination(params.get_input<Field<int>>("Next Vertex Index"),

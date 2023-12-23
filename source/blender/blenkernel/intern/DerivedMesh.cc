@@ -34,7 +34,6 @@
 
 #include "BKE_DerivedMesh.hh"
 #include "BKE_bvhutils.hh"
-#include "BKE_colorband.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
@@ -537,13 +536,13 @@ static void set_rest_position(Mesh &mesh)
   if (positions) {
     if (positions.sharing_info && positions.varray.is_span()) {
       attributes.add<float3>("rest_position",
-                             ATTR_DOMAIN_POINT,
+                             AttrDomain::Point,
                              AttributeInitShared(positions.varray.get_internal_span().data(),
                                                  *positions.sharing_info));
     }
     else {
       attributes.add<float3>(
-          "rest_position", ATTR_DOMAIN_POINT, AttributeInitVArray(positions.varray));
+          "rest_position", AttrDomain::Point, AttributeInitVArray(positions.varray));
     }
   }
 }
