@@ -44,6 +44,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
+    EXPECT_EQ(g_data_packed.layer_data, 1);
     EXPECT_EQ(data_out.closure_count, 1);
     EXPECT_TRUE(data_out.has_any_surface);
     EXPECT_TRUE(data_out.has_diffuse);
@@ -65,6 +66,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
+    EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
     EXPECT_TRUE(data_out.has_any_surface);
     EXPECT_TRUE(data_out.has_diffuse);
@@ -87,6 +89,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
+    EXPECT_EQ(g_data_packed.layer_data, 1);
     EXPECT_EQ(data_out.closure_count, 1);
     EXPECT_TRUE(data_out.has_any_surface);
     EXPECT_TRUE(data_out.has_translucent);
@@ -108,6 +111,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
+    EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
     EXPECT_TRUE(data_out.has_any_surface);
     EXPECT_TRUE(data_out.has_reflection);
@@ -131,6 +135,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
+    EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
     EXPECT_TRUE(data_out.has_any_surface);
     EXPECT_TRUE(data_out.has_refraction);
@@ -140,5 +145,83 @@ void main()
     EXPECT_NEAR(data_in.refraction.N, data_out.data.refraction.N, 1e-5);
     EXPECT_NEAR(data_in.refraction.data.r, data_out.data.refraction.roughness, 1e-5);
     EXPECT_NEAR(data_in.refraction.data.g, data_out.data.refraction.ior, 1e-5);
+  }
+
+  TEST(eevee_gbuffer, ClosureCombination)
+  {
+    data_in = gbuffer_new();
+    data_in.refraction.type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
+    data_in.refraction.weight = 1.0;
+    data_in.refraction.color = vec3(0.1, 0.2, 0.3);
+    data_in.refraction.data.x = 0.4;
+    data_in.refraction.data.y = 0.5;
+    data_in.refraction.N = normalize(vec3(0.2, 0.1, 0.3));
+
+    data_in.reflection.type = CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID;
+    data_in.reflection.weight = 1.0;
+    data_in.reflection.color = vec3(0.1, 0.2, 0.3);
+    data_in.reflection.data.x = 0.4;
+    data_in.reflection.N = normalize(vec3(0.2, 0.3, 0.4));
+
+    g_data_packed = gbuffer_pack(data_in);
+
+    EXPECT_EQ(g_data_packed.layer_data, 4);
+
+    data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
+
+    EXPECT_EQ(data_out.closure_count, 2);
+    EXPECT_TRUE(data_out.has_any_surface);
+    EXPECT_TRUE(data_out.has_refraction);
+    EXPECT_TRUE(data_out.has_reflection);
+
+    EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
+    EXPECT_NEAR(data_in.refraction.color, data_out.data.refraction.color, 1e-5);
+    EXPECT_NEAR(data_in.refraction.N, data_out.data.refraction.N, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.r, data_out.data.refraction.roughness, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.g, data_out.data.refraction.ior, 1e-5);
+
+    EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
+    EXPECT_NEAR(data_in.reflection.color, data_out.data.reflection.color, 1e-5);
+    EXPECT_NEAR(data_in.reflection.N, data_out.data.reflection.N, 1e-5);
+    EXPECT_NEAR(data_in.reflection.data.r, data_out.data.reflection.roughness, 1e-5);
+  }
+
+  TEST(eevee_gbuffer, ClosureColorless)
+  {
+    data_in = gbuffer_new();
+    data_in.refraction.type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
+    data_in.refraction.weight = 1.0;
+    data_in.refraction.color = vec3(0.1, 0.1, 0.1);
+    data_in.refraction.data.x = 0.4;
+    data_in.refraction.data.y = 0.5;
+    data_in.refraction.N = normalize(vec3(0.2, 0.1, 0.3));
+
+    data_in.reflection.type = CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID;
+    data_in.reflection.weight = 1.0;
+    data_in.reflection.color = vec3(0.1, 0.1, 0.1);
+    data_in.reflection.data.x = 0.4;
+    data_in.reflection.N = normalize(vec3(0.2, 0.3, 0.4));
+
+    g_data_packed = gbuffer_pack(data_in);
+
+    EXPECT_EQ(g_data_packed.layer_data, 2);
+
+    data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
+
+    EXPECT_EQ(data_out.closure_count, 2);
+    EXPECT_TRUE(data_out.has_any_surface);
+    EXPECT_TRUE(data_out.has_refraction);
+    EXPECT_TRUE(data_out.has_reflection);
+
+    EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
+    EXPECT_NEAR(data_in.refraction.color, data_out.data.refraction.color, 1e-5);
+    EXPECT_NEAR(data_in.refraction.N, data_out.data.refraction.N, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.r, data_out.data.refraction.roughness, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.g, data_out.data.refraction.ior, 1e-5);
+
+    EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
+    EXPECT_NEAR(data_in.reflection.color, data_out.data.reflection.color, 1e-5);
+    EXPECT_NEAR(data_in.reflection.N, data_out.data.reflection.N, 1e-5);
+    EXPECT_NEAR(data_in.reflection.data.r, data_out.data.reflection.roughness, 1e-5);
   }
 }
