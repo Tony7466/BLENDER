@@ -516,6 +516,7 @@ static void rna_def_node_socket(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "pin_gizmo", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SOCK_GIZMO_PIN);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
       prop, "Pin Gizmo", "Keep gizmo visible even when the node is not selected");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, nullptr);
