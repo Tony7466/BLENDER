@@ -1878,7 +1878,7 @@ static void draw_property_for_output_socket(const bContext &C,
   add_attribute_search_button(C, row, nmd, md_ptr, rna_path_attribute_name, socket, true);
 }
 
-static NodesModifierPanel *find_panel_by_id(const NodesModifierData &nmd, const int id)
+static NodesModifierPanel *find_panel_by_id(NodesModifierData &nmd, const int id)
 {
   for (const int i : IndexRange(nmd.panels_num)) {
     if (nmd.panels[i].id == id) {
