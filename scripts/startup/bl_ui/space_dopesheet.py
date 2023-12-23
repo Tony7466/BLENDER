@@ -363,6 +363,7 @@ class DOPESHEET_MT_view(Menu):
 
         layout.prop(st, "show_region_ui")
         layout.prop(st, "show_region_hud")
+        layout.prop(st, "show_region_channels")
 
         layout.separator()
 
@@ -383,8 +384,6 @@ class DOPESHEET_MT_view(Menu):
 
         layout.separator()
         layout.prop(st, "show_markers")
-
-        layout.separator()
         layout.prop(st, "show_seconds")
         layout.prop(st, "show_locked_time")
 

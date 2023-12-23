@@ -123,17 +123,27 @@ class TIME_MT_view(Menu):
         scene = context.scene
         st = context.space_data
 
-        layout.menu("INFO_MT_area")
+        layout.prop(st, "show_region_ui")
+        layout.prop(st, "show_region_hud")
+        layout.prop(st, "show_region_channels")
 
         layout.separator()
 
+        layout.prop(st, "show_markers")
+        layout.prop(st, "show_seconds")
+        layout.prop(st, "show_locked_time")
+
+        layout.separator()
+        layout.operator("anim.previewrange_set")
+        layout.operator("anim.previewrange_clear")
         # NOTE: "action" now, since timeline is in the dopesheet editor, instead of as own editor
-        layout.operator("action.view_frame")
-        layout.operator("action.view_all")
+        layout.operator("action.previewrange_set")
 
         layout.separator()
-
-        layout.menu("TIME_MT_cache")
+        layout.operator("action.view_all")
+        layout.operator("action.view_selected")
+        layout.operator("action.view_frame")
+        layout.operator("view2d.zoom_border", text="Zoom")
 
         layout.separator()
 
@@ -142,16 +152,17 @@ class TIME_MT_view(Menu):
 
         layout.separator()
 
-        layout.prop(st, "show_markers")
+        layout.menu("TIME_MT_cache")
+
+        layout.separator()
+        props = layout.operator("wm.context_set_enum", text="Toggle Graph Editor", icon='GRAPH')
+        props.data_path = "area.type"
+        props.value = 'GRAPH_EDITOR'
 
         layout.separator()
 
-        layout.prop(st, "show_locked_time")
-        layout.prop(st, "show_seconds")
-
-        layout.separator()
-
-        layout.prop(st, "show_region_hud")
+        layout.menu("INFO_MT_area")
+        
 
 
 class TIME_MT_cache(Menu):

@@ -1326,14 +1326,14 @@ class CLIP_MT_view(Menu):
         sc = context.space_data
 
         if sc.view == 'CLIP':
-            layout.prop(sc, "show_region_ui")
             layout.prop(sc, "show_region_toolbar")
+            layout.prop(sc, "show_region_ui")
             layout.prop(sc, "show_region_hud")
 
             layout.separator()
 
-            layout.operator("clip.view_selected")
             layout.operator("clip.view_all")
+            layout.operator("clip.view_selected")
             layout.operator("clip.view_all", text="View Fit").fit_view = True
             layout.operator("clip.view_center_cursor")
 
@@ -1350,14 +1350,15 @@ class CLIP_MT_view(Menu):
 
             layout.menu("CLIP_MT_view_zoom")
         else:
-            if sc.view == 'GRAPH':
-                layout.operator_context = 'INVOKE_REGION_PREVIEW'
-                layout.operator("clip.graph_center_current_frame")
-                layout.operator("clip.graph_view_all")
-                layout.operator_context = 'INVOKE_DEFAULT'
-
             layout.prop(sc, "show_seconds")
             layout.prop(sc, "show_locked_time")
+
+            if sc.view == 'GRAPH':
+                layout.separator()
+                layout.operator_context = 'INVOKE_REGION_PREVIEW'
+                layout.operator("clip.graph_view_all")
+                layout.operator("clip.graph_center_current_frame")
+                layout.operator_context = 'INVOKE_DEFAULT'
 
         layout.separator()
 

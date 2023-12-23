@@ -411,9 +411,9 @@ class SEQUENCER_MT_view(Menu):
             # mode, else the lookup for the shortcut will fail in
             # wm_keymap_item_find_props() (see #32595).
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
+        layout.prop(st, "show_region_toolbar")
         layout.prop(st, "show_region_ui")
         layout.prop(st, "show_region_tool_header")
-        layout.prop(st, "show_region_toolbar")
         layout.operator_context = 'INVOKE_DEFAULT'
 
         if is_sequencer_view:
@@ -428,7 +428,24 @@ class SEQUENCER_MT_view(Menu):
             layout.prop(st, "show_transform_preview", text="Preview During Transform")
 
         layout.separator()
+        layout.operator_context = 'INVOKE_REGION_WIN'
+        layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="Refresh All")
+        layout.operator_context = 'INVOKE_DEFAULT'
 
+        if is_sequencer_view:
+            layout.separator()
+            layout.prop(st, "show_markers")
+            layout.prop(st, "show_seconds")
+            layout.prop(st, "show_locked_time")
+            if context.preferences.view.show_developer_ui:
+                layout.menu("SEQUENCER_MT_view_cache", text="Show Cache")
+
+            layout.separator()
+            layout.operator_context = 'INVOKE_DEFAULT'
+            layout.menu("SEQUENCER_MT_navigation")
+            layout.menu("SEQUENCER_MT_range")
+
+        layout.separator()
         layout.operator_context = 'INVOKE_REGION_WIN'
         if st.view_type == 'PREVIEW':
             # See above (#32595)
@@ -444,8 +461,6 @@ class SEQUENCER_MT_view(Menu):
 
         if is_preview:
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
-            layout.separator()
-
             layout.operator("sequencer.view_all_preview", text="Fit Preview in Window")
 
             if is_sequencer_view:
@@ -465,27 +480,6 @@ class SEQUENCER_MT_view(Menu):
             layout.menu("SEQUENCER_MT_proxy")
 
             layout.operator_context = 'INVOKE_DEFAULT'
-
-        layout.separator()
-        layout.operator_context = 'INVOKE_REGION_WIN'
-        layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="Refresh All")
-        layout.operator_context = 'INVOKE_DEFAULT'
-
-        if is_sequencer_view:
-            layout.separator()
-
-            layout.operator_context = 'INVOKE_DEFAULT'
-            layout.menu("SEQUENCER_MT_navigation")
-            layout.menu("SEQUENCER_MT_range")
-
-            layout.separator()
-            layout.prop(st, "show_locked_time")
-
-            layout.separator()
-            layout.prop(st, "show_seconds")
-            layout.prop(st, "show_markers")
-            if context.preferences.view.show_developer_ui:
-                layout.menu("SEQUENCER_MT_view_cache", text="Show Cache")
 
         layout.separator()
 
