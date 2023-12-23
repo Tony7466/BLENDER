@@ -18,6 +18,7 @@
 #include "BKE_collection.h"
 #include "BKE_context.hh"
 #include "BKE_file_handler.hh"
+#include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.hh"
@@ -443,9 +444,8 @@ static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
   IOHandlerData *data = MEM_cnew<IOHandlerData>("IOHandlerData");
   STRNCPY(data->fh_idname, fh->idname);
 
-  WM_operator_properties_alloc(&data->export_ptr, &data->export_properties, fh->export_operator);
-  WM_operator_properties_sanitize(data->export_ptr, true);
-  data->export_ptr->owner_id = nullptr;
+  IDPropertyTemplate val{};
+  data->export_properties = IDP_New(IDP_GROUP, &val, "wmOpItemProp");
 
   BLI_addtail(io_handlers, data);
 
@@ -483,11 +483,15 @@ static int collection_debug_io_exec(bContext *C, wmOperator * /*op*/)
       continue;
     }
 
+    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+    if (!ot) {
+      continue;
+    }
     printf("DEBUG: Invoking %s\n", fh->export_operator);
 
     /* Invoke operator with the properties stored on the Collection. */
-    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
-    WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, data->export_ptr, nullptr);
+    PointerRNA ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+    WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &ptr, nullptr);
 
     /* TODO: Should we continue calling operators if one fails? */
     /* TODO: What's the best way to surface the problem? Reports? */

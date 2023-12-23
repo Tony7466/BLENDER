@@ -71,7 +71,6 @@ typedef struct IOHandlerData {
   char fh_idname[64];
 
   IDProperty *export_properties;
-  struct PointerRNA *export_ptr;
 } IOHandlerData;
 
 /* Light linking state of object or collection: defines how they react to the emitters in the

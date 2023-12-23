@@ -2363,18 +2363,18 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       continue;
     }
 
-    if (!data->export_ptr) {
-      data->export_ptr = MEM_cnew<PointerRNA>("wmOpItemPtr");
-      WM_operator_properties_create(data->export_ptr, fh->export_operator);
-      data->export_ptr->data = data->export_properties;
+    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+    if (!ot) {
+      continue;
     }
 
+    PointerRNA ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+
     /* TEMP: Just draw the properties like the KeyMap editor for debugging. */
-    PointerRNA *ptr = data->export_ptr;
     uiLayout *flow = uiLayoutColumnFlow(layout, 2, false);
 
-    RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (ptr, prop) {
-      const bool is_set = RNA_property_is_set(ptr, prop);
+    RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (&ptr, prop) {
+      const bool is_set = RNA_property_is_set(&ptr, prop);
       uiBut *but;
 
       /* TEMP: Just filter out some extra stuff for better debug layout. */
@@ -2394,7 +2394,7 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       uiLayout *row = uiLayoutRow(box, false);
 
       /* property value */
-      uiItemFullR(row, ptr, prop, -1, 0, UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemFullR(row, &ptr, prop, -1, 0, UI_ITEM_NONE, nullptr, ICON_NONE);
 
       if (is_set) {
         /* unset operator */
@@ -2410,7 +2410,7 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
                             UI_UNIT_X,
                             UI_UNIT_Y,
                             nullptr);
-        but->rnapoin = *ptr;
+        but->rnapoin = ptr;
         but->rnaprop = prop;
         UI_block_emboss_set(block, UI_EMBOSS);
       }

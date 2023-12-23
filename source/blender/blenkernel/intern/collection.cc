@@ -162,10 +162,6 @@ static void io_handler_item_free(IOHandlerData *data)
     IDP_FreeProperty(data->export_properties);
     data->export_properties = nullptr;
   }
-  if (data->export_ptr) {
-    MEM_freeN(data->export_ptr);
-    data->export_ptr = nullptr;
-  }
 }
 
 static void collection_free_data(ID *id)
@@ -335,7 +331,6 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
 
   BLO_read_list(reader, &collection->io_handlers);
   LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
-    data->export_ptr = nullptr;
     BLO_read_data_address(reader, &data->export_properties);
     IDP_BlendDataRead(reader, &data->export_properties);
   }
