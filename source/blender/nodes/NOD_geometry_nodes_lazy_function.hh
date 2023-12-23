@@ -212,6 +212,8 @@ struct GeoNodesCallData {
    */
   GeoNodesOperatorData *operator_data = nullptr;
 
+  bke::bake::BakeDataBlockMap *bake_data_block_map = nullptr;
+
   /**
    * Self object has slightly different semantics depending on how geometry nodes is called.
    * Therefor, it is not stored directly in the global data.

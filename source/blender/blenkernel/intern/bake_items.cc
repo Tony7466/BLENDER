@@ -33,8 +33,10 @@ static void remove_materials(Material ***materials, short *materials_num)
   *materials_num = 0;
 }
 
-void GeometryBakeItem::cleanup_geometry(GeometrySet &main_geometry)
+void GeometryBakeItem::prepare_geometry_for_bake(GeometrySet &main_geometry,
+                                                 BakeDataBlockMap *data_block_map)
 {
+  UNUSED_VARS(data_block_map);
   main_geometry.ensure_owns_all_data();
   main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {

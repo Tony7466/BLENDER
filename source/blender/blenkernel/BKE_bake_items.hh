@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BKE_bake_data_block_map.hh"
 #include "BKE_geometry_set.hh"
 
 namespace blender::bke::bake {
@@ -45,10 +46,8 @@ class GeometryBakeItem : public BakeItem {
    * Removes parts of the geometry that can't be stored in the simulation state:
    * - Anonymous attributes can't be stored because it is not known which of them will or will not
    * be used in the future.
-   * - Materials can't be stored directly, because they are linked ID data blocks that can't be
-   *   restored from baked data currently.
    */
-  static void cleanup_geometry(GeometrySet &geometry);
+  static void prepare_geometry_for_bake(GeometrySet &geometry, BakeDataBlockMap *data_block_map);
 };
 
 /**

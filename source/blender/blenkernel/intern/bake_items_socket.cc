@@ -21,7 +21,8 @@ static const CPPType &get_socket_cpp_type(const eNodeSocketDatatype socket_type)
 }
 
 Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<void *> socket_values,
-                                                                  const BakeSocketConfig &config)
+                                                                  const BakeSocketConfig &config,
+                                                                  BakeDataBlockMap *data_block_map)
 {
   BLI_assert(socket_values.size() == config.types.size());
   BLI_assert(socket_values.size() == config.geometries_by_attribute.size());
@@ -108,7 +109,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       continue;
     }
     GeometrySet &geometry = static_cast<GeometryBakeItem *>(bake_items[i].get())->geometry;
-    GeometryBakeItem::cleanup_geometry(geometry);
+    GeometryBakeItem::prepare_geometry_for_bake(geometry, data_block_map);
   }
 
   return bake_items;
@@ -203,10 +204,12 @@ static void rename_attributes(const Span<GeometrySet *> geometries,
 void move_bake_items_to_socket_values(
     const Span<BakeItem *> bake_items,
     const BakeSocketConfig &config,
+    BakeDataBlockMap *data_block_map,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
     const Span<void *> r_socket_values)
 {
+  UNUSED_VARS(data_block_map);
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;
 
   Vector<GeometrySet *> geometries;
@@ -243,10 +246,12 @@ void move_bake_items_to_socket_values(
 void copy_bake_items_to_socket_values(
     const Span<const BakeItem *> bake_items,
     const BakeSocketConfig &config,
+    BakeDataBlockMap *data_block_map,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
     const Span<void *> r_socket_values)
 {
+  UNUSED_VARS(data_block_map);
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;
   Vector<GeometrySet *> geometries;
 
