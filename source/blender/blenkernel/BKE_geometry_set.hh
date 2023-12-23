@@ -11,13 +11,10 @@
 #include <iosfwd>
 #include <mutex>
 
-#include "BLI_compute_context.hh"
-
 #include "BLI_bounds_types.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_implicit_sharing_ptr.hh"
 #include "BLI_map.hh"
-#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 
 /* For #Map. */
@@ -42,6 +39,7 @@ class GeometryComponent;
 class GreasePencilEditHints;
 class MutableAttributeAccessor;
 enum class AttrDomain : int8_t;
+struct GizmosEditHints;
 }  // namespace blender::bke
 
 namespace blender::bke {
@@ -672,18 +670,6 @@ class VolumeComponent : public GeometryComponent {
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 };
 
-struct GeoNodesGizmoID {
-  ComputeContextHash compute_context_hash;
-  int node_id;
-
-  BLI_STRUCT_EQUALITY_OPERATORS_2(GeoNodesGizmoID, compute_context_hash, node_id)
-
-  uint64_t hash() const
-  {
-    return get_default_hash_2(this->compute_context_hash, this->node_id);
-  }
-};
-
 /**
  * When the original data is in some edit mode, we want to propagate some additional information
  * through object evaluation. This information can be used by edit modes to support working on
@@ -704,7 +690,10 @@ class GeometryComponentEditData final : public GeometryComponent {
    * Information about how drawings on the grease pencil layers are manipulated during evaluation.
    */
   std::unique_ptr<GreasePencilEditHints> grease_pencil_edit_hints_;
-  Map<GeoNodesGizmoID, float4x4> gizmo_transforms_;
+  /**
+   * Propagated information for how gizmos should be transformed along with the geometry.
+   */
+  std::unique_ptr<GizmosEditHints> gizmos_edit_hints_;
 
   GeometryComponentEditData();
 

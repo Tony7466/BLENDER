@@ -18,6 +18,7 @@
 #include "BKE_collection.h"
 #include "BKE_curves.hh"
 #include "BKE_deform.h"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
 #include "BKE_material.h"
@@ -649,7 +650,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       case bke::GeometryComponent::Type::Edit: {
         const auto *edit_component = static_cast<const bke::GeometryComponentEditData *>(
             component);
-        if (!edit_component->gizmo_transforms_.is_empty() || edit_component->curves_edit_hints_) {
+        if (edit_component->gizmos_edit_hints_ || edit_component->curves_edit_hints_) {
           gather_info.r_tasks.edit_data_tasks.append({edit_component, base_transform});
         }
         break;
@@ -1570,8 +1571,14 @@ static void execute_realize_edit_data_tasks(const Span<RealizeEditDataTask> task
             *task.edit_data->curves_edit_hints_);
       }
     }
-    for (auto item : task.edit_data->gizmo_transforms_.items()) {
-      component.gizmo_transforms_.add(item.key, task.transform * item.value);
+    if (const bke::GizmosEditHints *src_gizmo_edit_hints =
+            task.edit_data->gizmos_edit_hints_.get()) {
+      if (!component.gizmos_edit_hints_) {
+        component.gizmos_edit_hints_ = std::make_unique<bke::GizmosEditHints>();
+      }
+      for (auto item : src_gizmo_edit_hints->gizmo_transforms.items()) {
+        component.gizmos_edit_hints_->gizmo_transforms.add(item.key, task.transform * item.value);
+      }
     }
   }
 }

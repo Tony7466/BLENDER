@@ -16,6 +16,7 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_curves.hh"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
@@ -252,8 +253,10 @@ static void translate_geometry_set(GeoNodeExecParams &params,
   }
   if (geometry.get_component<GeometryComponentEditData>()) {
     auto &component = geometry.get_component_for_write<GeometryComponentEditData>();
-    for (float4x4 &m : component.gizmo_transforms_.values()) {
-      m.location() += translation;
+    if (bke::GizmosEditHints *gizmo_edit_hints = component.gizmos_edit_hints_.get()) {
+      for (float4x4 &m : gizmo_edit_hints->gizmo_transforms.values()) {
+        m.location() += translation;
+      }
     }
   }
 }
@@ -286,8 +289,10 @@ void transform_geometry_set(GeoNodeExecParams &params,
   }
   if (geometry.get_component<GeometryComponentEditData>()) {
     auto &component = geometry.get_component_for_write<GeometryComponentEditData>();
-    for (float4x4 &m : component.gizmo_transforms_.values()) {
-      m = transform * m;
+    if (bke::GizmosEditHints *gizmo_edit_hints = component.gizmos_edit_hints_.get()) {
+      for (float4x4 &m : gizmo_edit_hints->gizmo_transforms.values()) {
+        m = transform * m;
+      }
     }
   }
 }

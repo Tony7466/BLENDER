@@ -16,6 +16,7 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.hh"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_idprop.hh"
@@ -450,8 +451,12 @@ static const float4x4 *find_direct_gizmo_transform(const bke::GeometrySet &geome
                                                    const bke::GeoNodesGizmoID &gizmo_id)
 {
   if (const auto *edit_data_component = geometry.get_component<bke::GeometryComponentEditData>()) {
-    if (const float4x4 *m = edit_data_component->gizmo_transforms_.lookup_ptr(gizmo_id)) {
-      return m;
+    if (edit_data_component->gizmos_edit_hints_) {
+      if (const float4x4 *m = edit_data_component->gizmos_edit_hints_->gizmo_transforms.lookup_ptr(
+              gizmo_id))
+      {
+        return m;
+      }
     }
   }
   return nullptr;

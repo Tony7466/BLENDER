@@ -7,6 +7,7 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_viewer_path.hh"
@@ -122,12 +123,13 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
           info.has_deform_matrices = curve_edit_hints->deform_mats.has_value();
           info.has_deformed_positions = curve_edit_hints->positions.has_value();
         }
-        if (!edit_component.gizmo_transforms_.is_empty()) {
+        if (const bke::GizmosEditHints *gizmo_edit_hints = edit_component.gizmos_edit_hints_.get())
+        {
           if (!this->edit_data_info) {
             this->edit_data_info.emplace();
           }
           EditDataInfo &info = this->edit_data_info.emplace();
-          info.gizmo_transforms_num = edit_component.gizmo_transforms_.size();
+          info.gizmo_transforms_num = gizmo_edit_hints->gizmo_transforms.size();
         }
         break;
       }

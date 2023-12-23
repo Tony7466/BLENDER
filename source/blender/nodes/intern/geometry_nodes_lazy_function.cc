@@ -38,6 +38,7 @@
 #include "DNA_ID.h"
 
 #include "BKE_compute_contexts.hh"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
@@ -916,8 +917,9 @@ class LazyFunctionForGizmoNode : public LazyFunction {
       GeometrySet geometry;
       GeometryComponentEditData &edit_data =
           geometry.get_component_for_write<GeometryComponentEditData>();
-      edit_data.gizmo_transforms_.add({user_data.compute_context->hash(), bnode_.identifier},
-                                      float4x4::identity());
+      edit_data.gizmos_edit_hints_ = std::make_unique<bke::GizmosEditHints>();
+      edit_data.gizmos_edit_hints_->gizmo_transforms.add(
+          {user_data.compute_context->hash(), bnode_.identifier}, float4x4::identity());
       params.set_output(0, std::move(geometry));
     }
 
