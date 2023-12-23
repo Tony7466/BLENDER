@@ -1900,8 +1900,7 @@ static void draw_interface_panel_content(const bContext *C,
 
   for (const bNodeTreeInterfaceItem *item : interface_panel.items()) {
     if (item->item_type == NODE_INTERFACE_PANEL) {
-      const bNodeTreeInterfacePanel &sub_interface_panel =
-          *reinterpret_cast<const bNodeTreeInterfacePanel *>(item);
+      const auto &sub_interface_panel = *reinterpret_cast<const bNodeTreeInterfacePanel *>(item);
       NodesModifierPanel *panel = find_panel_by_id(nmd, sub_interface_panel.identifier);
       PointerRNA panel_ptr = RNA_pointer_create(
           modifier_ptr->owner_id, &RNA_NodesModifierPanel, panel);
@@ -1913,8 +1912,7 @@ static void draw_interface_panel_content(const bContext *C,
       }
     }
     else {
-      const bNodeTreeInterfaceSocket &interface_socket =
-          *reinterpret_cast<const bNodeTreeInterfaceSocket *>(item);
+      const auto &interface_socket = *reinterpret_cast<const bNodeTreeInterfaceSocket *>(item);
       if (interface_socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
         if (!(interface_socket.flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
           draw_property_for_socket(
