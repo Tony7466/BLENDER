@@ -214,6 +214,9 @@ static void propagate_gizmos_from_builtin_nodes(GizmoPropagationResult &result,
 {
   for (const StringRefNull idname : {"GeometryNodeGizmoLinear", "GeometryNodeGizmoDial"}) {
     for (const bNode *gizmo_node : tree.nodes_by_type(idname)) {
+      if (gizmo_node->is_muted()) {
+        continue;
+      }
       const bNodeSocket &gizmo_value_input = gizmo_node->input_socket(0);
       gizmo_value_input.runtime->has_gizmo = true;
       Vector<GizmoTarget> gizmo_targets;
@@ -256,6 +259,9 @@ static void propagate_gizmos_from_group_nodes(GizmoPropagationResult &result,
                                               const bNodeTree &tree)
 {
   for (const bNode *group_node : tree.group_nodes()) {
+    if (group_node->is_muted()) {
+      continue;
+    }
     const bNodeTree *group = reinterpret_cast<const bNodeTree *>(group_node->id);
     if (group == nullptr) {
       continue;
