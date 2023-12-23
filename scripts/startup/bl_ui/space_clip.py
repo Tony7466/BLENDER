@@ -1332,10 +1332,6 @@ class CLIP_MT_view(Menu):
 
             layout.separator()
 
-            layout.prop(sc, "show_metadata")
-
-            layout.separator()
-
             layout.operator("clip.view_all")
             layout.operator("clip.view_selected")
             layout.operator("clip.view_all", text="View Fit").fit_view = True
@@ -1346,20 +1342,22 @@ class CLIP_MT_view(Menu):
 
             layout.operator("clip.view_zoom_in")
             layout.operator("clip.view_zoom_out")
-        else:
-            layout.prop(sc, "show_seconds")
-            layout.prop(sc, "show_locked_time")
 
             layout.separator()
-            
+
+            layout.prop(sc, "show_metadata")
+        else:
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
             layout.operator("clip.graph_view_all")
-            
             if sc.view == 'GRAPH':
                 layout.operator("clip.graph_center_current_frame")
                 
             layout.operator("view2d.zoom_border", text="Zoom")
             layout.operator_context = 'INVOKE_DEFAULT'
+
+            layout.separator()
+            layout.prop(sc, "show_seconds")
+            layout.prop(sc, "show_locked_time")
 
         layout.separator()
 

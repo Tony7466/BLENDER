@@ -117,28 +117,25 @@ class NLA_MT_view(Menu):
         layout.prop(st, "show_region_channels")
 
         layout.separator()
+        layout.operator("nla.view_all")
+        layout.operator("nla.view_selected")
+        layout.operator("nla.view_frame")
+        layout.operator("view2d.zoom_border", text="Zoom")
 
+        layout.separator()
         layout.prop(st, "use_realtime_update")
 
         layout.separator()
         layout.prop(st, "show_markers")
         layout.prop(st, "show_local_markers")
-
         layout.prop(st, "show_seconds")
         layout.prop(st, "show_locked_time")
-
         layout.prop(st, "show_strip_curves")
 
         layout.separator()
         layout.operator("anim.previewrange_set")
         layout.operator("anim.previewrange_clear")
         layout.operator("nla.previewrange_set")
-
-        layout.separator()
-        layout.operator("nla.view_all")
-        layout.operator("nla.view_selected")
-        layout.operator("nla.view_frame")
-        layout.operator("view2d.zoom_border", text="Zoom")
 
         layout.separator()
         layout.menu("INFO_MT_area")

@@ -432,19 +432,6 @@ class SEQUENCER_MT_view(Menu):
         layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="Refresh All")
         layout.operator_context = 'INVOKE_DEFAULT'
 
-        if is_sequencer_view:
-            layout.separator()
-            layout.prop(st, "show_markers")
-            layout.prop(st, "show_seconds")
-            layout.prop(st, "show_locked_time")
-            if context.preferences.view.show_developer_ui:
-                layout.menu("SEQUENCER_MT_view_cache", text="Show Cache")
-
-            layout.separator()
-            layout.operator_context = 'INVOKE_DEFAULT'
-            layout.menu("SEQUENCER_MT_navigation")
-            layout.menu("SEQUENCER_MT_range")
-
         layout.separator()
         layout.operator_context = 'INVOKE_REGION_WIN'
         if st.view_type == 'PREVIEW':
@@ -480,6 +467,19 @@ class SEQUENCER_MT_view(Menu):
             layout.menu("SEQUENCER_MT_proxy")
 
             layout.operator_context = 'INVOKE_DEFAULT'
+
+        if is_sequencer_view:
+            layout.separator()
+            layout.prop(st, "show_markers")
+            layout.prop(st, "show_seconds")
+            layout.prop(st, "show_locked_time")
+            if context.preferences.view.show_developer_ui:
+                layout.menu("SEQUENCER_MT_view_cache", text="Show Cache")
+
+            layout.separator()
+            layout.operator_context = 'INVOKE_DEFAULT'
+            layout.menu("SEQUENCER_MT_navigation")
+            layout.menu("SEQUENCER_MT_range")
 
         layout.separator()
 

@@ -144,7 +144,12 @@ class GRAPH_MT_view(Menu):
         layout.prop(st, "show_region_channels")
 
         layout.separator()
+        layout.operator("graph.view_all")
+        layout.operator("graph.view_selected")
+        layout.operator("graph.view_frame")
+        layout.operator("view2d.zoom_border", text="Zoom")
 
+        layout.separator()
         layout.prop(st, "use_realtime_update")
         layout.prop(st, "show_cursor")
         layout.prop(st, "show_sliders")
@@ -166,12 +171,6 @@ class GRAPH_MT_view(Menu):
         layout.operator("anim.previewrange_set")
         layout.operator("anim.previewrange_clear")
         layout.operator("graph.previewrange_set")
-
-        layout.separator()
-        layout.operator("graph.view_all")
-        layout.operator("graph.view_selected")
-        layout.operator("graph.view_frame")
-        layout.operator("view2d.zoom_border", text="Zoom")
 
         # Add this to show key-binding (reverse action in dope-sheet).
         layout.separator()

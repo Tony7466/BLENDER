@@ -128,6 +128,12 @@ class TIME_MT_view(Menu):
         layout.prop(st, "show_region_channels")
 
         layout.separator()
+        layout.operator("action.view_all")
+        layout.operator("action.view_selected")
+        layout.operator("action.view_frame")
+        layout.operator("view2d.zoom_border", text="Zoom")
+
+        layout.separator()
 
         layout.prop(st.dopesheet, "use_multi_word_filter", text="Multi-Word Match Search")
 
@@ -148,12 +154,6 @@ class TIME_MT_view(Menu):
         layout.operator("anim.previewrange_clear")
         # NOTE: "action" now, since timeline is in the dopesheet editor, instead of as own editor
         layout.operator("action.previewrange_set")
-
-        layout.separator()
-        layout.operator("action.view_all")
-        layout.operator("action.view_selected")
-        layout.operator("action.view_frame")
-        layout.operator("view2d.zoom_border", text="Zoom")
 
         layout.separator()
 
