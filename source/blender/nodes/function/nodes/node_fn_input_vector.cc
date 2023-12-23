@@ -6,8 +6,6 @@
 
 #include "BLI_hash.h"
 
-#include "BKE_node_runtime.hh"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -20,14 +18,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiLayout *row = uiLayoutRow(layout, true);
-  uiLayout *col = uiLayoutColumn(row, true);
-  const bNode &node = *static_cast<const bNode *>(ptr->data);
-  const bNodeSocket &socket = node.output_socket(0);
+  uiLayout *col = uiLayoutColumn(layout, true);
   uiItemR(col, ptr, "vector", UI_ITEM_R_EXPAND, "", ICON_NONE);
-  if (socket.runtime->has_gizmo) {
-    uiItemL(row, "", ICON_GIZMO);
-  }
 }
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)

@@ -96,9 +96,6 @@ static void node_buts_value(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
   uiLayout *row = uiLayoutRow(layout, true);
   uiItemR(row, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
-  if (output->runtime->has_gizmo) {
-    uiItemR(row, &sockptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
-  }
 }
 
 static void node_buts_rgb(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -1303,6 +1300,26 @@ static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
   return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
+static void draw_gizmo_icon(uiLayout *layout,
+                            PointerRNA *socket_ptr,
+                            const bool valid,
+                            const bool editable)
+{
+  if (valid) {
+    if (editable) {
+      uiItemR(layout, socket_ptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
+    }
+    else {
+      uiItemL(layout, "", ICON_GIZMO);
+    }
+  }
+  else {
+    uiLayout *row = uiLayoutRow(layout, true);
+    uiLayoutSetEnabled(row, false);
+    uiItemL(row, "", ICON_GIZMO);
+  }
+}
+
 static void std_node_socket_draw(
     bContext *C, uiLayout *layout, PointerRNA *ptr, PointerRNA *node_ptr, const char *text)
 {
@@ -1317,14 +1334,32 @@ static void std_node_socket_draw(
     return;
   }
 
+  const bool has_gizmo = sock->runtime->has_gizmo;
+  const bool gizmo_valid = sock->runtime->gizmo_valid;
+
+  if (sock->in_out == SOCK_OUT && has_gizmo &&
+      ELEM(node->type, SH_NODE_VALUE, FN_NODE_INPUT_VECTOR, FN_NODE_INPUT_INT, NODE_GROUP_INPUT))
+  {
+    uiLayout *row = uiLayoutRow(layout, false);
+    uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+    node_socket_button_label(C, row, ptr, node_ptr, text);
+    draw_gizmo_icon(row, ptr, true, node->type != NODE_GROUP_INPUT);
+    return;
+  }
+
   if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_HIDE_VALUE) ||
       ((sock->flag & SOCK_IS_LINKED) && !all_links_muted(*sock)))
   {
     node_socket_button_label(C, layout, ptr, node_ptr, text);
+    if (sock->in_out == SOCK_IN && has_gizmo) {
+      draw_gizmo_icon(layout, ptr, gizmo_valid, false);
+    }
     return;
   }
 
   text = (sock->flag & SOCK_HIDE_LABEL) ? "" : text;
+
+  bool gizmo_handled = false;
 
   switch (type) {
     case SOCK_FLOAT:
@@ -1341,8 +1376,16 @@ static void std_node_socket_draw(
           uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
         }
         else {
-          uiLayout *column = uiLayoutColumn(layout, true);
-          uiItemR(column, ptr, "default_value", DEFAULT_FLAGS, text, ICON_NONE);
+          uiLayout *column = uiLayoutColumn(layout, false);
+          {
+            uiLayout *row = uiLayoutRow(column, true);
+            uiItemL(row, text, ICON_NONE);
+            if (has_gizmo) {
+              draw_gizmo_icon(row, ptr, gizmo_valid, true);
+              gizmo_handled = true;
+            }
+          }
+          uiItemR(column, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
         }
       }
       break;
@@ -1449,6 +1492,10 @@ static void std_node_socket_draw(
     default:
       node_socket_button_label(C, layout, ptr, node_ptr, text);
       break;
+  }
+
+  if (has_gizmo && !gizmo_handled) {
+    draw_gizmo_icon(layout, ptr, true, true);
   }
 }
 
