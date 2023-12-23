@@ -118,7 +118,9 @@ static Curves *edge_paths_to_curves_convert(
     BLI_assert(current_rank > 0);
 
     const int next_vert = next_indices[vert];
+    // >> int aaa = 0;
     while (true) {
+      // >> if (aaa++ > 100000) { printf("AAAA>>> %s;\n", AT); }
       // printf("%s;\n", AT);
       /* In some odd case, other thread might already write current vert rank, but still don't
        * finish next one. Await for this. */
@@ -138,87 +140,114 @@ static Curves *edge_paths_to_curves_convert(
 
     int total_rank = 0;
 
+    // >> int aaa = 0;
     for (int current_vert = vertex; true; current_vert = next_indices[current_vert]) {
+      // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
       // printf("%s;\n", AT);
-      total_rank++;
 
       int expected_rank = non_checked;
       if (rank[current_vert].compare_exchange_strong(expected_rank, vert_path_id)) {
+        total_rank++;
+        if (current_vert == next_indices[current_vert]) {
+          break;
+        }
         // printf("<< Next: %d;\n", expected_rank);
         // printf("%s;\n", AT);
         continue;
       }
+
       // printf(">> Next: %d;\n", expected_rank);
 
       if (expected_rank == vert_path_id) {
         int cycle_size = 1;
+        // >> int aaa = 0;
         for (int cycle_vert = next_indices[current_vert]; cycle_vert != current_vert;
              cycle_vert = next_indices[cycle_vert])
         {
+          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
           // printf("%s;\n", AT);
           cycle_size++;
         }
         rank[current_vert].store(cycle_size);
+        // >> aaa = 0;
         for (int cycle_vert = next_indices[current_vert]; cycle_vert != current_vert;
              cycle_vert = next_indices[cycle_vert])
         {
+          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
           // printf("%s;\n", AT);
           rank[cycle_vert].store(cycle_size);
         }
-        total_rank += cycle_size - 1;
-
+        total_rank += cycle_size;
         break;
+      }
+
+      // >> int aaa = 0;
+      while (expected_rank < 0) {
+        // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
+        // printf("%s;\n", AT);
+        expected_rank = rank[current_vert].load();
       }
 
       if (expected_rank > 0) {
         const bool in_cycle = vert_in_cycle(current_vert);
         if (!in_cycle) {
-          total_rank += expected_rank - 1;
+          total_rank += expected_rank;
           break;
         }
 
         const int cycle_size = expected_rank;
 
-        int affected_part_of_cycle = 0;
-        for (int cycle_vert = current_vert; rank[cycle_vert].load() != vert_path_id;
+        int affected_part_of_cycle = 1;
+        // >> int aaa = 0;
+        for (int cycle_vert = next_indices[current_vert]; cycle_vert != current_vert;
              cycle_vert = next_indices[cycle_vert])
         {
+          BLI_assert(next_indices[cycle_vert] != cycle_vert);
+          if (next_indices[cycle_vert] == cycle_vert) {
+            printf("WTF THIS IS DEAD END!\n");
+          }
+          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
           // printf("%s;\n", AT);
           affected_part_of_cycle++;
         }
         const int gradient_depth = total_rank - (cycle_size - affected_part_of_cycle);
 
         int affected_cycle_vert = index_after(next_indices, vertex, gradient_depth);
+        // >> aaa = 0;
         for ([[maybe_unused]] const int i : IndexRange(affected_part_of_cycle)) {
+          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
           // printf("%s;\n", AT);
           rank[affected_cycle_vert].store(cycle_size);
           affected_cycle_vert = next_indices[affected_cycle_vert];
         }
 
+        total_rank += expected_rank;
         break;
-      }
-
-      if (expected_rank < 0) {
-        while (true) {
-          // printf("%s;\n", AT);
-          if (rank[current_vert].load() > 0) {
-            continue;
-          }
-        }
       }
     }
 
     int last = -1;
+    // >> aaa = 0;
     for (int current_vert = vertex; rank[current_vert].load() == vert_path_id;
          current_vert = next_indices[current_vert])
     {
+      // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
       last = current_vert;
       // printf("%s ++;\n", AT);
       rank[current_vert].store(total_rank);
       total_rank--;
     }
 
-    BLI_assert(rank[next_indices[last]] > 0);
+    if ((last != -1) && (rank[next_indices[last]] != (rank[last] - 1)) &&
+        (next_indices[last] != last)) {
+      // printf("End is not correct!!!, diff: %d;\n", (rank[next_indices[last]] - (rank[last] -
+      // 1)));
+    }
+
+    BLI_assert((last == -1) || (next_indices[last] == last) ||
+               (rank[next_indices[last]] == (rank[last] - 1)));
+
+    BLI_assert(last == -1 || rank[next_indices[last]] > 0);
 
     BLI_assert(total_rank >= 0);
 
