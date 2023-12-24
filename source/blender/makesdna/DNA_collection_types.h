@@ -15,9 +15,8 @@
 #include "DNA_listBase.h"
 
 struct Collection;
-struct GHash;
 struct Object;
-struct PointerRNA;
+struct GHash;
 
 /* Light linking relation of a collection or an object. */
 typedef struct CollectionLightLinking {
@@ -71,7 +70,14 @@ typedef struct IOHandlerData {
   char fh_idname[64];
 
   IDProperty *export_properties;
+  uint32_t flag;
+
+  uint32_t _pad0;
 } IOHandlerData;
+
+typedef enum IOHandlerPanelFlag {
+  IO_HANDLER_PANEL_OPEN = 1 << 0,
+} IOHandlerPanelFlag;
 
 /* Light linking state of object or collection: defines how they react to the emitters in the
  * scene. See the comment for the link_state in the CollectionLightLinking for the details. */

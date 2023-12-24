@@ -567,10 +567,17 @@ static void rna_def_collection_child(BlenderRNA *brna)
 static void rna_def_io_handler_data(BlenderRNA *brna)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "IOHandlerData", nullptr);
   RNA_def_struct_sdna(srna, "IOHandlerData");
   RNA_def_struct_ui_text(srna, "IO Handler Data", "IO Handlers configured for the collection");
+
+  prop = RNA_def_property(srna, "is_open", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", IO_HANDLER_PANEL_OPEN);
+  RNA_def_property_ui_text(prop, "Is Open", "Whether the panel is expanded or closed");
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
 }
 
 void RNA_def_collections(BlenderRNA *brna)

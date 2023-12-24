@@ -57,7 +57,7 @@ class COLLECTION_PT_io_handlers(CollectionButtonsPanel, Panel):
     def draw(self, _context):
         layout = self.layout
         layout.operator("wm.call_menu", text="Add IO Handler", icon='ADD').name = "COLLECTION_MT_io_handler_add"
-        layout.operator("COLLECTION_OT_debug_io") # DEBUG: temporary button to trigger exporting everything
+        layout.operator("COLLECTION_OT_io_export_all", icon='EXPORT')
         layout.template_collection_exporters()
 
 

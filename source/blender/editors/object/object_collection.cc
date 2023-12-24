@@ -446,6 +446,7 @@ static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
 
   IDPropertyTemplate val{};
   data->export_properties = IDP_New(IDP_GROUP, &val, "wmOpItemProp");
+  data->flag |= IO_HANDLER_PANEL_OPEN;
 
   BLI_addtail(io_handlers, data);
 
@@ -471,27 +472,98 @@ void COLLECTION_OT_io_handler_add(wmOperatorType *ot)
   RNA_def_string(ot->srna, "name", nullptr, MAX_ID_NAME - 2, "Name", "FileHandler idname");
 }
 
-static int collection_debug_io_exec(bContext *C, wmOperator * /*op*/)
+static int collection_io_handler_remove_exec(bContext *C, wmOperator *op)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
+  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+
+  int id = RNA_int_get(op->ptr, "id");
+  IOHandlerData *data = static_cast<IOHandlerData *>(
+      BLI_listbase_string_or_index_find(io_handlers, nullptr, 0, id));
+
+  if (data->export_properties) {
+    IDP_FreeProperty(data->export_properties);
+    data->export_properties = nullptr;
+  }
+
+  BLI_remlink(io_handlers, data);
+
+  return OPERATOR_FINISHED;
+}
+
+void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Remove IO Handler";
+  ot->description = "Remove IO Handler";
+  ot->idname = "COLLECTION_OT_io_handler_remove";
+
+  /* api callbacks */
+  ot->exec = collection_io_handler_remove_exec;
+  ot->poll = ED_operator_objectmode;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_int(ot->srna, "id", 0, 0, INT_MAX, "Id", "IO Handler id", 0, INT_MAX);
+}
+
+static int io_handler_export(bContext *C, IOHandlerData *data)
+{
+  FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
+  if (!fh) {
+    return OPERATOR_CANCELLED;
+  }
+
+  wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+  if (!ot) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Invoke operator with the properties stored on the Collection. */
+  PointerRNA ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+  return WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &ptr, nullptr);
+}
+
+static int collection_io_handler_export_exec(bContext *C, wmOperator *op)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
+  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+
+  int id = RNA_int_get(op->ptr, "id");
+  IOHandlerData *data = static_cast<IOHandlerData *>(
+      BLI_listbase_string_or_index_find(io_handlers, nullptr, 0, id));
+
+  return io_handler_export(C, data);
+}
+
+void COLLECTION_OT_io_handler_export(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Export IO Handler";
+  ot->description = "Trigger export of the IO Handler";
+  ot->idname = "COLLECTION_OT_io_handler_export";
+
+  /* api callbacks */
+  ot->exec = collection_io_handler_export_exec;
+  ot->poll = ED_operator_objectmode;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_int(ot->srna, "id", 0, 0, INT_MAX, "Id", "IO Handler id", 0, INT_MAX);
+}
+
+static int collection_io_export_all_exec(bContext *C, wmOperator * /*op*/)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
   ListBase *io_handlers = &layer_coll->collection->io_handlers;
 
   LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
-    FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
-    if (!fh) {
-      continue;
-    }
-
-    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
-    if (!ot) {
-      continue;
-    }
-    printf("DEBUG: Invoking %s\n", fh->export_operator);
-
-    /* Invoke operator with the properties stored on the Collection. */
-    PointerRNA ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
-    WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &ptr, nullptr);
+    io_handler_export(C, data);
 
     /* TODO: Should we continue calling operators if one fails? */
     /* TODO: What's the best way to surface the problem? Reports? */
@@ -500,15 +572,15 @@ static int collection_debug_io_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-void COLLECTION_OT_debug_io(wmOperatorType *ot)
+void COLLECTION_OT_io_export_all(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "debug: execute handlers";
-  ot->description = "debug: execute handlers";
-  ot->idname = "COLLECTION_OT_debug_io";
+  ot->name = "Export All";
+  ot->description = "Export all configured IO Handlers";
+  ot->idname = "COLLECTION_OT_io_export_all";
 
   /* api callbacks */
-  ot->exec = collection_debug_io_exec;
+  ot->exec = collection_io_export_all_exec;
   ot->poll = ED_operator_objectmode;
 
   /* flags */
@@ -545,7 +617,9 @@ void collection_io_handler_register()
 
   WM_menutype_add(mt);
   WM_operatortype_append(COLLECTION_OT_io_handler_add);
-  WM_operatortype_append(COLLECTION_OT_debug_io);
+  WM_operatortype_append(COLLECTION_OT_io_handler_remove);
+  WM_operatortype_append(COLLECTION_OT_io_handler_export);
+  WM_operatortype_append(COLLECTION_OT_io_export_all);
 }
 
 }  // namespace blender::ed::object

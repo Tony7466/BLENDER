@@ -2350,6 +2350,72 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 #ifdef _MSC_VER
 #  pragma optimize("", off)
 #endif
+void draw_export_controls(
+    bContext *C, uiLayout *layout, PointerRNA *ptr, FileHandlerType *fh, int id)
+{
+  uiLayout *box = uiLayoutBox(layout);
+  uiLayout *row = uiLayoutRow(box, true);
+  uiItemR(row, ptr, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemS(row);
+  uiItemIntO(row, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "id", id);
+  uiItemIntO(row, "", ICON_X, "COLLECTION_OT_io_handler_remove", "id", id);
+}
+
+void draw_export_properties(bContext *C, uiLayout *layout, PointerRNA *ptr, FileHandlerType *fh)
+{
+  if (fh->ui_export) {
+    fh->ui_export(C, layout, ptr, fh);
+  }
+  else {
+    /* TEMP: Just draw the properties like the KeyMap editor for debugging. */
+    uiLayout *flow = uiLayoutColumnFlow(layout, 2, false);
+
+    RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (ptr, prop) {
+      const bool is_set = RNA_property_is_set(ptr, prop);
+      uiBut *but;
+
+      /* TEMP: Just filter out some extra stuff for better debug layout. */
+      if (RNA_property_type(prop) == PROP_POINTER) {
+        continue;
+      }
+      const char *prop_name = RNA_property_identifier(prop);
+      if (STRPREFIX(prop_name, "filter_") || STRPREFIX(prop_name, "check_") ||
+          STRPREFIX(prop_name, "sort_") || STREQ(prop_name, "display_type") ||
+          STREQ(prop_name, "filemode"))
+      {
+        continue;
+      }
+
+      uiLayout *box = uiLayoutBox(flow);
+      uiLayoutSetActive(box, is_set);
+      uiLayout *row = uiLayoutRow(box, false);
+
+      /* property value */
+      uiItemFullR(row, ptr, prop, -1, 0, UI_ITEM_NONE, nullptr, ICON_NONE);
+
+      if (is_set) {
+        /* unset operator */
+        uiBlock *block = uiLayoutGetBlock(row);
+        UI_block_emboss_set(block, UI_EMBOSS_NONE);
+        but = uiDefIconButO(block,
+                            UI_BTYPE_BUT,
+                            "UI_OT_unset_property_button",
+                            WM_OP_EXEC_DEFAULT,
+                            ICON_X,
+                            0,
+                            0,
+                            UI_UNIT_X,
+                            UI_UNIT_Y,
+                            nullptr);
+        but->rnapoin = *ptr;
+        but->rnaprop = prop;
+        UI_block_emboss_set(block, UI_EMBOSS);
+      }
+    }
+    RNA_STRUCT_END;
+  }
+}
+
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
 {
   ARegion *region = CTX_wm_region(C);
@@ -2357,7 +2423,9 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
   LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
   ListBase *io_handlers = &layer_coll->collection->io_handlers;
 
-  LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
+  /* Draw all the IO handlers. */
+  int id = 0;
+  LISTBASE_FOREACH_INDEX (IOHandlerData *, data, io_handlers, id) {
     FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
     if (!fh) {
       continue;
@@ -2368,61 +2436,18 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       continue;
     }
 
-    PointerRNA ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+    PointerRNA prop_ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+    PointerRNA io_handler_ptr = RNA_pointer_create(nullptr, &RNA_IOHandlerData, data);
 
-    if (fh->ui_export) {
-      fh->ui_export(C, layout, &ptr, fh);
-    }
-    else {
-      /* TEMP: Just draw the properties like the KeyMap editor for debugging. */
-      uiLayout *flow = uiLayoutColumnFlow(layout, 2, false);
-
-      RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (&ptr, prop) {
-        const bool is_set = RNA_property_is_set(&ptr, prop);
-        uiBut *but;
-
-        /* TEMP: Just filter out some extra stuff for better debug layout. */
-        if (RNA_property_type(prop) == PROP_POINTER) {
-          continue;
-        }
-        const char *prop_name = RNA_property_identifier(prop);
-        if (STRPREFIX(prop_name, "filter_") || STRPREFIX(prop_name, "check_") ||
-            STRPREFIX(prop_name, "sort_") || STREQ(prop_name, "display_type") ||
-            STREQ(prop_name, "filemode"))
-        {
-          continue;
-        }
-
-        uiLayout *box = uiLayoutBox(flow);
-        uiLayoutSetActive(box, is_set);
-        uiLayout *row = uiLayoutRow(box, false);
-
-        /* property value */
-        uiItemFullR(row, &ptr, prop, -1, 0, UI_ITEM_NONE, nullptr, ICON_NONE);
-
-        if (is_set) {
-          /* unset operator */
-          uiBlock *block = uiLayoutGetBlock(row);
-          UI_block_emboss_set(block, UI_EMBOSS_NONE);
-          but = uiDefIconButO(block,
-                              UI_BTYPE_BUT,
-                              "UI_OT_unset_property_button",
-                              WM_OP_EXEC_DEFAULT,
-                              ICON_X,
-                              0,
-                              0,
-                              UI_UNIT_X,
-                              UI_UNIT_Y,
-                              nullptr);
-          but->rnapoin = ptr;
-          but->rnaprop = prop;
-          UI_block_emboss_set(block, UI_EMBOSS);
-        }
-      }
-      RNA_STRUCT_END;
+    if (uiLayout *panel_layout = uiLayoutPanel(C, layout, fh->label, &io_handler_ptr, "is_open")) {
+      draw_export_controls(C, panel_layout, &prop_ptr, fh, id);
+      draw_export_properties(C, panel_layout, &prop_ptr, fh);
     }
   }
 }
+#ifdef _MSC_VER
+#  pragma optimize("", on)
+#endif
 
 /** \} */
 

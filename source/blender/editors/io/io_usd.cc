@@ -233,12 +233,6 @@ static void wm_usd_export_draw(const bContext *C,
 
   uiLayout *box = uiLayoutBox(layout);
 
-  /* TEMP: The filepath layout should eventually happen in some common place. */
-  if (CTX_wm_space_properties(C)) {
-    col = uiLayoutColumn(box, true);
-    uiItemR(col, ptr, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
-
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "selected_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "visible_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
