@@ -30,12 +30,17 @@ void USDInstanceReader::create_object(Main *bmain, const double /* motionSampleT
 {
   this->object_ = BKE_object_add_only_object(bmain, OB_EMPTY, name_.c_str());
   this->object_->data = nullptr;
+  this->object_->instance_collection = nullptr;
   this->object_->transflag |= OB_DUPLICOLLECTION;
 }
 
 void USDInstanceReader::set_instance_collection(Collection *coll)
 {
-  if (this->object_) {
+  if (this->object_ && this->object_->instance_collection != coll) {
+    if (this->object_->instance_collection) {
+      id_us_min(&this->object_->instance_collection->id);
+      this->object_->instance_collection = nullptr;
+    }
     id_us_plus(&coll->id);
     this->object_->instance_collection = coll;
   }

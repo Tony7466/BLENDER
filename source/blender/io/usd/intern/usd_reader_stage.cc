@@ -594,15 +594,7 @@ void USDStageReader::create_proto_collections(Main *bmain,
   }
 
   /* Set the instance collections on the readers, including the prototype
-   * readers, as instancing may be nested. */
-
-  for (const auto &pair : proto_readers_) {
-    for (USDPrimReader *reader : pair.second) {
-      if (USDInstanceReader *instance_reader = dynamic_cast<USDInstanceReader *>(reader)) {
-        set_instance_collection(instance_reader, proto_collection_map);
-      }
-    }
-  }
+   * readers (which are included in readers_), as instancing may be nested. */
 
   for (USDPrimReader *reader : readers_) {
     if (USDInstanceReader *instance_reader = dynamic_cast<USDInstanceReader *>(reader)) {
