@@ -872,6 +872,17 @@ class NodeTreeMainUpdater {
           }
         }
       }
+      else if (node->type == GEO_NODE_MENU_SWITCH) {
+        /* First input is always the node's own menu, propagate only to the enum case inputs. */
+        const bNodeSocket *output = node->output_sockets().first();
+        for (bNodeSocket *input : node->input_sockets().drop_front(1)) {
+          if (input->is_available() && input->type == SOCK_MENU) {
+            this->update_socket_enum_definition(
+                *input->default_value_typed<bNodeSocketValueMenu>(),
+                *output->default_value_typed<bNodeSocketValueMenu>());
+          }
+        }
+      }
       else {
         /* Propagate over internal relations. */
         /* XXX Placeholder implementation just propagates all outputs

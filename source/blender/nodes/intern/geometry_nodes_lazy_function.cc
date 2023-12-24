@@ -3707,7 +3707,8 @@ struct GeometryNodesLazyFunctionBuilder {
 
   void build_menu_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
-    std::unique_ptr<LazyFunction> lazy_function = get_menu_switch_node_lazy_function(bnode);
+    std::unique_ptr<LazyFunction> lazy_function = get_menu_switch_node_lazy_function(
+        bnode, *lf_graph_info_);
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 

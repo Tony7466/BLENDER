@@ -42,7 +42,8 @@ static bool is_supported_socket_type(const eNodeSocketDatatype data_type) {
               SOCK_OBJECT,
               SOCK_COLLECTION,
               SOCK_MATERIAL,
-              SOCK_IMAGE);
+              SOCK_IMAGE,
+              SOCK_MENU);
 }
 
 static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
@@ -240,13 +241,17 @@ class MenuSwitchFn : public mf::MultiFunction {
 
 class LazyFunctionForMenuSwitchNode : public LazyFunction {
  private:
+  const bNode &node_;
   bool can_be_field_ = false;
   const NodeEnumDefinition &enum_def_;
   const CPPType *cpp_type_;
+  const CPPType *field_base_type_;
   std::unique_ptr<MultiFunction> multi_function_;
 
  public:
-  LazyFunctionForMenuSwitchNode(const bNode &node) : enum_def_(node_storage(node).enum_definition)
+  LazyFunctionForMenuSwitchNode(const bNode &node,
+                                GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
+      : node_(node), enum_def_(node_storage(node).enum_definition)
   {
     const NodeMenuSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
@@ -256,17 +261,23 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
         nodeStaticSocketType(data_type, PROP_NONE));
     BLI_assert(socket_type != nullptr);
     cpp_type_ = socket_type->geometry_nodes_cpp_type;
-    const CPPType &field_base_type = *socket_type->base_cpp_type;
+    field_base_type_ = socket_type->base_cpp_type;
 
     /* Construct multifunction if needed. */
-    multi_function_ = std::unique_ptr<MultiFunction>(new MenuSwitchFn(enum_def_, field_base_type));
+    multi_function_ = std::unique_ptr<MultiFunction>(
+        new MenuSwitchFn(enum_def_, *field_base_type_));
+    MutableSpan<int> lf_index_by_bsocket = lf_graph_info.mapping.lf_index_by_bsocket;
 
     debug_name_ = node.name;
-    inputs_.append_as("Switch", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
-    for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
-      inputs_.append_as(enum_item.name, *cpp_type_, lf::ValueUsage::Maybe);
+    lf_index_by_bsocket[node.input_socket(0).index_in_tree()] = inputs_.append_and_get_index_as(
+        "Switch", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
+    for (const int i : enum_def_.items().index_range()) {
+      const NodeEnumItem &enum_item = enum_def_.items()[i];
+      lf_index_by_bsocket[node.input_socket(i + 1).index_in_tree()] =
+          inputs_.append_and_get_index_as(enum_item.name, *cpp_type_, lf::ValueUsage::Maybe);
     }
-    outputs_.append_as("Value", *cpp_type_);
+    lf_index_by_bsocket[node.output_socket(0).index_in_tree()] = outputs_.append_and_get_index_as(
+        "Value", *cpp_type_);
   }
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
@@ -282,20 +293,18 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
 
   void execute_single(const int condition, lf::Params &params) const
   {
-    bool found_match = false;
-    void *output_ptr = params.get_output_data_ptr(0);
     for (const int i : IndexRange(enum_def_.items_num)) {
       const NodeEnumItem &enum_item = enum_def_.items_array[i];
       const int input_index = i + 1;
       if (enum_item.identifier == condition) {
-        found_match = true;
         void *value_to_forward = params.try_get_input_data_ptr_or_request(input_index);
         if (value_to_forward == nullptr) {
           /* Try again when the value is available. */
-          continue;
+          return;
         }
 
-        cpp_type_->move_construct(value_to_forward, output_ptr);
+        void *output_ptr = params.get_output_data_ptr(0);
+        field_base_type_->move_construct(value_to_forward, output_ptr);
         params.output_set(0);
       }
       else {
@@ -304,20 +313,11 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     }
     /* No guarantee that the switch input matches any enum,
      * set default outputs to ensure valid state. */
-    if (!found_match) {
-      cpp_type_->value_initialize(output_ptr);
-      params.output_set(0);
-    }
+    set_default_remaining_node_outputs(params, node_);
   }
 
   void execute_field(Field<int> condition, lf::Params &params) const
   {
-    if (!condition.node().depends_on_input()) {
-      const int condition_int = fn::evaluate_constant_field(condition);
-      this->execute_single(condition_int, params);
-      return;
-    }
-
     /* When the condition is a non-constant field, we need all inputs. */
     const int values_num = this->enum_def_.items_num;
     Array<SocketValueVariant *, 8> input_values(values_num);
@@ -421,14 +421,16 @@ NOD_REGISTER_NODE(register_node)
 
 namespace blender::nodes {
 
-std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(const bNode &node)
+std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
 {
   using namespace node_geo_menu_switch_cc;
   BLI_assert(node.type == GEO_NODE_MENU_SWITCH);
-  return std::make_unique<LazyFunctionForMenuSwitchNode>(node);
+  return std::make_unique<LazyFunctionForMenuSwitchNode>(node, lf_graph_info);
 }
 
-std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(const bNode &node)
+std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(
+    const bNode &node)
 {
   using namespace node_geo_menu_switch_cc;
   BLI_assert(node.type == GEO_NODE_MENU_SWITCH);
