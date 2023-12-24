@@ -12,3 +12,4 @@ struct wmOperatorType;
 
 void WM_OT_usd_export(wmOperatorType *ot);
 void WM_OT_usd_import(wmOperatorType *ot);
+void register_usd_file_handler();

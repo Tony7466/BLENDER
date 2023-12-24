@@ -1479,6 +1479,27 @@ static bool file_handler_poll_drop(const bContext *C,
   return is_usable;
 }
 
+static void file_handler_ui_export(const bContext *C,
+                                   uiLayout *layout,
+                                   PointerRNA *properties,
+                                   FileHandlerType *file_handler_type)
+{
+  extern FunctionRNA rna_FileHandler_draw_export_func;
+
+  PointerRNA ptr = RNA_pointer_create(
+      nullptr, file_handler_type->rna_ext.srna, nullptr); /* dummy */
+  FunctionRNA *func = &rna_FileHandler_draw_export_func;
+
+  ParameterList list;
+  RNA_parameter_list_create(&list, &ptr, func);
+  RNA_parameter_set_lookup(&list, "context", &C);
+  RNA_parameter_set_lookup(&list, "layout", &layout);
+  RNA_parameter_set_lookup(&list, "properties", properties);
+  file_handler_type->rna_ext.call((bContext *)C, &ptr, func, &list);
+
+  RNA_parameter_list_free(&list);
+}
+
 static bool rna_FileHandler_unregister(Main * /*bmain*/, StructRNA *type)
 {
   using namespace blender;
@@ -1515,7 +1536,7 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
   PointerRNA dummy_file_handler_ptr = RNA_pointer_create(
       nullptr, &RNA_FileHandler, &dummy_file_handler);
 
-  bool have_function[1];
+  bool have_function[2];
 
   /* Validate the python class. */
   if (validate(&dummy_file_handler_ptr, data, have_function) != 0) {
@@ -1556,6 +1577,7 @@ static StructRNA *rna_FileHandler_register(Main *bmain,
   RNA_struct_blender_type_set(file_handler_type->rna_ext.srna, file_handler_type.get());
 
   file_handler_type->poll_drop = have_function[0] ? file_handler_poll_drop : nullptr;
+  file_handler_type->ui_export = have_function[1] ? file_handler_ui_export : nullptr;
 
   auto srna = file_handler_type->rna_ext.srna;
   bke::file_handler_add(std::move(file_handler_type));
@@ -2388,6 +2410,19 @@ static void rna_def_file_handler(BlenderRNA *brna)
   RNA_def_function_return(func, RNA_def_boolean(func, "is_usable", true, "", ""));
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  /* draw_export */
+  func = RNA_def_function(srna, "draw_export", nullptr);
+  RNA_def_function_ui_description(func, "Draw function for the export operator");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
+  parm = RNA_def_pointer(func, "context", "Context", "", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_property(func, "layout", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(parm, "UILayout");
+  RNA_def_property_ui_text(parm, "Layout", "Layout in the UI");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "properties", "OperatorProperties", "", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 
 void RNA_def_ui(BlenderRNA *brna)

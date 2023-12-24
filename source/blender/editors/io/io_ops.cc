@@ -42,6 +42,7 @@ void ED_operatortypes_io()
 #ifdef WITH_USD
   WM_operatortype_append(WM_OT_usd_import);
   WM_operatortype_append(WM_OT_usd_export);
+  register_usd_file_handler();
 #endif
 
 #ifdef WITH_IO_GPENCIL

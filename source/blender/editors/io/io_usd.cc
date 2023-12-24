@@ -13,6 +13,7 @@
 #  include <cstring>
 
 #  include "BKE_context.hh"
+#  include "BKE_file_handler.hh"
 #  include "BKE_main.hh"
 #  include "BKE_report.h"
 
@@ -221,15 +222,22 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
+static void wm_usd_export_draw(const bContext *C,
+                               uiLayout *layout,
+                               PointerRNA *ptr,
+                               FileHandlerType * /*file_handler_type*/)
 {
-  uiLayout *layout = op->layout;
   uiLayout *col;
-  PointerRNA *ptr = op->ptr;
 
   uiLayoutSetPropSep(layout, true);
 
   uiLayout *box = uiLayoutBox(layout);
+
+  /* TEMP: The filepath layout should eventually happen in some common place. */
+  if (CTX_wm_space_properties(C)) {
+    col = uiLayoutColumn(box, true);
+    uiItemR(col, ptr, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "selected_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -281,6 +289,11 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(box, ptr, "use_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
+static void op_usd_export_draw(bContext *C, wmOperator *op)
+{
+  wm_usd_export_draw(C, op->layout, op->ptr, nullptr);
+}
+
 static void free_operator_customdata(wmOperator *op)
 {
   if (op->customdata) {
@@ -317,7 +330,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
   ot->invoke = wm_usd_export_invoke;
   ot->exec = wm_usd_export_exec;
   ot->poll = WM_operator_winactive;
-  ot->ui = wm_usd_export_draw;
+  ot->ui = op_usd_export_draw;
   ot->cancel = wm_usd_export_cancel;
   ot->check = wm_usd_export_check;
 
@@ -827,4 +840,18 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "Behavior when the name of an imported texture file conflicts with an existing file");
 }
 
+void register_usd_file_handler()
+{
+  std::unique_ptr<FileHandlerType> fh = std::make_unique<FileHandlerType>();
+  STRNCPY(fh->idname, "WM_FH_usd_io");
+  STRNCPY(fh->label, "Universal Scene Description (.usd*)");
+  STRNCPY(fh->import_operator, "WM_OT_usd_import");
+  STRNCPY(fh->export_operator, "WM_OT_usd_export");
+  STRNCPY(fh->file_extensions_str, ".usd;usda;usdc;usdz");
+
+  // fh->poll_drop = wm_usd_poll_drop;
+  fh->ui_export = wm_usd_export_draw;
+
+  BKE_file_handler_add(std::move(fh));
+}
 #endif /* WITH_USD */
