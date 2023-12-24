@@ -50,9 +50,8 @@ void main()
             samp, to_closure_reflection(gbuf.closures[i]), P, V, noise_probe);
         break;
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-        /* TODO(fclem): Refraction from lightprobe. */
-        // out_refraction = lightprobe_eval(
-        //     samp, to_closure_refraction(gbuf.closures[i]), P, V, noise_probe);
+        out_refraction = lightprobe_eval(
+            samp, to_closure_refraction(gbuf.closures[i]), P, V, noise_probe);
         break;
       case CLOSURE_NONE_ID:
         /* TODO(fclem): Assert. */
@@ -61,7 +60,13 @@ void main()
   }
 
   /* TODO(fclem): Layered texture. */
-  imageStore(indirect_diffuse_img, texel, vec4(out_diffuse, 1.0));
-  imageStore(indirect_reflection_img, texel, vec4(out_reflection, 1.0));
-  imageStore(indirect_refraction_img, texel, vec4(out_refraction, 1.0));
+  if (gbuf.has_diffuse) {
+    imageStore(indirect_diffuse_img, texel, vec4(out_diffuse, 1.0));
+  }
+  if (gbuf.has_reflection) {
+    imageStore(indirect_reflection_img, texel, vec4(out_reflection, 1.0));
+  }
+  if (gbuf.has_refraction) {
+    imageStore(indirect_refraction_img, texel, vec4(out_refraction, 1.0));
+  }
 }

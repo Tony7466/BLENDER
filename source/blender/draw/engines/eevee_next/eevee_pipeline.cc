@@ -767,7 +767,7 @@ void DeferredLayer::render(View &main_view,
                                    (CLOSURE_REFLECTION | CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
     direct_radiance_txs_[i].acquire(
-        (closure_count > 1) ? extent : int2(1), GPU_R11F_G11F_B10F, usage_rw);
+        (closure_count > i) ? extent : int2(1), DEFERRED_RADIANCE_FORMAT, usage_rw);
   }
 
   bool use_tracing = false;
@@ -785,10 +785,8 @@ void DeferredLayer::render(View &main_view,
     indirect_refract_tx_ = indirect_radiance_txs_[i++];
   }
 
-
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, render_view);
-  GPU_flush();
 
   RayTraceResult indirect_result;
   if (use_tracing) {
