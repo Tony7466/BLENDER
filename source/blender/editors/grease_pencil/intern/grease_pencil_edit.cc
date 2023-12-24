@@ -1659,12 +1659,11 @@ static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
 
+    /* If the attribute does not exist then default with index range. */
     if (!shape_ids) {
       shape_ids = attributes.lookup_or_add_for_write_span<int>("shape_id", ATTR_DOMAIN_CURVE);
 
-      for (const int i : shape_ids.span.index_range()) {
-        shape_ids.span[i] = i;
-      }
+      array_utils::fill_index_range<int>(shape_ids.span);
     }
 
     /* TODO: Get the active element index instead of the first. */
@@ -1719,6 +1718,68 @@ static void GREASE_PENCIL_OT_set_shape_id(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Clear Shape ID Operator
+ * \{ */
+
+static int grease_pencil_clear_shape_id_exec(bContext *C, wmOperator * /*op*/)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  bool changed = false;
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  for (const MutableDrawingInfo &info : drawings) {
+    IndexMaskMemory memory;
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
+      continue;
+    }
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+    bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
+
+    int max_shape_id = 0;
+    for (const int i : shape_ids.span.index_range()) {
+      max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
+    }
+
+    strokes.foreach_index(
+        [&](const int64_t i, const int64_t pos) { shape_ids.span[i] = pos + max_shape_id + 1; });
+
+    shape_ids.finish();
+    info.drawing.tag_topology_changed();
+
+    changed = true;
+  };
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_clear_shape_id(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Clear Shape ID";
+  ot->idname = "GREASE_PENCIL_OT_clear_shape_id";
+  ot->description = "Clear shape id";
+
+  /* callbacks */
+  ot->exec = grease_pencil_clear_shape_id_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -1740,6 +1801,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
   WM_operatortype_append(GREASE_PENCIL_OT_set_shape_id);
+  WM_operatortype_append(GREASE_PENCIL_OT_clear_shape_id);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
