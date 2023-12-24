@@ -2166,6 +2166,10 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
         layout.operator("grease_pencil.select_more")
         layout.operator("grease_pencil.select_less")
 
+        layout.separator()
+
+        layout.operator("grease_pencil.select_shape")
+
 
 class VIEW3D_MT_paint_grease_pencil(Menu):
     bl_label = "Draw"

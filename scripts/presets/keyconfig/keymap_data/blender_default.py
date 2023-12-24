@@ -4647,6 +4647,7 @@ def km_grease_pencil_edit(params):
 
         ("grease_pencil.set_shape_id", {"type": 'P', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.clear_shape_id", {"type": 'P', "value": 'PRESS', "alt": True}, None),
+        ("grease_pencil.select_shape", {"type": 'L', "value": 'PRESS', "shift": True}, None),
     ])
 
     return keymap
