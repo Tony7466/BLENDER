@@ -100,8 +100,6 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_deferred_light_double";
     case DEFERRED_LIGHT_TRIPLE:
       return "eevee_deferred_light_triple";
-    case DEFERRED_LIGHTPROBE:
-      return "eevee_deferred_lightprobe";
     case DEFERRED_CAPTURE_EVAL:
       return "eevee_deferred_capture_eval";
     case DEFERRED_PLANAR_EVAL:

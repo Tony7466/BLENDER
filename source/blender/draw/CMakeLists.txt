@@ -477,7 +477,6 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_deferred_capture_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_combine_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_light_frag.glsl
-  engines/eevee_next/shaders/eevee_deferred_lightprobe_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_planar_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_tile_classify_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_tile_compact_vert.glsl

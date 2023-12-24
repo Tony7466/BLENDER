@@ -241,8 +241,7 @@ class DeferredLayer : DeferredLayerBase {
    */
   TextureFromPool direct_radiance_txs_[3] = {
       {"direct_radiance_1"}, {"direct_radiance_2"}, {"direct_radiance_3"}};
-  TextureFromPool indirect_radiance_txs_[3] = {
-      {"indirect_radiance_1"}, {"indirect_radiance_2"}, {"indirect_radiance_3"}};
+  Texture dummy_black_tx = {"dummy_black_tx"};
   /* Reference to ray-tracing result. */
   GPUTexture *indirect_diffuse_tx_ = nullptr;
   GPUTexture *indirect_reflect_tx_ = nullptr;

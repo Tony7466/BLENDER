@@ -55,8 +55,7 @@ void main()
   vec3 out_specular = vec3(0.0);
 
   for (int i = 0; i < GBUFFER_LAYER_MAX && i < gbuf.closure_count; i++) {
-    vec3 closure_light = load_radiance_direct(texel, i) +
-                         load_radiance_indirect(texel, gbuf.closures[i].type);
+    vec3 closure_light = load_radiance_direct(texel, i);
 
     closure_light *= gbuf.closures[i].color;
     out_combined.rgb += closure_light;
