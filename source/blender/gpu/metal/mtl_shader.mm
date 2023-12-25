@@ -747,7 +747,7 @@ static void populate_specialization_descriptor(
   int num_specialized_constants = 0;
   if (shader_specialization_constants.size() > 0) {
     specialization_descriptor.specialization_constants.clear();
-    MTL_LOG_INFO(" -- Fetching specailized PSO for shader with config: --\n");
+    MTL_LOG_INFO(" -- Fetching specialized PSO for shader with config: --\n");
     for (const SpecializationConstantValue &sc_value : shader_specialization_constants.values()) {
 
       /* Switch between either custom assigned value or default value. */

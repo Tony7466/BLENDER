@@ -612,7 +612,7 @@ void Shader::specialize_constant_float(int constant_id, float value)
     return;
   }
   BLI_assert_msg(sc->type == shader::Type::FLOAT,
-                 "Attempting to assign a non-float vaue to float specialization constant.");
+                 "Attempting to assign a non-float value to float specialization constant.");
   BLI_assert_msg(constant_id == sc->constant_id, "lookup constant ID does not match stored ID.");
   sc->assigned = true;
   sc->value_f = value;
@@ -630,7 +630,7 @@ void Shader::specialize_constant_int(int constant_id, int value)
     return;
   }
   BLI_assert_msg(sc->type == shader::Type::INT,
-                 "Attempting to assign a non-int vaue to integer specialization constant.");
+                 "Attempting to assign a non-int value to integer specialization constant.");
   BLI_assert_msg(constant_id == sc->constant_id, "lookup constant ID does not match stored ID.");
   sc->assigned = true;
   sc->value_i = value;
@@ -648,7 +648,7 @@ void Shader::specialize_constant_bool(int constant_id, bool value)
     return;
   }
   BLI_assert_msg(sc->type == shader::Type::BOOL,
-                 "Attempting to assign a non-bool vaue to boolean specialization constant.");
+                 "Attempting to assign a non-bool value to boolean specialization constant.");
   BLI_assert_msg(constant_id == sc->constant_id, "lookup constant ID does not match stored ID.");
   sc->assigned = true;
   sc->value_b = value;
