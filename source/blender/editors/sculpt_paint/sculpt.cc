@@ -2739,20 +2739,22 @@ static void update_sculpt_normal(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   }
 }
 
-static void calc_local_y(ViewContext *vc, const float center[3], float y[3])
+static void calc_local_from_screen(ViewContext *vc,
+                                   const float center[3],
+                                   const float screen_dir[2],
+                                   float r_local_dir[3])
 {
   Object *ob = vc->obact;
   float loc[3];
-  const float xy_delta[2] = {0.0f, 1.0f};
 
-  mul_v3_m4v3(loc, ob->world_to_object, center);
+  mul_v3_m4v3(loc, ob->object_to_world, center);
   const float zfac = ED_view3d_calc_zfac(vc->rv3d, loc);
 
-  ED_view3d_win_to_delta(vc->region, xy_delta, zfac, y);
-  normalize_v3(y);
+  ED_view3d_win_to_delta(vc->region, screen_dir, zfac, r_local_dir);
+  normalize_v3(r_local_dir);
 
-  add_v3_v3(y, ob->loc);
-  mul_m4_v3(ob->world_to_object, y);
+  add_v3_v3(r_local_dir, ob->loc);
+  mul_m4_v3(ob->world_to_object, r_local_dir);
 }
 
 static void calc_brush_local_mat(const float rotation,
@@ -2765,7 +2767,6 @@ static void calc_brush_local_mat(const float rotation,
   float mat[4][4];
   float scale[4][4];
   float angle, v[3];
-  float up[3];
 
   /* Ensure `ob->world_to_object` is up to date. */
   invert_m4_m4(ob->world_to_object, ob->object_to_world);
@@ -2776,17 +2777,26 @@ static void calc_brush_local_mat(const float rotation,
   mat[2][3] = 0.0f;
   mat[3][3] = 1.0f;
 
-  /* Get view's up vector in object-space. */
-  calc_local_y(cache->vc, cache->location, up);
-
-  /* Calculate the X axis of the local matrix. */
-  cross_v3_v3v3(v, up, cache->sculpt_normal);
-  /* Apply rotation (user angle, rake, etc.) to X axis. */
+  /* Read rotation (user angle, rake, etc.) to find the view's transverse direction. */
   angle = rotation - cache->special_rotation;
-  rotate_v3_v3v3fl(mat[0], v, cache->sculpt_normal, angle);
+  float transverse_view[2];
+  float transverse_local[3];
+  transverse_view[0] = cosf(angle);
+  transverse_view[1] = sinf(angle);
+  /* Convert view's brush transverse drection to object-space */
+  calc_local_from_screen(cache->vc, cache->location, transverse_view, transverse_local);
+
+  /* Calculate the movement direction for the local matrix.
+   * Note that there is a deliberate prioritization here: Our calculations are
+   * designed such that the _motion vector_ gets projected into the tangent space;
+   * in most cases this will be more intuitive than projecting the transverse
+   * direction (which is orthogonal to the motion direction and therefore less
+   * apparent to the user). */
+  cross_v3_v3v3(v, transverse_local, cache->sculpt_normal);
+  normalize_v3_v3(mat[1], v);
 
   /* Get other axes. */
-  cross_v3_v3v3(mat[1], cache->sculpt_normal, mat[0]);
+  cross_v3_v3v3(mat[0], mat[1], cache->sculpt_normal);
   copy_v3_v3(mat[2], cache->sculpt_normal);
 
   /* Set location. */
