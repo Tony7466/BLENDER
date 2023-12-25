@@ -2780,10 +2780,10 @@ static void calc_brush_local_mat(const float rotation,
   /* Read rotation (user angle, rake, etc.) to find the view's transverse direction. */
   angle = rotation - cache->special_rotation;
   float transverse_view[2];
-  float transverse_local[3];
   transverse_view[0] = cosf(angle);
   transverse_view[1] = sinf(angle);
   /* Convert view's brush transverse drection to object-space */
+  float transverse_local[3];
   calc_local_from_screen(cache->vc, cache->location, transverse_view, transverse_local);
 
   /* Calculate the movement direction for the local matrix.
