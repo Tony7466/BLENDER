@@ -643,8 +643,12 @@ struct SculptGestureContext {
 };
 
 struct SculptGestureOperation {
-  /* Initial setup (data updates, special undo push...). */
-  void (*sculpt_gesture_begin)(bContext *, SculptGestureContext *);
+  /* Initial setup (data updates...) before the initial undo push.
+   * May return false to cancel the operation. */
+  bool (*sculpt_gesture_begin)(bContext *, SculptGestureContext *);
+
+  /* Continued complex initial setup after the undo push. */
+  void (*sculpt_gesture_begin_post_undo)(bContext *, SculptGestureContext *);
 
   /* Apply the gesture action for each symmetry pass. */
   void (*sculpt_gesture_apply_for_symmetry_pass)(bContext *, SculptGestureContext *);
@@ -1035,12 +1039,23 @@ static bool sculpt_gesture_is_effected(SculptGestureContext *sgcontext,
   return false;
 }
 
-static void sculpt_gesture_apply(bContext *C, SculptGestureContext *sgcontext, wmOperator *op)
+/**
+ * Applies the sculpt gesture operation to all symmetry passes.
+ * \return False if the operation was cancelled before any modifications.
+ */
+static bool sculpt_gesture_apply(bContext *C, SculptGestureContext *sgcontext, wmOperator *op)
 {
   SculptGestureOperation *operation = sgcontext->operation;
+
+  if (!operation->sculpt_gesture_begin(C, sgcontext)) {
+    return false;
+  }
+
   undo::push_begin(CTX_data_active_object(C), op);
 
-  operation->sculpt_gesture_begin(C, sgcontext);
+  if (operation->sculpt_gesture_begin_post_undo) {
+    operation->sculpt_gesture_begin_post_undo(C, sgcontext);
+  }
 
   for (int symmpass = 0; symmpass <= sgcontext->symm; symmpass++) {
     if (SCULPT_is_symmetry_iteration_valid(symmpass, sgcontext->symm)) {
@@ -1057,6 +1072,24 @@ static void sculpt_gesture_apply(bContext *C, SculptGestureContext *sgcontext, w
   undo::push_end(ob);
 
   SCULPT_tag_update_overlays(C);
+  return true;
+}
+
+/**
+ * Applies the sculpt gesture operation and frees the gesture context.
+ * Intended to be used as the final return statement of the operator execute callback.
+ *
+ * \return Operator return status enum value.
+ */
+static int sculpt_gesture_apply_and_free(bContext *C,
+                                         SculptGestureContext *sgcontext,
+                                         wmOperator *op)
+{
+  const bool ok = sculpt_gesture_apply(C, sgcontext, op);
+
+  sculpt_gesture_context_free(sgcontext);
+
+  return ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 /* Face Set Gesture Operation. */
@@ -1067,10 +1100,11 @@ struct SculptGestureFaceSetOperation {
   int new_face_set_id;
 };
 
-static void sculpt_gesture_face_set_begin(bContext *C, SculptGestureContext *sgcontext)
+static bool sculpt_gesture_face_set_begin(bContext *C, SculptGestureContext *sgcontext)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   BKE_sculpt_update_object_for_edit(depsgraph, sgcontext->vc.obact, false);
+  return true;
 }
 
 static void face_set_gesture_apply_mesh(SculptGestureContext *sgcontext,
@@ -1193,10 +1227,11 @@ struct SculptGestureMaskOperation {
   float value;
 };
 
-static void sculpt_gesture_mask_begin(bContext *C, SculptGestureContext *sgcontext)
+static bool sculpt_gesture_mask_begin(bContext *C, SculptGestureContext *sgcontext)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   BKE_sculpt_update_object_for_edit(depsgraph, sgcontext->vc.obact, false);
+  return true;
 }
 
 static void mask_gesture_apply_task(SculptGestureContext *sgcontext,
@@ -1794,7 +1829,7 @@ static void sculpt_gesture_apply_trim(SculptGestureContext *sgcontext)
       result, static_cast<Mesh *>(sgcontext->vc.obact->data), sgcontext->vc.obact);
 }
 
-static void sculpt_gesture_trim_begin(bContext *C, SculptGestureContext *sgcontext)
+static bool sculpt_gesture_trim_begin(bContext *C, SculptGestureContext *sgcontext)
 {
   Object *object = sgcontext->vc.obact;
   SculptSession *ss = object->sculpt;
@@ -1804,6 +1839,11 @@ static void sculpt_gesture_trim_begin(bContext *C, SculptGestureContext *sgconte
   sculpt_gesture_trim_geometry_generate(sgcontext);
   SCULPT_topology_islands_invalidate(ss);
   BKE_sculpt_update_object_for_edit(depsgraph, sgcontext->vc.obact, false);
+  return true;
+}
+
+static void sculpt_gesture_trim_begin_post_undo(bContext * /*C*/, SculptGestureContext *sgcontext)
+{
   undo::push_node(sgcontext->vc.obact, nullptr, undo::Type::Geometry);
 }
 
@@ -1846,6 +1886,7 @@ static void sculpt_gesture_init_trim_properties(SculptGestureContext *sgcontext,
   SculptGestureTrimOperation *trim_operation = (SculptGestureTrimOperation *)sgcontext->operation;
 
   trim_operation->op.sculpt_gesture_begin = sculpt_gesture_trim_begin;
+  trim_operation->op.sculpt_gesture_begin_post_undo = sculpt_gesture_trim_begin_post_undo;
   trim_operation->op.sculpt_gesture_apply_for_symmetry_pass =
       sculpt_gesture_trim_apply_for_symmetry_pass;
   trim_operation->op.sculpt_gesture_end = sculpt_gesture_trim_end;
@@ -1897,10 +1938,11 @@ struct SculptGestureProjectOperation {
   SculptGestureOperation operation;
 };
 
-static void sculpt_gesture_project_begin(bContext *C, SculptGestureContext *sgcontext)
+static bool sculpt_gesture_project_begin(bContext *C, SculptGestureContext *sgcontext)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   BKE_sculpt_update_object_for_edit(depsgraph, sgcontext->vc.obact, false);
+  return true;
 }
 
 static void project_line_gesture_apply_task(SculptGestureContext *sgcontext, PBVHNode *node)
@@ -1992,9 +2034,7 @@ static int paint_mask_gesture_box_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   sculpt_gesture_init_mask_properties(C, sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
@@ -2004,9 +2044,7 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   sculpt_gesture_init_mask_properties(C, sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 static int paint_mask_gesture_line_exec(bContext *C, wmOperator *op)
@@ -2016,9 +2054,7 @@ static int paint_mask_gesture_line_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   sculpt_gesture_init_mask_properties(C, sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 static int face_set_gesture_box_exec(bContext *C, wmOperator *op)
@@ -2028,9 +2064,7 @@ static int face_set_gesture_box_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   sculpt_gesture_init_face_set_properties(sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 static int face_set_gesture_lasso_exec(bContext *C, wmOperator *op)
@@ -2040,9 +2074,7 @@ static int face_set_gesture_lasso_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   sculpt_gesture_init_face_set_properties(sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 static int sculpt_trim_gesture_box_exec(bContext *C, wmOperator *op)
@@ -2065,9 +2097,8 @@ static int sculpt_trim_gesture_box_exec(bContext *C, wmOperator *op)
   }
 
   sculpt_gesture_init_trim_properties(sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 static int sculpt_trim_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -2110,9 +2141,7 @@ static int sculpt_trim_gesture_lasso_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   sculpt_gesture_init_trim_properties(sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 static int sculpt_trim_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -2139,9 +2168,7 @@ static int project_gesture_line_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   sculpt_gesture_init_project_properties(sgcontext, op);
-  sculpt_gesture_apply(C, sgcontext, op);
-  sculpt_gesture_context_free(sgcontext);
-  return OPERATOR_FINISHED;
+  return sculpt_gesture_apply_and_free(C, sgcontext, op);
 }
 
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot)
