@@ -1743,6 +1743,12 @@ typedef struct NodeGeometryCurveTrim {
   uint8_t mode;
 } NodeGeometryCurveTrim;
 
+// struct NodeGeometryDeformCurvesOnSurfaceCache;
+
+typedef struct NodeGeometryDeformCurvesOnSurface {
+  uint64_t cache;
+} NodeGeometryDeformCurvesOnSurface;
+
 typedef struct NodeGeometryCurveToPoints {
   /** #GeometryNodeCurveResampleMode. */
   uint8_t mode;

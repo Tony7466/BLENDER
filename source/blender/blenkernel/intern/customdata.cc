@@ -2354,7 +2354,10 @@ static bool customdata_typemap_is_valid(const CustomData *data)
 }
 #endif
 
-static void *copy_layer_data(const eCustomDataType type, const void *data, const int totelem, bool preserve_data = true)
+static void *copy_layer_data(const eCustomDataType type,
+                             const void *data,
+                             const int totelem,
+                             bool preserve_data = true)
 {
   const LayerTypeInfo &type_info = *layerType_getInfo(type);
   const int64_t size_in_bytes = int64_t(totelem) * type_info.size;
@@ -2562,7 +2565,9 @@ static const ImplicitSharingInfo *make_implicit_sharing_info_for_layer(const eCu
 /**
  * If the layer data is currently shared (hence it is immutable), create a copy that can be edited.
  */
-static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totelem, bool preserve_data = true)
+static void ensure_layer_data_is_mutable(CustomDataLayer &layer,
+                                         const int totelem,
+                                         bool preserve_data = true)
 {
   if (layer.data == nullptr) {
     return;

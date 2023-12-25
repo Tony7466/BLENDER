@@ -9,6 +9,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_span.hh"
+#include "BLI_vector.hh"
+#include "BLI_offset_indices.hh"
 
 namespace blender::geometry {
 
@@ -24,12 +26,20 @@ class ReverseUVSampler {
  private:
   Span<float2> uv_map_;
   Span<int3> corner_tris_;
-  int resolution_;
-  std::unique_ptr<LookupGrid> lookup_grid_;
+  int2 resolution_;
+  int2 span_;
+  int live_count_;
+  
+  Vector<int> corner_tris_by_cell_;
+  Vector<int> cell_populations_;
+
+  float2 uv_base_, uv_max_, supp_uv_min_, supp_uv_max_;
 
  public:
-  ReverseUVSampler(Span<float2> uv_map, Span<int3> corner_tris);
-  ~ReverseUVSampler();
+  ReverseUVSampler(Span<float2> uv_map,
+                   Span<int3> corner_tris,
+                   float2 supp_uv_min = float2{0.0f, 0.0f},
+                   float2 supp_uv_max = float2{0.0f, 0.0f});
 
   enum class ResultType {
     None,
@@ -43,8 +53,16 @@ class ReverseUVSampler {
     float3 bary_weights;
   };
 
-  Result sample(const float2 &query_uv) const;
-  void sample_many(Span<float2> query_uvs, MutableSpan<Result> r_results) const;
+  void sample(const float2 &query_uv, Result &result, bool hint = false) const;
+  Result sample(const float2 &query_uv) const
+  {
+    Result result;
+    sample(query_uv, result);
+    return result;
+  }
+  void sample_many(Span<float2> query_uvs,
+                   MutableSpan<Result> r_results,
+                   bool hints = false) const;
 };
 
 }  // namespace blender::geometry

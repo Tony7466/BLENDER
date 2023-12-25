@@ -350,7 +350,8 @@ Span<float3> CurvesGeometry::positions() const
 }
 MutableSpan<float3> CurvesGeometry::positions_for_write(bool preserve)
 {
-  return get_mutable_attribute<float3>(*this, AttrDomain::Point, ATTR_POSITION, float3(), preserve);
+  return get_mutable_attribute<float3>(
+      *this, AttrDomain::Point, ATTR_POSITION, float3(), preserve);
 }
 
 Span<int> CurvesGeometry::offsets() const
