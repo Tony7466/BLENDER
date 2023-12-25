@@ -190,6 +190,26 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   result.add(joined_components.get_component_for_write(component_type));
 }
 
+ 
+void join_transform_instance_components(Span<const bke::InstancesComponent *> src_components,
+                                        Span<blender::float4x4> src_base_transforms,
+                                        GeometrySet &result)
+{
+  if (src_components.is_empty()){
+    return;
+  }
+  if (src_components.size() == 1){
+    result.add(*src_components.first());
+    return;
+  }
+  else{
+    result.add(*src_components[0]);
+    result.add(*src_components[1]);
+    result.add(*src_components[2]);
+    return;
+  }
+}
+
 GeometrySet join_geometries(const Span<GeometrySet> geometries,
                             const bke::AnonymousAttributePropagationInfo &propagation_info)
 {

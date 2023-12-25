@@ -1690,8 +1690,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     // Add the new GeometrySet to the Vector
     geometries_to_merge.append(new_geometry_se);
 }
-
-  new_geometry_set = geometry::join_geometries(geometries_to_merge, options.propagation_info);
+  join_transform_instance_components(gather_info.instances_components_to_merge, gather_info.instances_components_transforms, new_geometry_set);
+  // new_geometry_set = geometry::join_geometries(geometries_to_merge, options.propagation_info);
 
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
