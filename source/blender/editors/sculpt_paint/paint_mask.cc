@@ -640,6 +640,9 @@ struct SculptGestureContext {
 
   /* Task Callback Data. */
   Vector<PBVHNode *> nodes;
+
+  /* Report list for reporting problems. */
+  ReportList *reports;
 };
 
 struct SculptGestureOperation {
@@ -685,6 +688,8 @@ static void sculpt_gesture_context_init_common(bContext *C,
   /* Operator properties. */
   sgcontext->front_faces_only = RNA_boolean_get(op->ptr, "use_front_faces_only");
   sgcontext->line.use_side_planes = RNA_boolean_get(op->ptr, "use_limit_to_segment");
+
+  sgcontext->reports = op->reports;
 
   /* SculptSession */
   sgcontext->ss = ob->sculpt;
@@ -1942,7 +1947,7 @@ static bool sculpt_gesture_project_begin(bContext *C, SculptGestureContext *sgco
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   BKE_sculpt_update_object_for_edit(depsgraph, sgcontext->vc.obact, false);
-  return true;
+  return !ED_sculpt_report_if_shape_key_is_locked(sgcontext->vc.obact, sgcontext->reports);
 }
 
 static void project_line_gesture_apply_task(SculptGestureContext *sgcontext, PBVHNode *node)
