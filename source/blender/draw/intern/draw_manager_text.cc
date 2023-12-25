@@ -55,6 +55,7 @@ struct ViewCachedString {
   short xoffs, yoffs;
   short flag;
   int str_len;
+  bool shadow;
 
   /* str is allocated past the end */
   char str[0];
@@ -84,7 +85,8 @@ void DRW_text_cache_add(DRWTextStore *dt,
                         short xoffs,
                         short yoffs,
                         short flag,
-                        const uchar col[4])
+                        const uchar col[4],
+                        bool shadow)
 {
   int alloc_len;
   ViewCachedString *vos;
@@ -106,6 +108,7 @@ void DRW_text_cache_add(DRWTextStore *dt,
   vos->yoffs = yoffs;
   vos->flag = flag;
   vos->str_len = str_len;
+  vos->shadow = shadow;
 
   /* allocate past the end */
   if (flag & DRW_TEXT_CACHE_STRING_PTR) {
@@ -145,9 +148,18 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
 
       BLF_position(
           font_id, float(vos->sco[0] + vos->xoffs), float(vos->sco[1] + vos->yoffs), 2.0f);
+
+      if (vos->shadow) {
+        BLF_enable(font_id, BLF_SHADOW);
+        BLF_shadow(font_id, 5, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
+        BLF_shadow_offset(font_id, 1, -1);
+      }
       BLF_draw(font_id,
                (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
                vos->str_len);
+      if (vos->shadow) {
+        BLF_disable(font_id, BLF_SHADOW);
+      }
     }
   }
 

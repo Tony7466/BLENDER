@@ -83,7 +83,8 @@ static void add_values_to_text_cache(const GVArray &values,
         BLI_assert_unreachable();
       }
 
-      DRW_text_cache_add(dt, position, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
+      DRW_text_cache_add(
+          dt, position, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col, true);
     }
   });
 }
