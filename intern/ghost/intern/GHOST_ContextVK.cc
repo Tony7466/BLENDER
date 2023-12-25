@@ -237,16 +237,6 @@ class GHOST_DeviceVK {
     device_features.fragmentStoresAndAtomics = VK_TRUE;
     device_features.samplerAnisotropy = features.features.samplerAnisotropy;
 
-    VkDeviceCreateInfo device_create_info = {};
-    device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    device_create_info.queueCreateInfoCount = uint32_t(queue_create_infos.size());
-    device_create_info.pQueueCreateInfos = queue_create_infos.data();
-    device_create_info.enabledLayerCount = uint32_t(layers_enabled.size());
-    device_create_info.ppEnabledLayerNames = layers_enabled.data();
-    device_create_info.enabledExtensionCount = uint32_t(extensions_device.size());
-    device_create_info.ppEnabledExtensionNames = extensions_device.data();
-    device_create_info.pEnabledFeatures = &device_features;
-
     void *device_create_info_p_next = nullptr;
 
     /* Enable optional vulkan 12 features when supported on physical device.
@@ -272,11 +262,22 @@ class GHOST_DeviceVK {
     maintenance_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
     maintenance_4.maintenance4 = VK_TRUE;
     if (has_extensions({VK_KHR_MAINTENANCE_4_EXTENSION_NAME})) {
+      extensions_device.push_back(VK_KHR_MAINTENANCE_4_EXTENSION_NAME);
       maintenance_4.pNext = device_create_info_p_next;
       device_create_info_p_next = &maintenance_4;
     }
 
+    VkDeviceCreateInfo device_create_info = {};
+    device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_create_info.pNext = device_create_info_p_next;
+    device_create_info.queueCreateInfoCount = uint32_t(queue_create_infos.size());
+    device_create_info.pQueueCreateInfos = queue_create_infos.data();
+    device_create_info.enabledLayerCount = uint32_t(layers_enabled.size());
+    device_create_info.ppEnabledLayerNames = layers_enabled.data();
+    device_create_info.enabledExtensionCount = uint32_t(extensions_device.size());
+    device_create_info.ppEnabledExtensionNames = extensions_device.data();
+    device_create_info.pEnabledFeatures = &device_features;
+
     vkCreateDevice(physical_device, &device_create_info, nullptr, &device);
   }
 
