@@ -66,10 +66,10 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .define("SPECIALIZED_SHADOW_PARAMS")
     /* SC_render_pass_shadow_id has a valid specialized value of `-1`. Default to uniform lookup
        only if unassigned with default value below -1.*/
-    .constant_int(SC_render_pass_shadow_id_SLOT, "SC_render_pass_shadow_id", -99)
-    .constant_int(SC_shadow_ray_count_SLOT, "SC_shadow_ray_count", -1)
-    .constant_int(SC_shadow_ray_step_count_SLOT, "SC_shadow_ray_step_count", -1)
-    .constant_float(SC_shadow_normal_bias_SLOT, "SC_shadow_normal_bias", -999.0f)
+    .constant(Type::INT, SC_render_pass_shadow_id_SLOT, "SC_render_pass_shadow_id", -99)
+    .constant(Type::INT, SC_shadow_ray_count_SLOT, "SC_shadow_ray_count", -1)
+    .constant(Type::INT, SC_shadow_ray_step_count_SLOT, "SC_shadow_ray_step_count", -1)
+    .constant(Type::FLOAT, SC_shadow_normal_bias_SLOT, "SC_shadow_normal_bias", -999.0f)
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
                      "eevee_utility_texture",
@@ -116,8 +116,8 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .fragment_source("eevee_deferred_combine_frag.glsl")
     /* NOTE: Both light IDs have a valid specialized assignment of '-1' so only when default is
      * present will we instead dynamically look-up ID from the uniform buffer. */
-    .constant_int(SC_diffuse_light_id_SLOT, "SC_diffuse_light_id", -99)
-    .constant_int(SC_specular_light_id_SLOT, "SC_specular_light_id", -99)
+    .constant(Type::INT, SC_diffuse_light_id_SLOT, "SC_diffuse_light_id", -99)
+    .constant(Type::INT, SC_specular_light_id_SLOT, "SC_specular_light_id", -99)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_capture_eval)

@@ -1006,15 +1006,18 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
     ss << "#define " << sc.constant_name;
     switch (sc.type) {
-      case Type::INT: {
-        ss << " (" << sc.default_value_i << ")\n";
-      } break;
-      case Type::BOOL: {
-        ss << " (" << sc.default_value_b << ")\n";
-      } break;
-      case Type::FLOAT: {
-        ss << " (" << sc.default_value_f << ")\n";
-      } break;
+      case Type::INT:
+        ss << " int(" << std::to_string(static_cast<int>(sc.default_value)) << ")\n";
+        break;
+      case Type::BOOL:
+        ss << " bool(" << std::to_string(static_cast<bool>(sc.default_value)) << ")\n";
+        break;
+      case Type::FLOAT:
+        ss << " float(" << std::to_string(static_cast<float>(sc.default_value)) << ")\n";
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
     }
   }
 

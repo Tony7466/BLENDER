@@ -411,13 +411,16 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
     sc_value.assigned = false;
     switch (sc_value.type) {
       case Type::INT:
-        sc_value.default_value_i = sc.default_value_i;
+        sc_value.default_value_i = static_cast<int>(sc.default_value);
         break;
       case Type::BOOL:
-        sc_value.default_value_b = sc.default_value_b;
+        sc_value.default_value_b = static_cast<bool>(sc.default_value);
         break;
       case Type::FLOAT:
-        sc_value.default_value_f = sc.default_value_f;
+        sc_value.default_value_f = static_cast<float>(sc.default_value);
+        break;
+      default:
+        BLI_assert_unreachable();
         break;
     }
     shader->specialization_constant_add(sc.constant_id, sc_value);
