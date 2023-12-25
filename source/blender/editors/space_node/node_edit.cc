@@ -697,7 +697,10 @@ void snode_set_context(const bContext &C)
     from = nullptr;
   }
 
-  if (!(snode->flag & SNODE_PIN) || ntree == nullptr) {
+  if (!(snode->flag & SNODE_PIN) || ntree == nullptr ||
+      snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL ||
+      snode->geometry_nodes_type == SNODE_GEOMETRY_MODIFIER)
+  {
     if (treetype->get_from_context) {
       /* Reset and update from context. */
       ntree = nullptr;
