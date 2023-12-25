@@ -2779,13 +2779,13 @@ static void calc_brush_local_mat(const float rotation,
 
   /* Read rotation (user angle, rake, etc.) to find the view's movement direction. */
   angle = rotation + cache->special_rotation;
-  float normal_screen[2];
-  normal_screen[0] = -sinf(angle);
-  normal_screen[1] = cosf(angle);
+  float motion_normal_screen[2];
+  motion_normal_screen[0] = -sinf(angle);
+  motion_normal_screen[1] = cosf(angle);
   /* Convert view's brush transverse direction to object-space,
    * i.e. the normal of the plane described by the motion */
-  float normal_local[3];
-  calc_local_from_screen(cache->vc, cache->location, normal_screen, normal_local);
+  float motion_normal_local[3];
+  calc_local_from_screen(cache->vc, cache->location, motion_normal_screen, motion_normal_local);
 
   /* Calculate the movement direction for the local matrix.
    * Note that there is a deliberate prioritization here: Our calculations are
@@ -2796,7 +2796,7 @@ static void calc_brush_local_mat(const float rotation,
    * The Y-axis of the brush-local frame has to lie in the intersection of the tangent plane
    * and the motion plane. */
 
-  cross_v3_v3v3(v, normal_local, cache->sculpt_normal);
+  cross_v3_v3v3(v, motion_normal_local, cache->sculpt_normal);
   normalize_v3_v3(mat[1], v);
 
   /* Get other axes. */
