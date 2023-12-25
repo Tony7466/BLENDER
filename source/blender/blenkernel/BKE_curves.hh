@@ -396,6 +396,12 @@ class CurvesGeometry : public ::CurvesGeometry {
   void reverse_curves(const IndexMask &curves_to_reverse);
 
   /**
+   * Change the direction of selected points (switch the start and end) without changing their
+   * shape.
+   */
+  void reverse_points(const IndexMask &points_to_reverse);
+
+  /**
    * Remove any attributes that are unused based on the types in the curves.
    */
   void remove_attributes_based_on_types();

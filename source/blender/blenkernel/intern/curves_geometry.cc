@@ -1306,6 +1306,12 @@ static void reverse_curve_point_data(const CurvesGeometry &curves,
 }
 
 template<typename T>
+static void reverse_point_data(const IndexMask &point_selection, MutableSpan<T> data)
+{
+  data.slice(point_selection.first(), point_selection.size()).reverse();
+}
+
+template<typename T>
 static void reverse_swap_curve_point_data(const CurvesGeometry &curves,
                                           const IndexMask &curve_selection,
                                           MutableSpan<T> data_a,
@@ -1378,6 +1384,36 @@ void CurvesGeometry::reverse_curves(const IndexMask &curves_to_reverse)
   }
 
   this->tag_topology_changed();
+}
+
+void CurvesGeometry::reverse_points(const IndexMask &points_to_reverse)
+{
+  Set<StringRef> bezier_handle_names{{ATTR_HANDLE_POSITION_LEFT,
+                                      ATTR_HANDLE_POSITION_RIGHT,
+                                      ATTR_HANDLE_TYPE_LEFT,
+                                      ATTR_HANDLE_TYPE_RIGHT}};
+
+  MutableAttributeAccessor attributes = this->attributes_for_write();
+
+  attributes.for_all([&](const AttributeIDRef &id, AttributeMetaData meta_data) {
+    if (meta_data.domain != AttrDomain::Point) {
+      return true;
+    }
+    if (meta_data.data_type == CD_PROP_STRING) {
+      return true;
+    }
+    if (bezier_handle_names.contains(id.name())) {
+      return true;
+    }
+
+    GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+    attribute_math::convert_to_static_type(attribute.span.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      reverse_point_data<T>(points_to_reverse, attribute.span.typed<T>());
+    });
+    attribute.finish();
+    return true;
+  });
 }
 
 void CurvesGeometry::remove_attributes_based_on_types()

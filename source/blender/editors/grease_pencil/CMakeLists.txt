@@ -30,6 +30,7 @@ set(SRC
   intern/grease_pencil_ops.cc
   intern/grease_pencil_select.cc
   intern/grease_pencil_utils.cc
+  intern/grease_pencil_join_selection.cc
 )
 
 set(LIB

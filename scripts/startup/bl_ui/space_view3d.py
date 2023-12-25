@@ -5819,6 +5819,7 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout.separator()
 
         layout.operator("grease_pencil.clean_loose")
+        layout.operator("grease_pencil.join_selection")
 
 
 class VIEW3D_MT_edit_greasepencil_stroke(Menu):
