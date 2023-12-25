@@ -56,6 +56,7 @@ struct ViewCachedString {
   short flag;
   int str_len;
   bool shadow;
+  bool align_center;
 
   /* str is allocated past the end */
   char str[0];
@@ -86,7 +87,8 @@ void DRW_text_cache_add(DRWTextStore *dt,
                         short yoffs,
                         short flag,
                         const uchar col[4],
-                        bool shadow)
+                        bool shadow,
+                        bool align_center)
 {
   int alloc_len;
   ViewCachedString *vos;
@@ -109,6 +111,7 @@ void DRW_text_cache_add(DRWTextStore *dt,
   vos->flag = flag;
   vos->str_len = str_len;
   vos->shadow = shadow;
+  vos->align_center = align_center;
 
   /* allocate past the end */
   if (flag & DRW_TEXT_CACHE_STRING_PTR) {
@@ -144,6 +147,17 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
       if (col_pack_prev != vos->col.pack) {
         BLF_color4ubv(font_id, vos->col.ub);
         col_pack_prev = vos->col.pack;
+      }
+
+      /* Use the string and the font_id to calculate the width of the string, then
+       * offset x to align text to vertex. */
+      if (vos->align_center) {
+        short offset = BLF_width(
+            font_id,
+            (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
+            vos->str_len);
+
+        vos->xoffs += -offset / 2;
       }
 
       BLF_position(
