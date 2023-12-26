@@ -8,7 +8,6 @@
 
 #include "DNA_mesh_types.h"
 
-#include "BLI_atomic_disjoint_set.hh"
 #include "BLI_timeit.hh"
 
 #include "GEO_mesh_to_curve.hh"
