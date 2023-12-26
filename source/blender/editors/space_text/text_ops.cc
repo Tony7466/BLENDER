@@ -440,6 +440,7 @@ static int text_open_exec(bContext *C, wmOperator *op)
   }
 
   text_drawcache_tag_update(st, true);
+
   WM_event_add_notifier(C, NC_TEXT | NA_ADDED, text);
 
   MEM_freeN(op->customdata);
@@ -530,6 +531,7 @@ static int text_reload_exec(bContext *C, wmOperator *op)
   text_update_edited(text);
   text_update_cursor_moved(C);
   text_drawcache_tag_update(st, true);
+
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   text->flags &= ~TXT_ISDIRTY;
@@ -589,6 +591,7 @@ static int text_unlink_exec(bContext *C, wmOperator * /*op*/)
   BKE_id_delete(bmain, text);
 
   text_drawcache_tag_update(st, true);
+
   WM_event_add_notifier(C, NC_TEXT | NA_REMOVED, nullptr);
 
   return OPERATOR_FINISHED;
@@ -988,6 +991,7 @@ static int text_paste_exec(bContext *C, wmOperator *op)
   }
 
   text_drawcache_tag_update(st, false);
+
   ED_text_undo_push_init(C);
 
   /* Convert clipboard content indentation to spaces if specified */
@@ -1131,6 +1135,7 @@ static int text_cut_exec(bContext *C, wmOperator * /*op*/)
   Text *text = CTX_data_edit_text(C);
 
   text_drawcache_tag_update(st, false);
+
   txt_copy_clipboard(text);
 
   ED_text_undo_push_init(C);
@@ -1209,6 +1214,7 @@ static int text_indent_exec(bContext *C, wmOperator * /*op*/)
   Text *text = CTX_data_edit_text(C);
 
   text_drawcache_tag_update(st, false);
+
   ED_text_undo_push_init(C);
 
   if (txt_has_sel(text)) {
@@ -1254,6 +1260,7 @@ static int text_unindent_exec(bContext *C, wmOperator * /*op*/)
   Text *text = CTX_data_edit_text(C);
 
   text_drawcache_tag_update(st, false);
+
   ED_text_undo_push_init(C);
 
   txt_order_cursors(text, false);
@@ -1296,6 +1303,7 @@ static int text_line_break_exec(bContext *C, wmOperator * /*op*/)
   int space = (text->flags & TXT_TABSTOSPACES) ? st->tabnumber : 1;
 
   text_drawcache_tag_update(st, false);
+
   /* Double check tabs/spaces before splitting the line. */
   curts = txt_setcurr_tab_spaces(text, space);
   ED_text_undo_push_init(C);
@@ -1352,6 +1360,7 @@ static int text_comment_exec(bContext *C, wmOperator *op)
   const char *prefix = ED_text_format_comment_line_prefix(text);
 
   text_drawcache_tag_update(st, false);
+
   ED_text_undo_push_init(C);
 
   if (txt_has_sel(text)) {
@@ -3738,8 +3747,14 @@ void TEXT_OT_insert(wmOperatorType *ot)
 
 /** \} */
 
+/** #TEXT_OT_find.direction. */
+enum eFindDirection {
+  FIND_PREV,
+  FIND_NEXT,
+};
+
 /* -------------------------------------------------------------------- */
-/** \name Find Operator
+/** \name Find and Replace Operator
  * \{ */
 
 /* mode */
@@ -3753,83 +3768,56 @@ static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
   Main *bmain = CTX_data_main(C);
   SpaceText *st = CTX_wm_space_text(C);
   Text *text = st->text;
-  int flags;
-  int found = 0;
-  char *tmp;
 
   if (!st->findstr[0]) {
     return OPERATOR_CANCELLED;
   }
 
-  flags = st->flags;
-  if (flags & ST_FIND_ALL) {
-    flags &= ~ST_FIND_WRAP;
+  int idx = ED_text_get_active_string_match(st);
+
+  if (idx == -1) {
+    wmOperatorType *ot = WM_operatortype_find("TEXT_OT_find", false);
+    PointerRNA props;
+    WM_operator_properties_create_ptr(&props, ot);
+    RNA_enum_set(&props, "direction", FIND_NEXT);
+    auto result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &props, nullptr);
+    WM_operator_properties_free(&props);
+    return result;
   }
 
-  /* Replace current */
-  if (mode != TEXT_FIND && txt_has_sel(text)) {
-    tmp = txt_sel_to_buf(text, nullptr);
-
-    if (flags & ST_MATCH_CASE) {
-      found = STREQ(st->findstr, tmp);
-    }
-    else {
-      found = BLI_strcasecmp(st->findstr, tmp) == 0;
-    }
-
-    if (found) {
-      if (mode == TEXT_REPLACE) {
-        ED_text_undo_push_init(C);
-        txt_insert_buf(text, st->replacestr, strlen(st->replacestr));
-        if (text->curl && text->curl->format) {
-          MEM_freeN(text->curl->format);
-          text->curl->format = nullptr;
-        }
-        text_update_cursor_moved(C);
-        WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
-        text_drawcache_tag_update(st, true);
-      }
-    }
-    MEM_freeN(tmp);
-    tmp = nullptr;
+  ED_text_undo_push_init(C);
+  txt_insert_buf(text, st->replacestr, strlen(st->replacestr));
+  if (text->curl && text->curl->format) {
+    MEM_freeN(text->curl->format);
+    text->curl->format = nullptr;
   }
-
-  /* Find next */
-  if (txt_find_string(text, st->findstr, flags & ST_FIND_WRAP, flags & ST_MATCH_CASE)) {
-    text_update_cursor_moved(C);
-    WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
-  }
-  else if (flags & ST_FIND_ALL) {
-    if (text->id.next) {
-      text = st->text = static_cast<Text *>(text->id.next);
-    }
-    else {
-      text = st->text = static_cast<Text *>(bmain->texts.first);
-    }
-    txt_move_toline(text, 0, false);
-    text_update_cursor_moved(C);
-    WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
-  }
-  else {
-    if (!found) {
-      BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);
-    }
-  }
-
+  text_update_cursor_moved(C);
+  WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
+  text_drawcache_tag_update(st, true);
   return OPERATOR_FINISHED;
 }
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Find Operator
+ * \{ */
+
+static const EnumPropertyItem find_direction[] = {
+    {FIND_PREV, "PREV", 0, "Previous", ""},
+    {FIND_NEXT, "NEXT", 0, "Next", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
 
 static int text_find_exec(bContext *C, wmOperator *op)
 {
-  PropertyRNA *prop_previous = RNA_struct_find_property(op->ptr, "previous");
-
-  bool find_previous = RNA_property_boolean_get(op->ptr, prop_previous);
+  const eFindDirection direction = eFindDirection(RNA_enum_get(op->ptr, "direction"));
 
   SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
   auto *text_search = ED_text_get_text_search(st, text);
 
   if (!text_search || text_search->string_matches().size() == 0) {
+    BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);
     return OPERATOR_CANCELLED;
   }
 
@@ -3845,7 +3833,7 @@ static int text_find_exec(bContext *C, wmOperator *op)
         return sm.line_index < line_index || (sm.line_index == line_index && sm.start < curc);
       });
 
-  if (find_previous) {
+  if (direction == FIND_PREV) {
     string_match_itr--;
   }
   if (string_match_itr->line_index == line_index && string_match_itr->start == curc) {
@@ -3885,7 +3873,7 @@ static int text_find_exec(bContext *C, wmOperator *op)
 void TEXT_OT_find(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Find Next";
+  ot->name = "Find";
   ot->idname = "TEXT_OT_find";
   ot->description = "Find specified text";
 
@@ -3893,9 +3881,8 @@ void TEXT_OT_find(wmOperatorType *ot)
   ot->exec = text_find_exec;
   ot->poll = text_space_edit_poll;
 
-  PropertyRNA *prop;
-  prop = RNA_def_boolean(
-      ot->srna, "previous", false, "Find previous", "Find previous occurrences");
+  PropertyRNA *prop = RNA_def_enum(
+      ot->srna, "direction", find_direction, FIND_NEXT, "Direction", "Direction to cycle through");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 

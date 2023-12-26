@@ -1231,7 +1231,7 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
   if (ui_region) {
     if (!(ui_region->flag & RGN_FLAG_HIDDEN)) {
       const char *active_category = UI_panel_category_active_get(ui_region, false);
-      if (active_category && STREQ(active_category, "Text")) {
+      if (!active_category || STREQ(active_category, "Text")) {
         highlight_text_search = true;
       }
     }

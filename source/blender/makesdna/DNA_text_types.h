@@ -73,7 +73,7 @@ enum {
 
 struct StringMatch {
   /** Line where a match was found. */
-  struct TextLine *text_line;
+  TextLine *text_line;
   /** Index of the line in the Text. */
   int line_index;
   /** Start and end position in #tex_line where the `SpaceText.findstr` string was found. */
@@ -95,9 +95,9 @@ enum {
   TXT_SM_SELECTED = 1 << 0,
 };
 
-typedef struct TextSearch {
+struct TextSearch {
   /** Text data-block. */
-  struct Text *text;
+  Text *text;
   /* Pointer to `blender::Vector<StringMatch>` match vector. */
   void *_string_matches;
 #ifdef __cplusplus
@@ -118,4 +118,4 @@ typedef struct TextSearch {
     return *(static_cast<blender::Vector<StringMatch> *>(_string_matches));
   }
 #endif
-} TextMatch;
+};

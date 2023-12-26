@@ -399,10 +399,10 @@ static void text_properties_region_draw(const bContext *C, ARegion *region)
   ED_region_panels(C, region);
 
   SpaceText *st = CTX_wm_space_text(C);
-  /* This flag trick is make sure buttons have been added already. */
+  /** This flag trick is make sure buttons have been added already. */
   if (st->flags & ST_FIND_ACTIVATE) {
     if (UI_textbutton_activate_rna(C, region, st, "find_text")) {
-      /* Redraw so `find_text` button can be highlighted as active. */
+      /** Draw again so `find_text` text button is highlighted as active. */
       ED_region_panels(C, region);
     }
     st->flags &= ~ST_FIND_ACTIVATE;

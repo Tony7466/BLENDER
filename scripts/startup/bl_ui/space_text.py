@@ -242,15 +242,15 @@ class TEXT_PT_find(Panel):
         row.prop(st, "find_text", text="", placeholder="Search", )
         row.prop(st, "use_match_case", icon='SORTALPHA', text="", text_ctxt=i18n_contexts.id_text)
 
-        row.operator("text.find", icon='TRIA_UP', text="").previous = True
-        row.operator("text.find", icon='TRIA_DOWN', text="")
+        row.operator("text.find", icon='TRIA_UP', text="").direction = 'PREV'
+        row.operator("text.find", icon='TRIA_DOWN', text="").direction = 'NEXT'
 
         # replace
         col = layout.column()
         row = col.row(align=True)
         row.prop(st, "replace_text", placeholder="Replace", text="")
 
-        row.operator("text.replace", icon='UV_SYNC_SELECT', text="")
+        row.operator("text.replace", icon='DECORATE_OVERRIDE', text="")
         row.operator("text.replace", icon='CON_ROTLIKE', text="", text_ctxt="Replace all").all = True
 
         col = layout.column()
