@@ -61,6 +61,7 @@ set(INC
   ../functions
   ../geometry
   ../gpu
+  ../imbuf
   ../makesrna
   ../modifiers
   ../render
@@ -104,6 +105,7 @@ set(SRC
   NOD_math_functions.hh
   NOD_multi_function.hh
   NOD_node_declaration.hh
+  NOD_node_extra_info.hh
   NOD_register.hh
   NOD_rna_define.hh
   NOD_shader.h
@@ -126,7 +128,6 @@ set(LIB
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_functions
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
   bf_nodes_composite
   bf_nodes_function
@@ -184,6 +185,9 @@ if(WITH_GMP)
 endif()
 
 if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
