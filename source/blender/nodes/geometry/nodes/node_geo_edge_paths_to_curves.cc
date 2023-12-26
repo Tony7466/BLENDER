@@ -17,38 +17,6 @@
 
 namespace blender::nodes::node_geo_edge_paths_to_curves_cc {
 
-/*
-class IndexSequence {
- protected:
-  Span<int> indices_;
-
- public:
-  IndexSequence(const Span<int> indices) : indices_(indices) {}
-
-  class BaseIterator {
-   protected:
-    Span<int> indices_;
-
-   public:
-    BaseIterator(const Span<int> indices) : indices_(indices) {}
-
-    int next_for(const int index) const
-    {
-      return this->indices_[index];
-    }
-
-    bool is_end(const int index) const
-    {
-      return index == this->indices_[index];
-    }
-  };
-
-  class Iterator : public BaseIterator {
-
-  }
-};
-*/
-
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
@@ -57,14 +25,52 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
-static int index_after(const Span<int> indices, const int start, const int range)
+static bool is_dead_end(const Span<int> next_indices, const int vert)
 {
-  int last = start;
-  for ([[maybe_unused]] const int i : IndexRange(range)) {
-    // printf("%s;\n", AT);
-    last = indices[last];
+  return vert == next_indices[vert];
+}
+
+static int size_of_loop(const Span<int> next_indices,
+                        const Span<std::atomic<int>> rank,
+                        const int vert)
+{
+  if (const int cycle_rank = rank[vert]; cycle_rank > 0) {
+    return cycle_rank;
   }
-  return last;
+
+  int cycle_size = 1;
+  for (int cycle_vert = next_indices[vert]; cycle_vert != vert;
+       cycle_vert = next_indices[cycle_vert])
+  {
+    BLI_assert(!is_dead_end(next_indices, cycle_vert));
+    cycle_size++;
+  }
+  return cycle_size;
+}
+
+/**
+ * Fill part of cycle, marked by mask value.
+ * This part should be continuous sequence of connected vertices.
+ * Filling by value of size of this cycle. */
+static void replace_in_cycle(const Span<int> next_indices,
+                             const int vert,
+                             const int src,
+                             const int dst,
+                             MutableSpan<std::atomic<int>> rank)
+{
+  BLI_assert(src != dst);
+
+  int iter_vert = vert;
+  while (rank[iter_vert].load() != src) {
+    iter_vert = next_indices[iter_vert];
+    BLI_assert(!is_dead_end(next_indices, iter_vert));
+  }
+
+  while (rank[iter_vert].load() == src) {
+    rank[iter_vert].store(dst);
+    iter_vert = next_indices[iter_vert];
+    BLI_assert(!is_dead_end(next_indices, iter_vert));
+  }
 }
 
 static Curves *edge_paths_to_curves_convert(
@@ -112,146 +118,72 @@ static Curves *edge_paths_to_curves_convert(
     });
   }
 
-  const auto vert_in_cycle = [&](const int vert) -> bool {
-    BLI_assert(vert != next_indices[vert]);
-    const int current_rank = rank[vert].load();
-    BLI_assert(current_rank > 0);
-
-    const int next_vert = next_indices[vert];
-    // >> int aaa = 0;
-    while (true) {
-      // >> if (aaa++ > 100000) { printf("AAAA>>> %s;\n", AT); }
-      // printf("%s;\n", AT);
-      /* In some odd case, other thread might already write current vert rank, but still don't
-       * finish next one. Await for this. */
-      const int next_rank = rank[next_vert].load();
-      if (next_rank > 0) {
-        return current_rank == next_rank;
-      }
-    }
-  };
-
   const auto rank_for_vertex = [&](const int vertex) -> int {
-    if (rank[vertex].load(std::memory_order_relaxed) > 0) {
+    if (rank[vertex] > 0) {
       return rank[vertex];
     }
-
     const int vert_path_id = -(vertex + 1);
-
     int total_rank = 0;
-
-    // >> int aaa = 0;
     for (int current_vert = vertex; true; current_vert = next_indices[current_vert]) {
-      // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
-      // printf("%s;\n", AT);
-
       int expected_rank = non_checked;
+      /* Marking all points of this branch be id of this branch. Other connected branches will
+       * read-only final rank of this point. */
       if (rank[current_vert].compare_exchange_strong(expected_rank, vert_path_id)) {
         total_rank++;
-        if (current_vert == next_indices[current_vert]) {
+        if (is_dead_end(next_indices, current_vert)) {
           break;
         }
-        // printf("<< Next: %d;\n", expected_rank);
-        // printf("%s;\n", AT);
         continue;
       }
 
-      // printf(">> Next: %d;\n", expected_rank);
-
       if (expected_rank == vert_path_id) {
-        int cycle_size = 1;
-        // >> int aaa = 0;
-        for (int cycle_vert = next_indices[current_vert]; cycle_vert != current_vert;
-             cycle_vert = next_indices[cycle_vert])
-        {
-          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
-          // printf("%s;\n", AT);
-          cycle_size++;
-        }
-        rank[current_vert].store(cycle_size);
-        // >> aaa = 0;
-        for (int cycle_vert = next_indices[current_vert]; cycle_vert != current_vert;
-             cycle_vert = next_indices[cycle_vert])
-        {
-          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
-          // printf("%s;\n", AT);
-          rank[cycle_vert].store(cycle_size);
-        }
+        /* Cycle formed by this branch. Other branches might be connected, but they will read-only
+         * rank of cycle. */
+        const int cycle_size = size_of_loop(next_indices, rank, current_vert);
+        replace_in_cycle(next_indices, current_vert, vert_path_id, cycle_size, rank);
         total_rank += cycle_size;
         break;
       }
 
-      // >> int aaa = 0;
-      while (expected_rank < 0) {
-        // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
-        // printf("%s;\n", AT);
-        expected_rank = rank[current_vert].load();
-      }
-
-      if (expected_rank > 0) {
-        const bool in_cycle = vert_in_cycle(current_vert);
-        if (!in_cycle) {
-          total_rank += expected_rank;
-          break;
-        }
-
-        const int cycle_size = expected_rank;
-
-        int affected_part_of_cycle = 1;
-        // >> int aaa = 0;
-        for (int cycle_vert = next_indices[current_vert]; cycle_vert != current_vert;
-             cycle_vert = next_indices[cycle_vert])
-        {
-          BLI_assert(next_indices[cycle_vert] != cycle_vert);
-          if (next_indices[cycle_vert] == cycle_vert) {
-            printf("WTF THIS IS DEAD END!\n");
-          }
-          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
-          // printf("%s;\n", AT);
-          affected_part_of_cycle++;
-        }
-        const int gradient_depth = total_rank - (cycle_size - affected_part_of_cycle);
-
-        int affected_cycle_vert = index_after(next_indices, vertex, gradient_depth);
-        // >> aaa = 0;
-        for ([[maybe_unused]] const int i : IndexRange(affected_part_of_cycle)) {
-          // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
-          // printf("%s;\n", AT);
-          rank[affected_cycle_vert].store(cycle_size);
-          affected_cycle_vert = next_indices[affected_cycle_vert];
-        }
-
-        total_rank += expected_rank;
+      /* One last point of marked by another branch, but this is last one, and it rank is known as
+       * one. */
+      if (is_dead_end(next_indices, current_vert)) {
+        total_rank++;
         break;
       }
+
+      // if (next_indices[next_indices[current_vert]] == current_vert && rank[...] < non_checked) {
+      /* TODO: DEADLOCK OF an "A->B->C->...->A" CYCLE OF POINTS AND THREADS!!!!!. Have to solve
+       * this case. */
+      // }
+
+      /* Await info from another thread to get final rank. Info is coming due to this is not zero,
+       * but marked by other branch id. */
+      while (rank[current_vert].load() < non_checked) {
+      }
+      const int current_rank = rank[current_vert].load();
+      while (rank[next_indices[current_vert]].load() < non_checked) {
+      }
+      const int next_rank = rank[next_indices[current_vert]].load();
+
+      const bool is_cycle = current_rank == next_rank;
+      BLI_assert(ELEM(current_rank, next_rank, next_rank + 1));
+      if (LIKELY(!is_cycle)) {
+        total_rank += current_rank;
+        break;
+      }
+
+      const int cycle_size = size_of_loop(next_indices, rank, current_vert);
+      replace_in_cycle(next_indices, current_vert, vert_path_id, cycle_size, rank);
+      total_rank += cycle_size;
     }
 
-    int last = -1;
-    // >> aaa = 0;
     for (int current_vert = vertex; rank[current_vert].load() == vert_path_id;
          current_vert = next_indices[current_vert])
     {
-      // >> if (aaa++ > 100000) { printf("AAAA>>> %s: %d;\n", AT, vertex); }
-      last = current_vert;
-      // printf("%s ++;\n", AT);
       rank[current_vert].store(total_rank);
       total_rank--;
     }
-
-    if ((last != -1) && (rank[next_indices[last]] != (rank[last] - 1)) &&
-        (next_indices[last] != last)) {
-      // printf("End is not correct!!!, diff: %d;\n", (rank[next_indices[last]] - (rank[last] -
-      // 1)));
-    }
-
-    BLI_assert((last == -1) || (next_indices[last] == last) ||
-               (rank[next_indices[last]] == (rank[last] - 1)));
-
-    BLI_assert(last == -1 || rank[next_indices[last]] > 0);
-
-    BLI_assert(total_rank >= 0);
-
-    BLI_assert(!rank.as_span().contains(vert_path_id));
 
     return rank[vertex].load(std::memory_order_relaxed);
   };
@@ -262,7 +194,6 @@ static Curves *edge_paths_to_curves_convert(
     valid_start_verts.foreach_index(GrainSize(2048),
                                     [&](const int first_vert, const int vert_pos) {
                                       curve_offsets[vert_pos] = rank_for_vertex(first_vert);
-                                      // printf("Rank: %d;\n", curve_offsets[vert_pos]);
                                     });
   }
 
@@ -272,7 +203,6 @@ static Curves *edge_paths_to_curves_convert(
     curves = offset_indices::accumulate_counts_to_offsets(curve_offsets);
   }
   if (curves.is_empty()) {
-    // printf("HMMM?\n");
     return nullptr;
   }
 
