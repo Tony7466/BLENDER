@@ -191,7 +191,7 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
 }
 
 
-void join_transform_instance_components(Span<const bke::InstancesComponent *> src_components,
+void join_transform_instance_components(const Span<const GeometryComponent *> src_components,
                                         Span<blender::float4x4> src_base_transforms,
                                         GeometrySet &result)
 {
@@ -201,26 +201,31 @@ void join_transform_instance_components(Span<const bke::InstancesComponent *> sr
   }
   VArray<blender::float4x4>::ForSpan(src_base_transforms);
   std::unique_ptr<bke::Instances> dst_instances = std::make_unique<bke::Instances>(); 
+
   int tot_instances = 0; 
-  for (const bke::InstancesComponent *src_component : src_components) {
-    tot_instances += src_component->get()->instances_num();
+  for (const bke::GeometryComponent *src_component : src_components) {
+    const bke::InstancesComponent &src_instance_component = static_cast<const bke::InstancesComponent &>(*src_component);
+    tot_instances += src_instance_component.get()->instances_num();
   }
+
   // dst_instances->reserve(tot_instances);
 
   for (const int i:src_components.index_range())
   {
-    const bke::InstancesComponent *src_component = src_components[i];
+    const bke::GeometryComponent *src_component = src_components[i];
+    const bke::InstancesComponent &src_instance_component = static_cast<const bke::InstancesComponent &>(*src_component);
+    // const bke::InstancesComponent *src_component = src_components[i];
     const blender::float4x4 &base_transform = src_base_transforms[i];
-    const bke::Instances &src_instances = *src_component->get();
+    const bke::Instances &src_instances = *src_instance_component.get();
 
-    Span<bke::InstanceReference> src_references = src_instances.references();
+    const Span<bke::InstanceReference> src_references = src_instances.references();
     Array<int> handle_map(src_references.size());
     for (const int src_handle : src_references.index_range()) {
       handle_map[src_handle] = dst_instances->add_reference(src_references[src_handle]);
     }
 
-    Span<float4x4> src_transforms = src_instances.transforms(); 
-    Span<int> src_reference_handles = src_instances.reference_handles(); 
+    const Span<float4x4> src_transforms = src_instances.transforms(); 
+    const Span<int> src_reference_handles = src_instances.reference_handles(); 
     for (const int i : src_transforms.index_range())
     {
       const int src_handle = src_reference_handles[i];
