@@ -3541,72 +3541,14 @@ static void do_paintvert_box_select__doSelectVert(void *user_data,
     data->is_changed = true;
   }
 }
-static bool do_paintvert_box_select(ViewContext *vc,
-                                    wmGenericUserData *wm_userdata,
-                                    const rcti *rect,
-                                    const eSelectOp sel_op)
+
+static bool do_paint_box_select(ViewContext *vc,
+                                wmGenericUserData *wm_userdata,
+                                const rcti *rect,
+                                eSelectOp sel_op)
 {
   using namespace blender;
-  const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
 
-  Mesh *mesh = static_cast<Mesh *>(vc->obact->data);
-  if ((mesh == nullptr) || (mesh->verts_num == 0)) {
-    return false;
-  }
-
-  bool changed = false;
-  if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
-    changed |= paintvert_deselect_all_visible(vc->obact, SEL_DESELECT, false);
-  }
-
-  if (BLI_rcti_is_empty(rect)) {
-    /* pass */
-  }
-  else if (use_zbuf) {
-    EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
-    if (wm_userdata->data == nullptr) {
-      editselect_buf_cache_init_with_generic_userdata(wm_userdata, vc, SCE_SELECT_VERTEX);
-      esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
-      esel->select_bitmap = DRW_select_buffer_bitmap_from_rect(
-          vc->depsgraph, vc->region, vc->v3d, rect, nullptr);
-    }
-    if (esel->select_bitmap != nullptr) {
-      changed |= edbm_backbuf_check_and_select_verts_obmode(mesh, esel, sel_op);
-    }
-  }
-  else {
-    bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-    bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
-        ".select_vert", bke::AttrDomain::Point);
-
-    BoxSelectUserData_ForMeshVert data;
-    data.select_vert = select_vert.span;
-
-    view3d_userdata_boxselect_init(&data.box_data, vc, rect, sel_op);
-
-    ED_view3d_init_mats_rv3d(vc->obact, vc->rv3d);
-
-    meshobject_foreachScreenVert(
-        vc, do_paintvert_box_select__doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
-    changed |= data.box_data.is_changed;
-    select_vert.finish();
-  }
-
-  if (changed) {
-    if (SEL_OP_CAN_DESELECT(sel_op)) {
-      BKE_mesh_mselect_validate(mesh);
-    }
-    paintvert_flush_flags(vc->obact);
-    paintvert_tag_select_update(vc->C, vc->obact);
-  }
-  return changed;
-}
-
-static bool do_paintface_box_select(ViewContext *vc,
-                                    wmGenericUserData *wm_userdata,
-                                    const rcti *rect,
-                                    eSelectOp sel_op)
-{
   Object *ob = vc->obact;
   Mesh *mesh;
 
@@ -3615,29 +3557,99 @@ static bool do_paintface_box_select(ViewContext *vc,
     return false;
   }
 
+  const bool is_face_sel = (mesh->editflag & ME_EDIT_PAINT_FACE_SEL);
+  const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
   bool changed = false;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
-    changed |= paintface_deselect_all_visible(vc->C, vc->obact, SEL_DESELECT, false);
+    changed |= is_face_sel ?
+                   paintface_deselect_all_visible(vc->C, vc->obact, SEL_DESELECT, false) :
+                   paintvert_deselect_all_visible(vc->obact, SEL_DESELECT, false);
   }
 
   if (BLI_rcti_is_empty(rect)) {
     /* pass */
   }
-  else {
+  else if (use_zbuf) {
     EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
     if (wm_userdata->data == nullptr) {
-      editselect_buf_cache_init_with_generic_userdata(wm_userdata, vc, SCE_SELECT_FACE);
+      editselect_buf_cache_init_with_generic_userdata(
+          wm_userdata, vc, is_face_sel ? SCE_SELECT_FACE : SCE_SELECT_VERTEX);
       esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
       esel->select_bitmap = DRW_select_buffer_bitmap_from_rect(
           vc->depsgraph, vc->region, vc->v3d, rect, nullptr);
     }
     if (esel->select_bitmap != nullptr) {
-      changed |= edbm_backbuf_check_and_select_faces_obmode(mesh, esel, sel_op);
+      changed |= is_face_sel ? edbm_backbuf_check_and_select_faces_obmode(mesh, esel, sel_op) :
+                               edbm_backbuf_check_and_select_verts_obmode(mesh, esel, sel_op);
     }
+  }
+  else {
+    BoxSelectUserData_ForMeshVert data;
+    view3d_userdata_boxselect_init(&data.box_data, vc, rect, sel_op);
+    ED_view3d_init_mats_rv3d(vc->obact, vc->rv3d);
+
+    bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+    if (is_face_sel) {
+      Array<bool> vert_tag(mesh->verts_num, 0);
+      data.select_vert = vert_tag.as_mutable_span();
+
+      meshobject_foreachScreenVert(
+          vc, do_paintvert_box_select__doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
+
+      if (data.box_data.is_changed) {
+        data.box_data.is_changed = false;
+        bke::AttributeAccessor attributes_me = mesh->attributes();
+        const VArray<bool> hide_poly_me = *attributes_me.lookup_or_default<bool>(
+            ".hide_poly", bke::AttrDomain::Face, false);
+        bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
+            ".select_poly", bke::AttrDomain::Face);
+
+        const OffsetIndices<int> faces = mesh->faces();
+        const Span<int> corner_verts = mesh->corner_verts();
+        for (const int i : faces.index_range()) {
+          if (select_poly.span[i]) {
+            continue;
+          }
+          if (hide_poly_me[i]) {
+            continue;
+          }
+          const IndexRange face = faces[i];
+          for (const int corner : face) {
+            const int i_curr = corner_verts[corner];
+            if (vert_tag[i_curr]) {
+              select_poly.span[i] = true;
+              data.box_data.is_changed = true;
+              break;
+            }
+          }
+        }
+        select_poly.finish();
+      }
+    }
+    else {
+      bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
+          ".select_vert", bke::AttrDomain::Point);
+      data.select_vert = select_vert.span;
+
+      meshobject_foreachScreenVert(
+          vc, do_paintvert_box_select__doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
+      select_vert.finish();
+    }
+
+    changed |= data.box_data.is_changed;
   }
 
   if (changed) {
-    paintface_flush_flags(vc->C, vc->obact, true, false);
+    if (is_face_sel) {
+      paintface_flush_flags(vc->C, vc->obact, true, false);
+    }
+    else {
+      if (SEL_OP_CAN_DESELECT(sel_op)) {
+        BKE_mesh_mselect_validate(mesh);
+      }
+      paintvert_flush_flags(vc->obact);
+      paintvert_tag_select_update(vc->C, vc->obact);
+    }
   }
   return changed;
 }
@@ -4345,11 +4357,8 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
     FOREACH_OBJECT_IN_MODE_END;
   }
   else { /* No edit-mode, unified for bones and objects. */
-    if (vc.obact && BKE_paint_select_face_test(vc.obact)) {
-      changed_multi = do_paintface_box_select(&vc, wm_userdata, &rect, sel_op);
-    }
-    else if (vc.obact && BKE_paint_select_vert_test(vc.obact)) {
-      changed_multi = do_paintvert_box_select(&vc, wm_userdata, &rect, sel_op);
+    if (vc.obact && BKE_paint_select_elem_test(vc.obact)) {
+      changed_multi = do_paint_box_select(&vc, wm_userdata, &rect, sel_op);
     }
     else if (vc.obact && vc.obact->mode & OB_MODE_PARTICLE_EDIT) {
       changed_multi = PE_box_select(C, &rect, sel_op);
