@@ -7,5 +7,5 @@ Referenced by issue #114490, "Auto Smooth" GN modifiers do not appear on the nod
 Referenced by issue #114822, Data transfer modifier doesn't transfer per face corner normal data.
 Referenced by issue #116069, Data Transfer's modifier Face Corner Custom Normals Tranfer don't work as expected
 Referenced by issue #115993, Different normals in 4.1 when using sharp faces with Auto Smooth disabled in 4.0
-Referenced by issue #116307, Regression: Crash with data transfere modifier in 4.0
+Referenced by issue #116307, Regression: Crash with data transfer modifier in 4.0
 Referenced by commit 78c3253553fd33daa593fd54038077fc2590d8de, Fix #116069: Incorrect data transfer custom normals behavior
