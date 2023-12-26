@@ -108,7 +108,7 @@ class USDStageReader {
   /**
    * Create prototype collections for instancing by the USD instance readers.
    */
-  void create_proto_collections(Main *bmain, ViewLayer *view_layer, Collection *parent_collection);
+  void create_proto_collections(Main *bmain, Collection *parent_collection);
 
  private:
   USDPrimReader *collect_readers(Main *bmain,

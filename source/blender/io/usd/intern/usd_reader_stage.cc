@@ -570,9 +570,7 @@ void USDStageReader::sort_readers()
       });
 }
 
-void USDStageReader::create_proto_collections(Main *bmain,
-                                              ViewLayer *view_layer,
-                                              Collection *parent_collection)
+void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_collection)
 {
   if (proto_readers_.empty()) {
     return;
