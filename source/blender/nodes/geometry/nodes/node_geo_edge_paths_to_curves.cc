@@ -81,17 +81,6 @@ static Curves *edge_paths_to_curves_convert(
 {
   const IndexRange vert_range(mesh.verts_num);
 
-  /* Do not create curves from first point with incorrect index. */
-  IndexMaskMemory memory;
-  IndexMask valid_start_verts;
-  {
-    SCOPED_TIMER_AVERAGED("Roots mask");
-    valid_start_verts = IndexMask::from_predicate(
-        start_verts_mask, GrainSize(4096), memory, [&](const int vert_i) {
-          return vert_range.contains(next_indices[vert_i]);
-        });
-  }
-
   /* All the next points can pointing to itself. */
   {
     SCOPED_TIMER_AVERAGED("Loops incorrect indices");
@@ -104,6 +93,17 @@ static Curves *edge_paths_to_curves_convert(
         }
       }
     });
+  }
+
+  /* Do not create curves from first point with incorrect index. */
+  IndexMaskMemory memory;
+  IndexMask valid_start_verts;
+  {
+    SCOPED_TIMER_AVERAGED("Roots mask");
+    valid_start_verts = IndexMask::from_predicate(
+        start_verts_mask, GrainSize(4096), memory, [&](const int vert_i) {
+          return !is_dead_end(next_indices, vert_i);
+        });
   }
 
   const constexpr int non_checked = 0;
