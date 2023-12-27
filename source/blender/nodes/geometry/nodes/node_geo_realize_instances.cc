@@ -49,7 +49,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   evaluator.evaluate();
   const VArray<int> depths = evaluator.get_evaluated<int>(0);
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
-  // bke::AnonymousAttributePropagationInfo propagation_info = params.get_output_propagation_info("Geometry");
 
   geometry::RealizeInstancesOptions options;
   options.keep_original_ids = false;
@@ -59,7 +58,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   options.selection = selection;
 
   geometry_set = geometry::realize_instances(geometry_set, options);
-  // geometry_set = geometry::realize_instances(geometry_set, {selection, depths, propagation_info});
   params.set_output("Geometry", std::move(geometry_set));
 }
 
