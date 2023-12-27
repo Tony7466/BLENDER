@@ -459,7 +459,6 @@ void GPU_shader_bind(GPUShader *gpu_shader)
 
   if (ctx->shader != shader) {
     ctx->shader = shader;
-    shader->specialization_config_reset();
     shader->bind();
     GPU_matrix_bind(gpu_shader);
     Shader::set_srgb_uniform(gpu_shader);
@@ -559,11 +558,6 @@ void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
     constants.values.append(sc.default_value);
     constants.defaults.append(sc.default_value);
   }
-}
-
-void Shader::specialization_config_reset()
-{
-  constants.values = constants.defaults;
 }
 
 void GPU_shader_constant_int_ex(GPUShader *sh, int location, int value)

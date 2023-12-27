@@ -91,11 +91,6 @@ class Shader {
    * GPU_shader_specialize_constant_*(). */
   void specialization_constants_init(const shader::ShaderCreateInfo &info);
 
-  /* Reset the current specialization configuration. This should happen between binds to avoid
-   * utilizing a stale state for a secondary use of a shader. If no specialization constants have
-   * been assigned, the unspecialized base variant of a shader PSO will be used.*/
-  void specialization_config_reset();
-
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const = 0;

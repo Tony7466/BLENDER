@@ -440,7 +440,7 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
     /* If this is a compute shader, bake base PSO for compute straight-away.
      * NOTE: This will compile the base unspecialized variant. */
     if (is_compute) {
-      this->bake_compute_pipeline_state(context_, false);
+      this->bake_compute_pipeline_state(context_);
     }
   }
 
@@ -865,7 +865,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_current_pipeline_state(
       (requires_specific_topology_class) ? prim_type : MTLPrimitiveTopologyClassUnspecified;
 
   /* Specialization configuration. */
-  pipeline_descriptor.specialization_state = {this->constants.defaults};
+  pipeline_descriptor.specialization_state = {this->constants.values};
 
   /* Bake pipeline state using global descriptor. */
   return bake_pipeline_state(ctx, prim_type, pipeline_descriptor);
@@ -897,7 +897,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
    * whether the base unspecialized variant exists:
    * - If unspecialized version exists: Compile specialized PSO asynchronously, returning base PSO
    * and flagging state of specialization in cache as being built.
-   *  - If unspecialized does NOT exist, build specialized version straight away, as we pay the
+   * - If unspecialized does NOT exist, build specialized version straight away, as we pay the
    * cost of compilation in both cases regardless. */
 
   /* Generate new Render Pipeline State Object (PSO). */
@@ -987,7 +987,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
         {
           shader_debug_printf(
               "TODO(Metal): Shader %s needs to support internal format conversion\n",
-              mtl_interface->name);
+              mtl_interface->get_name());
         }
 
         /* Copy metal back-end attribute descriptor state into PSO descriptor.
@@ -1397,8 +1397,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
   }
 }
 
-MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLContext *ctx,
-                                                                        bool allow_specialized)
+MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
 {
   /* NOTE(Metal): Bakes and caches a PSO for compute. */
   BLI_assert(this);
@@ -1412,8 +1411,7 @@ MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLConte
 
   /* Specialization configuration.
    * NOTE: If allow_specialized is disabled, we will build the base un-specialized variant. */
-  compute_pipeline_descriptor.specialization_state = {
-      allow_specialized ? this->constants.values : this->constants.defaults};
+  compute_pipeline_descriptor.specialization_state = {this->constants.values};
 
   /* Check if current PSO exists in the cache. */
   pso_cache_lock_.lock();

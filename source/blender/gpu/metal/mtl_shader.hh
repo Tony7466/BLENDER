@@ -369,8 +369,7 @@ class MTLShader : public Shader {
       MTLPrimitiveTopologyClass prim_type,
       const MTLRenderPipelineStateDescriptor &pipeline_descriptor);
 
-  MTLComputePipelineStateInstance *bake_compute_pipeline_state(MTLContext *ctx,
-                                                               bool allow_specialized);
+  MTLComputePipelineStateInstance *bake_compute_pipeline_state(MTLContext *ctx);
   const MTLComputePipelineStateCommon &get_compute_common_state()
   {
     return compute_pso_common_state_;

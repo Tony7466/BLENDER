@@ -2204,7 +2204,7 @@ const MTLComputePipelineStateInstance *MTLContext::ensure_compute_pipeline_state
   }
 
   const MTLComputePipelineStateInstance *compute_pso_inst =
-      this->pipeline_state.active_shader->bake_compute_pipeline_state(this, true);
+      this->pipeline_state.active_shader->bake_compute_pipeline_state(this);
   if (compute_pso_inst == nullptr || compute_pso_inst->pso == nil) {
     MTL_LOG_WARNING("No valid compute PSO for compute dispatch!", );
     return nullptr;
