@@ -8,37 +8,21 @@
 
 #pragma once
 
-#include <memory>
-
-#include "DNA_brush_types.h"
-#include "DNA_key_types.h"
-#include "DNA_listBase.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_vec_types.h"
+#include <queue>
 
 #include "BKE_attribute.hh"
-#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
-#include "BLI_bitmap.h"
-#include "BLI_compiler_attrs.h"
-#include "BLI_compiler_compat.h"
 #include "BLI_generic_array.hh"
-#include "BLI_gsqueue.h"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
-#include "BLI_threads.h"
 #include "BLI_vector.hh"
 
 #include "ED_view3d.hh"
-
-#include <functional>
 
 namespace blender::ed::sculpt_paint {
 namespace auto_mask {
@@ -135,8 +119,8 @@ struct SculptOrigFaceData {
 
 /* Flood Fill. */
 struct SculptFloodFill {
-  GSQueue *queue;
-  BLI_bitmap *visited_verts;
+  std::queue<PBVHVertRef> queue;
+  blender::BitVector<> visited_verts;
 };
 
 enum eBoundaryAutomaskMode {
@@ -170,7 +154,7 @@ struct NodeGeometry {
 
   CustomData vert_data;
   CustomData edge_data;
-  CustomData loop_data;
+  CustomData corner_data;
   CustomData face_data;
   int *face_offset_indices;
   const ImplicitSharingInfo *face_offsets_sharing_info;
@@ -220,7 +204,7 @@ struct Node {
   bool applied;
 
   /* shape keys */
-  char shapeName[sizeof(KeyBlock::name)];
+  char shapeName[MAX_NAME]; /* sizeof(KeyBlock::name). */
 
   /* Geometry modification operations.
    *
@@ -896,7 +880,7 @@ bool SCULPT_vertex_is_occluded(SculptSession *ss, PBVHVertRef vertex, bool origi
 /** Returns true if a color attribute exists in the current sculpt session. */
 bool SCULPT_has_colors(const SculptSession *ss);
 
-/** Returns true if the active color attribute is on loop (ATTR_DOMAIN_CORNER) domain. */
+/** Returns true if the active color attribute is on loop (AttrDomain::Corner) domain. */
 bool SCULPT_has_loop_colors(const Object *ob);
 
 const float *SCULPT_vertex_persistent_co_get(SculptSession *ss, PBVHVertRef vertex);
@@ -1045,38 +1029,7 @@ void SCULPT_orig_vert_data_unode_init(SculptOrigVertData *data,
 /** \name Brush Utilities.
  * \{ */
 
-BLI_INLINE bool SCULPT_tool_needs_all_pbvh_nodes(const Brush *brush)
-{
-  if (brush->sculpt_tool == SCULPT_TOOL_ELASTIC_DEFORM) {
-    /* Elastic deformations in any brush need all nodes to avoid artifacts as the effect
-     * of the Kelvinlet is not constrained by the radius. */
-    return true;
-  }
-
-  if (brush->sculpt_tool == SCULPT_TOOL_POSE) {
-    /* Pose needs all nodes because it applies all symmetry iterations at the same time
-     * and the IK chain can grow to any area of the model. */
-    /* TODO: This can be optimized by filtering the nodes after calculating the chain. */
-    return true;
-  }
-
-  if (brush->sculpt_tool == SCULPT_TOOL_BOUNDARY) {
-    /* Boundary needs all nodes because it is not possible to know where the boundary
-     * deformation is going to be propagated before calculating it. */
-    /* TODO: after calculating the boundary info in the first iteration, it should be
-     * possible to get the nodes that have vertices included in any boundary deformation
-     * and cache them. */
-    return true;
-  }
-
-  if (brush->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK &&
-      brush->snake_hook_deform_type == BRUSH_SNAKE_HOOK_DEFORM_ELASTIC)
-  {
-    /* Snake hook in elastic deform type has same requirements as the elastic deform tool. */
-    return true;
-  }
-  return false;
-}
+bool SCULPT_tool_needs_all_pbvh_nodes(const Brush *brush);
 
 void SCULPT_calc_brush_plane(Sculpt *sd,
                              Object *ob,
@@ -1250,7 +1203,6 @@ void execute(SculptSession *ss,
                           bool is_duplicate,
                           void *userdata),
              void *userdata);
-void free_fill(SculptFloodFill *flood);
 
 }
 
@@ -1463,16 +1415,7 @@ void plane_falloff_preview_draw(uint gpuattr,
 
 blender::Vector<PBVHNode *> brush_affected_nodes_gather(SculptSession *ss, Brush *brush);
 
-BLI_INLINE bool is_cloth_deform_brush(const Brush *brush)
-{
-  return (brush->sculpt_tool == SCULPT_TOOL_CLOTH && ELEM(brush->cloth_deform_type,
-                                                          BRUSH_CLOTH_DEFORM_GRAB,
-                                                          BRUSH_CLOTH_DEFORM_SNAKE_HOOK)) ||
-         /* All brushes that are not the cloth brush deform the simulation using softbody
-          * constraints instead of applying forces. */
-         (brush->sculpt_tool != SCULPT_TOOL_CLOTH &&
-          brush->deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM);
-}
+bool is_cloth_deform_brush(const Brush *brush);
 
 }
 
@@ -1883,6 +1826,23 @@ int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex);
 
 /** \} */
 
-/* Make SCULPT_ alias to a few blenkernel sculpt methods. */
+inline void *SCULPT_vertex_attr_get(const PBVHVertRef vertex, const SculptAttribute *attr)
+{
+  if (attr->data) {
+    char *p = (char *)attr->data;
+    int idx = (int)vertex.i;
 
-#define SCULPT_vertex_attr_get BKE_sculpt_vertex_attr_get
+    if (attr->data_for_bmesh) {
+      BMElem *v = (BMElem *)vertex.i;
+      idx = v->head.index;
+    }
+
+    return p + attr->elem_size * (int)idx;
+  }
+  else {
+    BMElem *v = (BMElem *)vertex.i;
+    return BM_ELEM_CD_GET_VOID_P(v, attr->bmesh_cd_offset);
+  }
+
+  return NULL;
+}
