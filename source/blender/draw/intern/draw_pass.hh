@@ -596,7 +596,7 @@ template<class T> void PassBase<T>::submit(command::RecordingState &state) const
         commands_[header.index].push_constant.execute(state);
         break;
       case command::Type::SpecializeConstant:
-        commands_[header.index].specialize_constant.execute(state);
+        commands_[header.index].specialize_constant.execute();
         break;
       case command::Type::Draw:
         commands_[header.index].draw.execute(state);

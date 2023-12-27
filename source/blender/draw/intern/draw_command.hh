@@ -340,7 +340,7 @@ struct SpecializeConstant {
   SpecializeConstant(GPUShader *sh, int loc, const bool *val)
       : shader(sh), bool_ref(val), location(loc), type(Type::BoolReference){};
 
-  void execute(RecordingState &state) const;
+  void execute() const;
   std::string serialize() const;
 };
 

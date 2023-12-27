@@ -111,7 +111,7 @@ void PushConstant::execute(RecordingState &state) const
   }
 }
 
-void SpecializeConstant::execute(RecordingState &state) const
+void SpecializeConstant::execute() const
 {
   /* All specialization constants should exist as they are not optimized out like uniforms. */
   BLI_assert(location != -1);
