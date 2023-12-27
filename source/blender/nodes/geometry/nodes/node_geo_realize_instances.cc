@@ -23,6 +23,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(("Which top-level instances to realize"));
   b.add_input<decl::Int>("Depth")
       .default_value(0)
+      .min(0)
       .supports_field()
       .description(
       ("Number of levels of nested instances to realize for each top-level instance"));

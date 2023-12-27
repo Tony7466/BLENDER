@@ -207,14 +207,10 @@ void join_transform_instance_components(const Span<const GeometryComponent *> sr
     const bke::InstancesComponent &src_instance_component = static_cast<const bke::InstancesComponent &>(*src_component);
     tot_instances += src_instance_component.get()->instances_num();
   }
-
-  // dst_instances->reserve(tot_instances);
-
   for (const int i:src_components.index_range())
   {
     const bke::GeometryComponent *src_component = src_components[i];
     const bke::InstancesComponent &src_instance_component = static_cast<const bke::InstancesComponent &>(*src_component);
-    // const bke::InstancesComponent *src_component = src_components[i];
     const blender::float4x4 &base_transform = src_base_transforms[i];
     const bke::Instances &src_instances = *src_instance_component.get();
 
@@ -240,16 +236,6 @@ void join_transform_instance_components(const Span<const GeometryComponent *> sr
   bke::InstancesComponent &dst_component = result.get_component_for_write<bke::InstancesComponent>();
   join_attributes(src_components, dst_component, {"position"});
 
-  // if (src_components.size() == 1){
-  //   result.add(*src_components.first());
-  //   return;
-  // }
-  // else{
-  //   result.add(*src_components[0]);
-  //   result.add(*src_components[1]);
-  //   result.add(*src_components[2]);
-  //   return;
-  // }
 }
 
 GeometrySet join_geometries(const Span<GeometrySet> geometries,
