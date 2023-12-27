@@ -503,6 +503,8 @@ void DeferredLayer::end_sync()
   eClosureBits evaluated_closures = CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT | CLOSURE_REFLECTION |
                                     CLOSURE_REFRACTION;
   if (closure_bits_ & evaluated_closures) {
+    RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
+
     /* Add the tile classification step at the end of the GBuffer pass. */
     {
       /* Fill tile mask texture with the collected closure present in a tile. */
@@ -569,13 +571,13 @@ void DeferredLayer::end_sync()
          * See page 78 of "SIGGRAPH 2023: Unreal Engine Substrate" by Hillaire & de Rousiers. */
         for (int i = ARRAY_SIZE(closure_bufs_) - 1; i >= 0; i--) {
           GPUShader *sh = inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i));
-          sub.specialize_constant(
-              sh, "SC_render_pass_shadow_id", &inst_.render_buffers.data.shadow_id);
-          sub.specialize_constant(sh, "SC_shadow_ray_count", &inst_.shadows.get_data().ray_count);
-          sub.specialize_constant(
-              sh, "SC_shadow_ray_step_count", &inst_.shadows.get_data().step_count);
-          sub.specialize_constant(
-              sh, "SC_shadow_normal_bias", &inst_.shadows.get_data().normal_bias);
+          /* TODO(fclem): Could specialize directly with the pass index but this would break it for
+           * OpenGL and Vulkan implementation which aren't fully supporting the specialize
+           * constant. */
+          sub.specialize_constant(sh, "render_pass_shadow_enabled", rbuf_data.shadow_id != -1);
+          const ShadowSceneData &shadow_scene = inst_.shadows.get_data();
+          sub.specialize_constant(sh, "shadow_ray_count", &shadow_scene.ray_count);
+          sub.specialize_constant(sh, "shadow_ray_step_count", &shadow_scene.step_count);
           sub.shader_set(sh);
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
           sub.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
