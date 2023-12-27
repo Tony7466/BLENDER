@@ -770,7 +770,7 @@ struct ShaderCreateInfo {
    *
    * Specialization constants are reset to their provided default values upon `GPU_shader_bind()`.
    * */
-  Self &constant(Type type, StringRefNull name, double default_value)
+  Self &specialization_constant(Type type, StringRefNull name, double default_value)
   {
     SpecializationConstant constant;
     constant.type = type;
