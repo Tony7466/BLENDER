@@ -54,10 +54,13 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
 class COLLECTION_PT_io_handlers(CollectionButtonsPanel, Panel):
     bl_label = "IO Handlers"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
+        collection = context.collection
+
         layout.operator("wm.call_menu", text="Add IO Handler", icon='ADD').name = "COLLECTION_MT_io_handler_add"
-        layout.operator("COLLECTION_OT_io_export_all", icon='EXPORT')
+        if collection.io_handlers:
+            layout.operator("COLLECTION_OT_io_export_all", icon='EXPORT')
         layout.template_collection_exporters()
 
 

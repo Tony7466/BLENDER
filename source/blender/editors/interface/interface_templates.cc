@@ -2351,14 +2351,14 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 #  pragma optimize("", off)
 #endif
 void draw_export_controls(
-    bContext *C, uiLayout *layout, PointerRNA *ptr, FileHandlerType *fh, int id)
+    bContext *C, uiLayout *layout, PointerRNA *ptr, FileHandlerType *fh, int index)
 {
   uiLayout *box = uiLayoutBox(layout);
   uiLayout *row = uiLayoutRow(box, true);
   uiItemR(row, ptr, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemS(row);
-  uiItemIntO(row, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "id", id);
-  uiItemIntO(row, "", ICON_X, "COLLECTION_OT_io_handler_remove", "id", id);
+  uiItemIntO(row, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
+  uiItemIntO(row, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
 }
 
 void draw_export_properties(bContext *C, uiLayout *layout, PointerRNA *ptr, FileHandlerType *fh)
@@ -2418,14 +2418,12 @@ void draw_export_properties(bContext *C, uiLayout *layout, PointerRNA *ptr, File
 
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
 {
-  ARegion *region = CTX_wm_region(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
-  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+  Collection *collection = CTX_data_collection(C);
+  ListBase *io_handlers = &collection->io_handlers;
 
   /* Draw all the IO handlers. */
-  int id = 0;
-  LISTBASE_FOREACH_INDEX (IOHandlerData *, data, io_handlers, id) {
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (IOHandlerData *, data, io_handlers, index) {
     FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
     if (!fh) {
       continue;
@@ -2440,7 +2438,7 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
     PointerRNA io_handler_ptr = RNA_pointer_create(nullptr, &RNA_IOHandlerData, data);
 
     if (uiLayout *panel_layout = uiLayoutPanel(C, layout, fh->label, &io_handler_ptr, "is_open")) {
-      draw_export_controls(C, panel_layout, &prop_ptr, fh, id);
+      draw_export_controls(C, panel_layout, &prop_ptr, fh, index);
       draw_export_properties(C, panel_layout, &prop_ptr, fh);
     }
   }

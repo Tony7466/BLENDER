@@ -156,14 +156,6 @@ static void collection_copy_data(Main *bmain, ID *id_dst, const ID *id_src, cons
   }
 }
 
-static void io_handler_item_free(IOHandlerData *data)
-{
-  if (data->export_properties) {
-    IDP_FreeProperty(data->export_properties);
-    data->export_properties = nullptr;
-  }
-}
-
 static void collection_free_data(ID *id)
 {
   Collection *collection = (Collection *)id;
@@ -181,7 +173,9 @@ static void collection_free_data(ID *id)
   BLI_freelistN(&collection->runtime.parents);
 
   LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
-    io_handler_item_free(data);
+    if (data->export_properties) {
+      IDP_FreeProperty(data->export_properties);
+    }
   }
   BLI_freelistN(&collection->io_handlers);
 

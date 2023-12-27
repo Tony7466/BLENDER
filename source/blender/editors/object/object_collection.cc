@@ -423,9 +423,8 @@ void COLLECTION_OT_create(wmOperatorType *ot)
 
 static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
-  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+  Collection *collection = CTX_data_collection(C);
+  ListBase *io_handlers = &collection->io_handlers;
 
   char name[MAX_ID_NAME - 2]; /* id name */
   RNA_string_get(op->ptr, "name", name);
@@ -474,20 +473,23 @@ void COLLECTION_OT_io_handler_add(wmOperatorType *ot)
 
 static int collection_io_handler_remove_exec(bContext *C, wmOperator *op)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
-  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+  Collection *collection = CTX_data_collection(C);
+  ListBase *io_handlers = &collection->io_handlers;
 
-  int id = RNA_int_get(op->ptr, "id");
-  IOHandlerData *data = static_cast<IOHandlerData *>(
-      BLI_listbase_string_or_index_find(io_handlers, nullptr, 0, id));
+  int index = RNA_int_get(op->ptr, "index");
+  IOHandlerData *data = static_cast<IOHandlerData *>(BLI_findlink(io_handlers, index));
+  if (!data) {
+    return OPERATOR_CANCELLED;
+  }
 
   if (data->export_properties) {
     IDP_FreeProperty(data->export_properties);
-    data->export_properties = nullptr;
   }
 
   BLI_remlink(io_handlers, data);
+  MEM_freeN(data);
+
+  WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -506,7 +508,7 @@ void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_int(ot->srna, "id", 0, 0, INT_MAX, "Id", "IO Handler id", 0, INT_MAX);
+  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
 }
 
 static int io_handler_export(bContext *C, IOHandlerData *data)
@@ -528,13 +530,14 @@ static int io_handler_export(bContext *C, IOHandlerData *data)
 
 static int collection_io_handler_export_exec(bContext *C, wmOperator *op)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
-  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+  Collection *collection = CTX_data_collection(C);
+  ListBase *io_handlers = &collection->io_handlers;
 
-  int id = RNA_int_get(op->ptr, "id");
-  IOHandlerData *data = static_cast<IOHandlerData *>(
-      BLI_listbase_string_or_index_find(io_handlers, nullptr, 0, id));
+  int index = RNA_int_get(op->ptr, "index");
+  IOHandlerData *data = static_cast<IOHandlerData *>(BLI_findlink(io_handlers, index));
+  if (!data) {
+    return OPERATOR_CANCELLED;
+  }
 
   return io_handler_export(C, data);
 }
@@ -553,14 +556,13 @@ void COLLECTION_OT_io_handler_export(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_int(ot->srna, "id", 0, 0, INT_MAX, "Id", "IO Handler id", 0, INT_MAX);
+  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
 }
 
 static int collection_io_export_all_exec(bContext *C, wmOperator * /*op*/)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  LayerCollection *layer_coll = BKE_view_layer_active_collection_get(view_layer);
-  ListBase *io_handlers = &layer_coll->collection->io_handlers;
+  Collection *collection = CTX_data_collection(C);
+  ListBase *io_handlers = &collection->io_handlers;
 
   LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
     io_handler_export(C, data);
