@@ -1262,7 +1262,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const int &constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
@@ -1272,7 +1271,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const uint &constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
@@ -1282,7 +1280,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const float &constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
@@ -1292,7 +1289,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const bool &constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
@@ -1302,7 +1298,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const int *constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
@@ -1312,7 +1307,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const uint *constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
@@ -1322,7 +1316,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const float *constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
@@ -1332,7 +1325,6 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
                                              const char *constant_name,
                                              const bool *constant_value)
 {
-  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
   create_command(Type::SpecializeConstant).specialize_constant = {
       shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
