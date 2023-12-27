@@ -230,9 +230,21 @@ struct PaintOperationExecutor {
         "cyclic", ATTR_DOMAIN_CURVE);
     cyclic.span.last() = false;
     materials.span.last() = material_index;
+    bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
+
+    /* Make the new stroke a new shape. */
+    if (shape_ids) {
+      int max_shape_id = 0;
+      for (const int i : shape_ids.span.index_range()) {
+        max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
+      }
+
+      shape_ids.span.last() = max_shape_id + 1;
+    }
 
     cyclic.finish();
     materials.finish();
+    shape_ids.finish();
 
     curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
     curves.update_curve_types();
@@ -244,7 +256,8 @@ struct PaintOperationExecutor {
                                          "cyclic",
                                          "radius",
                                          "opacity",
-                                         "vertex_color"}};
+                                         "vertex_color",
+                                         "shape_id"}};
     attributes.for_all(
         [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
           if (attributes_to_skip.contains(id.name())) {
