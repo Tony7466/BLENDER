@@ -16,15 +16,13 @@
 #include "BLI_task.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_mesh.hh"
@@ -505,7 +503,6 @@ static float *sculpt_expand_topology_falloff_create(Sculpt *sd, Object *ob, cons
   fdata.dists = dists;
 
   flood_fill::execute(ss, &flood, expand_topology_floodfill_cb, &fdata);
-  flood_fill::free_fill(&flood);
 
   return dists;
 }
@@ -566,7 +563,6 @@ static float *sculpt_expand_normal_falloff_create(Sculpt *sd,
   SCULPT_vertex_normal_get(ss, v, fdata.original_normal);
 
   flood_fill::execute(ss, &flood, mask_expand_normal_floodfill_cb, &fdata);
-  flood_fill::free_fill(&flood);
 
   for (int repeat = 0; repeat < blur_steps; repeat++) {
     for (int i = 0; i < totvert; i++) {
@@ -639,7 +635,7 @@ static float *sculpt_expand_boundary_topology_falloff_create(Object *ob, const P
   const int totvert = SCULPT_vertex_count_get(ss);
   float *dists = static_cast<float *>(MEM_calloc_arrayN(totvert, sizeof(float), __func__));
   BitVector<> visited_verts(totvert);
-  GSQueue *queue = BLI_gsqueue_new(sizeof(PBVHVertRef));
+  std::queue<PBVHVertRef> queue;
 
   /* Search and initialize a boundary per symmetry pass, then mark those vertices as visited. */
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
@@ -657,22 +653,22 @@ static float *sculpt_expand_boundary_topology_falloff_create(Object *ob, const P
     }
 
     for (int i = 0; i < boundary->verts_num; i++) {
-      BLI_gsqueue_push(queue, &boundary->verts[i]);
+      queue.push(boundary->verts[i]);
       visited_verts[BKE_pbvh_vertex_to_index(ss->pbvh, boundary->verts[i])].set();
     }
     boundary::data_free(boundary);
   }
 
   /* If there are no boundaries, return a falloff with all values set to 0. */
-  if (BLI_gsqueue_is_empty(queue)) {
+  if (queue.empty()) {
     return dists;
   }
 
   /* Propagate the values from the boundaries to the rest of the mesh. */
-  while (!BLI_gsqueue_is_empty(queue)) {
-    PBVHVertRef v_next;
+  while (!queue.empty()) {
+    PBVHVertRef v_next = queue.front();
+    queue.pop();
 
-    BLI_gsqueue_pop(queue, &v_next);
     int v_next_i = BKE_pbvh_vertex_to_index(ss->pbvh, v_next);
 
     SculptVertexNeighborIter ni;
@@ -682,12 +678,11 @@ static float *sculpt_expand_boundary_topology_falloff_create(Object *ob, const P
       }
       dists[ni.index] = dists[v_next_i] + 1.0f;
       visited_verts[ni.index].set();
-      BLI_gsqueue_push(queue, &ni.vertex);
+      queue.push(ni.vertex);
     }
     SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
   }
 
-  BLI_gsqueue_free(queue);
   return dists;
 }
 
@@ -711,7 +706,7 @@ static float *sculpt_expand_diagonals_falloff_create(Object *ob, const PBVHVertR
 
   /* Search and mask as visited the initial vertices using the enabled symmetry passes. */
   BitVector<> visited_verts(totvert);
-  GSQueue *queue = BLI_gsqueue_new(sizeof(PBVHVertRef));
+  std::queue<PBVHVertRef> queue;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
   for (char symm_it = 0; symm_it <= symm; symm_it++) {
     if (!SCULPT_is_symmetry_iteration_valid(symm_it, symm)) {
@@ -722,18 +717,18 @@ static float *sculpt_expand_diagonals_falloff_create(Object *ob, const PBVHVertR
         ob, symm_it, v);
     int symm_vertex_i = BKE_pbvh_vertex_to_index(ss->pbvh, symm_vertex);
 
-    BLI_gsqueue_push(queue, &symm_vertex);
+    queue.push(symm_vertex);
     visited_verts[symm_vertex_i].set();
   }
 
-  if (BLI_gsqueue_is_empty(queue)) {
+  if (queue.empty()) {
     return dists;
   }
 
   /* Propagate the falloff increasing the value by 1 each time a new vertex is visited. */
-  while (!BLI_gsqueue_is_empty(queue)) {
-    PBVHVertRef v_next;
-    BLI_gsqueue_pop(queue, &v_next);
+  while (!queue.empty()) {
+    PBVHVertRef v_next = queue.front();
+    queue.pop();
 
     int v_next_i = BKE_pbvh_vertex_to_index(ss->pbvh, v_next);
 
@@ -745,12 +740,11 @@ static float *sculpt_expand_diagonals_falloff_create(Object *ob, const PBVHVertR
         }
         dists[neighbor_v.i] = dists[v_next_i] + 1.0f;
         visited_verts[neighbor_v.i].set();
-        BLI_gsqueue_push(queue, &neighbor_v);
+        queue.push(neighbor_v);
       }
     }
   }
 
-  BLI_gsqueue_free(queue);
   return dists;
 }
 
@@ -929,7 +923,6 @@ static void sculpt_expand_topology_from_state_boundary(Object *ob,
   ExpandFloodFillData fdata;
   fdata.dists = dists;
   flood_fill::execute(ss, &flood, expand_topology_floodfill_cb, &fdata);
-  flood_fill::free_fill(&flood);
 
   expand_cache->vert_falloff = dists;
 }
@@ -1201,7 +1194,7 @@ static void write_mask_data(SculptSession *ss, const Span<float> mask)
       Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
       bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
       bke::SpanAttributeWriter<float> attribute = attributes.lookup_or_add_for_write_span<float>(
-          ".sculpt_mask", ATTR_DOMAIN_POINT);
+          ".sculpt_mask", bke::AttrDomain::Point);
       for (PBVHNode *node : nodes) {
         PBVHVertexIter vd;
         BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
@@ -1344,7 +1337,7 @@ static void sculpt_expand_face_sets_update(Object &object, Cache *expand_cache)
   bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const bke::AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+  const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   for (const int f : face_sets.span.index_range()) {
     const bool enabled = sculpt_expand_face_state_get(
         object.sculpt, hide_poly, face_sets.span, expand_cache, f);

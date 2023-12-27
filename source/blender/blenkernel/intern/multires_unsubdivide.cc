@@ -9,6 +9,8 @@
  * its corresponding grids to match a given original mesh.
  */
 
+#include <queue>
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_mesh_types.h"
@@ -16,7 +18,6 @@
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_gsqueue.h"
 #include "BLI_math_vector.h"
 
 #include "BKE_customdata.hh"
@@ -163,10 +164,8 @@ static bool is_vertex_diagonal(BMVert *from_v, BMVert *to_v)
  */
 static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex)
 {
-  bool *visited_verts = static_cast<bool *>(
-      MEM_calloc_arrayN(bm->totvert, sizeof(bool), "visited vertices"));
-  GSQueue *queue;
-  queue = BLI_gsqueue_new(sizeof(BMVert *));
+  blender::BitVector<> visited_verts(bm->totvert);
+  std::queue<BMVert *> queue;
 
   /* Add and tag the vertices connected by a diagonal to initial_vertex to the flood fill queue. If
    * initial_vertex is a pole and there is a valid solution, those vertices should be the (0,0) of
@@ -179,8 +178,8 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
     BM_ITER_ELEM (neighbor_v, &iter_a, f, BM_VERTS_OF_FACE) {
       int neighbor_vertex_index = BM_elem_index_get(neighbor_v);
       if (neighbor_v != initial_vertex && is_vertex_diagonal(neighbor_v, initial_vertex)) {
-        BLI_gsqueue_push(queue, &neighbor_v);
-        visited_verts[neighbor_vertex_index] = true;
+        queue.push(neighbor_v);
+        visited_verts[neighbor_vertex_index].set();
         BM_elem_flag_set(neighbor_v, BM_ELEM_TAG, true);
       }
     }
@@ -191,44 +190,39 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
    * direction. If a solution exists and `initial_vertex` was a pole, this is guaranteed that will
    * tag all the (0,0) vertices of the grids, and nothing else. */
   /* If it was not a pole, it may or may not find a solution, even if the solution exists. */
-  while (!BLI_gsqueue_is_empty(queue)) {
-    BMVert *from_v;
-    BLI_gsqueue_pop(queue, &from_v);
+  while (!queue.empty()) {
+    BMVert *from_v = queue.front();
+    queue.pop();
 
     /* Get the diagonals (first connected step) */
-    GSQueue *diagonals;
-    diagonals = BLI_gsqueue_new(sizeof(BMVert *));
+    std::queue<BMVert *> diagonals;
     BM_ITER_ELEM (f, &iter, from_v, BM_FACES_OF_VERT) {
       BM_ITER_ELEM (neighbor_v, &iter_a, f, BM_VERTS_OF_FACE) {
         if (neighbor_v != from_v && is_vertex_diagonal(neighbor_v, from_v)) {
-          BLI_gsqueue_push(diagonals, &neighbor_v);
+          diagonals.push(neighbor_v);
         }
       }
     }
 
     /* Do the second connected step. This vertices are the ones that are added to the flood fill
      * queue. */
-    while (!BLI_gsqueue_is_empty(diagonals)) {
-      BMVert *diagonal_v;
-      BLI_gsqueue_pop(diagonals, &diagonal_v);
+    while (!diagonals.empty()) {
+      BMVert *diagonal_v = diagonals.front();
+      diagonals.pop();
       BM_ITER_ELEM (f, &iter, diagonal_v, BM_FACES_OF_VERT) {
         BM_ITER_ELEM (neighbor_v, &iter_a, f, BM_VERTS_OF_FACE) {
           int neighbor_vertex_index = BM_elem_index_get(neighbor_v);
           if (!visited_verts[neighbor_vertex_index] && neighbor_v != diagonal_v &&
               is_vertex_diagonal(neighbor_v, diagonal_v))
           {
-            BLI_gsqueue_push(queue, &neighbor_v);
-            visited_verts[neighbor_vertex_index] = true;
+            queue.push(neighbor_v);
+            visited_verts[neighbor_vertex_index].set();
             BM_elem_flag_set(neighbor_v, BM_ELEM_TAG, true);
           }
         }
       }
     }
-    BLI_gsqueue_free(diagonals);
   }
-
-  BLI_gsqueue_free(queue);
-  MEM_freeN(visited_verts);
 }
 
 /**
@@ -292,10 +286,10 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
   /* First, get vertex candidates to try to generate possible un-subdivide solution. */
   /* Find a vertex pole. If there is a solution on an all quad base mesh, this vertex should be
    * part of the base mesh. If it isn't, then there is no solution. */
-  GSQueue *initial_vertex = BLI_gsqueue_new(sizeof(BMVert *));
+  std::queue<BMVert *> initial_vertex;
   BMVert *initial_vertex_pole = unsubdivide_find_any_pole(bm, elem_id, elem);
   if (initial_vertex_pole != nullptr) {
-    BLI_gsqueue_push(initial_vertex, &initial_vertex_pole);
+    initial_vertex.push(initial_vertex_pole);
   }
 
   /* Also try from the different 4 vertices of a quad in the current
@@ -317,16 +311,16 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
   }
 
   BM_ITER_ELEM (v, &iter_a, init_face, BM_VERTS_OF_FACE) {
-    BLI_gsqueue_push(initial_vertex, &v);
+    initial_vertex.push(v);
   }
 
   bool valid_tag_found = false;
 
   /* Check all vertex candidates to a solution. */
-  while (!BLI_gsqueue_is_empty(initial_vertex)) {
+  while (!initial_vertex.empty()) {
 
-    BMVert *iv;
-    BLI_gsqueue_pop(initial_vertex, &iv);
+    BMVert *iv = initial_vertex.front();
+    initial_vertex.pop();
 
     /* Generate a possible solution. */
     unsubdivide_face_center_vertex_tag(bm, iv);
@@ -347,7 +341,6 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
       }
     }
   }
-  BLI_gsqueue_free(initial_vertex);
   return valid_tag_found;
 }
 
@@ -361,31 +354,29 @@ static int unsubdivide_init_elem_ids(BMesh *bm, int *elem_id)
   int current_id = 0;
   for (int i = 0; i < bm->totvert; i++) {
     if (!visited_verts[i]) {
-      GSQueue *queue;
-      queue = BLI_gsqueue_new(sizeof(BMVert *));
+      std::queue<BMVert *> queue;
 
       visited_verts[i] = true;
       elem_id[i] = current_id;
-      BMVert *iv = BM_vert_at_index(bm, i);
-      BLI_gsqueue_push(queue, &iv);
+      queue.push(BM_vert_at_index(bm, i));
 
-      while (!BLI_gsqueue_is_empty(queue)) {
+      while (!queue.empty()) {
         BMIter iter;
-        BMVert *current_v, *neighbor_v;
+        BMVert *current_v = queue.front();
+        queue.pop();
+        BMVert *neighbor_v;
         BMEdge *ed;
-        BLI_gsqueue_pop(queue, &current_v);
         BM_ITER_ELEM (ed, &iter, current_v, BM_EDGES_OF_VERT) {
           neighbor_v = BM_edge_other_vert(ed, current_v);
           const int neighbor_index = BM_elem_index_get(neighbor_v);
           if (!visited_verts[neighbor_index]) {
             visited_verts[neighbor_index] = true;
             elem_id[neighbor_index] = current_id;
-            BLI_gsqueue_push(queue, &neighbor_v);
+            queue.push(neighbor_v);
           }
         }
       }
       current_id++;
-      BLI_gsqueue_free(queue);
     }
   }
   MEM_freeN(visited_verts);
@@ -886,15 +877,15 @@ static const char vname[] = "v_remap_index";
 static void multires_unsubdivide_free_original_datalayers(Mesh *mesh)
 {
   const int l_layer_index = CustomData_get_named_layer_index(
-      &mesh->loop_data, CD_PROP_INT32, lname);
+      &mesh->corner_data, CD_PROP_INT32, lname);
   if (l_layer_index != -1) {
-    CustomData_free_layer(&mesh->loop_data, CD_PROP_INT32, mesh->totloop, l_layer_index);
+    CustomData_free_layer(&mesh->corner_data, CD_PROP_INT32, mesh->corners_num, l_layer_index);
   }
 
   const int v_layer_index = CustomData_get_named_layer_index(
       &mesh->vert_data, CD_PROP_INT32, vname);
   if (v_layer_index != -1) {
-    CustomData_free_layer(&mesh->vert_data, CD_PROP_INT32, mesh->totvert, v_layer_index);
+    CustomData_free_layer(&mesh->vert_data, CD_PROP_INT32, mesh->verts_num, v_layer_index);
   }
 }
 
@@ -907,16 +898,16 @@ static void multires_unsubdivide_add_original_index_datalayers(Mesh *mesh)
   multires_unsubdivide_free_original_datalayers(mesh);
 
   int *l_index = static_cast<int *>(CustomData_add_layer_named(
-      &mesh->loop_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, lname));
+      &mesh->corner_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->corners_num, lname));
 
   int *v_index = static_cast<int *>(CustomData_add_layer_named(
-      &mesh->vert_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totvert, vname));
+      &mesh->vert_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->verts_num, vname));
 
   /* Initialize these data-layer with the indices in the current mesh. */
-  for (int i = 0; i < mesh->totloop; i++) {
+  for (int i = 0; i < mesh->corners_num; i++) {
     l_index[i] = i;
   }
-  for (int i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->verts_num; i++) {
     v_index[i] = i;
   }
 }
@@ -946,7 +937,7 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
       CustomData_get_layer_named(&base_mesh->vert_data, CD_PROP_INT32, vname));
 
   /* Tag the base mesh vertices in the original mesh. */
-  for (int i = 0; i < base_mesh->totvert; i++) {
+  for (int i = 0; i < base_mesh->verts_num; i++) {
     int vert_basemesh_index = context->base_to_orig_vmap[i];
     BMVert *v = BM_vert_at_index(bm_original_mesh, vert_basemesh_index);
     BM_elem_flag_set(v, BM_ELEM_TAG, true);
@@ -990,9 +981,9 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
 
   BMesh *bm_original_mesh = context->bm_original_mesh;
 
-  context->num_grids = base_mesh->totloop;
+  context->num_grids = base_mesh->corners_num;
   context->base_mesh_grids = static_cast<MultiresUnsubdivideGrid *>(
-      MEM_calloc_arrayN(base_mesh->totloop, sizeof(MultiresUnsubdivideGrid), "grids"));
+      MEM_calloc_arrayN(base_mesh->corners_num, sizeof(MultiresUnsubdivideGrid), "grids"));
 
   /* Based on the existing indices in the data-layers, generate two vertex indices maps. */
   /* From vertex index in original to vertex index in base and from vertex index in base to vertex
@@ -1000,21 +991,21 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
   int *orig_to_base_vmap = static_cast<int *>(
       MEM_calloc_arrayN(bm_original_mesh->totvert, sizeof(int), "orig vmap"));
   int *base_to_orig_vmap = static_cast<int *>(
-      MEM_calloc_arrayN(base_mesh->totvert, sizeof(int), "base vmap"));
+      MEM_calloc_arrayN(base_mesh->verts_num, sizeof(int), "base vmap"));
 
   context->base_to_orig_vmap = static_cast<const int *>(
       CustomData_get_layer_named(&base_mesh->vert_data, CD_PROP_INT32, vname));
-  for (int i = 0; i < base_mesh->totvert; i++) {
+  for (int i = 0; i < base_mesh->verts_num; i++) {
     base_to_orig_vmap[i] = context->base_to_orig_vmap[i];
   }
 
   /* If an index in original does not exist in base (it was dissolved when creating the new base
    * mesh, return -1. */
-  for (int i = 0; i < original_mesh->totvert; i++) {
+  for (int i = 0; i < original_mesh->verts_num; i++) {
     orig_to_base_vmap[i] = -1;
   }
 
-  for (int i = 0; i < base_mesh->totvert; i++) {
+  for (int i = 0; i < base_mesh->verts_num; i++) {
     const int orig_vertex_index = context->base_to_orig_vmap[i];
     orig_to_base_vmap[orig_vertex_index] = i;
   }
@@ -1173,16 +1164,16 @@ static void multires_create_grids_in_unsubdivided_base_mesh(MultiresUnsubdivideC
                                                             Mesh *base_mesh)
 {
   /* Free the current MDISPS and create a new ones. */
-  if (CustomData_has_layer(&base_mesh->loop_data, CD_MDISPS)) {
-    CustomData_free_layers(&base_mesh->loop_data, CD_MDISPS, base_mesh->totloop);
+  if (CustomData_has_layer(&base_mesh->corner_data, CD_MDISPS)) {
+    CustomData_free_layers(&base_mesh->corner_data, CD_MDISPS, base_mesh->corners_num);
   }
-  MDisps *mdisps = static_cast<MDisps *>(
-      CustomData_add_layer(&base_mesh->loop_data, CD_MDISPS, CD_SET_DEFAULT, base_mesh->totloop));
+  MDisps *mdisps = static_cast<MDisps *>(CustomData_add_layer(
+      &base_mesh->corner_data, CD_MDISPS, CD_SET_DEFAULT, base_mesh->corners_num));
 
   const int totdisp = pow_i(BKE_ccg_gridsize(context->num_total_levels), 2);
-  const int totloop = base_mesh->totloop;
+  const int totloop = base_mesh->corners_num;
 
-  BLI_assert(base_mesh->totloop == context->num_grids);
+  BLI_assert(base_mesh->corners_num == context->num_grids);
 
   /* Allocate the MDISPS grids and copy the extracted data from context. */
   for (int i = 0; i < totloop; i++) {
