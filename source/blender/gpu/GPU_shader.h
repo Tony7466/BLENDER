@@ -126,7 +126,7 @@ int GPU_shader_get_sampler_binding(GPUShader *shader, const char *name);
 int GPU_shader_get_uniform(GPUShader *shader, const char *name);
 
 /**
- * Returns constant location.
+ * Returns specialization constant location.
  */
 int GPU_shader_get_constant(GPUShader *shader, const char *name);
 
@@ -185,12 +185,12 @@ bool GPU_shader_get_attribute_info(const GPUShader *shader,
  * \{ */
 
 void GPU_shader_constant_int_ex(GPUShader *sh, int location, int value);
-void GPU_shader_constant_uint_ex(GPUShader *sh, int location, uint value);
+void GPU_shader_constant_uint_ex(GPUShader *sh, int location, unsigned int value);
 void GPU_shader_constant_float_ex(GPUShader *sh, int location, float value);
 void GPU_shader_constant_bool_ex(GPUShader *sh, int location, bool value);
 
 void GPU_shader_constant_int(GPUShader *sh, const char *name, int value);
-void GPU_shader_constant_uint(GPUShader *sh, const char *name, uint value);
+void GPU_shader_constant_uint(GPUShader *sh, const char *name, unsigned int value);
 void GPU_shader_constant_float(GPUShader *sh, const char *name, float value);
 void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value);
 

@@ -365,18 +365,23 @@ class PassBase {
   /**
    * Update a shader specialization constant.
    *
+   * IMPORTANT: Non-specialized constants can have undefined values.
+   * Specialize every constant before binding a shader.
+   *
    * Reference versions are to be used when the resource might change between the time it is
    * referenced and the time it is dereferenced for drawing.
    *
    * IMPORTANT: Will keep a reference to the data and dereference it upon drawing. Make sure data
    * still alive until pass submission.
    */
-  void shader_constant_set(uint constant_id, const float &data);
-  void shader_constant_set(uint constant_id, const int &data);
-  void shader_constant_set(uint constant_id, const bool &data);
-  void shader_constant_set(uint constant_id, const float *data);
-  void shader_constant_set(uint constant_id, const int *data);
-  void shader_constant_set(uint constant_id, const bool *data);
+  void shader_constant_set(GPUShader *shader, const char *name, const float &data);
+  void shader_constant_set(GPUShader *shader, const char *name, const int &data);
+  void shader_constant_set(GPUShader *shader, const char *name, const uint &data);
+  void shader_constant_set(GPUShader *shader, const char *name, const bool &data);
+  void shader_constant_set(GPUShader *shader, const char *name, const float *data);
+  void shader_constant_set(GPUShader *shader, const char *name, const int *data);
+  void shader_constant_set(GPUShader *shader, const char *name, const uint *data);
+  void shader_constant_set(GPUShader *shader, const char *name, const bool *data);
 
   /**
    * Turn the pass into a string for inspection.
@@ -591,7 +596,7 @@ template<class T> void PassBase<T>::submit(command::RecordingState &state) const
         commands_[header.index].push_constant.execute(state);
         break;
       case command::Type::SpecializeConstant:
-        commands_[header.index].shader_constant_set.execute(state);
+        commands_[header.index].specialize_constant.execute(state);
         break;
       case command::Type::Draw:
         commands_[header.index].draw.execute(state);
@@ -1246,46 +1251,90 @@ template<class T> inline void PassBase<T>::push_constant(const char *name, const
   create_command(Type::None) = commands[2];
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Resource bind Implementation
+ * \{ */
+
 template<class T>
-inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const int &value)
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const int &constant_value)
 {
-  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
-                                                                  value};
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const float &value)
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const uint &constant_value)
 {
-  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
-                                                                  value};
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const bool &value)
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const float &constant_value)
 {
-  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
-                                                                  value};
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const int *data)
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const bool &constant_value)
 {
-  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
-                                                                  data};
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const float *data)
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const int *constant_value)
 {
-  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
-                                                                  data};
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(uint specialization_constant_id, const bool *data)
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const uint *constant_value)
 {
-  create_command(Type::SpecializeConstant).shader_constant_set = {specialization_constant_id,
-                                                                  data};
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const float *constant_value)
+{
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+                                             const char *constant_name,
+                                             const bool *constant_value)
+{
+  BLI_assert_msg(shader_ != shader, "Cannot specialize constant of currently bound shader");
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
 
 /** \} */

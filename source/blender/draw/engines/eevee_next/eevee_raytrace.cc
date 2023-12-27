@@ -150,8 +150,12 @@ void RayTraceModule::sync()
   /* Denoise. */
   for (auto type : IndexRange(3)) {
     PassSimple &pass = PASS_VARIATION(denoise_spatial_, type, _ps_);
+    GPUShader *sh = inst_.shaders.static_shader_get(SHADER_VARIATION(RAY_DENOISE_SPATIAL_, type));
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(SHADER_VARIATION(RAY_DENOISE_SPATIAL_, type)));
+    pass.shader_constant_set(
+        sh, "SC_raytrace_resolution_scale", &inst_.raytracing.data_.resolution_scale);
+    pass.shader_constant_set(sh, "SC_raytrace_skip_denoise", &inst_.raytracing.data_.skip_denoise);
+    pass.shader_set(sh);
     pass.bind_ssbo("tiles_coord_buf", &raytrace_denoise_tiles_buf_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_texture("depth_tx", &depth_tx);
@@ -165,9 +169,6 @@ void RayTraceModule::sync()
     inst_.bind_uniform_data(&pass);
     inst_.sampling.bind_resources(pass);
     inst_.gbuffer.bind_resources(pass);
-    pass.shader_constant_set(SC_raytrace_resolution_scale_SLOT,
-                             &inst_.raytracing.data_.resolution_scale);
-    pass.shader_constant_set(SC_raytrace_skip_denoise_SLOT, &inst_.raytracing.data_.skip_denoise);
     pass.dispatch(raytrace_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }

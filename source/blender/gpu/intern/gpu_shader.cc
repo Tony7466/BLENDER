@@ -617,6 +617,13 @@ int GPU_shader_get_uniform(GPUShader *shader, const char *name)
   return uniform ? uniform->location : -1;
 }
 
+int GPU_shader_get_constant(GPUShader *shader, const char *name)
+{
+  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInput *constant = interface->constant_get(name);
+  return constant ? constant->location : -1;
+}
+
 int GPU_shader_get_builtin_uniform(GPUShader *shader, int builtin)
 {
   const ShaderInterface *interface = unwrap(shader)->interface;

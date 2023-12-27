@@ -568,7 +568,15 @@ void DeferredLayer::end_sync()
         /* Submit the more costly ones first to avoid long tail in occupancy.
          * See page 78 of "SIGGRAPH 2023: Unreal Engine Substrate" by Hillaire & de Rousiers. */
         for (int i = ARRAY_SIZE(closure_bufs_) - 1; i >= 0; i--) {
-          sub.shader_set(inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i)));
+          GPUShader *sh = inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i));
+          sub.shader_constant_set(
+              sh, "SC_render_pass_shadow_id", &inst_.render_buffers.data.shadow_id);
+          sub.shader_constant_set(sh, "SC_shadow_ray_count", &inst_.shadows.get_data().ray_count);
+          sub.shader_constant_set(
+              sh, "SC_shadow_ray_step_count", &inst_.shadows.get_data().step_count);
+          sub.shader_constant_set(
+              sh, "SC_shadow_normal_bias", &inst_.shadows.get_data().normal_bias);
+          sub.shader_set(sh);
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
           sub.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
           sub.bind_image("direct_radiance_3_img", &direct_radiance_txs_[2]);
@@ -578,13 +586,6 @@ void DeferredLayer::end_sync()
           inst_.shadows.bind_resources(sub);
           inst_.sampling.bind_resources(sub);
           inst_.hiz_buffer.bind_resources(sub);
-          sub.shader_constant_set(SC_render_pass_shadow_id_SLOT,
-                                  &inst_.render_buffers.data.shadow_id);
-          sub.shader_constant_set(SC_shadow_ray_count_SLOT, &inst_.shadows.get_data().ray_count);
-          sub.shader_constant_set(SC_shadow_ray_step_count_SLOT,
-                                  &inst_.shadows.get_data().step_count);
-          sub.shader_constant_set(SC_shadow_normal_bias_SLOT,
-                                  &inst_.shadows.get_data().normal_bias);
           sub.state_stencil(0xFFu, 1u << i, 0xFFu);
           if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
             /* WORKAROUND: On Apple silicon the stencil test is broken. Only issue one expensive
@@ -603,9 +604,14 @@ void DeferredLayer::end_sync()
     {
       PassSimple &pass = combine_ps_;
       pass.init();
+      GPUShader *sh = inst_.shaders.static_shader_get(DEFERRED_COMBINE);
+      pass.shader_constant_set(
+          sh, "SC_diffuse_light_id", &inst_.render_buffers.data.diffuse_light_id);
+      pass.shader_constant_set(
+          sh, "SC_specular_light_id", &inst_.render_buffers.data.specular_light_id);
+      pass.shader_set(sh);
       /* Use depth test to reject background pixels. */
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ADD_FULL);
-      pass.shader_set(inst_.shaders.static_shader_get(DEFERRED_COMBINE));
       pass.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
       pass.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
       pass.bind_image("direct_radiance_3_img", &direct_radiance_txs_[2]);
@@ -616,11 +622,6 @@ void DeferredLayer::end_sync()
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       inst_.gbuffer.bind_resources(pass);
       inst_.bind_uniform_data(&pass);
-
-      pass.shader_constant_set(SC_diffuse_light_id_SLOT,
-                               &inst_.render_buffers.data.diffuse_light_id);
-      pass.shader_constant_set(SC_specular_light_id_SLOT,
-                               &inst_.render_buffers.data.specular_light_id);
 
       pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
       pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);

@@ -38,8 +38,10 @@ void HiZBuffer::sync()
 
   {
     PassSimple &pass = hiz_update_ps_;
+    GPUShader *sh = inst_.shaders.static_shader_get(HIZ_UPDATE);
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(HIZ_UPDATE));
+    pass.shader_constant_set(sh, "SC_update_mip_0", update_mip_0);
+    pass.shader_set(sh);
     pass.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
     /* TODO(fclem): Should be a parameter to avoid confusion. */
     pass.bind_texture("depth_tx", &src_tx_, with_filter);
@@ -53,14 +55,15 @@ void HiZBuffer::sync()
     /* TODO(@fclem): There might be occasions where we might not want to
      * copy mip 0 for performance reasons if there is no need for it. */
     pass.push_constant("update_mip_0", true);
-    pass.shader_constant_set(SC_update_mip_0_SLOT, update_mip_0);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
   {
     PassSimple &pass = hiz_update_layer_ps_;
+    GPUShader *sh = inst_.shaders.static_shader_get(HIZ_UPDATE_LAYER);
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(HIZ_UPDATE_LAYER));
+    pass.shader_constant_set(sh, "SC_update_mip_0", update_mip_0);
+    pass.shader_set(sh);
     pass.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
     /* TODO(fclem): Should be a parameter to avoid confusion. */
     pass.bind_texture("depth_layered_tx", &src_tx_, with_filter);
@@ -75,7 +78,6 @@ void HiZBuffer::sync()
      * copy mip 0 for performance reasons if there is no need for it. */
     pass.push_constant("update_mip_0", true);
     pass.push_constant("layer_id", &layer_id_);
-    pass.shader_constant_set(SC_update_mip_0_SLOT, update_mip_0);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
