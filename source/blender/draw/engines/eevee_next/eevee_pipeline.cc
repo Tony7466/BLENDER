@@ -96,7 +96,12 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
 
 void WorldPipeline::render(View &view)
 {
+  /* TODO(Miguel Pozo): All world probes are rendered as RAY_TYPE_GLOSSY. */
+  inst_.pipelines.data.is_probe_reflection = true;
+  inst_.push_uniform_data();
   inst_.manager->submit(cubemap_face_ps_, view);
+  inst_.pipelines.data.is_probe_reflection = false;
+  inst_.push_uniform_data();
 }
 
 /** \} */
@@ -417,8 +422,8 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
                                   GPU_ATTACHEMENT_WRITE,
                                   GPU_ATTACHEMENT_WRITE});
   /* G-buffer. */
+  gbuffer_ps_.bind_image(GBUF_NORMAL_SLOT, &inst.gbuffer.normal_img_tx);
   gbuffer_ps_.bind_image(GBUF_CLOSURE_SLOT, &inst.gbuffer.closure_img_tx);
-  gbuffer_ps_.bind_image(GBUF_COLOR_SLOT, &inst.gbuffer.color_img_tx);
   /* RenderPasses & AOVs. */
   gbuffer_ps_.bind_image(RBUFS_COLOR_SLOT, &inst.render_buffers.rp_color_tx);
   gbuffer_ps_.bind_image(RBUFS_VALUE_SLOT, &inst.render_buffers.rp_value_tx);
@@ -574,7 +579,17 @@ void DeferredLayer::end_sync()
           inst_.sampling.bind_resources(sub);
           inst_.hiz_buffer.bind_resources(sub);
           sub.state_stencil(0xFFu, 1u << i, 0xFFu);
-          sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+          if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+            /* WORKAROUND: On Apple silicon the stencil test is broken. Only issue one expensive
+             * lighting evaluation. */
+            if (i == 2) {
+              sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
+              sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+            }
+          }
+          else {
+            sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+          }
         }
       }
     }

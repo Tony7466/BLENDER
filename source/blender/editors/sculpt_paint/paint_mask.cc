@@ -10,8 +10,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_vec_types.h"
@@ -149,7 +147,7 @@ static bool try_remove_mask_mesh(Object &object, const Span<PBVHNode *> nodes)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
-  const VArraySpan mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT);
+  const VArraySpan mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
   if (mask.is_empty()) {
     return true;
   }
@@ -157,7 +155,7 @@ static bool try_remove_mask_mesh(Object &object, const Span<PBVHNode *> nodes)
   /* If there are any hidden vertices that shouldn't be affected with a mask value set, the
    * attribute cannot be removed. This could also be done by building an IndexMask in the full
    * vertex domain. */
-  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
+  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
   threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
   const bool hidden_masked_verts = threading::parallel_reduce(
       nodes.index_range(),
@@ -201,7 +199,7 @@ static void fill_mask_mesh(Object &object, const float value, const Span<PBVHNod
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
-  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
+  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
   if (value == 0.0f) {
     if (try_remove_mask_mesh(object, nodes)) {
       return;
@@ -209,7 +207,7 @@ static void fill_mask_mesh(Object &object, const float value, const Span<PBVHNod
   }
 
   bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_only_span<float>(
-      ".sculpt_mask", ATTR_DOMAIN_POINT);
+      ".sculpt_mask", bke::AttrDomain::Point);
 
   threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -356,9 +354,9 @@ static void invert_mask_mesh(Object &object, const Span<PBVHNode *> nodes)
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
 
-  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
+  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
   bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
-      ".sculpt_mask", ATTR_DOMAIN_POINT);
+      ".sculpt_mask", bke::AttrDomain::Point);
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (PBVHNode *node : nodes.slice(range)) {
       undo::push_node(&object, node, undo::Type::Mask);
@@ -536,7 +534,7 @@ struct LassoGestureData {
   int width;
 
   /* 2D bitmap to test if a vertex is affected by the lasso shape. */
-  BLI_bitmap *mask_px;
+  blender::BitVector<> mask_px;
 };
 
 struct LineGestureData {
@@ -670,7 +668,7 @@ static void sculpt_gesture_lasso_px_cb(int x, int x_end, int y, void *user_data)
   int index = (y * lasso->width) + x;
   int index_end = (y * lasso->width) + x_end;
   do {
-    BLI_BITMAP_ENABLE(lasso->mask_px, index);
+    lasso->mask_px[index].set();
   } while (++index != index_end);
 }
 
@@ -694,7 +692,7 @@ static SculptGestureContext *sculpt_gesture_init_from_lasso(bContext *C, wmOpera
   const int lasso_width = 1 + sgcontext->lasso.boundbox.xmax - sgcontext->lasso.boundbox.xmin;
   const int lasso_height = 1 + sgcontext->lasso.boundbox.ymax - sgcontext->lasso.boundbox.ymin;
   sgcontext->lasso.width = lasso_width;
-  sgcontext->lasso.mask_px = BLI_BITMAP_NEW(lasso_width * lasso_height, __func__);
+  sgcontext->lasso.mask_px.resize(lasso_width * lasso_height);
 
   BLI_bitmap_draw_2d_poly_v2i_n(sgcontext->lasso.boundbox.xmin,
                                 sgcontext->lasso.boundbox.ymin,
@@ -849,7 +847,6 @@ static SculptGestureContext *sculpt_gesture_init_from_line(bContext *C, wmOperat
 
 static void sculpt_gesture_context_free(SculptGestureContext *sgcontext)
 {
-  MEM_SAFE_FREE(sgcontext->lasso.mask_px);
   MEM_SAFE_FREE(sgcontext->gesture_points);
   MEM_SAFE_FREE(sgcontext->operation);
   MEM_delete(sgcontext);
@@ -966,7 +963,7 @@ static bool sculpt_gesture_is_effected_lasso(SculptGestureContext *sgcontext, co
   scr_co_s[0] -= lasso->boundbox.xmin;
   scr_co_s[1] -= lasso->boundbox.ymin;
 
-  return BLI_BITMAP_TEST_BOOL(lasso->mask_px, scr_co_s[1] * lasso->width + scr_co_s[0]);
+  return lasso->mask_px[scr_co_s[1] * lasso->width + scr_co_s[0]].test();
 }
 
 static bool sculpt_gesture_is_effected(SculptGestureContext *sgcontext,
@@ -1648,8 +1645,7 @@ static void sculpt_gesture_trim_geometry_generate(SculptGestureContext *sgcontex
   }
 
   bke::mesh_smooth_set(*trim_operation->mesh, false);
-
-  BKE_mesh_calc_edges(trim_operation->mesh, false, false);
+  bke::mesh_calc_edges(*trim_operation->mesh, false, false);
   sculpt_gesture_trim_normals_update(sgcontext);
 }
 
@@ -1775,7 +1771,7 @@ static void sculpt_gesture_trim_apply_for_symmetry_pass(bContext * /*C*/,
   SculptGestureTrimOperation *trim_operation = (SculptGestureTrimOperation *)sgcontext->operation;
   Mesh *trim_mesh = trim_operation->mesh;
   MutableSpan<float3> positions = trim_mesh->vert_positions_for_write();
-  for (int i = 0; i < trim_mesh->totvert; i++) {
+  for (int i = 0; i < trim_mesh->verts_num; i++) {
     flip_v3_v3(positions[i], trim_operation->true_mesh_co[i], sgcontext->symmpass);
   }
   sculpt_gesture_trim_normals_update(sgcontext);

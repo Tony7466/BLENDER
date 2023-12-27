@@ -19,7 +19,6 @@
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_ghash.h"
-#include "BLI_gsqueue.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_set.hh"
@@ -31,18 +30,17 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
+#include "DNA_key_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
@@ -120,7 +118,7 @@ SculptMaskWriteInfo SCULPT_mask_get_for_write(SculptSession *ss)
     case PBVH_FACES: {
       Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
       info.layer = static_cast<float *>(CustomData_get_layer_named_for_write(
-          &mesh->vert_data, CD_PROP_FLOAT, ".sculpt_mask", mesh->totvert));
+          &mesh->vert_data, CD_PROP_FLOAT, ".sculpt_mask", mesh->verts_num));
       break;
     }
     case PBVH_BMESH:
@@ -187,7 +185,7 @@ bool SCULPT_has_loop_colors(const Object *ob)
   if (!meta_data) {
     return false;
   }
-  if (meta_data->domain != ATTR_DOMAIN_CORNER) {
+  if (meta_data->domain != bke::AttrDomain::Corner) {
     return false;
   }
   if (!(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL)) {
@@ -300,7 +298,7 @@ float SCULPT_vertex_mask_get(SculptSession *ss, PBVHVertRef vertex)
       const Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
       const bke::AttributeAccessor attributes = mesh->attributes();
       const VArray mask = *attributes.lookup_or_default<float>(
-          ".sculpt_mask", ATTR_DOMAIN_POINT, 0.0f);
+          ".sculpt_mask", bke::AttrDomain::Point, 0.0f);
       return mask[vertex.i];
     }
     case PBVH_BMESH: {
@@ -412,7 +410,7 @@ bool vert_visible_get(const SculptSession *ss, PBVHVertRef vertex)
       const Mesh *mesh = BKE_pbvh_get_mesh(ss->pbvh);
       const bke::AttributeAccessor attributes = mesh->attributes();
       const VArray hide_vert = *attributes.lookup_or_default<bool>(
-          ".hide_vert", ATTR_DOMAIN_POINT, false);
+          ".hide_vert", bke::AttrDomain::Point, false);
       return !hide_vert[vertex.i];
     }
     case PBVH_BMESH:
@@ -1013,22 +1011,19 @@ namespace blender::ed::sculpt_paint::flood_fill {
 
 void init_fill(SculptSession *ss, SculptFloodFill *flood)
 {
-  int vertex_count = SCULPT_vertex_count_get(ss);
   SCULPT_vertex_random_access_ensure(ss);
-
-  flood->queue = BLI_gsqueue_new(sizeof(intptr_t));
-  flood->visited_verts = BLI_BITMAP_NEW(vertex_count, "visited verts");
+  flood->visited_verts.resize(SCULPT_vertex_count_get(ss));
 }
 
 void add_initial(SculptFloodFill *flood, PBVHVertRef vertex)
 {
-  BLI_gsqueue_push(flood->queue, &vertex);
+  flood->queue.push(vertex);
 }
 
 void add_and_skip_initial(SculptFloodFill *flood, PBVHVertRef vertex)
 {
-  BLI_gsqueue_push(flood->queue, &vertex);
-  BLI_BITMAP_ENABLE(flood->visited_verts, vertex.i);
+  flood->queue.push(vertex);
+  flood->visited_verts[vertex.i].set(vertex.i);
 }
 
 void add_initial_with_symmetry(Sculpt *sd,
@@ -1097,16 +1092,16 @@ void execute(SculptSession *ss,
                           void *userdata),
              void *userdata)
 {
-  while (!BLI_gsqueue_is_empty(flood->queue)) {
-    PBVHVertRef from_v;
+  while (!flood->queue.empty()) {
+    PBVHVertRef from_v = flood->queue.front();
+    flood->queue.pop();
 
-    BLI_gsqueue_pop(flood->queue, &from_v);
     SculptVertexNeighborIter ni;
     SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN (ss, from_v, ni) {
       const PBVHVertRef to_v = ni.vertex;
       int to_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
 
-      if (BLI_BITMAP_TEST(flood->visited_verts, to_v_i)) {
+      if (flood->visited_verts[to_v_i]) {
         continue;
       }
 
@@ -1114,21 +1109,14 @@ void execute(SculptSession *ss,
         continue;
       }
 
-      BLI_BITMAP_ENABLE(flood->visited_verts, BKE_pbvh_vertex_to_index(ss->pbvh, to_v));
+      flood->visited_verts[BKE_pbvh_vertex_to_index(ss->pbvh, to_v)].set();
 
       if (func(ss, from_v, to_v, ni.is_duplicate, userdata)) {
-        BLI_gsqueue_push(flood->queue, &to_v);
+        flood->queue.push(to_v);
       }
     }
     SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
   }
-}
-
-void free_fill(SculptFloodFill *flood)
-{
-  MEM_SAFE_FREE(flood->visited_verts);
-  BLI_gsqueue_free(flood->queue);
-  flood->queue = nullptr;
 }
 
 }  // namespace blender::ed::sculpt_paint::flood_fill
@@ -1338,7 +1326,7 @@ static void paint_mesh_restore_node(Object *ob, const undo::Type type, PBVHNode 
           Mesh &mesh = *static_cast<Mesh *>(ob->data);
           bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
           bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
-              ".sculpt_mask", ATTR_DOMAIN_POINT);
+              ".sculpt_mask", bke::AttrDomain::Point);
           array_utils::scatter(
               unode->mask.as_span(), BKE_pbvh_node_get_unique_vert_indices(node), mask.span);
           mask.finish();
@@ -2968,6 +2956,39 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
   }
 }
 
+bool SCULPT_tool_needs_all_pbvh_nodes(const Brush *brush)
+{
+  if (brush->sculpt_tool == SCULPT_TOOL_ELASTIC_DEFORM) {
+    /* Elastic deformations in any brush need all nodes to avoid artifacts as the effect
+     * of the Kelvinlet is not constrained by the radius. */
+    return true;
+  }
+
+  if (brush->sculpt_tool == SCULPT_TOOL_POSE) {
+    /* Pose needs all nodes because it applies all symmetry iterations at the same time
+     * and the IK chain can grow to any area of the model. */
+    /* TODO: This can be optimized by filtering the nodes after calculating the chain. */
+    return true;
+  }
+
+  if (brush->sculpt_tool == SCULPT_TOOL_BOUNDARY) {
+    /* Boundary needs all nodes because it is not possible to know where the boundary
+     * deformation is going to be propagated before calculating it. */
+    /* TODO: after calculating the boundary info in the first iteration, it should be
+     * possible to get the nodes that have vertices included in any boundary deformation
+     * and cache them. */
+    return true;
+  }
+
+  if (brush->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK &&
+      brush->snake_hook_deform_type == BRUSH_SNAKE_HOOK_DEFORM_ELASTIC)
+  {
+    /* Snake hook in elastic deform type has same requirements as the elastic deform tool. */
+    return true;
+  }
+  return false;
+}
+
 void SCULPT_calc_brush_plane(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_no[3], float r_area_co[3])
 {
@@ -3162,7 +3183,7 @@ void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, const Span<float3> vertCos)
     ofs = BKE_keyblock_convert_to_vertcos(ob, kb);
 
     /* Calculate key coord offsets (from previous location). */
-    for (a = 0; a < mesh->totvert; a++) {
+    for (a = 0; a < mesh->verts_num; a++) {
       sub_v3_v3v3(ofs[a], vertCos[a], ofs[a]);
     }
 
@@ -4927,7 +4948,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
     const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
     srd.corner_verts = mesh.corner_verts();
     const bke::AttributeAccessor attributes = mesh.attributes();
-    srd.hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+    srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   }
   srd.ray_start = ray_start;
   srd.ray_normal = ray_normal;
@@ -5080,7 +5101,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
       const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
       srd.corner_verts = mesh.corner_verts();
       const bke::AttributeAccessor attributes = mesh.attributes();
-      srd.hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+      srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
     }
     srd.depth = depth;
     srd.original = original;
@@ -5113,7 +5134,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
     const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
     srd.corner_verts = mesh.corner_verts();
     const bke::AttributeAccessor attributes = mesh.attributes();
-    srd.hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+    srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   }
   srd.ray_start = ray_start;
   srd.ray_normal = ray_normal;
@@ -5935,8 +5956,8 @@ void SCULPT_boundary_info_ensure(Object *object)
 
   Mesh *base_mesh = BKE_mesh_from_object(object);
 
-  ss->vertex_info.boundary.resize(base_mesh->totvert);
-  Array<int> adjacent_faces_edge_count(base_mesh->totedge, 0);
+  ss->vertex_info.boundary.resize(base_mesh->verts_num);
+  Array<int> adjacent_faces_edge_count(base_mesh->edges_num, 0);
   array_utils::count_indices(base_mesh->corner_edges(), adjacent_faces_edge_count);
 
   const blender::Span<int2> edges = base_mesh->edges();
@@ -6079,13 +6100,14 @@ void SCULPT_stroke_id_next(Object *ob)
 
 void SCULPT_stroke_id_ensure(Object *ob)
 {
+  using namespace blender;
   SculptSession *ss = ob->sculpt;
 
   if (!ss->attrs.automasking_stroke_id) {
     SculptAttributeParams params = {0};
     ss->attrs.automasking_stroke_id = BKE_sculpt_attribute_ensure(
         ob,
-        ATTR_DOMAIN_POINT,
+        bke::AttrDomain::Point,
         CD_PROP_INT8,
         SCULPT_ATTRIBUTE_NAME(automasking_stroke_id),
         &params);
@@ -6108,6 +6130,7 @@ void SCULPT_topology_islands_invalidate(SculptSession *ss)
 
 void SCULPT_topology_islands_ensure(Object *ob)
 {
+  using namespace blender;
   using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
@@ -6120,7 +6143,11 @@ void SCULPT_topology_islands_ensure(Object *ob)
   params.permanent = params.stroke_only = params.simple_array = false;
 
   ss->attrs.topology_island_key = BKE_sculpt_attribute_ensure(
-      ob, ATTR_DOMAIN_POINT, CD_PROP_INT8, SCULPT_ATTRIBUTE_NAME(topology_island_key), &params);
+      ob,
+      bke::AttrDomain::Point,
+      CD_PROP_INT8,
+      SCULPT_ATTRIBUTE_NAME(topology_island_key),
+      &params);
   SCULPT_vertex_random_access_ensure(ss);
 
   int totvert = SCULPT_vertex_count_get(ss);

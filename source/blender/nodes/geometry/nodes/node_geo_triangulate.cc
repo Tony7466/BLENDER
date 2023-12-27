@@ -52,7 +52,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    const bke::MeshFieldContext context{*src_mesh, ATTR_DOMAIN_FACE};
+    const bke::MeshFieldContext context{src_mesh, AttrDomain::Face};
     FieldEvaluator evaluator{context, src_mesh->faces_num};
     evaluator.add(selection_field);
     evaluator.evaluate();
