@@ -1235,11 +1235,11 @@ blender::float3x3 get_texture_points(const blender::bke::CurvesGeometry &curves,
 
   /* Default is the front draw plane. */
   const VArray<float3> text_u = *attributes.lookup_or_default<float3>(
-      "texture_u", ATTR_DOMAIN_CURVE, float3(1.0f, 0.0f, 0.0f));
+      "texture_u", bke::AttrDomain::Curve, float3(1.0f, 0.0f, 0.0f));
   const VArray<float3> text_v = *attributes.lookup_or_default<float3>(
-      "texture_v", ATTR_DOMAIN_CURVE, float3(0.0f, 0.0f, 1.0f));
+      "texture_v", bke::AttrDomain::Curve, float3(0.0f, 0.0f, 1.0f));
   const VArray<float3> text_origin = *attributes.lookup_or_default<float3>(
-      "texture_origin", ATTR_DOMAIN_CURVE, float3(0.0f, 0.0f, 0.0f));
+      "texture_origin", bke::AttrDomain::Curve, float3(0.0f, 0.0f, 0.0f));
 
   const float3 locu = text_u[curve_i];
   const float3 locv = text_v[curve_i];
@@ -1262,11 +1262,11 @@ void set_texture_points(blender::bke::CurvesGeometry &curves,
   MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   SpanAttributeWriter<float3> textU = attributes.lookup_or_add_for_write_span<float3>(
-      "texture_u", ATTR_DOMAIN_CURVE);
+      "texture_u", bke::AttrDomain::Curve);
   SpanAttributeWriter<float3> textV = attributes.lookup_or_add_for_write_span<float3>(
-      "texture_v", ATTR_DOMAIN_CURVE);
+      "texture_v", bke::AttrDomain::Curve);
   SpanAttributeWriter<float3> textO = attributes.lookup_or_add_for_write_span<float3>(
-      "texture_origin", ATTR_DOMAIN_CURVE);
+      "texture_origin", bke::AttrDomain::Curve);
 
   textU.span[curve_i] = texture_points[0];
   textV.span[curve_i] = texture_points[1];
