@@ -512,14 +512,12 @@ struct ShaderCreateInfo {
       }
     };
 
-    int constant_id;
     Type type;
     StringRefNull name;
     Value default_value;
 
     bool operator==(const SpecializationConstant &b) const
     {
-      TEST_EQUAL(*this, b, constant_id);
       TEST_EQUAL(*this, b, type);
       TEST_EQUAL(*this, b, name);
       TEST_EQUAL(*this, b, default_value);
@@ -772,10 +770,9 @@ struct ShaderCreateInfo {
    *
    * Specialization constants are reset to their provided default values upon `GPU_shader_bind()`.
    * */
-  Self &constant(Type type, int constant_id, StringRefNull name, double default_value)
+  Self &constant(Type type, StringRefNull name, double default_value)
   {
     SpecializationConstant constant;
-    constant.constant_id = constant_id;
     constant.type = type;
     constant.name = name;
     switch (type) {
