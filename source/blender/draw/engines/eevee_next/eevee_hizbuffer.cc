@@ -40,7 +40,7 @@ void HiZBuffer::sync()
     PassSimple &pass = hiz_update_ps_;
     GPUShader *sh = inst_.shaders.static_shader_get(HIZ_UPDATE);
     pass.init();
-    pass.shader_constant_set(sh, "SC_update_mip_0", update_mip_0);
+    pass.specialize_constant(sh, "SC_update_mip_0", update_mip_0);
     pass.shader_set(sh);
     pass.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
     /* TODO(fclem): Should be a parameter to avoid confusion. */
@@ -62,7 +62,7 @@ void HiZBuffer::sync()
     PassSimple &pass = hiz_update_layer_ps_;
     GPUShader *sh = inst_.shaders.static_shader_get(HIZ_UPDATE_LAYER);
     pass.init();
-    pass.shader_constant_set(sh, "SC_update_mip_0", update_mip_0);
+    pass.specialize_constant(sh, "SC_update_mip_0", update_mip_0);
     pass.shader_set(sh);
     pass.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
     /* TODO(fclem): Should be a parameter to avoid confusion. */

@@ -569,12 +569,12 @@ void DeferredLayer::end_sync()
          * See page 78 of "SIGGRAPH 2023: Unreal Engine Substrate" by Hillaire & de Rousiers. */
         for (int i = ARRAY_SIZE(closure_bufs_) - 1; i >= 0; i--) {
           GPUShader *sh = inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i));
-          sub.shader_constant_set(
+          sub.specialize_constant(
               sh, "SC_render_pass_shadow_id", &inst_.render_buffers.data.shadow_id);
-          sub.shader_constant_set(sh, "SC_shadow_ray_count", &inst_.shadows.get_data().ray_count);
-          sub.shader_constant_set(
+          sub.specialize_constant(sh, "SC_shadow_ray_count", &inst_.shadows.get_data().ray_count);
+          sub.specialize_constant(
               sh, "SC_shadow_ray_step_count", &inst_.shadows.get_data().step_count);
-          sub.shader_constant_set(
+          sub.specialize_constant(
               sh, "SC_shadow_normal_bias", &inst_.shadows.get_data().normal_bias);
           sub.shader_set(sh);
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
@@ -605,9 +605,9 @@ void DeferredLayer::end_sync()
       PassSimple &pass = combine_ps_;
       pass.init();
       GPUShader *sh = inst_.shaders.static_shader_get(DEFERRED_COMBINE);
-      pass.shader_constant_set(
+      pass.specialize_constant(
           sh, "SC_diffuse_light_id", &inst_.render_buffers.data.diffuse_light_id);
-      pass.shader_constant_set(
+      pass.specialize_constant(
           sh, "SC_specular_light_id", &inst_.render_buffers.data.specular_light_id);
       pass.shader_set(sh);
       /* Use depth test to reject background pixels. */

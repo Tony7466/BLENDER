@@ -766,7 +766,7 @@ struct ShaderCreateInfo {
    * Specialization constants are assigned at runtime using:
    *  - GPU_shader_set_constant_*(shader, constant_id, value)
    * or
-   *  - `.shader_constant_set(constant_id, value)` for a DrawPass.
+   *  - `.specialize_constant(constant_id, value)` for a DrawPass.
    *
    * Specialization constants are reset to their provided default values upon `GPU_shader_bind()`.
    * */

@@ -374,14 +374,14 @@ class PassBase {
    * IMPORTANT: Will keep a reference to the data and dereference it upon drawing. Make sure data
    * still alive until pass submission.
    */
-  void shader_constant_set(GPUShader *shader, const char *name, const float &data);
-  void shader_constant_set(GPUShader *shader, const char *name, const int &data);
-  void shader_constant_set(GPUShader *shader, const char *name, const uint &data);
-  void shader_constant_set(GPUShader *shader, const char *name, const bool &data);
-  void shader_constant_set(GPUShader *shader, const char *name, const float *data);
-  void shader_constant_set(GPUShader *shader, const char *name, const int *data);
-  void shader_constant_set(GPUShader *shader, const char *name, const uint *data);
-  void shader_constant_set(GPUShader *shader, const char *name, const bool *data);
+  void specialize_constant(GPUShader *shader, const char *name, const float &data);
+  void specialize_constant(GPUShader *shader, const char *name, const int &data);
+  void specialize_constant(GPUShader *shader, const char *name, const uint &data);
+  void specialize_constant(GPUShader *shader, const char *name, const bool &data);
+  void specialize_constant(GPUShader *shader, const char *name, const float *data);
+  void specialize_constant(GPUShader *shader, const char *name, const int *data);
+  void specialize_constant(GPUShader *shader, const char *name, const uint *data);
+  void specialize_constant(GPUShader *shader, const char *name, const bool *data);
 
   /**
    * Turn the pass into a string for inspection.
@@ -1258,7 +1258,7 @@ template<class T> inline void PassBase<T>::push_constant(const char *name, const
  * \{ */
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const int &constant_value)
 {
@@ -1267,7 +1267,7 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const uint &constant_value)
 {
@@ -1276,7 +1276,7 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const float &constant_value)
 {
@@ -1285,7 +1285,7 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const bool &constant_value)
 {
@@ -1294,7 +1294,7 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const int *constant_value)
 {
@@ -1303,7 +1303,7 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const uint *constant_value)
 {
@@ -1312,7 +1312,7 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const float *constant_value)
 {
@@ -1321,7 +1321,7 @@ inline void PassBase<T>::shader_constant_set(GPUShader *shader,
 }
 
 template<class T>
-inline void PassBase<T>::shader_constant_set(GPUShader *shader,
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
                                              const char *constant_name,
                                              const bool *constant_value)
 {
