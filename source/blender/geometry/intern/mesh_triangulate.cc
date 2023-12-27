@@ -19,6 +19,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -93,11 +94,11 @@ static Mesh *create_mesh_no_attributes(const Mesh &params_mesh,
   BKE_mesh_copy_parameters_for_eval(mesh, &params_mesh);
   CustomData_free_layer_named(&mesh->vert_data, "position", 0);
   CustomData_free_layer_named(&mesh->edge_data, ".edge_verts", 0);
-  CustomData_free_layer_named(&mesh->loop_data, ".corner_vert", 0);
-  CustomData_free_layer_named(&mesh->loop_data, ".corner_edge", 0);
-  mesh->totvert = verts_num;
-  mesh->totedge = edges_num;
-  mesh->totloop = corners_num;
+  CustomData_free_layer_named(&mesh->corner_data, ".corner_vert", 0);
+  CustomData_free_layer_named(&mesh->corner_data, ".corner_edge", 0);
+  mesh->verts_num = verts_num;
+  mesh->edges_num = edges_num;
+  mesh->corners_num = corners_num;
   return mesh;
 }
 
@@ -580,7 +581,7 @@ static IndexMask calc_unselected_faces(const Mesh &mesh,
   Array<int> vert_to_tri_offsets;
   Array<int> vert_to_tri_indices;
   const GroupedSpan<int> vert_to_tri_map = build_vert_to_tri_map(
-      mesh.totvert, corner_map.cast<int3>(), vert_to_tri_offsets, vert_to_tri_indices);
+      mesh.verts_num, corner_map.cast<int3>(), vert_to_tri_offsets, vert_to_tri_indices);
   return IndexMask::from_predicate(unselected, GrainSize(1024), memory, [&](const int i) {
     const Span<int> face_verts = src_corner_verts.slice(src_faces[i]);
     if (face_verts.size() != 3) {
@@ -691,7 +692,7 @@ std::optional<Mesh *> mesh_triangulate(
   /* Create a mesh with no face corners. We don't know the number of corners from unselected faces.
    * We have to create the face offsets anyway, this will give us the number of corners. */
   Mesh *mesh = create_mesh_no_attributes(src_mesh,
-                                         src_mesh.totvert,
+                                         src_mesh.verts_num,
                                          tri_edges_range.size() + src_edges.size(),
                                          tris_range.size() + unselected.size(),
                                          0);
@@ -699,13 +700,13 @@ std::optional<Mesh *> mesh_triangulate(
   /* Find the face corner ranges using the offsets array from the new mesh. That gives us the
    * final number of face corners. */
   const OffsetIndices faces = calc_faces(src_faces, unselected, mesh->face_offsets_for_write());
-  mesh->totloop = faces.total_size();
+  mesh->corners_num = faces.total_size();
   const OffsetIndices faces_unselected = faces.slice(unselected_range);
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  attributes.add<int>(".corner_vert", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
-  attributes.add<int>(".corner_edge", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
-  attributes.add<int2>(".edge_verts", ATTR_DOMAIN_EDGE, bke::AttributeInitConstruct());
+  attributes.add<int2>(".edge_verts", bke::AttrDomain::Edge, bke::AttributeInitConstruct());
+  attributes.add<int>(".corner_vert", bke::AttrDomain::Corner, bke::AttributeInitConstruct());
+  attributes.add<int>(".corner_edge", bke::AttrDomain::Corner, bke::AttributeInitConstruct());
 
   MutableSpan<int2> edges = mesh->edges_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
@@ -738,7 +739,7 @@ std::optional<Mesh *> mesh_triangulate(
 
   /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
    * Use the #CustomData API for better support for vertex groups. */
-  CustomData_merge(&src_mesh.vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, mesh->totvert);
+  CustomData_merge(&src_mesh.vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
 
   array_utils::copy(src_edges, edges.take_front(src_edges.size()));
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
@@ -756,10 +757,10 @@ std::optional<Mesh *> mesh_triangulate(
   if (CustomData_has_layer(&src_mesh.edge_data, CD_ORIGINDEX)) {
     const Span src(
         static_cast<const int *>(CustomData_get_layer(&src_mesh.edge_data, CD_ORIGINDEX)),
-        src_mesh.totedge);
+        src_mesh.edges_num);
     MutableSpan dst(static_cast<int *>(CustomData_add_layer(
-                        &mesh->edge_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->totedge)),
-                    mesh->totedge);
+                        &mesh->edge_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->edges_num)),
+                    mesh->edges_num);
     dst.slice(tri_edges_range).fill(ORIGINDEX_NONE);
     array_utils::copy(src, dst.slice(src_edges_range));
   }
