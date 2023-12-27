@@ -155,6 +155,24 @@ void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     array_utils::copy(dst_cyclic.as_span(), curves.cyclic_for_write().drop_front(old_curves_num));
   }
 
+  bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
+
+  /* Make the new curves part of new shapes. */
+  if (shape_ids) {
+    int max_shape_id = 0;
+    for (const int i : shape_ids.span.index_range()) {
+      max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
+    }
+
+    /* Note: add `max_shape_id` may create gaps in the order of shape ids.
+     * This is fix by `ensure_shape_id_order` */
+    for (const int curve_i : IndexRange(old_curves_num, num_curves_to_add)) {
+      shape_ids.span[curve_i] += max_shape_id;
+    }
+  }
+
+  shape_ids.finish();
+
   curves.update_curve_types();
   curves.tag_topology_changed();
 
@@ -209,6 +227,24 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
     attribute.finish();
     return true;
   });
+
+  bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
+
+  /* Make the new curves part of new shapes. */
+  if (shape_ids) {
+    int max_shape_id = 0;
+    for (const int i : shape_ids.span.index_range()) {
+      max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
+    }
+
+    /* Note: add `max_shape_id` may create gaps in the order of shape ids.
+     * This is fix by `ensure_shape_id_order` */
+    for (const int curve_i : IndexRange(orig_curves_num, mask.size())) {
+      shape_ids.span[curve_i] += max_shape_id;
+    }
+  }
+
+  shape_ids.finish();
 
   curves.update_curve_types();
   curves.tag_topology_changed();
