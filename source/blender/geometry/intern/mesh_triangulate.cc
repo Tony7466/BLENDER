@@ -226,7 +226,7 @@ static void calc_corner_maps(const Span<float3> positions,
 
     /* Find the offsets of each face in the local selection. We can gather them together even if
      * they aren't contiguous because we only need to know the start of each face; the size is
-     * just four. */
+     * just 4. */
     const Span<int> offsets = gather_or_reference(src_faces.data(), quads, data.offsets);
     calc_quad_directions(positions, offsets, src_corner_verts, quad_mode, data.directions);
     const IndexRange corners(pos * 6, offsets.size() * 6);
@@ -239,13 +239,13 @@ static void calc_corner_maps(const Span<float3> positions,
  * triangles. The corner_verts are just the corners of the quads, and the edges are just the new
  * edges for these quads.
  */
-static void calc_edges(const Span<int> quad_corner_verts, MutableSpan<int2> edges)
+static void calc_edges(const Span<int> quad_corner_verts, MutableSpan<int2> new_quad_edges)
 {
   const int quads_num = quad_corner_verts.size() / 6;
-  for (const int quad : IndexRange(quads_num)) {
-    const Span<int> verts = quad_corner_verts.slice(6 * quad, 6);
+  for (const int i : IndexRange(quads_num)) {
+    const Span<int> verts = quad_corner_verts.slice(6 * i, 6);
     /* Use the first vertex of each triangle. */
-    edges[quad] = int2(verts[0], verts[1]);
+    new_quad_edges[i] = int2(verts[0], verts[1]);
   }
 }
 
@@ -737,6 +737,11 @@ std::optional<Mesh *> mesh_triangulate(
                      corner_edges.slice(quad_corners_range));
   }
 
+  Array<int> src_vert_to_edge_offsets;
+  Array<int> src_vert_to_edge_indices;
+  const GroupedSpan<int> src_vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
+      src_edges, src_mesh.verts_num, src_vert_to_edge_offsets, src_vert_to_edge_indices);
+
   /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
    * Use the #CustomData API for better support for vertex groups. */
   CustomData_merge(&src_mesh.vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
@@ -750,7 +755,7 @@ std::optional<Mesh *> mesh_triangulate(
     /* It would be reasonable interpolate data from connected edges within each face.
      * Currently the data from new edges is just set to the type's default value. */
     const void *default_value = new_data.type().default_value();
-    new_data.type().fill_assign_n(default_value, new_data.data(), new_data.size());
+    new_data.type().fill_construct_n(default_value, new_data.data(), new_data.size());
     attribute.dst.finish();
   }
 
