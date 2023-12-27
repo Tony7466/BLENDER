@@ -6163,13 +6163,13 @@ static SculptTopologyIslandCache vert_disjoint_set_to_islands(const AtomicDisjoi
   return cache;
 }
 
-static AtomicDisjointSet mesh_vert_disjoint_set_calc(const Mesh &mesh)
+static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
 {
+  AtomicDisjointSet disjoint_set(mesh.verts_num);
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-  AtomicDisjointSet disjoint_set(mesh.verts_num);
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int face : range) {
       if (!hide_poly.is_empty() && hide_poly[face]) {
@@ -6181,13 +6181,7 @@ static AtomicDisjointSet mesh_vert_disjoint_set_calc(const Mesh &mesh)
       }
     }
   });
-  return disjoint_set;
-}
-
-static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
-{
-  const AtomicDisjointSet vert_set = mesh_vert_disjoint_set_calc(mesh);
-  return vert_disjoint_set_to_islands(vert_set, mesh.verts_num);
+  return vert_disjoint_set_to_islands(disjoint_set, mesh.verts_num);
 }
 
 static SculptTopologyIslandCache calc_topology_islands_grids(SculptSession &ss)
@@ -6262,6 +6256,7 @@ static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &objec
 
 static SculptTopologyIslandCache calculate_cache(Object &object)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   SculptSession &ss = *object.sculpt;
   switch (BKE_pbvh_type(ss.pbvh)) {
     case PBVH_FACES:
