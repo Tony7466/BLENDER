@@ -538,6 +538,12 @@ void import_blendshapes(Main *bmain,
   pxr::UsdPrim anim_prim = skel_api.GetInheritedAnimationSource();
 
   if (!anim_prim) {
+    /* Querying the directly bound animation source may be necessary
+     * if the prim does not have an applied skel binding API schema. */
+    skel_api.GetAnimationSource(&anim_prim);
+  }
+
+  if (!anim_prim) {
     return;
   }
 
