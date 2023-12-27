@@ -4,7 +4,7 @@
 
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
-// #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
