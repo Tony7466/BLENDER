@@ -8,7 +8,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_gsqueue.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_task.h"
@@ -24,7 +23,7 @@
 #include "BKE_bvhutils.hh"
 #include "BKE_ccg.h"
 #include "BKE_collision.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_modifier.hh"
 #include "BKE_paint.hh"
@@ -104,6 +103,17 @@ Vector<PBVHNode *> brush_affected_nodes_gather(SculptSession *ss, Brush *brush)
 
   BLI_assert_unreachable();
   return Vector<PBVHNode *>();
+}
+
+bool is_cloth_deform_brush(const Brush *brush)
+{
+  return (brush->sculpt_tool == SCULPT_TOOL_CLOTH && ELEM(brush->cloth_deform_type,
+                                                          BRUSH_CLOTH_DEFORM_GRAB,
+                                                          BRUSH_CLOTH_DEFORM_SNAKE_HOOK)) ||
+         /* All brushes that are not the cloth brush deform the simulation using softbody
+          * constraints instead of applying forces. */
+         (brush->sculpt_tool != SCULPT_TOOL_CLOTH &&
+          brush->deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM);
 }
 
 static float cloth_brush_simulation_falloff_get(const Brush *brush,

@@ -17,6 +17,7 @@
 #include "BKE_action.h"
 #include "BKE_context.hh"
 #include "BKE_layer.h"
+#include "BKE_lib_override.hh"
 #include "BKE_report.h"
 
 #include "BLT_translation.h"
@@ -63,6 +64,13 @@ static bool bone_collection_add_poll(bContext *C)
     return false;
   }
 
+  if (BKE_lib_override_library_is_system_defined(nullptr, reinterpret_cast<ID *>(ob->data))) {
+    CTX_wm_operator_poll_msg_set(C,
+                                 "Cannot add bone collections to a linked Armature with a system "
+                                 "override; explicitly create an override on the Armature");
+    return false;
+  }
+
   return true;
 }
 
@@ -80,8 +88,14 @@ static bool active_bone_collection_poll(bContext *C)
   }
 
   bArmature *armature = static_cast<bArmature *>(ob->data);
-  BoneCollection *bcoll = armature->runtime.active_collection;
+  if (BKE_lib_override_library_is_system_defined(nullptr, &armature->id)) {
+    CTX_wm_operator_poll_msg_set(C,
+                                 "Cannot update a linked Armature with a system override; "
+                                 "explicitly create an override on the Armature");
+    return false;
+  }
 
+  BoneCollection *bcoll = armature->runtime.active_collection;
   if (bcoll == nullptr) {
     CTX_wm_operator_poll_msg_set(C, "Armature has no active bone collection, select one first");
     return false;
@@ -297,17 +311,9 @@ static bool bone_collection_assign_mode_specific(bContext *C,
     }
 
     case CTX_MODE_EDIT_ARMATURE: {
-      uint objects_len = 0;
-      Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-          CTX_data_scene(C), CTX_data_view_layer(C), CTX_wm_view3d(C), &objects_len);
+      bone_collection_assign_editbones(
+          C, ob, bcoll, assign_ebone_func, made_any_changes, had_bones_to_assign);
 
-      for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-        Object *ob = objects[ob_index];
-        bone_collection_assign_editbones(
-            C, ob, bcoll, assign_ebone_func, made_any_changes, had_bones_to_assign);
-      }
-
-      MEM_freeN(objects);
       ED_outliner_select_sync_from_edit_bone_tag(C);
       return true;
     }
@@ -385,6 +391,12 @@ static bool bone_collection_assign_poll(bContext *C)
   if (ID_IS_LINKED(armature) && !ID_IS_OVERRIDE_LIBRARY(armature)) {
     CTX_wm_operator_poll_msg_set(
         C, "Cannot edit bone collections on linked Armatures without override");
+    return false;
+  }
+  if (BKE_lib_override_library_is_system_defined(nullptr, &armature->id)) {
+    CTX_wm_operator_poll_msg_set(C,
+                                 "Cannot edit bone collections on a linked Armature with a system "
+                                 "override; explicitly create an override on the Armature");
     return false;
   }
 
@@ -482,6 +494,12 @@ static bool bone_collection_create_and_assign_poll(bContext *C)
   if (ID_IS_LINKED(armature) && !ID_IS_OVERRIDE_LIBRARY(armature)) {
     CTX_wm_operator_poll_msg_set(
         C, "Cannot edit bone collections on linked Armatures without override");
+    return false;
+  }
+  if (BKE_lib_override_library_is_system_defined(nullptr, &armature->id)) {
+    CTX_wm_operator_poll_msg_set(C,
+                                 "Cannot edit bone collections on a linked Armature with a system "
+                                 "override; explicitly create an override on the Armature");
     return false;
   }
 
@@ -951,8 +969,16 @@ static bool move_to_collection_poll(bContext *C)
     return false;
   }
 
-  if (ID_IS_LINKED(ob->data) && !ID_IS_OVERRIDE_LIBRARY(ob->data)) {
+  const bArmature *armature = static_cast<bArmature *>(ob->data);
+  if (ID_IS_LINKED(armature) && !ID_IS_OVERRIDE_LIBRARY(armature)) {
     CTX_wm_operator_poll_msg_set(C, "This needs a local Armature or an override");
+    return false;
+  }
+
+  if (BKE_lib_override_library_is_system_defined(nullptr, &armature->id)) {
+    CTX_wm_operator_poll_msg_set(C,
+                                 "Cannot update a linked Armature with a system override; "
+                                 "explicitly create an override on the Armature");
     return false;
   }
 
