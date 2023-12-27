@@ -551,21 +551,6 @@ void GPU_shader_transform_feedback_disable(GPUShader *shader)
 /** \name Assign specialization constants.
  * \{ */
 
-void GPU_shader_set_constant_1i(GPUShader *sh, int constant_id, int value)
-{
-  unwrap(sh)->specialize_constant_int(constant_id, value);
-}
-
-void GPU_shader_set_constant_1b(GPUShader *sh, int constant_id, bool value)
-{
-  unwrap(sh)->specialize_constant_bool(constant_id, value);
-}
-
-void GPU_shader_set_constant_1f(GPUShader *sh, int constant_id, float value)
-{
-  unwrap(sh)->specialize_constant_float(constant_id, value);
-}
-
 void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
 {
   using namespace shader;
@@ -581,31 +566,42 @@ void Shader::specialization_config_reset()
   constants.values = constants.defaults;
 }
 
-void Shader::specialize_constant_float(int constant_id, float value)
+void GPU_shader_constant_int_ex(GPUShader *sh, int location, int value)
 {
-  if (constant_id < 0) {
-    BLI_assert_unreachable();
-    return;
-  }
-  constants.values[constant_id].f = value;
+  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::INT);
+  unwrap(sh)->constants.values[location].i = value;
+}
+void GPU_shader_constant_uint_ex(GPUShader *sh, int location, uint value)
+{
+  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::UINT);
+  unwrap(sh)->constants.values[location].u = value;
+}
+void GPU_shader_constant_float_ex(GPUShader *sh, int location, float value)
+{
+  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::FLOAT);
+  unwrap(sh)->constants.values[location].f = value;
+}
+void GPU_shader_constant_bool_ex(GPUShader *sh, int location, bool value)
+{
+  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::BOOL);
+  unwrap(sh)->constants.values[location].u = value;
 }
 
-void Shader::specialize_constant_int(int constant_id, int value)
+void GPU_shader_constant_int(GPUShader *sh, const char *name, int value)
 {
-  if (constant_id < 0) {
-    BLI_assert_unreachable();
-    return;
-  }
-  constants.values[constant_id].i = value;
+  GPU_shader_constant_int_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
 }
-
-void Shader::specialize_constant_bool(int constant_id, bool value)
+void GPU_shader_constant_uint(GPUShader *sh, const char *name, uint value)
 {
-  if (constant_id < 0) {
-    BLI_assert_unreachable();
-    return;
-  }
-  constants.values[constant_id].u = value;
+  GPU_shader_constant_uint_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
+}
+void GPU_shader_constant_float(GPUShader *sh, const char *name, float value)
+{
+  GPU_shader_constant_float_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
+}
+void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value)
+{
+  GPU_shader_constant_bool_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
 }
 
 /** \} */

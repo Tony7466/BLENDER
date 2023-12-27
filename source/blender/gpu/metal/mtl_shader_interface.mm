@@ -425,6 +425,7 @@ void MTLShaderInterface::prepare_common_shader_inputs()
     MTLShaderConstant &shd_const = constants_[const_index];
     current_input->name_offset = shd_const.name_offset;
     current_input->name_hash = BLI_hash_string(this->get_name_at_offset(shd_const.name_offset));
+    current_input->location = const_index;
     current_input++;
   }
 

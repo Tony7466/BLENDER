@@ -96,13 +96,6 @@ class Shader {
    * been assigned, the unspecialized base variant of a shader PSO will be used.*/
   void specialization_config_reset();
 
-  /* Assign runtime constant value.
-   * NOTE: Use with caution as any previously unspecified values will trigger a recompilation of a
-   * PSO. */
-  void specialize_constant_float(int constant_id, float value);
-  void specialize_constant_int(int constant_id, int value);
-  void specialize_constant_bool(int constant_id, bool value);
-
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const = 0;
