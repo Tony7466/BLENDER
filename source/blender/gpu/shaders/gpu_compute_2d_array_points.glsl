@@ -1,0 +1,22 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/**
+ *  Constructs a simple 2D array index buffer, with 'ncurves' rows and 'elements_per_curve'
+ *  columns. Each row contains 'elements_per_curve-1' indexes and a restart index.
+ *  The index buffer can then be used to draw either 'ncurves' lines with 'elements_per_curve-1'
+ *  vertexes each, or 'ncurves' triangle strips with 'elements_per_curve-3' triangles each.
+ */
+void main()
+{
+  uvec3 gid = gl_GlobalInvocationID;
+  uvec3 nthreads = gl_NumWorkGroups * gl_WorkGroupSize;
+  for (uint y = gid.y + gid.z * nthreads.y; y < ncurves; y += nthreads.y * nthreads.z) {
+    for (uint x = gid.x; x < elements_per_curve; x += nthreads.x) {
+      uint store_index = x + y * elements_per_curve;
+      out_indices[store_index] = (x + 1 < elements_per_curve) ? x + y * (elements_per_curve - 1) :
+                                                                0xFFFFFFFF;
+    }
+  }
+}

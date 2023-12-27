@@ -590,6 +590,9 @@ set(GLSL_SRC
   shaders/gpu_shader_cfg_world_clip_lib.glsl
   shaders/gpu_shader_colorspace_lib.glsl
 
+  shaders/gpu_compute_2d_array_points.glsl
+  shaders/gpu_compute_2d_array_lines.glsl
+  shaders/gpu_compute_2d_array_tris.glsl
 
   GPU_shader_shared_utils.h
 )
@@ -734,6 +737,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/intern/shaders/draw_view_info.hh
 
   shaders/infos/gpu_clip_planes_info.hh
+  shaders/infos/gpu_compute_shaders_info.hh
   shaders/infos/gpu_shader_2D_area_borders_info.hh
   shaders/infos/gpu_shader_2D_checker_info.hh
   shaders/infos/gpu_shader_2D_diag_stripes_info.hh

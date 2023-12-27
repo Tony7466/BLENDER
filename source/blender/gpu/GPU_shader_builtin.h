@@ -127,8 +127,15 @@ typedef enum eGPUBuiltinShader {
    * \param pos: in vec3
    */
   GPU_SHADER_3D_IMAGE_COLOR,
+
+  /**
+   * Compute shaders to generate 2d index buffers (mainly for curve drawing).
+   * */
+  GPU_SHADER_INDEXBUF_POINTS,
+  GPU_SHADER_INDEXBUF_LINES,
+  GPU_SHADER_INDEXBUF_TRIS,
 } eGPUBuiltinShader;
-#define GPU_SHADER_BUILTIN_LEN (GPU_SHADER_3D_IMAGE_COLOR + 1)
+#define GPU_SHADER_BUILTIN_LEN (GPU_SHADER_INDEXBUF_TRIS + 1)
 
 /** Support multiple configurations. */
 typedef enum eGPUShaderConfig {
