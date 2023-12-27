@@ -25,27 +25,6 @@ namespace gpu {
 
 class GPULogParser;
 
-struct SpecializationConstantValue {
-  uint constant_id;
-  /* String value name of constant. */
-  std::string constant_name;
-  shader::Type type;
-  /* Whether the specialization constant has been assigned and the active assignment
-   * should be used. */
-  bool assigned = false;
-  union {
-    float value_f;
-    int value_i;
-    bool value_b;
-  };
-  /* Defaults. */
-  union {
-    float default_value_f;
-    int default_value_i;
-    bool default_value_b;
-  };
-};
-
 /**
  * Implementation of shader compilation and uniforms handling.
  * Base class which is then specialized for each implementation (GL, VK, ...).
@@ -54,6 +33,21 @@ class Shader {
  public:
   /** Uniform & attribute locations for shader. */
   ShaderInterface *interface = nullptr;
+
+  /**
+   * Specialization constants as a Struct-of-Arrays. Allow simpler comparison and reset.
+   * The backend is free to implement their support as they see fit.
+   */
+  struct Constants {
+    using Value = shader::ShaderCreateInfo::SpecializationConstant::Value;
+    Vector<gpu::shader::Type> types;
+    /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
+     * that however it wants (i.e: bind another shader instead). */
+    Vector<Value> values;
+    /* Default specialization values copied from shader create info at compile time.
+     * Used to reset the values. */
+    Vector<Value> defaults;
+  } constants;
 
  protected:
   /** For debugging purpose. */
@@ -64,9 +58,6 @@ class Shader {
    * such as PSOs upfront. This enables asynchronous PSO compilation which mitigates stuttering
    * when updating new materials. */
   Shader *parent_shader_ = nullptr;
-
-  /* Activate shader specialization state for current shader. */
-  Map<uint, SpecializationConstantValue> specialization_constants_;
 
  public:
   Shader(const char *name);
@@ -94,6 +85,12 @@ class Shader {
   virtual void uniform_float(int location, int comp_len, int array_size, const float *data) = 0;
   virtual void uniform_int(int location, int comp_len, int array_size, const int *data) = 0;
 
+  /* Add specialization constant declarations to shader instance.
+   * This populates keys in the shaders specialization constant state map, allowing specialization
+   * constants with matching ID to be assigned a dynamic value using
+   * GPU_shader_specialize_constant_*(). */
+  void specialization_constants_init(const shader::ShaderCreateInfo &info);
+
   /* Reset the current specialization configuration. This should happen between binds to avoid
    * utilizing a stale state for a secondary use of a shader. If no specialization constants have
    * been assigned, the unspecialized base variant of a shader PSO will be used.*/
@@ -105,13 +102,6 @@ class Shader {
   void specialize_constant_float(int constant_id, float value);
   void specialize_constant_int(int constant_id, int value);
   void specialize_constant_bool(int constant_id, bool value);
-
-  /* Adds a specialization constant to the shader's internal map. Only constants which are in this
-   * map can be assigned to. Any others will be ignored. */
-  inline void specialization_constant_add(uint constant_id, SpecializationConstantValue sc_value)
-  {
-    specialization_constants_.add(constant_id, sc_value);
-  }
 
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;

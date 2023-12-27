@@ -288,10 +288,9 @@ std::string ShaderCreateInfo::check_error() const
         error += this->name_ + " contains two specialization constants with the ID: " +
                  std::to_string(specialization_constants_[i].constant_id);
       }
-      if (specialization_constants_[i].constant_name == specialization_constants_[j].constant_name)
-      {
+      if (specialization_constants_[i].name == specialization_constants_[j].name) {
         error += this->name_ + " contains two specialization constants with the name: " +
-                 std::string(specialization_constants_[i].constant_name);
+                 std::string(specialization_constants_[i].name);
       }
     }
   }

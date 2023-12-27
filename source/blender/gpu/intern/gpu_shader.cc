@@ -298,6 +298,8 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
   Shader *shader = GPUBackend::get()->shader_alloc(info.name_.c_str());
 
+  shader->specialization_constants_init(info);
+
   std::string defines = shader->defines_declare(info);
   std::string resources = shader->resources_declare(info);
 
@@ -397,33 +399,6 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
   if (info.tf_type_ != GPU_SHADER_TFB_NONE && info.tf_names_.size() > 0) {
     shader->transform_feedback_names_set(info.tf_names_.as_span(), info.tf_type_);
-  }
-
-  /* Add specialization constant declarations to shader instance.
-   * This populates keys in the shaders specialization constant state map, allowing specialization
-   * constants with matching ID to be assigned a dynamic value using
-   * GPU_shader_specialize_constant_*(). */
-  for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
-    SpecializationConstantValue sc_value;
-    sc_value.constant_id = sc.constant_id;
-    sc_value.constant_name = sc.constant_name;
-    sc_value.type = sc.type;
-    sc_value.assigned = false;
-    switch (sc_value.type) {
-      case Type::INT:
-        sc_value.default_value_i = static_cast<int>(sc.default_value);
-        break;
-      case Type::BOOL:
-        sc_value.default_value_b = static_cast<bool>(sc.default_value);
-        break;
-      case Type::FLOAT:
-        sc_value.default_value_f = static_cast<float>(sc.default_value);
-        break;
-      default:
-        BLI_assert_unreachable();
-        break;
-    }
-    shader->specialization_constant_add(sc.constant_id, sc_value);
   }
 
   if (!shader->finalize(&info)) {
@@ -591,67 +566,46 @@ void GPU_shader_set_constant_1f(GPUShader *sh, int constant_id, float value)
   unwrap(sh)->specialize_constant_float(constant_id, value);
 }
 
+void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
+{
+  using namespace shader;
+  for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+    constants.types.append(sc.type);
+    constants.values.append(sc.default_value);
+    constants.defaults.append(sc.default_value);
+  }
+}
+
 void Shader::specialization_config_reset()
 {
-  /* Mark specialization constants as unassigned, falling back to utilising default
-   * code string instead of dynamically assigned value. */
-  for (SpecializationConstantValue &sc : specialization_constants_.values()) {
-    sc.assigned = false;
-  }
+  constants.values = constants.defaults;
 }
 
 void Shader::specialize_constant_float(int constant_id, float value)
 {
   if (constant_id < 0) {
-    BLI_assert(false);
+    BLI_assert_unreachable();
     return;
   }
-  SpecializationConstantValue *sc = specialization_constants_.lookup_ptr(constant_id);
-  if (sc == nullptr) {
-    BLI_assert_msg(false, "Could not find specialization constant with the given ID.");
-    return;
-  }
-  BLI_assert_msg(sc->type == shader::Type::FLOAT,
-                 "Attempting to assign a non-float value to float specialization constant.");
-  BLI_assert_msg(constant_id == sc->constant_id, "lookup constant ID does not match stored ID.");
-  sc->assigned = true;
-  sc->value_f = value;
+  constants.values[constant_id].f = value;
 }
 
 void Shader::specialize_constant_int(int constant_id, int value)
 {
   if (constant_id < 0) {
-    BLI_assert(false);
+    BLI_assert_unreachable();
     return;
   }
-  SpecializationConstantValue *sc = specialization_constants_.lookup_ptr(constant_id);
-  if (sc == nullptr) {
-    BLI_assert_msg(false, "Could not find specialization constant with the given ID.");
-    return;
-  }
-  BLI_assert_msg(sc->type == shader::Type::INT,
-                 "Attempting to assign a non-int value to integer specialization constant.");
-  BLI_assert_msg(constant_id == sc->constant_id, "lookup constant ID does not match stored ID.");
-  sc->assigned = true;
-  sc->value_i = value;
+  constants.values[constant_id].i = value;
 }
 
 void Shader::specialize_constant_bool(int constant_id, bool value)
 {
   if (constant_id < 0) {
-    BLI_assert(false);
+    BLI_assert_unreachable();
     return;
   }
-  SpecializationConstantValue *sc = specialization_constants_.lookup_ptr(constant_id);
-  if (sc == nullptr) {
-    BLI_assert_msg(false, "Could not find specialization constant with the given ID.");
-    return;
-  }
-  BLI_assert_msg(sc->type == shader::Type::BOOL,
-                 "Attempting to assign a non-bool value to boolean specialization constant.");
-  BLI_assert_msg(constant_id == sc->constant_id, "lookup constant ID does not match stored ID.");
-  sc->assigned = true;
-  sc->value_b = value;
+  constants.values[constant_id].u = value;
 }
 
 /** \} */

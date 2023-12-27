@@ -13,6 +13,8 @@
 
 #include "BLI_vector.hh"
 
+#include "gpu_shader_private.hh"
+
 namespace blender::gpu {
 
 /**
@@ -173,56 +175,24 @@ struct MTLVertexDescriptor {
   }
 };
 
-/* The specialization constant descriptor here only contains an indirection into the source
- * shader's Specialization Constant List. We also only include assigned specialization constants in
- * the PSO descriptor.*/
-struct SpecializationConstantDescriptor {
-  /* Constant ID used as key in gpu::Shader::specialization_constants_. */
-  uint constant_id;
-  union {
-    float value_f;
-    int value_i;
-    bool value_b;
-  };
-};
-
 struct SpecializationStateDescriptor {
-  uint num_specialized_constants = 0;
-  Vector<SpecializationConstantDescriptor> specialization_constants;
+  Vector<Shader::Constants::Value> values;
+
+  SpecializationStateDescriptor() = default;
+  SpecializationStateDescriptor(Vector<Shader::Constants::Value> source) : values(source) {}
 
   bool operator==(const SpecializationStateDescriptor &other) const
   {
-    if (num_specialized_constants > 0 && other.num_specialized_constants > 0) {
-      int sc_size = specialization_constants.size();
-      if (sc_size != other.specialization_constants.size()) {
-        return false;
-      }
-      for (const int i : IndexRange(sc_size)) {
-        if (memcmp(&specialization_constants[i],
-                   &other.specialization_constants[i],
-                   sizeof(SpecializationConstantDescriptor)) != 0)
-        {
-          return false;
-        }
-      }
-    }
-
-    return true;
+    return values == other.values;
   }
 
   uint64_t hash() const
   {
-    uint64_t hash = 0;
-    if (num_specialized_constants > 0) {
-      hash = num_specialized_constants;
-
-      uint seed = 0xFF;
-      for (const SpecializationConstantDescriptor scd : specialization_constants) {
-        /* SpecializationStateDescriptor occupies 8 bytes, so hash using ontaining constant_id and
-         * assigned value. */
-        seed = seed << 1;
-        hash ^= seed ^ (*(reinterpret_cast<const uint64_t *>(&scd)));
-      }
+    uint64_t hash = values.size();
+    uint seed = 0xFF;
+    for (const Shader::Constants::Value &value : values) {
+      seed = seed << 1;
+      hash ^= seed ^ value.u;
     }
     return hash;
   }

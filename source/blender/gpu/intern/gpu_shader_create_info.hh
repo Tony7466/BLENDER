@@ -499,18 +499,29 @@ struct ShaderCreateInfo {
   Vector<SubpassIn> subpass_inputs_;
 
   struct SpecializationConstant {
+    struct Value {
+      union {
+        uint32_t u;
+        int32_t i;
+        float f;
+      };
+
+      bool operator==(const Value &other) const
+      {
+        return u == other.u;
+      }
+    };
+
     int constant_id;
     Type type;
-    StringRefNull constant_name;
-    /* Untyped default value stored as double and casted down to the specific type.
-     * This allows to retain the 32bit precision of integers and float at the same time. */
-    double default_value;
+    StringRefNull name;
+    Value default_value;
 
     bool operator==(const SpecializationConstant &b) const
     {
       TEST_EQUAL(*this, b, constant_id);
       TEST_EQUAL(*this, b, type);
-      TEST_EQUAL(*this, b, constant_name);
+      TEST_EQUAL(*this, b, name);
       TEST_EQUAL(*this, b, default_value);
       return true;
     }
@@ -761,16 +772,28 @@ struct ShaderCreateInfo {
    *
    * Specialization constants are reset to their provided default values upon `GPU_shader_bind()`.
    * */
-  Self &constant(Type type, int constant_id, StringRefNull constant_name, double default_value)
+  Self &constant(Type type, int constant_id, StringRefNull name, double default_value)
   {
-    BLI_assert_msg(ELEM(type, Type::BOOL, Type::INT, Type::UINT, Type::FLOAT),
-                   "Only scalar types can be used as constants");
-    SpecializationConstant specialization_constant;
-    specialization_constant.constant_id = constant_id;
-    specialization_constant.type = type;
-    specialization_constant.constant_name = constant_name;
-    specialization_constant.default_value = default_value;
-    specialization_constants_.append(specialization_constant);
+    SpecializationConstant constant;
+    constant.constant_id = constant_id;
+    constant.type = type;
+    constant.name = name;
+    switch (type) {
+      case Type::BOOL:
+      case Type::INT:
+        constant.default_value.i = static_cast<int>(default_value);
+        break;
+      case Type::UINT:
+        constant.default_value.u = static_cast<uint>(default_value);
+        break;
+      case Type::FLOAT:
+        constant.default_value.f = static_cast<float>(default_value);
+        break;
+      default:
+        BLI_assert_msg(0, "Only scalar types can be used as constants");
+        break;
+    }
+    specialization_constants_.append(constant);
     return *(Self *)this;
   }
 

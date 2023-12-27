@@ -879,11 +879,11 @@ char *MSLGeneratorInterface::msl_patch_default_get()
 static void generate_specialization_constant_declarations(const shader::ShaderCreateInfo *info,
                                                           std::stringstream &ss)
 {
+  uint index = MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID;
   for (const ShaderCreateInfo::SpecializationConstant &sc : info->specialization_constants_) {
     /* TODO(Metal): Output specialization constant chain. */
-    uint function_constant_id = MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID + sc.constant_id;
-    ss << "constant " << sc.type << " " << sc.constant_name << " [[function_constant("
-       << function_constant_id << ")]];\n";
+    ss << "constant " << sc.type << " " << sc.name << " [[function_constant(" << index << ")]];\n";
+    index++;
   }
 }
 
@@ -1814,6 +1814,11 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
                        bool(push_constant.array_size > 1),
                        push_constant.array_size);
     uniforms.append(uniform);
+  }
+
+  /** Prepare Constants. */
+  for (const auto &constant : create_info_->specialization_constants_) {
+    constants.append(MSLConstant(constant.type, constant.name));
   }
 
   /* Prepare textures and uniform blocks.
@@ -3744,6 +3749,12 @@ MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(const char *nam
                            input_texture.is_texture_sampler,
                            input_texture.stage,
                            tex_buf_ssbo_location);
+  }
+
+  /* Specialization Constants. */
+  for (const MSLConstant &constant : this->constants) {
+    interface->add_constant(name_buffer_copystr(
+        &interface->name_buffer_, constant.name.c_str(), name_buffer_size, name_buffer_offset));
   }
 
   /* Sampler Parameters. */

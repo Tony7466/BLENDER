@@ -736,104 +736,37 @@ void MTLShader::set_interface(MTLShaderInterface *interface)
 
 /* -------------------------------------------------------------------- */
 /** \name Shader specialization common utilities.
- * NOTE: Force default parameter is used for building the generic unspecialized default case.
+ *
  * \{ */
 
-static void populate_specialization_descriptor(
-    const Map<uint, SpecializationConstantValue> &shader_specialization_constants,
-    SpecializationStateDescriptor &specialization_descriptor,
-    bool force_default)
-{
-  int num_specialized_constants = 0;
-  if (shader_specialization_constants.size() > 0) {
-    specialization_descriptor.specialization_constants.clear();
-    MTL_LOG_INFO(" -- Fetching specialized PSO for shader with config: --\n");
-    for (const SpecializationConstantValue &sc_value : shader_specialization_constants.values()) {
-
-      /* Switch between either custom assigned value or default value. */
-      bool use_assigned_value = sc_value.assigned && !force_default;
-
-      SpecializationConstantDescriptor sc_descriptor;
-      sc_descriptor.constant_id = sc_value.constant_id;
-      switch (sc_value.type) {
-        case Type::FLOAT: {
-          sc_descriptor.value_f = (use_assigned_value) ? sc_value.value_f :
-                                                         sc_value.default_value_f;
-          MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %f)}\n",
-                       sc_value.constant_id,
-                       sc_value.constant_name.c_str(),
-                       (sc_value.assigned) ? "YES" : "NO (USING DEFAULT)",
-                       sc_descriptor.value_f);
-
-        } break;
-        case Type::INT: {
-          sc_descriptor.value_i = (use_assigned_value) ? sc_value.value_i :
-                                                         sc_value.default_value_i;
-          MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %i)}\n",
-                       sc_value.constant_id,
-                       sc_value.constant_name.c_str(),
-                       (sc_value.assigned) ? "YES" : "NO (USING DEFAULT)",
-                       sc_descriptor.value_i);
-
-        } break;
-        case Type::BOOL: {
-          sc_descriptor.value_b = (use_assigned_value) ? sc_value.value_b :
-                                                         sc_value.default_value_b;
-          MTL_LOG_INFO("  -> {%u : '%s', assigned: %s, value: %u)}\n",
-                       sc_value.constant_id,
-                       sc_value.constant_name.c_str(),
-                       (sc_value.assigned) ? "YES" : "NO (USING DEFAULT)",
-                       sc_descriptor.value_b ? 1 : 0);
-        } break;
-        default: {
-          BLI_assert_unreachable();
-        } break;
-      }
-      specialization_descriptor.specialization_constants.append(sc_descriptor);
-    }
-    num_specialized_constants = specialization_descriptor.specialization_constants.size();
-  }
-  specialization_descriptor.num_specialized_constants = num_specialized_constants;
-}
-
+/**
+ * Populates `values` with the given `SpecializationStateDescriptor` values.
+ */
 static void populate_specialization_constant_values(
     MTLFunctionConstantValues *values,
-    const Map<uint, SpecializationConstantValue> &shader_specialization_constants,
+    const Shader::Constants &shader_constants,
     const SpecializationStateDescriptor &specialization_descriptor)
 {
-  if (specialization_descriptor.num_specialized_constants > 0) {
-    for (const SpecializationConstantDescriptor &scd :
-         specialization_descriptor.specialization_constants)
-    {
-      /* Fetch shader specialization constant info. */
-      const SpecializationConstantValue *shader_specialization_constant =
-          shader_specialization_constants.lookup_ptr(scd.constant_id);
-      if (shader_specialization_constant == nullptr) {
-        BLI_assert_msg(false, "Could not find specialization constant with the given ID\n");
-        continue;
-      }
-      uint constant_id_with_offset = scd.constant_id + MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID;
-      switch (shader_specialization_constant->type) {
-        case Type::INT:
-          [values setConstantValue:&scd.value_i
-                              type:MTLDataTypeInt
-                           atIndex:constant_id_with_offset];
-          break;
-        case Type::FLOAT:
-          [values setConstantValue:&scd.value_f
-                              type:MTLDataTypeFloat
-                           atIndex:constant_id_with_offset];
-          break;
+  for (auto i : shader_constants.types.index_range()) {
+    const Shader::Constants::Value &value = specialization_descriptor.values[i];
 
-        case Type::BOOL:
-          [values setConstantValue:&scd.value_b
-                              type:MTLDataTypeBool
-                           atIndex:constant_id_with_offset];
-          break;
-        default:
-          BLI_assert_msg(false, "Unsupported custom constant type.");
-          break;
-      }
+    uint index = i + MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID;
+    switch (shader_constants.types[i]) {
+      case Type::INT:
+        [values setConstantValue:&value.i type:MTLDataTypeInt atIndex:index];
+        break;
+      case Type::UINT:
+        [values setConstantValue:&value.u type:MTLDataTypeUInt atIndex:index];
+        break;
+      case Type::BOOL:
+        [values setConstantValue:&value.u type:MTLDataTypeBool atIndex:index];
+        break;
+      case Type::FLOAT:
+        [values setConstantValue:&value.f type:MTLDataTypeFloat atIndex:index];
+        break;
+      default:
+        BLI_assert_msg(false, "Unsupported custom constant type.");
+        break;
     }
   }
 }
@@ -932,8 +865,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_current_pipeline_state(
       (requires_specific_topology_class) ? prim_type : MTLPrimitiveTopologyClassUnspecified;
 
   /* Specialization configuration. */
-  populate_specialization_descriptor(
-      specialization_constants_, pipeline_descriptor.specialization_state, false);
+  pipeline_descriptor.specialization_state = {this->constants.defaults};
 
   /* Bake pipeline state using global descriptor. */
   return bake_pipeline_state(ctx, prim_type, pipeline_descriptor);
@@ -978,7 +910,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
 
     /* Custom function constant values: */
     populate_specialization_constant_values(
-        values, specialization_constants_, pipeline_descriptor.specialization_state);
+        values, this->constants, pipeline_descriptor.specialization_state);
 
     /* Prepare Vertex descriptor based on current pipeline vertex binding state. */
     MTLRenderPipelineDescriptor *desc = pso_descriptor_;
@@ -1480,9 +1412,8 @@ MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLConte
 
   /* Specialization configuration.
    * NOTE: If allow_specialized is disabled, we will build the base un-specialized variant. */
-  populate_specialization_descriptor(specialization_constants_,
-                                     compute_pipeline_descriptor.specialization_state,
-                                     !allow_specialized);
+  compute_pipeline_descriptor.specialization_state = {
+      allow_specialized ? this->constants.values : this->constants.defaults};
 
   /* Check if current PSO exists in the cache. */
   pso_cache_lock_.lock();
@@ -1507,7 +1438,7 @@ MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLConte
 
     /* Custom function constant values: */
     populate_specialization_constant_values(
-        values, specialization_constants_, compute_pipeline_descriptor.specialization_state);
+        values, this->constants, compute_pipeline_descriptor.specialization_state);
 
     /* Offset the bind index for Uniform buffers such that they begin after the VBO
      * buffer bind slots. `MTL_uniform_buffer_base_index` is passed as a function
