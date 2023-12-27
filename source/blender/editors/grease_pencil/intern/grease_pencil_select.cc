@@ -368,13 +368,14 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
-    const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, memory);
-    if (selectable_strokes.is_empty()) {
+    if (strokes.is_empty()) {
       return;
     }
 
@@ -384,24 +385,26 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
 
     /* If the attribute does not exist then each curves is it's own shape. */
     if (!shape_ids) {
+      const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
+          *object, info.drawing, memory);
       blender::ed::curves::select_linked(curves, selectable_strokes);
       return;
     }
 
     const OffsetIndices points_by_curve = curves.points_by_curve();
     bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-        curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+        curves, selection_domain, CD_PROP_BOOL);
 
-    selectable_strokes.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
-      if (!ed::curves::has_anything_selected(selection.span.slice(points_by_curve[curve_i]))) {
-        return;
-      }
+    strokes.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
       const int shape_id = shape_ids[curve_i];
       for (const int curve_i2 : curves.curves_range()) {
-        if (shape_ids[curve_i2] == shape_id) {
-          GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i2]);
-          ed::curves::fill_selection_true(selection_curve);
+        if (shape_ids[curve_i2] != shape_id) {
+          continue;
         }
+        GMutableSpan selection_curve = selection.span.slice(selection_domain == ATTR_DOMAIN_POINT ?
+                                                                points_by_curve[curve_i2] :
+                                                                IndexRange(curve_i2, 1));
+        ed::curves::fill_selection_true(selection_curve);
       }
     });
 
@@ -423,7 +426,7 @@ static void GREASE_PENCIL_OT_select_shape(wmOperatorType *ot)
   ot->description = "Select all curves in the shape";
 
   ot->exec = select_shape_exec;
-  ot->poll = editable_grease_pencil_point_selection_poll;
+  ot->poll = editable_grease_pencil_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
