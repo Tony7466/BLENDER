@@ -56,7 +56,7 @@ void RayTraceModule::sync()
     pass.bind_image("tile_horizon_denoise_img", &tile_horizon_denoise_tx_);
     pass.bind_image("tile_horizon_tracing_img", &tile_horizon_tracing_tx_);
     inst_.bind_uniform_data(&pass);
-    inst_.gbuffer.bind_resources(pass);
+    pass.bind_resources(inst_.gbuffer);
     pass.dispatch(&tile_classify_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_SHADER_STORAGE);
   }
@@ -87,8 +87,8 @@ void RayTraceModule::sync()
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_image("out_ray_data_img", &ray_data_tx_);
     pass.bind_ssbo("tiles_coord_buf", &raytrace_tracing_tiles_buf_);
-    inst_.sampling.bind_resources(pass);
-    inst_.gbuffer.bind_resources(pass);
+    pass.bind_resources(inst_.sampling);
+    pass.bind_resources(inst_.gbuffer);
     pass.dispatch(raytrace_tracing_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_TEXTURE_FETCH |
                  GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -107,15 +107,13 @@ void RayTraceModule::sync()
       sub.bind_image("ray_radiance_img", &ray_radiance_tx_);
       sub.bind_texture("depth_tx", &depth_tx);
       inst_.bind_uniform_data(&sub);
-      inst_.planar_probes.bind_resources(sub);
-      inst_.irradiance_cache.bind_resources(sub);
-      inst_.reflection_probes.bind_resources(sub);
+      sub.bind_resources(inst_.planar_probes);
+      sub.bind_resources(inst_.irradiance_cache);
+      sub.bind_resources(inst_.reflection_probes);
       /* TODO(@fclem): Use another dispatch with only tiles that touches planar captures. */
       sub.dispatch(raytrace_tracing_dispatch_buf_);
       sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     }
-    HiZBuffer::Type hiz_type = (&pass == &trace_refract_ps_) ? HiZBuffer::Type::BACK :
-                                                               HiZBuffer::Type::FRONT;
     pass.shader_set(inst_.shaders.static_shader_get(SHADER_VARIATION(RAY_TRACE_SCREEN_, type)));
     pass.bind_ssbo("tiles_coord_buf", &raytrace_tracing_tiles_buf_);
     pass.bind_image("ray_data_img", &ray_data_tx_);
@@ -124,10 +122,11 @@ void RayTraceModule::sync()
     pass.bind_texture("depth_tx", &depth_tx);
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
     inst_.bind_uniform_data(&pass);
-    inst_.hiz_buffer.bind_resources(pass, hiz_type);
-    inst_.sampling.bind_resources(pass);
-    inst_.irradiance_cache.bind_resources(pass);
-    inst_.reflection_probes.bind_resources(pass);
+    pass.bind_resources((&pass == &trace_refract_ps_) ? inst_.hiz_buffer.back :
+                                                        inst_.hiz_buffer.front);
+    pass.bind_resources(inst_.sampling);
+    pass.bind_resources(inst_.irradiance_cache);
+    pass.bind_resources(inst_.reflection_probes);
     pass.dispatch(raytrace_tracing_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -141,9 +140,9 @@ void RayTraceModule::sync()
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
     pass.bind_texture("depth_tx", &depth_tx);
     inst_.bind_uniform_data(&pass);
-    inst_.irradiance_cache.bind_resources(pass);
-    inst_.reflection_probes.bind_resources(pass);
-    inst_.sampling.bind_resources(pass);
+    pass.bind_resources(inst_.irradiance_cache);
+    pass.bind_resources(inst_.reflection_probes);
+    pass.bind_resources(inst_.sampling);
     pass.dispatch(raytrace_tracing_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -166,8 +165,8 @@ void RayTraceModule::sync()
     pass.bind_image("out_hit_depth_img", &hit_depth_tx_);
     pass.bind_image("tile_mask_img", &tile_raytrace_denoise_tx_);
     inst_.bind_uniform_data(&pass);
-    inst_.sampling.bind_resources(pass);
-    inst_.gbuffer.bind_resources(pass);
+    pass.bind_resources(inst_.sampling);
+    pass.bind_resources(inst_.gbuffer);
     pass.dispatch(raytrace_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -186,7 +185,7 @@ void RayTraceModule::sync()
     pass.bind_image("in_variance_img", &hit_variance_tx_);
     pass.bind_image("out_variance_img", &denoise_variance_tx_);
     pass.bind_ssbo("tiles_coord_buf", &raytrace_denoise_tiles_buf_);
-    inst_.sampling.bind_resources(pass);
+    pass.bind_resources(inst_.sampling);
     pass.dispatch(raytrace_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -202,8 +201,8 @@ void RayTraceModule::sync()
     pass.bind_image("tile_mask_img", &tile_raytrace_denoise_tx_);
     pass.bind_ssbo("tiles_coord_buf", &raytrace_denoise_tiles_buf_);
     inst_.bind_uniform_data(&pass);
-    inst_.sampling.bind_resources(pass);
-    inst_.gbuffer.bind_resources(pass);
+    pass.bind_resources(inst_.sampling);
+    pass.bind_resources(inst_.gbuffer);
     pass.dispatch(raytrace_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -217,7 +216,7 @@ void RayTraceModule::sync()
     pass.bind_image("out_radiance_img", &downsampled_in_radiance_tx_);
     pass.bind_image("out_normal_img", &downsampled_in_normal_tx_);
     inst_.bind_uniform_data(&pass);
-    inst_.gbuffer.bind_resources(pass);
+    pass.bind_resources(inst_.gbuffer);
     pass.dispatch(&tracing_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -232,9 +231,9 @@ void RayTraceModule::sync()
     pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     inst_.bind_uniform_data(&pass);
-    inst_.hiz_buffer.bind_resources(pass);
-    inst_.sampling.bind_resources(pass);
-    inst_.gbuffer.bind_resources(pass);
+    pass.bind_resources(inst_.hiz_buffer.front);
+    pass.bind_resources(inst_.sampling);
+    pass.bind_resources(inst_.gbuffer);
     pass.dispatch(horizon_tracing_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -242,7 +241,6 @@ void RayTraceModule::sync()
     PassSimple &pass = horizon_denoise_ps_;
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(HORIZON_DENOISE));
-    inst_.bind_uniform_data(&pass);
     pass.bind_texture("depth_tx", &depth_tx);
     pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
     pass.bind_image("horizon_occlusion_img", &horizon_occlusion_tx_);
@@ -250,10 +248,10 @@ void RayTraceModule::sync()
     pass.bind_image("tile_mask_img", &tile_horizon_denoise_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_denoise_tiles_buf_);
     inst_.bind_uniform_data(&pass);
-    inst_.sampling.bind_resources(pass);
-    inst_.gbuffer.bind_resources(pass);
-    inst_.irradiance_cache.bind_resources(pass);
-    inst_.reflection_probes.bind_resources(pass);
+    pass.bind_resources(inst_.sampling);
+    pass.bind_resources(inst_.gbuffer);
+    pass.bind_resources(inst_.irradiance_cache);
+    pass.bind_resources(inst_.reflection_probes);
     pass.dispatch(horizon_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
