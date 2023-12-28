@@ -7,6 +7,7 @@
  */
 
 #include "BKE_attribute.hh"
+#include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BLI_cpp_type.hh"
 #include "BLI_generic_virtual_array.hh"
@@ -20,6 +21,7 @@
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_vector.hh"
+#include "BLI_virtual_array.hh"
 #include "DEG_depsgraph.hh"
 
 #include "DNA_curves_types.h"
@@ -34,6 +36,7 @@
 #include "RNA_define.hh"
 
 #include "WM_api.hh"
+#include <cstdint>
 
 namespace blender::ed::greasepencil {
 
@@ -372,48 +375,49 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
   using namespace blender::bke;
 
   if (curves_a.curves_num() != curves_b.curves_num() ||
-      curves_a.points_num() != curves_b.points_num())
+      curves_a.points_num() != curves_b.points_num() || curves_a.offsets() != curves_b.offsets())
   {
-    return false;
-  }
-
-  if (curves_a.offsets() != curves_b.offsets()) {
     return false;
   }
 
   const AttributeAccessor attributes_a = curves_a.attributes();
   const AttributeAccessor attributes_b = curves_b.attributes();
+
   const Set<AttributeIDRef> ids_a = attributes_a.all_ids();
   const Set<AttributeIDRef> ids_b = attributes_b.all_ids();
-
   if (ids_a != ids_b) {
     return false;
   }
 
-  for (const AttributeIDRef &id : ids_a) {
-    GAttributeReader reader_a = attributes_a.lookup(id);
-    GAttributeReader reader_b = attributes_b.lookup(id);
+  return attributes_a.for_all([&](const AttributeIDRef &id, const AttributeMetaData) {
+    GAttributeReader attr_a = attributes_a.lookup(id);
+    GAttributeReader attr_b = attributes_b.lookup(id);
 
-    const GVArray &values_a = *reader_a;
-    const GVArray &values_b = *reader_b;
-    if (values_a.size() != values_b.size()) {
+    const CPPType &type_a = attr_a.varray.type();
+    const CPPType &type_b = attr_b.varray.type();
+
+    if (attr_a.varray.size() != attr_b.varray.size() || type_a != type_b) {
       return false;
     }
 
-    const CPPType &type_a = values_a.type();
-    const CPPType &type_b = values_b.type();
-    if (type_a != type_b) {
-      return false;
-    }
+    bool attrs_equal = true;
 
-    // for (int64_t i : values_a.index_range()) {
-    //   if (!type_a.is_equal_or_false()) {
-    //     return false;
-    //   }
-    // }
-  }
+    attribute_math::convert_to_static_type(attr_a.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
 
-  return true;
+      const VArraySpan typed_a = attr_a.varray.typed<T>();
+      const VArraySpan typed_b = attr_b.varray.typed<T>();
+
+      for (const int64_t i : typed_a.index_range()) {
+        if (!type_a.is_equal_or_false(&(typed_a[i]), &(typed_b[i]))) {
+          attrs_equal = false;
+          break;
+        }
+      }
+    });
+
+    return attrs_equal;
+  });
 }
 
 static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
