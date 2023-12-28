@@ -35,7 +35,7 @@
 /* Set to 0 to allow devices that do not have the required features.
  * This allows development on OSX until we really needs these features. */
 #define STRICT_REQUIREMENTS true
-
+#define VK_ENABLE_DEBUG_SYNC
 /*
  * Should we only select surfaces that are known to be compatible. Or should we in case no
  * compatible surfaces have been found select the first one.
@@ -1037,15 +1037,33 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     /* VkValidationFeaturesEXT */
     VkValidationFeaturesEXT validationFeatures = {};
     validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-    validationFeatures.enabledValidationFeatureCount = 1;
+    #ifdef VK_ENABLE_DEBUG_PRINTF
+      VkValidationFeatureEnableEXT enabledValidationFeatures[1] = {
+        VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
+      };
+      if (m_debug) {
+        extensions_device.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+        create_info.pNext = &validationFeatures;
+        validationFeatures.enabledValidationFeatureCount = 1;
+        validationFeatures.disabledValidationFeatureCount = 0;
+        validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+        validationFeatures.pDisabledValidationFeatures = nullptr;
+        validationFeatures.pNext = create_info.pNext;
+        create_info.pNext = &validationFeatures;
+      }
 
-    VkValidationFeatureEnableEXT enabledValidationFeatures[1] = {
-        VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
-    validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
-    if (m_debug) {
-      create_info.pNext = &validationFeatures;
-    }
-
+    #elif defined(VK_ENABLE_DEBUG_SYNC)
+      VkValidationFeatureEnableEXT enabledValidationFeatures[] = {
+          VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
+      if (m_debug) {
+        validationFeatures.enabledValidationFeatureCount = 1;
+        validationFeatures.disabledValidationFeatureCount = 0;
+        validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+        validationFeatures.pDisabledValidationFeatures = nullptr;
+        validationFeatures.pNext = create_info.pNext;
+        create_info.pNext = &validationFeatures;
+      }
+    #endif
     VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance));
   }
   else {
