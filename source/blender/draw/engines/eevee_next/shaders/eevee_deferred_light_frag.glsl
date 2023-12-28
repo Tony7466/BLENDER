@@ -95,17 +95,17 @@ void main()
   }
 #endif
 
-#if 1 /* TODO(fclem): Limit to when shadow pass is needed. */
-  vec3 radiance_shadowed = vec3(0);
-  vec3 radiance_unshadowed = vec3(0);
-  for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
-    radiance_shadowed += stack.cl[i].light_shadowed;
-    radiance_unshadowed += stack.cl[i].light_unshadowed;
+  if (render_pass_shadow_enabled) {
+    vec3 radiance_shadowed = vec3(0);
+    vec3 radiance_unshadowed = vec3(0);
+    for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
+      radiance_shadowed += stack.cl[i].light_shadowed;
+      radiance_unshadowed += stack.cl[i].light_unshadowed;
+    }
+    /* TODO(fclem): Change shadow pass to be colored. */
+    vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
+    output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
   }
-  /* TODO(fclem): Change shadow pass to be colored. */
-  vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
-  output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
-#endif
 
   if (true) {
     vec2 noise_probe = interlieved_gradient_noise(gl_FragCoord.xy, vec2(0, 1), vec2(0.0));
