@@ -238,7 +238,7 @@ void LookdevModule::sync_pass(PassSimple &pass,
   pass.bind_resources(inst_.reflection_probes);
   pass.bind_resources(inst_.irradiance_cache);
   pass.bind_resources(inst_.shadows);
-  inst_.volume.bind_resources(pass);
+  pass.bind_resources(inst_.volume.result);
   pass.bind_resources(inst_.cryptomatte);
 
   pass.draw(geom, res_handle, 0);

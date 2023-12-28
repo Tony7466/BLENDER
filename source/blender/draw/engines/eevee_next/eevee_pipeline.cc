@@ -123,7 +123,7 @@ void WorldVolumePipeline::sync(GPUMaterial *gpumat)
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
   world_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   inst_.bind_uniform_data(&world_ps_);
-  inst_.volume.bind_properties_buffers(world_ps_);
+  world_ps_.bind_resources(inst_.volume.properties);
   world_ps_.bind_resources(inst_.sampling);
 
   world_ps_.material_set(*inst_.manager, gpumat);
@@ -288,7 +288,7 @@ void ForwardPipeline::sync()
       inst_.bind_uniform_data(&opaque_ps_);
       opaque_ps_.bind_resources(inst_.lights);
       opaque_ps_.bind_resources(inst_.shadows);
-      inst_.volume.bind_resources(opaque_ps_);
+      opaque_ps_.bind_resources(inst_.volume.result);
       opaque_ps_.bind_resources(inst_.sampling);
       opaque_ps_.bind_resources(inst_.hiz_buffer.front);
       opaque_ps_.bind_resources(inst_.irradiance_cache);
@@ -316,7 +316,7 @@ void ForwardPipeline::sync()
     inst_.bind_uniform_data(&sub);
     sub.bind_resources(inst_.lights);
     sub.bind_resources(inst_.shadows);
-    inst_.volume.bind_resources(sub);
+    sub.bind_resources(inst_.volume.result);
     sub.bind_resources(inst_.sampling);
     sub.bind_resources(inst_.hiz_buffer.front);
     sub.bind_resources(inst_.irradiance_cache);
@@ -948,7 +948,7 @@ void VolumeLayer::sync()
     /* Double sided without depth test. */
     pass.state_set(DRW_STATE_WRITE_DEPTH);
     inst_.bind_uniform_data(&pass);
-    inst_.volume.bind_occupancy_buffers(pass);
+    pass.bind_resources(inst_.volume.occupancy);
     pass.bind_resources(inst_.sampling);
     occupancy_ps_ = &pass;
   }
@@ -957,7 +957,7 @@ void VolumeLayer::sync()
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     inst_.bind_uniform_data(&pass);
-    inst_.volume.bind_properties_buffers(pass);
+    pass.bind_resources(inst_.volume.properties);
     pass.bind_resources(inst_.sampling);
     material_ps_ = &pass;
   }

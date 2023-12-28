@@ -108,9 +108,18 @@ void VolumeModule::end_sync()
     integrated_scatter_tx_.free();
     integrated_transmit_tx_.free();
 
-    transparent_pass_scatter_tx_ = dummy_scatter_tx_;
-    transparent_pass_transmit_tx_ = dummy_transmit_tx_;
-
+    /* Update references for bindings. */
+    result.scattering_tx_ = dummy_scatter_tx_;
+    result.transmittance_tx_ = dummy_transmit_tx_;
+    /* These shouldn't be used. */
+    properties.scattering_tx_ = nullptr;
+    properties.extinction_tx_ = nullptr;
+    properties.emission_tx_ = nullptr;
+    properties.phase_tx_ = nullptr;
+    properties.occupancy_tx_ = nullptr;
+    occupancy.occupancy_tx_ = nullptr;
+    occupancy.hit_depth_tx_ = nullptr;
+    occupancy.hit_count_tx_ = nullptr;
     return;
   }
 
@@ -167,8 +176,17 @@ void VolumeModule::end_sync()
   integrated_scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   integrated_transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
-  transparent_pass_scatter_tx_ = integrated_scatter_tx_;
-  transparent_pass_transmit_tx_ = integrated_transmit_tx_;
+  /* Update references for bindings. */
+  result.scattering_tx_ = integrated_scatter_tx_;
+  result.transmittance_tx_ = integrated_transmit_tx_;
+  properties.scattering_tx_ = prop_scattering_tx_;
+  properties.extinction_tx_ = prop_extinction_tx_;
+  properties.emission_tx_ = prop_emission_tx_;
+  properties.phase_tx_ = prop_phase_tx_;
+  properties.occupancy_tx_ = occupancy_tx_;
+  occupancy.occupancy_tx_ = occupancy_tx_;
+  occupancy.hit_depth_tx_ = hit_depth_tx_;
+  occupancy.hit_count_tx_ = hit_count_tx_;
 
   scatter_ps_.init();
   scatter_ps_.shader_set(
@@ -206,7 +224,7 @@ void VolumeModule::end_sync()
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
   inst_.bind_uniform_data(&resolve_ps_);
-  bind_resources(resolve_ps_);
+  resolve_ps_.bind_resources(this->result);
   resolve_ps_.bind_texture("depth_tx", &inst_.render_buffers.depth_tx);
   resolve_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
   resolve_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
