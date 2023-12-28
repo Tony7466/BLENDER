@@ -6916,9 +6916,9 @@ static void def_cmp_map_uv(StructRNA *srna)
 {
   PropertyRNA *prop;
 
-  static const EnumPropertyItem sampling_mode_items[] = {
-      {CMP_NODE_MAP_UV_ANISOTROPIC, "ANISOTROPIC", 0, "Anisotropic", ""},
-      {CMP_NODE_MAP_UV_NEAREST_NEIGHBOUR, "NEARESTNEIGHBOUR", 0, "Nearest Neighbour", ""},
+  static const EnumPropertyItem filter_type_items[] = {
+      {CMP_NODE_MAP_UV_FILTERING_NEAREST, "NEAREST", 0, "Nearest", ""},
+      {CMP_NODE_MAP_UV_FILTERING_ANISOTROPIC, "ANISOTROPIC", 0, "Anisotropic", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -6928,10 +6928,10 @@ static void def_cmp_map_uv(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Alpha", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
-  prop = RNA_def_property(srna, "sampling_mode", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "filter_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom2");
-  RNA_def_property_enum_items(prop, sampling_mode_items);
-  RNA_def_property_ui_text(prop, "Sampling Mode", "");
+  RNA_def_property_enum_items(prop, filter_type_items);
+  RNA_def_property_ui_text(prop, "Filter Type", "");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_NODETREE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }

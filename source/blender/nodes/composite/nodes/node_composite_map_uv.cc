@@ -37,7 +37,7 @@ static void cmp_node_map_uv_declare(NodeDeclarationBuilder &b)
 static void node_composit_buts_map_uv(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "alpha", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "sampling_mode", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "filter_type", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 using namespace blender::realtime_compositor;
@@ -95,7 +95,7 @@ class MapUVOperation : public NodeOperation {
 
   bool get_nearest_neighbour()
   {
-    return bnode().custom2 == CMP_NODE_MAP_UV_NEAREST_NEIGHBOUR;
+    return bnode().custom2 == CMP_NODE_MAP_UV_FILTERING_NEAREST;
   }
 
  private:
