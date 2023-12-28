@@ -511,7 +511,7 @@ void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
 }
 
-static int io_handler_export(bContext *C, IOHandlerData *data)
+static int io_handler_export(bContext *C, IOHandlerData *data, Collection *collection)
 {
   FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
   if (!fh) {
@@ -524,8 +524,12 @@ static int io_handler_export(bContext *C, IOHandlerData *data)
   }
 
   /* Invoke operator with the properties stored on the Collection. */
-  PointerRNA ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
-  return WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &ptr, nullptr);
+  PointerRNA prop_ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+  RNA_string_set(&prop_ptr, "collection", collection->id.name + 2);
+
+  /* TODO: Cascade settings down from parent collections(??) */
+
+  return WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &prop_ptr, nullptr);
 }
 
 static int collection_io_handler_export_exec(bContext *C, wmOperator *op)
@@ -539,7 +543,7 @@ static int collection_io_handler_export_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  return io_handler_export(C, data);
+  return io_handler_export(C, data, collection);
 }
 
 void COLLECTION_OT_io_handler_export(wmOperatorType *ot)
@@ -565,7 +569,7 @@ static int collection_io_export_all_exec(bContext *C, wmOperator * /*op*/)
   ListBase *io_handlers = &collection->io_handlers;
 
   LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
-    io_handler_export(C, data);
+    io_handler_export(C, data, collection);
 
     /* TODO: Should we continue calling operators if one fails? */
     /* TODO: What's the best way to surface the problem? Reports? */

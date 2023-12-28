@@ -26,12 +26,15 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
+#include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_appdir.h"
 #include "BKE_blender_version.h"
+#include "BKE_collection.h"
 #include "BKE_context.hh"
 #include "BKE_global.h"
+#include "BKE_lib_id.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -39,6 +42,7 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
+#include "BLI_vector.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -486,7 +490,23 @@ bool USD_export(bContext *C,
    *
    * Has to be done from main thread currently, as it may affect Main original data (e.g. when
    * doing deferred update of the view-layers, see #112534 for details). */
-  if (job->params.visible_objects_only) {
+  if (job->params.collection[0] != '\0') {
+    Collection *collection = reinterpret_cast<Collection *>(
+        BKE_libblock_find_name(job->bmain, ID_GR, job->params.collection));
+    Base *base = BKE_collection_or_layer_objects(scene, view_layer, collection);
+    const bool for_render = (DEG_get_mode(job->depsgraph) == DAG_EVAL_RENDER);
+    const int base_flag = (for_render) ? BASE_ENABLED_RENDER : BASE_ENABLED_VIEWPORT;
+
+    blender::Vector<ID *> ids;
+    for (; base; base = base->next) {
+      if (base->flag & base_flag) {
+        ids.append(&base->object->id);
+      }
+    }
+
+    DEG_graph_build_from_ids(job->depsgraph, ids.data(), ids.size());
+  }
+  else if (job->params.visible_objects_only) {
     DEG_graph_build_from_view_layer(job->depsgraph);
   }
   else {

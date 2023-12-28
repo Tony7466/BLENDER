@@ -216,13 +216,14 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
+  RNA_string_get(op->ptr, "collection", params.collection);
 
   bool ok = USD_export(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void wm_usd_export_draw(const bContext *C,
+static void wm_usd_export_draw(const bContext * /*C*/,
                                uiLayout *layout,
                                PointerRNA *ptr,
                                FileHandlerType * /*file_handler_type*/)
@@ -354,6 +355,9 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Visible Only",
                   "Only export visible objects. Invisible parents of exported objects are "
                   "exported as empty transforms");
+
+  prop = RNA_def_string(ot->srna, "collection", nullptr, MAX_IDPROP_NAME, "Collection", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_boolean(
       ot->srna,
