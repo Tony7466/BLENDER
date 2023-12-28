@@ -19,6 +19,7 @@
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 
+#include "BLI_vector.hh"
 #include "DEG_depsgraph.hh"
 
 #include "DNA_curves_types.h"
@@ -33,7 +34,6 @@
 #include "RNA_define.hh"
 
 #include "WM_api.hh"
-#include <cstdint>
 
 namespace blender::ed::greasepencil {
 
@@ -431,6 +431,7 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
     }
 
     const Span<FramesMapKey> &keys = layer->sorted_keys();
+    Vector<FramesMapKey> frames_to_delete = {};
 
     for (size_t i = 0; i < keys.size(); ++i) {
       if (i + 1 >= keys.size()) {
@@ -467,10 +468,14 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
         continue;
       }
 
-      ++i;
-      changed = true;
-      layer->remove_frame(next);
+      frames_to_delete.append(next);
     }
+
+    for (const FramesMapKey frame : frames_to_delete) {
+      layer->remove_frame(frame);
+    }
+
+    changed = true;
   }
 
   if (changed) {
