@@ -124,10 +124,10 @@ void SpecializeConstant::execute() const
       GPU_shader_constant_int_ex(shader, location, *int_ref);
       break;
     case SpecializeConstant::Type::UintValue:
-      GPU_shader_constant_uint_ex(shader, location, int_value);
+      GPU_shader_constant_uint_ex(shader, location, uint_value);
       break;
     case SpecializeConstant::Type::UintReference:
-      GPU_shader_constant_uint_ex(shader, location, *int_ref);
+      GPU_shader_constant_uint_ex(shader, location, *uint_ref);
       break;
     case SpecializeConstant::Type::FloatValue:
       GPU_shader_constant_float_ex(shader, location, float_value);
