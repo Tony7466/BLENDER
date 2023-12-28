@@ -207,7 +207,7 @@ static void recent_files_menu_draw(const bContext * /*C*/, Menu *menu)
       RNA_boolean_set(&ptr, "display_file_selector", false);
     }
     uiItemS(layout);
-    uiItemO(layout, nullptr, ICON_NONE, "WM_OT_clear_recent_files");
+    uiItemO(layout, nullptr, ICON_TRASH, "WM_OT_clear_recent_files");
   }
   else {
     uiItemL(layout, IFACE_("No Recent Files"), ICON_NONE);
