@@ -6,8 +6,14 @@
  * \ingroup edgreasepencil
  */
 
+#include "BKE_attribute.hh"
+#include "BKE_curves.hh"
+#include "BLI_cpp_type.hh"
+#include "BLI_generic_virtual_array.hh"
+#include "BLI_index_range.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
@@ -15,6 +21,8 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "DNA_curves_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_scene_types.h"
 
 #include "ED_grease_pencil.hh"
@@ -25,6 +33,7 @@
 #include "RNA_define.hh"
 
 #include "WM_api.hh"
+#include <cstdint>
 
 namespace blender::ed::greasepencil {
 
@@ -264,7 +273,8 @@ void select_frames_region(KeyframeEditData *ked,
       }
       else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
         if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data),
-                                        pt)) {
+                                        pt))
+        {
           select_frame(frame, select_mode);
         }
       }
@@ -356,6 +366,122 @@ static int insert_blank_frame_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
+                                     const bke::CurvesGeometry &curves_b)
+{
+  using namespace blender::bke;
+
+  if (curves_a.curves_num() != curves_b.curves_num() ||
+      curves_a.points_num() != curves_b.points_num())
+  {
+    return false;
+  }
+
+  if (curves_a.offsets() != curves_b.offsets()) {
+    return false;
+  }
+
+  const AttributeAccessor attributes_a = curves_a.attributes();
+  const AttributeAccessor attributes_b = curves_b.attributes();
+  const Set<AttributeIDRef> ids_a = attributes_a.all_ids();
+  const Set<AttributeIDRef> ids_b = attributes_b.all_ids();
+
+  if (ids_a != ids_b) {
+    return false;
+  }
+
+  for (const AttributeIDRef &id : ids_a) {
+    GAttributeReader reader_a = attributes_a.lookup(id);
+    GAttributeReader reader_b = attributes_b.lookup(id);
+
+    const GVArray &values_a = *reader_a;
+    const GVArray &values_b = *reader_b;
+    if (values_a.size() != values_b.size()) {
+      return false;
+    }
+
+    const CPPType &type_a = values_a.type();
+    const CPPType &type_b = values_b.type();
+    if (type_a != type_b) {
+      return false;
+    }
+
+    // for (int64_t i : values_a.index_range()) {
+    //   if (!type_a.is_equal_or_false()) {
+    //     return false;
+    //   }
+    // }
+  }
+
+  return true;
+}
+
+static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender::bke::greasepencil;
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const bool selected = RNA_boolean_get(op->ptr, "selected");
+
+  bool changed = false;
+
+  for (Layer *layer : grease_pencil.layers_for_write()) {
+    if (!layer->is_editable()) {
+      continue;
+    }
+
+    const Span<FramesMapKey> &keys = layer->sorted_keys();
+
+    for (size_t i = 0; i < keys.size(); ++i) {
+      if (i + 1 >= keys.size()) {
+        break;
+      }
+
+      FramesMapKey current = keys[i];
+      FramesMapKey next = keys[i + 1];
+
+      GreasePencilFrame frame = layer->frames().lookup(current);
+
+      if (selected && !frame.is_selected()) {
+        continue;
+      }
+
+      int current_idx = layer->drawing_index_at(current);
+      int next_idx = layer->drawing_index_at(next);
+
+      GreasePencilDrawingBase *current_drawing_base = grease_pencil.drawing(current_idx);
+      GreasePencilDrawingBase *next_drawing_base = grease_pencil.drawing(next_idx);
+
+      if (current_drawing_base->type != GP_DRAWING || next_drawing_base->type != GP_DRAWING) {
+        continue;
+      }
+
+      Drawing &current_drawing =
+          reinterpret_cast<GreasePencilDrawing *>(current_drawing_base)->wrap();
+      bke::CurvesGeometry &current_geo = current_drawing.strokes_for_write();
+
+      Drawing &next_drawing = reinterpret_cast<GreasePencilDrawing *>(next_drawing_base)->wrap();
+      bke::CurvesGeometry &next_geo = next_drawing.strokes_for_write();
+
+      if (!curves_geometry_is_equal(current_geo, next_geo)) {
+        continue;
+      }
+
+      ++i;
+      changed = true;
+      layer->remove_frame(next);
+    }
+  }
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
 static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -378,10 +504,32 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
   RNA_def_int(ot->srna, "duration", 0, 0, MAXFRAME, "Duration", "", 0, 100);
 }
 
+static void GREASE_PENCIL_OT_frame_clean_duplicate(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Delete Duplicate Frames";
+  ot->idname = "GREASE_PENCIL_OT_frame_clean_duplicate";
+  ot->description = "Remove any keyframe that is a duplicate of the previous one";
+
+  /* callbacks */
+  ot->exec = frame_clean_duplicate_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  prop = RNA_def_boolean(
+      ot->srna, "selected", false, "Selected", "Only delete selected keyframes");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_frames()
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_insert_blank_frame);
+  WM_operatortype_append(GREASE_PENCIL_OT_frame_clean_duplicate);
 }
