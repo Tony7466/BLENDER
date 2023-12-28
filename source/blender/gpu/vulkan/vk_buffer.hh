@@ -39,7 +39,7 @@ class VKBuffer {
   void update(const void *data) const;
   void flush() const;
   void read(void *data) const;
-  bool free();
+  bool free(bool deferred = true);
 
   int64_t size_in_bytes() const
   {

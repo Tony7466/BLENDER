@@ -36,6 +36,7 @@ void VKStagingBuffer::copy_to_device(VKContext &context)
   command_buffers.copy(
       device_buffer_, host_buffer_.vk_handle(), Span<VkBufferCopy>(&buffer_copy, 1));
   command_buffers.submit();
+  free();
 }
 
 void VKStagingBuffer::copy_from_device(VKContext &context)
@@ -47,11 +48,12 @@ void VKStagingBuffer::copy_from_device(VKContext &context)
   command_buffers.copy(
       host_buffer_, device_buffer_.vk_handle(), Span<VkBufferCopy>(&buffer_copy, 1));
   command_buffers.submit();
+  free();
 }
 
 void VKStagingBuffer::free()
 {
-  host_buffer_.free();
+  host_buffer_.free(false);
 }
 
 }  // namespace blender::gpu

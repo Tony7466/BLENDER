@@ -26,11 +26,16 @@ uchar *VKImmediate::begin()
   const size_t bytes_needed = vertex_buffer_size(&vertex_format_converter.device_format_get(),
                                                  vertex_len);
   const bool new_buffer_needed = !has_active_resource() || buffer_bytes_free() < bytes_needed;
-
-  std::unique_ptr<VKBuffer> &buffer = tracked_resource_for(context, new_buffer_needed);
+  uchar *data = nullptr;
+  if (new_buffer_needed) {
+    std::unique_ptr<VKBuffer> &buffer = tracked_resource_for(context, new_buffer_needed);
+    data = static_cast<uchar *>(buffer->mapped_memory_get());
+  }
+  else {
+    data = static_cast<uchar *>(active_resource().get()->mapped_memory_get());
+  }
   current_subbuffer_len_ = bytes_needed;
 
-  uchar *data = static_cast<uchar *>(buffer->mapped_memory_get());
   return data + subbuffer_offset_get();
 }
 

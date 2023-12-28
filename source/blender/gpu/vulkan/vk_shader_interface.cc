@@ -216,7 +216,8 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     const ShaderInput *input = shader_input_get(
         ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT, res.index);
     BLI_assert(input);
-    descriptor_set_location_update(input, descriptor_set_location++);
+    descriptor_set_location_update(
+        input, descriptor_set_location++, ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT);
   }
   /* Post initializing push constants. */
   /* Determine the binding location of push constants fallback buffer. */
