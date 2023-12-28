@@ -68,13 +68,7 @@ static Collection *create_collection(Main *bmain, Collection *parent, const char
     return nullptr;
   }
 
-  Collection *coll = BKE_collection_add(bmain, parent, name);
-
-  if (coll) {
-    DEG_id_tag_update(&coll->id, ID_RECALC_COPY_ON_WRITE);
-  }
-
-  return coll;
+  return BKE_collection_add(bmain, parent, name);
 }
 
 /**
@@ -585,6 +579,9 @@ void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_co
   if (all_protos_collection) {
     all_protos_collection->flag |= COLLECTION_HIDE_VIEWPORT;
     all_protos_collection->flag |= COLLECTION_HIDE_RENDER;
+    if (parent_collection) {
+      DEG_id_tag_update(&parent_collection->id, ID_RECALC_HIERARCHY);
+    }
   }
 
   std::map<pxr::SdfPath, Collection *> proto_collection_map;
