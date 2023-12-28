@@ -44,9 +44,6 @@ class Shader {
     /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
      * that however it wants (i.e: bind another shader instead). */
     Vector<Value> values;
-    /* Default specialization values copied from shader create info at compile time.
-     * Used to reset the values. */
-    Vector<Value> defaults;
   } constants;
 
  protected:
@@ -85,10 +82,7 @@ class Shader {
   virtual void uniform_float(int location, int comp_len, int array_size, const float *data) = 0;
   virtual void uniform_int(int location, int comp_len, int array_size, const int *data) = 0;
 
-  /* Add specialization constant declarations to shader instance.
-   * This populates keys in the shaders specialization constant state map, allowing specialization
-   * constants with matching ID to be assigned a dynamic value using
-   * GPU_shader_specialize_constant_*(). */
+  /* Add specialization constant declarations to shader instance. */
   void specialization_constants_init(const shader::ShaderCreateInfo &info);
 
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;

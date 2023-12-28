@@ -556,7 +556,6 @@ void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
   for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
     constants.types.append(sc.type);
     constants.values.append(sc.default_value);
-    constants.defaults.append(sc.default_value);
   }
 }
 

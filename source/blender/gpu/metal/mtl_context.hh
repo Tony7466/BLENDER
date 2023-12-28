@@ -854,8 +854,7 @@ class MTLContext : public Context {
   void free_dummy_resources();
 
   /* Compute. */
-  /* Ensure compute pipeline state for current configuration is compiled and return PSO instance.
-   */
+  /* Ensure compute pipeline state for current config is compiled and return PSO instance. */
   const MTLComputePipelineStateInstance *ensure_compute_pipeline_state();
   void compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
   void compute_dispatch_indirect(StorageBuf *indirect_buf);

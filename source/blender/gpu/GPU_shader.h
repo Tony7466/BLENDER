@@ -181,7 +181,9 @@ bool GPU_shader_get_attribute_info(const GPUShader *shader,
 /* -------------------------------------------------------------------- */
 /** \name Specialization API.
  *
- * Used to allow specialization constants used within shaders to be declared.
+ * Used to allow specialization constants.
+ * IMPORTANT: All constants must be specified before binding a shader that needs specialization it
+ * will produce undefined behavior.
  * \{ */
 
 void GPU_shader_constant_int_ex(GPUShader *sh, int location, int value);

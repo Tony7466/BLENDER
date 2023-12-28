@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include "GPU_material.h"
@@ -764,22 +763,22 @@ struct ShaderCreateInfo {
    * presets), or those with a low set of possible runtime permutations.
    *
    * Specialization constants are assigned at runtime using:
-   *  - GPU_shader_set_constant_*(shader, constant_id, value)
+   *  - `GPU_shader_constant_*(shader, name, value)`
    * or
-   *  - `.specialize_constant(constant_id, value)` for a DrawPass.
+   *  - `DrawPass::specialize_constant(shader, name, value)`
    *
-   * Specialization constants are reset to their provided default values upon `GPU_shader_bind()`.
-   * */
+   * All constants **MUST** be specified before binding a shader.
+   */
   Self &specialization_constant(Type type, StringRefNull name, double default_value)
   {
     SpecializationConstant constant;
     constant.type = type;
     constant.name = name;
     switch (type) {
-      case Type::BOOL:
       case Type::INT:
         constant.default_value.i = static_cast<int>(default_value);
         break;
+      case Type::BOOL:
       case Type::UINT:
         constant.default_value.u = static_cast<uint>(default_value);
         break;

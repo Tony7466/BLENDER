@@ -627,7 +627,6 @@ void DeferredLayer::end_sync()
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       inst_.gbuffer.bind_resources(pass);
       inst_.bind_uniform_data(&pass);
-
       pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
       pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
     }

@@ -869,13 +869,7 @@ char *MSLGeneratorInterface::msl_patch_default_get()
   return msl_patch_default;
 }
 
-/* Specialization constants will evaluate using a dynamic value if provided at PSO compile time.
- * Otherwise, they will fall back to fetching a value by running a specified string of code. A
- * macro also exists to check whether a given specialization constant has had a value assigned by
- * appending
- * _DEFINED onto the original specialization constant name. e.g. "SC_my_runtime_constant" for
- * fetching the value in all cases and "SC_my_runtime_constant_DEFINED" to determine if the
- * constant is specified. */
+/* Specialization constants will evaluate using a dynamic value if provided at PSO compile time. */
 static void generate_specialization_constant_declarations(const shader::ShaderCreateInfo *info,
                                                           std::stringstream &ss)
 {
