@@ -48,10 +48,14 @@
 #include "BKE_modifier.hh"
 #include "BKE_report.h"
 
+#include "CLG_log.h"
+
 #include "DNA_collection_types.h"
 #include "DNA_material_types.h"
 
 #include "WM_api.hh"
+
+static CLG_LogRef LOG = {"io.usd"};
 
 namespace blender::io::usd {
 
@@ -94,8 +98,8 @@ static void set_instance_collection(
     instance_reader->set_instance_collection(it->second);
   }
   else {
-    std::cerr << "WARNING: Couldn't find prototype collection for " << instance_reader->prim_path()
-              << std::endl;
+    CLOG_WARN(
+        &LOG, "Couldn't find prototype collection for %s", instance_reader->prim_path().c_str());
   }
 }
 
@@ -609,6 +613,9 @@ void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_co
     if (it == proto_collection_map.end()) {
       std::cerr << "WARNING: Couldn't find collection when adding objects for prototype "
                 << pair.first << std::endl;
+      CLOG_WARN(&LOG,
+                "Couldn't find collection when adding objects for prototype %s",
+                pair.first.GetAsString().c_str());
       continue;
     }
 
