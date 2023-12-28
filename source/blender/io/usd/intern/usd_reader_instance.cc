@@ -10,8 +10,6 @@
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 
-#include <iostream>
-
 namespace blender::io::usd {
 
 USDInstanceReader::USDInstanceReader(const pxr::UsdPrim &prim,
