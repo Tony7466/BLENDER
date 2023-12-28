@@ -59,7 +59,7 @@ void SubsurfaceModule::end_sync()
     pass.init();
     pass.state_set(DRW_STATE_NO_DRAW);
     pass.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_CONVOLVE));
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.gbuffer);
     pass.bind_texture("radiance_tx", &radiance_tx_, sampler);
     pass.bind_texture("depth_tx", &inst_.render_buffers.depth_tx, sampler);
@@ -124,7 +124,7 @@ void SubsurfaceModule::precompute_samples_location()
     data_.samples[i].z = 1.0f / burley_pdf(d, r);
   }
 
-  inst_.push_uniform_data();
+  inst_.uniform_data.push_update();
 }
 
 /** \} */

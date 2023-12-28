@@ -883,7 +883,7 @@ void ShadowModule::begin_sync()
       sub.push_constant("pixel_world_radius", &pixel_world_radius_);
       sub.push_constant("fb_resolution", &usage_tag_fb_resolution_);
       sub.push_constant("fb_lod", &usage_tag_fb_lod_);
-      inst_.bind_uniform_data(&sub);
+      sub.bind_resources(inst_.uniform_data);
       sub.bind_resources(inst_.hiz_buffer.front);
       sub.bind_resources(inst_.lights);
 
@@ -1083,7 +1083,7 @@ void ShadowModule::end_sync()
       sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
-      inst_.bind_uniform_data(&sub);
+      sub.bind_resources(inst_.uniform_data);
       sub.bind_resources(inst_.hiz_buffer.front);
       sub.bind_resources(inst_.sampling);
       sub.bind_resources(inst_.lights);
@@ -1229,7 +1229,7 @@ void ShadowModule::debug_end_sync()
   debug_draw_ps_.push_constant("debug_tilemap_index", light.tilemap_index);
   debug_draw_ps_.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
   debug_draw_ps_.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
-  inst_.bind_uniform_data(&debug_draw_ps_);
+  debug_draw_ps_.bind_resources(inst_.uniform_data);
   debug_draw_ps_.bind_resources(inst_.hiz_buffer.front);
   debug_draw_ps_.bind_resources(inst_.lights);
   debug_draw_ps_.bind_resources(inst_.shadows);

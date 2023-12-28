@@ -55,7 +55,7 @@ void RayTraceModule::sync()
     pass.bind_image("tile_raytrace_tracing_img", &tile_raytrace_tracing_tx_);
     pass.bind_image("tile_horizon_denoise_img", &tile_horizon_denoise_tx_);
     pass.bind_image("tile_horizon_tracing_img", &tile_horizon_tracing_tx_);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.gbuffer);
     pass.dispatch(&tile_classify_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_SHADER_STORAGE);
@@ -76,7 +76,7 @@ void RayTraceModule::sync()
     pass.bind_ssbo("raytrace_denoise_tiles_buf", &raytrace_denoise_tiles_buf_);
     pass.bind_ssbo("horizon_tracing_tiles_buf", &horizon_tracing_tiles_buf_);
     pass.bind_ssbo("horizon_denoise_tiles_buf", &horizon_denoise_tiles_buf_);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.dispatch(&tile_compact_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
   }
@@ -106,7 +106,7 @@ void RayTraceModule::sync()
       sub.bind_image("ray_time_img", &ray_time_tx_);
       sub.bind_image("ray_radiance_img", &ray_radiance_tx_);
       sub.bind_texture("depth_tx", &depth_tx);
-      inst_.bind_uniform_data(&sub);
+      sub.bind_resources(inst_.uniform_data);
       sub.bind_resources(inst_.planar_probes);
       sub.bind_resources(inst_.irradiance_cache);
       sub.bind_resources(inst_.reflection_probes);
@@ -121,7 +121,7 @@ void RayTraceModule::sync()
     pass.bind_texture("screen_radiance_tx", &screen_radiance_tx_);
     pass.bind_texture("depth_tx", &depth_tx);
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources((&pass == &trace_refract_ps_) ? inst_.hiz_buffer.back :
                                                         inst_.hiz_buffer.front);
     pass.bind_resources(inst_.sampling);
@@ -139,7 +139,7 @@ void RayTraceModule::sync()
     pass.bind_image("ray_time_img", &ray_time_tx_);
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
     pass.bind_texture("depth_tx", &depth_tx);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.irradiance_cache);
     pass.bind_resources(inst_.reflection_probes);
     pass.bind_resources(inst_.sampling);
@@ -164,7 +164,7 @@ void RayTraceModule::sync()
     pass.bind_image("out_variance_img", &hit_variance_tx_);
     pass.bind_image("out_hit_depth_img", &hit_depth_tx_);
     pass.bind_image("tile_mask_img", &tile_raytrace_denoise_tx_);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.gbuffer);
     pass.dispatch(raytrace_denoise_dispatch_buf_);
@@ -174,7 +174,7 @@ void RayTraceModule::sync()
     PassSimple &pass = denoise_temporal_ps_;
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(RAY_DENOISE_TEMPORAL));
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_texture("radiance_history_tx", &radiance_history_tx_);
     pass.bind_texture("variance_history_tx", &variance_history_tx_);
     pass.bind_texture("tilemask_history_tx", &tilemask_history_tx_);
@@ -200,7 +200,7 @@ void RayTraceModule::sync()
     pass.bind_image("in_variance_img", &denoise_variance_tx_);
     pass.bind_image("tile_mask_img", &tile_raytrace_denoise_tx_);
     pass.bind_ssbo("tiles_coord_buf", &raytrace_denoise_tiles_buf_);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.gbuffer);
     pass.dispatch(raytrace_denoise_dispatch_buf_);
@@ -210,12 +210,12 @@ void RayTraceModule::sync()
     PassSimple &pass = horizon_setup_ps_;
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(HORIZON_SETUP));
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_texture("depth_tx", &depth_tx);
     pass.bind_texture("in_radiance_tx", &screen_radiance_tx_, GPUSamplerState::default_sampler());
     pass.bind_image("out_radiance_img", &downsampled_in_radiance_tx_);
     pass.bind_image("out_normal_img", &downsampled_in_normal_tx_);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.gbuffer);
     pass.dispatch(&tracing_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -230,7 +230,7 @@ void RayTraceModule::sync()
     pass.bind_texture("screen_radiance_tx", &downsampled_in_radiance_tx_);
     pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.hiz_buffer.front);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.gbuffer);
@@ -247,7 +247,7 @@ void RayTraceModule::sync()
     pass.bind_image("radiance_img", &horizon_scan_output_tx_);
     pass.bind_image("tile_mask_img", &tile_horizon_denoise_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_denoise_tiles_buf_);
-    inst_.bind_uniform_data(&pass);
+    pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.gbuffer);
     pass.bind_resources(inst_.irradiance_cache);
@@ -332,7 +332,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   /* TODO(fclem): Eventually all uniform data is setup here. */
 
-  inst_.push_uniform_data();
+  inst_.uniform_data.push_update();
 
   RayTraceResult result;
 
@@ -502,7 +502,7 @@ RayTraceResultTexture RayTraceModule::trace(
   data_.full_resolution_inv = 1.0f / float2(extent);
   data_.skip_denoise = !use_spatial_denoise;
   data_.closure_index = closure_index;
-  inst_.push_uniform_data();
+  inst_.uniform_data.push_update();
 
   /* Ray setup. */
   raytrace_tracing_dispatch_buf_.clear_to_zero();
