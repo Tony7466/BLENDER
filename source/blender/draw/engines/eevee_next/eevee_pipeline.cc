@@ -607,10 +607,13 @@ void DeferredLayer::end_sync()
       PassSimple &pass = combine_ps_;
       pass.init();
       GPUShader *sh = inst_.shaders.static_shader_get(DEFERRED_COMBINE);
+      /* TODO(fclem): Could specialize directly with the pass index but this would break it for
+       * OpenGL and Vulkan implementation which aren't fully supporting the specialize
+       * constant. */
       pass.specialize_constant(
-          sh, "SC_diffuse_light_id", &inst_.render_buffers.data.diffuse_light_id);
+          sh, "render_pass_diffuse_light_enabled", rbuf_data.diffuse_light_id != -1);
       pass.specialize_constant(
-          sh, "SC_specular_light_id", &inst_.render_buffers.data.specular_light_id);
+          sh, "render_pass_specular_light_enabled", rbuf_data.specular_light_id != -1);
       pass.shader_set(sh);
       /* Use depth test to reject background pixels. */
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ADD_FULL);

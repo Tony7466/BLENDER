@@ -77,15 +77,13 @@ void main()
     }
   }
 
-#if 1 /* TODO(fclem): Only if needed. */
   /* Light passes. */
-  int diff_light_id = (SC_diffuse_light_id >= -1) ? SC_diffuse_light_id :
-                                                    uniform_buf.render_pass.diffuse_light_id;
-  int spec_light_id = (SC_specular_light_id >= -1) ? SC_specular_light_id :
-                                                     uniform_buf.render_pass.specular_light_id;
-  output_renderpass_color(diff_light_id, vec4(out_diffuse, 1.0));
-  output_renderpass_color(spec_light_id, vec4(out_specular, 1.0));
-#endif
+  if (render_pass_diffuse_light_enabled) {
+    output_renderpass_color(uniform_buf.render_pass.diffuse_light_id, vec4(out_diffuse, 1.0));
+  }
+  if (render_pass_specular_light_enabled) {
+    output_renderpass_color(uniform_buf.render_pass.specular_light_id, vec4(out_specular, 1.0));
+  }
 
   if (any(isnan(out_combined))) {
     out_combined = vec4(1.0, 0.0, 1.0, 0.0);

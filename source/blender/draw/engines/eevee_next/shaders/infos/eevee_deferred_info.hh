@@ -113,8 +113,8 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .fragment_source("eevee_deferred_combine_frag.glsl")
     /* NOTE: Both light IDs have a valid specialized assignment of '-1' so only when default is
      * present will we instead dynamically look-up ID from the uniform buffer. */
-    .specialization_constant(Type::INT, "SC_diffuse_light_id", -99)
-    .specialization_constant(Type::INT, "SC_specular_light_id", -99)
+    .specialization_constant(Type::BOOL, "render_pass_diffuse_light_enabled", true)
+    .specialization_constant(Type::BOOL, "render_pass_specular_light_enabled", true)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_capture_eval)
