@@ -152,9 +152,8 @@ void RayTraceModule::sync()
     PassSimple &pass = PASS_VARIATION(denoise_spatial_, type, _ps_);
     GPUShader *sh = inst_.shaders.static_shader_get(SHADER_VARIATION(RAY_DENOISE_SPATIAL_, type));
     pass.init();
-    pass.specialize_constant(
-        sh, "SC_raytrace_resolution_scale", &inst_.raytracing.data_.resolution_scale);
-    pass.specialize_constant(sh, "SC_raytrace_skip_denoise", &inst_.raytracing.data_.skip_denoise);
+    pass.specialize_constant(sh, "raytrace_resolution_scale", &data_.resolution_scale);
+    pass.specialize_constant(sh, "skip_denoise", &data_.skip_denoise);
     pass.shader_set(sh);
     pass.bind_ssbo("tiles_coord_buf", &raytrace_denoise_tiles_buf_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
