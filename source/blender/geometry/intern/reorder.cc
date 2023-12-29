@@ -6,11 +6,9 @@
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
 
-#include "BKE_anonymous_attribute_id.hh"
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
-#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"

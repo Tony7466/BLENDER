@@ -3,21 +3,19 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute.hh"
-#include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
-#include "BLI_multi_value_map.hh"
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
-
-#include "UI_interface.hh"
-#include "UI_resources.hh"
 
 #include "DNA_mesh_types.h"
 
 #include "GEO_reorder.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
