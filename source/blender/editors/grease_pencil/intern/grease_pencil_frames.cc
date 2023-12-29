@@ -36,7 +36,9 @@
 #include "RNA_define.hh"
 
 #include "WM_api.hh"
+#include <algorithm>
 #include <cstdint>
+#include <optional>
 
 namespace blender::ed::greasepencil {
 
@@ -369,6 +371,68 @@ static int insert_blank_frame_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool attributes_varrays_are_equal(const bke::GAttributeReader &attrs_a,
+                                         const bke::GAttributeReader &attrs_b)
+{
+  if (attrs_a.varray.size() != attrs_b.varray.size() ||
+      attrs_a.varray.type() != attrs_b.varray.type())
+  {
+    return false;
+  }
+
+  if (attrs_a.varray.is_span() && attrs_b.varray.is_span()) {
+    if (attrs_a.varray.get_internal_span().data() != attrs_b.varray.get_internal_span().data()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+template<typename T>
+static bool attributes_elements_are_equal(const bke::GAttributeReader &attrs_a,
+                                          const bke::GAttributeReader &attrs_b)
+{
+  const VArray attributes_a = attrs_a.varray.typed<T>();
+  const VArray attributes_b = attrs_b.varray.typed<T>();
+
+  const std::optional<T> value_a = attributes_a.get_if_single();
+  const std::optional<T> value_b = attributes_b.get_if_single();
+  if (value_a.has_value() && value_b.has_value()) {
+    return value_a.value() == value_b.value();
+  }
+
+  const VArraySpan attrs_span_a = attributes_a;
+  const VArraySpan attrs_span_b = attributes_b;
+  if (!std::equal(
+          attrs_span_a.begin(), attrs_span_a.end(), attrs_span_b.begin(), attrs_span_b.end()))
+  {
+    return false;
+  }
+
+  return true;
+}
+
+static std::optional<bke::CurvesGeometry *> get_gp_curves_geometry_from_frame_key(
+    GreasePencil &grease_pencil,
+    const bke::greasepencil::Layer *layer,
+    const bke::greasepencil::FramesMapKey key)
+{
+  using namespace blender::bke::greasepencil;
+
+  int index = layer->drawing_index_at(key);
+
+  GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(index);
+
+  if (drawing_base->type != GP_DRAWING) {
+    return std::nullopt;
+  }
+
+  Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+
+  return &(drawing.strokes_for_write());
+}
+
 static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
                                      const bke::CurvesGeometry &curves_b)
 {
@@ -390,30 +454,19 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
   }
 
   return attributes_a.for_all([&](const AttributeIDRef &id, const AttributeMetaData) {
-    GAttributeReader attr_a = attributes_a.lookup(id);
-    GAttributeReader attr_b = attributes_b.lookup(id);
+    GAttributeReader attrs_a = attributes_a.lookup(id);
+    GAttributeReader attrs_b = attributes_b.lookup(id);
 
-    const CPPType &type_a = attr_a.varray.type();
-    const CPPType &type_b = attr_b.varray.type();
-
-    if (attr_a.varray.size() != attr_b.varray.size() || type_a != type_b) {
+    if (!attributes_varrays_are_equal(attrs_a, attrs_b)) {
       return false;
     }
 
     bool attrs_equal = true;
 
-    attribute_math::convert_to_static_type(attr_a.varray.type(), [&](auto dummy) {
+    attribute_math::convert_to_static_type(attrs_a.varray.type(), [&](auto dummy) {
       using T = decltype(dummy);
 
-      const VArraySpan typed_a = attr_a.varray.typed<T>();
-      const VArraySpan typed_b = attr_b.varray.typed<T>();
-
-      for (const int64_t i : typed_a.index_range()) {
-        if (!type_a.is_equal_or_false(&(typed_a[i]), &(typed_b[i]))) {
-          attrs_equal = false;
-          break;
-        }
-      }
+      attrs_equal = attributes_elements_are_equal<T>(attrs_a, attrs_b);
     });
 
     return attrs_equal;
@@ -451,24 +504,16 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
         continue;
       }
 
-      int current_idx = layer->drawing_index_at(current);
-      int next_idx = layer->drawing_index_at(next);
+      std::optional<bke::CurvesGeometry *> current_geo = get_gp_curves_geometry_from_frame_key(
+          grease_pencil, layer, current);
+      std::optional<bke::CurvesGeometry *> next_geo = get_gp_curves_geometry_from_frame_key(
+          grease_pencil, layer, next);
 
-      GreasePencilDrawingBase *current_drawing_base = grease_pencil.drawing(current_idx);
-      GreasePencilDrawingBase *next_drawing_base = grease_pencil.drawing(next_idx);
-
-      if (current_drawing_base->type != GP_DRAWING || next_drawing_base->type != GP_DRAWING) {
+      if (!current_geo.has_value() || !next_geo.has_value()) {
         continue;
       }
 
-      Drawing &current_drawing =
-          reinterpret_cast<GreasePencilDrawing *>(current_drawing_base)->wrap();
-      bke::CurvesGeometry &current_geo = current_drawing.strokes_for_write();
-
-      Drawing &next_drawing = reinterpret_cast<GreasePencilDrawing *>(next_drawing_base)->wrap();
-      bke::CurvesGeometry &next_geo = next_drawing.strokes_for_write();
-
-      if (!curves_geometry_is_equal(current_geo, next_geo)) {
+      if (!curves_geometry_is_equal(*current_geo.value(), *next_geo.value())) {
         continue;
       }
 
