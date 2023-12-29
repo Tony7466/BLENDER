@@ -503,8 +503,9 @@ void DeferredLayer::end_sync()
   eClosureBits evaluated_closures = CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT | CLOSURE_REFLECTION |
                                     CLOSURE_REFRACTION;
 
-  use_combined_lightprobe_eval = inst_.pipelines.data.use_combined_lightprobe_eval =
-      (inst_.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED);
+  const bool use_raytracing = (inst_.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED);
+  inst_.pipelines.data.use_combined_lightprobe_eval = !use_raytracing;
+  use_combined_lightprobe_eval = !use_raytracing;
 
   if (closure_bits_ & evaluated_closures) {
     RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
@@ -621,6 +622,7 @@ void DeferredLayer::end_sync()
           sh, "render_pass_diffuse_light_enabled", rbuf_data.diffuse_light_id != -1);
       pass.specialize_constant(
           sh, "render_pass_specular_light_enabled", rbuf_data.specular_light_id != -1);
+      pass.specialize_constant(sh, "use_combined_lightprobe_eval", use_combined_lightprobe_eval);
       pass.shader_set(sh);
       /* Use depth test to reject background pixels. */
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ADD_FULL);
@@ -787,10 +789,6 @@ void DeferredLayer::render(View &main_view,
     indirect_reflect_tx_ = dummy_black_tx;
     indirect_refract_tx_ = dummy_black_tx;
   }
-
-  GPU_framebuffer_bind(combined_fb);
-  inst_.manager->submit(eval_light_ps_, render_view);
-
   else {
     indirect_result = inst_.raytracing.render(rt_buffer,
                                               radiance_behind_tx_,
@@ -805,6 +803,9 @@ void DeferredLayer::render(View &main_view,
     indirect_reflect_tx_ = indirect_result.reflect.get();
     indirect_refract_tx_ = indirect_result.refract.get();
   }
+
+  GPU_framebuffer_bind(combined_fb);
+  inst_.manager->submit(eval_light_ps_, render_view);
 
   inst_.subsurface.render(
       direct_radiance_txs_[0], indirect_diffuse_tx_, closure_bits_, render_view);

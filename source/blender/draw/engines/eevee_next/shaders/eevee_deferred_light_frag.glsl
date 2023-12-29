@@ -119,6 +119,8 @@ void main()
       switch (gbuf.closures[i].type) {
         case CLOSURE_BSDF_TRANSLUCENT_ID:
           /* TODO: Support in ray tracing first. Otherwise we have a discrepancy. */
+          stack.cl[i].light_shadowed += lightprobe_eval(
+              samp, to_closure_translucent(gbuf.closures[i]), P, V, noise_probe);
           break;
         case CLOSURE_BSSRDF_BURLEY_ID:
           /* TODO: Support translucency in ray tracing first. Otherwise we have a discrepancy. */
