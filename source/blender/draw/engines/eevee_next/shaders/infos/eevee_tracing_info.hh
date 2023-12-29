@@ -71,6 +71,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_generate)
                      "eevee_utility_texture")
     .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_ray_data_img")
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_generate_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_generate)
