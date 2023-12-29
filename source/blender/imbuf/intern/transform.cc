@@ -81,16 +81,12 @@ struct TransformUserData {
 
   void init_add_x(const float4x4 &transform_matrix)
   {
-    const double width = src->x;
-    add_x = double2(transform_matrix.x_axis()) * width + double2(transform_matrix.location());
-    add_x = (add_x - start_uv) * (1.0 / width);
+    add_x = double2(transform_matrix.x_axis());
   }
 
   void init_add_y(const float4x4 &transform_matrix)
   {
-    const double height = src->y;
-    add_y = double2(transform_matrix.y_axis()) * height + double2(transform_matrix.location());
-    add_y = (add_y - start_uv) * (1.0 / height);
+    add_y = double2(transform_matrix.y_axis());
   }
 
   void init_subsampling(const int num_subsamples)
