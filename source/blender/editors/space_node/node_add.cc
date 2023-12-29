@@ -188,6 +188,7 @@ static int add_reroute_exec(bContext *C, wmOperator *op)
     const Map<bNodeLink *, float2> &cuts = item.value.links;
 
     bNode *reroute = nodeAddStaticNode(C, &ntree, NODE_REROUTE);
+    nodeSetActive(&ntree, reroute);
 
     nodeAddLink(&ntree,
                 item.value.from_node,
