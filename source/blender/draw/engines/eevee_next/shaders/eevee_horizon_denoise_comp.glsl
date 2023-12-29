@@ -55,20 +55,7 @@ vec3 from_accumulation_space(vec3 color)
 
 vec3 load_normal(ivec2 texel)
 {
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel);
-
-  /* TODO(fclem): Load preprocessed Normal. */
-  vec3 N = vec3(0.0);
-  if (gbuf.has_diffuse) {
-    N = gbuf.diffuse.N;
-  }
-  else if (gbuf.has_reflection) {
-    N = gbuf.reflection.N;
-  }
-  else if (gbuf.has_refraction) {
-    N = gbuf.refraction.N;
-  }
-  return N;
+  return gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel).data.surface_N;
 }
 
 void main()
@@ -93,20 +80,21 @@ void main()
     return;
   }
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
-  vec3 center_N = gbuf.diffuse.N;
+  vec3 center_N = gbuf.data.diffuse.N;
   float roughness = 1.0;
   if (uniform_buf.raytrace.closure_active == eClosureBits(CLOSURE_REFLECTION)) {
-    roughness = gbuf.reflection.roughness;
-    center_N = gbuf.reflection.N;
+    roughness = gbuf.data.reflection.roughness;
+    center_N = gbuf.data.reflection.N;
     if (!gbuf.has_reflection) {
       return;
     }
   }
   else if (uniform_buf.raytrace.closure_active == eClosureBits(CLOSURE_REFRACTION)) {
     roughness = 1.0; /* TODO(fclem): Apparent roughness. */
-    center_N = gbuf.refraction.N;
+    center_N = gbuf.data.refraction.N;
     if (!gbuf.has_refraction) {
       return;
     }

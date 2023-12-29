@@ -603,6 +603,7 @@ set(GLSL_SRC_TEST
   tests/shaders/gpu_compute_ssbo_test.glsl
   tests/shaders/gpu_compute_vbo_test.glsl
   tests/shaders/gpu_compute_dummy_test.glsl
+  tests/shaders/gpu_specialization_test.glsl
   tests/shaders/gpu_framebuffer_layer_viewport_test.glsl
   tests/shaders/gpu_framebuffer_subpass_input_test.glsl
   tests/shaders/gpu_push_constants_test.glsl
@@ -626,7 +627,7 @@ set(MSL_SRC
 )
 
 if(WITH_GTESTS)
-  if(WITH_OPENGL_DRAW_TESTS)
+  if(WITH_GPU_DRAW_TESTS)
     list(APPEND GLSL_SRC ${GLSL_SRC_TEST})
   endif()
 endif()
@@ -775,7 +776,7 @@ set(SRC_SHADER_CREATE_INFOS_MTL
 )
 
 if(WITH_GTESTS)
-  if(WITH_OPENGL_DRAW_TESTS)
+  if(WITH_GPU_DRAW_TESTS)
     list(APPEND SRC_SHADER_CREATE_INFOS ${SRC_SHADER_CREATE_INFOS_TEST})
   endif()
 endif()
@@ -884,7 +885,7 @@ if(WITH_GTESTS)
   set(TEST_INC)
   set(TEST_LIB)
 
-  if(WITH_OPENGL_DRAW_TESTS)
+  if(WITH_GPU_DRAW_TESTS)
     list(APPEND TEST_SRC
       tests/buffer_texture_test.cc
       tests/compute_test.cc
@@ -893,6 +894,7 @@ if(WITH_GTESTS)
       tests/index_buffer_test.cc
       tests/push_constants_test.cc
       tests/shader_test.cc
+      tests/specialization_constants_test.cc
       tests/state_blend_test.cc
       tests/storage_buffer_test.cc
       tests/texture_test.cc
@@ -909,7 +911,7 @@ if(WITH_GTESTS)
   endif()
 
   # Enable shader validation on buildbot for Metal
-  if(WITH_METAL_BACKEND AND NOT WITH_OPENGL_DRAW_TESTS)
+  if(WITH_METAL_BACKEND AND NOT WITH_GPU_DRAW_TESTS)
     list(APPEND TEST_SRC
       tests/shader_create_info_test.cc
     )
