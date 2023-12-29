@@ -742,6 +742,11 @@ std::optional<Mesh *> mesh_triangulate(
   const GroupedSpan<int> src_vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
       src_edges, src_mesh.verts_num, src_vert_to_edge_offsets, src_vert_to_edge_indices);
 
+  const IndexMask src_edges_to_copy = IndexMask::from_predicate(
+      src_edges.index_range(), GrainSize(1024), memory, [&](const int i) {
+        const int2 new_edge = ;
+      });
+
   /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
    * Use the #CustomData API for better support for vertex groups. */
   CustomData_merge(&src_mesh.vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
