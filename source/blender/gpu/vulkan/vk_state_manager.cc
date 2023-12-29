@@ -37,7 +37,7 @@ void VKStateManager::apply_bindings()
     images_.apply_bindings();
     uniform_buffers_.apply_bindings();
     storage_buffers_.apply_bindings();
-     input_attachments_.apply_bindings();
+    input_attachments_.apply_bindings();
   }
 }
 

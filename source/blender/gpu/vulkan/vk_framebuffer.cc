@@ -279,18 +279,18 @@ void VKFrameBuffer::subpass_transition(const GPUAttachmentState /*depth_attachme
   for (int i : color_attachment_states.index_range()) {
     GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
     if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
-        BLI_assert(attachments_[type].tex);
-        int input_order = 0;
-        for (auto type_index : renderpass_->subpass_input_orders_[subpass_current_]) {
-            if (type_index == i) {
-                reinterpret_cast<VKStateManager *>(VKContext::get()->state_manager)
-                                ->input_attachment_bind(reinterpret_cast<Texture *>(attachments_[type].tex),
-                                    input_order);
-                break;
-            }
-            input_order++;
+      BLI_assert(attachments_[type].tex);
+      int input_order = 0;
+      for (auto type_index : renderpass_->subpass_input_orders_[subpass_current_]) {
+        if (type_index == i) {
+          reinterpret_cast<VKStateManager *>(VKContext::get()->state_manager)
+              ->input_attachment_bind(reinterpret_cast<Texture *>(attachments_[type].tex),
+                                      input_order);
+          break;
         }
-        BLI_assert(renderpass_->subpass_input_orders_[subpass_current_].size() > input_order);
+        input_order++;
+      }
+      BLI_assert(renderpass_->subpass_input_orders_[subpass_current_].size() > input_order);
     }
   }
   return;

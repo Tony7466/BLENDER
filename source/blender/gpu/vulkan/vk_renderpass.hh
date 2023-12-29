@@ -74,7 +74,7 @@ class VKRenderPass {
   VKAttachments attachments_;
   Vector<int> subpass_multi_attachments;
   Vector<int> subpass_input_orders_[GPU_TEX_MAX_SUBPASS];
-  
+
  public:
   VKRenderPass(){};
   ~VKRenderPass()

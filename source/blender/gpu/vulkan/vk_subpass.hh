@@ -12,7 +12,7 @@
 
 namespace blender::gpu {
 
-enum class SubpassTransitionPattern : uint8_t{
+enum class SubpassTransitionPattern : uint8_t {
   EXTERNAL_TO_COLOR = 0,
   EXTERNAL_SHADER_READ_TO_COLOR,
   EXTERNAL_SHADER_WRITE_TO_COLOR,
@@ -103,10 +103,11 @@ struct VKSubpassDependency : public VkSubpassDependency2 {
                     VK_IMAGE_LAYOUT_GENERAL,
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 
-    bool from_shader = (VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL  != src_layout);
+    bool from_shader = (VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL != src_layout);
     srcSubpass = VK_SUBPASS_EXTERNAL;
     dstSubpass = dst_pass;
-    srcStageMask = (from_shader) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT :
+    srcStageMask = (from_shader) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT :
                                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     srcAccessMask = (from_shader) ? VK_ACCESS_SHADER_READ_BIT : VK_ACCESS_MEMORY_READ_BIT;
@@ -127,14 +128,14 @@ struct VKSubpassDependency : public VkSubpassDependency2 {
     srcSubpass = VK_SUBPASS_EXTERNAL;
     dstSubpass = dst_pass;
     srcStageMask = (from_shader) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT :
-                              VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT :
+                                   VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                       VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     srcAccessMask = (from_shader) ? VK_ACCESS_SHADER_READ_BIT :
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+                                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
     dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
                     VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
     dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
@@ -143,18 +144,19 @@ struct VKSubpassDependency : public VkSubpassDependency2 {
 
   VkSubpassDependency2 &depth_to_external(uint32_t src_pass, VkImageLayout dst_layout)
   {
-    BLI_assert(ELEM(dst_layout,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+    BLI_assert(ELEM(dst_layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 
     srcSubpass = src_pass;
     dstSubpass = VK_SUBPASS_EXTERNAL;
-    srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dstStageMask =  VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-    dstAccessMask = VK_ACCESS_SHADER_READ_BIT ;
+    srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                   VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
     return *reinterpret_cast<VkSubpassDependency2 *>(this);
   }
 };
 
-}  // namespace vk_subpass
+}  // namespace blender::gpu

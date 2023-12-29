@@ -9,8 +9,8 @@
 #include "vk_renderpass.hh"
 #include "vk_backend.hh"
 #include "vk_framebuffer.hh"
-#include "vk_subpass.hh"
 #include "vk_memory.hh"
+#include "vk_subpass.hh"
 #include "vk_texture.hh"
 
 namespace blender::gpu {

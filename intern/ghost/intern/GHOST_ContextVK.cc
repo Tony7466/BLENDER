@@ -1037,33 +1037,32 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     /* VkValidationFeaturesEXT */
     VkValidationFeaturesEXT validationFeatures = {};
     validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-    #ifdef VK_ENABLE_DEBUG_PRINTF
-      VkValidationFeatureEnableEXT enabledValidationFeatures[1] = {
-        VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
-      };
-      if (m_debug) {
-        extensions_device.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
-        create_info.pNext = &validationFeatures;
-        validationFeatures.enabledValidationFeatureCount = 1;
-        validationFeatures.disabledValidationFeatureCount = 0;
-        validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
-        validationFeatures.pDisabledValidationFeatures = nullptr;
-        validationFeatures.pNext = create_info.pNext;
-        create_info.pNext = &validationFeatures;
-      }
+#ifdef VK_ENABLE_DEBUG_PRINTF
+    VkValidationFeatureEnableEXT enabledValidationFeatures[1] = {
+        VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
+    if (m_debug) {
+      extensions_device.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+      create_info.pNext = &validationFeatures;
+      validationFeatures.enabledValidationFeatureCount = 1;
+      validationFeatures.disabledValidationFeatureCount = 0;
+      validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+      validationFeatures.pDisabledValidationFeatures = nullptr;
+      validationFeatures.pNext = create_info.pNext;
+      create_info.pNext = &validationFeatures;
+    }
 
-    #elif defined(VK_ENABLE_DEBUG_SYNC)
-      VkValidationFeatureEnableEXT enabledValidationFeatures[] = {
-          VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
-      if (m_debug) {
-        validationFeatures.enabledValidationFeatureCount = 1;
-        validationFeatures.disabledValidationFeatureCount = 0;
-        validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
-        validationFeatures.pDisabledValidationFeatures = nullptr;
-        validationFeatures.pNext = create_info.pNext;
-        create_info.pNext = &validationFeatures;
-      }
-    #endif
+#elif defined(VK_ENABLE_DEBUG_SYNC)
+    VkValidationFeatureEnableEXT enabledValidationFeatures[] = {
+        VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
+    if (m_debug) {
+      validationFeatures.enabledValidationFeatureCount = 1;
+      validationFeatures.disabledValidationFeatureCount = 0;
+      validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+      validationFeatures.pDisabledValidationFeatures = nullptr;
+      validationFeatures.pNext = create_info.pNext;
+      create_info.pNext = &validationFeatures;
+    }
+#endif
     VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance));
   }
   else {

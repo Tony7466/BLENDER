@@ -110,7 +110,6 @@ GPU_SHADER_CREATE_INFO(overlay_extra_wire)
     .fragment_source("overlay_extra_wire_frag.glsl")
     .additional_info("draw_modelmat", "draw_globals");
 
-
 GPU_SHADER_CREATE_INFO(overlay_extra_wire_select)
     .do_static_compilation(true)
     .define("SELECT_EDGES")

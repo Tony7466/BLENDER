@@ -411,7 +411,7 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
       case ShaderCreateInfo::Resource::BindType::IMAGE:
         uniform_len_++;
         break;
-    case ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
+      case ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
         break;
     }
   }

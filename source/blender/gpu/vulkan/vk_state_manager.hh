@@ -30,6 +30,7 @@ class VKStateManager : public StateManager {
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER> uniform_buffers_;
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER> storage_buffers_;
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT> input_attachments_;
+
  public:
   void apply_state() override;
   void force_state() override;

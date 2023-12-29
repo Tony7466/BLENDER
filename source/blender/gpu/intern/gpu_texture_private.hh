@@ -345,6 +345,7 @@ class Texture {
   {
     return subpass_;
   }
+
  protected:
   virtual bool init_internal() = 0;
   virtual bool init_internal(GPUVertBuf *vbo) = 0;

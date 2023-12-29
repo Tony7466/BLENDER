@@ -520,13 +520,7 @@ struct ShaderCreateInfo {
   };
 
   struct Resource {
-    enum BindType {
-      UNIFORM_BUFFER = 0,
-      STORAGE_BUFFER,
-      SAMPLER,
-      IMAGE,
-      INPUT_ATTACHMENT
-    };
+    enum BindType { UNIFORM_BUFFER = 0, STORAGE_BUFFER, SAMPLER, IMAGE, INPUT_ATTACHMENT };
 
     BindType bind_type;
     int slot;

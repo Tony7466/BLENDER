@@ -343,14 +343,14 @@ static void test_framebuffer_subpass_input()
   const int2 size(1, 1);
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture_a = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_R32I, usage| GPU_TEXTURE_USAGE_INPUT_ATTACHMENT, nullptr);
+      __func__, UNPACK2(size), 1, GPU_R32I, usage | GPU_TEXTURE_USAGE_INPUT_ATTACHMENT, nullptr);
   GPUTexture *texture_b = GPU_texture_create_2d(
       __func__, UNPACK2(size), 1, GPU_R32I, usage, nullptr);
-  
+
   GPU_texture_subpass_write_bits(texture_a, 0, 0);
   GPU_texture_subpass_read_bits(texture_a, 0b10);
   GPU_texture_subpass_write_bits(texture_b, 1, 0);
-  
+
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
   GPU_framebuffer_ensure_config(
       &framebuffer,

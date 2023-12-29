@@ -61,6 +61,7 @@ class VKFrameBuffer : public FrameBuffer {
   bool enabled_srgb_;
   bool dirty_subpass_ = false;
   int subpass_current_ = 0;
+
  public:
   /**
    * Create a conventional framebuffer to attach texture to.
@@ -154,6 +155,7 @@ class VKFrameBuffer : public FrameBuffer {
   }
   const int is_subpass_continue() const;
   void next_subpass(VKCommandBuffers &command_buffers);
+
  private:
   void update_attachments();
   void create();

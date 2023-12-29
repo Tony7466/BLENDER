@@ -1037,7 +1037,7 @@ bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
   const VkShaderStageFlags vk_shader_stages = is_graphics_shader() ? VK_SHADER_STAGE_ALL_GRAPHICS :
                                                                      VK_SHADER_STAGE_COMPUTE_BIT;
   VkDescriptorSetLayoutCreateInfo layout_info = create_descriptor_set_layout(
-     shader_interface, all_resources, info.subpass_inputs_, bindings, vk_shader_stages);
+      shader_interface, all_resources, info.subpass_inputs_, bindings, vk_shader_stages);
   if (vkCreateDescriptorSetLayout(
           vk_device, &layout_info, vk_allocation_callbacks, &vk_descriptor_set_layout_) !=
       VK_SUCCESS)
@@ -1256,8 +1256,8 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
     /* Declare global for input. */
     ss << to_string(input.type) << " " << input.name << ";\n";
     ss << "layout(input_attachment_index = " << std::to_string(input.raster_order_group)
-    << ",binding = " << std::to_string(input.index) << " ) uniform "
-    << print_subpass_qualifier(input.type) << " " << image_name << ";\n ";
+       << ",binding = " << std::to_string(input.index) << " ) uniform "
+       << print_subpass_qualifier(input.type) << " " << image_name << ";\n ";
     std::stringstream ss_pre;
     char swizzle[] = "xyzw";
     swizzle[to_component_count(input.type)] = '\0';

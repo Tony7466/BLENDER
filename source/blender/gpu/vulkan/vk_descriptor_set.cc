@@ -200,7 +200,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
     image_info.imageView = binding.texture->image_view_get().lock()->vk_handle();
-    image_info.imageLayout =  layout;
+    image_info.imageLayout = layout;
     image_infos.append(image_info);
 
     VkWriteDescriptorSet write_descriptor = {};
