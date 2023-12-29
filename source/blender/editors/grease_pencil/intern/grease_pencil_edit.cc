@@ -1808,7 +1808,6 @@ static bool grease_pencil_separate_layer(bContext *C,
 {
   using namespace bke::greasepencil;
   bool result = false;
-  int initial_frame = scene->r.cfra;
 
   GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
 
@@ -1825,46 +1824,37 @@ static bool grease_pencil_separate_layer(bContext *C,
     /* Create Layer. */
     Layer &layer_dst = create_layer_if_not_exist(layer_src, grease_pencil_src, grease_pencil_dst);
 
-    /* Iterate through all the frames in the layer. */
-    for (const auto &[frame_number, frame] : layer_src->frames().items()) {
+    /* Iterate through all the drawings at current frame. */
+    const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
+        *scene, grease_pencil_src, *layer_src);
+    threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+      /* Select all strokes */
+      IndexMaskMemory memory;
+      IndexMask strokes = retrieve_editable_strokes(
+          *static_cast<Object *>(object_src), info.drawing, memory);
 
-      int current_frame = frame_number;
-      scene->r.cfra = current_frame;
+      /* Insert Keyframe at current frame. */
+      grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
-      /* Iterate through all the drawings at current frame. */
-      const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
-          *scene, grease_pencil_src, *layer_src);
-      threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
-        /* Select all strokes */
-        IndexMaskMemory memory;
-        IndexMask strokes = retrieve_editable_strokes(
-            *static_cast<Object *>(object_src), info.drawing, memory);
+      /*Assign new CurvesGeometry to layer/frame. */
+      Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
+                                                                       info.frame_number);
+      /* Copy strokes to new CurvesGeometry. */
+      const bke::AnonymousAttributePropagationInfo propagation_info{};
+      drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
+          info.drawing.strokes(), strokes, propagation_info);
 
-        /* TO_DO: Determine if the curve stroke is using a particular material. */
+      /* Add object materials. */
+      BKE_object_material_array_assign(bmain,
+                                       object_dst,
+                                       BKE_object_material_array_p(object_src),
+                                       *BKE_object_material_len_p(object_src),
+                                       false);
 
-        /* Insert Keyframe at current frame. */
-        grease_pencil_dst.insert_blank_frame(layer_dst, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
-
-        /*Assign new CurvesGeometry to layer/frame. */
-        Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
-                                                                         current_frame);
-        /* Copy strokes to new CurvesGeometry. */
-        const bke::AnonymousAttributePropagationInfo propagation_info{};
-        drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
-            info.drawing.strokes(), strokes, propagation_info);
-
-        /* Add object materials. */
-        BKE_object_material_array_assign(bmain,
-                                         object_dst,
-                                         BKE_object_material_array_p(object_src),
-                                         *BKE_object_material_len_p(object_src),
-                                         false);
-
-        info.drawing.tag_topology_changed();
-        drawing_dst->tag_topology_changed();
-        result = true;
-      });
-    }
+      info.drawing.tag_topology_changed();
+      drawing_dst->tag_topology_changed();
+      result = true;
+    });
 
     /* Remove unused material slots from target object. */
     remove_unused_materials(bmain, object_dst);
@@ -1874,8 +1864,6 @@ static bool grease_pencil_separate_layer(bContext *C,
   }
 
   if (result) {
-
-    scene->r.cfra = initial_frame;
 
     /* Remove all layers but active from source object. */
     Vector<Layer *> layers_to_remove;
