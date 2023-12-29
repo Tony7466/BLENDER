@@ -50,7 +50,12 @@ void main()
 
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
+  /* TODO: use stencil buffer to avoid fragment invocations here. */
   out_combined = vec4(0.0, 0.0, 0.0, 0.0);
+  if (gbuf.closure_count == 0) {
+    return;
+  }
+
   vec3 out_diffuse = vec3(0.0);
   vec3 out_specular = vec3(0.0);
 
