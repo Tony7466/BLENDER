@@ -380,7 +380,11 @@ static bool attributes_varrays_are_equal(const bke::GAttributeReader &attrs_a,
   }
 
   if (attrs_a.varray.is_span() && attrs_b.varray.is_span()) {
-    if (attrs_a.varray.get_internal_span().data() != attrs_b.varray.get_internal_span().data()) {
+    if (attrs_a.varray.get_internal_span().data() == attrs_b.varray.get_internal_span().data()) {
+      return true;
+    }
+
+    if (attrs_a.varray.get_internal_span().size() != attrs_b.varray.get_internal_span().size()) {
       return false;
     }
   }
