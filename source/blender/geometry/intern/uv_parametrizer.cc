@@ -4651,7 +4651,15 @@ static bool p_chart_correct_zero_area_point(PFace* f, float min_area, float min_
     {0.0f, 0.0f, 1.0f},
     {0.0f, 1.0f, 1.0f},
     {1.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 0.0f}
+    {1.0f, 1.0f, 0.0f},
+
+    {0.0f, 0.5f, 1.0f},
+    {0.5f, 0.0f, 1.0f},
+    {0.5f, 1.0f, 0.0f},
+
+    {0.0f, 1.0f, 0.5f},
+    {1.0f, 0.0f, 0.5f},
+    {1.0f, 0.5f, 0.0f}
   };
   static const int ref_edge_count = sizeof(ref_edges) / sizeof(ref_edges[0]);
   static const int LEN_MULTIPLIER_COUNT = 3;
@@ -4804,7 +4812,7 @@ static bool p_chart_correct_zero_area2(PChart *chart, float min_area, float min_
     PVert *corr_v = corr_e->vert;
 
     /* check 4 distinct directions */
-    static const int DIR_COUNT = 4;
+    static const int DIR_COUNT = 16;
     static const int LEN_MULTIPLIER_COUNT = 2;
     float corr_co[3];
     bool corr_co_found = false;
@@ -5233,8 +5241,8 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
     //p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
 
     if (!p_chart_correct_zero_area(chart, SLIM_CORR_MIN_AREA, SLIM_CORR_MIN_ANGLE)) {
-      mt_chart->succeeded = false;
-      continue;
+      //mt_chart->succeeded = false;
+      //continue;
     }
 
     mt_chart->succeeded = true;
