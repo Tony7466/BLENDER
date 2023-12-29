@@ -107,7 +107,11 @@ void main()
     output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
   }
 
-  if (true) {
+  /* TODO(fclem): Enable for OpenGL and Vulkan once they fully support specialization constants. */
+#ifndef GPU_METAL
+  bool use_lightprobe_eval = uniform_buf.pipeline.use_combined_lightprobe_eval;
+#endif
+  if (use_lightprobe_eval) {
     vec2 noise_probe = interlieved_gradient_noise(gl_FragCoord.xy, vec2(0, 1), vec2(0.0));
     LightProbeSample samp = lightprobe_load(P, Ng, V);
 

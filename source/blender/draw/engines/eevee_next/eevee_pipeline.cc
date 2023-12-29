@@ -502,6 +502,10 @@ void DeferredLayer::end_sync()
 {
   eClosureBits evaluated_closures = CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT | CLOSURE_REFLECTION |
                                     CLOSURE_REFRACTION;
+
+  use_combined_lightprobe_eval = inst_.pipelines.data.use_combined_lightprobe_eval =
+      (inst_.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED);
+
   if (closure_bits_ & evaluated_closures) {
     RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
 
@@ -575,6 +579,7 @@ void DeferredLayer::end_sync()
            * OpenGL and Vulkan implementation which aren't fully supporting the specialize
            * constant. */
           sub.specialize_constant(sh, "render_pass_shadow_enabled", rbuf_data.shadow_id != -1);
+          sub.specialize_constant(sh, "use_lightprobe_eval", use_combined_lightprobe_eval);
           const ShadowSceneData &shadow_scene = inst_.shadows.get_data();
           sub.specialize_constant(sh, "shadow_ray_count", &shadow_scene.ray_count);
           sub.specialize_constant(sh, "shadow_ray_step_count", &shadow_scene.step_count);
@@ -772,9 +777,9 @@ void DeferredLayer::render(View &main_view,
         (closure_count > i) ? extent : int2(1), DEFERRED_RADIANCE_FORMAT, usage_rw);
   }
 
-  bool use_tracing = false;
+  RayTraceResult indirect_result;
 
-  if (!use_tracing) {
+  if (use_combined_lightprobe_eval) {
     float4 data(0.0f);
     dummy_black_tx.ensure_2d(
         RAYTRACE_RADIANCE_FORMAT, int2(1), GPU_TEXTURE_USAGE_SHADER_READ, data);
@@ -786,8 +791,7 @@ void DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, render_view);
 
-  RayTraceResult indirect_result;
-  if (use_tracing) {
+  else {
     indirect_result = inst_.raytracing.render(rt_buffer,
                                               radiance_behind_tx_,
                                               radiance_feedback_tx_,
@@ -808,7 +812,7 @@ void DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
-  if (use_tracing) {
+  if (!use_combined_lightprobe_eval) {
     indirect_result.release();
   }
 

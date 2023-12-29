@@ -59,10 +59,12 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .fragment_source("eevee_deferred_light_frag.glsl")
     /* Early fragment test is needed to avoid processing background fragments. */
     .early_fragment_test(true)
+    .fragment_out(0, Type::VEC4, "out_combined")
     /* Chaining to next pass. */
     .image_out(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_1_img")
     .image_out(3, DEFERRED_RADIANCE_FORMAT, "direct_radiance_2_img")
     .image_out(4, DEFERRED_RADIANCE_FORMAT, "direct_radiance_3_img")
+    .specialization_constant(Type::BOOL, "use_lightprobe_eval", false)
     .specialization_constant(Type::BOOL, "render_pass_shadow_enabled", true)
     .define("SPECIALIZED_SHADOW_PARAMS")
     .specialization_constant(Type::INT, "shadow_ray_count", 1)

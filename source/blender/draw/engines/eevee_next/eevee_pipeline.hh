@@ -266,6 +266,8 @@ class DeferredLayer : DeferredLayerBase {
   Texture radiance_feedback_tx_ = {"radiance_feedback_tx"};
   float4x4 radiance_feedback_persmat_;
 
+  bool use_combined_lightprobe_eval = true;
+
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};
 
