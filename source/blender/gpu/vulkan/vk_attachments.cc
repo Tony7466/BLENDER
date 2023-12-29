@@ -41,6 +41,10 @@ void VKAttachments::description_set(VKTexture &texture,
       attachment_description.finalLayout = attachment_description.initialLayout =
           VK_IMAGE_LAYOUT_GENERAL;
       break;
+    case eRenderpassType::Mix:
+      attachment_description.finalLayout = attachment_description.initialLayout =
+          texture.best_layout_get();
+      break;
     case eRenderpassType::Any:
       BLI_assert_unreachable();
   };

@@ -89,7 +89,8 @@ class VKRenderPass {
   void dependency_static_set(bool use_depth);
   VkSubpassDependency2 dependency_get(int srcpass,
                                       int dstpass,
-                                      SubpassTransitionPattern transition_pattern);
+                                      SubpassTransitionPattern transition_pattern,
+                                      VkImageLayout dst_layout);
   void multiview_set();
   friend class VKFrameBuffer;
 };

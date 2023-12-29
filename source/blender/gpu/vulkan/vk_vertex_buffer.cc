@@ -99,7 +99,7 @@ void VKVertexBuffer::read(void *data) const
   }
 
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
-  staging_buffer.copy_from_device(context,data);
+  staging_buffer.copy_from_device(context, data);
 }
 
 void VKVertexBuffer::acquire_data()

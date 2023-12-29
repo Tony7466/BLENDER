@@ -25,7 +25,10 @@ const VkAttachmentDescription2 descriptions_default = {
     /*.loadOp*/ VK_ATTACHMENT_LOAD_OP_LOAD,
     /*.storeOp*/ VK_ATTACHMENT_STORE_OP_STORE,
     /*.stencilLoadOp*/ VK_ATTACHMENT_LOAD_OP_LOAD,
-    /*.stencilStoreOp*/ VK_ATTACHMENT_STORE_OP_STORE};
+    /*.stencilStoreOp*/ VK_ATTACHMENT_STORE_OP_STORE,
+    /*.initial_layour*/ VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    /*.final_layour*/ VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+
 const VkAttachmentReference2 references_default = {
     /*VkStructureType sType*/ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
     /*const void *pNext*/ VK_NULL_HANDLE,

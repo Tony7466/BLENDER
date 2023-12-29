@@ -345,6 +345,10 @@ class Texture {
   {
     return subpass_;
   }
+  void subpass_bits_clear()
+  {
+    subpass_.disable = 0;
+  }
 
  protected:
   virtual bool init_internal() = 0;

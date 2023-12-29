@@ -113,9 +113,6 @@ class VKTexture : public Texture, public VKBindableResource {
   bool init_internal(GPUTexture *src, int mip_offset, int layer_offset, bool use_stencil) override;
 
  private:
-  /** Is this texture a view of another texture. */
-  bool is_texture_view() const;
-
   /**
    * Allocate the texture of the device. Result is `true` when texture is successfully allocated
    * on the device.
@@ -193,6 +190,12 @@ class VKTexture : public Texture, public VKBindableResource {
   /**  From the VkImage,we get the layout that is most likely to be used in blender. **/
   VkImageLayout best_layout_get();
   bool is_format_dirty(eImageViewUsage usage, bool use_srgb);
+  VKTexture *source_texture_get()
+  {
+    return source_texture_;
+  }
+  /** Is this texture a view of another texture. */
+  bool is_texture_view() const;
 
  private:
   IndexRange mip_map_range() const;
@@ -202,7 +205,14 @@ class VKTexture : public Texture, public VKBindableResource {
 
 BLI_INLINE VKTexture *unwrap(Texture *tex)
 {
-  return static_cast<VKTexture *>(tex);
+  if (tex == nullptr) {
+    return static_cast<VKTexture *>(tex);
+  }
+  VKTexture *vk_tex = static_cast<VKTexture *>(tex);
+  if (vk_tex->is_texture_view()) {
+    return vk_tex->source_texture_get();
+  }
+  return vk_tex;
 }
 
 BLI_INLINE Texture *wrap(VKTexture *texture)

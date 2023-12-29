@@ -640,8 +640,10 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
         renderpass_->attachments_
             .descriptions_[renderpass_->info_id_][attachment_reference->attachment];
     if (config) {
-      renderpass_->attachments_.description_set(
-          *unwrap(unwrap(tex)), *attachment_reference, attachment_description, renderpass_->render_pass_enum_);
+      renderpass_->attachments_.description_set(*unwrap(unwrap(tex)),
+                                                *attachment_reference,
+                                                attachment_description,
+                                                renderpass_->render_pass_enum_);
       VkAttachmentDescription2 &attachment_description_cache =
           renderpass_->attachments_
               .descriptions_[renderpass_->info_id_counter()][attachment_reference->attachment];

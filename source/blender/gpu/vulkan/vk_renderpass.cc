@@ -304,6 +304,7 @@ void VKRenderPass::dependency_static_set(bool use_depth)
           break;
       }
       break;
+    case eRenderpassType::Storage:
     case eRenderpassType::ShaderBinding:
       switch (depth_only) {
         case true:
@@ -327,13 +328,22 @@ void VKRenderPass::dependency_static_set(bool use_depth)
           break;
       }
       break;
+    case eRenderpassType::Mix: {
+      BLI_assert(depth_only == false);
+      vk_create_info_[info_id_].pDependencies = &vk_subpass::dependencies[static_cast<uint64_t>(
+          vk_subpass::DependencyType::BASIC_COLOR)];
+      vk_create_info_[info_id_].dependencyCount = 8;
+      break;
+    }
     default:
       BLI_assert_unreachable();
   }
 }
+
 VkSubpassDependency2 VKRenderPass::dependency_get(int srcpass,
                                                   int dstpass,
-                                                  SubpassTransitionPattern transition_pattern)
+                                                  SubpassTransitionPattern transition_pattern,
+                                                  VkImageLayout dst_layout)
 {
   VKSubpassDependency subpass_dep;
   switch (transition_pattern) {
@@ -342,24 +352,22 @@ VkSubpassDependency2 VKRenderPass::dependency_get(int srcpass,
     case SubpassTransitionPattern::EXTERNAL_TO_DEPTH:
       return subpass_dep.external_to_depth(dstpass,
                                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    case SubpassTransitionPattern::EXTERNAL_SHADER_READ_TO_COLOR:
-      return subpass_dep.external_to_color(dstpass, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    case SubpassTransitionPattern::EXTERNAL_SHADER_WRITE_TO_COLOR:
-      return subpass_dep.external_to_color(dstpass, VK_IMAGE_LAYOUT_GENERAL);
-    case SubpassTransitionPattern::EXTERNAL_SHADER_READ_TO_DEPTH:
+    case SubpassTransitionPattern::EXTERNAL_SHADER_READ_WRITE_TO_COLOR:
+      return subpass_dep.external_to_color(dstpass, dst_layout);
+    case SubpassTransitionPattern::EXTERNAL_SHADER_READ_WRITE_TO_DEPTH:
       return subpass_dep.external_to_depth(dstpass, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     case SubpassTransitionPattern::COLOR_TO_INPUT:
       return subpass_dep.color_to_input(srcpass, dstpass);
-    case SubpassTransitionPattern::COLOR_TO_EXTERNAL_SHADER_READ:
-      return subpass_dep.color_to_external(srcpass, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    case SubpassTransitionPattern::COLOR_TO_EXTERNAL_SHADER_WRITE:
-      return subpass_dep.color_to_external(srcpass, VK_IMAGE_LAYOUT_GENERAL);
+    case SubpassTransitionPattern::COLOR_TO_EXTERNAL_SHADER_READ_WRITE:
+      return subpass_dep.color_to_external(srcpass, dst_layout);
+    case SubpassTransitionPattern::COLOR_TO_EXTERNAL:
+      return subpass_dep.color_to_external(srcpass, dst_layout);
     case SubpassTransitionPattern::INPUT_TO_EXTERNAL_COLOR:
       return subpass_dep.input_to_external(srcpass, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    case SubpassTransitionPattern::INPUT_TO_EXTERNAL_SHADER_READ:
-      return subpass_dep.input_to_external(srcpass, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    case SubpassTransitionPattern::INPUT_TO_EXTERNAL_SHADER_WRITE:
-      return subpass_dep.input_to_external(srcpass, VK_IMAGE_LAYOUT_GENERAL);
+    case SubpassTransitionPattern::DEPTH_TO_EXTERNAL_SHADER_READ_WRITE:
+      return subpass_dep.depth_to_external(srcpass, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    case SubpassTransitionPattern::INPUT_TO_EXTERNAL_SHADER_READ_WRITE:
+      return subpass_dep.input_to_external(srcpass, dst_layout);
     default:
       BLI_assert_unreachable();
   }
@@ -375,6 +383,28 @@ static int scan_pre_write_pass(SubpassBits &subpass, int read_pass)
   }
   BLI_assert_unreachable();
   return -1;
+}
+
+static bool prepass_loaded(VkSubpassDescription2 &subpass, int view_order, bool color)
+{
+  if (subpass.colorAttachmentCount > 0) {
+    if (color) {
+      for (int i = 0; i < subpass.colorAttachmentCount; i++) {
+        auto ref = subpass.pColorAttachments[i];
+        if (ref.attachment == view_order) {
+          return true;
+        }
+      }
+    }
+    else {
+      if (subpass.pDepthStencilAttachment) {
+        if (subpass.pDepthStencilAttachment->attachment == view_order) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
@@ -410,20 +440,33 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
   Vector<VkAttachmentReference2> input_references_all[GPU_TEX_MAX_SUBPASS];
   /* The last subpass number where depth is written */
   int dst_pass_depth_final = -1;
-  SubpassTransitionPattern color_transition_next[GPU_TEX_MAX_SUBPASS];
-  SubpassTransitionPattern color_read_transition_next[GPU_TEX_MAX_SUBPASS];
 
+  VkImageLayout dst_depth_layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR;
+  auto layout2transition = [](VkImageLayout layout) -> SubpassTransitionPattern {
+    switch (layout) {
+      case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+      case VK_IMAGE_LAYOUT_GENERAL:
+        return SubpassTransitionPattern::EXTERNAL_SHADER_READ_WRITE_TO_COLOR;
+        break;
+      case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+        return SubpassTransitionPattern::EXTERNAL_TO_COLOR;
+      default:
+        break;
+    }
+    BLI_assert_unreachable();
+    return SubpassTransitionPattern::EXTERNAL_TO_COLOR;
+  };
   /* Start parsing from the first pass. */
   for (int pass = 0; pass < GPU_TEX_MAX_SUBPASS; pass++) {
-    color_transition_next[pass] = SubpassTransitionPattern::SUBPASS_TRANSITION_PATTERN_ALL;
-    color_read_transition_next[pass] = SubpassTransitionPattern::SUBPASS_TRANSITION_PATTERN_ALL;
     bool subpass_add = false;
     subpass_input_orders_[pass].clear();
     auto &desc = subpasses[pass] = vk_subpass::descriptions_default;
     Vector<VkAttachmentReference2> &references = write_references_all[pass];
     Vector<VkAttachmentReference2> &ireferences = input_references_all[pass];
-    references.clear();
+    references.resize(N);
     ireferences.clear();
+    int unused_color = 0;
+    int unused_depth = 0;
     /**
      * Scan this pass's Blender attachments.
      * Since the Texture has multiple subpass Bit states,
@@ -432,12 +475,12 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
      */
     for (int view_order = 0; view_order < N; view_order++) {
       int type = attachments_.type_get(view_order, info_id_);
+      GPUTexture *attachment_tex = nullptr;
+      int type_index = static_cast<int>(type) - static_cast<int>(GPU_FB_COLOR_ATTACHMENT0);
       /* final-layout gives the initial state. */
       const VkImageLayout final_layout =
           attachments_.descriptions_[info_id_][view_order].finalLayout;
-      BLI_assert(attachments_.descriptions_[info_id_][view_order].initialLayout == final_layout);
-      GPUTexture *attachment_tex = nullptr;
-      int type_index = static_cast<int>(type) - static_cast<int>(GPU_FB_COLOR_ATTACHMENT0);
+
       if (type_index < 0) {
         attachment_tex = frame_buffer.depth_tex();
       }
@@ -460,118 +503,200 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
         subpass_input_orders_[pass].append(type_index);
         int src_pass = scan_pre_write_pass(subpass_flag, pass);
         if (check_dependency(src_pass, pass, SubpassTransitionPattern::COLOR_TO_INPUT)) {
-          dependencies.append(
-              dependency_get(src_pass, pass, SubpassTransitionPattern::COLOR_TO_INPUT));
+          dependencies.append(dependency_get(
+              src_pass, pass, SubpassTransitionPattern::COLOR_TO_INPUT, final_layout));
         }
-        color_read_transition_next[pass] =
-            (final_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) ?
-                SubpassTransitionPattern::INPUT_TO_EXTERNAL_COLOR :
-            (final_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) ?
-                SubpassTransitionPattern::INPUT_TO_EXTERNAL_SHADER_READ :
-                SubpassTransitionPattern::INPUT_TO_EXTERNAL_SHADER_WRITE;
-        /* It is never readable and write-attachment. */
-        continue;
+        unused_color--;
       }
       uint8_t write_attachment = subpass_flag.bits.write[pass];
+
       /* Is this an Attachment ? */
-      if (write_attachment > 0) {
-        /* Scan shader-order. */
-        for (int shader_order = 0; shader_order < 8; shader_order++) {
-          if ((write_attachment >> shader_order) & 0b1) {
-            if (type_index < 0 && (dst_pass_depth_final != -2)) {
-              if (dst_pass_depth_final >= 0) {
-                dst_pass_depth_final = pass;
-                break;
-              }
-              /* It is possible to transition depth to input, but it is a TODO. */
-              desc.pDepthStencilAttachment = attachments_.reference_get(type_index, info_id_);
-              subpass_add = true;
-              if (final_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL) {
-                dependencies.append(
-                    dependency_get(VK_SUBPASS_EXTERNAL,
-                                   pass,
-                                   SubpassTransitionPattern::EXTERNAL_SHADER_READ_TO_DEPTH));
-                dst_pass_depth_final = -2;
-              }
-              else {
-                dependencies.append(dependency_get(
-                    VK_SUBPASS_EXTERNAL, pass, SubpassTransitionPattern::EXTERNAL_TO_DEPTH));
-                dst_pass_depth_final = pass;
-              }
-              break;
-            }
-            else {
-              /* The references are derived from the references generated in the main
-               * configuration. */
-              VkAttachmentReference2 copy_reference = *attachments_.reference_get(type_index,
-                                                                                  info_id_);
-              desc.colorAttachmentCount++;
-              SubpassTransitionPattern t_pattern;
-              switch (final_layout) {
-                case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-                  t_pattern = SubpassTransitionPattern::EXTERNAL_TO_COLOR;
-                  break;
-                case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-                  t_pattern = SubpassTransitionPattern::EXTERNAL_SHADER_READ_TO_COLOR;
-                  break;
-                case VK_IMAGE_LAYOUT_GENERAL:
-                  t_pattern = SubpassTransitionPattern::EXTERNAL_SHADER_WRITE_TO_COLOR;
-                  break;
-                default:
-                  break;
-              }
-              if (check_dependency(VK_SUBPASS_EXTERNAL, pass, t_pattern)) {
-                color_transition_next[pass] =
-                    (t_pattern == SubpassTransitionPattern::EXTERNAL_TO_COLOR) ?
-                        SubpassTransitionPattern::SUBPASS_TRANSITION_PATTERN_ALL :
-                        static_cast<SubpassTransitionPattern>((~(uint8_t)t_pattern) & 0b1111);
-                dependencies.append(dependency_get(VK_SUBPASS_EXTERNAL, pass, t_pattern));
-              }
-              if (references.size() < (shader_order + 1)) {
-                references.resize(shader_order + 1);
-              }
-              references[shader_order] = copy_reference;
-              BLI_assert(references[shader_order].attachment == view_order);
-            }
-            break;
-          };
+      if (type_index < 0) {
+        if (write_attachment != 1) {
+          unused_depth++;
+          continue;
+        }
+        /* It is possible to transition depth to input, but it is a TODO. */
+        desc.pDepthStencilAttachment = attachments_.reference_get(type_index, info_id_);
+
+        if (dst_pass_depth_final >= 0) {
+          dst_pass_depth_final = pass;
+          continue;
+        }
+        subpass_add = true;
+        if ((dst_pass_depth_final != -2) &&
+            final_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL)
+        {
+          dst_pass_depth_final = -2;
+          dst_depth_layout = final_layout;
+          if (!(vk_create_info_[info_id_].pAttachments[view_order].loadOp ==
+                VK_ATTACHMENT_LOAD_OP_LOAD)) {
+            dependencies.append(dependency_get(VK_SUBPASS_EXTERNAL,
+                                               pass,
+                                               SubpassTransitionPattern::EXTERNAL_TO_DEPTH,
+                                               final_layout));
+          }
+          dependencies.append(dependency_get(VK_SUBPASS_EXTERNAL,
+                                             pass,
+                                             SubpassTransitionPattern::EXTERNAL_TO_DEPTH,
+                                             final_layout));
+        }
+        else {
+          /* Scan shader-order. */
+          /* The references are derived from the references generated in the main
+           * configuration. */
+          dependencies.append(
+              dependency_get(VK_SUBPASS_EXTERNAL,
+                             pass,
+                             SubpassTransitionPattern::EXTERNAL_SHADER_READ_WRITE_TO_DEPTH,
+                             final_layout));
+          dst_pass_depth_final = pass;
+          dst_depth_layout = final_layout;
         }
       }
-    }
-    if (desc.colorAttachmentCount > 0) {
-      desc.pColorAttachments = references.data();
-      subpass_add = true;
-    }
-    if (desc.inputAttachmentCount > 0) {
-      desc.pInputAttachments = ireferences.data();
-      subpass_add = true;
-    }
-    if (subpass_add) {
-      vk_create_info_[info_id_].subpassCount++;
-      subpass_multi_attachments.append(subpasses[pass].colorAttachmentCount);
+      else {
+        if (write_attachment >> view_order & 0b1) {
+
+          VkAttachmentReference2 copy_reference = *attachments_.reference_get(type_index,
+                                                                              info_id_);
+          desc.colorAttachmentCount++;
+          references[view_order] = copy_reference;
+          BLI_assert(references[view_order].attachment == view_order);
+          bool loaded = false;
+          for (int ppass = pass - 1; ppass >= 0; ppass--) {
+            loaded |= prepass_loaded(subpasses[ppass], view_order, true);
+          }
+          if (!loaded) {
+            if (!(vk_create_info_[info_id_].pAttachments[view_order].loadOp ==
+                  VK_ATTACHMENT_LOAD_OP_LOAD)) {
+              if (check_dependency(
+                      VK_SUBPASS_EXTERNAL, pass, SubpassTransitionPattern::EXTERNAL_TO_COLOR)) {
+                dependencies.append(dependency_get(VK_SUBPASS_EXTERNAL,
+                                                   pass,
+                                                   SubpassTransitionPattern::EXTERNAL_TO_COLOR,
+                                                   final_layout));
+              }
+            }
+            else {
+              SubpassTransitionPattern t_pattern = layout2transition(final_layout);
+              if (check_dependency(VK_SUBPASS_EXTERNAL, pass, t_pattern)) {
+                dependencies.append(
+                    dependency_get(VK_SUBPASS_EXTERNAL, pass, t_pattern, final_layout));
+              }
+            }
+          }
+        }
+        else {
+          desc.colorAttachmentCount++;
+          references[view_order] = *attachments_.reference_get(type_index, info_id_);
+          references[view_order].attachment = VK_ATTACHMENT_UNUSED;
+          unused_color++;
+        };
+      }
+      if ((unused_color + unused_depth) < N) {
+        desc.pColorAttachments = references.data();
+        if (desc.inputAttachmentCount > 0) {
+          desc.pInputAttachments = ireferences.data();
+        }
+
+        vk_create_info_[info_id_].subpassCount++;
+        subpass_multi_attachments.append(subpasses[pass].colorAttachmentCount);
+      }
+      else {
+        desc.colorAttachmentCount = 0;
+      }
     }
   }
   if (dst_pass_depth_final > -1) {
-    dependencies.append(dependency_get(dst_pass_depth_final,
-                                       VK_SUBPASS_EXTERNAL,
-                                       SubpassTransitionPattern::DEPTH_TO_EXTERNAL_SHADER_READ));
+    dependencies.append(
+        dependency_get(dst_pass_depth_final,
+                       VK_SUBPASS_EXTERNAL,
+                       SubpassTransitionPattern::DEPTH_TO_EXTERNAL_SHADER_READ_WRITE,
+                       dst_depth_layout));
   }
-  for (int pass = 0; pass < GPU_TEX_MAX_SUBPASS; pass++) {
-    for (auto transition : {color_transition_next[pass], color_read_transition_next[pass]}) {
-      if (transition == SubpassTransitionPattern::SUBPASS_TRANSITION_PATTERN_ALL) {
+  {
+    const VkAttachmentDescription2 *atta = vk_create_info_[info_id_].pAttachments;
+
+    Vector<bool> final_transition_valid;
+    final_transition_valid.resize(N, false);
+    for (int pass = GPU_TEX_MAX_SUBPASS - 1; pass >= 0; pass--) {
+      auto subpass = subpasses[pass];
+      if (subpass.colorAttachmentCount == 0) {
         continue;
       }
-      if (check_dependency(pass, VK_SUBPASS_EXTERNAL, transition)) {
-        dependencies.append(dependency_get(pass, VK_SUBPASS_EXTERNAL, transition));
+      int color_num = (subpass.pDepthStencilAttachment == nullptr) ? N : N - 1;
+      BLI_assert(subpass.colorAttachmentCount == color_num);
+      for (int i = 0; i < color_num; i++) {
+        if (final_transition_valid[i]) {
+          continue;
+        }
+        auto ref = subpass.pColorAttachments[i];
+        if (ref.attachment != VK_ATTACHMENT_UNUSED) {
+          BLI_assert(ref.attachment == i);
+          auto desc = atta[ref.attachment];
+          SubpassTransitionPattern transition;
+          switch (desc.finalLayout) {
+            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+              transition = SubpassTransitionPattern::COLOR_TO_EXTERNAL;
+              break;
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            case VK_IMAGE_LAYOUT_GENERAL:
+              transition = SubpassTransitionPattern::COLOR_TO_EXTERNAL_SHADER_READ_WRITE;
+              break;
+            default:
+              break;
+          }
+          if (check_dependency(pass, VK_SUBPASS_EXTERNAL, transition)) {
+            dependencies.append(
+                dependency_get(pass, VK_SUBPASS_EXTERNAL, transition, desc.finalLayout));
+          };
+          final_transition_valid[i] = true;
+          continue;
+        }
+        if (subpass.inputAttachmentCount <= i) {
+          continue;
+        }
+        auto iref = subpass.pInputAttachments[i];
+        if (iref.attachment != VK_ATTACHMENT_UNUSED) {
+
+          auto desc = atta[iref.attachment];
+          SubpassTransitionPattern transition = SubpassTransitionPattern::INPUT_TO_EXTERNAL_COLOR;
+          if (transition != SubpassTransitionPattern::SUBPASS_TRANSITION_PATTERN_ALL) {
+            if (check_dependency(pass, VK_SUBPASS_EXTERNAL, transition)) {
+              dependencies.append(
+                  dependency_get(pass, VK_SUBPASS_EXTERNAL, transition, desc.finalLayout));
+            };
+
+            final_transition_valid[i] = true;
+            continue;
+          }
+        }
       }
     }
+    VKSubpassDependency subpass_dep;
+    dependencies.append(subpass_dep.depth_to_depth(1, 2));
+    dependencies.append(subpass_dep.write_to_read(1, 2));
+    dependencies.append(subpass_dep.write_to_read2(1, 2));
   }
   vk_create_info_[info_id_].dependencyCount = dependencies.size();
   vk_create_info_[info_id_].pDependencies = dependencies.data();
   vk_create_info_[info_id_].pSubpasses = subpasses;
 
   create();
+  for (int view_order = 0; view_order < N; view_order++) {
+    int type = attachments_.type_get(view_order, info_id_);
+    int type_index = static_cast<int>(type) - static_cast<int>(GPU_FB_COLOR_ATTACHMENT0);
+    Texture *attachment_tex = nullptr;
+    if (type_index < 0) {
+      attachment_tex = reinterpret_cast<Texture *>(frame_buffer.depth_tex());
+    }
+    else {
+      attachment_tex = reinterpret_cast<Texture *>(frame_buffer.color_tex(type_index));
+    }
+    attachment_tex->subpass_bits_clear();
+  }
 }
+
 void VKRenderPass::multiview_set()
 {
   /* TODO::Multiview Config */
