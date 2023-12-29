@@ -79,6 +79,7 @@ void VKStorageBuffer::clear(uint32_t clear_value)
   ensure_allocated();
   VKContext &context = *VKContext::get();
   buffer_.clear(context, clear_value);
+  buffer_.barrier(GPU_BARRIER_SHADER_STORAGE);
 }
 
 void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, uint copy_size)

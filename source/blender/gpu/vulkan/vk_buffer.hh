@@ -63,6 +63,8 @@ class VKBuffer {
    */
   bool is_mapped() const;
 
+  void barrier(eGPUBarrier type);
+
  private:
   /** Check if this buffer is mapped. */
   bool map();

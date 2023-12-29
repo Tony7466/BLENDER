@@ -24,12 +24,15 @@ class VKPipeline;
 class VKDescriptorSet;
 
 class VKCommandBuffers : public NonCopyable, NonMovable {
-  VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
+ public:
   enum class Type {
     DataTransferCompute = 0,
     Graphics = 1,
     Max = 2,
   };
+
+ private:
+  VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
 
   bool initialized_ = false;
 
@@ -104,7 +107,10 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   void pipeline_barrier(VkPipelineStageFlags source_stages,
                         VkPipelineStageFlags destination_stages,
                         Span<VkImageMemoryBarrier> image_memory_barriers);
-
+  void pipeline_barrier(VkPipelineStageFlags source_stages,
+                        VkPipelineStageFlags destination_stages,
+                        Span<VkBufferMemoryBarrier> buffer_memory_barriers,
+                        Type buffer_type = Type::DataTransferCompute);
   /**
    * Clear color image resource.
    */

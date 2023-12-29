@@ -484,6 +484,25 @@ void VKCommandBuffers::pipeline_barrier(const VkPipelineStageFlags src_stages,
   command_buffer.command_recorded();
 }
 
+void VKCommandBuffers::pipeline_barrier(const VkPipelineStageFlags src_stages,
+                                        const VkPipelineStageFlags dst_stages,
+                                        Span<VkBufferMemoryBarrier> memory_barriers,
+                                        Type buffer_type)
+{
+  VKCommandBuffer &command_buffer = command_buffer_get(buffer_type);
+  vkCmdPipelineBarrier(command_buffer.vk_command_buffer(),
+                       src_stages,
+                       dst_stages,
+                       VK_DEPENDENCY_BY_REGION_BIT,
+                       0,
+                       nullptr,
+                       memory_barriers.size(),
+                       memory_barriers.data(),
+                       0,
+                       nullptr);
+  command_buffer.command_recorded();
+}
+
 void VKCommandBuffers::clear(VkImage vk_image,
                              VkImageLayout vk_image_layout,
                              const VkClearColorValue &vk_clear_color,

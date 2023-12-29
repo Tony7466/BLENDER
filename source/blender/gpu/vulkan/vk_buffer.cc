@@ -171,4 +171,39 @@ bool VKBuffer::free(bool deferred)
   return true;
 }
 
+void VKBuffer::barrier(eGPUBarrier type)
+{
+  VkBufferMemoryBarrier barrier = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, VK_NULL_HANDLE};
+  barrier.buffer = this->vk_handle();
+  barrier.size = this->size_in_bytes();
+  VKContext &context = *VKContext::get();
+  switch (type) {
+    case GPU_BARRIER_COMMAND: {
+      barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+      barrier.dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+      barrier.srcQueueFamilyIndex = -1;
+      barrier.dstQueueFamilyIndex = -1;
+      context.command_buffers_get().pipeline_barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                     VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                                                     Span<VkBufferMemoryBarrier>(&barrier, 1),
+                                                     VKCommandBuffers::Type::DataTransferCompute);
+      break;
+      case GPU_BARRIER_SHADER_STORAGE:
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+        barrier.srcQueueFamilyIndex = -1;
+        barrier.dstQueueFamilyIndex = -1;
+        context.command_buffers_get().pipeline_barrier(
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            Span<VkBufferMemoryBarrier>(&barrier, 1),
+            VKCommandBuffers::Type::DataTransferCompute);
+        break;
+      default:
+        break;
+    }
+  }
+  return;
+}
+
 }  // namespace blender::gpu
