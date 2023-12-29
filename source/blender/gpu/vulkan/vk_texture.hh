@@ -160,6 +160,10 @@ class VKTexture : public Texture, public VKBindableResource {
                      VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                      VkAccessFlags dst_access = VK_ACCESS_MEMORY_READ_BIT);
 
+  void layout_ensure(VKContext &context,
+                     const VkImageLayout old_layout,
+                     const VkImageLayout new_layout);
+
  private:
   /**
    * Internal function to ensure the layout of a single mipmap level. Note that the caller is

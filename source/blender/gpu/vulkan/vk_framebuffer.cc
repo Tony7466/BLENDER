@@ -197,7 +197,6 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
               << "PERFORMANCE: impact clearing depth texture in render pass that doesn't allow "
                  "depth writes.\n";
         }
-        depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
         depth_texture->clear_depth_stencil(buffers, clear_depth, clear_stencil);
       }
     }
@@ -314,14 +313,16 @@ void VKFrameBuffer::read(eGPUFrameBufferBits plane,
   switch (plane) {
     case GPU_COLOR_BIT:
       attachment = &attachments_[GPU_FB_COLOR_ATTACHMENT0 + slot];
-      color_attachment_layout_ensure(context, slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      color_attachment_layout_ensure(
+          context, slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       break;
 
     case GPU_DEPTH_BIT:
       attachment = attachments_[GPU_FB_DEPTH_ATTACHMENT].tex ?
                        &attachments_[GPU_FB_DEPTH_ATTACHMENT] :
                        &attachments_[GPU_FB_DEPTH_STENCIL_ATTACHMENT];
-      depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      depth_attachment_layout_ensure(
+          context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       break;
 
     default:
@@ -420,9 +421,10 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     if (src_attachment.tex && dst_attachment.tex) {
       VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
       VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
-      color_attachment_layout_ensure(context, src_slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      color_attachment_layout_ensure(
+          context, src_slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       dst_framebuffer.color_attachment_layout_ensure(
-          context, dst_slot, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+          context, dst_slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
       blit_aspect(command_buffers,
                   dst_texture,
@@ -430,8 +432,10 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
                   dst_offset_x,
                   dst_offset_y,
                   VK_IMAGE_ASPECT_COLOR_BIT);
-      color_attachment_layout_ensure(context, src_slot, VK_IMAGE_LAYOUT_MAX_ENUM);
-      dst_framebuffer.color_attachment_layout_ensure(context, dst_slot, VK_IMAGE_LAYOUT_MAX_ENUM);
+      color_attachment_layout_ensure(
+          context, src_slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+      dst_framebuffer.color_attachment_layout_ensure(
+          context, dst_slot, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
     }
   }
 
@@ -447,9 +451,10 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     if (src_attachment.tex && dst_attachment.tex) {
       VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
       VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
-      depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-      dst_framebuffer.depth_attachment_layout_ensure(context,
-                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      depth_attachment_layout_ensure(
+          context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      dst_framebuffer.depth_attachment_layout_ensure(
+          context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
       blit_aspect(command_buffers,
                   dst_texture,
@@ -457,8 +462,10 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
                   dst_offset_x,
                   dst_offset_y,
                   VK_IMAGE_ASPECT_DEPTH_BIT);
-      depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_MAX_ENUM);
-      dst_framebuffer.depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_MAX_ENUM);
+      depth_attachment_layout_ensure(
+          context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+      dst_framebuffer.depth_attachment_layout_ensure(
+          context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
     }
   }
 }
@@ -878,36 +885,37 @@ bool VKFrameBuffer::image_view_ensure(GPUTexture *tex, int mip, int layer, int a
 
 void VKFrameBuffer::color_attachment_layout_ensure(VKContext &context,
                                                    int color_attachment,
-                                                   VkImageLayout requested_layout)
+                                                   VkImageLayout old_layout,
+                                                   VkImageLayout new_layout)
 {
   VKTexture *color_texture = unwrap(unwrap(color_tex(color_attachment)));
   if (color_texture == nullptr) {
     return;
   }
-  if (requested_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
-    requested_layout = color_texture->best_layout_get();
+  if (old_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
+    old_layout = color_texture->best_layout_get();
   }
-  if (color_texture->current_layout_get() == requested_layout) {
-    return;
+  if (new_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
+    new_layout = color_texture->best_layout_get();
   }
-
-  color_texture->layout_ensure(context, requested_layout);
+  color_texture->layout_ensure(context, old_layout, new_layout);
 }
 
 void VKFrameBuffer::depth_attachment_layout_ensure(VKContext &context,
-                                                   VkImageLayout requested_layout)
+                                                   VkImageLayout old_layout,
+                                                   VkImageLayout new_layout)
 {
   VKTexture *depth_texture = unwrap(unwrap(depth_tex()));
   if (depth_texture == nullptr) {
     return;
   }
-  if (requested_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
-    requested_layout = depth_texture->best_layout_get();
+  if (old_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
+    old_layout = depth_texture->best_layout_get();
   }
-  if (depth_texture->current_layout_get() == requested_layout) {
-    return;
+  if (new_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
+    new_layout = depth_texture->best_layout_get();
   }
-  depth_texture->layout_ensure(context, requested_layout);
+  depth_texture->layout_ensure(context, old_layout, new_layout);
 }
 
 void VKFrameBuffer::update_size()

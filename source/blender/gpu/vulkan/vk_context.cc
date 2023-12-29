@@ -263,9 +263,21 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
   wrapper.init(swap_chain_data.image,
                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                to_gpu_format(swap_chain_data.format));
-  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  framebuffer.color_attachment_layout_ensure(*this, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  wrapper.layout_ensure(*this,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_ACCESS_TRANSFER_WRITE_BIT);
+
   VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
+  BLI_assert(color_attachment->best_layout_get() == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  color_attachment->layout_ensure(*this,
+                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                  VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                  VK_ACCESS_TRANSFER_READ_BIT);
 
   VkImageBlit image_blit = {};
   image_blit.srcOffsets[0] = {0, color_attachment->height_get() - 1, 0};
@@ -288,8 +300,19 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
                              *color_attachment,
                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                              Span<VkImageBlit>(&image_blit, 1));
-  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-  color_attachment->layout_ensure(*this, color_attachment->best_layout_get());
+  wrapper.layout_ensure(*this,
+                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                        VK_ACCESS_MEMORY_READ_BIT);
+
+  color_attachment->layout_ensure(*this,
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                  VK_ACCESS_TRANSFER_READ_BIT,
+                                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   command_buffers_get().submit();
 }
 

@@ -59,6 +59,8 @@ const char *to_string(VkObjectType type);
 const char *to_string(VkImageLayout layout);
 VkImageLayout vk_aspect_to_layout(VkImageAspectFlags aspect);
 VkFormat to_non_srgb_format(const VkFormat format);
+uint32_t to_vk_access_to_stage_flag(uint32_t accessMask);
+VkAccessFlagBits to_vk_layout_to_access_flag(VkImageLayout vk_image_layout);
 /* Types per VKTexture */
 enum class eRenderpassType { ShaderBinding, Attachment, Storage, Any };
 

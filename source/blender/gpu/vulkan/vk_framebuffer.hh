@@ -122,10 +122,14 @@ class VKFrameBuffer : public FrameBuffer {
   Array<VkViewport, 16> vk_viewports_get() const;
   Array<VkRect2D, 16> vk_render_areas_get() const;
 
-  void depth_attachment_layout_ensure(VKContext &context, VkImageLayout requested_layout);
+  void depth_attachment_layout_ensure(VKContext &context,
+                                      VkImageLayout old_layout,
+                                      VkImageLayout new_layout);
+
   void color_attachment_layout_ensure(VKContext &context,
                                       int color_attachment,
-                                      VkImageLayout requested_layout);
+                                      VkImageLayout old_layout,
+                                      VkImageLayout new_layout);
   /**
    * Ensure that the size of the frame-buffer matches the first attachment resolution.
    *

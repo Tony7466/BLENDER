@@ -131,15 +131,15 @@ void VKTexture::generate_mipmap()
   }
 
   current_layout_set(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  layout_ensure(context, best_layout_get());
-  current_layout_set(best_layout_get());
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, best_layout_get());
 }
 
 void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspect)
 {
   VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  dst_texture.layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  layout_ensure(context, best_layout_get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  dst_texture.layout_ensure(
+      context, dst_texture.best_layout_get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   VkImageCopy region = {};
   region.srcSubresource.aspectMask = vk_image_aspect;
@@ -152,8 +152,9 @@ void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspe
 
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(dst_texture, *this, Span<VkImageCopy>(&region, 1));
-  layout_ensure(context, best_layout_get());
-  dst_texture.layout_ensure(context, dst_texture.best_layout_get());
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, best_layout_get());
+  dst_texture.layout_ensure(
+      context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dst_texture.best_layout_get());
   context.flush();
 }
 
@@ -182,10 +183,10 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
   range.levelCount = VK_REMAINING_MIP_LEVELS;
   range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  layout_ensure(context, best_layout_get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   command_buffers.clear(
       vk_image_, current_layout_get(), clear_color, Span<VkImageSubresourceRange>(&range, 1));
-  layout_ensure(context, best_layout_get());
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, best_layout_get());
 }
 
 void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
@@ -204,12 +205,12 @@ void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
   range.levelCount = VK_REMAINING_MIP_LEVELS;
   range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  layout_ensure(context, best_layout_get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   command_buffers.clear(vk_image_,
                         current_layout_get(),
                         clear_depth_stencil,
                         Span<VkImageSubresourceRange>(&range, 1));
-  layout_ensure(context, best_layout_get());
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, best_layout_get());
 }
 
 void VKTexture::swizzle_set(const char swizzle_mask[4])
@@ -232,7 +233,7 @@ void VKTexture::read_sub(
     int mip, eGPUDataFormat format, const int region[4], const IndexRange layers, void *r_data)
 {
   VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  layout_ensure(context, best_layout_get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
   /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
   VKBuffer staging_buffer;
@@ -255,7 +256,7 @@ void VKTexture::read_sub(
 
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(staging_buffer, *this, Span<VkBufferImageCopy>(&buffer_image_copy, 1));
-  layout_ensure(context, best_layout_get());
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, best_layout_get());
   context.flush();
 
   convert_device_to_host(
@@ -313,10 +314,10 @@ void VKTexture::update_sub(
   region.imageSubresource.mipLevel = mip;
   region.imageSubresource.layerCount = layers;
 
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  layout_ensure(context, best_layout_get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(*this, staging_buffer, Span<VkBufferImageCopy>(&region, 1));
-  layout_ensure(context, best_layout_get());
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, best_layout_get());
   context.flush();
 }
 
@@ -380,10 +381,10 @@ bool VKTexture::init_internal(GPUVertBuf *vbo)
   region.imageSubresource.layerCount = 1;
 
   VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  layout_ensure(context, best_layout_get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.copy(*this, vertex_buffer->buffer_, Span<VkBufferImageCopy>(&region, 1));
-  layout_ensure(context, best_layout_get());
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, best_layout_get());
   context.flush();
 
   return true;
@@ -585,6 +586,27 @@ void VKTexture::current_layout_set(const VkImageLayout new_layout)
   BLI_assert(!is_texture_view());
   current_layout_ = new_layout;
 }
+
+void VKTexture::layout_ensure(VKContext &context,
+                              const VkImageLayout old_layout,
+                              const VkImageLayout new_layout)
+{
+  if (is_texture_view()) {
+    source_texture_->layout_ensure(context, old_layout, new_layout);
+    return;
+  }
+  const VkAccessFlags src_access = to_vk_layout_to_access_flag(old_layout);
+  const VkAccessFlags dst_access = to_vk_layout_to_access_flag(new_layout);
+  layout_ensure(context,
+                IndexRange(0, VK_REMAINING_MIP_LEVELS),
+                old_layout,
+                new_layout,
+                to_vk_access_to_stage_flag(src_access),
+                src_access,
+                to_vk_access_to_stage_flag(dst_access),
+                dst_access);
+  current_layout_set(new_layout);
+};
 
 void VKTexture::layout_ensure(VKContext &context,
                               const VkImageLayout requested_layout,
