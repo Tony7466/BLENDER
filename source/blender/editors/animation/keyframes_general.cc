@@ -951,6 +951,29 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
 
 /* ---------------- */
 
+void scale_from_fcurve_segment_neighbor(FCurve *fcu,
+                                        FCurveSegment *segment,
+                                        const float factor,
+                                        const FCurveSegmentAnchor anchor)
+{
+  const BezTriple *reference_key;
+  switch (anchor) {
+    case FCurveSegmentAnchor::LEFT:
+      reference_key = fcurve_segment_start_get(fcu, segment->start_index);
+      break;
+    case FCurveSegmentAnchor::RIGHT:
+      reference_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+      break;
+  }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const float key_y_value = interpf(fcu->bezt[i].vec[1][1], reference_key->vec[1][1], factor);
+    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_bezt = fcurve_segment_start_get(fcu, segment->start_index);
@@ -1245,7 +1268,7 @@ static void remove_fcurve_key_range(FCurve *fcu,
 
       int after_index = BKE_fcurve_bezt_binarysearch_index(
           fcu->bezt, range[1], fcu->totvert, &replace);
-      /* REMOVE_OUT_RANGE is treated as exlusive on both ends. */
+      /* #REMOVE_OUT_RANGE is treated as exclusive on both ends. */
       if (replace) {
         after_index++;
       }

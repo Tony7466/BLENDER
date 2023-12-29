@@ -54,7 +54,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = ATTR_DOMAIN_FACE;
+  node->custom1 = int16_t(AttrDomain::Face);
   node->custom2 = GEO_NODE_SCALE_ELEMENTS_UNIFORM;
 }
 
@@ -363,7 +363,7 @@ static void gather_face_islands(const Mesh &mesh,
 {
   IndexMaskMemory memory;
   const IndexMask vert_mask = geometry::vert_selection_from_face(
-      mesh.face_offsets(), face_mask, mesh.corner_verts(), mesh.totvert, memory);
+      mesh.face_offsets(), face_mask, mesh.corner_verts(), mesh.verts_num, memory);
 
   Array<int> face_island_indices(face_mask.size());
   Array<int> vert_island_indices(vert_mask.size());
@@ -378,7 +378,7 @@ static void gather_face_islands(const Mesh &mesh,
   if (face_mask.size() != mesh.faces_num) {
     parallel_transform<int>(r_item_indices, 4096, [&](const int pos) { return face_mask[pos]; });
   }
-  if (vert_mask.size() != mesh.totvert) {
+  if (vert_mask.size() != mesh.verts_num) {
     parallel_transform<int>(r_vert_indices, 4096, [&](const int pos) { return vert_mask[pos]; });
   }
 }
@@ -424,7 +424,7 @@ static void gather_edge_islands(const Mesh &mesh,
 {
   IndexMaskMemory memory;
   const IndexMask vert_mask = geometry::vert_selection_from_edge(
-      mesh.edges(), edge_mask, mesh.totvert, memory);
+      mesh.edges(), edge_mask, mesh.verts_num, memory);
 
   Array<int> edge_island_indices(edge_mask.size());
   Array<int> vert_island_indices(vert_mask.size());
@@ -436,10 +436,10 @@ static void gather_edge_islands(const Mesh &mesh,
   gather_groups(edge_island_indices, total_islands, r_item_offsets, r_item_indices);
 
   /* If result indices is for gathered array, map than back into global indices. */
-  if (edge_mask.size() != mesh.totedge) {
+  if (edge_mask.size() != mesh.edges_num) {
     parallel_transform<int>(r_item_indices, 4096, [&](const int pos) { return edge_mask[pos]; });
   }
-  if (vert_mask.size() != mesh.totvert) {
+  if (vert_mask.size() != mesh.verts_num) {
     parallel_transform<int>(r_vert_indices, 4096, [&](const int pos) { return vert_mask[pos]; });
   }
 }
@@ -447,7 +447,7 @@ static void gather_edge_islands(const Mesh &mesh,
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
-  const eAttrDomain domain = eAttrDomain(node.custom1);
+  const AttrDomain domain = AttrDomain(node.custom1);
   const GeometryNodeScaleElementsMode scale_mode = GeometryNodeScaleElementsMode(node.custom2);
 
   GeometrySet geometry = params.extract_input<GeometrySet>("Geometry");
@@ -479,10 +479,10 @@ static void node_geo_exec(GeoNodeExecParams params)
       Array<int> vert_indices;
 
       switch (domain) {
-        case ATTR_DOMAIN_FACE:
+        case AttrDomain::Face:
           gather_face_islands(*mesh, mask, item_offsets, item_indices, vert_offsets, vert_indices);
           break;
-        case ATTR_DOMAIN_EDGE:
+        case AttrDomain::Edge:
           gather_edge_islands(*mesh, mask, item_offsets, item_indices, vert_offsets, vert_indices);
           break;
         default:
@@ -516,12 +516,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem domain_items[] = {
-      {ATTR_DOMAIN_FACE,
+      {int(AttrDomain::Face),
        "FACE",
        ICON_NONE,
        "Face",
        "Scale individual faces or neighboring face islands"},
-      {ATTR_DOMAIN_EDGE,
+      {int(AttrDomain::Edge),
        "EDGE",
        ICON_NONE,
        "Edge",
@@ -549,7 +549,7 @@ static void node_rna(StructRNA *srna)
                     "Element type to transform",
                     domain_items,
                     NOD_inline_enum_accessors(custom1),
-                    ATTR_DOMAIN_FACE);
+                    int(AttrDomain::Face));
 
   RNA_def_node_enum(
       srna, "scale_mode", "Scale Mode", "", scale_mode_items, NOD_inline_enum_accessors(custom2));

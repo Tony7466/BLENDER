@@ -5,6 +5,7 @@
 /* Paint a color made from hash of node pointer. */
 //#define DEBUG_PIXEL_NODES
 
+#include "DNA_brush_types.h"
 #include "DNA_image_types.h"
 #include "DNA_object_types.h"
 
@@ -591,6 +592,7 @@ void SCULPT_do_paint_brush_image(PaintModeSettings *paint_mode_settings,
   fix_non_manifold_seam_bleeding(*ob, data);
 
   for (PBVHNode *node : texnodes) {
-    bke::pbvh::pixels::mark_image_dirty(*node, *data.image_data.image, *data.image_data.image_user);
+    bke::pbvh::pixels::mark_image_dirty(
+        *node, *data.image_data.image, *data.image_data.image_user);
   }
 }
