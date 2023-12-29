@@ -355,17 +355,6 @@ static void blit_aspect(VKCommandBuffers &command_buffer,
                         int dst_offset_y,
                         VkImageAspectFlags image_aspect)
 {
-  /* Prefer texture copy, as some platforms don't support using D32_SFLOAT_S8_UINT to be used as
-   * a blit destination. */
-  if (dst_offset_x == 0 && dst_offset_y == 0 &&
-      dst_texture.device_format_get() == src_texture.device_format_get() &&
-      src_texture.width_get() == dst_texture.width_get() &&
-      src_texture.height_get() == dst_texture.height_get())
-  {
-    src_texture.copy_to(dst_texture, image_aspect);
-    return;
-  }
-
   VkImageBlit image_blit = {};
   image_blit.srcSubresource.aspectMask = image_aspect;
   image_blit.srcSubresource.mipLevel = 0;
@@ -421,21 +410,30 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     if (src_attachment.tex && dst_attachment.tex) {
       VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
       VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
-      color_attachment_layout_ensure(
-          context, src_slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-      dst_framebuffer.color_attachment_layout_ensure(
-          context, dst_slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      blit_aspect(command_buffers,
-                  dst_texture,
-                  src_texture,
-                  dst_offset_x,
-                  dst_offset_y,
-                  VK_IMAGE_ASPECT_COLOR_BIT);
-      color_attachment_layout_ensure(
-          context, src_slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
-      dst_framebuffer.color_attachment_layout_ensure(
-          context, dst_slot, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+      if (dst_offset_x == 0 && dst_offset_y == 0 &&
+          dst_texture.device_format_get() == src_texture.device_format_get() &&
+          src_texture.width_get() == dst_texture.width_get() &&
+          src_texture.height_get() == dst_texture.height_get())
+      {
+        src_texture.copy_to(dst_texture, VK_IMAGE_ASPECT_COLOR_BIT);
+      }
+      else {
+        color_attachment_layout_ensure(
+            context, src_slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        dst_framebuffer.color_attachment_layout_ensure(
+            context, dst_slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        blit_aspect(command_buffers,
+                    dst_texture,
+                    src_texture,
+                    dst_offset_x,
+                    dst_offset_y,
+                    VK_IMAGE_ASPECT_COLOR_BIT);
+        color_attachment_layout_ensure(
+            context, src_slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+        dst_framebuffer.color_attachment_layout_ensure(
+            context, dst_slot, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+      }
     }
   }
 
@@ -451,21 +449,31 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     if (src_attachment.tex && dst_attachment.tex) {
       VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
       VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
-      depth_attachment_layout_ensure(
-          context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-      dst_framebuffer.depth_attachment_layout_ensure(
-          context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-      blit_aspect(command_buffers,
-                  dst_texture,
-                  src_texture,
-                  dst_offset_x,
-                  dst_offset_y,
-                  VK_IMAGE_ASPECT_DEPTH_BIT);
-      depth_attachment_layout_ensure(
-          context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
-      dst_framebuffer.depth_attachment_layout_ensure(
-          context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+      /* Prefer texture copy, as some platforms don't support using D32_SFLOAT_S8_UINT to be used
+       * as a blit destination. */
+      if (dst_offset_x == 0 && dst_offset_y == 0 &&
+          dst_texture.device_format_get() == src_texture.device_format_get() &&
+          src_texture.width_get() == dst_texture.width_get() &&
+          src_texture.height_get() == dst_texture.height_get())
+      {
+        src_texture.copy_to(dst_texture, VK_IMAGE_ASPECT_DEPTH_BIT);
+      }
+      else {
+        depth_attachment_layout_ensure(
+            context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        dst_framebuffer.depth_attachment_layout_ensure(
+            context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        blit_aspect(command_buffers,
+                    dst_texture,
+                    src_texture,
+                    dst_offset_x,
+                    dst_offset_y,
+                    VK_IMAGE_ASPECT_DEPTH_BIT);
+        depth_attachment_layout_ensure(
+            context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+        dst_framebuffer.depth_attachment_layout_ensure(
+            context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
+      }
     }
   }
 }
