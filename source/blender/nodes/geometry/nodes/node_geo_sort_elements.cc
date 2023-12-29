@@ -43,24 +43,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = int(bke::AttrDomain::Point);
 }
 
-static bool indices_are_range(const Span<int> indices, const IndexRange range)
-{
-  if (indices.size() != range.size()) {
-    return false;
-  }
-  return threading::parallel_reduce(
-      range.index_range(),
-      4096,
-      true,
-      [&](const IndexRange part, const bool is_range) {
-        const Span<int> local_indices = indices.slice(part);
-        const IndexRange local_range = range.slice(part);
-        return is_range &&
-               std::equal(local_indices.begin(), local_indices.end(), local_range.begin());
-      },
-      std::logical_and());
-}
-
 static void grouped_sort(const OffsetIndices<int> offsets,
                          const Span<float> weights,
                          MutableSpan<int> indices)
@@ -185,7 +167,7 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
     parallel_transform<int>(gathered_indices, 2048, [&](const int pos) { return mask[pos]; });
   }
 
-  if (indices_are_range(gathered_indices, IndexRange(domain_size))) {
+  if (array_utils::indices_are_range(gathered_indices, IndexRange(domain_size))) {
     return std::nullopt;
   }
 
@@ -202,7 +184,7 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
   unselected.foreach_index_optimized<int>(GrainSize(2048),
                                           [&](const int index) { indices[index] = index; });
 
-  if (indices_are_range(indices, indices.index_range())) {
+  if (array_utils::indices_are_range(indices, indices.index_range())) {
     return std::nullopt;
   }
 

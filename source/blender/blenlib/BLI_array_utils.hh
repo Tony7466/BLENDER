@@ -293,4 +293,6 @@ bool indexed_data_equal(const Span<T> all_values, const Span<int> indices, const
   return false;
 }
 
+bool indices_are_range(Span<int> indices, IndexRange range);
+
 }  // namespace blender::array_utils
