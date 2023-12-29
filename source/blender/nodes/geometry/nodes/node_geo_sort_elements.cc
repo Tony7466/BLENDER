@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 
@@ -39,7 +40,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = ATTR_DOMAIN_POINT;
+  node->custom1 = int(bke::AttrDomain::Point);
 }
 
 static bool indices_are_range(const Span<int> indices, const IndexRange range)
@@ -138,7 +139,7 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
                                                 const Field<bool> selection_field,
                                                 const Field<int> group_id_field,
                                                 const Field<float> weight_field,
-                                                const eAttrDomain domain)
+                                                const bke::AttrDomain domain)
 {
   const int domain_size = component.attribute_domain_size(domain);
   if (domain_size == 0) {
@@ -217,7 +218,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   const Field<int> group_id_field = params.extract_input<Field<int>>("Group ID");
   const Field<float> weight_field = params.extract_input<Field<float>>("Sort Weight");
-  const eAttrDomain domain = eAttrDomain(params.node().custom1);
+  const bke::AttrDomain domain = bke::AttrDomain(params.node().custom1);
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     for (const auto [type, domains] : geometry::components_supported_reordering().items()) {
@@ -260,12 +261,12 @@ static Array<EnumPropertyItem> items_value_in(const Span<T> values,
 
 static void node_rna(StructRNA *srna)
 {
-  static const Array<EnumPropertyItem> supported_items = items_value_in<eAttrDomain>(
-      {ATTR_DOMAIN_POINT,
-       ATTR_DOMAIN_EDGE,
-       ATTR_DOMAIN_FACE,
-       ATTR_DOMAIN_CURVE,
-       ATTR_DOMAIN_INSTANCE},
+  static const Array<EnumPropertyItem> supported_items = items_value_in<bke::AttrDomain>(
+      {bke::AttrDomain::Point,
+       bke::AttrDomain::Edge,
+       bke::AttrDomain::Face,
+       bke::AttrDomain::Curve,
+       bke::AttrDomain::Instance},
       rna_enum_attribute_domain_items);
 
   RNA_def_node_enum(srna,
@@ -274,7 +275,7 @@ static void node_rna(StructRNA *srna)
                     "",
                     supported_items.data(),
                     NOD_inline_enum_accessors(custom1),
-                    ATTR_DOMAIN_POINT);
+                    int(bke::AttrDomain::Point));
 }
 
 static void node_register()

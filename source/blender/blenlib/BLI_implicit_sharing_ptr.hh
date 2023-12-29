@@ -93,7 +93,7 @@ template<typename T> class ImplicitSharingPtr {
 
   const T *release()
   {
-    T *data = const_cast<T *>(data_);
+    const T *data = data_;
     data_ = nullptr;
     return data;
   }

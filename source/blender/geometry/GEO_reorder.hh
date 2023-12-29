@@ -7,6 +7,7 @@
 #include "BLI_multi_value_map.hh"
 #include "BLI_span.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_geometry_set.hh"
 
 #include "DNA_mesh_types.h"
@@ -14,10 +15,11 @@
 
 namespace blender::geometry {
 
-const MultiValueMap<bke::GeometryComponent::Type, eAttrDomain> &components_supported_reordering();
+const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain>
+    &components_supported_reordering();
 
 bke::GeometryComponent &reordered_component_copy(const bke::GeometryComponent &src_component,
                                                  const Span<int> old_by_new_map,
-                                                 const eAttrDomain domain);
+                                                 const bke::AttrDomain domain);
 
 };  // namespace blender::geometry
