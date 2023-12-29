@@ -67,7 +67,7 @@ void main()
 #ifndef GPU_METAL
     bool use_combined_lightprobe_eval = uniform_buf.pipeline.use_combined_lightprobe_eval;
 #endif
-    if (use_combined_lightprobe_eval) {
+    if (!use_combined_lightprobe_eval) {
       closure_light += load_radiance_indirect(texel, gbuf.closures[i].type);
     }
 
