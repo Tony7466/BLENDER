@@ -221,6 +221,13 @@ void VKRenderPass::create()
   }
   free();
   VK_ALLOCATION_CALLBACKS
+  is_clear_pass_ = false;
+  for (int i = 0; i < vk_create_info_[info_id_].attachmentCount; i++) {
+    if (!ELEM(vk_create_info_[info_id_].pAttachments[i].loadOp, VK_ATTACHMENT_LOAD_OP_LOAD)) {
+      is_clear_pass_ = true;
+      break;
+    }
+  }
   const VKDevice &device = VKBackend::get().device_get();
   vkCreateRenderPass2(
       device.device_get(), &vk_create_info_[info_id_], vk_allocation_callbacks, &vk_render_pass_);

@@ -61,6 +61,7 @@ class VKFrameBuffer : public FrameBuffer {
   bool enabled_srgb_;
   bool dirty_subpass_ = false;
   int subpass_current_ = 0;
+  Vector<VkClearValue> clear_values;
 
  public:
   /**
@@ -103,7 +104,7 @@ class VKFrameBuffer : public FrameBuffer {
   void attachment_set(GPUAttachmentType type,
                       const GPUAttachment &new_attachment,
                       bool config = true) override;
-
+  void renderpass_clear_values_set(VkRenderPassBeginInfo &info);
   void cache_init();
   bool is_imageless() const
   {
@@ -162,6 +163,7 @@ class VKFrameBuffer : public FrameBuffer {
   }
   const int is_subpass_continue() const;
   void next_subpass(VKCommandBuffers &command_buffers);
+  void clear_pass_pipeline_barrier_recoding();
 
  private:
   void update_attachments();

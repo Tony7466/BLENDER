@@ -56,6 +56,7 @@ const VkSubpassDescription2 descriptions_default = {
 class VKRenderPass {
  private:
   bool imageless_ = false;
+  bool is_clear_pass_ = false;
   bool dirty_ = false;
   VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
   eRenderpassType render_pass_enum_ = eRenderpassType::Any;

@@ -218,16 +218,14 @@ void VKCommandBuffers::ensure_active_framebuffer()
     render_pass_begin_info.renderPass = framebuffer_->vk_render_pass_get();
     render_pass_begin_info.framebuffer = framebuffer_->vk_framebuffer_get();
     render_pass_begin_info.renderArea = framebuffer_->vk_render_areas_get()[0];
-    /* We don't use clear ops, but vulkan wants to have at least one. */
-    VkClearValue clear_value = {};
-    render_pass_begin_info.clearValueCount = 1;
-    render_pass_begin_info.pClearValues = &clear_value;
+    framebuffer_->renderpass_clear_values_set(render_pass_begin_info);
     render_pass_begin_info.pNext = VK_NULL_HANDLE;
     if (framebuffer_->is_imageless()) {
       static VkRenderPassAttachmentBeginInfo attachment_begin_info = {
           VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO, VK_NULL_HANDLE, 0};
       render_pass_begin_info.pNext = &attachment_begin_info;
     }
+    framebuffer_->clear_pass_pipeline_barrier_recoding();
     VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
     vkCmdBeginRenderPass(
         command_buffer.vk_command_buffer(), &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);

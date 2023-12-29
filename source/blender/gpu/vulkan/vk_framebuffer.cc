@@ -235,10 +235,94 @@ void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
 /** \name Load/Store operations
  * \{ */
 
-void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPULoadStore /*ls*/)
+static void loadstore_set(GPULoadStore ls, VkAttachmentDescription2 &desc)
 {
-  NOT_YET_IMPLEMENTED;
+  switch (ls.load_action) {
+    case GPU_LOADACTION_LOAD:
+      desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      break;
+    case GPU_LOADACTION_CLEAR:
+      desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      break;
+    case GPU_LOADACTION_DONT_CARE:
+      desc.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      break;
+    default:
+      break;
+  }
+  switch (ls.store_action) {
+    case GPU_STOREACTION_STORE:
+      desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      break;
+    case GPU_STOREACTION_DONT_CARE:
+      desc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      break;
+    default:
+      break;
+  }
+};
+static void loadstore_stencil_set(GPULoadStore ls, VkAttachmentDescription2 &desc)
+{
+  switch (ls.load_action) {
+    case GPU_LOADACTION_LOAD:
+      desc.loadOp = desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      break;
+    case GPU_LOADACTION_CLEAR:
+      desc.loadOp = desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      desc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      break;
+    case GPU_LOADACTION_DONT_CARE:
+      desc.loadOp = desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      desc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      break;
+    default:
+      break;
+  }
+  switch (ls.store_action) {
+    case GPU_STOREACTION_STORE:
+      desc.storeOp = desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+      break;
+    case GPU_STOREACTION_DONT_CARE:
+      // desc.storeOp = desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      break;
+    default:
+      break;
+  }
+};
+void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls)
+{
+  GPUAttachment attachment = attachments_[type];
+  if (attachment.tex != nullptr) {
+    int view_order = renderpass_->attachments_.idx_[renderpass_->info_id_][type];
+    VkAttachmentDescription2 *desc = const_cast<VkAttachmentDescription2 *>(
+        &renderpass_->vk_create_info_[renderpass_->info_id_].pAttachments[view_order]);
+    if (type >= GPU_FB_COLOR_ATTACHMENT0) {
+      loadstore_set(ls, *desc);
+
+      memcpy(clear_values[view_order].color.float32, ls.clear_value, sizeof(float) * 4);
+      dirty_subpass_ = true;
+    }
+    else {
+      loadstore_stencil_set(ls, *desc);
+      if (ls.load_action == GPU_LOADACTION_CLEAR) {
+        clear_values[view_order].depthStencil.depth = ls.clear_value[0];
+        clear_values[view_order].depthStencil.stencil = (uint32_t)ls.clear_value[1];
+      }
+      else {
+        clear_values[view_order].depthStencil.depth = 0.;
+        clear_values[view_order].depthStencil.stencil = 0;
+      }
+    }
+  }
 }
+
+void VKFrameBuffer::renderpass_clear_values_set(VkRenderPassBeginInfo &info)
+{
+  info.clearValueCount = renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
+  info.pClearValues = clear_values.data();
+};
 
 /** \} */
 void VKFrameBuffer::config(const GPUAttachment *config, int config_len)
@@ -267,6 +351,7 @@ void VKFrameBuffer::config(const GPUAttachment *config, int config_len)
                                  GPU_FB_DEPTH_ATTACHMENT;
     attachment_set(type, depth_attachment);
   }
+  clear_values.resize(renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount);
 }
 /* -------------------------------------------------------------------- */
 /** \name Sub-pass transition
@@ -1009,6 +1094,30 @@ void VKFrameBuffer::next_subpass(VKCommandBuffers &command_buffers)
 {
   command_buffers.next_subpass();
   subpass_current_++;
+};
+
+void VKFrameBuffer::clear_pass_pipeline_barrier_recoding()
+{
+
+  if (!renderpass_->is_clear_pass_) {
+    return;
+  }
+  VKContext &context = *VKContext::get();
+  for (int i = 0; i < renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount; i++) {
+    if (!ELEM(renderpass_->vk_create_info_[renderpass_->info_id_].pAttachments[i].loadOp,
+              VK_ATTACHMENT_LOAD_OP_LOAD))
+    {
+      int type = renderpass_->attachments_.type_get(i, renderpass_->info_id_);
+      const GPUAttachment &attachment = attachments_[type];
+      VKTexture *texture = reinterpret_cast<VKTexture *>(attachment.tex);
+      texture->layout_ensure(context,
+                             VK_IMAGE_LAYOUT_MAX_ENUM,
+                             (type <= GPU_FB_COLOR_ATTACHMENT0) ?
+                                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                             {0, VK_REMAINING_ARRAY_LAYERS});
+    }
+  }
 };
 /** \} */
 
