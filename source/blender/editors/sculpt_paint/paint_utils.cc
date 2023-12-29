@@ -11,7 +11,6 @@
 
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "DNA_brush_types.h"
@@ -25,7 +24,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_image.h"
@@ -274,8 +273,8 @@ static void imapaint_pick_uv(const Mesh *me_eval,
   int view[4];
   const ePaintCanvasSource mode = ePaintCanvasSource(scene->toolsettings->imapaint.mode);
 
-  const blender::Span<MLoopTri> tris = me_eval->looptris();
-  const blender::Span<int> looptri_faces = me_eval->looptri_faces();
+  const blender::Span<blender::int3> tris = me_eval->corner_tris();
+  const blender::Span<int> tri_faces = me_eval->corner_tri_faces();
 
   const blender::Span<blender::float3> positions = me_eval->vert_positions();
   const blender::Span<int> corner_verts = me_eval->corner_verts();
@@ -299,7 +298,7 @@ static void imapaint_pick_uv(const Mesh *me_eval,
   /* test all faces in the derivedmesh with the original index of the picked face */
   /* face means poly here, not triangle, indeed */
   for (const int i : tris.index_range()) {
-    const int face_i = looptri_faces[i];
+    const int face_i = tri_faces[i];
     const int findex = index_mp_to_orig ? index_mp_to_orig[face_i] : face_i;
 
     if (findex == faceindex) {
@@ -308,7 +307,7 @@ static void imapaint_pick_uv(const Mesh *me_eval,
       float tri_co[3][3];
 
       for (int j = 3; j--;) {
-        copy_v3_v3(tri_co[j], positions[corner_verts[tris[i].tri[j]]]);
+        copy_v3_v3(tri_co[j], positions[corner_verts[tris[i][j]]]);
       }
 
       if (mode == PAINT_CANVAS_SOURCE_MATERIAL) {
@@ -321,20 +320,20 @@ static void imapaint_pick_uv(const Mesh *me_eval,
 
         if (!(slot && slot->uvname &&
               (mloopuv = static_cast<const float(*)[2]>(CustomData_get_layer_named(
-                   &me_eval->loop_data, CD_PROP_FLOAT2, slot->uvname)))))
+                   &me_eval->corner_data, CD_PROP_FLOAT2, slot->uvname)))))
         {
           mloopuv = static_cast<const float(*)[2]>(
-              CustomData_get_layer(&me_eval->loop_data, CD_PROP_FLOAT2));
+              CustomData_get_layer(&me_eval->corner_data, CD_PROP_FLOAT2));
         }
       }
       else {
         mloopuv = static_cast<const float(*)[2]>(
-            CustomData_get_layer(&me_eval->loop_data, CD_PROP_FLOAT2));
+            CustomData_get_layer(&me_eval->corner_data, CD_PROP_FLOAT2));
       }
 
-      tri_uv[0] = mloopuv[tris[i].tri[0]];
-      tri_uv[1] = mloopuv[tris[i].tri[1]];
-      tri_uv[2] = mloopuv[tris[i].tri[2]];
+      tri_uv[0] = mloopuv[tris[i][0]];
+      tri_uv[1] = mloopuv[tris[i][1]];
+      tri_uv[2] = mloopuv[tris[i][2]];
 
       p[0] = xy[0];
       p[1] = xy[1];
@@ -408,16 +407,16 @@ void paint_sample_color(
     if (ob) {
       CustomData_MeshMasks cddata_masks = CD_MASK_BAREMESH;
       cddata_masks.pmask |= CD_MASK_ORIGINDEX;
-      Mesh *me = (Mesh *)ob->data;
+      Mesh *mesh = (Mesh *)ob->data;
       const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
       const int *material_indices = (const int *)CustomData_get_layer_named(
           &me_eval->face_data, CD_PROP_INT32, "material_index");
 
       const int mval[2] = {x, y};
       uint faceindex;
-      uint faces_num = me->faces_num;
+      uint faces_num = mesh->faces_num;
 
-      if (CustomData_has_layer(&me_eval->loop_data, CD_PROP_FLOAT2)) {
+      if (CustomData_has_layer(&me_eval->corner_data, CD_PROP_FLOAT2)) {
         ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
         view3d_operator_needs_opengl(C);
@@ -818,9 +817,9 @@ void PAINT_OT_vert_select_all(wmOperatorType *ot)
 static int vert_select_ungrouped_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-  if (BLI_listbase_is_empty(&me->vertex_group_names) || (BKE_mesh_deform_verts(me) == nullptr)) {
+  if (BLI_listbase_is_empty(&mesh->vertex_group_names) || mesh->deform_verts().is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No weights/vertex groups on object");
     return OPERATOR_CANCELLED;
   }

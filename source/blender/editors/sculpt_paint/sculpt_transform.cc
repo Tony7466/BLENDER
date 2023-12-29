@@ -14,8 +14,6 @@
 #include "BLI_span.hh"
 #include "BLI_task.h"
 
-#include "DNA_meshdata_types.h"
-
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
@@ -69,7 +67,7 @@ void ED_sculpt_init_transform(bContext *C,
 
   SCULPT_vertex_random_access_ensure(ss);
 
-  SCULPT_filter_cache_init(C, ob, sd, SculptUndoType::Position, mval_fl, 5.0, 1.0f);
+  filter::cache_init(C, ob, sd, undo::Type::Position, mval_fl, 5.0, 1.0f);
 
   if (sd->transform_mode == SCULPT_TRANSFORM_MODE_RADIUS_ELASTIC) {
     ss->filter_cache->transform_displacement_mode = SCULPT_TRANSFORM_DISPLACEMENT_INCREMENTAL;
@@ -149,11 +147,11 @@ static void sculpt_transform_task(Object *ob, const float transform_mats[8][4][4
   SculptSession *ss = ob->sculpt;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SculptUndoType::Position);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   PBVHVertexIter vd;
 
-  undo::push_node(ob, node, SculptUndoType::Position);
+  undo::push_node(ob, node, undo::Type::Position);
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
     float *start_co;
@@ -217,7 +215,7 @@ static void sculpt_elastic_transform_task(Object *ob,
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, SculptUndoType::Position);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   KelvinletParams params;
   /* TODO(pablodp606): These parameters can be exposed if needed as transform strength and volume
@@ -228,7 +226,7 @@ static void sculpt_elastic_transform_task(Object *ob,
   const float poisson_ratio = 0.4f;
   BKE_kelvinlet_init_params(&params, transform_radius, force, shear_modulus, poisson_ratio);
 
-  undo::push_node(ob, node, SculptUndoType::Position);
+  undo::push_node(ob, node, undo::Type::Position);
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
@@ -268,9 +266,6 @@ static void sculpt_transform_radius_elastic(Sculpt *sd, Object *ob, const float 
   float transform_mats[8][4][4];
   sculpt_transform_matrices_init(
       ss, symm, ss->filter_cache->transform_displacement_mode, transform_mats);
-
-  TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
 
   /* Elastic transform needs to apply all transform matrices to all vertices and then combine the
    * displacement proxies as all vertices are modified by all symmetry passes. */
@@ -346,9 +341,10 @@ void ED_sculpt_update_modal_transform(bContext *C, Object *ob)
 
 void ED_sculpt_end_transform(bContext *C, Object *ob)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   if (ss->filter_cache) {
-    SCULPT_filter_cache_free(ss);
+    filter::cache_free(ss);
   }
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
 }
