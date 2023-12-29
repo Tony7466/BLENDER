@@ -4649,7 +4649,7 @@ static int rna_raw_access(ReportList *reports,
       if (out.type == in.type) {
         void *inp = in.array;
         void *outp = out.array;
-        int size;
+        size_t size;
 
         size = RNA_raw_type_sizeof(out.type) * arraylen;
 
