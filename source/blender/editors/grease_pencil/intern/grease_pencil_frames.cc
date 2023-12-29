@@ -37,7 +37,6 @@
 
 #include "WM_api.hh"
 #include <algorithm>
-#include <cstdint>
 #include <optional>
 
 namespace blender::ed::greasepencil {
