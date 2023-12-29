@@ -1698,33 +1698,27 @@ static Object *duplicate_grease_pencil_object(Main *bmain,
   return object_dst;
 }
 
-static bke::greasepencil::Layer &create_layer_if_not_exist(
-    const bke::greasepencil::Layer *layer_src,
-    GreasePencil &grease_pencil_src,
-    GreasePencil &grease_pencil_dst)
+static bke::greasepencil::Layer &create_layer(const bke::greasepencil::Layer *layer_src,
+                                              GreasePencil &grease_pencil_src,
+                                              GreasePencil &grease_pencil_dst)
 {
   using namespace bke::greasepencil;
 
-  if (!grease_pencil_dst.layers().contains(layer_src)) {
+  /* Transfer Layer attributes. */
+  const bke::AnonymousAttributePropagationInfo propagation_info{};
+  Vector<int> src_to_dst_layer;
+  src_to_dst_layer.append(grease_pencil_src.layers().first_index(layer_src));
+  const bke::AttributeAccessor src_attributes = grease_pencil_src.attributes();
+  bke::MutableAttributeAccessor dst_attributes = grease_pencil_dst.attributes_for_write();
 
-    /* Transfer Layer attributes. */
-    const bke::AnonymousAttributePropagationInfo propagation_info{};
-    Vector<int> src_to_dst_layer;
-    src_to_dst_layer.append(grease_pencil_src.layers().first_index(layer_src));
-    const bke::AttributeAccessor src_attributes = grease_pencil_src.attributes();
-    bke::MutableAttributeAccessor dst_attributes = grease_pencil_dst.attributes_for_write();
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Layer,
+                         propagation_info,
+                         {".layers"},
+                         src_to_dst_layer,
+                         dst_attributes);
 
-    bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Layer,
-                           propagation_info,
-                           {".layers"},
-                           src_to_dst_layer,
-                           dst_attributes);
-
-    return grease_pencil_dst.add_layer(layer_src->name());
-  }
-  Layer layer_dst = *layer_src;
-  return layer_dst;
+  return grease_pencil_dst.add_layer(layer_src->name());
 }
 
 static bool grease_pencil_separate_selected(bContext *C,
@@ -1742,8 +1736,6 @@ static bool grease_pencil_separate_selected(bContext *C,
       bmain, scene, view_layer, base_prev, grease_pencil_src);
   GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
 
-  /* TO_DO: Copy grease pencil data Attributes. */
-
   /* Iterate through all the drawings at current scene frame. */
   const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings(*scene,
                                                                             grease_pencil_src);
@@ -1758,7 +1750,7 @@ static bool grease_pencil_separate_selected(bContext *C,
     }
 
     /* Insert Keyframe at current frame/layer */
-    Layer &layer_dst = create_layer_if_not_exist(
+    Layer &layer_dst = create_layer(
         grease_pencil_src.layers()[info.layer_index], grease_pencil_src, grease_pencil_dst);
     grease_pencil_dst.insert_blank_frame(layer_dst, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
 
@@ -1822,7 +1814,7 @@ static bool grease_pencil_separate_layer(bContext *C,
         bmain, scene, view_layer, base_prev, grease_pencil_src);
     GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
     /* Create Layer. */
-    Layer &layer_dst = create_layer_if_not_exist(layer_src, grease_pencil_src, grease_pencil_dst);
+    Layer &layer_dst = create_layer(layer_src, grease_pencil_src, grease_pencil_dst);
 
     /* Iterate through all the drawings at current frame. */
     const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
@@ -1928,7 +1920,7 @@ static bool grease_pencil_separate_material(bContext *C,
         GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
 
         /* Insert Keyframe at current frame/layer */
-        Layer &layer_dst = create_layer_if_not_exist(
+        Layer &layer_dst = create_layer(
             grease_pencil_src.layers()[info.layer_index], grease_pencil_src, grease_pencil_dst);
         grease_pencil_dst.insert_blank_frame(
             layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
