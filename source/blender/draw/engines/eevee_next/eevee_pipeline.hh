@@ -297,6 +297,8 @@ class DeferredPipeline {
 
   PassSimple debug_draw_ps_ = {"debug_gbuffer"};
 
+  bool use_combined_lightprobe_eval;
+
  public:
   DeferredPipeline(Instance &inst)
       : opaque_layer_(inst), refraction_layer_(inst), volumetric_layer_(inst){};

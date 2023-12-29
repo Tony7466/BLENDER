@@ -503,9 +503,7 @@ void DeferredLayer::end_sync()
   eClosureBits evaluated_closures = CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT | CLOSURE_REFLECTION |
                                     CLOSURE_REFRACTION;
 
-  const bool use_raytracing = (inst_.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED);
-  inst_.pipelines.data.use_combined_lightprobe_eval = !use_raytracing;
-  use_combined_lightprobe_eval = !use_raytracing;
+  use_combined_lightprobe_eval = inst_.pipelines.data.use_combined_lightprobe_eval;
 
   if (closure_bits_ & evaluated_closures) {
     RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
@@ -839,6 +837,12 @@ void DeferredLayer::render(View &main_view,
 
 void DeferredPipeline::begin_sync()
 {
+  Instance &inst = opaque_layer_.inst_;
+
+  const bool use_raytracing = (inst.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED);
+  inst.pipelines.data.use_combined_lightprobe_eval = !use_raytracing;
+  use_combined_lightprobe_eval = !use_raytracing;
+
   opaque_layer_.begin_sync();
   refraction_layer_.begin_sync();
 }
@@ -900,7 +904,7 @@ PassMain::Sub *DeferredPipeline::prepass_add(::Material *blender_mat,
                                              GPUMaterial *gpumat,
                                              bool has_motion)
 {
-  if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
+  if (!use_combined_lightprobe_eval && (blender_mat->blend_flag & MA_BL_SS_REFRACTION)) {
     return refraction_layer_.prepass_add(blender_mat, gpumat, has_motion);
   }
   else {
@@ -910,7 +914,7 @@ PassMain::Sub *DeferredPipeline::prepass_add(::Material *blender_mat,
 
 PassMain::Sub *DeferredPipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
-  if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
+  if (!use_combined_lightprobe_eval && (blender_mat->blend_flag & MA_BL_SS_REFRACTION)) {
     return refraction_layer_.material_add(blender_mat, gpumat);
   }
   else {
