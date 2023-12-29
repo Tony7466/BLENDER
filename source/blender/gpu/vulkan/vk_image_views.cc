@@ -126,4 +126,8 @@ bool VKImageViews::is_srgb_dirty(eImageViewUsage usage, bool enabled_srgb)
   return !image_view->check_srgb(enabled_srgb);
 };
 
+bool VKImageViews::equal_vk_image(VKTexture &texture)
+{
+  return texture.vk_image_handle() == vk_image_ref_;
+};
 }  // namespace blender::gpu

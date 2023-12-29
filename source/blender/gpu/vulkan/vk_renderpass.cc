@@ -277,7 +277,7 @@ void VKRenderPass::dependency_static_set(bool use_depth)
     return;
   }
 
-  BLI_assert(ELEM(render_pass_enum_, eRenderpassType::Attachment, eRenderpassType::ShaderBinding));
+  BLI_assert(!ELEM(render_pass_enum_, eRenderpassType::Any));
 
   bool depth_only = (subpass_[info_id_].colorAttachmentCount == 0);
 

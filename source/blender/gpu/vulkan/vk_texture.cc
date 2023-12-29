@@ -66,7 +66,7 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
         (!(format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL))))
     {
       result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
-      render_pass_type = eRenderpassType::ShaderBinding;
+      render_pass_type = eRenderpassType::Storage;
     }
   }
   return result;
@@ -733,8 +733,25 @@ bool VKTexture::is_format_dirty(eImageViewUsage usage, bool use_srgb)
   return image_views_->is_srgb_dirty(usage, enabled_srgb);
 }
 
-std::weak_ptr<VKImageView> VKTexture::image_view_get()
+std::weak_ptr<VKImageView> VKTexture::image_view_get(VkDescriptorType type)
 {
+  if (type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
+    return image_views_->vk_image_view_get(eImageViewUsage::Attachment);
+  }
+  if (is_texture_view()) {
+    if (!image_views_->equal_vk_image(*source_texture_)) {
+      GPUTexture *tex = reinterpret_cast<GPUTexture *>(source_texture_);
+      source_texture_ = nullptr;
+      init_internal(tex, mip_min_, layer_offset_, use_stencil_);
+    }
+    return image_views_->lookup_vk_handle(*source_texture_,
+                                          eImageViewUsage::ShaderBinding,
+                                          layer_range(),
+                                          mip_map_range(),
+                                          use_stencil_,
+                                          true,
+                                          name_);
+  }
   return image_views_->lookup_vk_handle(*this,
                                         eImageViewUsage::ShaderBinding,
                                         layer_range(),

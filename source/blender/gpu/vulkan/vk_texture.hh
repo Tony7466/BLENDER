@@ -186,7 +186,8 @@ class VKTexture : public Texture, public VKBindableResource {
   /** Attchment type does not make multiple mips into views. **/
   std::weak_ptr<VKImageView> image_view_get(bool use_srgb, int mip, int layer);
   /** Types other than Attchment **/
-  std::weak_ptr<VKImageView> image_view_get();
+  std::weak_ptr<VKImageView> image_view_get(
+      VkDescriptorType type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
   /**  From the VkImage,we get the layout that is most likely to be used in blender. **/
   VkImageLayout best_layout_get();

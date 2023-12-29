@@ -53,7 +53,9 @@ void VKAttachments::description_set(VKTexture &texture,
   }
   else {
     /* Is the transition structure unified by several attachments? */
-    BLI_assert((trans_ty == render_pass_enum_));
+    if (trans_ty != render_pass_enum_) {
+      render_pass_enum_ = eRenderpassType::Mix;
+    };
   }
   attachment_description.format = to_vk_format(texture.device_format_get());
 }

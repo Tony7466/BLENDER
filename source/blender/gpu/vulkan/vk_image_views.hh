@@ -73,6 +73,12 @@ class VKImageViews {
   void swizzle_set(const char swizzle_mask[4]);
   bool is_srgb_dirty(eImageViewUsage usage, bool use_srgb);
   int location_get(eImageViewUsage usage);
+  bool equal_vk_image(VKTexture &texture);
+  std::weak_ptr<VKImageView> vk_image_view_get(eImageViewUsage usage)
+  {
+    int location = location_get(usage);
+    return image_views_[location];
+  };
 };
 
 bool vk_image_view_equal(std::weak_ptr<VKImageView> a, std::weak_ptr<VKImageView> b);

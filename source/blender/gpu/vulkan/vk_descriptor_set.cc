@@ -192,15 +192,12 @@ void VKDescriptorSetTracker::update(VKContext &context)
     }
 
     /* Transitions should be avoided here. For ImageWrite only, use this barrier.  */
-    VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-      layout = VK_IMAGE_LAYOUT_GENERAL;
-      binding.texture->layout_ensure(context, layout);
-    }
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
-    image_info.imageView = binding.texture->image_view_get().lock()->vk_handle();
-    image_info.imageLayout = layout;
+    image_info.imageView = binding.texture->image_view_get(binding.type).lock()->vk_handle();
+    image_info.imageLayout = (VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT == binding.type) ?
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL :
+                                 unwrap(binding.texture)->best_layout_get();
     image_infos.append(image_info);
 
     VkWriteDescriptorSet write_descriptor = {};
