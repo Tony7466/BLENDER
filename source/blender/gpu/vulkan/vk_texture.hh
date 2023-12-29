@@ -157,7 +157,10 @@ class VKTexture : public Texture, public VKBindableResource {
                      VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                      VkAccessFlags dst_access = VK_ACCESS_MEMORY_READ_BIT);
 
-  void layout_ensure(VKContext &context, VkImageLayout old_layout, VkImageLayout new_layout);
+  void layout_ensure(VKContext &context,
+                     VkImageLayout old_layout,
+                     VkImageLayout new_layout,
+                     IndexRange mipmap_range = IndexRange(0, VK_REMAINING_MIP_LEVELS));
 
  private:
   /**

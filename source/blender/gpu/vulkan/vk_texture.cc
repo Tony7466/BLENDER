@@ -128,10 +128,7 @@ void VKTexture::generate_mipmap()
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.submit();
 
-  layout_ensure(context,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_ACCESS_MEMORY_WRITE_BIT,
-                VK_ACCESS_TRANSFER_READ_BIT);
+  layout_ensure(context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   for (int src_mipmap : IndexRange(mipmaps_ - 1)) {
     int dst_mipmap = src_mipmap + 1;
@@ -155,13 +152,9 @@ void VKTexture::generate_mipmap()
     }
 
     layout_ensure(context,
-                  IndexRange(src_mipmap, 1),
                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                  VK_PIPELINE_STAGE_TRANSFER_BIT,
-                  VK_ACCESS_TRANSFER_WRITE_BIT,
-                  VK_PIPELINE_STAGE_TRANSFER_BIT,
-                  VK_ACCESS_TRANSFER_READ_BIT);
+                  IndexRange(src_mipmap, 1));
 
     VkImageBlit image_blit = {};
     image_blit.srcOffsets[0] = {0, 0, 0};
@@ -185,17 +178,12 @@ void VKTexture::generate_mipmap()
                          Span<VkImageBlit>(&image_blit, 1));
     if (dst_mipmap == mipmaps_ - 1) {
       layout_ensure(context,
-                    IndexRange(dst_mipmap, 1),
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_ACCESS_TRANSFER_READ_BIT);
+                    IndexRange(dst_mipmap, 1));
     }
   }
 
-  current_layout_set(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
   layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
 }
 
@@ -597,7 +585,8 @@ void VKTexture::current_layout_set(const VkImageLayout new_layout)
 
 void VKTexture::layout_ensure(VKContext &context,
                               VkImageLayout old_layout,
-                              VkImageLayout new_layout)
+                              VkImageLayout new_layout,
+                              const IndexRange mipmap_range)
 {
   if (is_texture_view()) {
     source_texture_->layout_ensure(context, old_layout, new_layout);
@@ -612,7 +601,7 @@ void VKTexture::layout_ensure(VKContext &context,
   const VkAccessFlags src_access = to_vk_layout_to_access_flag(old_layout);
   const VkAccessFlags dst_access = to_vk_layout_to_access_flag(new_layout);
   layout_ensure(context,
-                IndexRange(0, VK_REMAINING_MIP_LEVELS),
+                mipmap_range,
                 old_layout,
                 new_layout,
                 to_vk_access_to_stage_flag(src_access),
