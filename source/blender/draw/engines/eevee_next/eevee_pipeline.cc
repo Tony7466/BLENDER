@@ -624,12 +624,12 @@ void DeferredLayer::end_sync()
       pass.shader_set(sh);
       /* Use depth test to reject background pixels. */
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ADD_FULL);
-      pass.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
-      pass.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
-      pass.bind_image("direct_radiance_3_img", &direct_radiance_txs_[2]);
-      pass.bind_image("indirect_diffuse_img", &indirect_diffuse_tx_);
-      pass.bind_image("indirect_reflect_img", &indirect_reflect_tx_);
-      pass.bind_image("indirect_refract_img", &indirect_refract_tx_);
+      pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);
+      pass.bind_texture("direct_radiance_2_tx", &direct_radiance_txs_[1]);
+      pass.bind_texture("direct_radiance_3_tx", &direct_radiance_txs_[2]);
+      pass.bind_texture("indirect_diffuse_tx", &indirect_diffuse_tx_);
+      pass.bind_texture("indirect_reflect_tx", &indirect_reflect_tx_);
+      pass.bind_texture("indirect_refract_tx", &indirect_refract_tx_);
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       pass.bind_resources(inst_.gbuffer);

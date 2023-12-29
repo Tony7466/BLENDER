@@ -102,12 +102,12 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     /* Early fragment test is needed to avoid processing fragments background fragments. */
     .early_fragment_test(true)
     /* Inputs. */
-    .image_in(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_1_img")
-    .image_in(3, DEFERRED_RADIANCE_FORMAT, "direct_radiance_2_img")
-    .image_in(4, DEFERRED_RADIANCE_FORMAT, "direct_radiance_3_img")
-    .image_in(5, RAYTRACE_RADIANCE_FORMAT, "indirect_diffuse_img")
-    .image_in(6, RAYTRACE_RADIANCE_FORMAT, "indirect_reflect_img")
-    .image_in(7, RAYTRACE_RADIANCE_FORMAT, "indirect_refract_img")
+    .sampler(2, ImageType::FLOAT_2D, "direct_radiance_1_tx")
+    .sampler(3, ImageType::FLOAT_2D, "direct_radiance_2_tx")
+    .sampler(4, ImageType::FLOAT_2D, "direct_radiance_3_tx")
+    .sampler(5, ImageType::FLOAT_2D, "indirect_diffuse_tx")
+    .sampler(6, ImageType::FLOAT_2D, "indirect_reflect_tx")
+    .sampler(7, ImageType::FLOAT_2D, "indirect_refract_tx")
     .fragment_out(0, Type::VEC4, "out_combined")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
