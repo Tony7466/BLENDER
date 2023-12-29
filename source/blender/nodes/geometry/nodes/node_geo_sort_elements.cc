@@ -163,12 +163,11 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
     return std::nullopt;
   }
 
-  Array<float> weight_span;
   Array<int> gathered_indices(mask.size());
 
   if (group_id.is_single()) {
     mask.to_indices<int>(gathered_indices);
-    weight_span.reinitialize(domain_size);
+    Array<float> weight_span(domain_size);
     array_utils::copy(weight, mask, weight_span.as_mutable_span());
     grouped_sort(Span({0, int(mask.size())}), weight_span, gathered_indices);
   }
@@ -178,12 +177,12 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
     const int total_groups = identifiers_to_indices(gathered_group_id);
     Array<int> offsets_to_sort(total_groups + 1, 0);
     find_points_by_group_index(gathered_group_id, offsets_to_sort, gathered_indices);
-    parallel_transform<int>(gathered_indices, 2048, [&](const int pos) { return mask[pos]; });
     if (!weight.is_single()) {
-      weight_span.reinitialize(domain_size);
-      array_utils::gather(weight, gathered_indices.as_span(), weight_span.as_mutable_span());
+      Array<float> weight_span(mask.size());
+      array_utils::gather(weight, mask, weight_span.as_mutable_span());
       grouped_sort(offsets_to_sort.as_span(), weight_span, gathered_indices);
     }
+    parallel_transform<int>(gathered_indices, 2048, [&](const int pos) { return mask[pos]; });
   }
 
   if (indices_are_range(gathered_indices, IndexRange(domain_size))) {
