@@ -112,8 +112,7 @@ void VKStorageBuffer::read(void *data)
   context.flush();
 
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
-  staging_buffer.copy_from_device(context);
-  staging_buffer.host_buffer_get().read(data);
+  staging_buffer.copy_from_device(context, data);
 }
 
 }  // namespace blender::gpu

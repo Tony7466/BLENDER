@@ -72,8 +72,7 @@ void VKIndexBuffer::read(uint32_t *data) const
 {
   VKContext &context = *VKContext::get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
-  staging_buffer.copy_from_device(context);
-  staging_buffer.host_buffer_get().read(data);
+  staging_buffer.copy_from_device(context,data);
 }
 
 void VKIndexBuffer::update_sub(uint /*start*/, uint /*len*/, const void * /*data*/)

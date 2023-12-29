@@ -39,7 +39,7 @@ void VKStagingBuffer::copy_to_device(VKContext &context)
   free();
 }
 
-void VKStagingBuffer::copy_from_device(VKContext &context)
+void VKStagingBuffer::copy_from_device(VKContext &context, void *data)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
   VkBufferCopy buffer_copy = {};
@@ -48,6 +48,7 @@ void VKStagingBuffer::copy_from_device(VKContext &context)
   command_buffers.copy(
       host_buffer_, device_buffer_.vk_handle(), Span<VkBufferCopy>(&buffer_copy, 1));
   command_buffers.submit();
+  host_buffer_.read(data);
   free();
 }
 

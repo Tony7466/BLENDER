@@ -56,7 +56,7 @@ class VKStagingBuffer {
   /**
    * Copy the content of the device buffer to the host buffer.
    */
-  void copy_from_device(VKContext &context);
+  void copy_from_device(VKContext &context,void* data);
 
   /**
    * Get the reference to the host buffer to update/load the data.
