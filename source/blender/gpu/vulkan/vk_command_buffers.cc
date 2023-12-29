@@ -222,7 +222,12 @@ void VKCommandBuffers::ensure_active_framebuffer()
     VkClearValue clear_value = {};
     render_pass_begin_info.clearValueCount = 1;
     render_pass_begin_info.pClearValues = &clear_value;
-
+    render_pass_begin_info.pNext = VK_NULL_HANDLE;
+    if (framebuffer_->is_imageless()) {
+      static VkRenderPassAttachmentBeginInfo attachment_begin_info = {
+          VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO, VK_NULL_HANDLE, 0};
+      render_pass_begin_info.pNext = &attachment_begin_info;
+    }
     VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
     vkCmdBeginRenderPass(
         command_buffer.vk_command_buffer(), &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);

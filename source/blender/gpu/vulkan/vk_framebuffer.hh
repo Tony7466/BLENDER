@@ -105,7 +105,10 @@ class VKFrameBuffer : public FrameBuffer {
                       bool config = true) override;
 
   void cache_init();
-
+  bool is_imageless() const
+  {
+    return renderpass_->imageless_;
+  }
   bool is_valid() const
   {
     return vk_framebuffer_ != VK_NULL_HANDLE;

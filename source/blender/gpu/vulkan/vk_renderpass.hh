@@ -55,6 +55,7 @@ const VkSubpassDescription2 descriptions_default = {
 
 class VKRenderPass {
  private:
+  bool imageless_ = false;
   bool dirty_ = false;
   VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
   eRenderpassType render_pass_enum_ = eRenderpassType::Any;
@@ -91,6 +92,7 @@ class VKRenderPass {
                                       int dstpass,
                                       SubpassTransitionPattern transition_pattern,
                                       VkImageLayout dst_layout);
+  void imageless_pass_set();
   void multiview_set();
   friend class VKFrameBuffer;
 };

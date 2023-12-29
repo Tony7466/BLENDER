@@ -268,6 +268,7 @@ void VKRenderPass::cache_init()
   for (auto &i : attachments_.idx_[info_id_]) {
     i = VK_ATTACHMENT_EMPTY;
   }
+  imageless_ = false;
 };
 
 void VKRenderPass::dependency_static_set(bool use_depth)
@@ -695,6 +696,25 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
     }
     attachment_tex->subpass_bits_clear();
   }
+}
+
+void VKRenderPass::imageless_pass_set()
+{
+  auto &info = vk_create_info_[info_id_];
+  info.attachmentCount = 0;
+  info.pAttachments = &vk_attachment::descriptions_default;
+  info.correlatedViewMaskCount = 0;
+  info.dependencyCount = 0;
+  info.flags = 0;
+  info.pCorrelatedViewMasks = nullptr;
+  info.pDependencies = nullptr;
+  info.pNext = nullptr;
+  subpass_[info_id_].colorAttachmentCount = 0;
+  subpass_[info_id_].pColorAttachments = nullptr;
+  subpass_[info_id_].pDepthStencilAttachment = nullptr;
+  info.pSubpasses = &subpass_[info_id_];
+  info.subpassCount = 1;
+  imageless_ = true;
 }
 
 void VKRenderPass::multiview_set()

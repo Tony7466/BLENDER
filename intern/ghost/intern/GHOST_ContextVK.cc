@@ -257,6 +257,7 @@ class GHOST_DeviceVK {
     vulkan_12_features.shaderOutputViewportIndex = features_12.shaderOutputViewportIndex;
     vulkan_12_features.timelineSemaphore = VK_TRUE;
     vulkan_12_features.separateDepthStencilLayouts = features_12.separateDepthStencilLayouts;
+    vulkan_12_features.imagelessFramebuffer = features_12.imagelessFramebuffer;
     vulkan_12_features.pNext = device_create_info_p_next;
     device_create_info_p_next = &vulkan_12_features;
 

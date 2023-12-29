@@ -755,51 +755,79 @@ void VKFrameBuffer::create()
   thread_local int size[3] = {0, 0, 0};
   size[0] = -1;
   Vector<VkImageView> data;
-  for (int i = 0; i < vk_framebuffer_create_info_.attachmentCount; i++) {
-    data.append(image_views_[i].lock()->vk_handle());
-    if (size[0] == -1) {
-      int type = 0;
-      if (renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount > 0) {
-        for (int j = 0; j < 8; j++) {
-          if (renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[j].attachment ==
-              VK_ATTACHMENT_UNUSED)
-          {
-            continue;
+  if (vk_framebuffer_create_info_.attachmentCount == 0) {
+    static VkFramebufferAttachmentImageInfo attachments_image_info = {
+        /*.sType*/ VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO,
+        /*.pNext*/ VK_NULL_HANDLE};
+    attachments_image_info.usage =
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;  // VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
+    vk_framebuffer_create_info_.width = attachments_image_info.width = width_;
+    vk_framebuffer_create_info_.height = attachments_image_info.height = height_;
+    vk_framebuffer_create_info_.layers = attachments_image_info.layerCount = 1;
+    static const VkFormat formats[1] = {VK_FORMAT_R8G8B8A8_UNORM};
+    attachments_image_info.pViewFormats = formats;
+    attachments_image_info.viewFormatCount = 1;
+    static VkFramebufferAttachmentsCreateInfo attachments_create_info = {
+        VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO, VK_NULL_HANDLE};
+
+    vk_framebuffer_create_info_.attachmentCount =
+        attachments_create_info.attachmentImageInfoCount = 0;
+    attachments_create_info.pAttachmentImageInfos = &attachments_image_info;
+
+    vk_framebuffer_create_info_.pNext = &attachments_create_info;
+    vk_framebuffer_create_info_.flags |= VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
+    vk_framebuffer_create_info_.pAttachments = NULL;  // pAttachments is ignored here now
+  }
+  else {
+    vk_framebuffer_create_info_.pNext = VK_NULL_HANDLE;
+    for (int i = 0; i < vk_framebuffer_create_info_.attachmentCount; i++) {
+      data.append(image_views_[i].lock()->vk_handle());
+      if (size[0] == -1) {
+        int type = 0;
+        if (renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount > 0) {
+          for (int j = 0; j < 8; j++) {
+            if (renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[j].attachment ==
+                VK_ATTACHMENT_UNUSED)
+            {
+              continue;
+            }
+            type = renderpass_->attachments_.type_get(
+                renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[i].attachment,
+                renderpass_->info_id_);
+            const GPUAttachment &attachment = attachments_[type];
+            if (!attachment.tex) {
+              continue;
+            }
+            VKTexture *tex = unwrap(unwrap(attachment.tex));
+            tex->mip_size_get(attachment.mip, size);
+            vk_framebuffer_create_info_.layers = (attachment.layer == -1) ?
+                                                     tex->vk_layer_count(1) :
+                                                     1;
+            break;
           }
+        }
+
+        if (size[0] == -1) {
           type = renderpass_->attachments_.type_get(
-              renderpass_->subpass_[renderpass_->info_id_].pColorAttachments[i].attachment,
+              renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment->attachment,
               renderpass_->info_id_);
           const GPUAttachment &attachment = attachments_[type];
-          if (!attachment.tex) {
-            continue;
-          }
-          VKTexture *tex = reinterpret_cast<VKTexture *>(attachment.tex);
+          BLI_assert(attachment.tex);
+          VKTexture *tex = unwrap(unwrap(attachment.tex));
           tex->mip_size_get(attachment.mip, size);
           vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) :
                                                                           1;
-          break;
         }
       }
-
-      if (size[0] == -1) {
-        type = renderpass_->attachments_.type_get(
-            renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment->attachment,
-            renderpass_->info_id_);
-        const GPUAttachment &attachment = attachments_[type];
-        VKTexture *tex = reinterpret_cast<VKTexture *>(attachment.tex);
-        BLI_assert(attachment.tex);
-        tex->mip_size_get(attachment.mip, size);
-        vk_framebuffer_create_info_.layers = (attachment.layer == -1) ? tex->vk_layer_count(1) : 1;
-      }
     }
-  }
 
-  BLI_assert(size[0] > 0);
-  size_set(size[0], size[1]);
-  vk_framebuffer_create_info_.renderPass = renderpass_->vk_render_pass_;
-  vk_framebuffer_create_info_.width = width_;
-  vk_framebuffer_create_info_.height = height_;
-  vk_framebuffer_create_info_.pAttachments = data.data();
+    BLI_assert(size[0] > 0);
+    size_set(size[0], size[1]);
+    vk_framebuffer_create_info_.width = width_;
+    vk_framebuffer_create_info_.height = height_;
+    vk_framebuffer_create_info_.pAttachments = data.data();
+  }
   if (!multi_viewport_) {
     viewport_reset();
     scissor_reset();
@@ -807,6 +835,7 @@ void VKFrameBuffer::create()
   free();
   VK_ALLOCATION_CALLBACKS
   const VKDevice &device = VKBackend::get().device_get();
+  vk_framebuffer_create_info_.renderPass = renderpass_->vk_render_pass_;
   vkCreateFramebuffer(device.device_get(),
                       &vk_framebuffer_create_info_,
                       vk_allocation_callbacks,
