@@ -438,6 +438,7 @@ DefNode(GeometryNode, GEO_NODE_SET_SPLINE_CYCLIC, 0, "SET_SPLINE_CYCLIC", SetSpl
 DefNode(GeometryNode, GEO_NODE_SET_SPLINE_RESOLUTION, 0, "SET_SPLINE_RESOLUTION", SetSplineResolution, "Set Spline Resolution", "Control how many evaluated points should be generated on every curve segment")
 DefNode(GeometryNode, GEO_NODE_SIMULATION_INPUT, def_geo_simulation_input, "SIMULATION_INPUT", SimulationInput, "Simulation Input", "Input data for the simulation zone")
 DefNode(GeometryNode, GEO_NODE_SIMULATION_OUTPUT, def_geo_simulation_output, "SIMULATION_OUTPUT", SimulationOutput, "Simulation Output", "Output data from the simulation zone")
+DefNode(GeometryNode, GEO_NODE_SORT_ELEMENTS, 0, "SORT_ELEMENTS", SortElements, "Sort Elements", "Rearrange geometry elements, changing their indices")
 DefNode(GeometryNode, GEO_NODE_SPLIT_TO_INSTANCES, 0, "Split to Instances", SplitToInstances, "Split to Instances", "Create separate geometries containing the elements from the same group")
 DefNode(GeometryNode, GEO_NODE_SPLIT_EDGES, 0, "SPLIT_EDGES", SplitEdges, "Split Edges", "Duplicate mesh edges and break connections with the surrounding faces")
 DefNode(GeometryNode, GEO_NODE_STORE_NAMED_ATTRIBUTE, 0, "STORE_NAMED_ATTRIBUTE", StoreNamedAttribute, "Store Named Attribute", "Store the result of a field on a geometry as an attribute with the specified name")
@@ -461,8 +462,6 @@ DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, 0, "VOLUME_TO_MESH", VolumeToMesh
 DefNode(GeometryNode, GEO_NODE_INTERPOLATE_CURVES, 0, "INTERPOLATE_CURVES", InterpolateCurves, "Interpolate Curves", "Generate new curves on points by interpolating between existing curves")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_CURVES, 0, "POINTS_TO_CURVES", PointsToCurves, "Points to Curves", "Split all points to curve by its group ID and reorder by weight")
 DefNode(GeometryNode, GEO_NODE_INPUT_EDGE_SMOOTH, 0, "INPUT_EDGE_SMOOTH", InputEdgeSmooth, "Is Edge Smooth", "Retrieve whether each edge is marked for smooth or split normals")
-
-DefNode(GeometryNode, GEO_NODE_SORT_ELEMENTS, 0, "SORT_ELEMENTS", SortElements, "Sort Elements", "")
 
 /* undefine macros */
 #undef DefNode

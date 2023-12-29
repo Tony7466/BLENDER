@@ -83,6 +83,18 @@ inline void scatter(const Span<T> src,
   });
 }
 
+template<typename T>
+inline void scatter(const Span<T> src,
+                    const IndexMask mask,
+                    MutableSpan<T> dst,
+                    const int64_t grain_size = 4096)
+{
+  BLI_assert(mask.size() == src.size());
+  BLI_assert(mask.min_array_size() <= dst.size());
+  mask.foreach_index_optimized<int>(
+      GrainSize(grain_size), [&](const int index, const int pos) { dst[index] = src[pos]; });
+}
+
 /**
  * Fill the destination span by gathering indexed values from the `src` array.
  */

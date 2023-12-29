@@ -83,15 +83,15 @@ static void grouped_sort(const OffsetIndices<int> offsets,
   });
 }
 
-static void find_points_by_group_index(const Span<int> indices_of_curves,
+static void find_points_by_group_index(const Span<int> indices,
                                        MutableSpan<int> r_offsets,
                                        MutableSpan<int> r_indices)
 {
-  offset_indices::build_reverse_offsets(indices_of_curves, r_offsets);
+  offset_indices::build_reverse_offsets(indices, r_offsets);
   Array<int> counts(r_offsets.size(), 0);
 
-  for (const int64_t index : indices_of_curves.index_range()) {
-    const int curve_index = indices_of_curves[index];
+  for (const int64_t index : indices.index_range()) {
+    const int curve_index = indices[index];
     r_indices[r_offsets[curve_index] + counts[curve_index]] = int(index);
     counts[curve_index]++;
   }
@@ -199,11 +199,9 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
 
   Array<int> indices(domain_size);
 
+  array_utils::scatter<int>(gathered_indices, mask, indices);
   unselected.foreach_index_optimized<int>(GrainSize(2048),
                                           [&](const int index) { indices[index] = index; });
-  mask.foreach_index_optimized<int>(GrainSize(2048), [&](const int index, const int pos) {
-    indices[index] = gathered_indices[pos];
-  });
 
   if (indices_are_range(indices, indices.index_range())) {
     return std::nullopt;
@@ -234,11 +232,10 @@ static void node_geo_exec(GeoNodeExecParams params)
       if (!indices.has_value()) {
         continue;
       }
-      bke::GeometryComponent &dst_component = geometry::reordered_component_copy(
+      bke::GeometryComponentPtr dst_component = geometry::reordered_component_copy(
           *src_component, *indices, domain);
       geometry_set.remove(type);
-      geometry_set.add(dst_component);
-      dst_component.remove_user_and_delete_if_last();
+      geometry_set.add(*dst_component.get());
     }
   });
 
@@ -246,8 +243,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 }
 
 template<typename T>
-static Array<EnumPropertyItem> items_value_in(const Span<T> values,
-                                              const EnumPropertyItem *src_items)
+static Vector<EnumPropertyItem> items_value_in(const Span<T> values,
+                                               const EnumPropertyItem *src_items)
 {
   Vector<EnumPropertyItem> items;
   for (const EnumPropertyItem *item = src_items; item->identifier != nullptr; item++) {
@@ -256,12 +253,12 @@ static Array<EnumPropertyItem> items_value_in(const Span<T> values,
     }
   }
   items.append({0, nullptr, 0, nullptr, nullptr});
-  return items.as_span();
+  return items;
 }
 
 static void node_rna(StructRNA *srna)
 {
-  static const Array<EnumPropertyItem> supported_items = items_value_in<bke::AttrDomain>(
+  static const Vector<EnumPropertyItem> supported_items = items_value_in<bke::AttrDomain>(
       {bke::AttrDomain::Point,
        bke::AttrDomain::Edge,
        bke::AttrDomain::Face,

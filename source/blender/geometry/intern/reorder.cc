@@ -4,7 +4,6 @@
 
 #include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_anonymous_attribute_id.hh"
@@ -226,26 +225,26 @@ static void reorder_instaces(const bke::Instances &src_instances,
   array_utils::gather(old_transforms, old_by_new_map, new_transforms);
 }
 
-bke::GeometryComponent &reordered_component_copy(const bke::GeometryComponent &src_component,
-                                                 const Span<int> old_by_new_map,
-                                                 const bke::AttrDomain domain)
+bke::GeometryComponentPtr reordered_component_copy(const bke::GeometryComponent &src_component,
+                                                   const Span<int> old_by_new_map,
+                                                   const bke::AttrDomain domain)
 {
   BLI_assert(!src_component.is_empty());
-  bke::GeometryComponent &dst_component = const_cast<bke::GeometryComponent &>(
-      *src_component.copy().release());
+  bke::GeometryComponentPtr dst_component = src_component.copy();
+  bke::GeometryComponent *component = const_cast<bke::GeometryComponent *>(dst_component.get());
 
   if (const bke::MeshComponent *src_mesh_component = dynamic_cast<const bke::MeshComponent *>(
           &src_component))
   {
-    bke::MeshComponent &dst_mesh_component = static_cast<bke::MeshComponent &>(dst_component);
+    bke::MeshComponent &dst_mesh_component = *static_cast<bke::MeshComponent *>(component);
     reorder_mesh(
         *src_mesh_component->get(), old_by_new_map, domain, *dst_mesh_component.get_for_write());
   }
   else if (const bke::PointCloudComponent *src_points_component =
                dynamic_cast<const bke::PointCloudComponent *>(&src_component))
   {
-    bke::PointCloudComponent &dst_points_component = static_cast<bke::PointCloudComponent &>(
-        dst_component);
+    bke::PointCloudComponent &dst_points_component = *static_cast<bke::PointCloudComponent *>(
+        component);
     BLI_assert(domain == bke::AttrDomain::Point);
     reorder_points(
         *src_points_component->get(), old_by_new_map, *dst_points_component.get_for_write());
@@ -253,7 +252,7 @@ bke::GeometryComponent &reordered_component_copy(const bke::GeometryComponent &s
   else if (const bke::CurveComponent *src_curves_component =
                dynamic_cast<const bke::CurveComponent *>(&src_component))
   {
-    bke::CurveComponent &dst_curves_component = static_cast<bke::CurveComponent &>(dst_component);
+    bke::CurveComponent &dst_curves_component = *static_cast<bke::CurveComponent *>(component);
     BLI_assert(domain == bke::AttrDomain::Curve);
     reorder_curves(src_curves_component->get()->geometry.wrap(),
                    old_by_new_map,
@@ -262,8 +261,8 @@ bke::GeometryComponent &reordered_component_copy(const bke::GeometryComponent &s
   else if (const bke::InstancesComponent *src_instances_component =
                dynamic_cast<const bke::InstancesComponent *>(&src_component))
   {
-    bke::InstancesComponent &dst_instances_component = static_cast<bke::InstancesComponent &>(
-        dst_component);
+    bke::InstancesComponent &dst_instances_component = *static_cast<bke::InstancesComponent *>(
+        component);
     BLI_assert(domain == bke::AttrDomain::Instance);
     reorder_instaces(
         *src_instances_component->get(), old_by_new_map, *dst_instances_component.get_for_write());

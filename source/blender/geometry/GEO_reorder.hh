@@ -18,8 +18,8 @@ namespace blender::geometry {
 const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain>
     &components_supported_reordering();
 
-bke::GeometryComponent &reordered_component_copy(const bke::GeometryComponent &src_component,
-                                                 const Span<int> old_by_new_map,
-                                                 const bke::AttrDomain domain);
+bke::GeometryComponentPtr reordered_component_copy(const bke::GeometryComponent &src_component,
+                                                   const Span<int> old_by_new_map,
+                                                   const bke::AttrDomain domain);
 
 };  // namespace blender::geometry
