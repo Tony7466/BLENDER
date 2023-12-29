@@ -5795,6 +5795,10 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout.menu("VIEW3D_MT_mirror")
 
         layout.separator()
+        
+        layout.operator_menu_enum("grease_pencil.separate", "mode", text="Separate")
+        
+        layout.separator()
 
         layout.menu("GREASE_PENCIL_MT_layer_active", text="Active Layer")
 

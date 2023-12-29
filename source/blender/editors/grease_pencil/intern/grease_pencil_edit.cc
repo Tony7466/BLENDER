@@ -21,6 +21,7 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_report.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -28,8 +29,11 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "DNA_material_types.h"
+
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
+#include "ED_object.hh"
 #include "ED_screen.hh"
 
 #include "WM_api.hh"
@@ -37,6 +41,7 @@
 #include "UI_resources.hh"
 
 namespace blender::ed::greasepencil {
+static void remove_unused_materials(Object *object_src, Main *bmain);
 
 bool active_grease_pencil_poll(bContext *C)
 {
@@ -1640,6 +1645,570 @@ static void GREASE_PENCIL_OT_clean_loose(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Stroke Separate Operator
+ * \{ */
+
+enum class SeparateMode : int8_t {
+  /* Selected Points/Strokes */
+  SELECTED = 0,
+  /* By Material */
+  MATERIAL,
+  /* By Active Layer */
+  LAYER,
+};
+
+static const EnumPropertyItem prop_separate_modes[] = {
+    {int(SeparateMode::SELECTED), "SELECTED", 0, "Selection", "Separate selected geometry"},
+    {int(SeparateMode::MATERIAL), "MATERIAL", 0, "By Material", "Separate by material"},
+    {int(SeparateMode::LAYER), "LAYER", 0, "By Layer", "Separate by layer"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+void remove_unused_materials(Main *bmain, Object *object)
+{
+  /* Remove unused material slots from source object. */
+  int actcol = object->actcol;
+  for (int slot = 1; slot <= object->totcol; slot++) {
+    while (slot <= object->totcol && !BKE_object_material_slot_used(object, slot)) {
+      object->actcol = slot;
+      BKE_object_material_slot_remove(bmain, object);
+      if (actcol >= slot) {
+        actcol--;
+      }
+    }
+  }
+  object->actcol = actcol;
+}
+
+static Object *duplicate_grease_pencil_object(Main *bmain,
+                                              Scene *scene,
+                                              ViewLayer *view_layer,
+                                              Base *base_prev,
+                                              GreasePencil &grease_pencil_src)
+{
+  /* Take into account user preferences for duplicating actions. */
+  const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
+  /* Create a new object and data. */
+  Base *base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
+  Object *object_dst = base_new->object;
+  object_dst->mode = OB_MODE_OBJECT;
+  object_dst->data = BKE_grease_pencil_add(bmain, grease_pencil_src.id.name + 2);
+
+  return object_dst;
+}
+
+static bke::greasepencil::Layer &create_layer_if_not_exist(
+    const bke::greasepencil::Layer *layer_src,
+    GreasePencil &grease_pencil_src,
+    GreasePencil &grease_pencil_dst)
+{
+  using namespace bke::greasepencil;
+
+  if (!grease_pencil_dst.layers().contains(layer_src)) {
+
+    /* Transfer Layer attributes. */
+    const bke::AnonymousAttributePropagationInfo propagation_info{};
+    Vector<int> src_to_dst_layer;
+    src_to_dst_layer.append(grease_pencil_src.layers().first_index(layer_src));
+    const bke::AttributeAccessor src_attributes = grease_pencil_src.attributes();
+    bke::MutableAttributeAccessor dst_attributes = grease_pencil_dst.attributes_for_write();
+
+    bke::gather_attributes(src_attributes,
+                           bke::AttrDomain::Layer,
+                           propagation_info,
+                           {".layers"},
+                           src_to_dst_layer,
+                           dst_attributes);
+
+    return grease_pencil_dst.add_layer(layer_src->name());
+  }
+  Layer layer_dst = *layer_src;
+  return layer_dst;
+}
+
+static bool grease_pencil_separate_selected(bContext *C,
+                                            Main *bmain,
+                                            Scene *scene,
+                                            ViewLayer *view_layer,
+                                            Base *base_prev,
+                                            Object *object_src)
+{
+  using namespace bke::greasepencil;
+  bool result = false;
+
+  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
+  Object *object_dst = duplicate_grease_pencil_object(
+      bmain, scene, view_layer, base_prev, grease_pencil_src);
+  GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
+
+  /* TO_DO: Copy grease pencil data Attributes. */
+
+  /* Iterate through all the drawings at current scene frame. */
+  const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings(*scene,
+                                                                            grease_pencil_src);
+  threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+    /* Get geometry of current drawing. */
+    bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
+    IndexMaskMemory memory;
+    IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
+
+    if (selected_points.is_empty()) {
+      return;
+    }
+
+    /* Insert Keyframe at current frame/layer */
+    Layer &layer_dst = create_layer_if_not_exist(
+        grease_pencil_src.layers()[info.layer_index], grease_pencil_src, grease_pencil_dst);
+    grease_pencil_dst.insert_blank_frame(layer_dst, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
+
+    /*Assign new CurvesGeometry to layer. */
+    Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst, scene->r.cfra);
+    /* Copy selected points/strokes to new CurvesGeometry. */
+    const bke::AnonymousAttributePropagationInfo propagation_info{};
+    drawing_dst->strokes_for_write() = bke::curves_copy_point_selection(
+        curves_src, selected_points, propagation_info);
+
+    /* Delete selected points from current drawing. */
+    curves_src.remove_points(selected_points, propagation_info);
+
+    info.drawing.tag_topology_changed();
+    drawing_dst->tag_topology_changed();
+    result = true;
+  });
+
+  if (result) {
+
+    grease_pencil_dst.set_active_layer(0);
+
+    /* Add object materials to target object. */
+    BKE_object_material_array_assign(bmain,
+                                     object_dst,
+                                     BKE_object_material_array_p(object_src),
+                                     *BKE_object_material_len_p(object_src),
+                                     false);
+
+    /* Remove unused material slots from target object. */
+    remove_unused_materials(bmain, object_dst);
+    DEG_id_tag_update(&grease_pencil_dst.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
+
+    /* Remove unused material slots from source object. */
+    remove_unused_materials(bmain, object_src);
+  }
+  return result;
+}
+
+static bool grease_pencil_separate_layer(bContext *C,
+                                         Main *bmain,
+                                         Scene *scene,
+                                         ViewLayer *view_layer,
+                                         Base *base_prev,
+                                         Object *object_src)
+{
+  using namespace bke::greasepencil;
+  bool result = false;
+  int initial_frame = scene->r.cfra;
+
+  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
+
+  /* Create a separate object for each layer. */
+  for (const Layer *layer_src : grease_pencil_src.layers()) {
+
+    if (layer_src->is_selected() || layer_src->is_locked()) {
+      continue;
+    }
+
+    Object *object_dst = duplicate_grease_pencil_object(
+        bmain, scene, view_layer, base_prev, grease_pencil_src);
+    GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
+    /* Create Layer. */
+    Layer &layer_dst = create_layer_if_not_exist(layer_src, grease_pencil_src, grease_pencil_dst);
+
+    /* Iterate through all the frames in the layer. */
+    for (const auto &[frame_number, frame] : layer_src->frames().items()) {
+
+      int current_frame = frame_number;
+      scene->r.cfra = current_frame;
+
+      /* Iterate through all the drawings at current frame. */
+      const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
+          *scene, grease_pencil_src, *layer_src);
+      threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+        /* Select all strokes */
+        IndexMaskMemory memory;
+        IndexMask strokes = retrieve_editable_strokes(
+            *static_cast<Object *>(object_src), info.drawing, memory);
+
+        /* TO_DO: Determine if the curve stroke is using a particular material. */
+
+        /* Insert Keyframe at current frame. */
+        grease_pencil_dst.insert_blank_frame(layer_dst, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+
+        /*Assign new CurvesGeometry to layer/frame. */
+        Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
+                                                                         current_frame);
+        /* Copy strokes to new CurvesGeometry. */
+        const bke::AnonymousAttributePropagationInfo propagation_info{};
+        drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
+            info.drawing.strokes(), strokes, propagation_info);
+
+        /* Add object materials. */
+        BKE_object_material_array_assign(bmain,
+                                         object_dst,
+                                         BKE_object_material_array_p(object_src),
+                                         *BKE_object_material_len_p(object_src),
+                                         false);
+
+        info.drawing.tag_topology_changed();
+        drawing_dst->tag_topology_changed();
+        result = true;
+      });
+    }
+
+    /* Remove unused material slots from target object. */
+    remove_unused_materials(bmain, object_dst);
+
+    DEG_id_tag_update(&grease_pencil_dst.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
+  }
+
+  if (result) {
+
+    scene->r.cfra = initial_frame;
+
+    /* Remove all layers but active from source object. */
+    Vector<Layer *> layers_to_remove;
+    for (Layer *layer : grease_pencil_src.layers_for_write()) {
+      if (!layer->is_locked() && !layer->is_selected()) {
+        layers_to_remove.append(layer);
+      }
+    }
+    /* Remove the layers outside the loop to avoid modifying the collection during iteration. */
+    for (Layer *layer : layers_to_remove) {
+      grease_pencil_src.remove_layer(*layer);
+    }
+  }
+
+  return result;
+}
+
+static bool grease_pencil_separate_material(bContext *C,
+                                            Main *bmain,
+                                            Scene *scene,
+                                            ViewLayer *view_layer,
+                                            Base *base_prev,
+                                            Object *object_src)
+{
+
+  using namespace blender::bke;
+  using namespace bke::greasepencil;
+  bool result = false;
+
+  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
+
+  /* Create a separate object for each material. */
+  for (const int mat_i : IndexRange(object_src->totcol)) {
+
+    if (mat_i == 0) {
+      continue;
+    }
+
+    // TODO: Check empty slots. The array element must exist to keep array index consistency.
+    Object *object_dst = duplicate_grease_pencil_object(
+        bmain, scene, view_layer, base_prev, grease_pencil_src);
+
+    /* Add object materials. */
+    BKE_object_material_array_assign(bmain,
+                                     object_dst,
+                                     BKE_object_material_array_p(object_src),
+                                     *BKE_object_material_len_p(object_src),
+                                     false);
+
+    /* Iterate through all the drawings at current scene frame. */
+    const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings(*scene,
+                                                                              grease_pencil_src);
+    threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+      /* Get geometry of current drawing. */
+      bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
+      IndexMaskMemory memory;
+      IndexMask strokes = retrieve_editable_strokes_by_material(
+          *static_cast<Object *>(object_src), info.drawing, memory, mat_i);
+
+      if (!strokes.is_empty()) {
+
+        GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
+
+        /* Insert Keyframe at current frame/layer */
+        Layer &layer_dst = create_layer_if_not_exist(
+            grease_pencil_src.layers()[info.layer_index], grease_pencil_src, grease_pencil_dst);
+        grease_pencil_dst.insert_blank_frame(
+            layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+
+        /* Assign new CurvesGeometry to layer. */
+        Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
+                                                                         info.frame_number);
+        /* Copy points/strokes to new CurvesGeometry. */
+        const bke::AnonymousAttributePropagationInfo propagation_info{};
+        drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
+            curves_src, strokes, propagation_info);
+
+        /* Delete points from current drawing. */
+        curves_src.remove_curves(strokes, propagation_info);
+
+        info.drawing.tag_topology_changed();
+        drawing_dst->tag_topology_changed();
+        DEG_id_tag_update(&grease_pencil_dst.id, ID_RECALC_GEOMETRY);
+        WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
+
+        /*printf("\t grease_pencil_dst: %s | layer_dts: %s | frame: %d | strokes.size: %d \n",
+               grease_pencil_dst.id.name,
+               layer_dst.base.name,
+               info.frame_number,
+               strokes.size());*/
+
+        result = true;
+      }
+    });
+
+    /* Remove unused material slots from target object. */
+    remove_unused_materials(bmain, object_dst);
+  }
+
+  if (result) {
+    /* Remove unused material slots from source object. */
+    remove_unused_materials(bmain, object_src);
+  }
+
+  return result;
+}
+
+/* TEST. */
+static bool grease_pencil_separate_material_test(bContext *C,
+                                                 Main *bmain,
+                                                 Scene *scene,
+                                                 ViewLayer *view_layer,
+                                                 Base *base_prev,
+                                                 Object *object_src)
+{
+
+  using namespace blender::bke;
+  using namespace bke::greasepencil;
+  bool result = false;
+
+  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
+  Object *object_dst = nullptr;
+  Vector<GreasePencil> grease_pencil_mat_dst;
+
+  /* Create a separate object for each material. */
+  for (const int mat_i : IndexRange(object_src->totcol)) {
+
+    if (mat_i == 0) {
+      grease_pencil_mat_dst.append(grease_pencil_src);
+      continue;
+    }
+    /* Take into account user preferences for duplicating actions. */
+    const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
+    /* Create a new object and data. */
+    Base *base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
+    object_dst = base_new->object;
+    object_dst->mode = OB_MODE_OBJECT;
+    object_dst->data = BKE_grease_pencil_add(bmain, grease_pencil_src.id.name + 2);
+    GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
+    /*grease_pencil_mat_dst[mat_i] = *static_cast<GreasePencil *>(object_dst->data);*/
+    grease_pencil_mat_dst.append(grease_pencil_dst);
+  }
+
+  // printf("(mat_i:%d - grease_pencil_mat_dst[mat_i]: %s \n",
+  // mat_i,
+  // grease_pencil_mat_dst[mat_i].id.name);
+
+  for (const int gd_i : grease_pencil_mat_dst.index_range()) {
+    printf("(gd_i:%d - grease_pencil_mat_dst[gd_i]: %s \n",
+           gd_i,
+           grease_pencil_mat_dst[gd_i].id.name);
+  }
+
+  // for (const int gd_i : grease_pencil_mat_dst.index_range()) {
+  //  printf("(gd_i:%d - grease_pencil_mat_dst[gd_i]: %s \n",
+  //         gd_i,
+  //         grease_pencil_mat_dst[gd_i].id.name);
+  //}
+
+  // for (const GreasePencil &gp : grease_pencil_mat_dst) {
+  //  printf("GreasePencil Value: %s\n", gp.id.name);
+  //}
+
+  /* Iterate through all the drawings at current scene frame. */
+  const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings(*scene,
+                                                                            grease_pencil_src);
+  threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+    /* Get geometry of current drawing. */
+    bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
+    IndexMaskMemory memory;
+    IndexMask strokes = retrieve_editable_strokes(
+        *static_cast<Object *>(object_src), info.drawing, memory);
+
+    const bke::AttributeAccessor attributes = curves_src.attributes();
+    const VArray<int> materials = *attributes.lookup_or_default<int>(
+        "material_index", bke::AttrDomain::Curve, -1);
+
+    int last_layer_index = -1;
+    for (int curve_i : strokes.index_range()) {
+      const int mat_i = materials[curve_i];
+
+      if (strokes.contains(mat_i) && mat_i != 0) {
+
+        GreasePencil grease_pencil_dst = grease_pencil_mat_dst[mat_i];
+
+        /* Create Object if does not exist. */
+        /*GreasePencil &grease_pencil_dst = */
+
+        const Layer *layer_src = grease_pencil_src.layers()[info.layer_index];
+        Layer temp_layer;
+        Layer &layer_dst = (last_layer_index != info.layer_index) ?
+                               grease_pencil_dst.add_layer(layer_src->name()) :
+                               (temp_layer = *layer_src, temp_layer);
+
+        /* Insert Keyframe at current frame. */
+        grease_pencil_dst.insert_blank_frame(
+            layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+
+        /* Copy selected points/strokes to new CurvesGeometry. */
+        const bke::AnonymousAttributePropagationInfo propagation_info{};
+        bke::CurvesGeometry curves_dst = bke::curves_copy_point_selection(
+            curves_src, strokes, propagation_info);
+
+        /*Assign new CurvesGeometry to layer. */
+        Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
+                                                                         info.frame_number);
+        drawing_dst->strokes_for_write() = curves_dst;
+
+        /* TO_DO: Delete points from current drawing outside the loop. */
+        /*curves_src.remove_points(strokes);*/
+
+        info.drawing.tag_topology_changed();
+        DEG_id_tag_update(&grease_pencil_dst.id, ID_RECALC_GEOMETRY);
+        WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil_dst);
+
+        printf("\t grease_pencil_dst: %s | layer_dts: %s | frame: %d | strokes.size: %d \n",
+               grease_pencil_dst.id.name,
+               layer_dst.base.name,
+               info.frame_number,
+               strokes.size());
+
+        result = true;
+      }
+    }
+    last_layer_index = info.layer_index;
+  });
+
+  if (result) {
+
+    /* Remove unused material slots from source object. */
+    remove_unused_materials(bmain, object_src);
+  }
+
+  return result;
+}
+
+static int grease_pencil_separate_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  using namespace bke::greasepencil;
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Base *base_prev = CTX_data_active_base(C);
+  Object *object_src = CTX_data_active_object(C);
+  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
+
+  const SeparateMode mode = SeparateMode(RNA_enum_get(op->ptr, "mode"));
+  bool changed = false;
+  bool has_selection = false;
+
+  /* Cancel if nothing selected. */
+  if ((mode == SeparateMode::SELECTED)) {
+    const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
+                                                                          grease_pencil_src);
+    threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+      bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+      IndexMaskMemory memory;
+      const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
+      if (!selected_curves.is_empty()) {
+        has_selection = true;
+      }
+    });
+    if (!has_selection) {
+      BKE_report(op->reports, RPT_ERROR, "Nothing selected");
+      return OPERATOR_CANCELLED;
+    }
+  }
+
+  /* Cancel if the object only has one material. */
+  if ((mode == SeparateMode::MATERIAL) && (object_src->totcol == 1)) {
+    BKE_report(op->reports, RPT_ERROR, "The object has only one material");
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Cancel if the object only has one layer. */
+  if ((mode == SeparateMode::LAYER) && (grease_pencil_src.layers().size() == 1)) {
+    BKE_report(op->reports, RPT_ERROR, "The object has only one layer");
+    return OPERATOR_CANCELLED;
+  }
+
+  WM_cursor_wait(true);
+
+  switch (mode) {
+    case SeparateMode::SELECTED: {
+      changed = grease_pencil_separate_selected(
+          C, bmain, scene, view_layer, base_prev, object_src);
+      break;
+    }
+    case SeparateMode::MATERIAL: {
+      changed = grease_pencil_separate_material(
+          C, bmain, scene, view_layer, base_prev, object_src);
+      break;
+    }
+    case SeparateMode::LAYER: {
+      changed = grease_pencil_separate_layer(C, bmain, scene, view_layer, base_prev, object_src);
+      break;
+    }
+  }
+
+  WM_cursor_wait(false);
+
+  if (changed) {
+
+    DEG_id_tag_update(&grease_pencil_src.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil_src);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GREASE_PENCIL_OT_separate(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Separate";
+  ot->idname = "GREASE_PENCIL_OT_separate";
+  ot->description = "Separate the selected geometry into a new grease pencil object";
+
+  /* callbacks */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = grease_pencil_separate_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  ot->prop = RNA_def_enum(
+      ot->srna, "mode", prop_separate_modes, int(SeparateMode::SELECTED), "Mode", "");
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -1660,6 +2229,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_duplicate);
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
+  WM_operatortype_append(GREASE_PENCIL_OT_separate);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
