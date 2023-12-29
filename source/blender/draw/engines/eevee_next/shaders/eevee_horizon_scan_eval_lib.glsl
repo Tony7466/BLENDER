@@ -157,12 +157,12 @@ float bxdf_eval(ClosureDiffuse closure, vec3 L, vec3 V)
 
 float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
 {
-  return bsdf_ggx(closure.N, L, V, closure.roughness);
+  return bsdf_ggx_reflect(closure.N, L, V, closure.roughness);
 }
 
 float bxdf_eval(ClosureRefraction closure, vec3 L, vec3 V)
 {
-  return btdf_ggx(closure.N, L, V, closure.roughness, closure.ior);
+  return bsdf_ggx_refract(closure.N, L, V, closure.roughness, closure.ior);
 }
 
 void horizon_scan_context_sample_finish(
