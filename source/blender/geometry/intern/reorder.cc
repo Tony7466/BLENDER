@@ -26,17 +26,15 @@ const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain>
     &components_supported_reordering()
 {
   using namespace bke;
-  const static MultiValueMap<GeometryComponent::Type, bke::AttrDomain>
-      supported_types_and_domains = []() {
-        MultiValueMap<GeometryComponent::Type, bke::AttrDomain> supported_types_and_domains;
+  const static MultiValueMap<GeometryComponent::Type, AttrDomain> supported_types_and_domains =
+      []() {
+        MultiValueMap<GeometryComponent::Type, AttrDomain> supported_types_and_domains;
         supported_types_and_domains.add_multiple(
             GeometryComponent::Type::Mesh,
-            {bke::AttrDomain::Point, bke::AttrDomain::Edge, bke::AttrDomain::Face});
-        supported_types_and_domains.add(GeometryComponent::Type::Curve, bke::AttrDomain::Curve);
-        supported_types_and_domains.add(GeometryComponent::Type::PointCloud,
-                                        bke::AttrDomain::Point);
-        supported_types_and_domains.add(GeometryComponent::Type::Instance,
-                                        bke::AttrDomain::Instance);
+            {AttrDomain::Point, AttrDomain::Edge, AttrDomain::Face});
+        supported_types_and_domains.add(GeometryComponent::Type::Curve, AttrDomain::Curve);
+        supported_types_and_domains.add(GeometryComponent::Type::PointCloud, AttrDomain::Point);
+        supported_types_and_domains.add(GeometryComponent::Type::Instance, AttrDomain::Instance);
         return supported_types_and_domains;
       }();
   return supported_types_and_domains;
