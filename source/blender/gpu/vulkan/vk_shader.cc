@@ -1267,12 +1267,7 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
 
   ss << "\n/* Outputs. */\n";
   for (const ShaderCreateInfo::FragOut &output : info.fragment_outputs_) {
-    if (output.raster_order_group >= 0) {
-      ss << "layout(location = " << output.raster_order_group;
-    }
-    else {
-      ss << "layout(location = " << output.index;
-    }
+    ss << "layout(location = " << output.index;
     switch (output.blend) {
       case DualBlend::SRC_0:
         ss << ", index = 0";

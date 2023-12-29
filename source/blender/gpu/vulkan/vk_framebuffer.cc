@@ -512,7 +512,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
   }
   if (!leave && attachment.tex) {
     /* The texture entity has nothing to do with render pass regeneration. */
-    reinterpret_cast<Texture *>(attachment.tex)->detach_from(this);
+    unwrap(unwrap(attachment.tex))->detach_from(this);
   }
 
   VkAttachmentReference2 *attachment_reference = nullptr;
@@ -577,7 +577,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
         /* Use depth-attachment. */
         renderpass_->attachments_.idx_[renderpass_->info_id_][type] =
             renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
-        VKTexture &texture = *reinterpret_cast<VKTexture *>(tex);
+        VKTexture &texture = *unwrap(unwrap(tex));
         if (GPU_texture_has_stencil_format(tex)) {
           BLI_assert(ELEM(type, GPU_FB_DEPTH_STENCIL_ATTACHMENT));
         }
@@ -631,7 +631,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       BLI_assert(GPU_texture_is_cube(tex) || GPU_texture_is_array(tex));
     }
     if (!leave) {
-      reinterpret_cast<Texture *>(tex)->attach_to(this, type);
+      unwrap(unwrap(tex))->attach_to(this, type);
     }
 
     dirty_view |= image_view_ensure(tex, atta_mip, atta_layer, attachment_reference->attachment);
@@ -641,7 +641,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
             .descriptions_[renderpass_->info_id_][attachment_reference->attachment];
     if (config) {
       renderpass_->attachments_.description_set(
-          tex, *attachment_reference, attachment_description, renderpass_->render_pass_enum_);
+          *unwrap(unwrap(tex)), *attachment_reference, attachment_description, renderpass_->render_pass_enum_);
       VkAttachmentDescription2 &attachment_description_cache =
           renderpass_->attachments_
               .descriptions_[renderpass_->info_id_counter()][attachment_reference->attachment];
@@ -656,7 +656,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       VkAttachmentDescription2 &attachment_description_cache =
           renderpass_->attachments_
               .descriptions_[renderpass_->info_id_counter()][attachment_reference->attachment];
-      renderpass_->attachments_.description_set(tex,
+      renderpass_->attachments_.description_set(*unwrap(unwrap(tex)),
                                                 *attachment_reference,
                                                 attachment_description_cache,
                                                 renderpass_->render_pass_enum_);

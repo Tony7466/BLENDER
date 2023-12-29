@@ -69,7 +69,7 @@ class VKAttachments {
   bool check_format(VKTexture &texture,
                     VkAttachmentDescription2 &attachment_description,
                     bool enabled_srgb);
-  void description_set(GPUTexture *texture,
+  void description_set(VKTexture &texture,
                        const VkAttachmentReference2 &attachment_reference,
                        VkAttachmentDescription2 &attachment_description,
                        eRenderpassType &render_pass_enum_);

@@ -25,6 +25,71 @@
 
 namespace blender::gpu {
 
+/*
+ * From the Usage and Format of the Texture,
+ * we prioritize the type of transition that would be appropriate if the VkImage will be used in a
+ * render pass.
+ */
+static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
+                                              const eGPUTextureFormatFlag format_flag,
+                                              eRenderpassType &render_pass_type)
+{
+  VkImageUsageFlagBits result = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+  render_pass_type = eRenderpassType::Any;
+  if (usage & GPU_TEXTURE_USAGE_ATTACHMENT) {
+    if (format_flag & GPU_FORMAT_COMPRESSED) {
+      /* These formats aren't supported as an attachment. When using GPU_TEXTURE_USAGE_DEFAULT they
+       * are still being evaluated to be attachable. So we need to skip them. */
+    }
+    else {
+      if (format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL)) {
+        result = static_cast<VkImageUsageFlagBits>(result |
+                                                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        render_pass_type = eRenderpassType::Attachment;
+      }
+      else {
+        result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+        if (usage & GPU_TEXTURE_USAGE_INPUT_ATTACHMENT) {
+          result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        }
+        render_pass_type = eRenderpassType::Attachment;
+      }
+    }
+  }
+  if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
+    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_SAMPLED_BIT);
+    render_pass_type = eRenderpassType::ShaderBinding;
+  }
+  if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {
+    if ((GPU_TEXTURE_USAGE_GENERAL != usage) && (!(format_flag & GPU_FORMAT_SRGB)) &&
+        (!(format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL))))
+    {
+      result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
+      render_pass_type = eRenderpassType::ShaderBinding;
+    }
+  }
+  return result;
+}
+
+static VkImageCreateFlagBits to_vk_image_create(const eGPUTextureType texture_type,
+                                                const eGPUTextureFormatFlag format_flag,
+                                                const eGPUTextureUsage usage)
+{
+  VkImageCreateFlagBits result = static_cast<VkImageCreateFlagBits>(0);
+
+  if (ELEM(texture_type, GPU_TEXTURE_CUBE, GPU_TEXTURE_CUBE_ARRAY)) {
+    result = static_cast<VkImageCreateFlagBits>(result | VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+  }
+
+  /* sRGB textures needs to be mutable as they can be used as non-sRGB frame-buffer attachments. */
+  if (usage & GPU_TEXTURE_USAGE_ATTACHMENT && format_flag & GPU_FORMAT_SRGB) {
+    result = static_cast<VkImageCreateFlagBits>(result | VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
+  }
+
+  return result;
+}
+
 VKTexture::~VKTexture()
 {
   if (image_views_) {
@@ -392,7 +457,6 @@ bool VKTexture::init_internal(GPUVertBuf *vbo)
 
 bool VKTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset, bool use_stencil)
 {
-  BLI_assert(false);
   BLI_assert(source_texture_ == nullptr);
   BLI_assert(src);
 
@@ -403,78 +467,22 @@ bool VKTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset,
   mip_max_ = mip_offset;
   layer_offset_ = layer_offset;
   use_stencil_ = use_stencil;
-
+  /** VKTexture and VKImageviews share a life cycle via VkImage. **/
+  VkImageCreateInfo image_info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, VK_NULL_HANDLE};
+  image_info.flags = to_vk_image_create(
+      texture->type_, texture->format_flag_, texture->usage_get());
+  image_info.mipLevels = mip_count();
+  image_info.arrayLayers = vk_layer_count(1);
+  if (image_views_) {
+    delete image_views_;
+  }
+  image_views_ = new VKImageViews(texture->vk_image_, image_info);
   return true;
 }
 
 bool VKTexture::is_texture_view() const
 {
   return source_texture_ != nullptr;
-}
-
-/*
- * From the Usage and Format of the Texture,
- * we prioritize the type of transition that would be appropriate if the VkImage will be used in a
- * render pass.
- */
-static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
-                                              const eGPUTextureFormatFlag format_flag,
-                                              eRenderpassType &render_pass_type)
-{
-  VkImageUsageFlagBits result = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                                                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-  render_pass_type = eRenderpassType::Any;
-  if (usage & GPU_TEXTURE_USAGE_ATTACHMENT) {
-    if (format_flag & GPU_FORMAT_COMPRESSED) {
-      /* These formats aren't supported as an attachment. When using GPU_TEXTURE_USAGE_DEFAULT they
-       * are still being evaluated to be attachable. So we need to skip them. */
-    }
-    else {
-      if (format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL)) {
-        result = static_cast<VkImageUsageFlagBits>(result |
-                                                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-        render_pass_type = eRenderpassType::Attachment;
-      }
-      else {
-        result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-        if (usage & GPU_TEXTURE_USAGE_INPUT_ATTACHMENT) {
-          result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-        }
-        render_pass_type = eRenderpassType::Attachment;
-      }
-    }
-  }
-  if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
-    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_SAMPLED_BIT);
-    render_pass_type = eRenderpassType::ShaderBinding;
-  }
-  if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {
-    if ((GPU_TEXTURE_USAGE_GENERAL != usage) && (!(format_flag & GPU_FORMAT_SRGB)) &&
-        (!(format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL))))
-    {
-      result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
-      render_pass_type = eRenderpassType::ShaderBinding;
-    }
-  }
-  return result;
-}
-
-static VkImageCreateFlagBits to_vk_image_create(const eGPUTextureType texture_type,
-                                                const eGPUTextureFormatFlag format_flag,
-                                                const eGPUTextureUsage usage)
-{
-  VkImageCreateFlagBits result = static_cast<VkImageCreateFlagBits>(0);
-
-  if (ELEM(texture_type, GPU_TEXTURE_CUBE, GPU_TEXTURE_CUBE_ARRAY)) {
-    result = static_cast<VkImageCreateFlagBits>(result | VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-  }
-
-  /* sRGB textures needs to be mutable as they can be used as non-sRGB frame-buffer attachments. */
-  if (usage & GPU_TEXTURE_USAGE_ATTACHMENT && format_flag & GPU_FORMAT_SRGB) {
-    result = static_cast<VkImageCreateFlagBits>(result | VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
-  }
-
-  return result;
 }
 
 bool VKTexture::allocate()

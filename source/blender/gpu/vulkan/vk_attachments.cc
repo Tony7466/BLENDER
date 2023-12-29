@@ -16,7 +16,7 @@ bool VKAttachments::check_format(VKTexture &texture,
   };
   return true;
 };
-void VKAttachments::description_set(GPUTexture *tex,
+void VKAttachments::description_set(VKTexture &texture,
                                     const VkAttachmentReference2 &attachment_reference,
                                     VkAttachmentDescription2 &attachment_description,
                                     eRenderpassType &render_pass_enum_)
@@ -26,7 +26,6 @@ void VKAttachments::description_set(GPUTexture *tex,
    * that should be and determine the type of transition as this render pass.
    * So far, it can be expressed in a simple transition structure.
    */
-  VKTexture &texture = *reinterpret_cast<VKTexture *>(tex);
   eRenderpassType trans_ty = texture.render_pass_type_get();
   switch (trans_ty) {
     case eRenderpassType::ShaderBinding:
