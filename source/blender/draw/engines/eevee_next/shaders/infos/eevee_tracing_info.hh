@@ -98,6 +98,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_planar)
     .additional_info("eevee_shared",
                      "eevee_global_ubo",
                      "eevee_sampling_data",
+                     "eevee_gbuffer_data",
                      "draw_view",
                      "eevee_lightprobe_data",
                      "eevee_lightprobe_planar_data")
@@ -106,6 +107,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_planar)
     .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "ray_radiance_img")
     .sampler(2, ImageType::DEPTH_2D, "depth_tx")
     .storage_buf(5, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_trace_planar_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_trace_screen)
@@ -113,6 +115,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_screen)
     .additional_info("eevee_shared",
                      "eevee_global_ubo",
                      "eevee_sampling_data",
+                     "eevee_gbuffer_data",
                      "draw_view",
                      "eevee_hiz_data",
                      "eevee_lightprobe_data")
@@ -122,6 +125,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_screen)
     .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
     .sampler(1, ImageType::DEPTH_2D, "depth_tx")
     .storage_buf(5, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_trace_screen_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_trace_screen)
