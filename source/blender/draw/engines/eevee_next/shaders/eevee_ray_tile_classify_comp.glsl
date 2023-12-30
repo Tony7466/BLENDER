@@ -15,6 +15,24 @@
 shared uint tile_contains_ray_tracing[3];
 shared uint tile_contains_horizon_scan[3];
 
+float closure_apparent_roughness_get(ClosureUndetermined cl)
+{
+  switch (cl.type) {
+    case CLOSURE_BSDF_TRANSLUCENT_ID:
+      return 1.0;
+    case CLOSURE_BSSRDF_BURLEY_ID:
+    case CLOSURE_BSDF_DIFFUSE_ID:
+      return 1.0;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+      return to_closure_reflection(cl).roughness;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      return to_closure_refraction(cl).roughness;
+    case CLOSURE_NONE_ID:
+    default:
+      return 0.0;
+  }
+}
+
 /* Returns a blend factor between different tracing method. */
 float ray_roughness_factor(RayTraceData raytrace, float roughness)
 {
@@ -40,26 +58,9 @@ void main()
   if (valid_texel) {
     GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
-    /* TODO(fclem): Arbitrary closure stack. */
-    for (int i = 0; i < 3; i++) {
-      float ray_roughness_fac;
-
-      if (i == 0 && gbuf.has_diffuse) {
-        /* Diffuse. */
-        ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace, 1.0);
-      }
-      else if (i == 1 && gbuf.has_reflection) {
-        /* Reflection. */
-        ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace,
-                                                 gbuf.data.reflection.roughness);
-      }
-      else if (i == 2 && gbuf.has_refraction) {
-        /* Refraction. */
-        ray_roughness_fac = 0.0; /* TODO(fclem): Apparent roughness. For now, always raytrace. */
-      }
-      else {
-        continue;
-      }
+    for (int i = 0; i < 3 && i < gbuf.closure_count; i++) {
+      float roughness = closure_apparent_roughness_get(gbuf.closures[i]);
+      float ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace, roughness);
 
       /* We don't care about race condition here. */
       if (ray_roughness_fac > 0.0) {
