@@ -198,7 +198,7 @@ class CurvesGeometry : public ::CurvesGeometry {
   Array<int> point_to_curve_map() const;
 
   Span<float3> positions() const;
-  MutableSpan<float3> positions_for_write();
+  MutableSpan<float3> positions_for_write(bool for_write_only = false);
 
   /** Whether the curve loops around to connect to itself, on the curve domain. */
   VArray<bool> cyclic() const;

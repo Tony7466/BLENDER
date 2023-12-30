@@ -241,7 +241,8 @@ template<typename T>
 static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
                                             const AttrDomain domain,
                                             const StringRef name,
-                                            const T default_value = T())
+                                            const T default_value = T(),
+                                            bool for_write_only = false)
 {
   const int num = domain_num(curves, domain);
   if (num <= 0) {
@@ -250,13 +251,15 @@ static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
   const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
   CustomData &custom_data = domain_custom_data(curves, domain);
 
-  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name, num);
+  T *data = (T *)CustomData_get_layer_named_for_write(
+      &custom_data, type, name, num, for_write_only);
   if (data != nullptr) {
     return {data, num};
   }
-  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name);
+  data = (T *)CustomData_add_layer_named(
+      &custom_data, type, for_write_only ? CD_CONSTRUCT : CD_SET_DEFAULT, num, name);
   MutableSpan<T> span = {data, num};
-  if (num > 0 && span.first() != default_value) {
+  if ((!for_write_only) && num > 0 && span.first() != default_value) {
     span.fill(default_value);
   }
   return span;
@@ -347,9 +350,10 @@ Span<float3> CurvesGeometry::positions() const
 {
   return get_span_attribute<float3>(*this, AttrDomain::Point, ATTR_POSITION);
 }
-MutableSpan<float3> CurvesGeometry::positions_for_write()
+MutableSpan<float3> CurvesGeometry::positions_for_write(bool for_write_only)
 {
-  return get_mutable_attribute<float3>(*this, AttrDomain::Point, ATTR_POSITION);
+  return get_mutable_attribute<float3>(
+      *this, AttrDomain::Point, ATTR_POSITION, float3(), for_write_only);
 }
 
 Span<int> CurvesGeometry::offsets() const
