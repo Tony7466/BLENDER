@@ -208,6 +208,7 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
         2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_img")
     .image(3, GPU_R8, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_occlusion_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_horizon_scan_comp.glsl");
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_horizon_scan)
@@ -228,6 +229,7 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
     .image(4, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "radiance_img")
     .image(6, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D_ARRAY, "tile_mask_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_horizon_denoise_comp.glsl");
 
 #undef image_out
