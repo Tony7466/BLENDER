@@ -760,8 +760,8 @@ endif()
 
 # Unit testing
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
-option(WITH_OPENGL_RENDER_TESTS "Enable OpenGL render related unit testing (Experimental)" OFF)
-option(WITH_OPENGL_DRAW_TESTS "Enable OpenGL UI drawing related unit testing (Experimental)" OFF)
+option(WITH_GPU_RENDER_TESTS "Enable GPU render related unit testing (EEVEE, Workbench and Grease Pencil)" OFF)
+option(WITH_GPU_DRAW_TESTS "Enable GPU drawing related unit testing (GPU backends and draw manager)" OFF)
 option(WITH_COMPOSITOR_REALTIME_TESTS "Enable regression testing for realtime compositor" OFF)
 if(UNIX AND NOT (APPLE OR HAIKU))
   option(WITH_UI_TESTS "\
@@ -1784,13 +1784,21 @@ if(CMAKE_COMPILER_IS_GNUCC)
     CXX_WARN_NO_SUGGEST_OVERRIDE -Wno-suggest-override
     CXX_WARN_UNINITIALIZED -Wuninitialized
 
+    # NOTE(@ideasman42): In GCC 13.2.1 on Linux this causes internal compiler errors.
+    # The crashes can be resolved by disabling the flag per module (but not via pragmas).
+    # However this also causes a type mix-up FreeStyle  (Blender & FreeStyle's `Curve`)
+    # so it seems to impact GCC's the internal state enough that it's too risky to enable.
+    # When this is resolved the check can be enabled for fixed GCC versions.
+    #
+    # Prevents linking errors with MSVC.
+    # `CXX_WARN_MISMATCHED_TAGS -Wmismatched-tags`
+
     # Useful but too many false positives and inconvenient to suppress each occurrence.
     CXX_WARN_NO_STRINGOP_OVERREAD -Wno-stringop-overread
     CXX_WARN_NO_STRINGOP_OVERFLOW -Wno-stringop-overflow
 
     # Use `[[fallthrough]]` or `ATTR_FALLTHROUGH` macro to suppress.
     CXX_WARN_IMPLICIT_FALLTHROUGH -Wimplicit-fallthrough=5
-
   )
 
   # causes too many warnings
@@ -1892,6 +1900,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     CXX_WARN_UNDEF -Wundef
     CXX_WARN_UNDEF_PREFIX -Wundef-prefix
     CXX_WARN_UNUSED_PARAMETER -Wunused-parameter
+
+    # Prevents linking errors with MSVC.
+    CXX_WARN_MISMATCHED_TAGS -Wmismatched-tags
 
     # Gives too many unfixable warnings.
     # `C_WARN_UNUSED_MACROS -Wunused-macros`

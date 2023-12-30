@@ -189,14 +189,21 @@ typedef struct bArmature {
   short pathflag;
 
   /** This is used only for reading/writing BoneCollections in blend
-   * files, for forwards/backwards compatibility with Blender 4.0.  It
-   * should always be empty at runtime.
-   * Use collection_array for everything other than file reading/writing. */
-  ListBase collections; /* BoneCollection. */
+   * files, for forwards/backwards compatibility with Blender 4.0. It
+   * should always be empty at runtime. Use collection_array for
+   * everything other than file reading/writing.
+   * TODO: remove this in Blender 5.0, and instead write the contents of
+   * collection_array to blend files directly. */
+  ListBase collections_legacy; /* BoneCollection. */
 
   struct BoneCollection **collection_array; /* Array of `collection_array_num` BoneCollections. */
   int collection_array_num;
-  char _pad2[4];
+  /**
+   * Number of root bone collections.
+   *
+   * `collection_array[0:collection_root_count]` are the collections without a parent collection.
+   */
+  int collection_root_count;
 
   /** Do not directly assign, use `ANIM_armature_bonecoll_active_set` instead.
    * This is stored as a string to make it possible for the library overrides system to understand
@@ -245,6 +252,15 @@ typedef struct BoneCollection {
   /** eBoneCollection_Flag. */
   uint8_t flags;
   uint8_t _pad0[7];
+
+  /*
+   * Hierarchy information. The Armature has an array of BoneCollection pointers. These are ordered
+   * such that siblings are always stored in consecutive array elements.
+   */
+  /** Array index of the first child of this BoneCollection. */
+  int child_index;
+  /** Number of children of this BoneCollection. */
+  int child_count;
 
   /** Custom properties. */
   struct IDProperty *prop;
