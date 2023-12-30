@@ -47,7 +47,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_collection.h"
 #include "BKE_curve.hh"
 #include "BKE_effect.h"
@@ -875,8 +875,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       nodeAddLink(ntree, sub1_node, sub1_socket_out, min_node, min_socket_A);
       nodeAddLink(ntree, min_node, min_socket_out, node, detail_socket);
 
-      if ((noise_type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
-          (noise_type == SHD_NOISE_HETERO_TERRAIN)) {
+      if (ELEM(noise_type, SHD_NOISE_RIDGED_MULTIFRACTAL, SHD_NOISE_HETERO_TERRAIN)) {
         locy_offset -= 40.0f;
 
         /* Add Greater Than Math node before Subtract Math node. */
@@ -1766,10 +1765,10 @@ static void versioning_nodes_dynamic_sockets(bNodeTree &ntree)
   }
 }
 
-static void versioning_switch_node_dynamic_socket(bNodeTree &ntree)
+static void versioning_nodes_dynamic_sockets_2(bNodeTree &ntree)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
-    if (node->type != GEO_NODE_SWITCH) {
+    if (!ELEM(node->type, GEO_NODE_SWITCH, GEO_NODE_SAMPLE_CURVE)) {
       continue;
     }
     version_socket_identifier_suffixes_for_dynamic_types(node->inputs, "_");
@@ -2160,7 +2159,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type == NTREE_GEOMETRY) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == GEO_NODE_SET_SHADE_SMOOTH) {
-            node->custom1 = ATTR_DOMAIN_FACE;
+            node->custom1 = int8_t(blender::bke::AttrDomain::Face);
           }
         }
       }
@@ -2587,7 +2586,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       if (ntree->type == NTREE_GEOMETRY) {
         version_geometry_nodes_use_rotation_socket(*ntree);
-        versioning_switch_node_dynamic_socket(*ntree);
+        versioning_nodes_dynamic_sockets_2(*ntree);
       }
     }
   }

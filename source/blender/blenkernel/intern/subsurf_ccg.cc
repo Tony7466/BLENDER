@@ -34,6 +34,7 @@
 
 #include "BKE_ccg.h"
 #include "BKE_cdderivedmesh.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.hh"
@@ -493,7 +494,7 @@ static float *get_ss_weights(WeightTable *wtable, int gridCuts, int faceLen)
           w2 = (1.0f - fx + fac2 * fx * -fac) * (fy);
           w4 = (fx) * (1.0f - fy + -fac2 * fy * fac);
 
-          /* these values aren't used for tri's and cause divide by zero */
+          /* These values aren't used for triangles and cause divide by zero. */
           if (faceLen > 3) {
             fac2 = 1.0f - (w1 + w2 + w4);
             fac2 = fac2 / float(faceLen - 3);
