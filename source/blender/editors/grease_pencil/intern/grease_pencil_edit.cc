@@ -1665,7 +1665,7 @@ static const EnumPropertyItem prop_separate_modes[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-void remove_unused_materials(Main *bmain, Object *object)
+static void remove_unused_materials(Main *bmain, Object *object)
 {
   /* Remove unused material slots from source object. */
   int actcol = object->actcol;
@@ -1869,21 +1869,6 @@ static bool grease_pencil_separate_layer(bContext *C,
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
   }
 
-  if (result) {
-
-    //* Remove all drawings in layers but active from source object. */
-    // Vector<Layer *> layers_to_remove;
-    // for (Layer *layer : grease_pencil_src.layers_for_write()) {
-    //  if (!layer->is_locked() && !layer->is_selected()) {
-    //    layers_to_remove.append(layer);
-    //  }
-    //}
-    ///* Remove the layers outside the loop to avoid modifying the collection during iteration. */
-    // for (Layer *layer : layers_to_remove) {
-    //  grease_pencil_src.remove_layer(*layer);
-    //}
-  }
-
   return result;
 }
 
@@ -1908,7 +1893,6 @@ static bool grease_pencil_separate_material(bContext *C,
       continue;
     }
 
-    // TODO: Check empty slots. The array element must exist to keep array index consistency.
     Object *object_dst = duplicate_grease_pencil_object(
         bmain, scene, view_layer, base_prev, grease_pencil_src);
 
