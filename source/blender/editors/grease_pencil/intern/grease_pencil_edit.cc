@@ -1705,7 +1705,6 @@ static bke::greasepencil::Layer &get_layer_dst(const int layer_index,
   using namespace bke::greasepencil;
 
   const Layer *layer_src = grease_pencil_src.layers().get(layer_index, layer_src);
-  const Layer *layer_dst = nullptr;
 
   for (Layer *layer : grease_pencil_dst.layers_for_write()) {
     if (layer_src->name() == layer->name()) {
