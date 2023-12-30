@@ -18,8 +18,6 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
@@ -237,7 +235,7 @@ static void partialvis_update_mesh(Object &object,
       const Span<float3> positions = BKE_pbvh_get_vert_positions(&pbvh);
       vert_hide_update(object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
         for (const int i : verts.index_range()) {
-          if (isect_point_planes_v3(planes, 4, positions[verts[i]])) {
+          if (isect_point_planes_v3(planes, 4, positions[verts[i]]) == (area == VisArea::Inside)) {
             hide[i] = value;
           }
         }
@@ -383,7 +381,8 @@ static void partialvis_update_grids(Depsgraph &depsgraph,
             for (const int y : IndexRange(key.grid_size)) {
               for (const int x : IndexRange(key.grid_size)) {
                 CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
-                if (isect_point_planes_v3(planes, 4, CCG_elem_co(&key, elem))) {
+                if (isect_point_planes_v3(planes, 4, CCG_elem_co(&key, elem)) ==
+                    (area == VisArea::Inside)) {
                   hide[y * key.grid_size + x].set(value);
                 }
               }

@@ -40,7 +40,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_deform.h"
@@ -1904,16 +1904,15 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
     return;
   }
 
-  char unique_name[MAX_CUSTOMDATA_LAYER_NAME];
-  BKE_id_attribute_calc_unique_name(&orig_me->id, "Color", unique_name);
+  const std::string unique_name = BKE_id_attribute_calc_unique_name(orig_me->id, "Color");
   if (!orig_me->attributes_for_write().add(
           unique_name, AttrDomain::Point, CD_PROP_COLOR, AttributeInitDefaultValue()))
   {
     return;
   }
 
-  BKE_id_attributes_active_color_set(&orig_me->id, unique_name);
-  BKE_id_attributes_default_color_set(&orig_me->id, unique_name);
+  BKE_id_attributes_active_color_set(&orig_me->id, unique_name.c_str());
+  BKE_id_attributes_default_color_set(&orig_me->id, unique_name.c_str());
   DEG_id_tag_update(&orig_me->id, ID_RECALC_GEOMETRY_ALL_MODES);
   BKE_mesh_tessface_clear(orig_me);
 

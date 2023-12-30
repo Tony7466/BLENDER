@@ -11,6 +11,7 @@
 #include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
@@ -304,10 +305,10 @@ static void copy_submesh(const Mesh &mesh,
   int dst_verts_num;
   VectorSet<int> verts;
   if (copy_all_verts) {
-    /* Copy the vertex indices from the corner indices stored in every triangle. */
-    array_utils::gather(corner_verts,
-                        corner_tris.cast<int>(),
-                        MutableSpan(sm.face_vertex_indices.data(), sm.face_vertex_indices.size()));
+    bke::mesh::vert_tris_from_corner_tris(
+        corner_verts,
+        corner_tris,
+        MutableSpan(sm.face_vertex_indices.data(), sm.face_vertex_indices.size()).cast<int3>());
     dst_verts_num = vert_positions.size();
   }
   else {

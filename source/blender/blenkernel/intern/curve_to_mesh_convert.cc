@@ -9,11 +9,9 @@
 #include "BLI_set.hh"
 #include "BLI_task.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"

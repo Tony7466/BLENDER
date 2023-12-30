@@ -27,6 +27,7 @@
 
 #include "BKE_bvhutils.hh"
 #include "BKE_cloth.hh"
+#include "BKE_customdata.hh"
 #include "BKE_effect.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
@@ -77,7 +78,7 @@ static BVHTree *bvhtree_build_from_cloth(ClothModifierData *clmd, float epsilon)
   }
 
   ClothVertex *verts = cloth->verts;
-  const MVertTri *vt = cloth->tri;
+  const blender::int3 *vert_tris = cloth->vert_tris;
 
   /* in the moment, return zero if no faces there */
   if (!cloth->primitive_num) {
@@ -89,12 +90,12 @@ static BVHTree *bvhtree_build_from_cloth(ClothModifierData *clmd, float epsilon)
 
   /* fill tree */
   if (clmd->hairdata == nullptr) {
-    for (int i = 0; i < cloth->primitive_num; i++, vt++) {
+    for (int i = 0; i < cloth->primitive_num; i++) {
       float co[3][3];
 
-      copy_v3_v3(co[0], verts[vt->tri[0]].xold);
-      copy_v3_v3(co[1], verts[vt->tri[1]].xold);
-      copy_v3_v3(co[2], verts[vt->tri[2]].xold);
+      copy_v3_v3(co[0], verts[vert_tris[i][0]].xold);
+      copy_v3_v3(co[1], verts[vert_tris[i][1]].xold);
+      copy_v3_v3(co[2], verts[vert_tris[i][2]].xold);
 
       BLI_bvhtree_insert(bvhtree, i, co[0], 3);
     }
@@ -124,7 +125,6 @@ void bvhtree_update_from_cloth(ClothModifierData *clmd, bool moving, bool self)
   Cloth *cloth = clmd->clothObject;
   BVHTree *bvhtree;
   ClothVertex *verts = cloth->verts;
-  const MVertTri *vt;
 
   BLI_assert(!(clmd->hairdata != nullptr && self));
 
@@ -139,32 +139,32 @@ void bvhtree_update_from_cloth(ClothModifierData *clmd, bool moving, bool self)
     return;
   }
 
-  vt = cloth->tri;
+  const blender::int3 *vert_tris = cloth->vert_tris;
 
   /* update vertex position in bvh tree */
   if (clmd->hairdata == nullptr) {
-    if (verts && vt) {
-      for (i = 0; i < cloth->primitive_num; i++, vt++) {
+    if (verts && vert_tris) {
+      for (i = 0; i < cloth->primitive_num; i++) {
         float co[3][3], co_moving[3][3];
         bool ret;
 
         /* copy new locations into array */
         if (moving) {
-          copy_v3_v3(co[0], verts[vt->tri[0]].txold);
-          copy_v3_v3(co[1], verts[vt->tri[1]].txold);
-          copy_v3_v3(co[2], verts[vt->tri[2]].txold);
+          copy_v3_v3(co[0], verts[vert_tris[i][0]].txold);
+          copy_v3_v3(co[1], verts[vert_tris[i][1]].txold);
+          copy_v3_v3(co[2], verts[vert_tris[i][2]].txold);
 
           /* update moving positions */
-          copy_v3_v3(co_moving[0], verts[vt->tri[0]].tx);
-          copy_v3_v3(co_moving[1], verts[vt->tri[1]].tx);
-          copy_v3_v3(co_moving[2], verts[vt->tri[2]].tx);
+          copy_v3_v3(co_moving[0], verts[vert_tris[i][0]].tx);
+          copy_v3_v3(co_moving[1], verts[vert_tris[i][1]].tx);
+          copy_v3_v3(co_moving[2], verts[vert_tris[i][2]].tx);
 
           ret = BLI_bvhtree_update_node(bvhtree, i, co[0], co_moving[0], 3);
         }
         else {
-          copy_v3_v3(co[0], verts[vt->tri[0]].tx);
-          copy_v3_v3(co[1], verts[vt->tri[1]].tx);
-          copy_v3_v3(co[2], verts[vt->tri[2]].tx);
+          copy_v3_v3(co[0], verts[vert_tris[i][0]].tx);
+          copy_v3_v3(co[1], verts[vert_tris[i][1]].tx);
+          copy_v3_v3(co[2], verts[vert_tris[i][2]].tx);
 
           ret = BLI_bvhtree_update_node(bvhtree, i, co[0], nullptr, 3);
         }
@@ -478,8 +478,8 @@ void cloth_free_modifier(ClothModifierData *clmd)
     }
 
     /* we save our faces for collision objects */
-    if (cloth->tri) {
-      MEM_freeN(cloth->tri);
+    if (cloth->vert_tris) {
+      MEM_freeN(cloth->vert_tris);
     }
 
 #if 0
@@ -546,8 +546,8 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
     }
 
     /* we save our faces for collision objects */
-    if (cloth->tri) {
-      MEM_freeN(cloth->tri);
+    if (cloth->vert_tris) {
+      MEM_freeN(cloth->vert_tris);
     }
 
 #if 0
@@ -848,15 +848,15 @@ static void cloth_from_mesh(ClothModifierData *clmd, const Object *ob, Mesh *mes
     clmd->clothObject->primitive_num = mesh->edges_num;
   }
 
-  clmd->clothObject->tri = static_cast<MVertTri *>(
-      MEM_malloc_arrayN(corner_tris.size(), sizeof(MVertTri), __func__));
-  if (clmd->clothObject->tri == nullptr) {
+  clmd->clothObject->vert_tris = static_cast<blender::int3 *>(
+      MEM_malloc_arrayN(corner_tris.size(), sizeof(blender::int3), __func__));
+  if (clmd->clothObject->vert_tris == nullptr) {
     cloth_free_modifier(clmd);
     BKE_modifier_set_error(ob, &(clmd->modifier), "Out of memory on allocating triangles");
     return;
   }
-  BKE_mesh_runtime_verttris_from_corner_tris(
-      clmd->clothObject->tri, corner_verts.data(), corner_tris.data(), corner_tris.size());
+  blender::bke::mesh::vert_tris_from_corner_tris(
+      corner_verts, corner_tris, {clmd->clothObject->vert_tris, corner_tris.size()});
 
   clmd->clothObject->edges = mesh->edges().data();
 

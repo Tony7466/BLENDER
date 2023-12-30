@@ -1765,35 +1765,36 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
 
     CustomData_free_layer_named(&mesh->corner_data, uv_names[i].c_str(), mesh->corners_num);
 
-    char new_name[MAX_CUSTOMDATA_LAYER_NAME];
-    BKE_id_attribute_calc_unique_name(&mesh->id, uv_names[i].c_str(), new_name);
+    const std::string new_name = BKE_id_attribute_calc_unique_name(mesh->id, uv_names[i].c_str());
     uv_names[i] = new_name;
 
     CustomData_add_layer_named_with_data(
-        &mesh->corner_data, CD_PROP_FLOAT2, coords, mesh->corners_num, new_name, nullptr);
+        &mesh->corner_data, CD_PROP_FLOAT2, coords, mesh->corners_num, new_name.c_str(), nullptr);
     char buffer[MAX_CUSTOMDATA_LAYER_NAME];
     if (vert_selection) {
-      CustomData_add_layer_named_with_data(&mesh->corner_data,
-                                           CD_PROP_BOOL,
-                                           vert_selection,
-                                           mesh->corners_num,
-                                           BKE_uv_map_vert_select_name_get(new_name, buffer),
-                                           nullptr);
+      CustomData_add_layer_named_with_data(
+          &mesh->corner_data,
+          CD_PROP_BOOL,
+          vert_selection,
+          mesh->corners_num,
+          BKE_uv_map_vert_select_name_get(new_name.c_str(), buffer),
+          nullptr);
     }
     if (edge_selection) {
-      CustomData_add_layer_named_with_data(&mesh->corner_data,
-                                           CD_PROP_BOOL,
-                                           edge_selection,
-                                           mesh->corners_num,
-                                           BKE_uv_map_edge_select_name_get(new_name, buffer),
-                                           nullptr);
+      CustomData_add_layer_named_with_data(
+          &mesh->corner_data,
+          CD_PROP_BOOL,
+          edge_selection,
+          mesh->corners_num,
+          BKE_uv_map_edge_select_name_get(new_name.c_str(), buffer),
+          nullptr);
     }
     if (pin) {
       CustomData_add_layer_named_with_data(&mesh->corner_data,
                                            CD_PROP_BOOL,
                                            pin,
                                            mesh->corners_num,
-                                           BKE_uv_map_pin_name_get(new_name, buffer),
+                                           BKE_uv_map_pin_name_get(new_name.c_str(), buffer),
                                            nullptr);
     }
   }
@@ -2342,3 +2343,46 @@ void mesh_sculpt_mask_to_generic(Mesh &mesh)
 }  // namespace blender::bke
 
 /** \} */
+
+void BKE_mesh_calc_edges_tessface(Mesh *mesh)
+{
+  const int nulegacy_faces = mesh->totface_legacy;
+  blender::VectorSet<blender::OrderedEdge> eh;
+  eh.reserve(nulegacy_faces);
+  MFace *legacy_faces = (MFace *)CustomData_get_layer_for_write(
+      &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
+
+  MFace *mf = legacy_faces;
+  for (int i = 0; i < nulegacy_faces; i++, mf++) {
+    eh.add({mf->v1, mf->v2});
+    eh.add({mf->v2, mf->v3});
+
+    if (mf->v4) {
+      eh.add({mf->v3, mf->v4});
+      eh.add({mf->v4, mf->v1});
+    }
+    else {
+      eh.add({mf->v3, mf->v1});
+    }
+  }
+
+  const int numEdges = eh.size();
+
+  /* write new edges into a temporary CustomData */
+  CustomData edgeData;
+  CustomData_reset(&edgeData);
+  CustomData_add_layer_named(&edgeData, CD_PROP_INT32_2D, CD_CONSTRUCT, numEdges, ".edge_verts");
+  CustomData_add_layer(&edgeData, CD_ORIGINDEX, CD_SET_DEFAULT, numEdges);
+
+  blender::int2 *ege = (blender::int2 *)CustomData_get_layer_named_for_write(
+      &edgeData, CD_PROP_INT32_2D, ".edge_verts", mesh->edges_num);
+  int *index = (int *)CustomData_get_layer_for_write(&edgeData, CD_ORIGINDEX, mesh->edges_num);
+
+  memset(index, ORIGINDEX_NONE, sizeof(int) * numEdges);
+  MutableSpan(ege, numEdges).copy_from(eh.as_span().cast<blender::int2>());
+
+  /* free old CustomData and assign new one */
+  CustomData_free(&mesh->edge_data, mesh->edges_num);
+  mesh->edge_data = edgeData;
+  mesh->edges_num = numEdges;
+}

@@ -142,13 +142,16 @@ const Curve *CurveComponent::get_curve_for_render() const
 /** \name Curve Normals Access
  * \{ */
 
-static Array<float3> curve_normal_point_domain(const bke::CurvesGeometry &curves)
+static Array<float3> curve_normal_point_domain(const CurvesGeometry &curves)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const OffsetIndices evaluated_points_by_curve = curves.evaluated_points_by_curve();
   const VArray<int8_t> types = curves.curve_types();
   const VArray<int> resolutions = curves.resolution();
   const VArray<bool> curves_cyclic = curves.cyclic();
+  const AttributeAccessor attributes = curves.attributes();
+  const VArray<float3> custom_normals = *attributes.lookup_or_default<float3>(
+      "custom_normal", AttrDomain::Point, float3(0, 0, 1));
 
   const Span<float3> positions = curves.positions();
   const VArray<int8_t> normal_modes = curves.normal_mode();
@@ -194,13 +197,16 @@ static Array<float3> curve_normal_point_domain(const bke::CurvesGeometry &curves
           nurbs_tangents.resize(points.size());
           const bool cyclic = curves_cyclic[i_curve];
           const Span<float3> curve_positions = positions.slice(points);
-          bke::curves::poly::calculate_tangents(curve_positions, cyclic, nurbs_tangents);
+          curves::poly::calculate_tangents(curve_positions, cyclic, nurbs_tangents);
           switch (NormalMode(normal_modes[i_curve])) {
             case NORMAL_MODE_Z_UP:
-              bke::curves::poly::calculate_normals_z_up(nurbs_tangents, curve_normals);
+              curves::poly::calculate_normals_z_up(nurbs_tangents, curve_normals);
               break;
             case NORMAL_MODE_MINIMUM_TWIST:
-              bke::curves::poly::calculate_normals_minimum(nurbs_tangents, cyclic, curve_normals);
+              curves::poly::calculate_normals_minimum(nurbs_tangents, cyclic, curve_normals);
+              break;
+            case NORMAL_MODE_FREE:
+              custom_normals.materialize(points, curve_normals);
               break;
           }
           break;
@@ -286,7 +292,7 @@ bool CurveLengthFieldInput::is_equal_to(const fn::FieldNode &other) const
 }
 
 std::optional<AttrDomain> CurveLengthFieldInput::preferred_domain(
-    const bke::CurvesGeometry & /*curves*/) const
+    const CurvesGeometry & /*curves*/) const
 {
   return AttrDomain::Curve;
 }
@@ -360,7 +366,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       static const float default_value = 0.0f;
       return {VArray<float>::ForSingle(default_value, curves->points_num()), AttrDomain::Point};
     }
-    return {bke::varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
+    return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
@@ -379,7 +385,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       return {};
     }
     MutableSpan<MDeformVert> dverts = curves->deform_verts_for_write();
-    return {bke::varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
+    return {varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final
@@ -406,7 +412,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     }
 
     MutableSpan<MDeformVert> dverts = curves->deform_verts_for_write();
-    bke::remove_defgroup_index(dverts, index);
+    remove_defgroup_index(dverts, index);
     return true;
   }
 
@@ -569,7 +575,7 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static const auto normal_mode_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "Normal Mode Validate",
       [](int8_t value) {
-        return std::clamp<int8_t>(value, NORMAL_MODE_MINIMUM_TWIST, NORMAL_MODE_Z_UP);
+        return std::clamp<int8_t>(value, NORMAL_MODE_MINIMUM_TWIST, NORMAL_MODE_FREE);
       },
       mf::build::exec_presets::AllSpanOrSingle());
   static BuiltinCustomDataLayerProvider normal_mode("normal_mode",
@@ -581,6 +587,15 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                     curve_access,
                                                     tag_component_normals_changed,
                                                     AttributeValidator{&normal_mode_clamp});
+
+  static BuiltinCustomDataLayerProvider custom_normal("custom_normal",
+                                                      AttrDomain::Point,
+                                                      CD_PROP_FLOAT3,
+                                                      CD_PROP_FLOAT3,
+                                                      BuiltinAttributeProvider::Creatable,
+                                                      BuiltinAttributeProvider::Deletable,
+                                                      point_access,
+                                                      tag_component_normals_changed);
 
   static const auto knots_mode_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "Knots Mode Validate",
@@ -650,6 +665,7 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                       &handle_type_right,
                                       &handle_type_left,
                                       &normal_mode,
+                                      &custom_normal,
                                       &nurbs_order,
                                       &nurbs_knots_mode,
                                       &nurbs_weight,

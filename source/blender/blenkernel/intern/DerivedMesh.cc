@@ -34,7 +34,6 @@
 
 #include "BKE_DerivedMesh.hh"
 #include "BKE_bvhutils.hh"
-#include "BKE_colorband.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
@@ -632,7 +631,7 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
       }
 
       if (mti->type == ModifierTypeType::OnlyDeform && !sculpt_dyntopo) {
-        blender::bke::ScopedModifierTimer modifier_timer{*md};
+        ScopedModifierTimer modifier_timer{*md};
         if (!mesh_final) {
           mesh_final = BKE_mesh_copy_for_eval(mesh_input);
           ASSERT_IS_VALID_MESH(mesh_final);
