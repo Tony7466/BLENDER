@@ -627,9 +627,9 @@ void DeferredLayer::end_sync()
       pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);
       pass.bind_texture("direct_radiance_2_tx", &direct_radiance_txs_[1]);
       pass.bind_texture("direct_radiance_3_tx", &direct_radiance_txs_[2]);
-      pass.bind_texture("indirect_diffuse_tx", &indirect_diffuse_tx_);
-      pass.bind_texture("indirect_reflect_tx", &indirect_reflect_tx_);
-      pass.bind_texture("indirect_refract_tx", &indirect_refract_tx_);
+      pass.bind_texture("indirect_radiance_1_tx", &indirect_radiance_txs_[0]);
+      pass.bind_texture("indirect_radiance_2_tx", &indirect_radiance_txs_[1]);
+      pass.bind_texture("indirect_radiance_3_tx", &indirect_radiance_txs_[2]);
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       pass.bind_resources(inst_.gbuffer);
@@ -783,9 +783,9 @@ void DeferredLayer::render(View &main_view,
     float4 data(0.0f);
     dummy_black_tx.ensure_2d(
         RAYTRACE_RADIANCE_FORMAT, int2(1), GPU_TEXTURE_USAGE_SHADER_READ, data);
-    indirect_diffuse_tx_ = dummy_black_tx;
-    indirect_reflect_tx_ = dummy_black_tx;
-    indirect_refract_tx_ = dummy_black_tx;
+    for (int i = 0; i < 3; i++) {
+      indirect_radiance_txs_[i] = dummy_black_tx;
+    }
   }
   else {
     indirect_result = inst_.raytracing.render(rt_buffer,
@@ -796,17 +796,16 @@ void DeferredLayer::render(View &main_view,
                                               main_view,
                                               render_view,
                                               do_screen_space_refraction);
-
-    indirect_diffuse_tx_ = indirect_result.diffuse.get();
-    indirect_reflect_tx_ = indirect_result.reflect.get();
-    indirect_refract_tx_ = indirect_result.refract.get();
+    for (int i = 0; i < 3; i++) {
+      indirect_radiance_txs_[i] = indirect_result.closures[i].get();
+    }
   }
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, render_view);
 
   inst_.subsurface.render(
-      direct_radiance_txs_[0], indirect_diffuse_tx_, closure_bits_, render_view);
+      direct_radiance_txs_[0], indirect_radiance_txs_[0], closure_bits_, render_view);
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);

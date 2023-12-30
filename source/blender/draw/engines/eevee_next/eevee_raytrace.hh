@@ -51,10 +51,9 @@ struct RayTraceBuffer {
     TextureFromPool denoised_bilateral_tx = {"denoised_bilateral_tx"};
   };
   /**
-   * One for each closure type. Not to be mistaken with deferred layer type.
-   * For instance the opaque deferred layer will only used the reflection history buffer.
+   * One for each closure. Not to be mistaken with deferred layer type.
    */
-  DenoiseBuffer reflection, refraction, diffuse;
+  DenoiseBuffer closures[3];
 };
 
 /**
@@ -92,15 +91,13 @@ class RayTraceResultTexture {
 };
 
 struct RayTraceResult {
-  RayTraceResultTexture diffuse;
-  RayTraceResultTexture reflect;
-  RayTraceResultTexture refract;
+  RayTraceResultTexture closures[3];
 
   void release()
   {
-    diffuse.release();
-    reflect.release();
-    refract.release();
+    for (int i = 0; i < 3; i++) {
+      closures[i].release();
+    }
   }
 };
 
@@ -235,8 +232,7 @@ class RayTraceModule {
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
 
  private:
-  RayTraceResultTexture trace(const char *debug_pass_name,
-                              int closure_index,
+  RayTraceResultTexture trace(int closure_index,
                               bool active_layer,
                               RaytraceEEVEE options,
                               RayTraceBuffer &rt_buffer,

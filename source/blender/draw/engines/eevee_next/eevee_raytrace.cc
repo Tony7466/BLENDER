@@ -362,41 +362,18 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   data_.trace_refraction = do_refraction_tracing;
 
-  result.diffuse = trace("Closure0",
-                         0,
-                         (closure_count > 0),
-                         options,
-                         rt_buffer,
-                         screen_radiance_back_tx,
-                         screen_radiance_front_tx,
-                         screen_radiance_persmat,
-                         main_view,
-                         render_view,
-                         use_horizon_scan);
-
-  result.reflect = trace("Closure1",
-                         1,
-                         (closure_count > 1),
-                         options,
-                         rt_buffer,
-                         screen_radiance_back_tx,
-                         screen_radiance_front_tx,
-                         screen_radiance_persmat,
-                         main_view,
-                         render_view,
-                         use_horizon_scan);
-
-  result.refract = trace("Closure2",
-                         2,
-                         (closure_count > 2),
-                         options,
-                         rt_buffer,
-                         screen_radiance_back_tx,
-                         screen_radiance_front_tx,
-                         screen_radiance_persmat,
-                         main_view,
-                         render_view,
-                         use_horizon_scan);
+  for (int i = 0; i < 3; i++) {
+    result.closures[i] = trace(0,
+                               (closure_count > 0),
+                               options,
+                               rt_buffer,
+                               screen_radiance_back_tx,
+                               screen_radiance_front_tx,
+                               screen_radiance_persmat,
+                               main_view,
+                               render_view,
+                               use_horizon_scan);
+  }
 
   downsampled_in_radiance_tx_.release();
   downsampled_in_normal_tx_.release();
@@ -407,7 +384,6 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 }
 
 RayTraceResultTexture RayTraceModule::trace(
-    const char *debug_pass_name,
     int closure_index,
     bool active_layer,
     RaytraceEEVEE options,
@@ -420,17 +396,7 @@ RayTraceResultTexture RayTraceModule::trace(
     View &render_view,
     bool use_horizon_scan)
 {
-  RayTraceBuffer::DenoiseBuffer *denoise_buf = nullptr;
-
-  if (closure_index == 0) {
-    denoise_buf = &rt_buffer.diffuse;
-  }
-  else if (closure_index == 1) {
-    denoise_buf = &rt_buffer.reflection;
-  }
-  else if (closure_index == 2) {
-    denoise_buf = &rt_buffer.refraction;
-  }
+  RayTraceBuffer::DenoiseBuffer *denoise_buf = &rt_buffer.closures[closure_index];
 
   if (!active_layer) {
     /* Early out. Release persistent buffers. Still acquire one dummy resource for validation. */
@@ -458,7 +424,7 @@ RayTraceResultTexture RayTraceModule::trace(
 
   eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
 
-  DRW_stats_group_start(debug_pass_name);
+  DRW_stats_group_start("Raytracing");
 
   data_.thickness = options.screen_trace_thickness;
   data_.quality = 1.0f - 0.95f * options.screen_trace_quality;
