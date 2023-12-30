@@ -8,24 +8,8 @@
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_closure_lib.glsl)
 
-float closure_apparent_roughness_get(ClosureUndetermined cl)
-{
-  switch (cl.type) {
-    case CLOSURE_BSDF_TRANSLUCENT_ID:
-      return 1.0;
-    case CLOSURE_BSSRDF_BURLEY_ID:
-    case CLOSURE_BSDF_DIFFUSE_ID:
-      return 1.0;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-      return to_closure_reflection(cl).roughness;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-      return to_closure_refraction(cl).roughness;
-    case CLOSURE_NONE_ID:
-    default:
-      return 0.0;
-  }
-}
 float bilateral_depth_weight(vec3 center_N, vec3 center_P, vec3 sample_P)
 {
   vec4 center_plane_eq = vec4(center_N, -dot(center_N, center_P));
