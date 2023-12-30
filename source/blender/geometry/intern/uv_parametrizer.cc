@@ -5238,7 +5238,7 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
     PChart *chart = phandle->charts[i];
     slim::MatrixTransferChart *mt_chart = &mt->charts[i];
 
-    //p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
+    p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
 
     if (!p_chart_correct_zero_area(chart, SLIM_CORR_MIN_AREA, SLIM_CORR_MIN_ANGLE)) {
       //mt_chart->succeeded = false;
