@@ -524,7 +524,8 @@ const void *CustomData_get_layer_named(const CustomData *data,
 void *CustomData_get_layer_named_for_write(CustomData *data,
                                            eCustomDataType type,
                                            blender::StringRef name,
-                                           int totelem);
+                                           int totelem,
+                                           bool preserve_data = true);
 
 int CustomData_get_offset(const CustomData *data, eCustomDataType type);
 int CustomData_get_offset_named(const CustomData *data,
