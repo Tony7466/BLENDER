@@ -1665,7 +1665,7 @@ static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
 
     /* If the attribute does not exist then default with index range. */
     if (!shape_ids) {
-      shape_ids = attributes.lookup_or_add_for_write_span<int>("shape_id", ATTR_DOMAIN_CURVE);
+      shape_ids = attributes.lookup_or_add_for_write_span<int>("shape_id", bke::AttrDomain::Curve);
 
       array_utils::fill_index_range<int>(shape_ids.span);
     }
@@ -1681,7 +1681,7 @@ static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
     /* Copy curve attributes to all selected curves. */
     Set<std::string> attributes_to_skip{{"curve_type", "cyclic", "shape_id"}};
     attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
-      if (meta_data.domain != ATTR_DOMAIN_CURVE) {
+      if (meta_data.domain != bke::AttrDomain::Curve) {
         return true;
       }
       if (attributes_to_skip.contains(id.name())) {

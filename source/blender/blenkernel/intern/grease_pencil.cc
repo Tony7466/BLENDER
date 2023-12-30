@@ -349,7 +349,7 @@ Array<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
 
   const int num_curves = curves.curves_num();
 
-  const VArray<int> shape_ids = *attributes.lookup<int>("shape_id", ATTR_DOMAIN_CURVE);
+  const VArray<int> shape_ids = *attributes.lookup<int>("shape_id", bke::AttrDomain::Curve);
 
   if (!shape_ids) {
     /* If the attribute does not exist then the default is each shape containing one curve. */

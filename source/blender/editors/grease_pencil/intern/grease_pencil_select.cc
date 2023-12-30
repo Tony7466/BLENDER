@@ -369,7 +369,8 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+      scene->toolsettings);
 
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
@@ -382,7 +383,7 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
 
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-    const VArray<int> shape_ids = *attributes.lookup<int>("shape_id", ATTR_DOMAIN_CURVE);
+    const VArray<int> shape_ids = *attributes.lookup<int>("shape_id", bke::AttrDomain::Curve);
 
     /* If the attribute does not exist then each curves is it's own shape. */
     if (!shape_ids) {
@@ -402,9 +403,9 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
         if (shape_ids[curve_i2] != shape_id) {
           continue;
         }
-        GMutableSpan selection_curve = selection.span.slice(selection_domain == ATTR_DOMAIN_POINT ?
-                                                                points_by_curve[curve_i2] :
-                                                                IndexRange(curve_i2, 1));
+        GMutableSpan selection_curve = selection.span.slice(
+            selection_domain == bke::AttrDomain::Point ? points_by_curve[curve_i2] :
+                                                         IndexRange(curve_i2, 1));
         ed::curves::fill_selection_true(selection_curve);
       }
     });
