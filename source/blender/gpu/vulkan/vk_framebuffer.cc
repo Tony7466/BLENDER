@@ -997,8 +997,6 @@ bool VKFrameBuffer::image_view_ensure(GPUTexture *tex, int mip, int layer, int v
         texture, attachment_description, enabled_srgb_);
   };
   std::weak_ptr<VKImageView> image_view = texture.image_view_get(enabled_srgb_, mip, layer);
-  clear_pass_pipeline_barrier_recoding(
-      view_order, image_view.lock()->mip_range_get(), image_view.lock()->layer_range_get());
   if (image_views_[view_order].expired() ||
       !vk_image_view_equal(image_views_[view_order], image_view))
   {
@@ -1097,28 +1095,32 @@ void VKFrameBuffer::next_subpass(VKCommandBuffers &command_buffers)
   subpass_current_++;
 };
 
-void VKFrameBuffer::clear_pass_pipeline_barrier_recoding(int view_order,const IndexRange& mip_range,const IndexRange& layer_range)
+void VKFrameBuffer::clear_pass_pipeline_barrier_recoding()
 {
-
   if (!renderpass_->is_clear_pass_) {
     return;
   }
- 
-  if (!ELEM(renderpass_->vk_create_info_[renderpass_->info_id_].pAttachments[view_order].loadOp,
-            VK_ATTACHMENT_LOAD_OP_LOAD))
+  for (int view_order = 0;
+       view_order < renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
+       view_order++)
   {
-  int type = renderpass_->attachments_.type_get(view_order, renderpass_->info_id_);
-    const GPUAttachment &attachment = attachments_[type];
-    VKTexture *texture = reinterpret_cast<VKTexture *>(attachment.tex);
-    VKContext &context = *VKContext::get();
-    texture->layout_ensure(context,
-                                          VK_IMAGE_LAYOUT_MAX_ENUM,
-                                          (type < GPU_FB_COLOR_ATTACHMENT0) ?
-                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
-                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                              mip_range,
-                                              layer_range,
-                                          VKCommandBuffers::Type::Graphics);
+    if (!ELEM(renderpass_->vk_create_info_[renderpass_->info_id_].pAttachments[view_order].loadOp,
+              VK_ATTACHMENT_LOAD_OP_LOAD))
+    {
+      int type = renderpass_->attachments_.type_get(view_order, renderpass_->info_id_);
+      const GPUAttachment &attachment = attachments_[type];
+      VKTexture *texture = reinterpret_cast<VKTexture *>(attachment.tex);
+      VKContext &context = *VKContext::get();
+      std::weak_ptr<VKImageView> image_view = texture->image_view_get(eImageViewUsage::Attachment);
+      texture->layout_ensure(context,
+                             VK_IMAGE_LAYOUT_MAX_ENUM,
+                             (type < GPU_FB_COLOR_ATTACHMENT0) ?
+                                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                             image_view.lock()->mip_range_get(),
+                             image_view.lock()->layer_range_get(),
+                             VKCommandBuffers::Type::Graphics);
+    }
   }
 
 };

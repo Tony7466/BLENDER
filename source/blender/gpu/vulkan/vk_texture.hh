@@ -190,7 +190,7 @@ class VKTexture : public Texture, public VKBindableResource {
   /** Types other than Attchment **/
   std::weak_ptr<VKImageView> image_view_get(
       VkDescriptorType type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
+  std::weak_ptr<VKImageView> image_view_get(eImageViewUsage usage);
   /**  From the VkImage,we get the layout that is most likely to be used in blender. **/
   VkImageLayout best_layout_get();
   bool is_format_dirty(eImageViewUsage usage, bool use_srgb);

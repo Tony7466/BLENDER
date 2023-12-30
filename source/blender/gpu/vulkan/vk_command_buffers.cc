@@ -226,6 +226,7 @@ void VKCommandBuffers::ensure_active_framebuffer()
       render_pass_begin_info.pNext = &attachment_begin_info;
     }
     VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+    framebuffer_->clear_pass_pipeline_barrier_recoding();
     vkCmdBeginRenderPass(
         command_buffer.vk_command_buffer(), &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
     framebuffer_bound_ = true;

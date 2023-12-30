@@ -723,14 +723,24 @@ VkExtent3D VKTexture::vk_extent_3d(int mip_level) const
 std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb, int mip, int layer)
 {
   BLI_assert(mip > -1);
-  int layer_offset = 0;
-  int layer_size = 1;
-  if (layer == -1) {
-    layer_size = vk_layer_count(1);
+  int layer_size = (layer != -1) ? 1 : vk_layer_count(1);
+  int layer_offset = (layer != -1) ? layer : 0;
+  if (is_texture_view()) {
+    layer_offset += layer_offset_;
+    if (!image_views_->equal_vk_image(*source_texture_)) {
+      GPUTexture *tex = reinterpret_cast<GPUTexture *>(source_texture_);
+      source_texture_ = nullptr;
+      init_internal(tex, mip_min_, layer_offset_, use_stencil_);
+    }
+    return image_views_->lookup_vk_handle(*source_texture_,
+                                          eImageViewUsage::Attachment,
+                                          IndexRange(layer_offset, layer_size),
+                                          IndexRange(mip, 1),
+                                          use_stencil_,
+                                          use_srgb,
+                                          name_);
   }
-  else {
-    layer_offset = layer;
-  }
+ 
   return image_views_->lookup_vk_handle(*this,
                                         eImageViewUsage::Attachment,
                                         IndexRange(layer_offset, layer_size),
@@ -799,6 +809,12 @@ VkImageLayout VKTexture::best_layout_get()
   }
   return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
+
+std::weak_ptr<VKImageView> VKTexture::image_view_get(eImageViewUsage usage)
+{
+  return image_views_->vk_image_view_get(usage);
+};
+
 /** \} */
 
 }  // namespace blender::gpu

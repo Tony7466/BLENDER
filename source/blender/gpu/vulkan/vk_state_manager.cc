@@ -50,23 +50,25 @@ void VKStateManager::force_state()
   pipeline.state_manager_get().force_state(state, mutable_state);
 }
 
-void VKStateManager::issue_barrier(eGPUBarrier /*barrier_bits*/)
+void VKStateManager::issue_barrier(eGPUBarrier barrier_bits)
 {
+  #if 0
   VKContext &context = *VKContext::get();
   /* TODO: Pipeline barriers should be added. We might be able to extract it from
    * the actual pipeline, later on, but for now we submit the work as barrier. */
   context.flush();
+  #endif
 }
 
 void VKStateManager::texture_bind(Texture *tex, GPUSamplerState sampler, int unit)
 {
-  VKTexture *texture = unwrap(tex);
+  VKTexture *texture = unwrap(tex,false);
   textures_.bind(unit, *texture, sampler);
 }
 
 void VKStateManager::texture_unbind(Texture *tex)
 {
-  VKTexture *texture = unwrap(tex);
+  VKTexture *texture = unwrap(tex, false);
   textures_.unbind(*texture);
 }
 
@@ -77,13 +79,13 @@ void VKStateManager::texture_unbind_all()
 
 void VKStateManager::input_attachment_bind(Texture *tex, int unit)
 {
-  VKTexture *texture = unwrap(tex);
+  VKTexture *texture = unwrap(tex, false);
   input_attachments_.bind(unit, *texture);
 };
 
 void VKStateManager::input_attachment_unbind(Texture *tex)
 {
-  VKTexture *texture = unwrap(tex);
+  VKTexture *texture = unwrap(tex, false);
   input_attachments_.unbind(*texture);
 };
 
@@ -94,13 +96,13 @@ void VKStateManager::input_attachment_unbind_all()
 
 void VKStateManager::image_bind(Texture *tex, int binding)
 {
-  VKTexture *texture = unwrap(tex);
+  VKTexture *texture = unwrap(tex,false);
   images_.bind(binding, *texture);
 }
 
 void VKStateManager::image_unbind(Texture *tex)
 {
-  VKTexture *texture = unwrap(tex);
+  VKTexture *texture = unwrap(tex,false);
   images_.unbind(*texture);
 }
 

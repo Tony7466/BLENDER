@@ -163,9 +163,7 @@ class VKFrameBuffer : public FrameBuffer {
   }
   const int is_subpass_continue() const;
   void next_subpass(VKCommandBuffers &command_buffers);
-  void clear_pass_pipeline_barrier_recoding(int view_order,
-                                            const IndexRange &mip_range,
-                                            const IndexRange &layer_range);
+  void clear_pass_pipeline_barrier_recoding();
   void submit(VKCommandBuffers &command_buffers);
  private:
   void update_attachments();
