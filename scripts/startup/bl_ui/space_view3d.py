@@ -702,7 +702,7 @@ class VIEW3D_HT_header(Header):
                     icon = snap_items[elem].icon
                     break
             else:
-                text = "Mix"
+                text = iface_("Mix", i18n_contexts.editor_view3d)
                 icon = 'NONE'
             del snap_items, snap_elements
 
@@ -714,6 +714,7 @@ class VIEW3D_HT_header(Header):
                 panel="VIEW3D_PT_snapping",
                 icon=icon,
                 text=text,
+                translate=False,
             )
 
         # Proportional editing
@@ -910,18 +911,21 @@ class VIEW3D_HT_header(Header):
 
         layout.separator_spacer()
 
-        if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL'}:
+        if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
             # Grease pencil
-            if object_mode == 'PAINT_GPENCIL':
-                layout.prop_with_popover(
+            if object_mode in {'PAINT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
+                sub = layout.row(align=True)
+                sub.prop_with_popover(
                     tool_settings,
                     "gpencil_stroke_placement_view3d",
                     text="",
                     panel="VIEW3D_PT_gpencil_origin",
                 )
 
-            if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL'}:
-                layout.prop_with_popover(
+            if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
+                sub = layout.row(align=True)
+                sub.active = tool_settings.gpencil_stroke_placement_view3d != 'SURFACE'
+                sub.prop_with_popover(
                     tool_settings.gpencil_sculpt,
                     "lock_axis",
                     text="",
@@ -1039,6 +1043,8 @@ class VIEW3D_HT_header(Header):
             sub.popover(panel="VIEW3D_PT_overlay_vertex_paint", text="", icon='VPAINT_HLT')
         elif obj is not None and obj.type == 'GPENCIL':
             sub.popover(panel="VIEW3D_PT_overlay_gpencil_options", text="", icon='OUTLINER_DATA_GREASEPENCIL')
+        elif obj is not None and obj.type == 'GREASEPENCIL':
+            sub.popover(panel="VIEW3D_PT_overlay_grease_pencil_options", text="", icon='OUTLINER_DATA_GREASEPENCIL')
 
         # Separate from `elif` chain because it may coexist with weight-paint.
         if (
@@ -1165,7 +1171,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_mask")
                 layout.menu("VIEW3D_MT_face_sets")
                 layout.template_node_operator_asset_root_items()
-            if mode_string == 'SCULPT_CURVES':
+            elif mode_string == 'SCULPT_CURVES':
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
                 layout.template_node_operator_asset_root_items()
@@ -2163,10 +2169,16 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
 
 
 class VIEW3D_MT_paint_grease_pencil(Menu):
-    bl_label = "Paint"
+    bl_label = "Draw"
 
     def draw(self, _context):
-        pass
+        layout = self.layout
+
+        layout.menu("GREASE_PENCIL_MT_layer_active", text="Active Layer")
+
+        layout.separator()
+
+        layout.menu("VIEW3D_MT_edit_greasepencil_showhide")
 
 
 class VIEW3D_MT_paint_gpencil(Menu):
@@ -2755,7 +2767,8 @@ class VIEW3D_MT_object_animation(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe...")
+        layout.operator("anim.keyframe_insert", text="Insert Keyframe")
+        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe with Keying Set")
         layout.operator("anim.keyframe_delete_v3d", text="Delete Keyframes...")
         layout.operator("anim.keyframe_clear_v3d", text="Clear Keyframes...")
         layout.operator("anim.keying_set_active_set", text="Change Keying Set...")
@@ -3019,7 +3032,8 @@ class VIEW3D_MT_object_context_menu(Menu):
 
         layout.separator()
 
-        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe...")
+        layout.operator("anim.keyframe_insert", text="Insert Keyframe")
+        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe with Keying Set")
 
         layout.separator()
 
@@ -3554,7 +3568,7 @@ class VIEW3D_MT_sculpt(Menu):
         props.action = 'SHOW'
         props.area = 'ALL'
 
-        layout.operator("sculpt.face_set_invert_visibility", text="Invert Visible")
+        layout.operator("paint.visibility_invert", text="Invert Visible")
 
         props = layout.operator("paint.hide_show", text="Hide Masked")
         props.action = 'HIDE'
@@ -3775,12 +3789,6 @@ class VIEW3D_MT_face_sets(Menu):
 
         layout.separator()
 
-        layout.operator("sculpt.face_set_invert_visibility", text="Invert Visible Face Sets")
-
-        props = layout.operator("sculpt.reveal_all", text="Show All Face Sets")
-
-        layout.separator()
-
         props = layout.operator("sculpt.face_sets_randomize_colors", text="Randomize Colors")
 
         layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
@@ -3976,7 +3984,6 @@ class VIEW3D_MT_pose(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_pose_motion")
-        layout.operator("armature.move_to_collection", text="Move to Bone Collection")
         layout.menu("VIEW3D_MT_bone_collections")
 
         layout.separator()
@@ -4070,47 +4077,13 @@ class VIEW3D_MT_bone_collections(Menu):
     def draw(self, context):
         layout = self.layout
 
-        if not context.selected_pose_bones and not context.selected_bones:
-            # If there are no bones to assign to any collection, there's no need
-            # to go over all the bone collections & try to build up the menu.
-            #
-            # The poll function shouldn't test for this, because returning False
-            # there will hide this menu completely from the Pose menu, and
-            # that's going too far.
-            layout.enabled = False
-            layout.label(text="- select bones to operate on first -")
-            return
+        layout.operator("armature.move_to_collection")
+        layout.operator("armature.assign_to_collection")
+
+        layout.separator()
 
         layout.operator("armature.collection_show_all")
-        layout.separator()
-
-        arm = context.object.data
-        bone = context.active_bone
-
-        found_editable_bcoll = False
-        for bcoll in arm.collections:
-            if not bcoll.is_editable:
-                continue
-            found_editable_bcoll = True
-
-            if bcoll.name in bone.collections:
-                props = layout.operator("armature.collection_unassign",
-                                        text=bcoll.name,
-                                        icon='REMOVE')
-            else:
-                props = layout.operator("armature.collection_assign",
-                                        text=bcoll.name,
-                                        icon='ADD')
-            props.name = bcoll.name
-
-        if arm.collections and not found_editable_bcoll:
-            row = layout.row()
-            row.enabled = False
-            row.label(text="All bone collections are read-only")
-
-        layout.separator()
-
-        props = layout.operator("armature.collection_assign",
+        props = layout.operator("armature.collection_create_and_assign",
                                 text="Assign to New Collection")
         props.name = "New Collection"
 
@@ -4177,7 +4150,8 @@ class VIEW3D_MT_pose_context_menu(Menu):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe...")
+        layout.operator("anim.keyframe_insert", text="Insert Keyframe")
+        layout.operator("anim.keyframe_insert_menu", text="Insert Keyframe with Keying Set")
 
         layout.separator()
 
@@ -5763,7 +5737,7 @@ class VIEW3D_MT_edit_greasepencil_animation(Menu):
     def draw(self, context):
         layout = self.layout
         layout.operator("grease_pencil.insert_blank_frame", text="Insert Blank Keyframe (Active Layer)")
-        layout.operator("grease_pencil.insert_blank_frame", text="Insert Blank Keyframe (All Layer)").all_layers = True
+        layout.operator("grease_pencil.insert_blank_frame", text="Insert Blank Keyframe (All Layers)").all_layers = True
 
 
 class VIEW3D_MT_edit_gpencil_transform(Menu):
@@ -5798,6 +5772,20 @@ class VIEW3D_MT_edit_gpencil_showhide(Menu):
         layout.operator("gpencil.hide", text="Hide Inactive Layers").unselected = True
 
 
+class VIEW3D_MT_edit_greasepencil_showhide(Menu):
+    bl_label = "Show/Hide"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("grease_pencil.layer_reveal", text="Show All Layers")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.layer_hide", text="Hide Active Layer").unselected = False
+        layout.operator("grease_pencil.layer_hide", text="Hide Inactive Layers").unselected = True
+
+
 class VIEW3D_MT_edit_greasepencil(Menu):
     bl_label = "Grease Pencil"
 
@@ -5808,7 +5796,23 @@ class VIEW3D_MT_edit_greasepencil(Menu):
 
         layout.separator()
 
+        layout.menu("GREASE_PENCIL_MT_layer_active", text="Active Layer")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.duplicate_move")
+
+        layout.separator()
+
+        layout.menu("VIEW3D_MT_edit_greasepencil_showhide")
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_edit_greasepencil_delete")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.clean_loose")
 
 
 class VIEW3D_MT_edit_greasepencil_stroke(Menu):
@@ -5848,6 +5852,8 @@ class VIEW3D_MT_edit_curves(Menu):
         layout = self.layout
 
         layout.menu("VIEW3D_MT_transform")
+        layout.separator()
+        layout.operator("curves.duplicate_move")
         layout.separator()
         layout.operator("curves.attribute_set")
         layout.operator("curves.delete")
@@ -6102,9 +6108,11 @@ class VIEW3D_MT_sculpt_face_sets_edit_pie(Menu):
         props = pie.operator("sculpt.face_sets_create", text="Face Set from Visible")
         props.mode = 'VISIBLE'
 
-        pie.operator("sculpt.face_set_invert_visibility", text="Invert Visible")
+        pie.operator("paint.visibility_invert", text="Invert Visible")
 
-        props = pie.operator("sculpt.reveal_all", text="Show All")
+        props = pie.operator("paint.hide_show", text="Show All")
+        props.action = "SHOW"
+        props.area = "ALL"
 
 
 class VIEW3D_MT_wpaint_vgroup_lock_pie(Menu):
@@ -6729,7 +6737,7 @@ class VIEW3D_PT_shading_render_pass(Panel):
     bl_region_type = 'HEADER'
     bl_label = "Render Pass"
     bl_parent_id = "VIEW3D_PT_shading"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     @classmethod
     def poll(cls, context):
@@ -6961,13 +6969,6 @@ class VIEW3D_PT_overlay_geometry(Panel):
         sub.prop(overlay, "wireframe_opacity", text="Opacity")
 
         row = col.row(align=True)
-        row.active = view.show_viewer
-        row.prop(overlay, "show_viewer_attribute", text="")
-        subrow = row.row(align=True)
-        subrow.active = overlay.show_viewer_attribute
-        subrow.prop(overlay, "viewer_attribute_opacity", text="Viewer Node")
-
-        row = col.row(align=True)
 
         # These properties should be always available in the UI for all modes
         # other than Object.
@@ -6986,6 +6987,33 @@ class VIEW3D_PT_overlay_geometry(Panel):
         col.prop(overlay, "show_face_orientation")
 
         # sub.prop(overlay, "show_onion_skins")
+
+
+class VIEW3D_PT_overlay_viewer_node(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_parent_id = "VIEW3D_PT_overlay"
+    bl_label = "Viewer Node"
+
+    def draw(self, context):
+        layout = self.layout
+        view = context.space_data
+        overlay = view.overlay
+        display_all = overlay.show_overlays
+
+        col = layout.column()
+        col.active = display_all
+
+        row = col.row(align=True)
+        row.active = view.show_viewer
+        row.prop(overlay, "show_viewer_attribute", text="")
+        subrow = row.row(align=True)
+        subrow.active = overlay.show_viewer_attribute
+        subrow.prop(overlay, "viewer_attribute_opacity", text="Color Opacity")
+
+        row = col.row(align=True)
+        row.active = view.show_viewer
+        row.prop(overlay, "show_viewer_text", text="Attribute Text")
 
 
 class VIEW3D_PT_overlay_motion_tracking(Panel):
@@ -7117,7 +7145,7 @@ class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
         statvis_active = not xray
         row = col.row()
         row.active = statvis_active
-        row.prop(overlay, "show_statvis", text="Mesh Analysis")
+        row.prop(overlay, "show_statvis")
         if overlay.show_statvis:
             col = col.column()
             col.active = statvis_active
@@ -7608,7 +7636,10 @@ class VIEW3D_PT_gpencil_origin(Panel):
             row = layout.row()
             row.label(text="Offset")
             row = layout.row()
-            row.prop(gpd, "zdepth_offset", text="")
+            if context.preferences.experimental.use_grease_pencil_version3:
+                row.prop(tool_settings, "gpencil_surface_offset", text="")
+            else:
+                row.prop(gpd, "zdepth_offset", text="")
 
         if tool_settings.gpencil_stroke_placement_view3d == 'STROKE':
             row = layout.row()
@@ -7749,6 +7780,33 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
             shading = VIEW3D_PT_shading.get_shading(context)
             row.enabled = shading.type not in {'WIREFRAME', 'RENDERED'}
             row.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
+
+
+class VIEW3D_PT_overlay_grease_pencil_options(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = ""
+    bl_ui_units_x = 13
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == 'GREASEPENCIL'
+
+    def draw(self, context):
+        layout = self.layout
+        view = context.space_data
+        overlay = view.overlay
+
+        layout.label(text={
+            'PAINT_GREASE_PENCIL': iface_("Draw Grease Pencil"),
+            'EDIT_GREASE_PENCIL': iface_("Edit Grease Pencil"),
+            'OBJECT': iface_("Grease Pencil"),
+        }[context.mode], translate=False)
+
+        if context.object.mode in {'EDIT'}:
+            split = layout.split()
+            col = split.column()
+            col.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
 
 
 class VIEW3D_PT_quad_view(Panel):
@@ -8045,6 +8103,32 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.separator()
 
             col.operator("gpencil.reproject", text="Reproject")
+
+
+class VIEW3D_MT_greasepencil_material_active(Menu):
+    bl_label = "Active Material"
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.active_object
+        if ob is None or len(ob.material_slots) == 0:
+            return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+        ob = context.active_object
+
+        for slot in ob.material_slots:
+            mat = slot.material
+            if not mat:
+                continue
+            mat.id_data.preview_ensure()
+            if mat and mat.id_data and mat.id_data.preview:
+                icon = mat.id_data.preview.icon_id
+                layout.operator("grease_pencil.set_material", text=mat.name, icon_value=icon).slot = mat.name
 
 
 class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
@@ -8781,6 +8865,7 @@ classes = (
     VIEW3D_MT_edit_mesh_merge,
     VIEW3D_MT_edit_mesh_split,
     VIEW3D_MT_edit_mesh_showhide,
+    VIEW3D_MT_greasepencil_material_active,
     VIEW3D_MT_paint_grease_pencil,
     VIEW3D_MT_paint_gpencil,
     VIEW3D_MT_draw_gpencil,
@@ -8790,6 +8875,7 @@ classes = (
     VIEW3D_MT_edit_gpencil_point,
     VIEW3D_MT_edit_gpencil_delete,
     VIEW3D_MT_edit_gpencil_showhide,
+    VIEW3D_MT_edit_greasepencil_showhide,
     VIEW3D_MT_weight_gpencil,
     VIEW3D_MT_gpencil_animation,
     VIEW3D_MT_gpencil_simplify,
@@ -8868,6 +8954,7 @@ classes = (
     VIEW3D_PT_overlay_guides,
     VIEW3D_PT_overlay_object,
     VIEW3D_PT_overlay_geometry,
+    VIEW3D_PT_overlay_viewer_node,
     VIEW3D_PT_overlay_motion_tracking,
     VIEW3D_PT_overlay_edit_mesh,
     VIEW3D_PT_overlay_edit_mesh_shading,
@@ -8888,6 +8975,7 @@ classes = (
     VIEW3D_PT_gpencil_guide,
     VIEW3D_PT_transform_orientations,
     VIEW3D_PT_overlay_gpencil_options,
+    VIEW3D_PT_overlay_grease_pencil_options,
     VIEW3D_PT_context_properties,
     VIEW3D_PT_paint_vertex_context_menu,
     VIEW3D_PT_paint_texture_context_menu,

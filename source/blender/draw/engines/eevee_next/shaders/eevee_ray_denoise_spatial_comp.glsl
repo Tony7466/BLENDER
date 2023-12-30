@@ -42,10 +42,21 @@ void main()
   const uint tile_size = RAYTRACE_GROUP_SIZE;
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
 
-  ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
-  ivec2 texel = (texel_fullres) / uniform_buf.raytrace.resolution_scale;
+#ifdef GPU_METAL
+  int rt_resolution_scale = raytrace_resolution_scale;
+#else /* TODO(fclem): Support specialization on OpenGL and Vulkan. */
+  int rt_resolution_scale = uniform_buf.raytrace.resolution_scale;
+#endif
 
-  if (uniform_buf.raytrace.skip_denoise) {
+  ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
+  ivec2 texel = (texel_fullres) / rt_resolution_scale;
+
+#ifdef GPU_METAL
+  bool do_skip_denoise = skip_denoise;
+#else /* TODO(fclem): Support specialization on OpenGL and Vulkan. */
+  bool do_skip_denoise = uniform_buf.raytrace.skip_denoise;
+#endif
+  if (do_skip_denoise) {
     imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
     return;
   }
@@ -63,7 +74,11 @@ void main()
         continue;
       }
 
-      bool tile_is_unused = imageLoad(tile_mask_img, tile_coord_neighbor).r == 0;
+      int closure_index = uniform_buf.raytrace.closure_index;
+      ivec3 sample_tile = ivec3(tile_coord_neighbor, closure_index);
+
+      uint tile_mask = imageLoad(tile_mask_img, sample_tile).r;
+      bool tile_is_unused = !flag_test(tile_mask, 1u << 0u);
       if (tile_is_unused) {
         ivec2 texel_fullres_neighbor = texel_fullres + ivec2(x, y) * int(tile_size);
 
@@ -75,8 +90,17 @@ void main()
   }
 
   bool valid_texel = in_texture_range(texel_fullres, gbuf_header_tx);
-  uint closure_bits = (!valid_texel) ? 0u : texelFetch(gbuf_header_tx, texel_fullres, 0).r;
-  if (!flag_test(closure_bits, CLOSURE_ACTIVE)) {
+  uint header = (!valid_texel) ? 0u : texelFetch(gbuf_header_tx, texel_fullres, 0).r;
+  GBufferReader gbuf_header = gbuffer_read_header(header);
+
+#if defined(RAYTRACE_DIFFUSE)
+  bool has_closure = gbuf_header.has_diffuse;
+#elif defined(RAYTRACE_REFRACT)
+  bool has_closure = gbuf_header.has_refraction;
+#elif defined(RAYTRACE_REFLECT)
+  bool has_closure = gbuf_header.has_reflection;
+#endif
+  if (!has_closure) {
     imageStore(out_radiance_img, texel_fullres, vec4(FLT_11_11_10_MAX, 0.0));
     imageStore(out_variance_img, texel_fullres, vec4(0.0));
     imageStore(out_hit_depth_img, texel_fullres, vec4(0.0));
@@ -88,14 +112,15 @@ void main()
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
 
-  GBufferData gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_color_tx, texel_fullres);
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
 #if defined(RAYTRACE_DIFFUSE)
-  ClosureDiffuse closure = gbuf.diffuse;
+  ClosureDiffuse closure = gbuf.data.diffuse;
 #elif defined(RAYTRACE_REFRACT)
-  ClosureRefraction closure = gbuf.refraction;
+  ClosureRefraction closure = gbuf.data.refraction;
 #elif defined(RAYTRACE_REFLECT)
-  ClosureReflection closure = gbuf.reflection;
+  ClosureReflection closure = gbuf.data.reflection;
 #else
 #  error
 #endif
@@ -108,7 +133,7 @@ void main()
   /* NOTE: filter_size should never be greater than twice RAYTRACE_GROUP_SIZE. Otherwise, the
    * reconstruction can becomes ill defined since we don't know if further tiles are valid. */
   filter_size = 12.0 * sqrt(filter_size_factor);
-  if (uniform_buf.raytrace.resolution_scale > 1) {
+  if (rt_resolution_scale > 1) {
     /* Filter at least 1 trace pixel to fight the undersampling. */
     filter_size = max(filter_size, 3.0);
     sample_count = max(sample_count, 5u);

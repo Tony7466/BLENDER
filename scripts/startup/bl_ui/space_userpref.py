@@ -576,6 +576,8 @@ class USERPREF_PT_animation_keyframes(AnimationPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         edit = prefs.edit
 
+        layout.prop(edit, "key_insert_channels", expand=True)
+
         col = layout.column()
         col.prop(edit, "use_visual_keying")
         col.prop(edit, "use_keyframe_insert_needed", text="Only Insert Needed")
@@ -643,9 +645,13 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
 
         if bpy.app.build_options.cycles:
             addon = prefs.addons.get("cycles")
-            if addon is not None:
+            if addon is None:
+                layout.label(text="Enable Cycles Render Engine add-on to use Cycles", icon='INFO')
+            else:
                 addon.preferences.draw_impl(col, context)
             del addon
+        else:
+            layout.label(text="Cycles is disabled in this build", icon='INFO')
 
 
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
@@ -1589,6 +1595,7 @@ class USERPREF_UL_extension_repos(bpy.types.UIList):
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.prop(repo, "name", text="", emboss=False)
+        layout.prop(repo, "enabled", text="", emboss=False, icon='CHECKBOX_HLT' if repo.enabled else 'CHECKBOX_DEHLT')
 
 
 # -----------------------------------------------------------------------------
@@ -2008,7 +2015,7 @@ class USERPREF_PT_extensions(ExtensionsPanel, Panel):
         row = layout.row()
         row.label(text="The add-on to use extensions is disabled! See:")
         row.operator(
-            "wm.url_open", text="Extension Add-on Repo", icon='URL',
+            "wm.url_open", text="Extension Add-on Repository", icon='URL',
         ).url = "https://projects.blender.org/ideasman42/bl_ext"
 
 
@@ -2540,7 +2547,6 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_tools_tilt"}, ("blender/blender/issues/82877", "#82877")),
                 ({"property": "use_extended_asset_browser"},
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
-                ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
                 ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
             ),
