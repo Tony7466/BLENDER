@@ -1812,7 +1812,7 @@ static bool grease_pencil_separate_layer(bContext *C,
 
   GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
 
-  /* Create a separate object for each layer. */
+  /* Create a new object for each layer. */
   for (const Layer *layer_src : grease_pencil_src.layers()) {
 
     if (layer_src->is_selected() || layer_src->is_locked()) {
@@ -1829,6 +1829,7 @@ static bool grease_pencil_separate_layer(bContext *C,
     const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
         *scene, grease_pencil_src, *layer_src);
     threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+      bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       /* Select all strokes */
       IndexMaskMemory memory;
       IndexMask strokes = retrieve_editable_strokes(
@@ -1852,6 +1853,9 @@ static bool grease_pencil_separate_layer(bContext *C,
                                        *BKE_object_material_len_p(object_src),
                                        false);
 
+      /* Delete strokes from current drawing. */
+      curves_src.remove_curves(strokes, propagation_info);
+
       info.drawing.tag_topology_changed();
       drawing_dst->tag_topology_changed();
       result = true;
@@ -1866,17 +1870,17 @@ static bool grease_pencil_separate_layer(bContext *C,
 
   if (result) {
 
-    /* Remove all layers but active from source object. */
-    Vector<Layer *> layers_to_remove;
-    for (Layer *layer : grease_pencil_src.layers_for_write()) {
-      if (!layer->is_locked() && !layer->is_selected()) {
-        layers_to_remove.append(layer);
-      }
-    }
-    /* Remove the layers outside the loop to avoid modifying the collection during iteration. */
-    for (Layer *layer : layers_to_remove) {
-      grease_pencil_src.remove_layer(*layer);
-    }
+    //* Remove all drawings in layers but active from source object. */
+    // Vector<Layer *> layers_to_remove;
+    // for (Layer *layer : grease_pencil_src.layers_for_write()) {
+    //  if (!layer->is_locked() && !layer->is_selected()) {
+    //    layers_to_remove.append(layer);
+    //  }
+    //}
+    ///* Remove the layers outside the loop to avoid modifying the collection during iteration. */
+    // for (Layer *layer : layers_to_remove) {
+    //  grease_pencil_src.remove_layer(*layer);
+    //}
   }
 
   return result;
@@ -1896,7 +1900,7 @@ static bool grease_pencil_separate_material(bContext *C,
 
   GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src->data);
 
-  /* Create a separate object for each material. */
+  /* Create a new object for each material. */
   for (const int mat_i : IndexRange(object_src->totcol)) {
 
     if (mat_i == 0) {
@@ -1936,12 +1940,12 @@ static bool grease_pencil_separate_material(bContext *C,
         /* Assign new CurvesGeometry to layer. */
         Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
                                                                          info.frame_number);
-        /* Copy points/strokes to new CurvesGeometry. */
+        /* Copy strokes to new CurvesGeometry. */
         const bke::AnonymousAttributePropagationInfo propagation_info{};
         drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
             curves_src, strokes, propagation_info);
 
-        /* Delete points from current drawing. */
+        /* Delete strokes from current drawing. */
         curves_src.remove_curves(strokes, propagation_info);
 
         info.drawing.tag_topology_changed();
