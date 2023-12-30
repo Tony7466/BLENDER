@@ -5,23 +5,6 @@
 #include "eevee_defines.hh"
 #include "gpu_shader_create_info.hh"
 
-#define EEVEE_RAYTRACE_CLOSURE_VARIATION(name, ...) \
-  GPU_SHADER_CREATE_INFO(name##_diffuse) \
-      .do_static_compilation(true) \
-      .define("RAYTRACE_DIFFUSE") \
-      .define("CLOSURE_ACTIVE", "eClosureBits(CLOSURE_DIFFUSE)") \
-      .additional_info(#name); \
-  GPU_SHADER_CREATE_INFO(name##_reflect) \
-      .do_static_compilation(true) \
-      .define("RAYTRACE_REFLECT") \
-      .define("CLOSURE_ACTIVE", "eClosureBits(CLOSURE_REFLECTION)") \
-      .additional_info(#name); \
-  GPU_SHADER_CREATE_INFO(name##_refract) \
-      .do_static_compilation(true) \
-      .define("RAYTRACE_REFRACT") \
-      .define("CLOSURE_ACTIVE", "eClosureBits(CLOSURE_REFRACTION)") \
-      .additional_info(#name);
-
 /* -------------------------------------------------------------------- */
 /** \name Ray tracing Pipeline
  * \{ */
@@ -62,6 +45,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_tile_compact)
     .compute_source("eevee_ray_tile_compact_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_generate)
+    .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
@@ -73,8 +57,6 @@ GPU_SHADER_CREATE_INFO(eevee_ray_generate)
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
     .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_generate_comp.glsl");
-
-EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_generate)
 
 GPU_SHADER_CREATE_INFO(eevee_ray_trace_fallback)
     .do_static_compilation(true)
@@ -111,6 +93,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_planar)
     .compute_source("eevee_ray_trace_planar_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_trace_screen)
+    .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "eevee_global_ubo",
@@ -122,15 +105,18 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_screen)
     .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D, "ray_data_img")
     .image(1, RAYTRACE_RAYTIME_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "ray_time_img")
     .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "ray_radiance_img")
-    .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
-    .sampler(1, ImageType::DEPTH_2D, "depth_tx")
+    .sampler(0, ImageType::DEPTH_2D, "depth_tx")
+    .sampler(1, ImageType::FLOAT_2D, "radiance_front_tx")
+    .sampler(2, ImageType::FLOAT_2D, "radiance_back_tx")
+    .sampler(4, ImageType::FLOAT_2D, "hiz_front_tx")
+    .sampler(5, ImageType::FLOAT_2D, "hiz_back_tx")
     .storage_buf(5, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::BOOL, "trace_refraction", true)
     .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_trace_screen_comp.glsl");
 
-EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_trace_screen)
-
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_spatial)
+    .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
@@ -152,8 +138,6 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_spatial)
     .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_denoise_spatial_comp.glsl");
 
-EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_denoise_spatial)
-
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_temporal)
     .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
@@ -171,6 +155,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_temporal)
     .compute_source("eevee_ray_denoise_temporal_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
+    .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
@@ -185,8 +170,6 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
     .compute_source("eevee_ray_denoise_bilateral_comp.glsl");
 
-EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_denoise_bilateral)
-
 GPU_SHADER_CREATE_INFO(eevee_horizon_setup)
     .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
@@ -198,6 +181,7 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_setup)
     .compute_source("eevee_horizon_setup_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
+    .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
@@ -214,8 +198,6 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
     .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_horizon_scan_comp.glsl");
-
-EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_horizon_scan)
 
 GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
     .do_static_compilation(true)

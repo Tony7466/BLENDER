@@ -77,15 +77,21 @@ void main()
   /* Extend the ray to cover the whole view. */
   ray_view.max_time = 1000.0;
 
+#ifndef GPU_METAL
+  /* TODO(fclem): Support specialization on OpenGL and Vulkan. */
+  bool trace_refraction = uniform_buf.raytrace.trace_refraction;
+#endif
+
+  ScreenTraceHitData hit;
+  hit.valid = false;
   /* This huge branch is likely to be a huge issue for performance.
    * We could split the shader but that would mean to dispatch some area twice for the same closure
    * index. Another idea is to put both HiZ buffer int he same texture and dynamically access one
    * or the other. But that might also impact performance. */
-  ScreenTraceHitData hit;
   if (is_reflection) {
     hit = raytrace_screen(uniform_buf.raytrace,
                           uniform_buf.hiz,
-                          hiz_tx,
+                          hiz_front_tx,
                           rand_trace,
                           roughness,
                           true,  /* discard_backface */
@@ -98,13 +104,13 @@ void main()
       vec3 history_ndc_hit_P = project_point(uniform_buf.raytrace.radiance_persmat, hit_P);
       vec3 history_ss_hit_P = history_ndc_hit_P * 0.5 + 0.5;
       /* Fetch radiance at hit-point. */
-      radiance = textureLod(screen_radiance_tx, history_ss_hit_P.xy, 0.0).rgb;
+      radiance = textureLod(radiance_front_tx, history_ss_hit_P.xy, 0.0).rgb;
     }
   }
-  else /* is_transmission */ {
+  else if (trace_refraction) {
     hit = raytrace_screen(uniform_buf.raytrace,
                           uniform_buf.hiz,
-                          hiz_tx,
+                          hiz_back_tx,
                           rand_trace,
                           roughness,
                           false, /* discard_backface */
@@ -112,7 +118,7 @@ void main()
                           ray_view);
 
     if (!hit.valid) {
-      radiance = textureLod(screen_radiance_tx, hit.ss_hit_P.xy, 0.0).rgb;
+      radiance = textureLod(radiance_back_tx, hit.ss_hit_P.xy, 0.0).rgb;
     }
   }
 
