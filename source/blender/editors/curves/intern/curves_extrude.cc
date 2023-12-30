@@ -12,12 +12,29 @@
 #include "ED_curves.hh"
 
 namespace blender::ed::curves {
-
+/* Stores information need to create new curves by copying data from original ones. */
 struct CurvesCopy {
-
+  /* Same semantics as in #CurvesGeometry.curve_offsets. */
   blender::Array<int> curve_offsets;
+
+  /**
+   * Buffer for intervals of all curves. Beginning and end of a curve can be determined only by
+   * #curve_interval_ranges. For ex. [0, 3, 4, 4, 4] indicates one copy interval for first curve
+   * [0, 3] and two for second [4, 4][4, 4]. The first curve will be copied as is without changes,
+   * in the second one (consisting only one point - 4) first point will be duplicated (extruded).
+   */
   blender::Array<int> curve_intervals;
+
+  /**
+   * Points to intervals for each curve in the curve_intervals array.
+   * For example above value would be [{0, 1}, {2, 2}]
+   */
   blender::Array<IndexRange> curve_interval_ranges;
+
+  /**
+   * Per curve boolean indicating if first interval in a curve is selected.
+   * Other can be calculated as in a curve two adjacent intervals can have same selection state.
+   */
   blender::Array<bool> is_first_selected;
 
   CurvesCopy(const int curve_num, const int curve_intervals_size)
@@ -29,6 +46,11 @@ struct CurvesCopy {
   }
 };
 
+/**
+ * Merges copy intervals at curve endings to minimize number of copy operations.
+ * For example above intervals [0, 3, 4, 4, 4] became [0, 4, 4].
+ * Leading to only two copy operations.
+ */
 Span<int> compress_intervals(const blender::Array<IndexRange> &curve_interval_ranges,
                              const Span<int> curve_intervals,
                              blender::Array<int> &compressed)
@@ -47,6 +69,11 @@ Span<int> compress_intervals(const blender::Array<IndexRange> &curve_interval_ra
   return {dst, compact_count};
 }
 
+/**
+ * Creates copy intervals for selection #range in the context of #curve_index.
+ * If part of the #range is outside given curve, slices it and returns false indicating remaining
+ * still needs to be handled. If whole #range was handled returns true.
+ */
 bool handle_range(const int curve_index,
                   const int interval_offset,
                   int &ins,
@@ -78,6 +105,10 @@ bool handle_range(const int curve_index,
   return inside_curve;
 }
 
+/**
+ * Calculates number of points in resulting curve denoted by #curve_index and sets it's
+ * #curve_offsets value.
+ */
 void calc_curve_offset(const int curve_index, int &interval_offset, CurvesCopy &extr)
 {
   int points_in_curve = 0;
@@ -97,8 +128,8 @@ void finish_curve(int &curve_index, int &interval_offset, int ins, int last_elem
     extr.curve_intervals[interval_offset + ins] = last_elem;
     ins++;
   }
-  /* Check for extrusion from one point. */
   else if (extr.is_first_selected[curve_index] && ins == 2) {
+    /* Extrusion from one point. */
     extr.curve_intervals[interval_offset + ins] = extr.curve_intervals[interval_offset + ins - 1];
     extr.is_first_selected[curve_index] = false;
     ins++;
@@ -120,8 +151,8 @@ void finish_curve_or_shallow_copy(int &curve_index,
   if (prev_range.has_value() && prev_range.value().last() >= offsets[curve_index]) {
     finish_curve(curve_index, interval_offset, ins, last, extr);
   }
-  /* Shallow copy if previous selected point vas not on this curve. */
   else {
+    /* Shallow copy if previous selected point vas not on this curve. */
     const int first = offsets[curve_index];
     extr.curve_interval_ranges[curve_index] = IndexRange(interval_offset, 1);
     extr.is_first_selected[curve_index] = false;
@@ -132,6 +163,12 @@ void finish_curve_or_shallow_copy(int &curve_index,
   }
 }
 
+/**
+ * Creates and fills #CurvesCopy for extrusion of selected points.
+ *
+ * \param offsets: offsets of original curve.
+ * \param selection: selected points.
+ */
 const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const IndexMask &selection)
 {
   const int curve_num = offsets.size() - 1;
