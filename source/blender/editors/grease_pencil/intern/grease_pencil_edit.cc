@@ -32,6 +32,8 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
+#include "GEO_subdivide_curves.hh"
+
 #include "WM_api.hh"
 
 #include "UI_resources.hh"
@@ -1636,6 +1638,173 @@ static void GREASE_PENCIL_OT_clean_loose(wmOperatorType *ot)
               "Number of points to consider stroke as loose",
               1,
               INT_MAX);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Stroke Subdivide Operator
+ * \{ */
+
+/* helper to smooth */
+static void gpencil_smooth_stroke(bContext *C, wmOperator *op)
+{
+  const int repeat = RNA_int_get(op->ptr, "repeat");
+  float factor = RNA_float_get(op->ptr, "factor");
+  const bool only_selected = RNA_boolean_get(op->ptr, "only_selected");
+  const bool smooth_position = RNA_boolean_get(op->ptr, "smooth_position");
+  const bool smooth_thickness = RNA_boolean_get(op->ptr, "smooth_thickness");
+  const bool smooth_strength = RNA_boolean_get(op->ptr, "smooth_strength");
+  const bool smooth_uv = RNA_boolean_get(op->ptr, "smooth_uv");
+
+  if (factor == 0.0f) {
+    return;
+  }
+}
+
+/* helper: Count how many points need to be inserted */
+static int gpencil_count_subdivision_cuts(bGPDstroke *gps)
+{
+  bGPDspoint *pt;
+  int i;
+  int totnewpoints = 0;
+  for (i = 0, pt = gps->points; i < gps->totpoints && pt; i++, pt++) {
+    if (pt->flag & GP_SPOINT_SELECT) {
+      if (i + 1 < gps->totpoints) {
+        if (gps->points[i + 1].flag & GP_SPOINT_SELECT) {
+          totnewpoints++;
+        }
+      }
+    }
+  }
+
+  if ((gps->flag & GP_STROKE_CYCLIC) && (gps->points[0].flag & GP_SPOINT_SELECT) &&
+      (gps->points[gps->totpoints - 1].flag & GP_SPOINT_SELECT))
+  {
+    totnewpoints++;
+  }
+
+  return totnewpoints;
+}
+
+static void gpencil_stroke_subdivide(bke::CurvesGeometry &strokes, const int cuts)
+{
+  // TODO here...
+}
+
+static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
+{
+  const int cuts = RNA_int_get(op->ptr, "number_cuts");
+  int changed = 0;
+
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+    scene->toolsettings);
+
+  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
+      return;
+    }
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+    const OffsetIndices points_by_curve = curves.points_by_curve();
+    //const VArray<bool> cyclic = curves.cyclic();
+    const VArray<bool> point_selection = *curves.attributes().lookup_or_default<bool>(
+        ".selection", bke::AttrDomain::Point, true);
+
+    /* every stroke subdivides to the same cut. */
+    Array<int> cuts_array(curves.curve_num,cuts);
+    VArray<int> vcuts=VArray<int>::ForContainer(std::move(cuts_array));
+
+    if (selection_domain == bke::AttrDomain::Curve) {
+      /* Subdivide entire selected curve. */
+      blender::bke::AnonymousAttributePropagationInfo pinfo;
+      blender::geometry::subdivide_curves(curves,strokes,vcuts,pinfo);
+    }
+    else if (selection_domain == bke::AttrDomain::Point) {
+      /* Subdivide between selected points. */
+    }
+
+  });
+
+
+  if (changed) {
+    /* notifiers */
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static bool gpencil_subdivide_curve_edit_poll_property(const bContext *C,
+                                                       wmOperator * /*op*/,
+                                                       const PropertyRNA *prop)
+{
+  // bGPdata *gpd = ED_gpencil_data_get_active(C);
+  // if (gpd != nullptr && GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd)) {
+  //   const char *prop_id = RNA_property_identifier(prop);
+  //   /* Only show number_cuts in curve edit mode */
+  //   if (!STREQ(prop_id, "number_cuts")) {
+  //     return false;
+  //   }
+  // }
+
+  return true;
+}
+
+bool grease_active_layer_poll(bContext* C){
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  return grease_pencil.has_active_layer();
+}
+
+void GPENCIL_OT_stroke_subdivide(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Subdivide Stroke";
+  ot->idname = "GPENCIL_OT_stroke_subdivide";
+  ot->description =
+      "Subdivide between continuous selected points of the stroke adding a point half way "
+      "between "
+      "them";
+
+  /* api callbacks */
+  ot->exec = gpencil_stroke_subdivide_exec;
+  ot->poll = grease_active_layer_poll;
+  ot->poll_property = gpencil_subdivide_curve_edit_poll_property;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 10, "Number of Cuts", "", 1, 5);
+  /* avoid re-using last var because it can cause _very_ high value and annoy users */
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  /* Smooth parameters */
+  RNA_def_float(ot->srna, "factor", 0.0f, 0.0f, 2.0f, "Smooth", "", 0.0f, 2.0f);
+  prop = RNA_def_int(ot->srna, "repeat", 1, 1, 10, "Repeat", "", 1, 5);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_boolean(ot->srna,
+                  "only_selected",
+                  true,
+                  "Selected Points",
+                  "Smooth only selected points in the stroke");
+  RNA_def_boolean(ot->srna, "smooth_position", true, "Position", "");
+  RNA_def_boolean(ot->srna, "smooth_thickness", true, "Thickness", "");
+  RNA_def_boolean(ot->srna, "smooth_strength", false, "Strength", "");
+  RNA_def_boolean(ot->srna, "smooth_uv", false, "UV", "");
 }
 
 /** \} */
