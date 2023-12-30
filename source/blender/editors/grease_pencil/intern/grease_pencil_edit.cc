@@ -1823,7 +1823,8 @@ static bool grease_pencil_separate_layer(bContext *C,
         bmain, scene, view_layer, base_prev, grease_pencil_src);
     GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
     /* Create Layer. */
-    Layer &layer_dst = get_layer_dst(0, grease_pencil_src, grease_pencil_dst);
+    Layer &layer_dst = get_layer_dst(
+        grease_pencil_src.layers().first_index(layer_src), grease_pencil_src, grease_pencil_dst);
 
     /* Iterate through all the drawings at current frame. */
     const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
