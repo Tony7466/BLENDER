@@ -6,6 +6,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BKE_anonymous_attribute_id.hh"
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
@@ -215,13 +216,43 @@ static void reorder_instaces(const bke::Instances &src_instances,
   array_utils::gather(old_transforms, old_by_new_map, new_transforms);
 }
 
-bke::GeometryComponentPtr reordered_component_copy(const bke::GeometryComponent &src_component,
-                                                   const Span<int> old_by_new_map,
-                                                   const bke::AttrDomain domain)
+static void clean_unused_attributes(const bke::AnonymousAttributePropagationInfo &propagation_info,
+                                    bke::GeometryComponent &component)
+{
+  std::optional<bke::MutableAttributeAccessor> attributes = component.attributes_for_write();
+  if (!attributes.has_value()) {
+    return;
+  }
+
+  Vector<std::string> unused_ids;
+  attributes->for_all(
+      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
+        if (!id.is_anonymous()) {
+          return true;
+        }
+        if (propagation_info.propagate(id.anonymous_id())) {
+          return true;
+        }
+        unused_ids.append(id.name());
+        return true;
+      });
+
+  for (const std::string &unused_id : unused_ids) {
+    attributes->remove(unused_id);
+  }
+}
+
+bke::GeometryComponentPtr reordered_component_copy(
+    const bke::GeometryComponent &src_component,
+    const Span<int> old_by_new_map,
+    const bke::AttrDomain domain,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   BLI_assert(!src_component.is_empty());
   bke::GeometryComponentPtr dst_component = src_component.copy();
   bke::GeometryComponent *component = const_cast<bke::GeometryComponent *>(dst_component.get());
+
+  clean_unused_attributes(propagation_info, *component);
 
   if (const bke::MeshComponent *src_mesh_component = dynamic_cast<const bke::MeshComponent *>(
           &src_component))
