@@ -43,7 +43,7 @@ void main()
 #endif
 
   uint gbuf_header = texelFetch(gbuf_header_tx, texel_fullres, 0).r;
-  GBufferReader gbuf = gbuffer_read_header_closure_types(gbuf.header);
+  GBufferReader gbuf = gbuffer_read_header_closure_types(gbuf_header);
   uint closure_type = gbuf.closures[closure_index].type;
 
   bool is_reflection = true;
