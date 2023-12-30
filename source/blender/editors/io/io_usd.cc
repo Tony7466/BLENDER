@@ -91,6 +91,26 @@ const EnumPropertyItem rna_enum_usd_tex_name_collision_mode_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
+    {USD_SUBDIV_IGNORE,
+     "IGNORE",
+     0,
+     "Ignore",
+     "Subdivision scheme = None, export base mesh without subdivision"},
+    {USD_SUBDIV_TESSELLATE,
+     "TESSELLATE",
+     0,
+     "Tessellate",
+     "Subdivision scheme = None, export subdivided mesh"},
+    {USD_SUBDIV_BEST_MATCH,
+     "BEST_MATCH",
+     0,
+     "Best Match",
+     "Subdivision scheme = Catmull-Clark, when possible. "
+     "Reverts to exporting the subdivided mesh for the Simple subdivision type"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
 enum { AS_BACKGROUND_JOB = 1 };
@@ -155,6 +175,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_mesh_colors = RNA_boolean_get(op->ptr, "export_mesh_colors");
   const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
+  const eSubdivExportMode export_subdiv = eSubdivExportMode(
+      RNA_enum_get(op->ptr, "export_subdivision"));
   const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
@@ -174,6 +196,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_normals,
       export_mesh_colors,
       export_materials,
+      export_subdiv,
       selected_objects_only,
       visible_objects_only,
       use_instancing,
@@ -211,6 +234,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
@@ -335,6 +359,14 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Export viewport settings of materials as USD preview materials, and export "
                   "material assignments as geometry subsets");
 
+  RNA_def_enum(ot->srna,
+               "export_subdivision",
+               rna_enum_usd_export_subdiv_mode_items,
+               USD_SUBDIV_BEST_MATCH,
+               "Subdivision Scheme",
+               "Choose how subdivision modifiers will be mapped to the USD subdivision scheme "
+               "during export");
+
   RNA_def_boolean(ot->srna,
                   "use_instancing",
                   false,
@@ -441,7 +473,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   const bool import_subdiv = RNA_boolean_get(op->ptr, "import_subdiv");
 
-  const bool import_instance_proxies = RNA_boolean_get(op->ptr, "import_instance_proxies");
+  const bool support_scene_instancing = RNA_boolean_get(op->ptr, "support_scene_instancing");
 
   const bool import_visible_only = RNA_boolean_get(op->ptr, "import_visible_only");
 
@@ -505,7 +537,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_blendshapes = import_blendshapes;
   params.prim_path_mask = prim_path_mask;
   params.import_subdiv = import_subdiv;
-  params.import_instance_proxies = import_instance_proxies;
+  params.support_scene_instancing = support_scene_instancing;
   params.create_collection = create_collection;
   params.import_guide = import_guide;
   params.import_proxy = import_proxy;
@@ -561,7 +593,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "read_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Include"));
   uiItemR(col, ptr, "import_subdiv", UI_ITEM_NONE, IFACE_("Subdivision"), ICON_NONE);
-  uiItemR(col, ptr, "import_instance_proxies", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "support_scene_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_visible_only", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_guide", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_proxy", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -656,10 +688,10 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   "SubdivisionScheme attribute");
 
   RNA_def_boolean(ot->srna,
-                  "import_instance_proxies",
+                  "support_scene_instancing",
                   true,
-                  "Import Instance Proxies",
-                  "Create unique Blender objects for USD instances");
+                  "Scene Instancing",
+                  "Import USD scene graph instances as collection instances");
 
   RNA_def_boolean(ot->srna,
                   "import_visible_only",
