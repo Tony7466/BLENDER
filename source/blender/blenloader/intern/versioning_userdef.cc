@@ -45,6 +45,7 @@
 #include "readfile.hh" /* Own include. */
 
 #include "WM_types.hh"
+#include "wm_cursors.hh"
 #include "wm_event_types.hh"
 
 /* Don't use translation strings in versioning!
@@ -922,6 +923,7 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+    userdef->cursor_editmode = WM_CURSOR_CROSS;
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

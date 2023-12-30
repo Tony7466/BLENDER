@@ -923,7 +923,8 @@ typedef struct UserDef {
   /** Number of samples for FPS display calculations. */
   short playback_fps_samples;
 
-  char _pad7[2];
+  char cursor_editmode;
+  char _pad7[1];
 
   /** Private, defaults to 20 for 72 DPI setting. */
   short widget_unit;

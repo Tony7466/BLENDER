@@ -5635,6 +5635,20 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_DEPTH_CURSOR);
   RNA_def_property_ui_text(
       prop, "Cursor Surface Project", "Use the surface depth for cursor placement");
+
+  static const EnumPropertyItem editmode_cursors[] = {
+      {WM_CURSOR_CROSS, "CROSS", 0, "Cross", "Cross cursor"},
+      {WM_CURSOR_PAINT, "PAINT_CROSS", 0, "Paint", "Paint cross cursor"},
+      {WM_CURSOR_CROSSC, "ALT_CROSS", 0, "Alternate Cross", "Alternate cross cursor"},
+      {WM_CURSOR_DEFAULT, "ARROW", 0, "Arrow", "Arrow cursor"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "cursor_editmode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, editmode_cursors);
+  RNA_def_property_enum_default(prop, WM_CURSOR_CROSS);
+  RNA_def_property_ui_text(prop, "Edit Cursor", "Cursor used while editing.");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 }
 
 static void rna_def_userdef_system(BlenderRNA *brna)

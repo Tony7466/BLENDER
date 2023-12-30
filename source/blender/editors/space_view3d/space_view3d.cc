@@ -1516,7 +1516,7 @@ static void view3d_main_region_cursor(wmWindow *win, ScrArea *area, ARegion *reg
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *obedit = BKE_view_layer_edit_object_get(view_layer);
   if (obedit) {
-    WM_cursor_set(win, WM_CURSOR_EDIT);
+    WM_cursor_set(win, U.cursor_editmode);
   }
   else {
     WM_cursor_set(win, WM_CURSOR_DEFAULT);
