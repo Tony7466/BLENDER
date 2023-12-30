@@ -726,8 +726,8 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
     if ((stroke_len > 2) && use_cyclic) {
       calc_flag |= CURVE_FIT_CALC_CYCLIC;
     }
-    // might happen after removing doubles
     else {
+      /* Might need this update if stroke_len <= 2 after removing doubles. */
       is_cyclic = false;
     }
 
