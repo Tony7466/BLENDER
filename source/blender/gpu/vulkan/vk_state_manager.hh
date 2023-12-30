@@ -50,6 +50,7 @@ class VKStateManager : public StateManager {
 
   void input_attachment_bind(Texture *tex, int unit);
   void input_attachment_unbind(Texture *tex);
+  void input_attachment_unbind_all();
 
   void uniform_buffer_bind(VKUniformBuffer *uniform_buffer, int slot);
   void uniform_buffer_unbind(VKUniformBuffer *uniform_buffer);

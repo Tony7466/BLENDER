@@ -160,7 +160,9 @@ class VKTexture : public Texture, public VKBindableResource {
   void layout_ensure(VKContext &context,
                      VkImageLayout old_layout,
                      VkImageLayout new_layout,
-                     IndexRange mipmap_range = IndexRange(0, VK_REMAINING_MIP_LEVELS));
+                     IndexRange mipmap_range = IndexRange(0, VK_REMAINING_MIP_LEVELS),
+                     IndexRange layer_range = IndexRange(0, VK_REMAINING_ARRAY_LAYERS),
+                     VKCommandBuffers::Type command_type = VKCommandBuffers::Type::DataTransferCompute);
 
  private:
   /**
@@ -205,13 +207,13 @@ class VKTexture : public Texture, public VKBindableResource {
   /** \} */
 };
 
-BLI_INLINE VKTexture *unwrap(Texture *tex)
+BLI_INLINE VKTexture *unwrap(Texture *tex,bool source = true)
 {
   if (tex == nullptr) {
     return static_cast<VKTexture *>(tex);
   }
   VKTexture *vk_tex = static_cast<VKTexture *>(tex);
-  if (vk_tex->is_texture_view()) {
+  if (source && vk_tex->is_texture_view()) {
     return vk_tex->source_texture_get();
   }
   return vk_tex;

@@ -99,7 +99,15 @@ void ShadingView::render()
   gbuf.acquire(extent_,
                inst_.pipelines.deferred.closure_layer_count(),
                inst_.pipelines.deferred.normal_layer_count());
-
+  GPU_texture_subpass_write_bits(rbufs.combined_tx, 0, 0);
+  GPU_texture_subpass_write_bits(gbuf.header_tx, 0, 1);
+  GPU_texture_subpass_read_bits(gbuf.header_tx, 0b10);
+  GPU_texture_subpass_write_bits(gbuf.normal_tx.layer_view(0), 0, 2);
+  GPU_texture_subpass_write_bits(gbuf.closure_tx.layer_view(0), 0, 3);
+  GPU_texture_subpass_write_bits(gbuf.closure_tx.layer_view(1), 0, 4);
+  GPU_texture_subpass_write_bits(rbufs.depth_tx, 0, 0);
+  GPU_texture_subpass_write_bits(rbufs.depth_tx, 1, 0);
+  GPU_texture_subpass_write_bits(rbufs.depth_tx, 2, 0);
   gbuffer_fb_.ensure(GPU_ATTACHMENT_TEXTURE(rbufs.depth_tx),
                      GPU_ATTACHMENT_TEXTURE(rbufs.combined_tx),
                      GPU_ATTACHMENT_TEXTURE(gbuf.header_tx),

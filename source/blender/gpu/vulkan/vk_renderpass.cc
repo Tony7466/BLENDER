@@ -538,7 +538,8 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
           dst_pass_depth_final = -2;
           dst_depth_layout = final_layout;
           if (!(vk_create_info_[info_id_].pAttachments[view_order].loadOp ==
-                VK_ATTACHMENT_LOAD_OP_LOAD)) {
+                VK_ATTACHMENT_LOAD_OP_LOAD))
+          {
             dependencies.append(dependency_get(VK_SUBPASS_EXTERNAL,
                                                pass,
                                                SubpassTransitionPattern::EXTERNAL_TO_DEPTH,
@@ -576,9 +577,11 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
           }
           if (!loaded) {
             if (!(vk_create_info_[info_id_].pAttachments[view_order].loadOp ==
-                  VK_ATTACHMENT_LOAD_OP_LOAD)) {
+                  VK_ATTACHMENT_LOAD_OP_LOAD))
+            {
               if (check_dependency(
-                      VK_SUBPASS_EXTERNAL, pass, SubpassTransitionPattern::EXTERNAL_TO_COLOR)) {
+                      VK_SUBPASS_EXTERNAL, pass, SubpassTransitionPattern::EXTERNAL_TO_COLOR))
+              {
                 dependencies.append(dependency_get(VK_SUBPASS_EXTERNAL,
                                                    pass,
                                                    SubpassTransitionPattern::EXTERNAL_TO_COLOR,
@@ -601,18 +604,18 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
           unused_color++;
         };
       }
-      if ((unused_color + unused_depth) < N) {
-        desc.pColorAttachments = references.data();
-        if (desc.inputAttachmentCount > 0) {
-          desc.pInputAttachments = ireferences.data();
-        }
+    }
+    if ((unused_color + unused_depth) < N) {
+      desc.pColorAttachments = references.data();
+      if (desc.inputAttachmentCount > 0) {
+        desc.pInputAttachments = ireferences.data();
+      }
 
-        vk_create_info_[info_id_].subpassCount++;
-        subpass_multi_attachments.append(subpasses[pass].colorAttachmentCount);
-      }
-      else {
-        desc.colorAttachmentCount = 0;
-      }
+      vk_create_info_[info_id_].subpassCount++;
+      subpass_multi_attachments.append(subpasses[pass].colorAttachmentCount);
+    }
+    else {
+      desc.colorAttachmentCount = 0;
     }
   }
   if (dst_pass_depth_final > -1) {

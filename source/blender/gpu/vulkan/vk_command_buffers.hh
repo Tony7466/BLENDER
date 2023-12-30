@@ -106,11 +106,12 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
             Span<VkImageBlit> regions);
   void pipeline_barrier(VkPipelineStageFlags source_stages,
                         VkPipelineStageFlags destination_stages,
-                        Span<VkImageMemoryBarrier> image_memory_barriers);
+                        Span<VkImageMemoryBarrier> image_memory_barriers,
+                        Type command_type = Type::DataTransferCompute);
   void pipeline_barrier(VkPipelineStageFlags source_stages,
                         VkPipelineStageFlags destination_stages,
                         Span<VkBufferMemoryBarrier> buffer_memory_barriers,
-                        Type buffer_type = Type::DataTransferCompute);
+                        Type command_type = Type::DataTransferCompute);
   /**
    * Clear color image resource.
    */

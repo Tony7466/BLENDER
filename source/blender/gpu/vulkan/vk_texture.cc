@@ -586,10 +586,13 @@ void VKTexture::current_layout_set(const VkImageLayout new_layout)
 void VKTexture::layout_ensure(VKContext &context,
                               VkImageLayout old_layout,
                               VkImageLayout new_layout,
-                              const IndexRange mipmap_range)
+                              const IndexRange mipmap_range,
+                              const IndexRange layer_range,
+                              VKCommandBuffers::Type command_type)
 {
   if (is_texture_view()) {
-    source_texture_->layout_ensure(context, old_layout, new_layout);
+    source_texture_->layout_ensure(
+        context, old_layout, new_layout, mipmap_range, IndexRange(layer_offset_,vk_layer_count(1)), command_type);
     return;
   }
   if (old_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
@@ -600,14 +603,24 @@ void VKTexture::layout_ensure(VKContext &context,
   }
   const VkAccessFlags src_access = to_vk_layout_to_access_flag(old_layout);
   const VkAccessFlags dst_access = to_vk_layout_to_access_flag(new_layout);
-  layout_ensure(context,
-                mipmap_range,
-                old_layout,
-                new_layout,
-                to_vk_access_to_stage_flag(src_access),
-                src_access,
-                to_vk_access_to_stage_flag(dst_access),
-                dst_access);
+
+  VkImageMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.oldLayout = old_layout;
+  barrier.newLayout = new_layout;
+  barrier.srcAccessMask = src_access;
+  barrier.dstAccessMask = dst_access;
+  barrier.image = vk_image_;
+  barrier.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(device_format_);
+  barrier.subresourceRange.baseMipLevel = uint32_t(mipmap_range.start());
+  barrier.subresourceRange.levelCount = uint32_t(mipmap_range.size());
+  barrier.subresourceRange.baseArrayLayer = uint32_t(layer_range.start());
+  barrier.subresourceRange.layerCount         = uint32_t(layer_range.size());
+  context.command_buffers_get().pipeline_barrier(to_vk_access_to_stage_flag(src_access),
+                                                 to_vk_access_to_stage_flag(dst_access),
+                                                 Span<VkImageMemoryBarrier>(&barrier, 1),
+                                                 command_type);
+
   current_layout_set(new_layout);
 };
 

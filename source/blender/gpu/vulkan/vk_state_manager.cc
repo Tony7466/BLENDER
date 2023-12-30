@@ -87,6 +87,11 @@ void VKStateManager::input_attachment_unbind(Texture *tex)
   input_attachments_.unbind(*texture);
 };
 
+void VKStateManager::input_attachment_unbind_all()
+{
+  input_attachments_.unbind_all();
+}
+
 void VKStateManager::image_bind(Texture *tex, int binding)
 {
   VKTexture *texture = unwrap(tex);

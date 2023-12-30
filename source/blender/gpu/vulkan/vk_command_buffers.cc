@@ -225,7 +225,6 @@ void VKCommandBuffers::ensure_active_framebuffer()
           VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO, VK_NULL_HANDLE, 0};
       render_pass_begin_info.pNext = &attachment_begin_info;
     }
-    framebuffer_->clear_pass_pipeline_barrier_recoding();
     VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
     vkCmdBeginRenderPass(
         command_buffer.vk_command_buffer(), &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -471,9 +470,9 @@ void VKCommandBuffers::blit(VKTexture &dst_texture,
 
 void VKCommandBuffers::pipeline_barrier(const VkPipelineStageFlags src_stages,
                                         const VkPipelineStageFlags dst_stages,
-                                        Span<VkImageMemoryBarrier> image_memory_barriers)
+                                        Span<VkImageMemoryBarrier> image_memory_barriers,Type command_type)
 {
-  VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
+  VKCommandBuffer &command_buffer = command_buffer_get(command_type);
   vkCmdPipelineBarrier(command_buffer.vk_command_buffer(),
                        src_stages,
                        dst_stages,

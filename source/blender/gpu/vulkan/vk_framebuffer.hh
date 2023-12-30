@@ -163,14 +163,16 @@ class VKFrameBuffer : public FrameBuffer {
   }
   const int is_subpass_continue() const;
   void next_subpass(VKCommandBuffers &command_buffers);
-  void clear_pass_pipeline_barrier_recoding();
-
+  void clear_pass_pipeline_barrier_recoding(int view_order,
+                                            const IndexRange &mip_range,
+                                            const IndexRange &layer_range);
+  void submit(VKCommandBuffers &command_buffers);
  private:
   void update_attachments();
   void create();
   void free();
   void ensure();
-  bool image_view_ensure(GPUTexture *tex, int mip, int layer, int attachment_index);
+  bool image_view_ensure(GPUTexture *tex, int mip, int layer, int view_order);
   /* Clearing attachments */
   void build_clear_attachments_depth_stencil(eGPUFrameBufferBits buffers,
                                              float clear_depth,

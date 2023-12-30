@@ -45,7 +45,6 @@ class VKImageView : NonCopyable {
   {
     return enabled_srgb == enabled_srgb_;
   }
-
   bool check_eq(bool use_stencil) const
   {
     return use_stencil == use_stencil_;
@@ -60,6 +59,14 @@ class VKImageView : NonCopyable {
       return layer_range_ == range;
     }
     return mip_range_ == range;
+  }
+
+  const IndexRange layer_range_get() const {
+    return layer_range_;
+  }
+  const IndexRange mip_range_get() const
+  {
+    return mip_range_;
   }
 };
 
