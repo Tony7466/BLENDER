@@ -68,14 +68,6 @@ static void reorder_attributes_group_to_group(const bke::AttributeAccessor src_a
       });
 }
 
-static void reorder_attributes(const bke::AttributeAccessor src_attributes,
-                               const bke::AttrDomain domain,
-                               const Span<int> old_by_new_map,
-                               bke::MutableAttributeAccessor dst_attributes)
-{
-  bke::gather_attributes(src_attributes, domain, {}, {}, old_by_new_map, dst_attributes);
-}
-
 static Array<int> invert_permutation(const Span<int> permutation)
 {
   Array<int> data(permutation.size());
