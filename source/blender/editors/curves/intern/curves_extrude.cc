@@ -13,180 +13,161 @@
 
 namespace blender::ed::curves {
 
-class CurvesExtrusion {
-  int curve_index_;
-  int interval_offset_;
-  blender::Array<int> compact_;
-  int compact_count_;
-  blender::Array<int> curve_offsets_;
-  blender::Array<int> curve_intervals_;
+struct CurvesCopy {
 
-  bool handle_range(int &ins, IndexRange &range, const Span<int> offsets);
-
-  void calc_curve_offset();
-
-  void finish_curve(int ins, int last_elem);
-
-  void finish_curve_or_shallow_copy(int ins,
-                                    const std::optional<IndexRange> prev_range,
-                                    const Span<int> offsets);
-
-  CurvesExtrusion(const Span<int> offsets, const IndexMask &selection, const int curve_num);
-
- public:
+  blender::Array<int> curve_offsets;
+  blender::Array<int> curve_intervals;
   blender::Array<IndexRange> curve_interval_ranges;
   blender::Array<bool> is_first_selected;
 
-  CurvesExtrusion(const Span<int> offsets, const IndexMask &selection)
-      : CurvesExtrusion(offsets, selection, offsets.size() - 1)
+  CurvesCopy(const int curve_num, const int curve_intervals_size)
+      : curve_offsets(curve_num + 1),
+        curve_intervals(curve_intervals_size),
+        curve_interval_ranges(curve_num),
+        is_first_selected(curve_num)
   {
-  }
-
-  Span<int> curve_offsets() const
-  {
-    return {curve_offsets_.data(), curve_offsets_.size()};
-  }
-
-  Span<int> intervals() const
-  {
-    return {compact_.data(), compact_count_};
-  }
-
-  Span<int> curve_intervals() const
-  {
-    return {curve_intervals_.data(), curve_intervals_.size()};
   }
 };
 
-CurvesExtrusion::CurvesExtrusion(const Span<int> offsets,
-                                 const IndexMask &selection,
-                                 const int curve_num)
-    : compact_(selection.size() * 2 + curve_num * 2),
-      compact_count_(0),
-      curve_offsets_(curve_num + 1),
-      curve_interval_ranges(curve_num),
-      curve_intervals_(selection.size() * 2 + curve_num * 2),
-      is_first_selected(curve_num)
+Span<int> compress_intervals(const blender::Array<IndexRange> &curve_interval_ranges,
+                             const Span<int> curve_intervals,
+                             blender::Array<int> &compressed)
 {
-  std::optional<IndexRange> prev_range;
-  int ins = 0;
-
-  curve_index_ = 0;
-  interval_offset_ = 0;
-  curve_intervals_[interval_offset_] = offsets[0];
-  curve_offsets_[0] = offsets[0];
-
-  selection.foreach_range([&](const IndexRange range) {
-    /* Beginning of the range outside current curve. */
-    if (range.first() > offsets[curve_index_ + 1] - 1) {
-      do {
-        finish_curve_or_shallow_copy(ins, prev_range, offsets);
-      } while (range.first() > offsets[curve_index_ + 1] - 1);
-      ins = 0;
-      curve_intervals_[interval_offset_] = offsets[curve_index_];
-    }
-
-    IndexRange range_to_handle = range;
-    while (!handle_range(ins, range_to_handle, offsets)) {
-      finish_curve(ins, offsets[curve_index_ + 1] - 1);
-      ins = 0;
-      curve_intervals_[interval_offset_] = offsets[curve_index_];
-    }
-    prev_range = range;
-  });
-
-  do {
-    finish_curve_or_shallow_copy(ins, prev_range, offsets);
-    prev_range.reset();
-  } while (curve_index_ < offsets.size() - 1);
-
-  compact_[0] = curve_intervals_[0];
-  compact_count_ = 1;
-  for (const int c : IndexRange(curve_num)) {
+  int *dst = compressed.data();
+  const int *src = curve_intervals.data();
+  dst[0] = src[0];
+  int compact_count = 1;
+  for (const int c : IndexRange(curve_interval_ranges.size())) {
     IndexRange cr = curve_interval_ranges[c];
-    memcpy(compact_.data() + compact_count_,
-           curve_intervals_.data() + cr.first() + 1,
-           (cr.size() - 1) * sizeof(compact_[0]));
-    compact_count_ += cr.size() - 1;
+    memmove(dst + compact_count, src + cr.first() + 1, (cr.size() - 1) * sizeof(dst[0]));
+    compact_count += cr.size() - 1;
   }
-  compact_[compact_count_] = curve_intervals_[curve_interval_ranges[curve_num - 1].last() + 1];
-  compact_count_++;
+  dst[compact_count] = src[curve_interval_ranges[curve_interval_ranges.size() - 1].last() + 1];
+  compact_count++;
+  return {dst, compact_count};
 }
 
-bool CurvesExtrusion::handle_range(int &ins, IndexRange &range, const Span<int> offsets)
+bool handle_range(const int curve_index,
+                  const int interval_offset,
+                  int &ins,
+                  IndexRange &range,
+                  const Span<int> offsets,
+                  CurvesCopy &extr)
 {
-  const int first_elem = offsets[curve_index_];
-  const int last_elem = offsets[curve_index_ + 1] - 1;
+  const int first_elem = offsets[curve_index];
+  const int last_elem = offsets[curve_index + 1] - 1;
 
   if (ins == 0) {
-    is_first_selected[curve_index_] = range.first() == first_elem && range.size() == 1;
-    if (!is_first_selected[curve_index_]) {
+    extr.is_first_selected[curve_index] = range.first() == first_elem && range.size() == 1;
+    if (!extr.is_first_selected[curve_index]) {
       ins++;
     }
   }
-  curve_intervals_[interval_offset_ + ins] = range.first();
+  extr.curve_intervals[interval_offset + ins] = range.first();
   ins++;
 
   bool inside_curve = last_elem >= range.last();
   if (inside_curve) {
-    curve_intervals_[interval_offset_ + ins] = range.last();
+    extr.curve_intervals[interval_offset + ins] = range.last();
   }
   else {
-    curve_intervals_[interval_offset_ + ins] = last_elem;
+    extr.curve_intervals[interval_offset + ins] = last_elem;
     range = IndexRange(last_elem + 1, range.last() - last_elem);
   }
   ins++;
   return inside_curve;
 }
 
-void CurvesExtrusion::calc_curve_offset()
+void calc_curve_offset(const int curve_index, int &interval_offset, CurvesCopy &extr)
 {
   int points_in_curve = 0;
-  for (const int i : curve_interval_ranges[curve_index_]) {
-    points_in_curve += curve_intervals_[i + 1] - curve_intervals_[i] + 1;
+  for (const int i : extr.curve_interval_ranges[curve_index]) {
+    points_in_curve += extr.curve_intervals[i + 1] - extr.curve_intervals[i] + 1;
   }
-  interval_offset_ += curve_interval_ranges[curve_index_].size() + 1;
-  curve_offsets_[curve_index_ + 1] = curve_offsets_[curve_index_] + points_in_curve;
+  interval_offset += extr.curve_interval_ranges[curve_index].size() + 1;
+  extr.curve_offsets[curve_index + 1] = extr.curve_offsets[curve_index] + points_in_curve;
 }
 
-void CurvesExtrusion::finish_curve(int ins, int last_elem)
+void finish_curve(int &curve_index, int &interval_offset, int ins, int last_elem, CurvesCopy &extr)
 {
-  if (curve_intervals_[interval_offset_ + ins - 1] != last_elem ||
-      curve_intervals_[interval_offset_ + ins - 2] != curve_intervals_[interval_offset_ + ins - 1])
+  if (extr.curve_intervals[interval_offset + ins - 1] != last_elem ||
+      extr.curve_intervals[interval_offset + ins - 2] !=
+          extr.curve_intervals[interval_offset + ins - 1])
   {
-    curve_intervals_[interval_offset_ + ins] = last_elem;
+    extr.curve_intervals[interval_offset + ins] = last_elem;
     ins++;
   }
   /* Check for extrusion from one point. */
-  else if (is_first_selected[curve_index_] && ins == 2) {
-    curve_intervals_[interval_offset_ + ins] = curve_intervals_[interval_offset_ + ins - 1];
-    is_first_selected[curve_index_] = false;
+  else if (extr.is_first_selected[curve_index] && ins == 2) {
+    extr.curve_intervals[interval_offset + ins] = extr.curve_intervals[interval_offset + ins - 1];
+    extr.is_first_selected[curve_index] = false;
     ins++;
   }
-  curve_interval_ranges[curve_index_] = IndexRange(interval_offset_, ins - 1);
-  calc_curve_offset();
-  curve_index_++;
+  extr.curve_interval_ranges[curve_index] = IndexRange(interval_offset, ins - 1);
+  calc_curve_offset(curve_index, interval_offset, extr);
+  curve_index++;
 }
 
-void CurvesExtrusion::finish_curve_or_shallow_copy(int ins,
-                                                   const std::optional<IndexRange> prev_range,
-                                                   const Span<int> offsets)
+void finish_curve_or_shallow_copy(int &curve_index,
+                                  int &interval_offset,
+                                  int ins,
+                                  const std::optional<IndexRange> prev_range,
+                                  const Span<int> offsets,
+                                  CurvesCopy &extr)
 {
-  const int last = offsets[curve_index_ + 1] - 1;
+  const int last = offsets[curve_index + 1] - 1;
 
-  if (prev_range.has_value() && prev_range.value().last() >= offsets[curve_index_]) {
-    finish_curve(ins, last);
+  if (prev_range.has_value() && prev_range.value().last() >= offsets[curve_index]) {
+    finish_curve(curve_index, interval_offset, ins, last, extr);
   }
   /* Shallow copy if previous selected point vas not on this curve. */
   else {
-    const int first = offsets[curve_index_];
-    curve_interval_ranges[curve_index_] = IndexRange(interval_offset_, 1);
-    is_first_selected[curve_index_] = false;
-    curve_intervals_[interval_offset_] = first;
-    curve_intervals_[interval_offset_ + 1] = last;
-    calc_curve_offset();
-    curve_index_++;
+    const int first = offsets[curve_index];
+    extr.curve_interval_ranges[curve_index] = IndexRange(interval_offset, 1);
+    extr.is_first_selected[curve_index] = false;
+    extr.curve_intervals[interval_offset] = first;
+    extr.curve_intervals[interval_offset + 1] = last;
+    calc_curve_offset(curve_index, interval_offset, extr);
+    curve_index++;
   }
+}
+
+const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const IndexMask &selection)
+{
+  const int curve_num = offsets.size() - 1;
+  CurvesCopy extr(curve_num, selection.size() * 2 + curve_num * 2);
+  std::optional<IndexRange> prev_range;
+  int ins = 0;
+
+  int curve_index = 0;
+  int interval_offset = 0;
+  extr.curve_intervals[interval_offset] = offsets[0];
+  extr.curve_offsets[0] = offsets[0];
+
+  selection.foreach_range([&](const IndexRange range) {
+    /* Beginning of the range outside current curve. */
+    if (range.first() > offsets[curve_index + 1] - 1) {
+      do {
+        finish_curve_or_shallow_copy(curve_index, interval_offset, ins, prev_range, offsets, extr);
+      } while (range.first() > offsets[curve_index + 1] - 1);
+      ins = 0;
+      extr.curve_intervals[interval_offset] = offsets[curve_index];
+    }
+
+    IndexRange range_to_handle = range;
+    while (!handle_range(curve_index, interval_offset, ins, range_to_handle, offsets, extr)) {
+      finish_curve(curve_index, interval_offset, ins, offsets[curve_index + 1] - 1, extr);
+      ins = 0;
+      extr.curve_intervals[interval_offset] = offsets[curve_index];
+    }
+    prev_range = range;
+  });
+
+  do {
+    finish_curve_or_shallow_copy(curve_index, interval_offset, ins, prev_range, offsets, extr);
+    prev_range.reset();
+  } while (curve_index < offsets.size() - 1);
+  return extr;
 }
 
 static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
@@ -207,16 +188,21 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
   const Span<int> old_offsets = curves.offsets();
-  CurvesExtrusion curves_copy(old_offsets, extruded_points);
+  const CurvesCopy curves_copy = calc_curves_extrusion(old_offsets, extruded_points);
+
+  const Span<int> curve_offsets = {curves_copy.curve_offsets.data(),
+                                   curves_copy.curve_offsets.size()};
 
   bke::CurvesGeometry new_curves = bke::curves::copy_only_curve_domain(curves);
-  new_curves.resize(curves_copy.curve_offsets().last(), curves.curves_num());
+  new_curves.resize(curve_offsets.last(), curves.curves_num());
 
   MutableSpan<int> offsets = new_curves.offsets_for_write();
 
-  offsets.copy_from(curves_copy.curve_offsets());
+  offsets.copy_from(curve_offsets);
 
-  const Span<int> curve_intervals = curves_copy.curve_intervals();
+  const Span<int> curve_intervals = {curves_copy.curve_intervals.data(),
+                                     curves_copy.curve_intervals.size()};
+
   int dest_index = 0;
 
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
@@ -234,7 +220,9 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   }
   selection.finish();
 
-  const Span<int> intervals = curves_copy.intervals();
+  blender::Array<int> compact_buffer(curve_intervals.size());
+  const Span<int> intervals = compress_intervals(
+      curves_copy.curve_interval_ranges, curve_intervals, compact_buffer);
 
   bke::MutableAttributeAccessor dst_attributes = new_curves.attributes_for_write();
   bke::AttributeAccessor src_attributes = curves.attributes();
