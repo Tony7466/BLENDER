@@ -16,8 +16,6 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_key_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_scene_types.h"
 
@@ -356,12 +354,7 @@ void import_blendshapes(Main *bmain,
     return;
   }
 
-  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim);
-
-  if (!skel_api) {
-    /* No skel binding. */
-    return;
-  }
+  pxr::UsdSkelBindingAPI skel_api(prim);
 
   /* Get the blend shape targets, which are the USD paths to the
    * blend shape primitives. */
@@ -540,13 +533,15 @@ void import_blendshapes(Main *bmain,
     return;
   }
 
-  skel_api = pxr::UsdSkelBindingAPI::Apply(skel_prim.GetPrim());
-
-  if (!skel_api) {
-    return;
-  }
+  skel_api = pxr::UsdSkelBindingAPI(skel_prim.GetPrim());
 
   pxr::UsdPrim anim_prim = skel_api.GetInheritedAnimationSource();
+
+  if (!anim_prim) {
+    /* Querying the directly bound animation source may be necessary
+     * if the prim does not have an applied skel binding API schema. */
+    skel_api.GetAnimationSource(&anim_prim);
+  }
 
   if (!anim_prim) {
     return;
@@ -898,11 +893,7 @@ void import_mesh_skel_bindings(Main *bmain,
     return;
   }
 
-  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim);
-
-  if (!skel_api) {
-    return;
-  }
+  pxr::UsdSkelBindingAPI skel_api(prim);
 
   pxr::UsdSkelSkeleton skel = skel_api.GetInheritedSkeleton();
 
@@ -989,7 +980,7 @@ void import_mesh_skel_bindings(Main *bmain,
 
   /* Sanity check: make sure we have the expected number of values for the interpolation type. */
   if (interp == pxr::UsdGeomTokens->vertex &&
-      joint_weights.size() != mesh->totvert * joint_weights_elem_size)
+      joint_weights.size() != mesh->verts_num * joint_weights_elem_size)
   {
     BKE_reportf(reports,
                 RPT_WARNING,
@@ -1052,7 +1043,7 @@ void import_mesh_skel_bindings(Main *bmain,
   }
 
   /* Set the deform group verts and weights. */
-  for (int i = 0; i < mesh->totvert; ++i) {
+  for (int i = 0; i < mesh->verts_num; ++i) {
     /* Offset into the weights array, which is
      * always 0 for constant interpolation. */
     int offset = 0;
