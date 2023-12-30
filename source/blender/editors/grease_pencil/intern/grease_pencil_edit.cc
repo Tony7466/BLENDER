@@ -1698,16 +1698,25 @@ static Object *duplicate_grease_pencil_object(Main *bmain,
   return object_dst;
 }
 
-static bke::greasepencil::Layer &create_layer(const bke::greasepencil::Layer *layer_src,
-                                              GreasePencil &grease_pencil_src,
-                                              GreasePencil &grease_pencil_dst)
+static bke::greasepencil::Layer &get_layer_dst(const int layer_index,
+                                               GreasePencil &grease_pencil_src,
+                                               GreasePencil &grease_pencil_dst)
 {
   using namespace bke::greasepencil;
+
+  const Layer *layer_src = grease_pencil_src.layers().get(layer_index, layer_src);
+  const Layer *layer_dst = nullptr;
+
+  for (Layer *layer : grease_pencil_dst.layers_for_write()) {
+    if (layer_src->name() == layer->name()) {
+      return *layer;
+    }
+  }
 
   /* Transfer Layer attributes. */
   const bke::AnonymousAttributePropagationInfo propagation_info{};
   Vector<int> src_to_dst_layer;
-  src_to_dst_layer.append(grease_pencil_src.layers().first_index(layer_src));
+  src_to_dst_layer.append(layer_index);
   const bke::AttributeAccessor src_attributes = grease_pencil_src.attributes();
   bke::MutableAttributeAccessor dst_attributes = grease_pencil_dst.attributes_for_write();
 
@@ -1750,12 +1759,12 @@ static bool grease_pencil_separate_selected(bContext *C,
     }
 
     /* Insert Keyframe at current frame/layer */
-    Layer &layer_dst = create_layer(
-        grease_pencil_src.layers()[info.layer_index], grease_pencil_src, grease_pencil_dst);
-    grease_pencil_dst.insert_blank_frame(layer_dst, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
+    Layer &layer_dst = get_layer_dst(info.layer_index, grease_pencil_src, grease_pencil_dst);
+    grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
     /*Assign new CurvesGeometry to layer. */
-    Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst, scene->r.cfra);
+    Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
+                                                                     info.frame_number);
     /* Copy selected points/strokes to new CurvesGeometry. */
     const bke::AnonymousAttributePropagationInfo propagation_info{};
     drawing_dst->strokes_for_write() = bke::curves_copy_point_selection(
@@ -1766,6 +1775,7 @@ static bool grease_pencil_separate_selected(bContext *C,
 
     info.drawing.tag_topology_changed();
     drawing_dst->tag_topology_changed();
+
     result = true;
   });
 
@@ -1814,7 +1824,7 @@ static bool grease_pencil_separate_layer(bContext *C,
         bmain, scene, view_layer, base_prev, grease_pencil_src);
     GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
     /* Create Layer. */
-    Layer &layer_dst = create_layer(layer_src, grease_pencil_src, grease_pencil_dst);
+    Layer &layer_dst = get_layer_dst(0, grease_pencil_src, grease_pencil_dst);
 
     /* Iterate through all the drawings at current frame. */
     const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
@@ -1920,8 +1930,7 @@ static bool grease_pencil_separate_material(bContext *C,
         GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
 
         /* Insert Keyframe at current frame/layer */
-        Layer &layer_dst = create_layer(
-            grease_pencil_src.layers()[info.layer_index], grease_pencil_src, grease_pencil_dst);
+        Layer &layer_dst = get_layer_dst(info.layer_index, grease_pencil_src, grease_pencil_dst);
         grease_pencil_dst.insert_blank_frame(
             layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
