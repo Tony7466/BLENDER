@@ -730,7 +730,18 @@ void interpolate_to_evaluated(const GSpan src,
                               const OffsetIndices<int> evaluated_offsets,
                               GMutableSpan dst);
 
-float4 calculate_basis(const float parameter);
+inline float4 calculate_basis(const float parameter)
+{
+  /* Adapted from Cycles #catmull_rom_basis_eval function. */
+  const float t = parameter;
+  const float s = 1.0f - parameter;
+  return {
+      -t * s * s,
+      2.0f + t * t * (3.0f * t - 5.0f),
+      2.0f + s * s * (3.0f * s - 5.0f),
+      -s * t * t,
+  };
+}
 
 /**
  * Interpolate the control point values for the given parameter on the piecewise segment.

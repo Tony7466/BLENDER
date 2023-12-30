@@ -343,27 +343,6 @@ void flip_v2_v2v2(float v[2], const float v1[2], const float v2[2])
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Comparison
- * \{ */
-
-bool is_finite_v2(const float v[2])
-{
-  return (isfinite(v[0]) && isfinite(v[1]));
-}
-
-bool is_finite_v3(const float v[3])
-{
-  return (isfinite(v[0]) && isfinite(v[1]) && isfinite(v[2]));
-}
-
-bool is_finite_v4(const float v[4])
-{
-  return (isfinite(v[0]) && isfinite(v[1]) && isfinite(v[2]) && isfinite(v[3]));
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Angles
  * \{ */
 

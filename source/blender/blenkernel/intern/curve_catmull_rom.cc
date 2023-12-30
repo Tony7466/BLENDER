@@ -24,19 +24,6 @@ int calculate_evaluated_num(const int points_num, const bool cyclic, const int r
   return eval_num + 1;
 }
 
-float4 calculate_basis(const float parameter)
-{
-  /* Adapted from Cycles #catmull_rom_basis_eval function. */
-  const float t = parameter;
-  const float s = 1.0f - parameter;
-  return {
-      -t * s * s,
-      2.0f + t * t * (3.0f * t - 5.0f),
-      2.0f + s * s * (3.0f * s - 5.0f),
-      -s * t * t,
-  };
-}
-
 template<typename T>
 static void evaluate_segment(const T &a, const T &b, const T &c, const T &d, MutableSpan<T> dst)
 {
