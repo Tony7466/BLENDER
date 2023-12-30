@@ -14,6 +14,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -193,7 +194,7 @@ static int geometry_extract_apply(bContext *C,
   BKE_editmesh_free_data(em);
   MEM_freeN(em);
 
-  if (new_mesh->totvert == 0) {
+  if (new_mesh->verts_num == 0) {
     BKE_id_free(bmain, new_mesh);
     return OPERATOR_FINISHED;
   }
@@ -471,7 +472,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
   Mesh *new_mesh = (Mesh *)BKE_id_copy(bmain, &mesh->id);
 
   if (ob->mode == OB_MODE_SCULPT) {
-    ED_sculpt_undo_geometry_begin(ob, op);
+    sculpt_paint::undo::geometry_begin(ob, op);
   }
 
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(new_mesh);
@@ -534,7 +535,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
       const int next_face_set_id = sculpt_paint::face_set::find_next_available_id(*ob);
       sculpt_paint::face_set::initialize_none_to_id(mesh, next_face_set_id);
     }
-    ED_sculpt_undo_geometry_end(ob);
+    sculpt_paint::undo::geometry_end(ob);
   }
 
   BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
