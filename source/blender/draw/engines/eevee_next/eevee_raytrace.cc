@@ -367,8 +367,8 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   data_.trace_refraction = do_refraction_tracing;
 
   for (int i = 0; i < 3; i++) {
-    result.closures[i] = trace(0,
-                               (closure_count > 0),
+    result.closures[i] = trace(i,
+                               (closure_count > i),
                                options,
                                rt_buffer,
                                screen_radiance_back_tx,
