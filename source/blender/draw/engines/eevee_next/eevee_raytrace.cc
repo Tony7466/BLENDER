@@ -57,8 +57,10 @@ void RayTraceModule::sync()
   }
   {
     PassSimple &pass = tile_compact_ps_;
+    GPUShader *sh = inst_.shaders.static_shader_get(RAY_TILE_COMPACT);
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(RAY_TILE_COMPACT));
+    pass.specialize_constant(sh, "closure_index", &data_.closure_index);
+    pass.shader_set(sh);
     pass.bind_image("tile_raytrace_denoise_img", &tile_raytrace_denoise_tx_);
     pass.bind_image("tile_raytrace_tracing_img", &tile_raytrace_tracing_tx_);
     pass.bind_image("tile_horizon_denoise_img", &tile_horizon_denoise_tx_);
@@ -181,8 +183,10 @@ void RayTraceModule::sync()
   }
   {
     PassSimple &pass = denoise_temporal_ps_;
+    GPUShader *sh = inst_.shaders.static_shader_get(RAY_DENOISE_TEMPORAL);
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(RAY_DENOISE_TEMPORAL));
+    pass.specialize_constant(sh, "closure_index", &data_.closure_index);
+    pass.shader_set(sh);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_texture("radiance_history_tx", &radiance_history_tx_);
     pass.bind_texture("variance_history_tx", &variance_history_tx_);

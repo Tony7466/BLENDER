@@ -42,6 +42,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_tile_compact)
     .storage_buf(5, Qualifier::WRITE, "uint", "raytrace_denoise_tiles_buf[]")
     .storage_buf(6, Qualifier::WRITE, "uint", "horizon_tracing_tiles_buf[]")
     .storage_buf(7, Qualifier::WRITE, "uint", "horizon_denoise_tiles_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_tile_compact_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_generate)
@@ -152,6 +153,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_temporal)
     .image(3, RAYTRACE_VARIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "in_variance_img")
     .image(4, RAYTRACE_VARIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "out_variance_img")
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_denoise_temporal_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
@@ -168,6 +170,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
     .image(3, RAYTRACE_VARIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "in_variance_img")
     .image(6, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D_ARRAY, "tile_mask_img")
     .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_denoise_bilateral_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_horizon_setup)
