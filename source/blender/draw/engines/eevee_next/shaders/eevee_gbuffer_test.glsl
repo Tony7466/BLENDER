@@ -17,7 +17,7 @@ GBufferDataUndetermined gbuffer_new()
   GBufferDataUndetermined data;
   data.diffuse.weight = 0.0;
   data.translucent.weight = 0.0;
-  closures[0].weight = 0.0;
+  data.reflection.weight = 0.0;
   data.refraction.weight = 0.0;
   data.thickness = 0.2;
   data.object_id = 0xF220u;
@@ -129,7 +129,7 @@ void main()
     EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_NEAR(data_in.reflection.color, out_reflection.color, 1e-5);
     EXPECT_NEAR(data_in.reflection.N, out_reflection.N, 1e-5);
-    EXPECT_NEAR(data_in.reflection.data.r, out_reflection.roughness, 1e-5);
+    EXPECT_NEAR(data_in.reflection.data.r, out_reflection.data.r, 1e-5);
   }
 
   TEST(eevee_gbuffer, ClosureRefraction)
@@ -155,8 +155,8 @@ void main()
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_NEAR(data_in.refraction.color, out_refraction.color, 1e-5);
     EXPECT_NEAR(data_in.refraction.N, out_refraction.N, 1e-5);
-    EXPECT_NEAR(data_in.refraction.data.r, out_refraction.roughness, 1e-5);
-    EXPECT_NEAR(data_in.refraction.data.g, out_refraction.ior, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.r, out_refraction.data.r, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.g, out_refraction.data.g, 1e-5);
   }
 
   TEST(eevee_gbuffer, ClosureCombination)
@@ -192,13 +192,13 @@ void main()
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_NEAR(data_in.refraction.color, out_refraction.color, 1e-5);
     EXPECT_NEAR(data_in.refraction.N, out_refraction.N, 1e-5);
-    EXPECT_NEAR(data_in.refraction.data.r, out_refraction.roughness, 1e-5);
-    EXPECT_NEAR(data_in.refraction.data.g, out_refraction.ior, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.r, out_refraction.data.r, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.g, out_refraction.data.g, 1e-5);
 
     EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_NEAR(data_in.reflection.color, out_reflection.color, 1e-5);
     EXPECT_NEAR(data_in.reflection.N, out_reflection.N, 1e-5);
-    EXPECT_NEAR(data_in.reflection.data.r, out_reflection.roughness, 1e-5);
+    EXPECT_NEAR(data_in.reflection.data.r, out_reflection.data.r, 1e-5);
   }
 
   TEST(eevee_gbuffer, ClosureColorless)
@@ -234,12 +234,12 @@ void main()
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_NEAR(data_in.refraction.color, out_refraction.color, 1e-5);
     EXPECT_NEAR(data_in.refraction.N, out_refraction.N, 1e-5);
-    EXPECT_NEAR(data_in.refraction.data.r, to_closure_refraction(out_refraction).roughness, 1e-5);
-    EXPECT_NEAR(data_in.refraction.data.g, to_closure_refraction(out_refraction).ior, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.r, out_refraction.data.r, 1e-5);
+    EXPECT_NEAR(data_in.refraction.data.g, out_refraction.data.g, 1e-5);
 
     EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_NEAR(data_in.reflection.color, out_reflection.color, 1e-5);
     EXPECT_NEAR(data_in.reflection.N, out_reflection.N, 1e-5);
-    EXPECT_NEAR(data_in.reflection.data.r, to_closure_reflection(out_reflection).data.x, 1e-5);
+    EXPECT_NEAR(data_in.reflection.data.r, out_reflection.data.r, 1e-5);
   }
 }
