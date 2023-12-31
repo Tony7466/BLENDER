@@ -1836,30 +1836,35 @@ static bool grease_pencil_separate_layer(bContext *C,
       IndexMask strokes = retrieve_editable_strokes(
           *static_cast<Object *>(object_src), info.drawing, memory);
 
-      /* Insert Keyframe at current frame. */
-      grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+      if (!strokes.is_empty()) {
 
-      /*Assign new CurvesGeometry to layer/frame. */
-      Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
-                                                                       info.frame_number);
-      /* Copy strokes to new CurvesGeometry. */
-      const bke::AnonymousAttributePropagationInfo propagation_info{};
-      drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
-          info.drawing.strokes(), strokes, propagation_info);
+        /* Insert Keyframe at current frame. */
+        grease_pencil_dst.insert_blank_frame(
+            layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
-      /* Add object materials. */
-      BKE_object_material_array_assign(bmain,
-                                       object_dst,
-                                       BKE_object_material_array_p(object_src),
-                                       *BKE_object_material_len_p(object_src),
-                                       false);
+        /*Assign new CurvesGeometry to layer/frame. */
+        Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
+                                                                         info.frame_number);
+        /* Copy strokes to new CurvesGeometry. */
+        const bke::AnonymousAttributePropagationInfo propagation_info{};
+        drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
+            info.drawing.strokes(), strokes, propagation_info);
 
-      /* Delete strokes from current drawing. */
-      curves_src.remove_curves(strokes, propagation_info);
+        /* Add object materials. */
+        BKE_object_material_array_assign(bmain,
+                                         object_dst,
+                                         BKE_object_material_array_p(object_src),
+                                         *BKE_object_material_len_p(object_src),
+                                         false);
 
-      info.drawing.tag_topology_changed();
-      drawing_dst->tag_topology_changed();
-      result = true;
+        /* Delete strokes from current drawing. */
+        curves_src.remove_curves(strokes, propagation_info);
+
+        info.drawing.tag_topology_changed();
+        drawing_dst->tag_topology_changed();
+
+        result = true;
+      }
     });
 
     /* Remove unused material slots from target object. */
