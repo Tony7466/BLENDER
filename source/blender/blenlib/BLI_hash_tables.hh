@@ -113,7 +113,7 @@ class LoadFactor {
                                       int64_t *r_total_slots,
                                       int64_t *r_usable_slots) const
   {
-    BLI_assert(is_power_of_2_i(int(min_total_slots)));
+    BLI_assert(is_power_of_2_constexpr(int(min_total_slots)));
 
     int64_t total_slots = this->compute_total_slots(min_usable_slots, numerator_, denominator_);
     total_slots = std::max(total_slots, min_total_slots);
