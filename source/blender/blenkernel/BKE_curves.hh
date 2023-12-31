@@ -389,6 +389,8 @@ class CurvesGeometry : public ::CurvesGeometry {
    */
   void reverse_curves(const IndexMask &curves_to_reverse);
 
+  void reorder_curves(const Span<int> dst_to_src_curve);
+
   /**
    * Remove any attributes that are unused based on the types in the curves.
    */
