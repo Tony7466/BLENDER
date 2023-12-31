@@ -323,7 +323,9 @@ void SocketDeclaration::set_common_flags(bNodeSocket &socket) const
   SET_FLAG_FROM_TEST(socket.flag, hide_label, SOCK_HIDE_LABEL);
   SET_FLAG_FROM_TEST(socket.flag, is_multi_input, SOCK_MULTI_INPUT);
   SET_FLAG_FROM_TEST(socket.flag, no_mute_links, SOCK_NO_INTERNAL_LINK);
-  SET_FLAG_FROM_TEST(socket.flag, is_unavailable, SOCK_UNAVAIL);
+  /* While dynamic declaration and socket disabling is used, this flag should not be restored on
+   * update. */
+  /* SET_FLAG_FROM_TEST(socket.flag, is_unavailable, SOCK_UNAVAIL); */
 }
 
 bool SocketDeclaration::matches_common_data(const bNodeSocket &socket) const
