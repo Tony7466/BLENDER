@@ -1964,7 +1964,7 @@ static void rna_set_raw_property(PropertyDefRNA *dp, PropertyRNA *prop)
   }
 
   if (STREQ(dp->dnatype, "char")) {
-    prop->rawtype = PROP_RAW_CHAR;
+    prop->rawtype = prop->type == PROP_BOOLEAN ? PROP_RAW_BOOLEAN : PROP_RAW_CHAR;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "short")) {
