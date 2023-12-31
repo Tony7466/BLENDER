@@ -11,9 +11,7 @@
  */
 
 #include <algorithm>
-#include <cmath>
 
-#include "BLI_allocator.hh"
 #include "BLI_memory_utils.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"

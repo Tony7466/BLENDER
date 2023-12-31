@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <string>
+
 #include "BLI_vector.hh"
 
 #include "DNA_windowmanager_types.h"

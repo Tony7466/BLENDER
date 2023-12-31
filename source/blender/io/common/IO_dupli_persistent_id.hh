@@ -8,8 +8,7 @@
 #include "DNA_object_types.h" /* For MAX_DUPLI_RECUR */
 
 #include <array>
-#include <optional>
-#include <ostream>
+#include <iosfwd>
 
 namespace blender::io {
 
