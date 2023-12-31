@@ -394,6 +394,23 @@ void WM_operator_handlers_clear(wmWindowManager *wm, wmOperatorType *ot)
             /* don't run op->cancel because it needs the context,
              * assume whoever unregisters the operator will cleanup */
             handler->head.flag |= WM_HANDLER_DO_FREE;
+            /**
+             * Check if the operator has invoked the filesec window, and invalidate the pointer to
+             * the operator.
+             */
+            if (handler->is_fileselect) {
+              LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+                bScreen *screen = WM_window_get_active_screen(win);
+                ED_screen_areas_iter (win, screen, area) {
+                  if (area->spacetype == SPACE_FILE) {
+                    SpaceFile *sfile = static_cast<SpaceFile *>(area->spacedata.first);
+                    if (sfile->op == handler->op) {
+                      sfile->op = nullptr;
+                    }
+                  }
+                }
+              }
+            }
             WM_operator_free(handler->op);
             handler->op = nullptr;
           }
