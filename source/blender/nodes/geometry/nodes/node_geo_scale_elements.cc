@@ -211,7 +211,7 @@ template<typename T> static T gather_mean(const VArray<T> &values, const Span<in
           for (const int i : indices.slice(range)) {
             value += values[i];
           }
-          return join_accumulators({value / float(indices.size()), 1}, other);
+          return join_accumulators({value, int(range.size())}, other);
         },
         join_accumulators);
     value = accumulator.first / accumulator.second;
@@ -331,7 +331,7 @@ static int face_to_vert_islands(const Mesh &mesh,
   index_mask::build_reverse_map<int>(vert_mask, verts_pos);
 
   AtomicDisjointSet disjoint_set(vert_mask.size());
-  const GroupedSpan<int> face_verts(mesh.face_offsets(), mesh.corner_verts());
+  const GroupedSpan<int> face_verts(mesh.faces(), mesh.corner_verts());
 
   face_mask.foreach_index_optimized<int>(GrainSize(4096), [&](const int face_i) {
     const Span<int> verts = face_verts[face_i];
