@@ -35,6 +35,7 @@ struct SpaceImage;
 struct VPaint;
 struct ViewContext;
 struct bContext;
+struct ReportList;
 struct wmEvent;
 struct wmKeyConfig;
 struct wmKeyMap;
@@ -456,7 +457,7 @@ enum BrushStrokeMode {
 
 namespace blender::ed::sculpt_paint::hide {
 void sync_all_from_faces(Object &object);
-void mesh_show_all(Object &object, const Span<PBVHNode *> nodes);
+void mesh_show_all(Object &object, Span<PBVHNode *> nodes);
 void grids_show_all(Depsgraph &depsgraph, Object &object, Span<PBVHNode *> nodes);
 void tag_update_visibility(const bContext &C);
 
@@ -467,6 +468,9 @@ void PAINT_OT_visibility_invert(wmOperatorType *ot);
 /* `paint_mask.cc` */
 
 namespace blender::ed::sculpt_paint::mask {
+
+Array<float> duplicate_mask(const Object &object);
+
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);
 void PAINT_OT_mask_box_gesture(wmOperatorType *ot);
