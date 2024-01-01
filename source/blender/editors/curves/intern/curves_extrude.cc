@@ -217,8 +217,8 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *obedit = CTX_data_edit_object(C);
   Curves *curves_id = static_cast<Curves *>(obedit->data);
-  const eAttrDomain selection_domain = eAttrDomain(curves_id->selection_domain);
-  if (selection_domain != ATTR_DOMAIN_POINT) {
+  const bke::AttrDomain selection_domain = bke::AttrDomain(curves_id->selection_domain);
+  if (selection_domain != bke::AttrDomain::Point) {
     return OPERATOR_FINISHED;
   }
 
@@ -271,7 +271,7 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   bke::AttributeAccessor src_attributes = curves.attributes();
   src_attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData &meta_data) {
-        if (meta_data.domain != ATTR_DOMAIN_POINT || std::string(".selection") == id.name()) {
+        if (meta_data.domain != bke::AttrDomain::Point || std::string(".selection") == id.name()) {
           return true;
         }
         bke::GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
@@ -280,17 +280,15 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
         const CPPType &type = dst.type();
         const GVArraySpan src = (*src_attributes.lookup(id, meta_data.domain));
 
-        if (meta_data.domain == ATTR_DOMAIN_POINT) {
-          int dest_index = 0;
-          for (const int i : IndexRange(intervals.size() - 1)) {
-            const int first = intervals[i];
-            const int size = intervals[i + 1] - first + 1;
+        int dest_index = 0;
+        for (const int i : IndexRange(intervals.size() - 1)) {
+          const int first = intervals[i];
+          const int size = intervals[i + 1] - first + 1;
 
-            type.copy_assign_n(src.slice(IndexRange(first, size)).data(),
-                               dst.slice(IndexRange(dest_index, size)).data(),
-                               size);
-            dest_index += size;
-          }
+          type.copy_assign_n(src.slice(IndexRange(first, size)).data(),
+                             dst.slice(IndexRange(dest_index, size)).data(),
+                             size);
+          dest_index += size;
         }
         dst_attribute.finish();
         return true;
