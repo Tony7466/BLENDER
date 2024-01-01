@@ -5854,6 +5854,79 @@ static void SCREEN_OT_workspace_cycle(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Operator Drop blend file
+ * \{ */
+
+static int wm_drop_blend_file_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  char filepath[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filepath);
+  uiPopupMenu *pup = UI_popup_menu_begin(C, BLI_path_basename(filepath), ICON_QUESTION);
+  uiLayout *layout = UI_popup_menu_layout(pup);
+
+  uiLayout *col = uiLayoutColumn(layout, true);
+  uiLayoutSetOperatorContext(col, WM_OP_INVOKE_DEFAULT);
+
+  wmOperatorType *ot = WM_operatortype_find("WM_OT_open_mainfile", false);
+  PointerRNA props;
+  WM_operator_properties_create_ptr(&props, ot);
+  RNA_string_set(&props, "filepath", filepath);
+  RNA_boolean_set(&props, "display_file_selector", false);
+  uiItemFullO_ptr(col,
+                  ot,
+                  TIP_("Open"),
+                  ICON_FILE_FOLDER,
+                  static_cast<IDProperty *>(props.data),
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  nullptr);
+  uiItemS_ex(layout, 1.0f);
+
+  col = uiLayoutColumn(layout, true);
+  uiLayoutSetOperatorContext(col, WM_OP_INVOKE_DEFAULT);
+  uiItemStringO(layout, TIP_("Link.."), ICON_LINK_BLEND, "WM_OT_link", "filepath", filepath);
+  uiItemStringO(layout, TIP_("Append.."), ICON_APPEND_BLEND, "WM_OT_append", "filepath", filepath);
+  UI_popup_menu_end(C, pup);
+
+  return OPERATOR_INTERFACE;
+}
+
+static void WM_OT_drop_blend_file(wmOperatorType *ot)
+{
+  /** Identifiers. */
+  ot->idname = "WM_OT_drop_blend_file";
+  ot->name = "Drop .blend file Handler";
+  ot->description = "Drop .blend file Handler";
+  ot->flag = OPTYPE_INTERNAL;
+
+  /** API callbacks. */
+  ot->invoke = wm_drop_blend_file_invoke;
+
+  ot->prop = RNA_def_string_file_path(
+      ot->srna, "filepath", nullptr, FILE_MAX, "File Path", "Path to file");
+  RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
+static bool blend_file_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
+{
+  if (drag->type == WM_DRAG_PATH) {
+    const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
+    if (ELEM(file_type, FILE_TYPE_BLENDER, FILE_TYPE_BLENDER_BACKUP)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+{
+  /** Copy drag path to properties. */
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Assigning Operator Types
  * \{ */
 
@@ -5906,6 +5979,8 @@ void ED_operatortypes_screen()
   /* New/delete. */
   WM_operatortype_append(SCREEN_OT_new);
   WM_operatortype_append(SCREEN_OT_delete);
+
+  WM_operatortype_append(WM_OT_drop_blend_file);
 }
 
 /** \} */
@@ -5928,23 +6003,6 @@ static void keymap_modal_set(wmKeyConfig *keyconf)
   wmKeyMap *keymap = WM_modalkeymap_ensure(keyconf, "Standard Modal Map", modal_items);
 
   WM_modalkeymap_assign(keymap, "SCREEN_OT_area_move");
-}
-
-static bool blend_file_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
-{
-  if (drag->type == WM_DRAG_PATH) {
-    const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (ELEM(file_type, FILE_TYPE_BLENDER, FILE_TYPE_BLENDER_BACKUP)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
-{
-  /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
 void ED_keymap_screen(wmKeyConfig *keyconf)
