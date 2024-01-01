@@ -334,8 +334,17 @@ bool BLI_file_touch(const char *filepath) ATTR_NONNULL(1);
  * \return true on success (i.e. given path now exists on file-system), false otherwise.
  */
 bool BLI_file_ensure_parent_dir_exists(const char *filepath) ATTR_NONNULL(1);
-
-bool BLI_file_alias_target(const char *filepath, char *r_targetpath) ATTR_WARN_UNUSED_RESULT;
+/**
+ * Gets the path of the target of a Shell link object.
+ *
+ * \param update_if_broken Checks whether the shortcut is broken or outdated and then updates it
+ * to reflect the correct destination path.
+ *
+ * \return true on success (i.e. given path exists or was successfully resolved), false otherwise.
+ */
+bool BLI_file_alias_target(const char *filepath,
+                           const bool update_if_broken,
+                           char *r_targetpath) ATTR_WARN_UNUSED_RESULT;
 
 bool BLI_file_magic_is_gzip(const char header[4]);
 
