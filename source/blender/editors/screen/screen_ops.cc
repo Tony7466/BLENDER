@@ -5884,8 +5884,9 @@ static int wm_drop_blend_file_invoke(bContext *C, wmOperator *op, const wmEvent 
 
   col = uiLayoutColumn(layout, true);
   uiLayoutSetOperatorContext(col, WM_OP_INVOKE_DEFAULT);
-  uiItemStringO(layout, TIP_("Link.."), ICON_LINK_BLEND, "WM_OT_link", "filepath", filepath);
-  uiItemStringO(layout, TIP_("Append.."), ICON_APPEND_BLEND, "WM_OT_append", "filepath", filepath);
+  uiItemStringO(layout, TIP_("Link..."), ICON_LINK_BLEND, "WM_OT_link", "filepath", filepath);
+  uiItemStringO(
+      layout, TIP_("Append..."), ICON_APPEND_BLEND, "WM_OT_append", "filepath", filepath);
   UI_popup_menu_end(C, pup);
 
   return OPERATOR_INTERFACE;
