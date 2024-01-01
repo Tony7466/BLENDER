@@ -109,17 +109,23 @@ bool handle_range(const int curve_index,
  * Calculates number of points in resulting curve denoted by #curve_index and sets it's
  * #curve_offsets value.
  */
-void calc_curve_offset(const int curve_index, int &interval_offset, CurvesCopy &extr)
+void calc_curve_offset(const int curve_index,
+                       int &interval_offset,
+                       const Span<int> offsets,
+                       CurvesCopy &extr)
 {
-  int points_in_curve = 0;
-  for (const int i : extr.curve_interval_ranges[curve_index]) {
-    points_in_curve += extr.curve_intervals[i + 1] - extr.curve_intervals[i] + 1;
-  }
-  interval_offset += extr.curve_interval_ranges[curve_index].size() + 1;
+  const int points_in_curve = (offsets[curve_index + 1] - offsets[curve_index] +
+                               extr.curve_interval_ranges[curve_index].size() - 1);
   extr.curve_offsets[curve_index + 1] = extr.curve_offsets[curve_index] + points_in_curve;
+  interval_offset += extr.curve_interval_ranges[curve_index].size() + 1;
 }
 
-void finish_curve(int &curve_index, int &interval_offset, int ins, int last_elem, CurvesCopy &extr)
+void finish_curve(int &curve_index,
+                  int &interval_offset,
+                  int ins,
+                  int last_elem,
+                  const Span<int> offsets,
+                  CurvesCopy &extr)
 {
   if (extr.curve_intervals[interval_offset + ins - 1] != last_elem ||
       extr.curve_intervals[interval_offset + ins - 2] !=
@@ -135,7 +141,7 @@ void finish_curve(int &curve_index, int &interval_offset, int ins, int last_elem
     ins++;
   }
   extr.curve_interval_ranges[curve_index] = IndexRange(interval_offset, ins - 1);
-  calc_curve_offset(curve_index, interval_offset, extr);
+  calc_curve_offset(curve_index, interval_offset, offsets, extr);
   curve_index++;
 }
 
@@ -149,7 +155,7 @@ void finish_curve_or_shallow_copy(int &curve_index,
   const int last = offsets[curve_index + 1] - 1;
 
   if (prev_range.has_value() && prev_range.value().last() >= offsets[curve_index]) {
-    finish_curve(curve_index, interval_offset, ins, last, extr);
+    finish_curve(curve_index, interval_offset, ins, last, offsets, extr);
   }
   else {
     /* Shallow copy if previous selected point vas not on this curve. */
@@ -158,7 +164,7 @@ void finish_curve_or_shallow_copy(int &curve_index,
     extr.is_first_selected[curve_index] = false;
     extr.curve_intervals[interval_offset] = first;
     extr.curve_intervals[interval_offset + 1] = last;
-    calc_curve_offset(curve_index, interval_offset, extr);
+    calc_curve_offset(curve_index, interval_offset, offsets, extr);
     curve_index++;
   }
 }
@@ -193,7 +199,7 @@ const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const IndexMask 
 
     IndexRange range_to_handle = range;
     while (!handle_range(curve_index, interval_offset, ins, range_to_handle, offsets, extr)) {
-      finish_curve(curve_index, interval_offset, ins, offsets[curve_index + 1] - 1, extr);
+      finish_curve(curve_index, interval_offset, ins, offsets[curve_index + 1] - 1, offsets, extr);
       ins = 0;
       extr.curve_intervals[interval_offset] = offsets[curve_index];
     }
