@@ -246,21 +246,26 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   const Span<int> curve_intervals = {curves_copy.curve_intervals.data(),
                                      curves_copy.curve_intervals.size()};
 
-  int dest_index = 0;
-
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       new_curves, selection_domain, CD_PROP_BOOL);
-  for (const int c : curves.curves_range()) {
-    bool is_selected = curves_copy.is_first_selected[c];
-    for (const int i : curves_copy.curve_interval_ranges[c]) {
-      const int size = curve_intervals[i + 1] - curve_intervals[i] + 1;
-      GMutableSpan selection_span = selection.span.slice(IndexRange(dest_index, size));
-      fill_selection(selection_span, is_selected);
 
-      dest_index += size;
-      is_selected = !is_selected;
+  threading::parallel_for(curves.curves_range(), 128, [&](IndexRange curves_range) {
+    for (const int c : curves_range) {
+      const int first_index = curves_copy.curve_interval_ranges[c].start();
+      const int first_value = curve_intervals[first_index];
+      bool is_selected = curves_copy.is_first_selected[c];
+
+      for (const int i : curves_copy.curve_interval_ranges[c]) {
+        const int dest_index = curve_offsets[c] + curve_intervals[i] - first_value + i -
+                               first_index;
+        const int size = curve_intervals[i + 1] - curve_intervals[i] + 1;
+        GMutableSpan selection_span = selection.span.slice(IndexRange(dest_index, size));
+        fill_selection(selection_span, is_selected);
+
+        is_selected = !is_selected;
+      }
     }
-  }
+  });
   selection.finish();
 
   blender::Array<int> compact_buffer(curve_intervals.size());
@@ -280,16 +285,16 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
         const CPPType &type = dst.type();
         const GVArraySpan src = (*src_attributes.lookup(id, meta_data.domain));
 
-        int dest_index = 0;
-        for (const int i : IndexRange(intervals.size() - 1)) {
-          const int first = intervals[i];
-          const int size = intervals[i + 1] - first + 1;
-
-          type.copy_assign_n(src.slice(IndexRange(first, size)).data(),
-                             dst.slice(IndexRange(dest_index, size)).data(),
-                             size);
-          dest_index += size;
-        }
+        threading::parallel_for(IndexRange(intervals.size() - 1), 128, [&](IndexRange range) {
+          for (const int i : range) {
+            const int first = intervals[i];
+            const int size = intervals[i + 1] - first + 1;
+            const int dest_index = intervals[i] + i;
+            type.copy_assign_n(src.slice(IndexRange(first, size)).data(),
+                               dst.slice(IndexRange(dest_index, size)).data(),
+                               size);
+          }
+        });
         dst_attribute.finish();
         return true;
       });
