@@ -254,6 +254,11 @@ static unique_ptr<ImageInput> get_oiio_reader(const char *format,
     return nullptr;
   }
 
+  if (!in->valid_file(&mem_reader)) {
+    in.reset();
+    return nullptr;
+  }
+
   /* Open the reader using the ioproxy. */
   in->set_ioproxy(&mem_reader);
   bool ok = in->open("", r_newspec, config);
@@ -270,8 +275,8 @@ bool imb_oiio_check(const uchar *mem, size_t mem_size, const char *file_format)
 
   /* This memory proxy must remain alive for the full duration of the read. */
   Filesystem::IOMemReader mem_reader(cspan<uchar>(mem, mem_size));
-  unique_ptr<ImageInput> in = get_oiio_reader(file_format, config, mem_reader, spec);
-  return in ? true : false;
+  unique_ptr<ImageInput> in = ImageInput::create(file_format);
+  return in && in->valid_file(&mem_reader);
 }
 
 ImBuf *imb_oiio_read(const ReadContext &ctx,
