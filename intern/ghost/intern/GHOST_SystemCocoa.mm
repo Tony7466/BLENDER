@@ -573,8 +573,10 @@ GHOST_SystemCocoa::~GHOST_SystemCocoa()
    * well, so it does not point back to a freed system, forcing the delegate to be created with the
    * new GHOST system in init(). */
   CocoaAppDelegate *appDelegate = (CocoaAppDelegate *)[NSApp delegate];
-  [NSApp setDelegate:nil];
-  [appDelegate release];
+  if (appDelegate) {
+    [NSApp setDelegate:nil];
+    [appDelegate release];
+  }
 }
 
 GHOST_TSuccess GHOST_SystemCocoa::init()
