@@ -129,7 +129,11 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 #endif
 
 /* Can't use enum here because not a header file. But would be great to do. */
-#define ClosureType uint
+#ifdef GPU_METAL
+#  define ClosureType uchar
+#else
+#  define ClosureType uint
+#endif
 #define CLOSURE_NONE_ID 0u
 /* Diffuse */
 #define CLOSURE_BSDF_DIFFUSE_ID 1u
@@ -151,12 +155,14 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 #define CLOSURE_BSSRDF_BURLEY_ID 14u
 
 struct ClosureUndetermined {
-  vec3 color;
-  float weight;
-  vec3 N;
-  ClosureType type;
   /* Additional data different for each closure type. */
   vec4 data;
+  packed_vec3 color;
+#ifndef CLOSURE_NO_WEIGHT
+  float weight;
+#endif
+  packed_vec3 N;
+  ClosureType type;
 };
 
 ClosureUndetermined closure_new(ClosureType type)
@@ -167,66 +173,83 @@ ClosureUndetermined closure_new(ClosureType type)
 }
 
 struct ClosureOcclusion {
-  vec3 N;
+  packed_vec3 N;
 };
 
 struct ClosureDiffuse {
+  packed_vec3 color;
+#ifndef CLOSURE_NO_WEIGHT
   float weight;
-  vec3 color;
-  vec3 N;
-  vec3 sss_radius;
+#endif
+  packed_vec3 N;
+  packed_vec3 sss_radius;
   uint sss_id;
 };
 
 struct ClosureTranslucent {
+  packed_vec3 color;
+  packed_vec3 N;
+#ifndef CLOSURE_NO_WEIGHT
   float weight;
-  vec3 color;
-  vec3 N;
+#endif
 };
 
 struct ClosureReflection {
+  packed_vec3 color;
+#ifndef CLOSURE_NO_WEIGHT
   float weight;
-  vec3 color;
-  vec3 N;
+#endif
+  packed_vec3 N;
   float roughness;
 };
 
 struct ClosureRefraction {
-  float weight;
-  vec3 color;
-  vec3 N;
+  packed_vec3 color;
   float roughness;
+  packed_vec3 N;
   float ior;
+#ifndef CLOSURE_NO_WEIGHT
+  float weight;
+#endif
 };
 
 struct ClosureHair {
-  float weight;
-  vec3 color;
+
+  packed_vec3 color;
   float offset;
-  vec2 roughness;
-  vec3 T;
+  packed_vec3 T;
+#ifndef CLOSURE_NO_WEIGHT
+  float weight;
+#endif
+  packed_vec2 roughness;
 };
 
 struct ClosureVolumeScatter {
+  packed_vec3 scattering;
+#ifndef CLOSURE_NO_WEIGHT
   float weight;
-  vec3 scattering;
+#endif
   float anisotropy;
 };
 
 struct ClosureVolumeAbsorption {
+#ifndef CLOSURE_NO_WEIGHT
   float weight;
+#endif
   vec3 absorption;
 };
 
 struct ClosureEmission {
+  packed_vec3 emission;
   float weight;
-  vec3 emission;
 };
 
 struct ClosureTransparency {
-  float weight;
-  vec3 transmittance;
+  packed_vec3 transmittance;
   float holdout;
+#ifndef CLOSURE_NO_WEIGHT
+  float weight;
+#endif
 };
 
 ClosureDiffuse to_closure_diffuse(ClosureUndetermined cl)

@@ -59,6 +59,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .fragment_source("eevee_deferred_light_frag.glsl")
     /* Early fragment test is needed to avoid processing background fragments. */
     .early_fragment_test(true)
+
     .fragment_out(0, Type::VEC4, "out_combined")
     /* Chaining to next pass. */
     .image_out(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_1_img")
@@ -69,6 +70,8 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .define("SPECIALIZED_SHADOW_PARAMS")
     .specialization_constant(Type::INT, "shadow_ray_count", 1)
     .specialization_constant(Type::INT, "shadow_ray_step_count", 6)
+    /* Remove "weight" parameters. Reduces active register pressure. */
+    .define("CLOSURE_NO_WEIGHT", "1")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
                      "eevee_utility_texture",
@@ -119,6 +122,8 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .specialization_constant(Type::BOOL, "render_pass_diffuse_light_enabled", true)
     .specialization_constant(Type::BOOL, "render_pass_specular_light_enabled", true)
     .specialization_constant(Type::BOOL, "use_combined_lightprobe_eval", false)
+    /* Remove "weight" parameters. Reduces active register pressure. */
+    .define("CLOSURE_NO_WEIGHT", "1")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_capture_eval)

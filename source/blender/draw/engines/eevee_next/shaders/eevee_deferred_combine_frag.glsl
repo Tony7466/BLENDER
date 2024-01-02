@@ -98,9 +98,12 @@ void main()
     output_renderpass_color(uniform_buf.render_pass.specular_light_id, vec4(out_specular, 1.0));
   }
 
+#ifndef GPU_METAL
+  /* NOTE: isnan is a no-op when FastMath is enabled in Metal. */
   if (any(isnan(out_combined))) {
     out_combined = vec4(1.0, 0.0, 1.0, 0.0);
   }
+#endif
 
   out_combined = colorspace_safe_color(out_combined);
 }

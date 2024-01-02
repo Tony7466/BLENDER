@@ -9,6 +9,9 @@
 #  define samplerCubeArray sampler2DArray
 #endif
 
+/* Bitfield no-op. */
+#define BITFIELD(N)
+
 /* Fast store variant macro. In GLSL this is the same as imageStore, but assumes no bounds
  * checking. */
 #define imageStoreFast imageStore
@@ -28,6 +31,12 @@
 #define isampler2DArrayAtomic isampler2DArray
 #define isampler2DAtomic isampler2D
 #define isampler3DAtomic isampler3D
+
+/* Packed types.
+ * Allows explicit selection of packed data types in supporting languages. */
+#define packed_vec2 vec2
+#define packed_vec3 vec3
+#define packed_vec4 vec4
 
 /* Backend Functions. */
 #define select(A, B, mask) mix(A, B, mask)

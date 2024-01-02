@@ -54,6 +54,15 @@ using uvec4 = uint4;
 #define vec3_1010102_Unorm uint
 #define vec3_1010102_Inorm int
 
+/* Packed types.
+ * Allows explicit selection of packed data types in supporting languages. */
+#define packed_vec2 packed_float2
+#define packed_vec3 packed_float3
+#define packed_vec4 packed_float4
+
+/* Bitfield no-op. */
+#define BITFIELD(N) : N
+
 /* Strip GLSL Decorators. */
 /* NOTE: For debugging, keep decorators in to ensure we have not missed any
  * shader resources which are not guarded behind Macro's. */

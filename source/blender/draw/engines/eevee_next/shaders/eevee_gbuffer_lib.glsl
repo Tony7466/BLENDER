@@ -29,11 +29,11 @@ struct GBufferData {
   ClosureTranslucent translucent;
   ClosureReflection reflection;
   ClosureRefraction refraction;
+  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
+  packed_vec3 surface_N;
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;
-  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
-  vec3 surface_N;
 };
 
 /* TODO(fclem): This should replace GBufferData. */
@@ -42,24 +42,23 @@ struct GBufferDataUndetermined {
   ClosureUndetermined translucent;
   ClosureUndetermined reflection;
   ClosureUndetermined refraction;
+  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
+  packed_vec3 surface_N;
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;
-  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
-  vec3 surface_N;
 };
 
 /* Result of Packing the GBuffer. */
 struct GBufferWriter {
-  uint header;
   /* TODO(fclem): Better packing. */
   vec4 data[GBUFFER_DATA_MAX];
-  vec2 N[GBUFFER_NORMAL_MAX];
-
+  packed_vec2 N[GBUFFER_NORMAL_MAX];
+  uint header;
   /* Only used for book-keeping. Not actually written. Can be derived from header. */
-  int closure_count;
-  int layer_data;
-  int layer_normal;
+  int closure_count BITFIELD(3);
+  int layer_data BITFIELD(4);
+  int layer_normal BITFIELD(3);
 };
 
 /* Result of loading the GBuffer. */
@@ -67,20 +66,21 @@ struct GBufferReader {
   GBufferData data;
 
   ClosureUndetermined closures[GBUFFER_LAYER_MAX];
-
-  bool has_diffuse;
-  bool has_translucent;
-  bool has_reflection;
-  bool has_refraction;
-  bool has_sss;
-  bool has_any_surface;
-  uint header;
-  int closure_count;
-  /* Only used for book-keeping when reading. */
-  int layer_data;
-  int layer_normal;
   /* Texel of the gbuffer being read. */
   ivec2 texel;
+
+  uint header;
+  bool has_diffuse BITFIELD(1);
+  bool has_translucent BITFIELD(1);
+  bool has_reflection BITFIELD(1);
+  bool has_refraction BITFIELD(1);
+  bool has_sss BITFIELD(1);
+  bool has_any_surface BITFIELD(1);
+
+  int closure_count BITFIELD(3);
+  /* Only used for book-keeping when reading. */
+  int layer_data BITFIELD(4);
+  int layer_normal BITFIELD(3);
 };
 
 /** \} */
@@ -597,6 +597,7 @@ void gbuffer_closure_metal_clear_coat_load(inout GBufferReader gbuf,
  *
  * \{ */
 
+#ifndef CLOSURE_NO_WEIGHT
 GBufferWriter gbuffer_pack(GBufferDataUndetermined data_in)
 {
   GBufferWriter gbuf;
@@ -657,6 +658,7 @@ GBufferWriter gbuffer_pack(GBufferDataUndetermined data_in)
 
   return gbuf;
 }
+#endif
 
 /* Populate the GBufferReader only based on the header. The rest of the data is undefined. */
 GBufferReader gbuffer_read_header(uint header)

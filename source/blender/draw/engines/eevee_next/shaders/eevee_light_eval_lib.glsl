@@ -94,15 +94,15 @@ void light_shadow_mask(vec3 P, vec3 Ng, float vPz, float thickness, out uint sha
 }
 
 struct ClosureLight {
-  /* Shading normal. */
-  vec3 N;
   /* LTC matrix. */
   vec4 ltc_mat;
+  /* Output both shadowed and unshadowed for shadow denoising. */
+  packed_vec3 light_shadowed;
+  packed_vec3 light_unshadowed;
+  /* Shading normal. */
+  packed_vec3 N;
   /* Enum (used as index) telling how to treat the lighting. */
   LightingType type;
-  /* Output both shadowed and unshadowed for shadow denoising. */
-  vec3 light_shadowed;
-  vec3 light_unshadowed;
 };
 
 struct ClosureLightStack {
