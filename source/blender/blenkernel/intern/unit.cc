@@ -492,7 +492,7 @@ static bUnitDef buImperialAreaDef[] = {
         /*name*/ "square mile",
         /*name_plural*/ "square miles",
         /*name_short*/ "sq mi",
-        /*name_alt*/ "sq m",
+        /*name_alt*/ nullptr,
         /*name_display*/ "Square Miles",
         /*identifier*/ nullptr,
         /*scalar*/ UN_SC_MI *UN_SC_MI,
@@ -680,7 +680,7 @@ static bUnitDef buImperialVolDef[] = {
         /*name*/ "cubic mile",
         /*name_plural*/ "cubic miles",
         /*name_short*/ "cu mi",
-        /*name_alt*/ "cu m",
+        /*name_alt*/ nullptr,
         /*name_display*/ "Cubic Miles",
         /*identifier*/ nullptr,
         /*scalar*/ UN_SC_MI *UN_SC_MI *UN_SC_MI,
@@ -766,10 +766,10 @@ static bUnitCollection buImperialVolCollection = {
 /* Mass. */
 static bUnitDef buMetricMassDef[] = {
     {
-        /*name*/ "ton",
+        /*name*/ "tonne",
         /*name_plural*/ "tonnes",
-        /*name_short*/ "ton",
-        /*name_alt*/ "t",
+        /*name_short*/ "t",
+        /*name_alt*/ "ton",
         /*name_display*/ "Tonnes",
         /*identifier*/ "TONNES",
         /*scalar*/ UN_SC_MTON,
@@ -855,10 +855,10 @@ static bUnitCollection buMetricMassCollection = {
 static bUnitDef buImperialMassDef[] = {
     {
         /*name*/ "ton",
-        /*name_plural*/ "tonnes",
-        /*name_short*/ "ton",
-        /*name_alt*/ "t",
-        /*name_display*/ "Tonnes",
+        /*name_plural*/ "tons",
+        /*name_short*/ "tn",
+        /*name_alt*/ "st",
+        /*name_display*/ "Tons",
         /*identifier*/ "TONNES",
         /*scalar*/ UN_SC_ITON,
         /*bias*/ 0.0,
@@ -1050,8 +1050,8 @@ static bUnitDef buNaturalTimeDef[] = {
     {
         /*name*/ "hour",
         /*name_plural*/ "hours",
-        /*name_short*/ "hr",
-        /*name_alt*/ "h",
+        /*name_short*/ "h",
+        /*name_alt*/ "hr",
         /*name_display*/ "Hours",
         /*identifier*/ "HOURS",
         /*scalar*/ 3600.0,
@@ -1073,8 +1073,8 @@ static bUnitDef buNaturalTimeDef[] = {
     {
         /*name*/ "second",
         /*name_plural*/ "seconds",
-        /*name_short*/ "sec",
-        /*name_alt*/ "s",
+        /*name_short*/ "s",
+        /*name_alt*/ "sec",
         /*name_display*/ "Seconds",
         /*identifier*/ "SECONDS",
         /*scalar*/ 1.0,
