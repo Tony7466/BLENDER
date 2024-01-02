@@ -4438,16 +4438,16 @@ static void p_chart_flush_collapsed_uvs(PChart *chart)
   }
 }
 
-static bool p_validate_corrected_coords_point(
-                                        const PEdge *corr_e,
-                                        const float corr_co1[3],
-                                        const float corr_co2[3],
-                                        float min_area,
-                                        float min_angle_cos)
+static bool p_validate_corrected_coords_point(const PEdge *corr_e,
+                                              const float corr_co1[3],
+                                              const float corr_co2[3],
+                                              float min_area,
+                                              float min_angle_cos)
 {
-  /* Check whether the given corrected coordinates don't result in any other triangle with area lower than min_area.
+  /* Check whether the given corrected coordinates don't result in any other triangle with area
+   * lower than min_area.
    */
-  const PVert * corr_v = corr_e->vert;
+  const PVert *corr_v = corr_e->vert;
   const PEdge *e = corr_v->edge;
 
   do {
@@ -4462,9 +4462,10 @@ static bool p_validate_corrected_coords_point(
     }
 
     if (e->next->next == corr_e->pair) {
-      PVert* other_v = e->next->next->vert;
+      PVert *other_v = e->next->next->vert;
       area = area_tri_v3(corr_co1, corr_co2, other_v->co);
-    } else {
+    }
+    else {
       const PVert *other_v1 = e->next->vert;
       const PVert *other_v2 = e->next->next->vert;
       area = area_tri_v3(corr_co1, other_v1->co, other_v2->co);
@@ -4485,7 +4486,7 @@ static bool p_validate_corrected_coords_point(
       const PVert *other_v2 = e->next->next->vert;
       p_triangle_cos(corr_co1, other_v1->co, other_v2->co, f_cos, f_cos + 1, f_cos + 2);
     }
-    
+
     for (int i = 0; i < 3; i++) {
       if (f_cos[i] > min_angle_cos) {
         return false;
@@ -4497,13 +4498,13 @@ static bool p_validate_corrected_coords_point(
   return true;
 }
 
-static bool p_validate_corrected_coords(
-                                        const PEdge *corr_e,
+static bool p_validate_corrected_coords(const PEdge *corr_e,
                                         const float corr_co[3],
                                         float min_area,
                                         float min_angle_cos)
 {
-  /* Check whether the given corrected coordinates don't result in any other triangle with area lower than min_area.
+  /* Check whether the given corrected coordinates don't result in any other triangle with area
+   * lower than min_area.
    */
 
   const PVert *corr_v = corr_e->vert;
@@ -4596,29 +4597,29 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
 
 static const float CORR_ZERO_AREA_EPS = 1.0e-10f;
 
-static bool p_chart_correct_degenerate_triangle_point(PFace* f, float min_area, float min_angle_cos)
+static bool p_chart_correct_degenerate_triangle_point(PFace *f,
+                                                      float min_area,
+                                                      float min_angle_cos)
 {
-  static const float ref_edges[][3] = {
-    {1.0f, 0.0f, 0.0f},
-    {0.0f, 1.0f, 0.0f},
-    {0.0f, 0.0f, 1.0f},
-    {0.0f, 1.0f, 1.0f},
-    {1.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 0.0f},
+  static const float ref_edges[][3] = {{1.0f, 0.0f, 0.0f},
+                                       {0.0f, 1.0f, 0.0f},
+                                       {0.0f, 0.0f, 1.0f},
+                                       {0.0f, 1.0f, 1.0f},
+                                       {1.0f, 0.0f, 1.0f},
+                                       {1.0f, 1.0f, 0.0f},
 
-    {0.0f, 0.5f, 1.0f},
-    {0.5f, 0.0f, 1.0f},
-    {0.5f, 1.0f, 0.0f},
+                                       {0.0f, 0.5f, 1.0f},
+                                       {0.5f, 0.0f, 1.0f},
+                                       {0.5f, 1.0f, 0.0f},
 
-    {0.0f, 1.0f, 0.5f},
-    {1.0f, 0.0f, 0.5f},
-    {1.0f, 0.5f, 0.0f}
-  };
+                                       {0.0f, 1.0f, 0.5f},
+                                       {1.0f, 0.0f, 0.5f},
+                                       {1.0f, 0.5f, 0.0f}};
   static const int ref_edge_count = sizeof(ref_edges) / sizeof(ref_edges[0]);
   static const int LEN_MULTIPLIER_COUNT = 3;
   bool corr_co_found = false;
 
-  float corr_len = 2.0f * std::sqrt((min_area + CORR_ZERO_AREA_EPS) / 3.0f / std::sqrt(3.0f) );
+  float corr_len = 2.0f * std::sqrt((min_area + CORR_ZERO_AREA_EPS) / 3.0f / std::sqrt(3.0f));
 
   for (int m = 0; m < LEN_MULTIPLIER_COUNT; m++) {
     for (int re = 0; re < ref_edge_count; re++) {
@@ -4693,7 +4694,7 @@ static bool p_chart_correct_degenerate_triangles2(PChart *chart, float min_area,
 
     float face_area = p_face_area(f);
 
-    PEdge* max_edge = nullptr;
+    PEdge *max_edge = nullptr;
     float max_edge_len = -std::numeric_limits<float>::infinity();
 
     PEdge *min_edge = nullptr;
@@ -4701,7 +4702,7 @@ static bool p_chart_correct_degenerate_triangles2(PChart *chart, float min_area,
 
     PEdge *middle_edge = nullptr;
 
-    PEdge* e = f->edge;
+    PEdge *e = f->edge;
     do {
       float len = p_edge_length(e);
 
@@ -4747,11 +4748,14 @@ static bool p_chart_correct_degenerate_triangles2(PChart *chart, float min_area,
       continue;
     }
 
-    float max_face_cos = middle_edge->next == max_edge ?
-        p_vec_cos(middle_edge->vert->co, max_edge->vert->co, min_edge->vert->co) :
-        p_vec_cos(max_edge->vert->co, middle_edge->vert->co, min_edge->vert->co);
+    float max_face_cos =
+        middle_edge->next == max_edge ?
+            p_vec_cos(middle_edge->vert->co, max_edge->vert->co, min_edge->vert->co) :
+            p_vec_cos(max_edge->vert->co, middle_edge->vert->co, min_edge->vert->co);
 
-    float angle_corr_len = max_face_cos > min_angle_cos ? p_edge_length(middle_edge) * min_angle_sin : 0.0f;
+    float angle_corr_len = max_face_cos > min_angle_cos ?
+                               p_edge_length(middle_edge) * min_angle_sin :
+                               0.0f;
 
     if ((face_area > min_area) && (angle_corr_len == 0.0f)) {
       f->flag |= PFACE_DONE;
@@ -4807,11 +4811,10 @@ static bool p_chart_correct_degenerate_triangles2(PChart *chart, float min_area,
 
 #ifndef NDEBUG
 
-static bool p_validate_triangle_angles(
-  const PVert* vert1,
-  const PVert* vert2,
-  const PVert* vert3,
-  const float min_angle_cos)
+static bool p_validate_triangle_angles(const PVert *vert1,
+                                       const PVert *vert2,
+                                       const PVert *vert3,
+                                       const float min_angle_cos)
 {
   float t_cos[3];
   p_triangle_cos(vert1->co, vert2->co, vert3->co, t_cos, t_cos + 1, t_cos + 2);
@@ -4829,8 +4832,9 @@ static bool p_validate_triangle_angles(
 
 static bool p_chart_correct_degenerate_triangles(PChart *chart, float min_area, float min_angle)
 {
-  /* Look for degenerate triangles: triangles with angles lower than `min_angle` or having area lower than `min_area`
-   * and try to correct vertex coordinates so that the resulting triangle is not degenerate.
+  /* Look for degenerate triangles: triangles with angles lower than `min_angle` or having area
+   * lower than `min_area` and try to correct vertex coordinates so that the resulting triangle is
+   * not degenerate.
    *
    * The return value indicates whether all triangles could be corrected.
    */
@@ -4844,7 +4848,8 @@ static bool p_chart_correct_degenerate_triangles(PChart *chart, float min_area, 
   for (PFace *f = chart->faces; f; f = f->nextlink) {
     if (!(f->flag & PFACE_DONE)) {
       ret = false;
-    } else {
+    }
+    else {
 #ifndef NDEBUG
       float f_area = p_face_area(f);
       BLI_assert(f_area > (min_area - CORR_ZERO_AREA_EPS));
@@ -5064,7 +5069,7 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
 
     /* p_chart_correct_degenerate_triangles is able to fix double vertices so
      * the following is probably not needed */
-    //p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
+    // p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
 
     p_chart_correct_degenerate_triangles(chart, SLIM_CORR_MIN_AREA, SLIM_CORR_MIN_ANGLE);
 
