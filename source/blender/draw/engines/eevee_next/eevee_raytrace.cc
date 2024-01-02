@@ -611,7 +611,7 @@ RayTraceResultTexture RayTraceModule::trace(
     horizon_occlusion_tx_.release();
     horizon_radiance_tx_.release();
   }
-
+  GPU_flush();
   DRW_stats_group_end();
 
   return result;

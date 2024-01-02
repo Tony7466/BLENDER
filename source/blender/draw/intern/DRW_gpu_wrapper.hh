@@ -1072,6 +1072,7 @@ class TextureFromPool : public Texture, NonMovable {
 
     if (G.debug & G_DEBUG_GPU) {
       debug_clear();
+      GPU_flush();
     }
   }
 
