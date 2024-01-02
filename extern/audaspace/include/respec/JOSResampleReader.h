@@ -164,7 +164,7 @@ public:
 	 * \param reader The reader to mix.
 	 * \param rate The target sampling rate.
 	 */
-	JOSResampleReader(std::shared_ptr<IReader> reader, SampleRate rate, Quality = Quality::HIGH);
+	JOSResampleReader(std::shared_ptr<IReader> reader, SampleRate rate, Quality = Quality::MEDIUM);
 
 	virtual void seek(int position);
 	virtual int getLength() const;
