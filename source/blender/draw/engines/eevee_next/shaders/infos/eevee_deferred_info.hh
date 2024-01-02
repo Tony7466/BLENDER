@@ -20,8 +20,6 @@ GPU_SHADER_CREATE_INFO(eevee_gbuffer_data)
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_tile_classify)
     .fragment_source("eevee_deferred_tile_classify_frag.glsl")
-    /* Early fragment test is needed to avoid processing background fragments. */
-    .early_fragment_test(true)
     .additional_info("eevee_shared", "draw_fullscreen")
     .subpass_in(1, Type::UINT, "in_gbuffer_header", DEFERRED_GBUFFER_ROG_ID)
     .typedef_source("draw_shader_shared.h")

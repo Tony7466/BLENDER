@@ -517,16 +517,12 @@ void DeferredLayer::end_sync()
                               GPU_ATTACHEMENT_READ, /* Header. */
                               GPU_ATTACHEMENT_IGNORE,
                               GPU_ATTACHEMENT_IGNORE});
-      /* Use depth test to reject background pixels. */
-      /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
-      sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER);
+      sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS);
       sub.shader_set(inst_.shaders.static_shader_get(DEFERRED_TILE_CLASSIFY));
-      sub.bind_image("tile_mask_img", &tile_mask_tx_);
-      sub.push_constant("closure_tile_size_shift", &closure_tile_size_shift_);
-      sub.barrier(GPU_BARRIER_TEXTURE_FETCH);
+      sub.state_stencil(0xFFu, /* Set by shader */ 0x0u, 0xFFu);
       sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
     }
-    {
+    if (false) {
       PassMain::Sub &sub = gbuffer_ps_.sub("TileCompaction");
       /* Use rasterizer discard. This processes the tile data to create tile command lists. */
       sub.state_set(DRW_STATE_NO_DRAW);
@@ -546,7 +542,7 @@ void DeferredLayer::end_sync()
       PassSimple &pass = eval_light_ps_;
       pass.init();
 
-      {
+      if (false) {
         PassSimple::Sub &sub = pass.sub("StencilSet");
         sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS |
                       DRW_STATE_DEPTH_GREATER);
@@ -594,7 +590,7 @@ void DeferredLayer::end_sync()
           sub.bind_resources(inst_.hiz_buffer.front);
           sub.bind_resources(inst_.reflection_probes);
           sub.bind_resources(inst_.irradiance_cache);
-          sub.state_stencil(0xFFu, 1u << i, 0xFFu);
+          sub.state_stencil(0xFFu, i, 0xFFu);
           if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
             /* WORKAROUND: On Apple silicon the stencil test is broken. Only issue one expensive
              * lighting evaluation. */
