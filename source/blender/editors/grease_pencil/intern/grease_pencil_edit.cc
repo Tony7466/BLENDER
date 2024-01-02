@@ -705,7 +705,7 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     const GSpan src_data(attribute.span.type(), orig_data.data(), attribute.span.size());
 
     switch (meta_data.domain) {
-      case ATTR_DOMAIN_CURVE: {
+      case blender::bke::AttrDomain::Curve: {
         if (id.name() == "cyclic") {
           return true;
         }
@@ -715,7 +715,7 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
             attribute.span);
         break;
       }
-      case ATTR_DOMAIN_POINT: {
+      case blender::bke::AttrDomain::Point: {
         bke::attribute_math::gather(
             src_data,
             point_map,
@@ -747,14 +747,14 @@ static int grease_pencil_stroke_split_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+  const blender::bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
   std::atomic<bool> changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask mask = ed::greasepencil::retrieve_editable_and_selected_elements(
-        *object, info.drawing, ATTR_DOMAIN_POINT, memory);
+        *object, info.drawing, blender::bke::AttrDomain::Point, memory);
     if (mask.is_empty()) {
       return;
     }
