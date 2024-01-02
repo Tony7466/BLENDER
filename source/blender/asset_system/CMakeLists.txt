@@ -64,6 +64,5 @@ if(WITH_GTESTS)
   set(TEST_LIB
     bf_asset_system
   )
-  include(GTestTesting)
   blender_add_test_suite_lib(asset_system "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()

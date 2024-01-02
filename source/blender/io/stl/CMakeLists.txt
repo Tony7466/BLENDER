@@ -71,6 +71,5 @@ if(WITH_GTESTS)
     bf_io_stl
   )
 
-  include(GTestTesting)
   blender_add_test_suite_lib(io_stl "${TEST_SRC}" "${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
 endif()

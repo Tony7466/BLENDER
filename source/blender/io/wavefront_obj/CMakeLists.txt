@@ -95,6 +95,5 @@ if(WITH_GTESTS)
     bf_io_wavefront_obj
   )
 
-  include(GTestTesting)
   blender_add_test_suite_lib(io_wavefront "${TEST_SRC}" "${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
 endif()
