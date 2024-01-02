@@ -20,7 +20,7 @@
 #include "rna_internal.h"
 
 #include "BKE_fluid.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_pointcache.h"
 
 #include "BLT_translation.h"
@@ -39,8 +39,8 @@
 
 #  include "BLI_threads.h"
 
-#  include "BKE_colorband.h"
-#  include "BKE_context.h"
+#  include "BKE_colorband.hh"
+#  include "BKE_context.hh"
 #  include "BKE_particle.h"
 
 #  include "DEG_depsgraph.hh"

@@ -26,7 +26,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 
@@ -539,7 +539,7 @@ static void flyEvent(FlyInfo *fly, const wmEvent *event)
         fly->state = FLY_CONFIRM;
         break;
       }
-      /* Speed adjusting with mouse-pan (track-pad). */
+      /* Speed adjusting with mouse-pan (trackpad). */
       case FLY_MODAL_SPEED: {
         float fac = 0.02f * float(event->prev_xy[1] - event->xy[1]);
 

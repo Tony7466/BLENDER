@@ -13,13 +13,13 @@
 #include "BLI_sort.h"
 #include "BLI_stack.h"
 
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 
 #include "atomic_ops.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "bmesh_intersect_edges.h" /* own include */
+#include "bmesh_intersect_edges.hh" /* own include */
 
 //#define INTERSECT_EDGES_DEBUG
 

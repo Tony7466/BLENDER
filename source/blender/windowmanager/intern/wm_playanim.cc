@@ -653,7 +653,7 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
  * \param draw_flip: X/Y flipping (ignored when null).
  * \param frame_indicator_factor: Display a vertical frame-indicator (ignored when -1).
  */
-static void playanim_toscreen_ex(GhostData *data,
+static void playanim_toscreen_ex(GhostData *ghost_data,
                                  const PlayDisplayContext *display_ctx,
                                  const PlayAnimPict *picture,
                                  ImBuf *ibuf,
@@ -664,11 +664,11 @@ static void playanim_toscreen_ex(GhostData *data,
                                  const bool draw_flip[2],
                                  const float frame_indicator_factor)
 {
-  GHOST_ActivateWindowDrawingContext(data->window);
+  GHOST_ActivateWindowDrawingContext(ghost_data->window);
   GPU_render_begin();
 
   GPUContext *restore_context = GPU_context_active_get();
-  GPU_context_active_set(data->gpu_context);
+  GPU_context_active_set(ghost_data->gpu_context);
 
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
@@ -723,7 +723,7 @@ static void playanim_toscreen_ex(GhostData *data,
                picture->error_message ? picture->error_message : "<unknown error>");
     }
 
-    playanim_window_get_size(data->window, &sizex, &sizey);
+    playanim_window_get_size(ghost_data->window, &sizex, &sizey);
     fsizex_inv = 1.0f / sizex;
     fsizey_inv = 1.0f / sizey;
 
@@ -776,7 +776,7 @@ static void playanim_toscreen_ex(GhostData *data,
     GPU_flush();
   }
 
-  GHOST_SwapWindowBuffers(data->window);
+  GHOST_SwapWindowBuffers(ghost_data->window);
   GPU_context_active_set(restore_context);
   GPU_render_end();
 }
@@ -1143,11 +1143,11 @@ static void playanim_audio_stop(PlayState * /*ps*/)
 #endif
 }
 
-static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
+static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr ps_void_ptr)
 {
-  PlayState *ps = static_cast<PlayState *>(ps_void);
-  const GHOST_TEventType type = GHOST_GetEventType(evt);
-  GHOST_TEventDataPtr data = GHOST_GetEventData(evt);
+  PlayState *ps = static_cast<PlayState *>(ps_void_ptr);
+  const GHOST_TEventType type = GHOST_GetEventType(ghost_event);
+  GHOST_TEventDataPtr data = GHOST_GetEventData(ghost_event);
   /* Convert ghost event into value keyboard or mouse. */
   const int val = ELEM(type, GHOST_kEventKeyDown, GHOST_kEventButtonDown);
   GHOST_SystemHandle ghost_system = ps->ghost_data.system;
@@ -1923,7 +1923,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
       short frs_sec = 25;
       float frs_sec_base = 1.0;
 
-      IMB_anim_get_fps(anim_movie, &frs_sec, &frs_sec_base, true);
+      IMB_anim_get_fps(anim_movie, true, &frs_sec, &frs_sec_base);
 
       g_playanim.fps_movie = double(frs_sec) / double(frs_sec_base);
       /* Enforce same fps for movie as sound. */

@@ -29,11 +29,11 @@
 #include "BLI_utildefines.h"
 #include "BLI_utildefines_stack.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "intern/bmesh_operators_private.h" /* own include */
+#include "intern/bmesh_operators_private.hh" /* own include */
 
 #define VERT_SHARED (1 << 0)
 

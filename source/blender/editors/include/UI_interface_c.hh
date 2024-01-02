@@ -493,7 +493,8 @@ void UI_draw_roundbox_4fv_ex(const rctf *rect,
 int UI_draw_roundbox_corner_get();
 #endif
 
-void UI_draw_box_shadow(const rctf *rect, unsigned char alpha);
+void ui_draw_dropshadow(const rctf *rct, float radius, float width, float aspect, float alpha);
+
 void UI_draw_text_underline(int pos_x, int pos_y, int len, int height, const float color[4]);
 
 /**
@@ -563,8 +564,10 @@ using uiButHandleNFunc = void (*)(bContext *C, void *argN, void *arg2);
 using uiButHandleHoldFunc = void (*)(bContext *C, ARegion *butregion, uiBut *but);
 using uiButCompleteFunc = int (*)(bContext *C, char *str, void *arg);
 
-/** Function to compare the identity of two buttons over redraws, to check if they represent the
- * same data, and thus should be considered the same button over redraws. */
+/**
+ * Function to compare the identity of two buttons over redraws, to check if they represent the
+ * same data, and thus should be considered the same button over redraws.
+ */
 using uiButIdentityCompareFunc = bool (*)(const uiBut *a, const uiBut *b);
 
 /* Search types. */
@@ -1812,7 +1815,7 @@ void UI_but_func_tooltip_custom_set(uiBut *but,
  * \param text: Allocated text (transfer ownership to `data`) or null.
  * \param suffix: Allocated text (transfer ownership to `data`) or null.
  */
-void UI_tooltip_text_field_add(struct uiTooltipData *data,
+void UI_tooltip_text_field_add(uiTooltipData *data,
                                char *text,
                                char *suffix,
                                const uiTooltipStyle style,
@@ -1823,9 +1826,8 @@ void UI_tooltip_text_field_add(struct uiTooltipData *data,
  * \param image: Image buffer (duplicated, ownership is *not* transferred to `data`).
  * \param image_size: Display size for the image (pixels without UI scale applied).
  */
-void UI_tooltip_image_field_add(struct uiTooltipData *data,
-                                const struct ImBuf *image,
-                                const short image_size[2]) ATTR_NONNULL(1, 2, 3);
+void UI_tooltip_image_field_add(uiTooltipData *data, const ImBuf *image, const short image_size[2])
+    ATTR_NONNULL(1, 2, 3);
 
 /**
  * Recreate tool-tip (use to update dynamic tips)
@@ -2282,6 +2284,33 @@ bool uiLayoutGetPropDecorate(uiLayout *layout);
 /* Layout create functions. */
 
 uiLayout *uiLayoutRow(uiLayout *layout, bool align);
+
+/**
+ * Create a "layout panel" which is a panel that is defined as part of the `uiLayout`. This allows
+ * creating expandable sections which can also be nested.
+ *
+ * The open-state of the panel is defined by an RNA property which is passed in as a pointer +
+ * property name pair. This gives the caller flexibility to decide who should own the open-state.
+ *
+ * \param C: The context is necessary because sometimes the panel may be forced to be open by the
+ *   context even of the open-property is `false`. This can happen with e.g. property search.
+ * \param layout: The `uiLayout` that should contain the subpanel. Only layouts that span the full
+ *   width of the region are supported for now.
+ * \param name: Text that's shown in the panel header. It should already be translated.
+ * \param open_prop_owner: Data that contains the open-property.
+ * \param open_prop_name: Name of the open-property in `open_prop_owner`.
+ *
+ * \return NULL if the panel is closed and should not be drawn, otherwise the layout where the
+ * sub-panel should be inserted into.
+ */
+uiLayout *uiLayoutPanel(const bContext *C,
+                        uiLayout *layout,
+                        const char *name,
+                        PointerRNA *open_prop_owner,
+                        const char *open_prop_name);
+
+bool uiLayoutEndsWithPanelHeader(const uiLayout &layout);
+
 /**
  * See #uiLayoutColumnWithHeading().
  */
@@ -2675,11 +2704,13 @@ void uiTemplateLightLinkingCollection(uiLayout *layout,
                                       PointerRNA *ptr,
                                       const char *propname);
 
+void uiTemplateBoneCollectionTree(uiLayout *layout, bContext *C);
+
 #ifdef WITH_GREASE_PENCIL_V3
 void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
 #endif
 
-void uiTemplateNodeTreeInterface(struct uiLayout *layout, struct PointerRNA *ptr);
+void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
 
 /**
  * \return: A RNA pointer for the operator properties.

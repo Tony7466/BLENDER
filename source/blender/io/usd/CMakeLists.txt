@@ -61,14 +61,12 @@ set(INC
   ../../blenloader
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../editors/include
   ../../imbuf
   ../../makesrna
   ../../nodes
   ../../python/intern
   ../../windowmanager
-  ../../../../intern/clog
   ../../../../intern/utfconv
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -101,6 +99,7 @@ set(SRC
   intern/usd_reader_camera.cc
   intern/usd_reader_curve.cc
   intern/usd_reader_geom.cc
+  intern/usd_reader_instance.cc
   intern/usd_reader_light.cc
   intern/usd_reader_material.cc
   intern/usd_reader_mesh.cc
@@ -135,6 +134,7 @@ set(SRC
   intern/usd_reader_camera.h
   intern/usd_reader_curve.h
   intern/usd_reader_geom.h
+  intern/usd_reader_instance.h
   intern/usd_reader_light.h
   intern/usd_reader_material.h
   intern/usd_reader_mesh.h
@@ -150,7 +150,6 @@ set(SRC
 
 if(WITH_HYDRA)
   list(APPEND SRC
-    hydra/camera.cc
     hydra/curves.cc
     hydra/hydra_scene_delegate.cc
     hydra/id.cc
@@ -165,7 +164,6 @@ if(WITH_HYDRA)
     hydra/volume_modifier.cc
     hydra/world.cc
 
-    hydra/camera.h
     hydra/curves.h
     hydra/hydra_scene_delegate.h
     hydra/id.h
@@ -185,9 +183,11 @@ endif()
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::animrig
   bf_imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_io_common
 )
@@ -202,6 +202,9 @@ list(APPEND LIB
 
 if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+  list(APPEND INC
+    ../../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
