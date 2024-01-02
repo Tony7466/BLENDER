@@ -57,12 +57,6 @@
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.usd"};
 
-namespace usdtokens {
-static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
-static const pxr::TfToken joint1("joint1", pxr::TfToken::Immortal);
-static const pxr::TfToken Skel("Skel", pxr::TfToken::Immortal);
-}  // namespace usdtokens
-
 namespace {
 
 /* Utility: return the magnitude of the largest component
