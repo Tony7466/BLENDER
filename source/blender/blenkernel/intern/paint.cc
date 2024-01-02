@@ -1356,7 +1356,7 @@ bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
 
     /* Limit how often we update the angle to prevent jitter. */
     if (len_squared_v2(dpos) >= r * r) {
-      rotation = atan2f(dpos[1], dpos[0]);
+      rotation = atan2f(dpos[1], dpos[0]) + float(0.5f * M_PI);
 
       copy_v2_v2(ups->last_rake, mouse_pos);
 

@@ -2149,7 +2149,8 @@ float BKE_brush_sample_tex_3d(const Scene *scene,
      * the texture is not rotated by skipping the calls to
      * atan2, sqrtf, sin, and cos. */
     if (rotation > 0.001f || rotation < -0.001f) {
-      const float angle = atan2f(y, x) + rotation;
+      /* Since we are sampling, rotation must be negated */
+      const float angle = atan2f(y, x) - rotation;
       const float flen = sqrtf(x * x + y * y);
 
       x = flen * cosf(angle);
