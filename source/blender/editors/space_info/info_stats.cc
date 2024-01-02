@@ -499,7 +499,7 @@ static bool format_stats(
   SceneStats *stats = *stats_p;
 
   /* Generate formatted numbers. */
-#define SCENE_STATS_FMT_INT(_id) BLI_str_format_uint64_grouped(stats_fmt->_id, stats->_id)
+#define SCENE_STATS_FMT_INT(_id) BLI_str_format_uint64_grouped_n(stats_fmt->_id, stats->_id, U.numbers_format)
 
   SCENE_STATS_FMT_INT(totvert);
   SCENE_STATS_FMT_INT(totvertsel);

@@ -5042,6 +5042,13 @@ static void rna_def_userdef_view(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  /* Numbers format. */
+  static const EnumPropertyItem numbers_format_items[] = {
+      {USER_NUMBERS_FORMAT_3, "FORMAT_3", 0, "3-Digit Groups", ""},
+      {USER_NUMBERS_FORMAT_4, "FORMAT_4", 0, "4-Digit Groups", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   prop = RNA_def_property(srna, "mini_axis_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mini_axis_type_items);
   RNA_def_property_ui_text(
@@ -5226,6 +5233,12 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_statusbar_scene_duration", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "statusbar_flag", STATUSBAR_SHOW_SCENE_DURATION);
   RNA_def_property_ui_text(prop, "Show Scene Duration", "Show scene duration");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "numbers_format", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, numbers_format_items);
+  RNA_def_property_ui_text(
+      prop, "Numbers Format", "How to group long numbers");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, "rna_userdef_update");
 }
 

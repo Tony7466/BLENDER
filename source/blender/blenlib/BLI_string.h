@@ -281,9 +281,11 @@ const char *BLI_str_escape_find_quote(const char *str) ATTR_NONNULL(1);
  *
  * \param dst: The resulting string.
  * \param num: Number to format.
+ * \param numbers_format: numbers grouping mode, default value USER_NUMBERS_FORMAT_3 == 0,
+ * see eUserpref_NumbersFormat.
  * \return The length of \a dst
  */
-size_t BLI_str_format_int_grouped(char dst[BLI_STR_FORMAT_INT32_GROUPED_SIZE], int num)
+size_t BLI_str_format_int_grouped_n(char dst[BLI_STR_FORMAT_INT32_GROUPED_SIZE], int num, int numbers_format)
     ATTR_NONNULL(1);
 /**
  * Format uint64_t with decimal grouping.
@@ -291,10 +293,16 @@ size_t BLI_str_format_int_grouped(char dst[BLI_STR_FORMAT_INT32_GROUPED_SIZE], i
  *
  * \param dst: The resulting string.
  * \param num: Number to format.
+ * \param numbers_format: numbers grouping mode, default value USER_NUMBERS_FORMAT_3 == 0,
+ * see eUserpref_NumbersFormat.
  * \return The length of \a dst.
  */
-size_t BLI_str_format_uint64_grouped(char dst[BLI_STR_FORMAT_UINT64_GROUPED_SIZE], uint64_t num)
+size_t BLI_str_format_uint64_grouped_n(char dst[BLI_STR_FORMAT_UINT64_GROUPED_SIZE], uint64_t num, int numbers_format)
     ATTR_NONNULL(1);
+
+#define BLI_str_format_int_grouped(dst,num) BLI_str_format_int_grouped_n(dst,num,USER_NUMBERS_FORMAT_3)
+#define BLI_str_format_uint64_grouped(dst,num) BLI_str_format_uint64_grouped_n(dst,num,USER_NUMBERS_FORMAT_3)
+
 /**
  * Format a size in bytes using binary units.
  * 1000 -> 1 KB

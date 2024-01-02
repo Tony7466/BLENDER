@@ -22,6 +22,8 @@
 
 #include "BLI_strict_flags.h"
 
+#include "DNA_userdef_types.h" /* For eUserpref_NumbersFormat. */
+
 /* -------------------------------------------------------------------- */
 /** \name String Duplicate/Copy
  * \{ */
@@ -1121,7 +1123,7 @@ int BLI_string_find_split_words(
 /** \name String Formatting (Numeric)
  * \{ */
 
-static size_t BLI_str_format_int_grouped_ex(char *src, char *dst, int num_len)
+static size_t BLI_str_format_int_grouped_ex(char *src, char *dst, int num_len, int numbers_format)
 {
   char *p_src = src;
   char *p_dst = dst;
@@ -1134,7 +1136,12 @@ static size_t BLI_str_format_int_grouped_ex(char *src, char *dst, int num_len)
     num_len--;
   }
 
-  for (commas = 2 - num_len % 3; *p_src; commas = (commas + 1) % 3) {
+
+  int group=3;
+  if (numbers_format == USER_NUMBERS_FORMAT_3){ group=3; }
+  else if (numbers_format == USER_NUMBERS_FORMAT_4){ group=4; }
+
+  for (commas = 2 - num_len % group; *p_src; commas = (commas + 1) % group) {
     *p_dst++ = *p_src++;
     if (commas == 1) {
       *p_dst++ = separator;
@@ -1145,7 +1152,7 @@ static size_t BLI_str_format_int_grouped_ex(char *src, char *dst, int num_len)
   return (size_t)(p_dst - dst);
 }
 
-size_t BLI_str_format_int_grouped(char dst[BLI_STR_FORMAT_INT32_GROUPED_SIZE], int num)
+size_t BLI_str_format_int_grouped_n(char dst[BLI_STR_FORMAT_INT32_GROUPED_SIZE], int num, int numbers_format)
 {
   const size_t dst_maxncpy = BLI_STR_FORMAT_INT32_GROUPED_SIZE;
   BLI_string_debug_size(dst, dst_maxncpy);
@@ -1154,10 +1161,10 @@ size_t BLI_str_format_int_grouped(char dst[BLI_STR_FORMAT_INT32_GROUPED_SIZE], i
   char src[BLI_STR_FORMAT_INT32_GROUPED_SIZE];
   const int num_len = (int)SNPRINTF(src, "%d", num);
 
-  return BLI_str_format_int_grouped_ex(src, dst, num_len);
+  return BLI_str_format_int_grouped_ex(src, dst, num_len, numbers_format);
 }
 
-size_t BLI_str_format_uint64_grouped(char dst[BLI_STR_FORMAT_UINT64_GROUPED_SIZE], uint64_t num)
+size_t BLI_str_format_uint64_grouped_n(char dst[BLI_STR_FORMAT_UINT64_GROUPED_SIZE], uint64_t num, int numbers_format)
 {
   const size_t dst_maxncpy = BLI_STR_FORMAT_UINT64_GROUPED_SIZE;
   BLI_string_debug_size(dst, dst_maxncpy);
@@ -1166,7 +1173,7 @@ size_t BLI_str_format_uint64_grouped(char dst[BLI_STR_FORMAT_UINT64_GROUPED_SIZE
   char src[BLI_STR_FORMAT_UINT64_GROUPED_SIZE];
   const int num_len = (int)SNPRINTF(src, "%" PRIu64 "", num);
 
-  return BLI_str_format_int_grouped_ex(src, dst, num_len);
+  return BLI_str_format_int_grouped_ex(src, dst, num_len, numbers_format);
 }
 
 void BLI_str_format_byte_unit(char dst[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE],
