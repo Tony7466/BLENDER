@@ -535,23 +535,32 @@ static bool elem_of(int elem, const int2 elems)
 
 static void corner_edges_topology(const int edge_edges_num,
                                   const int face_faces_num,
-                                  MutableSpan<int> corner_edges,
-                                  const Span<int2> edges)
+                                  MutableSpan<int> corner_edges)
 {
   const Span<int2> base_edge_points = base_edge_point_indices();
   const Span<int3> base_face_points = base_face_point_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
+
   if (edge_edges_num == 1) {
     corner_edges.copy_from(base_faces_edges.cast<int>());
     return;
   }
+
+  const int edge_faces_num = edge_edges_num - 2;
+
+  const IndexRange corner_faces_corners(3 * 3);
+  const IndexRange edge_faces_corners(corner_faces_corners.one_after_last(),
+                                      edge_faces_num * 3 * 3);
+  const IndexRange face_top_faces_corners(edge_faces_corners.one_after_last(),
+                                          pyramid_sum(edge_edges_num - 1) * 3);
+  const IndexRange face_bottom_faces_corners(face_top_faces_corners.one_after_last(),
+                                             pyramid_sum(edge_edges_num - 3) * 3);
+
   for (const int face_i : IndexRange(base_faces_num)) {
     const int3 face_vert_indices = base_face_points[face_i];
     const int3 face_edge_indices = base_faces_edges[face_i];
-    // MutableSpan<int> face_cornder_edges = corner_edges.slice(face_i * face_faces_num * 3,
-    // face_faces_num * 3);
-    MutableSpan<int> face_cornder_edges = corner_edges.slice(
-        face_i * (3 * (3 + (edge_edges_num - 2) * 3)), 3 * (3 + (edge_edges_num - 2) * 3));
+    MutableSpan<int> face_cornder_edges = corner_edges.slice(face_i * face_faces_num * 3,
+                                                             face_faces_num * 3);
 
     const IndexRange edge_a_edges(face_edge_indices[0] * edge_edges_num, edge_edges_num);
     const IndexRange edge_b_edges(face_edge_indices[1] * edge_edges_num, edge_edges_num);
@@ -570,84 +579,108 @@ static void corner_edges_topology(const int edge_edges_num,
                                           pyramid_sum(edge_edges_num - 1),
                                   pyramid_sum(edge_edges_num - 1));
 
-    face_cornder_edges[0] = elem_of(base_edge_points[face_edge_indices[2]][0],
-                                    base_edge_points[face_edge_indices[1]]) ?
-                                edge_c_edges.first() :
-                                edge_c_edges.last();
-    face_cornder_edges[1] = face_edges_a.last();
-    face_cornder_edges[2] = elem_of(base_edge_points[face_edge_indices[1]][0],
-                                    base_edge_points[face_edge_indices[2]]) ?
-                                edge_b_edges.first() :
-                                edge_b_edges.last();
+    const bool corner_a_order = elem_of(base_edge_points[face_edge_indices[2]][0],
+                                        base_edge_points[face_edge_indices[1]]);
+    const bool corner_b_order = elem_of(base_edge_points[face_edge_indices[0]][0],
+                                        base_edge_points[face_edge_indices[2]]);
+    const bool corner_c_order = elem_of(base_edge_points[face_edge_indices[1]][0],
+                                        base_edge_points[face_edge_indices[2]]);
 
-    face_cornder_edges[3] = elem_of(base_edge_points[face_edge_indices[2]][0],
-                                    base_edge_points[face_edge_indices[0]]) ?
-                                edge_c_edges.first() :
-                                edge_c_edges.last();
-    face_cornder_edges[4] = face_edges_b.last();
-    face_cornder_edges[5] = elem_of(base_edge_points[face_edge_indices[0]][0],
-                                    base_edge_points[face_edge_indices[2]]) ?
-                                edge_a_edges.first() :
-                                edge_a_edges.last();
-
-    face_cornder_edges[6] = elem_of(base_edge_points[face_edge_indices[0]][0],
-                                    base_edge_points[face_edge_indices[1]]) ?
-                                edge_a_edges.first() :
-                                edge_a_edges.last();
-    face_cornder_edges[7] = face_edges_c.last();
-    face_cornder_edges[8] = elem_of(base_edge_points[face_edge_indices[1]][0],
-                                    base_edge_points[face_edge_indices[0]]) ?
-                                edge_b_edges.first() :
-                                edge_b_edges.last();
-
-    face_cornder_edges = face_cornder_edges.drop_front(3 * 3);
-
-    const int edge_faces_num = edge_edges_num - 2;
+    face_cornder_edges[corner_faces_corners[0]] = corner_a_order ? edge_c_edges.first() :
+                                                                   edge_c_edges.last();
+    face_cornder_edges[corner_faces_corners[1]] = face_edges_a.last();
+    face_cornder_edges[corner_faces_corners[2]] = corner_c_order ? edge_b_edges.first() :
+                                                                   edge_b_edges.last();
+    face_cornder_edges[corner_faces_corners[3]] = !corner_a_order ? edge_c_edges.first() :
+                                                                    edge_c_edges.last();
+    face_cornder_edges[corner_faces_corners[4]] = face_edges_b.last();
+    face_cornder_edges[corner_faces_corners[5]] = corner_b_order ? edge_a_edges.first() :
+                                                                   edge_a_edges.last();
+    face_cornder_edges[corner_faces_corners[6]] = !corner_b_order ? edge_a_edges.first() :
+                                                                    edge_a_edges.last();
+    face_cornder_edges[corner_faces_corners[7]] = face_edges_c.last();
+    face_cornder_edges[corner_faces_corners[8]] = !corner_c_order ? edge_b_edges.first() :
+                                                                    edge_b_edges.last();
 
     const bool edge_a_order = int2(face_vert_indices[0], face_vert_indices[1]) ==
                               base_edge_points[face_edge_indices[0]];
     for (const int i : IndexRange(edge_faces_num)) {
-      face_cornder_edges[i * 3 + 0] = edge_a_order ? edge_a_edges.drop_front(1)[i] :
-                                                     edge_a_edges.drop_back(1)[edge_faces_num - i];
+      face_cornder_edges[edge_faces_corners[i * 3 + 0]] = edge_a_order ?
+                                                              edge_a_edges.drop_front(1)[i] :
+                                                              edge_a_edges.drop_back(
+                                                                  1)[edge_faces_num - i];
 
       const IndexRange b_line = face_edges_c.slice(pyramid_slice(edge_edges_num - 1, i));
       const IndexRange c_line = face_edges_b.slice(
           pyramid_slice(edge_edges_num - 1, edge_faces_num - 1 - i));
 
-      face_cornder_edges[i * 3 + 1] = b_line.first();
-      face_cornder_edges[i * 3 + 2] = c_line.first();
+      face_cornder_edges[edge_faces_corners[i * 3 + 1]] = b_line.first();
+      face_cornder_edges[edge_faces_corners[i * 3 + 2]] = c_line.first();
     }
 
     const bool edge_b_order = int2(face_vert_indices[1], face_vert_indices[2]) !=
                               base_edge_points[face_edge_indices[1]];
     for (const int i : IndexRange(edge_faces_num)) {
-      face_cornder_edges[(edge_faces_num + i) * 3 + 0] = edge_b_order ?
-                                                             edge_b_edges.drop_front(1)[i] :
-                                                             edge_b_edges.drop_back(
-                                                                 1)[edge_faces_num - i];
+      face_cornder_edges[edge_faces_corners[(edge_faces_num + i) * 3 + 0]] =
+          edge_b_order ? edge_b_edges.drop_front(1)[i] :
+                         edge_b_edges.drop_back(1)[edge_faces_num - i];
 
       const IndexRange a_line = face_edges_c.slice(pyramid_slice(edge_edges_num - 1, i));
       const IndexRange c_line = face_edges_a.slice(
           pyramid_slice(edge_edges_num - 1, edge_faces_num - 1 - i));
 
-      face_cornder_edges[(edge_faces_num + i) * 3 + 1] = a_line.last();
-      face_cornder_edges[(edge_faces_num + i) * 3 + 2] = c_line.last();
+      face_cornder_edges[edge_faces_corners[(edge_faces_num + i) * 3 + 1]] = a_line.last();
+      face_cornder_edges[edge_faces_corners[(edge_faces_num + i) * 3 + 2]] = c_line.last();
     }
 
     const bool edge_c_order = int2(face_vert_indices[0], face_vert_indices[2]) ==
                               base_edge_points[face_edge_indices[2]];
     for (const int i : IndexRange(edge_faces_num)) {
-      face_cornder_edges[(edge_faces_num * 2 + i) * 3 + 0] = edge_c_order ?
-                                                                 edge_c_edges.drop_front(1)[i] :
-                                                                 edge_c_edges.drop_back(
-                                                                     1)[edge_faces_num - i];
+      face_cornder_edges[edge_faces_corners[(edge_faces_num * 2 + i) * 3 + 0]] =
+          edge_c_order ? edge_c_edges.drop_front(1)[i] :
+                         edge_c_edges.drop_back(1)[edge_faces_num - i];
 
       const IndexRange a_line = face_edges_a.slice(pyramid_slice(edge_edges_num - 1, i));
       const IndexRange b_line = face_edges_b.slice(
           pyramid_slice(edge_edges_num - 1, edge_faces_num - 1 - i));
 
-      face_cornder_edges[(edge_faces_num * 2 + i) * 3 + 1] = a_line.first();
-      face_cornder_edges[(edge_faces_num * 2 + i) * 3 + 2] = b_line.last();
+      face_cornder_edges[edge_faces_corners[(edge_faces_num * 2 + i) * 3 + 1]] = a_line.first();
+      face_cornder_edges[edge_faces_corners[(edge_faces_num * 2 + i) * 3 + 2]] = b_line.last();
+    }
+
+    for (const int line_i : IndexRange(edge_edges_num - 1)) {
+      const IndexRange line_range = pyramid_slice(edge_edges_num - 1, line_i);
+      MutableSpan<int> face_line_corners = face_cornder_edges.slice(
+          face_top_faces_corners.slice(line_range.start() * 3, line_range.size() * 3));
+      for (const int i : line_range.index_range()) {
+        face_line_corners[i * 3 + 0] = face_edges_a.slice(line_range)[i];
+
+        const IndexRange b_line = face_edges_c.slice(pyramid_slice(edge_edges_num - 1, i));
+        const IndexRange c_line = face_edges_b.slice(
+            pyramid_slice(edge_edges_num - 1, edge_faces_num - i - line_i));
+
+        face_line_corners[i * 3 + 1] = b_line.drop_front(line_i).first();
+        face_line_corners[i * 3 + 2] = c_line.drop_front(line_i).first();
+      }
+    }
+
+    const int bottom_faces_num = math::max<int>(0, edge_edges_num - 3);
+    for (const int line_i : IndexRange(bottom_faces_num)) {
+      const IndexRange line_range = pyramid_slice(bottom_faces_num, line_i);
+      const IndexRange line_range_ = pyramid_slice(edge_edges_num - 1, line_i);
+      MutableSpan<int> face_line_corners = face_cornder_edges.slice(
+          face_bottom_faces_corners.slice(line_range.start() * 3, line_range.size() * 3));
+
+      for (const int i : line_range.index_range()) {
+        face_line_corners[i * 3 + 0] = face_edges_a.slice(line_range_)[i + 1];
+
+        const IndexRange b_line = face_edges_c.slice(pyramid_slice(edge_edges_num - 1, i));
+        const IndexRange c_line = face_edges_b.slice(
+            pyramid_slice(edge_edges_num - 1, edge_faces_num - i - line_i - 2));
+
+        face_line_corners[i * 3 + 1] = b_line.drop_front(line_i + 1).first();
+        face_line_corners[i * 3 + 2] = c_line.drop_front(line_i + 1).first();
+      }
     }
   }
 }
@@ -693,8 +726,7 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
   const int verts_num = base_verts_num + (base_edges_num - base_face_quads) * edge_verts_num +
                         base_face_quads * edge_verts_num * edge_verts_num;
   const int edges_num = base_edges_num * edge_edges_num + face_edges_num * base_faces_num * 3;
-  // const int faces_num = base_faces_num * face_faces_num;
-  const int faces_num = base_faces_num * (3 + (edge_edges_num - 2) * 3);
+  const int faces_num = base_faces_num * face_faces_num;
   const int corners_num = faces_num * 3;
 
   Mesh *mesh = BKE_mesh_new_nomain(verts_num, edges_num, faces_num, corners_num);
@@ -724,15 +756,28 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
   face_edge_topology(
       edge_edges_num, face_verts_num, edge_verts_num, face_points, edges.slice(face_edges));
 
-  corner_edges_topology(edge_edges_num, face_faces_num, corner_edges, edges);
+  corner_edges_topology(edge_edges_num, face_faces_num, corner_edges);
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
+
+  IndexMaskMemory memory;
+  const IndexMask normals_mask = IndexMask::from_predicate(
+      IndexMask(faces_num), GrainSize(2048), memory, [&](const int i) -> bool {
+        const int face_i = i * 3;
+        const float3 normal = bke::mesh::face_normal_calc(positions,
+                                                          corner_verts.slice(face_i, 3));
+        const float3 pos_a = math::normalize(positions[corner_verts[face_i]]);
+        return !math::is_equal(normal, pos_a, 0.4f);
+      });
+
+  bke::mesh_flip_faces(*mesh, normals_mask);
 
   BLI_assert(std::all_of(edges.cast<int>().begin(),
                          edges.cast<int>().end(),
                          [=](const int i) -> bool { return IndexRange(verts_num).contains(i); }));
 
-  // mesh->tag_loose_verts_none();
-  // mesh->tag_overlapping_none();
+  mesh->tag_loose_verts_none();
+  mesh->tag_loose_edges_none();
+  mesh->tag_overlapping_none();
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
   mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, subdivisions));
 
