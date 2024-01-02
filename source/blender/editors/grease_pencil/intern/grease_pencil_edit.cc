@@ -32,7 +32,7 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
-#include "GEO_subdivide_curves.hh"
+#include "../../geometry/GEO_subdivide_curves.hh"
 
 #include "WM_api.hh"
 
@@ -1695,7 +1695,7 @@ static void gpencil_stroke_subdivide(bke::CurvesGeometry &strokes, const int cut
 static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
 {
   const int cuts = RNA_int_get(op->ptr, "number_cuts");
-  int changed = 0;
+  std::atomic<bool> changed = false;
 
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -1721,20 +1721,20 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
         ".selection", bke::AttrDomain::Point, true);
 
     /* every stroke subdivides to the same cut. */
-    Array<int> cuts_array(curves.curve_num,cuts);
-    VArray<int> vcuts=VArray<int>::ForContainer(std::move(cuts_array));
+    VArray<int> vcuts=VArray<int>::ForSingle(cuts,curves.curve_num);
 
     if (selection_domain == bke::AttrDomain::Curve) {
       /* Subdivide entire selected curve. */
       blender::bke::AnonymousAttributePropagationInfo pinfo;
-      blender::geometry::subdivide_curves(curves,strokes,vcuts,pinfo);
+      curves = blender::geometry::subdivide_curves(curves,strokes,vcuts,pinfo);
+      info.drawing.tag_topology_changed();
+      changed.store(true,std::memory_order_relaxed);
     }
     else if (selection_domain == bke::AttrDomain::Point) {
       /* Subdivide between selected points. */
     }
 
   });
-
 
   if (changed) {
     /* notifiers */
@@ -1767,13 +1767,13 @@ bool grease_active_layer_poll(bContext* C){
   return grease_pencil.has_active_layer();
 }
 
-void GPENCIL_OT_stroke_subdivide(wmOperatorType *ot)
+void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
   /* identifiers */
   ot->name = "Subdivide Stroke";
-  ot->idname = "GPENCIL_OT_stroke_subdivide";
+  ot->idname = "GREASE_PENCIL_OT_stroke_subdivide";
   ot->description =
       "Subdivide between continuous selected points of the stroke adding a point half way "
       "between "
@@ -1829,6 +1829,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_duplicate);
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_subdivide);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
