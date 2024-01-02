@@ -277,7 +277,15 @@ class GHOST_DeviceVK {
       maintenance_4.pNext = device_create_info_p_next;
       device_create_info_p_next = &maintenance_4;
     }
-
+    /* Coverage of about 60% on Windows and Linux. */
+    VkPhysicalDeviceRobustness2FeaturesEXT robustness_2 = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT};
+    /* Something that can set VK_NULL_HANDLE when there is no content in DescriptorSet. */
+    robustness_2.nullDescriptor = VK_TRUE;
+    if (has_extensions({VK_EXT_ROBUSTNESS_2_EXTENSION_NAME})) {
+      robustness_2.pNext = device_create_info_p_next;
+      device_create_info_p_next = &robustness_2;
+    }
     device_create_info.pNext = device_create_info_p_next;
     vkCreateDevice(physical_device, &device_create_info, nullptr, &device);
   }

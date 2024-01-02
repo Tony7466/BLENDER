@@ -1033,7 +1033,7 @@ bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
   all_resources.extend(info.pass_resources_);
   all_resources.extend(info.batch_resources_);
 
-  Vector<VkDescriptorSetLayoutBinding> bindings;
+  //Vector<VkDescriptorSetLayoutBinding> bindings;
   const VkShaderStageFlags vk_shader_stages = is_graphics_shader() ? VK_SHADER_STAGE_ALL_GRAPHICS :
                                                                      VK_SHADER_STAGE_COMPUTE_BIT;
   VkDescriptorSetLayoutCreateInfo layout_info = create_descriptor_set_layout(

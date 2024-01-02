@@ -150,6 +150,8 @@ void VKDescriptorSetTracker::update(VKContext &context)
   Vector<VkDescriptorBufferInfo> buffer_infos;
   buffer_infos.reserve(16);
   Vector<VkWriteDescriptorSet> descriptor_writes;
+  bool update_bindings[32];
+  memset(update_bindings, 0, sizeof(bool) * 32);
 
   for (const Binding &binding : bindings_) {
     if (!binding.is_buffer()) {
@@ -168,6 +170,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     write_descriptor.descriptorType = binding.type;
     write_descriptor.pBufferInfo = &buffer_infos.last();
     descriptor_writes.append(write_descriptor);
+    update_bindings[binding.location] = true;
   }
 
   for (const Binding &binding : bindings_) {
@@ -182,6 +185,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
     write_descriptor.descriptorType = binding.type;
     write_descriptor.pTexelBufferView = &binding.vk_buffer_view;
     descriptor_writes.append(write_descriptor);
+    update_bindings[binding.location] = true;
   }
 
   Vector<VkDescriptorImageInfo> image_infos;
@@ -208,13 +212,54 @@ void VKDescriptorSetTracker::update(VKContext &context)
     write_descriptor.descriptorType = binding.type;
     write_descriptor.pImageInfo = &image_infos.last();
     descriptor_writes.append(write_descriptor);
+    update_bindings[binding.location] = true;
+  }
+  VKDevice &device = VKBackend::get().device_get();
+
+  VkDescriptorImageInfo image_info = {};
+  image_info.sampler = device.samplers().get(GPUSamplerState::default_sampler()).vk_handle();
+  image_info.imageView = VK_NULL_HANDLE;
+  image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  VkDescriptorBufferInfo buffer_info = {};
+  buffer_info.buffer = VK_NULL_HANDLE;
+  buffer_info.range = 0;
+  for (const VkDescriptorSetLayoutBinding binding : shader.bindings) {
+    if (update_bindings[binding.binding]) {
+      continue;
+    }
+    VkWriteDescriptorSet write_descriptor = {};
+    write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write_descriptor.dstSet = vk_descriptor_set;
+    write_descriptor.dstBinding = binding.binding;
+    write_descriptor.descriptorCount = 1;
+    write_descriptor.descriptorType = binding.descriptorType;
+    switch (binding.descriptorType) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+        write_descriptor.pImageInfo = &image_info;
+        break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+        write_descriptor.pTexelBufferView = VK_NULL_HANDLE;
+        break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+        write_descriptor.pBufferInfo = &buffer_info;
+        break;
+      default:
+        break;
+    };
+    descriptor_writes.append(write_descriptor);
   }
 
-  const VKDevice &device = VKBackend::get().device_get();
+
   vkUpdateDescriptorSets(
       device.device_get(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
   bindings_.clear();
+
 }
 
 std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)
