@@ -102,6 +102,7 @@ static void eevee_engine_init(void *vedata)
 
 static void eevee_draw_scene(void *vedata)
 {
+  GPU_debug_capture_begin();
   EEVEE_Data *ved = reinterpret_cast<EEVEE_Data *>(vedata);
   if (DRW_state_is_viewport_image_render()) {
     ved->instance->draw_viewport_image_render();
@@ -110,6 +111,7 @@ static void eevee_draw_scene(void *vedata)
     ved->instance->draw_viewport();
   }
   STRNCPY(ved->info, ved->instance->info.c_str());
+  GPU_debug_capture_end();
   /* Reset view for other following engines. */
   DRW_view_set_active(nullptr);
 }
