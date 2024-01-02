@@ -28,10 +28,10 @@
 
 #include "BKE_addon.h"
 #include "BKE_blender_version.h"
-#include "BKE_colorband.h"
+#include "BKE_colorband.hh"
 #include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_preferences.h"
 
 #include "BLO_readfile.h"

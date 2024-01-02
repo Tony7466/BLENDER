@@ -32,13 +32,13 @@ set(SRC
   ANIM_action.hh
   ANIM_animdata.hh
   ANIM_armature_iter.hh
-  ANIM_bone_collections.h
   ANIM_bone_collections.hh
   ANIM_bonecolor.hh
   ANIM_fcurve.hh
   ANIM_keyframing.hh
   ANIM_rna.hh
   ANIM_visualkey.hh
+  intern/bone_collections_internal.hh
 )
 
 set(LIB

@@ -1582,18 +1582,21 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad2[2];
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
   char annotate_v3d_align;
-
   /** Default stroke thickness for annotation strokes. */
   short annotate_thickness;
+
+  /** Normal offset used when drawing on surfaces. */
+  float gpencil_surface_offset;
+
   /** Stroke selection mode for Edit. */
   char gpencil_selectmode_edit;
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
+  char _pad1[6];
 
   /** Grease Pencil Sculpt. */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -1646,7 +1649,7 @@ typedef struct ToolSettings {
   short snap_flag_seq;
   short snap_flag_anim;
   short snap_uv_flag;
-  char _pad[4];
+  char _pad2[4];
   /** Default snap source, #eSnapSourceOP. */
   /**
    * TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of
@@ -1709,7 +1712,7 @@ typedef struct ToolSettings {
 
   /** Normal Editing. */
   float normal_vector[3];
-  char _pad4[4];
+  char _pad3[4];
 
   /**
    * Custom Curve Profile for bevel tool:
@@ -1896,12 +1899,10 @@ typedef struct SceneEEVEE {
   int shadow_step_count;
   float shadow_normal_bias;
 
-  int ray_split_settings;
+  char _pad[4];
   int ray_tracing_method;
 
-  struct RaytraceEEVEE reflection_options;
-  struct RaytraceEEVEE refraction_options;
-  struct RaytraceEEVEE diffuse_options;
+  struct RaytraceEEVEE ray_tracing_options;
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
@@ -2097,7 +2098,7 @@ enum {
 /** #RenderData::mode. */
 enum {
   R_MODE_UNUSED_0 = 1 << 0, /* dirty */
-  R_MODE_UNUSED_1 = 1 << 1, /* cleared */
+  R_SIMPLIFY_NORMALS = 1 << 1,
   R_MODE_UNUSED_2 = 1 << 2, /* cleared */
   R_MODE_UNUSED_3 = 1 << 3, /* cleared */
   R_MODE_UNUSED_4 = 1 << 4, /* cleared */

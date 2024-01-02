@@ -14,12 +14,11 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_camera_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_defaults.h"
 #include "DNA_scene_types.h"
+#include "DNA_meshdata_types.h"
 
 #include "BKE_global.h"
 
@@ -46,7 +45,7 @@
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
@@ -824,10 +823,10 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   }
 
   edgeMap = static_cast<BMEdge **>(
-      MEM_mallocN(subdiv_mesh->totedge * sizeof(BMEdge *), "unwrap_edit_edge_map"));
+      MEM_mallocN(subdiv_mesh->edges_num * sizeof(BMEdge *), "unwrap_edit_edge_map"));
 
   /* map subsurfed edges to original editEdges */
-  for (int i = 0; i < subdiv_mesh->totedge; i++) {
+  for (int i = 0; i < subdiv_mesh->edges_num; i++) {
     /* not all edges correspond to an old edge */
     edgeMap[i] = (origEdgeIndices[i] != ORIGINDEX_NONE) ?
                      BM_edge_at_index(em->bm, origEdgeIndices[i]) :
@@ -1408,7 +1407,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     }
   }
 
-  if (island_vector.size() == 0) {
+  if (island_vector.is_empty()) {
     return;
   }
 
@@ -3138,7 +3137,7 @@ static int smart_project_exec(bContext *C, wmOperator *op)
                                                    project_angle_limit_cos,
                                                    area_weight);
 
-    if (project_normal_array.size() == 0) {
+    if (project_normal_array.is_empty()) {
       MEM_freeN(thick_faces);
       continue;
     }
@@ -3497,7 +3496,7 @@ static int reset_exec(bContext *C, wmOperator * /*op*/)
       scene, view_layer, v3d, &objects_len);
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    Mesh *me = (Mesh *)obedit->data;
+    Mesh *mesh = (Mesh *)obedit->data;
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
 
     if (em->bm->totfacesel == 0) {
@@ -3509,7 +3508,7 @@ static int reset_exec(bContext *C, wmOperator * /*op*/)
       continue;
     }
 
-    ED_mesh_uv_loop_reset(C, me);
+    ED_mesh_uv_loop_reset(C, mesh);
 
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
@@ -4176,7 +4175,7 @@ void UV_OT_cube_project(wmOperatorType *ot)
 
 void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
 {
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
   bool sync_selection = (scene->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
 
   BMeshCreateParams create_params{};
@@ -4187,12 +4186,12 @@ void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
    * since we are not in edit mode we need to ensure only the uv flags are tested */
   scene->toolsettings->uv_flag &= ~UV_SYNC_SELECTION;
 
-  ED_mesh_uv_ensure(me, nullptr);
+  ED_mesh_uv_ensure(mesh, nullptr);
 
   BMeshFromMeshParams bm_from_me_params{};
   bm_from_me_params.calc_face_normal = true;
   bm_from_me_params.calc_vert_normal = true;
-  BM_mesh_bm_from_me(bm, me, &bm_from_me_params);
+  BM_mesh_bm_from_me(bm, mesh, &bm_from_me_params);
 
   /* Select all UVs for cube_project. */
   ED_uvedit_select_all(bm);
@@ -4213,7 +4212,7 @@ void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
 
   /* Write back from BMesh to Mesh. */
   BMeshToMeshParams bm_to_me_params{};
-  BM_mesh_bm_to_me(bmain, bm, me, &bm_to_me_params);
+  BM_mesh_bm_to_me(bmain, bm, mesh, &bm_to_me_params);
   BM_mesh_free(bm);
 
   if (sync_selection) {
