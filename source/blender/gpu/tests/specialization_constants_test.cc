@@ -8,6 +8,7 @@
 #include "GPU_capabilities.h"
 #include "GPU_compute.h"
 #include "GPU_context.h"
+#include "GPU_debug.h"
 #include "GPU_framebuffer.h"
 #include "GPU_shader.h"
 #include "GPU_storage_buffer.h"
@@ -44,6 +45,7 @@ struct ShaderSpecializationConst {
 
     GPU_render_begin();
 
+    GPU_debug_capture_begin();
     this->init_shader(info_name);
 
     GPU_storagebuf_bind(ssbo, GPU_shader_get_ssbo_binding(shader, "data_out"));
@@ -70,6 +72,7 @@ struct ShaderSpecializationConst {
     this->validate();
 
     GPU_render_end();
+    GPU_debug_capture_end();
   }
 
   ~ShaderSpecializationConst()

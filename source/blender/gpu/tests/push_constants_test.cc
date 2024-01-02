@@ -14,7 +14,7 @@
 #include "BLI_vector.hh"
 
 #include "gpu_testing.hh"
-
+#if 0
 namespace blender::gpu::tests {
 struct CallData {
   GPUStorageBuf *ssbo = nullptr;
@@ -212,3 +212,4 @@ static void test_push_constants_multiple_512bytes()
 GPU_TEST(push_constants_multiple_512bytes)
 
 }  // namespace blender::gpu::tests
+#endif

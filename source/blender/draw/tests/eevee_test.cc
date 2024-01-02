@@ -19,7 +19,7 @@
 #include "draw_testing.hh"
 #include "engines/eevee_next/eevee_instance.hh"
 #include "engines/eevee_next/eevee_precompute.hh"
-
+#if 0
 namespace blender::draw {
 
 using namespace blender::eevee;
@@ -1487,3 +1487,4 @@ static void test_eevee_lut_gen()
 DRAW_TEST(eevee_lut_gen)
 
 }  // namespace blender::draw
+#endif

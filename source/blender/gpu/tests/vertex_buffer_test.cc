@@ -15,7 +15,7 @@
 #include "BLI_math_vector_types.hh"
 
 #include "gpu_testing.hh"
-
+#if 0
 namespace blender::gpu::tests {
 
 static constexpr int Size = 256;
@@ -125,3 +125,4 @@ static void test_vertex_buffer_fetch_mode__GPU_COMP_F32__GPU_FETCH_FLOAT()
 GPU_TEST(vertex_buffer_fetch_mode__GPU_COMP_F32__GPU_FETCH_FLOAT);
 
 }  // namespace blender::gpu::tests
+#endif

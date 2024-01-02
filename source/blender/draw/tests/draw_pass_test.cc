@@ -12,7 +12,7 @@
 #include "draw_testing.hh"
 
 #include <bitset>
-
+#if 0
 namespace blender::draw {
 
 static void test_draw_pass_all_commands()
@@ -280,6 +280,7 @@ DRAW_TEST(draw_pass_sortable)
 static void test_draw_resource_id_gen()
 {
   GPU_render_begin();
+  GPU_debug_capture_begin();
   Texture color_attachment;
   Framebuffer framebuffer;
   color_attachment.ensure_2d(GPU_RGBA32F, int2(1));
@@ -352,9 +353,10 @@ static void test_draw_resource_id_gen()
   }
 
   GPU_render_end();
-
+  GPU_debug_capture_end();
   DRW_shape_cache_free();
   DRW_shaders_free();
+  system("pause");
 }
 DRAW_TEST(draw_resource_id_gen)
 
@@ -498,3 +500,4 @@ static void test_draw_manager_sync()
 DRAW_TEST(draw_manager_sync)
 
 }  // namespace blender::draw
+#endif

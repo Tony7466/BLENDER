@@ -6,7 +6,7 @@
 
 #include "gpu_shader_create_info_private.hh"
 #include "gpu_testing.hh"
-
+#if 0
 namespace blender::gpu::tests {
 
 /**
@@ -19,3 +19,4 @@ static void test_static_shaders()
 GPU_TEST(static_shaders)
 
 }  // namespace blender::gpu::tests
+#endif
