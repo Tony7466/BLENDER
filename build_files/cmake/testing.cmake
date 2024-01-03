@@ -157,6 +157,10 @@ endfunction()
 #
 # If WITH_TESTS_SINGLE_BINARY is disabled, this works identically to
 # blender_add_test_suite_executable.
+#
+# The function accepts an optional argument which denotes list of sources which
+# is to be compiled-in with the suit sources for each fo the suites when the
+# WITH_TESTS_SINGLE_BINARY configuration is set to OFF.
 function(blender_add_test_suite_lib
   name
   sources
@@ -164,6 +168,10 @@ function(blender_add_test_suite_lib
   includes_sys
   library_deps
   )
+
+  # Sources which are common for all suits and do not need to yield their own
+  # test suit binaries when WITH_TESTS_SINGLE_BINARY is OFF.
+  set(common_sources ${ARGN})
 
   if(WITH_TESTS_SINGLE_BINARY)
     add_cc_flags_custom_test(${name}_tests PARENT_SCOPE)
@@ -183,7 +191,8 @@ function(blender_add_test_suite_lib
       ${CMAKE_SOURCE_DIR}/extern/gmock/include
     )
 
-    blender_add_lib__impl(${name}_tests "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
+    blender_add_lib__impl(${name}_tests
+        "${sources};${common_sources}" "${includes}" "${includes_sys}" "${library_deps}")
 
     target_compile_definitions(${name}_tests PRIVATE ${GFLAGS_DEFINES})
     target_compile_definitions(${name}_tests PRIVATE ${GLOG_DEFINES})
@@ -193,7 +202,7 @@ function(blender_add_test_suite_lib
     blender_add_ctests(
       TARGET blender_test
       SUITE_NAME ${name}
-      SOURCES "${sources}"
+      SOURCES "${sources};${common_sources}"
       DISCOVER_TESTS TRUE
     )
   else()
@@ -203,6 +212,7 @@ function(blender_add_test_suite_lib
       "${includes}"
       "${includes_sys}"
       "${library_deps}"
+      "${common_sources}"
     )
   endif()
 endfunction()
@@ -255,6 +265,10 @@ endfunction()
 # To be used for smaller isolated libraries, that do not have many dependencies.
 # For libraries that do drag in many other Blender libraries and would create a
 # very large executable, blender_add_test_suite_lib() should be used instead.
+#
+# The function accepts an optional argument which denotes list of sources which
+# is to be compiled-in with the suit sources for each fo the suites when the
+# WITH_TESTS_SINGLE_BINARY configuration is set to OFF.
 function(blender_add_test_suite_executable
   name
   sources
@@ -263,10 +277,14 @@ function(blender_add_test_suite_executable
   library_deps
   )
 
+  # Sources which are common for all suits and do not need to yield their own
+  # test suit binaries when WITH_TESTS_SINGLE_BINARY is OFF.
+  set(common_sources ${ARGN})
+
   if(WITH_TESTS_SINGLE_BINARY)
     blender_add_test_executable_impl(
       "${name}"
-      "${sources}"
+      "${sources};${common_sources}"
       "${includes}"
       "${includes_sys}"
       "${library_deps}"
@@ -287,7 +305,7 @@ function(blender_add_test_suite_executable
 
         blender_add_test_executable_impl(
           "${_test_name}"
-          "${source}"
+          "${source};${common_sources}"
           "${includes}"
           "${includes_sys}"
           "${library_deps}"
