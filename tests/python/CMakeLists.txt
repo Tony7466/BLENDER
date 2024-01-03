@@ -776,7 +776,7 @@ if(WITH_COMPOSITOR_CPU)
 
     foreach(comp_test ${compositor_tests})
       add_render_test(
-        compositor_${comp_test}_cpu_test
+        compositor_${comp_test}_cpu
         ${CMAKE_CURRENT_LIST_DIR}/compositor_cpu_render_tests.py
         -testdir "${TEST_SRC_DIR}/compositor/${comp_test}"
         -outdir "${TEST_OUT_DIR}/compositor_cpu"
@@ -808,7 +808,7 @@ if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
 
     foreach(comp_test ${compositor_tests})
       add_render_test(
-        compositor_${comp_test}_realtime_test
+        compositor_${comp_test}_realtime
         ${CMAKE_CURRENT_LIST_DIR}/compositor_realtime_render_tests.py
         -testdir "${TEST_SRC_DIR}/compositor/${comp_test}"
         -outdir "${TEST_OUT_DIR}/compositor_realtime"
@@ -915,7 +915,7 @@ if(WITH_ALEMBIC)
   get_filename_component(ALEMBIC_ROOT_DIR ${real_include_dir} DIRECTORY)
 
   add_python_test(
-    bf_io_alembic_export_tests
+    io_alembic_export_tests
     ${CMAKE_CURRENT_LIST_DIR}/alembic_export_tests.py
     --blender "${TEST_BLENDER_EXE}"
     --testdir "${TEST_SRC_DIR}/alembic"
@@ -932,13 +932,13 @@ endif()
 
 if(WITH_USD)
   add_blender_test(
-    bf_io_usd_export_test
+    io_usd_export
     --python ${CMAKE_CURRENT_LIST_DIR}/bl_usd_export_test.py
     --
     --testdir "${TEST_SRC_DIR}/usd"
   )
   add_blender_test(
-    bf_io_usd_import_test
+    io_usd_import
     --python ${CMAKE_CURRENT_LIST_DIR}/bl_usd_import_test.py
     --
     --testdir "${TEST_SRC_DIR}/usd"
@@ -972,7 +972,7 @@ else()
   endif()
 
   add_blender_test(
-    bf_imbuf_save
+    imbuf_save
     --python ${CMAKE_CURRENT_LIST_DIR}/bl_imbuf_save.py
     --
     -test_dir "${TEST_SRC_DIR}/imbuf_io"
@@ -982,7 +982,7 @@ else()
   )
 
   add_blender_test(
-    bf_imbuf_load
+    imbuf_load
     --python ${CMAKE_CURRENT_LIST_DIR}/bl_imbuf_load.py
     --
     -test_dir "${TEST_SRC_DIR}/imbuf_io"
@@ -1038,7 +1038,7 @@ if(WITH_UI_TESTS)
   )
   foreach(ui_test ${_undo_tests})
     add_blender_test_headless(
-      "bf_ui_${ui_test}"
+      "ui_${ui_test}"
       --enable-event-simulate
       --python "${CMAKE_CURRENT_LIST_DIR}/ui_simulate/run_blender_setup.py"
       --
