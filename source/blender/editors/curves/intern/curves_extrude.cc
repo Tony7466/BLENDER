@@ -249,7 +249,7 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       new_curves, selection_domain, CD_PROP_BOOL);
 
-  threading::parallel_for(curves.curves_range(), 128, [&](IndexRange curves_range) {
+  threading::parallel_for(curves.curves_range(), 256, [&](IndexRange curves_range) {
     for (const int c : curves_range) {
       const int first_index = curves_copy.curve_interval_ranges[c].start();
       const int first_value = curve_intervals[first_index];
@@ -274,30 +274,22 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
 
   bke::MutableAttributeAccessor dst_attributes = new_curves.attributes_for_write();
   bke::AttributeAccessor src_attributes = curves.attributes();
-  src_attributes.for_all(
-      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData &meta_data) {
-        if (meta_data.domain != bke::AttrDomain::Point || std::string(".selection") == id.name()) {
-          return true;
-        }
-        bke::GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
-            id, meta_data.domain, meta_data.data_type);
-        GMutableSpan dst = dst_attribute.span;
-        const CPPType &type = dst.type();
-        const GVArraySpan src = (*src_attributes.lookup(id, meta_data.domain));
-
-        threading::parallel_for(IndexRange(intervals.size() - 1), 128, [&](IndexRange range) {
-          for (const int i : range) {
-            const int first = intervals[i];
-            const int size = intervals[i + 1] - first + 1;
-            const int dest_index = intervals[i] + i;
-            type.copy_assign_n(src.slice(IndexRange(first, size)).data(),
-                               dst.slice(IndexRange(dest_index, size)).data(),
-                               size);
-          }
-        });
-        dst_attribute.finish();
-        return true;
-      });
+  for (auto &attribute : bke::retrieve_attributes_for_transfer(
+           src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, {}, {".selection"}))
+  {
+    const CPPType &type = attribute.src.type();
+    threading::parallel_for(IndexRange(intervals.size() - 1), 512, [&](IndexRange range) {
+      for (const int i : range) {
+        const int first = intervals[i];
+        const int size = intervals[i + 1] - first + 1;
+        const int dest_index = intervals[i] + i;
+        type.copy_assign_n(attribute.src.slice(IndexRange(first, size)).data(),
+                           attribute.dst.span.slice(IndexRange(dest_index, size)).data(),
+                           size);
+      }
+    });
+    attribute.dst.finish();
+  }
   new_curves.update_curve_types();
 
   curves_id->geometry.wrap() = new_curves;
