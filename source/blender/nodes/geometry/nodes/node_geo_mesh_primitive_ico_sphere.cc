@@ -232,7 +232,51 @@ class TriangleRange {
   }
 };
 
-static void base_ico_sphere_positions(const float radius, MutableSpan<float3> positions)
+class SphericalIterator {
+ private:
+  float3 previous_;
+  float3 current_;
+  float product_;
+
+ public:
+  SphericalIterator(const float3 &begin, const float3 &next, const float product)
+      : previous_(begin), current_(next), product_(product)
+  {
+    BLI_assert(math::is_unit_scale(begin) && math::is_unit_scale(next));
+  }
+
+  static SphericalIterator between_points(const float3 from, const float3 &to, const int steps)
+  {
+    const float3 normal = math::normalize(math::cross_tri(float3(0.0f), from, to));
+    const math::AngleRadian rotation = math::angle_between<float>(from, to) / steps;
+    const float reflection_factor = math::cos(rotation) * 2.0f;
+    const math::AxisAngle axis(normal, rotation);
+    return SphericalIterator(
+        from, math::transform_point(math::to_quaternion(axis), from), reflection_factor);
+  }
+
+  SphericalIterator &operator++()
+  {
+    const float3 next = current_ * product_ - previous_;
+    previous_ = current_;
+    current_ = next;
+    return *this;
+  }
+
+  SphericalIterator operator++(int)
+  {
+    SphericalIterator copied_iterator = *this;
+    ++(*this);
+    return copied_iterator;
+  }
+
+  float3 operator*() const
+  {
+    return current_;
+  }
+};
+
+static void base_ico_sphere_positions(MutableSpan<float3> positions)
 {
   SCOPED_TIMER_AVERAGED(__func__);
   positions.first() = float3(0.0f, 0.0f, 1.0f);
@@ -255,9 +299,9 @@ static void base_ico_sphere_positions(const float radius, MutableSpan<float3> po
 
   positions.last() = float3(0.0f, 0.0f, -1.0f);
 
-  for (float3 &position : positions) {
-    position *= radius;
-  }
+  BLI_assert(std::all_of(positions.begin(), positions.end(), [](const float3 &pos) -> bool {
+    return math::is_unit_scale(pos);
+  }));
 }
 
 static Span<int2> base_edge_point_indices()
@@ -356,27 +400,17 @@ static void interpolate_edge_points(const int edge_verts_num,
   SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_points = base_edge_point_indices();
 
-  const float lerp_factor = 1.0f / (edge_verts_num + 1);
   for (const int edge_i : IndexRange(base_edges_num)) {
     MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
-
     const int2 edge = base_edge_points[edge_i];
+    const float3 vert_a = base_verts[edge[0]];
+    const float3 vert_b = base_verts[edge[1]];
 
-    const float3 &point_a = base_verts[edge[0]];
-    const float3 &point_b = base_verts[edge[1]];
-
-    const float3 normalized_a = math::normalize(point_a);
-    const float3 normalized_b = math::normalize(point_b);
-
-    const float3 normal = math::normalize(
-        math::cross_tri(float3(0.0f), normalized_a, normalized_b));
-    const math::AngleRadian rotation = math::angle_between<float>(normalized_a, normalized_b);
-
-    math::AngleRadian steps(0.0f);
+    SphericalIterator rotation = SphericalIterator::between_points(
+        vert_a, vert_b, edge_verts_num + 1);
     for (float3 &vert : verts) {
-      steps += rotation * lerp_factor;
-      const math::AxisAngle axis(normal, steps);
-      vert = math::transform_point(math::to_quaternion(axis), point_a);
+      vert = *rotation;
+      rotation++;
     }
   }
 }
@@ -391,59 +425,28 @@ static void interpolate_face_points(const int line_subdiv,
   const constexpr int left_righr_points = 2;
   const TriangleRange inner_face_verts =
       TriangleRange(line_subdiv - left_righr_points).drop_bottom(1);
-  const float edge_lerp_factor = 1.0f / (inner_face_verts.hight() + left_righr_points);
+  const int steps = inner_face_verts.hight() + left_righr_points;
 
   for (const int face_i : IndexRange(base_faces_num)) {
     const int3 face = base_face_points[face_i];
 
-    const float3 &point_a = base_verts[face[0]];
-    const float3 &point_b = base_verts[face[1]];
-    const float3 &point_c = base_verts[face[2]];
+    const float3 &vert_a = base_verts[face[0]];
+    const float3 &vert_b = base_verts[face[1]];
+    const float3 &vert_c = base_verts[face[2]];
 
-    const float3 normalized_a = math::normalize(point_a);
-    const float3 normalized_b = math::normalize(point_b);
-    const float3 normalized_c = math::normalize(point_c);
-
-    const float3 normal_ac = math::normalize(
-        math::cross_tri(float3(0.0f), normalized_a, normalized_c));
-    const math::AngleRadian rotation_ac = math::angle_between<float>(normalized_a, normalized_c);
-
-    const float3 normal_bc = math::normalize(
-        math::cross_tri(float3(0.0f), normalized_b, normalized_c));
-    const math::AngleRadian rotation_bc = math::angle_between<float>(normalized_b, normalized_c);
-
-    math::AngleRadian steps_ac(0.0f);
-    math::AngleRadian steps_bc(0.0f);
-
+    SphericalIterator rotation_ac = SphericalIterator::between_points(vert_a, vert_c, steps);
+    SphericalIterator rotation_bc = SphericalIterator::between_points(vert_b, vert_c, steps);
     MutableSpan<float3> face_verts = faces_verts.slice(face_i * inner_face_verts.total(),
                                                        inner_face_verts.total());
     for (const int y_index : IndexRange(inner_face_verts.hight())) {
-      const int r_y_index = inner_face_verts.hight() - 1 - y_index;
-      const float face_inner_factor = 1.0f / (r_y_index + left_righr_points);
       MutableSpan<float3> level_verts = face_verts.slice(inner_face_verts.slice_at(y_index));
-
-      steps_ac += rotation_ac * edge_lerp_factor;
-      steps_bc += rotation_bc * edge_lerp_factor;
-
-      const math::AxisAngle axis_ac(normal_ac, steps_ac);
-      const math::AxisAngle axis_bc(normal_bc, steps_bc);
-
-      const float3 edge_point_a = math::transform_point(math::to_quaternion(axis_ac), point_a);
-      const float3 edge_point_b = math::transform_point(math::to_quaternion(axis_bc), point_b);
-
-      const float3 normalized_edge_a = math::normalize(edge_point_a);
-      const float3 normalized_edge_b = math::normalize(edge_point_b);
-
-      const float3 normal_c = math::normalize(
-          math::cross_tri(float3(0.0f), normalized_edge_a, normalized_edge_b));
-      const math::AngleRadian rotation_c = math::angle_between<float>(normalized_edge_a,
-                                                                      normalized_edge_b);
-
-      math::AngleRadian steps_c(0.0f);
+      SphericalIterator rotation_ab = SphericalIterator::between_points(
+          *rotation_ac, *rotation_bc, level_verts.size() + 1);
+      rotation_ac++;
+      rotation_bc++;
       for (float3 &vert : level_verts) {
-        steps_c += rotation_c * face_inner_factor;
-        const math::AxisAngle axis_ac(normal_c, steps_c);
-        vert = math::transform_point(math::to_quaternion(axis_ac), edge_point_a);
+        vert = *rotation_ab;
+        rotation_ab++;
       }
     }
   }
@@ -818,7 +821,7 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
   const IndexRange edge_points(vert_points.one_after_last(), base_edges_num * edge_verts_num);
   const IndexRange face_points(edge_points.one_after_last(), face_verts_num * base_faces_num);
 
-  base_ico_sphere_positions(radius, positions.take_front(base_verts_num));
+  base_ico_sphere_positions(positions.take_front(base_verts_num));
 
   interpolate_edge_points(
       edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
@@ -842,11 +845,18 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
           const int face_i = i * 3;
           const float3 normal = bke::mesh::face_normal_calc(positions,
                                                             corner_verts.slice(face_i, 3));
-          const float3 pos_a = math::normalize(positions[corner_verts[face_i]]);
+          const float3 pos_a = positions[corner_verts[face_i]];
           return !math::is_equal(normal, pos_a, 0.4f);
         });
 
     bke::mesh_flip_faces(*mesh, normals_mask);
+  }
+
+  {
+    SCOPED_TIMER_AVERAGED("Scaling");
+    std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 p) {
+      return p * radius;
+    });
   }
 
   BLI_assert(std::all_of(edges.cast<int>().begin(),
