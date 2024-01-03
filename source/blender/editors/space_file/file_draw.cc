@@ -232,12 +232,11 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
             IMB_metadata_get_field(
                 thumb->metadata, "Thumb::Image::Height", value2, sizeof(value2)))
         {
-          UI_tooltip_text_field_add(
-              tip,
-              BLI_sprintfN("%s \u00D7 %s", value1, value2),
-              nullptr,
-              UI_TIP_STYLE_NORMAL,
-              UI_TIP_LC_NORMAL);
+          UI_tooltip_text_field_add(tip,
+                                    BLI_sprintfN("%s \u00D7 %s", value1, value2),
+                                    nullptr,
+                                    UI_TIP_STYLE_NORMAL,
+                                    UI_TIP_LC_NORMAL);
           UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
         }
       }
@@ -256,12 +255,11 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, struct uiTooltipData
             IMB_metadata_get_field(
                 thumb->metadata, "Thumb::Video::Height", value2, sizeof(value2)))
         {
-          UI_tooltip_text_field_add(
-              tip,
-              BLI_sprintfN("%s \u00D7 %s", value1, value2),
-              nullptr,
-              UI_TIP_STYLE_NORMAL,
-              UI_TIP_LC_NORMAL);
+          UI_tooltip_text_field_add(tip,
+                                    BLI_sprintfN("%s \u00D7 %s", value1, value2),
+                                    nullptr,
+                                    UI_TIP_STYLE_NORMAL,
+                                    UI_TIP_LC_NORMAL);
         }
         if (IMB_metadata_get_field(
                 thumb->metadata, "Thumb::Video::Frames", value1, sizeof(value1)) &&
