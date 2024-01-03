@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstring>
 
+#include "BLI_math_vector.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
@@ -25,23 +26,32 @@
 #  include "BLI_timeit.hh"
 #endif
 
-SequencerScopes::~SequencerScopes()
+namespace blender::ed::seq {
+
+SeqScopes::~SeqScopes()
+{
+  cleanup();
+}
+
+void SeqScopes::cleanup()
 {
   if (zebra_ibuf) {
     IMB_freeImBuf(zebra_ibuf);
+    zebra_ibuf = nullptr;
   }
   if (waveform_ibuf) {
     IMB_freeImBuf(waveform_ibuf);
+    waveform_ibuf = nullptr;
   }
   if (sep_waveform_ibuf) {
     IMB_freeImBuf(sep_waveform_ibuf);
+    sep_waveform_ibuf = nullptr;
   }
   if (vector_ibuf) {
     IMB_freeImBuf(vector_ibuf);
+    vector_ibuf = nullptr;
   }
-  if (histogram_ibuf) {
-    IMB_freeImBuf(histogram_ibuf);
-  }
+  histogram.data.reinitialize(0);
 }
 
 /* XXX(@ideasman42): why is this function better than BLI_math version?
@@ -459,127 +469,7 @@ ImBuf *make_zebra_view_from_ibuf(ImBuf *ibuf, float perc)
   return new_ibuf;
 }
 
-static void draw_histogram_marker(ImBuf *ibuf, int x)
-{
-  uchar *p = ibuf->byte_buffer.data;
-  int barh = ibuf->y * 0.1;
-
-  p += 4 * (x + ibuf->x * (ibuf->y - barh + 1));
-
-  for (int i = 0; i < barh - 1; i++) {
-    p[0] = p[1] = p[2] = 255;
-    p += ibuf->x * 4;
-  }
-}
-
-static void draw_histogram_bar(ImBuf *ibuf, int x, float val, int col)
-{
-  uchar *p = ibuf->byte_buffer.data;
-  int barh = ibuf->y * val * 0.9f;
-
-  p += 4 * (x + ibuf->x);
-
-  for (int i = 0; i < barh; i++) {
-    p[col] = 255;
-    p += ibuf->x * 4;
-  }
-}
-
-#define HIS_STEPS 512
-
-struct MakeHistogramViewData {
-  const ImBuf *ibuf;
-};
-
-static void make_histogram_view_from_ibuf_byte_fn(void *__restrict userdata,
-                                                  const int y,
-                                                  const TaskParallelTLS *__restrict tls)
-{
-  const MakeHistogramViewData *data = static_cast<MakeHistogramViewData *>(userdata);
-  const ImBuf *ibuf = data->ibuf;
-  const uchar *src = ibuf->byte_buffer.data;
-
-  uint32_t(*cur_bins)[HIS_STEPS] = static_cast<uint32_t(*)[HIS_STEPS]>(tls->userdata_chunk);
-
-  for (int x = 0; x < ibuf->x; x++) {
-    const uchar *pixel = src + (y * ibuf->x + x) * 4;
-
-    for (int j = 3; j--;) {
-      cur_bins[j][pixel[j]]++;
-    }
-  }
-}
-
-static void make_histogram_view_from_ibuf_reduce(const void *__restrict /*userdata*/,
-                                                 void *__restrict chunk_join,
-                                                 void *__restrict chunk)
-{
-  uint32_t(*join_bins)[HIS_STEPS] = static_cast<uint32_t(*)[HIS_STEPS]>(chunk_join);
-  uint32_t(*bins)[HIS_STEPS] = static_cast<uint32_t(*)[HIS_STEPS]>(chunk);
-  for (int j = 3; j--;) {
-    for (int i = 0; i < HIS_STEPS; i++) {
-      join_bins[j][i] += bins[j][i];
-    }
-  }
-}
-
-static ImBuf *make_histogram_view_from_ibuf_byte(ImBuf *ibuf)
-{
-#ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
-#endif
-  ImBuf *rval = IMB_allocImBuf(515, 128, 32, IB_rect);
-  int x;
-  uint nr, ng, nb;
-
-  uint bins[3][HIS_STEPS];
-
-  memset(bins, 0, sizeof(bins));
-
-  MakeHistogramViewData data{};
-  data.ibuf = ibuf;
-  TaskParallelSettings settings;
-  BLI_parallel_range_settings_defaults(&settings);
-  settings.use_threading = (ibuf->y >= 256);
-  settings.userdata_chunk = bins;
-  settings.userdata_chunk_size = sizeof(bins);
-  settings.func_reduce = make_histogram_view_from_ibuf_reduce;
-  BLI_task_parallel_range(0, ibuf->y, &data, make_histogram_view_from_ibuf_byte_fn, &settings);
-
-  nr = nb = ng = 0;
-  for (x = 0; x < HIS_STEPS; x++) {
-    if (bins[0][x] > nr) {
-      nr = bins[0][x];
-    }
-    if (bins[1][x] > ng) {
-      ng = bins[1][x];
-    }
-    if (bins[2][x] > nb) {
-      nb = bins[2][x];
-    }
-  }
-
-  for (x = 0; x < HIS_STEPS; x++) {
-    if (nr) {
-      draw_histogram_bar(rval, x * 2 + 1, float(bins[0][x]) / nr, 0);
-      draw_histogram_bar(rval, x * 2 + 2, float(bins[0][x]) / nr, 0);
-    }
-    if (ng) {
-      draw_histogram_bar(rval, x * 2 + 1, float(bins[1][x]) / ng, 1);
-      draw_histogram_bar(rval, x * 2 + 2, float(bins[1][x]) / ng, 1);
-    }
-    if (nb) {
-      draw_histogram_bar(rval, x * 2 + 1, float(bins[2][x]) / nb, 2);
-      draw_histogram_bar(rval, x * 2 + 2, float(bins[2][x]) / nb, 2);
-    }
-  }
-
-  wform_put_border(rval->byte_buffer.data, rval->x, rval->y);
-
-  return rval;
-}
-
-BLI_INLINE int get_bin_float(float f)
+static int get_bin_float(float f)
 {
   if (f < -0.25f) {
     return 0;
@@ -587,92 +477,65 @@ BLI_INLINE int get_bin_float(float f)
   if (f >= 1.25f) {
     return 511;
   }
-
   return int(((f + 0.25f) / 1.5f) * 512);
 }
 
-static void make_histogram_view_from_ibuf_float_fn(void *__restrict userdata,
-                                                   const int y,
-                                                   const TaskParallelTLS *__restrict tls)
-{
-  const MakeHistogramViewData *data = static_cast<const MakeHistogramViewData *>(userdata);
-  const ImBuf *ibuf = static_cast<const ImBuf *>(data->ibuf);
-  const float *src = ibuf->float_buffer.data;
-
-  uint32_t(*cur_bins)[HIS_STEPS] = static_cast<uint32_t(*)[HIS_STEPS]>(tls->userdata_chunk);
-
-  for (int x = 0; x < ibuf->x; x++) {
-    const float *pixel = src + (y * ibuf->x + x) * 4;
-
-    for (int j = 3; j--;) {
-      cur_bins[j][get_bin_float(pixel[j])]++;
-    }
-  }
-}
-
-static ImBuf *make_histogram_view_from_ibuf_float(ImBuf *ibuf)
+void ScopeHistogram::calc_from_ibuf(const ImBuf *ibuf)
 {
 #ifdef DEBUG_TIME
   SCOPED_TIMER_AVERAGED(__func__);
 #endif
-  ImBuf *rval = IMB_allocImBuf(515, 128, 32, IB_rect);
-  int nr, ng, nb;
-  int x;
 
-  uint bins[3][HIS_STEPS];
+  const bool is_float = ibuf->float_buffer.data != nullptr;
+  const int hist_size = is_float ? 512 : 256;
 
-  memset(bins, 0, sizeof(bins));
+  Array<uint3> counts(hist_size, uint3(0));
+  data = threading::parallel_reduce(
+      IndexRange(ibuf->y),
+      256,
+      counts,
+      [&](const IndexRange y_range, const Array<uint3> &init) {
+        Array<uint3> res = init;
 
-  MakeHistogramViewData data{};
-  data.ibuf = ibuf;
-  TaskParallelSettings settings;
-  BLI_parallel_range_settings_defaults(&settings);
-  settings.use_threading = (ibuf->y >= 256);
-  settings.userdata_chunk = bins;
-  settings.userdata_chunk_size = sizeof(bins);
-  settings.func_reduce = make_histogram_view_from_ibuf_reduce;
-  BLI_task_parallel_range(0, ibuf->y, &data, make_histogram_view_from_ibuf_float_fn, &settings);
+        if (is_float) {
+          /* Float images spead -0.25..+1.25 range over 512 bins. */
+          for (const int y : y_range) {
+            const float *src = ibuf->float_buffer.data + y * ibuf->x * 4;
+            for (int x = 0; x < ibuf->x; x++) {
+              res[get_bin_float(src[0])].x++;
+              res[get_bin_float(src[1])].y++;
+              res[get_bin_float(src[2])].z++;
+              src += 4;
+            }
+          }
+        }
+        else {
+          /* Byte images just use 256 histogram bins, directly indexed by value. */
+          for (const int y : y_range) {
+            const uchar *src = ibuf->byte_buffer.data + y * ibuf->x * 4;
+            for (int x = 0; x < ibuf->x; x++) {
+              res[src[0]].x++;
+              res[src[1]].y++;
+              res[src[2]].z++;
+              src += 4;
+            }
+          }
+        }
+        return res;
+      },
+      [&](const Array<uint3> &a, const Array<uint3> &b) {
+        BLI_assert(a.size() == b.size());
+        Array<uint3> res(a.size());
+        for (int i = 0; i < a.size(); i++) {
+          res[i] = a[i] + b[i];
+        }
+        return res;
+      });
 
-  nr = nb = ng = 0;
-  for (x = 0; x < HIS_STEPS; x++) {
-    if (bins[0][x] > nr) {
-      nr = bins[0][x];
-    }
-    if (bins[1][x] > ng) {
-      ng = bins[1][x];
-    }
-    if (bins[2][x] > nb) {
-      nb = bins[2][x];
-    }
+  max_value = uint3(0);
+  for (const uint3 &v : data) {
+    max_value = math::max(max_value, v);
   }
-
-  for (x = 0; x < HIS_STEPS; x++) {
-    if (nr) {
-      draw_histogram_bar(rval, x + 1, float(bins[0][x]) / nr, 0);
-    }
-    if (ng) {
-      draw_histogram_bar(rval, x + 1, float(bins[1][x]) / ng, 1);
-    }
-    if (nb) {
-      draw_histogram_bar(rval, x + 1, float(bins[2][x]) / nb, 2);
-    }
-  }
-
-  draw_histogram_marker(rval, get_bin_float(0.0));
-  draw_histogram_marker(rval, get_bin_float(1.0));
-  wform_put_border(rval->byte_buffer.data, rval->x, rval->y);
-
-  return rval;
-}
-
-#undef HIS_STEPS
-
-ImBuf *make_histogram_view_from_ibuf(ImBuf *ibuf)
-{
-  if (ibuf->float_buffer.data) {
-    return make_histogram_view_from_ibuf_float(ibuf);
-  }
-  return make_histogram_view_from_ibuf_byte(ibuf);
 }
 
 static void vectorscope_put_cross(uchar r, uchar g, uchar b, uchar *tgt, int w, int h, int size)
@@ -806,3 +669,5 @@ ImBuf *make_vectorscope_view_from_ibuf(ImBuf *ibuf)
   }
   return make_vectorscope_view_from_ibuf_byte(ibuf);
 }
+
+}  // namespace blender::ed::seq

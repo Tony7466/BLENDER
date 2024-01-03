@@ -50,7 +50,7 @@ struct SpaceSeq_Runtime {
   int rename_channel_index = 0;
   float timeline_clamp_custom_range = 0;
 
-  SequencerScopes scopes;
+  blender::ed::seq::SeqScopes scopes;
 
   SpaceSeq_Runtime() = default;
   SpaceSeq_Runtime(const SpaceSeq_Runtime &) = delete;
