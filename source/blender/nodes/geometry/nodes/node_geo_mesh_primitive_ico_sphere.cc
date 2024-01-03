@@ -169,14 +169,6 @@ static constexpr int pyramid_sum(const int floor)
   return floor * (floor + 1) / 2;
 }
 
-static constexpr IndexRange pyramid_slice(const int floor, const int i)
-{
-  const int total_size = pyramid_sum(floor);
-  const int begin = pyramid_sum(floor - i);
-  const int end = pyramid_sum(floor - 1 - i);
-  return IndexRange(total_size).take_back(begin).drop_back(end);
-}
-
 class TriangleRange {
  private:
   int base_;
@@ -188,8 +180,8 @@ class TriangleRange {
   IndexRange slice_at(const int level_i) const
   {
     const int begin = pyramid_sum(base_ - level_i);
-    const int end = pyramid_sum(base_ - 1 - level_i);
-    return IndexRange(total_ - begin, begin - end);
+    const int size = base_ - level_i;
+    return IndexRange(total_ - begin, size);
   }
 
   int start_of(const int level_i) const
@@ -243,6 +235,7 @@ class SphericalIterator {
   SphericalIterator(const double3 begin, const double3 next, const double product)
       : previous_(begin), current_(next), product_(product)
   {
+    BLI_assert(math::is_unit_scale(begin) && math::is_unit_scale(next));
   }
 
   static SphericalIterator between_points(const double3 from, const double3 &to, const int steps)
@@ -453,7 +446,7 @@ static void interpolate_face_points(const int line_subdiv,
 }
 
 template<typename Func>
-static void edge_line_points(const int2 ends, MutableSpan<int2> edges, Func &&func)
+static void edgeы_line_fill_verts(const int2 ends, MutableSpan<int2> edges, Func &&func)
 {
   MutableSpan<int> edge_verts = edges.cast<int>().drop_back(1).drop_front(1);
   if (UNLIKELY(edge_verts.is_empty())) {
@@ -485,7 +478,8 @@ static void vert_edge_topology(const int edge_edges_num,
     const int2 base_edge = base_edges[edge_i];
     MutableSpan<int2> edges = edge_edges.slice(edge_i * edge_edges_num, edge_edges_num);
     const IndexRange points = edges_verts.slice(edge_i * edge_verts_num, edge_verts_num);
-    edge_line_points(base_edge, edges, [=](const int edge_i) -> int { return points[edge_i]; });
+    edgeы_line_fill_verts(
+        base_edge, edges, [=](const int edge_i) -> int { return points[edge_i]; });
   }
 }
 
@@ -532,9 +526,9 @@ static void face_edge_topology(const int edge_edges_num,
 
         const IndexRange line_verts = faces_vert.slice(inner_face_verts.slice_at(line_i));
         MutableSpan<int2> line_edges = edges.slice(inner_face_edges.slice_at(line_i));
-        edge_line_points(int2(begin_vert, end_vert), line_edges, [=](const int edge_i) -> int {
-          return line_verts[edge_i];
-        });
+        edgeы_line_fill_verts(int2(begin_vert, end_vert),
+                              line_edges,
+                              [=](const int edge_i) -> int { return line_verts[edge_i]; });
       }
     }
   }
@@ -567,9 +561,10 @@ static void face_edge_topology(const int edge_edges_num,
         const int end_vert = edge_b_order ? edge_c_verts[line_i] : edge_c_verts.from_end(line_i);
 
         MutableSpan<int2> line_edges = edges.slice(inner_face_edges.slice_at(r_line_i));
-        edge_line_points(int2(begin_vert, end_vert), line_edges, [=](const int edge_i) -> int {
-          return faces_vert[inner_face_verts.last_of(edge_i) - r_line_i];
-        });
+        edgeы_line_fill_verts(
+            int2(begin_vert, end_vert), line_edges, [=](const int edge_i) -> int {
+              return faces_vert[inner_face_verts.last_of(edge_i) - r_line_i];
+            });
       }
     }
   }
@@ -601,9 +596,10 @@ static void face_edge_topology(const int edge_edges_num,
         const int end_vert = edge_c_order ? edge_c_verts[line_i] : edge_c_verts.from_end(line_i);
 
         MutableSpan<int2> line_edges = edges.slice(inner_face_edges.slice_at(line_i));
-        edge_line_points(int2(begin_vert, end_vert), line_edges, [=](const int edge_i) -> int {
-          return faces_vert[inner_face_verts.first_of(edge_i) + line_i];
-        });
+        edgeы_line_fill_verts(
+            int2(begin_vert, end_vert), line_edges, [=](const int edge_i) -> int {
+              return faces_vert[inner_face_verts.first_of(edge_i) + line_i];
+            });
       }
     }
   }
@@ -854,8 +850,8 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
 
   {
     SCOPED_TIMER_AVERAGED("Scaling");
-    std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 p) {
-      return p * radius;
+    std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
+      return pos * radius;
     });
   }
 
@@ -866,6 +862,7 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
   mesh->tag_loose_verts_none();
   mesh->tag_loose_edges_none();
   mesh->tag_overlapping_none();
+  mesh->no_overlapping_topology();
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
   mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, subdivisions));
 
