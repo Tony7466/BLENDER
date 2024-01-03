@@ -69,6 +69,7 @@
 
 namespace blender {
 namespace gpu {
+
 namespace debug {
 
 void raise_gl_error(const char *info);

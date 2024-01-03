@@ -34,7 +34,7 @@ class Renderdoc {
                            RENDERDOC_WindowHandle window_handle);
   void end_frame_capture(RENDERDOC_DevicePointer device_handle,
                          RENDERDOC_WindowHandle window_handle);
-
+  void set_capture_title(const char*);
  private:
   /**
    * Check if renderdoc has been loaded.

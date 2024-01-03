@@ -92,7 +92,7 @@ class Context {
   virtual void *debug_capture_scope_create(const char *name) = 0;
   virtual bool debug_capture_scope_begin(void *scope) = 0;
   virtual void debug_capture_scope_end(void *scope) = 0;
-
+  virtual void debug_capture_title(const char *) = 0;
   bool is_active_on_thread();
 };
 

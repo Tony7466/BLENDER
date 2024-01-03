@@ -111,6 +111,7 @@ void main()
 #ifndef GPU_METAL
   bool use_lightprobe_eval = uniform_buf.pipeline.use_combined_lightprobe_eval;
 #endif
+#if 0
   if (use_lightprobe_eval) {
     vec2 noise_probe = interlieved_gradient_noise(gl_FragCoord.xy, vec2(0, 1), vec2(0.0));
     LightProbeSample samp = lightprobe_load(P, Ng, V);
@@ -141,8 +142,9 @@ void main()
           break;
       }
     }
-  }
-
+}
+#endif
+stack.cl[0].light_shadowed =vec3(1.,0.,1.);
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
     /* TODO(fclem): Layered texture. */
     if (i == 0) {

@@ -12,6 +12,9 @@
 
 #include "BLI_assert.h"
 
+#include "BKE_global.h"
+#include "GPU_debug.h"
+
 #include "gpu_batch_private.hh"
 #include "gpu_shader_private.hh"
 
@@ -286,7 +289,9 @@ void GLBatch::bind(int i_first)
 void GLBatch::draw(int v_first, int v_count, int i_first, int i_count)
 {
   GL_CHECK_RESOURCES("Batch");
-
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_begin_title(GLContext::get()->shader->name_get());
+  }
   this->bind(i_first);
 
   BLI_assert(v_count > 0 && i_count > 0);
@@ -316,12 +321,18 @@ void GLBatch::draw(int v_first, int v_count, int i_first, int i_count)
       glDrawArraysInstanced(gl_type, v_first, v_count, i_count);
     }
   }
+
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_end();
+  }
 }
 
 void GLBatch::draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset)
 {
   GL_CHECK_RESOURCES("Batch");
-
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_begin_title(GLContext::get()->shader->name_get());
+  }
   this->bind(0);
 
   /* TODO(fclem): Make the barrier and binding optional if consecutive draws are issued. */
@@ -340,6 +351,9 @@ void GLBatch::draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset)
   }
   /* Unbind. */
   glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_end();
+  }
 }
 
 void GLBatch::multi_draw_indirect(GPUStorageBuf *indirect_buf,
@@ -348,7 +362,9 @@ void GLBatch::multi_draw_indirect(GPUStorageBuf *indirect_buf,
                                   intptr_t stride)
 {
   GL_CHECK_RESOURCES("Batch");
-
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_begin_title(GLContext::get()->shader->name_get());
+  }
   this->bind(0);
 
   /* TODO(fclem): Make the barrier and binding optional if consecutive draws are issued. */
@@ -367,6 +383,9 @@ void GLBatch::multi_draw_indirect(GPUStorageBuf *indirect_buf,
   }
   /* Unbind. */
   glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_end();
+  }
 }
 
 /** \} */

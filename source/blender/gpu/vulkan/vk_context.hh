@@ -61,6 +61,7 @@ class VKContext : public Context, NonCopyable {
   void *debug_capture_scope_create(const char *name) override;
   bool debug_capture_scope_begin(void *scope) override;
   void debug_capture_scope_end(void *scope) override;
+  void debug_capture_title(const char * /* title */) override{};
 
   bool has_active_framebuffer() const;
   void activate_framebuffer(VKFrameBuffer &framebuffer);

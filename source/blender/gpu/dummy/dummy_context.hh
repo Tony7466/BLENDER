@@ -46,6 +46,7 @@ class DummyContext : public Context {
     return false;
   }
   void debug_capture_scope_end(void * /*scope*/) override {}
+  void debug_capture_title(const char * /* title */) override{};
 };
 
 }  // namespace blender::gpu

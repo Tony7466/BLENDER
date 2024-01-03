@@ -165,6 +165,7 @@ class GLBackend : public GPUBackend {
 
   bool debug_capture_begin();
   void debug_capture_end();
+  void debug_capture_title(const char *title);
 
  private:
   static void platform_init();

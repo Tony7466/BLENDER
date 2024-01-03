@@ -64,4 +64,12 @@ void Renderdoc::load()
 #endif
 }
 
+void Renderdoc::set_capture_title(const char *title)
+{
+  if (!check_loaded()) {
+    return;
+  }
+  renderdoc_api_->SetCaptureTitle(title);
+}
+
 }  // namespace renderdoc::api

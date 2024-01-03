@@ -427,6 +427,21 @@ bool GLContext::debug_capture_scope_begin(void * /*scope*/)
 
 void GLContext::debug_capture_scope_end(void * /*scope*/) {}
 
+void GLContext::debug_capture_title(const char *title)
+{
+  GLBackend::get()->debug_capture_title(title);
+}
+
+void GLBackend::debug_capture_title(const char *title)
+{
+#ifdef WITH_RENDERDOC
+  return renderdoc_.set_capture_title(title);
+#else
+  UNUSED_VARS(vk_instance);
+  return false;
+#endif
+};
+
 /** \} */
 
 }  // namespace blender::gpu

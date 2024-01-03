@@ -93,6 +93,25 @@ void GPU_debug_capture_begin()
   }
 }
 
+void GPU_debug_capture_begin_title(const char * title)
+{
+  /* GPU Frame capture is only enabled when --debug-gpu is specified. */
+  if (!(G.debug & G_DEBUG_GPU)) {
+    return;
+  }
+
+  Context *ctx = Context::get();
+  if (ctx && !ctx->debug_is_capturing) {
+    ctx->debug_is_capturing = ctx->debug_capture_begin();
+    ctx->debug_capture_title(title);
+    if (!ctx->debug_is_capturing) {
+      printf("Failed to start GPU frame capture!\n");
+    }
+    /* Call GPU_finish to ensure all desired GPU commands occur within the capture boundary. */
+    GPU_finish();
+  }
+}
+
 void GPU_debug_capture_end()
 {
   /* GPU Frame capture is only enabled when --debug-gpu is specified. */
