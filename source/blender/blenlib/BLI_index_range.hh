@@ -314,6 +314,7 @@ class IndexRange {
     return IndexRange(start_ + size_ - new_size, new_size);
   }
 
+  /* Reverse indent on sampling. Zero index will retrieve last reachable index of range. */
   constexpr int64_t from_end(int64_t i) const
   {
     return start_ + size_ - 1 - i;
