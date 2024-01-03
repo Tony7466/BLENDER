@@ -186,6 +186,8 @@ struct DeferredLayerBase {
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_ = CLOSURE_NONE;
+  /* Maximum closure count considering all material in this pass. */
+  int closure_count_ = 0;
 
   /* Return the amount of gbuffer layer needed. */
   int closure_layer_count() const

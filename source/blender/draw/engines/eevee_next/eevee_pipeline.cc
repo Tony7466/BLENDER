@@ -460,6 +460,7 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
   gbuffer_single_sided_ps_->state_set(state | DRW_STATE_CULL_BACK);
 
   closure_bits_ = CLOSURE_NONE;
+  closure_count_ = 0;
 }
 
 void DeferredLayer::begin_sync()
@@ -658,6 +659,7 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
 {
   eClosureBits closure_bits = shader_closure_bits_from_flag(gpumat);
   closure_bits_ |= closure_bits;
+  closure_count_ = max_ii(closure_count_, count_bits_i(closure_bits));
 
   bool has_shader_to_rgba = (closure_bits & CLOSURE_SHADER_TO_RGBA) != 0;
   bool backface_culling = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) != 0;
@@ -771,11 +773,9 @@ void DeferredLayer::render(View &main_view,
 
   inst_.manager->submit(gbuffer_ps_, render_view);
 
-  int closure_count = count_bits_i(closure_bits_ &
-                                   (CLOSURE_REFLECTION | CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
     direct_radiance_txs_[i].acquire(
-        (closure_count > i) ? extent : int2(1), DEFERRED_RADIANCE_FORMAT, usage_rw);
+        (closure_count_ > i) ? extent : int2(1), DEFERRED_RADIANCE_FORMAT, usage_rw);
   }
 
   RayTraceResult indirect_result;
@@ -1243,6 +1243,7 @@ PassMain::Sub *DeferredProbeLayer::material_add(::Material *blender_mat, GPUMate
 {
   eClosureBits closure_bits = shader_closure_bits_from_flag(gpumat);
   closure_bits_ |= closure_bits;
+  closure_count_ = max_ii(closure_count_, count_bits_i(closure_bits));
 
   bool has_shader_to_rgba = (closure_bits & CLOSURE_SHADER_TO_RGBA) != 0;
   bool backface_culling = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) != 0;
@@ -1371,6 +1372,7 @@ void PlanarProbePipeline::begin_sync()
   }
 
   closure_bits_ = CLOSURE_NONE;
+  closure_count_ = 0;
 }
 
 void PlanarProbePipeline::end_sync()
@@ -1390,6 +1392,7 @@ PassMain::Sub *PlanarProbePipeline::material_add(::Material *blender_mat, GPUMat
 {
   eClosureBits closure_bits = shader_closure_bits_from_flag(gpumat);
   closure_bits_ |= closure_bits;
+  closure_count_ = max_ii(closure_count_, count_bits_i(closure_bits));
 
   bool has_shader_to_rgba = (closure_bits & CLOSURE_SHADER_TO_RGBA) != 0;
   bool backface_culling = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) != 0;
