@@ -248,7 +248,8 @@ void gaussian_blur_1D(const GSpan src,
     using T = decltype(dummy);
     /* Reduces unnecessary code generation. */
     if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
-                  std::is_same_v<T, float3>) {
+                  std::is_same_v<T, float3>)
+    {
       gaussian_blur_1D(src.typed<T>(),
                        iterations,
                        influence,
@@ -1701,7 +1702,7 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
-    scene->toolsettings);
+      scene->toolsettings);
 
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
@@ -1716,24 +1717,44 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     const OffsetIndices points_by_curve = curves.points_by_curve();
-    //const VArray<bool> cyclic = curves.cyclic();
+    // const VArray<bool> cyclic = curves.cyclic();
     const VArray<bool> point_selection = *curves.attributes().lookup_or_default<bool>(
         ".selection", bke::AttrDomain::Point, true);
-
-    /* every stroke subdivides to the same cut. */
-    VArray<int> vcuts=VArray<int>::ForSingle(cuts,curves.curve_num);
+    VArray<int> vcuts = {};
 
     if (selection_domain == bke::AttrDomain::Curve) {
-      /* Subdivide entire selected curve. */
+      /* Subdivide entire selected curve, every stroke subdivides to the same cut. */
+      vcuts = VArray<int>::ForSingle(cuts, curves.point_num);
       blender::bke::AnonymousAttributePropagationInfo pinfo;
-      curves = blender::geometry::subdivide_curves(curves,strokes,vcuts,pinfo);
+      curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
       info.drawing.tag_topology_changed();
-      changed.store(true,std::memory_order_relaxed);
+      changed.store(true, std::memory_order_relaxed);
     }
     else if (selection_domain == bke::AttrDomain::Point) {
-      /* Subdivide between selected points. */
+      /* Subdivide between selected points. Only cut between selected points. */
+      /* Make the cut array the same length as point count for specifying
+      /* cut/uncut for each segment. */
+      Array<int> use_cuts(curves.point_num, 0);
+
+      const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+          ".selection", bke::AttrDomain::Point, true);
+
+      for (const int points_i : curves.points_range()) {
+        if (selection[points_i] && (points_i < curves.points_range().last() - 1) &&
+            selection[points_i + 1])
+        {
+          use_cuts[points_i] = cuts;
+        }
+      }
+      vcuts = VArray<int>::ForContainer(use_cuts);
     }
 
+    if (!vcuts.is_empty()) {
+      blender::bke::AnonymousAttributePropagationInfo pinfo;
+      curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
+      info.drawing.tag_topology_changed();
+      changed.store(true, std::memory_order_relaxed);
+    }
   });
 
   if (changed) {
@@ -1761,7 +1782,8 @@ static bool gpencil_subdivide_curve_edit_poll_property(const bContext *C,
   return true;
 }
 
-bool grease_active_layer_poll(bContext* C){
+bool grease_active_layer_poll(bContext *C)
+{
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   return grease_pencil.has_active_layer();
