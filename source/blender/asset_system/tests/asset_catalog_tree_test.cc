@@ -13,8 +13,7 @@
 
 namespace blender::asset_system::tests {
 
-class AssetCatalogTreeTest : public AssetLibraryTestBase, public AssetCatalogTreeTestFunctions {
-};
+class AssetCatalogTreeTest : public AssetLibraryTestBase, public AssetCatalogTreeTestFunctions {};
 
 TEST_F(AssetCatalogTreeTest, insert_item_into_tree)
 {

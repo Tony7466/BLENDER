@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-function(get_blender_test_install_dir variable_name)
+function(get_blender_test_install_dir VARIABLE_NAME)
   get_property(GENERATOR_IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
   if(GENERATOR_IS_MULTI_CONFIG)
     string(REPLACE "\${BUILD_TYPE}" "$<CONFIG>" TEST_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
@@ -159,7 +159,7 @@ endfunction()
 # blender_add_test_suite_executable.
 #
 # The function accepts an optional argument which denotes list of sources which
-# is to be compiled-in with the suit sources for each fo the suites when the
+# is to be compiled-in with the suite sources for each fo the suites when the
 # WITH_TESTS_SINGLE_BINARY configuration is set to OFF.
 function(blender_add_test_suite_lib
   name
@@ -170,7 +170,7 @@ function(blender_add_test_suite_lib
   )
 
   # Sources which are common for all suits and do not need to yield their own
-  # test suit binaries when WITH_TESTS_SINGLE_BINARY is OFF.
+  # test suite binaries when WITH_TESTS_SINGLE_BINARY is OFF.
   set(common_sources ${ARGN})
 
   if(WITH_TESTS_SINGLE_BINARY)
