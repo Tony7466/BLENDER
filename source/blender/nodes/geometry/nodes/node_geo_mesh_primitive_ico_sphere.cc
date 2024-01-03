@@ -327,25 +327,25 @@ static void interpolate_edge_points(const int subdiv_verts_num,
   SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_points = base_edge_point_indices();
 
+  const float lerp_factor = 1.0f / (subdiv_verts_num + 1);
   for (const int edge_i : IndexRange(base_edges_num)) {
     MutableSpan<float3> points = edge_points.slice(edge_i * subdiv_verts_num, subdiv_verts_num);
 
     const int2 edge = base_edge_points[edge_i];
 
-    const float3 point_a = base_points[edge[0]];
-    const float3 point_b = base_points[edge[1]];
+    const float3 &point_a = base_points[edge[0]];
+    const float3 &point_b = base_points[edge[1]];
 
     const float3 normalized_a = math::normalize(point_a);
     const float3 normalized_b = math::normalize(point_b);
 
     const float3 normal = math::normalize(
         math::cross_tri(float3(0.0f), normalized_a, normalized_b));
-    const math::AngleRadian rotation = math::angle_between<float>(normalized_a, normalized_b) /
-                                       (subdiv_verts_num + 1);
+    const math::AngleRadian rotation = math::angle_between<float>(normalized_a, normalized_b);
 
     math::AngleRadian steps(0.0f);
     for (const int i : IndexRange(subdiv_verts_num)) {
-      steps += rotation;
+      steps += rotation * lerp_factor;
       const math::AxisAngle axis(normal, steps);
       points[i] = math::transform_point(math::to_quaternion(axis), point_a);
     }
