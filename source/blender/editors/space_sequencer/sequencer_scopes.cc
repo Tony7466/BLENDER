@@ -17,7 +17,7 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "sequencer_intern.hh"
+#include "sequencer_scopes.hh"
 
 // #define DEBUG_TIME
 
@@ -506,6 +506,9 @@ static void make_histogram_view_from_ibuf_reduce(const void *__restrict /*userda
 
 static ImBuf *make_histogram_view_from_ibuf_byte(ImBuf *ibuf)
 {
+#ifdef DEBUG_TIME
+  SCOPED_TIMER_AVERAGED(__func__);
+#endif
   ImBuf *rval = IMB_allocImBuf(515, 128, 32, IB_rect);
   int x;
   uint nr, ng, nb;
@@ -590,6 +593,9 @@ static void make_histogram_view_from_ibuf_float_fn(void *__restrict userdata,
 
 static ImBuf *make_histogram_view_from_ibuf_float(ImBuf *ibuf)
 {
+#ifdef DEBUG_TIME
+  SCOPED_TIMER_AVERAGED(__func__);
+#endif
   ImBuf *rval = IMB_allocImBuf(515, 128, 32, IB_rect);
   int nr, ng, nb;
   int x;
@@ -679,6 +685,9 @@ static void vectorscope_put_cross(uchar r, uchar g, uchar b, uchar *tgt, int w, 
 
 static ImBuf *make_vectorscope_view_from_ibuf_byte(ImBuf *ibuf)
 {
+#ifdef DEBUG_TIME
+  SCOPED_TIMER_AVERAGED(__func__);
+#endif
   ImBuf *rval = IMB_allocImBuf(515, 515, 32, IB_rect);
   int x, y;
   const uchar *src = ibuf->byte_buffer.data;
@@ -724,6 +733,9 @@ static ImBuf *make_vectorscope_view_from_ibuf_byte(ImBuf *ibuf)
 
 static ImBuf *make_vectorscope_view_from_ibuf_float(ImBuf *ibuf)
 {
+#ifdef DEBUG_TIME
+  SCOPED_TIMER_AVERAGED(__func__);
+#endif
   ImBuf *rval = IMB_allocImBuf(515, 515, 32, IB_rect);
   int x, y;
   const float *src = ibuf->float_buffer.data;

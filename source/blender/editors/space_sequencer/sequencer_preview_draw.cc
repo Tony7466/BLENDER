@@ -56,8 +56,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-/* Own include. */
 #include "sequencer_intern.hh"
+#include "sequencer_scopes.hh"
 
 static Sequence *special_seq_update = nullptr;
 

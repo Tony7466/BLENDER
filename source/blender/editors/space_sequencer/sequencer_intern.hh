@@ -258,14 +258,6 @@ void sequencer_dropboxes();
 void sequencer_operatortypes();
 void sequencer_keymap(wmKeyConfig *keyconf);
 
-/* sequencer_scope.c */
-
-ImBuf *make_waveform_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_sep_waveform_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_vectorscope_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_zebra_view_from_ibuf(ImBuf *ibuf, float perc);
-ImBuf *make_histogram_view_from_ibuf(ImBuf *ibuf);
-
 /* `sequencer_buttons.cc` */
 
 void sequencer_buttons_register(ARegionType *art);

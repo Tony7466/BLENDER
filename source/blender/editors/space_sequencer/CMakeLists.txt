@@ -46,6 +46,7 @@ set(SRC
 
   sequencer_intern.hh
   sequencer_quads_batch.hh
+  sequencer_scopes.hh
 )
 
 set(LIB
