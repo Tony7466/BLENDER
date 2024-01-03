@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'72b6c44e759b')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'98c6bded9844')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-04 11:06:00\n"
+"POT-Creation-Date: 2024-01-02 10:08:43\n"
 "PO-Revision-Date: 2023-11-14 19:14+0000\n"
 "Last-Translator: Lee YeonJoo <yzoo2@naver.com>\n"
 "Language-Team: Korean <https://translate.blender.org/projects/blender-ui/ui/ko/>\n"
@@ -10409,6 +10409,18 @@ msgid "Whether this path is saved in bookmarks, or generated from OS"
 msgstr "이 경로는 북마크에서 저장되는지 여부, 또는 OS로부터 생성되는지"
 
 
+msgid "File Extensions"
+msgstr "파일 확장자"
+
+
+msgid "Operator"
+msgstr "작업자"
+
+
+msgid "Label"
+msgstr "레이블"
+
+
 msgid "Icon ID"
 msgstr "아이콘 ID"
 
@@ -18748,10 +18760,6 @@ msgid "Node tree consisting of linked nodes used for shading, textures and compo
 msgstr "셰이딩, 텍스처 및 컴포지팅에 사용되는 연결된 노드로 구성된 노드 트리"
 
 
-msgid "Label"
-msgstr "레이블"
-
-
 msgid "The node tree label"
 msgstr "노드 트리 레이블"
 
@@ -25932,10 +25940,6 @@ msgstr "언어..."
 
 msgid "Channel"
 msgstr "채널"
-
-
-msgid "Dope Sheet Channel"
-msgstr "도프시트 채널"
 
 
 msgid "Snap"
@@ -33547,6 +33551,10 @@ msgid "Component"
 msgstr "구성 요소"
 
 
+msgid "Bake"
+msgstr "베이크"
+
+
 msgid "Original"
 msgstr "원본"
 
@@ -34572,6 +34580,10 @@ msgid "Value to Normal"
 msgstr "값을 노멀로 변환"
 
 
+msgid "Socket Type"
+msgstr "소켓 유형"
+
+
 msgid "Node Inputs"
 msgstr "노드 입력"
 
@@ -34830,10 +34842,6 @@ msgstr "가상 노드 소켓"
 
 msgid "Virtual socket of a node"
 msgstr "노드의 가상 소켓"
-
-
-msgid "Socket Type"
-msgstr "소켓 유형"
 
 
 msgid "Boolean Node Socket Interface"
@@ -36055,6 +36063,10 @@ msgstr "본 정렬"
 
 msgid "Align selected bones to the active bone (or to their parent)"
 msgstr "선택된 본을 활성 본(또는 부모)에 정렬"
+
+
+msgid "Collection Index"
+msgstr "컬렉션 인덱스"
 
 
 msgid "Automatically renames the selected bones according to which side of the target axis they fall on"
@@ -38307,6 +38319,14 @@ msgid "Reset original length of bone for Stretch To Constraint"
 msgstr "제약으로 늘이기에 대해 본의 원본 길이를 재설정"
 
 
+msgid "Error distance threshold (in object units)"
+msgstr "오류 거리 임계 값 (오브젝트 단위로)"
+
+
+msgid "Duplicate"
+msgstr "복제"
+
+
 msgid "(De)select all control points"
 msgstr "모든 컨트롤 포인트를 선택(취소)"
 
@@ -38314,6 +38334,15 @@ msgstr "모든 컨트롤 포인트를 선택(취소)"
 msgctxt "Operator"
 msgid "Select Random"
 msgstr "랜덤 선택"
+
+
+msgctxt "Operator"
+msgid "Clear Tilt"
+msgstr "기울기를 지우기"
+
+
+msgid "Clear the tilt of selected control points"
+msgstr "선택된 컨트롤 포인트의 기울기를 지우기"
 
 
 msgctxt "Operator"
@@ -38388,10 +38417,6 @@ msgstr "커브를 그리기"
 
 msgid "Draw a freehand spline"
 msgstr "자유형 스플라인을 그리기"
-
-
-msgid "Error distance threshold (in object units)"
-msgstr "오류 거리 임계 값 (오브젝트 단위로)"
 
 
 msgctxt "Operator"
@@ -38836,15 +38861,6 @@ msgid "Switch direction of selected splines"
 msgstr "선택된 스플라인의 방향을 전환"
 
 
-msgctxt "Operator"
-msgid "Clear Tilt"
-msgstr "기울기를 지우기"
-
-
-msgid "Clear the tilt of selected control points"
-msgstr "선택된 컨트롤 포인트의 기울기를 지우기"
-
-
 msgid "Add a new control point (linked to only selected end-curve one, if any)"
 msgstr "새로운 컨트롤 포인트를 추가(단 선택된 종료 커브에 연결된 모든 경우)"
 
@@ -39131,11 +39147,6 @@ msgstr "오일러 (ZYX)"
 
 msgid "Convert rotations to euler ZYX"
 msgstr "오일러 ZYX에 회전을 변환"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL을 내보내기"
 
 
 msgid "Save STL triangle mesh data"
@@ -42277,10 +42288,6 @@ msgid "Flat"
 msgstr "플랫"
 
 
-msgid "Duplicate"
-msgstr "복제"
-
-
 msgctxt "Operator"
 msgid "Select Mode"
 msgstr "선택 모드"
@@ -43017,11 +43024,6 @@ msgstr "이미지의 정의를 블렌더 단위 당 도트로 사용"
 
 msgid "Use alpha channel for transparency"
 msgstr "투명도를 위해 알파 채널을 사용"
-
-
-msgctxt "Operator"
-msgid "Import STL"
-msgstr "STL을 가져오기"
 
 
 msgid "Load STL triangle mesh data"
@@ -44011,10 +44013,6 @@ msgstr "페이스 생성하기 대신 병합"
 msgctxt "Operator"
 msgid "Reverse Colors"
 msgstr "컬러를 반전"
-
-
-msgid "Flip direction of vertex colors inside faces"
-msgstr "페이스 내부의 버텍스 컬러의 방향을 뒤집기"
 
 
 msgctxt "Operator"
@@ -47792,10 +47790,6 @@ msgstr "컬렉션을 숨기기"
 
 msgid "Show only objects in collection (Shift to extend)"
 msgstr "컬렉션에있는 오브젝트 만 표시 (Shift 키를 눌러 확장)"
-
-
-msgid "Collection Index"
-msgstr "컬렉션 인덱스"
 
 
 msgid "Index of the collection to change visibility"
@@ -51652,10 +51646,6 @@ msgid "Bake physics"
 msgstr "피직스를 베이크"
 
 
-msgid "Bake"
-msgstr "베이크"
-
-
 msgctxt "Operator"
 msgid "Bake All Physics"
 msgstr "모든 피직스를 베이크"
@@ -52938,10 +52928,6 @@ msgstr "페인트 마스크의 대비를 감소시킵니다"
 
 msgid "Number of times that the filter is going to be applied"
 msgstr "필터가 적용되는 횟수"
-
-
-msgid "Operator"
-msgstr "작업자"
 
 
 msgid "Applies a filter to modify the current mesh"
@@ -58292,6 +58278,16 @@ msgstr "릴리즈 정보와 함께 스플래쉬 화면을 열기"
 
 
 msgctxt "Operator"
+msgid "Export STL"
+msgstr "STL을 내보내기"
+
+
+msgctxt "Operator"
+msgid "Import STL"
+msgstr "STL을 가져오기"
+
+
+msgctxt "Operator"
 msgid "Save System Info"
 msgstr "시스템 정보를 저장"
 
@@ -58921,14 +58917,6 @@ msgstr "활성 팔레트 컬러"
 
 msgid "Panel containing UI elements"
 msgstr "UI 요소가 포함된 패널"
-
-
-msgid "Refraction"
-msgstr "굴절"
-
-
-msgid "Denoising"
-msgstr "노이즈 제거"
 
 
 msgid "Integrator Presets"
@@ -59635,6 +59623,10 @@ msgstr "블룸"
 
 msgid "Indirect Lighting"
 msgstr "간접 라이트닝"
+
+
+msgid "Denoising"
+msgstr "노이즈 제거"
 
 
 msgid "Shadows"
@@ -65015,10 +65007,6 @@ msgid "Crop the rendered frame to the defined render region size"
 msgstr "렌더링된 프레임을 정의된 렌더링 영역 크기로 자릅니다"
 
 
-msgid "File Extensions"
-msgstr "파일 확장자"
-
-
 msgid "Add the file format extensions to the rendered file name (eg: filename + .jpg)"
 msgstr "렌더된 파일 이름에 파일 형식 확장자를 추가 (예: 파일 이름 + .JPG)"
 
@@ -67579,18 +67567,6 @@ msgstr "오프셋을 표시"
 
 msgid "Display strip in/out offsets"
 msgstr "스트립 인/아웃 오프셋을 표시"
-
-
-msgid "Waveforms Off"
-msgstr "파형 Off"
-
-
-msgid "Waveforms On"
-msgstr "파형 On"
-
-
-msgid "Use Strip Option"
-msgstr "스트립 옵션을 사용"
 
 
 msgid "Bounding Box Center"
@@ -70317,22 +70293,6 @@ msgid "Studio light image file has separate \"diffuse\" and \"specular\" passes"
 msgstr "스튜디오 라이트 이미지 파일에는 별도의 \"확산\"및 \"반사\" 패스가 있습니다"
 
 
-msgid "Irradiance Cache Path"
-msgstr "방사 조도 캐시 경로"
-
-
-msgid "Path where the irradiance cache is stored"
-msgstr "방사 조도 캐시가 저장된 경로"
-
-
-msgid "SH Cache Path"
-msgstr "SH 캐시 경로"
-
-
-msgid "Path where the spherical harmonics cache is stored"
-msgstr "구형 고조파 캐시가 저장된 경로"
-
-
 msgid "Lights user to display objects in solid draw mode"
 msgstr "솔리드 그리기 모드에서 오브젝트를 표시하는 사용자 라이트"
 
@@ -70975,6 +70935,10 @@ msgstr "채널 그룹"
 
 msgid "Channels Selected"
 msgstr "채널 선택됨"
+
+
+msgid "Dope Sheet Channel"
+msgstr "도프시트 채널"
 
 
 msgid "Interpolation Line"
@@ -73150,8 +73114,8 @@ msgid "Display vertex-per-face normals as lines"
 msgstr "라인으로 페이스 당 버텍스 노멀을 표시"
 
 
-msgid "Stat Vis"
-msgstr "스탯 비스"
+msgid "Mesh Analysis"
+msgstr "메쉬 분석"
 
 
 msgid "Display statistical information about the mesh"
@@ -76077,6 +76041,10 @@ msgid "Light Clamping"
 msgstr "라이트 클램핑"
 
 
+msgid "Refraction"
+msgstr "굴절"
+
+
 msgid "Cascade Size"
 msgstr "캐스케이드 크기"
 
@@ -78716,10 +78684,6 @@ msgid "Vertex Group Weights"
 msgstr "버텍스 그룹 웨이트"
 
 
-msgid "Mesh Analysis"
-msgstr "메쉬 분석"
-
-
 msgid "Face Angle"
 msgstr "페이스 각도"
 
@@ -78982,86 +78946,6 @@ msgstr "세그먼트를 삭제"
 msgctxt "Operator"
 msgid "Delete Point"
 msgstr "포인트를 삭제"
-
-
-msgctxt "Operator"
-msgid "Copyright"
-msgstr "저작권"
-
-
-msgctxt "Operator"
-msgid "Registered Trademark"
-msgstr "등록된 상표"
-
-
-msgctxt "Operator"
-msgid "Degree Sign"
-msgstr "디그리 기호"
-
-
-msgctxt "Operator"
-msgid "Multiplication Sign"
-msgstr "곱셈 기호"
-
-
-msgctxt "Operator"
-msgid "Superscript 1"
-msgstr "첨자 1"
-
-
-msgctxt "Operator"
-msgid "Superscript 2"
-msgstr "첨자 2"
-
-
-msgctxt "Operator"
-msgid "Superscript 3"
-msgstr "첨자 3"
-
-
-msgctxt "Operator"
-msgid "Double >>"
-msgstr "이중 >>"
-
-
-msgctxt "Operator"
-msgid "Double <<"
-msgstr "이중 <<"
-
-
-msgctxt "Operator"
-msgid "Promillage"
-msgstr "프로밀레이지"
-
-
-msgctxt "Operator"
-msgid "Dutch Florin"
-msgstr "네덜란드 플로린"
-
-
-msgctxt "Operator"
-msgid "British Pound"
-msgstr "영국 파운드"
-
-
-msgctxt "Operator"
-msgid "Japanese Yen"
-msgstr "일본 엔"
-
-
-msgctxt "Operator"
-msgid "German S"
-msgstr "독일어 S"
-
-
-msgctxt "Operator"
-msgid "Spanish Question Mark"
-msgstr "스페인어 물음표"
-
-
-msgctxt "Operator"
-msgid "Spanish Exclamation Mark"
-msgstr "스페인어 느낌표"
 
 
 msgctxt "Operator"
@@ -79504,10 +79388,6 @@ msgid "Int"
 msgstr "정수"
 
 
-msgid "PreviewCol"
-msgstr "PreviewCol"
-
-
 msgid "TexturedCol"
 msgstr "택스처화 Col"
 
@@ -79530,10 +79410,6 @@ msgstr "셰이프키"
 
 msgid "OS Loop"
 msgstr "OS 루프"
-
-
-msgid "PreviewLoopCol"
-msgstr "PreviewLoopCol"
 
 
 msgid "Source or destination meshes do not have any vertices, cannot transfer vertex data"
@@ -83904,6 +83780,10 @@ msgid "File '%s' could not be loaded"
 msgstr "파일 '%s'을 불러올 수 없습니다"
 
 
+msgid "Please select all related strips"
+msgstr "관련 스트립을 모두 선택하십시오"
+
+
 msgid "Cannot apply effects to audio sequence strips"
 msgstr "오디오 시퀀스 스트립에 이펙트를 적용 할 수 없습니다"
 
@@ -83926,10 +83806,6 @@ msgstr "TODO: 어떤 경우에 이런 일이 발생합니까?"
 
 msgid "No valid inputs to swap"
 msgstr "교환하는 유효한 입력이 없음"
-
-
-msgid "Please select all related strips"
-msgstr "관련 스트립을 모두 선택하십시오"
 
 
 msgid "Please select two strips"

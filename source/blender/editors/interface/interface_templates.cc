@@ -43,10 +43,10 @@
 
 #include "BKE_action.h"
 #include "BKE_blender_version.h"
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 #include "BKE_cachefile.h"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_curveprofile.h"
@@ -2772,7 +2772,8 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
         (layout_flags & UI_TEMPLATE_OP_PROPS_COMPACT));
 
     if ((return_info & UI_PROP_BUTS_NONE_ADDED) &&
-        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY)) {
+        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY))
+    {
       uiItemL(layout, IFACE_("No Properties"), ICON_NONE);
     }
   }
@@ -2883,7 +2884,8 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
         continue;
       }
       if (op->type->poll_property &&
-          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data)) {
+          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data))
+      {
         continue;
       }
       if (RNA_property_type(prop) != PROP_BOOLEAN) {
@@ -4819,7 +4821,8 @@ static void curvemap_buttons_layout(uiLayout *layout,
                       TIP_("Auto Handle"));
     UI_but_func_set(bt, curvemap_tools_handle_auto, cumap, nullptr);
     if (((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
-        ((cmp->flag & CUMA_HANDLE_VECTOR) == false)) {
+        ((cmp->flag & CUMA_HANDLE_VECTOR) == false))
+    {
       bt->flag |= UI_SELECT_DRAW;
     }
 
@@ -5301,8 +5304,15 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
    * after a preset is selected would be more complicated. */
   uiLayout *row = uiLayoutRow(layout, true);
-  bt = uiDefBlockBut(
-      block, CurveProfile_buttons_presets, profile, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
+  bt = uiDefBlockBut(block,
+                     CurveProfile_buttons_presets,
+                     profile,
+                     IFACE_("Preset"),
+                     0,
+                     0,
+                     UI_UNIT_X,
+                     UI_UNIT_X,
+                     "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
   /* Show a "re-apply" preset button when it has been changed from the preset. */
@@ -5313,7 +5323,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                             UI_BTYPE_BUT,
                             0,
                             ICON_NONE,
-                            "Apply Preset",
+                            IFACE_("Apply Preset"),
                             0,
                             0,
                             UI_UNIT_X,

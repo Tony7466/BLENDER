@@ -16,7 +16,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 #include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_screen.hh"
@@ -206,6 +206,8 @@ static void recent_files_menu_draw(const bContext * /*C*/, Menu *menu)
       RNA_string_set(&ptr, "filepath", recent->filepath);
       RNA_boolean_set(&ptr, "display_file_selector", false);
     }
+    uiItemS(layout);
+    uiItemO(layout, nullptr, ICON_TRASH, "WM_OT_clear_recent_files");
   }
   else {
     uiItemL(layout, IFACE_("No Recent Files"), ICON_NONE);

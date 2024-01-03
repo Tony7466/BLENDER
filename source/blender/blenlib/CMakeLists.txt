@@ -210,7 +210,7 @@ set(SRC
   BLI_cpp_type_make.hh
   BLI_cpp_types.hh
   BLI_cpp_types_make.hh
-  BLI_delaunay_2d.h
+  BLI_delaunay_2d.hh
   BLI_devirtualize_parameters.hh
   BLI_dial_2d.h
   BLI_disjoint_set.hh
@@ -524,6 +524,7 @@ if(WITH_GTESTS)
     tests/BLI_math_bits_test.cc
     tests/BLI_math_color_test.cc
     tests/BLI_math_geom_test.cc
+    tests/BLI_math_interp_test.cc
     tests/BLI_math_matrix_test.cc
     tests/BLI_math_matrix_types_test.cc
     tests/BLI_math_rotation_test.cc
@@ -570,8 +571,7 @@ if(WITH_GTESTS)
   set(TEST_LIB
     bf_blenlib
   )
-  include(GTestTesting)
-  blender_add_test_executable(blenlib "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_executable(BLI "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 
   add_subdirectory(tests/performance)
 endif()

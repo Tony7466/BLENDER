@@ -1159,7 +1159,8 @@ static BChunkList *bchunk_list_from_data_merge(const BArrayInfo *info,
   /* Warning, from now on don't use len(data) since we want to ignore chunks already matched. */
   size_t data_len = data_len_original;
 #define data_len_original invalid_usage
-#ifdef data_len_original /* Quiet warning. */
+#ifdef data_len_original
+  /* Quiet warning. */
 #endif
 
   const BChunkRef *chunk_list_reference_last = NULL;
@@ -1222,7 +1223,8 @@ static BChunkList *bchunk_list_from_data_merge(const BArrayInfo *info,
       BLI_assert(i != i_prev);
 
       if ((cref != chunk_list_reference_last) &&
-          bchunk_data_compare(cref->link, data, data_len, i_prev)) {
+          bchunk_data_compare(cref->link, data, data_len, i_prev))
+      {
         bchunk_list_append(info, bs_mem, chunk_list, cref->link);
         ASSERT_CHUNKLIST_SIZE(chunk_list, i);
         ASSERT_CHUNKLIST_DATA(chunk_list, data);

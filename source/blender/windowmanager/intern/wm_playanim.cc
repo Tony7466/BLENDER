@@ -920,7 +920,8 @@ static void build_pict_list_from_image_sequence(ListBase *picsbase,
     void *mem = nullptr;
     size_t size = -1;
     if (!buffer_from_filepath(
-            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message)) {
+            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message))
+    {
       has_error = true;
       size = 0;
     }
@@ -1143,11 +1144,11 @@ static void playanim_audio_stop(PlayState * /*ps*/)
 #endif
 }
 
-static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
+static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr ps_void_ptr)
 {
-  PlayState *ps = static_cast<PlayState *>(ps_void);
-  const GHOST_TEventType type = GHOST_GetEventType(evt);
-  GHOST_TEventDataPtr data = GHOST_GetEventData(evt);
+  PlayState *ps = static_cast<PlayState *>(ps_void_ptr);
+  const GHOST_TEventType type = GHOST_GetEventType(ghost_event);
+  GHOST_TEventDataPtr data = GHOST_GetEventData(ghost_event);
   /* Convert ghost event into value keyboard or mouse. */
   const int val = ELEM(type, GHOST_kEventKeyDown, GHOST_kEventButtonDown);
   GHOST_SystemHandle ghost_system = ps->ghost_data.system;
