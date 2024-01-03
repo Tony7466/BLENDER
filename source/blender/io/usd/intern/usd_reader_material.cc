@@ -431,7 +431,7 @@ void compute_node_loc(const int column, float *r_locx, float *r_locy, NodePlacem
   (*r_locx) = r_ctx->origx - column * r_ctx->horizontal_step;
 
   if (column >= r_ctx->column_offsets.size()) {
-    r_ctx->column_offsets.push_back(0.0f);
+    r_ctx->column_offsets.append(0.0f);
   }
 
   (*r_locy) = r_ctx->origy - r_ctx->column_offsets[column];

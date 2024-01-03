@@ -304,7 +304,7 @@ static bool merge_with_parent(USDPrimReader *reader)
 
 USDPrimReader *USDStageReader::collect_readers(Main *bmain,
                                                const pxr::UsdPrim &prim,
-                                               std::vector<USDPrimReader *> &r_readers)
+                                               blender::Vector<USDPrimReader *> &r_readers)
 {
   if (prim.IsA<pxr::UsdGeomImageable>()) {
     pxr::UsdGeomImageable imageable(prim);
@@ -326,11 +326,11 @@ USDPrimReader *USDStageReader::collect_readers(Main *bmain,
 
   pxr::UsdPrimSiblingRange children = prim.GetFilteredChildren(filter_predicate);
 
-  std::vector<USDPrimReader *> child_readers;
+  blender::Vector<USDPrimReader *> child_readers;
 
   for (const auto &childPrim : children) {
     if (USDPrimReader *child_reader = collect_readers(bmain, childPrim, r_readers)) {
-      child_readers.push_back(child_reader);
+      child_readers.append(child_reader);
     }
   }
 
@@ -349,7 +349,7 @@ USDPrimReader *USDStageReader::collect_readers(Main *bmain,
   /* Check if we can merge an Xform with its child prim. */
   if (child_readers.size() == 1) {
 
-    USDPrimReader *child_reader = child_readers.front();
+    USDPrimReader *child_reader = child_readers.first();
 
     if (merge_with_parent(child_reader)) {
       return child_reader;
@@ -359,7 +359,7 @@ USDPrimReader *USDStageReader::collect_readers(Main *bmain,
   if (prim.IsA<pxr::UsdShadeMaterial>()) {
     /* Record material path for later processing, if needed,
      * e.g., when importing all materials. */
-    material_paths_.push_back(prim.GetPath().GetAsString());
+    material_paths_.append(prim.GetPath().GetAsString());
 
     /* We don't create readers for materials, so return early. */
     return nullptr;
@@ -371,7 +371,7 @@ USDPrimReader *USDStageReader::collect_readers(Main *bmain,
     return nullptr;
   }
 
-  r_readers.push_back(reader);
+  r_readers.append(reader);
   reader->incref();
 
   /* Set each child reader's parent. */
@@ -402,12 +402,12 @@ void USDStageReader::collect_readers(Main *bmain)
     std::vector<pxr::UsdPrim> protos = stage_->GetPrototypes();
 
     for (const pxr::UsdPrim &proto_prim : protos) {
-      std::vector<USDPrimReader *> proto_readers;
+      blender::Vector<USDPrimReader *> proto_readers;
       collect_readers(bmain, proto_prim, proto_readers);
       proto_readers_.insert(std::make_pair(proto_prim.GetPath(), proto_readers));
 
       for (USDPrimReader *reader : proto_readers) {
-        readers_.push_back(reader);
+        readers_.append(reader);
         reader->incref();
       }
     }

@@ -8,6 +8,7 @@
 #include "WM_types.hh"
 
 #include "BLI_map.hh"
+#include "BLI_vector.hh"
 
 #include <pxr/usd/usdShade/material.h>
 
@@ -29,7 +30,7 @@ using ShaderToNodeMap = blender::Map<std::string, bNode *>;
 struct NodePlacementContext {
   float origx;
   float origy;
-  std::vector<float> column_offsets;
+  blender::Vector<float, 0> column_offsets;
   const float horizontal_step;
   const float vertical_step;
 
