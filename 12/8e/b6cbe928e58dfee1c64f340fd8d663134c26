@@ -1,1 +1,2 @@
 Referenced by commit 43394e41a8e, Fix Alembic point cloud streaming.
+Referenced by issue #109185, Instancing Geometry on Imported Alembic Particles produces extremely long render times when motion blur is enabled.
