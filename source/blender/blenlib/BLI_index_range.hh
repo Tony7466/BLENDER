@@ -314,6 +314,11 @@ class IndexRange {
     return IndexRange(start_ + size_ - new_size, new_size);
   }
 
+  constexpr int64_t from_end(int64_t i) const
+  {
+    return start_ + size_ - 1 - i;
+  }
+
   /**
    * Move the range forward or backward within the larger array. The amount may be negative,
    * but its absolute value cannot be greater than the existing start of the range.
