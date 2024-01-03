@@ -474,9 +474,9 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_debug_surfels_frag.glsl
   engines/eevee_next/shaders/eevee_debug_irradiance_grid_vert.glsl
   engines/eevee_next/shaders/eevee_debug_irradiance_grid_frag.glsl
-  engines/eevee_next/shaders/eevee_deferred_light_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_capture_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_combine_frag.glsl
+  engines/eevee_next/shaders/eevee_deferred_light_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_planar_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_tile_classify_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_tile_compact_vert.glsl
@@ -995,7 +995,6 @@ if(WITH_GTESTS)
     )
     set(TEST_LIB
     )
-    include(GTestTesting)
-    blender_add_test_lib(bf_draw_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+    blender_add_test_suite_lib(draw "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()
 endif()

@@ -1840,7 +1840,8 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     if (U.experimental.use_sculpt_texture_paint && ss->pbvh) {
       char *paint_canvas_key = BKE_paint_canvas_key_get(&scene->toolsettings->paint_mode, ob);
       if (ss->last_paint_canvas_key == nullptr ||
-          !STREQ(paint_canvas_key, ss->last_paint_canvas_key)) {
+          !STREQ(paint_canvas_key, ss->last_paint_canvas_key))
+      {
         MEM_SAFE_FREE(ss->last_paint_canvas_key);
         ss->last_paint_canvas_key = paint_canvas_key;
         BKE_pbvh_mark_rebuild_pixels(ss->pbvh);
@@ -1904,16 +1905,15 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
     return;
   }
 
-  char unique_name[MAX_CUSTOMDATA_LAYER_NAME];
-  BKE_id_attribute_calc_unique_name(&orig_me->id, "Color", unique_name);
+  const std::string unique_name = BKE_id_attribute_calc_unique_name(orig_me->id, "Color");
   if (!orig_me->attributes_for_write().add(
           unique_name, AttrDomain::Point, CD_PROP_COLOR, AttributeInitDefaultValue()))
   {
     return;
   }
 
-  BKE_id_attributes_active_color_set(&orig_me->id, unique_name);
-  BKE_id_attributes_default_color_set(&orig_me->id, unique_name);
+  BKE_id_attributes_active_color_set(&orig_me->id, unique_name.c_str());
+  BKE_id_attributes_default_color_set(&orig_me->id, unique_name.c_str());
   DEG_id_tag_update(&orig_me->id, ID_RECALC_GEOMETRY_ALL_MODES);
   BKE_mesh_tessface_clear(orig_me);
 
@@ -2512,7 +2512,8 @@ static SculptAttribute *sculpt_get_cached_layer(SculptSession *ss,
     SculptAttribute *attr = ss->temp_attributes + i;
 
     if (attr->used && STREQ(attr->name, name) && attr->proptype == proptype &&
-        attr->domain == domain) {
+        attr->domain == domain)
+    {
 
       return attr;
     }
