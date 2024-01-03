@@ -339,6 +339,9 @@ static void update_existing_bake_caches(NodesModifierData &nmd)
 
   Map<int, std::unique_ptr<bake::SimulationNodeCache>> new_simulation_cache_by_id;
   Map<int, std::unique_ptr<bake::BakeNodeCache>> new_bake_cache_by_id;
+  if (!nmd.node_group) {
+    return;
+  }
   for (const bNestedNodeRef &ref : nmd.node_group->nested_node_refs_span()) {
     const bNode *node = nmd.node_group->find_nested_node(ref.id);
     switch (node->type) {
