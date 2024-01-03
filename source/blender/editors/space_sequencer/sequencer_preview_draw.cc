@@ -561,7 +561,7 @@ static void sequencer_draw_display_buffer(const bContext *C,
 static ImBuf *sequencer_get_scope(Scene *scene, SpaceSeq *sseq, ImBuf *ibuf, bool draw_backdrop)
 {
   ImBuf *scope = nullptr;
-  SequencerScopes *scopes = &sseq->scopes;
+  SequencerScopes *scopes = &sseq->runtime->scopes;
 
   if (!draw_backdrop && (sseq->mainb != SEQ_DRAW_IMG_IMBUF || sseq->zebra != 0)) {
     sequencer_check_scopes(scopes, ibuf);

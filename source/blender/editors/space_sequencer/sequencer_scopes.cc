@@ -25,6 +25,25 @@
 #  include "BLI_timeit.hh"
 #endif
 
+SequencerScopes::~SequencerScopes()
+{
+  if (zebra_ibuf) {
+    IMB_freeImBuf(zebra_ibuf);
+  }
+  if (waveform_ibuf) {
+    IMB_freeImBuf(waveform_ibuf);
+  }
+  if (sep_waveform_ibuf) {
+    IMB_freeImBuf(sep_waveform_ibuf);
+  }
+  if (vector_ibuf) {
+    IMB_freeImBuf(vector_ibuf);
+  }
+  if (histogram_ibuf) {
+    IMB_freeImBuf(histogram_ibuf);
+  }
+}
+
 /* XXX(@ideasman42): why is this function better than BLI_math version?
  * only difference is it does some normalize after, need to double check on this. */
 static void rgb_to_yuv_normalized(const float rgb[3], float yuv[3])

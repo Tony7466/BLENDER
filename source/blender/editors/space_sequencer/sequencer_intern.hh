@@ -13,6 +13,8 @@
 #include "DNA_sequence_types.h"
 #include "RNA_access.hh"
 
+#include "sequencer_scopes.hh"
+
 /* Internal exports only. */
 
 class SeqQuadsBatch;
@@ -39,6 +41,23 @@ struct ListBase;
 
 #define DEFAULT_IMG_STRIP_LENGTH 25 /* XXX arbitrary but ok for now. */
 #define OVERLAP_ALPHA 180
+
+struct SpaceSeq_Runtime {
+  /** Required for Thumbnail job start condition. */
+  rctf last_thumbnail_area = {0, 0, 0, 0};
+  /** Stores lists of most recently displayed thumbnails. */
+  GHash *last_displayed_thumbnails = nullptr;
+  int rename_channel_index = 0;
+  float timeline_clamp_custom_range = 0;
+
+  SequencerScopes scopes;
+
+  SpaceSeq_Runtime() = default;
+  SpaceSeq_Runtime(const SpaceSeq_Runtime &) = delete;
+  void operator=(const SpaceSeq_Runtime &) = delete;
+
+  ~SpaceSeq_Runtime();
+};
 
 struct SeqChannelDrawContext {
   const bContext *C;
