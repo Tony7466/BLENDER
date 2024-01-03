@@ -190,7 +190,6 @@ static void recent_files_menu_draw(const bContext * /*C*/, Menu *menu)
 {
   uiLayout *layout = menu->layout;
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
-
   if (uiTemplateRecentFiles(layout, U.recent_files) == 0) {
     uiItemL(layout, IFACE_("No Recent Files"), ICON_NONE);
   }
