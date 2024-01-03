@@ -86,13 +86,10 @@ static int unpack_libraries_exec(bContext *C, wmOperator *op)
 /** \name Unpack Blend File Libraries Operator
  * \{ */
 
-static void unpack_libraries_warning(bContext * /* C */,
-                                     wmOperator * /* op */,
-                                     wmWarningDetails *warning)
+static int unpack_libraries_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  STRNCPY(warning->message, IFACE_("Creates directories, all new paths should work"));
-  STRNCPY(warning->confirm_button, IFACE_("Unpack"));
-  warning->icon = ALERT_ICON_INFO;
+  return WM_operator_confirm_message(
+      C, op, "Unpack Linked Libraries - creates directories, all new paths should work");
 }
 
 void FILE_OT_unpack_libraries(wmOperatorType *ot)
@@ -103,9 +100,8 @@ void FILE_OT_unpack_libraries(wmOperatorType *ot)
   ot->description = "Restore all packed linked data-blocks to their original locations";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = unpack_libraries_invoke;
   ot->exec = unpack_libraries_exec;
-  ot->warning = unpack_libraries_warning;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -161,13 +157,6 @@ static int pack_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void pack_all_warning(bContext * /* C */, wmOperator * /* op */, wmWarningDetails *warning)
-{
-  STRNCPY(warning->message,
-          IFACE_("Some images are mofified. These changes will be lost. Continue?"));
-  STRNCPY(warning->confirm_button, IFACE_("Pack"));
-}
-
 static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /* event */)
 {
   Main *bmain = CTX_data_main(C);
@@ -183,7 +172,8 @@ static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /* event
   }
 
   if (ima) {
-    return WM_operator_confirm(C, op, nullptr);
+    return WM_operator_confirm_message(
+        C, op, "Some images are painted on. These changes will be lost. Continue?");
   }
 
   return pack_all_exec(C, op);
@@ -199,7 +189,6 @@ void FILE_OT_pack_all(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = pack_all_exec;
   ot->invoke = pack_all_invoke;
-  ot->warning = pack_all_warning;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

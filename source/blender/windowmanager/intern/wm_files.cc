@@ -2327,14 +2327,6 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void save_homefile_warning(bContext * /*C*/, wmOperator * /*op*/, wmWarningDetails *warning)
-{
-  STRNCPY(warning->confirm_button, IFACE_("Save"));
-  warning->icon = ALERT_ICON_BLENDER;
-  warning->size = WM_WARNING_SIZE_LARGE;
-  warning->position = WM_WARNING_POSITION_CENTER;
-}
-
 void WM_OT_save_homefile(wmOperatorType *ot)
 {
   ot->name = "Save Startup File";
@@ -2343,7 +2335,6 @@ void WM_OT_save_homefile(wmOperatorType *ot)
 
   ot->invoke = WM_operator_confirm;
   ot->exec = wm_homefile_write_exec;
-  ot->warning = save_homefile_warning;
 }
 
 /** \} */
@@ -2507,19 +2498,6 @@ void WM_OT_read_userpref(wmOperatorType *ot)
   ot->exec = wm_userpref_read_exec;
 }
 
-static void wm_userpref_read_factory_warning(bContext * /*C*/,
-                                             wmOperator * /*op*/,
-                                             wmWarningDetails *warning)
-{
-  STRNCPY(warning->title, IFACE_("Load factory default preferences"));
-  STRNCPY(warning->message,
-          IFACE_("To make changes to preferences permanent, use \"Save Preferences\""));
-  STRNCPY(warning->confirm_button, IFACE_("Load"));
-  warning->icon = ALERT_ICON_BLENDER;
-  warning->size = WM_WARNING_SIZE_LARGE;
-  warning->position = WM_WARNING_POSITION_CENTER;
-}
-
 void WM_OT_read_factory_userpref(wmOperatorType *ot)
 {
   ot->name = "Load Factory Preferences";
@@ -2530,7 +2508,6 @@ void WM_OT_read_factory_userpref(wmOperatorType *ot)
 
   ot->invoke = WM_operator_confirm;
   ot->exec = wm_userpref_read_exec;
-  ot->warning = wm_userpref_read_factory_warning;
 
   read_factory_reset_props(ot);
 }
@@ -2753,37 +2730,16 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   /* omit poll to run in background mode */
 }
 
-static void read_factory_warning(bContext *C, wmOperator * /*op*/, wmWarningDetails *warning)
-{
-  STRNCPY(warning->title, IFACE_("Load factory default startup file and preferences."));
-  STRNCPY(warning->message,
-          IFACE_("To make changes to preferences permanent, use \"Save Preferences\""));
-  warning->icon = ALERT_ICON_BLENDER;
-  warning->confirm_default = true;
-  warning->cancel_default = false;
-
-  if (wm_file_or_session_data_has_unsaved_changes(CTX_data_main(C), CTX_wm_manager(C))) {
-    STRNCPY(warning->message2,
-            IFACE_("WARNING: Your file is unsaved. Proceeding will abandon your changes"));
-    warning->icon = ALERT_ICON_WARNING;
-    warning->confirm_default = false;
-    warning->cancel_default = true;
-  }
-
-  STRNCPY(warning->confirm_button, IFACE_("Load"));
-  warning->size = WM_WARNING_SIZE_LARGE;
-  warning->position = WM_WARNING_POSITION_CENTER;
-}
-
 void WM_OT_read_factory_settings(wmOperatorType *ot)
 {
   ot->name = "Load Factory Settings";
   ot->idname = "WM_OT_read_factory_settings";
-  ot->description = "Load factory default startup file and preferences";
+  ot->description =
+      "Load factory default startup file and preferences. "
+      "To make changes permanent, use \"Save Startup File\" and \"Save Preferences\"";
 
   ot->invoke = WM_operator_confirm;
   ot->exec = wm_homefile_read_exec;
-  ot->warning = read_factory_warning;
   /* Omit poll to run in background mode. */
 
   read_factory_reset_props(ot);

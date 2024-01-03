@@ -712,6 +712,11 @@ int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width);
 int WM_operator_redo_popup(bContext *C, wmOperator *op);
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);
 
+/**
+ * Can't be used as an invoke directly, needs message arg (can be NULL).
+ */
+int WM_operator_confirm_message(bContext *C, wmOperator *op, const char *message);
+
 /* Operator API. */
 
 void WM_operator_free(wmOperator *op);
