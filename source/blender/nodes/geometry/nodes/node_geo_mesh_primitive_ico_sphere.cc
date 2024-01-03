@@ -320,21 +320,21 @@ static Span<int3> base_face_edge_indices()
   return face_edges;
 }
 
-static void interpolate_edge_points(const int subdiv_verts_num,
-                                    const Span<float3> base_points,
-                                    MutableSpan<float3> edge_points)
+static void interpolate_edge_points(const int edge_verts_num,
+                                    const Span<float3> base_verts,
+                                    MutableSpan<float3> edge_verts)
 {
   SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_points = base_edge_point_indices();
 
-  const float lerp_factor = 1.0f / (subdiv_verts_num + 1);
+  const float lerp_factor = 1.0f / (edge_verts_num + 1);
   for (const int edge_i : IndexRange(base_edges_num)) {
-    MutableSpan<float3> points = edge_points.slice(edge_i * subdiv_verts_num, subdiv_verts_num);
+    MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
 
     const int2 edge = base_edge_points[edge_i];
 
-    const float3 &point_a = base_points[edge[0]];
-    const float3 &point_b = base_points[edge[1]];
+    const float3 &point_a = base_verts[edge[0]];
+    const float3 &point_b = base_verts[edge[1]];
 
     const float3 normalized_a = math::normalize(point_a);
     const float3 normalized_b = math::normalize(point_b);
@@ -344,16 +344,16 @@ static void interpolate_edge_points(const int subdiv_verts_num,
     const math::AngleRadian rotation = math::angle_between<float>(normalized_a, normalized_b);
 
     math::AngleRadian steps(0.0f);
-    for (const int i : IndexRange(subdiv_verts_num)) {
+    for (float3 &vert : verts) {
       steps += rotation * lerp_factor;
       const math::AxisAngle axis(normal, steps);
-      points[i] = math::transform_point(math::to_quaternion(axis), point_a);
+      vert = math::transform_point(math::to_quaternion(axis), point_a);
     }
   }
 }
 
 static void interpolate_face_points(const int line_subdiv,
-                                    const Span<float3> base_points,
+                                    const Span<float3> base_verts,
                                     MutableSpan<float3> faces_verts)
 {
   SCOPED_TIMER_AVERAGED(__func__);
@@ -367,9 +367,9 @@ static void interpolate_face_points(const int line_subdiv,
   for (const int face_i : IndexRange(base_faces_num)) {
     const int3 face = base_face_points[face_i];
 
-    const float3 &point_a = base_points[face[0]];
-    const float3 &point_b = base_points[face[1]];
-    const float3 &point_c = base_points[face[2]];
+    const float3 &point_a = base_verts[face[0]];
+    const float3 &point_b = base_verts[face[1]];
+    const float3 &point_c = base_verts[face[2]];
 
     const float3 normalized_a = math::normalize(point_a);
     const float3 normalized_b = math::normalize(point_b);
@@ -449,16 +449,16 @@ static void vert_edge_topology(const int edge_edges_num,
 {
   SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edges = base_edge_point_indices();
-  if (edge_edges_num == 1) {
+  if (edge_edges.size() == base_edges.size()) {
     edge_edges.copy_from(base_edges);
     return;
   }
 
-  const IndexRange edges_points(base_verts_num, base_edges_num * edge_verts_num);
+  const IndexRange edges_verts(base_verts_num, base_edges_num * edge_verts_num);
   for (const int edge_i : IndexRange(base_edges_num)) {
     const int2 base_edge = base_edges[edge_i];
     MutableSpan<int2> edges = edge_edges.slice(edge_i * edge_edges_num, edge_edges_num);
-    const IndexRange points = edges_points.slice(edge_i * edge_verts_num, edge_verts_num);
+    const IndexRange points = edges_verts.slice(edge_i * edge_verts_num, edge_verts_num);
     fill_edge_line(points, base_edge, edges);
   }
 }
