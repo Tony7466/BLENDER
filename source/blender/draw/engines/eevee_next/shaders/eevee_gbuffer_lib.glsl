@@ -68,13 +68,6 @@ struct GBufferReader {
 
   ClosureUndetermined closures[GBUFFER_LAYER_MAX];
 
-  bool has_diffuse;
-  bool has_translucent;
-  bool has_reflection;
-  bool has_refraction;
-  bool has_sss;
-  bool has_any_surface;
-  uint header;
   int closure_count;
   /* Only used for book-keeping when reading. */
   int layer_data;
@@ -301,42 +294,6 @@ void gbuffer_register_closure(inout GBufferReader gbuf, ClosureUndetermined cl)
 {
   gbuf.closures[gbuf.closure_count] = cl;
   gbuf.closure_count++;
-  switch (cl.type) {
-    case CLOSURE_NONE_ID:
-      /* TODO(fclem): Assert. */
-      break;
-    case CLOSURE_BSSRDF_BURLEY_ID:
-      /* TODO(fclem): BSSSRDF closure. */
-      gbuf.data.diffuse.N = cl.N;
-      gbuf.data.diffuse.color = cl.color;
-      gbuf.data.diffuse.sss_radius = cl.data.xyz;
-      gbuf.has_diffuse = true;
-      gbuf.has_sss = true;
-      break;
-    case CLOSURE_BSDF_DIFFUSE_ID:
-      gbuf.data.diffuse.N = cl.N;
-      gbuf.data.diffuse.color = cl.color;
-      gbuf.has_diffuse = true;
-      break;
-    case CLOSURE_BSDF_TRANSLUCENT_ID:
-      gbuf.data.translucent.N = cl.N;
-      gbuf.data.translucent.color = cl.color;
-      gbuf.has_translucent = true;
-      break;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-      gbuf.data.reflection.N = cl.N;
-      gbuf.data.reflection.color = cl.color;
-      gbuf.data.reflection.roughness = cl.data.x;
-      gbuf.has_reflection = true;
-      break;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-      gbuf.data.refraction.N = cl.N;
-      gbuf.data.refraction.color = cl.color;
-      gbuf.data.refraction.roughness = cl.data.x;
-      gbuf.data.refraction.ior = cl.data.y;
-      gbuf.has_refraction = true;
-      break;
-  }
 }
 
 void gbuffer_append_data(inout GBufferWriter gbuf, vec4 data)
@@ -658,58 +615,24 @@ GBufferWriter gbuffer_pack(GBufferDataUndetermined data_in)
   return gbuf;
 }
 
-/* Populate the GBufferReader only based on the header. The rest of the data is undefined. */
-GBufferReader gbuffer_read_header(uint header)
+/* Return the number of closure as encoded in the give header value. */
+uint gbuffer_closure_count(uint header)
 {
-  GBufferReader gbuf;
-  gbuf.header = header;
-  gbuf.has_any_surface = (header != 0u);
-  gbuf.has_diffuse = false;
-  gbuf.has_reflection = false;
-  gbuf.has_refraction = false;
-  gbuf.has_translucent = false;
-  gbuf.has_sss = false;
-  gbuf.closure_count = 0;
+  uvec4 closure_types = (uvec4(header) >> uvec4(0u, 4u, 8u, 12u)) & 15u;
 
-  for (int layer = 0; layer < 4; layer++) {
-    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
-    switch (mode) {
-      case GBUF_NONE:
-        break;
-      case GBUF_DIFFUSE:
-        gbuf.has_diffuse = true;
-        break;
-      case GBUF_TRANSLUCENT:
-        gbuf.has_translucent = true;
-        break;
-      case GBUF_SUBSURFACE:
-        gbuf.has_diffuse = true;
-        gbuf.has_sss = true;
-        break;
-      case GBUF_METAL_CLEARCOAT:
-      case GBUF_REFLECTION_COLORLESS:
-      case GBUF_REFLECTION:
-        gbuf.has_reflection = true;
-        break;
-      case GBUF_REFRACTION_COLORLESS:
-      case GBUF_REFRACTION:
-        gbuf.has_refraction = true;
-        break;
-    }
+  if (closure_types.x == GBUF_METAL_CLEARCOAT) {
+    return 2u;
   }
-
-  return gbuf;
+  return reduce_add(vec4(not(equal(closure_types, uvec4(0u)))));
 }
 
 GBufferReader gbuffer_read_header_closure_types(uint header)
 {
   GBufferReader gbuf;
-  gbuf.header = header;
-  gbuf.has_any_surface = (header != 0u);
   gbuf.closure_count = 0;
 
   for (int layer = 0; layer < 4; layer++) {
-    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
+    GBufferMode mode = gbuffer_header_unpack(header, layer);
     switch (mode) {
       case GBUF_NONE:
         break;
@@ -743,7 +666,6 @@ GBufferReader gbuffer_read_header_closure_types(uint header)
         break;
     }
   }
-
   return gbuf;
 }
 
@@ -754,19 +676,13 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
 {
   GBufferReader gbuf;
   gbuf.texel = texel;
-  gbuf.header = fetchGBuffer(header_tx, texel);
-  gbuf.has_any_surface = (gbuf.header != 0u);
-  gbuf.has_diffuse = false;
-  gbuf.has_reflection = false;
-  gbuf.has_refraction = false;
-  gbuf.has_translucent = false;
-  gbuf.has_sss = false;
   gbuf.data.thickness = 0.0;
   gbuf.closure_count = 0;
   gbuf.layer_data = 0;
   gbuf.layer_normal = 0;
 
-  if (!gbuf.has_any_surface) {
+  uint header = fetchGBuffer(header_tx, texel);
+  if (header == 0u) {
     return gbuf;
   }
 
@@ -797,8 +713,9 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
     gbuf.closures[layer].type = CLOSURE_NONE_ID;
   }
 
+  bool has_additional_data = false;
   for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
-    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
+    GBufferMode mode = gbuffer_header_unpack(header, layer);
     switch (mode) {
       case GBUF_NONE:
         break;
@@ -807,9 +724,11 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
         break;
       case GBUF_TRANSLUCENT:
         gbuffer_closure_translucent_load(gbuf, closure_tx, normal_tx);
+        has_additional_data = true;
         break;
       case GBUF_SUBSURFACE:
         gbuffer_closure_subsurface_load(gbuf, closure_tx, normal_tx);
+        has_additional_data = true;
         break;
       case GBUF_REFLECTION:
         gbuffer_closure_reflection_load(gbuf, closure_tx, normal_tx);
@@ -829,7 +748,7 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
     }
   }
 
-  if (gbuf.has_sss || gbuf.has_translucent) {
+  if (has_additional_data) {
     gbuffer_additional_info_load(gbuf, normal_tx);
   }
 

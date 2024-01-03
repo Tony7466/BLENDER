@@ -18,18 +18,18 @@ void main()
 
   ivec2 tile_co = texel >> closure_tile_size_shift;
 
-  GBufferReader gbuf = gbuffer_read_header(in_gbuffer_header);
+  uint closure_count = gbuffer_closure_count(in_gbuffer_header);
 
-  if (gbuf.closure_count > 0) {
+  if (closure_count > 0) {
     imageStore(tile_mask_img, ivec3(tile_co, 0), uvec4(1u));
   }
-  if (gbuf.closure_count > 1) {
+  if (closure_count > 1) {
     imageStore(tile_mask_img, ivec3(tile_co, 1), uvec4(1u));
   }
-  if (gbuf.closure_count > 2) {
+  if (closure_count > 2) {
     imageStore(tile_mask_img, ivec3(tile_co, 2), uvec4(1u));
   }
-  if (gbuf.closure_count > 3) {
+  if (closure_count > 3) {
     imageStore(tile_mask_img, ivec3(tile_co, 3), uvec4(1u));
   }
 }

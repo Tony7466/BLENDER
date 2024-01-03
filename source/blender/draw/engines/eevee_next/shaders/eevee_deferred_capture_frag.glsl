@@ -19,7 +19,7 @@ void main()
 
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
-  if (!gbuf.has_any_surface) {
+  if (gbuf.closure_count == 0) {
     return;
   }
 

@@ -93,12 +93,14 @@ void main(void)
   vec3 vP = drw_point_screen_to_view(vec3(center_uv, depth));
 
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
-
-  if (!gbuf.has_sss) {
+  if (gbuf.closures[0].type != CLOSURE_BSSRDF_BURLEY_ID) {
     return;
   }
 
-  float max_radius = reduce_max(gbuf.data.diffuse.sss_radius);
+  /* TODO SSS closure. */
+  ClosureDiffuse closure = to_closure_diffuse(gbuf.closures[0]);
+
+  float max_radius = reduce_max(closure.sss_radius);
 
   float homcoord = ProjectionMatrix[2][3] * vP.z + ProjectionMatrix[3][3];
   vec2 sample_scale = vec2(ProjectionMatrix[0][0], ProjectionMatrix[1][1]) *
@@ -111,10 +113,9 @@ void main(void)
   }
 
   /* Avoid too small radii that have float imprecision. */
-  vec3 clamped_sss_radius = max(vec3(1e-4), gbuf.data.diffuse.sss_radius / max_radius) *
-                            max_radius;
+  vec3 clamped_sss_radius = max(vec3(1e-4), closure.sss_radius / max_radius) * max_radius;
   /* Scale albedo because we can have HDR value caused by BSDF sampling. */
-  vec3 albedo = gbuf.data.diffuse.color / max(1e-6, reduce_max(gbuf.data.diffuse.color));
+  vec3 albedo = closure.color / max(1e-6, reduce_max(closure.color));
   vec3 d = burley_setup(clamped_sss_radius, albedo);
 
   /* Do not rotate too much to avoid too much cache misses. */

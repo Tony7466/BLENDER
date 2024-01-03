@@ -64,9 +64,11 @@ void main()
   }
 
   /* TODO(fclem): Split thickness computation. */
-  float thickness = (gbuf.has_translucent) ? gbuf.data.thickness : 0.0;
+  float thickness = gbuf.data.thickness;
 #ifdef MAT_SUBSURFACE
-  if (gbuf.has_sss) {
+  /* NOTE: BSSRDF is supposed to always be the first closure. */
+  bool has_sss = gbuf.closures[0].type == CLOSURE_BSSRDF_BURLEY_ID;
+  if (has_sss) {
     float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
     thickness = (shadow_thickness != THICKNESS_NO_VALUE) ?
                     max(shadow_thickness, gbuf.data.thickness) :
@@ -84,8 +86,7 @@ void main()
   light_eval(stack, P, Ng, V, vPz, thickness);
 
 #ifdef MAT_SUBSURFACE
-  /* NOTE: BSSRDF is supposed to always be the first closure. */
-  if (gbuf.closures[0].type == CLOSURE_BSSRDF_BURLEY_ID) {
+  if (has_sss) {
     /* Add to diffuse light for processing inside the Screen Space SSS pass.
      * The tranlucent light is not outputed as a separate quantity because
      * it is over the closure_count. */
