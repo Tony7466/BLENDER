@@ -2116,7 +2116,7 @@ float BKE_brush_sample_tex_3d(const Scene *scene,
     if (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) {
       /* keep coordinates relative to mouse */
 
-      rotation += ups->brush_rotation;
+      rotation -= ups->brush_rotation;
 
       x = point_2d[0] - ups->tex_mouse[0];
       y = point_2d[1] - ups->tex_mouse[1];
@@ -2134,7 +2134,7 @@ float BKE_brush_sample_tex_3d(const Scene *scene,
       y = point_2d[1];
     }
     else if (mtex->brush_map_mode == MTEX_MAP_MODE_RANDOM) {
-      rotation += ups->brush_rotation;
+      rotation -= ups->brush_rotation;
       /* these contain a random coordinate */
       x = point_2d[0] - ups->tex_mouse[0];
       y = point_2d[1] - ups->tex_mouse[1];
@@ -2149,8 +2149,7 @@ float BKE_brush_sample_tex_3d(const Scene *scene,
      * the texture is not rotated by skipping the calls to
      * atan2, sqrtf, sin, and cos. */
     if (rotation > 0.001f || rotation < -0.001f) {
-      /* Since we are sampling, rotation must be negated */
-      const float angle = atan2f(y, x) - rotation;
+      const float angle = atan2f(y, x) + rotation;
       const float flen = sqrtf(x * x + y * y);
 
       x = flen * cosf(angle);
@@ -2230,7 +2229,7 @@ float BKE_brush_sample_masktex(
     if (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) {
       /* keep coordinates relative to mouse */
 
-      rotation += ups->brush_rotation_sec;
+      rotation -= ups->brush_rotation_sec;
 
       x = point_2d[0] - ups->mask_tex_mouse[0];
       y = point_2d[1] - ups->mask_tex_mouse[1];
@@ -2248,7 +2247,7 @@ float BKE_brush_sample_masktex(
       y = point_2d[1];
     }
     else if (mtex->brush_map_mode == MTEX_MAP_MODE_RANDOM) {
-      rotation += ups->brush_rotation_sec;
+      rotation -= ups->brush_rotation_sec;
       /* these contain a random coordinate */
       x = point_2d[0] - ups->mask_tex_mouse[0];
       y = point_2d[1] - ups->mask_tex_mouse[1];
