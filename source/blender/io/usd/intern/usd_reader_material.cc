@@ -725,7 +725,8 @@ static IntermediateNode add_scale_bias(const pxr::UsdShadeShader &usd_shader,
 
   /* Nothing to be done if the values match their defaults. */
   if (scale == pxr::GfVec4f{1.0f, 1.0f, 1.0f, 1.0f} &&
-      bias == pxr::GfVec4f{0.0f, 0.0f, 0.0f, 0.0f}) {
+      bias == pxr::GfVec4f{0.0f, 0.0f, 0.0f, 0.0f})
+  {
     return {};
   }
 
