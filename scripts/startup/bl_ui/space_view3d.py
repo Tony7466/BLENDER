@@ -8171,6 +8171,10 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.menu("VIEW3D_MT_mirror", text="Mirror Points")
 
+            col.separator()
+
+            col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
+
             # Removal Operators
             col.separator()
 
@@ -8192,6 +8196,10 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.separator()
 
             col.menu("VIEW3D_MT_mirror")
+
+            col.separator()
+
+            col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
 
 
 def draw_gpencil_layer_active(context, layout):
