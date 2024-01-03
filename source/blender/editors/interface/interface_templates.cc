@@ -7281,7 +7281,6 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
     UI_tooltip_image_field_add(tip, thumb, size);
     IMB_freeImBuf(thumb);
   }
-
 }
 
 int uiTemplateRecentFiles(uiLayout *layout, int rows)
@@ -7302,7 +7301,6 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
                 WM_OP_INVOKE_DEFAULT,
                 UI_ITEM_NONE,
                 &ptr);
-
     RNA_string_set(&ptr, "filepath", recent->filepath);
     RNA_boolean_set(&ptr, "display_file_selector", false);
 
