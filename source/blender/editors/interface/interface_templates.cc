@@ -7199,15 +7199,10 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
 {
   char *path = (char *)argN;
 
-  /* Filename. */
-  //UI_tooltip_text_field_add(
-  //    tip, BLI_strdup(path), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
-  //UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
-
   /* File path. */
   char root[FILE_MAX];
   BLI_path_split_dir_part(path, root, FILE_MAX);
-  UI_tooltip_text_field_add(tip, BLI_strdup(root), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+  UI_tooltip_text_field_add(tip, BLI_strdup(root), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
   UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
 
   /* Blender version. */
