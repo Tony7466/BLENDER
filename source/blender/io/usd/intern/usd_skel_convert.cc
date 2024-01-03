@@ -39,6 +39,7 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
+#include "BLI_map.hh"
 #include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_string.h"
@@ -121,7 +122,7 @@ void add_bezt(FCurve *fcu,
 void import_skeleton_curves(Main *bmain,
                             Object *arm_obj,
                             const pxr::UsdSkelSkeletonQuery &skel_query,
-                            const std::map<pxr::TfToken, std::string> &joint_to_bone_map,
+                            const blender::Map<pxr::TfToken, std::string> &joint_to_bone_map,
                             ReportList *reports)
 
 {
@@ -129,7 +130,7 @@ void import_skeleton_curves(Main *bmain,
     return;
   }
 
-  if (joint_to_bone_map.empty()) {
+  if (joint_to_bone_map.is_empty()) {
     return;
   }
 
@@ -163,9 +164,9 @@ void import_skeleton_curves(Main *bmain,
 
   /* Iterate over the joints and create the corresponding curves for the bones. */
   for (const pxr::TfToken &joint : joint_order) {
-    std::map<pxr::TfToken, std::string>::const_iterator it = joint_to_bone_map.find(joint);
+    const std::string *name = joint_to_bone_map.lookup_ptr(joint);
 
-    if (it == joint_to_bone_map.end()) {
+    if (name == nullptr) {
       /* This joint doesn't correspond to any bone we created.
        * Add null placeholders for the channel curves. */
       loc_curves.append(nullptr);
@@ -181,23 +182,23 @@ void import_skeleton_curves(Main *bmain,
       continue;
     }
 
-    bActionGroup *grp = action_groups_add_new(act, it->second.c_str());
+    bActionGroup *grp = action_groups_add_new(act, name->c_str());
 
     /* Add translation curves. */
-    std::string rna_path = "pose.bones[\"" + it->second + "\"].location";
+    std::string rna_path = "pose.bones[\"" + *name + "\"].location";
     loc_curves.append(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
     loc_curves.append(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
     loc_curves.append(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
 
     /* Add rotation curves. */
-    rna_path = "pose.bones[\"" + it->second + "\"].rotation_quaternion";
+    rna_path = "pose.bones[\"" + *name + "\"].rotation_quaternion";
     rot_curves.append(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
     rot_curves.append(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
     rot_curves.append(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
     rot_curves.append(create_chan_fcurve(act, grp, 3, rna_path, num_samples));
 
     /* Add scale curves. */
-    rna_path = "pose.bones[\"" + it->second + "\"].scale";
+    rna_path = "pose.bones[\"" + *name + "\"].scale";
     scale_curves.append(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
     scale_curves.append(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
     scale_curves.append(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
@@ -721,7 +722,7 @@ void import_skeleton(Main *bmain,
   /* Keep track of the bones we create for each joint.
    * We'll need this when creating animation curves
    * later. */
-  std::map<pxr::TfToken, std::string> joint_to_bone_map;
+  blender::Map<pxr::TfToken, std::string> joint_to_bone_map;
 
   /* Create the bones. */
   for (const pxr::TfToken &joint : joint_order) {
@@ -736,7 +737,7 @@ void import_skeleton(Main *bmain,
       edit_bones.append(nullptr);
       continue;
     }
-    joint_to_bone_map.insert(std::make_pair(joint, bone->name));
+    joint_to_bone_map.add(joint, bone->name);
     edit_bones.append(bone);
   }
 

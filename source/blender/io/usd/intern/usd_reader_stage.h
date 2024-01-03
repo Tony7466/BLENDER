@@ -8,6 +8,7 @@ struct Main;
 #include "WM_types.hh"
 
 #include "usd.h"
+#include "usd_hash_types.h"
 #include "usd_reader_prim.h"
 
 #include <pxr/usd/usd/stage.h>
@@ -23,7 +24,7 @@ namespace blender::io::usd {
  * Map a USD prototype prim path to the list of readers that convert
  * the prototype data.
  */
-using ProtoReaderMap = std::map<pxr::SdfPath, blender::Vector<USDPrimReader *>>;
+using ProtoReaderMap = blender::Map<pxr::SdfPath, blender::Vector<USDPrimReader *>>;
 
 class USDStageReader {
 
