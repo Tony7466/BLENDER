@@ -234,30 +234,30 @@ class TriangleRange {
 
 class SphericalIterator {
  private:
-  float3 previous_;
-  float3 current_;
-  float product_;
+  /* Float have not enough precision for iteration over large subdivision. */
+  double3 previous_;
+  double3 current_;
+  double product_;
 
  public:
-  SphericalIterator(const float3 &begin, const float3 &next, const float product)
+  SphericalIterator(const double3 begin, const double3 next, const double product)
       : previous_(begin), current_(next), product_(product)
   {
-    BLI_assert(math::is_unit_scale(begin) && math::is_unit_scale(next));
   }
 
-  static SphericalIterator between_points(const float3 from, const float3 &to, const int steps)
+  static SphericalIterator between_points(const double3 from, const double3 &to, const int steps)
   {
-    const float3 normal = math::normalize(math::cross_tri(float3(0.0f), from, to));
-    const math::AngleRadian rotation = math::angle_between<float>(from, to) / steps;
-    const float reflection_factor = math::cos(rotation) * 2.0f;
-    const math::AxisAngle axis(normal, rotation);
+    const double3 normal = math::normalize(math::cross_tri(double3(0.0f), from, to));
+    const math::AngleRadianBase<double> rotation = math::angle_between<double>(from, to) / steps;
+    const double reflection_factor = math::cos(rotation) * 2.0f;
+    const math::AxisAngleBase<double, math::AngleRadianBase<double>> axis(normal, rotation);
     return SphericalIterator(
         from, math::transform_point(math::to_quaternion(axis), from), reflection_factor);
   }
 
   SphericalIterator &operator++()
   {
-    const float3 next = current_ * product_ - previous_;
+    const double3 next = current_ * product_ - previous_;
     previous_ = current_;
     current_ = next;
     return *this;
@@ -270,7 +270,7 @@ class SphericalIterator {
     return copied_iterator;
   }
 
-  float3 operator*() const
+  double3 operator*() const
   {
     return current_;
   }
@@ -403,13 +403,13 @@ static void interpolate_edge_points(const int edge_verts_num,
   for (const int edge_i : IndexRange(base_edges_num)) {
     MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
     const int2 edge = base_edge_points[edge_i];
-    const float3 vert_a = base_verts[edge[0]];
-    const float3 vert_b = base_verts[edge[1]];
+    const double3 vert_a(base_verts[edge[0]]);
+    const double3 vert_b(base_verts[edge[1]]);
 
     SphericalIterator rotation = SphericalIterator::between_points(
         vert_a, vert_b, edge_verts_num + 1);
     for (float3 &vert : verts) {
-      vert = *rotation;
+      vert = float3(*rotation);
       rotation++;
     }
   }
@@ -430,9 +430,9 @@ static void interpolate_face_points(const int line_subdiv,
   for (const int face_i : IndexRange(base_faces_num)) {
     const int3 face = base_face_points[face_i];
 
-    const float3 &vert_a = base_verts[face[0]];
-    const float3 &vert_b = base_verts[face[1]];
-    const float3 &vert_c = base_verts[face[2]];
+    const double3 vert_a(base_verts[face[0]]);
+    const double3 vert_b(base_verts[face[1]]);
+    const double3 vert_c(base_verts[face[2]]);
 
     SphericalIterator rotation_ac = SphericalIterator::between_points(vert_a, vert_c, steps);
     SphericalIterator rotation_bc = SphericalIterator::between_points(vert_b, vert_c, steps);
@@ -445,7 +445,7 @@ static void interpolate_face_points(const int line_subdiv,
       rotation_ac++;
       rotation_bc++;
       for (float3 &vert : level_verts) {
-        vert = *rotation_ab;
+        vert = float3(*rotation_ab);
         rotation_ab++;
       }
     }
@@ -455,18 +455,18 @@ static void interpolate_face_points(const int line_subdiv,
 template<typename Func>
 static void edge_line_points(const int2 ends, MutableSpan<int2> edges, Func &&func)
 {
-  MutableSpan<int> edge_verts = edges.cast<int>();
-  edge_verts.first() = ends[0];
-  edge_verts.last() = ends[1];
-  edge_verts = edge_verts.drop_back(1).drop_front(1);
+  MutableSpan<int> edge_verts = edges.cast<int>().drop_back(1).drop_front(1);
   if (UNLIKELY(edge_verts.is_empty())) {
+    edges.first() = ends;
     return;
   }
+  edges.first()[0] = ends[0];
   for (const int i : IndexRange(edges.size() - 1)) {
     const int vert_i = func(i);
     edge_verts[i * 2 + 0] = vert_i;
     edge_verts[i * 2 + 1] = vert_i;
   }
+  edges.last()[1] = ends[1];
 }
 
 static void vert_edge_topology(const int edge_edges_num,
