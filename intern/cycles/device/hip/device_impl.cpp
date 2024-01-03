@@ -116,7 +116,7 @@ HIPDevice::HIPDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
   hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
   hipDevArchitecture = major * 100 + minor * 10;
 
-  // get hip Runtime Version needed for memory types
+  /* Get hip runtime Version needed for memory types. */
   hip_assert(hipRuntimeGetVersion(&hipRuntimeVersion));
 
   /* Pop context set by hipCtxCreate. */

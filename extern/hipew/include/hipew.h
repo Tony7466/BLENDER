@@ -185,9 +185,10 @@ typedef struct textureReference {
 
 typedef textureReference* hipTexRef;
 
-/** ROCM 6 and ROCM 5 memory types are different.  
-  For now, we include both in the enum and then use the get_hip_memory_type
-  Function to convert.  When removing ROCM5 compatibility this can be simplified.
+/**
+ * ROCm 6 and ROCm 5 memory types are different.
+ * For now, we include both in the enum and then use the get_hip_memory_type
+ * Function to convert. When removing ROCm 5 compatibility this can be simplified.
 */
 typedef enum hipMemoryType {
   hipMemoryTypeHost_v5 = 0x00,
