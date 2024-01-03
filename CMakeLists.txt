@@ -94,7 +94,6 @@ endif()
 # Load Blender's Local Macros
 
 include(build_files/cmake/macros.cmake)
-include(build_files/cmake/testing.cmake)
 
 # -----------------------------------------------------------------------------
 # Initialize Project
@@ -2192,6 +2191,10 @@ endif()
 # message(STATUS "Using CFLAGS: ${CMAKE_C_FLAGS}")
 # message(STATUS "Using CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 
+# -----------------------------------------------------------------------------
+# Testing Functions
+
+include(build_files/cmake/testing.cmake)
 
 # -----------------------------------------------------------------------------
 # Add Sub-Directories
