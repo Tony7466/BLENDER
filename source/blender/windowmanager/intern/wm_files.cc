@@ -3585,7 +3585,7 @@ static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator * /*op*/)
 
 void WM_OT_clear_recent_files(wmOperatorType *ot)
 {
-  ot->name = "Clear Recent Files";
+  ot->name = "Clear Recent Files List";
   ot->idname = "WM_OT_clear_recent_files";
   ot->description = "Clear the Recent Files List";
 
