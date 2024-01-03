@@ -20,20 +20,16 @@ void main()
 
   GBufferReader gbuf = gbuffer_read_header(in_gbuffer_header);
 
-  if (gbuf.has_diffuse) {
+  if (gbuf.closure_count > 0) {
     imageStore(tile_mask_img, ivec3(tile_co, 0), uvec4(1u));
   }
-  if (gbuf.has_reflection) {
+  if (gbuf.closure_count > 1) {
     imageStore(tile_mask_img, ivec3(tile_co, 1), uvec4(1u));
   }
-  if (gbuf.has_refraction) {
+  if (gbuf.closure_count > 2) {
     imageStore(tile_mask_img, ivec3(tile_co, 2), uvec4(1u));
   }
-  if (gbuf.has_translucent) {
-    imageStore(tile_mask_img, ivec3(tile_co, 3), uvec4(1u));
-  }
-  /* TODO(fclem): For now, override SSS if we have translucency. */
-  else if (gbuf.has_sss) {
+  if (gbuf.closure_count > 3) {
     imageStore(tile_mask_img, ivec3(tile_co, 3), uvec4(1u));
   }
 }
