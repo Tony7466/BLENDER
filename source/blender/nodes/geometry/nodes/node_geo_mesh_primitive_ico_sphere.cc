@@ -23,6 +23,8 @@
 #include "BLI_ordered_edge.hh"
 #include "BLI_span.hh"
 
+#include "BLI_timeit.hh"
+
 #include "GEO_randomize.hh"
 
 #include "bmesh.hh"
@@ -145,6 +147,8 @@ static constexpr int base_face_quads = base_faces_num / 2;
  * In other words: /return = floor + floor - 1 + floor - 2 + ... 0. */
 static constexpr int pyramid_sum(const int floor)
 {
+  /* Zero level have zero length which one is known from prefix sum from -1 level. */
+  BLI_assert(floor >= -1);
   return floor * (floor + 1) / 2;
 }
 
@@ -156,8 +160,52 @@ static constexpr IndexRange pyramid_slice(const int floor, const int i)
   return IndexRange(total_size).take_back(begin).drop_back(end);
 }
 
+class TriangleRange {
+ private:
+  int base_;
+  int total_;
+
+ public:
+  TriangleRange(const int base) : base_(base), total_(pyramid_sum(base)) {}
+
+  IndexRange slice_at(const int level_i) const
+  {
+    const int begin = pyramid_sum(base_ - level_i);
+    const int end = pyramid_sum(base_ - 1 - level_i);
+    return IndexRange(total_ - begin, begin - end);
+  }
+
+  int start_of(const int level_i) const
+  {
+    const int begin = pyramid_sum(base_ - level_i);
+    return total_ - begin;
+  }
+
+  int end_of(const int level_i) const
+  {
+    const int end = pyramid_sum(base_ - 1 - level_i);
+    return total_ - end;
+  }
+
+  int total() const
+  {
+    return total_;
+  }
+
+  int hight() const
+  {
+    return base_;
+  }
+
+  TriangleRange drop_bottom(const int levels_num) const
+  {
+    return TriangleRange(math::max<int>(0, base_ - levels_num));
+  }
+};
+
 static void base_ico_sphere_positions(const float radius, MutableSpan<float3> positions)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   positions.first() = float3(0.0f, 0.0f, 1.0f);
 
   const float latitude = math::atan(0.5f);
@@ -185,6 +233,7 @@ static void base_ico_sphere_positions(const float radius, MutableSpan<float3> po
 
 static Span<int2> base_edge_point_indices()
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   static const auto edge_points = []() -> std::array<int2, base_edges_num> {
     std::array<int2, base_edges_num> edge_points;
 
@@ -216,6 +265,7 @@ static Span<int2> base_edge_point_indices()
 
 static Span<int3> base_face_point_indices()
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_points = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_points;
 
@@ -245,6 +295,7 @@ static Span<int3> base_face_point_indices()
 
 static Span<int3> base_face_edge_indices()
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_edges = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_edges;
 
@@ -269,68 +320,101 @@ static Span<int3> base_face_edge_indices()
   return face_edges;
 }
 
-static float3 polar_lert(const float3 &a, const float3 &b, const float factor)
-{
-  const float3 normalized_a = math::normalize(a);
-  const float3 normalized_b = math::normalize(b);
-
-  const float3 normal = math::normalize(math::cross_tri(float3(0.0f), normalized_a, normalized_b));
-  const math::AngleRadian rotation = math::angle_between<float>(normalized_a, normalized_b);
-
-  const math::AxisAngle axis(normal, rotation * factor);
-  return math::transform_point(math::to_quaternion(axis), a);
-}
-
 static void interpolate_edge_points(const int subdiv_verts_num,
                                     const Span<float3> base_points,
                                     MutableSpan<float3> edge_points)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_points = base_edge_point_indices();
 
   for (const int edge_i : IndexRange(base_edges_num)) {
     MutableSpan<float3> points = edge_points.slice(edge_i * subdiv_verts_num, subdiv_verts_num);
 
     const int2 edge = base_edge_points[edge_i];
-    const float3 point = base_points[edge[0]];
 
     const float3 point_a = base_points[edge[0]];
     const float3 point_b = base_points[edge[1]];
 
+    const float3 normalized_a = math::normalize(point_a);
+    const float3 normalized_b = math::normalize(point_b);
+
+    const float3 normal = math::normalize(
+        math::cross_tri(float3(0.0f), normalized_a, normalized_b));
+    const math::AngleRadian rotation = math::angle_between<float>(normalized_a, normalized_b) /
+                                       (subdiv_verts_num + 1);
+
+    math::AngleRadian steps(0.0f);
     for (const int i : IndexRange(subdiv_verts_num)) {
-      points[i] = polar_lert(point_a, point_b, float(i + 1) / (subdiv_verts_num + 1));
+      steps += rotation;
+      const math::AxisAngle axis(normal, steps);
+      points[i] = math::transform_point(math::to_quaternion(axis), point_a);
     }
   }
 }
 
-static void interpolate_face_points(const int face_points_num,
-                                    const int edge_points_num,
+static void interpolate_face_points(const int line_subdiv,
                                     const Span<float3> base_points,
-                                    MutableSpan<float3> face_points)
+                                    MutableSpan<float3> faces_verts)
 {
-  if (face_points_num == 0) {
-    return;
-  }
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int3> base_face_points = base_face_point_indices();
 
+  const constexpr int left_righr_points = 2;
+  const TriangleRange inner_face_points =
+      TriangleRange(line_subdiv - left_righr_points).drop_bottom(1);
+  const float edge_lerp_factor = 1.0f / (inner_face_points.hight() + left_righr_points);
+
   for (const int face_i : IndexRange(base_faces_num)) {
-    MutableSpan<float3> points = face_points.slice(face_i * face_points_num, face_points_num);
     const int3 face = base_face_points[face_i];
 
-    const float3 point_a = base_points[face[0]];
-    const float3 point_b = base_points[face[1]];
-    const float3 point_c = base_points[face[2]];
+    const float3 &point_a = base_points[face[0]];
+    const float3 &point_b = base_points[face[1]];
+    const float3 &point_c = base_points[face[2]];
 
-    const int points_num = edge_points_num - 1;
-    for (const int y_index : IndexRange(points_num)) {
-      const float3 edge_point_a = polar_lert(
-          point_a, point_c, float(y_index + 1) / (edge_points_num + 1));
-      const float3 edge_point_b = polar_lert(
-          point_b, point_c, float(y_index + 1) / (edge_points_num + 1));
+    const float3 normalized_a = math::normalize(point_a);
+    const float3 normalized_b = math::normalize(point_b);
+    const float3 normalized_c = math::normalize(point_c);
 
-      MutableSpan<float3> line_points = points.slice(pyramid_slice(points_num, y_index));
-      for (const int x_index : IndexRange(points_num - y_index)) {
-        line_points[x_index] = polar_lert(
-            edge_point_a, edge_point_b, float(x_index + 1) / (edge_points_num - y_index));
+    const float3 normal_ac = math::normalize(
+        math::cross_tri(float3(0.0f), normalized_a, normalized_c));
+    const math::AngleRadian rotation_ac = math::angle_between<float>(normalized_a, normalized_c);
+
+    const float3 normal_bc = math::normalize(
+        math::cross_tri(float3(0.0f), normalized_b, normalized_c));
+    const math::AngleRadian rotation_bc = math::angle_between<float>(normalized_b, normalized_c);
+
+    math::AngleRadian steps_ac(0.0f);
+    math::AngleRadian steps_bc(0.0f);
+
+    MutableSpan<float3> face_verts = faces_verts.slice(face_i * inner_face_points.total(),
+                                                       inner_face_points.total());
+    for (const int y_index : IndexRange(inner_face_points.hight())) {
+      const int r_y_index = inner_face_points.hight() - 1 - y_index;
+      const float face_inner_factor = 1.0f / (r_y_index + left_righr_points);
+      MutableSpan<float3> level_verts = face_verts.slice(inner_face_points.slice_at(y_index));
+
+      steps_ac += rotation_ac * edge_lerp_factor;
+      steps_bc += rotation_bc * edge_lerp_factor;
+
+      const math::AxisAngle axis_ac(normal_ac, steps_ac);
+      const math::AxisAngle axis_bc(normal_bc, steps_bc);
+
+      const float3 edge_point_a = math::transform_point(math::to_quaternion(axis_ac), point_a);
+      const float3 edge_point_b = math::transform_point(math::to_quaternion(axis_bc), point_b);
+
+      const float3 normalized_edge_a = math::normalize(edge_point_a);
+      const float3 normalized_edge_b = math::normalize(edge_point_b);
+
+      const float3 normal_c = math::normalize(
+          math::cross_tri(float3(0.0f), normalized_edge_a, normalized_edge_b));
+      const math::AngleRadian rotation_c = math::angle_between<float>(normalized_edge_a,
+                                                                      normalized_edge_b);
+
+      math::AngleRadian steps_c(0.0f);
+      for (float3 &vert : level_verts) {
+        steps_c += rotation_c * face_inner_factor;
+        const math::AxisAngle axis_ac(normal_c, steps_c);
+        vert = math::transform_point(math::to_quaternion(axis_ac), edge_point_a);
       }
     }
   }
@@ -363,6 +447,7 @@ static void vert_edge_topology(const int edge_edges_num,
                                const int edge_verts_num,
                                MutableSpan<int2> edge_edges)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edges = base_edge_point_indices();
   if (edge_edges_num == 1) {
     edge_edges.copy_from(base_edges);
@@ -384,146 +469,156 @@ static void face_edge_topology(const int edge_edges_num,
                                const IndexRange faces_verts,
                                MutableSpan<int2> face_edges)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_points = base_edge_point_indices();
   const Span<int3> base_face_points = base_face_point_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
 
-  for (const int face_i : IndexRange(base_faces_num)) {
-    const int3 face_vert_indices = base_face_points[face_i];
-    const int3 face_edge_indices = base_faces_edges[face_i];
-    const IndexRange faces_vert = faces_verts.slice(face_i * face_verts_num, face_verts_num);
+  {
+    SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
+    for (const int face_i : IndexRange(base_faces_num)) {
+      const int3 face_vert_indices = base_face_points[face_i];
+      const int3 face_edge_indices = base_faces_edges[face_i];
+      const IndexRange faces_vert = faces_verts.slice(face_i * face_verts_num, face_verts_num);
 
-    /* Edges from A to B, poduct to C. */
+      /* Edges from A to B, poduct to C. */
 
-    /* Edge C verts: {C, A}. */
-    const IndexRange edge_a_verts(base_verts_num + face_edge_indices[2] * edge_verts_num,
-                                  edge_verts_num);
-    /* Edge B verts: {B, C}. */
-    const IndexRange edge_b_verts(base_verts_num + face_edge_indices[1] * edge_verts_num,
-                                  edge_verts_num);
+      /* Edge C verts: {C, A}. */
+      const IndexRange edge_a_verts(base_verts_num + face_edge_indices[2] * edge_verts_num,
+                                    edge_verts_num);
+      /* Edge B verts: {B, C}. */
+      const IndexRange edge_b_verts(base_verts_num + face_edge_indices[1] * edge_verts_num,
+                                    edge_verts_num);
 
-    const bool edge_a_order = int2(face_vert_indices[0], face_vert_indices[2]) ==
-                              base_edge_points[face_edge_indices[2]];
-    const bool edge_b_order = int2(face_vert_indices[1], face_vert_indices[2]) ==
-                              base_edge_points[face_edge_indices[1]];
+      const bool edge_a_order = int2(face_vert_indices[0], face_vert_indices[2]) ==
+                                base_edge_points[face_edge_indices[2]];
+      const bool edge_b_order = int2(face_vert_indices[1], face_vert_indices[2]) ==
+                                base_edge_points[face_edge_indices[1]];
 
-    MutableSpan<int2> edges = face_edges.slice(face_i * pyramid_sum(edge_edges_num - 1),
-                                               pyramid_sum(edge_edges_num - 1));
-    for (const int line_i : IndexRange(edge_edges_num - 1)) {
-      const int begin_vert = edge_a_order ? edge_a_verts[line_i] :
-                                            edge_a_verts.one_after_last() - 1 - line_i;
-      const int end_vert = edge_b_order ? edge_b_verts[line_i] :
-                                          edge_b_verts.one_after_last() - 1 - line_i;
+      MutableSpan<int2> edges = face_edges.slice(face_i * pyramid_sum(edge_edges_num - 1),
+                                                 pyramid_sum(edge_edges_num - 1));
+      for (const int line_i : IndexRange(edge_edges_num - 1)) {
+        const int begin_vert = edge_a_order ? edge_a_verts[line_i] :
+                                              edge_a_verts.one_after_last() - 1 - line_i;
+        const int end_vert = edge_b_order ? edge_b_verts[line_i] :
+                                            edge_b_verts.one_after_last() - 1 - line_i;
 
-      const IndexRange line_verts = faces_vert.slice(pyramid_slice(edge_edges_num - 2, line_i));
-      fill_edge_line(line_verts,
-                     int2(begin_vert, end_vert),
-                     edges.slice(pyramid_slice(edge_edges_num - 1, line_i)));
+        const IndexRange line_verts = faces_vert.slice(pyramid_slice(edge_edges_num - 2, line_i));
+        fill_edge_line(line_verts,
+                       int2(begin_vert, end_vert),
+                       edges.slice(pyramid_slice(edge_edges_num - 1, line_i)));
+      }
     }
   }
 
-  for (const int face_i : IndexRange(base_faces_num)) {
-    const int3 face_vert_indices = base_face_points[face_i];
-    const int3 face_edge_indices = base_faces_edges[face_i];
-    const IndexRange faces_vert = faces_verts.slice(face_i * face_verts_num, face_verts_num);
+  {
+    SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
+    for (const int face_i : IndexRange(base_faces_num)) {
+      const int3 face_vert_indices = base_face_points[face_i];
+      const int3 face_edge_indices = base_faces_edges[face_i];
+      const IndexRange faces_vert = faces_verts.slice(face_i * face_verts_num, face_verts_num);
 
-    /* Edges from C to B, poduct to A. */
+      /* Edges from C to B, poduct to A. */
 
-    /* Edge B verts: {A, B}. */
-    const IndexRange edge_c_verts(base_verts_num + face_edge_indices[0] * edge_verts_num,
-                                  edge_verts_num);
-    /* Edge C verts: {C, A}. */
-    const IndexRange edge_b_verts(base_verts_num + face_edge_indices[2] * edge_verts_num,
-                                  edge_verts_num);
+      /* Edge B verts: {A, B}. */
+      const IndexRange edge_c_verts(base_verts_num + face_edge_indices[0] * edge_verts_num,
+                                    edge_verts_num);
+      /* Edge C verts: {C, A}. */
+      const IndexRange edge_b_verts(base_verts_num + face_edge_indices[2] * edge_verts_num,
+                                    edge_verts_num);
 
-    const bool edge_c_order = int2(face_vert_indices[0], face_vert_indices[1]) ==
-                              base_edge_points[face_edge_indices[0]];
-    const bool edge_b_order = int2(face_vert_indices[0], face_vert_indices[2]) ==
-                              base_edge_points[face_edge_indices[2]];
+      const bool edge_c_order = int2(face_vert_indices[0], face_vert_indices[1]) ==
+                                base_edge_points[face_edge_indices[0]];
+      const bool edge_b_order = int2(face_vert_indices[0], face_vert_indices[2]) ==
+                                base_edge_points[face_edge_indices[2]];
 
-    MutableSpan<int2> edges = face_edges.slice((base_faces_num + face_i) *
-                                                   pyramid_sum(edge_edges_num - 1),
-                                               pyramid_sum(edge_edges_num - 1));
-    for (const int line_i : IndexRange(edge_edges_num - 1)) {
-      const int r_line_i = edge_edges_num - 2 - line_i;
-      const int begin_vert = edge_c_order ? edge_c_verts[line_i] :
+      MutableSpan<int2> edges = face_edges.slice((base_faces_num + face_i) *
+                                                     pyramid_sum(edge_edges_num - 1),
+                                                 pyramid_sum(edge_edges_num - 1));
+      for (const int line_i : IndexRange(edge_edges_num - 1)) {
+        const int r_line_i = edge_edges_num - 2 - line_i;
+        const int begin_vert = edge_c_order ? edge_c_verts[line_i] :
+                                              edge_c_verts.one_after_last() - 1 - line_i;
+        const int end_vert = edge_b_order ? edge_b_verts[line_i] :
+                                            edge_b_verts.one_after_last() - 1 - line_i;
+
+        MutableSpan<int2> line_edges = edges.slice(pyramid_slice(edge_edges_num - 1, r_line_i));
+        if (line_edges.size() == 1) {
+          line_edges.first() = int2(begin_vert, end_vert);
+          continue;
+        }
+
+        line_edges.first()[0] = begin_vert;
+        line_edges.first()[1] =
+            faces_vert.slice(pyramid_slice(edge_edges_num - 2, 0)).drop_back(r_line_i).last();
+
+        const IndexRange range = line_edges.index_range().drop_front(1).drop_back(1);
+        for (const int i : range.index_range()) {
+          line_edges[range[i]] = int2(
+              faces_vert.slice(pyramid_slice(edge_edges_num - 2, i)).last() - r_line_i,
+              faces_vert.slice(pyramid_slice(edge_edges_num - 2, i + 1)).last() - r_line_i);
+        }
+
+        line_edges.last()[0] = faces_vert.slice(pyramid_slice(edge_edges_num - 2, range.size()))
+                                   .drop_back(r_line_i)
+                                   .last();
+        line_edges.last()[1] = end_vert;
+      }
+    }
+  }
+
+  {
+    SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
+    for (const int face_i : IndexRange(base_faces_num)) {
+      const int3 face_vert_indices = base_face_points[face_i];
+      const int3 face_edge_indices = base_faces_edges[face_i];
+      const IndexRange faces_vert = faces_verts.slice(face_i * face_verts_num, face_verts_num);
+
+      /* Edges from C to A, poduct to B. */
+
+      /* Edge B verts: {A, B}. */
+      const IndexRange edge_a_verts(base_verts_num + face_edge_indices[0] * edge_verts_num,
+                                    edge_verts_num);
+      /* Edge C verts: {B, C}. */
+      const IndexRange edge_c_verts(base_verts_num + face_edge_indices[1] * edge_verts_num,
+                                    edge_verts_num);
+
+      const bool edge_a_order = int2(face_vert_indices[0], face_vert_indices[1]) ==
+                                base_edge_points[face_edge_indices[0]];
+      const bool edge_c_order = int2(face_vert_indices[2], face_vert_indices[1]) ==
+                                base_edge_points[face_edge_indices[1]];
+
+      MutableSpan<int2> edges = face_edges.slice((base_faces_num * 2 + face_i) *
+                                                     pyramid_sum(edge_edges_num - 1),
+                                                 pyramid_sum(edge_edges_num - 1));
+      for (const int line_i : IndexRange(edge_edges_num - 1)) {
+        const int begin_vert = edge_a_order ? edge_a_verts[line_i] :
+                                              edge_a_verts.one_after_last() - 1 - line_i;
+        const int end_vert = edge_c_order ? edge_c_verts[line_i] :
                                             edge_c_verts.one_after_last() - 1 - line_i;
-      const int end_vert = edge_b_order ? edge_b_verts[line_i] :
-                                          edge_b_verts.one_after_last() - 1 - line_i;
 
-      MutableSpan<int2> line_edges = edges.slice(pyramid_slice(edge_edges_num - 1, r_line_i));
-      if (line_edges.size() == 1) {
-        line_edges.first() = int2(begin_vert, end_vert);
-        continue;
+        MutableSpan<int2> line_edges = edges.slice(pyramid_slice(edge_edges_num - 1, line_i));
+        if (line_edges.size() == 1) {
+          line_edges.first() = int2(begin_vert, end_vert);
+          continue;
+        }
+
+        line_edges.first()[0] = begin_vert;
+        line_edges.first()[1] =
+            faces_vert.slice(pyramid_slice(edge_edges_num - 2, 0)).drop_front(line_i).start();
+
+        const IndexRange range = line_edges.index_range().drop_front(1).drop_back(1);
+        for (const int i : range.index_range()) {
+          line_edges[range[i]] = int2(
+              faces_vert.slice(pyramid_slice(edge_edges_num - 2, i)).start() + line_i,
+              faces_vert.slice(pyramid_slice(edge_edges_num - 2, i + 1)).start() + line_i);
+        }
+
+        line_edges.last()[0] = faces_vert.slice(pyramid_slice(edge_edges_num - 2, range.size()))
+                                   .drop_front(line_i)
+                                   .start();
+        line_edges.last()[1] = end_vert;
       }
-
-      line_edges.first()[0] = begin_vert;
-      line_edges.first()[1] =
-          faces_vert.slice(pyramid_slice(edge_edges_num - 2, 0)).drop_back(r_line_i).last();
-
-      const IndexRange range = line_edges.index_range().drop_front(1).drop_back(1);
-      for (const int i : range.index_range()) {
-        line_edges[range[i]] = int2(
-            faces_vert.slice(pyramid_slice(edge_edges_num - 2, i)).drop_back(r_line_i).last(),
-            faces_vert.slice(pyramid_slice(edge_edges_num - 2, i + 1)).drop_back(r_line_i).last());
-      }
-
-      line_edges.last()[0] = faces_vert.slice(pyramid_slice(edge_edges_num - 2, range.size()))
-                                 .drop_back(r_line_i)
-                                 .last();
-      line_edges.last()[1] = end_vert;
-    }
-  }
-
-  for (const int face_i : IndexRange(base_faces_num)) {
-    const int3 face_vert_indices = base_face_points[face_i];
-    const int3 face_edge_indices = base_faces_edges[face_i];
-    const IndexRange faces_vert = faces_verts.slice(face_i * face_verts_num, face_verts_num);
-
-    /* Edges from C to A, poduct to B. */
-
-    /* Edge B verts: {A, B}. */
-    const IndexRange edge_a_verts(base_verts_num + face_edge_indices[0] * edge_verts_num,
-                                  edge_verts_num);
-    /* Edge C verts: {B, C}. */
-    const IndexRange edge_c_verts(base_verts_num + face_edge_indices[1] * edge_verts_num,
-                                  edge_verts_num);
-
-    const bool edge_a_order = int2(face_vert_indices[0], face_vert_indices[1]) ==
-                              base_edge_points[face_edge_indices[0]];
-    const bool edge_c_order = int2(face_vert_indices[2], face_vert_indices[1]) ==
-                              base_edge_points[face_edge_indices[1]];
-
-    MutableSpan<int2> edges = face_edges.slice((base_faces_num * 2 + face_i) *
-                                                   pyramid_sum(edge_edges_num - 1),
-                                               pyramid_sum(edge_edges_num - 1));
-    for (const int line_i : IndexRange(edge_edges_num - 1)) {
-      const int begin_vert = edge_a_order ? edge_a_verts[line_i] :
-                                            edge_a_verts.one_after_last() - 1 - line_i;
-      const int end_vert = edge_c_order ? edge_c_verts[line_i] :
-                                          edge_c_verts.one_after_last() - 1 - line_i;
-
-      MutableSpan<int2> line_edges = edges.slice(pyramid_slice(edge_edges_num - 1, line_i));
-      if (line_edges.size() == 1) {
-        line_edges.first() = int2(begin_vert, end_vert);
-        continue;
-      }
-
-      line_edges.first()[0] = begin_vert;
-      line_edges.first()[1] =
-          faces_vert.slice(pyramid_slice(edge_edges_num - 2, 0)).drop_front(line_i).start();
-
-      const IndexRange range = line_edges.index_range().drop_front(1).drop_back(1);
-      for (const int i : range.index_range()) {
-        line_edges[range[i]] = int2(
-            faces_vert.slice(pyramid_slice(edge_edges_num - 2, i)).drop_front(line_i).start(),
-            faces_vert.slice(pyramid_slice(edge_edges_num - 2, i + 1)).drop_front(line_i).start());
-      }
-
-      line_edges.last()[0] = faces_vert.slice(pyramid_slice(edge_edges_num - 2, range.size()))
-                                 .drop_front(line_i)
-                                 .start();
-      line_edges.last()[1] = end_vert;
     }
   }
 }
@@ -537,6 +632,7 @@ static void corner_edges_topology(const int edge_edges_num,
                                   const int face_faces_num,
                                   MutableSpan<int> corner_edges)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_points = base_edge_point_indices();
   const Span<int3> base_face_points = base_face_point_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -690,6 +786,7 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
                                     const int faces_num,
                                     MutableSpan<int> corner_verts)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   for (const int i : IndexRange(faces_num)) {
     const int2 edge_a = edges[corner_edges[i * 3 + 0]];
     const int2 edge_b = edges[corner_edges[i * 3 + 1]];
@@ -746,8 +843,7 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
 
   interpolate_edge_points(
       edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
-  interpolate_face_points(
-      face_verts_num, edge_verts_num, positions.slice(vert_points), positions.slice(face_points));
+  interpolate_face_points(line_subdiv, positions.slice(vert_points), positions.slice(face_points));
 
   const IndexRange edge_edges(base_edges_num * edge_edges_num);
   const IndexRange face_edges(edge_edges.one_after_last(), face_edges_num * base_faces_num * 3);
@@ -759,17 +855,20 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
   corner_edges_topology(edge_edges_num, face_faces_num, corner_edges);
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
 
-  IndexMaskMemory memory;
-  const IndexMask normals_mask = IndexMask::from_predicate(
-      IndexMask(faces_num), GrainSize(2048), memory, [&](const int i) -> bool {
-        const int face_i = i * 3;
-        const float3 normal = bke::mesh::face_normal_calc(positions,
-                                                          corner_verts.slice(face_i, 3));
-        const float3 pos_a = math::normalize(positions[corner_verts[face_i]]);
-        return !math::is_equal(normal, pos_a, 0.4f);
-      });
+  {
+    SCOPED_TIMER_AVERAGED("Flip normals");
+    IndexMaskMemory memory;
+    const IndexMask normals_mask = IndexMask::from_predicate(
+        IndexMask(faces_num), GrainSize(2048), memory, [&](const int i) -> bool {
+          const int face_i = i * 3;
+          const float3 normal = bke::mesh::face_normal_calc(positions,
+                                                            corner_verts.slice(face_i, 3));
+          const float3 pos_a = math::normalize(positions[corner_verts[face_i]]);
+          return !math::is_equal(normal, pos_a, 0.4f);
+        });
 
-  bke::mesh_flip_faces(*mesh, normals_mask);
+    bke::mesh_flip_faces(*mesh, normals_mask);
+  }
 
   BLI_assert(std::all_of(edges.cast<int>().begin(),
                          edges.cast<int>().end(),
