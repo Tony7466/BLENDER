@@ -782,8 +782,8 @@ void DeferredLayer::render(View &main_view,
 
   if (use_combined_lightprobe_eval) {
     float4 data(0.0f);
-    dummy_black_tx.ensure_2d(
-        RAYTRACE_RADIANCE_FORMAT, int2(1), GPU_TEXTURE_USAGE_SHADER_READ, data);
+    /* Subsurface writes (black) to that texture. */
+    dummy_black_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, int2(1), usage_rw, data);
     for (int i = 0; i < 3; i++) {
       indirect_radiance_txs_[i] = dummy_black_tx;
     }
