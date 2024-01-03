@@ -961,7 +961,8 @@ int HIPDevice::get_device_default_attribute(hipDeviceAttribute_t attribute, int 
   return value;
 }
 
-hipMemoryType HIPDevice::get_memory_type(hipMemoryType mem_type) {
+hipMemoryType HIPDevice::get_memory_type(hipMemoryType mem_type)
+{
   return get_hip_memory_type(mem_type, hipRuntimeVersion);
 }
 
