@@ -768,8 +768,7 @@ static void corner_edges_topology(const int edge_edges_num,
     }
 
     /* Faces (flipped). */
-    const int top_faces_num = edge_edges_num - 1;
-    for (const int line_i : IndexRange(top_faces_num)) {
+    for (const int line_i : IndexRange(top_faces.hight())) {
       MutableSpan<int> line = top_face_edges.slice(top_faces.slice_at(line_i).scale(face_size));
       const int inner_edge_line_start = inner_face_edges.start_of(line_i);
       for (const int i : IndexRange(inner_face_edges.size_of(line_i))) {
