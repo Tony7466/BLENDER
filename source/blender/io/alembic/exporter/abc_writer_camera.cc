@@ -50,7 +50,7 @@ void ABCCameraWriter::create_alembic_objects(const HierarchyContext * /*context*
    * Houdini). */
   OFloatProperty render_resx(abc_custom_data_container_, "resx");
   OFloatProperty render_resy(abc_custom_data_container_, "resy");
-  Scene *scene = DEG_get_input_scene(args_.depsgraph);
+  Scene *scene = DEG_get_evaluated_scene(args_.depsgraph);
   int width, height;
   BKE_render_resolution(&scene->r, false, &width, &height);
   render_resx.set(float(width));
