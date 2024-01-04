@@ -6,6 +6,9 @@
  * \ingroup gpu
  */
 
+#include "GPU_debug.h"
+#include "BKE_global.h"
+
 #include "gl_compute.hh"
 
 #include "gl_debug.hh"
@@ -14,6 +17,9 @@ namespace blender::gpu {
 
 void GLCompute::dispatch(int group_x_len, int group_y_len, int group_z_len)
 {
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_begin_title(GLContext::get()->shader->name_get());
+  }
   GL_CHECK_RESOURCES("Compute");
 
   /* Sometime we reference a dispatch size but we want to skip it by setting one dimension to 0.
@@ -23,6 +29,9 @@ void GLCompute::dispatch(int group_x_len, int group_y_len, int group_z_len)
   }
 
   glDispatchCompute(group_x_len, group_y_len, group_z_len);
+  if (G.debug_value == 12345) {
+    GPU_debug_capture_end();
+  }
 }
 
 }  // namespace blender::gpu
