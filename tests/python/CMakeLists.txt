@@ -22,7 +22,7 @@ file(MAKE_DIRECTORY ${TEST_OUT_DIR}/blendfile_io)
 # endif()
 
 # Run Blender command with parameters.
-function(add_blender_test_impl testname exe envvars_list)
+function(add_blender_test_impl testname envvars_list exe)
   add_test(
     NAME ${testname}
     COMMAND ${exe} ${ARGN}
@@ -33,8 +33,8 @@ endfunction()
 function(add_blender_test testname)
   add_blender_test_impl(
     "${testname}"
-    "${TEST_BLENDER_EXE}"
     ""
+    "${TEST_BLENDER_EXE}"
     ${TEST_BLENDER_EXE_PARAMS}
     ${ARGN}
   )
@@ -79,9 +79,9 @@ The location of weston, leave blank for the default location."
     list(REMOVE_ITEM EXE_PARAMS --background)
     add_blender_test_impl(
       "${testname}"
+      "${_blender_headless_env_vars}"
       "${TEST_PYTHON_EXE}"
       "${CMAKE_SOURCE_DIR}/tests/utils/blender_headless.py"
-      "${_blender_headless_env_vars}"
       # NOTE: attempting to maximize the window causes problems with a headless `weston`,
       # while this could be investigated, use windowed mode instead.
       # Use a window size that balances software GPU rendering with enough room to use the UI.
