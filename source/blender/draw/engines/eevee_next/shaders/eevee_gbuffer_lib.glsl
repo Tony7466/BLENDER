@@ -695,15 +695,12 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
   /* First closure is always written. */
   gbuf.surface_N = gbuffer_normal_unpack(fetchGBuffer(normal_tx, texel, 0).xy);
 
-  for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
-    gbuf.closures[layer].type = CLOSURE_NONE_ID;
-  }
-
   bool has_additional_data = false;
   for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
     GBufferMode mode = gbuffer_header_unpack(header, layer);
     switch (mode) {
       case GBUF_NONE:
+        gbuf.closures[layer].type = CLOSURE_NONE_ID;
         break;
       case GBUF_DIFFUSE:
         gbuffer_closure_diffuse_load(gbuf, closure_tx, normal_tx);
