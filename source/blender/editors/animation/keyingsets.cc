@@ -521,10 +521,10 @@ static void build_keyingset_enum(bContext *C, EnumPropertyItem **item, int *toti
   *r_free = true;
 }
 
-static const EnumPropertyItem *keying_set_set_active_enum_itemf(bContext *C,
-                                                                PointerRNA * /*ptr*/,
-                                                                PropertyRNA * /*prop*/,
-                                                                bool *r_free)
+static const EnumPropertyItem *keyingset_set_active_enum_itemf(bContext *C,
+                                                               PointerRNA * /*ptr*/,
+                                                               PropertyRNA * /*prop*/,
+                                                               bool *r_free)
 {
   if (C == nullptr) {
     return rna_enum_dummy_DEFAULT_items;
@@ -572,7 +572,7 @@ void ANIM_OT_keying_set_active_set(wmOperatorType *ot)
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
       ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
-  RNA_def_enum_funcs(prop, keying_set_set_active_enum_itemf);
+  RNA_def_enum_funcs(prop, keyingset_set_active_enum_itemf);
   // RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
