@@ -64,10 +64,14 @@ struct GBufferWriter {
 
 /* Result of loading the GBuffer. */
 struct GBufferReader {
-  GBufferData data;
-
   ClosureUndetermined closures[GBUFFER_LAYER_MAX];
+  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
+  vec3 surface_N;
+  /* Additional object information if any closure needs it. */
+  float thickness;
+  uint object_id;
 
+  /* Number of valid closure encoded in the gbuffer. */
   int closure_count;
   /* Only used for book-keeping when reading. */
   int layer_data;
@@ -331,8 +335,8 @@ void gbuffer_additional_info_load(inout GBufferReader gbuf, samplerGBufferNormal
 {
   vec2 data_packed = fetchGBuffer(normal_tx, gbuf.texel, gbuf.layer_normal).rg;
   gbuf.layer_normal++;
-  gbuf.data.thickness = gbuffer_thickness_unpack(data_packed.x);
-  gbuf.data.object_id = gbuffer_object_id_unorm16_unpack(data_packed.y);
+  gbuf.thickness = gbuffer_thickness_unpack(data_packed.x);
+  gbuf.object_id = gbuffer_object_id_unorm16_unpack(data_packed.y);
 }
 
 /** \} */
@@ -676,10 +680,12 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
 {
   GBufferReader gbuf;
   gbuf.texel = texel;
-  gbuf.data.thickness = 0.0;
+  gbuf.thickness = 0.0;
   gbuf.closure_count = 0;
+  gbuf.object_id = 0u;
   gbuf.layer_data = 0;
   gbuf.layer_normal = 0;
+  gbuf.surface_N = vec3(0.0);
 
   uint header = fetchGBuffer(header_tx, texel);
   if (header == 0u) {
@@ -687,27 +693,7 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
   }
 
   /* First closure is always written. */
-  gbuf.data.surface_N = gbuffer_normal_unpack(fetchGBuffer(normal_tx, texel, 0).xy);
-
-  /* Default values. */
-  gbuf.data.refraction.color = vec3(0.0);
-  gbuf.data.refraction.N = vec3(0.0, 0.0, 1.0);
-  gbuf.data.refraction.roughness = 0.0;
-  gbuf.data.refraction.ior = 1.1; /* Avoid NaN in some places. */
-
-  gbuf.data.reflection.color = vec3(0.0);
-  gbuf.data.reflection.N = vec3(0.0, 0.0, 1.0);
-  gbuf.data.reflection.roughness = 0.0;
-
-  gbuf.data.diffuse.color = vec3(0.0);
-  gbuf.data.diffuse.N = vec3(0.0, 0.0, 1.0);
-  gbuf.data.diffuse.sss_radius = vec3(0.0, 0.0, 0.0);
-  gbuf.data.diffuse.sss_id = 0u;
-
-  gbuf.data.translucent.color = vec3(0.0);
-  gbuf.data.translucent.N = vec3(0.0, 0.0, 1.0);
-
-  gbuf.data.thickness = 0.0;
+  gbuf.surface_N = gbuffer_normal_unpack(fetchGBuffer(normal_tx, texel, 0).xy);
 
   for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
     gbuf.closures[layer].type = CLOSURE_NONE_ID;

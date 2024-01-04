@@ -54,7 +54,7 @@ void main()
   }
 
   vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
-  vec3 Ng = gbuf.data.surface_N;
+  vec3 Ng = gbuf.surface_N;
   vec3 V = drw_world_incident_vector(P);
   float vPz = dot(drw_view_forward(), P) - dot(drw_view_forward(), drw_view_position());
 
@@ -64,15 +64,14 @@ void main()
   }
 
   /* TODO(fclem): Split thickness computation. */
-  float thickness = gbuf.data.thickness;
+  float thickness = gbuf.thickness;
 #ifdef MAT_SUBSURFACE
   /* NOTE: BSSRDF is supposed to always be the first closure. */
   bool has_sss = gbuf.closures[0].type == CLOSURE_BSSRDF_BURLEY_ID;
   if (has_sss) {
     float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
-    thickness = (shadow_thickness != THICKNESS_NO_VALUE) ?
-                    max(shadow_thickness, gbuf.data.thickness) :
-                    gbuf.data.thickness;
+    thickness = (shadow_thickness != THICKNESS_NO_VALUE) ? max(shadow_thickness, gbuf.thickness) :
+                                                           gbuf.thickness;
 
     /* Add one translucent closure for all SSS closure. Reuse the same lighting. */
     ClosureLight cl_light;

@@ -133,7 +133,7 @@ void main(void)
 
     SubSurfaceSample samp = sample_neighborhood(sample_uv);
     /* Reject radiance from other surfaces. Avoids light leak between objects. */
-    if (samp.sss_id != gbuf.data.object_id) {
+    if (samp.sss_id != gbuf.object_id) {
       continue;
     }
     /* Slide 34. */

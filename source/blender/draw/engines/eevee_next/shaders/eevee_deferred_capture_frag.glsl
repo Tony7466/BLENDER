@@ -24,21 +24,21 @@ void main()
   }
 
   ClosureLightStack stack;
-  stack.cl[0].N = gbuf.data.surface_N;
+  stack.cl[0].N = gbuf.surface_N;
   stack.cl[0].ltc_mat = LTC_LAMBERT_MAT;
   stack.cl[0].type = LIGHT_DIFFUSE;
 
-  stack.cl[1].N = -gbuf.data.surface_N;
+  stack.cl[1].N = -gbuf.surface_N;
   stack.cl[1].ltc_mat = LTC_LAMBERT_MAT;
   stack.cl[1].type = LIGHT_DIFFUSE;
 
   vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
-  vec3 Ng = gbuf.data.surface_N;
+  vec3 Ng = gbuf.surface_N;
   vec3 V = drw_world_incident_vector(P);
   float vPz = dot(drw_view_forward(), P) - dot(drw_view_forward(), drw_view_position());
 
   /* Direct light. */
-  light_eval(stack, P, Ng, V, vPz, gbuf.data.thickness);
+  light_eval(stack, P, Ng, V, vPz, gbuf.thickness);
 
   /* Indirect light. */
   /* Can only load irradiance to avoid dependency loop with the reflection probe. */

@@ -35,7 +35,7 @@ void main(void)
     float max_radius = reduce_max(closure.sss_radius);
 
     imageStore(radiance_img, texel, vec4(radiance, 0.0));
-    imageStore(object_id_img, texel, uvec4(gbuf.data.object_id));
+    imageStore(object_id_img, texel, uvec4(gbuf.object_id));
 
     vec2 center_uv = (vec2(texel) + 0.5) / vec2(textureSize(gbuf_header_tx, 0));
     float depth = texelFetch(depth_tx, texel, 0).r;
