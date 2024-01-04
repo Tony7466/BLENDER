@@ -522,9 +522,12 @@ static void draw_histogram(const blender::ed::seq::ScopeHistogram &hist,
     return;
   }
 
-  uchar col_grid[4] = {128, 128, 128, 128};
+  /* Background. */
+  uchar col_bg[4] = {0, 0, 0, 255};
+  quads.add_quad(area.xmin, area.ymin, area.xmax, area.ymax, col_bg);
 
   /* Grid lines. */
+  uchar col_grid[4] = {128, 128, 128, 128};
   float grid_x_0 = area.xmin;
   float grid_x_1 = area.xmax;
   if (hist.data.size() > 256) {
@@ -535,6 +538,10 @@ static void draw_histogram(const blender::ed::seq::ScopeHistogram &hist,
     float x = grid_x_0 + (grid_x_1 - grid_x_0) * line / 4;
     quads.add_line(x, area.ymin, x, area.ymax, col_grid);
   }
+
+  /* Border. */
+  uchar col_border[4] = {64, 64, 64, 128};
+  quads.add_wire_quad(area.xmin, area.ymin, area.xmax, area.ymax, col_border);
 
   /* Histogram area & line for each R/G/B channels, additively blended. */
   quads.draw();
@@ -648,19 +655,25 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq,
     immUnbindProgram();
   }
 
-  uchar col_bg[4] = {0, 0, 0, 255};
-  uchar col_border[4] = {0, 160, 0, 255};
-  if (scope_image == nullptr) {
-    quads.add_quad(preview.xmin, preview.ymin, preview.xmax, preview.ymax, col_bg);
-  }
-
   if (sseq->mainb == SEQ_DRAW_IMG_HISTOGRAM) {
     draw_histogram(scopes->histogram, quads, preview);
   }
-
-  if (scope_image == nullptr) {
-    quads.add_wire_quad(preview.xmin, preview.ymin, preview.xmax, preview.ymax, col_border);
+  if (sseq->mainb == SEQ_DRAW_IMG_WAVEFORM) {
+    /* Horizontal lines at 10%, 70%, 90%. */
+    uchar col_grid[4] = {160, 64, 64, 128};
+    const float x0 = preview.xmin;
+    const float x1 = preview.xmax;
+    const float y10 = preview.ymin + (preview.ymax - preview.ymin) * 0.10f;
+    const float y70 = preview.ymin + (preview.ymax - preview.ymin) * 0.70f;
+    const float y90 = preview.ymin + (preview.ymax - preview.ymin) * 0.90f;
+    quads.add_line(x0, y10, x1, y10, col_grid);
+    quads.add_line(x0, y70, x1, y70, col_grid);
+    quads.add_line(x0, y90, x1, y90, col_grid);
+    /* Border. */
+    uchar col_border[4] = {64, 64, 64, 128};
+    quads.add_wire_quad(x0, preview.ymin, x1, preview.ymax, col_border);
   }
+
   quads.draw();
 
   if (use_blend) {
