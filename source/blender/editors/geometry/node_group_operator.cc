@@ -22,6 +22,7 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_layer.h"
@@ -225,7 +226,7 @@ static void store_result_geometry(
 
       if (object.mode == OB_MODE_EDIT) {
         EDBM_mesh_make(&object, scene.toolsettings->selectmode, true);
-        BKE_editmesh_looptri_and_normals_calc(mesh.edit_mesh);
+        BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
       }
       else if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_end(&object);
@@ -947,7 +948,8 @@ static bool unassigned_local_poll(const bContext &C)
       continue;
     }
     if (!group->geometry_node_asset_traits ||
-        (group->geometry_node_asset_traits->flag & flag) != flag) {
+        (group->geometry_node_asset_traits->flag & flag) != flag)
+    {
       continue;
     }
     return true;
@@ -991,7 +993,8 @@ static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
       continue;
     }
     if (!group->geometry_node_asset_traits ||
-        (group->geometry_node_asset_traits->flag & flag) != flag) {
+        (group->geometry_node_asset_traits->flag & flag) != flag)
+    {
       continue;
     }
 

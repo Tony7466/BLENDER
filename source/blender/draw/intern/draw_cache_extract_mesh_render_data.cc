@@ -56,7 +56,7 @@ static void mesh_render_data_loose_geom_mesh(const MeshRenderData &mr, MeshBuffe
   const bool no_loose_edge_hint = mesh.runtime->loose_edges_cache.is_cached() &&
                                   mesh.runtime->loose_edges_cache.data().count == 0;
   threading::parallel_invoke(
-      mesh.totedge > 4096 && !no_loose_vert_hint && !no_loose_edge_hint,
+      mesh.edges_num > 4096 && !no_loose_vert_hint && !no_loose_edge_hint,
       [&]() {
         const bke::LooseEdgeCache &loose_edges = mesh.loose_edges();
         if (loose_edges.count > 0) {
@@ -355,7 +355,7 @@ const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *mesh)
   switch (mesh->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      return &mesh->loop_data;
+      return &mesh->corner_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
       return &mesh->edit_mesh->bm->ldata;
@@ -363,7 +363,7 @@ const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *mesh)
   }
 
   BLI_assert(0);
-  return &mesh->loop_data;
+  return &mesh->corner_data;
 }
 
 const CustomData *mesh_cd_pdata_get_from_mesh(const Mesh *mesh)
@@ -414,20 +414,20 @@ const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *mesh)
   return &mesh->vert_data;
 }
 
-void mesh_render_data_update_looptris(MeshRenderData &mr,
-                                      const eMRIterType iter_type,
-                                      const eMRDataType data_flag)
+void mesh_render_data_update_corner_tris(MeshRenderData &mr,
+                                         const eMRIterType iter_type,
+                                         const eMRDataType data_flag)
 {
   if (mr.extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
-    if ((iter_type & MR_ITER_LOOPTRI) || (data_flag & MR_DATA_LOOPTRI)) {
-      mr.looptris = mr.mesh->looptris();
-      mr.looptri_faces = mr.mesh->looptri_faces();
+    if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
+      mr.corner_tris = mr.mesh->corner_tris();
+      mr.corner_tri_faces = mr.mesh->corner_tri_faces();
     }
   }
   else {
     /* #BMesh */
-    if ((iter_type & MR_ITER_LOOPTRI) || (data_flag & MR_DATA_LOOPTRI)) {
+    if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
       /* Edit mode ensures this is valid, no need to calculate. */
       BLI_assert((mr.bm->totloop == 0) || (mr.edit_bmesh->looptris != nullptr));
     }
@@ -477,7 +477,8 @@ static bool bm_loop_normals_required(BMesh *bm)
   }
 
   if (edge_mix == array_utils::BooleanMix::AllFalse &&
-      face_mix == array_utils::BooleanMix::AllFalse) {
+      face_mix == array_utils::BooleanMix::AllFalse)
+  {
     return false;
   }
 
@@ -488,12 +489,11 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
 {
   if (mr.extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
-    mr.normals_domain = mr.mesh->normals_domain();
     mr.vert_normals = mr.mesh->vert_normals();
     if (data_flag & (MR_DATA_POLY_NOR | MR_DATA_LOOP_NOR | MR_DATA_TAN_LOOP_NOR)) {
       mr.face_normals = mr.mesh->face_normals();
     }
-    if (((data_flag & MR_DATA_LOOP_NOR) &&
+    if (((data_flag & MR_DATA_LOOP_NOR) && !mr.use_simplify_normals &&
          mr.normals_domain == blender::bke::MeshNormalDomain::Corner) ||
         (data_flag & MR_DATA_TAN_LOOP_NOR))
     {
@@ -505,7 +505,8 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
     if (data_flag & MR_DATA_POLY_NOR) {
       /* Use #BMFace.no instead. */
     }
-    if (((data_flag & MR_DATA_LOOP_NOR) && bm_loop_normals_required(mr.bm)) ||
+    if (((data_flag & MR_DATA_LOOP_NOR) && !mr.use_simplify_normals &&
+         bm_loop_normals_required(mr.bm)) ||
         (data_flag & MR_DATA_TAN_LOOP_NOR))
     {
 
@@ -660,9 +661,9 @@ MeshRenderData *mesh_render_data_create(Object *object,
 
   if (mr->extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
-    mr->vert_len = mr->mesh->totvert;
-    mr->edge_len = mr->mesh->totedge;
-    mr->loop_len = mr->mesh->totloop;
+    mr->vert_len = mr->mesh->verts_num;
+    mr->edge_len = mr->mesh->edges_num;
+    mr->loop_len = mr->mesh->corners_num;
     mr->face_len = mr->mesh->faces_num;
     mr->tri_len = poly_to_tri_count(mr->face_len, mr->loop_len);
 
@@ -679,19 +680,21 @@ MeshRenderData *mesh_render_data_create(Object *object,
     mr->p_origindex = static_cast<const int *>(
         CustomData_get_layer(&mr->mesh->face_data, CD_ORIGINDEX));
 
+    mr->normals_domain = mr->mesh->normals_domain();
+
     const bke::AttributeAccessor attributes = mr->mesh->attributes();
 
-    mr->material_indices = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
+    mr->material_indices = *attributes.lookup<int>("material_index", bke::AttrDomain::Face);
 
-    mr->hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
-    mr->hide_edge = *attributes.lookup<bool>(".hide_edge", ATTR_DOMAIN_EDGE);
-    mr->hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+    mr->hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
+    mr->hide_edge = *attributes.lookup<bool>(".hide_edge", bke::AttrDomain::Edge);
+    mr->hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
-    mr->select_vert = *attributes.lookup<bool>(".select_vert", ATTR_DOMAIN_POINT);
-    mr->select_edge = *attributes.lookup<bool>(".select_edge", ATTR_DOMAIN_EDGE);
-    mr->select_poly = *attributes.lookup<bool>(".select_poly", ATTR_DOMAIN_FACE);
+    mr->select_vert = *attributes.lookup<bool>(".select_vert", bke::AttrDomain::Point);
+    mr->select_edge = *attributes.lookup<bool>(".select_edge", bke::AttrDomain::Edge);
+    mr->select_poly = *attributes.lookup<bool>(".select_poly", bke::AttrDomain::Face);
 
-    mr->sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+    mr->sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
   }
   else {
     /* #BMesh */

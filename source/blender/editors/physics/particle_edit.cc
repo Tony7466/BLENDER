@@ -30,6 +30,7 @@
 
 #include "BKE_bvhutils.hh"
 #include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_main.hh"
@@ -535,7 +536,8 @@ static bool PE_create_shape_tree(PEData *data, Object *shapeob)
     return false;
   }
 
-  return (BKE_bvhtree_from_mesh_get(&data->shape_bvh, mesh, BVHTREE_FROM_LOOPTRI, 4) != nullptr);
+  return (BKE_bvhtree_from_mesh_get(&data->shape_bvh, mesh, BVHTREE_FROM_CORNER_TRIS, 4) !=
+          nullptr);
 }
 
 static void PE_free_shape_tree(PEData *data)
@@ -2894,7 +2896,8 @@ static void rekey_particle_to_time(
 
   /* update edit pointers */
   for (k = 0, key = pa->hair, ekey = edit->points[pa_index].keys; k < pa->totkey;
-       k++, key++, ekey++) {
+       k++, key++, ekey++)
+  {
     ekey->co = key->co;
     ekey->time = &key->time;
   }

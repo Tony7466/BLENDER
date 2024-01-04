@@ -211,6 +211,8 @@ typedef struct bNodeSocketType {
   const CPPTypeHandle *geometry_nodes_cpp_type;
   /* Get geometry nodes cpp value. */
   SocketGetGeometryNodesCPPValueFunction get_geometry_nodes_cpp_value;
+  /* Default value for this socket type. */
+  const void *geometry_nodes_default_cpp_value;
 } bNodeSocketType;
 
 typedef void *(*NodeInitExecFunction)(struct bNodeExecContext *context,
@@ -1322,19 +1324,20 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_NAMED_LAYER_SELECTION 2117
 #define GEO_NODE_INDEX_SWITCH 2118
 #define GEO_NODE_INPUT_ACTIVE_CAMERA 2119
-#define GEO_NODE_GET_NAMED_GRID 2120
-#define GEO_NODE_STORE_NAMED_GRID 2121
-#define GEO_NODE_DILATE_GRID 2122
-#define GEO_NODE_ERODE_GRID 2123
-#define GEO_NODE_SAMPLE_GRID 2124
-#define GEO_NODE_EXTRAPOLATE_GRID 2125
-#define GEO_NODE_GRID_POISSON_SOLVER 2126
-#define GEO_NODE_GRID_CAPTURE 2127
-#define GEO_NODE_COMBINE_GRID_TOPOLOGY 2128
-#define GEO_NODE_DEACTIVATE_VOXELS 2129
-#define GEO_NODE_GRID_FILTER 2130
-#define GEO_NODE_GRID_LEVEL_SET_FILTER 2131
-#define GEO_NODE_GRID_TO_POINTS 2132
+#define GEO_NODE_BAKE 2120
+#define GEO_NODE_GET_NAMED_GRID 2121
+#define GEO_NODE_STORE_NAMED_GRID 2122
+#define GEO_NODE_DILATE_GRID 2123
+#define GEO_NODE_ERODE_GRID 2124
+#define GEO_NODE_SAMPLE_GRID 2125
+#define GEO_NODE_EXTRAPOLATE_GRID 2126
+#define GEO_NODE_GRID_POISSON_SOLVER 2127
+#define GEO_NODE_GRID_CAPTURE 2128
+#define GEO_NODE_COMBINE_GRID_TOPOLOGY 2129
+#define GEO_NODE_DEACTIVATE_VOXELS 2130
+#define GEO_NODE_GRID_FILTER 2131
+#define GEO_NODE_GRID_LEVEL_SET_FILTER 2132
+#define GEO_NODE_GRID_TO_POINTS 2133
 
 /** \} */
 

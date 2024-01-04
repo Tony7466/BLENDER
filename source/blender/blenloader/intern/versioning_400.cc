@@ -47,7 +47,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_collection.h"
 #include "BKE_curve.hh"
 #include "BKE_effect.h"
@@ -550,7 +550,8 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute")) {
+                     "GeometryNodeInputNamedAttribute"))
+        {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -875,8 +876,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       nodeAddLink(ntree, sub1_node, sub1_socket_out, min_node, min_socket_A);
       nodeAddLink(ntree, min_node, min_socket_out, node, detail_socket);
 
-      if ((noise_type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
-          (noise_type == SHD_NOISE_HETERO_TERRAIN)) {
+      if (ELEM(noise_type, SHD_NOISE_RIDGED_MULTIFRACTAL, SHD_NOISE_HETERO_TERRAIN)) {
         locy_offset -= 40.0f;
 
         /* Add Greater Than Math node before Subtract Math node. */
@@ -983,7 +983,8 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     else {
       if (*detail < 1.0f) {
         if ((noise_type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
-            (noise_type != SHD_NOISE_HETERO_TERRAIN)) {
+            (noise_type != SHD_NOISE_HETERO_TERRAIN))
+        {
           /* Add Multiply Math node behind Fac output. */
 
           bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -1395,39 +1396,37 @@ static void version_geometry_nodes_use_rotation_socket(bNodeTree &ntree)
 static bNodeTreeInterfaceItem *legacy_socket_move_to_interface(bNodeSocket &legacy_socket,
                                                                const eNodeSocketInOut in_out)
 {
-  bNodeTreeInterfaceItem *new_item = static_cast<bNodeTreeInterfaceItem *>(
-      MEM_mallocN(sizeof(bNodeTreeInterfaceSocket), __func__));
-  new_item->item_type = NODE_INTERFACE_SOCKET;
-  bNodeTreeInterfaceSocket &new_socket = *reinterpret_cast<bNodeTreeInterfaceSocket *>(new_item);
+  bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
+  new_socket->item.item_type = NODE_INTERFACE_SOCKET;
 
   /* Move reusable data. */
-  new_socket.name = BLI_strdup(legacy_socket.name);
-  new_socket.identifier = BLI_strdup(legacy_socket.identifier);
-  new_socket.description = BLI_strdup(legacy_socket.description);
-  new_socket.socket_type = BLI_strdup(legacy_socket.idname);
-  new_socket.flag = (in_out == SOCK_IN ? NODE_INTERFACE_SOCKET_INPUT :
-                                         NODE_INTERFACE_SOCKET_OUTPUT);
+  new_socket->name = BLI_strdup(legacy_socket.name);
+  new_socket->identifier = BLI_strdup(legacy_socket.identifier);
+  new_socket->description = BLI_strdup(legacy_socket.description);
+  new_socket->socket_type = BLI_strdup(legacy_socket.idname);
+  new_socket->flag = (in_out == SOCK_IN ? NODE_INTERFACE_SOCKET_INPUT :
+                                          NODE_INTERFACE_SOCKET_OUTPUT);
   SET_FLAG_FROM_TEST(
-      new_socket.flag, legacy_socket.flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
-  SET_FLAG_FROM_TEST(new_socket.flag,
+      new_socket->flag, legacy_socket.flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+  SET_FLAG_FROM_TEST(new_socket->flag,
                      legacy_socket.flag & SOCK_HIDE_IN_MODIFIER,
                      NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
-  new_socket.attribute_domain = legacy_socket.attribute_domain;
+  new_socket->attribute_domain = legacy_socket.attribute_domain;
 
   /* The following data are stolen from the old data, the ownership of their memory is directly
    * transferred to the new data. */
-  new_socket.default_attribute_name = legacy_socket.default_attribute_name;
+  new_socket->default_attribute_name = legacy_socket.default_attribute_name;
   legacy_socket.default_attribute_name = nullptr;
-  new_socket.socket_data = legacy_socket.default_value;
+  new_socket->socket_data = legacy_socket.default_value;
   legacy_socket.default_value = nullptr;
-  new_socket.properties = legacy_socket.prop;
+  new_socket->properties = legacy_socket.prop;
   legacy_socket.prop = nullptr;
 
   /* Unused data. */
   MEM_delete(legacy_socket.runtime);
   legacy_socket.runtime = nullptr;
 
-  return new_item;
+  return &new_socket->item;
 }
 
 static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
@@ -1765,6 +1764,17 @@ static void versioning_nodes_dynamic_sockets(bNodeTree &ntree)
         version_socket_identifier_suffixes_for_dynamic_types(node->outputs, "_");
         break;
     }
+  }
+}
+
+static void versioning_nodes_dynamic_sockets_2(bNodeTree &ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
+    if (!ELEM(node->type, GEO_NODE_SWITCH, GEO_NODE_SAMPLE_CURVE)) {
+      continue;
+    }
+    version_socket_identifier_suffixes_for_dynamic_types(node->inputs, "_");
+    version_socket_identifier_suffixes_for_dynamic_types(node->outputs, "_");
   }
 }
 
@@ -2151,7 +2161,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type == NTREE_GEOMETRY) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == GEO_NODE_SET_SHADE_SMOOTH) {
-            node->custom1 = ATTR_DOMAIN_FACE;
+            node->custom1 = int8_t(blender::bke::AttrDomain::Face);
           }
         }
       }
@@ -2184,7 +2194,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
               RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
               if (shelf_data && shelf_data->active_shelf &&
-                  (shelf_data->active_shelf->preferred_row_count == 0)) {
+                  (shelf_data->active_shelf->preferred_row_count == 0))
+              {
                 shelf_data->active_shelf->preferred_row_count = 1;
               }
             }
@@ -2200,7 +2211,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (item.item_type == NODE_INTERFACE_SOCKET) {
           bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
           if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
-              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT))
+          {
             sockets_to_split.append(&socket);
           }
         }
@@ -2561,7 +2573,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Keep this block, even when empty. */
 
     if (!DNA_struct_member_exists(
-            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "ray_tracing_options")) {
+            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "ray_tracing_options"))
+    {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.ray_tracing_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
         scene->eevee.ray_tracing_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
@@ -2578,6 +2591,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       if (ntree->type == NTREE_GEOMETRY) {
         version_geometry_nodes_use_rotation_socket(*ntree);
+        versioning_nodes_dynamic_sockets_2(*ntree);
       }
     }
   }

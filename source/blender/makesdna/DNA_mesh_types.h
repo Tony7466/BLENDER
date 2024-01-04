@@ -11,7 +11,6 @@
 #include "DNA_ID.h"
 #include "DNA_customdata_types.h"
 #include "DNA_defs.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_session_uuid_types.h"
 
 /** Workaround to forward-declare C++ type in C header. */
@@ -19,13 +18,18 @@
 
 #  include <optional>
 
-#  include "BLI_bounds_types.hh"
 #  include "BLI_math_vector_types.hh"
-#  include "BLI_offset_indices.hh"
 
 namespace blender {
-template<typename T> class Span;
+template<typename T> struct Bounds;
+namespace offset_indices {
+template<typename T> struct GroupedSpan;
+template<typename T> class OffsetIndices;
+}  // namespace offset_indices
+using offset_indices::GroupedSpan;
+using offset_indices::OffsetIndices;
 template<typename T> class MutableSpan;
+template<typename T> class Span;
 namespace bke {
 struct MeshRuntime;
 class AttributeAccessor;
@@ -46,7 +50,6 @@ struct Key;
 struct MCol;
 struct MEdge;
 struct MFace;
-struct MLoopTri;
 struct Material;
 
 typedef struct Mesh {
@@ -68,13 +71,13 @@ typedef struct Mesh {
   struct Material **mat;
 
   /** The number of vertices in the mesh, and the size of #vert_data. */
-  int totvert;
+  int verts_num;
   /** The number of edges in the mesh, and the size of #edge_data. */
-  int totedge;
+  int edges_num;
   /** The number of polygons/faces in the mesh, and the size of #face_data. */
   int faces_num;
-  /** The number of face corners in the mesh, and the size of #loop_data. */
-  int totloop;
+  /** The number of face corners in the mesh, and the size of #corner_data. */
+  int corners_num;
 
   /**
    * Array owned by mesh. See #Mesh::faces() and #OffsetIndices.
@@ -87,7 +90,7 @@ typedef struct Mesh {
   CustomData vert_data;
   CustomData edge_data;
   CustomData face_data;
-  CustomData loop_data;
+  CustomData corner_data;
 
   /**
    * List of vertex group (#bDeformGroup) names and flags only. Actual weights are stored in dvert.
@@ -294,12 +297,12 @@ typedef struct Mesh {
   /**
    * Cached triangulation of mesh faces, depending on the face topology and the vertex positions.
    */
-  blender::Span<MLoopTri> looptris() const;
+  blender::Span<blender::int3> corner_tris() const;
 
   /**
-   * A map containing the face index that each cached triangle from #Mesh::looptris() came from.
+   * A map containing the face index that each cached triangle from #Mesh::corner_tris() came from.
    */
-  blender::Span<int> looptri_faces() const;
+  blender::Span<int> corner_tri_faces() const;
 
   /**
    * Calculate the largest and smallest position values of vertices.

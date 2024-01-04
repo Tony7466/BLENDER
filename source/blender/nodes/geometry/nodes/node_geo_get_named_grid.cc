@@ -5,7 +5,7 @@
 #include "node_geometry_util.hh"
 
 #include "BKE_volume.hh"
-#include "BKE_volume_openvdb.hh"
+#include "BKE_volume_grid.hh"
 
 #include "RNA_enum_types.hh"
 
@@ -19,17 +19,18 @@ namespace blender::nodes::node_geo_get_named_grid_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  const bNode *node = b.node_or_null();
-  if (!node) {
-    return;
-  }
-
   b.add_input<decl::Geometry>("Volume");
   b.add_input<decl::String>("Name");
   b.add_input<decl::Bool>("Remove").default_value(true);
 
   b.add_output<decl::Geometry>("Volume");
-  grids::declare_grid_type_output(b, eCustomDataType(node->custom1), "Grid");
+
+  const bNode *node = b.node_or_null();
+  if (!node) {
+    return;
+  }
+
+  b.add_output(eNodeSocketDatatype(node->custom1), "Grid");
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)
@@ -48,38 +49,37 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = CD_PROP_FLOAT;
+  node->custom1 = SOCK_FLOAT;
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grids::grid_type_supported(data_type));
+  const bNode &node = params.node();
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
   const std::string grid_name = params.extract_input<std::string>("Name");
   const bool remove_grid = params.extract_input<bool>("Remove");
+  const VolumeGridType grid_type = *bke::socket_type_to_grid_type(
+      eNodeSocketDatatype(node.custom1));
 
   if (Volume *volume = geometry_set.get_volume_for_write()) {
-    if (VolumeGrid *grid = BKE_volume_grid_find_for_write(volume, grid_name.c_str())) {
+    if (const bke::VolumeGridData *grid = BKE_volume_grid_find(volume, grid_name.c_str())) {
       /* Increment user count before removing from volume. */
       grid->add_user();
       if (remove_grid) {
         BKE_volume_grid_remove(volume, grid);
       }
 
-      grids::set_output_grid(params, "Grid", data_type, bke::GVolumeGridPtr(grid));
+      params.set_output("Grid", bke::GVolumeGrid(grid));
       params.set_output("Volume", geometry_set);
       return;
     }
   }
 
-  grids::set_output_grid(params, "Grid", data_type, nullptr);
+  params.set_output("Grid", bke::GVolumeGrid(grid_type));
   params.set_output("Volume", geometry_set);
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 
@@ -89,10 +89,10 @@ static void node_rna(StructRNA *srna)
                     "data_type",
                     "Data Type",
                     "Type of grid data",
-                    rna_enum_attribute_type_items,
+                    rna_enum_node_socket_data_type_items,
                     NOD_inline_enum_accessors(custom1),
-                    CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    SOCK_FLOAT,
+                    grid_socket_type_items_filter_fn);
 }
 
 static void node_register()

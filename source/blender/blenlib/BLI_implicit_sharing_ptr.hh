@@ -94,7 +94,7 @@ template<typename T> class ImplicitSharingPtr {
 
   const T *release()
   {
-    T *data = data_;
+    const T *data = data_;
     data_ = nullptr;
     return data;
   }
