@@ -246,7 +246,6 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   const NodeEnumDefinition &enum_def_;
   const CPPType *cpp_type_;
   const CPPType *field_base_type_;
-  std::unique_ptr<MultiFunction> multi_function_;
 
  public:
   LazyFunctionForMenuSwitchNode(const bNode &node,
@@ -263,11 +262,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     cpp_type_ = socket_type->geometry_nodes_cpp_type;
     field_base_type_ = socket_type->base_cpp_type;
 
-    /* Construct multifunction if needed. */
-    multi_function_ = std::unique_ptr<MultiFunction>(
-        new MenuSwitchFn(enum_def_, *field_base_type_));
     MutableSpan<int> lf_index_by_bsocket = lf_graph_info.mapping.lf_index_by_bsocket;
-
     debug_name_ = node.name;
     lf_index_by_bsocket[node.input_socket(0).index_in_tree()] = inputs_.append_and_get_index_as(
         "Switch", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
@@ -335,7 +330,9 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     for (const int i : IndexRange(enum_def_.items_num)) {
       item_fields[i + 1] = input_values[i]->extract<GField>();
     }
-    GField output_field{FieldOperation::Create(*multi_function_, std::move(item_fields))};
+    std::unique_ptr<MultiFunction> multi_function = std::make_unique<MenuSwitchFn>(
+        enum_def_, *field_base_type_);
+    GField output_field{FieldOperation::Create(std::move(multi_function), std::move(item_fields))};
 
     void *output_ptr = params.get_output_data_ptr(0);
     new (output_ptr) SocketValueVariant(std::move(output_field));
