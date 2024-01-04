@@ -136219,3 +136219,17 @@ msgstr "Angle de face maximal pour les arêtes lisses"
 msgid "Ignore Sharpness"
 msgstr "Ignorer la dureté"
 
+msgid "Ignore Sharpness"
+msgstr "Ignorer la dureté"
+
+msgid "Add Child  Collection"
+msgstr "Ajouter une collection enfant"
+
+msgid "Assign Selected Bones"
+msgstr "Ajouter les os selectionnés à la collection"
+
+msgid "Deselect Bones"
+msgstr "Déselectionné les os"
+
+msgid "Remove Selected Bones"
+msgstr "Remplacé les os sélectionnés"
