@@ -41,6 +41,7 @@
 
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_vector.hh"
@@ -471,7 +472,7 @@ void import_blendshapes(Main *bmain,
 
   /* Keep track of the shape-keys we're adding,
    * for validation when creating curves later. */
-  std::set<pxr::TfToken> shapekey_names;
+  blender::Set<pxr::TfToken> shapekey_names;
 
   for (int i = 0; i < targets.size(); ++i) {
     /* Get USD path to blend shape. */
@@ -507,7 +508,7 @@ void import_blendshapes(Main *bmain,
       continue;
     }
 
-    shapekey_names.insert(blendshapes[i]);
+    shapekey_names.add(blendshapes[i]);
 
     /* Add the key block. */
     kb = BKE_keyblock_add(key, blendshapes[i].GetString().c_str());
@@ -634,7 +635,7 @@ void import_blendshapes(Main *bmain,
   blender::Vector<FCurve *> curves;
 
   for (auto blendshape_name : blendshapes) {
-    if (shapekey_names.find(blendshape_name) == shapekey_names.end()) {
+    if (!shapekey_names.contains(blendshape_name)) {
       /* We didn't create a shape-key for this blend-shape, so we don't
        * create a curve and insert a null placeholder in the curve array. */
       curves.append(nullptr);
