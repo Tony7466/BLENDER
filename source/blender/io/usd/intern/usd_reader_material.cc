@@ -112,10 +112,7 @@ using blender::io::usd::ShaderToNodeMap;
 static bNode *get_cached_node(const ShaderToNodeMap &node_cache,
                               const pxr::UsdShadeShader &usd_shader)
 {
-  if (bNode *const *node_ptr = node_cache.lookup_ptr(usd_shader.GetPath().GetAsString())) {
-    return *node_ptr;
-  }
-  return nullptr;
+  return node_cache.lookup_default(usd_shader.GetPath().GetAsString(), nullptr);
 }
 
 /* Cache the Blender node translated from the given USD shader
