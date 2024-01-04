@@ -2400,7 +2400,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
 
   BLI_dynstr_clear(dyn_str);
   orphan_desc(C, dyn_str, false, false, true);
-  BLI_snprintf(text, 1024, "Include Indirectly Unused (recursive)");
+  BLI_snprintf(text, 1024, "Include Indirectly Unused (Recursive)");
 
   uiDefButBitC(block,
                UI_BTYPE_CHECKBOX,
