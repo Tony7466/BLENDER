@@ -2111,7 +2111,7 @@ void OUTLINER_OT_keyingset_remove_selected(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Remove Orphan Data-Blocks Operator
+/** \name Purge Orphan Data-Blocks Operator
  * \{ */
 
 static bool ed_operator_outliner_id_orphans_active(bContext *C)
@@ -2140,12 +2140,12 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
   RNA_int_set(op->ptr, "num_deleted", num_tagged[INDEX_ID_NULL]);
 
   if (num_tagged[INDEX_ID_NULL] == 0) {
-    BKE_report(op->reports, RPT_INFO, "No unused data-blocks to remove");
+    BKE_report(op->reports, RPT_INFO, "No unused data-blocks to purge");
     return OPERATOR_CANCELLED;
   }
 
   DynStr *dyn_str = BLI_dynstr_new();
-  BLI_dynstr_appendf(dyn_str, TIP_("Removing %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
+  BLI_dynstr_appendf(dyn_str, TIP_("Purging %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
   bool is_first = true;
   for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
     if (num_tagged[i] != 0) {
@@ -2188,7 +2188,7 @@ static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
         bmain, LIB_TAG_DOIT, do_local_ids, do_linked_ids, do_recursive_cleanup, num_tagged);
 
     if (num_tagged[INDEX_ID_NULL] == 0) {
-      BKE_report(op->reports, RPT_INFO, "No unused data-blocks to remove");
+      BKE_report(op->reports, RPT_INFO, "No unused data-blocks to purge");
       return OPERATOR_CANCELLED;
     }
   }
@@ -2218,8 +2218,8 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
 {
   /* identifiers */
   ot->idname = "OUTLINER_OT_orphans_purge";
-  ot->name = "Remove All";
-  ot->description = "Remove all data-blocks without any users from the file";
+  ot->name = "Purge All";
+  ot->description = "Remove all unused data-blocks without any users from the file";
 
   /* callbacks */
   ot->invoke = outliner_orphans_purge_invoke;
@@ -2266,22 +2266,26 @@ static void wm_block_orphans_cancel_button(uiBlock *block)
   UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 }
 
-static char orphans_purge_do_local = true;
-static char orphans_purge_do_linked = false;
-static char orphans_purge_do_recursive = false;
+struct OrphansPurgeData {
+  wmOperator *op = nullptr;
+  char local = true;
+  char linked = false;
+  char recursive = false;
+};
 
 static void wm_block_orphans_purge(bContext *C, void *arg_block, void *arg_data)
 {
-  wmOperator *op = (wmOperator *)arg_data;
+  OrphansPurgeData *purge_data = (OrphansPurgeData *)arg_data;
+  wmOperator *op = purge_data->op;
   Main *bmain = CTX_data_main(C);
   int num_tagged[INDEX_ID_MAX] = {0};
 
   /* Tag all IDs to delete. */
   BKE_lib_query_unused_ids_tag(bmain,
                                LIB_TAG_DOIT,
-                               orphans_purge_do_local,
-                               orphans_purge_do_linked,
-                               orphans_purge_do_recursive,
+                               purge_data->local,
+                               purge_data->linked,
+                               purge_data->recursive,
                                num_tagged);
 
   if (num_tagged[INDEX_ID_NULL] == 0) {
@@ -2299,11 +2303,11 @@ static void wm_block_orphans_purge(bContext *C, void *arg_block, void *arg_data)
   UI_popup_block_close(C, CTX_wm_window(C), (uiBlock *)arg_block);
 }
 
-static void wm_block_orphans_purge_button(uiBlock *block, wmOperator *op)
+static void wm_block_orphans_purge_button(uiBlock *block, OrphansPurgeData *purge_data)
 {
   uiBut *but = uiDefIconTextBut(
       block, UI_BTYPE_BUT, 0, 0, IFACE_("Delete"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
-  UI_but_func_set(but, wm_block_orphans_purge, block, op);
+  UI_but_func_set(but, wm_block_orphans_purge, block, purge_data);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
 
@@ -2339,7 +2343,8 @@ static void orphan_desc(bContext *C, DynStr *desc_r, bool local, bool linked, bo
 
 static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, void *arg)
 {
-  wmOperator *op = (wmOperator *)arg;
+  OrphansPurgeData *purge_data = (OrphansPurgeData *)arg;
+  wmOperator *op = purge_data->op;
   uiBlock *block = UI_block_begin(C, region, "orphans_remove_popup", UI_EMBOSS);
   UI_block_flag_enable(
       block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
@@ -2348,14 +2353,14 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
   uiLayout *layout = uiItemsAlertBox(block, 40, ALERT_ICON_WARNING);
 
   /* Title. */
-  uiItemL_ex(layout, TIP_("Remove Unused Data in This File"), 0, true, false);
+  uiItemL_ex(layout, TIP_("Purge Unused Data From This File"), 0, true, false);
 
   uiItemS(layout);
 
   char text[1024];
   DynStr *dyn_str = BLI_dynstr_new();
   orphan_desc(C, dyn_str, true, false, false);
-  BLI_snprintf(text, 1024, "Local (%s)", BLI_dynstr_get_cstring(dyn_str));
+  BLI_snprintf(text, 1024, "Local data: %s", BLI_dynstr_get_cstring(dyn_str));
 
   uiDefButBitC(block,
                UI_BTYPE_CHECKBOX,
@@ -2366,7 +2371,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                0,
                UI_UNIT_Y,
-               &orphans_purge_do_local,
+               &purge_data->local,
                0,
                0,
                0,
@@ -2375,7 +2380,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
 
   BLI_dynstr_clear(dyn_str);
   orphan_desc(C, dyn_str, false, true, false);
-  BLI_snprintf(text, 1024, "Linked (%s)", BLI_dynstr_get_cstring(dyn_str));
+  BLI_snprintf(text, 1024, "Linked data: %s", BLI_dynstr_get_cstring(dyn_str));
 
   uiDefButBitC(block,
                UI_BTYPE_CHECKBOX,
@@ -2386,7 +2391,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                0,
                UI_UNIT_Y,
-               &orphans_purge_do_linked,
+               &purge_data->linked,
                0,
                0,
                0,
@@ -2395,7 +2400,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
 
   BLI_dynstr_clear(dyn_str);
   orphan_desc(C, dyn_str, false, false, true);
-  BLI_snprintf(text, 1024, "Indirectly Unused (%s)", BLI_dynstr_get_cstring(dyn_str));
+  BLI_snprintf(text, 1024, "Include Indirectly Unused (recursive)");
 
   uiDefButBitC(block,
                UI_BTYPE_CHECKBOX,
@@ -2406,7 +2411,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                0,
                UI_UNIT_Y,
-               &orphans_purge_do_recursive,
+               &purge_data->recursive,
                0,
                0,
                0,
@@ -2431,7 +2436,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
   if (windows_layout) {
     /* Windows standard layout. */
     uiLayoutColumn(split, false);
-    wm_block_orphans_purge_button(block, op);
+    wm_block_orphans_purge_button(block, purge_data);
     uiLayoutColumn(split, false);
     wm_block_orphans_cancel_button(block);
   }
@@ -2440,7 +2445,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
     uiLayoutColumn(split, false);
     wm_block_orphans_cancel_button(block);
     uiLayoutColumn(split, false);
-    wm_block_orphans_purge_button(block, op);
+    wm_block_orphans_purge_button(block, purge_data);
   }
 
   UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
@@ -2449,7 +2454,9 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
 
 static int outliner_orphans_cleanup_exec(bContext *C, wmOperator *op)
 {
-  UI_popup_block_invoke(C, wm_block_create_orphans_cleanup, op, nullptr);
+  OrphansPurgeData *purge_data = MEM_new<OrphansPurgeData>("orphans_purge_data");
+  purge_data->op = op;
+  UI_popup_block_invoke(C, wm_block_create_orphans_cleanup, purge_data, MEM_freeN);
   return OPERATOR_FINISHED;
 }
 
@@ -2457,8 +2464,8 @@ void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot)
 {
   /* identifiers */
   ot->idname = "OUTLINER_OT_orphans_cleanup";
-  ot->name = "Remove Unused Data...";
-  ot->description = "Remove Unused data in the file";
+  ot->name = "Purge Unused Data...";
+  ot->description = "Remove unused data from this file";
 
   /* callbacks */
   ot->exec = outliner_orphans_cleanup_exec;
