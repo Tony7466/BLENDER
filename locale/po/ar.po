@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'274dc815eb35')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'98c6bded9844')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-11 11:18:04\n"
+"POT-Creation-Date: 2024-01-02 10:08:43\n"
 "PO-Revision-Date: 2016-04-23 22:41+0300\n"
 "Last-Translator: Yousef Harfoush <bat3a@msn.com>\n"
 "Language-Team: Yousef Harfoush, Amine Moussaoui <bat3a@msn.com>\n"
@@ -16635,10 +16635,6 @@ msgid "Channel"
 msgstr "ﺓﺎﻨﻗ"
 
 
-msgid "Dope Sheet Channel"
-msgstr "ﻂﻴﻄﺨﺗ ﺔﻗﺭﻭ ﺓﺎﻨﻗ"
-
-
 msgid "Snap"
 msgstr "ﻱﺫﺎﺣ"
 
@@ -20329,6 +20325,10 @@ msgid "Component"
 msgstr "ﻥﻮّﻜﻣ"
 
 
+msgid "Bake"
+msgstr "ﻥﺰّﺧ"
+
+
 msgid "Original"
 msgstr "ﻲﻠﺻﺃ"
 
@@ -22561,6 +22561,15 @@ msgstr "ﺎﻴﺋﺍﻮﺸﻋ ﺮﺘﺧﺍ"
 
 
 msgctxt "Operator"
+msgid "Clear Tilt"
+msgstr "ﻥﻼ﻿ﻴﻤﻟﺍ ﻝﺯﺍ"
+
+
+msgid "Clear the tilt of selected control points"
+msgstr "ﺓﺭﺎﺘﺨﻤﻟﺍ ﻢﻜﺤﺘﻟﺍ ﻂﻘﻧ ﻥﻼ﻿ﻴﻣ ﻝﺯﺍ"
+
+
+msgctxt "Operator"
 msgid "Toggle Cyclic"
 msgstr "ﻱﺭﻭﺪﻟﺍ ﺐﻠﻗﺍ"
 
@@ -22808,15 +22817,6 @@ msgstr "ﺓﺭﺎﺘﺨﻤﻟﺍ ﻂﻘﻨﻠﻟ ﻦﻴﻠﻟﺍ ﻢﺴﺠﻟﺍ
 
 
 msgctxt "Operator"
-msgid "Clear Tilt"
-msgstr "ﻥﻼ﻿ﻴﻤﻟﺍ ﻝﺯﺍ"
-
-
-msgid "Clear the tilt of selected control points"
-msgstr "ﺓﺭﺎﺘﺨﻤﻟﺍ ﻢﻜﺤﺘﻟﺍ ﻂﻘﻧ ﻥﻼ﻿ﻴﻣ ﻝﺯﺍ"
-
-
-msgctxt "Operator"
 msgid "Use Nodes"
 msgstr "ﺪﻘﻌﻟﺍ ﻡﺪﺨﺘﺳﺇ"
 
@@ -22926,11 +22926,6 @@ msgstr "ﺮﻟﻮﻳ YZX ﻰﻟﺇ ﺮﻳﻭﺍﺪﺘﻟﺍ ﻝﻮﺣ"
 
 msgid "Euler (ZYX)"
 msgstr "(ZYX) ﺮﻟﻮﻳ"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL ﺭﺪّﺻ"
 
 
 msgid "Z Forward"
@@ -27294,10 +27289,6 @@ msgid "Bake Physics"
 msgstr "ﺕﺎﻴﺋﺎﻳﺰﻴﻔﻟﺍ ﻥﺰﺧ"
 
 
-msgid "Bake"
-msgstr "ﻥﺰّﺧ"
-
-
 msgctxt "Operator"
 msgid "Bake All Physics"
 msgstr "ﺕﺎﻴﺋﺎﻳﺰﻔﻟﺍ ﻞﻛ ﻥﺰﺧ"
@@ -29569,6 +29560,11 @@ msgstr "ﺭﺎﺴﻳ/ﻦﻴﻤﻳ ﺐﻠﻗﺍ"
 msgctxt "Operator"
 msgid "Splash Screen"
 msgstr "ﺔﻳﺍﺪﺒﻟﺍ ﺔﺷﺎﺷ"
+
+
+msgctxt "Operator"
+msgid "Export STL"
+msgstr "STL ﺭﺪّﺻ"
 
 
 msgid "UV Maps"
@@ -33618,14 +33614,6 @@ msgid "Show Offsets"
 msgstr "ﺕﺎﺣﺍﺯﻻ﻿ﺍ ﺮﻬﻇﺍ"
 
 
-msgid "Waveforms Off"
-msgstr "ﻲﺟﻮﻤﻟﺍ ﻞﻜﺸﻟﺍ ﺊﻔﻃﺃ "
-
-
-msgid "Waveforms On"
-msgstr "ﻲﺟﻮﻤﻟﺍ ﻞﻜﺸﻟﺍ ﻞﻌّﻓ "
-
-
 msgid "Median Point"
 msgstr "ﻂﺳّﻮﺘﻟﺍ ﺔﻄﻘﻧ"
 
@@ -34535,6 +34523,10 @@ msgstr "ﺔﻟﺎﻌﻔﻟﺍ ﺓﺎﻨﻘﻟﺍ ﺔﻋﻮﻤﺠﻣ"
 
 msgid "Channel Group"
 msgstr "ﺕﺍﻮﻨﻗ ﺔﻋﻮﻤﺠﻣ"
+
+
+msgid "Dope Sheet Channel"
+msgstr "ﻂﻴﻄﺨﺗ ﺔﻗﺭﻭ ﺓﺎﻨﻗ"
 
 
 msgid "Color of Keyframe"
@@ -37606,76 +37598,6 @@ msgstr "ﺝﺭﺎﺨﻟﺎﺑ ﺐﺴﺣﺃ"
 msgctxt "Operator"
 msgid "Recalculate Inside"
 msgstr "ﻞﺧﺍﺪﻟﺎﺑ ﺐﺴﺣﺃ"
-
-
-msgctxt "Operator"
-msgid "Copyright"
-msgstr "ﺦﺴﻨﻟﺍ ﻖﺣ"
-
-
-msgctxt "Operator"
-msgid "Registered Trademark"
-msgstr "ﺔﻠﺠﺴﻣ ﺔﻳﺭﺎﺠﺗ ﺔﻣﻼ﻿ﻋ"
-
-
-msgctxt "Operator"
-msgid "Degree Sign"
-msgstr "ﺔﺟﺭﺪﻟﺍ ﺰﻣﺭ"
-
-
-msgctxt "Operator"
-msgid "Multiplication Sign"
-msgstr "ﺏﺮﻀﻟﺍ ﺰﻣﺭ"
-
-
-msgctxt "Operator"
-msgid "Superscript 1"
-msgstr "1 ﻱﻮﻠﻋ ﺺﻧ"
-
-
-msgctxt "Operator"
-msgid "Superscript 2"
-msgstr "2 ﻱﻮﻠﻋ ﺺﻧ"
-
-
-msgctxt "Operator"
-msgid "Superscript 3"
-msgstr "3 ﻱﻮﻠﻋ ﺺﻧ"
-
-
-msgctxt "Operator"
-msgid "Double >>"
-msgstr "<< ﻒﻋﺎﻀﻣ"
-
-
-msgctxt "Operator"
-msgid "Double <<"
-msgstr ">> ﻒﻋﺎﻀﻣ"
-
-
-msgctxt "Operator"
-msgid "Dutch Florin"
-msgstr "ﻱﺪﻨﻟﻮﻫ ﻥﺭﻮﻠﻓ"
-
-
-msgctxt "Operator"
-msgid "British Pound"
-msgstr "ﻲﻧﺎﻄﻳﺮﺑ ﻪﻴﻨﺟ"
-
-
-msgctxt "Operator"
-msgid "Japanese Yen"
-msgstr "ﻲﻧﺎﺑﺎﻳ ﻦﻳ"
-
-
-msgctxt "Operator"
-msgid "Spanish Question Mark"
-msgstr "ﺔﻴﻧﺎﺒﺳﺃ ﻡﺎﻬﻔﺘﺳﺇ ﺔﻣﻼ﻿ﻋ"
-
-
-msgctxt "Operator"
-msgid "Spanish Exclamation Mark"
-msgstr "ﺔﻴﻧﺎﺒﺳﺃ ﺐﺠﻌﺗ ﺔﻣﻼ﻿ﻋ"
 
 
 msgctxt "Operator"

@@ -187,7 +187,7 @@ GHOST_SystemX11::GHOST_SystemX11()
   }
 
   {
-    struct timespec ts = {0, 0};
+    timespec ts = {0, 0};
     if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
       GHOST_ASSERT(false, "Could not instantiate monotonic timer!");
     }
@@ -638,7 +638,8 @@ bool GHOST_SystemX11::processEvents(bool waitForEvent)
       }
       else if (xevent.type == KeyPress) {
         if ((xevent.xkey.keycode == m_last_release_keycode) &&
-            (xevent.xkey.time <= m_last_release_time)) {
+            (xevent.xkey.time <= m_last_release_time))
+        {
           continue;
         }
       }
@@ -1149,7 +1150,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
 
           /* Use utf8 because its not locale repentant, from XORG docs. */
           if (!(len = Xutf8LookupString(
-                    xic, xke, utf8_buf, sizeof(utf8_array) - 5, &key_sym, &status))) {
+                    xic, xke, utf8_buf, sizeof(utf8_array) - 5, &key_sym, &status)))
+          {
             utf8_buf[0] = '\0';
           }
 

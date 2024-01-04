@@ -632,11 +632,11 @@ enum eWM_EventFlag {
    */
   WM_EVENT_IS_REPEAT = (1 << 1),
   /**
-   * Generated for consecutive track-pad or NDOF-motion events,
+   * Generated for consecutive trackpad or NDOF-motion events,
    * the repeat chain is broken by key/button events,
    * or cursor motion exceeding #WM_EVENT_CURSOR_MOTION_THRESHOLD.
    *
-   * Changing the type of track-pad or gesture event also breaks the chain.
+   * Changing the type of trackpad or gesture event also breaks the chain.
    */
   WM_EVENT_IS_CONSECUTIVE = (1 << 2),
   /**
@@ -674,7 +674,7 @@ struct wmTabletData {
  *   See: #ISKEYBOARD_OR_BUTTON.
  *
  * - Previous x/y are exceptions: #wmEvent.prev
- *   these are set on mouse motion, see #MOUSEMOVE & track-pad events.
+ *   these are set on mouse motion, see #MOUSEMOVE & trackpad events.
  *
  * - Modal key-map handling sets `prev_val` & `prev_type` to `val` & `type`,
  *   this allows modal keys-maps to check the original values (needed in some cases).
@@ -919,6 +919,31 @@ struct wmTimer {
   bool sleep;
 };
 
+typedef enum wmWarningSize {
+  WM_WARNING_SIZE_SMALL = 0,
+  WM_WARNING_SIZE_LARGE,
+} wmWarningSize;
+
+typedef enum wmWarningPosition {
+  WM_WARNING_POSITION_MOUSE = 0,
+  WM_WARNING_POSITION_CENTER,
+} wmWarningPosition;
+
+typedef struct wmWarningDetails {
+  char title[1024];
+  char message[1024];
+  char message2[1024];
+  char confirm_button[256];
+  char cancel_button[256];
+  int icon;
+  wmWarningSize size;
+  wmWarningPosition position;
+  bool confirm_default;
+  bool cancel_default;
+  bool mouse_move_quit;
+  bool red_alert;
+} wmWarningDetails;
+
 /**
  * Communication/status data owned by the wmJob, and passed to the worker code when calling
  * `startjob` callback.
@@ -1046,6 +1071,11 @@ struct wmOperatorType {
    */
   std::string (*get_description)(bContext *C, wmOperatorType *ot, PointerRNA *ptr);
 
+  /**
+   * If using WM_operator_confirm the following can override all parts of the dialog.
+   */
+  void (*warning)(struct bContext *C, struct wmOperator *, wmWarningDetails *warning);
+
   /** RNA for properties */
   StructRNA *srna;
 
@@ -1135,6 +1165,7 @@ enum eWM_DragDataType {
   WM_DRAG_ASSET_CATALOG,
   WM_DRAG_GREASE_PENCIL_LAYER,
   WM_DRAG_NODE_TREE_INTERFACE,
+  WM_DRAG_BONE_COLLECTION,
 };
 
 enum eWM_DragFlags {
