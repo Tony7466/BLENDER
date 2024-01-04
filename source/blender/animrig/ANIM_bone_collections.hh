@@ -231,8 +231,9 @@ void ANIM_bonecoll_hide(bArmature *armature, BoneCollection *bcoll);
 /**
  * Show or hide this bone collection.
  *
- * Do not use this with a hard-coded `is_visible` parameter, but use one of the
- * dedicated show/hide functions instead.
+ * Calling this with a hard-coded `is_visible` parameter is equivalent to
+ * calling the dedicated show/hide functions. Prefer the dedicated functions for
+ * clarity.
  *
  * \see ANIM_bonecoll_show
  * \see ANIM_bonecoll_hide
