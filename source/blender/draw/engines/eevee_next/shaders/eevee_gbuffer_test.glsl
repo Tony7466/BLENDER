@@ -46,8 +46,6 @@ void main()
 
     EXPECT_EQ(g_data_packed.layer_data, 1);
     EXPECT_EQ(data_out.closure_count, 1);
-    EXPECT_TRUE(data_out.has_any_surface);
-    EXPECT_TRUE(data_out.has_diffuse);
 
     ClosureUndetermined out_diffuse = data_out.closures[0];
 
@@ -71,13 +69,10 @@ void main()
 
     EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
-    EXPECT_TRUE(data_out.has_any_surface);
-    EXPECT_TRUE(data_out.has_diffuse);
-    EXPECT_TRUE(data_out.has_sss);
 
     ClosureUndetermined out_sss_burley = data_out.closures[0];
 
-    EXPECT_EQ(out_sss_burley.type, CLOSURE_BSDF_DIFFUSE_ID);
+    EXPECT_EQ(out_sss_burley.type, CLOSURE_BSSRDF_BURLEY_ID);
     EXPECT_EQ(data_in.diffuse.type, CLOSURE_BSSRDF_BURLEY_ID);
     EXPECT_NEAR(data_in.diffuse.color, out_sss_burley.color, 1e-5);
     EXPECT_NEAR(data_in.diffuse.N, out_sss_burley.N, 1e-5);
@@ -97,11 +92,10 @@ void main()
 
     EXPECT_EQ(g_data_packed.layer_data, 1);
     EXPECT_EQ(data_out.closure_count, 1);
-    EXPECT_TRUE(data_out.has_any_surface);
-    EXPECT_TRUE(data_out.has_translucent);
 
     ClosureUndetermined out_translucent = data_out.closures[0];
 
+    EXPECT_EQ(out_translucent.type, CLOSURE_BSDF_TRANSLUCENT_ID);
     EXPECT_EQ(data_in.translucent.type, CLOSURE_BSDF_TRANSLUCENT_ID);
     EXPECT_NEAR(data_in.translucent.color, out_translucent.color, 1e-5);
     EXPECT_NEAR(data_in.translucent.N, out_translucent.N, 1e-5);
@@ -121,11 +115,10 @@ void main()
 
     EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
-    EXPECT_TRUE(data_out.has_any_surface);
-    EXPECT_TRUE(data_out.has_reflection);
 
     ClosureUndetermined out_reflection = data_out.closures[0];
 
+    EXPECT_EQ(out_reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_NEAR(data_in.reflection.color, out_reflection.color, 1e-5);
     EXPECT_NEAR(data_in.reflection.N, out_reflection.N, 1e-5);
@@ -147,11 +140,10 @@ void main()
 
     EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
-    EXPECT_TRUE(data_out.has_any_surface);
-    EXPECT_TRUE(data_out.has_refraction);
 
     ClosureUndetermined out_refraction = data_out.closures[0];
 
+    EXPECT_EQ(out_refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_NEAR(data_in.refraction.color, out_refraction.color, 1e-5);
     EXPECT_NEAR(data_in.refraction.N, out_refraction.N, 1e-5);
@@ -182,19 +174,18 @@ void main()
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
     EXPECT_EQ(data_out.closure_count, 2);
-    EXPECT_TRUE(data_out.has_any_surface);
-    EXPECT_TRUE(data_out.has_refraction);
-    EXPECT_TRUE(data_out.has_reflection);
 
-    ClosureUndetermined out_reflection = data_out.closures[0];
-    ClosureUndetermined out_refraction = data_out.closures[1];
+    ClosureUndetermined out_reflection = data_out.closures[1];
+    ClosureUndetermined out_refraction = data_out.closures[0];
 
+    EXPECT_EQ(out_refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_NEAR(data_in.refraction.color, out_refraction.color, 1e-5);
     EXPECT_NEAR(data_in.refraction.N, out_refraction.N, 1e-5);
     EXPECT_NEAR(data_in.refraction.data.r, out_refraction.data.r, 1e-5);
     EXPECT_NEAR(data_in.refraction.data.g, out_refraction.data.g, 1e-5);
 
+    EXPECT_EQ(out_reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_NEAR(data_in.reflection.color, out_reflection.color, 1e-5);
     EXPECT_NEAR(data_in.reflection.N, out_reflection.N, 1e-5);
@@ -224,19 +215,18 @@ void main()
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
     EXPECT_EQ(data_out.closure_count, 2);
-    EXPECT_TRUE(data_out.has_any_surface);
-    EXPECT_TRUE(data_out.has_refraction);
-    EXPECT_TRUE(data_out.has_reflection);
 
-    ClosureUndetermined out_reflection = data_out.closures[0];
-    ClosureUndetermined out_refraction = data_out.closures[1];
+    ClosureUndetermined out_reflection = data_out.closures[1];
+    ClosureUndetermined out_refraction = data_out.closures[0];
 
+    EXPECT_EQ(out_refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_NEAR(data_in.refraction.color, out_refraction.color, 1e-5);
     EXPECT_NEAR(data_in.refraction.N, out_refraction.N, 1e-5);
     EXPECT_NEAR(data_in.refraction.data.r, out_refraction.data.r, 1e-5);
     EXPECT_NEAR(data_in.refraction.data.g, out_refraction.data.g, 1e-5);
 
+    EXPECT_EQ(out_reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_NEAR(data_in.reflection.color, out_reflection.color, 1e-5);
     EXPECT_NEAR(data_in.reflection.N, out_reflection.N, 1e-5);
