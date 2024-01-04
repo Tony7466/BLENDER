@@ -9,6 +9,8 @@
 #include <cmath>
 #include <cstring>
 
+#include "BLF_api.h"
+
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
@@ -517,7 +519,8 @@ static void sequencer_draw_display_buffer(const bContext *C,
   }
 }
 
-static void draw_histogram(const blender::ed::seq::ScopeHistogram &hist,
+static void draw_histogram(ARegion *region,
+                           const blender::ed::seq::ScopeHistogram &hist,
                            SeqQuadsBatch &quads,
                            const rctf &area)
 {
@@ -529,17 +532,36 @@ static void draw_histogram(const blender::ed::seq::ScopeHistogram &hist,
   uchar col_bg[4] = {0, 0, 0, 255};
   quads.add_quad(area.xmin, area.ymin, area.xmax, area.ymax, col_bg);
 
-  /* Grid lines. */
+  /* Grid lines and labels. */
   uchar col_grid[4] = {128, 128, 128, 128};
   float grid_x_0 = area.xmin;
   float grid_x_1 = area.xmax;
+  /* Float histograms show -0.25 .. 1.25 area horizontally. */
   if (hist.data.size() > 256) {
     grid_x_0 = area.xmin + (area.xmax - area.xmin) * (0.25f / 1.5f);
     grid_x_1 = area.xmin + (area.xmax - area.xmin) * (1.25f / 1.5f);
   }
+
+  View2D *v2d = &region->v2d;
+  const float text_scale_x = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
+  const float text_scale_y = BLI_rctf_size_y(&v2d->cur) / BLI_rcti_size_y(&v2d->mask);
+
   for (int line = 0; line <= 4; line++) {
-    float x = grid_x_0 + (grid_x_1 - grid_x_0) * line / 4;
+    float val = float(line) / 4;
+    float x = grid_x_0 + (grid_x_1 - grid_x_0) * val;
     quads.add_line(x, area.ymin, x, area.ymax, col_grid);
+
+    /* Label. */
+    char buf[10];
+    snprintf(buf, sizeof(buf), "%.2f", val);
+    size_t buf_len = strlen(buf);
+
+    float text_width, text_height;
+    BLF_width_and_height(BLF_default(), buf, buf_len, &text_width, &text_height);
+    text_width *= text_scale_x;
+    text_height *= text_scale_y;
+    UI_view2d_text_cache_add(
+        v2d, x - text_width / 2, area.ymax - text_height * 1.3f, buf, buf_len, col_grid);
   }
 
   /* Border. */
@@ -572,6 +594,8 @@ static void draw_histogram(const blender::ed::seq::ScopeHistogram &hist,
   }
   quads.draw();
   GPU_blend(GPU_BLEND_ALPHA);
+
+  UI_view2d_text_cache_draw(region);
 }
 
 static blender::float2 rgb_to_uv(const blender::float3 &rgb)
@@ -579,6 +603,29 @@ static blender::float2 rgb_to_uv(const blender::float3 &rgb)
   float y, u, v;
   rgb_to_yuv(rgb.x, rgb.y, rgb.z, &y, &u, &v, BLI_YUV_ITU_BT709);
   return blender::float2(u, v);
+}
+
+static void draw_waveform_graticule(ARegion *region, SeqQuadsBatch &quads, const rctf &area)
+{
+  /* Horizontal lines at 10%, 70%, 90%. */
+  const float lines[3] = {0.1f, 0.7f, 0.9f};
+  uchar col_grid[4] = {160, 64, 64, 128};
+  const float x0 = area.xmin;
+  const float x1 = area.xmax;
+
+  for (int i = 0; i < 3; i++) {
+    const float y = area.ymin + (area.ymax - area.ymin) * lines[i];
+    char buf[10];
+    snprintf(buf, sizeof(buf), "%.1f", lines[i]);
+    quads.add_line(x0, y, x1, y, col_grid);
+    UI_view2d_text_cache_add(&region->v2d, x0 + 8, y + 8, buf, strlen(buf), col_grid);
+  }
+  /* Border. */
+  uchar col_border[4] = {64, 64, 64, 128};
+  quads.add_wire_quad(x0, area.ymin, x1, area.ymax, col_border);
+
+  quads.draw();
+  UI_view2d_text_cache_draw(region);
 }
 
 static void draw_vectorscope_graticule(SeqQuadsBatch &quads, const rctf &area)
@@ -741,22 +788,11 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq,
   }
 
   if (sseq->mainb == SEQ_DRAW_IMG_HISTOGRAM) {
-    draw_histogram(scopes->histogram, quads, preview);
+    draw_histogram(region, scopes->histogram, quads, preview);
   }
   if (sseq->mainb == SEQ_DRAW_IMG_WAVEFORM) {
-    /* Horizontal lines at 10%, 70%, 90%. */
-    uchar col_grid[4] = {160, 64, 64, 128};
-    const float x0 = preview.xmin;
-    const float x1 = preview.xmax;
-    const float y10 = preview.ymin + (preview.ymax - preview.ymin) * 0.10f;
-    const float y70 = preview.ymin + (preview.ymax - preview.ymin) * 0.70f;
-    const float y90 = preview.ymin + (preview.ymax - preview.ymin) * 0.90f;
-    quads.add_line(x0, y10, x1, y10, col_grid);
-    quads.add_line(x0, y70, x1, y70, col_grid);
-    quads.add_line(x0, y90, x1, y90, col_grid);
-    /* Border. */
-    uchar col_border[4] = {64, 64, 64, 128};
-    quads.add_wire_quad(x0, preview.ymin, x1, preview.ymax, col_border);
+    use_blend = true;
+    draw_waveform_graticule(region, quads, preview);
   }
   if (sseq->mainb == SEQ_DRAW_IMG_VECTORSCOPE) {
     use_blend = true;
