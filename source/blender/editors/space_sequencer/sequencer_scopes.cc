@@ -101,16 +101,14 @@ static void init_wave_table(int height, uchar wtable[256])
   }
 }
 
-static ImBuf *make_waveform_view_from_ibuf_byte(ImBuf *ibuf)
+ImBuf *make_waveform_view_from_ibuf(const ImBuf *ibuf)
 {
 #ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER(__func__);
 #endif
-  using namespace blender;
-  int w = ibuf->x;
-  int h = 256;
+  const int w = ibuf->x;
+  const int h = 256;
   ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
-  const uchar *src = ibuf->byte_buffer.data;
   uchar *tgt = rval->byte_buffer.data;
 
   uchar wtable[256];
@@ -123,132 +121,37 @@ static ImBuf *make_waveform_view_from_ibuf_byte(ImBuf *ibuf)
   int muls[3] = {int(coeffs[0] * 65535), int(coeffs[1] * 65535), int(coeffs[2] * 65535)};
 
   /* Parallel over x, since each column is easily independent from others. */
-  threading::parallel_for(IndexRange(ibuf->x), 16, [&](IndexRange x_range) {
-    for (int y = 0; y < ibuf->y; y++) {
-
-      for (const int x : x_range) {
-        const uchar *rgb = src + 4 * (ibuf->x * y + x);
-        /* +1 is "Sree's solution" from http://stereopsis.com/doubleblend.html */
-        int rgb0 = rgb[0] + 1;
-        int rgb1 = rgb[1] + 1;
-        int rgb2 = rgb[2] + 1;
-        int luma = (rgb0 * muls[0] + rgb1 * muls[1] + rgb2 * muls[2]) >> 16;
-        int luma_y = clamp_i(luma, 0, 255);
-        uchar *p = tgt + 4 * (w * luma_y + x);
-        scope_put_pixel(wtable, p);
-      }
-    }
-  });
-
-  return rval;
-}
-
-static ImBuf *make_waveform_view_from_ibuf_float(ImBuf *ibuf)
-{
-#ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
-#endif
-  using namespace blender;
-  int w = ibuf->x;
-  int h = 256;
-  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
-  const float *src = ibuf->float_buffer.data;
-  uchar *tgt = rval->byte_buffer.data;
-
-  uchar wtable[256];
-  init_wave_table(ibuf->y, wtable);
-
-  /* Parallel over x, since each column is easily independent from others. */
-  threading::parallel_for(IndexRange(ibuf->x), 16, [&](IndexRange x_range) {
-    for (int y = 0; y < ibuf->y; y++) {
-
-      for (const int x : x_range) {
-        const float *rgb = src + 4 * (ibuf->x * y + x);
-        float v = IMB_colormanagement_get_luminance(rgb);
-        uchar *p = tgt;
-
-        int iv = clamp_i(int(v * h), 0, h - 1);
-
-        p += 4 * (w * iv + x);
-        scope_put_pixel(wtable, p);
-      }
-    }
-  });
-
-  return rval;
-}
-
-ImBuf *make_waveform_view_from_ibuf(ImBuf *ibuf)
-{
-  if (ibuf->float_buffer.data) {
-    return make_waveform_view_from_ibuf_float(ibuf);
-  }
-  return make_waveform_view_from_ibuf_byte(ibuf);
-}
-
-static ImBuf *make_sep_waveform_view_from_ibuf_byte(ImBuf *ibuf)
-{
-#ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
-#endif
-  using namespace blender;
-  int w = ibuf->x;
-  int h = 256;
-  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
-  const uchar *src = ibuf->byte_buffer.data;
-  uchar *tgt = rval->byte_buffer.data;
-  int sw = ibuf->x / 3;
-
-  uchar wtable[256];
-  init_wave_table(ibuf->y, wtable);
-
-  /* Parallel over x, since each column is easily independent from others. */
-  threading::parallel_for(IndexRange(ibuf->x), 16, [&](IndexRange x_range) {
-    for (int y = 0; y < ibuf->y; y++) {
-      for (const int x : x_range) {
-        int c;
-        const uchar *rgb = src + 4 * (ibuf->x * y + x);
-        for (c = 0; c < 3; c++) {
+  threading::parallel_for(IndexRange(ibuf->x), 32, [&](IndexRange x_range) {
+    if (ibuf->float_buffer.data) {
+      /* Float image. */
+      const float *src = ibuf->float_buffer.data;
+      for (int y = 0; y < ibuf->y; y++) {
+        for (const int x : x_range) {
+          const float *rgb = src + 4 * (ibuf->x * y + x);
+          float v = IMB_colormanagement_get_luminance(rgb);
           uchar *p = tgt;
-          p += 4 * (w * rgb[c] + c * sw + x / 3);
-          scope_put_pixel_single(wtable, p, c);
-        }
-      }
-    }
-  });
 
-  return rval;
-}
-
-static ImBuf *make_sep_waveform_view_from_ibuf_float(ImBuf *ibuf)
-{
-#ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
-#endif
-  using namespace blender;
-  int w = ibuf->x;
-  int h = 256;
-  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
-  const float *src = ibuf->float_buffer.data;
-  uchar *tgt = rval->byte_buffer.data;
-  int sw = ibuf->x / 3;
-
-  uchar wtable[256];
-  init_wave_table(ibuf->y, wtable);
-
-  /* Parallel over x, since each column is easily independent from others. */
-  threading::parallel_for(IndexRange(ibuf->x), 16, [&](IndexRange x_range) {
-    for (int y = 0; y < ibuf->y; y++) {
-      for (const int x : x_range) {
-        int c;
-        const float *rgb = src + 4 * (ibuf->x * y + x);
-        for (c = 0; c < 3; c++) {
-          uchar *p = tgt;
-          float v = rgb[c];
           int iv = clamp_i(int(v * h), 0, h - 1);
 
-          p += 4 * (w * iv + c * sw + x / 3);
-          scope_put_pixel_single(wtable, p, c);
+          p += 4 * (w * iv + x);
+          scope_put_pixel(wtable, p);
+        }
+      }
+    }
+    else {
+      /* Byte image. */
+      const uchar *src = ibuf->byte_buffer.data;
+      for (int y = 0; y < ibuf->y; y++) {
+        for (const int x : x_range) {
+          const uchar *rgb = src + 4 * (ibuf->x * y + x);
+          /* +1 is "Sree's solution" from http://stereopsis.com/doubleblend.html */
+          int rgb0 = rgb[0] + 1;
+          int rgb1 = rgb[1] + 1;
+          int rgb2 = rgb[2] + 1;
+          int luma = (rgb0 * muls[0] + rgb1 * muls[1] + rgb2 * muls[2]) >> 16;
+          int luma_y = clamp_i(luma, 0, 255);
+          uchar *p = tgt + 4 * (w * luma_y + x);
+          scope_put_pixel(wtable, p);
         }
       }
     }
@@ -257,92 +160,113 @@ static ImBuf *make_sep_waveform_view_from_ibuf_float(ImBuf *ibuf)
   return rval;
 }
 
-ImBuf *make_sep_waveform_view_from_ibuf(ImBuf *ibuf)
-{
-  if (ibuf->float_buffer.data) {
-    return make_sep_waveform_view_from_ibuf_float(ibuf);
-  }
-  return make_sep_waveform_view_from_ibuf_byte(ibuf);
-}
-
-static void draw_zebra_byte(const ImBuf *src, ImBuf *ibuf, float perc)
+ImBuf *make_sep_waveform_view_from_ibuf(const ImBuf *ibuf)
 {
 #ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER(__func__);
 #endif
-  using namespace blender;
-  uint limit = 255.0f * perc / 100.0f;
+  int w = ibuf->x;
+  int h = 256;
+  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
+  uchar *tgt = rval->byte_buffer.data;
+  int sw = ibuf->x / 3;
 
-  threading::parallel_for(IndexRange(ibuf->y), 16, [&](IndexRange y_range) {
-    const uchar *p = src->byte_buffer.data + y_range.first() * ibuf->x * 4;
-    uchar *o = ibuf->byte_buffer.data + y_range.first() * ibuf->x * 4;
-    for (const int y : y_range) {
-      for (int x = 0; x < ibuf->x; x++) {
-        uchar r = *p++;
-        uchar g = *p++;
-        uchar b = *p++;
-        uchar a = *p++;
+  uchar wtable[256];
+  init_wave_table(ibuf->y, wtable);
 
-        if (r >= limit || g >= limit || b >= limit) {
-          if (((x + y) & 0x08) != 0) {
-            r = 255 - r;
-            g = 255 - g;
-            b = 255 - b;
+  /* Parallel over x, since each column is easily independent from others. */
+  threading::parallel_for(IndexRange(ibuf->x), 32, [&](IndexRange x_range) {
+    if (ibuf->float_buffer.data) {
+      /* Float image. */
+      const float *src = ibuf->float_buffer.data;
+      for (int y = 0; y < ibuf->y; y++) {
+        for (const int x : x_range) {
+          const float *rgb = src + 4 * (ibuf->x * y + x);
+          for (int c = 0; c < 3; c++) {
+            uchar *p = tgt;
+            float v = rgb[c];
+            int iv = clamp_i(int(v * h), 0, h - 1);
+
+            p += 4 * (w * iv + c * sw + x / 3);
+            scope_put_pixel_single(wtable, p, c);
           }
         }
-        *o++ = r;
-        *o++ = g;
-        *o++ = b;
-        *o++ = a;
+      }
+    }
+    else {
+      /* Byte image. */
+      const uchar *src = ibuf->byte_buffer.data;
+      for (int y = 0; y < ibuf->y; y++) {
+        for (const int x : x_range) {
+          const uchar *rgb = src + 4 * (ibuf->x * y + x);
+          for (int c = 0; c < 3; c++) {
+            uchar *p = tgt;
+            p += 4 * (w * rgb[c] + c * sw + x / 3);
+            scope_put_pixel_single(wtable, p, c);
+          }
+        }
       }
     }
   });
+
+  return rval;
 }
 
-static void draw_zebra_float(ImBuf *src, ImBuf *ibuf, float perc)
+ImBuf *make_zebra_view_from_ibuf(const ImBuf *ibuf, float perc)
 {
 #ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER(__func__);
 #endif
-  using namespace blender;
-
-  float limit = perc / 100.0f;
+  ImBuf *res = IMB_allocImBuf(ibuf->x, ibuf->y, 32, IB_rect);
 
   threading::parallel_for(IndexRange(ibuf->y), 16, [&](IndexRange y_range) {
-    const float *p = src->float_buffer.data + y_range.first() * ibuf->x * 4;
-    uchar *o = ibuf->byte_buffer.data + y_range.first() * ibuf->x * 4;
-    for (const int y : y_range) {
-      for (int x = 0; x < ibuf->x; x++) {
-        float pix[4];
-        pix[0] = *p++;
-        pix[1] = *p++;
-        pix[2] = *p++;
-        pix[3] = *p++;
-        if (pix[0] >= limit || pix[1] >= limit || pix[2] >= limit) {
-          if (((x + y) & 0x08) != 0) {
-            pix[0] = -pix[0];
-            pix[1] = -pix[1];
-            pix[2] = -pix[2];
+    if (ibuf->float_buffer.data) {
+      /* Float image. */
+      const float limit = perc / 100.0f;
+      const float *p = ibuf->float_buffer.data + y_range.first() * ibuf->x * 4;
+      uchar *o = res->byte_buffer.data + y_range.first() * ibuf->x * 4;
+      for (const int y : y_range) {
+        for (int x = 0; x < ibuf->x; x++) {
+          float pix[4];
+          memcpy(pix, p, sizeof(pix));
+          if (pix[0] >= limit || pix[1] >= limit || pix[2] >= limit) {
+            if (((x + y) & 0x08) != 0) {
+              pix[0] = -pix[0];
+              pix[1] = -pix[1];
+              pix[2] = -pix[2];
+            }
           }
+          rgba_float_to_uchar(o, pix);
+          p += 4;
+          o += 4;
         }
-        rgba_float_to_uchar(o, pix);
-        o += 4;
+      }
+    }
+    else {
+      /* Byte image. */
+      const uint limit = 255.0f * perc / 100.0f;
+      const uchar *p = ibuf->byte_buffer.data + y_range.first() * ibuf->x * 4;
+      uchar *o = res->byte_buffer.data + y_range.first() * ibuf->x * 4;
+      for (const int y : y_range) {
+        for (int x = 0; x < ibuf->x; x++) {
+          uchar pix[4];
+          memcpy(pix, p, sizeof(pix));
+
+          if (pix[0] >= limit || pix[1] >= limit || pix[2] >= limit) {
+            if (((x + y) & 0x08) != 0) {
+              pix[0] = 255 - pix[0];
+              pix[1] = 255 - pix[1];
+              pix[2] = 255 - pix[2];
+            }
+          }
+          memcpy(o, pix, sizeof(pix));
+          p += 4;
+          o += 4;
+        }
       }
     }
   });
-}
-
-ImBuf *make_zebra_view_from_ibuf(ImBuf *ibuf, float perc)
-{
-  ImBuf *new_ibuf = IMB_allocImBuf(ibuf->x, ibuf->y, 32, IB_rect);
-
-  if (ibuf->float_buffer.data) {
-    draw_zebra_float(ibuf, new_ibuf, perc);
-  }
-  else {
-    draw_zebra_byte(ibuf, new_ibuf, perc);
-  }
-  return new_ibuf;
+  return res;
 }
 
 static int get_bin_float(float f)
@@ -359,7 +283,7 @@ static int get_bin_float(float f)
 void ScopeHistogram::calc_from_ibuf(const ImBuf *ibuf)
 {
 #ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER(__func__);
 #endif
 
   const bool is_float = ibuf->float_buffer.data != nullptr;
@@ -414,85 +338,58 @@ void ScopeHistogram::calc_from_ibuf(const ImBuf *ibuf)
   }
 }
 
-static ImBuf *make_vectorscope_view_from_ibuf_byte(ImBuf *ibuf)
+ImBuf *make_vectorscope_view_from_ibuf(const ImBuf *ibuf)
 {
 #ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER(__func__);
 #endif
-  int w = 512;
-  int h = 512;
-  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
+  const int size = 512;
+  const float size_mul = size - 1.0f;
+  ImBuf *rval = IMB_allocImBuf(size, size, 32, IB_rect);
 
-  int x, y;
-  const uchar *src = ibuf->byte_buffer.data;
-  uchar *tgt = rval->byte_buffer.data;
+  uchar *dst = rval->byte_buffer.data;
   float rgb[3];
 
   uchar wtable[256];
   init_wave_table(math::midpoint(ibuf->x, ibuf->y), wtable);
 
-  for (y = 0; y < ibuf->y; y++) {
-    for (x = 0; x < ibuf->x; x++) {
-      const uchar *src1 = src + 4 * (ibuf->x * y + x);
-      uchar *p;
-
-      rgb[0] = float(src1[0]) / 255.0f;
-      rgb[1] = float(src1[1]) / 255.0f;
-      rgb[2] = float(src1[2]) / 255.0f;
-      float2 uv = rgb_to_uv_normalized(rgb);
-
-      p = tgt + 4 * (w * int(uv.y * (h - 1)) + int(uv.x * (w - 1)));
-      scope_put_pixel(wtable, (uchar *)p);
-    }
-  }
-
-  return rval;
-}
-
-static ImBuf *make_vectorscope_view_from_ibuf_float(ImBuf *ibuf)
-{
-#ifdef DEBUG_TIME
-  SCOPED_TIMER_AVERAGED(__func__);
-#endif
-  int w = 512;
-  int h = 512;
-  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
-  int x, y;
-  const float *src = ibuf->float_buffer.data;
-  uchar *tgt = rval->byte_buffer.data;
-  float rgb[3];
-  float scope_gamma = 0.2;
-  uchar wtable[256];
-
-  for (x = 0; x < 256; x++) {
-    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, scope_gamma) * 255.0f);
-  }
-
-  for (y = 0; y < ibuf->y; y++) {
-    for (x = 0; x < ibuf->x; x++) {
-      const float *src1 = src + 4 * (ibuf->x * y + x);
-      const uchar *p;
-
-      memcpy(rgb, src1, sizeof(float[3]));
-
-      clamp_v3(rgb, 0.0f, 1.0f);
-
-      float2 uv = rgb_to_uv_normalized(rgb);
-
-      p = tgt + 4 * (w * int(uv.y * (h - 1)) + int(uv.x * (w - 1)));
-      scope_put_pixel(wtable, (uchar *)p);
-    }
-  }
-
-  return rval;
-}
-
-ImBuf *make_vectorscope_view_from_ibuf(ImBuf *ibuf)
-{
   if (ibuf->float_buffer.data) {
-    return make_vectorscope_view_from_ibuf_float(ibuf);
+    /* Float image. */
+    const float *src = ibuf->float_buffer.data;
+    for (int y = 0; y < ibuf->y; y++) {
+      for (int x = 0; x < ibuf->x; x++) {
+        memcpy(rgb, src, sizeof(float[3]));
+        clamp_v3(rgb, 0.0f, 1.0f);
+
+        float2 uv = rgb_to_uv_normalized(rgb) * size_mul;
+
+        uchar *p = dst + 4 * (size * int(uv.y) + int(uv.x));
+        scope_put_pixel(wtable, p);
+
+        src += 4;
+      }
+    }
   }
-  return make_vectorscope_view_from_ibuf_byte(ibuf);
+  else {
+    /* Byte image. */
+    const uchar *src = ibuf->byte_buffer.data;
+    for (int y = 0; y < ibuf->y; y++) {
+      for (int x = 0; x < ibuf->x; x++) {
+        rgb[0] = float(src[0]) * (1.0f / 255.0f);
+        rgb[1] = float(src[1]) * (1.0f / 255.0f);
+        rgb[2] = float(src[2]) * (1.0f / 255.0f);
+
+        float2 uv = rgb_to_uv_normalized(rgb) * size_mul;
+
+        uchar *p = dst + 4 * (size * int(uv.y) + int(uv.x));
+        scope_put_pixel(wtable, p);
+
+        src += 4;
+      }
+    }
+  }
+
+  return rval;
 }
 
 }  // namespace blender::ed::seq

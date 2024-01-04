@@ -39,9 +39,9 @@ struct SeqScopes {
   ScopeHistogram histogram;
 };
 
-ImBuf *make_waveform_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_sep_waveform_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_vectorscope_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_zebra_view_from_ibuf(ImBuf *ibuf, float perc);
+ImBuf *make_waveform_view_from_ibuf(const ImBuf *ibuf);
+ImBuf *make_sep_waveform_view_from_ibuf(const ImBuf *ibuf);
+ImBuf *make_vectorscope_view_from_ibuf(const ImBuf *ibuf);
+ImBuf *make_zebra_view_from_ibuf(const ImBuf *ibuf, float perc);
 
 }  // namespace blender::ed::seq

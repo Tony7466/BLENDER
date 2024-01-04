@@ -160,7 +160,9 @@ ImBuf *sequencer_ibuf_get(Main *bmain,
   return ibuf;
 }
 
-static ImBuf *sequencer_make_scope(Scene *scene, ImBuf *ibuf, ImBuf *(*make_scope_fn)(ImBuf *ibuf))
+static ImBuf *sequencer_make_scope(Scene *scene,
+                                   ImBuf *ibuf,
+                                   ImBuf *(*make_scope_fn)(const ImBuf *ibuf))
 {
   ImBuf *display_ibuf = IMB_dupImBuf(ibuf);
   ImBuf *scope;
