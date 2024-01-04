@@ -3579,11 +3579,11 @@ static void wm_clear_recent_files_warning(bContext * /*C*/,
                                           wmOperator * /*op*/,
                                           wmWarningDetails *warning)
 {
-  STRNCPY(warning->message, "Remove all items from the Recent Files list");
-  warning->cancel_default = true;
+  STRNCPY(warning->message, IFACE_("Remove all items from the Recent Files list"));
+  STRNCPY(warning->confirm_button, IFACE_("Remove All"));
   warning->position = WM_WARNING_POSITION_CENTER;
   warning->size = WM_WARNING_SIZE_LARGE;
-  STRNCPY(warning->confirm_button, IFACE_("Remove All"));
+  warning->cancel_default = true;
 }
 
 static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator * /*op*/)
