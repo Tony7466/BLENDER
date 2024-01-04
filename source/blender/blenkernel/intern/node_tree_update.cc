@@ -891,9 +891,11 @@ class NodeTreeMainUpdater {
         for (bNodeSocket *input : node->input_sockets()) {
           if (input->is_available() && input->type == SOCK_MENU) {
             for (const bNodeSocket *output : node->output_sockets()) {
-              this->update_socket_enum_definition(
-                  *input->default_value_typed<bNodeSocketValueMenu>(),
-                  *output->default_value_typed<bNodeSocketValueMenu>());
+              if (output->is_available() && output->type == SOCK_MENU) {
+                this->update_socket_enum_definition(
+                    *input->default_value_typed<bNodeSocketValueMenu>(),
+                    *output->default_value_typed<bNodeSocketValueMenu>());
+              }
             }
           }
         }
