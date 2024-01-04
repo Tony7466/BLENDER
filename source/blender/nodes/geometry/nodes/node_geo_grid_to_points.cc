@@ -5,6 +5,7 @@
 #include "node_geometry_util.hh"
 
 #include "BKE_pointcloud.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "NOD_rna_define.hh"
 
@@ -110,7 +111,7 @@ template<typename T> struct PointData {
             const bool output_active,
             const bool output_values)
   {
-    this->transform = grids::vdb_transform_to_matrix(grid.transform());
+    this->transform = BKE_volume_vdb_transform_to_matrix(grid.transform());
     this->depth = grid.tree().treeDepth();
 
     const size_t num_active_voxels = grid.tree().activeVoxelCount();

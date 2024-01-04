@@ -157,9 +157,6 @@ void node_geo_exec_with_missing_openvdb(GeoNodeExecParams &params);
 
 namespace grids {
 
-float4x4 vdb_transform_to_matrix(const openvdb::math::Transform &transform);
-openvdb::math::Transform::Ptr matrix_to_vdb_transform(const float4x4 &mat);
-
 BaseSocketDeclarationBuilder &declare_grid_type_input(NodeDeclarationBuilder &b,
                                                       eCustomDataType type,
                                                       StringRef name,

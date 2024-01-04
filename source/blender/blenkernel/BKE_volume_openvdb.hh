@@ -14,6 +14,7 @@
 #  include "BLI_math_matrix_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
+#  include "BLI_math_matrix_types.hh"
 
 #  include "BKE_volume_enums.hh"
 
@@ -69,5 +70,9 @@ auto BKE_volume_grid_type_operation(const VolumeGridType grid_type, OpType &&op)
 
 openvdb::GridBase::Ptr BKE_volume_grid_create_with_changed_resolution(
     const VolumeGridType grid_type, const openvdb::GridBase &old_grid, float resolution_factor);
+
+
+blender::float4x4 BKE_volume_vdb_transform_to_matrix(const openvdb::math::Transform &transform);
+openvdb::math::Transform::Ptr BKE_volume_matrix_to_vdb_transform(const blender::float4x4 &mat);
 
 #endif
