@@ -1210,11 +1210,11 @@ static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_
 {
   wmOperator *op = static_cast<wmOperator *>(arg_op);
 
-  wmWarningDetails warning = {0};
+  wmWarningDetails warning = {{0}};
 
-  STRNCPY_RLEN(warning.title, WM_operatortype_description(C, op->type, op->ptr).c_str());
-  STRNCPY_RLEN(warning.confirm_button, WM_operatortype_name(op->type, op->ptr).c_str());
-  STRNCPY_RLEN(warning.cancel_button, IFACE_("Cancel"));
+  STRNCPY(warning.title, WM_operatortype_description(C, op->type, op->ptr).c_str());
+  STRNCPY(warning.confirm_button, WM_operatortype_name(op->type, op->ptr).c_str());
+  STRNCPY(warning.cancel_button, IFACE_("Cancel"));
   warning.icon = ALERT_ICON_WARNING;
   warning.size = WM_WARNING_SIZE_SMALL;
   warning.position = WM_WARNING_POSITION_MOUSE;
