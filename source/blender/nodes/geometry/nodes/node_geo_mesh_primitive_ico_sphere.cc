@@ -565,15 +565,14 @@ static void face_edge_topology(const int edge_edges_num,
       MutableSpan<int2> edges = face_edges.slice(face_edges_range.step(base_faces_num + face_i));
       for (const int line_i : IndexRange(inner_face_edges.hight())) {
         const int r_line_i = inner_face_edges.hight() - 1 - line_i;
-        const int begin_vert = edge_ba_order ? edge_ba_verts[line_i] :
-                                               edge_ba_verts.from_end(line_i);
-        const int end_vert = edge_ca_order ? edge_ca_verts[line_i] :
-                                             edge_ca_verts.from_end(line_i);
-
-        MutableSpan<int2> line_edges = edges.slice(inner_face_edges.slice_at(r_line_i));
+        const int begin_vert = edge_ba_order ? edge_ba_verts[r_line_i] :
+                                               edge_ba_verts.from_end(r_line_i);
+        const int end_vert = edge_ca_order ? edge_ca_verts[r_line_i] :
+                                             edge_ca_verts.from_end(r_line_i);
+        MutableSpan<int2> line_edges = edges.slice(inner_face_edges.slice_at(line_i));
         edges_line_fill_verts(
             int2(begin_vert, end_vert), line_edges, [=](const int vert_i) -> int {
-              return face_verts[inner_face_verts.last_of(vert_i) - r_line_i];
+              return face_verts[inner_face_verts.last_of(vert_i) - line_i];
             });
       }
     }
@@ -606,7 +605,6 @@ static void face_edge_topology(const int edge_edges_num,
                                                edge_ab_verts.from_end(line_i);
         const int end_vert = edge_cb_order ? edge_cb_verts[line_i] :
                                              edge_cb_verts.from_end(line_i);
-
         MutableSpan<int2> line_edges = edges.slice(inner_face_edges.slice_at(line_i));
         edges_line_fill_verts(
             int2(begin_vert, end_vert), line_edges, [=](const int vert_i) -> int {
