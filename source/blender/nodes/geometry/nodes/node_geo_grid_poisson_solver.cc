@@ -4,6 +4,9 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -94,15 +97,15 @@ struct DirichletBoundaryOp {
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const bke::VolumeGridPtr<float> input_grid = grids::extract_grid_input<float>(params, "Grid");
-  const bke::VolumeGridPtr<float> boundary_grid = grids::extract_grid_input<float>(params,
-                                                                                   "Boundary");
+  auto input_grid = params.extract_input<bke::VolumeGrid<float>>("Grid");
+  const auto boundary_grid = params.extract_input<bke::VolumeGrid<float>>("Boundary");
   if (!input_grid) {
-    grids::set_output_grid(params, "Grid", CD_PROP_FLOAT, input_grid);
+    params.set_output("Grid", input_grid);
     params.set_default_remaining_outputs();
   }
 
-  const openvdb::FloatTree &input_tree = input_grid.grid()->tree();
+  const openvdb::FloatTree &input_tree =
+      input_grid.grid(input_grid.get().tree_access_token()).tree();
 
   const double epsilon = openvdb::math::Delta<float>::value();
   openvdb::math::pcg::State pcg_state = openvdb::math::pcg::terminationDefaults<float>();
@@ -116,7 +119,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   openvdb::FloatTree::Ptr output_tree; 
   if (boundary_grid) {
-    BoundaryOp boundary_op{boundary_grid.grid()->getAccessor()};
+    BoundaryOp boundary_op{
+        boundary_grid.grid(boundary_grid.get().tree_access_token()).getAccessor()};
     output_tree =
         openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
             input_tree, boundary_op, pcg_state, interrupter, staggered);
@@ -128,12 +132,12 @@ static void node_geo_exec(GeoNodeExecParams params)
             input_tree, boundary_op, pcg_state, interrupter, staggered);
   }
 
-  openvdb::FloatGrid::Ptr output_grid_vdb = input_grid.grid()->copyWithNewTree();
+  openvdb::FloatGrid::Ptr output_grid_vdb =
+      input_grid.grid(input_grid.get().tree_access_token()).copyWithNewTree();
   output_grid_vdb->setTree(output_tree);
-  bke::GVolumeGridPtr output_grid = bke::make_volume_grid_ptr(output_grid_vdb,
-                                                              VOLUME_TREE_SOURCE_GENERATED);
+  bke::GVolumeGrid output_grid(output_grid_vdb);
 
-  grids::set_output_grid(params, "Grid", CD_PROP_FLOAT, output_grid);
+  params.set_output("Grid", output_grid);
   params.set_output<bool>("Success", std::move(pcg_state.success));
   params.set_output<int>("Iterations", std::move(pcg_state.iterations));
   params.set_output<float>("Absolute Error", float(pcg_state.absoluteError));

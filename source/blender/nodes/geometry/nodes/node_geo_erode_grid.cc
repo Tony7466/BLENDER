@@ -4,8 +4,12 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "RNA_enum_types.hh"
 
+#include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "UI_interface.hh"
@@ -56,23 +60,18 @@ static void try_erode_grid(GeoNodeExecParams params,
                            const int iterations,
                            const GeometryNodeGridNeighborTopology neighbors_mode)
 {
-  const bke::SocketValueVariant<T> value = params.extract_input<bke::SocketValueVariant<T>>(
-      "Grid");
-  if (!value.is_grid()) {
+  auto grid = params.extract_input<bke::VolumeGrid<T>>("Grid");
+  if (!grid) {
     return;
   }
 
-  using GridType = typename bke::VolumeGridPtr<T>::GridType;
-  typename GridType::Ptr grid = value.grid.grid_for_write();
-  BLI_assert(grid);
-
+  bke::VolumeGrid<T> output_grid(&grid.get_for_write());
   openvdb::tools::erodeActiveValues(
-      grid->tree(), iterations, grids::get_vdb_neighbors_mode(neighbors_mode));
+      grid.grid_for_write(grid.get_for_write().tree_access_token()).tree(),
+      iterations,
+      BKE_volume_vdb_neighbors_mode(neighbors_mode));
 
-  params.set_output(
-      "Grid",
-      bke::SocketValueVariant<T>(
-          bke::make_volume_grid_ptr(grid, VOLUME_TREE_SOURCE_GENERATED).template typed<T>()));
+  params.set_output("Grid", output_grid);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -81,7 +80,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
   const GeometryNodeGridNeighborTopology neighbors_mode = GeometryNodeGridNeighborTopology(
       params.node().custom2);
-  BLI_assert(grids::grid_type_supported(data_type));
+  BLI_assert(grid_type_supported(data_type));
   const int iterations = params.extract_input<int>("Iterations");
 
   switch (data_type) {
@@ -113,7 +112,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 
   RNA_def_node_enum(srna,
                     "neighbors_mode",
