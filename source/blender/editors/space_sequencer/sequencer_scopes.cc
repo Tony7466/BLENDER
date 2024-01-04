@@ -231,9 +231,9 @@ ImBuf *make_zebra_view_from_ibuf(const ImBuf *ibuf, float perc)
           memcpy(pix, p, sizeof(pix));
           if (pix[0] >= limit || pix[1] >= limit || pix[2] >= limit) {
             if (((x + y) & 0x08) != 0) {
-              pix[0] = -pix[0];
-              pix[1] = -pix[1];
-              pix[2] = -pix[2];
+              pix[0] = 1.0f - pix[0];
+              pix[1] = 1.0f - pix[1];
+              pix[2] = 1.0f - pix[2];
             }
           }
           rgba_float_to_uchar(o, pix);
