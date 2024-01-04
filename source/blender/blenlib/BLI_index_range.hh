@@ -314,10 +314,24 @@ class IndexRange {
     return IndexRange(start_ + size_ - new_size, new_size);
   }
 
-  /* Reverse indent on sampling. Zero index will retrieve last reachable index of range. */
+  /* Reverse index on sampling. Zero index will retrieve last reachable index of range. */
   constexpr int64_t from_end(int64_t i) const
   {
     return start_ + size_ - 1 - i;
+  }
+
+  /* Consider this range as segment of sequence of ranges with the same size and make step forward
+   * in this sequence. */
+  constexpr IndexRange step(int64_t n) const
+  {
+    BLI_assert(size_ == 0 || start_ % size_ == 0);
+    return IndexRange(start_ + size_ * n, size_);
+  }
+
+  /* Scale the space of this range. */
+  constexpr IndexRange scale(int64_t size) const
+  {
+    return IndexRange(start_ * size, size_ * size);
   }
 
   /**
