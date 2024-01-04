@@ -15,8 +15,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -295,7 +293,7 @@ static void build_bvh_spatial(
 /** Hash table size (32768). */
 #define HASHSIZE size_t(1 << (3 * HASHBIT))
 
-#define HASH(i, j, k) ((((((i)&31) << 5) | ((j)&31)) << 5) | ((k)&31))
+#define HASH(i, j, k) ((((((i) & 31) << 5) | ((j) & 31)) << 5) | ((k) & 31))
 
 #define MB_BIT(i, bit) (((i) >> (bit)) & 1)
 // #define FLIP(i, bit) ((i) ^ 1 << (bit)) /* flip the given bit of i */
@@ -1488,12 +1486,12 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   }
   MEM_freeN(process.indices);
 
-  for (int i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->verts_num; i++) {
     normalize_v3(process.no[i]);
   }
   blender::bke::mesh_vert_normals_assign(*mesh, std::move(process.no));
 
-  BKE_mesh_calc_edges(mesh, false, false);
+  blender::bke::mesh_calc_edges(*mesh, false, false);
 
   return mesh;
 }

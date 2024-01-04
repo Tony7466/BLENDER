@@ -142,7 +142,12 @@ bool is_autokey_flag(const Scene *scene, eKeyInsert_Flag flag);
  */
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id);
 
-void autokeyframe_object(bContext *C, Scene *scene, Object *ob);
+/**
+ * Insert keyframes on the given object `ob` based on the auto-keying settings.
+ *
+ * \param rna_paths: Only inserts keys on those RNA paths.
+ */
+void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string> rna_paths);
 /**
  * Auto-keyframing feature - for objects
  *
@@ -154,12 +159,18 @@ bool autokeyframe_pchan(bContext *C, Scene *scene, Object *ob, bPoseChannel *pch
 /**
  * Auto-keyframing feature - for poses/pose-channels
  *
- * targetless_ik: has targetless ik been done on any channels?
+ * \param targetless_ik: Has targetless ik been done on any channels?
+ * \param rna_paths: Only inserts keys on those RNA paths.
  *
  * \note Context may not always be available,
  * so must check before using it as it's a luxury for a few cases.
  */
-void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, short targetless_ik);
+void autokeyframe_pose_channel(bContext *C,
+                               Scene *scene,
+                               Object *ob,
+                               bPoseChannel *pose_channel,
+                               Span<std::string> rna_paths,
+                               short targetless_ik);
 /**
  * Use for auto-key-framing.
  * \param only_if_property_keyed: if true, auto-key-framing only creates keyframes on already keyed
@@ -179,7 +190,7 @@ bool autokeyframe_property(bContext *C,
 /**
  * Insert keys for the given rna_path in the given action. The length of the values Span is
  * expected to be the size of the property array.
- * \param frame is expected to be in the local time of the action, meaning it has to be NLA mapped
+ * \param frame: is expected to be in the local time of the action, meaning it has to be NLA mapped
  * already.
  * \returns The number of keys inserted.
  */
@@ -195,7 +206,7 @@ int insert_key_action(Main *bmain,
 /**
  * Insert keys to the ID of the given PointerRNA for the given RNA paths. Tries to create an
  * action if none exists yet.
- * \param scene_frame is expected to be not NLA mapped as that happens within the function.
+ * \param scene_frame: is expected to be not NLA mapped as that happens within the function.
  */
 void insert_key_rna(PointerRNA *rna_pointer,
                     const blender::Span<std::string> rna_paths,
