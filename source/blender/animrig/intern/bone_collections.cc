@@ -722,21 +722,21 @@ int ANIM_armature_bonecoll_get_index_by_name(bArmature *armature, const char *na
 }
 
 /* Clear BONE_COLLECTION_ANCESTORS_VISIBLE on all decendents of this bone collection. */
-static void ancestors_visible_decendants_clear(bArmature *armature, BoneCollection *parent_bcoll)
+static void ancestors_visible_descendants_clear(bArmature *armature, BoneCollection *parent_bcoll)
 {
   for (BoneCollection *bcoll : armature->collection_children(parent_bcoll)) {
     bcoll->flags &= ~BONE_COLLECTION_ANCESTORS_VISIBLE;
-    ancestors_visible_decendants_clear(armature, bcoll);
+    ancestors_visible_descendants_clear(armature, bcoll);
   }
 }
 
 /* Set or clear BONE_COLLECTION_ANCESTORS_VISIBLE on all decendents of this bone collection. */
-static void ancestors_visible_decendants_update(bArmature *armature, BoneCollection *parent_bcoll)
+static void ancestors_visible_descendants_update(bArmature *armature, BoneCollection *parent_bcoll)
 {
   if (!parent_bcoll->is_visible_effectively()) {
     /* If this bone collection is not visible itself, or any of its ancestors are
-     * invisible, all decendants have an invisible ancestor. */
-    ancestors_visible_decendants_clear(armature, parent_bcoll);
+     * invisible, all descendants have an invisible ancestor. */
+    ancestors_visible_descendants_clear(armature, parent_bcoll);
     return;
   }
 
@@ -745,7 +745,7 @@ static void ancestors_visible_decendants_update(bArmature *armature, BoneCollect
    * recursion. */
   for (BoneCollection *bcoll : armature->collection_children(parent_bcoll)) {
     bcoll->flags |= BONE_COLLECTION_ANCESTORS_VISIBLE;
-    ancestors_visible_decendants_update(armature, bcoll);
+    ancestors_visible_descendants_update(armature, bcoll);
   }
 }
 
@@ -760,19 +760,19 @@ static void ancestors_visible_update(bArmature *armature,
   else {
     bcoll->flags &= ~BONE_COLLECTION_ANCESTORS_VISIBLE;
   }
-  ancestors_visible_decendants_update(armature, bcoll);
+  ancestors_visible_descendants_update(armature, bcoll);
 }
 
 void ANIM_bonecoll_show(bArmature *armature, BoneCollection *bcoll)
 {
   bcoll->flags |= BONE_COLLECTION_VISIBLE;
-  ancestors_visible_decendants_update(armature, bcoll);
+  ancestors_visible_descendants_update(armature, bcoll);
 }
 
 void ANIM_bonecoll_hide(bArmature *armature, BoneCollection *bcoll)
 {
   bcoll->flags &= ~BONE_COLLECTION_VISIBLE;
-  ancestors_visible_decendants_update(armature, bcoll);
+  ancestors_visible_descendants_update(armature, bcoll);
 }
 
 void ANIM_armature_bonecoll_is_visible_set(bArmature *armature,

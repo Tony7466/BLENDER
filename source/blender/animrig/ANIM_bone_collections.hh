@@ -224,7 +224,7 @@ void ANIM_bonecoll_show(bArmature *armature, BoneCollection *bcoll);
 /**
  * Hide this bone collection.
  *
- * This marks the bone collection as 'hidden'. This also effectively hides its decendants,
+ * This marks the bone collection as 'hidden'. This also effectively hides its descendants,
  * regardless of their visibility state. */
 void ANIM_bonecoll_hide(bArmature *armature, BoneCollection *bcoll);
 

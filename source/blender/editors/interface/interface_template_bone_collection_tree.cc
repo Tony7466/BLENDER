@@ -105,7 +105,7 @@ class BoneCollectionDropTarget : public TreeViewItemDropTarget {
       return false;
     }
 
-    /* Do not allow dropping onto its own decendants. */
+    /* Do not allow dropping onto its own descendants. */
     if (armature_bonecoll_is_decendent_of(
             drag_arm_bcoll->armature, drag_arm_bcoll->bcoll_index, drop_bonecoll_.bcoll_index))
     {
