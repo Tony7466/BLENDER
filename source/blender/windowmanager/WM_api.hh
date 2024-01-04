@@ -715,6 +715,12 @@ int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);
 /**
  * Can't be used as an invoke directly, needs message arg (can be NULL).
  */
+int WM_operator_confirm_message_ex(bContext *C,
+                                   wmOperator *op,
+                                   const char *title,
+                                   int icon,
+                                   const char *message,
+                                   wmOperatorCallContext opcontext);
 int WM_operator_confirm_message(bContext *C, wmOperator *op, const char *message);
 
 /* Operator API. */
