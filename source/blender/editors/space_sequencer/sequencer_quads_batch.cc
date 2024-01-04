@@ -150,7 +150,8 @@ void SeqQuadsBatch::add_wire_quad(float x1, float y1, float x2, float y2, const 
   lines_num += 4;
 }
 
-void SeqQuadsBatch::add_line(float x1, float y1, float x2, float y2, const uchar color[4])
+void SeqQuadsBatch::add_line(
+    float x1, float y1, float x2, float y2, const uchar color1[4], const uchar color2[4])
 {
   if (lines_num + 1 > MAX_LINES) {
     draw();
@@ -160,8 +161,8 @@ void SeqQuadsBatch::add_line(float x1, float y1, float x2, float y2, const uchar
     BLI_assert(verts_lines != nullptr);
   }
 
-  ColorVertex v0 = {blender::float2(x1, y1), color};
-  ColorVertex v1 = {blender::float2(x2, y2), color};
+  ColorVertex v0 = {blender::float2(x1, y1), color1};
+  ColorVertex v1 = {blender::float2(x2, y2), color2};
 
   *verts_lines++ = v0;
   *verts_lines++ = v1;

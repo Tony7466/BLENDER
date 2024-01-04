@@ -56,12 +56,18 @@ void SeqScopes::cleanup()
 
 static blender::float2 rgb_to_uv_normalized(const float rgb[3])
 {
-  float3 yuv;
-  rgb_to_yuv(rgb[0], rgb[1], rgb[2], &yuv.x, &yuv.y, &yuv.z, BLI_YUV_ITU_BT709);
+  /* Exact same math as rgb_to_yuv BT709 case. Duplicated here
+   * since this function is called a lot, and non-inline function
+   * call plus colorspace switch in there overhead does add up. */
+  float r = rgb[0], g = rgb[1], b = rgb[2];
+  /* We don't need y. */
+  float u = -0.09991f * r - 0.33609f * g + 0.436f * b;
+  float v = 0.615f * r - 0.55861f * g - 0.05639f * b;
 
-  /* Normalize: UV range is +/- 0.615 */
-  float2 uv = yuv.yz() * (0.5f / 0.615f) + 0.5f;
-  return math::clamp(uv, 0.0f, 1.0f);
+  /* Normalize: (U, V) range is +/- (0.436, 0.615) */
+  u = clamp_f(u * (0.5f / 0.436f) + 0.5f, 0.0f, 1.0f);
+  v = clamp_f(v * (0.5f / 0.615f) + 0.5f, 0.0f, 1.0f);
+  return float2(u, v);
 }
 
 static void scope_put_pixel(const uchar *table, uchar *pos)

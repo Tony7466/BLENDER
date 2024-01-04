@@ -592,16 +592,17 @@ static void draw_vectorscope_graticule(SeqQuadsBatch &quads, const rctf &area)
   const float h = BLI_rctf_size_y(&area);
   const float centerx = BLI_rctf_cent_x(&area);
   const float centery = BLI_rctf_cent_y(&area);
-  const float radius = ((w < h) ? w : h) * 0.5f * (0.5f / 0.615f);
+  const float rad_base = ((w < h) ? w : h) * 0.5f;
+  /* vectorscope image is scaled over YUV range, +/- (0.436, 0.615) */
+  const float rad_x = rad_base * (0.5f / 0.436f);
+  const float rad_y = rad_base * (0.5f / 0.615f);
 
   /* center cross */
   uchar col_grid[4] = {128, 128, 128, 96};
-  quads.add_line(centerx - radius * 0.1f, centery, centerx + radius * 0.1f, centery, col_grid);
-  quads.add_line(centerx, centery - radius * 0.1f, centerx, centery + radius * 0.1f, col_grid);
+  quads.add_line(centerx - rad_base * 0.1f, centery, centerx + rad_base * 0.1f, centery, col_grid);
+  quads.add_line(centerx, centery - rad_base * 0.1f, centerx, centery + rad_base * 0.1f, col_grid);
 
   /* fully saturated vs "safe" (0.75) colored areas */
-  quads.draw();
-  GPU_blend(GPU_BLEND_ADDITIVE);
   const float3 primaries[6] = {
       {1, 0, 0},
       {1, 1, 0},
@@ -611,31 +612,33 @@ static void draw_vectorscope_graticule(SeqQuadsBatch &quads, const rctf &area)
       {1, 0, 1},
   };
   float2 center{centerx, centery};
+  float2 rad_scale{rad_x * 2, rad_y * 2};
   for (int i = 0; i < 6; i++) {
     float3 prim0 = primaries[i];
     float3 prim1 = primaries[(i + 1) % 6];
     float3 safe0 = prim0 * 0.75f;
     float3 safe1 = prim1 * 0.75f;
-    float2 uv0 = center + rgb_to_uv(prim0) * (radius * 2);
-    float2 uv1 = center + rgb_to_uv(prim1) * (radius * 2);
-    float2 uv2 = center + rgb_to_uv(safe0) * (radius * 2);
-    float2 uv3 = center + rgb_to_uv(safe1) * (radius * 2);
-    uchar col0[4] = {uchar(prim0.x * 255), uchar(prim0.y * 255), uchar(prim0.z * 255), 128};
-    uchar col1[4] = {uchar(prim1.x * 255), uchar(prim1.y * 255), uchar(prim1.z * 255), 128};
-    uchar col2[4] = {uchar(safe0.x * 255), uchar(safe0.y * 255), uchar(safe0.z * 255), 128};
-    uchar col3[4] = {uchar(safe1.x * 255), uchar(safe1.y * 255), uchar(safe1.z * 255), 128};
+    float2 uv0 = center + rgb_to_uv(prim0) * rad_scale;
+    float2 uv1 = center + rgb_to_uv(prim1) * rad_scale;
+    float2 uv2 = center + rgb_to_uv(safe0) * rad_scale;
+    float2 uv3 = center + rgb_to_uv(safe1) * rad_scale;
+    uchar col0[4] = {uchar(prim0.x * 255), uchar(prim0.y * 255), uchar(prim0.z * 255), 64};
+    uchar col1[4] = {uchar(prim1.x * 255), uchar(prim1.y * 255), uchar(prim1.z * 255), 64};
+    uchar col2[4] = {uchar(safe0.x * 255), uchar(safe0.y * 255), uchar(safe0.z * 255), 64};
+    uchar col3[4] = {uchar(safe1.x * 255), uchar(safe1.y * 255), uchar(safe1.z * 255), 64};
     quads.add_quad(uv0.x, uv0.y, uv1.x, uv1.y, uv2.x, uv2.y, uv3.x, uv3.y, col0, col1, col2, col3);
+    col0[3] = col1[3] = col2[3] = col3[3] = 192;
+    quads.add_line(uv0.x, uv0.y, uv1.x, uv1.y, col0, col1);
+    quads.add_line(uv2.x, uv2.y, uv3.x, uv3.y, col2, col3);
   }
-  quads.draw();
-  GPU_blend(GPU_BLEND_ALPHA);
 
   /* skin tone line */
   uchar col_tone[4] = {255, 102, 0, 128};
-  const float tone_line_len = radius * 0.895f; /* makes it end at outer edge of saturation ring */
+  const float tone_line_len = 0.895f; /* makes it end at outer edge of saturation ring */
   quads.add_line(centerx,
                  centery,
-                 centerx + cosf(skin_rad) * tone_line_len,
-                 centery + sinf(skin_rad) * tone_line_len,
+                 centerx + cosf(skin_rad) * rad_x * tone_line_len,
+                 centery + sinf(skin_rad) * rad_y * tone_line_len,
                  col_tone);
 }
 
