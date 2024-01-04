@@ -304,7 +304,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
         }
 
         void *output_ptr = params.get_output_data_ptr(0);
-        field_base_type_->move_construct(value_to_forward, output_ptr);
+        cpp_type_->move_construct(value_to_forward, output_ptr);
         params.output_set(0);
       }
       else {
