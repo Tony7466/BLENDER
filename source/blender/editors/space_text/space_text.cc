@@ -470,6 +470,7 @@ void ED_spacetype_text()
 
   /* register formatters */
   ED_text_format_register_py();
+  ED_text_format_register_glsl();
   ED_text_format_register_osl();
   ED_text_format_register_pov();
   ED_text_format_register_pov_ini();
