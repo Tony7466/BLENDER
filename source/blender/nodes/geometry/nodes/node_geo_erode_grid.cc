@@ -8,6 +8,9 @@
 
 #include "NOD_socket_search_link.hh"
 
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/Morphology.h>
 #endif

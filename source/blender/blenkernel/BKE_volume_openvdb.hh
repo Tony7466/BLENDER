@@ -8,15 +8,19 @@
 
 #  include <openvdb/openvdb.h>
 #  include <openvdb/points/PointDataGrid.h>
+#  include <openvdb/tools/Morphology.h>
 #  include <optional>
 
 #  include "BLI_bounds_types.hh"
 #  include "BLI_math_matrix_types.hh"
+#  include "BLI_math_quaternion_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
 #  include "BLI_math_matrix_types.hh"
 
 #  include "BKE_volume_enums.hh"
+
+#  include "DNA_node_types.h"
 
 struct Volume;
 
@@ -74,5 +78,92 @@ openvdb::GridBase::Ptr BKE_volume_grid_create_with_changed_resolution(
 
 blender::float4x4 BKE_volume_vdb_transform_to_matrix(const openvdb::math::Transform &transform);
 openvdb::math::Transform::Ptr BKE_volume_matrix_to_vdb_transform(const blender::float4x4 &mat);
+
+using SupportedVDBGridTypes = openvdb::TypeList<openvdb::FloatGrid, openvdb::Vec3fGrid>;
+
+openvdb::tools::NearestNeighbors BKE_volume_vdb_neighbors_mode(
+    GeometryNodeGridNeighborTopology neighbors_mode);
+
+/* -------------------------------------------------------------------- */
+/** \name Grid Type Converter
+ *
+ * Converter between Blender types and OpenVDB types.
+ * \{ */
+
+namespace blender::bke::grids {
+
+template<typename T> struct Converter {
+  using AttributeValueType = T;
+  using GridValueType = void;
+};
+
+template<> struct Converter<bool> {
+  using AttributeValueType = bool;
+  using GridValueType = bool;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return value;
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
+  {
+    return value;
+  }
+};
+
+template<> struct Converter<int> {
+  using AttributeValueType = int;
+  using GridValueType = int;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return value;
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
+  {
+    return value;
+  }
+};
+
+template<> struct Converter<float> {
+  using AttributeValueType = float;
+  using GridValueType = float;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return value;
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
+  {
+    return value;
+  }
+};
+
+template<> struct Converter<blender::float3> {
+  using AttributeValueType = blender::float3;
+  using GridValueType = openvdb::Vec3f;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return openvdb::Vec3f(*value);
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
+  {
+    return blender::float3(value.asV());
+  }
+};
+
+template<> struct Converter<blender::math::Quaternion> {
+  using AttributeValueType = blender::math::Quaternion;
+  using GridValueType = openvdb::Vec4f;
+  static GridValueType to_openvdb(const AttributeValueType &value)
+  {
+    return openvdb::Vec4f(value.w, value.x, value.y, value.z);
+  }
+  static AttributeValueType to_blender(const GridValueType &value)
+  {
+    return blender::math::Quaternion(value.asV());
+  }
+};
+
+}  // namespace blender::bke::grids
+
+/** \} */
 
 #endif

@@ -4,6 +4,9 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -44,24 +47,23 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 struct DeactivateVoxelsOp {
   GeoNodeExecParams params;
 
-  template<typename T> bke::GVolumeGridPtr operator()()
+  template<typename T> bke::GVolumeGrid operator()()
   {
     using Converter = bke::grids::Converter<T>;
 
-    const bke::VolumeGridPtr<T> grid = grids::extract_grid_input<T>(this->params, "Grid");
+    bke::VolumeGrid<T> grid = this->params.extract_input<bke::VolumeGrid<T>>("Grid");
     if (!grid) {
-      return nullptr;
+      return {};
     }
     const T value = params.extract_input<T>("Value");
     const T tolerance = params.extract_input<T>("Tolerance");
 
-    bke::VolumeGridPtr<T> output_grid = grid->is_mutable() ? grid :
-                                                             bke::VolumeGridPtr<T>{grid->copy()};
-    output_grid->tag_ensured_mutable();
+    bke::VolumeGrid<T> output_grid(&grid.get_for_write());
 
-    openvdb::tools::deactivate(*output_grid.grid_for_write(),
-                               Converter::to_openvdb(value),
-                               Converter::to_openvdb(tolerance));
+    openvdb::tools::deactivate(
+        output_grid.grid_for_write(output_grid.get_for_write().tree_access_token()),
+        Converter::to_openvdb(value),
+        Converter::to_openvdb(tolerance));
 
     return output_grid;
   }
@@ -71,16 +73,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grids::grid_type_supported(data_type));
+  BLI_assert(grid_type_supported(data_type));
 
   DeactivateVoxelsOp deactivate_voxels_op = {params};
-  bke::GVolumeGridPtr grid = grids::apply(data_type, deactivate_voxels_op);
+  bke::GVolumeGrid grid = grids::apply(data_type, deactivate_voxels_op);
 
-  grids::set_output_grid(params, "Grid", data_type, grid);
+  params.set_output("Grid", grid);
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 
@@ -93,7 +93,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 }
 
 static void node_register()

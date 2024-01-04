@@ -12,6 +12,7 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
 #include "BKE_pointcloud.h"
+#include "BKE_volume_grid.hh"
 
 #include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
@@ -175,87 +176,6 @@ BaseSocketDeclarationBuilder &declare_grid_type_output(NodeDeclarationBuilder &b
   return b.add_output<decl::Float>(name, identifier);
 }
 
-bke::GVolumeGridPtr extract_grid_input(GeoNodeExecParams params,
-                                       StringRef identifier,
-                                       const eCustomDataType data_type)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      return params.extract_input<bke::SocketValueVariant<float>>(identifier).grid;
-    case CD_PROP_FLOAT3:
-      return params.extract_input<bke::SocketValueVariant<float3>>(identifier).grid;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
-  return nullptr;
-}
-
-#if 0
-template<typename T>
-static Vector<bke::GVolumeGridPtr> collect_volume_grids(
-    const Vector<bke::ValueOrField<T>> &values_or_fields)
-{
-  Vector<bke::GVolumeGridPtr> result;
-  result.reserve(values_or_fields.size());
-  for (const bke::ValueOrField<T> &value_or_field : values_or_fields) {
-    result.append(value_or_field.as_grid());
-  }
-  return result;
-}
-
-Vector<bke::GVolumeGridPtr> extract_grid_multi_input(GeoNodeExecParams params,
-                                                     StringRef identifier,
-                                                     const eCustomDataType data_type)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      return collect_volume_grids(
-          params.extract_input<Vector<bke::ValueOrField<float>>>(identifier));
-    case CD_PROP_FLOAT3:
-      return collect_volume_grids(
-          params.extract_input<Vector<bke::ValueOrField<float3>>>(identifier));
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
-  return {};
-}
-#endif
-
-void set_output_grid(GeoNodeExecParams params,
-                     StringRef identifier,
-                     const eCustomDataType data_type,
-                     const bke::GVolumeGridPtr &grid)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      params.set_output(identifier, SocketValueVariant<float>(grid.typed<float>()));
-      break;
-    case CD_PROP_FLOAT3:
-      params.set_output(identifier, SocketValueVariant<float3>(grid.typed<float3>()));
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
-}
-
-openvdb::tools::NearestNeighbors get_vdb_neighbors_mode(
-    GeometryNodeGridNeighborTopology neighbors_mode)
-{
-  switch (neighbors_mode) {
-    case GEO_NODE_GRID_NEIGHBOR_FACE:
-      return openvdb::tools::NearestNeighbors::NN_FACE;
-    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE:
-      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE;
-    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX:
-      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE_VERTEX;
-  }
-  BLI_assert_unreachable();
-  return openvdb::tools::NearestNeighbors::NN_FACE;
-}
-
 template<typename GridType> static int64_t get_voxel_count(const GridType &grid)
 {
   return grid.tree().activeLeafVoxelCount();
@@ -360,11 +280,11 @@ template<typename OutputGridPtr> struct TopologyInitOp {
 
 struct CaptureGridOp {
   const eCustomDataType topology_data_type;
-  bke::GVolumeGridPtr topology_grid;
+  bke::GVolumeGrid topology_grid;
   fn::GField value_field;
   GPointer background;
 
-  template<typename T> bke::GVolumeGridPtr operator()()
+  template<typename T> bke::GVolumeGrid operator()()
   {
     using GridType = typename bke::VolumeGridPtr<T>::GridType;
     using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
@@ -392,11 +312,11 @@ struct CaptureGridOp {
   }
 };
 
-bke::GVolumeGridPtr try_capture_field_as_grid(const eCustomDataType data_type,
-                                              const eCustomDataType topology_data_type,
-                                              const bke::GVolumeGridPtr &topology_grid,
-                                              const fn::GField value_field,
-                                              const GPointer background)
+bke::GVolumeGrid try_capture_field_as_grid(const eCustomDataType data_type,
+                                           const eCustomDataType topology_data_type,
+                                           const bke::GVolumeGrid &topology_grid,
+                                           const fn::GField value_field,
+                                           const GPointer background)
 {
   CaptureGridOp capture_op = {topology_data_type, topology_grid, value_field, background};
   return grids::apply(data_type, capture_op);

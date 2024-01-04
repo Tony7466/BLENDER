@@ -1119,4 +1119,19 @@ openvdb::math::Transform::Ptr BKE_volume_matrix_to_vdb_transform(const float4x4 
       std::make_shared<openvdb::math::AffineMap>(mat_openvdb));
 }
 
+openvdb::tools::NearestNeighbors BKE_volume_vdb_neighbors_mode(
+    GeometryNodeGridNeighborTopology neighbors_mode)
+{
+  switch (neighbors_mode) {
+    case GEO_NODE_GRID_NEIGHBOR_FACE:
+      return openvdb::tools::NearestNeighbors::NN_FACE;
+    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE:
+      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE;
+    case GEO_NODE_GRID_NEIGHBOR_FACE_EDGE_VERTEX:
+      return openvdb::tools::NearestNeighbors::NN_FACE_EDGE_VERTEX;
+  }
+  BLI_assert_unreachable();
+  return openvdb::tools::NearestNeighbors::NN_FACE;
+}
+
 #endif

@@ -4,9 +4,16 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "RNA_enum_types.hh"
 
+#include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/Morphology.h>
@@ -53,23 +60,18 @@ static void try_dilate_grid(GeoNodeExecParams params,
                             const int iterations,
                             const GeometryNodeGridNeighborTopology neighbors_mode)
 {
-  const bke::SocketValueVariant<T> value = params.extract_input<bke::SocketValueVariant<T>>(
-      "Grid");
-  if (!value.is_grid()) {
+  auto grid = params.extract_input<bke::VolumeGrid<T>>("Grid");
+  if (!grid) {
     return;
   }
 
-  bke::VolumeGridPtr<T> output_grid = value.grid;
-  if (!output_grid->is_mutable()) {
-    output_grid = bke::VolumeGridPtr<T>{output_grid->copy()};
-    output_grid->tag_ensured_mutable();
-  }
+  bke::VolumeGrid<T> output_grid(&grid.get_for_write());
+  openvdb::tools::dilateActiveValues(
+      output_grid.grid_for_write(output_grid.get_for_write().tree_access_token()).tree(),
+      iterations,
+      BKE_volume_vdb_neighbors_mode(neighbors_mode));
 
-  openvdb::tools::dilateActiveValues(output_grid.grid_for_write()->tree(),
-                                     iterations,
-                                     grids::get_vdb_neighbors_mode(neighbors_mode));
-
-  params.set_output("Grid", bke::SocketValueVariant<T>(output_grid));
+  params.set_output("Grid", output_grid);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -78,7 +80,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
   const GeometryNodeGridNeighborTopology neighbors_mode = GeometryNodeGridNeighborTopology(
       params.node().custom2);
-  BLI_assert(grids::grid_type_supported(data_type));
+  BLI_assert(grid_type_supported(data_type));
   const int iterations = params.extract_input<int>("Iterations");
 
   switch (data_type) {
@@ -110,7 +112,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 
   RNA_def_node_enum(srna,
                     "neighbors_mode",
