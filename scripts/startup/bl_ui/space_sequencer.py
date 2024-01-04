@@ -491,28 +491,7 @@ class SEQUENCER_MT_view(Menu):
                 layout.menu("SEQUENCER_MT_view_cache", text="Show Cache")
 
         layout.separator()
-
-        layout.operator("render.opengl", text="Sequence Render Image", icon='RENDER_STILL').sequencer = True
-        props = layout.operator("render.opengl", text="Sequence Render Animation", icon='RENDER_ANIMATION')
-        props.animation = True
-        props.sequencer = True
-
-        layout.separator()
         layout.operator("sequencer.export_subtitles", text="Export Subtitles", icon='EXPORT')
-
-        layout.separator()
-
-        # Note that the context is needed for the shortcut to display properly.
-        layout.operator_context = 'INVOKE_REGION_PREVIEW' if is_preview else 'INVOKE_REGION_WIN'
-        props = layout.operator(
-            "wm.context_toggle_enum",
-            text="Toggle Sequencer/Preview",
-            icon='SEQ_SEQUENCER' if is_preview else 'SEQ_PREVIEW',
-        )
-        props.data_path = "space_data.view_type"
-        props.value_1 = 'SEQUENCER'
-        props.value_2 = 'PREVIEW'
-        layout.operator_context = 'INVOKE_DEFAULT'
 
         layout.separator()
 
@@ -1112,6 +1091,32 @@ class SEQUENCER_MT_retiming(Menu):
 
         layout.operator("sequencer.retiming_key_add")
         layout.operator("sequencer.retiming_freeze_frame_add")
+
+class SEQUENCER_MT_render(Menu):
+    bl_label = "Render"
+    bl_translation_context = i18n_contexts.operator_default
+
+    def draw(self, context):
+
+        layout = self.layout
+        layout.operator("render.opengl", text="Sequence Render Image", icon='RENDER_STILL').sequencer = True
+        props = layout.operator("render.opengl", text="Sequence Render Animation", icon='RENDER_ANIMATION')
+        props.animation = True
+        props.sequencer = True
+
+        layout.separator()
+
+                # Note that the context is needed for the shortcut to display properly.
+        layout.operator_context = 'INVOKE_REGION_PREVIEW' if is_preview else 'INVOKE_REGION_WIN'
+        props = layout.operator(
+            "wm.context_toggle_enum",
+            text="Toggle Sequencer/Preview",
+            icon='SEQ_SEQUENCER' if is_preview else 'SEQ_PREVIEW',
+        )
+        props.data_path = "space_data.view_type"
+        props.value_1 = 'SEQUENCER'
+        props.value_2 = 'PREVIEW'
+        layout.operator_context = 'INVOKE_DEFAULT'
 
 
 class SEQUENCER_MT_context_menu(Menu):
@@ -2824,6 +2829,7 @@ classes = (
     SEQUENCER_MT_preview_context_menu,
     SEQUENCER_MT_pivot_pie,
     SEQUENCER_MT_retiming,
+    SEQUENCER_MT_render,
     SEQUENCER_MT_view_pie,
     SEQUENCER_MT_preview_view_pie,
 
