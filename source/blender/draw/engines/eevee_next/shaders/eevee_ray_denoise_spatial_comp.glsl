@@ -32,10 +32,15 @@ float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V)
     case CLOSURE_BSDF_DIFFUSE_ID:
       return bsdf_lambert(cl.N, L);
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-      return bsdf_ggx_reflect(cl.N, L, V, square(to_closure_reflection(cl).roughness));
+      return bsdf_ggx_reflect(
+          cl.N, L, V, square(max(BSDF_ROUGHNESS_THRESHOLD, to_closure_reflection(cl).roughness)));
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
       return bsdf_ggx_refract(
-          cl.N, L, V, square(to_closure_refraction(cl).roughness), to_closure_refraction(cl).ior);
+          cl.N,
+          L,
+          V,
+          square(max(BSDF_ROUGHNESS_THRESHOLD, to_closure_refraction(cl).roughness)),
+          to_closure_refraction(cl).ior);
     case CLOSURE_NONE_ID:
     default:
       return 0.0;

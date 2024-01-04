@@ -98,7 +98,7 @@ void main()
                           false, /* allow_self_intersection */
                           ray_view);
 
-    if (!hit.valid) {
+    if (hit.valid) {
       vec3 hit_P = transform_point(drw_view.viewinv, hit.v_hit_P);
       /* TODO(@fclem): Split matrix multiply for precision. */
       vec3 history_ndc_hit_P = project_point(uniform_buf.raytrace.radiance_persmat, hit_P);
@@ -117,7 +117,7 @@ void main()
                           true,  /* allow_self_intersection */
                           ray_view);
 
-    if (!hit.valid) {
+    if (hit.valid) {
       radiance = textureLod(radiance_back_tx, hit.ss_hit_P.xy, 0.0).rgb;
     }
   }

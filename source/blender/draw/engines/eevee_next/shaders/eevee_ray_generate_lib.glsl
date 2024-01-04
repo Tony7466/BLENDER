@@ -22,6 +22,11 @@ struct BsdfSample {
 /* Could maybe become parameters. */
 #define RAY_BIAS 0.05
 
+bool is_singular_ray(float roughness)
+{
+  return roughness < BSDF_ROUGHNESS_THRESHOLD;
+}
+
 /* Returns view-space ray. */
 BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V)
 {
@@ -50,24 +55,36 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V)
                                                 samp.pdf);
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
-      samp.direction = sample_ggx_reflect(random_point_on_cylinder,
-                                          square(to_closure_reflection(cl).roughness),
-                                          V,
-                                          world_to_tangent[2],
-                                          world_to_tangent[1],
-                                          world_to_tangent[0],
-                                          samp.pdf);
+      if (is_singular_ray(to_closure_reflection(cl).roughness)) {
+        samp.direction = reflect(-V, cl.N);
+        samp.pdf = 1.0;
+      }
+      else {
+        samp.direction = sample_ggx_reflect(random_point_on_cylinder,
+                                            square(to_closure_reflection(cl).roughness),
+                                            V,
+                                            world_to_tangent[2],
+                                            world_to_tangent[1],
+                                            world_to_tangent[0],
+                                            samp.pdf);
+      }
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      samp.direction = sample_ggx_refract(random_point_on_cylinder,
-                                          square(to_closure_refraction(cl).roughness),
-                                          to_closure_refraction(cl).ior,
-                                          V,
-                                          world_to_tangent[2],
-                                          world_to_tangent[1],
-                                          world_to_tangent[0],
-                                          samp.pdf);
+      if (is_singular_ray(to_closure_refraction(cl).roughness)) {
+        samp.direction = refract(-V, cl.N, 1.0 / to_closure_refraction(cl).ior);
+        samp.pdf = 1.0;
+      }
+      else {
+        samp.direction = sample_ggx_refract(random_point_on_cylinder,
+                                            square(to_closure_refraction(cl).roughness),
+                                            to_closure_refraction(cl).ior,
+                                            V,
+                                            world_to_tangent[2],
+                                            world_to_tangent[1],
+                                            world_to_tangent[0],
+                                            samp.pdf);
+      }
       break;
     }
     case CLOSURE_NONE_ID:
