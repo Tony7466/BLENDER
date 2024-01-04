@@ -58,12 +58,12 @@ using blender::bke::AttrDomain;
 /* Uncomment to test if triangles of the same face are
  * properly clustered into single nodes.
  */
-//#define TEST_PBVH_FACE_SPLIT
+// #define TEST_PBVH_FACE_SPLIT
 
 /* Uncomment to test that faces are only assigned to one PBVHNode */
-//#define VALIDATE_UNIQUE_NODE_FACES
+// #define VALIDATE_UNIQUE_NODE_FACES
 
-//#define PERFCNTRS
+// #define PERFCNTRS
 #define STACK_FIXED_DEPTH 100
 
 struct PBVHStack {
@@ -2095,7 +2095,8 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
            * uninitialized values. This stores the closest vertex in the current intersecting
            * triangle. */
           if (j == 0 ||
-              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co)) {
+              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
+          {
             copy_v3_v3(nearest_vertex_co, co[j]);
             r_active_vertex->i = corner_verts[tri[j]];
             *r_active_face_index = pbvh->corner_tri_faces[tri_i];
@@ -2158,7 +2159,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
         }
 
         if (ray_face_intersection_quad(
-                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth)) {
+                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
+        {
           hit = true;
 
           if (r_face_normal) {
@@ -2177,7 +2179,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
                * uninitialized values. This stores the closest vertex in the current intersecting
                * quad. */
               if (j == 0 || len_squared_v3v3(location, co[j]) <
-                                len_squared_v3v3(location, nearest_vertex_co)) {
+                                len_squared_v3v3(location, nearest_vertex_co))
+              {
                 copy_v3_v3(nearest_vertex_co, co[j]);
 
                 r_active_vertex->i = gridkey->grid_area * grid_index +
