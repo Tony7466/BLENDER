@@ -640,7 +640,7 @@ static void corner_edges_topology(const int edge_edges_num,
 
   const TriangleRange inner_face_edges = TriangleRange(edge_edges_num).drop_bottom(1);
 
-  /* Faces along face-edge except corner faces. */
+  /* Faces along base edge except corner faces. */
   const int edge_faces_num = edge_edges_num - 2;
 
   const IndexRange corner_faces_range(base_face_corners_num);
