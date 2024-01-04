@@ -587,6 +587,33 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 /** \name Split Stroke Operator
  * \{ */
 
+/**
+ * Finds all the index ranges for consecutive values in \a span.
+ */
+template<typename T> inline Vector<IndexRange> to_ranges(const Span<T> span)
+{
+  if (span.is_empty()) {
+    return Vector<IndexRange>();
+  }
+  Vector<IndexRange> ranges;
+  int64_t length = 1;
+  int64_t last = 1;
+  for (const int64_t i : span.index_range().drop_front(1)) {
+    if (span[i - 1] == span[last] && span[i] != span[last]) {
+      ranges.append(IndexRange(i - length, length));
+      length = 1;
+      last = i;
+    }
+    else if (span[i] == span[last]) {
+      length++;
+    }
+  }
+  if (length > 0) {
+    ranges.append(IndexRange(span.size() - length, length));
+  }
+  return ranges;
+}
+
 static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -594,15 +621,13 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 
   Array<bool> points_to_split(curves.points_num());
   mask.to_bools(points_to_split.as_mutable_span());
-  const int num_points_selected = mask.size();
-  const int num_points_unselected = points_to_split.as_span().count(false);
 
-  if (num_points_unselected == 0 || num_points_selected == 0) {
+  if (mask.size() == curves.points_num()) {
     return;
   }
 
   int point_start = 0;
-  Array<int> point_map(num_points_unselected + num_points_selected);
+  Array<int> point_map(curves.points_num());
   Vector<int> curve_counts;
   Vector<int> curve_map;
   Vector<bool> cyclic;
@@ -614,20 +639,16 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     const bool curve_cyclic = src_cyclic[curve_i];
 
     /* Note, these ranges start at zero and needed to be shifted by `points.first()` */
-    const Vector<IndexRange> ranges_selected = array_utils::find_all_ranges(
-        curve_points, true);
-    const Vector<IndexRange> ranges_unselected = array_utils::find_all_ranges(curve_points, false);
+    const Vector<IndexRange> ranges = to_ranges(curve_points);
 
-    const bool is_last_segment_unselected = curve_cyclic &&
-                                          ranges_unselected.first().first() == 0 &&
-                                          ranges_unselected.last().last() == points.size() - 1;
-    const bool is_curve_self_joined_unselected = is_last_segment_unselected && ranges_unselected.size() != 1;
-    const bool is_cyclic_unselected = ranges_unselected.size() == 1 && is_last_segment_unselected;
+    const bool is_last_and_first_same = curve_cyclic &&
+                                        curve_points.first() == curve_points.last();
+    const bool is_curve_self_joined = is_last_and_first_same && ranges.size() != 1;
+    const bool is_cyclic = ranges.size() == 1 && is_last_and_first_same;
 
-    const IndexRange unselected_range_ids = ranges_unselected.index_range();
-    /* Skip the first range because it is joined to the end of the last range. */
-    for (const int range_i : ranges_unselected.index_range().drop_front(is_curve_self_joined_unselected)) {
-      const IndexRange range = ranges_unselected[range_i];
+    const IndexRange range_ids = ranges.index_range();
+    for (const int range_i : ranges.index_range().drop_front(is_curve_self_joined)) {
+      const IndexRange range = ranges[range_i];
 
       array_utils::fill_index_range<int>(
           point_map.as_mutable_span().slice(point_start, range.size()),
@@ -636,42 +657,12 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 
       curve_counts.append(range.size());
       curve_map.append(curve_i);
-      cyclic.append(is_cyclic_unselected);
+      cyclic.append(is_cyclic);
     }
 
     /* Join the first range to the end of the last range. */
-    if (is_curve_self_joined_unselected) {
-      const IndexRange first_range = ranges_unselected[unselected_range_ids.first()];
-      array_utils::fill_index_range<int>(
-          point_map.as_mutable_span().slice(point_start, first_range.size()),
-          first_range.start() + points.first());
-      point_start += first_range.size();
-      curve_counts[curve_counts.size() - 1] += first_range.size();
-    }
-
-    const bool is_last_segment_selected = curve_cyclic && ranges_selected.first().first() == 0 &&
-                                          ranges_selected.last().last() == points.size() - 1;
-    const bool is_curve_self_joined_selected = is_last_segment_selected && ranges_selected.size() != 1;
-    const bool is_cyclic_selected = ranges_selected.size() == 1 && is_last_segment_selected;
-
-    const IndexRange selected_range_ids = ranges_selected.index_range();
-    /* Skip the first range because it is joined to the end of the last range. */
-    for (const int range_i : ranges_selected.index_range().drop_front(is_curve_self_joined_selected)) {
-      const IndexRange range = ranges_selected[range_i];
-
-      array_utils::fill_index_range<int>(
-          point_map.as_mutable_span().slice(point_start, range.size()),
-          range.start() + points.first());
-      point_start += range.size();
-
-      curve_counts.append(range.size());
-      curve_map.append(curve_i);
-      cyclic.append(is_cyclic_selected);
-    }
-
-    /* Join the first range to the end of the last range. */
-    if (is_curve_self_joined_selected) {
-      const IndexRange first_range = ranges_selected[selected_range_ids.first()];
+    if (is_curve_self_joined) {
+      const IndexRange first_range = ranges[range_ids.first()];
       array_utils::fill_index_range<int>(
           point_map.as_mutable_span().slice(point_start, first_range.size()),
           first_range.start() + points.first());
