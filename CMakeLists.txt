@@ -250,7 +250,7 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
 Enable unity build for modules that support it to improve compile times.\n\
 WARNING: this option allows files to be built without all necessary headers!\n
 This option should be disabled before manipulating or removing headers."
-    ON
+    OFF
   )
   mark_as_advanced(WITH_UNITY_BUILD)
 else()
@@ -1025,7 +1025,7 @@ if("${CMAKE_GENERATOR}" MATCHES "Ninja")
   option(WITH_NINJA_POOL_JOBS "\
 Enable Ninja pools of jobs, to try to ease building on machines with 16GB of RAM or less \
 (if not yet defined, will try to set best values based on detected machine specifications)."
-    OFF
+    ON
   )
   mark_as_advanced(WITH_NINJA_POOL_JOBS)
 endif()
@@ -1651,15 +1651,15 @@ if("${CMAKE_GENERATOR}" MATCHES "Ninja" AND WITH_NINJA_POOL_JOBS)
 
     # Heuristics: the more cores we have, the more free memory we have to keep
     # for the non-heavy tasks too.
-    if(${_TOT_MEM} LESS 8000 AND ${_NUM_CORES} GREATER 2)
+    if(${_TOT_MEM} LESS 8000 AND ${_NUM_CORES} GREATER 1)
       set(_compile_heavy_jobs "1")
-    elseif(${_TOT_MEM} LESS 16000 AND ${_NUM_CORES} GREATER 4)
+    elseif(${_TOT_MEM} LESS 16000 AND ${_NUM_CORES} GREATER 3)
       set(_compile_heavy_jobs "2")
-    elseif(${_TOT_MEM} LESS 24000 AND ${_NUM_CORES} GREATER 8)
+    elseif(${_TOT_MEM} LESS 24000 AND ${_NUM_CORES} GREATER 7)
       set(_compile_heavy_jobs "3")
-    elseif(${_TOT_MEM} LESS 32000 AND ${_NUM_CORES} GREATER 16)
+    elseif(${_TOT_MEM} LESS 32000 AND ${_NUM_CORES} GREATER 15)
       set(_compile_heavy_jobs "4")
-    elseif(${_TOT_MEM} LESS 64000 AND ${_NUM_CORES} GREATER 32)
+    elseif(${_TOT_MEM} LESS 64000 AND ${_NUM_CORES} GREATER 31)
       set(_compile_heavy_jobs "8")
     else()
       set(_compile_heavy_jobs "")
