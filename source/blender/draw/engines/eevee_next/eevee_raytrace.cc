@@ -472,6 +472,9 @@ RayTraceResultTexture RayTraceModule::trace(
       }
       inst_.manager->submit(trace_screen_ps_, render_view);
     }
+    else {
+      inst_.manager->submit(trace_fallback_ps_, render_view);
+    }
   }
 
   RayTraceResultTexture result;
