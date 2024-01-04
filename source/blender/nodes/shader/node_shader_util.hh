@@ -29,7 +29,6 @@
 #endif
 
 struct bContext;
-typedef struct bContext bContext;
 struct bNodeExecContext;
 struct bNodeExecData;
 struct bNodeTreeExec;
