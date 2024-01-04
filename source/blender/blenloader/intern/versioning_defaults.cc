@@ -383,6 +383,11 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (idprop) {
     IDP_ClearProperty(idprop);
   }
+
+  /* Ensure input_samples has a correct default value of 1. */
+  if (ts->unified_paint_settings.input_samples == 0) {
+    ts->unified_paint_settings.input_samples = 1;
+  }
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
@@ -675,6 +680,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
     /* Enable anti-aliasing by default. */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
+
+    /* By default, each brush should use a single input sample. */
+    brush->input_samples = 1;
   }
 
   {
