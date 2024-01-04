@@ -254,8 +254,7 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
   {
     const NodeMenuSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
-    can_be_field_ = ELEM(
-        data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION);
+    can_be_field_ = socket_type_supports_fields(data_type);
     const bNodeSocketType *socket_type = nodeSocketTypeFind(
         nodeStaticSocketType(data_type, PROP_NONE));
     BLI_assert(socket_type != nullptr);
