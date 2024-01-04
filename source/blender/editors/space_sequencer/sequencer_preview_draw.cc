@@ -10,6 +10,7 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "IMB_imbuf_types.h"
@@ -571,20 +572,98 @@ static void draw_histogram(const blender::ed::seq::ScopeHistogram &hist,
   GPU_blend(GPU_BLEND_ALPHA);
 }
 
+static blender::float2 rgb_to_uv(const blender::float3 &rgb)
+{
+  float y, u, v;
+  rgb_to_yuv(rgb.x, rgb.y, rgb.z, &y, &u, &v, BLI_YUV_ITU_BT709);
+  return blender::float2(u, v);
+}
+
+static void draw_vectorscope_graticule(SeqQuadsBatch &quads, const rctf &area)
+{
+  using namespace blender;
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  const float skin_rad = DEG2RADF(123.0f); /* angle in radians of the skin tone line */
+
+  const float w = BLI_rctf_size_x(&area);
+  const float h = BLI_rctf_size_y(&area);
+  const float centerx = BLI_rctf_cent_x(&area);
+  const float centery = BLI_rctf_cent_y(&area);
+  const float radius = ((w < h) ? w : h) * 0.5f * (0.5f / 0.615f);
+
+  /* center cross */
+  uchar col_grid[4] = {128, 128, 128, 96};
+  quads.add_line(centerx - radius * 0.1f, centery, centerx + radius * 0.1f, centery, col_grid);
+  quads.add_line(centerx, centery - radius * 0.1f, centerx, centery + radius * 0.1f, col_grid);
+
+  /* fully saturated vs "safe" (0.75) colored areas */
+  quads.draw();
+  GPU_blend(GPU_BLEND_ADDITIVE);
+  const float3 primaries[6] = {
+      {1, 0, 0},
+      {1, 1, 0},
+      {0, 1, 0},
+      {0, 1, 1},
+      {0, 0, 1},
+      {1, 0, 1},
+  };
+  float2 center{centerx, centery};
+  for (int i = 0; i < 6; i++) {
+    float3 prim0 = primaries[i];
+    float3 prim1 = primaries[(i + 1) % 6];
+    float3 safe0 = prim0 * 0.75f;
+    float3 safe1 = prim1 * 0.75f;
+    float2 uv0 = center + rgb_to_uv(prim0) * (radius * 2);
+    float2 uv1 = center + rgb_to_uv(prim1) * (radius * 2);
+    float2 uv2 = center + rgb_to_uv(safe0) * (radius * 2);
+    float2 uv3 = center + rgb_to_uv(safe1) * (radius * 2);
+    uchar col0[4] = {uchar(prim0.x * 255), uchar(prim0.y * 255), uchar(prim0.z * 255), 128};
+    uchar col1[4] = {uchar(prim1.x * 255), uchar(prim1.y * 255), uchar(prim1.z * 255), 128};
+    uchar col2[4] = {uchar(safe0.x * 255), uchar(safe0.y * 255), uchar(safe0.z * 255), 128};
+    uchar col3[4] = {uchar(safe1.x * 255), uchar(safe1.y * 255), uchar(safe1.z * 255), 128};
+    quads.add_quad(uv0.x, uv0.y, uv1.x, uv1.y, uv2.x, uv2.y, uv3.x, uv3.y, col0, col1, col2, col3);
+  }
+  quads.draw();
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  /* skin tone line */
+  uchar col_tone[4] = {255, 102, 0, 128};
+  const float tone_line_len = radius * 0.895f; /* makes it end at outer edge of saturation ring */
+  quads.add_line(centerx,
+                 centery,
+                 centerx + cosf(skin_rad) * tone_line_len,
+                 centery + sinf(skin_rad) * tone_line_len,
+                 col_tone);
+}
+
 static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq, bool draw_overlay)
 {
   using namespace blender::ed::seq;
 
   /* Figure out draw coordinates. */
   rctf preview;
-  rctf canvas;
   sequencer_preview_get_rect(&preview, scene, region, sseq, draw_overlay, false);
 
+  rctf uv;
   if (draw_overlay && (sseq->overlay_frame_type == SEQ_OVERLAY_FRAME_TYPE_RECT)) {
-    canvas = scene->ed->overlay_frame_rect;
+    uv = scene->ed->overlay_frame_rect;
   }
   else {
-    BLI_rctf_init(&canvas, 0.0f, 1.0f, 0.0f, 1.0f);
+    BLI_rctf_init(&uv, 0.0f, 1.0f, 0.0f, 1.0f);
+  }
+  const bool keep_aspect = sseq->mainb == SEQ_DRAW_IMG_VECTORSCOPE;
+  float vecscope_aspect = 1.0f;
+  if (keep_aspect) {
+    float width = std::max(BLI_rctf_size_x(&preview), 0.1f);
+    float height = std::max(BLI_rctf_size_y(&preview), 0.1f);
+    vecscope_aspect = width / height;
+    if (vecscope_aspect >= 1.0f) {
+      BLI_rctf_resize_x(&uv, BLI_rctf_size_x(&uv) * vecscope_aspect);
+    }
+    else {
+      BLI_rctf_resize_y(&uv, BLI_rctf_size_y(&uv) / vecscope_aspect);
+    }
   }
 
   SeqQuadsBatch quads;
@@ -623,6 +702,7 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq,
         "seq_display_buf", scope_image->x, scope_image->y, 1, format, usage, nullptr);
     GPU_texture_update(texture, data, scope_image->byte_buffer.data);
     GPU_texture_filter_mode(texture, false);
+    GPU_texture_extend_mode(texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
 
     GPU_texture_bind(texture, 0);
 
@@ -635,16 +715,16 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq,
 
     immBegin(GPU_PRIM_TRI_FAN, 4);
 
-    immAttr2f(texCoord, canvas.xmin, canvas.ymin);
+    immAttr2f(texCoord, uv.xmin, uv.ymin);
     immVertex2f(pos, preview.xmin, preview.ymin);
 
-    immAttr2f(texCoord, canvas.xmin, canvas.ymax);
+    immAttr2f(texCoord, uv.xmin, uv.ymax);
     immVertex2f(pos, preview.xmin, preview.ymax);
 
-    immAttr2f(texCoord, canvas.xmax, canvas.ymax);
+    immAttr2f(texCoord, uv.xmax, uv.ymax);
     immVertex2f(pos, preview.xmax, preview.ymax);
 
-    immAttr2f(texCoord, canvas.xmax, canvas.ymin);
+    immAttr2f(texCoord, uv.xmax, uv.ymin);
     immVertex2f(pos, preview.xmax, preview.ymin);
 
     immEnd();
@@ -672,6 +752,10 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq,
     /* Border. */
     uchar col_border[4] = {64, 64, 64, 128};
     quads.add_wire_quad(x0, preview.ymin, x1, preview.ymax, col_border);
+  }
+  if (sseq->mainb == SEQ_DRAW_IMG_VECTORSCOPE) {
+    use_blend = true;
+    draw_vectorscope_graticule(quads, preview);
   }
 
   quads.draw();

@@ -53,10 +53,10 @@ SeqQuadsBatch::SeqQuadsBatch()
 
   batch_quads = GPU_batch_create_ex(
       GPU_PRIM_TRIS, vbo_quads, ibo_quads, GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
-  GPU_batch_program_set_builtin(batch_quads, GPU_SHADER_3D_FLAT_COLOR);
+  GPU_batch_program_set_builtin(batch_quads, GPU_SHADER_3D_SMOOTH_COLOR);
 
   batch_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo_lines, nullptr, GPU_BATCH_OWNS_VBO);
-  GPU_batch_program_set_builtin(batch_lines, GPU_SHADER_3D_FLAT_COLOR);
+  GPU_batch_program_set_builtin(batch_lines, GPU_SHADER_3D_SMOOTH_COLOR);
 }
 
 SeqQuadsBatch::~SeqQuadsBatch()
@@ -93,7 +93,10 @@ void SeqQuadsBatch::add_quad(float x1,
                              float y3,
                              float x4,
                              float y4,
-                             const uchar color[4])
+                             const uchar color1[4],
+                             const uchar color2[4],
+                             const uchar color3[4],
+                             const uchar color4[4])
 {
   if (quads_num >= MAX_QUADS) {
     draw();
@@ -103,10 +106,10 @@ void SeqQuadsBatch::add_quad(float x1,
     BLI_assert(verts_quads != nullptr);
   }
 
-  ColorVertex v0 = {blender::float2(x1, y1), color};
-  ColorVertex v1 = {blender::float2(x2, y2), color};
-  ColorVertex v2 = {blender::float2(x3, y3), color};
-  ColorVertex v3 = {blender::float2(x4, y4), color};
+  ColorVertex v0 = {blender::float2(x1, y1), color1};
+  ColorVertex v1 = {blender::float2(x2, y2), color2};
+  ColorVertex v2 = {blender::float2(x3, y3), color3};
+  ColorVertex v3 = {blender::float2(x4, y4), color4};
 
   *verts_quads++ = v0;
   *verts_quads++ = v1;

@@ -54,20 +54,14 @@ void SeqScopes::cleanup()
   histogram.data.reinitialize(0);
 }
 
-/* XXX(@ideasman42): why is this function better than BLI_math version?
- * only difference is it does some normalize after, need to double check on this. */
-static void rgb_to_yuv_normalized(const float rgb[3], float yuv[3])
+static blender::float2 rgb_to_uv_normalized(const float rgb[3])
 {
-  yuv[0] = 0.299f * rgb[0] + 0.587f * rgb[1] + 0.114f * rgb[2];
-  yuv[1] = 0.492f * (rgb[2] - yuv[0]);
-  yuv[2] = 0.877f * (rgb[0] - yuv[0]);
+  float3 yuv;
+  rgb_to_yuv(rgb[0], rgb[1], rgb[2], &yuv.x, &yuv.y, &yuv.z, BLI_YUV_ITU_BT709);
 
-  /* Normalize. */
-  yuv[1] *= 255.0f / (122 * 2.0f);
-  yuv[1] += 0.5f;
-
-  yuv[2] *= 255.0f / (157 * 2.0f);
-  yuv[2] += 0.5f;
+  /* Normalize: UV range is +/- 0.615 */
+  float2 uv = yuv.yz() * (0.5f / 0.615f) + 0.5f;
+  return math::clamp(uv, 0.0f, 1.0f);
 }
 
 static void scope_put_pixel(const uchar *table, uchar *pos)
@@ -420,60 +414,22 @@ void ScopeHistogram::calc_from_ibuf(const ImBuf *ibuf)
   }
 }
 
-static void vectorscope_put_cross(uchar r, uchar g, uchar b, uchar *tgt, int w, int h, int size)
-{
-  float rgb[3], yuv[3];
-  uchar *p;
-
-  rgb[0] = float(r) / 255.0f;
-  rgb[1] = float(g) / 255.0f;
-  rgb[2] = float(b) / 255.0f;
-  rgb_to_yuv_normalized(rgb, yuv);
-
-  p = tgt + 4 * (w * int(yuv[2] * (h - 3) + 1) + int(yuv[1] * (w - 3) + 1));
-
-  if (r == 0 && g == 0 && b == 0) {
-    r = 255;
-  }
-
-  for (int y = -size; y <= size; y++) {
-    for (int x = -size; x <= size; x++) {
-      uchar *q = p + 4 * (y * w + x);
-      q[0] = r;
-      q[1] = g;
-      q[2] = b;
-      q[3] = 255;
-    }
-  }
-}
-
 static ImBuf *make_vectorscope_view_from_ibuf_byte(ImBuf *ibuf)
 {
 #ifdef DEBUG_TIME
   SCOPED_TIMER_AVERAGED(__func__);
 #endif
-  ImBuf *rval = IMB_allocImBuf(515, 515, 32, IB_rect);
+  int w = 512;
+  int h = 512;
+  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
+
   int x, y;
   const uchar *src = ibuf->byte_buffer.data;
   uchar *tgt = rval->byte_buffer.data;
-  float rgb[3], yuv[3];
-  int w = 515;
-  int h = 515;
-  float scope_gamma = 0.2;
+  float rgb[3];
+
   uchar wtable[256];
-
-  for (x = 0; x < 256; x++) {
-    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, scope_gamma) * 255.0f);
-  }
-
-  for (x = 0; x < 256; x++) {
-    vectorscope_put_cross(255, 0, 255 - x, tgt, w, h, 1);
-    vectorscope_put_cross(255, x, 0, tgt, w, h, 1);
-    vectorscope_put_cross(255 - x, 255, 0, tgt, w, h, 1);
-    vectorscope_put_cross(0, 255, x, tgt, w, h, 1);
-    vectorscope_put_cross(0, 255 - x, 255, tgt, w, h, 1);
-    vectorscope_put_cross(x, 0, 255, tgt, w, h, 1);
-  }
+  init_wave_table(math::midpoint(ibuf->x, ibuf->y), wtable);
 
   for (y = 0; y < ibuf->y; y++) {
     for (x = 0; x < ibuf->x; x++) {
@@ -483,14 +439,12 @@ static ImBuf *make_vectorscope_view_from_ibuf_byte(ImBuf *ibuf)
       rgb[0] = float(src1[0]) / 255.0f;
       rgb[1] = float(src1[1]) / 255.0f;
       rgb[2] = float(src1[2]) / 255.0f;
-      rgb_to_yuv_normalized(rgb, yuv);
+      float2 uv = rgb_to_uv_normalized(rgb);
 
-      p = tgt + 4 * (w * int(yuv[2] * (h - 3) + 1) + int(yuv[1] * (w - 3) + 1));
+      p = tgt + 4 * (w * int(uv.y * (h - 1)) + int(uv.x * (w - 1)));
       scope_put_pixel(wtable, (uchar *)p);
     }
   }
-
-  vectorscope_put_cross(0, 0, 0, tgt, w, h, 3);
 
   return rval;
 }
@@ -500,27 +454,18 @@ static ImBuf *make_vectorscope_view_from_ibuf_float(ImBuf *ibuf)
 #ifdef DEBUG_TIME
   SCOPED_TIMER_AVERAGED(__func__);
 #endif
-  ImBuf *rval = IMB_allocImBuf(515, 515, 32, IB_rect);
+  int w = 512;
+  int h = 512;
+  ImBuf *rval = IMB_allocImBuf(w, h, 32, IB_rect);
   int x, y;
   const float *src = ibuf->float_buffer.data;
   uchar *tgt = rval->byte_buffer.data;
-  float rgb[3], yuv[3];
-  int w = 515;
-  int h = 515;
+  float rgb[3];
   float scope_gamma = 0.2;
   uchar wtable[256];
 
   for (x = 0; x < 256; x++) {
     wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, scope_gamma) * 255.0f);
-  }
-
-  for (x = 0; x <= 255; x++) {
-    vectorscope_put_cross(255, 0, 255 - x, tgt, w, h, 1);
-    vectorscope_put_cross(255, x, 0, tgt, w, h, 1);
-    vectorscope_put_cross(255 - x, 255, 0, tgt, w, h, 1);
-    vectorscope_put_cross(0, 255, x, tgt, w, h, 1);
-    vectorscope_put_cross(0, 255 - x, 255, tgt, w, h, 1);
-    vectorscope_put_cross(x, 0, 255, tgt, w, h, 1);
   }
 
   for (y = 0; y < ibuf->y; y++) {
@@ -532,14 +477,12 @@ static ImBuf *make_vectorscope_view_from_ibuf_float(ImBuf *ibuf)
 
       clamp_v3(rgb, 0.0f, 1.0f);
 
-      rgb_to_yuv_normalized(rgb, yuv);
+      float2 uv = rgb_to_uv_normalized(rgb);
 
-      p = tgt + 4 * (w * int(yuv[2] * (h - 3) + 1) + int(yuv[1] * (w - 3) + 1));
+      p = tgt + 4 * (w * int(uv.y * (h - 1)) + int(uv.x * (w - 1)));
       scope_put_pixel(wtable, (uchar *)p);
     }
   }
-
-  vectorscope_put_cross(0, 0, 0, tgt, w, h, 3);
 
   return rval;
 }
