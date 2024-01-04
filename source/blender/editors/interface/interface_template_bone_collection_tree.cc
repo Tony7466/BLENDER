@@ -221,14 +221,12 @@ class BoneCollectionItem : public AbstractTreeViewItem {
 
     /* Visibility eyecon. */
     {
-      const bool is_visible = bone_collection_.flags & BONE_COLLECTION_VISIBLE;
+      uiLayout *visibility_sub = uiLayoutRow(sub, true);
+      uiLayoutSetActive(visibility_sub, bone_collection_.is_visible_ancestors());
+
+      const int icon = bone_collection_.is_visible() ? ICON_HIDE_OFF : ICON_HIDE_ON;
       PointerRNA bcoll_ptr = rna_pointer();
-      uiItemR(sub,
-              &bcoll_ptr,
-              "is_visible",
-              UI_ITEM_R_ICON_ONLY,
-              "",
-              is_visible ? ICON_HIDE_OFF : ICON_HIDE_ON);
+      uiItemR(visibility_sub, &bcoll_ptr, "is_visible", UI_ITEM_R_ICON_ONLY, "", icon);
     }
   }
 
