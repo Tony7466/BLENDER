@@ -52,21 +52,20 @@ struct CurvesCopy {
  * Leading to only two copy operations.
  */
 Span<int> compress_intervals(const blender::Array<IndexRange> &curve_interval_ranges,
-                             const Span<int> curve_intervals,
-                             blender::Array<int> &compressed)
+                             blender::Array<int> &intervals)
 {
-  int *dst = compressed.data();
-  const int *src = curve_intervals.data();
-  dst[0] = src[0];
-  int compact_count = 1;
-  for (const int c : IndexRange(curve_interval_ranges.size())) {
-    IndexRange cr = curve_interval_ranges[c];
-    memmove(dst + compact_count, src + cr.first() + 1, (cr.size() - 1) * sizeof(dst[0]));
-    compact_count += cr.size() - 1;
+  const int *src = intervals.data();
+  /* Skip the first curve, as all the data stays in the same place. */
+  int *dst = intervals.data() + curve_interval_ranges[0].size();
+
+  for (const int c : IndexRange(1, curve_interval_ranges.size() - 1)) {
+    const IndexRange cr = curve_interval_ranges[c];
+    const int width = cr.size() - 1;
+    std::copy_n(src + cr.first() + 1, width, dst);
+    dst += width;
   }
-  dst[compact_count] = src[curve_interval_ranges[curve_interval_ranges.size() - 1].last() + 1];
-  compact_count++;
-  return {dst, compact_count};
+  (*dst) = src[curve_interval_ranges[curve_interval_ranges.size() - 1].last() + 1];
+  return {intervals.data(), dst - intervals.data() + 1};
 }
 
 /**
@@ -231,7 +230,7 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
   const Span<int> old_offsets = curves.offsets();
-  const CurvesCopy curves_copy = calc_curves_extrusion(old_offsets, extruded_points);
+  CurvesCopy curves_copy = calc_curves_extrusion(old_offsets, extruded_points);
 
   const Span<int> curve_offsets = {curves_copy.curve_offsets.data(),
                                    curves_copy.curve_offsets.size()};
@@ -268,12 +267,11 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
   });
   selection.finish();
 
-  blender::Array<int> compact_buffer(curve_intervals.size());
-  const Span<int> intervals = compress_intervals(
-      curves_copy.curve_interval_ranges, curve_intervals, compact_buffer);
+  const Span<int> intervals = compress_intervals(curves_copy.curve_interval_ranges,
+                                                 curves_copy.curve_intervals);
 
   bke::MutableAttributeAccessor dst_attributes = new_curves.attributes_for_write();
-  bke::AttributeAccessor src_attributes = curves.attributes();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
            src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, {}, {".selection"}))
   {
