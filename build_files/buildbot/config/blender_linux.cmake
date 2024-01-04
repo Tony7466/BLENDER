@@ -12,3 +12,10 @@ message(STATUS "Building in Rocky 8 Linux 64bit environment")
 # Options which are specific to Linux-only platforms
 
 set(WITH_DOC_MANPAGE         OFF CACHE BOOL "" FORCE)
+
+# Attempt to work around linux buildbot compilation timeout.
+if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
+  if(WITH_COMPILER_ASAN)
+    set(WITH_UNITY_BUILD         OFF CACHE BOOL "" FORCE)
+  endif ()
+endif ()
