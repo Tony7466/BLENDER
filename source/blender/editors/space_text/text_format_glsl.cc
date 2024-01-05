@@ -1,7 +1,14 @@
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup sptext
+ */
 
 #include <cstring>
-/*He is posible of change #include <cstring> by */
-/*import std:string*/
+/*"include <cstring> can be replace by import std:string;"*/
+
 
 #include "BLI_blendlib.h"
 
@@ -27,9 +34,11 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "do"
     "double"
     "else"
+    "flat"
     "float"
     "for"
     "if"
+    "in"
     "int"
     "inout"
     "ivec2"
@@ -45,7 +54,10 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "sampler3D"
     "samplerCube"
     "struct"
-    "texel"  
+    "texel" 
+    "uvec2"
+    "uvec3"
+    "uvec4" 
     "vec2"
     "vec3"
     "vec4"
