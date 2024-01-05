@@ -9,6 +9,7 @@
 
 #include <array>
 #include <iosfwd>
+#include <string>
 
 namespace blender::io {
 
