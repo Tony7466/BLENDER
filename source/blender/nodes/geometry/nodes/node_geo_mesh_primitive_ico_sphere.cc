@@ -317,7 +317,7 @@ static void base_ico_sphere_positions(MutableSpan<float3> positions)
   }));
 }
 
-static Span<int2> base_edge_point_indices()
+static Span<int2> base_edge_verts_indices()
 {
   SCOPED_TIMER_AVERAGED(__func__);
   static const auto edge_points = []() -> std::array<int2, base_edges_num> {
@@ -350,7 +350,7 @@ static Span<int2> base_edge_point_indices()
   return edge_points;
 }
 
-static Span<int3> base_face_point_indices()
+static Span<int3> base_face_verts_indices()
 {
   SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_points = []() -> std::array<int3, base_faces_num> {
@@ -385,8 +385,8 @@ static Span<int3> base_face_edge_indices()
   static const auto face_edges = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_edges;
 
-    Span<int2> edge_points = base_edge_point_indices();
-    Span<int3> face_points = base_face_point_indices();
+    Span<int2> edge_points = base_edge_verts_indices();
+    Span<int3> face_points = base_face_verts_indices();
 
     Map<OrderedEdge, int> edge_index_by_verts;
     for (const int i : IndexRange(base_edges_num)) {
@@ -475,16 +475,16 @@ static Span<float2> base_face_uv_positions()
   return base_uv;
 }
 
-static void interpolate_edge_points(const int edge_verts_num,
-                                    const Span<float3> base_verts,
-                                    MutableSpan<float3> edge_verts)
+static void interpolate_edge_verts(const int edge_verts_num,
+                                   const Span<float3> base_verts,
+                                   MutableSpan<float3> edge_verts)
 {
   SCOPED_TIMER_AVERAGED(__func__);
-  const Span<int2> base_edge_points = base_edge_point_indices();
+  const Span<int2> base_edge_verts = base_edge_verts_indices();
 
   for (const int edge_i : IndexRange(base_edges_num)) {
     MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
-    const int2 edge_vert_indices = base_edge_points[edge_i];
+    const int2 edge_vert_indices = base_edge_verts[edge_i];
     const double3 vert_a(base_verts[edge_vert_indices[EdgeVert::A]]);
     const double3 vert_b(base_verts[edge_vert_indices[EdgeVert::B]]);
 
@@ -497,12 +497,12 @@ static void interpolate_edge_points(const int edge_verts_num,
   }
 }
 
-static void interpolate_face_points(const int line_subdiv,
-                                    const Span<float3> base_verts,
-                                    MutableSpan<float3> faces_verts)
+static void interpolate_face_verts(const int line_subdiv,
+                                   const Span<float3> base_verts,
+                                   MutableSpan<float3> faces_verts)
 {
   SCOPED_TIMER_AVERAGED(__func__);
-  const Span<int3> base_face_points = base_face_point_indices();
+  const Span<int3> base_face_verts = base_face_verts_indices();
 
   const constexpr int left_righr_points = 2;
   const TriangleRange inner_face_verts =
@@ -510,7 +510,7 @@ static void interpolate_face_points(const int line_subdiv,
   const int steps = inner_face_verts.hight() + left_righr_points;
 
   for (const int face_i : IndexRange(base_faces_num)) {
-    const int3 face_vert_indices = base_face_points[face_i];
+    const int3 face_vert_indices = base_face_verts[face_i];
 
     const double3 vert_a(base_verts[face_vert_indices[FaceVert::A]]);
     const double3 vert_b(base_verts[face_vert_indices[FaceVert::B]]);
@@ -555,7 +555,7 @@ static void vert_edge_topology(const int edge_edges_num,
                                MutableSpan<int2> edge_edges)
 {
   SCOPED_TIMER_AVERAGED(__func__);
-  const Span<int2> base_edges = base_edge_point_indices();
+  const Span<int2> base_edges = base_edge_verts_indices();
   if (edge_edges.size() == base_edges.size()) {
     edge_edges.copy_from(base_edges);
     return;
@@ -565,9 +565,9 @@ static void vert_edge_topology(const int edge_edges_num,
   for (const int edge_i : IndexRange(base_edges_num)) {
     const int2 base_edge = base_edges[edge_i];
     MutableSpan<int2> edges = edge_edges.slice(IndexRange(edge_edges_num).step(edge_i));
-    const IndexRange points = edges_verts.slice(IndexRange(edge_verts_num).step(edge_i));
+    const IndexRange verts = edges_verts.slice(IndexRange(edge_verts_num).step(edge_i));
     edges_line_fill_verts(
-        base_edge, edges, [=](const int edge_i) -> int { return points[edge_i]; });
+        base_edge, edges, [=](const int edge_i) -> int { return verts[edge_i]; });
   }
 }
 
@@ -578,8 +578,8 @@ static void face_edge_topology(const int edge_edges_num,
                                MutableSpan<int2> face_edges)
 {
   SCOPED_TIMER_AVERAGED(__func__);
-  const Span<int2> base_edge_points = base_edge_point_indices();
-  const Span<int3> base_face_points = base_face_point_indices();
+  const Span<int2> base_edge_verts = base_edge_verts_indices();
+  const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
 
   const TriangleRange inner_face_edges = TriangleRange(edge_edges_num).drop_bottom(1);
@@ -594,7 +594,7 @@ static void face_edge_topology(const int edge_edges_num,
   {
     SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
     for (const int face_i : IndexRange(base_faces_num)) {
-      const int3 face_vert_indices = base_face_points[face_i];
+      const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
       const IndexRange face_verts = faces_verts.slice(face_verts_range.step(face_i));
 
@@ -606,10 +606,10 @@ static void face_edge_topology(const int edge_edges_num,
       /* Check if order of vertices in face side (edge) is the same as in edge (real edge). */
       const bool edge_ac_order = int2(face_vert_indices[FaceVert::A],
                                       face_vert_indices[FaceVert::C]) ==
-                                 base_edge_points[face_edge_indices[FaceEdge::CA]];
+                                 base_edge_verts[face_edge_indices[FaceEdge::CA]];
       const bool edge_bc_order = int2(face_vert_indices[FaceVert::B],
                                       face_vert_indices[FaceVert::C]) ==
-                                 base_edge_points[face_edge_indices[FaceEdge::BC]];
+                                 base_edge_verts[face_edge_indices[FaceEdge::BC]];
 
       /* Edges parallel to AB base edge. */
       MutableSpan<int2> edges = face_edges.slice(
@@ -631,7 +631,7 @@ static void face_edge_topology(const int edge_edges_num,
   {
     SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
     for (const int face_i : IndexRange(base_faces_num)) {
-      const int3 face_vert_indices = base_face_points[face_i];
+      const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
       const IndexRange face_verts = faces_verts.slice(face_verts_range.step(face_i));
 
@@ -642,10 +642,10 @@ static void face_edge_topology(const int edge_edges_num,
 
       const bool edge_ba_order = int2(face_vert_indices[FaceVert::A],
                                       face_vert_indices[FaceVert::B]) ==
-                                 base_edge_points[face_edge_indices[FaceEdge::AB]];
+                                 base_edge_verts[face_edge_indices[FaceEdge::AB]];
       const bool edge_ca_order = int2(face_vert_indices[FaceVert::A],
                                       face_vert_indices[FaceVert::C]) ==
-                                 base_edge_points[face_edge_indices[FaceEdge::CA]];
+                                 base_edge_verts[face_edge_indices[FaceEdge::CA]];
 
       /* Edges parallel to BC base edge. */
       MutableSpan<int2> edges = face_edges.slice(
@@ -668,7 +668,7 @@ static void face_edge_topology(const int edge_edges_num,
   {
     SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
     for (const int face_i : IndexRange(base_faces_num)) {
-      const int3 face_vert_indices = base_face_points[face_i];
+      const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
       const IndexRange face_verts = faces_verts.slice(face_verts_range.step(face_i));
 
@@ -679,10 +679,10 @@ static void face_edge_topology(const int edge_edges_num,
 
       const bool edge_ab_order = int2(face_vert_indices[FaceVert::A],
                                       face_vert_indices[FaceVert::B]) ==
-                                 base_edge_points[face_edge_indices[FaceEdge::AB]];
+                                 base_edge_verts[face_edge_indices[FaceEdge::AB]];
       const bool edge_cb_order = int2(face_vert_indices[FaceVert::C],
                                       face_vert_indices[FaceVert::B]) ==
-                                 base_edge_points[face_edge_indices[FaceEdge::BC]];
+                                 base_edge_verts[face_edge_indices[FaceEdge::BC]];
 
       /* Edges parallel to AC base edge. */
       MutableSpan<int2> edges = face_edges.slice(
@@ -712,8 +712,8 @@ static void corner_edges_topology(const int edge_edges_num,
                                   MutableSpan<int> corner_edges)
 {
   SCOPED_TIMER_AVERAGED(__func__);
-  const Span<int2> base_edge_points = base_edge_point_indices();
-  const Span<int3> base_face_points = base_face_point_indices();
+  const Span<int2> base_edge_verts = base_edge_verts_indices();
+  const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
 
   if (corner_edges.size() == base_faces_edges.cast<int>().size()) {
@@ -739,7 +739,7 @@ static void corner_edges_topology(const int edge_edges_num,
   const IndexRange bottom_faces_range = top_faces_range.after(bottom_faces.total());
 
   for (const int face_i : IndexRange(base_faces_num)) {
-    const int3 face_vert_indices = base_face_points[face_i];
+    const int3 face_vert_indices = base_face_verts[face_i];
     const int3 face_edge_indices = base_faces_edges[face_i];
     MutableSpan<int> face_corner_edges = corner_edges.slice(
         faces_range.step(face_i).scale(face_size));
@@ -767,14 +767,14 @@ static void corner_edges_topology(const int edge_edges_num,
                                         .shift(base_edges_num * edge_edges_num);
 
     const bool corner_cab_order = elem_of(
-        base_edge_points[face_edge_indices[FaceEdge::CA]][EdgeVert::A],
-        base_edge_points[face_edge_indices[FaceEdge::BC]]);
+        base_edge_verts[face_edge_indices[FaceEdge::CA]][EdgeVert::A],
+        base_edge_verts[face_edge_indices[FaceEdge::BC]]);
     const bool corner_abc_order = elem_of(
-        base_edge_points[face_edge_indices[FaceEdge::AB]][EdgeVert::A],
-        base_edge_points[face_edge_indices[FaceEdge::CA]]);
+        base_edge_verts[face_edge_indices[FaceEdge::AB]][EdgeVert::A],
+        base_edge_verts[face_edge_indices[FaceEdge::CA]]);
     const bool corner_bca_order = elem_of(
-        base_edge_points[face_edge_indices[FaceEdge::BC]][EdgeVert::A],
-        base_edge_points[face_edge_indices[FaceEdge::AB]]);
+        base_edge_verts[face_edge_indices[FaceEdge::BC]][EdgeVert::A],
+        base_edge_verts[face_edge_indices[FaceEdge::AB]]);
 
     /* Faces in corners of base face. */
     std::array<int, face_size> a_corner_face;
@@ -797,13 +797,13 @@ static void corner_edges_topology(const int edge_edges_num,
 
     const bool edge_a_order = int2(face_vert_indices[FaceVert::A],
                                    face_vert_indices[FaceVert::B]) ==
-                              base_edge_points[face_edge_indices[FaceEdge::AB]];
+                              base_edge_verts[face_edge_indices[FaceEdge::AB]];
     const bool edge_b_order = int2(face_vert_indices[FaceVert::B],
                                    face_vert_indices[FaceVert::C]) !=
-                              base_edge_points[face_edge_indices[FaceEdge::BC]];
+                              base_edge_verts[face_edge_indices[FaceEdge::BC]];
     const bool edge_c_order = int2(face_vert_indices[FaceVert::A],
                                    face_vert_indices[FaceVert::C]) ==
-                              base_edge_points[face_edge_indices[FaceEdge::CA]];
+                              base_edge_verts[face_edge_indices[FaceEdge::CA]];
 
     /* Faces along base edge. */
     for (const int i : IndexRange(edge_faces_num)) {
@@ -872,9 +872,9 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
                                     const int faces_num,
                                     MutableSpan<int> corner_verts)
 {
-  const Span<int3> base_face_points = base_face_point_indices();
-  if (base_face_points.cast<int>().size() == corner_verts.size()) {
-    corner_verts.copy_from(base_face_points.cast<int>());
+  const Span<int3> base_face_verts = base_face_verts_indices();
+  if (base_face_verts.cast<int>().size() == corner_verts.size()) {
+    corner_verts.copy_from(base_face_verts.cast<int>());
     return;
   }
 
@@ -951,9 +951,9 @@ static Mesh *ico_sphere(const int subdivisions,
 
   base_ico_sphere_positions(positions.take_front(base_verts_num));
 
-  interpolate_edge_points(
+  interpolate_edge_verts(
       edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
-  interpolate_face_points(line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+  interpolate_face_verts(line_subdiv, positions.slice(vert_points), positions.slice(face_points));
 
   const IndexRange edge_edges(base_edges_num * edge_edges_num);
   const IndexRange face_edges(edge_edges.one_after_last(), face_edges_num * base_faces_num * 3);
