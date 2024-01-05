@@ -291,7 +291,7 @@ class SphericalIterator {
 
 static void base_ico_sphere_positions(MutableSpan<float3> positions)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   positions.first() = float3(0.0f, 0.0f, 1.0f);
 
   const float latitude = math::atan(0.5f);
@@ -319,7 +319,7 @@ static void base_ico_sphere_positions(MutableSpan<float3> positions)
 
 static Span<int2> base_edge_verts_indices()
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   static const auto edge_points = []() -> std::array<int2, base_edges_num> {
     std::array<int2, base_edges_num> edge_points;
 
@@ -352,7 +352,7 @@ static Span<int2> base_edge_verts_indices()
 
 static Span<int3> base_face_verts_indices()
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_points = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_points;
 
@@ -381,7 +381,7 @@ static Span<int3> base_face_verts_indices()
 
 static Span<int3> base_face_edge_indices()
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_edges = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_edges;
 
@@ -479,7 +479,7 @@ static void interpolate_edge_verts(const int edge_verts_num,
                                    const Span<float3> base_verts,
                                    MutableSpan<float3> edge_verts)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
 
   for (const int edge_i : IndexRange(base_edges_num)) {
@@ -501,7 +501,7 @@ static void interpolate_face_verts(const int line_subdiv,
                                    const Span<float3> base_verts,
                                    MutableSpan<float3> faces_verts)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int3> base_face_verts = base_face_verts_indices();
 
   const constexpr int left_righr_points = 2;
@@ -554,7 +554,7 @@ static void vert_edge_topology(const int edge_edges_num,
                                const int edge_verts_num,
                                MutableSpan<int2> edge_edges)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edges = base_edge_verts_indices();
   if (edge_edges.size() == base_edges.size()) {
     edge_edges.copy_from(base_edges);
@@ -577,7 +577,7 @@ static void face_edge_topology(const int edge_edges_num,
                                const IndexRange faces_verts,
                                MutableSpan<int2> face_edges)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -592,7 +592,7 @@ static void face_edge_topology(const int edge_edges_num,
   const IndexRange edges_verts_range(base_verts_num, base_edges_num * edge_verts_num);
 
   {
-    SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
+    // SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -629,7 +629,7 @@ static void face_edge_topology(const int edge_edges_num,
   }
 
   {
-    SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
+    // SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -666,7 +666,7 @@ static void face_edge_topology(const int edge_edges_num,
   }
 
   {
-    SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
+    // SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -711,7 +711,7 @@ static void corner_edges_topology(const int edge_edges_num,
                                   const int face_faces_num,
                                   MutableSpan<int> corner_edges)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -723,6 +723,8 @@ static void corner_edges_topology(const int edge_edges_num,
 
   const IndexRange edge_edges_range(edge_edges_num);
   const IndexRange faces_range(face_faces_num);
+
+  const IndexRange face_corners_range(face_size);
 
   const TriangleRange top_faces(edge_edges_num - 1);
   const TriangleRange bottom_faces = top_faces.drop_bottom(2);
@@ -777,23 +779,20 @@ static void corner_edges_topology(const int edge_edges_num,
         base_edge_verts[face_edge_indices[FaceEdge::AB]]);
 
     /* Faces in corners of base face. */
-    std::array<int, face_size> a_corner_face;
+    MutableSpan<int> a_corner_face = corner_face_edges.slice(face_corners_range.step(Corner::A));
     a_corner_face[Corner::A] = face_edges_a.last();
     a_corner_face[Corner::B] = !corner_bca_order ? edge_b_edges.first() : edge_b_edges.last();
     a_corner_face[Corner::C] = corner_cab_order ? edge_c_edges.first() : edge_c_edges.last();
-    corner_face_edges.slice(IndexRange(face_size).step(Corner::A)).copy_from(a_corner_face);
 
-    std::array<int, face_size> b_corner_face;
+    MutableSpan<int> b_corner_face = corner_face_edges.slice(face_corners_range.step(Corner::B));
     b_corner_face[Corner::A] = corner_abc_order ? edge_a_edges.first() : edge_a_edges.last();
     b_corner_face[Corner::B] = face_edges_b.last();
     b_corner_face[Corner::C] = !corner_cab_order ? edge_c_edges.first() : edge_c_edges.last();
-    corner_face_edges.slice(IndexRange(face_size).step(Corner::B)).copy_from(b_corner_face);
 
-    std::array<int, face_size> c_corner_face;
+    MutableSpan<int> c_corner_face = corner_face_edges.slice(face_corners_range.step(Corner::C));
     c_corner_face[Corner::A] = !corner_abc_order ? edge_a_edges.first() : edge_a_edges.last();
     c_corner_face[Corner::B] = corner_bca_order ? edge_b_edges.first() : edge_b_edges.last();
     c_corner_face[Corner::C] = face_edges_c.last();
-    corner_face_edges.slice(IndexRange(face_size).step(Corner::C)).copy_from(c_corner_face);
 
     const bool edge_a_order = int2(face_vert_indices[FaceVert::A],
                                    face_vert_indices[FaceVert::B]) ==
@@ -878,7 +877,7 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
     return;
   }
 
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   for (const int i : IndexRange(faces_num)) {
     const int face_i = i * face_size;
     const int2 edge_a = edges[corner_edges[face_i + FaceVert::A]];
@@ -904,11 +903,171 @@ static void uv_vert_positions(const int edge_edges_num,
                               const int face_faces_num,
                               MutableSpan<float2> uv)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
+
+  const Span<int3> base_face_verts = base_face_verts_indices();
+  const Span<int3> base_faces_edges = base_face_edge_indices();
+
   const Span<float2> base_uv = base_face_uv_positions();
   if (uv.size() == base_uv.size()) {
     uv.copy_from(base_uv);
     return;
+  }
+
+  const IndexRange faces_range(face_faces_num);
+
+  const IndexRange face_corners_range(face_size);
+
+  const TriangleRange top_faces(edge_edges_num - 1);
+  const TriangleRange bottom_faces = top_faces.drop_bottom(2);
+
+  /* Faces along base edge except corner faces. */
+  const int edge_faces_num = edge_edges_num - 2;
+
+  const IndexRange corner_faces_range(base_face_corners_num);
+  const IndexRange edge_faces_range = corner_faces_range.after(edge_faces_num *
+                                                               base_face_corners_num);
+  const IndexRange top_faces_range = edge_faces_range.after(top_faces.total());
+  const IndexRange bottom_faces_range = top_faces_range.after(bottom_faces.total());
+
+  for (const int face_i : IndexRange(base_faces_num)) {
+    const int3 face_vert_indices = base_face_verts[face_i];
+    const int3 face_edge_indices = base_faces_edges[face_i];
+
+    MutableSpan<float2> face_uv = uv.slice(faces_range.step(face_i).scale(face_size));
+
+    MutableSpan<float2> corner_face_edges_uv = face_uv.slice(corner_faces_range.scale(face_size));
+    MutableSpan<float2> edge_face_edges_uv = face_uv.slice(edge_faces_range.scale(face_size));
+    MutableSpan<float2> top_face_edges_uv = face_uv.slice(top_faces_range.scale(face_size));
+    MutableSpan<float2> bottom_face_edges_uv = face_uv.slice(bottom_faces_range.scale(face_size));
+
+    const float2 uv_corner_a = base_uv[face_corners_range.step(face_i)[FaceVert::A]];
+    const float2 uv_corner_b = base_uv[face_corners_range.step(face_i)[FaceVert::B]];
+    const float2 uv_corner_c = base_uv[face_corners_range.step(face_i)[FaceVert::C]];
+
+    const float2 uv_ab_edge = uv_corner_a - uv_corner_b;
+    const float2 uv_bc_edge = uv_corner_b - uv_corner_c;
+    const float2 uv_ca_edge = uv_corner_c - uv_corner_a;
+
+    MutableSpan<float2> a_corner_face_uv = corner_face_edges_uv.slice(
+        face_corners_range.step(Corner::B));
+    a_corner_face_uv[Corner::A] = uv_corner_a;
+    a_corner_face_uv[Corner::B] = uv_corner_a - uv_ab_edge / edge_edges_num;
+    a_corner_face_uv[Corner::C] = uv_corner_a + uv_ca_edge / edge_edges_num;
+
+    MutableSpan<float2> b_corner_face_uv = corner_face_edges_uv.slice(
+        face_corners_range.step(Corner::C));
+    b_corner_face_uv[Corner::A] = uv_corner_b + uv_ab_edge / edge_edges_num;
+    b_corner_face_uv[Corner::B] = uv_corner_b;
+    b_corner_face_uv[Corner::C] = uv_corner_b - uv_bc_edge / edge_edges_num;
+
+    MutableSpan<float2> c_corner_face_uv = corner_face_edges_uv.slice(
+        face_corners_range.step(Corner::A));
+    c_corner_face_uv[Corner::A] = uv_corner_c - uv_ca_edge / edge_edges_num;
+    c_corner_face_uv[Corner::B] = uv_corner_c + uv_bc_edge / edge_edges_num;
+    c_corner_face_uv[Corner::C] = uv_corner_c;
+
+    /* Faces along base edge. */
+    {
+      std::array<float2, face_size> face_template;
+      face_template[FaceVert::A] = a_corner_face_uv[FaceVert::A];
+      face_template[FaceVert::B] = a_corner_face_uv[FaceVert::B];
+      face_template[FaceVert::C] = a_corner_face_uv[FaceVert::C];
+      const float2 offset = face_template[FaceVert::B] - face_template[FaceVert::A];
+      float2 offset_accumulate = offset;
+      for (const int i : IndexRange(edge_faces_num)) {
+        const int face_i = (edge_faces_num * InnerEdges::Base + i) * face_size;
+        edge_face_edges_uv[face_i + Corner::A] = face_template[Corner::A] + offset_accumulate;
+        edge_face_edges_uv[face_i + Corner::B] = face_template[Corner::B] + offset_accumulate;
+        edge_face_edges_uv[face_i + Corner::C] = face_template[Corner::C] + offset_accumulate;
+        offset_accumulate += offset;
+      }
+    }
+
+    {
+      std::array<float2, face_size> face_template;
+      face_template[FaceVert::A] = c_corner_face_uv[FaceVert::B];
+      face_template[FaceVert::B] = c_corner_face_uv[FaceVert::C];
+      face_template[FaceVert::C] = c_corner_face_uv[FaceVert::A];
+      const float2 offset = face_template[FaceVert::A] - face_template[FaceVert::B];
+      float2 offset_accumulate = offset;
+      for (const int i : IndexRange(edge_faces_num)) {
+        const int face_i = (edge_faces_num * InnerEdges::Left + i) * face_size;
+        edge_face_edges_uv[face_i + Corner::A] = face_template[Corner::A] + offset_accumulate;
+        edge_face_edges_uv[face_i + Corner::B] = face_template[Corner::B] + offset_accumulate;
+        edge_face_edges_uv[face_i + Corner::C] = face_template[Corner::C] + offset_accumulate;
+        offset_accumulate += offset;
+      }
+    }
+
+    {
+      std::array<float2, face_size> face_template;
+      face_template[FaceVert::A] = a_corner_face_uv[FaceVert::C];
+      face_template[FaceVert::B] = a_corner_face_uv[FaceVert::A];
+      face_template[FaceVert::C] = a_corner_face_uv[FaceVert::B];
+      const float2 offset = face_template[FaceVert::A] - face_template[FaceVert::B];
+      float2 offset_accumulate = offset;
+      for (const int i : IndexRange(edge_faces_num)) {
+        const int face_i = (edge_faces_num * InnerEdges::Right + i) * face_size;
+        edge_face_edges_uv[face_i + Corner::A] = face_template[Corner::A] + offset_accumulate;
+        edge_face_edges_uv[face_i + Corner::B] = face_template[Corner::B] + offset_accumulate;
+        edge_face_edges_uv[face_i + Corner::C] = face_template[Corner::C] + offset_accumulate;
+        offset_accumulate += offset;
+      }
+    }
+
+    /* Faces (flipped). */
+    {
+      std::array<float2, face_size> face_template;
+      face_template[FaceVert::A] = c_corner_face_uv[FaceVert::B];
+      face_template[FaceVert::B] = c_corner_face_uv[FaceVert::A];
+      face_template[FaceVert::C] = c_corner_face_uv[FaceVert::C];
+      const float2 face_hight = c_corner_face_uv[FaceVert::C] -
+                                math::midpoint(c_corner_face_uv[FaceVert::A],
+                                               c_corner_face_uv[FaceVert::B]);
+      /* Flip triangle uv. */
+      face_template[FaceVert::C] -= face_hight * 2.0f;
+      const float2 offset_in_line = c_corner_face_uv[FaceVert::B] - c_corner_face_uv[FaceVert::A];
+      const float2 offset_by_line = face_template[FaceVert::C] - face_template[FaceVert::A];
+      for (const int line_i : IndexRange(top_faces.hight())) {
+        MutableSpan<float2> line_uv = top_face_edges_uv.slice(
+            top_faces.slice_at(line_i).scale(face_size));
+        const int r_line_i = top_faces.hight() - line_i - 1;
+        float2 offset_accumulate = offset_by_line * float(r_line_i);
+        for (const int i : IndexRange(top_faces.size_of(line_i))) {
+          const int face_i = i * face_size;
+          line_uv[face_i + Corner::A] = face_template[FaceVert::A] + offset_accumulate;
+          line_uv[face_i + Corner::B] = face_template[FaceVert::B] + offset_accumulate;
+          line_uv[face_i + Corner::C] = face_template[FaceVert::C] + offset_accumulate;
+          offset_accumulate += offset_in_line;
+        }
+      }
+    }
+
+    /* Faces (non-flipped). */
+    {
+      std::array<float2, face_size> face_template;
+      face_template[FaceVert::A] = c_corner_face_uv[FaceVert::A];
+      face_template[FaceVert::B] = c_corner_face_uv[FaceVert::B];
+      face_template[FaceVert::C] = c_corner_face_uv[FaceVert::C];
+      const float2 offset_in_line = c_corner_face_uv[FaceVert::B] - c_corner_face_uv[FaceVert::A];
+      const float2 offset_by_line = face_template[FaceVert::C] - face_template[FaceVert::A];
+
+      for (const int line_i : IndexRange(bottom_faces.hight())) {
+        MutableSpan<float2> line_uv = bottom_face_edges_uv.slice(
+            bottom_faces.slice_at(line_i).scale(face_size));
+        const int r_line_i = bottom_faces.hight() - line_i;
+        const int inner_r_line_i = r_line_i + 1;
+        float2 offset_accumulate = -offset_by_line * float(inner_r_line_i) + offset_in_line;
+        for (const int i : IndexRange(bottom_faces.size_of(line_i))) {
+          const int face_i = i * face_size;
+          line_uv[face_i + Corner::A] = face_template[FaceVert::A] + offset_accumulate;
+          line_uv[face_i + Corner::B] = face_template[FaceVert::B] + offset_accumulate;
+          line_uv[face_i + Corner::C] = face_template[FaceVert::C] + offset_accumulate;
+          offset_accumulate += offset_in_line;
+        }
+      }
+    }
   }
 }
 
@@ -966,7 +1125,7 @@ static Mesh *ico_sphere(const int subdivisions,
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
 
   {
-    SCOPED_TIMER_AVERAGED("Scaling");
+    // SCOPED_TIMER_AVERAGED("Scaling");
     std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
       return pos * radius;
     });
@@ -1007,11 +1166,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   if (new_type) {
+    SCOPED_TIMER_AVERAGED("New");
     Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get());
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
     return;
   }
 
+  SCOPED_TIMER_AVERAGED("Old");
   Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }
