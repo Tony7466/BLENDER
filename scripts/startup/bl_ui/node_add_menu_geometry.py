@@ -674,7 +674,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_WRITE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeGridCapture")
         node_add_menu.add_node_type(layout, "GeometryNodeDeactivateVoxels")
         node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedGrid")
-        node_add_menu.draw_assets_for_catalog(layout, "Volume/Write"
+        node_add_menu.draw_assets_for_catalog(layout, "Volume/Write")
 
 
 class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
