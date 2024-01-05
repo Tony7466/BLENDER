@@ -4,6 +4,9 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -68,47 +71,48 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 struct GridFilterOp {
   GeoNodeExecParams params;
 
-  template<typename T> bke::GVolumeGridPtr operator()()
+  template<typename T> bke::GVolumeGrid operator()()
   {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
-    using MaskType = typename bke::VolumeGridPtr<float>::GridType;
+    using GridType = bke::OpenvdbGridType<T>;
+    using MaskType = bke::OpenvdbGridType<float>;
     using Converter = bke::grids::Converter<T>;
 
     const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(params.node().custom1);
 
-    const bke::VolumeGridPtr<T> grid = grids::extract_grid_input<T>(this->params, "Grid");
-    const bke::VolumeGridPtr<float> mask = grids::extract_grid_input<float>(this->params, "Mask");
+    auto grid = this->params.extract_input<bke::VolumeGrid<T>>("Grid");
+    const auto mask = this->params.extract_input<bke::VolumeGrid<float>>("Mask");
     if (!grid) {
-      return nullptr;
+      return {};
     }
-    const bke::VolumeGridPtr<T> output_grid = grid->is_mutable() ?
-                                                  grid :
-                                                  bke::VolumeGridPtr<T>{grid->copy()};
+    std::shared_ptr<bke::OpenvdbGridType<T>> output_grid = grid.grid_ptr_for_write(grid.get().tree_access_token());
+    const bke::OpenvdbGridType<float> *mask_ptr = mask ?
+                                                      &mask.grid(mask.get().tree_access_token()) :
+                                                      nullptr;
 
-    openvdb::tools::Filter<GridType, MaskType> filter(*output_grid.grid_for_write());
+    openvdb::tools::Filter<GridType, MaskType> filter(*output_grid);
 
     switch (operation) {
       case GEO_NODE_GRID_FILTER_MEAN: {
         const int width = params.extract_input<int>("Width");
         const int iterations = params.extract_input<int>("Iterations");
-        filter.mean(width, iterations, mask ? mask.grid().get() : nullptr);
+        filter.mean(width, iterations, mask_ptr);
         break;
       }
       case GEO_NODE_GRID_FILTER_MEDIAN: {
         const int width = params.extract_input<int>("Width");
         const int iterations = params.extract_input<int>("Iterations");
-        filter.median(width, iterations, mask ? mask.grid().get() : nullptr);
+        filter.median(width, iterations, mask_ptr);
         break;
       }
       case GEO_NODE_GRID_FILTER_GAUSSIAN: {
         const int width = params.extract_input<int>("Width");
         const int iterations = params.extract_input<int>("Iterations");
-        filter.gaussian(width, iterations, mask ? mask.grid().get() : nullptr);
+        filter.gaussian(width, iterations, mask_ptr);
         break;
       }
       case GEO_NODE_GRID_FILTER_OFFSET: {
         const T offset = params.extract_input<T>("Offset");
-        filter.offset(Converter::to_openvdb(offset), mask ? mask.grid().get() : nullptr);
+        filter.offset(Converter::to_openvdb(offset), mask_ptr);
         break;
       }
       case GEO_NODE_GRID_FILTER_MEAN_CURVATURE:
@@ -118,7 +122,7 @@ struct GridFilterOp {
         break;
     }
 
-    return output_grid;
+    return bke::GVolumeGrid(output_grid);
   }
 };
 
@@ -126,16 +130,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom2);
-  BLI_assert(grids::grid_type_supported(data_type));
+  BLI_assert(grid_type_supported(data_type));
 
   GridFilterOp filter_op = {params};
-  bke::GVolumeGridPtr grid = grids::apply(data_type, filter_op);
+  bke::GVolumeGrid grid = grids::apply(data_type, filter_op);
 
-  grids::set_output_grid(params, "Grid", data_type, grid);
+  params.set_output("Grid", grid);
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 
@@ -168,7 +170,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom2),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 }
 
 static void node_register()

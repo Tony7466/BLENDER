@@ -4,6 +4,9 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -48,13 +51,12 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 struct CaptureGridOp {
   GeoNodeExecParams params;
 
-  template<typename T> bke::GVolumeGridPtr operator()()
+  template<typename T> bke::GVolumeGrid operator()()
   {
     const eCustomDataType data_type = eCustomDataType(params.node().custom1);
     const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
-    BLI_assert(grids::grid_type_supported(topo_data_type));
-    const bke::GVolumeGridPtr topo_grid = grids::extract_grid_input(
-        this->params, "Topology Grid", topo_data_type);
+    BLI_assert(grid_type_supported(topo_data_type));
+    const auto topo_grid = this->params.extract_input<bke::GVolumeGrid>("Topology Grid");
     const fn::Field<T> value_field = this->params.extract_input<fn::Field<T>>("Value");
     const T background = this->params.extract_input<T>("Background");
 
@@ -67,16 +69,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grids::grid_type_supported(data_type));
+  BLI_assert(grid_type_supported(data_type));
 
   CaptureGridOp capture_op = {params};
-  bke::GVolumeGridPtr grid = grids::apply(data_type, capture_op);
+  bke::GVolumeGrid grid = grids::apply(data_type, capture_op);
 
-  grids::set_output_grid(params, "Grid", data_type, grid);
+  params.set_output("Grid", grid);
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 
@@ -89,7 +89,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 
   RNA_def_node_enum(srna,
                     "topology_data_type",
@@ -98,7 +98,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom2),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 }
 
 static void node_register()

@@ -65,9 +65,10 @@ static bke::GVolumeGrid try_combine_grids(GeoNodeExecParams params)
   primary_grid.get_for_write()
       .grid_for_write(primary_data.tree_access_token())
       .apply<SupportedVDBGridTypes>([&](auto &primary_grid) {
-        for (const bke::GVolumeGridPtr &secondary_grid : secondary_grids) {
-          secondary_grid.grid()->apply<grids::SupportedVDBGridTypes>(
-              [&](const auto &secondary_grid) {
+        for (const bke::GVolumeGrid &secondary_grid : secondary_grids) {
+          const bke::VolumeGridData &secondary_data = secondary_grid.get();
+          secondary_data.grid(secondary_data.tree_access_token())
+              .apply<SupportedVDBGridTypes>([&](const auto &secondary_grid) {
                 switch (operation) {
                   case GEO_NODE_BOOLEAN_INTERSECT: {
                     primary_grid.topologyIntersection(secondary_grid);

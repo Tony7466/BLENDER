@@ -13,6 +13,7 @@
 #ifdef WITH_OPENVDB
 
 #  include <functional>
+#  include <memory>
 #  include <mutex>
 #  include <optional>
 
@@ -322,6 +323,14 @@ template<typename T> class VolumeGrid : public GVolumeGrid {
   const OpenvdbGridType<T> &grid(const VolumeTreeAccessToken &tree_access_token) const;
   OpenvdbGridType<T> &grid_for_write(const VolumeTreeAccessToken &tree_access_token);
 
+  /**
+   * Wraps the same methods on #VolumeGridData but casts to the correct OpenVDB type.
+   */
+  std::shared_ptr<const OpenvdbGridType<T>> grid_ptr(
+      const VolumeTreeAccessToken &tree_access_token) const;
+  std::shared_ptr<OpenvdbGridType<T>> grid_ptr_for_write(
+      const VolumeTreeAccessToken &tree_access_token);
+
  private:
   void assert_correct_type() const;
 };
@@ -393,6 +402,21 @@ inline OpenvdbGridType<T> &VolumeGrid<T>::grid_for_write(
 {
   return static_cast<OpenvdbGridType<T> &>(
       this->get_for_write().grid_for_write(tree_access_token));
+}
+
+template<typename T>
+inline std::shared_ptr<const OpenvdbGridType<T>> VolumeGrid<T>::grid_ptr(
+    const VolumeTreeAccessToken &tree_access_token) const
+{
+  return std::static_pointer_cast<const OpenvdbGridType<T>>(data_->grid_ptr(tree_access_token));
+}
+
+template<typename T>
+inline std::shared_ptr<OpenvdbGridType<T>> VolumeGrid<T>::grid_ptr_for_write(
+    const VolumeTreeAccessToken &tree_access_token)
+{
+  return std::static_pointer_cast<OpenvdbGridType<T>>(
+      this->get_for_write().grid_ptr_for_write(tree_access_token));
 }
 
 template<typename T> inline void VolumeGrid<T>::assert_correct_type() const

@@ -5,6 +5,7 @@
 #include "node_geometry_util.hh"
 
 #include "BKE_pointcloud.h"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "NOD_rna_define.hh"
@@ -74,7 +75,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 }
 
 template<typename T> struct PointData {
-  using GridType = typename bke::detail::VolumeGridType<T>;
+  using GridType = typename bke::OpenvdbGridType<T>;
   using GridValueType = typename GridType::ValueType;
   using Converter = bke::grids::Converter<T>;
   using AttributeValueType = typename Converter::AttributeValueType;
@@ -167,18 +168,18 @@ struct GridToPointsOp {
 
   template<typename T> void operator()()
   {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
+    using GridType = typename bke::OpenvdbGridType<T>;
     using TreeType = typename GridType::TreeType;
 
-    const bke::VolumeGridPtr<T> grid_ptr = grids::extract_grid_input<T>(params, "Grid");
-    if (!grid_ptr) {
+    const auto grid = params.extract_input<bke::VolumeGrid<T>>("Grid");
+    if (!grid) {
       params.set_default_remaining_outputs();
       return;
     }
-    const GridType &grid = *grid_ptr.grid();
+    const GridType &vdb_grid = grid.grid(grid.get().tree_access_token());
     const bool use_tiles = params.extract_input<bool>("Use Tiles");
 
-    PointData<T> point_data(grid,
+    PointData<T> point_data(vdb_grid,
                             use_tiles,
                             params.output_is_required("Bounds Min"),
                             params.output_is_required("Bounds Max"),
@@ -187,7 +188,7 @@ struct GridToPointsOp {
                             params.output_is_required("Value"));
 
     int64_t cur_point = 0;
-    for (typename TreeType::ValueOnCIter value_iter = grid.tree().cbeginValueOn(); value_iter;
+    for (typename TreeType::ValueOnCIter value_iter = vdb_grid.tree().cbeginValueOn(); value_iter;
          ++value_iter)
     {
       point_data.add_voxel_point(
@@ -217,7 +218,7 @@ struct GridToPointsOp {
             "Coordinate"))
     {
       attributes.add<float3>(*attribute_id,
-                             ATTR_DOMAIN_POINT,
+                             AttrDomain::Point,
                              bke::AttributeInitVArray(VArray<float3>::ForSpan(point_data.coords)));
     }
     if (AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
@@ -225,7 +226,7 @@ struct GridToPointsOp {
     {
       attributes.add<float3>(
           *attribute_id,
-          ATTR_DOMAIN_POINT,
+          AttrDomain::Point,
           bke::AttributeInitVArray(VArray<float3>::ForSpan(point_data.bounds_min)));
     }
     if (AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
@@ -233,14 +234,14 @@ struct GridToPointsOp {
     {
       attributes.add<float3>(
           *attribute_id,
-          ATTR_DOMAIN_POINT,
+          AttrDomain::Point,
           bke::AttributeInitVArray(VArray<float3>::ForSpan(point_data.bounds_max)));
     }
     if (AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
             "Level"))
     {
       attributes.add<int>(*attribute_id,
-                          ATTR_DOMAIN_POINT,
+                          AttrDomain::Point,
                           bke::AttributeInitVArray(VArray<int>::ForSpan(point_data.levels)));
     }
     if (AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
@@ -248,14 +249,14 @@ struct GridToPointsOp {
     {
       attributes.add<bool>(
           *attribute_id,
-          ATTR_DOMAIN_POINT,
+          AttrDomain::Point,
           bke::AttributeInitVArray(VArray<bool>::ForSpan(point_data.active_state)));
     }
     if (AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
             "Value"))
     {
       attributes.add<T>(*attribute_id,
-                        ATTR_DOMAIN_POINT,
+                        AttrDomain::Point,
                         bke::AttributeInitVArray(VArray<T>::ForSpan(point_data.values)));
     }
 
@@ -267,7 +268,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grids::grid_type_supported(data_type));
+  BLI_assert(grid_type_supported(data_type));
 
   GridToPointsOp grid_to_points_op = {params};
   grids::apply(data_type, grid_to_points_op);
@@ -287,7 +288,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
 }
 
 static void node_register()

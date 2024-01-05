@@ -261,7 +261,7 @@ template<typename GridType> class CaptureFieldContext : public FieldContext {
 };
 
 template<typename OutputGridPtr> struct TopologyInitOp {
-  bke::GVolumeGridPtr topology_grid;
+  bke::GVolumeGrid topology_grid;
   OutputGridPtr output_grid;
 
   template<typename T> void operator()()
@@ -270,7 +270,9 @@ template<typename OutputGridPtr> struct TopologyInitOp {
       /* TODO should use topology union of inputs in this case. */
       return;
     }
-    typename bke::VolumeGridPtr<T>::GridConstPtr vdb_grid = this->topology_grid.typed<T>().grid();
+    bke::VolumeGrid<T> typed_topology_grid = this->topology_grid.typed<T>();
+    typename std::shared_ptr<const bke::OpenvdbGridType<T>> vdb_grid =
+        typed_topology_grid.grid_ptr(typed_topology_grid.get().tree_access_token());
 
     output_grid->setTransform(vdb_grid->transform().copy());
     output_grid->insertMeta(*vdb_grid);
@@ -286,8 +288,8 @@ struct CaptureGridOp {
 
   template<typename T> bke::GVolumeGrid operator()()
   {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
-    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
+    using GridType = typename bke::OpenvdbGridType<T>;
+    using GridPtr = std::shared_ptr<GridType>;
     using Converter = bke::grids::Converter<T>;
 
     const typename GridType::ValueType vdb_background = Converter::to_openvdb(
@@ -308,7 +310,7 @@ struct CaptureGridOp {
     evaluator.evaluate();
     store_voxel_values(*output_grid, values.as_span());
 
-    return bke::make_volume_grid_ptr(std::move(output_grid), VOLUME_TREE_SOURCE_GENERATED);
+    return bkeGVolumeGrid(std::move(output_grid));
   }
 };
 

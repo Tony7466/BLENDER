@@ -4,6 +4,9 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -188,21 +191,22 @@ struct ExtrapolateOp {
   GeoNodeExecParams params;
   GeometryNodeGridExtrapolationInputType input_type;
   openvdb::tools::FastSweepingDomain fast_sweeping_domain;
-  bke::VolumeGridPtr<float> input_grid;
+  bke::VolumeGrid<float> input_grid;
 
-  bke::GVolumeGridPtr result;
+  bke::GVolumeGrid result;
 
   template<typename T> void operator()()
   {
-    using GridType = typename bke::VolumeGridPtr<T>::GridType;
-    using GridPtr = typename bke::VolumeGridPtr<T>::GridPtr;
+    using GridType = typename bke::OpenvdbGridType<T>;
+    using GridPtr = typename GridType::Ptr;
     using Converter = bke::grids::Converter<T>;
 
     if (!this->input_grid) {
       return;
     }
 
-    const openvdb::FloatGrid::ConstPtr vdb_input_grid = input_grid.grid();
+    const openvdb::FloatGrid::ConstPtr vdb_input_grid = this->input_grid.grid_ptr(
+        input_grid.get().tree_access_token());
     const fn::Field<T> boundary_field = this->params.extract_input<fn::Field<T>>("Boundary Value");
     const T background = this->params.extract_input<T>("Background");
     const float iso_value = this->params.extract_input<float>("Iso Value");
@@ -257,8 +261,7 @@ struct ExtrapolateOp {
         vdb_result->insertMeta(*vdb_input_grid);
         vdb_result->setTransform(vdb_input_grid->transform().copy());
       }
-      this->result = bke::make_volume_grid_ptr(std::move(vdb_result),
-                                               VOLUME_TREE_SOURCE_GENERATED);
+      this->result = bke::GVolumeGrid(std::move(vdb_result));
     }
     catch (const openvdb::ValueError &ex) {
       /* TODO this happens when the iso value is outside a valid range, which depends on the
@@ -281,15 +284,14 @@ static void node_geo_exec(GeoNodeExecParams params)
       storage.fast_sweeping_region);
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
 
-  const bke::VolumeGridPtr<float> input_grid = grids::extract_grid_input<float>(params,
-                                                                                "InputGrid");
+  const auto input_grid = params.extract_input<bke::VolumeGrid<float>>("InputGrid");
   const openvdb::tools::FastSweepingDomain fs_domain = get_fast_sweeping_domain(
       fast_sweeping_region);
 
   ExtrapolateOp extrapolate_op = {params, input_type, fs_domain, input_grid};
   grids::apply(data_type, extrapolate_op);
 
-  grids::set_output_grid(params, "Grid", data_type, extrapolate_op.result);
+  params.set_output("Grid", extrapolate_op.result);
   params.set_default_remaining_outputs();
 #else
   params.set_default_remaining_outputs();
@@ -323,7 +325,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_storage_enum_accessors(data_type),
                     CD_PROP_FLOAT,
-                    grids::grid_type_items_fn);
+                    grid_custom_data_type_items_filter_fn);
   RNA_def_node_enum(srna,
                     "fast_sweeping_region",
                     "Region",
