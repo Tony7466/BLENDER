@@ -478,6 +478,80 @@ static int keyingset_active_menu_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+/* Build the enum for all keyingsets except the active keyingset. */
+static void build_keyingset_enum(bContext *C, EnumPropertyItem **item, int *totitem, bool *r_free)
+{
+  /* user-defined Keying Sets
+   * - these are listed in the order in which they were defined for the active scene
+   */
+  EnumPropertyItem item_tmp = {0};
+
+  Scene *scene = CTX_data_scene(C);
+  KeyingSet *ks;
+  int enum_index = 1;
+  if (scene->keyingsets.first) {
+    for (ks = static_cast<KeyingSet *>(scene->keyingsets.first); ks; ks = ks->next, enum_index++) {
+      if (ANIM_keyingset_context_ok_poll(C, ks)) {
+        item_tmp.identifier = ks->idname;
+        item_tmp.name = ks->name;
+        item_tmp.description = ks->description;
+        item_tmp.value = enum_index;
+        RNA_enum_item_add(item, totitem, &item_tmp);
+      }
+    }
+
+    /* separator */
+    RNA_enum_item_add_separator(item, totitem);
+  }
+
+  /* builtin Keying Sets */
+  enum_index = -1;
+  for (ks = static_cast<KeyingSet *>(builtin_keyingsets.first); ks; ks = ks->next, enum_index--) {
+    /* only show KeyingSet if context is suitable */
+    if (ANIM_keyingset_context_ok_poll(C, ks)) {
+      item_tmp.identifier = ks->idname;
+      item_tmp.name = ks->name;
+      item_tmp.description = ks->description;
+      item_tmp.value = enum_index;
+      RNA_enum_item_add(item, totitem, &item_tmp);
+    }
+  }
+
+  RNA_enum_item_end(item, totitem);
+  *r_free = true;
+}
+
+static const EnumPropertyItem *keyingset_set_active_enum_itemf(bContext *C,
+                                                               PointerRNA * /*ptr*/,
+                                                               PropertyRNA * /*prop*/,
+                                                               bool *r_free)
+{
+  if (C == nullptr) {
+    return rna_enum_dummy_DEFAULT_items;
+  }
+
+  /* active Keying Set
+   * - only include entry if it exists
+   */
+  Scene *scene = CTX_data_scene(C);
+  EnumPropertyItem *item = nullptr, item_tmp = {0};
+  int totitem = 0;
+  if (scene->active_keyingset) {
+    /* active Keying Set */
+    item_tmp.identifier = "__ACTIVE__";
+    item_tmp.name = "Clear Active Keying Set";
+    item_tmp.value = 0;
+    RNA_enum_item_add(&item, &totitem, &item_tmp);
+
+    /* separator */
+    RNA_enum_item_add_separator(&item, &totitem);
+  }
+
+  build_keyingset_enum(C, &item, &totitem, r_free);
+
+  return item;
+}
+
 void ANIM_OT_keying_set_active_set(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -498,7 +572,7 @@ void ANIM_OT_keying_set_active_set(wmOperatorType *ot)
   /* keyingset to use (dynamic enum) */
   prop = RNA_def_enum(
       ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
-  RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
+  RNA_def_enum_funcs(prop, keyingset_set_active_enum_itemf);
   // RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -774,8 +848,6 @@ const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
                                                     PropertyRNA * /*prop*/,
                                                     bool *r_free)
 {
-  int enum_index = 0;
-
   if (C == nullptr) {
     return rna_enum_dummy_DEFAULT_items;
   }
@@ -790,49 +862,14 @@ const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
     /* active Keying Set */
     item_tmp.identifier = "__ACTIVE__";
     item_tmp.name = "Active Keying Set";
-    item_tmp.value = enum_index;
+    item_tmp.value = 0;
     RNA_enum_item_add(&item, &totitem, &item_tmp);
 
     /* separator */
     RNA_enum_item_add_separator(&item, &totitem);
   }
 
-  enum_index++;
-
-  /* user-defined Keying Sets
-   * - these are listed in the order in which they were defined for the active scene
-   */
-  KeyingSet *ks;
-  if (scene->keyingsets.first) {
-    for (ks = static_cast<KeyingSet *>(scene->keyingsets.first); ks; ks = ks->next, enum_index++) {
-      if (ANIM_keyingset_context_ok_poll(C, ks)) {
-        item_tmp.identifier = ks->idname;
-        item_tmp.name = ks->name;
-        item_tmp.description = ks->description;
-        item_tmp.value = enum_index;
-        RNA_enum_item_add(&item, &totitem, &item_tmp);
-      }
-    }
-
-    /* separator */
-    RNA_enum_item_add_separator(&item, &totitem);
-  }
-
-  /* builtin Keying Sets */
-  enum_index = -1;
-  for (ks = static_cast<KeyingSet *>(builtin_keyingsets.first); ks; ks = ks->next, enum_index--) {
-    /* only show KeyingSet if context is suitable */
-    if (ANIM_keyingset_context_ok_poll(C, ks)) {
-      item_tmp.identifier = ks->idname;
-      item_tmp.name = ks->name;
-      item_tmp.description = ks->description;
-      item_tmp.value = enum_index;
-      RNA_enum_item_add(&item, &totitem, &item_tmp);
-    }
-  }
-
-  RNA_enum_item_end(&item, &totitem);
-  *r_free = true;
+  build_keyingset_enum(C, &item, &totitem, r_free);
 
   return item;
 }
@@ -1069,8 +1106,7 @@ static int insert_key_to_keying_set_path(bContext *C,
   const eBezTriple_KeyframeType keytype = eBezTriple_KeyframeType(
       scene->toolsettings->keyframe_type);
   /* For each possible index, perform operation
-   * - assume that arraylen is greater than index.
-   */
+   * - Assume that array-length is greater than index. */
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
                                                                                     frame);

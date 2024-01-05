@@ -10,7 +10,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_ghash.h"
-#include "BLI_gsqueue.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -27,7 +26,7 @@
 
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
 #include "BKE_paint.hh"
@@ -617,21 +616,16 @@ void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
-  const float radius = ss->cache->radius;
-  const float offset = SCULPT_brush_plane_offset_get(sd, ss);
-  const float displace = radius * (0.25f + offset);
-
   /* Sampled geometry normal and area center. */
   float area_no_sp[3];
   float area_no[3];
-  float area_co[3];
+  float area_co_tmp[3];
 
-  float temp[3];
   float mat[4][4];
   float scale[4][4];
   float tmat[4][4];
 
-  SCULPT_calc_brush_plane(sd, ob, nodes, area_no_sp, area_co);
+  SCULPT_calc_brush_plane(sd, ob, nodes, area_no_sp, area_co_tmp);
 
   if (brush->sculpt_plane != SCULPT_DISP_DIR_AREA || (brush->flag & BRUSH_ORIGINAL_NORMAL)) {
     SCULPT_calc_area_normal(sd, ob, nodes, area_no);
@@ -657,12 +651,6 @@ void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
     return;
   }
 
-  /* Displace the brush planes. */
-  copy_v3_v3(area_co, ss->cache->location);
-  mul_v3_v3v3(temp, area_no_sp, ss->cache->scale);
-  mul_v3_fl(temp, displace);
-  add_v3_v3(area_co, temp);
-
   /* Initialize brush local-space matrix. */
   cross_v3_v3v3(mat[0], area_no, ss->cache->grab_delta_symmetry);
   mat[0][3] = 0.0f;
@@ -684,7 +672,8 @@ void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      do_clay_thumb_brush_task(ob, brush, mat, area_no_sp, area_co, clay_strength, nodes[i]);
+      do_clay_thumb_brush_task(
+          ob, brush, mat, area_no_sp, ss->cache->location, clay_strength, nodes[i]);
     }
   });
 }
@@ -2716,7 +2705,7 @@ void SCULPT_do_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
       SCULPT_do_mask_brush_draw(sd, ob, nodes);
       break;
     case BRUSH_MASK_SMOOTH:
-      smooth::do_smooth_brush(sd, ob, nodes, ss->cache->bstrength, true);
+      smooth::do_smooth_mask_brush(sd, ob, nodes, ss->cache->bstrength);
       break;
   }
 }

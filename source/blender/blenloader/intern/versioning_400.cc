@@ -47,7 +47,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_collection.h"
 #include "BKE_curve.hh"
 #include "BKE_effect.h"
@@ -183,7 +183,7 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
       layermask_collection.append(std::make_pair(layer_mask, bcoll));
 
       if ((arm->layer & layer_mask) == 0) {
-        ANIM_bonecoll_hide(bcoll);
+        ANIM_bonecoll_hide(arm, bcoll);
       }
     }
 
@@ -223,7 +223,7 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
        * groups did not have any impact on this. To retain the behavior, that
        * hiding all layers a bone is on hides the bone, the
        * bone-group-collections should be created hidden. */
-      ANIM_bonecoll_hide(bcoll);
+      ANIM_bonecoll_hide(arm, bcoll);
     }
 
     /* Assign the bones to their bone group based collection. */
@@ -550,7 +550,8 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute")) {
+                     "GeometryNodeInputNamedAttribute"))
+        {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -875,8 +876,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       nodeAddLink(ntree, sub1_node, sub1_socket_out, min_node, min_socket_A);
       nodeAddLink(ntree, min_node, min_socket_out, node, detail_socket);
 
-      if ((noise_type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
-          (noise_type == SHD_NOISE_HETERO_TERRAIN)) {
+      if (ELEM(noise_type, SHD_NOISE_RIDGED_MULTIFRACTAL, SHD_NOISE_HETERO_TERRAIN)) {
         locy_offset -= 40.0f;
 
         /* Add Greater Than Math node before Subtract Math node. */
@@ -983,7 +983,8 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     else {
       if (*detail < 1.0f) {
         if ((noise_type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
-            (noise_type != SHD_NOISE_HETERO_TERRAIN)) {
+            (noise_type != SHD_NOISE_HETERO_TERRAIN))
+        {
           /* Add Multiply Math node behind Fac output. */
 
           bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -1766,10 +1767,10 @@ static void versioning_nodes_dynamic_sockets(bNodeTree &ntree)
   }
 }
 
-static void versioning_switch_node_dynamic_socket(bNodeTree &ntree)
+static void versioning_nodes_dynamic_sockets_2(bNodeTree &ntree)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
-    if (node->type != GEO_NODE_SWITCH) {
+    if (!ELEM(node->type, GEO_NODE_SWITCH, GEO_NODE_SAMPLE_CURVE)) {
       continue;
     }
     version_socket_identifier_suffixes_for_dynamic_types(node->inputs, "_");
@@ -2160,7 +2161,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type == NTREE_GEOMETRY) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == GEO_NODE_SET_SHADE_SMOOTH) {
-            node->custom1 = ATTR_DOMAIN_FACE;
+            node->custom1 = int8_t(blender::bke::AttrDomain::Face);
           }
         }
       }
@@ -2193,7 +2194,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
               RegionAssetShelf *shelf_data = static_cast<RegionAssetShelf *>(region->regiondata);
               if (shelf_data && shelf_data->active_shelf &&
-                  (shelf_data->active_shelf->preferred_row_count == 0)) {
+                  (shelf_data->active_shelf->preferred_row_count == 0))
+              {
                 shelf_data->active_shelf->preferred_row_count = 1;
               }
             }
@@ -2209,7 +2211,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (item.item_type == NODE_INTERFACE_SOCKET) {
           bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
           if ((socket.flag & NODE_INTERFACE_SOCKET_INPUT) &&
-              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
+              (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT))
+          {
             sockets_to_split.append(&socket);
           }
         }
@@ -2570,7 +2573,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Keep this block, even when empty. */
 
     if (!DNA_struct_member_exists(
-            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "ray_tracing_options")) {
+            fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "ray_tracing_options"))
+    {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.ray_tracing_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
         scene->eevee.ray_tracing_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
@@ -2587,7 +2591,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       if (ntree->type == NTREE_GEOMETRY) {
         version_geometry_nodes_use_rotation_socket(*ntree);
-        versioning_switch_node_dynamic_socket(*ntree);
+        versioning_nodes_dynamic_sockets_2(*ntree);
       }
     }
   }

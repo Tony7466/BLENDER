@@ -120,10 +120,10 @@ void OVERLAY_edit_uv_init(OVERLAY_Data *vedata)
   const bool show_modified_uvs = sima->flag & SI_DRAWSHADOW;
   const bool is_tiled_image = image && (image->source == IMA_SRC_TILED);
   const bool do_edges_only = (ts->uv_flag & UV_SYNC_SELECTION) ?
-                                  /* NOTE: Ignore #SCE_SELECT_EDGE because a single selected edge
-                                   * on the mesh may cause single UV vertices to be selected. */
-                                  false :
-                                  (ts->uv_selectmode == UV_SELECT_EDGE);
+                                 /* NOTE: Ignore #SCE_SELECT_EDGE because a single selected edge
+                                  * on the mesh may cause single UV vertices to be selected. */
+                                 false :
+                                 (ts->uv_selectmode == UV_SELECT_EDGE);
   const bool do_faces = ((sima->flag & SI_NO_DRAWFACES) == 0);
   const bool do_face_dots = (ts->uv_flag & UV_SYNC_SELECTION) ?
                                 (ts->selectmode & SCE_SELECT_FACE) != 0 :
@@ -446,7 +446,7 @@ static void overlay_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool is_edit_object = DRW_object_is_in_edit_mode(ob);
   Mesh *mesh = (Mesh *)ob->data;
-  const bool has_active_object_uvmap = CustomData_get_active_layer(&mesh->loop_data,
+  const bool has_active_object_uvmap = CustomData_get_active_layer(&mesh->corner_data,
                                                                    CD_PROP_FLOAT2) != -1;
   const bool has_active_edit_uvmap = is_edit_object &&
                                      (CustomData_get_active_layer(&mesh->edit_mesh->bm->ldata,

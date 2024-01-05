@@ -25,7 +25,6 @@
 #include "DNA_customdata_types.h"
 
 /* For embedding CCGKey in iterator. */
-#include "BKE_attribute.h"
 #include "BKE_ccg.h"
 #include "BKE_pbvh.hh"
 
@@ -37,35 +36,21 @@ struct CCGElem;
 struct CCGKey;
 struct CustomData;
 struct IsectRayPrecalc;
-struct MLoopTri;
 struct Mesh;
 struct PBVH;
 struct PBVHNode;
-struct SculptSession;
 struct SubdivCCG;
-struct TaskParallelSettings;
 struct Image;
 struct ImageUser;
-namespace blender::draw::pbvh {
+namespace blender {
+namespace bke {
+enum class AttrDomain : int8_t;
+}
+namespace draw::pbvh {
 struct PBVHBatches;
 struct PBVH_GPU_Args;
-}  // namespace blender::draw::pbvh
-
-/*
- * These structs represent logical verts/edges/faces.
- * for PBVH_GRIDS and PBVH_FACES they store integer
- * offsets, PBVH_BMESH stores pointers.
- *
- * The idea is to enforce stronger type checking by encapsulating
- * intptr_t's in structs.
- */
-
-/* A generic PBVH vertex.
- *
- * NOTE: in PBVH_GRIDS we consider the final grid points
- * to be vertices.  This is not true of edges or faces which are pulled from
- * the base mesh.
- */
+}  // namespace draw::pbvh
+}  // namespace blender
 
 struct PBVHProxyNode {
   blender::Vector<blender::float3> co;
@@ -100,7 +85,7 @@ struct PBVHFrustumPlanes {
 
 BLI_INLINE BMesh *BKE_pbvh_get_bmesh(PBVH *pbvh)
 {
-  return ((struct PBVHPublic *)pbvh)->bm;
+  return ((PBVHPublic *)pbvh)->bm;
 }
 
 Mesh *BKE_pbvh_get_mesh(PBVH *pbvh);
@@ -133,14 +118,6 @@ BLI_INLINE PBVHVertRef BKE_pbvh_index_to_vertex(PBVH *pbvh, int index)
 
 /* Callbacks */
 
-/**
- * Returns true if the search should continue from this node, false otherwise.
- */
-
-using BKE_pbvh_HitCallback = void (*)(PBVHNode *node, void *data);
-using BKE_pbvh_HitOccludedCallback = void (*)(PBVHNode *node, void *data, float *tmin);
-using BKE_pbvh_SearchNearestCallback = void (*)(PBVHNode *node, void *data, float *tmin);
-
 namespace blender::bke::pbvh {
 
 /**
@@ -157,54 +134,50 @@ PBVH *build_grids(const CCGKey *key, Mesh *mesh, SubdivCCG *subdiv_ccg);
  */
 PBVH *build_bmesh(BMesh *bm, BMLog *log, int cd_vert_node_offset, int cd_face_node_offset);
 
-}  // namespace blender::bke::pbvh
+void update_bmesh_offsets(PBVH *pbvh, int cd_vert_node_offset, int cd_face_node_offset);
 
-void BKE_pbvh_update_bmesh_offsets(PBVH *pbvh, int cd_vert_node_offset, int cd_face_node_offset);
-
-void BKE_pbvh_build_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image_user);
-void BKE_pbvh_free(PBVH *pbvh);
+void build_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image_user);
+void free(PBVH *pbvh);
 
 /* Hierarchical Search in the BVH, two methods:
  * - For each hit calling a callback.
  * - Gather nodes in an array (easy to multi-thread) see blender::bke::pbvh::search_gather.
  */
 
-void BKE_pbvh_search_callback(PBVH *pbvh,
-                              blender::FunctionRef<bool(PBVHNode &)> scb,
-                              BKE_pbvh_HitCallback hcb,
-                              void *hit_data);
+void search_callback(PBVH &pbvh,
+                     FunctionRef<bool(PBVHNode &)> filter_fn,
+                     FunctionRef<void(PBVHNode &)> hit_fn);
 
 /* Ray-cast
  * the hit callback is called for all leaf nodes intersecting the ray;
  * it's up to the callback to find the primitive within the leaves that is
  * hit first */
 
-void BKE_pbvh_raycast(PBVH *pbvh,
-                      BKE_pbvh_HitOccludedCallback cb,
-                      void *data,
-                      const float ray_start[3],
-                      const float ray_normal[3],
-                      bool original);
+void raycast(PBVH *pbvh,
+             FunctionRef<void(PBVHNode &node, float *tmin)> cb,
+             const float ray_start[3],
+             const float ray_normal[3],
+             bool original);
 
-bool BKE_pbvh_node_raycast(PBVH *pbvh,
-                           PBVHNode *node,
-                           float (*origco)[3],
-                           bool use_origco,
-                           blender::Span<int> corner_verts,
-                           blender::Span<bool> hide_poly,
-                           const float ray_start[3],
-                           const float ray_normal[3],
-                           IsectRayPrecalc *isect_precalc,
-                           float *depth,
-                           PBVHVertRef *active_vertex,
-                           int *active_face_grid_index,
-                           float *face_normal);
+bool raycast_node(PBVH *pbvh,
+                  PBVHNode *node,
+                  float (*origco)[3],
+                  bool use_origco,
+                  Span<int> corner_verts,
+                  Span<bool> hide_poly,
+                  const float ray_start[3],
+                  const float ray_normal[3],
+                  IsectRayPrecalc *isect_precalc,
+                  float *depth,
+                  PBVHVertRef *active_vertex,
+                  int *active_face_grid_index,
+                  float *face_normal);
 
-bool BKE_pbvh_bmesh_node_raycast_detail(PBVHNode *node,
-                                        const float ray_start[3],
-                                        IsectRayPrecalc *isect_precalc,
-                                        float *depth,
-                                        float *r_edge_length);
+bool bmesh_node_raycast_detail(PBVHNode *node,
+                               const float ray_start[3],
+                               IsectRayPrecalc *isect_precalc,
+                               float *depth,
+                               float *r_edge_length);
 
 /**
  * For orthographic cameras, project the far away ray segment points to the root node so
@@ -216,43 +189,39 @@ bool BKE_pbvh_bmesh_node_raycast_detail(PBVHNode *node,
  * dividing view3d->clip_end by the object scale, which for small object and large
  * clip_end's can easily lead to floating-point overflows.
  */
-void BKE_pbvh_clip_ray_ortho(
+void clip_ray_ortho(
     PBVH *pbvh, bool original, float ray_start[3], float ray_end[3], float ray_normal[3]);
 
-void BKE_pbvh_find_nearest_to_ray(PBVH *pbvh,
-                                  BKE_pbvh_HitOccludedCallback cb,
-                                  void *data,
-                                  const float ray_start[3],
-                                  const float ray_normal[3],
-                                  bool original);
+void find_nearest_to_ray(PBVH *pbvh,
+                         const FunctionRef<void(PBVHNode &node, float *tmin)> fn,
+                         const float ray_start[3],
+                         const float ray_normal[3],
+                         bool original);
 
-bool BKE_pbvh_node_find_nearest_to_ray(PBVH *pbvh,
-                                       PBVHNode *node,
-                                       float (*origco)[3],
-                                       bool use_origco,
-                                       blender::Span<int> corner_verts,
-                                       blender::Span<bool> hide_poly,
-                                       const float ray_start[3],
-                                       const float ray_normal[3],
-                                       float *depth,
-                                       float *dist_sq);
+bool find_nearest_to_ray_node(PBVH *pbvh,
+                              PBVHNode *node,
+                              float (*origco)[3],
+                              bool use_origco,
+                              Span<int> corner_verts,
+                              Span<bool> hide_poly,
+                              const float ray_start[3],
+                              const float ray_normal[3],
+                              float *depth,
+                              float *dist_sq);
 
 /* Drawing */
-void BKE_pbvh_set_frustum_planes(PBVH *pbvh, PBVHFrustumPlanes *planes);
-void BKE_pbvh_get_frustum_planes(const PBVH *pbvh, PBVHFrustumPlanes *planes);
+void set_frustum_planes(PBVH *pbvh, PBVHFrustumPlanes *planes);
+void get_frustum_planes(const PBVH *pbvh, PBVHFrustumPlanes *planes);
 
-void BKE_pbvh_draw_cb(
-    const Mesh &mesh,
-    PBVH *pbvh,
-    bool update_only_visible,
-    const PBVHFrustumPlanes &update_frustum,
-    const PBVHFrustumPlanes &draw_frustum,
-    blender::FunctionRef<void(blender::draw::pbvh::PBVHBatches *batches,
-                              const blender::draw::pbvh::PBVH_GPU_Args &args)> draw_fn);
+void draw_cb(const Mesh &mesh,
+             PBVH *pbvh,
+             bool update_only_visible,
+             const PBVHFrustumPlanes &update_frustum,
+             const PBVHFrustumPlanes &draw_frustum,
+             FunctionRef<void(draw::pbvh::PBVHBatches *batches,
+                              const draw::pbvh::PBVH_GPU_Args &args)> draw_fn);
 
-/* PBVH Access */
-
-bool BKE_pbvh_has_faces(const PBVH *pbvh);
+}  // namespace blender::bke::pbvh
 
 /**
  * Get the PBVH root's bounding box.
@@ -292,16 +261,20 @@ enum PBVHTopologyUpdateMode {
 };
 ENUM_OPERATORS(PBVHTopologyUpdateMode, PBVH_Collapse);
 
+namespace blender::bke::pbvh {
+
 /**
  * Collapse short edges, subdivide long edges.
  */
-bool BKE_pbvh_bmesh_update_topology(PBVH *pbvh,
-                                    PBVHTopologyUpdateMode mode,
-                                    const float center[3],
-                                    const float view_normal[3],
-                                    float radius,
-                                    bool use_frontface,
-                                    bool use_projected);
+bool bmesh_update_topology(PBVH *pbvh,
+                           PBVHTopologyUpdateMode mode,
+                           const float center[3],
+                           const float view_normal[3],
+                           float radius,
+                           bool use_frontface,
+                           bool use_projected);
+
+}  // namespace blender::bke::pbvh
 
 /* Node Access */
 
@@ -349,11 +322,6 @@ Span<int> node_face_indices_calc_grids(const PBVH &pbvh, const PBVHNode &node, V
 
 blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node);
 
-/* Get number of faces in the mesh; for PBVH_GRIDS the
- * number of base mesh faces is returned.
- */
-int BKE_pbvh_num_faces(const PBVH *pbvh);
-
 blender::Bounds<blender::float3> BKE_pbvh_node_get_BB(const PBVHNode *node);
 blender::Bounds<blender::float3> BKE_pbvh_node_get_original_BB(const PBVHNode *node);
 
@@ -389,9 +357,11 @@ void update_normals(PBVH &pbvh, SubdivCCG *subdiv_ccg);
 }  // namespace blender::bke::pbvh
 
 blender::Bounds<blender::float3> BKE_pbvh_redraw_BB(PBVH *pbvh);
-blender::IndexMask BKE_pbvh_get_grid_updates(const PBVH *pbvh,
-                                             blender::Span<const PBVHNode *> nodes,
-                                             blender::IndexMaskMemory &memory);
+namespace blender::bke::pbvh {
+IndexMask nodes_to_face_selection_grids(const SubdivCCG &subdiv_ccg,
+                                        Span<const PBVHNode *> nodes,
+                                        IndexMaskMemory &memory);
+}
 void BKE_pbvh_grids_update(PBVH *pbvh, const CCGKey *key);
 void BKE_pbvh_subdiv_cgg_set(PBVH *pbvh, SubdivCCG *subdiv_ccg);
 
@@ -562,7 +532,9 @@ blender::Span<blender::float3> BKE_pbvh_get_vert_normals(const PBVH *pbvh);
 
 PBVHColorBufferNode *BKE_pbvh_node_color_buffer_get(PBVHNode *node);
 void BKE_pbvh_node_color_buffer_free(PBVH *pbvh);
-bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, eAttrDomain *r_domain);
+bool BKE_pbvh_get_color_layer(Mesh *mesh,
+                              CustomDataLayer **r_layer,
+                              blender::bke::AttrDomain *r_domain);
 
 /* Swaps colors at each element in indices (of domain pbvh->vcol_domain)
  * with values in colors. */
@@ -589,10 +561,9 @@ void BKE_pbvh_vertex_color_set(PBVH *pbvh, PBVHVertRef vertex, const float color
 void BKE_pbvh_vertex_color_get(const PBVH *pbvh, PBVHVertRef vertex, float r_color[4]);
 
 void BKE_pbvh_ensure_node_loops(PBVH *pbvh);
-bool BKE_pbvh_draw_cache_invalid(const PBVH *pbvh);
 int BKE_pbvh_debug_draw_gen_get(PBVHNode *node);
 
-void BKE_pbvh_pmap_set(PBVH *pbvh, blender::GroupedSpan<int> pmap);
+void BKE_pbvh_pmap_set(PBVH *pbvh, blender::GroupedSpan<int> vert_to_face_map);
 
 namespace blender::bke::pbvh {
 Vector<PBVHNode *> search_gather(PBVH *pbvh,
