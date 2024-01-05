@@ -1405,7 +1405,8 @@ static void update_vector_math_node_dot_product_operator(bNodeTree *ntree)
     if (node->type == SH_NODE_VECTOR_MATH) {
       bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
       if (version_node_socket_is_used(sockOutVector) &&
-          node->custom1 == NODE_VECTOR_MATH_DOT_PRODUCT) {
+          node->custom1 == NODE_VECTOR_MATH_DOT_PRODUCT)
+      {
         LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
           if (link->fromsock == sockOutVector) {
             switch (link->tosock->type) {
@@ -3097,7 +3098,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
           }
 
           else if (node->type == SH_NODE_EEVEE_SPECULAR &&
-                   STREQ(node->idname, "ShaderNodeOutputSpecular")) {
+                   STREQ(node->idname, "ShaderNodeOutputSpecular"))
+          {
             STRNCPY(node->idname, "ShaderNodeEeveeSpecular");
             error |= eNTreeDoVersionErrors::NTREE_DOVERSION_NEED_OUTPUT;
           }
@@ -3162,7 +3164,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
       /* Grease pencil multi-frame falloff curve. */
       if (!DNA_struct_member_exists(
-              fd->filesdna, "GP_Sculpt_Settings", "CurveMapping", "cur_falloff")) {
+              fd->filesdna, "GP_Sculpt_Settings", "CurveMapping", "cur_falloff"))
+      {
         LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
           /* sculpt brushes */
           GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
@@ -3202,7 +3205,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 280, 3)) {
     /* init grease pencil grids and paper */
     if (!DNA_struct_member_exists(
-            fd->filesdna, "View3DOverlay", "float", "gpencil_paper_color[3]")) {
+            fd->filesdna, "View3DOverlay", "float", "gpencil_paper_color[3]"))
+    {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -3326,7 +3330,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
         if (area->spacetype == SPACE_INFO) {
           if ((area->v2->vec.y == win_height) && (area->v1->vec.x == 0) &&
-              (area->v4->vec.x == win_width)) {
+              (area->v4->vec.x == win_width))
+          {
             BKE_screen_area_free(area);
 
             BLI_remlink(&screen->areabase, area);
@@ -3887,7 +3892,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     if (!DNA_struct_member_exists(
-            fd->filesdna, "RigidBodyWorld", "RigidBodyWorld_Shared", "*shared")) {
+            fd->filesdna, "RigidBodyWorld", "RigidBodyWorld_Shared", "*shared"))
+    {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         RigidBodyWorld *rbw = scene->rigidbody_world;
 
@@ -4532,7 +4538,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 280, 36)) {
     if (!DNA_struct_member_exists(
-            fd->filesdna, "View3DShading", "float", "curvature_ridge_factor")) {
+            fd->filesdna, "View3DShading", "float", "curvature_ridge_factor"))
+    {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -4595,7 +4602,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Grease pencil primitive curve */
     if (!DNA_struct_member_exists(
-            fd->filesdna, "GP_Sculpt_Settings", "CurveMapping", "cur_primitive")) {
+            fd->filesdna, "GP_Sculpt_Settings", "CurveMapping", "cur_primitive"))
+    {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
         if ((gset) && (gset->cur_primitive == nullptr)) {
@@ -4723,7 +4731,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 280, 40)) {
     if (!DNA_struct_member_exists(
-            fd->filesdna, "ToolSettings", "char", "snap_transform_mode_flag")) {
+            fd->filesdna, "ToolSettings", "char", "snap_transform_mode_flag"))
+    {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->toolsettings->snap_transform_mode_flag = SCE_SNAP_TRANSFORM_MODE_TRANSLATE;
       }
@@ -5155,7 +5164,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     if (!DNA_struct_member_exists(
-            fd->filesdna, "View3DOverlay", "float", "sculpt_mode_mask_opacity")) {
+            fd->filesdna, "View3DOverlay", "float", "sculpt_mode_mask_opacity"))
+    {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -5490,7 +5500,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
             region_ui->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
             if (region_toolprops &&
-                (region_toolprops->alignment == (RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV))) {
+                (region_toolprops->alignment == (RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV)))
+            {
               SpaceType *stype = BKE_spacetype_from_id(sl->spacetype);
 
               /* Remove empty region at old location. */
@@ -5576,7 +5587,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     if (!DNA_struct_member_exists(
-            fd->filesdna, "LayerCollection", "short", "local_collections_bits")) {
+            fd->filesdna, "LayerCollection", "short", "local_collections_bits"))
+    {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
           LISTBASE_FOREACH (LayerCollection *, layer_collection, &view_layer->layer_collections) {
@@ -6083,7 +6095,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
             }
             case eGpencilModifierType_Thick: {
               if (!DNA_struct_member_exists(
-                      fd->filesdna, "ThickGpencilModifierData", "float", "thickness_fac")) {
+                      fd->filesdna, "ThickGpencilModifierData", "float", "thickness_fac"))
+              {
                 ThickGpencilModifierData *mmd = (ThickGpencilModifierData *)md;
                 mmd->thickness_fac = mmd->thickness;
               }
@@ -6276,7 +6289,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 283, 14)) {
     /* Solidify modifier merge tolerance. */
     if (!DNA_struct_member_exists(
-            fd->filesdna, "SolidifyModifierData", "float", "merge_tolerance")) {
+            fd->filesdna, "SolidifyModifierData", "float", "merge_tolerance"))
+    {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
           if (md->type == eModifierType_Solidify) {
