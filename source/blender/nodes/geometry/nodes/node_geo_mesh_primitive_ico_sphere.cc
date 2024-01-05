@@ -429,9 +429,9 @@ static Span<float2> base_face_uv_positions()
       const float next_i = float(i) + 1.0f;
       const int face_i = math::mod(i + 3, latitude_verts_num);
       const int face_index = (latitude_verts_num * 0 + face_i) * face_size;
-      base_uv[face_index + Corner::A] = float2(next_i, top_latitude_line);
-      base_uv[face_index + Corner::B] = float2(half_next_i, top_line);
-      base_uv[face_index + Corner::C] = float2(i, top_latitude_line);
+      base_uv[face_index + Corner::B] = float2(next_i, top_latitude_line);
+      base_uv[face_index + Corner::C] = float2(half_next_i, top_line);
+      base_uv[face_index + Corner::A] = float2(i, top_latitude_line);
     }
 
     for (const int i : IndexRange(latitude_verts_num)) {
@@ -440,9 +440,9 @@ static Span<float2> base_face_uv_positions()
       const float next_i = index + 1.0f;
       const int face_i = math::mod(i + 4, latitude_verts_num);
       const int face_index = (latitude_verts_num * 1 + face_i) * face_size;
-      base_uv[face_index + Corner::A] = float2(half_next_i, bottom_line);
-      base_uv[face_index + Corner::B] = float2(next_i, bottom_latitude_line);
-      base_uv[face_index + Corner::C] = float2(index, bottom_latitude_line);
+      base_uv[face_index + Corner::B] = float2(half_next_i, bottom_line);
+      base_uv[face_index + Corner::C] = float2(next_i, bottom_latitude_line);
+      base_uv[face_index + Corner::A] = float2(index, bottom_latitude_line);
     }
 
     for (const int i : IndexRange(latitude_verts_num)) {
@@ -450,9 +450,9 @@ static Span<float2> base_face_uv_positions()
       const float next_i = float(i) + 1.0f;
       const int face_i = math::mod(i + 3, latitude_verts_num);
       const int face_index = (latitude_verts_num * 2 + face_i) * face_size;
-      base_uv[face_index + Corner::A] = float2(half_next_i, bottom_latitude_line);
-      base_uv[face_index + Corner::B] = float2(next_i, top_latitude_line);
-      base_uv[face_index + Corner::C] = float2(i, top_latitude_line);
+      base_uv[face_index + Corner::B] = float2(half_next_i, bottom_latitude_line);
+      base_uv[face_index + Corner::C] = float2(next_i, top_latitude_line);
+      base_uv[face_index + Corner::A] = float2(i, top_latitude_line);
     }
 
     for (const int i : IndexRange(latitude_verts_num)) {
@@ -461,9 +461,9 @@ static Span<float2> base_face_uv_positions()
       const float next_i = index + 1.0f;
       const int face_i = math::mod(i + 4, latitude_verts_num);
       const int face_index = (latitude_verts_num * 3 + face_i) * face_size;
-      base_uv[face_index + Corner::A] = float2(next_i, bottom_latitude_line);
-      base_uv[face_index + Corner::B] = float2(half_next_i, top_latitude_line);
-      base_uv[face_index + Corner::C] = float2(index, bottom_latitude_line);
+      base_uv[face_index + Corner::B] = float2(next_i, bottom_latitude_line);
+      base_uv[face_index + Corner::C] = float2(half_next_i, top_latitude_line);
+      base_uv[face_index + Corner::A] = float2(index, bottom_latitude_line);
     }
 
     std::transform(base_uv.begin(), base_uv.end(), base_uv.begin(), [](const float2 pos) {
@@ -872,6 +872,12 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
                                     const int faces_num,
                                     MutableSpan<int> corner_verts)
 {
+  const Span<int3> base_face_points = base_face_point_indices();
+  if (base_face_points.cast<int>().size() == corner_verts.size()) {
+    corner_verts.copy_from(base_face_points.cast<int>());
+    return;
+  }
+
   SCOPED_TIMER_AVERAGED(__func__);
   for (const int i : IndexRange(faces_num)) {
     const int face_i = i * face_size;
@@ -883,10 +889,10 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
     BLI_assert(elem_of(edge_b[EdgeVert::A], edge_a) != elem_of(edge_b[EdgeVert::A], edge_c));
     BLI_assert(elem_of(edge_c[EdgeVert::A], edge_b) != elem_of(edge_c[EdgeVert::A], edge_a));
 
-    const int vert_a = elem_of(edge_a[EdgeVert::A], edge_b) ? edge_a[EdgeVert::A] :
+    const int vert_a = elem_of(edge_a[EdgeVert::A], edge_c) ? edge_a[EdgeVert::A] :
                                                               edge_a[EdgeVert::B];
-    const int vert_b = bke::mesh::edge_other_vert(edge_b, vert_a);
-    const int vert_c = bke::mesh::edge_other_vert(edge_c, vert_b);
+    const int vert_c = bke::mesh::edge_other_vert(edge_c, vert_a);
+    const int vert_b = bke::mesh::edge_other_vert(edge_b, vert_c);
 
     corner_verts[face_i + FaceVert::A] = vert_a;
     corner_verts[face_i + FaceVert::B] = vert_b;
