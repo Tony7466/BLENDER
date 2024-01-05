@@ -61,7 +61,6 @@ void file_handler_remove(FileHandlerType *file_handler)
       });
 }
 
-
 blender::Vector<FileHandlerType *> file_handlers_poll_file_drop(
     const bContext *C, const blender::Span<std::string> paths)
 {

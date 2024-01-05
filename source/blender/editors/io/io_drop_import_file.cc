@@ -47,16 +47,18 @@ static blender::Vector<std::string> drop_import_file_paths(const wmOperator *op)
   }
   return result;
 }
+
 /**
  * Return a vector of file handlers that support any file path in `paths` and the call to
- * `poll_drop` returns #true. Unlike `BKE_file_handlers_poll_file_drop`, it ensures that file
+ * `poll_drop` returns #true. Unlike `bke::file_handlers_poll_file_drop`, it ensures that file
  * handlers have a valid import operator.
  */
-static blender::Vector<FileHandlerType *> drop_import_file_poll_file_handlers(
+static blender::Vector<blender::bke::FileHandlerType *> drop_import_file_poll_file_handlers(
     const bContext *C, const blender::Span<std::string> paths, const bool quiet = true)
 {
-  auto file_handlers = BKE_file_handlers_poll_file_drop(C, paths);
-  file_handlers.remove_if([quiet](const FileHandlerType *file_handler) {
+  using namespace blender;
+  auto file_handlers = bke::file_handlers_poll_file_drop(C, paths);
+  file_handlers.remove_if([quiet](const bke::FileHandlerType *file_handler) {
     return WM_operatortype_find(file_handler->import_operator, quiet) == nullptr;
   });
   return file_handlers;
@@ -66,8 +68,8 @@ static blender::Vector<FileHandlerType *> drop_import_file_poll_file_handlers(
  * Creates a RNA pointer for the `FileHandlerType.import_operator` and sets on it all supported
  * file paths from `paths`.
  */
-static PointerRNA file_handler_import_operator_create_ptr(const FileHandlerType *file_handler,
-                                                          const blender::Span<std::string> paths)
+static PointerRNA file_handler_import_operator_create_ptr(
+    const blender::bke::FileHandlerType *file_handler, const blender::Span<std::string> paths)
 {
   wmOperatorType *ot = WM_operatortype_find(file_handler->import_operator, false);
   BLI_assert(ot != nullptr);
