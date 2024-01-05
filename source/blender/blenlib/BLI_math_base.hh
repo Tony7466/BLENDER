@@ -12,7 +12,7 @@
 #include <cmath>
 #include <type_traits>
 
-#include "BLI_math_numbers.h"
+#include "BLI_math_numbers.hh"
 #include "BLI_utildefines.h"
 
 namespace blender::math {
