@@ -174,19 +174,7 @@ static void collection_free_data(ID *id)
   BLI_freelistN(&collection->runtime.parents);
 
   LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
-    wmOperator *op = data->runtime.op;
-    if (op) {
-      op->properties = nullptr;
-      // No access to WM_api.h here in "blenkernel"
-      BKE_reports_free(op->reports);
-      MEM_freeN(op->reports);
-      MEM_freeN(op->ptr);
-      MEM_freeN(op);
-      data->runtime.op = nullptr;
-    }
-    if (data->export_properties) {
-      IDP_FreeProperty(data->export_properties);
-    }
+    BKE_collection_io_handler_free_data(data);
   }
   BLI_freelistN(&collection->io_handlers);
 
@@ -504,6 +492,24 @@ void BKE_collection_free_data(Collection *collection)
 {
   BKE_libblock_free_data(&collection->id, false);
   collection_free_data(&collection->id);
+}
+
+void BKE_collection_io_handler_free_data(struct IOHandlerData *data)
+{
+  wmOperator *op = data->runtime.op;
+  if (op) {
+    op->properties = nullptr;
+    // No access to WM_api.h here in "blenkernel"
+    BKE_reports_free(op->reports);
+    MEM_freeN(op->reports);
+    MEM_freeN(op->ptr);
+    MEM_freeN(op);
+    data->runtime.op = nullptr;
+  }
+
+  if (data->export_properties) {
+    IDP_FreeProperty(data->export_properties);
+  }
 }
 
 bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)

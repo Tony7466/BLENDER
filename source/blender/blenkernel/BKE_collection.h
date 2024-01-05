@@ -73,6 +73,12 @@ void BKE_collection_add_from_collection(struct Main *bmain,
  * Free (or release) any data used by this collection (does not free the collection itself).
  */
 void BKE_collection_free_data(struct Collection *collection);
+
+/**
+ * Free any data used by the IO handler (does not free the IO handler itself).
+ */
+void BKE_collection_io_handler_free_data(struct IOHandlerData *data);
+
 /**
  * Remove a collection, optionally removing its child objects or moving
  * them to parent collections.

@@ -457,8 +457,8 @@ static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
 void COLLECTION_OT_io_handler_add(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Add New IO Handler";
-  ot->description = "Add New IO Handler";
+  ot->name = "Add Exporter";
+  ot->description = "Add Exporter";
   ot->idname = "COLLECTION_OT_io_handler_add";
 
   /* api callbacks */
@@ -482,9 +482,7 @@ static int collection_io_handler_remove_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (data->export_properties) {
-    IDP_FreeProperty(data->export_properties);
-  }
+  BKE_collection_io_handler_free_data(data);
 
   BLI_remlink(io_handlers, data);
   MEM_freeN(data);
@@ -497,8 +495,8 @@ static int collection_io_handler_remove_exec(bContext *C, wmOperator *op)
 void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Remove IO Handler";
-  ot->description = "Remove IO Handler";
+  ot->name = "Remove Exporter";
+  ot->description = "Remove Exporter";
   ot->idname = "COLLECTION_OT_io_handler_remove";
 
   /* api callbacks */
@@ -523,7 +521,7 @@ static int io_handler_export(bContext *C, IOHandlerData *data, Collection *colle
     return OPERATOR_CANCELLED;
   }
 
-  /* Invoke operator with the properties stored on the Collection. */
+  /* Execute operator with our stored properties and against the specified Collection. */
   PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
   RNA_string_set(&properties, "collection", collection->id.name + 2);
 
@@ -549,8 +547,8 @@ static int collection_io_handler_export_exec(bContext *C, wmOperator *op)
 void COLLECTION_OT_io_handler_export(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Export IO Handler";
-  ot->description = "Trigger export of the IO Handler";
+  ot->name = "Export";
+  ot->description = "Invoke the export operation";
   ot->idname = "COLLECTION_OT_io_handler_export";
 
   /* api callbacks */
