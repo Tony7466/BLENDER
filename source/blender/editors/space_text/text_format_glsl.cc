@@ -49,9 +49,6 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "vec2"
     "vec3"
     "vec4"
-    "ivec2"
-    "ivec3"
-    "ivec4"
     "void"
     "while"
 
