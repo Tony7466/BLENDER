@@ -36,9 +36,9 @@ struct Panel_Runtime;
 namespace blender::bke {
 struct FileHandlerType;
 }
-using FileHandleTypeHandle = blender::bke::FileHandlerType;
+using FileHandlerTypeHandle = blender::bke::FileHandlerType;
 #else
-typedef struct FileHandleTypeHandle FileHandleTypeHandle;
+typedef struct FileHandlerTypeHandle FileHandlerTypeHandle;
 #endif
 
 /* TODO: Doing this is quite ugly :)
@@ -834,5 +834,5 @@ ENUM_OPERATORS(AssetShelfSettings_DisplayFlag, ASSETSHELF_SHOW_NAMES);
 typedef struct FileHandler {
   DNA_DEFINE_CXX_METHODS(FileHandler)
   /** Runtime. */
-  FileHandleTypeHandle *type;
+  FileHandlerTypeHandle *type;
 } FileHandler;
