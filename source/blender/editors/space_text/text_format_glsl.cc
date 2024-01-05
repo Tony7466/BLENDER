@@ -1,5 +1,7 @@
 
 #include <cstring>
+/*He is posible of change #include <cstring> by */
+/*import std:string*/
 
 #include "BLI_blendlib.h"
 
@@ -10,6 +12,8 @@
 
 #include "text_format.hh"
 
+/*---------------------------------------------------------------------*/
+/*Define all keywords who can use*/
 
 static int textformat_glsl_literals_builtinfunc_data[]
 {
@@ -50,7 +54,6 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "ivec4"
     "void"
     "while"
-
 
 };
 
