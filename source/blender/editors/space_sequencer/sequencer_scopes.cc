@@ -277,13 +277,10 @@ ImBuf *make_zebra_view_from_ibuf(const ImBuf *ibuf, float perc)
 
 static int get_bin_float(float f)
 {
-  if (f < -0.25f) {
-    return 0;
-  }
-  if (f >= 1.25f) {
-    return 511;
-  }
-  return int(((f + 0.25f) / 1.5f) * 512);
+  int bin = int(((f - ScopeHistogram::FLOAT_VAL_MIN) /
+                 (ScopeHistogram::FLOAT_VAL_MAX - ScopeHistogram::FLOAT_VAL_MIN)) *
+                ScopeHistogram::BINS_FLOAT);
+  return clamp_i(bin, 0, ScopeHistogram::BINS_FLOAT - 1);
 }
 
 void ScopeHistogram::calc_from_ibuf(const ImBuf *ibuf)
@@ -293,7 +290,7 @@ void ScopeHistogram::calc_from_ibuf(const ImBuf *ibuf)
 #endif
 
   const bool is_float = ibuf->float_buffer.data != nullptr;
-  const int hist_size = is_float ? 512 : 256;
+  const int hist_size = is_float ? BINS_FLOAT : BINS_BYTE;
 
   Array<uint3> counts(hist_size, uint3(0));
   data = threading::parallel_reduce(
@@ -304,7 +301,6 @@ void ScopeHistogram::calc_from_ibuf(const ImBuf *ibuf)
         Array<uint3> res = init;
 
         if (is_float) {
-          /* Float images spead -0.25..+1.25 range over 512 bins. */
           for (const int y : y_range) {
             const float *src = ibuf->float_buffer.data + y * ibuf->x * 4;
             for (int x = 0; x < ibuf->x; x++) {

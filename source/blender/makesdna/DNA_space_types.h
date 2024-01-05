@@ -66,16 +66,19 @@ namespace blender::ed::outliner {
 struct SpaceOutliner_Runtime;
 }  // namespace blender::ed::outliner
 using SpaceOutliner_Runtime = blender::ed::outliner::SpaceOutliner_Runtime;
+
+namespace blender::ed::seq {
+struct SpaceSeq_Runtime;
+}  // namespace blender::ed::seq
+using SpaceSeq_Runtime = blender::ed::seq::SpaceSeq_Runtime;
 #else
 typedef struct SpaceNode_Runtime SpaceNode_Runtime;
 typedef struct SpaceOutliner_Runtime SpaceOutliner_Runtime;
+typedef struct SpaceSeq_Runtime SpaceSeq_Runtime;
 #endif
 
 /** Defined in `file_intern.hh`. */
 typedef struct SpaceFile_Runtime SpaceFile_Runtime;
-
-/** Defined in `sequencer_intern.hh`. */
-typedef struct SpaceSeq_Runtime SpaceSeq_Runtime;
 
 /** Defined in `spreadsheet_intern.hh`. */
 typedef struct SpaceSpreadsheet_Runtime SpaceSpreadsheet_Runtime;

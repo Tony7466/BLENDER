@@ -65,7 +65,7 @@ static void sequencer_scopes_tag_refresh(ScrArea *area)
   sseq->runtime->scopes.reference_ibuf = nullptr;
 }
 
-SpaceSeq_Runtime::~SpaceSeq_Runtime()
+blender::ed::seq::SpaceSeq_Runtime::~SpaceSeq_Runtime()
 {
   if (last_displayed_thumbnails != nullptr) {
     BLI_ghash_free(last_displayed_thumbnails, nullptr, last_displayed_thumbnails_list_free);

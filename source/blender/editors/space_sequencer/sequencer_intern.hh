@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 #include "DNA_sequence_types.h"
@@ -42,7 +43,9 @@ struct ListBase;
 #define DEFAULT_IMG_STRIP_LENGTH 25 /* XXX arbitrary but ok for now. */
 #define OVERLAP_ALPHA 180
 
-struct SpaceSeq_Runtime {
+namespace blender::ed::seq {
+
+struct SpaceSeq_Runtime : public NonCopyable {
   /** Required for Thumbnail job start condition. */
   rctf last_thumbnail_area = {0, 0, 0, 0};
   /** Stores lists of most recently displayed thumbnails. */
@@ -53,11 +56,10 @@ struct SpaceSeq_Runtime {
   blender::ed::seq::SeqScopes scopes;
 
   SpaceSeq_Runtime() = default;
-  SpaceSeq_Runtime(const SpaceSeq_Runtime &) = delete;
-  void operator=(const SpaceSeq_Runtime &) = delete;
-
   ~SpaceSeq_Runtime();
 };
+
+}  // namespace blender::ed::seq
 
 struct SeqChannelDrawContext {
   const bContext *C;

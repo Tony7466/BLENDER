@@ -524,6 +524,7 @@ static void draw_histogram(ARegion *region,
                            SeqQuadsBatch &quads,
                            const rctf &area)
 {
+  using namespace blender::ed::seq;
   if (hist.data.is_empty()) {
     return;
   }
@@ -536,15 +537,17 @@ static void draw_histogram(ARegion *region,
   uchar col_grid[4] = {128, 128, 128, 128};
   float grid_x_0 = area.xmin;
   float grid_x_1 = area.xmax;
-  /* Float histograms show -0.25 .. 1.25 area horizontally. */
-  if (hist.data.size() > 256) {
-    grid_x_0 = area.xmin + (area.xmax - area.xmin) * (0.25f / 1.5f);
-    grid_x_1 = area.xmin + (area.xmax - area.xmin) * (1.25f / 1.5f);
+  /* Float histograms show more than 0..1 range horizontally. */
+  if (hist.is_float_hist()) {
+    float ratio_0 = ratiof(ScopeHistogram::FLOAT_VAL_MIN, ScopeHistogram::FLOAT_VAL_MAX, 0.0f);
+    float ratio_1 = ratiof(ScopeHistogram::FLOAT_VAL_MIN, ScopeHistogram::FLOAT_VAL_MAX, 1.0f);
+    grid_x_0 = area.xmin + (area.xmax - area.xmin) * ratio_0;
+    grid_x_1 = area.xmin + (area.xmax - area.xmin) * ratio_1;
   }
 
   View2D *v2d = &region->v2d;
-  const float text_scale_x = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
-  const float text_scale_y = BLI_rctf_size_y(&v2d->cur) / BLI_rcti_size_y(&v2d->mask);
+  float text_scale_x, text_scale_y;
+  UI_view2d_scale_get_inverse(v2d, &text_scale_x, &text_scale_y);
 
   for (int line = 0; line <= 4; line++) {
     float val = float(line) / 4;
@@ -553,7 +556,7 @@ static void draw_histogram(ARegion *region,
 
     /* Label. */
     char buf[10];
-    snprintf(buf, sizeof(buf), "%.2f", val);
+    BLI_snprintf(buf, sizeof(buf), "%.2f", val);
     size_t buf_len = strlen(buf);
 
     float text_width, text_height;
@@ -616,7 +619,7 @@ static void draw_waveform_graticule(ARegion *region, SeqQuadsBatch &quads, const
   for (int i = 0; i < 3; i++) {
     const float y = area.ymin + (area.ymax - area.ymin) * lines[i];
     char buf[10];
-    snprintf(buf, sizeof(buf), "%.1f", lines[i]);
+    BLI_snprintf(buf, sizeof(buf), "%.1f", lines[i]);
     quads.add_line(x0, y, x1, y, col_grid);
     UI_view2d_text_cache_add(&region->v2d, x0 + 8, y + 8, buf, strlen(buf), col_grid);
   }
@@ -681,7 +684,7 @@ static void draw_vectorscope_graticule(SeqQuadsBatch &quads, const rctf &area)
 
   /* skin tone line */
   uchar col_tone[4] = {255, 102, 0, 128};
-  const float tone_line_len = 0.895f; /* makes it end at outer edge of saturation ring */
+  const float tone_line_len = 0.895f; /* makes it end at outer edge of saturation ring. */
   quads.add_line(centerx,
                  centery,
                  centerx + cosf(skin_rad) * rad_x * tone_line_len,
@@ -689,21 +692,16 @@ static void draw_vectorscope_graticule(SeqQuadsBatch &quads, const rctf &area)
                  col_tone);
 }
 
-static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq, bool draw_overlay)
+static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq)
 {
   using namespace blender::ed::seq;
 
   /* Figure out draw coordinates. */
   rctf preview;
-  sequencer_preview_get_rect(&preview, scene, region, sseq, draw_overlay, false);
+  sequencer_preview_get_rect(&preview, scene, region, sseq, false, false);
 
   rctf uv;
-  if (draw_overlay && (sseq->overlay_frame_type == SEQ_OVERLAY_FRAME_TYPE_RECT)) {
-    uv = scene->ed->overlay_frame_rect;
-  }
-  else {
-    BLI_rctf_init(&uv, 0.0f, 1.0f, 0.0f, 1.0f);
-  }
+  BLI_rctf_init(&uv, 0.0f, 1.0f, 0.0f, 1.0f);
   const bool keep_aspect = sseq->mainb == SEQ_DRAW_IMG_VECTORSCOPE;
   float vecscope_aspect = 1.0f;
   if (keep_aspect) {
@@ -711,10 +709,10 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq,
     float height = std::max(BLI_rctf_size_y(&preview), 0.1f);
     vecscope_aspect = width / height;
     if (vecscope_aspect >= 1.0f) {
-      BLI_rctf_resize_x(&uv, BLI_rctf_size_x(&uv) * vecscope_aspect);
+      BLI_rctf_resize_x(&uv, vecscope_aspect);
     }
     else {
-      BLI_rctf_resize_y(&uv, BLI_rctf_size_y(&uv) / vecscope_aspect);
+      BLI_rctf_resize_y(&uv, 1.0f / vecscope_aspect);
     }
   }
 
@@ -1028,7 +1026,7 @@ void sequencer_draw_preview(const bContext *C,
     bool has_scope = sequencer_calc_scopes(scene, sseq, ibuf, draw_backdrop);
     if (has_scope) {
       /* Draw scope. */
-      sequencer_draw_scopes(scene, region, sseq, draw_overlay);
+      sequencer_draw_scopes(scene, region, sseq);
     }
     else {
       /* Draw image. */
