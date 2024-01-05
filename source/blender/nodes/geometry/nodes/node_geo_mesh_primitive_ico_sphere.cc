@@ -143,36 +143,36 @@ static constexpr int base_edges_num = 30;
 static constexpr int base_faces_num = 20;
 static constexpr int base_face_quads = base_faces_num / 2;
 
-static constexpr int base_face_corners_num = 3;
 static constexpr int face_size = 3;
+static constexpr int base_face_corners_num = face_size;
 
 namespace FaceEdge {
-static constexpr int8_t AB = 0;
-static constexpr int8_t BC = 1;
-static constexpr int8_t CA = 2;
+static constexpr int AB = 0;
+static constexpr int BC = 1;
+static constexpr int CA = 2;
 }  // namespace FaceEdge
 
 namespace FaceVert {
-static constexpr int8_t A = 0;
-static constexpr int8_t B = 1;
-static constexpr int8_t C = 2;
+static constexpr int A = 0;
+static constexpr int B = 1;
+static constexpr int C = 2;
 }  // namespace FaceVert
 
 namespace EdgeVert {
-static constexpr int8_t A = 0;
-static constexpr int8_t B = 1;
+static constexpr int A = 0;
+static constexpr int B = 1;
 }  // namespace EdgeVert
 
 namespace Corner {
-static constexpr int8_t A = 0;
-static constexpr int8_t B = 1;
-static constexpr int8_t C = 2;
+static constexpr int A = 0;
+static constexpr int B = 1;
+static constexpr int C = 2;
 }  // namespace Corner
 
 namespace InnerEdges {
-static constexpr int8_t Base = 0;
-static constexpr int8_t Left = 1;
-static constexpr int8_t Right = 2;
+static constexpr int Base = 0;
+static constexpr int Left = 1;
+static constexpr int Right = 2;
 }  // namespace InnerEdges
 
 /* Sum of pyramid of elements with floor of /p floor.
@@ -332,16 +332,16 @@ static Span<int2> base_edge_point_indices()
       edge_points[latitude_verts_num * 0 + i] = int2(first_point, top_latitude_points[i]);
       edge_points[latitude_verts_num * 1 + i] = int2(last_point, bottom_latitude_points[i]);
 
-      const int wrap_i = math::mod(i + 1, latitude_verts_num);
+      const int next_i = math::mod(i + 1, latitude_verts_num);
       edge_points[latitude_verts_num * 2 + i] = int2(top_latitude_points[i],
-                                                     top_latitude_points[wrap_i]);
+                                                     top_latitude_points[next_i]);
       edge_points[latitude_verts_num * 3 + i] = int2(bottom_latitude_points[i],
-                                                     bottom_latitude_points[wrap_i]);
+                                                     bottom_latitude_points[next_i]);
 
       edge_points[latitude_verts_num * 4 + i] = int2(top_latitude_points[i],
                                                      bottom_latitude_points[i]);
       edge_points[latitude_verts_num * 5 + i] = int2(top_latitude_points[i],
-                                                     bottom_latitude_points[wrap_i]);
+                                                     bottom_latitude_points[next_i]);
     }
 
     return edge_points;
@@ -362,15 +362,15 @@ static Span<int3> base_face_point_indices()
     const constexpr int last_point = base_verts_num - 1;
 
     for (const int i : IndexRange(latitude_verts_num)) {
-      const int wrap_i = math::mod(i + 1, latitude_verts_num);
+      const int next_i = math::mod(i + 1, latitude_verts_num);
       face_points[latitude_verts_num * 0 + i] = int3(
-          top_latitude_points[i], top_latitude_points[wrap_i], first_point);
+          top_latitude_points[i], top_latitude_points[next_i], first_point);
       face_points[latitude_verts_num * 1 + i] = int3(
-          bottom_latitude_points[i], last_point, bottom_latitude_points[wrap_i]);
+          bottom_latitude_points[i], last_point, bottom_latitude_points[next_i]);
       face_points[latitude_verts_num * 2 + i] = int3(
-          top_latitude_points[i], bottom_latitude_points[wrap_i], top_latitude_points[wrap_i]);
+          top_latitude_points[i], bottom_latitude_points[next_i], top_latitude_points[next_i]);
       face_points[latitude_verts_num * 3 + i] = int3(
-          bottom_latitude_points[i], bottom_latitude_points[wrap_i], top_latitude_points[i]);
+          bottom_latitude_points[i], bottom_latitude_points[next_i], top_latitude_points[i]);
     }
 
     return face_points;
@@ -388,16 +388,22 @@ static Span<int3> base_face_edge_indices()
     Span<int2> edge_points = base_edge_point_indices();
     Span<int3> face_points = base_face_point_indices();
 
-    Map<OrderedEdge, int> edge_points_map;
+    Map<OrderedEdge, int> edge_index_by_verts;
     for (const int i : IndexRange(base_edges_num)) {
-      edge_points_map.add(edge_points[i], i);
+      edge_index_by_verts.add(edge_points[i], i);
     }
 
     for (const int face_i : IndexRange(base_faces_num)) {
-      face_edges[face_i][0] = edge_points_map.lookup(face_points[face_i].xy());
-      face_edges[face_i][1] = edge_points_map.lookup(face_points[face_i].yz());
-      face_edges[face_i][2] = edge_points_map.lookup(
-          int2(face_points[face_i][2], face_points[face_i][0]));
+      const OrderedEdge ab_edge_verts(face_points[face_i][FaceVert::A],
+                                      face_points[face_i][FaceVert::B]);
+      const OrderedEdge bc_edge_verts(face_points[face_i][FaceVert::B],
+                                      face_points[face_i][FaceVert::C]);
+      const OrderedEdge ca_edge_verts(face_points[face_i][FaceVert::C],
+                                      face_points[face_i][FaceVert::A]);
+
+      face_edges[face_i][FaceEdge::AB] = edge_index_by_verts.lookup(ab_edge_verts);
+      face_edges[face_i][FaceEdge::BC] = edge_index_by_verts.lookup(bc_edge_verts);
+      face_edges[face_i][FaceEdge::CA] = edge_index_by_verts.lookup(ca_edge_verts);
     }
 
     return face_edges;
@@ -415,9 +421,9 @@ static void interpolate_edge_points(const int edge_verts_num,
 
   for (const int edge_i : IndexRange(base_edges_num)) {
     MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
-    const int2 edge = base_edge_points[edge_i];
-    const double3 vert_a(base_verts[edge[0]]);
-    const double3 vert_b(base_verts[edge[1]]);
+    const int2 edge_vert_indices = base_edge_points[edge_i];
+    const double3 vert_a(base_verts[edge_vert_indices[EdgeVert::A]]);
+    const double3 vert_b(base_verts[edge_vert_indices[EdgeVert::B]]);
 
     SphericalIterator rotation = SphericalIterator::between_points(
         vert_a, vert_b, edge_verts_num + 1);
@@ -441,11 +447,11 @@ static void interpolate_face_points(const int line_subdiv,
   const int steps = inner_face_verts.hight() + left_righr_points;
 
   for (const int face_i : IndexRange(base_faces_num)) {
-    const int3 face = base_face_points[face_i];
+    const int3 face_vert_indices = base_face_points[face_i];
 
-    const double3 vert_a(base_verts[face[0]]);
-    const double3 vert_b(base_verts[face[1]]);
-    const double3 vert_c(base_verts[face[2]]);
+    const double3 vert_a(base_verts[face_vert_indices[FaceVert::A]]);
+    const double3 vert_b(base_verts[face_vert_indices[FaceVert::B]]);
+    const double3 vert_c(base_verts[face_vert_indices[FaceVert::C]]);
 
     SphericalIterator rotation_ac = SphericalIterator::between_points(vert_a, vert_c, steps);
     SphericalIterator rotation_bc = SphericalIterator::between_points(vert_b, vert_c, steps);
@@ -472,13 +478,13 @@ static void edges_line_fill_verts(const int2 ends, MutableSpan<int2> edges, Func
     edges.first() = ends;
     return;
   }
-  edges.first()[0] = ends[0];
+  edges.first()[EdgeVert::A] = ends[EdgeVert::A];
   for (const int i : edges.index_range().drop_back(1)) {
     const int vert_i = func(i);
-    edges[i][1] = vert_i;
-    edges[i + 1][0] = vert_i;
+    edges[i][EdgeVert::B] = vert_i;
+    edges[i + 1][EdgeVert::A] = vert_i;
   }
-  edges.last()[1] = ends[1];
+  edges.last()[EdgeVert::B] = ends[EdgeVert::B];
 }
 
 static void vert_edge_topology(const int edge_edges_num,
@@ -740,31 +746,31 @@ static void corner_edges_topology(const int edge_edges_num,
     for (const int i : IndexRange(edge_faces_num)) {
       const int r_i = edge_faces_num - 1 - i;
       const int inner_i = i + 1;
-      const int index = (edge_faces_num * InnerEdges::Base + i) * face_size;
-      edge_face_edges[index + Corner::A] = edge_a_order ? edge_a_edges[inner_i] :
-                                                          edge_a_edges.from_end(inner_i);
-      edge_face_edges[index + Corner::B] = face_edges_b[inner_face_edges.first_of(r_i)];
-      edge_face_edges[index + Corner::C] = face_edges_c[inner_face_edges.first_of(i)];
+      const int face_i = (edge_faces_num * InnerEdges::Base + i) * face_size;
+      edge_face_edges[face_i + Corner::A] = edge_a_order ? edge_a_edges[inner_i] :
+                                                           edge_a_edges.from_end(inner_i);
+      edge_face_edges[face_i + Corner::B] = face_edges_b[inner_face_edges.first_of(r_i)];
+      edge_face_edges[face_i + Corner::C] = face_edges_c[inner_face_edges.first_of(i)];
     }
 
     for (const int i : IndexRange(edge_faces_num)) {
       const int r_i = edge_faces_num - 1 - i;
       const int inner_i = i + 1;
-      const int index = (edge_faces_num * InnerEdges::Left + i) * face_size;
-      edge_face_edges[index + Corner::A] = edge_b_order ? edge_b_edges[inner_i] :
-                                                          edge_b_edges.from_end(inner_i);
-      edge_face_edges[index + Corner::B] = face_edges_c[inner_face_edges.last_of(i)];
-      edge_face_edges[index + Corner::C] = face_edges_a[inner_face_edges.last_of(r_i)];
+      const int face_i = (edge_faces_num * InnerEdges::Left + i) * face_size;
+      edge_face_edges[face_i + Corner::A] = edge_b_order ? edge_b_edges[inner_i] :
+                                                           edge_b_edges.from_end(inner_i);
+      edge_face_edges[face_i + Corner::B] = face_edges_c[inner_face_edges.last_of(i)];
+      edge_face_edges[face_i + Corner::C] = face_edges_a[inner_face_edges.last_of(r_i)];
     }
 
     for (const int i : IndexRange(edge_faces_num)) {
       const int r_i = edge_faces_num - 1 - i;
       const int inner_i = i + 1;
-      const int index = (edge_faces_num * InnerEdges::Right + i) * face_size;
-      edge_face_edges[index + Corner::A] = edge_c_order ? edge_c_edges[inner_i] :
-                                                          edge_c_edges.from_end(inner_i);
-      edge_face_edges[index + Corner::B] = face_edges_a[inner_face_edges.first_of(i)];
-      edge_face_edges[index + Corner::C] = face_edges_b[inner_face_edges.last_of(r_i)];
+      const int face_i = (edge_faces_num * InnerEdges::Right + i) * face_size;
+      edge_face_edges[face_i + Corner::A] = edge_c_order ? edge_c_edges[inner_i] :
+                                                           edge_c_edges.from_end(inner_i);
+      edge_face_edges[face_i + Corner::B] = face_edges_a[inner_face_edges.first_of(i)];
+      edge_face_edges[face_i + Corner::C] = face_edges_b[inner_face_edges.last_of(r_i)];
     }
 
     /* Faces (flipped). */
@@ -773,10 +779,10 @@ static void corner_edges_topology(const int edge_edges_num,
       const int inner_edge_line_start = inner_face_edges.start_of(line_i);
       for (const int i : IndexRange(inner_face_edges.size_of(line_i))) {
         const int r_i = edge_faces_num - i - line_i;
-        const int index = i * face_size;
-        line[index + Corner::A] = face_edges_a[inner_edge_line_start + i];
-        line[index + Corner::B] = face_edges_b[inner_face_edges.first_of(r_i) + line_i];
-        line[index + Corner::C] = face_edges_c[inner_face_edges.first_of(i) + line_i];
+        const int face_i = i * face_size;
+        line[face_i + Corner::A] = face_edges_a[inner_edge_line_start + i];
+        line[face_i + Corner::B] = face_edges_b[inner_face_edges.first_of(r_i) + line_i];
+        line[face_i + Corner::C] = face_edges_c[inner_face_edges.first_of(i) + line_i];
       }
     }
 
@@ -787,12 +793,12 @@ static void corner_edges_topology(const int edge_edges_num,
       const int inner_edge_line_start = inner_face_edges.start_of(line_i) + 1;
       const int r_line_i = bottom_faces.hight() - line_i - 1;
       for (const int i : IndexRange(bottom_faces.size_of(line_i))) {
-        const int index = i * face_size;
+        const int face_i = i * face_size;
         const int inner_line_i = line_i + 1;
-        line[index + Corner::A] = face_edges_a[inner_edge_line_start + i];
-        line[index + Corner::B] =
+        line[face_i + Corner::A] = face_edges_a[inner_edge_line_start + i];
+        line[face_i + Corner::B] =
             face_edges_b[inner_face_edges.first_of(r_line_i - i) + inner_line_i];
-        line[index + Corner::C] = face_edges_c[inner_face_edges.first_of(i) + inner_line_i];
+        line[face_i + Corner::C] = face_edges_c[inner_face_edges.first_of(i) + inner_line_i];
       }
     }
   }
@@ -805,21 +811,23 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
 {
   SCOPED_TIMER_AVERAGED(__func__);
   for (const int i : IndexRange(faces_num)) {
-    const int2 edge_a = edges[corner_edges[i * 3 + 0]];
-    const int2 edge_b = edges[corner_edges[i * 3 + 1]];
-    const int2 edge_c = edges[corner_edges[i * 3 + 2]];
+    const int face_i = i * face_size;
+    const int2 edge_a = edges[corner_edges[face_i + FaceVert::A]];
+    const int2 edge_b = edges[corner_edges[face_i + FaceVert::B]];
+    const int2 edge_c = edges[corner_edges[face_i + FaceVert::C]];
 
-    BLI_assert(elem_of(edge_a[0], edge_b) != elem_of(edge_a[0], edge_c));
-    BLI_assert(elem_of(edge_b[0], edge_a) != elem_of(edge_b[0], edge_c));
-    BLI_assert(elem_of(edge_c[0], edge_b) != elem_of(edge_c[0], edge_a));
+    BLI_assert(elem_of(edge_a[EdgeVert::A], edge_b) != elem_of(edge_a[EdgeVert::A], edge_c));
+    BLI_assert(elem_of(edge_b[EdgeVert::A], edge_a) != elem_of(edge_b[EdgeVert::A], edge_c));
+    BLI_assert(elem_of(edge_c[EdgeVert::A], edge_b) != elem_of(edge_c[EdgeVert::A], edge_a));
 
-    const int vert_a = elem_of(edge_a[0], edge_b) ? edge_a[0] : edge_a[1];
+    const int vert_a = elem_of(edge_a[EdgeVert::A], edge_b) ? edge_a[EdgeVert::A] :
+                                                              edge_a[EdgeVert::B];
     const int vert_b = bke::mesh::edge_other_vert(edge_b, vert_a);
     const int vert_c = bke::mesh::edge_other_vert(edge_c, vert_b);
 
-    corner_verts[i * 3 + 0] = vert_a;
-    corner_verts[i * 3 + 1] = vert_b;
-    corner_verts[i * 3 + 2] = vert_c;
+    corner_verts[face_i + FaceVert::A] = vert_a;
+    corner_verts[face_i + FaceVert::B] = vert_b;
+    corner_verts[face_i + FaceVert::C] = vert_c;
   }
 }
 
