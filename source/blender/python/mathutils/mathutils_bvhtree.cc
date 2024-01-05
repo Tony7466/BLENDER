@@ -266,7 +266,7 @@ static void py_bvhtree_raycast_cb(void *userdata,
 {
   const PyBVHTree *self = static_cast<const PyBVHTree *>(userdata);
 
-  const float(*coords)[3] = (const float(*)[3])self->coords;
+  const float(*coords)[3] = self->coords;
   const uint *tri = self->tris[index];
   const float *tri_co[3] = {coords[tri[0]], coords[tri[1]], coords[tri[2]]};
   float dist;
@@ -359,7 +359,8 @@ static PyObject *py_bvhtree_ray_cast(PyBVHTree *self, PyObject *args)
   /* may fail if the mesh has no faces, in that case the ray-cast misses */
   if (self->tree) {
     if (BLI_bvhtree_ray_cast(self->tree, co, direction, 0.0f, &hit, py_bvhtree_raycast_cb, self) !=
-        -1) {
+        -1)
+    {
       return py_bvhtree_raycast_to_py(&hit);
     }
   }
@@ -403,7 +404,8 @@ static PyObject *py_bvhtree_find_nearest(PyBVHTree *self, PyObject *args)
   /* may fail if the mesh has no faces, in that case the ray-cast misses */
   if (self->tree) {
     if (BLI_bvhtree_find_nearest(self->tree, co, &nearest, py_bvhtree_nearest_point_cb, self) !=
-        -1) {
+        -1)
+    {
       return py_bvhtree_nearest_to_py(&nearest);
     }
   }
@@ -1150,13 +1152,13 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
 
   /* Get data for tessellation */
 
-  const uint coords_len = uint(mesh->totvert);
+  const uint coords_len = uint(mesh->verts_num);
 
   float(*coords)[3] = static_cast<float(*)[3]>(
       MEM_mallocN(sizeof(*coords) * size_t(coords_len), __func__));
   uint(*tris)[3] = static_cast<uint(*)[3]>(
       MEM_mallocN(sizeof(*tris) * size_t(corner_tris.size()), __func__));
-  memcpy(coords, mesh->vert_positions().data(), sizeof(float[3]) * size_t(mesh->totvert));
+  memcpy(coords, mesh->vert_positions().data(), sizeof(float[3]) * size_t(mesh->verts_num));
 
   BVHTree *tree;
 

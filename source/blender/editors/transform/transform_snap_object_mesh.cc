@@ -207,7 +207,8 @@ static bool nearest_world_mesh(SnapObjectContext *sctx,
   BVHTreeNearest nearest{};
   nearest.dist_sq = sctx->ret.dist_nearest_sq;
   if (nearest_world_tree(
-          sctx, treedata.tree, treedata.nearest_callback, obmat, &treedata, &nearest)) {
+          sctx, treedata.tree, treedata.nearest_callback, obmat, &treedata, &nearest))
+  {
     SnapData::register_result(sctx, ob_eval, &me_eval->id, obmat, &nearest);
     return true;
   }
@@ -432,7 +433,7 @@ static eSnapMode mesh_snap_mode_supported(const Mesh *mesh)
   if (mesh->faces_num) {
     snap_mode_supported |= SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_NEAREST | SNAP_TO_EDGE_ELEMENTS;
   }
-  else if (mesh->totedge) {
+  else if (mesh->edges_num) {
     snap_mode_supported |= SNAP_TO_EDGE_ELEMENTS;
   }
 

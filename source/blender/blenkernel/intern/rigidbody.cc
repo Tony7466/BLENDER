@@ -30,7 +30,6 @@
 #include "DNA_ID.h"
 #include "DNA_collection_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_rigidbody_types.h"
@@ -317,7 +316,8 @@ void BKE_rigidbody_object_copy(Main *bmain, Object *ob_dst, const Object *ob_src
       }
 
       if ((flag & LIB_ID_CREATE_NO_DEG_TAG) == 0 &&
-          (need_objects_update || need_constraints_update)) {
+          (need_objects_update || need_constraints_update))
+      {
         BKE_rigidbody_cache_reset(rigidbody_world);
 
         DEG_relations_tag_update(bmain);
@@ -373,7 +373,7 @@ static rbCollisionShape *rigidbody_get_shape_convexhull_from_mesh(Object *ob,
     mesh = rigidbody_get_mesh(ob);
     positions = (mesh) ? reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data()) :
                          nullptr;
-    totvert = (mesh) ? mesh->totvert : 0;
+    totvert = (mesh) ? mesh->verts_num : 0;
   }
   else {
     CLOG_ERROR(&LOG, "cannot make Convex Hull collision shape for non-Mesh object");
@@ -404,7 +404,7 @@ static rbCollisionShape *rigidbody_get_shape_trimesh_from_mesh(Object *ob)
     }
 
     const blender::Span<blender::float3> positions = mesh->vert_positions();
-    const int totvert = mesh->totvert;
+    const int totvert = mesh->verts_num;
     const blender::Span<blender::int3> corner_tris = mesh->corner_tris();
     const int tottri = corner_tris.size();
     const blender::Span<int> corner_verts = mesh->corner_verts();
@@ -1766,7 +1766,7 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Object *ob, RigidBodyO
     if (mesh) {
       float(*positions)[3] = reinterpret_cast<float(*)[3]>(
           mesh->vert_positions_for_write().data());
-      int totvert = mesh->totvert;
+      int totvert = mesh->verts_num;
       const std::optional<blender::Bounds<blender::float3>> bounds = BKE_object_boundbox_get(ob);
 
       RB_shape_trimesh_update(static_cast<rbCollisionShape *>(rbo->shared->physics_shape),
@@ -2045,7 +2045,8 @@ static void rigidbody_update_external_forces(Depsgraph *depsgraph,
     /* update influence of effectors - but don't do it on an effector */
     /* only dynamic bodies need effector update */
     if (rbo->type == RBO_TYPE_ACTIVE &&
-        ((ob->pd == nullptr) || (ob->pd->forcefield == PFIELD_NULL))) {
+        ((ob->pd == nullptr) || (ob->pd->forcefield == PFIELD_NULL)))
+    {
       EffectorWeights *effector_weights = rbw->effector_weights;
       EffectedPoint epoint;
       ListBase *effectors;

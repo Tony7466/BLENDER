@@ -43,17 +43,16 @@
 #include "DNA_defs.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_enums.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_camera.h"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_global.h"
@@ -106,7 +105,7 @@
 
 #include "IMB_colormanagement.h"
 
-//#include "bmesh_tools.hh"
+// #include "bmesh_tools.hh"
 
 #include "paint_intern.hh"
 
@@ -137,15 +136,15 @@ BLI_INLINE uchar f_to_char(const float val)
 #define PROJ_BOUNDBOX_DIV 8
 #define PROJ_BOUNDBOX_SQUARED (PROJ_BOUNDBOX_DIV * PROJ_BOUNDBOX_DIV)
 
-//#define PROJ_DEBUG_PAINT 1
-//#define PROJ_DEBUG_NOSEAMBLEED 1
-//#define PROJ_DEBUG_PRINT_CLIP 1
+// #define PROJ_DEBUG_PAINT 1
+// #define PROJ_DEBUG_NOSEAMBLEED 1
+// #define PROJ_DEBUG_PRINT_CLIP 1
 #define PROJ_DEBUG_WINCLIP 1
 
 #ifndef PROJ_DEBUG_NOSEAMBLEED
 /* projectFaceSeamFlags options */
-//#define PROJ_FACE_IGNORE  (1<<0)  /* When the face is hidden, back-facing or occluded. */
-//#define PROJ_FACE_INIT    (1<<1)  /* When we have initialized the faces data */
+// #define PROJ_FACE_IGNORE  (1<<0)  /* When the face is hidden, back-facing or occluded. */
+// #define PROJ_FACE_INIT    (1<<1)  /* When we have initialized the faces data */
 
 /* If this face has a seam on any of its edges. */
 #  define PROJ_FACE_SEAM0 (1 << 0)
@@ -2033,14 +2032,16 @@ static ProjPixel *project_paint_uvpixel_init(const ProjPaintState *ps,
        * the faces are already initialized in project_paint_delayed_face_init(...) */
       if (ibuf->float_buffer.data) {
         if (!project_paint_PickColor(
-                ps, co, ((ProjPixelClone *)projPixel)->clonepx.f, nullptr, true)) {
+                ps, co, ((ProjPixelClone *)projPixel)->clonepx.f, nullptr, true))
+        {
           /* zero alpha - ignore */
           ((ProjPixelClone *)projPixel)->clonepx.f[3] = 0;
         }
       }
       else {
         if (!project_paint_PickColor(
-                ps, co, nullptr, ((ProjPixelClone *)projPixel)->clonepx.ch, true)) {
+                ps, co, nullptr, ((ProjPixelClone *)projPixel)->clonepx.ch, true))
+        {
           /* zero alpha - ignore */
           ((ProjPixelClone *)projPixel)->clonepx.ch[3] = 0;
         }
@@ -2578,7 +2579,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_1 | ISECT_2);
     if (flag && flag != (ISECT_1 | ISECT_2)) {
       if (line_rect_clip(
-              bucket_bounds, v1coSS, v2coSS, uv1co, uv2co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v1coSS, v2coSS, uv1co, uv2co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -2591,7 +2593,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_2 | ISECT_3);
     if (flag && flag != (ISECT_2 | ISECT_3)) {
       if (line_rect_clip(
-              bucket_bounds, v2coSS, v3coSS, uv2co, uv3co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v2coSS, v3coSS, uv2co, uv3co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -2604,7 +2607,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_3 | ISECT_1);
     if (flag && flag != (ISECT_3 | ISECT_1)) {
       if (line_rect_clip(
-              bucket_bounds, v3coSS, v1coSS, uv3co, uv1co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v3coSS, v1coSS, uv3co, uv1co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -3183,12 +3187,12 @@ static void project_paint_face_init(const ProjPaintState *ps,
               }
             }
           }
-          //#if 0
+          // #if 0
           else if (has_x_isect) {
             /* assuming the face is not a bow-tie - we know we can't intersect again on the X */
             break;
           }
-          //#endif
+          // #endif
         }
 
 #if 0 /* TODO: investigate why this doesn't work sometimes! it should! */
@@ -4071,7 +4075,7 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
     return false;
   }
 
-  if (!CustomData_has_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2)) {
     ps->me_eval = nullptr;
     return false;
   }
@@ -4103,9 +4107,9 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   ps->sharp_faces_eval = static_cast<const bool *>(
       CustomData_get_layer_named(&ps->me_eval->face_data, CD_PROP_BOOL, "sharp_face"));
 
-  ps->totvert_eval = ps->me_eval->totvert;
+  ps->totvert_eval = ps->me_eval->verts_num;
   ps->faces_num_eval = ps->me_eval->faces_num;
-  ps->totloop_eval = ps->me_eval->totloop;
+  ps->totloop_eval = ps->me_eval->corners_num;
 
   ps->corner_tris_eval = ps->me_eval->corner_tris();
   ps->corner_tri_faces_eval = ps->me_eval->corner_tri_faces();
@@ -4128,7 +4132,7 @@ static void proj_paint_layer_clone_init(ProjPaintState *ps, ProjPaintLayerClone 
 
   /* use clone mtface? */
   if (ps->do_layer_clone) {
-    const int layer_num = CustomData_get_clone_layer(&((Mesh *)ps->ob->data)->loop_data,
+    const int layer_num = CustomData_get_clone_layer(&((Mesh *)ps->ob->data)->corner_data,
                                                      CD_PROP_FLOAT2);
 
     ps->poly_to_loop_uv_clone = static_cast<const float(**)[2]>(
@@ -4136,13 +4140,13 @@ static void proj_paint_layer_clone_init(ProjPaintState *ps, ProjPaintLayerClone 
 
     if (layer_num != -1) {
       mloopuv_clone_base = static_cast<const float(*)[2]>(
-          CustomData_get_layer_n(&ps->me_eval->loop_data, CD_PROP_FLOAT2, layer_num));
+          CustomData_get_layer_n(&ps->me_eval->corner_data, CD_PROP_FLOAT2, layer_num));
     }
 
     if (mloopuv_clone_base == nullptr) {
       /* get active instead */
       mloopuv_clone_base = static_cast<const float(*)[2]>(
-          CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
+          CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
     }
   }
 
@@ -4172,10 +4176,10 @@ static bool project_paint_clone_face_skip(ProjPaintState *ps,
       if (lc->slot_clone != lc->slot_last_clone) {
         if (!lc->slot_clone->uvname ||
             !(lc->mloopuv_clone_base = static_cast<const float(*)[2]>(CustomData_get_layer_named(
-                  &ps->me_eval->loop_data, CD_PROP_FLOAT2, lc->slot_clone->uvname))))
+                  &ps->me_eval->corner_data, CD_PROP_FLOAT2, lc->slot_clone->uvname))))
         {
           lc->mloopuv_clone_base = static_cast<const float(*)[2]>(
-              CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
+              CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
         }
         lc->slot_last_clone = lc->slot_clone;
       }
@@ -4358,17 +4362,17 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
       /* all faces should have a valid slot, reassert here */
       if (slot == nullptr) {
         mloopuv_base = static_cast<const float(*)[2]>(
-            CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
+            CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
         tpage = ps->canvas_ima;
       }
       else {
         if (slot != slot_last) {
           if (!slot->uvname ||
               !(mloopuv_base = static_cast<const float(*)[2]>(CustomData_get_layer_named(
-                    &ps->me_eval->loop_data, CD_PROP_FLOAT2, slot->uvname))))
+                    &ps->me_eval->corner_data, CD_PROP_FLOAT2, slot->uvname))))
           {
             mloopuv_base = static_cast<const float(*)[2]>(
-                CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
+                CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
           }
           slot_last = slot;
         }
@@ -4547,17 +4551,17 @@ static void project_paint_begin(const bContext *C,
 
   if (ps->do_layer_stencil || ps->do_stencil_brush) {
     // int layer_num = CustomData_get_stencil_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2);
-    int layer_num = CustomData_get_stencil_layer(&((Mesh *)ps->ob->data)->loop_data,
+    int layer_num = CustomData_get_stencil_layer(&((Mesh *)ps->ob->data)->corner_data,
                                                  CD_PROP_FLOAT2);
     if (layer_num != -1) {
       ps->mloopuv_stencil_eval = static_cast<const float(*)[2]>(
-          CustomData_get_layer_n(&ps->me_eval->loop_data, CD_PROP_FLOAT2, layer_num));
+          CustomData_get_layer_n(&ps->me_eval->corner_data, CD_PROP_FLOAT2, layer_num));
     }
 
     if (ps->mloopuv_stencil_eval == nullptr) {
       /* get active instead */
       ps->mloopuv_stencil_eval = static_cast<const float(*)[2]>(
-          CustomData_get_layer(&ps->me_eval->loop_data, CD_PROP_FLOAT2));
+          CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
     }
 
     if (ps->do_stencil_brush) {
@@ -6329,6 +6333,7 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
                                         nullptr,
                                         false,
                                         nullptr,
+                                        nullptr,
                                         err_out);
 
   if (!ibuf) {
@@ -6465,7 +6470,7 @@ bool ED_paint_proj_mesh_data_check(Scene *scene,
   }
 
   mesh = BKE_mesh_from_object(ob);
-  layernum = CustomData_number_of_layers(&mesh->loop_data, CD_PROP_FLOAT2);
+  layernum = CustomData_number_of_layers(&mesh->corner_data, CD_PROP_FLOAT2);
 
   if (layernum == 0) {
     has_uvs = false;
@@ -6584,15 +6589,16 @@ static Image *proj_paint_image_create(wmOperator *op, Main *bmain, bool is_data)
  */
 static const char *proj_paint_color_attribute_create(wmOperator *op, Object *ob)
 {
+  using namespace blender;
   char name[MAX_NAME] = "";
   float color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  eAttrDomain domain = ATTR_DOMAIN_POINT;
+  bke::AttrDomain domain = bke::AttrDomain::Point;
   eCustomDataType type = CD_PROP_COLOR;
 
   if (op) {
     RNA_string_get(op->ptr, "name", name);
     RNA_float_get_array(op->ptr, "color", color);
-    domain = (eAttrDomain)RNA_enum_get(op->ptr, "domain");
+    domain = bke::AttrDomain(RNA_enum_get(op->ptr, "domain"));
     type = (eCustomDataType)RNA_enum_get(op->ptr, "data_type");
   }
 
@@ -6915,6 +6921,7 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
 
 void PAINT_OT_add_texture_paint_slot(wmOperatorType *ot)
 {
+  using namespace blender;
   PropertyRNA *prop;
   static float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -6985,7 +6992,7 @@ void PAINT_OT_add_texture_paint_slot(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "domain",
                rna_enum_color_attribute_domain_items,
-               ATTR_DOMAIN_POINT,
+               int(bke::AttrDomain::Point),
                "Domain",
                "Type of element that attribute is stored on");
 

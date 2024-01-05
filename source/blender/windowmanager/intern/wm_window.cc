@@ -50,13 +50,13 @@
 #include "WM_types.hh"
 #include "wm.hh"
 #include "wm_draw.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_files.hh"
-#include "wm_platform_support.h"
+#include "wm_platform_support.hh"
 #include "wm_window.hh"
-#include "wm_window_private.h"
+#include "wm_window_private.hh"
 #ifdef WITH_XR_OPENXR
-#  include "wm_xr.h"
+#  include "wm_xr.hh"
 #endif
 
 #include "ED_anim_api.hh"
@@ -784,7 +784,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     }
 #endif
     /* until screens get drawn, make it nice gray */
-    GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
+    GPU_clear_color(0.25f, 0.25f, 0.25f, 1.0f);
 
     /* needed here, because it's used before it reads userdef */
     WM_window_set_dpi(win);
@@ -792,7 +792,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     wm_window_swap_buffers(win);
 
     /* Clear double buffer to avoids flickering of new windows on certain drivers. (See #97600) */
-    GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
+    GPU_clear_color(0.25f, 0.25f, 0.25f, 1.0f);
 
     GPU_render_end();
   }

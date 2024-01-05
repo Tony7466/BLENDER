@@ -26,9 +26,6 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_attribute.hh"
 #include "BKE_ccg.h"
 #include "BKE_mesh.hh"
@@ -53,18 +50,19 @@ using blender::float3;
 using blender::MutableSpan;
 using blender::Span;
 using blender::Vector;
+using blender::bke::AttrDomain;
 
 #define LEAF_LIMIT 10000
 
 /* Uncomment to test if triangles of the same face are
  * properly clustered into single nodes.
  */
-//#define TEST_PBVH_FACE_SPLIT
+// #define TEST_PBVH_FACE_SPLIT
 
 /* Uncomment to test that faces are only assigned to one PBVHNode */
-//#define VALIDATE_UNIQUE_NODE_FACES
+// #define VALIDATE_UNIQUE_NODE_FACES
 
-//#define PERFCNTRS
+// #define PERFCNTRS
 #define STACK_FIXED_DEPTH 100
 
 struct PBVHStack {
@@ -710,8 +708,8 @@ PBVH *build_mesh(Mesh *mesh)
   std::unique_ptr<PBVH> pbvh = std::make_unique<PBVH>();
   pbvh->header.type = PBVH_FACES;
 
-  const int totvert = mesh->totvert;
-  const int corner_tris_num = poly_to_tri_count(mesh->faces_num, mesh->totloop);
+  const int totvert = mesh->verts_num;
+  const int corner_tris_num = poly_to_tri_count(mesh->faces_num, mesh->corners_num);
   MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
   const OffsetIndices<int> faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
@@ -760,9 +758,9 @@ PBVH *build_mesh(Mesh *mesh)
 
   if (corner_tris_num) {
     const AttributeAccessor attributes = mesh->attributes();
-    const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
-    const VArraySpan material_index = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
-    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+    const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", AttrDomain::Face);
+    const VArraySpan material_index = *attributes.lookup<int>("material_index", AttrDomain::Face);
+    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
     pbvh_build(pbvh.get(),
                corner_verts,
                corner_tris,
@@ -842,8 +840,8 @@ PBVH *build_grids(const CCGKey *key, Mesh *mesh, SubdivCCG *subdiv_ccg)
 
   if (!grids.is_empty()) {
     const AttributeAccessor attributes = mesh->attributes();
-    const VArraySpan material_index = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
-    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+    const VArraySpan material_index = *attributes.lookup<int>("material_index", AttrDomain::Face);
+    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
     pbvh_build(pbvh.get(),
                {},
                {},
@@ -1306,6 +1304,9 @@ void update_bounds(PBVH &pbvh, int flag)
 {
   Vector<PBVHNode *> nodes = search_gather(
       &pbvh, [&](PBVHNode &node) { return update_search(&node, flag); });
+  if (nodes.is_empty()) {
+    return;
+  }
 
   if (flag & (PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw)) {
     pbvh_update_BB_redraw(&pbvh, nodes, flag);
@@ -1332,7 +1333,7 @@ void node_update_mask_mesh(const Span<float> mask, PBVHNode &node)
 static void update_mask_mesh(const Mesh &mesh, const Span<PBVHNode *> nodes)
 {
   const AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT);
+  const VArraySpan<float> mask = *attributes.lookup<float>(".sculpt_mask", AttrDomain::Point);
   if (mask.is_empty()) {
     for (PBVHNode *node : nodes) {
       node->flag &= ~PBVH_FullyMasked;
@@ -1454,7 +1455,7 @@ void node_update_visibility_mesh(const Span<bool> hide_vert, PBVHNode &node)
 static void update_visibility_faces(const Mesh &mesh, const Span<PBVHNode *> nodes)
 {
   const AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
+  const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", AttrDomain::Point);
   if (hide_vert.is_empty()) {
     for (PBVHNode *node : nodes) {
       node->flag &= ~PBVH_FullyHidden;
@@ -1589,11 +1590,11 @@ IndexMask nodes_to_face_selection_grids(const SubdivCCG &subdiv_ccg,
 
 /***************************** PBVH Access ***********************************/
 
-bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, eAttrDomain *r_domain)
+bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, AttrDomain *r_domain)
 {
   *r_layer = BKE_id_attribute_search_for_write(
       &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
-  *r_domain = *r_layer ? BKE_id_attribute_domain(&mesh->id, *r_layer) : ATTR_DOMAIN_POINT;
+  *r_domain = *r_layer ? BKE_id_attribute_domain(&mesh->id, *r_layer) : AttrDomain::Point;
   return *r_layer != nullptr;
 }
 
@@ -2067,7 +2068,8 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
            * uninitialized values. This stores the closest vertex in the current intersecting
            * triangle. */
           if (j == 0 ||
-              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co)) {
+              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
+          {
             copy_v3_v3(nearest_vertex_co, co[j]);
             r_active_vertex->i = corner_verts[tri[j]];
             *r_active_face_index = pbvh->corner_tri_faces[tri_i];
@@ -2130,7 +2132,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
         }
 
         if (ray_face_intersection_quad(
-                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth)) {
+                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
+        {
           hit = true;
 
           if (r_face_normal) {
@@ -2149,7 +2152,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
                * uninitialized values. This stores the closest vertex in the current intersecting
                * quad. */
               if (j == 0 || len_squared_v3v3(location, co[j]) <
-                                len_squared_v3v3(location, nearest_vertex_co)) {
+                                len_squared_v3v3(location, nearest_vertex_co))
+              {
                 copy_v3_v3(nearest_vertex_co, co[j]);
 
                 r_active_vertex->i = gridkey->grid_area * grid_index +
@@ -2583,7 +2587,7 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
   switch (pbvh.header.type) {
     case PBVH_FACES:
       args.vert_data = &mesh.vert_data;
-      args.loop_data = &mesh.loop_data;
+      args.corner_data = &mesh.corner_data;
       args.face_data = &mesh.face_data;
       args.mesh = pbvh.mesh;
       args.vert_positions = pbvh.vert_positions;
@@ -2594,14 +2598,14 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
       args.face_normals = pbvh.face_normals;
       /* Retrieve data from the original mesh. Ideally that would be passed to this function to
        * make it clearer when each is used. */
-      args.hide_poly = *pbvh.mesh->attributes().lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+      args.hide_poly = *pbvh.mesh->attributes().lookup<bool>(".hide_poly", AttrDomain::Face);
 
       args.prim_indices = node.prim_indices;
       args.tri_faces = mesh.corner_tri_faces();
       break;
     case PBVH_GRIDS:
       args.vert_data = &pbvh.mesh->vert_data;
-      args.loop_data = &pbvh.mesh->loop_data;
+      args.corner_data = &pbvh.mesh->corner_data;
       args.face_data = &pbvh.mesh->face_data;
       args.ccg_key = pbvh.gridkey;
       args.mesh = pbvh.mesh;
@@ -2613,7 +2617,7 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
     case PBVH_BMESH:
       args.bm = pbvh.header.bm;
       args.vert_data = &args.bm->vdata;
-      args.loop_data = &args.bm->ldata;
+      args.corner_data = &args.bm->ldata;
       args.face_data = &args.bm->pdata;
       args.bm_faces = &node.bm_faces;
       args.cd_mask_layer = CustomData_get_offset_named(
@@ -3161,7 +3165,7 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
       }
       else {
         SpanAttributeWriter<bool> hide_poly = attributes.lookup_or_add_for_write_span<bool>(
-            ".hide_poly", ATTR_DOMAIN_FACE, AttributeInitConstruct());
+            ".hide_poly", AttrDomain::Face, AttributeInitConstruct());
         hide_poly.span.fill(false);
         index_mask::masked_fill(hide_poly.span, true, hidden_faces);
         hide_poly.finish();

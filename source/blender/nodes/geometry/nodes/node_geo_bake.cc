@@ -75,7 +75,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   NodeGeometryBakeItem &item = data->items[0];
   item.name = BLI_strdup("Geometry");
   item.identifier = data->next_identifier++;
-  item.attribute_domain = ATTR_DOMAIN_POINT;
+  item.attribute_domain = int16_t(AttrDomain::Point);
   item.socket_type = SOCK_GEOMETRY;
 
   node->storage = data;
@@ -123,7 +123,7 @@ static bake::BakeSocketConfig make_bake_socket_config(const Span<NodeGeometryBak
   for (const int item_i : bake_items.index_range()) {
     const NodeGeometryBakeItem &item = bake_items[item_i];
     config.types[item_i] = eNodeSocketDatatype(item.socket_type);
-    config.domains[item_i] = eAttrDomain(item.attribute_domain);
+    config.domains[item_i] = AttrDomain(item.attribute_domain);
     if (item.socket_type == SOCK_GEOMETRY) {
       last_geometry_index = item_i;
     }
@@ -210,7 +210,8 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     }
     else if (auto *info = std::get_if<sim_output::ReadError>(behavior)) {
       if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(
-              user_data)) {
+              user_data))
+      {
         tree_logger->node_warnings.append(
             {node_.identifier, {NodeWarningType::Error, info->message}});
       }

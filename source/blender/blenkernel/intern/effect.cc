@@ -695,7 +695,8 @@ bool get_effector_data(EffectorCache *eff,
   /* In case surface object is in Edit mode when loading the .blend,
    * surface modifier is never executed and bvhtree never built, see #48415. */
   if (eff->pd && eff->pd->shape == PFIELD_SHAPE_SURFACE && eff->surmd &&
-      eff->surmd->runtime.bvhtree) {
+      eff->surmd->runtime.bvhtree)
+  {
     /* closest point in the object surface is an effector */
     float vec[3];
 
@@ -828,7 +829,7 @@ static void get_effector_tot(
   if (eff->pd->shape == PFIELD_SHAPE_POINTS) {
     /* TODO: hair and points object support */
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(eff->ob);
-    *tot = me_eval != nullptr ? me_eval->totvert : 1;
+    *tot = me_eval != nullptr ? me_eval->verts_num : 1;
 
     if (*tot && eff->pd->forcefield == PFIELD_HARMONIC && point->index >= 0) {
       *p = point->index % *tot;
@@ -848,7 +849,8 @@ static void get_effector_tot(
       efd->charge = eff->pd->f_strength;
     }
     else if (eff->pd->forcefield == PFIELD_HARMONIC &&
-             (eff->pd->flag & PFIELD_MULTIPLE_SPRINGS) == 0) {
+             (eff->pd->flag & PFIELD_MULTIPLE_SPRINGS) == 0)
+    {
       /* every particle is mapped to only one harmonic effector particle */
       *p = point->index % eff->psys->totpart;
       *tot = *p + 1;
