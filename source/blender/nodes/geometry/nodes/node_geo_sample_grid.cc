@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_type_conversions.hh"
-#include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLI_index_mask.hh"
@@ -130,15 +130,15 @@ void sample_grid(const GridType &grid,
 }
 
 template<typename T> class SampleGridFunction : public mf::MultiFunction {
-  using GridType = typename bke::VolumeGridPtr<T>::GridType;
-  using GridConstPtr = typename bke::VolumeGridPtr<T>::GridConstPtr;
+  using GridType = bke::OpenvdbGridType<T>;
+  using GridConstPtr = std::shared_ptr<GridType>;
 
-  bke::VolumeGridPtr<T> volume_grid_;
+  bke::VolumeGrid<T> volume_grid_;
   GeometryNodeSampleGridInterpolationMode interpolation_mode_;
   mf::Signature signature_;
 
  public:
-  SampleGridFunction(bke::VolumeGridPtr<T> volume_grid,
+  SampleGridFunction(bke::VolumeGrid<T> volume_grid,
                      GeometryNodeSampleGridInterpolationMode interpolation_mode)
       : volume_grid_(std::move(volume_grid)), interpolation_mode_(interpolation_mode)
   {
@@ -156,7 +156,11 @@ template<typename T> class SampleGridFunction : public mf::MultiFunction {
     const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
     MutableSpan<T> dst = params.uninitialized_single_output<T>(1, "Value");
 
-    sample_grid<T, GridType>(*volume_grid_.grid(), positions, mask, dst, interpolation_mode_);
+    sample_grid<T, GridType>(volume_grid_.grid(volume_grid_.get().tree_access_token()),
+                             positions,
+                             mask,
+                             dst,
+                             interpolation_mode_);
   }
 };
 
@@ -166,7 +170,7 @@ struct SampleGridOp {
 
   template<typename T> void operator()()
   {
-    const bke::VolumeGridPtr<T> volume_grid = grids::extract_grid_input<T>(this->params, "Grid");
+    const auto volume_grid = this->params.extract_input<bke::VolumeGrid<T>>("Grid");
     if (!volume_grid) {
       this->params.set_default_remaining_outputs();
       return;

@@ -4,6 +4,9 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -60,66 +63,67 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = GEO_NODE_GRID_FILTER_MEAN;
 }
 
-static bke::GVolumeGridPtr filter_grid(GeoNodeExecParams params)
+static bke::GVolumeGrid filter_grid(GeoNodeExecParams params)
 {
-  using GridType = typename bke::VolumeGridPtr<float>::GridType;
-  using MaskType = typename bke::VolumeGridPtr<float>::GridType;
+  using GridType = bke::OpenvdbGridType<float>;
+  using MaskType = bke::OpenvdbGridType<float>;
   using Converter = bke::grids::Converter<float>;
 
   const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(
       params.node().custom1);
 
-  const bke::VolumeGridPtr<float> grid = grids::extract_grid_input<float>(params, "Grid");
-  const bke::VolumeGridPtr<float> mask = grids::extract_grid_input<float>(params, "Mask");
+  auto grid = params.extract_input<bke::VolumeGrid<float>>("Grid");
+  const auto mask = params.extract_input<bke::VolumeGrid<float>>("Mask");
   if (!grid) {
-    return nullptr;
+    return {};
   }
   bool has_error = false;
-  if (!grid->grid()->hasUniformVoxels()) {
+  const GridType &vdb_grid = grid.grid(grid.get().tree_access_token());
+  if (!vdb_grid.hasUniformVoxels()) {
     params.error_message_add(geo_eval_log::NodeWarningType::Error, "Grid has non-uniform scale");
     has_error = true;
   }
-  if (grid->grid()->getGridClass() != openvdb::GRID_LEVEL_SET) {
+  if (vdb_grid.getGridClass() != openvdb::GRID_LEVEL_SET) {
     params.error_message_add(geo_eval_log::NodeWarningType::Error, "Grid must be a level set");
     has_error = true;
   }
   if (has_error) {
-    return nullptr;
+    return {};
   }
+  const MaskType *mask_ptr = mask ? &mask.grid(mask->tree_access_token()) : nullptr;
 
-  const bke::VolumeGridPtr<float> output_grid = grid->is_mutable() ?
-                                                    grid :
-                                                    bke::VolumeGridPtr<float>{grid->copy()};
+  bke::VolumeGrid<float> output_grid(&grid.get_for_write());
 
-  openvdb::tools::LevelSetFilter<GridType, MaskType> filter(*output_grid.grid_for_write());
+  openvdb::tools::LevelSetFilter<GridType, MaskType> filter(
+      output_grid.grid_for_write(output_grid->tree_access_token()));
 
   switch (operation) {
     case GEO_NODE_GRID_FILTER_MEAN: {
       const int width = params.extract_input<int>("Width");
-      filter.mean(width, mask ? mask.grid().get() : nullptr);
+      filter.mean(width, mask_ptr);
       break;
     }
     case GEO_NODE_GRID_FILTER_MEDIAN: {
       const int width = params.extract_input<int>("Width");
-      filter.median(width, mask ? mask.grid().get() : nullptr);
+      filter.median(width, mask_ptr);
       break;
     }
     case GEO_NODE_GRID_FILTER_GAUSSIAN: {
       const int width = params.extract_input<int>("Width");
-      filter.gaussian(width, mask ? mask.grid().get() : nullptr);
+      filter.gaussian(width, mask_ptr);
       break;
     }
     case GEO_NODE_GRID_FILTER_OFFSET: {
       const float offset = params.extract_input<float>("Offset");
-      filter.offset(Converter::to_openvdb(offset), mask ? mask.grid().get() : nullptr);
+      filter.offset(Converter::to_openvdb(offset), mask_ptr);
       break;
     }
     case GEO_NODE_GRID_FILTER_MEAN_CURVATURE: {
-      filter.meanCurvature(mask ? mask.grid().get() : nullptr);
+      filter.meanCurvature(mask_ptr);
       break;
     }
     case GEO_NODE_GRID_FILTER_LAPLACIAN: {
-      filter.laplacian(mask ? mask.grid().get() : nullptr);
+      filter.laplacian(mask_ptr);
       break;
     }
   }
@@ -130,12 +134,10 @@ static bke::GVolumeGridPtr filter_grid(GeoNodeExecParams params)
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  bke::GVolumeGridPtr output_grid = filter_grid(params);
-  grids::set_output_grid(params, "Grid", CD_PROP_FLOAT, std::move(output_grid));
+  bke::GVolumeGrid output_grid = filter_grid(params);
+  params.set_output("Grid", std::move(output_grid));
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 

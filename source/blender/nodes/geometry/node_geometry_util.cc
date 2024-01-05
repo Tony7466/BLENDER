@@ -310,7 +310,7 @@ struct CaptureGridOp {
     evaluator.evaluate();
     store_voxel_values(*output_grid, values.as_span());
 
-    return bkeGVolumeGrid(std::move(output_grid));
+    return bke::GVolumeGrid(std::move(output_grid));
   }
 };
 
