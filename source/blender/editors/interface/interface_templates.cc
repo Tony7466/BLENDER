@@ -2398,7 +2398,8 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
   /* Draw all the IO handlers. */
   int index = 0;
   LISTBASE_FOREACH_INDEX (IOHandlerData *, data, io_handlers, index) {
-    FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
+    using namespace blender;
+    bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
     if (!fh) {
       continue;
     }

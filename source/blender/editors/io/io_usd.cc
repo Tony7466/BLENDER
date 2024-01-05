@@ -223,12 +223,11 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void wm_usd_export_draw(const bContext * /*C*/,
-                               uiLayout *layout,
-                               PointerRNA *ptr,
-                               FileHandlerType * /*file_handler_type*/)
+static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
 {
+  uiLayout *layout = op->layout;
   uiLayout *col;
+  PointerRNA *ptr = op->ptr;
 
   uiLayoutSetPropSep(layout, true);
 
@@ -284,11 +283,6 @@ static void wm_usd_export_draw(const bContext * /*C*/,
   uiItemR(box, ptr, "use_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void op_usd_export_draw(bContext *C, wmOperator *op)
-{
-  wm_usd_export_draw(C, op->layout, op->ptr, nullptr);
-}
-
 static void free_operator_customdata(wmOperator *op)
 {
   if (op->customdata) {
@@ -325,7 +319,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
   ot->invoke = wm_usd_export_invoke;
   ot->exec = wm_usd_export_exec;
   ot->poll = WM_operator_winactive;
-  ot->ui = op_usd_export_draw;
+  ot->ui = wm_usd_export_draw;
   ot->cancel = wm_usd_export_cancel;
   ot->check = wm_usd_export_check;
 
@@ -840,7 +834,8 @@ void WM_OT_usd_import(wmOperatorType *ot)
 
 void register_usd_file_handler()
 {
-  std::unique_ptr<FileHandlerType> fh = std::make_unique<FileHandlerType>();
+  using namespace blender;
+  std::unique_ptr<bke::FileHandlerType> fh = std::make_unique<bke::FileHandlerType>();
   STRNCPY(fh->idname, "WM_FH_usd_io");
   STRNCPY(fh->label, "Universal Scene Description (.usd*)");
   STRNCPY(fh->import_operator, "WM_OT_usd_import");
@@ -849,6 +844,6 @@ void register_usd_file_handler()
 
   // fh->poll_drop = wm_usd_poll_drop;
 
-  BKE_file_handler_add(std::move(fh));
+  bke::file_handler_add(std::move(fh));
 }
 #endif /* WITH_USD */

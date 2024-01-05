@@ -423,13 +423,14 @@ void COLLECTION_OT_create(wmOperatorType *ot)
 
 static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   Collection *collection = CTX_data_collection(C);
   ListBase *io_handlers = &collection->io_handlers;
 
   char name[MAX_ID_NAME - 2]; /* id name */
   RNA_string_get(op->ptr, "name", name);
 
-  FileHandlerType *fh = BKE_file_handler_find(name);
+  bke::FileHandlerType *fh = bke::file_handler_find(name);
   if (!fh) {
     return OPERATOR_CANCELLED;
   }
@@ -511,7 +512,8 @@ void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
 
 static int io_handler_export(bContext *C, IOHandlerData *data, Collection *collection)
 {
-  FileHandlerType *fh = BKE_file_handler_find(data->fh_idname);
+  using namespace blender;
+  bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
   if (!fh) {
     return OPERATOR_CANCELLED;
   }
@@ -593,11 +595,12 @@ void COLLECTION_OT_io_export_all(wmOperatorType *ot)
 
 static void collection_io_handler_menu_draw(const bContext * /*C*/, Menu *menu)
 {
+  using namespace blender;
   uiLayout *layout = menu->layout;
 
   /* Add all file handlers capable of being exported to the menu. */
   bool at_least_one = false;
-  for (const auto &fh : BKE_file_handlers()) {
+  for (const auto &fh : bke::file_handlers()) {
     if (WM_operatortype_find(fh->export_operator, true)) {
       uiItemStringO(
           layout, fh->label, ICON_NONE, "COLLECTION_OT_io_handler_add", "name", fh->idname);
