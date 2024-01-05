@@ -91,6 +91,9 @@
 
 #include "ANIM_bone_collections.hh"
 
+#include "RNA_access.hh"
+#include "RNA_path.hh"
+
 #include "UI_resources.hh" /* for TH_KEYFRAME_SCALE lookup */
 
 /* ************************************************************ */
@@ -1212,7 +1215,7 @@ static bool skip_fcurve_with_name(
  *
  * \return true if F-Curve has errors/is disabled
  */
-static bool fcurve_has_errors(const FCurve *fcu)
+static bool fcurve_has_errors(ID *id, const FCurve *fcu)
 {
   /* F-Curve disabled (path evaluation error). */
   if (fcu->flag & FCURVE_DISABLED) {
@@ -1241,6 +1244,14 @@ static bool fcurve_has_errors(const FCurve *fcu)
       }
       DRIVER_TARGETS_LOOPER_END;
     }
+  }
+
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
+  /* In case the FCURVE_DISABLED flag hasn't been set yet. */
+  if (!RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
+    return true;
   }
 
   /* no errors found */
@@ -1305,7 +1316,7 @@ static FCurve *animfilter_fcurve_next(bDopeSheet *ads,
             /* error-based filtering... */
             if ((ads) && (ads->filterflag & ADS_FILTER_ONLY_ERRORS)) {
               /* skip if no errors... */
-              if (fcurve_has_errors(fcu) == false) {
+              if (fcurve_has_errors(owner_id, fcu) == false) {
                 continue;
               }
             }
