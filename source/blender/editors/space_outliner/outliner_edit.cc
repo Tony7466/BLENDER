@@ -2311,10 +2311,11 @@ static void wm_block_orphans_purge_button(uiBlock *block, OrphansPurgeData *purg
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
 
-static void orphan_desc(bContext *C, DynStr *desc_r, bool local, bool linked, bool recursive)
+static std::string orphan_desc(bContext *C, bool local, bool linked, bool recursive)
 {
   Main *bmain = CTX_data_main(C);
   int num_tagged[INDEX_ID_MAX] = {0};
+  std::string desc;
 
   BKE_lib_query_unused_ids_tag(bmain, LIB_TAG_DOIT, local, linked, recursive, num_tagged);
 
@@ -2322,23 +2323,22 @@ static void orphan_desc(bContext *C, DynStr *desc_r, bool local, bool linked, bo
   for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
     if (num_tagged[i] != 0) {
       if (!is_first) {
-        BLI_dynstr_append(desc_r, ", ");
+        desc.append(", ");
       }
       else {
         is_first = false;
       }
-      BLI_dynstr_appendf(
-          desc_r,
-          "%d %s",
-          num_tagged[i],
-          num_tagged[i] > 1 ?
+      desc.append<>(std::to_string(num_tagged[i]) + " ");
+      desc.append(num_tagged[i] > 1 ?
               TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))) :
               TIP_(BKE_idtype_idcode_to_name(BKE_idtype_idcode_from_index(i))));
     }
   }
-  if (BLI_dynstr_get_len(desc_r) == 0) {
-    BLI_dynstr_append(desc_r, "Nothing");
+  if (desc.empty()) {
+    desc = "Nothing";
   }
+
+  return desc;
 }
 
 static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, void *arg)
@@ -2357,16 +2357,13 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
 
   uiItemS(layout);
 
-  char text[1024];
-  DynStr *dyn_str = BLI_dynstr_new();
-  orphan_desc(C, dyn_str, true, false, false);
-  BLI_snprintf(text, 1024, "Local data: %s", BLI_dynstr_get_cstring(dyn_str));
+  std::string desc = "Local data: " + orphan_desc(C, true, false, false);
 
   uiDefButBitC(block,
                UI_BTYPE_CHECKBOX,
                1,
                0,
-               text,
+               desc.c_str(),
                0,
                0,
                0,
@@ -2378,15 +2375,13 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                "Delete unused local data");
 
-  BLI_dynstr_clear(dyn_str);
-  orphan_desc(C, dyn_str, false, true, false);
-  BLI_snprintf(text, 1024, "Linked data: %s", BLI_dynstr_get_cstring(dyn_str));
+  desc = "Linked data: " + orphan_desc(C, false, true, false);
 
   uiDefButBitC(block,
                UI_BTYPE_CHECKBOX,
                1,
                0,
-               text,
+               desc.c_str(),
                0,
                0,
                0,
@@ -2398,15 +2393,11 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                "Delete unused linked data");
 
-  BLI_dynstr_clear(dyn_str);
-  orphan_desc(C, dyn_str, false, false, true);
-  BLI_snprintf(text, 1024, "Include Indirectly Unused (Recursive)");
-
   uiDefButBitC(block,
                UI_BTYPE_CHECKBOX,
                1,
                0,
-               text,
+               "Include Indirectly Unused (Recursive)",
                0,
                0,
                0,
@@ -2418,8 +2409,6 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                "Recursively check for indirectly unused data, ensuring that no unused data "
                "remains after execution");
-
-  BLI_dynstr_free(dyn_str);
 
   uiItemS_ex(layout, 2.0f);
 
