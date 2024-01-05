@@ -17,6 +17,7 @@
 
 #include "RNA_types.hh"
 
+#include "BLI_array.hh"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
@@ -38,6 +39,8 @@
 #include "../generic/py_capi_rna.h"
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
+
+using blender::Array;
 
 /* Disabled duplicating strings because the array can still be freed and
  * the strings from it referenced, for now we can't support dynamically
@@ -2960,7 +2963,7 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
 
   const char *name = nullptr, *description = "";
   const char *translation_context = nullptr;
-  bool *default_value = nullptr;
+  Array<bool, 64> default_value;
   BPyPropArrayLength array_len_info{};
   array_len_info.len_total = 3;
   PropertyRNA *prop;
@@ -3048,35 +3051,25 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
   }
 
   if (default_py != nullptr) {
-    default_value = static_cast<bool *>(PyMem_Malloc(sizeof(bool) * array_len_info.len_total));
-    if (bpy_prop_array_from_py_with_dims(default_value,
-                                         sizeof(*default_value),
+    default_value.reinitialize(array_len_info.len_total);
+    if (bpy_prop_array_from_py_with_dims(default_value.data(),
+                                         sizeof(*default_value.data()),
                                          default_py,
                                          &array_len_info,
                                          &PyBool_Type,
                                          "BoolVectorProperty(default=sequence)") == -1)
     {
-      PyMem_Free(default_value);
       return nullptr;
     }
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
 
@@ -3087,14 +3080,14 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
 
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
-    if (default_value != nullptr) {
-      RNA_def_property_boolean_array_default(prop, default_value);
+    if (default_py != nullptr) {
+      RNA_def_property_boolean_array_default(prop, default_value.data());
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
-    if (default_value != nullptr) {
-      RNA_def_property_boolean_array_default(prop, default_value);
+    if (default_py != nullptr) {
+      RNA_def_property_boolean_array_default(prop, default_value.data());
     }
   }
 
@@ -3115,10 +3108,6 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
   bpy_prop_callback_assign_update(prop, update_fn);
   bpy_prop_callback_assign_boolean_array(prop, get_fn, set_fn);
   RNA_def_property_duplicate_pointers(srna, prop);
-
-  if (default_value != nullptr) {
-    PyMem_Free(default_value);
-  }
 
   Py_RETURN_NONE;
 }
@@ -3346,7 +3335,7 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   const char *translation_context = nullptr;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
-  int *default_value = nullptr;
+  Array<int, 64> default_value;
   BPyPropArrayLength array_len_info{};
   array_len_info.len_total = 3;
   PropertyRNA *prop;
@@ -3435,35 +3424,25 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   }
 
   if (default_py != nullptr) {
-    default_value = static_cast<int *>(PyMem_Malloc(sizeof(int) * array_len_info.len_total));
-    if (bpy_prop_array_from_py_with_dims(default_value,
-                                         sizeof(*default_value),
+    default_value.reinitialize(array_len_info.len_total);
+    if (bpy_prop_array_from_py_with_dims(default_value.data(),
+                                         sizeof(*default_value.data()),
                                          default_py,
                                          &array_len_info,
                                          &PyLong_Type,
                                          "IntVectorProperty(default=sequence)") == -1)
     {
-      PyMem_Free(default_value);
       return nullptr;
     }
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
 
@@ -3474,14 +3453,14 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
 
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
-    if (default_value != nullptr) {
-      RNA_def_property_int_array_default(prop, default_value);
+    if (default_py != nullptr) {
+      RNA_def_property_int_array_default(prop, default_value.data());
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
-    if (default_value != nullptr) {
-      RNA_def_property_int_array_default(prop, default_value);
+    if (default_py != nullptr) {
+      RNA_def_property_int_array_default(prop, default_value.data());
     }
   }
 
@@ -3504,10 +3483,6 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   bpy_prop_callback_assign_update(prop, update_fn);
   bpy_prop_callback_assign_int_array(prop, get_fn, set_fn);
   RNA_def_property_duplicate_pointers(srna, prop);
-
-  if (default_value != nullptr) {
-    PyMem_Free(default_value);
-  }
 
   Py_RETURN_NONE;
 }
@@ -3738,7 +3713,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   const char *translation_context = nullptr;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
-  float *default_value = nullptr;
+  Array<float, 64> default_value;
   int precision = 2;
   BPyPropArrayLength array_len_info{};
   array_len_info.len_total = 3;
@@ -3838,38 +3813,28 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   }
 
   if (default_py != nullptr) {
-    default_value = static_cast<float *>(PyMem_Malloc(sizeof(float) * array_len_info.len_total));
-    if (bpy_prop_array_from_py_with_dims(default_value,
-                                         sizeof(*default_value),
+    default_value.reinitialize(array_len_info.len_total);
+    if (bpy_prop_array_from_py_with_dims(default_value.data(),
+                                         sizeof(*default_value.data()),
                                          default_py,
                                          &array_len_info,
                                          &PyFloat_Type,
                                          "FloatVectorProperty(default=sequence)") == -1)
     {
-      PyMem_Free(default_value);
       return nullptr;
     }
     if (bpy_prop_array_is_matrix_compatible_ex(subtype_enum.value, &array_len_info)) {
-      bpy_prop_array_matrix_swap_row_column_vn(default_value, &array_len_info);
+      bpy_prop_array_matrix_swap_row_column_vn(default_value.data(), &array_len_info);
     }
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    if (default_value != nullptr) {
-      PyMem_Free(default_value);
-    }
     return nullptr;
   }
 
@@ -3880,14 +3845,14 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
 
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
-    if (default_value != nullptr) {
-      RNA_def_property_float_array_default(prop, default_value);
+    if (default_py != nullptr) {
+      RNA_def_property_float_array_default(prop, default_value.data());
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
-    if (default_value != nullptr) {
-      RNA_def_property_float_array_default(prop, default_value);
+    if (default_py != nullptr) {
+      RNA_def_property_float_array_default(prop, default_value.data());
     }
   }
 
@@ -3910,10 +3875,6 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   bpy_prop_callback_assign_update(prop, update_fn);
   bpy_prop_callback_assign_float_array(prop, get_fn, set_fn);
   RNA_def_property_duplicate_pointers(srna, prop);
-
-  if (default_value != nullptr) {
-    PyMem_Free(default_value);
-  }
 
   Py_RETURN_NONE;
 }
