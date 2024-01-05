@@ -2330,8 +2330,8 @@ static std::string orphan_desc(bContext *C, bool local, bool linked, bool recurs
       }
       desc.append<>(std::to_string(num_tagged[i]) + " ");
       desc.append(num_tagged[i] > 1 ?
-              TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))) :
-              TIP_(BKE_idtype_idcode_to_name(BKE_idtype_idcode_from_index(i))));
+                      TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))) :
+                      TIP_(BKE_idtype_idcode_to_name(BKE_idtype_idcode_from_index(i))));
     }
   }
   if (desc.empty()) {
@@ -2393,22 +2393,22 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
                0,
                "Delete unused linked data");
 
-  uiDefButBitC(block,
-               UI_BTYPE_CHECKBOX,
-               1,
-               0,
-               "Include Indirectly Unused (Recursive)",
-               0,
-               0,
-               0,
-               UI_UNIT_Y,
-               &purge_data->recursive,
-               0,
-               0,
-               0,
-               0,
-               "Recursively check for indirectly unused data, ensuring that no unused data "
-               "remains after execution");
+  uiDefButBitC(
+      block,
+      UI_BTYPE_CHECKBOX,
+      1,
+      0,
+      "Include indirect data",
+      0,
+      0,
+      0,
+      UI_UNIT_Y,
+      &purge_data->recursive,
+      0,
+      0,
+      0,
+      0,
+      "Recursively check for indirectly unused data, ensuring that no unused data remains");
 
   uiItemS_ex(layout, 2.0f);
 
