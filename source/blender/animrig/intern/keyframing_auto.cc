@@ -25,6 +25,7 @@
 #include "ED_scene.hh"
 #include "ED_transform.hh"
 
+#include "ANIM_driver.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
 
@@ -329,14 +330,18 @@ bool autokeyframe_property(bContext *C,
       ReportList *reports = CTX_wm_reports(C);
       ToolSettings *ts = scene->toolsettings;
 
+      const float driver_frame = remap_driver_frame(&anim_eval_context, ptr, prop, fcu);
+      AnimationEvalContext driver_eval_context = BKE_animsys_eval_context_construct(
+          CTX_data_depsgraph_pointer(C), driver_frame);
+
       changed = insert_keyframe_direct(reports,
                                        *ptr,
                                        prop,
                                        fcu,
-                                       &anim_eval_context,
+                                       &driver_eval_context,
                                        eBezTriple_KeyframeType(ts->keyframe_type),
                                        nullptr,
-                                       INSERTKEY_DRIVER);
+                                       INSERTKEY_NOFLAGS);
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }
   }
