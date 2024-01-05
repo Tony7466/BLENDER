@@ -246,7 +246,8 @@ void gaussian_blur_1D(const GSpan src,
     using T = decltype(dummy);
     /* Reduces unnecessary code generation. */
     if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
-                  std::is_same_v<T, float3>) {
+                  std::is_same_v<T, float3>)
+    {
       gaussian_blur_1D(src.typed<T>(),
                        iterations,
                        influence,
@@ -922,7 +923,7 @@ static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
   if (mode == DeleteFrameMode::ACTIVE_FRAME && grease_pencil.has_active_layer()) {
-    bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer_for_write();
+    bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer();
     if (layer.is_editable()) {
       changed |= grease_pencil.remove_frames(layer, {layer.frame_key_at(current_frame)});
     }
