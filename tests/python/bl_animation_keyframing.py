@@ -19,7 +19,7 @@ def _fcurve_paths_match(fcurves: list, expected_paths: list) -> bool:
     expected_paths.sort()
     if data_paths != expected_paths:
         raise AssertionError(
-            f"Expected paths do not match F-Curve paths. Expected: [{expected_paths}]. F-Curve: [{data_paths}]")
+            f"Expected paths do not match F-Curve paths. Expected: {expected_paths}. F-Curve: {data_paths}")
 
 
 def _get_view3d_context():
