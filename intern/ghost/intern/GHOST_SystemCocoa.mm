@@ -549,7 +549,7 @@ GHOST_SystemCocoa::GHOST_SystemCocoa()
   sysctl(mib, 2, &boottime, &len, nullptr, 0);
   m_start_time = ((boottime.tv_sec * 1000) + (boottime.tv_usec / 1000));
 
-  /* Detect multi-touch track-pad. */
+  /* Detect multi-touch trackpad. */
   mib[0] = CTL_HW;
   mib[1] = HW_MODEL;
   sysctl(mib, 2, nullptr, &len, nullptr, 0);
@@ -565,7 +565,19 @@ GHOST_SystemCocoa::GHOST_SystemCocoa()
   m_last_warp_timestamp = 0;
 }
 
-GHOST_SystemCocoa::~GHOST_SystemCocoa() {}
+GHOST_SystemCocoa::~GHOST_SystemCocoa()
+{
+  /* The application delegate integrates the Cocoa application with the GHOST system.
+   *
+   * Since the GHOST system is about to be fully destroyed release the application delegate as
+   * well, so it does not point back to a freed system, forcing the delegate to be created with the
+   * new GHOST system in init(). */
+  CocoaAppDelegate *appDelegate = (CocoaAppDelegate *)[NSApp delegate];
+  if (appDelegate) {
+    [NSApp setDelegate:nil];
+    [appDelegate release];
+  }
+}
 
 GHOST_TSuccess GHOST_SystemCocoa::init()
 {
@@ -2035,7 +2047,8 @@ GHOST_TSuccess GHOST_SystemCocoa::handleKeyEvent(void *eventPtr)
                                      false));
       }
       if ((modifiers & NSEventModifierFlagControl) !=
-          (m_modifierMask & NSEventModifierFlagControl)) {
+          (m_modifierMask & NSEventModifierFlagControl))
+      {
         pushEvent(new GHOST_EventKey(
             [event timestamp] * 1000,
             (modifiers & NSEventModifierFlagControl) ? GHOST_kEventKeyDown : GHOST_kEventKeyUp,
@@ -2053,7 +2066,8 @@ GHOST_TSuccess GHOST_SystemCocoa::handleKeyEvent(void *eventPtr)
             false));
       }
       if ((modifiers & NSEventModifierFlagCommand) !=
-          (m_modifierMask & NSEventModifierFlagCommand)) {
+          (m_modifierMask & NSEventModifierFlagCommand))
+      {
         pushEvent(new GHOST_EventKey(
             [event timestamp] * 1000,
             (modifiers & NSEventModifierFlagCommand) ? GHOST_kEventKeyDown : GHOST_kEventKeyUp,

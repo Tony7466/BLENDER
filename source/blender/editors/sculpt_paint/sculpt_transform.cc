@@ -12,9 +12,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
-#include "BLI_task.h"
-
-#include "DNA_meshdata_types.h"
 
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
@@ -268,9 +265,6 @@ static void sculpt_transform_radius_elastic(Sculpt *sd, Object *ob, const float 
   float transform_mats[8][4][4];
   sculpt_transform_matrices_init(
       ss, symm, ss->filter_cache->transform_displacement_mode, transform_mats);
-
-  TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
 
   /* Elastic transform needs to apply all transform matrices to all vertices and then combine the
    * displacement proxies as all vertices are modified by all symmetry passes. */

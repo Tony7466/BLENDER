@@ -97,7 +97,8 @@ static void extract_pos_nor_iter_face_mesh(const MeshRenderData &mr,
     vert->nor = data->normals[vert_i].low;
     /* Flag for paint mode overlay. */
     if (poly_hidden || vert_hidden ||
-        ((mr.v_origindex) && (mr.v_origindex[vert_i] == ORIGINDEX_NONE))) {
+        ((mr.v_origindex) && (mr.v_origindex[vert_i] == ORIGINDEX_NONE)))
+    {
       vert->nor.w = -1;
     }
     else if (!mr.select_vert.is_empty() && mr.select_vert[vert_i]) {
@@ -263,7 +264,7 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache &subdiv_cache,
 
     GPUVertBuf *src_custom_normals = GPU_vertbuf_calloc();
     GPU_vertbuf_init_with_format(src_custom_normals, get_custom_normals_format());
-    GPU_vertbuf_data_alloc(src_custom_normals, coarse_mesh->totloop);
+    GPU_vertbuf_data_alloc(src_custom_normals, coarse_mesh->corners_num);
 
     memcpy(GPU_vertbuf_get_data(src_custom_normals),
            corner_normals.data(),
@@ -469,7 +470,8 @@ static void extract_pos_nor_hq_iter_face_mesh(const MeshRenderData &mr,
 
     /* Flag for paint mode overlay. */
     if (poly_hidden || vert_hidden ||
-        ((mr.v_origindex) && (mr.v_origindex[vert_i] == ORIGINDEX_NONE))) {
+        ((mr.v_origindex) && (mr.v_origindex[vert_i] == ORIGINDEX_NONE)))
+    {
       vert->nor[3] = -1;
     }
     else if (!mr.select_vert.is_empty() && mr.select_vert[vert_i]) {
