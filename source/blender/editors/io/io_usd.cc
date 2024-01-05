@@ -848,7 +848,6 @@ void register_usd_file_handler()
   STRNCPY(fh->file_extensions_str, ".usd;usda;usdc;usdz");
 
   // fh->poll_drop = wm_usd_poll_drop;
-  fh->ui_export = wm_usd_export_draw;
 
   BKE_file_handler_add(std::move(fh));
 }

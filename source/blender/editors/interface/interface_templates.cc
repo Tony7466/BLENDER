@@ -2350,70 +2350,44 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 #ifdef _MSC_VER
 #  pragma optimize("", off)
 #endif
-void draw_export_controls(
-    bContext *C, uiLayout *layout, PointerRNA *ptr, FileHandlerType *fh, int index)
+static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *properties)
+{
+  /* Copied from #wm_operator_create.
+   * Create a slimmed down operator suitable only for UI drawing. */
+  wmOperator *op = MEM_cnew<wmOperator>(ot->idname);
+  STRNCPY(op->idname, ot->idname);
+  op->type = ot;
+
+  /* Initialize properties but do not assume ownership of them.
+   * This "minimal" operator owns nothing except the reports list below. */
+  op->ptr = MEM_cnew<PointerRNA>("wmOperatorPtrRNA");
+  op->properties = static_cast<IDProperty *>(properties->data);
+  *op->ptr = *properties;
+
+  /* Initialize error reports. */
+  op->reports = MEM_cnew<ReportList>("wmOperatorReportList");
+  BKE_reports_init(op->reports, RPT_STORE | RPT_FREE);
+
+  return op;
+}
+
+void draw_export_controls(uiLayout *layout, PointerRNA *properties, int index)
 {
   uiLayout *box = uiLayoutBox(layout);
   uiLayout *row = uiLayoutRow(box, true);
-  uiItemR(row, ptr, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(row, properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemS(row);
   uiItemIntO(row, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
   uiItemIntO(row, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
 }
 
-void draw_export_properties(bContext *C, uiLayout *layout, PointerRNA *ptr, FileHandlerType *fh)
+void draw_export_properties(bContext *C, uiLayout *layout, IOHandlerData *data)
 {
-  if (fh->ui_export) {
-    fh->ui_export(C, layout, ptr, fh);
-  }
-  else {
-    /* TEMP: Just draw the properties like the KeyMap editor for debugging. */
-    uiLayout *flow = uiLayoutColumnFlow(layout, 2, false);
+  wmOperator *const op = data->runtime.op;
 
-    RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (ptr, prop) {
-      const bool is_set = RNA_property_is_set(ptr, prop);
-      uiBut *but;
-
-      /* TEMP: Just filter out some extra stuff for better debug layout. */
-      if (RNA_property_type(prop) == PROP_POINTER) {
-        continue;
-      }
-      const char *prop_name = RNA_property_identifier(prop);
-      if (STRPREFIX(prop_name, "filter_") || STRPREFIX(prop_name, "check_") ||
-          STRPREFIX(prop_name, "sort_") || STREQ(prop_name, "display_type") ||
-          STREQ(prop_name, "filemode"))
-      {
-        continue;
-      }
-
-      uiLayout *box = uiLayoutBox(flow);
-      uiLayoutSetActive(box, is_set);
-      uiLayout *row = uiLayoutRow(box, false);
-
-      /* property value */
-      uiItemFullR(row, ptr, prop, -1, 0, UI_ITEM_NONE, nullptr, ICON_NONE);
-
-      if (is_set) {
-        /* unset operator */
-        uiBlock *block = uiLayoutGetBlock(row);
-        UI_block_emboss_set(block, UI_EMBOSS_NONE);
-        but = uiDefIconButO(block,
-                            UI_BTYPE_BUT,
-                            "UI_OT_unset_property_button",
-                            WM_OP_EXEC_DEFAULT,
-                            ICON_X,
-                            0,
-                            0,
-                            UI_UNIT_X,
-                            UI_UNIT_Y,
-                            nullptr);
-        but->rnapoin = *ptr;
-        but->rnaprop = prop;
-        UI_block_emboss_set(block, UI_EMBOSS);
-      }
-    }
-    RNA_STRUCT_END;
-  }
+  op->layout = layout;
+  op->type->ui(C, op);
+  op->layout = nullptr;
 }
 
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
@@ -2434,12 +2408,17 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       continue;
     }
 
-    PointerRNA prop_ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+    PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
     PointerRNA io_handler_ptr = RNA_pointer_create(nullptr, &RNA_IOHandlerData, data);
 
+    /* Create the operator if necessary. */
+    if (data->runtime.op == nullptr) {
+      data->runtime.op = minimal_operator_create(ot, &properties);
+    }
+
     if (uiLayout *panel_layout = uiLayoutPanel(C, layout, fh->label, &io_handler_ptr, "is_open")) {
-      draw_export_controls(C, panel_layout, &prop_ptr, fh, index);
-      draw_export_properties(C, panel_layout, &prop_ptr, fh);
+      draw_export_controls(panel_layout, &properties, index);
+      draw_export_properties(C, panel_layout, data);
     }
   }
 }

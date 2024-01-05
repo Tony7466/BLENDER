@@ -524,12 +524,12 @@ static int io_handler_export(bContext *C, IOHandlerData *data, Collection *colle
   }
 
   /* Invoke operator with the properties stored on the Collection. */
-  PointerRNA prop_ptr = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
-  RNA_string_set(&prop_ptr, "collection", collection->id.name + 2);
+  PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+  RNA_string_set(&properties, "collection", collection->id.name + 2);
 
   /* TODO: Cascade settings down from parent collections(??) */
 
-  return WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &prop_ptr, nullptr);
+  return WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &properties, nullptr);
 }
 
 static int collection_io_handler_export_exec(bContext *C, wmOperator *op)
