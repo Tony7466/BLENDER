@@ -412,6 +412,69 @@ static Span<int3> base_face_edge_indices()
   return face_edges;
 }
 
+static Span<float2> base_face_uv_positions()
+{
+  static const auto base_uv = []() -> std::array<float2, base_faces_num * face_size> {
+    std::array<float2, base_faces_num * face_size> base_uv;
+
+    static constexpr int bottom_line = 0;
+    static constexpr int bottom_latitude_line = 1;
+    static constexpr int top_latitude_line = 2;
+    static constexpr int top_line = 3;
+
+    static const float face_hight = math::sin(M_PI / 3.0f);
+
+    for (const int i : IndexRange(latitude_verts_num)) {
+      const float half_next_i = float(i) + 0.5f;
+      const float next_i = float(i) + 1.0f;
+      const int face_i = math::mod(i + 3, latitude_verts_num);
+      const int face_index = (latitude_verts_num * 0 + face_i) * face_size;
+      base_uv[face_index + Corner::A] = float2(next_i, top_latitude_line);
+      base_uv[face_index + Corner::B] = float2(half_next_i, top_line);
+      base_uv[face_index + Corner::C] = float2(i, top_latitude_line);
+    }
+
+    for (const int i : IndexRange(latitude_verts_num)) {
+      const float index = i + 0.5f;
+      const float half_next_i = index + 0.5f;
+      const float next_i = index + 1.0f;
+      const int face_i = math::mod(i + 4, latitude_verts_num);
+      const int face_index = (latitude_verts_num * 1 + face_i) * face_size;
+      base_uv[face_index + Corner::A] = float2(half_next_i, bottom_line);
+      base_uv[face_index + Corner::B] = float2(next_i, bottom_latitude_line);
+      base_uv[face_index + Corner::C] = float2(index, bottom_latitude_line);
+    }
+
+    for (const int i : IndexRange(latitude_verts_num)) {
+      const float half_next_i = float(i) + 0.5f;
+      const float next_i = float(i) + 1.0f;
+      const int face_i = math::mod(i + 3, latitude_verts_num);
+      const int face_index = (latitude_verts_num * 2 + face_i) * face_size;
+      base_uv[face_index + Corner::A] = float2(half_next_i, bottom_latitude_line);
+      base_uv[face_index + Corner::B] = float2(next_i, top_latitude_line);
+      base_uv[face_index + Corner::C] = float2(i, top_latitude_line);
+    }
+
+    for (const int i : IndexRange(latitude_verts_num)) {
+      const float index = i + 0.5f;
+      const float half_next_i = index + 0.5f;
+      const float next_i = index + 1.0f;
+      const int face_i = math::mod(i + 4, latitude_verts_num);
+      const int face_index = (latitude_verts_num * 3 + face_i) * face_size;
+      base_uv[face_index + Corner::A] = float2(next_i, bottom_latitude_line);
+      base_uv[face_index + Corner::B] = float2(half_next_i, top_latitude_line);
+      base_uv[face_index + Corner::C] = float2(index, bottom_latitude_line);
+    }
+
+    std::transform(base_uv.begin(), base_uv.end(), base_uv.begin(), [](const float2 pos) {
+      constexpr float scale_factor = 1.0f / 11.0f * 2.0f;
+      return pos * scale_factor * float2(1.0f, face_hight);
+    });
+    return base_uv;
+  }();
+  return base_uv;
+}
+
 static void interpolate_edge_points(const int edge_verts_num,
                                     const Span<float3> base_verts,
                                     MutableSpan<float3> edge_verts)
@@ -831,7 +894,21 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
   }
 }
 
-static Mesh *ico_sphere(const int subdivisions, const float radius)
+static void uv_vert_positions(const int edge_edges_num,
+                              const int face_faces_num,
+                              MutableSpan<float2> uv)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+  const Span<float2> base_uv = base_face_uv_positions();
+  if (uv.size() == base_uv.size()) {
+    uv.copy_from(base_uv);
+    return;
+  }
+}
+
+static Mesh *ico_sphere(const int subdivisions,
+                        const float radius,
+                        const AttributeIDRef &uv_map_id)
 {
   std::cout << std::endl;
   BLI_assert(subdivisions > 0);
@@ -854,6 +931,7 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
 
   Mesh *mesh = BKE_mesh_new_nomain(verts_num, edges_num, faces_num, corners_num);
 
+  MutableAttributeAccessor attributes = mesh->attributes_for_write();
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<int2> edges = mesh->edges_for_write();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
@@ -888,6 +966,14 @@ static Mesh *ico_sphere(const int subdivisions, const float radius)
     });
   }
 
+  if (uv_map_id) {
+    SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
+        uv_map_id, AttrDomain::Corner);
+    uv_map.span.fill(float2(0.0f));
+    uv_vert_positions(edge_edges_num, face_faces_num, uv_map.span);
+    uv_map.finish();
+  }
+
   BLI_assert(std::all_of(edges.cast<int>().begin(),
                          edges.cast<int>().end(),
                          [=](const int i) -> bool { return IndexRange(verts_num).contains(i); }));
@@ -912,13 +998,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const bool new_type = params.extract_input<bool>("New");
 
+  AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
+
   if (new_type) {
-    Mesh *mesh = ico_sphere(subdivisions, radius);
+    Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get());
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
     return;
   }
-
-  AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
