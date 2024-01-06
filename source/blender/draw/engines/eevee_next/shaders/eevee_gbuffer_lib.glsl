@@ -297,27 +297,39 @@ void gbuffer_append_closure(inout GBufferWriter gbuf, GBufferMode closure_type)
 void gbuffer_register_closure(inout GBufferReader gbuf, ClosureUndetermined cl, int slot)
 {
   switch (slot) {
+#if GBUFFER_LAYER_MAX > 0
     case 0:
       gbuf.closures[0] = cl;
       break;
+#endif
+#if GBUFFER_LAYER_MAX > 1
     case 1:
       gbuf.closures[1] = cl;
       break;
+#endif
+#if GBUFFER_LAYER_MAX > 2
     case 2:
       gbuf.closures[2] = cl;
       break;
+#endif
   }
 }
 
 ClosureUndetermined gbuffer_closure_get(GBufferReader gbuf, int i)
 {
   switch (i) {
+#if GBUFFER_LAYER_MAX > 0
     case 0:
       return gbuf.closures[0];
+#endif
+#if GBUFFER_LAYER_MAX > 1
     case 1:
       return gbuf.closures[1];
+#endif
+#if GBUFFER_LAYER_MAX > 2
     case 2:
       return gbuf.closures[2];
+#endif
     default:
       return closure_new(CLOSURE_NONE_ID);
   }
