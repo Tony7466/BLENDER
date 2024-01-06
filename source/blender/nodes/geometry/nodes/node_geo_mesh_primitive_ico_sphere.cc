@@ -48,6 +48,9 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Bool>("New");
 
+  b.add_input<decl::Bool>("New with old alg");
+  b.add_input<decl::Bool>("Normalize old");
+
   b.add_output<decl::Geometry>("Mesh");
   b.add_output<decl::Vector>("UV Map").field_on_all();
 }
@@ -291,7 +294,7 @@ class SphericalIterator {
 
 static void base_ico_sphere_positions(MutableSpan<float3> positions)
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   positions.first() = float3(0.0f, 0.0f, 1.0f);
 
   const float latitude = math::atan(0.5f);
@@ -319,7 +322,7 @@ static void base_ico_sphere_positions(MutableSpan<float3> positions)
 
 static Span<int2> base_edge_verts_indices()
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   static const auto edge_points = []() -> std::array<int2, base_edges_num> {
     std::array<int2, base_edges_num> edge_points;
 
@@ -352,7 +355,7 @@ static Span<int2> base_edge_verts_indices()
 
 static Span<int3> base_face_verts_indices()
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_points = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_points;
 
@@ -381,7 +384,7 @@ static Span<int3> base_face_verts_indices()
 
 static Span<int3> base_face_edge_indices()
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_edges = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_edges;
 
@@ -479,7 +482,7 @@ static void interpolate_edge_verts(const int edge_verts_num,
                                    const Span<float3> base_verts,
                                    MutableSpan<float3> edge_verts)
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
 
   for (const int edge_i : IndexRange(base_edges_num)) {
@@ -501,7 +504,7 @@ static void interpolate_face_verts(const int line_subdiv,
                                    const Span<float3> base_verts,
                                    MutableSpan<float3> faces_verts)
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int3> base_face_verts = base_face_verts_indices();
 
   const constexpr int left_righr_points = 2;
@@ -534,6 +537,69 @@ static void interpolate_face_verts(const int line_subdiv,
   }
 }
 
+static void interpolate_edge_verts_linear(const int edge_verts_num,
+                                          const Span<float3> base_verts,
+                                          MutableSpan<float3> edge_verts)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+  const Span<int2> base_edge_verts = base_edge_verts_indices();
+
+  for (const int edge_i : IndexRange(base_edges_num)) {
+    MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
+    const int2 edge_vert_indices = base_edge_verts[edge_i];
+    const float3 &vert_a = base_verts[edge_vert_indices[EdgeVert::A]];
+    const float3 &vert_b = base_verts[edge_vert_indices[EdgeVert::B]];
+
+    const float3 step = (vert_b - vert_a) / (edge_verts_num + 1);
+    float3 offset = vert_a + step;
+    for (float3 &vert : verts) {
+      vert = offset;
+      offset += step;
+    }
+  }
+}
+
+static void interpolate_face_verts_linear(const int line_subdiv,
+                                          const Span<float3> base_verts,
+                                          MutableSpan<float3> faces_verts)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+  const Span<int3> base_face_verts = base_face_verts_indices();
+
+  const constexpr int left_righr_points = 2;
+  const TriangleRange inner_face_verts =
+      TriangleRange(line_subdiv - left_righr_points).drop_bottom(1);
+  const int steps = inner_face_verts.hight() + left_righr_points;
+
+  for (const int face_i : IndexRange(base_faces_num)) {
+    const int3 face_vert_indices = base_face_verts[face_i];
+
+    const float3 &vert_a = base_verts[face_vert_indices[FaceVert::A]];
+    const float3 &vert_b = base_verts[face_vert_indices[FaceVert::B]];
+    const float3 &vert_c = base_verts[face_vert_indices[FaceVert::C]];
+
+    const float3 step_ac = (vert_c - vert_a) / steps;
+    const float3 step_bc = (vert_c - vert_b) / steps;
+
+    float3 offset_ac = vert_a + step_ac;
+    float3 offset_bc = vert_b + step_bc;
+
+    MutableSpan<float3> face_verts = faces_verts.slice(face_i * inner_face_verts.total(),
+                                                       inner_face_verts.total());
+    for (const int y_index : IndexRange(inner_face_verts.hight())) {
+      MutableSpan<float3> level_verts = face_verts.slice(inner_face_verts.slice_at(y_index));
+      const float3 step = (offset_bc - offset_ac) / (level_verts.size() + 1);
+      float3 offset = offset_ac + step;
+      offset_ac += step_ac;
+      offset_bc += step_bc;
+      for (float3 &vert : level_verts) {
+        vert = offset;
+        offset += step;
+      }
+    }
+  }
+}
+
 template<typename Func>
 static void edges_line_fill_verts(const int2 ends, MutableSpan<int2> edges, Func &&func)
 {
@@ -554,7 +620,7 @@ static void vert_edge_topology(const int edge_edges_num,
                                const int edge_verts_num,
                                MutableSpan<int2> edge_edges)
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edges = base_edge_verts_indices();
   if (edge_edges.size() == base_edges.size()) {
     edge_edges.copy_from(base_edges);
@@ -577,7 +643,7 @@ static void face_edge_topology(const int edge_edges_num,
                                const IndexRange faces_verts,
                                MutableSpan<int2> face_edges)
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -592,7 +658,7 @@ static void face_edge_topology(const int edge_edges_num,
   const IndexRange edges_verts_range(base_verts_num, base_edges_num * edge_verts_num);
 
   {
-    // SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
+    SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -629,7 +695,7 @@ static void face_edge_topology(const int edge_edges_num,
   }
 
   {
-    // SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
+    SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -666,7 +732,7 @@ static void face_edge_topology(const int edge_edges_num,
   }
 
   {
-    // SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
+    SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -711,7 +777,7 @@ static void corner_edges_topology(const int edge_edges_num,
                                   const int face_faces_num,
                                   MutableSpan<int> corner_edges)
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -877,7 +943,7 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
     return;
   }
 
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
   for (const int i : IndexRange(faces_num)) {
     const int face_i = i * face_size;
     const int2 edge_a = edges[corner_edges[face_i + FaceVert::A]];
@@ -903,7 +969,7 @@ static void uv_vert_positions(const int edge_edges_num,
                               const int face_faces_num,
                               MutableSpan<float2> uv)
 {
-  // SCOPED_TIMER_AVERAGED(__func__);
+  SCOPED_TIMER_AVERAGED(__func__);
 
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -1073,7 +1139,9 @@ static void uv_vert_positions(const int edge_edges_num,
 
 static Mesh *ico_sphere(const int subdivisions,
                         const float radius,
-                        const AttributeIDRef &uv_map_id)
+                        const AttributeIDRef &uv_map_id,
+                        const bool new_old,
+                        const bool new_old_normalize)
 {
   std::cout << std::endl;
   BLI_assert(subdivisions > 0);
@@ -1110,9 +1178,18 @@ static Mesh *ico_sphere(const int subdivisions,
 
   base_ico_sphere_positions(positions.take_front(base_verts_num));
 
-  interpolate_edge_verts(
-      edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
-  interpolate_face_verts(line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+  if (new_old) {
+    interpolate_edge_verts_linear(
+        edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
+    interpolate_face_verts_linear(
+        line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+  }
+  else {
+    interpolate_edge_verts(
+        edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
+    interpolate_face_verts(
+        line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+  }
 
   const IndexRange edge_edges(base_edges_num * edge_edges_num);
   const IndexRange face_edges(edge_edges.one_after_last(), face_edges_num * base_faces_num * 3);
@@ -1124,8 +1201,15 @@ static Mesh *ico_sphere(const int subdivisions,
   corner_edges_topology(edge_edges_num, face_faces_num, corner_edges);
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
 
+  if (new_old && new_old_normalize) {
+    SCOPED_TIMER_AVERAGED("new_old_normalize");
+    std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
+      return math::normalize(pos);
+    });
+  }
+
   {
-    // SCOPED_TIMER_AVERAGED("Scaling");
+    SCOPED_TIMER_AVERAGED("Scaling");
     std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
       return pos * radius;
     });
@@ -1163,16 +1247,18 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const bool new_type = params.extract_input<bool>("New");
 
+  const bool new_old = params.extract_input<bool>("New with old alg");
+
+  const bool new_old_normalize = params.extract_input<bool>("Normalize old");
+
   AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   if (new_type) {
-    SCOPED_TIMER_AVERAGED("New");
-    Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get());
+    Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get(), new_old, new_old_normalize);
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
     return;
   }
 
-  SCOPED_TIMER_AVERAGED("Old");
   Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }
