@@ -1411,7 +1411,8 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
     while (linep) {
       while (c < linep->len) {
         if (linep->format && linep->format[fc] != FMT_TYPE_STRING &&
-            linep->format[fc] != FMT_TYPE_COMMENT) {
+            linep->format[fc] != FMT_TYPE_COMMENT)
+        {
           b = text_check_bracket(linep->line[c]);
           if (b == find) {
             if (stack == 0) {
@@ -1445,7 +1446,8 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
     while (linep) {
       while (fc >= 0) {
         if (linep->format && linep->format[fc] != FMT_TYPE_STRING &&
-            linep->format[fc] != FMT_TYPE_COMMENT) {
+            linep->format[fc] != FMT_TYPE_COMMENT)
+        {
           b = text_check_bracket(linep->line[c]);
           if (b == find) {
             if (stack == 0) {
