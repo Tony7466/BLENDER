@@ -58,6 +58,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .field_on_all()
       .make_available(enable_poisson);
   b.add_input<decl::Int>("Seed");
+  b.add_input<decl::Bool>("Keep attributes").default_value(true).field_on_all();
 
   b.add_output<decl::Geometry>("Points").propagate_all();
   b.add_output<decl::Vector>("Normal").field_on_all();
@@ -292,14 +293,28 @@ BLI_NOINLINE static void propagate_existing_attributes(
     const Map<AttributeIDRef, AttributeKind> &attributes,
     PointCloud &points,
     const Span<float3> bary_coords,
-    const Span<int> tri_indices)
+    const Span<int> tri_indices,
+    bool anonymous_only)
 {
   const AttributeAccessor mesh_attributes = mesh.attributes();
   MutableAttributeAccessor point_attributes = points.attributes_for_write();
 
+  blender::Vector<StringRef> uv_layers;
+  const int num_uv_layers = CustomData_number_of_layers(&mesh.corner_data, CD_PROP_FLOAT2);
+  for (int layer_index = 0; layer_index < num_uv_layers; layer_index++)
+    uv_layers.append(CustomData_get_layer_name(&mesh.corner_data, CD_PROP_FLOAT2, layer_index));
+
   for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType output_data_type = entry.value.data_type;
+
+    if (anonymous_only) {
+      bool preserve = attribute_id.is_anonymous();
+      for (auto s : uv_layers)
+        preserve = preserve || (s == attribute_id);
+      if (!preserve)
+        continue;
+    }
 
     GAttributeReader src = mesh_attributes.lookup(attribute_id);
     if (!src) {
@@ -568,7 +583,13 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   /* Position is set separately. */
   attributes.remove("position");
 
-  propagate_existing_attributes(mesh, attributes, *pointcloud, bary_coords, tri_indices);
+  // if(params.get_input<bool>("Keep attributes"))
+  propagate_existing_attributes(mesh,
+                                attributes,
+                                *pointcloud,
+                                bary_coords,
+                                tri_indices,
+                                !params.get_input<bool>("Keep attributes"));
 
   const bool use_legacy_normal = params.node().custom2 != 0;
   compute_attribute_outputs(

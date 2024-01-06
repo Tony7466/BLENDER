@@ -1805,6 +1805,11 @@ typedef struct NodeGeometryStoreNamedAttribute {
   int8_t domain;
 } NodeGeometryStoreNamedAttribute;
 
+typedef struct NodeGeometryRemoveNamedAttribute {
+  /** #GeometryNodeRemoveNamedAttributeMode. */
+  uint8_t mode;
+} NodeGeometryRemoveNamedAttribute;
+
 typedef struct NodeGeometryInputNamedAttribute {
   /** #eCustomDataType. */
   int8_t data_type;
@@ -2876,3 +2881,9 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
+
+typedef enum GeometryNodeRemoveNamedAttributeMode {
+  GEO_NODE_REMOVE_NAMED_ATTRIBUTE_EXACT = 0,
+  GEO_NODE_REMOVE_NAMED_ATTRIBUTE_REGEX = 1,
+  GEO_NODE_REMOVE_NAMED_ATTRIBUTE_INV_REGEX = 2,
+} GeometryNodeRemoveNamedAttributeMode;
