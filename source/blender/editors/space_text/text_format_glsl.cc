@@ -92,6 +92,7 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "sampler2DRect"
     "sampler2DShadow"
     "sampler3D"
+    "samplerBuffer"
     "samplerCube" 
     "samplerCubeArray"
     "samplerCubeArrayShadow"
