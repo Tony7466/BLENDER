@@ -425,9 +425,7 @@ IndexMask retrieve_editable_strokes_by_material(Object &object,
         if (material_index == mat_i) {
           return editable_material_indices.contains(material_index);
         }
-        else {
-          return false;
-        }
+        return false;
       });
 }
 
