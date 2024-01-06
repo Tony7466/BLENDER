@@ -2424,6 +2424,7 @@ typedef struct NodesModifierData {
   int data_block_map_items_num;
   int active_data_block_map_item;
   NodesModifierDataBlockMapItem *data_block_map_items;
+  void *_pad3;
 
   char _pad2[4];
   int panels_num;
