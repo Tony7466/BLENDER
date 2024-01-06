@@ -1963,14 +1963,10 @@ static int grease_pencil_separate_exec(bContext *C, wmOperator *op)
       /* Cancel if nothing selected. */
       const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
                                                                             grease_pencil_src);
-      threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        IndexMaskMemory memory;
-        const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-        if (!selected_curves.is_empty()) {
-          has_selection = true;
-        }
-      });
+      has_selection = std::any_of(
+          drawings.begin(), drawings.end(), [&](const MutableDrawingInfo &info) {
+            return ed::curves::has_anything_selected(info.drawing.strokes());
+          });
       if (!has_selection) {
         BKE_report(op->reports, RPT_ERROR, "Nothing selected");
         WM_cursor_wait(false);
