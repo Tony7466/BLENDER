@@ -31,7 +31,7 @@ void main()
 
   float eval_cost = 0.0;
   for (int i = 0; i < GBUFFER_LAYER_MAX && i < gbuf.closure_count; i++) {
-    switch (gbuf.closures[i].type) {
+    switch (gbuffer_closure_get(gbuf, i).type) {
       case CLOSURE_BSDF_DIFFUSE_ID:
       case CLOSURE_BSDF_TRANSLUCENT_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:

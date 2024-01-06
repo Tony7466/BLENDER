@@ -93,12 +93,12 @@ void main(void)
   vec3 vP = drw_point_screen_to_view(vec3(center_uv, depth));
 
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
-  if (gbuf.closures[0].type != CLOSURE_BSSRDF_BURLEY_ID) {
+  if (gbuffer_closure_get(gbuf, 0).type != CLOSURE_BSSRDF_BURLEY_ID) {
     return;
   }
 
   /* TODO SSS closure. */
-  ClosureDiffuse closure = to_closure_diffuse(gbuf.closures[0]);
+  ClosureDiffuse closure = to_closure_diffuse(gbuffer_closure_get(gbuf, 0));
 
   float max_radius = reduce_max(closure.sss_radius);
 

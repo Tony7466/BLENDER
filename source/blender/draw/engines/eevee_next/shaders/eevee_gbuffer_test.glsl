@@ -47,7 +47,7 @@ void main()
     EXPECT_EQ(g_data_packed.layer_data, 1);
     EXPECT_EQ(data_out.closure_count, 1);
 
-    ClosureUndetermined out_diffuse = data_out.closures[0];
+    ClosureUndetermined out_diffuse = gbuffer_closure_get(data_out, 0);
 
     EXPECT_EQ(out_diffuse.type, CLOSURE_BSDF_DIFFUSE_ID);
     EXPECT_EQ(data_in.diffuse.type, CLOSURE_BSDF_DIFFUSE_ID);
@@ -70,7 +70,7 @@ void main()
     EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
 
-    ClosureUndetermined out_sss_burley = data_out.closures[0];
+    ClosureUndetermined out_sss_burley = gbuffer_closure_get(data_out, 0);
 
     EXPECT_EQ(out_sss_burley.type, CLOSURE_BSSRDF_BURLEY_ID);
     EXPECT_EQ(data_in.diffuse.type, CLOSURE_BSSRDF_BURLEY_ID);
@@ -93,7 +93,7 @@ void main()
     EXPECT_EQ(g_data_packed.layer_data, 1);
     EXPECT_EQ(data_out.closure_count, 1);
 
-    ClosureUndetermined out_translucent = data_out.closures[0];
+    ClosureUndetermined out_translucent = gbuffer_closure_get(data_out, 0);
 
     EXPECT_EQ(out_translucent.type, CLOSURE_BSDF_TRANSLUCENT_ID);
     EXPECT_EQ(data_in.translucent.type, CLOSURE_BSDF_TRANSLUCENT_ID);
@@ -116,7 +116,7 @@ void main()
     EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
 
-    ClosureUndetermined out_reflection = data_out.closures[0];
+    ClosureUndetermined out_reflection = gbuffer_closure_get(data_out, 0);
 
     EXPECT_EQ(out_reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
     EXPECT_EQ(data_in.reflection.type, CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
@@ -141,7 +141,7 @@ void main()
     EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(data_out.closure_count, 1);
 
-    ClosureUndetermined out_refraction = data_out.closures[0];
+    ClosureUndetermined out_refraction = gbuffer_closure_get(data_out, 0);
 
     EXPECT_EQ(out_refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
@@ -175,8 +175,8 @@ void main()
 
     EXPECT_EQ(data_out.closure_count, 2);
 
-    ClosureUndetermined out_reflection = data_out.closures[1];
-    ClosureUndetermined out_refraction = data_out.closures[0];
+    ClosureUndetermined out_reflection = gbuffer_closure_get(data_out, 1);
+    ClosureUndetermined out_refraction = gbuffer_closure_get(data_out, 0);
 
     EXPECT_EQ(out_refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
@@ -216,8 +216,8 @@ void main()
 
     EXPECT_EQ(data_out.closure_count, 2);
 
-    ClosureUndetermined out_reflection = data_out.closures[1];
-    ClosureUndetermined out_refraction = data_out.closures[0];
+    ClosureUndetermined out_reflection = gbuffer_closure_get(data_out, 1);
+    ClosureUndetermined out_refraction = gbuffer_closure_get(data_out, 0);
 
     EXPECT_EQ(out_refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
     EXPECT_EQ(data_in.refraction.type, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);

@@ -51,15 +51,16 @@ void main()
   vec3 albedo_back = vec3(0.0);
 
   for (int i = 0; i < GBUFFER_LAYER_MAX && i < gbuf.closure_count; i++) {
-    switch (gbuf.closures[i].type) {
+    ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
+    switch (cl) {
       case CLOSURE_BSSRDF_BURLEY_ID:
       case CLOSURE_BSDF_DIFFUSE_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-        albedo_front += gbuf.closures[i].color;
+        albedo_front += cl.color;
         break;
       case CLOSURE_BSDF_TRANSLUCENT_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-        albedo_back += gbuf.closures[i].color;
+        albedo_back += cl.color;
         break;
       case CLOSURE_NONE_ID:
         /* TODO(fclem): Assert. */

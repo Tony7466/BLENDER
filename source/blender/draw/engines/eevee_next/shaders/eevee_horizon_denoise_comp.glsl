@@ -93,7 +93,7 @@ void main()
     return;
   }
 
-  ClosureUndetermined closure_center = gbuf.closures[closure_index];
+  ClosureUndetermined closure_center = gbuffer_closure_get(gbuf, closure_index);
 
   vec3 center_N = closure_center.N;
   float roughness = closure_apparent_roughness_get(closure_center);
