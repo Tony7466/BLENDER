@@ -337,7 +337,38 @@ ClosureUndetermined gbuffer_closure_get(GBufferReader gbuf, int i)
 
 void gbuffer_append_data(inout GBufferWriter gbuf, vec4 data)
 {
-  gbuf.data[gbuf.layer_data] = data;
+  switch (gbuf.layer_data) {
+#if GBUFFER_DATA_MAX > 0
+    case 0:
+      gbuf.data[0] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 1
+    case 1:
+      gbuf.data[1] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 2
+    case 2:
+      gbuf.data[2] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 3
+    case 3:
+      gbuf.data[3] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 4
+    case 4:
+      gbuf.data[4] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 5
+    case 5:
+      gbuf.data[5] = data;
+      break;
+#endif
+  }
   gbuf.layer_data++;
 }
 vec4 gbuffer_pop_first_data(inout GBufferReader gbuf, samplerGBufferClosure closure_tx)
@@ -349,7 +380,24 @@ vec4 gbuffer_pop_first_data(inout GBufferReader gbuf, samplerGBufferClosure clos
 
 void gbuffer_append_normal(inout GBufferWriter gbuf, vec3 normal)
 {
-  gbuf.N[gbuf.layer_normal] = gbuffer_normal_pack(normal);
+  vec2 packed_N = gbuffer_normal_pack(normal);
+  switch (gbuf.layer_normal) {
+#if GBUFFER_NORMAL_MAX > 0
+    case 0:
+      gbuf.N[0] = packed_N;
+      break;
+#endif
+#if GBUFFER_NORMAL_MAX > 1
+    case 1:
+      gbuf.N[1] = packed_N;
+      break;
+#endif
+#if GBUFFER_NORMAL_MAX > 2
+    case 2:
+      gbuf.N[2] = packed_N;
+      break;
+#endif
+  }
   gbuf.layer_normal++;
 }
 vec3 gbuffer_pop_first_normal(inout GBufferReader gbuf, samplerGBufferNormal normal_tx)

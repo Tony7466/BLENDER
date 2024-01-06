@@ -52,7 +52,7 @@ void main()
 
   for (int i = 0; i < GBUFFER_LAYER_MAX && i < gbuf.closure_count; i++) {
     ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
-    switch (cl) {
+    switch (cl.type) {
       case CLOSURE_BSSRDF_BURLEY_ID:
       case CLOSURE_BSDF_DIFFUSE_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
