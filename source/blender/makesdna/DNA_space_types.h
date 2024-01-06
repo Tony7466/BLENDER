@@ -71,10 +71,17 @@ namespace blender::ed::seq {
 struct SpaceSeq_Runtime;
 }  // namespace blender::ed::seq
 using SpaceSeq_Runtime = blender::ed::seq::SpaceSeq_Runtime;
+
+namespace blender::ed::text {
+struct SpaceText_Runtime;
+}  // namespace blender::ed::text
+using SpaceText_Runtime = blender::ed::text::SpaceText_Runtime;
+
 #else
 typedef struct SpaceNode_Runtime SpaceNode_Runtime;
 typedef struct SpaceOutliner_Runtime SpaceOutliner_Runtime;
 typedef struct SpaceSeq_Runtime SpaceSeq_Runtime;
+typedef struct SpaceText_Runtime SpaceText_Runtime;
 #endif
 
 /** Defined in `file_intern.hh`. */
@@ -1419,7 +1426,7 @@ typedef struct SpaceText {
   char _pad3[2];
 
   /** Keep last. */
-  struct SpaceText_Runtime *runtime;
+  SpaceText_Runtime *runtime;
 } SpaceText;
 
 /** SpaceText flags (moved from DNA_text_types.h). */

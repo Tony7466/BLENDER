@@ -937,7 +937,8 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
     if (pix_bardiff > 0) {
       /* the start of the highlight is in the current viewport */
       if (st->runtime->viewlines && lhlstart >= st->top &&
-          lhlstart <= st->top + st->runtime->viewlines) {
+          lhlstart <= st->top + st->runtime->viewlines)
+      {
         /* Speed the progression of the start of the highlight through the scroll-bar. */
         hlstart = (((pix_available - pix_bardiff) * lhlstart) / ltexth) +
                   (pix_bardiff * (lhlstart - st->top) / st->runtime->viewlines);
@@ -959,7 +960,8 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
 
       /* the end of the highlight is in the current viewport */
       if (st->runtime->viewlines && lhlend >= st->top &&
-          lhlend <= st->top + st->runtime->viewlines) {
+          lhlend <= st->top + st->runtime->viewlines)
+      {
         /* Speed the progression of the end of the highlight through the scroll-bar. */
         hlend = (((pix_available - pix_bardiff) * lhlend) / ltexth) +
                 (pix_bardiff * (lhlend - st->top) / st->runtime->viewlines);
@@ -1237,7 +1239,7 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
     }
   }
 
-  auto *text_search = ED_text_get_text_search(st, st->text);
+  auto *text_search = blender::ed::text::text_search_get(st, st->text);
 
   if (highlight_text_search && text_search) {
     const auto &string_matches = text_search->string_matches();

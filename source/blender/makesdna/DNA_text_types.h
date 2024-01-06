@@ -79,14 +79,6 @@ struct StringMatch {
   /** Start and end position in #tex_line where the `SpaceText.findstr` string was found. */
   int start, end;
   int flags;
-
-#ifdef __cplusplus
-  bool operator==(const StringMatch &other) const
-  {
-    return text_line == other.text_line && line_index == other.line_index &&
-           start == other.start && end == other.end;
-  }
-#endif
 };
 
 /** #StringMatch.flags */

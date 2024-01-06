@@ -1996,20 +1996,23 @@ static int rna_SpaceText_text_string_matches_length(PointerRNA *ptr)
 
 static int rna_SpaceText_active_text_search_get(PointerRNA *ptr)
 {
+  using namespace blender;
   SpaceText *st = static_cast<SpaceText *>(ptr->data);
-  return ED_text_get_active_text_search(st);
+  return ed::text::active_text_search_get(st);
 }
 
 static int rna_SpaceText_active_string_match_get(PointerRNA *ptr)
 {
+  using namespace blender;
   SpaceText *st = static_cast<SpaceText *>(ptr->data);
-  return ED_text_get_active_string_match(st);
+  return ed::text::active_string_match_get(st);
 }
 
 static void rna_SpaceText_update_search(bContext *C, PointerRNA *ptr)
 {
+  using namespace blender;
   SpaceText *st = static_cast<SpaceText *>(ptr->data);
-  ED_text_update_search(C, st);
+  ed::text::update_search(C, st);
 }
 
 /* Space Properties */

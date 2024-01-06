@@ -3764,9 +3764,8 @@ enum {
   TEXT_REPLACE = 1,
 };
 
-static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
+static int text_find_and_replace(bContext *C, wmOperator * /*op*/, short /*mode*/)
 {
-  Main *bmain = CTX_data_main(C);
   SpaceText *st = CTX_wm_space_text(C);
   Text *text = st->text;
 
@@ -3774,7 +3773,7 @@ static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
     return OPERATOR_CANCELLED;
   }
 
-  int idx = ED_text_get_active_string_match(st);
+  int idx = blender::ed::text::active_string_match_get(st);
 
   if (idx == -1) {
     wmOperatorType *ot = WM_operatortype_find("TEXT_OT_find", false);
@@ -3815,7 +3814,7 @@ static int text_find_exec(bContext *C, wmOperator *op)
 
   SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
-  auto *text_search = ED_text_get_text_search(st, text);
+  auto *text_search = blender::ed::text::text_search_get(st, text);
 
   if (!text_search || text_search->string_matches().size() == 0) {
     BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);

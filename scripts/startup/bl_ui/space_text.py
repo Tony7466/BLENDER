@@ -214,8 +214,8 @@ class TEX_UL_texts_search(bpy.types.UIList):
 class TEX_UL_string_matches(bpy.types.UIList):
     def draw_item(self, context, layout, _data, string_match, icon, _active_data, _active_propname, _index):
         row = layout.row()
-        row.prop(string_match, "select", text=str(string_match.line_index))
-        row.label(text="..." + string_match.text_line.body.encode("utf8")[string_match.start:].decode('utf8'))
+        row.prop(string_match, "select", text="L " + str(string_match.line_index + 1) + ": ..." +
+                 string_match.text_line.body.encode("utf8")[string_match.start:].decode('utf8'))
         row.emboss = 'NONE'
         op = row.operator("text.open_text_with_selection", icon='ANIM', text="")
         st = context.space_data

@@ -49,17 +49,19 @@ const char *ED_text_format_comment_line_prefix(Text *text);
 
 bool ED_text_is_syntax_highlight_supported(Text *text);
 
+namespace blender::ed::text {
+
 /* Get the index of the active Text data-block in the Space Text search list. */
-int ED_text_get_active_text_search(const SpaceText *st);
+int active_text_search_get(const SpaceText *st);
 
 /* Get the index of the string match selected by the cursor. */
-int ED_text_get_active_string_match(const SpaceText *st);
+int active_string_match_get(const SpaceText *st);
 
 /* Updates the text search in a Space Text. */
-void ED_text_update_search(const bContext *C, const SpaceText *st);
+void update_search(const bContext *C, const SpaceText *st);
 
 /* Get the `text` search result in a Space Text. */
-const TextSearch *ED_text_get_text_search(const SpaceText *st, const Text *text);
+const TextSearch *text_search_get(const SpaceText *st, const Text *text);
 
 struct SpaceText_Runtime {
 
@@ -97,3 +99,4 @@ struct SpaceText_Runtime {
   /** Search result in Text data-blocks. */
   blender::Vector<std::unique_ptr<TextSearch>> texts_search;
 };
+}  // namespace blender::ed::text
