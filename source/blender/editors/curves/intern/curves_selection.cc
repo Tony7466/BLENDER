@@ -173,7 +173,7 @@ static bool contains(const VArray<bool> &varray,
           for (const int64_t segment_i : IndexRange(sliced_mask.segments_num())) {
             const IndexMaskSegment segment = sliced_mask.segment(segment_i);
             for (const int i : segment) {
-              if (span[i]) {
+              if (span[i] == value) {
                 return true;
               }
             }
@@ -198,7 +198,7 @@ static bool contains(const VArray<bool> &varray,
           std::array<bool, MaxChunkSize> values;
           auto values_end = values.begin() + size;
           varray.materialize_compressed(sliced_mask, values);
-          if (std::find(values.begin(), values_end, true) != values_end) {
+          if (std::find(values.begin(), values_end, value) != values_end) {
             return true;
           }
         }
