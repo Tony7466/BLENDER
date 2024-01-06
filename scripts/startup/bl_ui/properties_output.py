@@ -52,7 +52,6 @@ class RENDER_PT_format(RenderOutputButtonsPanel, Panel):
         'BLENDER_WORKBENCH',
     }
 
-    _frame_rate_args_prev = None
     _preset_class = None
 
     def draw_header_preset(self, _context):
@@ -61,8 +60,6 @@ class RENDER_PT_format(RenderOutputButtonsPanel, Panel):
     @staticmethod
     def _draw_framerate_label(*args):
         # avoids re-creating text string each draw
-        if RENDER_PT_format._frame_rate_args_prev == args:
-            return RENDER_PT_format._frame_rate_ret
 
         fps, fps_base, preset_label = args
 
@@ -81,7 +78,6 @@ class RENDER_PT_format(RenderOutputButtonsPanel, Panel):
             fps_label_text = tip_("%.4g fps") % fps_rate
             show_framerate = (preset_label == "Custom")
 
-        RENDER_PT_format._frame_rate_args_prev = args
         RENDER_PT_format._frame_rate_ret = args = (fps_label_text, show_framerate)
         return args
 
