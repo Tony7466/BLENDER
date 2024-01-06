@@ -28,6 +28,15 @@ struct SequenceLookup;
 struct VFont;
 struct bSound;
 
+#ifdef __cplusplus
+namespace blender::ed::seq {
+struct MediaPresence;
+}  // namespace blender::ed::seq
+using MediaPresence = blender::ed::seq::MediaPresence;
+#else
+typedef struct MediaPresence MediaPresence;
+#endif
+
 /* -------------------------------------------------------------------- */
 /** \name Sequence & Editing Structs
  * \{ */
@@ -298,6 +307,7 @@ typedef struct SeqTimelineChannel {
 
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
+  MediaPresence *media_presence;
 } EditingRuntime;
 
 typedef struct Editing {
@@ -337,7 +347,6 @@ typedef struct Editing {
   int64_t disk_cache_timestamp;
 
   EditingRuntime runtime;
-  void *_pad1;
 } Editing;
 
 /** \} */

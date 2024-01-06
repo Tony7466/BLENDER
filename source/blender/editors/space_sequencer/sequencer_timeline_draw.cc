@@ -68,7 +68,6 @@
 
 #include "MEM_guardedalloc.h"
 
-/* Own include. */
 #include "sequencer_intern.hh"
 #include "sequencer_quads_batch.hh"
 
@@ -230,10 +229,10 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   return strip_ctx;
 }
 
-void color3ubv_from_seq(const Scene *curscene,
-                        const Sequence *seq,
-                        const bool show_strip_color_tag,
-                        uchar r_col[3])
+static void color3ubv_from_seq(const Scene *curscene,
+                               const Sequence *seq,
+                               const bool show_strip_color_tag,
+                               uchar r_col[3])
 {
   Editing *ed = SEQ_editing_get(curscene);
   ListBase *channels = SEQ_channels_displayed_get(ed);
@@ -1093,6 +1092,13 @@ static void draw_strip_background(TimelineDrawContext *timeline_ctx,
   color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
   col[3] = mute_overlap_alpha_factor_get(timeline_ctx->channels, seq);
 
+  bool missing = blender::ed::seq::media_presence_is_missing(
+      &timeline_ctx->ed->runtime.media_presence, seq);
+  if (missing) {
+    uchar blendcol[3] = {224, 0, 0};  //@TODO: put into theme like TH_SEQ_MISSING ?
+    UI_GetColorPtrBlendShade3ubv(col, blendcol, col, 0.6f, 0);
+  }
+
   /* Draw the main strip body. */
   float x1 = strip_ctx->is_single_image ? strip_ctx->left_handle : strip_ctx->content_start;
   float x2 = strip_ctx->is_single_image ? strip_ctx->right_handle : strip_ctx->content_end;
@@ -1434,6 +1440,9 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
 
   /* Draw parts of strips below thumbnails. */
   GPU_blend(GPU_BLEND_ALPHA);
+  /* Guard media presence queries done in the following loop against
+   * render job also querying them etc. */
+  blender::ed::seq::media_presence_lock();
   for (const StripDrawContext &strip_ctx : strips) {
     draw_strip_background(timeline_ctx, &strip_ctx);
     draw_strip_color_band(timeline_ctx, &strip_ctx);
@@ -1441,6 +1450,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     draw_seq_transition_strip(timeline_ctx, &strip_ctx);
     drawmeta_contents(timeline_ctx, &strip_ctx);
   }
+  blender::ed::seq::media_presence_unlock();
   timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_NONE);
 

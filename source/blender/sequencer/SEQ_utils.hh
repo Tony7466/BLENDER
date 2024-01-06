@@ -47,3 +47,36 @@ void SEQ_set_scale_to_fit(const Sequence *seq,
  * \param scene: Scene in which name must be unique
  */
 void SEQ_ensure_unique_name(Sequence *seq, Scene *scene);
+
+namespace blender::ed::seq {
+struct MediaPresence;
+
+/**
+ * Allow this thread access to later #media_presence_is_missing queries.
+ * Internally that function has no mutex locks, the calling thread is supposed to lock and unlock
+ * around (possibly many) calls.
+ */
+void media_presence_lock();
+/**
+ * Release this thread access to #media_presence_is_missing queries.
+ */
+void media_presence_unlock();
+
+/**
+ * Check whether a sequences strip has missing media.
+ * Results of the query for this strip will be cached into #MediaPresence cache. The cache
+ * will be created on demand. Caller has to call #media_presence_lock and #media_presence_unlock
+ * around (possibly many) presence check calls.
+ *
+ * \param presence Media presence cache.
+ * \param seq Sequencer strip.
+ * \return False if media file is missing.
+ */
+bool media_presence_is_missing(MediaPresence **presence, const Sequence *seq);
+
+/**
+ * Free media presence cache, if it was created.
+ */
+void media_presence_free(MediaPresence **presence);
+
+}  // namespace blender::ed::seq
