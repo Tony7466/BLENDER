@@ -114,7 +114,7 @@ static PointerRNA file_handler_import_operator_create_ptr(
     const char *message =
         "Expected operator properties filepath or files and directory not found. Refer to "
         "FileHandler documentation for details.";
-    CLOG_WARN(&LOG, "%s", TIP_(message));
+    CLOG_WARN(&LOG, "%s", message);
   }
   return props;
 }
