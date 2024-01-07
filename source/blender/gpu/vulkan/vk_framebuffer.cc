@@ -521,7 +521,9 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     }
   }
 
-  if (planes & GPU_DEPTH_BIT) {
+  if (ELEM(planes, GPU_DEPTH_BIT, GPU_STENCIL_BIT)) {
+    VkImageAspectFlagBits aspect_flag = planes == GPU_DEPTH_BIT ? VK_IMAGE_ASPECT_DEPTH_BIT :
+                                                                  VK_IMAGE_ASPECT_STENCIL_BIT;
     /* Retrieve source texture. */
     const GPUAttachment &src_attachment = attachments_[GPU_FB_DEPTH_STENCIL_ATTACHMENT].tex ?
                                               attachments_[GPU_FB_DEPTH_STENCIL_ATTACHMENT] :
@@ -540,7 +542,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
           src_texture.width_get() == dst_texture.width_get() &&
           src_texture.height_get() == dst_texture.height_get())
       {
-        src_texture.copy_to(dst_texture, VK_IMAGE_ASPECT_DEPTH_BIT);
+        src_texture.copy_to(dst_texture, aspect_flag);
       }
       else {
         depth_attachment_layout_ensure(
@@ -552,7 +554,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
                     src_texture,
                     dst_offset_x,
                     dst_offset_y,
-                    VK_IMAGE_ASPECT_DEPTH_BIT);
+                    aspect_flag);
         depth_attachment_layout_ensure(
             context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
         dst_framebuffer.depth_attachment_layout_ensure(
