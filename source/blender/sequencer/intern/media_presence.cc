@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,6 @@
 #include "BLI_fileops.h"
 #include "BLI_map.hh"
 #include "BLI_path_util.h"
-#include "BLI_threads.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 

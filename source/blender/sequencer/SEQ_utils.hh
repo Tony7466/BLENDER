@@ -59,13 +59,13 @@ namespace blender::ed::seq {
 struct MediaPresence;
 
 /**
- * Check whether a sequences strip has missing media.
+ * Check whether a sequence strip has missing media.
  * Results of the query for this strip will be cached into #MediaPresence cache. The cache
  * will be created on demand.
  *
  * \param presence Media presence cache.
  * \param seq Sequencer strip.
- * \return False if media file is missing.
+ * \return True if media file is missing.
  */
 bool media_presence_is_missing(MediaPresence **presence, const Sequence *seq);
 
