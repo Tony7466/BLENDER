@@ -155,16 +155,16 @@ void VKPipeline::finalize(VKContext &context,
           VK_TRUE;
   pipeline_create_info.pInputAssemblyState = &pipeline_input_assembly;
 
+  VKPipelineStateManager &state_manager = state_manager_get();
   /* Viewport state. */
   VkPipelineViewportStateCreateInfo viewport_state = {};
   viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-  Array<VkViewport, 16> viewports = framebuffer.vk_viewports_get();
-  viewport_state.pViewports = &viewports[0];
-  viewport_state.viewportCount = viewports.size();
-  Array<VkRect2D, 16> scissors = framebuffer.vk_render_areas_get();
-  viewport_state.pScissors = &scissors[0];
-  viewport_state.scissorCount = scissors.size();
   pipeline_create_info.pViewportState = &viewport_state;
+  pipeline_create_info.pDynamicState = &state_manager.dynamic_state;
+  viewport_state.pViewports = VK_NULL_HANDLE;
+  viewport_state.viewportCount = (framebuffer.is_multi_viewport()) ? GPU_MAX_VIEWPORTS : 1;
+  viewport_state.pScissors = VK_NULL_HANDLE;
+  viewport_state.scissorCount = 1;
 
   /* Multi-sample state. */
   VkPipelineMultisampleStateCreateInfo multisample_state = {};
@@ -174,7 +174,7 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pMultisampleState = &multisample_state;
 
   /* States from the state manager. */
-  VKPipelineStateManager &state_manager = state_manager_get();
+
   state_manager.finalize_color_blend_state(framebuffer);
   pipeline_create_info.pColorBlendState = &state_manager.pipeline_color_blend_state;
   pipeline_create_info.pRasterizationState = &state_manager.rasterization_state;
@@ -198,6 +198,9 @@ void VKPipeline::bind(VKContext &context, VkPipelineBindPoint vk_pipeline_bind_p
 {
   VKCommandBuffers &command_buffers = context.command_buffers_get();
   command_buffers.bind(*this, vk_pipeline_bind_point);
+  if (VK_PIPELINE_BIND_POINT_COMPUTE != vk_pipeline_bind_point) {
+    context.active_framebuffer_get()->dynamic_state_set();
+  }
 }
 
 void VKPipeline::update_push_constants(VKContext &context)

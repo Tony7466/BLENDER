@@ -165,6 +165,15 @@ class VKFrameBuffer : public FrameBuffer {
   void next_subpass(VKCommandBuffers &command_buffers);
   void clear_pass_pipeline_barrier_recoding();
   void submit(VKCommandBuffers &command_buffers);
+  bool is_multi_viewport() const
+  {
+    return multi_viewport_;
+  }
+  void build_clear_attachments_color(const float (*clear_colors)[4],
+                                     const bool multi_clear_colors,
+                                     Vector<VkClearAttachment> &r_attachments) const;
+  void dynamic_state_set();
+
  private:
   void update_attachments();
   void create();

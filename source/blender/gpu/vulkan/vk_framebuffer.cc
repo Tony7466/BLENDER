@@ -1142,6 +1142,16 @@ void VKFrameBuffer::submit(VKCommandBuffers &command_buffers)
   }
 };
 
+void VKFrameBuffer::dynamic_state_set()
+{
+  int size = (multi_viewport_) ? GPU_MAX_VIEWPORTS : 1;
+  VKCommandBuffers &command_buffers = VKContext::get()->command_buffers_get();
+  BLI_assert(viewport_[0][2] > 0 && viewport_[0][3] > 0);
+  command_buffers.viewport_set(viewport_, size);
+  command_buffers.scissor_set(scissor_);
+  dirty_state_ = false;
+}
+
 /** \} */
 
 }  // namespace blender::gpu

@@ -619,6 +619,31 @@ void VKCommandBuffers::next_subpass()
   VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
   vkCmdNextSubpass(command_buffer.vk_command_buffer(), VK_SUBPASS_CONTENTS_INLINE);
 }
+
+void VKCommandBuffers::viewport_set(const int viewport[GPU_MAX_VIEWPORTS][4], int size)
+{
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  Array<VkViewport, 16> viewports(size);
+
+  int index = 0;
+  for (VkViewport &v : viewports) {
+    v.x = viewport[index][0];
+    v.y = viewport[index][1];
+    v.width = viewport[index][2];
+    v.height = viewport[index][3];
+    v.minDepth = 0.0f;
+    v.maxDepth = 1.0f;
+    index++;
+  }
+  vkCmdSetViewport(command_buffer.vk_command_buffer(), 0, size, viewports.data());
+};
+
+void VKCommandBuffers::scissor_set(const int scissor[4])
+{
+  VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
+  VkRect2D rect = {scissor[0], scissor[1], scissor[2], scissor[3]};
+  vkCmdSetScissor(command_buffer.vk_command_buffer(), 0, 1, &rect);
+}
 /** \} */
 
 }  // namespace blender::gpu

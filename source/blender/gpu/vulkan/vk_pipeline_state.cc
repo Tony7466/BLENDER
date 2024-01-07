@@ -44,7 +44,13 @@ VKPipelineStateManager::VKPipelineStateManager()
   current_.clip_distances = 0;
   current_.polygon_smooth = false;
   current_.line_smooth = false;
-
+  dynamic_state_enabled = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+  auto &dynamic = dynamic_state;
+  dynamic.pNext = VK_NULL_HANDLE;
+  dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+  dynamic.flags = 0;
+  dynamic.pDynamicStates = dynamic_state_enabled.data();
+  dynamic.dynamicStateCount = (uint32_t)dynamic_state_enabled.size();
   /* Suppress CLANG `-Wunused-private-field` warning. */
   (void)current_mutable_;
 }

@@ -26,7 +26,8 @@ class VKPipelineStateManager {
   Vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;
   VkPipelineRasterizationStateCreateInfo rasterization_state;
   VkPipelineDepthStencilStateCreateInfo depth_stencil_state;
-
+  VkPipelineDynamicStateCreateInfo dynamic_state;
+  Vector<VkDynamicState> dynamic_state_enabled;
   VKPipelineStateManager();
 
   void set_state(const GPUState &state, const GPUStateMutable &mutable_state);

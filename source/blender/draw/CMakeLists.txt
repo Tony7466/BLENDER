@@ -1002,8 +1002,6 @@ if(WITH_GTESTS)
         ${VULKAN_INCLUDE_DIRS}
       )
     endif()
-
-    include(GTestTesting)
     blender_add_test_lib(bf_draw_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()
 endif()
