@@ -16,6 +16,7 @@ GPU_SHADER_CREATE_INFO(gpu_shader_2D_diag_stripes)
     .push_constant(Type::VEC4, "color2")
     .push_constant(Type::INT, "size1")
     .push_constant(Type::INT, "size2")
+    .push_constant(Type::FLOAT, "xscale")
     .vertex_source("gpu_shader_2D_vert.glsl")
     .fragment_source("gpu_shader_diag_stripes_frag.glsl")
     .do_static_compilation(true);

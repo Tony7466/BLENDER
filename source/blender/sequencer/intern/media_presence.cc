@@ -16,8 +16,6 @@
 
 namespace blender::ed::seq {
 
-static ThreadMutex presence_lock = BLI_MUTEX_INITIALIZER;
-
 static bool check_media_missing(const Sequence *seq)
 {
   if (seq == nullptr || seq->strip == nullptr) {
@@ -84,16 +82,6 @@ void media_presence_free(MediaPresence **presence)
     MEM_delete(*presence);
     *presence = nullptr;
   }
-}
-
-void media_presence_lock()
-{
-  BLI_mutex_lock(&presence_lock);
-}
-
-void media_presence_unlock()
-{
-  BLI_mutex_unlock(&presence_lock);
 }
 
 }  // namespace blender::ed::seq

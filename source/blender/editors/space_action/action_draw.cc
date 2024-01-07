@@ -854,6 +854,7 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
 
   immUniform1i("size1", cache_draw_height * 2.0f);
   immUniform1i("size2", cache_draw_height);
+  immUniform1f("xscale", 1.0f);
 
   LISTBASE_FOREACH (PTCacheID *, pid, &pidlist) {
     if (timeline_cache_is_hidden_by_setting(saction, pid)) {
