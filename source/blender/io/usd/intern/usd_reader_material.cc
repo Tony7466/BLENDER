@@ -146,14 +146,14 @@ static void link_nodes(
   bNodeSocket *source_socket = nodeFindSocket(source, SOCK_OUT, sock_out);
 
   if (!source_socket) {
-    CLOG_ERROR(&LOG, "Couldn't output socket %s", sock_out);
+    CLOG_ERROR(&LOG, "Couldn't find output socket %s", sock_out);
     return;
   }
 
   bNodeSocket *dest_socket = nodeFindSocket(dest, SOCK_IN, sock_in);
 
   if (!dest_socket) {
-    CLOG_ERROR(&LOG, "Couldn't output socket %s", sock_in);
+    CLOG_ERROR(&LOG, "Couldn't find input socket %s", sock_in);
     return;
   }
 
@@ -710,8 +710,9 @@ bool USDMaterialReader::follow_connection(const pxr::UsdShadeInput &usd_input,
 
   pxr::TfToken shader_id;
   if (!source_shader.GetShaderId(&shader_id)) {
-    CLOG_ERROR(
-        &LOG, "Couldn't get shader id for source shader %s", source_shader.GetPrim().GetPath());
+    CLOG_ERROR(&LOG,
+               "Couldn't get shader id for source shader %s",
+               source_shader.GetPath().GetAsString().c_str());
     return false;
   }
 

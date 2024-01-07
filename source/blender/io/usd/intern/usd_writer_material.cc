@@ -584,7 +584,7 @@ static void export_in_memory_texture(Image *ima,
     return;
   }
 
-  CLOG_INFO(&LOG, 4, "Exporting in-memory texture to %s", export_path);
+  CLOG_INFO(&LOG, 2, "Exporting in-memory texture to '%s'", export_path);
 
   if (BKE_imbuf_write_as(imbuf, export_path, &imageFormat, true) == 0) {
     BKE_reportf(
@@ -894,7 +894,7 @@ static void copy_tiled_textures(Image *ima,
       continue;
     }
 
-    CLOG_INFO(&LOG, 4, "Copying texture tile from '%s' to '%s'", src_tile_path, dest_tile_path);
+    CLOG_INFO(&LOG, 2, "Copying texture tile from '%s' to '%s'", src_tile_path, dest_tile_path);
 
     /* Copy the file. */
     if (BLI_copy(src_tile_path, dest_tile_path) != 0) {
@@ -932,7 +932,7 @@ static void copy_single_file(Image *ima,
     return;
   }
 
-  CLOG_INFO(&LOG, 4, "Copying texture from '%s' to '%s'", source_path, dest_path);
+  CLOG_INFO(&LOG, 2, "Copying texture from '%s' to '%s'", source_path, dest_path);
 
   /* Copy the file. */
   if (BLI_copy(source_path, dest_path) != 0) {

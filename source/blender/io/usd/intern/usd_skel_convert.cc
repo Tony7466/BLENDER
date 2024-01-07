@@ -272,15 +272,16 @@ void import_skeleton_curves(Main *bmain,
   for (const double frame : samples) {
     pxr::VtMatrix4dArray joint_local_xforms;
     if (!skel_query.ComputeJointLocalTransforms(&joint_local_xforms, frame)) {
-      CLOG_WARN(&LOG, "Couldn't compute joint local transforms on frame %d", frame);
+      CLOG_WARN(&LOG, "Couldn't compute joint local transforms on frame %f", frame);
       continue;
     }
 
     if (joint_local_xforms.size() != joint_order.size()) {
-      CLOG_WARN(&LOG,
-                "number of joint local transform entries %d doesn't match the number of joints %d",
-                joint_local_xforms.size(),
-                joint_order.size());
+      CLOG_WARN(
+          &LOG,
+          "Number of joint local transform entries %zu doesn't match the number of joints %zu",
+          joint_local_xforms.size(),
+          joint_order.size());
       continue;
     }
 
@@ -292,7 +293,7 @@ void import_skeleton_curves(Main *bmain,
       pxr::GfVec3h s;
 
       if (!pxr::UsdSkelDecomposeTransform(bone_xform, &t, &qrot, &s)) {
-        CLOG_WARN(&LOG, "Error decomposing matrix on frame %d", frame);
+        CLOG_WARN(&LOG, "Error decomposing matrix on frame %f", frame);
         continue;
       }
 
@@ -545,10 +546,10 @@ void import_blendshapes(Main *bmain,
       int a = 0;
       for (int i : point_indices) {
         if (i < 0 || i > kb->totelem) {
-          CLOG_ERROR(&LOG,
-                     "Out of bounds point index %d for blendshape %s",
-                     i,
-                     path.GetAsString().c_str());
+          CLOG_WARN(&LOG,
+                    "Out of bounds point index %d for blendshape %s",
+                    i,
+                    path.GetAsString().c_str());
           ++a;
           continue;
         }
@@ -656,14 +657,14 @@ void import_blendshapes(Main *bmain,
   for (double frame : times) {
     pxr::VtFloatArray weights;
     if (!weights_attr.Get(&weights, frame)) {
-      CLOG_ERROR(&LOG, "Couldn't get blendshape weights for time %d", frame);
+      CLOG_WARN(&LOG, "Couldn't get blendshape weights for time %f", frame);
       continue;
     }
 
     if (weights.size() != curves.size()) {
-      CLOG_ERROR(
+      CLOG_WARN(
           &LOG,
-          "Number of weight samples doesn't match number of shapekey curve entries for frame %d",
+          "Number of weight samples doesn't match number of shapekey curve entries for frame %f",
           frame);
       continue;
     }
@@ -1055,7 +1056,7 @@ void import_mesh_skel_bindings(Main *bmain,
     if (std::find(used_indices.begin(), used_indices.end(), index) == used_indices.end()) {
       /* We haven't accounted for this index yet. */
       if (index < 0 || index >= joints.size()) {
-        CLOG_ERROR(&LOG, "Out of bound joint index %d", index);
+        CLOG_WARN(&LOG, "Out of bound joint index %d", index);
         continue;
       }
       used_indices.append(index);
