@@ -152,7 +152,7 @@ struct CornerNormalSpaceArray {
    * A map containing the face corners that make up each space,
    * in the order that they were processed (winding around a vertex).
    */
-  Array<Array<int>> corners_by_space;
+  Array<Array<int, 8>> corners_by_space;
   /** Whether to create the above map when calculating normals. */
   bool create_corners_by_space = false;
 };
