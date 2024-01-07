@@ -4,7 +4,6 @@
 
 /** \file
  * \ingroup edcurve
- * \ingroup edcurve
  */
 
 #include <cerrno>
