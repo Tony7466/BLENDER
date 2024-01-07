@@ -75,11 +75,27 @@ bool media_presence_is_missing(MediaPresence **presence, const Sequence *seq)
   return missing;
 }
 
+void media_presence_invalidate_strip(MediaPresence *presence, const Sequence *seq)
+{
+  if (presence != nullptr) {
+    presence->map.remove(seq);
+  }
+}
+
 void media_presence_free(MediaPresence **presence)
 {
   if (*presence != nullptr) {
     MEM_delete(*presence);
     *presence = nullptr;
+  }
+}
+
+void media_presence_free_all(Main *bmain)
+{
+  LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+    if (scene->ed != nullptr) {
+      media_presence_free(&scene->ed->runtime.media_presence);
+    }
   }
 }
 

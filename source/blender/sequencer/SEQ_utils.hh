@@ -70,8 +70,18 @@ struct MediaPresence;
 bool media_presence_is_missing(MediaPresence **presence, const Sequence *seq);
 
 /**
+ * Invalidate media presence cache for the given strip.
+ */
+void media_presence_invalidate_strip(MediaPresence *presence, const Sequence *seq);
+
+/**
  * Free media presence cache, if it was created.
  */
 void media_presence_free(MediaPresence **presence);
+
+/**
+ * Free media presence caches in all scenes of bmain.
+ */
+void media_presence_free_all(Main *bmain);
 
 }  // namespace blender::ed::seq
