@@ -961,6 +961,8 @@ void bmo_create_icosphere_exec(BMesh *bm, BMOperator *op)
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
   const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
 
+  const bool flat = BMO_slot_bool_get(op->slots_in, "flat");
+
   BMVert *eva[12];
   BMVert *v;
   BMIter liter;
@@ -1025,7 +1027,7 @@ void bmo_create_icosphere_exec(BMesh *bm, BMOperator *op)
                  rad,
                  (1 << (subdiv - 1)) - 1,
                  true,
-                 true);
+                 !flat);
 
     BMO_op_exec(bm, &bmop);
     BMO_slot_buffer_flag_enable(bm, bmop.slots_out, "geom.out", BM_VERT, VERT_MARK);
