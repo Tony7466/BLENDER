@@ -1802,6 +1802,11 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
   }
 }
 
+static void geometry_nodes_uv_sphere_uvmap(bNodeTree &ntree)
+{
+  
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2559,6 +2564,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  // TODO: check the proper version
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 410, 10)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
+      geometry_nodes_uv_sphere_uvmap(*ntree);
+    }
+  }
+  
   /**
    * Versioning code until next subversion bump goes here.
    *
