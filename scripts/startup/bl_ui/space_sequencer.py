@@ -2482,6 +2482,9 @@ class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
         elif st.display_mode == 'WAVEFORM':
             col.prop(st, "show_separate_color")
 
+        render = context.scene.render
+        col.prop(render, "sequencer_show_missing_media")
+
 
 class SEQUENCER_PT_view_cursor(SequencerButtonsPanel_Output, Panel):
     bl_category = "View"

@@ -2559,6 +2559,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 10)) {
+    /* Display missing media in sequencer by default. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->r.seq_flag |= R_SEQ_SHOW_MISSING_MEDIA;
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *

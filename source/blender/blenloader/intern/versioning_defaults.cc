@@ -317,6 +317,9 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
     view_layer->passflag &= ~SCE_PASS_Z;
   }
 
+  /* Show missing media in sequencer by default. */
+  scene->r.seq_flag |= R_SEQ_SHOW_MISSING_MEDIA;
+
   /* New EEVEE defaults. */
   scene->eevee.bloom_intensity = 0.05f;
   scene->eevee.bloom_clamp = 0.0f;

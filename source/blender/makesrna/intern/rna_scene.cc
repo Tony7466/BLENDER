@@ -6996,6 +6996,12 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
                            "each individual scene used in the strip");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SceneSequencer_update");
 
+  prop = RNA_def_property(srna, "sequencer_show_missing_media", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "seq_flag", R_SEQ_SHOW_MISSING_MEDIA);
+  RNA_def_property_ui_text(
+      prop, "Show Missing Media", "Render missing sequencer media as solid color");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SceneSequencer_update");
+
   prop = RNA_def_property(srna, "use_single_layer", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "scemode", R_SINGLE_LAYER);
   RNA_def_property_ui_text(prop,

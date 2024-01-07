@@ -2130,6 +2130,7 @@ enum {
   R_SEQ_UNUSED_3 = (1 << 3), /* cleared */
   R_SEQ_UNUSED_4 = (1 << 4), /* cleared */
   R_SEQ_OVERRIDE_SCENE_SETTINGS = (1 << 5),
+  R_SEQ_SHOW_MISSING_MEDIA = (1 << 6),
 };
 
 /** #RenderData::filtertype (used for nodes) */

@@ -112,7 +112,7 @@
  \
     .seq_prev_type = OB_SOLID, \
     .seq_rend_type = OB_SOLID, \
-    .seq_flag = 0, \
+    .seq_flag = R_SEQ_SHOW_MISSING_MEDIA, \
  \
     .threads = 1, \
  \
