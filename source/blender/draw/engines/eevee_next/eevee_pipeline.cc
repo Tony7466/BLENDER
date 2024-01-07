@@ -516,10 +516,9 @@ void DeferredLayer::end_sync()
     bool is_tbdr_arch_metal = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR) &&
                               (GPU_backend_get_type() == GPU_BACKEND_METAL);
 
-    /* Add the tile classification step at the end of the GBuffer pass. */
+    /* Add the stencil classification step at the end of the GBuffer pass. */
     {
       GPUShader *sh = inst_.shaders.static_shader_get(DEFERRED_TILE_CLASSIFY);
-      /* Fill tile mask texture with the collected closure present in a tile. */
       PassMain::Sub &sub = gbuffer_ps_.sub("StencilClassify");
       sub.subpass_transition(GPU_ATTACHEMENT_WRITE, /* Needed for depth test. */
                              {GPU_ATTACHEMENT_IGNORE,
@@ -556,9 +555,6 @@ void DeferredLayer::end_sync()
         /* WORKAROUND: Avoid rasterizer discard by enabling stencil write, but the shaders actually
          * use no fragment output. */
         sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL | DRW_STATE_DEPTH_GREATER);
-        if (!is_tbdr_arch_metal) {
-          sub.barrier(GPU_BARRIER_SHADER_STORAGE);
-        }
         sub.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
         sub.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
         sub.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
@@ -586,7 +582,7 @@ void DeferredLayer::end_sync()
           sub.bind_resources(inst_.hiz_buffer.front);
           sub.bind_resources(inst_.reflection_probes);
           sub.bind_resources(inst_.irradiance_cache);
-          sub.state_stencil(0xFFu, i, 0xFFu);
+          sub.state_stencil(0xFFu, i + 1, 0xFFu);
           sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
         }
       }
@@ -604,8 +600,10 @@ void DeferredLayer::end_sync()
           sh, "render_pass_specular_light_enabled", rbuf_data.specular_light_id != -1);
       pass.specialize_constant(sh, "use_combined_lightprobe_eval", use_combined_lightprobe_eval);
       pass.shader_set(sh);
-      /* Use depth test to reject background pixels. */
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ADD_FULL);
+      /* Use stencil test to reject pixels not written by this layer. */
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL | DRW_STATE_STENCIL_NEQUAL);
+      /* Render where stencil is not 0. */
+      pass.state_stencil(0xFFu, 0x0, 0xFFu);
       pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);
       pass.bind_texture("direct_radiance_2_tx", &direct_radiance_txs_[1]);
       pass.bind_texture("direct_radiance_3_tx", &direct_radiance_txs_[2]);
@@ -616,9 +614,7 @@ void DeferredLayer::end_sync()
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       pass.bind_resources(inst_.gbuffer);
       pass.bind_resources(inst_.uniform_data);
-      if (!is_tbdr_arch_metal) {
-        pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
-      }
+      pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
       pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
     }
   }
@@ -664,18 +660,22 @@ void DeferredLayer::render(View &main_view,
                            RayTraceBuffer &rt_buffer,
                            bool is_first_pass)
 {
+  if (closure_count_ == 0) {
+    return;
+  }
+
   RenderBuffers &rb = inst_.render_buffers;
 
   /* The first pass will never have any surfaces behind it. Nothing is refracted except the
    * environment. So in this case, disable tracing and fallback to probe. */
   bool do_screen_space_refraction = !is_first_pass && (closure_bits_ & CLOSURE_REFRACTION);
   bool do_screen_space_reflection = (closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
-  eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  constexpr eGPUTextureUsage usage_read = GPU_TEXTURE_USAGE_SHADER_READ;
+  constexpr eGPUTextureUsage usage_write = GPU_TEXTURE_USAGE_SHADER_WRITE;
+  constexpr eGPUTextureUsage usage_rw = usage_read | usage_write;
 
   if (do_screen_space_reflection) {
-    /* TODO(fclem): Verify if GPU_TEXTURE_USAGE_ATTACHMENT is needed for the copy and the clear. */
-    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
-    if (radiance_feedback_tx_.ensure_2d(rb.color_format, extent, usage)) {
+    if (radiance_feedback_tx_.ensure_2d(rb.color_format, extent, usage_read)) {
       radiance_feedback_tx_.clear(float4(0.0));
       radiance_feedback_persmat_ = render_view.persmat();
     }
@@ -688,9 +688,7 @@ void DeferredLayer::render(View &main_view,
   if (do_screen_space_refraction) {
     /* Update for refraction. */
     inst_.hiz_buffer.update();
-    /* TODO(fclem): Verify if GPU_TEXTURE_USAGE_ATTACHMENT is needed for the copy. */
-    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
-    radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage);
+    radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage_read);
     GPU_texture_copy(radiance_behind_tx_, rb.combined_tx);
   }
   else {
