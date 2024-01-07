@@ -257,7 +257,6 @@ void VKRenderPass::free()
 void VKRenderPass::cache_init()
 {
   info_id_ = info_id_counter();
-  dirty_ = false;
   multiview_layers_ = 1;
 
   /* Number of ShaderOutputs.*/

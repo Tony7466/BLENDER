@@ -619,10 +619,12 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
   int atta_layer = (leave) ? attachment.layer : new_attachment.layer;
   int atta_mip = (leave) ? attachment.mip : new_attachment.mip;
   if (config) {
+    bool reassign = false;
     if ((renderpass_->attachments_.idx_[renderpass_->info_id_][type] != VK_ATTACHMENT_UNUSED) &&
         (renderpass_->attachments_.idx_[renderpass_->info_id_][type] != VK_ATTACHMENT_EMPTY))
     {
       renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount--;
+      reassign = true;
     };
     /* Set the current information on the `render_pass_info_id_` side and compare it with the
      * information cached in the reverse id. */
@@ -637,17 +639,21 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
        */
       attachment_reference = renderpass_->attachments_.reference_get(type_index,
                                                                      renderpass_->info_id_);
-      renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
-          renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
-
+      if (!reassign) {
+          renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
+              renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
+      }
       attachment_reference->aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       attachment_reference->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
       /* Whether to increment the number of attachments actually used. */
       if (tex) {
         dirty_subpass_ = reinterpret_cast<Texture *>(tex)->subpass_bits_get().disable != 0;
-        attachment_reference->attachment =
-            renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
+          if (!reassign) {
+          attachment_reference->attachment = attachment_reference->attachment =
+          renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
+          }
+          renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
       }
       else {
         attachment_reference->attachment = VK_ATTACHMENT_UNUSED;
@@ -915,7 +921,7 @@ void VKFrameBuffer::create()
     vk_framebuffer_create_info_.height = height_;
     vk_framebuffer_create_info_.pAttachments = data.data();
   }
-  if (!multi_viewport_) {
+  if (viewport_[0][2] == 0 || (!dirty_state_ && width_ != 0)) {
     viewport_reset();
     scissor_reset();
   }
@@ -971,7 +977,7 @@ void VKFrameBuffer::ensure()
         continue;
       }
       VkAttachmentReference2 *attachment_reference = renderpass_->attachments_.reference_get(
-          ((type < 2) ? -1 : renderpass_->attachments_.idx_[renderpass_->info_id_][type]),
+          ((type < 2) ? -1 : type - 2),
           renderpass_->info_id_);
       if (attachment_reference->attachment == VK_ATTACHMENT_UNUSED) {
         continue;

@@ -185,9 +185,7 @@ class VKFrameBuffer : public FrameBuffer {
                                              float clear_depth,
                                              uint32_t clear_stencil,
                                              Vector<VkClearAttachment> &r_attachments) const;
-  void build_clear_attachments_color(const float (*clear_colors)[4],
-                                     const bool multi_clear_colors,
-                                     Vector<VkClearAttachment> &r_attachments) const;
+
   void clear(const Vector<VkClearAttachment> &attachments) const;
 };
 
