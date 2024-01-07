@@ -1436,7 +1436,7 @@ static void test_eevee_surfel_list()
     link_prev.append(surfel.prev);
   }
 
-#if 0 /* Useful for debugging */
+#  if 0 /* Useful for debugging */
   /* NOTE: All of these are unstable by definition (atomic + multi-thread).
    * But should be consistent since we only dispatch one thread-group. */
   /* Expect last added surfel index. It is the list start index before sorting. */
@@ -1445,7 +1445,7 @@ static void test_eevee_surfel_list()
   // link_next.as_span().print_as_lines("link_next");
   // link_prev.as_span().print_as_lines("link_prev");
   EXPECT_EQ_ARRAY(list_start_buf.data(), expect_list_start.data(), expect_list_start.size());
-#endif
+#  endif
   EXPECT_EQ_ARRAY(link_next.data(), expect_link_next.data(), expect_link_next.size());
   EXPECT_EQ_ARRAY(link_prev.data(), expect_link_prev.data(), expect_link_prev.size());
 

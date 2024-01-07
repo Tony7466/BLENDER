@@ -47,37 +47,37 @@ float _light_attenuation_surface(
 {
   /* TODO(fclem): add cutoff attenuation when back-facing. For now do nothing with Ng. */
   return /* light_attenuation_common(light, is_directional, lv.L);*/
-         light_attenuation_facing(light, lv.L, Ng, use_subsurface);
-    /* light_influence_attenuation(lv.dist, light.influence_radius_invsqr_surface); */
+      light_attenuation_facing(light, lv.L, Ng, use_subsurface);
+  /* light_influence_attenuation(lv.dist, light.influence_radius_invsqr_surface); */
 }
 
 void _light_eval_single_closure(LightData light,
-                               LightVector lv,
-                               inout ClosureLight cl,
-                               vec3 P,
-                               vec3 V,
-                               float thickness,
-                               float attenuation,
-                               float visibility)
+                                LightVector lv,
+                                inout ClosureLight cl,
+                                vec3 P,
+                                vec3 V,
+                                float thickness,
+                                float attenuation,
+                                float visibility)
 {
   if (light.power[cl.type] > 0.0) {
     float ltc_result = light_ltc(utility_tx, light, cl.N, V, lv, cl.ltc_mat);
     vec3 out_radiance = light.color * light.power[cl.type] * ltc_result;
-    
+
     cl.light_shadowed += visibility * out_radiance;
     cl.light_unshadowed += attenuation * out_radiance;
   }
 }
 
 void _light_eval_single(uint l_idx,
-                       const bool is_directional,
-                       inout ClosureLightStack stack,
-                       vec3 P,
-                       vec3 Ng,
-                       vec3 V,
-                       float thickness,
-                       uint packed_shadows,
-                       inout uint shift)
+                        const bool is_directional,
+                        inout ClosureLightStack stack,
+                        vec3 P,
+                        vec3 Ng,
+                        vec3 V,
+                        float thickness,
+                        uint packed_shadows,
+                        inout uint shift)
 {
   LightData light = light_buf[l_idx];
   int ray_count = uniform_buf.shadow.ray_count;
@@ -109,12 +109,12 @@ void _light_eval_single(uint l_idx,
 }
 
 void _light_eval(inout ClosureLightStack stack,
-                vec3 P,
-                vec3 Ng,
-                vec3 V,
-                float vPz,
-                float thickness,
-                uint packed_shadows)
+                 vec3 P,
+                 vec3 Ng,
+                 vec3 V,
+                 float vPz,
+                 float thickness,
+                 uint packed_shadows)
 {
 
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT; i++) {
@@ -140,7 +140,8 @@ void _light_eval(inout ClosureLightStack stack,
 /* Variations that have less arguments. */
 
 #if !defined(SHADOW_DEFERRED)
-void _light_eval(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz, float thickness)
+void _light_eval(
+    inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz, float thickness)
 {
   _light_eval(stack, P, Ng, V, vPz, thickness, 0u);
 }
@@ -253,7 +254,7 @@ void main()
           break;
       }
     }
-}
+  }
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
     /* TODO(fclem): Layered texture. */
     if (i == 0) {

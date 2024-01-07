@@ -52,17 +52,17 @@ void VKStateManager::force_state()
 
 void VKStateManager::issue_barrier(eGPUBarrier barrier_bits)
 {
-  #if 0
+#if 0
   VKContext &context = *VKContext::get();
   /* TODO: Pipeline barriers should be added. We might be able to extract it from
    * the actual pipeline, later on, but for now we submit the work as barrier. */
   context.flush();
-  #endif
+#endif
 }
 
 void VKStateManager::texture_bind(Texture *tex, GPUSamplerState sampler, int unit)
 {
-  VKTexture *texture = unwrap(tex,false);
+  VKTexture *texture = unwrap(tex, false);
   textures_.bind(unit, *texture, sampler);
 }
 
@@ -96,13 +96,13 @@ void VKStateManager::input_attachment_unbind_all()
 
 void VKStateManager::image_bind(Texture *tex, int binding)
 {
-  VKTexture *texture = unwrap(tex,false);
+  VKTexture *texture = unwrap(tex, false);
   images_.bind(binding, *texture);
 }
 
 void VKStateManager::image_unbind(Texture *tex)
 {
-  VKTexture *texture = unwrap(tex,false);
+  VKTexture *texture = unwrap(tex, false);
   images_.unbind(*texture);
 }
 

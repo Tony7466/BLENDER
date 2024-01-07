@@ -61,7 +61,8 @@ class VKImageView : NonCopyable {
     return mip_range_ == range;
   }
 
-  const IndexRange layer_range_get() const {
+  const IndexRange layer_range_get() const
+  {
     return layer_range_;
   }
   const IndexRange mip_range_get() const

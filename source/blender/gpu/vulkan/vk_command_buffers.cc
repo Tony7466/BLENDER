@@ -471,7 +471,8 @@ void VKCommandBuffers::blit(VKTexture &dst_texture,
 
 void VKCommandBuffers::pipeline_barrier(const VkPipelineStageFlags src_stages,
                                         const VkPipelineStageFlags dst_stages,
-                                        Span<VkImageMemoryBarrier> image_memory_barriers,Type command_type)
+                                        Span<VkImageMemoryBarrier> image_memory_barriers,
+                                        Type command_type)
 {
   VKCommandBuffer &command_buffer = command_buffer_get(command_type);
   vkCmdPipelineBarrier(command_buffer.vk_command_buffer(),

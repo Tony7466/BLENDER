@@ -591,8 +591,12 @@ void VKTexture::layout_ensure(VKContext &context,
                               VKCommandBuffers::Type command_type)
 {
   if (is_texture_view()) {
-    source_texture_->layout_ensure(
-        context, old_layout, new_layout, mipmap_range, IndexRange(layer_offset_,vk_layer_count(1)), command_type);
+    source_texture_->layout_ensure(context,
+                                   old_layout,
+                                   new_layout,
+                                   mipmap_range,
+                                   IndexRange(layer_offset_, vk_layer_count(1)),
+                                   command_type);
     return;
   }
   if (old_layout == VK_IMAGE_LAYOUT_MAX_ENUM) {
@@ -615,7 +619,7 @@ void VKTexture::layout_ensure(VKContext &context,
   barrier.subresourceRange.baseMipLevel = uint32_t(mipmap_range.start());
   barrier.subresourceRange.levelCount = uint32_t(mipmap_range.size());
   barrier.subresourceRange.baseArrayLayer = uint32_t(layer_range.start());
-  barrier.subresourceRange.layerCount         = uint32_t(layer_range.size());
+  barrier.subresourceRange.layerCount = uint32_t(layer_range.size());
   context.command_buffers_get().pipeline_barrier(to_vk_access_to_stage_flag(src_access),
                                                  to_vk_access_to_stage_flag(dst_access),
                                                  Span<VkImageMemoryBarrier>(&barrier, 1),
@@ -740,7 +744,7 @@ std::weak_ptr<VKImageView> VKTexture::image_view_get(bool use_srgb, int mip, int
                                           use_srgb,
                                           name_);
   }
- 
+
   return image_views_->lookup_vk_handle(*this,
                                         eImageViewUsage::Attachment,
                                         IndexRange(layer_offset, layer_size),

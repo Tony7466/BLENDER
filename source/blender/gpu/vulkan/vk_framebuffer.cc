@@ -8,8 +8,8 @@
 
 #include "vk_framebuffer.hh"
 #include "vk_backend.hh"
-#include "vk_common.hh"
 #include "vk_command_buffers.hh"
+#include "vk_common.hh"
 #include "vk_context.hh"
 #include "vk_image_views.hh"
 #include "vk_memory.hh"
@@ -549,12 +549,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
             context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
         dst_framebuffer.depth_attachment_layout_ensure(
             context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        blit_aspect(command_buffers,
-                    dst_texture,
-                    src_texture,
-                    dst_offset_x,
-                    dst_offset_y,
-                    aspect_flag);
+        blit_aspect(
+            command_buffers, dst_texture, src_texture, dst_offset_x, dst_offset_y, aspect_flag);
         depth_attachment_layout_ensure(
             context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_MAX_ENUM);
         dst_framebuffer.depth_attachment_layout_ensure(
@@ -606,7 +602,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
   }
   if (!leave && attachment.tex) {
     /* The texture entity has nothing to do with render pass regeneration. */
-    unwrap(unwrap(attachment.tex),false)->detach_from(this);
+    unwrap(unwrap(attachment.tex), false)->detach_from(this);
   }
 
   VkAttachmentReference2 *attachment_reference = nullptr;
@@ -640,8 +636,8 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       attachment_reference = renderpass_->attachments_.reference_get(type_index,
                                                                      renderpass_->info_id_);
       if (!reassign) {
-          renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
-              renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
+        renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
+            renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
       }
       attachment_reference->aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       attachment_reference->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -649,11 +645,11 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       /* Whether to increment the number of attachments actually used. */
       if (tex) {
         dirty_subpass_ = reinterpret_cast<Texture *>(tex)->subpass_bits_get().disable != 0;
-          if (!reassign) {
+        if (!reassign) {
           attachment_reference->attachment = attachment_reference->attachment =
-          renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
-          }
-          renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
+              renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
+        }
+        renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
       }
       else {
         attachment_reference->attachment = VK_ATTACHMENT_UNUSED;
@@ -731,7 +727,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       BLI_assert(GPU_texture_is_cube(tex) || GPU_texture_is_array(tex));
     }
     if (!leave) {
-      unwrap(unwrap(tex),false)->attach_to(this, type);
+      unwrap(unwrap(tex), false)->attach_to(this, type);
     }
 
     dirty_view |= image_view_ensure(tex, atta_mip, atta_layer, attachment_reference->attachment);
@@ -977,8 +973,7 @@ void VKFrameBuffer::ensure()
         continue;
       }
       VkAttachmentReference2 *attachment_reference = renderpass_->attachments_.reference_get(
-          ((type < 2) ? -1 : type - 2),
-          renderpass_->info_id_);
+          ((type < 2) ? -1 : type - 2), renderpass_->info_id_);
       if (attachment_reference->attachment == VK_ATTACHMENT_UNUSED) {
         continue;
       }
@@ -997,7 +992,7 @@ void VKFrameBuffer::ensure()
 
 bool VKFrameBuffer::image_view_ensure(GPUTexture *tex, int mip, int layer, int view_order)
 {
-  VKTexture &texture = *unwrap(unwrap(tex),false);
+  VKTexture &texture = *unwrap(unwrap(tex), false);
   if (texture.is_format_dirty(eImageViewUsage::Attachment, enabled_srgb_)) {
     VkAttachmentDescription2 &attachment_description =
         renderpass_->attachments_.descriptions_[renderpass_->info_id_][view_order];
@@ -1130,7 +1125,6 @@ void VKFrameBuffer::clear_pass_pipeline_barrier_recoding()
                              VKCommandBuffers::Type::Graphics);
     }
   }
-
 };
 
 void VKFrameBuffer::submit(VKCommandBuffers &command_buffers)

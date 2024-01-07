@@ -25,7 +25,7 @@
 #include <sstream>
 
 #if defined(_DEBUG) || defined(WITH_DRAW_DEBUG)
-//#  define DRAW_DEBUG
+// #  define DRAW_DEBUG
 #else
 /* Uncomment to forcibly enable debug draw in release mode. */
 // #define DRAW_DEBUG

@@ -111,6 +111,7 @@ class VKShader : public Shader {
     return vk_descriptor_set_layout_;
   }
   Vector<VkDescriptorSetLayoutBinding> bindings;
+
  private:
   Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
   void build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module);

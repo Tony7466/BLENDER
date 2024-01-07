@@ -71,7 +71,7 @@ bool GPU_debug_group_match(const char *ref);
  */
 void GPU_debug_capture_begin(void);
 void GPU_debug_capture_end(void);
-void GPU_debug_capture_begin_title(const char*);
+void GPU_debug_capture_begin_title(const char *);
 /**
  * GPU debug frame capture scopes.
  *

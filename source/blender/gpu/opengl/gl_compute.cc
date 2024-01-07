@@ -6,8 +6,8 @@
  * \ingroup gpu
  */
 
-#include "GPU_debug.h"
 #include "BKE_global.h"
+#include "GPU_debug.h"
 
 #include "gl_compute.hh"
 

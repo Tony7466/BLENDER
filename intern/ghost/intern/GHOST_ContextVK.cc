@@ -35,7 +35,7 @@
 /* Set to 0 to allow devices that do not have the required features.
  * This allows development on OSX until we really needs these features. */
 #define STRICT_REQUIREMENTS true
-//#define VK_ENABLE_DEBUG_SYNC
+// #define VK_ENABLE_DEBUG_SYNC
 /*
  * Should we only select surfaces that are known to be compatible. Or should we in case no
  * compatible surfaces have been found select the first one.

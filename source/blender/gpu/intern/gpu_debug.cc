@@ -93,7 +93,7 @@ void GPU_debug_capture_begin()
   }
 }
 
-void GPU_debug_capture_begin_title(const char * title)
+void GPU_debug_capture_begin_title(const char *title)
 {
   /* GPU Frame capture is only enabled when --debug-gpu is specified. */
   if (!(G.debug & G_DEBUG_GPU)) {

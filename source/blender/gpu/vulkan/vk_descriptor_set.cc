@@ -254,12 +254,10 @@ void VKDescriptorSetTracker::update(VKContext &context)
     descriptor_writes.append(write_descriptor);
   }
 
-
   vkUpdateDescriptorSets(
       device.device_get(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
   bindings_.clear();
-
 }
 
 std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)

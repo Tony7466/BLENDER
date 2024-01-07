@@ -157,12 +157,13 @@ class VKTexture : public Texture, public VKBindableResource {
                      VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                      VkAccessFlags dst_access = VK_ACCESS_MEMORY_READ_BIT);
 
-  void layout_ensure(VKContext &context,
-                     VkImageLayout old_layout,
-                     VkImageLayout new_layout,
-                     IndexRange mipmap_range = IndexRange(0, VK_REMAINING_MIP_LEVELS),
-                     IndexRange layer_range = IndexRange(0, VK_REMAINING_ARRAY_LAYERS),
-                     VKCommandBuffers::Type command_type = VKCommandBuffers::Type::DataTransferCompute);
+  void layout_ensure(
+      VKContext &context,
+      VkImageLayout old_layout,
+      VkImageLayout new_layout,
+      IndexRange mipmap_range = IndexRange(0, VK_REMAINING_MIP_LEVELS),
+      IndexRange layer_range = IndexRange(0, VK_REMAINING_ARRAY_LAYERS),
+      VKCommandBuffers::Type command_type = VKCommandBuffers::Type::DataTransferCompute);
 
  private:
   /**
@@ -207,7 +208,7 @@ class VKTexture : public Texture, public VKBindableResource {
   /** \} */
 };
 
-BLI_INLINE VKTexture *unwrap(Texture *tex,bool source = true)
+BLI_INLINE VKTexture *unwrap(Texture *tex, bool source = true)
 {
   if (tex == nullptr) {
     return static_cast<VKTexture *>(tex);

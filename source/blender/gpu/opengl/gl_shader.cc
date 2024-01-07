@@ -643,7 +643,7 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
         break;
     }
   }
-  
+
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, res, info.auto_resource_location_);

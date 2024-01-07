@@ -102,12 +102,11 @@ static void eevee_engine_init(void *vedata)
       size, &rect, &visible_rect, nullptr, depsgraph, camera, nullptr, default_view, v3d, rv3d);
 }
 
-
 static void eevee_draw_scene(void *vedata)
 {
-  G.debug_value = 0; 
+  G.debug_value = 0;
   GPU_debug_capture_begin_title("eeveee_draw_scene");
-  
+
   EEVEE_Data *ved = reinterpret_cast<EEVEE_Data *>(vedata);
   if (DRW_state_is_viewport_image_render()) {
     ved->instance->draw_viewport_image_render();

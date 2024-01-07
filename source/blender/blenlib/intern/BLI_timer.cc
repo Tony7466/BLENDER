@@ -147,7 +147,7 @@ void BLI_timer_on_file_load(void)
 }
 
 #define VK_TIMER
-//#define VK_TIMER_OFF
+// #define VK_TIMER_OFF
 #if defined(VK_TIMER)
 #  include "BLI_dynstr.h"
 
