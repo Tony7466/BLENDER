@@ -13,6 +13,7 @@
 #  include <cstring>
 
 #  include "BKE_context.hh"
+#  include "BKE_file_handler.hh"
 #  include "BKE_main.hh"
 #  include "BKE_report.h"
 
@@ -42,6 +43,7 @@
 #  include "DEG_depsgraph.hh"
 
 #  include "io_usd.hh"
+#  include "io_utils.hh"
 #  include "usd.h"
 
 #  include <cstdio>
@@ -457,7 +459,7 @@ static int wm_usd_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
   options->as_background_job = true;
   op->customdata = options;
 
-  return WM_operator_filesel(C, op, event);
+  return blender::ed::io::filesel_drop_import_invoke(C, op, event);
 }
 
 static int wm_usd_import_exec(bContext *C, wmOperator *op)
@@ -596,14 +598,14 @@ static void wm_usd_import_cancel(bContext * /*C*/, wmOperator *op)
   free_operator_customdata(op);
 }
 
-static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
+static void wm_usd_import_draw(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   PointerRNA *ptr = op->ptr;
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-
+  blender::ed::io::filepath_label_draw(C, op);
   uiLayout *box = uiLayoutBox(layout);
   uiLayout *col = uiLayoutColumnWithHeading(box, true, IFACE_("Data Types"));
   uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -672,13 +674,14 @@ void WM_OT_usd_import(wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
   ot->ui = wm_usd_import_draw;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER | FILE_TYPE_USD,
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS |
+                                     WM_FILESEL_SKIP_SAVE_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
@@ -826,5 +829,19 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "File Name Collision",
       "Behavior when the name of an imported texture file conflicts with an existing file");
 }
+
+namespace blender::ed::io {
+void usd_file_handler_add()
+{
+  auto fh_ptr = std::make_unique<blender::bke::FileHandlerType>();
+  auto &fh = *fh_ptr;
+  STRNCPY(fh.idname, "IO_FH_usd");
+  STRNCPY(fh.import_operator, "WM_OT_usd_import");
+  STRNCPY(fh.label, "USD");
+  STRNCPY(fh.file_extensions_str, ".usd;.usda;.usdc;.usdz");
+  fh.poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh_ptr));
+}
+}  // namespace blender::ed::io
 
 #endif /* WITH_USD */

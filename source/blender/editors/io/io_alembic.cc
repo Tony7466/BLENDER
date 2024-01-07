@@ -26,6 +26,7 @@
 #  include "DNA_space_types.h"
 
 #  include "BKE_context.hh"
+#  include "BKE_file_handler.hh"
 #  include "BKE_main.hh"
 #  include "BKE_report.h"
 
@@ -52,6 +53,7 @@
 #  include "DEG_depsgraph.hh"
 
 #  include "io_alembic.hh"
+#  include "io_utils.hh"
 
 #  include "ABC_alembic.h"
 
@@ -584,8 +586,9 @@ static void ui_alembic_import_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(col, imfptr, "always_add_cache_reader", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_alembic_import_draw(bContext * /*C*/, wmOperator *op)
+static void wm_alembic_import_draw(bContext *C, wmOperator *op)
 {
+  blender::ed::io::filepath_label_draw(C, op);
   ui_alembic_import_settings(op->layout, op->ptr);
 }
 
@@ -595,7 +598,7 @@ static int wm_alembic_import_invoke(bContext *C, wmOperator *op, const wmEvent *
   if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
     RNA_boolean_set(op->ptr, "as_background_job", true);
   }
-  return WM_operator_filesel(C, op, event);
+  return blender::ed::io::filesel_drop_import_invoke(C, op, event);
 }
 
 static int wm_alembic_import_exec(bContext *C, wmOperator *op)
@@ -651,7 +654,7 @@ void WM_OT_alembic_import(wmOperatorType *ot)
   ot->name = "Import Alembic";
   ot->description = "Load an Alembic archive";
   ot->idname = "WM_OT_alembic_import";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
   ot->invoke = wm_alembic_import_invoke;
   ot->exec = wm_alembic_import_exec;
@@ -662,7 +665,8 @@ void WM_OT_alembic_import(wmOperatorType *ot)
                                  FILE_TYPE_FOLDER | FILE_TYPE_ALEMBIC,
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS |
+                                     WM_FILESEL_SKIP_SAVE_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
@@ -715,5 +719,19 @@ void WM_OT_alembic_import(wmOperatorType *ot)
       "This option is deprecated; EXECUTE this operator to run in the foreground, and INVOKE it "
       "to run as a background job");
 }
+
+namespace blender::ed::io {
+void alembic_file_handler_add()
+{
+  auto fh_ptr = std::make_unique<blender::bke::FileHandlerType>();
+  auto &fh = *fh_ptr;
+  STRNCPY(fh.idname, "IO_FH_alembic");
+  STRNCPY(fh.import_operator, "WM_OT_alembic_import");
+  STRNCPY(fh.label, "Alembic");
+  STRNCPY(fh.file_extensions_str, ".abc");
+  fh.poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh_ptr));
+}
+}  // namespace blender::ed::io
 
 #endif

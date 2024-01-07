@@ -11,6 +11,7 @@
 #  include "DNA_space_types.h"
 
 #  include "BKE_context.hh"
+#  include "BKE_file_handler.hh"
 #  include "BKE_main.hh"
 #  include "BKE_report.h"
 
@@ -41,6 +42,7 @@
 #  include "IO_wavefront_obj.hh"
 
 #  include "io_obj.hh"
+#  include "io_utils.hh"
 
 static const EnumPropertyItem io_obj_export_evaluation_mode[] = {
     {DAG_EVAL_RENDER, "DAG_EVAL_RENDER", 0, "Render", "Export objects as they appear in render"},
@@ -385,12 +387,6 @@ void WM_OT_obj_export(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  WM_event_add_fileselect(C, op);
-  return OPERATOR_RUNNING_MODAL;
-}
-
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
   OBJImportParams import_params{};
@@ -475,6 +471,7 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
+  blender::ed::io::filepath_label_draw(C, op);
   ui_obj_import_settings(op->layout, &ptr);
 }
 
@@ -485,9 +482,9 @@ void WM_OT_obj_import(wmOperatorType *ot)
   ot->name = "Import Wavefront OBJ";
   ot->description = "Load a Wavefront OBJ scene";
   ot->idname = "WM_OT_obj_import";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
-  ot->invoke = wm_obj_import_invoke;
+  ot->invoke = blender::ed::io::filesel_drop_import_invoke;
   ot->exec = wm_obj_import_exec;
   ot->poll = WM_operator_winactive;
   ot->ui = wm_obj_import_draw;
@@ -497,7 +494,8 @@ void WM_OT_obj_import(wmOperatorType *ot)
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS |
-                                     WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
+                                     WM_FILESEL_DIRECTORY | WM_FILESEL_FILES |
+                                     WM_FILESEL_SKIP_SAVE_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
@@ -558,5 +556,19 @@ void WM_OT_obj_import(wmOperatorType *ot)
   prop = RNA_def_string(ot->srna, "filter_glob", "*.obj;*.mtl", 0, "Extension Filter", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
+
+namespace blender::ed::io {
+void obj_file_handler_add()
+{
+  auto fh_ptr = std::make_unique<blender::bke::FileHandlerType>();
+  auto &fh = *fh_ptr;
+  STRNCPY(fh.idname, "IO_FH_obj");
+  STRNCPY(fh.import_operator, "WM_OT_obj_import");
+  STRNCPY(fh.label, "Wavefront OBJ");
+  STRNCPY(fh.file_extensions_str, ".obj");
+  fh.poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh_ptr));
+}
+}  // namespace blender::ed::io
 
 #endif /* WITH_IO_WAVEFRONT_OBJ */
