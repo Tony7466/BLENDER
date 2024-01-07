@@ -14,7 +14,17 @@
 
 void main()
 {
-  GBufferReader gbuf = gbuffer_read_header(in_gbuffer_header);
+  GBufferReader gbuf = gbuffer_read_header_closure_types(in_gbuffer_header);
 
+#ifdef USE_STENCIL_EXPORT
   gl_FragStencilRefARB = gbuf.closure_count;
+#else
+  /* Instead of setting the stencil at once, we do it (literally) bit by bit.
+   * Discard fragments that do not have a number of closure whose bit-pattern overlap the current
+   * bit. */
+  if ((current_bit & int(gbuf.closure_count)) == 0) {
+    discard;
+    return;
+  }
+#endif
 }
