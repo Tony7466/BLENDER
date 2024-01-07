@@ -10,6 +10,8 @@
  * This file is only for shading passes. Other passes are declared in their own module.
  */
 
+#include "GPU_capabilities.h"
+
 #include "eevee_instance.hh"
 
 #include "eevee_pipeline.hh"
@@ -526,7 +528,7 @@ void DeferredLayer::end_sync()
                               GPU_ATTACHEMENT_IGNORE});
       sub.shader_set(sh);
       sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS);
-      if (false /*GPU_stencil_export_support()*/) {
+      if (GPU_stencil_export_support()) {
         /* The shader sets the stencil directly in one fullscreen pass. */
         sub.state_stencil(0xFFu, /* Set by shader */ 0x0u, 0xFFu);
         sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
