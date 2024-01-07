@@ -475,7 +475,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
                             int dst_offset_y)
 {
   BLI_assert(dst);
-  BLI_assert_msg(ELEM(planes, GPU_COLOR_BIT, GPU_DEPTH_BIT),
+  BLI_assert_msg(ELEM(planes, GPU_COLOR_BIT, GPU_DEPTH_BIT, GPU_STENCIL_BIT),
                  "VKFrameBuffer::blit_to only supports a single color or depth aspect.");
   UNUSED_VARS_NDEBUG(planes);
 
