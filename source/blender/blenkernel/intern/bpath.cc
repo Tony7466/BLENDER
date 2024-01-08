@@ -257,7 +257,7 @@ void BKE_bpath_missing_files_check(Main *bmain, ReportList *reports)
   }
 
   /* Clear sequencer media presence caches. */
-  blender::ed::seq::media_presence_free_all(bmain);
+  blender::seq::media_presence_free_all(bmain);
 }
 
 /** \} */
@@ -418,7 +418,7 @@ void BKE_bpath_missing_files_find(Main *bmain,
   BKE_bpath_foreach_path_main(&path_data);
 
   /* Clear sequencer media presence caches. */
-  blender::ed::seq::media_presence_free_all(bmain);
+  blender::seq::media_presence_free_all(bmain);
 }
 
 #undef MAX_DIR_RECURSE

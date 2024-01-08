@@ -13,7 +13,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-namespace blender::ed::seq {
+namespace blender::seq {
 
 static bool check_media_missing(const Sequence *seq)
 {
@@ -99,4 +99,4 @@ void media_presence_free_all(Main *bmain)
   }
 }
 
-}  // namespace blender::ed::seq
+}  // namespace blender::seq

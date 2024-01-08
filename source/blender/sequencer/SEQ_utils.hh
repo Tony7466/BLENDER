@@ -55,7 +55,7 @@ void SEQ_set_scale_to_fit(const Sequence *seq,
  */
 void SEQ_ensure_unique_name(Sequence *seq, Scene *scene);
 
-namespace blender::ed::seq {
+namespace blender::seq {
 struct MediaPresence;
 
 /**
@@ -84,4 +84,4 @@ void media_presence_free(MediaPresence **presence);
  */
 void media_presence_free_all(Main *bmain);
 
-}  // namespace blender::ed::seq
+}  // namespace blender::seq

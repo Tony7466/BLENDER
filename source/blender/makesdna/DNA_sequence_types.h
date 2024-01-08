@@ -29,10 +29,10 @@ struct VFont;
 struct bSound;
 
 #ifdef __cplusplus
-namespace blender::ed::seq {
+namespace blender::seq {
 struct MediaPresence;
-}  // namespace blender::ed::seq
-using MediaPresence = blender::ed::seq::MediaPresence;
+}  // namespace blender::seq
+using MediaPresence = blender::seq::MediaPresence;
 #else
 typedef struct MediaPresence MediaPresence;
 #endif
