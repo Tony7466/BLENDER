@@ -1873,15 +1873,16 @@ static void geometry_nodes_uv_sphere_uvmap(bNodeTree &ntree)
       nodeAddLink(&ntree, link->fromnode, link->fromsock, divide_node, divisor_input);
     }
     else{
-//      bNode *segments_node = nodeAddStaticNode(nullptr, &ntree, FN_NODE_INPUT_INT);
-//      segments_node->locx = divide_node->locx - divide_node->width * 1.25f;
-//      segments_node->locy = primitive_node->locy;
-//
-//      bNodeSocket *integer_output = nodeFindSocket(segments_node, SOCK_OUT, "Integer");
-//      nodeAddLink(&ntree, segments_node, integer_output, primitive_node, segments_input);
-//      nodeAddLink(&ntree, segments_node, integer_output, divide_node, divisor_input);
+      bNode *segments_node = nodeAddStaticNode(nullptr, &ntree, FN_NODE_INPUT_INT);
+      segments_node->locx = divide_node->locx - divide_node->width * 1.25f;
+      segments_node->locy = primitive_node->locy;
       
-      *version_cycles_node_socket_float_value(divisor_input) = *version_cycles_node_socket_int_value(segments_input);
+      NodeInputInt *node_storage = static_cast<NodeInputInt *>(segments_node->storage);
+      node_storage->integer = *version_cycles_node_socket_int_value(segments_input);
+      
+      bNodeSocket *integer_output = nodeFindSocket(segments_node, SOCK_OUT, "Integer");
+      nodeAddLink(&ntree, segments_node, integer_output, primitive_node, segments_input);
+      nodeAddLink(&ntree, segments_node, integer_output, divide_node, divisor_input);
     }
   }
 }
