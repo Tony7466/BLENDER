@@ -1809,18 +1809,6 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       {
         /* Link last body node to input/output nodes. */
         lf::FunctionNode &lf_last_body_node = *lf_body_nodes.as_span().last();
-
-        for (const int i : IndexRange(num_repeat_items)) {
-          std::cout << lf_last_body_node.output(body_fn_.indices.outputs.main[i]).detailed_name()
-                    << ": " << lf_last_body_node.output(body_fn_.indices.outputs.main[i]).name()
-                    << ";\n";
-          std::cout << lf_outputs[zone_info_.indices.outputs.main[i]]->detailed_name() << ": "
-                    << lf_outputs[zone_info_.indices.outputs.main[i]]->name() << ";\n";
-          std::cout << lf_inputs[zone_info_.indices.inputs.output_usages[i]]->detailed_name()
-                    << ": " << lf_inputs[zone_info_.indices.inputs.output_usages[i]]->name()
-                    << ";\n";
-        }
-
         for (const int i : IndexRange(num_repeat_items)) {
           lf_graph.add_link(lf_last_body_node.output(body_fn_.indices.outputs.main[i]),
                             *lf_outputs[zone_info_.indices.outputs.main[i]]);
