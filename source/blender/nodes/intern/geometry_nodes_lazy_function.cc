@@ -2310,11 +2310,12 @@ struct GeometryNodesLazyFunctionBuilder {
     auto &logger = scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_);
     auto &side_effect_provider = scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>();
 
-    auto tmp_copy_inputs = Vector<const lf::GraphInputSocket *>(lf_zone_inputs.as_span());
-    auto tmp_copy_outputs = Vector<const lf::GraphOutputSocket *>(lf_zone_outputs.as_span());
-
-    const auto &lf_graph_fn = scope_.construct<lf::GraphExecutor>(
-        lf_graph, tmp_copy_inputs, tmp_copy_outputs, &logger, &side_effect_provider, nullptr);
+    const auto &lf_graph_fn = scope_.construct<lf::GraphExecutor>(lf_graph,
+                                                                  lf_zone_inputs.as_span(),
+                                                                  lf_zone_outputs.as_span(),
+                                                                  &logger,
+                                                                  &side_effect_provider,
+                                                                  nullptr);
     const auto &zone_function = scope_.construct<LazyFunctionForSimulationZone>(*zone.output_node,
                                                                                 lf_graph_fn);
     zone_info.lazy_function = &zone_function;
@@ -2441,10 +2442,12 @@ struct GeometryNodesLazyFunctionBuilder {
     auto &logger = scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_);
     auto &side_effect_provider = scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>();
 
-    auto tmp_copy_inputs = Vector<const lf::GraphInputSocket *>(lf_body_inputs.as_span());
-    auto tmp_copy_outputs = Vector<const lf::GraphOutputSocket *>(lf_body_outputs.as_span());
-    body_fn.function = &scope_.construct<lf::GraphExecutor>(
-        lf_body_graph, tmp_copy_inputs, tmp_copy_outputs, &logger, &side_effect_provider, nullptr);
+    body_fn.function = &scope_.construct<lf::GraphExecutor>(lf_body_graph,
+                                                            lf_body_inputs.as_span(),
+                                                            lf_body_outputs.as_span(),
+                                                            &logger,
+                                                            &side_effect_provider,
+                                                            nullptr);
 
     // std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
