@@ -189,7 +189,7 @@ static SeqRenderData sequencer_thumbnail_context_init(const bContext *C)
   SEQ_render_new_render_data(bmain, depsgraph, scene, 0, 0, sseq->render_size, false, &context);
   context.view_id = BKE_scene_multiview_view_id_get(&scene->r, STEREO_LEFT_NAME);
   context.use_proxies = false;
-  context.show_missing_media = false;
+  context.never_show_missing_media = true;
   context.scene = scene;
 
   return context;

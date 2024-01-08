@@ -267,6 +267,7 @@ Editing *SEQ_editing_ensure(Scene *scene)
     ed->cache = nullptr;
     ed->cache_flag = SEQ_CACHE_STORE_FINAL_OUT;
     ed->cache_flag |= SEQ_CACHE_STORE_RAW;
+    ed->show_missing_media_flag = SEQ_EDIT_SHOW_MISSING_MEDIA;
     ed->displayed_channels = &ed->channels;
     SEQ_channels_ensure(ed->displayed_channels);
   }

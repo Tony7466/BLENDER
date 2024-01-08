@@ -335,6 +335,9 @@ typedef struct Editing {
   int overlay_frame_flag;
   rctf overlay_frame_rect;
 
+  int show_missing_media_flag;
+  int _pad1;
+
   struct SeqCache *cache;
 
   /* Cache control */
@@ -563,6 +566,11 @@ typedef struct SoundEqualizerModifierData {
 enum {
   SEQ_EDIT_OVERLAY_FRAME_SHOW = 1,
   SEQ_EDIT_OVERLAY_FRAME_ABS = 2,
+};
+
+/** #Editing::show_missing_media_flag */
+enum {
+  SEQ_EDIT_SHOW_MISSING_MEDIA = 1 << 0,
 };
 
 #define SEQ_STRIP_OFSBOTTOM 0.05f

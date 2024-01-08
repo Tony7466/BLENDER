@@ -231,8 +231,7 @@ void SEQ_render_new_render_data(Main *bmain,
   r_context->rectx = rectx;
   r_context->recty = recty;
   r_context->preview_render_size = preview_render_size;
-  r_context->show_missing_media = scene ? (scene->r.seq_flag & R_SEQ_SHOW_MISSING_MEDIA) != 0 :
-                                          false;
+  r_context->never_show_missing_media = false;
   r_context->for_render = for_render;
   r_context->motion_blur_samples = 0;
   r_context->motion_blur_shutter = 0;
@@ -967,8 +966,17 @@ static bool seq_image_strip_is_multiview_render(
   return (seq->flag & SEQ_USE_VIEWS) != 0 && (scene->r.scemode & R_MULTIVIEW) != 0;
 }
 
-static ImBuf *create_missing_media_image(const StripElem *orig)
+static ImBuf *create_missing_media_image(const SeqRenderData *context, const StripElem *orig)
 {
+  if (context->never_show_missing_media) {
+    return nullptr;
+  }
+  if (context->scene == nullptr || context->scene->ed == nullptr ||
+      (context->scene->ed->show_missing_media_flag & SEQ_EDIT_SHOW_MISSING_MEDIA) == 0)
+  {
+    return nullptr;
+  }
+
   ImBuf *ibuf = IMB_allocImBuf(
       max_ii(orig->orig_width, 1), max_ii(orig->orig_height, 1), 32, IB_rect);
   float col[4] = {0.85f, 0.0f, 0.75f, 1.0f};
@@ -1051,10 +1059,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
   }
 
   if (ibuf == nullptr) {
-    if (context->show_missing_media) {
-      ibuf = create_missing_media_image(s_elem);
-    }
-    return ibuf;
+    return create_missing_media_image(context, s_elem);
   }
 
   s_elem->orig_width = ibuf->x;
@@ -1217,10 +1222,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
   }
 
   if (ibuf == nullptr) {
-    if (context->show_missing_media) {
-      ibuf = create_missing_media_image(seq->strip->stripdata);
-    }
-    return ibuf;
+    return create_missing_media_image(context, seq->strip->stripdata);
   }
 
   if (*r_is_proxy_image == false) {

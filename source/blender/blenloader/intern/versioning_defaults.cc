@@ -37,6 +37,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -317,8 +318,10 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
     view_layer->passflag &= ~SCE_PASS_Z;
   }
 
-  /* Show missing media in sequencer by default. */
-  scene->r.seq_flag |= R_SEQ_SHOW_MISSING_MEDIA;
+  /* Display missing media by default. */
+  if (scene->ed) {
+    scene->ed->show_missing_media_flag |= SEQ_EDIT_SHOW_MISSING_MEDIA;
+  }
 
   /* New EEVEE defaults. */
   scene->eevee.bloom_intensity = 0.05f;
