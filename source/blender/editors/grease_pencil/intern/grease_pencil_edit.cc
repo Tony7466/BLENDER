@@ -1670,27 +1670,11 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
     }
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
-    const OffsetIndices points_by_curve = curves.points_by_curve();
-    const VArray<bool> cyclic = curves.cyclic();
     VArray<int> vcuts = {};
-
-    const VArray<bool> point_selection = *curves.attributes().lookup_or_default<bool>(
-        ".selection", bke::AttrDomain::Point, true);
-    VArray<bool> use_point_selection;
-    if (only_selected) {
-      use_point_selection = VArray<bool>(point_selection);
-    }
-    else {
-      use_point_selection = VArray<bool>::ForSingle(true, curves.points_num());
-    }
 
     if (selection_domain == bke::AttrDomain::Curve || (!only_selected)) {
       /* Subdivide entire selected curve, every stroke subdivides to the same cut. */
       vcuts = VArray<int>::ForSingle(cuts, curves.points_num());
-      blender::bke::AnonymousAttributePropagationInfo pinfo;
-      curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
-      info.drawing.tag_topology_changed();
-      changed.store(true, std::memory_order_relaxed);
     }
     else if (selection_domain == bke::AttrDomain::Point) {
       /* Subdivide between selected points. Only cut between selected points. */
@@ -1699,6 +1683,9 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       Array<int> use_cuts(curves.points_num(), 0);
       const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
           ".selection", bke::AttrDomain::Point, true);
+
+      const OffsetIndices points_by_curve = curves.points_by_curve();
+      const VArray<bool> cyclic = curves.cyclic();
 
       /* The cut is after each point, so the last point selected wouldn't need to be registered. */
       for (const int curves_i : curves.curves_range()) {
@@ -1718,12 +1705,10 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       vcuts = VArray<int>::ForContainer(use_cuts);
     }
 
-    if (!vcuts.is_empty()) {
-      blender::bke::AnonymousAttributePropagationInfo pinfo;
-      curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
-      info.drawing.tag_topology_changed();
-      changed.store(true, std::memory_order_relaxed);
-    }
+    blender::bke::AnonymousAttributePropagationInfo pinfo;
+    curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
+    info.drawing.tag_topology_changed();
+    changed.store(true, std::memory_order_relaxed);
   });
 
   if (changed) {
