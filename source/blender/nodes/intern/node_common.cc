@@ -26,7 +26,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 
 #include "RNA_types.hh"
 
@@ -299,12 +299,13 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       dst = std::move(value);
       break;
     }
-    case SOCK_CUSTOM:
+    case SOCK_CUSTOM: {
       auto value = std::make_unique<decl::Custom>();
       value->init_socket_fn = get_init_socket_fn(ntree.tree_interface, io_socket);
       value->idname_ = io_socket.socket_type;
       dst = std::move(value);
       break;
+    }
   }
   dst->name = io_socket.name ? io_socket.name : "";
   dst->identifier = io_socket.identifier;
@@ -623,7 +624,8 @@ bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNo
     for (const bNodeSocket *socket : next_node->output_sockets()) {
       for (const bNodeLink *link : socket->directly_linked_links()) {
         if (link->tonode->typeinfo->nclass == NODE_CLASS_OUTPUT &&
-            link->tonode->flag & NODE_DO_OUTPUT) {
+            link->tonode->flag & NODE_DO_OUTPUT)
+        {
           return true;
         }
         nodes_to_check.push(link->tonode);

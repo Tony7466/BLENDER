@@ -61,7 +61,7 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
       return geometry_relations;
     }
   }
-  if (ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT)) {
+  if (ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_BAKE)) {
     aal::RelationsInNode &relations = scope.construct<aal::RelationsInNode>();
     {
       /* Add eval relations. */
@@ -232,7 +232,7 @@ static bool or_into_each_other(BitGroupVector<> &vec, const int64_t a, const int
   return or_into_each_other(vec[a], vec[b]);
 }
 
-static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
+static AnonymousAttributeInferencingResult analyze_anonymous_attribute_usages(
     const bNodeTree &tree)
 {
   BLI_assert(!tree.has_available_link_cycle());
@@ -483,12 +483,14 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
                 geometry_source.data);
             for (const int field_source_index : geometry_source.field_sources) {
               for (const bNodeSocket *other_socket :
-                   group_output_node->input_sockets().drop_back(1)) {
+                   group_output_node->input_sockets().drop_back(1))
+              {
                 if (!nodes::socket_type_supports_fields(eNodeSocketDatatype(other_socket->type))) {
                   continue;
                 }
                 if (propagated_fields_by_socket[other_socket->index_in_tree()][field_source_index]
-                        .test()) {
+                        .test())
+                {
                   tree_relations.available_relations.append(
                       aal::AvailableRelation{other_socket->index(), socket->index()});
                   required_fields_by_geometry_socket[socket->index_in_tree()][field_source_index]
@@ -643,7 +645,7 @@ bool update_anonymous_attribute_relations(bNodeTree &tree)
     return changed;
   }
 
-  AnonymousAttributeInferencingResult result = analyse_anonymous_attribute_usages(tree);
+  AnonymousAttributeInferencingResult result = analyze_anonymous_attribute_usages(tree);
 
   const bool group_interface_changed =
       !tree.runtime->anonymous_attribute_inferencing ||

@@ -37,16 +37,16 @@
 #include "BKE_animsys.h"
 #include "BKE_blender_undo.h"
 #include "BKE_brush.hh"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_movieclip.h"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 #include "BKE_tracking.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "GHOST_C-api.h"
 
@@ -68,7 +68,7 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 
 #ifdef WITH_INPUT_IME
 #  include "BLT_lang.h"
@@ -657,7 +657,8 @@ static bool ui_but_dragedit_update_mval(uiHandleButtonData *data, int mx)
 #ifdef USE_DRAG_MULTINUM
     if (ELEM(data->multi_data.init,
              uiHandleButtonMulti::INIT_UNSET,
-             uiHandleButtonMulti::INIT_SETUP)) {
+             uiHandleButtonMulti::INIT_SETUP))
+    {
       return false;
     }
 #endif
@@ -959,7 +960,8 @@ static void ui_apply_but_undo(uiBut *but)
     else {
       ID *id = but->rnapoin.owner_id;
       if (!ED_undo_is_legacy_compatible_for_property(static_cast<bContext *>(but->block->evil_C),
-                                                     id)) {
+                                                     id))
+      {
         skip_undo = true;
       }
     }
@@ -4418,7 +4420,7 @@ static uiBut *ui_but_list_row_text_activate(bContext *C,
                                             const wmEvent *event,
                                             uiButtonActivateType activate_type)
 {
-  ARegion *region = CTX_wm_region(C);
+  ARegion *region = data->region;
   uiBut *labelbut = ui_but_find_mouse_over_ex(region, event->xy, true, false, nullptr, nullptr);
 
   if (labelbut && labelbut->type == UI_BTYPE_TEXT && !(labelbut->flag & UI_BUT_DISABLED)) {
@@ -4569,8 +4571,8 @@ static int ui_do_but_BUT(bContext *C, uiBut *but, uiHandleButtonData *data, cons
       return WM_UI_HANDLER_BREAK;
     }
     if (event->type == LEFTMOUSE && event->val == KM_RELEASE && but->block->handle) {
-      /* regular buttons will be 'UI_SELECT', menu items 'UI_ACTIVE' */
-      if (!(but->flag & (UI_SELECT | UI_ACTIVE))) {
+      /* regular buttons will be 'UI_SELECT', menu items 'UI_HOVER' */
+      if (!(but->flag & (UI_SELECT | UI_HOVER))) {
         data->cancel = true;
       }
       button_activate_state(C, but, BUTTON_STATE_EXIT);
@@ -4747,7 +4749,8 @@ static int ui_do_but_TEX(
 {
   if (data->state == BUTTON_STATE_HIGHLIGHT) {
     if (ELEM(event->type, LEFTMOUSE, EVT_BUT_OPEN, EVT_PADENTER, EVT_RETKEY) &&
-        event->val == KM_PRESS) {
+        event->val == KM_PRESS)
+    {
       if (ELEM(event->type, EVT_PADENTER, EVT_RETKEY) && !UI_but_is_utf8(but)) {
         /* Pass, allow file-selector, enter to execute. */
       }
@@ -5347,7 +5350,7 @@ static bool ui_numedit_but_NUM(uiButNumber *but,
 static void ui_numedit_set_active(uiBut *but)
 {
   const int oldflag = but->drawflag;
-  but->drawflag &= ~(UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT);
+  but->drawflag &= ~(UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT);
 
   uiHandleButtonData *data = but->active;
   if (!data) {
@@ -5365,16 +5368,16 @@ static void ui_numedit_set_active(uiBut *but)
     ui_window_to_block(data->region, but->block, &mx, &my);
 
     if (mx < (but->rect.xmin + handle_width)) {
-      but->drawflag |= UI_BUT_ACTIVE_LEFT;
+      but->drawflag |= UI_BUT_HOVER_LEFT;
     }
     else if (mx > (but->rect.xmax - handle_width)) {
-      but->drawflag |= UI_BUT_ACTIVE_RIGHT;
+      but->drawflag |= UI_BUT_HOVER_RIGHT;
     }
   }
 
   /* Don't change the cursor once pressed. */
   if ((but->flag & UI_SELECT) == 0) {
-    if ((but->drawflag & UI_BUT_ACTIVE_LEFT) || (but->drawflag & UI_BUT_ACTIVE_RIGHT)) {
+    if ((but->drawflag & UI_BUT_HOVER_LEFT) || (but->drawflag & UI_BUT_HOVER_RIGHT)) {
       if (data->changed_cursor) {
         WM_cursor_modal_restore(data->window);
         data->changed_cursor = false;
@@ -5425,14 +5428,14 @@ static int ui_do_but_NUM(
     }
     else if (type == WHEELDOWNMOUSE && (event->modifier & KM_CTRL)) {
       mx = but->rect.xmin;
-      but->drawflag &= ~UI_BUT_ACTIVE_RIGHT;
-      but->drawflag |= UI_BUT_ACTIVE_LEFT;
+      but->drawflag &= ~UI_BUT_HOVER_RIGHT;
+      but->drawflag |= UI_BUT_HOVER_LEFT;
       click = 1;
     }
     else if ((type == WHEELUPMOUSE) && (event->modifier & KM_CTRL)) {
       mx = but->rect.xmax;
-      but->drawflag &= ~UI_BUT_ACTIVE_LEFT;
-      but->drawflag |= UI_BUT_ACTIVE_RIGHT;
+      but->drawflag &= ~UI_BUT_HOVER_LEFT;
+      but->drawflag |= UI_BUT_HOVER_RIGHT;
       click = 1;
     }
     else if (event->val == KM_PRESS) {
@@ -5534,14 +5537,14 @@ static int ui_do_but_NUM(
 
     if (!ui_but_is_float(but)) {
       /* Integer Value. */
-      if (but->drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT)) {
+      if (but->drawflag & (UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT)) {
         button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
 
         const int value_step = int(number_but->step_size);
         BLI_assert(value_step > 0);
         const int softmin = round_fl_to_int_clamp(but->softmin);
         const int softmax = round_fl_to_int_clamp(but->softmax);
-        const double value_test = (but->drawflag & UI_BUT_ACTIVE_LEFT) ?
+        const double value_test = (but->drawflag & UI_BUT_HOVER_LEFT) ?
                                       double(max_ii(softmin, int(data->value) - value_step)) :
                                       double(min_ii(softmax, int(data->value) + value_step));
         if (value_test != data->value) {
@@ -5558,7 +5561,7 @@ static int ui_do_but_NUM(
     }
     else {
       /* Float Value. */
-      if (but->drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT)) {
+      if (but->drawflag & (UI_BUT_HOVER_LEFT | UI_BUT_HOVER_RIGHT)) {
         const PropertyScaleType scale_type = ui_but_scale_type(but);
 
         button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
@@ -5578,7 +5581,7 @@ static int ui_do_but_NUM(
         }
         BLI_assert(value_step > 0.0f);
         const double value_test =
-            (but->drawflag & UI_BUT_ACTIVE_LEFT) ?
+            (but->drawflag & UI_BUT_HOVER_LEFT) ?
                 double(max_ff(but->softmin, float(data->value - value_step))) :
                 double(min_ff(but->softmax, float(data->value + value_step)));
         if (value_test != data->value) {
@@ -6016,7 +6019,12 @@ static int ui_do_but_SCROLL(
     else if (event->type == MOUSEMOVE) {
       const bool is_motion = (event->type == MOUSEMOVE);
       if (ui_numedit_but_SLI(
-              but, data, (horizontal) ? mx : my, horizontal, is_motion, false, false)) {
+              but, data, (horizontal) ? mx : my, horizontal, is_motion, false, false))
+      {
+        /* Scroll-bars in popups need UI layout refresh to update the right items to show. */
+        if (ui_block_is_popup_any(but->block)) {
+          ED_region_tag_refresh_ui(data->region);
+        }
         ui_numedit_apply(C, block, but, data);
       }
     }
@@ -8053,16 +8061,15 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
         (event->modifier & (KM_SHIFT | KM_CTRL | KM_ALT | KM_OSKEY)) == 0 &&
         (event->val == KM_PRESS))
     {
-      ARegion *region = CTX_wm_region(C);
       /* For some button types that are typically representing entire sets of data, right-clicking
        * to spawn the context menu should also activate the item. This makes it clear which item
        * will be operated on.
        * Apply the button immediately, so context menu polls get the right active item. */
       uiBut *clicked_view_item_but = but->type == UI_BTYPE_VIEW_ITEM ?
                                          but :
-                                         ui_view_item_find_mouse_over(region, event->xy);
+                                         ui_view_item_find_mouse_over(data->region, event->xy);
       if (clicked_view_item_but) {
-        UI_but_execute(C, region, clicked_view_item_but);
+        UI_but_execute(C, data->region, clicked_view_item_but);
       }
 
       /* RMB has two options now */
@@ -8623,9 +8630,9 @@ static void button_activate_init(bContext *C,
 
   data->state = BUTTON_STATE_INIT;
 
-  /* activate button */
-  but->flag |= UI_ACTIVE;
-
+  /* Activate button. Sets the hover flag to enable button highlights, usually the button is
+   * initially activated because it's hovered. */
+  but->flag |= UI_HOVER;
   but->active = data;
 
   /* we disable auto_open in the block after a threshold, because we still
@@ -8813,7 +8820,7 @@ static void button_activate_exit(
   /* clean up button */
   MEM_SAFE_FREE(but->active);
 
-  but->flag &= ~(UI_ACTIVE | UI_SELECT);
+  but->flag &= ~(UI_HOVER | UI_SELECT);
   but->flag |= UI_BUT_LAST_ACTIVE;
   if (!onfree) {
     ui_but_update(but);
@@ -9219,7 +9226,7 @@ static bool ui_handle_button_activate_by_type(bContext *C, ARegion *region, uiBu
     ui_handle_button_activate(C, region, but, BUTTON_ACTIVATE);
   }
   else {
-#ifdef DEBUG
+#ifndef NDEBUG
     printf("%s: error, unhandled type: %d\n", __func__, but->type);
 #endif
     return false;
@@ -9400,7 +9407,8 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
           if (data->hold_action_timer) {
             if (but->flag & UI_SELECT) {
               if (len_manhattan_v2v2_int(event->xy, event->prev_xy) <=
-                  WM_EVENT_CURSOR_MOTION_THRESHOLD) {
+                  WM_EVENT_CURSOR_MOTION_THRESHOLD)
+              {
                 /* pass */
               }
               else {
@@ -9411,14 +9419,14 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
           }
 
           if (!(but->flag & UI_SELECT)) {
-            but->flag |= (UI_SELECT | UI_ACTIVE);
+            but->flag |= (UI_SELECT | UI_HOVER);
             data->cancel = false;
             ED_region_tag_redraw_no_rebuild(data->region);
           }
         }
         else {
           if (but->flag & UI_SELECT) {
-            but->flag &= ~(UI_SELECT | UI_ACTIVE);
+            but->flag &= ~(UI_SELECT | UI_HOVER);
             data->cancel = true;
             ED_region_tag_redraw_no_rebuild(data->region);
           }
@@ -9831,7 +9839,7 @@ static int ui_handle_viewlist_items_hover(const wmEvent *event, const ARegion *r
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       if (ELEM(but->type, UI_BTYPE_VIEW_ITEM, UI_BTYPE_LISTROW)) {
-        but->flag &= ~UI_ACTIVE;
+        but->flag &= ~UI_HOVER;
         has_item = true;
       }
     }
@@ -9848,7 +9856,7 @@ static int ui_handle_viewlist_items_hover(const wmEvent *event, const ARegion *r
     hovered_row_but = ui_list_row_find_mouse_over(region, event->xy);
   }
   if (hovered_row_but) {
-    hovered_row_but->flag |= UI_ACTIVE;
+    hovered_row_but->flag |= UI_HOVER;
   }
 
   return WM_UI_HANDLER_CONTINUE;
@@ -10471,7 +10479,8 @@ static int ui_handle_menu_event(bContext *C,
           if (event->val == KM_PRESS && (block->flag & UI_BLOCK_LOOP)) {
 
             if (ui_menu_pass_event_to_parent_if_nonactive(
-                    menu, but, level, is_parent_menu, retval)) {
+                    menu, but, level, is_parent_menu, retval))
+            {
               break;
             }
 
@@ -10572,7 +10581,8 @@ static int ui_handle_menu_event(bContext *C,
               }
 
               if (ui_menu_pass_event_to_parent_if_nonactive(
-                      menu, but, level, is_parent_menu, retval)) {
+                      menu, but, level, is_parent_menu, retval))
+              {
                 break;
               }
 
@@ -10684,7 +10694,8 @@ static int ui_handle_menu_event(bContext *C,
             int count;
 
             if (ui_menu_pass_event_to_parent_if_nonactive(
-                    menu, but, level, is_parent_menu, retval)) {
+                    menu, but, level, is_parent_menu, retval))
+            {
               break;
             }
 
@@ -10706,7 +10717,8 @@ static int ui_handle_menu_event(bContext *C,
                         UI_BTYPE_LABEL,
                         UI_BTYPE_SEPR,
                         UI_BTYPE_SEPR_LINE,
-                        UI_BTYPE_IMAGE)) {
+                        UI_BTYPE_IMAGE))
+              {
                 count++;
               }
 
@@ -10786,7 +10798,8 @@ static int ui_handle_menu_event(bContext *C,
             /* Menu search if space-bar or #MenuTypeFlag::SearchOnKeyPress. */
             MenuType *mt = WM_menutype_find(menu->menu_idname, true);
             if ((mt && bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) ||
-                event->type == EVT_SPACEKEY) {
+                event->type == EVT_SPACEKEY)
+            {
               if ((level != 0) && (but == nullptr || !menu->menu_idname[0])) {
                 /* Search parent if the child is open but not activated or not searchable. */
                 menu->menuretval = UI_RETURN_OUT | UI_RETURN_OUT_PARENT;
@@ -10798,7 +10811,8 @@ static int ui_handle_menu_event(bContext *C,
             }
 
             if (ui_menu_pass_event_to_parent_if_nonactive(
-                    menu, but, level, is_parent_menu, retval)) {
+                    menu, but, level, is_parent_menu, retval))
+            {
               break;
             }
 
@@ -10845,7 +10859,8 @@ static int ui_handle_menu_event(bContext *C,
               }
             }
             else if (saferct && !BLI_rctf_isect_pt(
-                                    &saferct->parent, float(event->xy[0]), float(event->xy[1]))) {
+                                    &saferct->parent, float(event->xy[0]), float(event->xy[1])))
+            {
               if (block->flag & UI_BLOCK_OUT_1) {
                 menu->menuretval = UI_RETURN_OK;
               }
@@ -10871,7 +10886,8 @@ static int ui_handle_menu_event(bContext *C,
       }
 #ifdef USE_KEYNAV_LIMIT
       else if ((event->type == MOUSEMOVE) &&
-               ui_mouse_motion_keynav_test(&menu->keynav_state, event)) {
+               ui_mouse_motion_keynav_test(&menu->keynav_state, event))
+      {
         /* Don't handle the mouse-move if we're using key-navigation. */
         retval = WM_UI_HANDLER_BREAK;
       }
@@ -10926,12 +10942,14 @@ static int ui_handle_menu_event(bContext *C,
 
           /* Check for all parent rects, enables arrow-keys to be used. */
           for (saferct = static_cast<uiSafetyRct *>(block->saferct.first); saferct;
-               saferct = saferct->next) {
+               saferct = saferct->next)
+          {
             /* for mouse move we only check our own rect, for other
              * events we check all preceding block rects too to make
              * arrow keys navigation work */
             if (event->type != MOUSEMOVE ||
-                saferct == static_cast<uiSafetyRct *>(block->saferct.first)) {
+                saferct == static_cast<uiSafetyRct *>(block->saferct.first))
+            {
               if (BLI_rctf_isect_pt(&saferct->parent, float(event->xy[0]), float(event->xy[1]))) {
                 break;
               }

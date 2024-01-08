@@ -15,8 +15,8 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 
 #include "transform.hh"
 #include "transform_snap.hh"
@@ -400,7 +400,8 @@ static void createTransCurveVerts(bContext * /*C*/, TransInfo *t)
       /* TODO: in the case of tilt and radius we can also avoid allocating the
        * initTransDataCurveHandles but for now just don't change handle types */
       if ((nu->type == CU_BEZIER) &&
-          ELEM(t->mode, TFM_CURVE_SHRINKFATTEN, TFM_TILT, TFM_DUMMY) == 0) {
+          ELEM(t->mode, TFM_CURVE_SHRINKFATTEN, TFM_TILT, TFM_DUMMY) == 0)
+      {
         /* sets the handles based on their selection,
          * do this after the data is copied to the TransData */
         BKE_nurb_handles_test(nu, handle_mode, use_around_origins_for_handles_test);

@@ -19,7 +19,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_screen.hh"
@@ -30,7 +30,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "ED_asset.hh"
@@ -985,10 +985,10 @@ static bool region_background_is_transparent(const ScrArea *area, const ARegion 
   return back[3] < 50;
 }
 
-#define AZONEPAD_EDGE (0.1f * U.widget_unit)
-#define AZONEPAD_ICON (0.45f * U.widget_unit)
 static void region_azone_edge(const ScrArea *area, AZone *az, const ARegion *region)
 {
+  const int azonepad_edge = (0.1f * U.widget_unit);
+
   /* If there is no visible region background, users typically expect the #AZone to be closer to
    * the content, so move it a bit. */
   const int overlap_padding =
@@ -1004,26 +1004,26 @@ static void region_azone_edge(const ScrArea *area, AZone *az, const ARegion *reg
   switch (az->edge) {
     case AE_TOP_TO_BOTTOMRIGHT:
       az->x1 = region->winrct.xmin;
-      az->y1 = region->winrct.ymax - AZONEPAD_EDGE - overlap_padding;
+      az->y1 = region->winrct.ymax - azonepad_edge - overlap_padding;
       az->x2 = region->winrct.xmax;
-      az->y2 = region->winrct.ymax + AZONEPAD_EDGE - overlap_padding;
+      az->y2 = region->winrct.ymax + azonepad_edge - overlap_padding;
       break;
     case AE_BOTTOM_TO_TOPLEFT:
       az->x1 = region->winrct.xmin;
-      az->y1 = region->winrct.ymin + AZONEPAD_EDGE + overlap_padding;
+      az->y1 = region->winrct.ymin + azonepad_edge + overlap_padding;
       az->x2 = region->winrct.xmax;
-      az->y2 = region->winrct.ymin - AZONEPAD_EDGE + overlap_padding;
+      az->y2 = region->winrct.ymin - azonepad_edge + overlap_padding;
       break;
     case AE_LEFT_TO_TOPRIGHT:
-      az->x1 = region->winrct.xmin - AZONEPAD_EDGE + overlap_padding;
+      az->x1 = region->winrct.xmin - azonepad_edge + overlap_padding;
       az->y1 = region->winrct.ymin;
-      az->x2 = region->winrct.xmin + AZONEPAD_EDGE + overlap_padding;
+      az->x2 = region->winrct.xmin + azonepad_edge + overlap_padding;
       az->y2 = region->winrct.ymax;
       break;
     case AE_RIGHT_TO_TOPLEFT:
-      az->x1 = region->winrct.xmax + AZONEPAD_EDGE - overlap_padding;
+      az->x1 = region->winrct.xmax + azonepad_edge - overlap_padding;
       az->y1 = region->winrct.ymin;
-      az->x2 = region->winrct.xmax - AZONEPAD_EDGE - overlap_padding;
+      az->x2 = region->winrct.xmax - azonepad_edge - overlap_padding;
       az->y2 = region->winrct.ymax;
       break;
   }
@@ -1072,6 +1072,13 @@ static void region_azone_tab_plus(ScrArea *area, AZone *az, ARegion *region)
 static bool region_azone_edge_poll(const ARegion *region, const bool is_fullscreen)
 {
   if (region->flag & RGN_FLAG_POLL_FAILED) {
+    return false;
+  }
+
+  /* Don't use edge if the region hides with previous region which is now hidden. See #116196. */
+  if ((region->alignment & (RGN_SPLIT_PREV | RGN_ALIGN_HIDE_WITH_PREV) && region->prev) &&
+      region->prev->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL))
+  {
     return false;
   }
 
@@ -1150,7 +1157,8 @@ static void region_azones_scrollbars_init(ScrArea *area, ARegion *region)
     region_azone_scrollbar_init(area, region, AZ_SCROLL_VERT);
   }
   if ((v2d->scroll & V2D_SCROLL_HORIZONTAL) &&
-      ((v2d->scroll & V2D_SCROLL_HORIZONTAL_HANDLES) == 0)) {
+      ((v2d->scroll & V2D_SCROLL_HORIZONTAL_HANDLES) == 0))
+  {
     region_azone_scrollbar_init(area, region, AZ_SCROLL_HOR);
   }
 }
@@ -1227,21 +1235,24 @@ static void region_overlap_fix(ScrArea *area, ARegion *region)
     if (region_iter->flag & (RGN_FLAG_POLL_FAILED | RGN_FLAG_HIDDEN)) {
       continue;
     }
+    if (!region_iter->overlap || (region_iter->alignment & RGN_SPLIT_PREV)) {
+      continue;
+    }
 
-    if (region_iter->overlap && ((region_iter->alignment & RGN_SPLIT_PREV) == 0)) {
-      if (ELEM(region_iter->alignment, RGN_ALIGN_FLOAT)) {
-        continue;
+    const int align_iter = RGN_ALIGN_ENUM_FROM_MASK(region_iter->alignment);
+    if (ELEM(align_iter, RGN_ALIGN_FLOAT)) {
+      continue;
+    }
+
+    align1 = align_iter;
+    if (BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr)) {
+      if (align1 != align) {
+        /* Left overlapping right or vice-versa, forbid this! */
+        region->flag |= RGN_FLAG_TOO_SMALL;
+        return;
       }
-      align1 = region_iter->alignment;
-      if (BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr)) {
-        if (align1 != align) {
-          /* Left overlapping right or vice-versa, forbid this! */
-          region->flag |= RGN_FLAG_TOO_SMALL;
-          return;
-        }
-        /* Else, we have our previous region on same side. */
-        break;
-      }
+      /* Else, we have our previous region on same side. */
+      break;
     }
   }
 
@@ -1272,18 +1283,19 @@ static void region_overlap_fix(ScrArea *area, ARegion *region)
     if (region_iter->flag & (RGN_FLAG_POLL_FAILED | RGN_FLAG_HIDDEN)) {
       continue;
     }
-    if (ELEM(region_iter->alignment, RGN_ALIGN_FLOAT)) {
+    if (!region_iter->overlap || (region_iter->alignment & RGN_SPLIT_PREV)) {
       continue;
     }
 
-    if (region_iter->overlap && (region_iter->alignment & RGN_SPLIT_PREV) == 0) {
-      if ((region_iter->alignment != align) &&
-          BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr))
-      {
-        /* Left overlapping right or vice-versa, forbid this! */
-        region->flag |= RGN_FLAG_TOO_SMALL;
-        return;
-      }
+    const int align_iter = RGN_ALIGN_ENUM_FROM_MASK(region_iter->alignment);
+    if (ELEM(align_iter, RGN_ALIGN_FLOAT)) {
+      continue;
+    }
+
+    if ((align_iter != align) && BLI_rcti_isect(&region_iter->winrct, &region->winrct, nullptr)) {
+      /* Left overlapping right or vice-versa, forbid this! */
+      region->flag |= RGN_FLAG_TOO_SMALL;
+      return;
     }
   }
 }
@@ -1708,13 +1720,15 @@ static void area_calc_totrct(ScrArea *area, const rcti *window_rect)
   area->winy = BLI_rcti_size_y(&area->totrct) + 1;
 }
 
-/* used for area initialize below */
-static void region_subwindow(ARegion *region)
+/**
+ * Update the `ARegion::visible` flag.
+ */
+static void region_evaulate_visibility(ARegion *region)
 {
   bool hidden = (region->flag & (RGN_FLAG_POLL_FAILED | RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) !=
                 0;
 
-  if ((region->alignment & RGN_SPLIT_PREV) && region->prev) {
+  if ((region->alignment & (RGN_SPLIT_PREV | RGN_ALIGN_HIDE_WITH_PREV)) && region->prev) {
     hidden = hidden || (region->prev->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL));
   }
 
@@ -2008,7 +2022,7 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   area_azone_init(win, screen, area);
 
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    region_subwindow(region);
+    region_evaulate_visibility(region);
 
     /* region size may have changed, init does necessary adjustments */
     if (region->type->init) {
@@ -2112,7 +2126,7 @@ void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
 
   /* region windows, default and own handlers */
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    region_subwindow(region);
+    region_evaulate_visibility(region);
 
     if (region->visible) {
       /* default region handlers */
@@ -2180,7 +2194,8 @@ static void area_offscreen_exit(wmWindowManager *wm, wmWindow *win, ScrArea *are
     }
 
     WM_event_modal_handler_region_replace(win, region, nullptr);
-    WM_draw_region_free(region, true);
+    WM_draw_region_free(region);
+    region->visible = false;
 
     MEM_SAFE_FREE(region->headerstr);
 
@@ -2224,7 +2239,7 @@ void ED_region_floating_init(ARegion *region)
   BLI_assert(region->alignment == RGN_ALIGN_FLOAT);
 
   /* refresh can be called before window opened */
-  region_subwindow(region);
+  region_evaulate_visibility(region);
 
   region_update_rect(region);
 }
@@ -2876,6 +2891,7 @@ static void ed_panel_draw(const bContext *C,
 
   bool open;
   panel = UI_panel_begin(region, lb, block, pt, panel, &open);
+  panel->runtime->layout_panels.clear();
 
   const bool search_filter_active = search_filter != nullptr && search_filter[0] != '\0';
 
@@ -2966,12 +2982,19 @@ static void ed_panel_draw(const bContext *C,
 
     pt->draw(C, panel);
 
+    const bool ends_with_layout_panel_header = uiLayoutEndsWithPanelHeader(*panel->layout);
+
     UI_block_apply_search_filter(block, search_filter);
     UI_block_layout_resolve(block, &xco, &yco);
     panel->layout = nullptr;
 
     if (yco != 0) {
-      h = -yco + 2 * style->panelspace;
+      h = -yco;
+      h += style->panelspace;
+      if (!ends_with_layout_panel_header) {
+        /* Last layout panel header ends together with the panel. */
+        h += style->panelspace;
+      }
     }
   }
 

@@ -8,7 +8,7 @@
  * Eevee's indirect lighting cache.
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BKE_global.h"
 
@@ -62,13 +62,13 @@
       (IRRADIANCE_MAX_POOL_SIZE / IRRADIANCE_SAMPLE_SIZE_Y)
 
 /* TODO: should be replace by a more elegant alternative. */
-extern "C" void DRW_gpu_context_enable(void);
-extern "C" void DRW_gpu_context_disable(void);
+void DRW_gpu_context_enable(void);
+void DRW_gpu_context_disable(void);
 
-extern "C" void DRW_system_gpu_render_context_enable(void *re_system_gpu_context);
-extern "C" void DRW_system_gpu_render_context_disable(void *re_system_gpu_context);
-extern "C" void DRW_blender_gpu_render_context_enable(void *re_blender_gpu_context);
-extern "C" void DRW_blender_gpu_render_context_disable(void *re_blender_gpu_context);
+void DRW_system_gpu_render_context_enable(void *re_system_gpu_context);
+void DRW_system_gpu_render_context_disable(void *re_system_gpu_context);
+void DRW_blender_gpu_render_context_enable(void *re_blender_gpu_context);
+void DRW_blender_gpu_render_context_disable(void *re_blender_gpu_context);
 
 struct EEVEE_LightBake {
   Depsgraph *depsgraph;
@@ -276,7 +276,7 @@ static void irradiance_pool_size_get(int visibility_size, int total_samples, int
                     (visibility_size / IRRADIANCE_SAMPLE_SIZE_Y);
 
   /* The irradiance itself take one layer, hence the +1 */
-  int layer_count = MIN2(irr_per_vis + 1, IRRADIANCE_MAX_POOL_LAYER);
+  int layer_count = std::min(irr_per_vis + 1, IRRADIANCE_MAX_POOL_LAYER);
 
   int texel_count = int(ceilf(float(total_samples) / float(layer_count - 1)));
   r_size[0] = visibility_size *
@@ -686,8 +686,7 @@ static void eevee_lightbake_count_probes(EEVEE_LightBake *lbake)
 
 static void eevee_lightbake_create_render_target(EEVEE_LightBake *lbake, int rt_res)
 {
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
-                           GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
   lbake->rt_depth = DRW_texture_create_cube_ex(
       rt_res, GPU_DEPTH_COMPONENT24, usage, DRWTextureFlag(0), nullptr);
   lbake->rt_color = DRW_texture_create_cube_ex(
@@ -927,6 +926,7 @@ static void eevee_lightbake_delete_resources(EEVEE_LightBake *lbake)
 /* Cache as in draw cache not light cache. */
 static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lbake)
 {
+  using namespace blender::draw;
   EEVEE_TextureList *txl = vedata->txl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -1474,7 +1474,8 @@ void EEVEE_lightbake_job(void *custom_data, wmJobWorkerStatus *worker_status)
         lbake->grid_sample_len = prb->grid_resolution_x * prb->grid_resolution_y *
                                  prb->grid_resolution_z;
         for (lbake->grid_sample = 0; lbake->grid_sample < lbake->grid_sample_len;
-             ++lbake->grid_sample) {
+             ++lbake->grid_sample)
+        {
           lightbake_do_sample(lbake, eevee_lightbake_render_grid_sample);
         }
       }

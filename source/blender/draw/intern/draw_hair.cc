@@ -8,7 +8,7 @@
  * \brief Contains procedural GPU hair drawing methods.
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
@@ -32,7 +32,7 @@
 #include "DRW_gpu_wrapper.hh"
 
 #include "draw_hair_private.h"
-#include "draw_shader.h"
+#include "draw_shader.hh"
 #include "draw_shader_shared.h"
 
 BLI_INLINE eParticleRefineShaderType drw_hair_shader_type_get()
@@ -130,7 +130,7 @@ static void drw_hair_particle_cache_update_compute(ParticleHairCache *cache, con
     const int max_strands_per_call = GPU_max_work_group_count(0);
     int strands_start = 0;
     while (strands_start < strands_len) {
-      int batch_strands_len = MIN2(strands_len - strands_start, max_strands_per_call);
+      int batch_strands_len = std::min(strands_len - strands_start, max_strands_per_call);
       DRWShadingGroup *subgroup = DRW_shgroup_create_sub(shgrp);
       DRW_shgroup_uniform_int_copy(subgroup, "hairStrandOffset", strands_start);
       DRW_shgroup_call_compute(subgroup, batch_strands_len, cache->final[subdiv].strands_res, 1);
@@ -178,6 +178,7 @@ static ParticleHairCache *drw_hair_particle_cache_get(Object *object,
                                                       int subdiv,
                                                       int thickness_res)
 {
+  using namespace blender::draw;
   ParticleHairCache *cache;
   bool update = particles_ensure_procedural_data(
       object, psys, md, &cache, gpu_material, subdiv, thickness_res);
@@ -459,6 +460,7 @@ static ParticleHairCache *hair_particle_cache_get(Object *object,
                                                   int subdiv,
                                                   int thickness_res)
 {
+  using namespace blender::draw;
   ParticleHairCache *cache;
   bool update = particles_ensure_procedural_data(
       object, psys, md, &cache, gpu_material, subdiv, thickness_res);

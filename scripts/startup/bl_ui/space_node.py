@@ -454,12 +454,9 @@ class NODE_PT_geometry_node_tool_object_types(Panel):
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in types:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_geometry_node_tool_mode(Panel):
@@ -475,6 +472,7 @@ class NODE_PT_geometry_node_tool_mode(Panel):
         group = snode.node_tree
 
         modes = (
+            ("is_mode_object", "Object Mode", 'OBJECT_DATAMODE'),
             ("is_mode_edit", "Edit Mode", 'EDITMODE_HLT'),
             ("is_mode_sculpt", "Sculpt Mode", 'SCULPTMODE_HLT'),
         )
@@ -482,12 +480,9 @@ class NODE_PT_geometry_node_tool_mode(Panel):
         col = layout.column()
         col.active = group.is_tool
         for prop, name, icon in modes:
-            row = col.row()
-            row_checkbox = row.row()
-            row_checkbox.prop(group, prop, text="")
-            row_label = row.row()
-            row_label.label(text=name, icon=icon)
-            row_label.active = getattr(group, prop)
+            row = col.row(align=True)
+            row.label(text=name, icon=icon)
+            row.prop(group, prop, text="")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
@@ -836,6 +831,7 @@ class NODE_PT_quality(bpy.types.Panel):
         if prefs.experimental.use_experimental_compositors:
             col.prop(tree, "execution_mode")
             use_realtime = tree.execution_mode == 'REALTIME'
+        col.prop(tree, "precision")
 
         col = layout.column()
         col.active = not use_realtime
@@ -1075,7 +1071,7 @@ class NODE_PT_simulation_zone_items(Panel):
             layout.use_property_split = True
             layout.use_property_decorate = False
             layout.prop(active_item, "socket_type")
-            if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA'}:
+            if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA', 'ROTATION'}:
                 layout.prop(active_item, "attribute_domain")
 
 
@@ -1149,6 +1145,92 @@ class NODE_PT_repeat_zone_items(Panel):
         layout.prop(output_node, "inspection_index")
 
 
+class NODE_UL_bake_node_items(bpy.types.UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        draw_socket_item_in_list(self, layout, item, icon)
+
+
+class NODE_PT_bake_node_items(bpy.types.Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Node"
+    bl_label = "Bake Items"
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        node = context.active_node
+        if node is None:
+            return False
+        if node.bl_idname != "GeometryNodeBake":
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        node = context.active_node
+        split = layout.row()
+        split.template_list(
+            "NODE_UL_bake_node_items",
+            "",
+            node,
+            "bake_items",
+            node,
+            "active_index")
+
+        ops_col = split.column()
+
+        add_remove_col = ops_col.column(align=True)
+        add_remove_col.operator("node.bake_node_item_add", icon='ADD', text="")
+        add_remove_col.operator("node.bake_node_item_remove", icon='REMOVE', text="")
+
+        ops_col.separator()
+
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.bake_node_item_move", icon='TRIA_UP', text="")
+        props.direction = 'UP'
+        props = up_down_col.operator("node.bake_node_item_move", icon='TRIA_DOWN', text="")
+        props.direction = 'DOWN'
+
+        active_item = node.active_item
+        if active_item is not None:
+            layout.use_property_split = True
+            layout.use_property_decorate = False
+            layout.prop(active_item, "socket_type")
+            if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA', 'ROTATION'}:
+                layout.prop(active_item, "attribute_domain")
+                layout.prop(active_item, "is_attribute")
+
+
+class NODE_PT_index_switch_node_items(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Node"
+    bl_label = "Index Switch"
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname != 'GeometryNodeIndexSwitch':
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        node = context.active_node
+        layout.operator("node.index_switch_item_add", icon='ADD', text="Add Item")
+        col = layout.column()
+        for i, item in enumerate(node.index_switch_items):
+            row = col.row()
+            row.label(text=node.inputs[i + 1].name)
+            row.operator("node.index_switch_item_remove", icon='REMOVE', text="").index = i
+
+
 # Grease Pencil properties
 class NODE_PT_annotation(AnnotationDataPanel, Panel):
     bl_space_type = 'NODE_EDITOR'
@@ -1217,6 +1299,9 @@ classes = (
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
     NODE_UL_repeat_zone_items,
+    NODE_UL_bake_node_items,
+    NODE_PT_bake_node_items,
+    NODE_PT_index_switch_node_items,
     NODE_PT_repeat_zone_items,
     NODE_PT_active_node_properties,
 

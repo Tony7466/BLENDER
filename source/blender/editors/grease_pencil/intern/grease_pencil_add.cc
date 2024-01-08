@@ -9,6 +9,7 @@
 #include <array>
 #include <iomanip>
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 
@@ -1148,19 +1149,19 @@ static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
   curves.transform(matrix);
 
   SpanAttributeWriter<float> point_radii = attributes.lookup_or_add_for_write_only_span<float>(
-      "radius", ATTR_DOMAIN_POINT);
+      "radius", AttrDomain::Point);
   point_radii.span.copy_from(radii);
 
   SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
-      "opacity", ATTR_DOMAIN_POINT);
+      "opacity", AttrDomain::Point);
   point_opacities.span.copy_from(opacities);
 
   SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
-      "cyclic", ATTR_DOMAIN_CURVE);
+      "cyclic", AttrDomain::Curve);
   stroke_cyclic.span.fill(false);
 
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", ATTR_DOMAIN_CURVE);
+      "material_index", AttrDomain::Curve);
   stroke_materials.span.copy_from(materials);
 
   point_radii.finish();
@@ -1180,7 +1181,7 @@ void create_blank(Main &bmain, Object &object, const int frame_number)
   int material_index = add_material_from_template(bmain, object, gp_stroke_material_black);
   object.actcol = material_index + 1;
 
-  Layer &new_layer = grease_pencil.add_layer(DATA_("GP_Layer"));
+  Layer &new_layer = grease_pencil.add_layer(DATA_("Layer"));
   grease_pencil.set_active_layer(&new_layer);
   grease_pencil.insert_blank_frame(new_layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 }

@@ -149,7 +149,7 @@ typedef struct bNodeSocket {
   short stack_index;
   char display_shape;
 
-  /* #eAttrDomain used when the geometry nodes modifier creates an attribute for a group
+  /* #AttrDomain used when the geometry nodes modifier creates an attribute for a group
    * output. */
   char attribute_domain;
 
@@ -669,6 +669,10 @@ typedef struct bNodeTree {
   int chunksize;
   /** Execution mode to use for compositor engine. */
   int execution_mode;
+  /** Execution mode to use for compositor engine. */
+  int precision;
+
+  char _pad[4];
 
   rctf viewer_border;
 
@@ -836,6 +840,12 @@ typedef enum eNodeTreeExecutionMode {
   NTREE_EXECUTION_MODE_REALTIME = 2,
 } eNodeTreeExecutionMode;
 
+/* tree->precision */
+typedef enum eNodeTreePrecision {
+  NODE_TREE_COMPOSITOR_PRECISION_AUTO = 0,
+  NODE_TREE_COMPOSITOR_PRECISION_FULL = 1,
+} eNodeTreePrecision;
+
 typedef enum eNodeTreeRuntimeFlag {
   /** There is a node that references an image with animation. */
   NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION = 1 << 0,
@@ -921,8 +931,9 @@ typedef enum GeometryNodeAssetTraitFlag {
   GEO_NODE_ASSET_CURVE = (1 << 4),
   GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
   GEO_NODE_ASSET_MODIFIER = (1 << 6),
+  GEO_NODE_ASSET_OBJECT = (1 << 7),
 } GeometryNodeAssetTraitFlag;
-ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_MODIFIER);
+ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_OBJECT);
 
 /* Data structs, for `node->storage`. */
 
@@ -1271,8 +1282,9 @@ typedef struct NodeTexGradient {
 typedef struct NodeTexNoise {
   NodeTexBase base;
   int dimensions;
+  uint8_t type;
   uint8_t normalize;
-  char _pad[3];
+  char _pad[2];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {
@@ -1286,9 +1298,9 @@ typedef struct NodeTexVoronoi {
 } NodeTexVoronoi;
 
 typedef struct NodeTexMusgrave {
-  NodeTexBase base;
-  int musgrave_type;
-  int dimensions;
+  NodeTexBase base DNA_DEPRECATED;
+  int musgrave_type DNA_DEPRECATED;
+  int dimensions DNA_DEPRECATED;
 } NodeTexMusgrave;
 
 typedef struct NodeTexWave {
@@ -1503,7 +1515,7 @@ typedef struct NodeRandomValue {
 typedef struct NodeAccumulateField {
   /** #eCustomDataType. */
   uint8_t data_type;
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   uint8_t domain;
 } NodeAccumulateField;
 
@@ -1684,7 +1696,7 @@ typedef struct NodeGeometryCurveSample {
 typedef struct NodeGeometryTransferAttribute {
   /** #eCustomDataType. */
   int8_t data_type;
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
   /** #GeometryNodeAttributeTransferMode. */
   uint8_t mode;
@@ -1694,7 +1706,7 @@ typedef struct NodeGeometryTransferAttribute {
 typedef struct NodeGeometrySampleIndex {
   /** #eCustomDataType. */
   int8_t data_type;
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
   int8_t clamp;
   char _pad[1];
@@ -1720,14 +1732,14 @@ typedef struct NodeGeometryMeshToPoints {
 typedef struct NodeGeometryAttributeCapture {
   /** #eCustomDataType. */
   int8_t data_type;
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
 } NodeGeometryAttributeCapture;
 
 typedef struct NodeGeometryStoreNamedAttribute {
   /** #eCustomDataType. */
   int8_t data_type;
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
 } NodeGeometryStoreNamedAttribute;
 
@@ -1748,19 +1760,19 @@ typedef struct NodeGeometryStringToCurves {
 } NodeGeometryStringToCurves;
 
 typedef struct NodeGeometryDeleteGeometry {
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
   /** #GeometryNodeDeleteGeometryMode. */
   int8_t mode;
 } NodeGeometryDeleteGeometry;
 
 typedef struct NodeGeometryDuplicateElements {
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
 } NodeGeometryDuplicateElements;
 
 typedef struct NodeGeometrySeparateGeometry {
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
 } NodeGeometrySeparateGeometry;
 
@@ -1772,7 +1784,7 @@ typedef struct NodeGeometryImageTexture {
 typedef struct NodeGeometryViewer {
   /** #eCustomDataType. */
   int8_t data_type;
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   int8_t domain;
 } NodeGeometryViewer;
 
@@ -1785,7 +1797,7 @@ typedef struct NodeSimulationItem {
   char *name;
   /** #eNodeSocketDatatype. */
   short socket_type;
-  /** #eAttrDomain. */
+  /** #AttrDomain. */
   short attribute_domain;
   /**
    * Generates unique identifier for sockets which stays the same even when the item order or
@@ -1844,17 +1856,31 @@ typedef struct NodeGeometryRepeatOutput {
 #endif
 } NodeGeometryRepeatOutput;
 
+typedef struct IndexSwitchItem {
+  /** Generated unique identifier which stays the same even when the item order or names change. */
+  int identifier;
+} IndexSwitchItem;
+
+typedef struct NodeIndexSwitch {
+  IndexSwitchItem *items;
+  int items_num;
+
+  /* #eNodeSocketDataType. */
+  int data_type;
+  /** Identifier to give to the next item. */
+  int next_identifier;
+
+  char _pad[4];
+#ifdef __cplusplus
+  blender::Span<IndexSwitchItem> items_span() const;
+  blender::MutableSpan<IndexSwitchItem> items_span();
+#endif
+} NodeIndexSwitch;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
-
-typedef struct NodeGeometrySampleVolume {
-  /** #eCustomDataType. */
-  int8_t grid_type;
-  /** #GeometryNodeSampleVolumeInterpolationMode */
-  int8_t interpolation_mode;
-} NodeGeometrySampleVolume;
 
 typedef struct NodeFunctionCompare {
   /** #NodeCompareOperation */
@@ -1881,6 +1907,27 @@ typedef struct NodeShaderMix {
   int8_t blend_type;
   char _pad[3];
 } NodeShaderMix;
+
+typedef struct NodeGeometryBakeItem {
+  char *name;
+  int16_t socket_type;
+  int16_t attribute_domain;
+  int identifier;
+  int32_t flag;
+  char _pad[4];
+} NodeGeometryBakeItem;
+
+typedef enum NodeGeometryBakeItemFlag {
+  GEO_NODE_BAKE_ITEM_IS_ATTRIBUTE = (1 << 0),
+} NodeGeometryBakeItemFlag;
+
+typedef struct NodeGeometryBake {
+  NodeGeometryBakeItem *items;
+  int items_num;
+  int next_identifier;
+  int active_index;
+  char _pad[4];
+} NodeGeometryBake;
 
 /* script node mode */
 enum {
@@ -2028,13 +2075,22 @@ enum {
   SHD_VORONOI_N_SPHERE_RADIUS = 4,
 };
 
-/* musgrave texture */
+/* Deprecated Musgrave Texture. Keep for Versioning */
 enum {
   SHD_MUSGRAVE_MULTIFRACTAL = 0,
   SHD_MUSGRAVE_FBM = 1,
   SHD_MUSGRAVE_HYBRID_MULTIFRACTAL = 2,
   SHD_MUSGRAVE_RIDGED_MULTIFRACTAL = 3,
   SHD_MUSGRAVE_HETERO_TERRAIN = 4,
+};
+
+/* Noise Texture */
+enum {
+  SHD_NOISE_MULTIFRACTAL = 0,
+  SHD_NOISE_FBM = 1,
+  SHD_NOISE_HYBRID_MULTIFRACTAL = 2,
+  SHD_NOISE_RIDGED_MULTIFRACTAL = 3,
+  SHD_NOISE_HETERO_TERRAIN = 4,
 };
 
 /* wave texture */
@@ -2330,11 +2386,11 @@ enum {
   CMP_NODE_OUTPUT_IGNORE_ALPHA = 1,
 };
 
-/** Split Viewer Node. Stored in `custom2`. */
-typedef enum CMPNodeSplitViewerAxis {
-  CMP_NODE_SPLIT_VIEWER_HORIZONTAL = 0,
-  CMP_NODE_SPLIT_VIEWER_VERTICAL = 1,
-} CMPNodeSplitViewerAxis;
+/** Split Node. Stored in `custom2`. */
+typedef enum CMPNodeSplitAxis {
+  CMP_NODE_SPLIT_HORIZONTAL = 0,
+  CMP_NODE_SPLIT_VERTICAL = 1,
+} CMPNodeSplitAxis;
 
 /** Color Balance Node. Stored in `custom1`. */
 typedef enum CMPNodeColorBalanceMethod {
@@ -2482,6 +2538,12 @@ typedef enum CMPNodeCombSepColorMode {
   CMP_NODE_COMBSEP_COLOR_YCC = 3,
   CMP_NODE_COMBSEP_COLOR_YUV = 4,
 } CMPNodeCombSepColorMode;
+
+/* Cryptomatte node source. */
+typedef enum CMPNodeCryptomatteSource {
+  CMP_NODE_CRYPTOMATTE_SOURCE_RENDER = 0,
+  CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE = 1,
+} CMPNodeCryptomatteSource;
 
 /* Point Density shader node */
 
@@ -2738,12 +2800,6 @@ typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_UNIFORM = 0,
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
-
-typedef enum GeometryNodeSampleVolumeInterpolationMode {
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST = 0,
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR = 1,
-  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
-} GeometryNodeSampleVolumeInterpolationMode;
 
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,

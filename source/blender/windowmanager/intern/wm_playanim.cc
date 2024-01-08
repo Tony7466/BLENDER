@@ -64,7 +64,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "wm_window_private.h"
+#include "wm_window_private.hh"
 
 #include "WM_api.hh" /* Only for #WM_main_playanim. */
 
@@ -154,19 +154,19 @@ static bool buffer_from_filepath(const char *filepath,
 enum eWS_Qual {
   WS_QUAL_LSHIFT = (1 << 0),
   WS_QUAL_RSHIFT = (1 << 1),
-  WS_QUAL_SHIFT = (WS_QUAL_LSHIFT | WS_QUAL_RSHIFT),
+#define WS_QUAL_SHIFT (WS_QUAL_LSHIFT | WS_QUAL_RSHIFT)
   WS_QUAL_LALT = (1 << 2),
   WS_QUAL_RALT = (1 << 3),
-  WS_QUAL_ALT = (WS_QUAL_LALT | WS_QUAL_RALT),
+#define WS_QUAL_ALT (WS_QUAL_LALT | WS_QUAL_RALT)
   WS_QUAL_LCTRL = (1 << 4),
   WS_QUAL_RCTRL = (1 << 5),
-  WS_QUAL_CTRL = (WS_QUAL_LCTRL | WS_QUAL_RCTRL),
+#define WS_QUAL_CTRL (WS_QUAL_LCTRL | WS_QUAL_RCTRL)
   WS_QUAL_LMOUSE = (1 << 16),
   WS_QUAL_MMOUSE = (1 << 17),
   WS_QUAL_RMOUSE = (1 << 18),
-  WS_QUAL_MOUSE = (WS_QUAL_LMOUSE | WS_QUAL_MMOUSE | WS_QUAL_RMOUSE),
+#define WS_QUAL_MOUSE (WS_QUAL_LMOUSE | WS_QUAL_MMOUSE | WS_QUAL_RMOUSE)
 };
-ENUM_OPERATORS(eWS_Qual, WS_QUAL_MOUSE)
+ENUM_OPERATORS(eWS_Qual, WS_QUAL_RMOUSE)
 
 struct GhostData {
   GHOST_SystemHandle system;
@@ -653,7 +653,7 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
  * \param draw_flip: X/Y flipping (ignored when null).
  * \param frame_indicator_factor: Display a vertical frame-indicator (ignored when -1).
  */
-static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
+static void playanim_toscreen_ex(GhostData *ghost_data,
                                  const PlayDisplayContext *display_ctx,
                                  const PlayAnimPict *picture,
                                  ImBuf *ibuf,
@@ -664,7 +664,11 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
                                  const bool draw_flip[2],
                                  const float frame_indicator_factor)
 {
-  GHOST_ActivateWindowDrawingContext(ghost_window);
+  GHOST_ActivateWindowDrawingContext(ghost_data->window);
+  GPU_render_begin();
+
+  GPUContext *restore_context = GPU_context_active_get();
+  GPU_context_active_set(ghost_data->gpu_context);
 
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
@@ -719,7 +723,7 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
                picture->error_message ? picture->error_message : "<unknown error>");
     }
 
-    playanim_window_get_size(ghost_window, &sizex, &sizey);
+    playanim_window_get_size(ghost_data->window, &sizex, &sizey);
     fsizex_inv = 1.0f / sizex;
     fsizey_inv = 1.0f / sizey;
 
@@ -767,10 +771,17 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
     GPU_matrix_pop_projection();
   }
 
-  GHOST_SwapWindowBuffers(ghost_window);
+  GPU_render_step();
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    GPU_flush();
+  }
+
+  GHOST_SwapWindowBuffers(ghost_data->window);
+  GPU_context_active_set(restore_context);
+  GPU_render_end();
 }
 
-static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
+static void playanim_toscreen_on_load(GhostData *ghost_data,
                                       const PlayDisplayContext *display_ctx,
                                       const PlayAnimPict *picture,
                                       ImBuf *ibuf)
@@ -781,7 +792,7 @@ static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
   const float frame_indicator_factor = -1.0f;
   const bool *draw_flip = nullptr;
 
-  playanim_toscreen_ex(ghost_window,
+  playanim_toscreen_ex(ghost_data,
                        display_ctx,
                        picture,
                        ibuf,
@@ -816,7 +827,7 @@ static void playanim_toscreen(PlayState *ps, const PlayAnimPict *picture, ImBuf 
   }
 
   BLI_assert(ps->loading == false);
-  playanim_toscreen_ex(ps->ghost_data.window,
+  playanim_toscreen_ex(&ps->ghost_data,
                        &ps->display_ctx,
                        picture,
                        ibuf,
@@ -842,7 +853,7 @@ static void build_pict_list_from_anim(ListBase *picsbase,
 
   ImBuf *ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
   if (ibuf) {
-    playanim_toscreen_on_load(ghost_data->window, display_ctx, nullptr, ibuf);
+    playanim_toscreen_on_load(ghost_data, display_ctx, nullptr, ibuf);
     IMB_freeImBuf(ibuf);
   }
 
@@ -909,7 +920,8 @@ static void build_pict_list_from_image_sequence(ListBase *picsbase,
     void *mem = nullptr;
     size_t size = -1;
     if (!buffer_from_filepath(
-            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message)) {
+            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message))
+    {
       has_error = true;
       size = 0;
     }
@@ -940,7 +952,7 @@ static void build_pict_list_from_image_sequence(ListBase *picsbase,
 
       if (ibuf) {
         if (display_imbuf) {
-          playanim_toscreen_on_load(ghost_data->window, display_ctx, picture, ibuf);
+          playanim_toscreen_on_load(ghost_data, display_ctx, picture, ibuf);
         }
 #ifdef USE_FRAME_CACHE_LIMIT
         if (fill_cache) {
@@ -1054,7 +1066,7 @@ static void playanim_change_frame(PlayState *ps)
   int sizex, sizey;
   playanim_window_get_size(ps->ghost_data.window, &sizex, &sizey);
   const int i_last = static_cast<PlayAnimPict *>(ps->picsbase.last)->frame;
-  /* Without this the frame-indicator location isn't closest to the cursor.  */
+  /* Without this the frame-indicator location isn't closest to the cursor. */
   const int correct_rounding = (sizex / i_last) / 2;
   const int i = clamp_i((i_last * (ps->frame_cursor_x + correct_rounding)) / sizex, 0, i_last);
 
@@ -1132,11 +1144,11 @@ static void playanim_audio_stop(PlayState * /*ps*/)
 #endif
 }
 
-static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
+static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr ps_void_ptr)
 {
-  PlayState *ps = static_cast<PlayState *>(ps_void);
-  const GHOST_TEventType type = GHOST_GetEventType(evt);
-  GHOST_TEventDataPtr data = GHOST_GetEventData(evt);
+  PlayState *ps = static_cast<PlayState *>(ps_void_ptr);
+  const GHOST_TEventType type = GHOST_GetEventType(ghost_event);
+  GHOST_TEventDataPtr data = GHOST_GetEventData(ghost_event);
   /* Convert ghost event into value keyboard or mouse. */
   const int val = ELEM(type, GHOST_kEventKeyDown, GHOST_kEventButtonDown);
   GHOST_SystemHandle ghost_system = ps->ghost_data.system;
@@ -1518,7 +1530,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
       zoomy = float(ps->display_ctx.size[1]) / ps->ibuf_size[1];
 
       /* Zoom always show entire image. */
-      ps->zoom = MIN2(zoomx, zoomy);
+      ps->zoom = std::min(zoomx, zoomy);
 
       GPU_viewport(0, 0, ps->display_ctx.size[0], ps->display_ctx.size[1]);
       GPU_scissor(0, 0, ps->display_ctx.size[0], ps->display_ctx.size[1]);
@@ -1701,6 +1713,11 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
   ps.font_id = -1;
 
+  IMB_init();
+#ifdef WITH_FFMPEG
+  IMB_ffmpeg_init();
+#endif
+
   STRNCPY(ps.display_ctx.display_settings.display_device,
           IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DEFAULT_BYTE));
   IMB_colormanagement_init_default_view_settings(&ps.display_ctx.view_settings,
@@ -1813,6 +1830,10 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
     exit(EXIT_FAILURE);
   }
 
+  /* Select GPU backend. */
+  GPU_backend_type_selection_detect();
+
+  /* Init GHOST and open window. */
   GHOST_EventConsumerHandle ghost_event_consumer = nullptr;
   {
     ghost_event_consumer = GHOST_CreateEventConsumer(ghost_event_proc, &ps);
@@ -1840,7 +1861,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
   // GHOST_ActivateWindowDrawingContext(ps.ghost_data.window);
 
-  /* Initialize GPU immediate mode. */
+  /* Init Blender GPU context. */
   ps.ghost_data.gpu_context = GPU_context_create(ps.ghost_data.window, nullptr);
   GPU_init();
 
@@ -1857,6 +1878,8 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   ps.display_ctx.size[0] = ps.ibuf_size[0];
   ps.display_ctx.size[1] = ps.ibuf_size[1];
 
+  GPU_render_begin();
+  GPU_render_step();
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
   {
@@ -1868,6 +1891,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   }
 
   GHOST_SwapWindowBuffers(ps.ghost_data.window);
+  GPU_render_end();
 
   /* One of the frames was invalid or not passed in. */
   if (frame_start == -1 || frame_end == -1) {
@@ -1900,7 +1924,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
       short frs_sec = 25;
       float frs_sec_base = 1.0;
 
-      IMB_anim_get_fps(anim_movie, &frs_sec, &frs_sec_base, true);
+      IMB_anim_get_fps(anim_movie, true, &frs_sec, &frs_sec_base);
 
       g_playanim.fps_movie = double(frs_sec) / double(frs_sec_base);
       /* Enforce same fps for movie as sound. */
@@ -2016,9 +2040,15 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
       ps.next_frame = ps.direction;
 
+      GPU_render_begin();
+      GPUContext *restore_context = GPU_context_active_get();
+      GPU_context_active_set(ps.ghost_data.gpu_context);
       while ((has_event = GHOST_ProcessEvents(ps.ghost_data.system, false))) {
         GHOST_DispatchEvents(ps.ghost_data.system);
       }
+      GPU_render_end();
+      GPU_context_active_set(restore_context);
+
       if (ps.go == false) {
         break;
       }
@@ -2120,6 +2150,11 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
   BLF_exit();
 
+  /* NOTE: Must happen before GPU Context destruction as GPU resources are released via
+   * Color Management module.
+   * NOTE: there is no #IMB_ffmpeg_exit. */
+  IMB_exit();
+
   if (ps.ghost_data.gpu_context) {
     GPU_context_active_set(ps.ghost_data.gpu_context);
     GPU_exit();
@@ -2139,8 +2174,6 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   }
 
   GHOST_DisposeSystem(ps.ghost_data.system);
-
-  IMB_exit();
 
 #if 0
   const int totblock = MEM_get_memory_blocks_in_use();

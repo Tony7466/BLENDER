@@ -22,19 +22,19 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "SEQ_modifier.h"
-#include "SEQ_render.h"
-#include "SEQ_sound.h"
+#include "SEQ_modifier.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sound.hh"
 
 #include "BLO_read_write.hh"
 
-#include "render.h"
+#include "render.hh"
 
 static SequenceModifierTypeInfo *modifiersTypes[NUM_SEQUENCE_MODIFIER_TYPES];
 static bool modifierTypesInit = false;

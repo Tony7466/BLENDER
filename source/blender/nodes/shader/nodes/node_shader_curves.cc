@@ -8,7 +8,7 @@
 
 #include "node_shader_util.hh"
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 
 #include "BLI_math_vector.h"
 
@@ -257,6 +257,7 @@ class CurveRGBFunction : public mf::MultiFunction {
       if (fac[i] != 1.0f) {
         interp_v3_v3v3(col_out[i], col_in[i], col_out[i], fac[i]);
       }
+      col_out[i].a = 1.0f;
     });
   }
 };

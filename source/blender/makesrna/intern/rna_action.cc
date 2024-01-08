@@ -36,7 +36,7 @@
 
 #  include "DEG_depsgraph.hh"
 
-#  include "ED_keyframing.hh"
+#  include "ANIM_action.hh"
 
 #  include "WM_api.hh"
 
@@ -112,7 +112,7 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
   }
 
   /* Annoying, check if this exists. */
-  if (ED_action_fcurve_find(act, data_path, index)) {
+  if (blender::animrig::action_fcurve_find(act, data_path, index)) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "F-Curve '%s[%d]' already exists in action '%s'",
@@ -121,7 +121,7 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
                 act->id.name + 2);
     return nullptr;
   }
-  return ED_action_fcurve_ensure(bmain, act, group, nullptr, data_path, index);
+  return blender::animrig::action_fcurve_ensure(bmain, act, group, nullptr, data_path, index);
 }
 
 static FCurve *rna_Action_fcurve_find(bAction *act,
@@ -654,6 +654,16 @@ static void rna_def_dopesheet(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Display Movie Clips", "Include visualization of movie clip related animation data");
   RNA_def_property_ui_icon(prop, ICON_TRACKER, 0);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
+
+  prop = RNA_def_property(srna, "show_driver_fallback_as_error", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "filterflag2", ADS_FILTER_DRIVER_FALLBACK_AS_ERROR);
+  RNA_def_property_ui_text(
+      prop,
+      "Variable Fallback As Error",
+      "Include drivers that relied on any fallback values for their evaluation "
+      "in the Only Show Errors filter, even if the driver evaluation succeeded");
+  RNA_def_property_ui_icon(prop, ICON_RNA, 0);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 }
 
