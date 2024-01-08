@@ -1649,14 +1649,7 @@ static void GREASE_PENCIL_OT_clean_loose(wmOperatorType *ot)
 static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
 {
   const int cuts = RNA_int_get(op->ptr, "number_cuts");
-  const float influence = RNA_float_get(op->ptr, "factor");
-  const int iterations = RNA_int_get(op->ptr, "repeat");
   const bool only_selected = RNA_boolean_get(op->ptr, "only_selected");
-  const bool keep_shape = RNA_boolean_get(op->ptr, "keep_shape");
-  const bool smooth_position = RNA_boolean_get(op->ptr, "smooth_position");
-  const bool smooth_thickness = RNA_boolean_get(op->ptr, "smooth_thickness");
-  const bool smooth_strength = RNA_boolean_get(op->ptr, "smooth_strength");
-  const bool smooth_uv = RNA_boolean_get(op->ptr, "smooth_uv");
 
   std::atomic<bool> changed = false;
 
@@ -1677,7 +1670,6 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
     }
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
-    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     VArray<int> vcuts = {};
@@ -1702,19 +1694,25 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
     }
     else if (selection_domain == bke::AttrDomain::Point) {
       /* Subdivide between selected points. Only cut between selected points. */
-      /* Make the cut array the same length as point count for specifying
+      /* Make the cut array the same length as point count for specifying */
       /* cut/uncut for each segment. */
       Array<int> use_cuts(curves.point_num, 0);
-
       const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
           ".selection", bke::AttrDomain::Point, true);
 
       /* The cut is after each point, so the last point selected wouldn't need to be registered. */
-      for (const int points_i : curves.points_range()) {
-        if (selection[points_i] && (points_i < curves.points_range().last() - 1) &&
-            selection[points_i + 1])
-        {
-          use_cuts[points_i] = cuts;
+      for (const int curves_i : curves.curves_range()) {
+        for (const int points_i : points_by_curve[curves_i]) {
+          const bool cyc = cyclic[curves_i];
+          if (selection[points_i] && /* Point is selected. */
+              /* And either the next point is selected... */
+              (((points_i < points_by_curve[curves_i].last()) && selection[points_i + 1]) ||
+               /* Or when the curve is cyclic, the first and the last are both selected.  */
+               (cyc && (points_i == points_by_curve[curves_i].last()) &&
+                selection[points_by_curve[curves_i].first()])))
+          {
+            use_cuts[points_i] = cuts;
+          }
         }
       }
       vcuts = VArray<int>::ForContainer(use_cuts);
@@ -1725,38 +1723,11 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
       info.drawing.tag_topology_changed();
       changed.store(true, std::memory_order_relaxed);
-
-      /* Smooth curves after being subdivided. */
-      auto do_smooth = [&](const char *attr) {
-        bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(attr);
-        smooth_curve_attribute(points_by_curve,
-                               use_point_selection,
-                               cyclic,
-                               strokes,
-                               iterations,
-                               influence,
-                               cyclic, /* Was smooth_ends */
-                               keep_shape,
-                               attribute.span);
-        attribute.finish();
-      };
-      if (smooth_position) {
-        do_smooth("position");
-      }
-      if (smooth_thickness) {
-        do_smooth("radius");
-      }
-      if (smooth_strength) {
-        do_smooth("opacity");
-      }
-      if (smooth_uv) {
-        do_smooth("uv");
-      }
     }
   });
 
   if (changed) {
-    /* notifiers */
+    /* Notifiers. */
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
@@ -1764,14 +1735,7 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-bool grease_active_layer_poll(bContext *C)
-{
-  Object *object = CTX_data_active_object(C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  return grease_pencil.has_active_layer();
-}
-
-void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -1795,24 +1759,26 @@ void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
   /* avoid re-using last var because it can cause _very_ high value and annoy users */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-  /* Smooth parameters */
-  RNA_def_float(ot->srna, "factor", 0.0f, 0.0f, 2.0f, "Smooth", "", 0.0f, 2.0f);
-  prop = RNA_def_int(ot->srna, "repeat", 1, 1, 10, "Repeat", "", 1, 5);
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_boolean(ot->srna,
                   "only_selected",
                   true,
                   "Selected Points",
                   "Smooth only selected points in the stroke");
-  RNA_def_boolean(ot->srna, "smooth_position", true, "Position", "");
-  RNA_def_boolean(ot->srna, "smooth_thickness", true, "Thickness", "");
-  RNA_def_boolean(ot->srna, "smooth_strength", false, "Strength", "");
-  RNA_def_boolean(ot->srna, "smooth_uv", false, "UV", "");
-  RNA_def_boolean(
-      ot->srna, "keep_shape", true, "Keep Shape", "Prevent stroke from severly deformed");
 }
 
 /** \} */
+
+static void grease_pencil_operatormarcos_define()
+{
+  wmOperatorType *ot;
+
+  ot = WM_operatortype_append_macro("GREASE_PENCIL_OT_stroke_subdivide_smooth",
+                                    "Subdivide And Smooth",
+                                    "Subdivide strokes and smooth them",
+                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_subdivide");
+  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_smooth");
+}
 
 }  // namespace blender::ed::greasepencil
 
@@ -1835,6 +1801,8 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_subdivide);
+
+  grease_pencil_operatormarcos_define();
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
