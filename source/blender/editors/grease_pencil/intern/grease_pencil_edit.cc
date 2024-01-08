@@ -1708,13 +1708,11 @@ static bke::greasepencil::Layer &get_layer_dst(const int layer_index,
   }
 
   /* Transfer Layer attributes. */
-  Vector<int> src_to_dst_layer;
-  src_to_dst_layer.append(layer_index);
   bke::gather_attributes(grease_pencil_src.attributes(),
                          bke::AttrDomain::Layer,
                          {},
                          {".layers"},
-                         src_to_dst_layer,
+                         Span({layer_index}),
                          grease_pencil_dst.attributes_for_write());
 
   return grease_pencil_dst.add_layer(layer_src->name());
@@ -1742,7 +1740,6 @@ static bool grease_pencil_separate_selected(bContext &C,
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
-
     if (selected_points.is_empty()) {
       continue;
     }
@@ -1751,13 +1748,11 @@ static bool grease_pencil_separate_selected(bContext &C,
     Layer &layer_dst = get_layer_dst(info.layer_index, grease_pencil_src, grease_pencil_dst);
     grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
-    /* Copy selected points/strokes to new CurvesGeometry. */
+    /* Copy strokes to new CurvesGeometry. */
     Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
                                                                      info.frame_number);
     drawing_dst->strokes_for_write() = bke::curves_copy_point_selection(
         curves_src, selected_points, {});
-
-    /* Delete selected points from current drawing. */
     curves_src.remove_points(selected_points, {});
 
     info.drawing.tag_topology_changed();
@@ -1777,12 +1772,10 @@ static bool grease_pencil_separate_selected(bContext &C,
                                      *BKE_object_material_len_p(&object_src),
                                      false);
 
-    /* Remove unused material slots from target object. */
     remove_unused_materials(&bmain, object_dst);
     DEG_id_tag_update(&grease_pencil_dst.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(&C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
 
-    /* Remove unused material slots from source object. */
     remove_unused_materials(&bmain, &object_src);
   }
   return changed;
@@ -1802,7 +1795,6 @@ static bool grease_pencil_separate_layer(bContext &C,
 
   /* Create a new object for each layer. */
   for (const Layer *layer_src : grease_pencil_src.layers()) {
-
     if (layer_src->is_selected() || layer_src->is_locked()) {
       continue;
     }
@@ -1820,20 +1812,9 @@ static bool grease_pencil_separate_layer(bContext &C,
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       IndexMaskMemory memory;
       const IndexMask strokes = retrieve_editable_strokes(object_src, info.drawing, memory);
-
       if (strokes.is_empty()) {
         continue;
       }
-
-      /* Insert Keyframe at current frame/layer. */
-      grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
-
-      /* Copy strokes to new CurvesGeometry. */
-      Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
-                                                                       info.frame_number);
-      const bke::AnonymousAttributePropagationInfo propagation_info{};
-      drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
-          info.drawing.strokes(), strokes, propagation_info);
 
       /* Add object materials. */
       BKE_object_material_array_assign(&bmain,
@@ -1842,8 +1823,15 @@ static bool grease_pencil_separate_layer(bContext &C,
                                        *BKE_object_material_len_p(&object_src),
                                        false);
 
-      /* Delete strokes from current drawing. */
-      curves_src.remove_curves(strokes, propagation_info);
+      /* Insert Keyframe at current frame/layer. */
+      grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+
+      /* Copy strokes to new CurvesGeometry. */
+      Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
+                                                                       info.frame_number);
+      drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
+          info.drawing.strokes(), strokes, {});
+      curves_src.remove_curves(strokes, {});
 
       info.drawing.tag_topology_changed();
       drawing_dst->tag_topology_changed();
@@ -1851,7 +1839,6 @@ static bool grease_pencil_separate_layer(bContext &C,
       changed = true;
     };
 
-    /* Remove unused material slots from target object. */
     remove_unused_materials(&bmain, object_dst);
 
     DEG_id_tag_update(&grease_pencil_dst.id, ID_RECALC_GEOMETRY);
@@ -1875,10 +1862,7 @@ static bool grease_pencil_separate_material(bContext &C,
   GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src.data);
 
   /* Create a new object for each material. */
-  for (const int mat_i : IndexRange(object_src.totcol)) {
-    if (mat_i == 0) {
-      continue;
-    }
+  for (const int mat_i : IndexRange(object_src.totcol).drop_front(1)) {
 
     Object *object_dst = duplicate_grease_pencil_object(
         &bmain, &scene, &view_layer, &base_prev, grease_pencil_src);
@@ -1897,8 +1881,7 @@ static bool grease_pencil_separate_material(bContext &C,
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       IndexMaskMemory memory;
       const IndexMask strokes = retrieve_editable_strokes_by_material(
-          *static_cast<Object *>(&object_src), info.drawing, memory, mat_i);
-
+          object_src, info.drawing, memory, mat_i);
       if (strokes.is_empty()) {
         continue;
       }
@@ -1912,12 +1895,8 @@ static bool grease_pencil_separate_material(bContext &C,
       /* Copy strokes to new CurvesGeometry. */
       Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
                                                                        info.frame_number);
-      const bke::AnonymousAttributePropagationInfo propagation_info{};
-      drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
-          curves_src, strokes, propagation_info);
-
-      /* Delete strokes from current drawing. */
-      curves_src.remove_curves(strokes, propagation_info);
+      drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(curves_src, strokes, {});
+      curves_src.remove_curves(strokes, {});
 
       info.drawing.tag_topology_changed();
       drawing_dst->tag_topology_changed();
@@ -1927,12 +1906,10 @@ static bool grease_pencil_separate_material(bContext &C,
       changed = true;
     };
 
-    /* Remove unused material slots from target object. */
     remove_unused_materials(&bmain, object_dst);
   }
 
   if (changed) {
-    /* Remove unused material slots from source object. */
     remove_unused_materials(&bmain, &object_src);
   }
 
