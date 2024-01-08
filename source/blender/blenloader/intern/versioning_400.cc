@@ -2644,8 +2644,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  // TODO: check the proper version
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 410, 10)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 10)) {
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       if (ntree->type != NTREE_GEOMETRY) {
         continue;
