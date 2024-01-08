@@ -2299,6 +2299,8 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align);
  * \param name: Text that's shown in the panel header. It should already be translated.
  * \param open_prop_owner: Data that contains the open-property.
  * \param open_prop_name: Name of the open-property in `open_prop_owner`.
+ * \param create_header: Whether to create the panel header or not. If false, the header is assumed
+ *   to have been created already using #uiLayoutPanelHeader.
  *
  * \return NULL if the panel is closed and should not be drawn, otherwise the layout where the
  * sub-panel should be inserted into.
@@ -2307,7 +2309,13 @@ uiLayout *uiLayoutPanel(const bContext *C,
                         uiLayout *layout,
                         const char *name,
                         PointerRNA *open_prop_owner,
-                        const char *open_prop_name);
+                        const char *open_prop_name,
+                        bool create_header);
+uiLayout *uiLayoutPanelHeader(const bContext *C,
+                              uiLayout *layout,
+                              const char *name,
+                              PointerRNA *open_prop_owner,
+                              const char *open_prop_name);
 
 bool uiLayoutEndsWithPanelHeader(const uiLayout &layout);
 
