@@ -282,9 +282,9 @@ static void rna_BoneCollection_parent_set(PointerRNA *ptr,
   const int to_parent_index = armature_bonecoll_find_index(armature, to_parent);
 
   if (to_parent_index == from_bcoll_index ||
-      armature_bonecoll_is_decendent_of(armature, from_bcoll_index, to_parent_index))
+      armature_bonecoll_is_descendant_of(armature, from_bcoll_index, to_parent_index))
   {
-    BKE_report(reports, RPT_ERROR, "Cannot make a bone collection a decendent of itself");
+    BKE_report(reports, RPT_ERROR, "Cannot make a bone collection a descendant of itself");
     return;
   }
 
@@ -423,6 +423,20 @@ static int rna_BoneCollection_index_get(PointerRNA *ptr)
   bArmature *arm = reinterpret_cast<bArmature *>(ptr->owner_id);
   BoneCollection *bcoll = static_cast<BoneCollection *>(ptr->data);
   return blender::animrig::armature_bonecoll_find_index(arm, bcoll);
+}
+
+static int rna_BoneCollection_child_number_get(PointerRNA *ptr)
+{
+  bArmature *arm = reinterpret_cast<bArmature *>(ptr->owner_id);
+  BoneCollection *bcoll = static_cast<BoneCollection *>(ptr->data);
+  return blender::animrig::armature_bonecoll_child_number_find(arm, bcoll);
+}
+static void rna_BoneCollection_child_number_set(PointerRNA *ptr, const int new_child_number)
+{
+  bArmature *arm = reinterpret_cast<bArmature *>(ptr->owner_id);
+  BoneCollection *bcoll = static_cast<BoneCollection *>(ptr->data);
+  blender::animrig::armature_bonecoll_child_number_set(arm, bcoll, new_child_number);
+  WM_main_add_notifier(NC_OBJECT | ND_BONE_COLLECTION, nullptr);
 }
 
 /* BoneCollection.bones iterator functions. */
@@ -2346,6 +2360,15 @@ static void rna_def_bonecollection(BlenderRNA *brna)
       prop,
       "Index",
       "Index of this bone collection in the armature.collections.all array. Note that finding "
+      "this index requires a scan of all the bone collections, so do access this with care");
+
+  prop = RNA_def_property(srna, "child_number", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(
+      prop, "rna_BoneCollection_child_number_get", "rna_BoneCollection_child_number_set", nullptr);
+  RNA_def_property_ui_text(
+      prop,
+      "Child Number",
+      "Index of this collection into its parent's list of children. Note that finding "
       "this index requires a scan of all the bone collections, so do access this with care");
 
   RNA_api_bonecollection(srna);
