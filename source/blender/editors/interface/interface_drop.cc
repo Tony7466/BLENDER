@@ -54,7 +54,7 @@ std::string drop_target_tooltip(const ARegion &region,
                                 const wmEvent &event)
 {
   const char *disabled_hint_dummy = nullptr;
-  if (!drop_target.can_drop(drag, &disabled_hint_dummy)) {
+  if ((&drop_target == nullptr) || !drop_target.can_drop(drag, &disabled_hint_dummy)) {
     return nullptr;
   }
 
