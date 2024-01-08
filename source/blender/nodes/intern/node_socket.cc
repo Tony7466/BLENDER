@@ -1064,7 +1064,7 @@ static bNodeSocketType *make_socket_type_string()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_enum()
+static bNodeSocketType *make_socket_type_menu()
 {
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_MENU, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<int>();
@@ -1076,6 +1076,8 @@ static bNodeSocketType *make_socket_type_enum()
     const int value = ((bNodeSocketValueMenu *)socket_value)->value;
     new (r_value) SocketValueVariant(value);
   };
+  static SocketValueVariant default_value{0};
+  socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
 
@@ -1184,7 +1186,7 @@ void register_standard_node_socket_types()
 
   nodeRegisterSocketType(make_socket_type_string());
 
-  nodeRegisterSocketType(make_socket_type_enum());
+  nodeRegisterSocketType(make_socket_type_menu());
 
   nodeRegisterSocketType(make_standard_socket_type(SOCK_SHADER, PROP_NONE));
 
