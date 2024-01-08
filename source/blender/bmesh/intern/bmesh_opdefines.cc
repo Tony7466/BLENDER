@@ -1639,6 +1639,7 @@ static BMOpDefine bmo_create_icosphere_def = {
    {"radius",          BMO_OP_SLOT_FLT}, /* radius */
    {"matrix",          BMO_OP_SLOT_MAT}, /* matrix to multiply the new geometry with */
    {"calc_uvs",        BMO_OP_SLOT_BOOL}, /* calculate default UVs */
+   {"flat",        BMO_OP_SLOT_BOOL}, /* skip spherical projection */
    {{'\0'}},
   },
   /*slot_types_out*/
