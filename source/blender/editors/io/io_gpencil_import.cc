@@ -199,14 +199,13 @@ void WM_OT_gpencil_import_svg(wmOperatorType *ot)
 namespace blender::ed::io {
 void gpencil_file_handler_add()
 {
-  auto fh_ptr = std::make_unique<blender::bke::FileHandlerType>();
-  auto &fh = *fh_ptr;
-  STRNCPY(fh.idname, "IO_FH_gpencil");
-  STRNCPY(fh.import_operator, "WM_OT_gpencil_import_svg");
-  STRNCPY(fh.label, "gpencil");
-  STRNCPY(fh.file_extensions_str, ".svg");
-  fh.poll_drop = poll_file_object_drop;
-  bke::file_handler_add(std::move(fh_ptr));
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_gpencil_svg");
+  STRNCPY(fh->import_operator, "WM_OT_gpencil_import_svg");
+  STRNCPY(fh->label, "SVG as Grease Pencil");
+  STRNCPY(fh->file_extensions_str, ".svg");
+  fh->poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh));
 }
 }  // namespace blender::ed::io
 

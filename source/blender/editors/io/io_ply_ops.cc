@@ -357,14 +357,13 @@ void WM_OT_ply_import(wmOperatorType *ot)
 namespace blender::ed::io {
 void ply_file_handler_add()
 {
-  auto fh_ptr = std::make_unique<blender::bke::FileHandlerType>();
-  auto &fh = *fh_ptr;
-  STRNCPY(fh.idname, "IO_FH_ply");
-  STRNCPY(fh.import_operator, "WM_OT_ply_import");
-  STRNCPY(fh.label, "PLY");
-  STRNCPY(fh.file_extensions_str, ".ply");
-  fh.poll_drop = poll_file_object_drop;
-  bke::file_handler_add(std::move(fh_ptr));
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_ply");
+  STRNCPY(fh->import_operator, "WM_OT_ply_import");
+  STRNCPY(fh->label, "Stanford PLY");
+  STRNCPY(fh->file_extensions_str, ".ply");
+  fh->poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh));
 }
 }  // namespace blender::ed::io
 

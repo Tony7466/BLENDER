@@ -833,14 +833,13 @@ void WM_OT_usd_import(wmOperatorType *ot)
 namespace blender::ed::io {
 void usd_file_handler_add()
 {
-  auto fh_ptr = std::make_unique<blender::bke::FileHandlerType>();
-  auto &fh = *fh_ptr;
-  STRNCPY(fh.idname, "IO_FH_usd");
-  STRNCPY(fh.import_operator, "WM_OT_usd_import");
-  STRNCPY(fh.label, "USD");
-  STRNCPY(fh.file_extensions_str, ".usd;.usda;.usdc;.usdz");
-  fh.poll_drop = poll_file_object_drop;
-  bke::file_handler_add(std::move(fh_ptr));
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_usd");
+  STRNCPY(fh->import_operator, "WM_OT_usd_import");
+  STRNCPY(fh->label, "Universal Scene Description");
+  STRNCPY(fh->file_extensions_str, ".usd;.usda;.usdc;.usdz");
+  fh->poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh));
 }
 }  // namespace blender::ed::io
 
