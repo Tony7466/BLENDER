@@ -1648,11 +1648,11 @@ static void GREASE_PENCIL_OT_clean_loose(wmOperatorType *ot)
  * \{ */
 
 enum class SeparateMode : int8_t {
-  /* Selected Points/Strokes */
+  /* Selected Points/Strokes. */
   SELECTED = 0,
-  /* By Material */
+  /* By Material. */
   MATERIAL = 1,
-  /* By Active Layer */
+  /* By Active Layer. */
   LAYER = 2,
 };
 
@@ -1747,14 +1747,13 @@ static bool grease_pencil_separate_selected(bContext &C,
       continue;
     }
 
-    /* Insert Keyframe at current frame/layer */
+    /* Insert Keyframe at current frame/layer. */
     Layer &layer_dst = get_layer_dst(info.layer_index, grease_pencil_src, grease_pencil_dst);
     grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
-    /*Assign new CurvesGeometry to layer. */
+    /* Copy selected points/strokes to new CurvesGeometry. */
     Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
                                                                      info.frame_number);
-    /* Copy selected points/strokes to new CurvesGeometry. */
     drawing_dst->strokes_for_write() = bke::curves_copy_point_selection(
         curves_src, selected_points, {});
 
@@ -1826,13 +1825,12 @@ static bool grease_pencil_separate_layer(bContext &C,
         continue;
       }
 
-      /* Insert Keyframe at current frame. */
+      /* Insert Keyframe at current frame/layer. */
       grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
-      /*Assign new CurvesGeometry to layer/frame. */
+      /* Copy strokes to new CurvesGeometry. */
       Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
                                                                        info.frame_number);
-      /* Copy strokes to new CurvesGeometry. */
       const bke::AnonymousAttributePropagationInfo propagation_info{};
       drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
           info.drawing.strokes(), strokes, propagation_info);
@@ -1907,14 +1905,13 @@ static bool grease_pencil_separate_material(bContext &C,
 
       GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
 
-      /* Insert Keyframe at current frame/layer */
+      /* Insert Keyframe at current frame/layer. */
       Layer &layer_dst = get_layer_dst(info.layer_index, grease_pencil_src, grease_pencil_dst);
       grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
-      /* Assign new CurvesGeometry to layer. */
+      /* Copy strokes to new CurvesGeometry. */
       Drawing *drawing_dst = grease_pencil_dst.get_editable_drawing_at(&layer_dst,
                                                                        info.frame_number);
-      /* Copy strokes to new CurvesGeometry. */
       const bke::AnonymousAttributePropagationInfo propagation_info{};
       drawing_dst->strokes_for_write() = bke::curves_copy_curve_selection(
           curves_src, strokes, propagation_info);
@@ -2014,20 +2011,20 @@ static int grease_pencil_separate_exec(bContext *C, wmOperator *op)
 
 void GREASE_PENCIL_OT_separate(wmOperatorType *ot)
 {
-  /* identifiers */
+  /* identifiers. */
   ot->name = "Separate";
   ot->idname = "GREASE_PENCIL_OT_separate";
   ot->description = "Separate the selected geometry into a new grease pencil object";
 
-  /* callbacks */
+  /* callbacks. */
   ot->invoke = WM_menu_invoke;
   ot->exec = grease_pencil_separate_exec;
   ot->poll = editable_grease_pencil_poll;
 
-  /* flags */
+  /* flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  /* properties */
+  /* properties. */
   ot->prop = RNA_def_enum(
       ot->srna, "mode", prop_separate_modes, int(SeparateMode::SELECTED), "Mode", "");
 }
