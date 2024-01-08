@@ -183,6 +183,8 @@ set(GLSL_SRC
   shaders/compositor_morphological_distance_feather.glsl
   shaders/compositor_morphological_distance_threshold.glsl
   shaders/compositor_morphological_step.glsl
+  shaders/compositor_motion_blur.glsl
+  shaders/compositor_motion_blur_max_neighbour_tile_velocity.glsl
   shaders/compositor_movie_distortion.glsl
   shaders/compositor_normalize.glsl
   shaders/compositor_parallel_reduction.glsl
@@ -304,6 +306,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_morphological_distance_info.hh
   shaders/infos/compositor_morphological_distance_threshold_info.hh
   shaders/infos/compositor_morphological_step_info.hh
+  shaders/infos/compositor_motion_blur_info.hh
   shaders/infos/compositor_movie_distortion_info.hh
   shaders/infos/compositor_normalize_info.hh
   shaders/infos/compositor_parallel_reduction_info.hh

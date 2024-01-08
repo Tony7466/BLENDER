@@ -6,10 +6,17 @@
  * \ingroup cmpnodes
  */
 
+#include "BLI_math_vector.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GPU_compute.h"
+#include "GPU_shader.h"
+
 #include "COM_node_operation.hh"
+#include "COM_result.hh"
+#include "COM_utilities.hh"
 
 #include "node_composite_util.hh"
 
@@ -17,15 +24,21 @@
 
 namespace blender::nodes::node_composite_vec_blur_cc {
 
+NODE_STORAGE_FUNCS(NodeBlurData)
+
 static void cmp_node_vec_blur_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image").default_value({1.0f, 1.0f, 1.0f, 1.0f});
-  b.add_input<decl::Float>("Z").default_value(0.0f).min(0.0f).max(1.0f);
+  b.add_input<decl::Color>("Image")
+      .default_value({1.0f, 1.0f, 1.0f, 1.0f})
+      .compositor_domain_priority(0);
+  b.add_input<decl::Float>("Z").default_value(0.0f).min(0.0f).max(1.0f).compositor_domain_priority(
+      2);
   b.add_input<decl::Vector>("Speed")
       .default_value({0.0f, 0.0f, 0.0f})
       .min(0.0f)
       .max(1.0f)
-      .subtype(PROP_VELOCITY);
+      .subtype(PROP_VELOCITY)
+      .compositor_domain_priority(1);
   b.add_output<decl::Color>("Image");
 }
 
@@ -62,8 +75,98 @@ class VectorBlurOperation : public NodeOperation {
 
   void execute() override
   {
-    get_input("Image").pass_through(get_result("Image"));
-    context().set_info_message("Viewport compositor setup not fully supported");
+    Result &input = get_input("Image");
+    Result &output = get_result("Image");
+    if (input.is_single_value()) {
+      input.pass_through(output);
+      return;
+    }
+
+    Result max_tile_velocity = compute_max_tile_velocity();
+    Result max_neighbour_tile_velocity = compute_max_neighbour_tile_velocity(max_tile_velocity);
+    max_tile_velocity.release();
+    compute_motion_blur(max_neighbour_tile_velocity);
+    max_neighbour_tile_velocity.release();
+  }
+
+  /* Reduces each 32x32 block of velocity pixels into a single velocity whose magnitude is largest.
+   * Each of the previous and next velocities are reduces independently. */
+  Result compute_max_tile_velocity()
+  {
+    GPUShader *shader = context().get_shader("compositor_max_velocity");
+    GPU_shader_bind(shader);
+
+    GPU_shader_uniform_1b(shader, "is_initial_reduction", true);
+
+    Result &input = get_input("Speed");
+    input.bind_as_texture(shader, "input_tx");
+
+    Result output = context().create_temporary_result(ResultType::Color);
+    const int2 tiles_count = math::divide_ceil(input.domain().size, int2(32));
+    output.allocate_texture(Domain(tiles_count));
+    output.bind_as_image(shader, "output_img");
+
+    GPU_compute_dispatch(shader, tiles_count.x, tiles_count.y, 1);
+
+    GPU_shader_unbind();
+    input.unbind_as_texture();
+    output.unbind_as_image();
+
+    return output;
+  }
+
+  Result compute_max_neighbour_tile_velocity(Result &max_tile_velocity)
+  {
+    GPUShader *shader = context().get_shader("compositor_motion_blur_max_neighbour_tile_velocity");
+    GPU_shader_bind(shader);
+
+    max_tile_velocity.bind_as_texture(shader, "input_tx");
+
+    Result output = context().create_temporary_result(ResultType::Color);
+    output.allocate_texture(max_tile_velocity.domain());
+    output.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, output.domain().size);
+
+    GPU_shader_unbind();
+    max_tile_velocity.unbind_as_texture();
+    output.unbind_as_image();
+
+    return output;
+  }
+
+  void compute_motion_blur(Result &max_tile_velocity)
+  {
+    GPUShader *shader = context().get_shader("compositor_motion_blur");
+    GPU_shader_bind(shader);
+
+    GPU_shader_uniform_1i(shader, "samples_count", node_storage(bnode()).samples);
+    GPU_shader_uniform_1f(shader, "shutter_speed", node_storage(bnode()).fac);
+
+    Result &input = get_input("Image");
+    input.bind_as_texture(shader, "input_tx");
+
+    Result &depth = get_input("Z");
+    depth.bind_as_texture(shader, "depth_tx");
+
+    Result &velocity = get_input("Speed");
+    velocity.bind_as_texture(shader, "velocity_tx");
+
+    max_tile_velocity.bind_as_texture(shader, "max_velocity_tx");
+
+    Result &output = get_result("Image");
+    const Domain domain = compute_domain();
+    output.allocate_texture(domain);
+    output.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, output.domain().size);
+
+    GPU_shader_unbind();
+    input.unbind_as_texture();
+    depth.unbind_as_texture();
+    velocity.unbind_as_texture();
+    max_tile_velocity.unbind_as_texture();
+    output.unbind_as_image();
   }
 };
 
@@ -87,8 +190,6 @@ void register_node_type_cmp_vecblur()
   node_type_storage(
       &ntype, "NodeBlurData", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
-  ntype.realtime_compositor_unsupported_message = N_(
-      "Node not supported in the Viewport compositor");
 
   nodeRegisterType(&ntype);
 }
