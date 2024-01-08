@@ -1804,11 +1804,16 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
 
 static void geometry_nodes_uv_sphere_uvmap(bNodeTree &ntree)
 {
+  blender::Map<bNode *, bNodeLink *> primitive_nodes_inputs;
   blender::MultiValueMap<bNode *, bNodeLink *> primitive_nodes_outputs;
   
   LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+    bNode *to_node = link->tonode;
+    if ((to_node->type == GEO_NODE_MESH_PRIMITIVE_UV_SPHERE) && (link->tosock == nodeFindSocket(to_node, SOCK_IN, "Segments"))) {
+      primitive_nodes_inputs.add(to_node, link);
+    }
     bNode *from_node = link->fromnode;
-    if ((from_node->type == GEO_NODE_MESH_PRIMITIVE_UV_SPHERE) && (link->fromsock == nodeFindSocket(link->fromnode, SOCK_OUT, "Mesh"))) {
+    if ((from_node->type == GEO_NODE_MESH_PRIMITIVE_UV_SPHERE) && (link->fromsock == nodeFindSocket(from_node, SOCK_OUT, "Mesh"))) {
       primitive_nodes_outputs.add(from_node, link);
     }
   }
@@ -1859,22 +1864,25 @@ static void geometry_nodes_uv_sphere_uvmap(bNodeTree &ntree)
     bNodeSocket *divisor_input = static_cast<bNodeSocket *>(BLI_findlink(&divide_node->inputs, 1));
     bNodeSocket *value_output = nodeFindSocket(divide_node, SOCK_OUT, "Value");
     
-    // TODO: set dividend_input to tau
+    *version_cycles_node_socket_float_value(dividend_input) = M_PI * 2;
     
     nodeAddLink(&ntree, divide_node, value_output, combine_node, z_input);
     
-    // TODO: if segments_input connected
-    // TODO: Reconnect
-    // TODO: else
-    bNode *segments_node = nodeAddStaticNode(nullptr, &ntree, SH_NODE_VALUE); // TODO: but with integer node
-    segments_node->locx = divide_node->locx - divide_node->width * 1.25f;
-    segments_node->locy = divide_node->locy;
-    
-    // TODO: Copy segments_input value to integer node
-    
-    bNodeSocket *integer_output = nodeFindSocket(segments_node, SOCK_OUT, "Value");
-    nodeAddLink(&ntree, segments_node, integer_output, primitive_node, segments_input);
-    nodeAddLink(&ntree, segments_node, integer_output, divide_node, divisor_input);
+    if (primitive_nodes_inputs.contains(primitive_node)) {
+      bNodeLink *link = primitive_nodes_inputs.lookup(primitive_node);
+      nodeAddLink(&ntree, link->fromnode, link->fromsock, divide_node, divisor_input);
+    }
+    else{
+//      bNode *segments_node = nodeAddStaticNode(nullptr, &ntree, FN_NODE_INPUT_INT);
+//      segments_node->locx = divide_node->locx - divide_node->width * 1.25f;
+//      segments_node->locy = primitive_node->locy;
+//
+//      bNodeSocket *integer_output = nodeFindSocket(segments_node, SOCK_OUT, "Integer");
+//      nodeAddLink(&ntree, segments_node, integer_output, primitive_node, segments_input);
+//      nodeAddLink(&ntree, segments_node, integer_output, divide_node, divisor_input);
+      
+      *version_cycles_node_socket_float_value(divisor_input) = *version_cycles_node_socket_int_value(segments_input);
+    }
   }
 }
 
