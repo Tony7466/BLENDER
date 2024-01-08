@@ -1,2 +1,3 @@
 Referenced by issue #108553, Alt + value change doesn't work for various inputs
 Referenced by issue #108621, Driven values are no longer marked in purple
+Referenced by issue #116854, Hard crash using template_keymap_item_properties with wm.context_toggle
