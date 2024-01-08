@@ -1681,12 +1681,12 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       use_point_selection = VArray<bool>(point_selection);
     }
     else {
-      use_point_selection = VArray<bool>::ForSingle(true, curves.point_num);
+      use_point_selection = VArray<bool>::ForSingle(true, curves.points_num());
     }
 
     if (selection_domain == bke::AttrDomain::Curve || (!only_selected)) {
       /* Subdivide entire selected curve, every stroke subdivides to the same cut. */
-      vcuts = VArray<int>::ForSingle(cuts, curves.point_num);
+      vcuts = VArray<int>::ForSingle(cuts, curves.points_num());
       blender::bke::AnonymousAttributePropagationInfo pinfo;
       curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
       info.drawing.tag_topology_changed();
@@ -1696,7 +1696,7 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       /* Subdivide between selected points. Only cut between selected points. */
       /* Make the cut array the same length as point count for specifying */
       /* cut/uncut for each segment. */
-      Array<int> use_cuts(curves.point_num, 0);
+      Array<int> use_cuts(curves.points_num(), 0);
       const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
           ".selection", bke::AttrDomain::Point, true);
 
