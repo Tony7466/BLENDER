@@ -1566,16 +1566,19 @@ struct RepeatEvalStorage {
 
 class LazyFunctionForRepeatZone : public LazyFunction {
  private:
+  const bNodeTree &btree_;
   const bNodeTreeZone &zone_;
   const bNode &repeat_output_bnode_;
   const ZoneBuildInfo &zone_info_;
   const ZoneBodyFunction &body_fn_;
 
  public:
-  LazyFunctionForRepeatZone(const bNodeTreeZone &zone,
+  LazyFunctionForRepeatZone(const bNodeTree &btree,
+                            const bNodeTreeZone &zone,
                             ZoneBuildInfo &zone_info,
                             const ZoneBodyFunction &body_fn)
-      : zone_(zone),
+      : btree_(btree),
+        zone_(zone),
         repeat_output_bnode_(*zone.output_node),
         zone_info_(zone_info),
         body_fn_(body_fn)
@@ -1592,6 +1595,9 @@ class LazyFunctionForRepeatZone : public LazyFunction {
     }
 
     for (const bNodeLink *link : zone.border_links) {
+      if (bke::nodeIsDanglingReroute(&btree_, link->fromnode)) {
+        continue;
+      }
       const int border_link_index = inputs_.append_and_get_index_as(
           link->fromsock->name,
           *link->tosock->typeinfo->geometry_nodes_cpp_type,
@@ -1616,7 +1622,10 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       zone_info.indices.outputs.input_usages.append(input_usage_index);
     }
 
-    for ([[maybe_unused]] const bNodeLink *link : zone.border_links) {
+    for (const bNodeLink *link : zone.border_links) {
+      if (bke::nodeIsDanglingReroute(&btree_, link->fromnode)) {
+        continue;
+      }
       const int border_link_usage_index = outputs_.append_and_get_index_as("Border Link Usage",
                                                                            CPPType::get<bool>());
       zone_info.indices.outputs.border_link_usages.append(border_link_usage_index);
@@ -2332,7 +2341,7 @@ struct GeometryNodesLazyFunctionBuilder {
     /* Build a function for the loop body. */
     ZoneBodyFunction &body_fn = this->build_zone_body_function(zone);
     /* Wrap the loop body by another function that implements the repeat behavior. */
-    auto &zone_fn = scope_.construct<LazyFunctionForRepeatZone>(zone, zone_info, body_fn);
+    auto &zone_fn = scope_.construct<LazyFunctionForRepeatZone>(btree_, zone, zone_info, body_fn);
     zone_info.lazy_function = &zone_fn;
   }
 
@@ -2460,6 +2469,9 @@ struct GeometryNodesLazyFunctionBuilder {
                                       Vector<int> &r_indices)
   {
     for (const bNodeLink *border_link : zone.border_links) {
+      if (bke::nodeIsDanglingReroute(&btree_, border_link->fromnode)) {
+        continue;
+      }
       const int input_index = r_lf_graph_inputs.append_and_get_index(
           &lf_graph.add_input(*border_link->tosock->typeinfo->geometry_nodes_cpp_type,
                               StringRef("Link from ") + border_link->fromsock->name));
@@ -2473,6 +2485,9 @@ struct GeometryNodesLazyFunctionBuilder {
                                            Vector<int> &r_indices)
   {
     for (const bNodeLink *border_link : zone.border_links) {
+      if (bke::nodeIsDanglingReroute(&btree_, border_link->fromnode)) {
+        continue;
+      }
       const int input_usage_index = r_lf_graph_outputs.append_and_get_index(&lf_graph.add_output(
           CPPType::get<bool>(), StringRef("Usage: Link from ") + border_link->fromsock->name));
       r_indices.append(input_usage_index);
@@ -2868,16 +2883,20 @@ struct GeometryNodesLazyFunctionBuilder {
                                           BuildGraphParams &graph_params)
   {
     lf::Graph &lf_graph = graph_params.lf_graph;
+    int border_link_index = 0;
     for (const int border_link_i : zone.border_links.index_range()) {
       const bNodeLink &border_link = *zone.border_links[border_link_i];
-      lf::GraphInputSocket &lf_from = *lf_inputs[lf_border_link_input_indices[border_link_i]];
+      if (bke::nodeIsDanglingReroute(&btree_, border_link.fromnode)) {
+        continue;
+      }
+      lf::GraphInputSocket &lf_from = *lf_inputs[lf_border_link_input_indices[border_link_index]];
       const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(border_link,
                                                                                 graph_params);
       for (lf::InputSocket *lf_to : lf_link_targets) {
         lf_graph.add_link(lf_from, *lf_to);
       }
       lf::GraphOutputSocket &lf_usage_output =
-          *lf_usages[lf_border_link_usage_indices[border_link_i]];
+          *lf_usages[lf_border_link_usage_indices[border_link_index]];
       if (lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(
               border_link.tosock, nullptr))
       {
@@ -2887,6 +2906,7 @@ struct GeometryNodesLazyFunctionBuilder {
         static const bool static_false = false;
         lf_usage_output.set_default_value(&static_false);
       }
+      border_link_index++;
     }
   }
 
@@ -2989,15 +3009,20 @@ struct GeometryNodesLazyFunctionBuilder {
     }
 
     const Span<const bNodeLink *> child_border_links = child_zone.border_links;
+    int child_border_link_index = 0;
     for (const int child_border_link_i : child_border_links.index_range()) {
-      lf::InputSocket &child_border_link_input = child_zone_node.input(
-          child_zone_info.indices.inputs.border_links[child_border_link_i]);
       const bNodeLink &link = *child_border_links[child_border_link_i];
+      if (bke::nodeIsDanglingReroute(&btree_, link.fromnode)) {
+        continue;
+      }
+      lf::InputSocket &child_border_link_input = child_zone_node.input(
+          child_zone_info.indices.inputs.border_links[child_border_link_index]);
       graph_params.lf_input_by_border_link.add(&link, &child_border_link_input);
       lf::OutputSocket &lf_usage = child_zone_node.output(
-          child_zone_info.indices.outputs.border_link_usages[child_border_link_i]);
+          child_zone_info.indices.outputs.border_link_usages[child_border_link_index]);
       graph_params.lf_inputs_by_bsocket.add(link.tosock, &child_border_link_input);
       graph_params.usage_by_bsocket.add(link.tosock, &lf_usage);
+      child_border_link_index++;
     }
 
     for (const auto item : child_zone_info.indices.inputs.attributes_by_field_source_index.items())
@@ -3858,6 +3883,9 @@ struct GeometryNodesLazyFunctionBuilder {
   {
     for (auto item : graph_params.lf_inputs_by_bsocket.items()) {
       const bNodeSocket &bsocket = *item.key;
+      if (bke::nodeIsDanglingReroute(&btree_, &bsocket.owner_node())) {
+        continue;
+      }
       const Span<lf::InputSocket *> lf_sockets = item.value;
       for (lf::InputSocket *lf_socket : lf_sockets) {
         if (lf_socket->origin() != nullptr) {
