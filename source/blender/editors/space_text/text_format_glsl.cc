@@ -523,10 +523,10 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_osl_format_identifier()`. */
 
-    if       ((i = txtfmt_glsl_find_specialvar(str))   != -1) {prev = FMT_TYPE_SPECIAL};
-     else if ((i = txtfmt_glsl_find_builtinfunc(str))  != -1) {prev = FMT_TYPE_KEYWORD};
-     else if ((i = txtfmt_glsl_find_reserved(str))     != -1) {prev = FMT_TYPE_RESERVED};
-     else if ((i = txtfmt_glsl_find_preprocessor(str)) != -1) {prev = FMT_TYPE_DIRECTIVE};
+    if       ((i = txtfmt_glsl_find_specialvar(str))   != -1) {prev = FMT_TYPE_SPECIAL;}
+     else if ((i = txtfmt_glsl_find_builtinfunc(str))  != -1) {prev = FMT_TYPE_KEYWORD;}
+     else if ((i = txtfmt_glsl_find_reserved(str))     != -1) {prev = FMT_TYPE_RESERVED;}
+     else if ((i = txtfmt_glsl_find_preprocessor(str)) != -1) {prev = FMT_TYPE_DIRECTIVE;}
          /* clang-format on */
 
         if (i > 0) {
@@ -555,7 +555,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
 
   /* If continuation has changed and we're allowed, process the next line */
   if (cont != cont_orig && do_next && line->next) {
-    txtfmt_osl_format_line(st, line->next, do_next);
+    txtfmt_glsl_format_line(st, line->next, do_next);
   }
 
   flatten_string_free(&fs);
@@ -565,17 +565,16 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
 
 void ED_text_format_register_glsl()
 {
-    static TextFormatType tft = {nullptr};
-    static const char *ext[] = {"glsl", nullptr};
+  static TextFormatType tft = {nullptr};
+  static const char *ext[] = {"glsl", nullptr};
 
-    tft.format_identifier = txtfmt_glsl_format_identifier;
-    tft.format_line = txtfmt_glsl_format_line;
-    tft.ext = ext;
-    tft.comment_line = "/**/"
-    ED_text_format_register(&tft);
+  tft.format_identifier = txtfmt_glsl_format_identifier;
+  tft.format_line = txtfmt_glsl_format_line;
+  tft.ext = ext;
+  tft.comment_line = "/**/"
+  ED_text_format_register(&tft);
 
-    BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
-    BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
-    BLI_assert(text_format_string_literals_check_sorted_array(textformat_glsl_literals_builtinfunc_data));
-    BLI_assert(text_format_string_literals_check_sorted_array());
+  BLI_assert(text_format_string_literals_check_sorted_array(textformat_glsl_literals_builtinfunc_data));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
 }
