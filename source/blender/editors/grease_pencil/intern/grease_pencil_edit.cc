@@ -32,7 +32,7 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
-#include "../../geometry/GEO_subdivide_curves.hh"
+#include "GEO_subdivide_curves.hh"
 
 #include "WM_api.hh"
 
@@ -1764,24 +1764,6 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool gpencil_subdivide_curve_edit_poll_property(const bContext *C,
-                                                       wmOperator * /*op*/,
-                                                       const PropertyRNA *prop)
-{
-  /* I'm not sure how to deal with these below: */
-
-  // bGPdata *gpd = ED_gpencil_data_get_active(C);
-  // if (gpd != nullptr && GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd)) {
-  //   const char *prop_id = RNA_property_identifier(prop);
-  //   /* Only show number_cuts in curve edit mode */
-  //   if (!STREQ(prop_id, "number_cuts")) {
-  //     return false;
-  //   }
-  // }
-
-  return true;
-}
-
 bool grease_active_layer_poll(bContext *C)
 {
   Object *object = CTX_data_active_object(C);
@@ -1803,8 +1785,7 @@ void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = gpencil_stroke_subdivide_exec;
-  ot->poll = grease_active_layer_poll;
-  ot->poll_property = gpencil_subdivide_curve_edit_poll_property;
+  ot->poll = ed::greasepencil::editable_grease_pencil_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
