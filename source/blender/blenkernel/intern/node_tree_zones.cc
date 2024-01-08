@@ -525,7 +525,7 @@ const bNodeZoneType *zone_type_by_node_type(const int node_type)
 std::ostream &operator<<(std::ostream &stream, const bNodeTreeZones &zones)
 {
   for (const std::unique_ptr<bNodeTreeZone> &zone : zones.zones) {
-    stream << *zone << std::endl;
+    stream << *zone;
     if (zones.zones.last().get() != zone.get()) {
       stream << std::endl;
     }
