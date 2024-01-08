@@ -65,6 +65,10 @@
 #include "tree/tree_element_rna.hh"
 #include "tree/tree_iterator.hh"
 
+#include "wm_window.hh"
+
+#include <fmt/format.h>
+
 using namespace blender::ed::outliner;
 
 namespace blender::ed::outliner {
@@ -2322,18 +2326,17 @@ static std::string orphan_desc(bContext *C, bool local, bool linked, bool recurs
   bool is_first = true;
   for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
     if (num_tagged[i] != 0) {
-      if (!is_first) {
-        desc.append(", ");
-      }
-      else {
-        is_first = false;
-      }
-      desc.append<>(std::to_string(num_tagged[i]) + " ");
-      desc.append(num_tagged[i] > 1 ?
-                      TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))) :
-                      TIP_(BKE_idtype_idcode_to_name(BKE_idtype_idcode_from_index(i))));
+      desc += fmt::format(
+          "{}{} {}",
+          (is_first) ? "" : ", ",
+          num_tagged[i],
+          (num_tagged[i] > 1) ?
+              TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))) :
+              TIP_(BKE_idtype_idcode_to_name(BKE_idtype_idcode_from_index(i))));
+      is_first = false;
     }
   }
+
   if (desc.empty()) {
     desc = "Nothing";
   }
@@ -2460,16 +2463,23 @@ void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot)
   ot->exec = outliner_orphans_cleanup_exec;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 static int outliner_orphans_manage_exec(bContext *C, wmOperator * /*op*/)
 {
+  int width = 800;
+  int height = 500;
+  if (wm_get_screensize(&width, &height)) {
+    width /= 2;
+    height /= 2;
+  }
+
   const rcti window_rect = {
       /*xmin*/ 0,
-      /*xmax*/ 500,
+      /*xmax*/ width,
       /*ymin*/ 0,
-      /*ymax*/ 500,
+      /*ymax*/ height,
   };
 
   if (WM_window_open(C,
@@ -2485,8 +2495,9 @@ static int outliner_orphans_manage_exec(bContext *C, wmOperator * /*op*/)
   {
     SpaceOutliner *soutline = (SpaceOutliner *)CTX_wm_area(C)->spacedata.first;
     soutline->outlinevis = SO_ID_ORPHANS;
+    return OPERATOR_FINISHED;
   }
-  return OPERATOR_FINISHED;
+  return OPERATOR_CANCELLED;
 }
 
 void OUTLINER_OT_orphans_manage(wmOperatorType *ot)
