@@ -40,7 +40,6 @@
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
-#include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
@@ -1803,98 +1802,6 @@ static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_p
   }
 }
 
-static void geometry_nodes_flat_ico_sphere(bNodeTree &ntree)
-{
-  blender::Map<bNode *, bNodeLink *> primitive_nodes_inputs;
-  blender::MultiValueMap<bNode *, bNodeLink *> primitive_nodes_outputs;
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
-    bNode *from_node = link->fromnode;
-    if (from_node->type == GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE) {
-      primitive_nodes_outputs.add(from_node, link);
-    }
-    bNode *to_node = link->tonode;
-    if (to_node->type == GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE) {
-      primitive_nodes_inputs.add(to_node, link);
-    }
-  }
-
-  for (bNode *primitive_node : primitive_nodes_outputs.keys()) {
-    bNode *set_position = nodeAddStaticNode(nullptr, &ntree, GEO_NODE_SET_POSITION);
-    set_position->locx = primitive_node->locx + primitive_node->width * 1.25f;
-    set_position->locy = primitive_node->locy;
-
-    bNodeSocket *mesh_output = nodeFindSocket(primitive_node, SOCK_OUT, "Mesh");
-    bNodeSocket *geometry_input = nodeFindSocket(set_position, SOCK_IN, "Geometry");
-    bNodeSocket *geometry_output = nodeFindSocket(set_position, SOCK_OUT, "Geometry");
-
-    for (bNodeLink *link : primitive_nodes_outputs.lookup(primitive_node)) {
-      link->fromnode = set_position;
-      link->fromsock = geometry_output;
-    }
-
-    nodeAddLink(&ntree, primitive_node, mesh_output, set_position, geometry_input);
-
-    bNode *scale_position = nodeAddStaticNode(nullptr, &ntree, SH_NODE_VECTOR_MATH);
-    scale_position->locx = primitive_node->locx;
-    scale_position->locy = primitive_node->locy - primitive_node->height * 1.25f;
-
-    bNodeSocket *scaled_position_output = nodeFindSocket(scale_position, SOCK_OUT, "Vector");
-    BLI_assert(scaled_position_output);
-    bNodeSocket *set_position_input = nodeFindSocket(set_position, SOCK_IN, "Position");
-    BLI_assert(set_position_input);
-    nodeAddLink(&ntree, scale_position, scaled_position_output, set_position, set_position_input);
-
-    scale_position->custom1 = NODE_VECTOR_MATH_SCALE;
-    scale_position->typeinfo->updatefunc(&ntree, scale_position);
-
-    bNode *normalize_position = nodeAddStaticNode(nullptr, &ntree, SH_NODE_VECTOR_MATH);
-    normalize_position->locx = primitive_node->locx - primitive_node->width * 1.25f;
-    normalize_position->locy = primitive_node->locy - primitive_node->height * 1.5f;
-
-    bNodeSocket *normalize_position_output = nodeFindSocket(
-        normalize_position, SOCK_OUT, "Vector");
-    BLI_assert(normalize_position_output);
-    bNodeSocket *scale_position_input = nodeFindSocket(scale_position, SOCK_IN, "Vector");
-    BLI_assert(scale_position_input);
-    nodeAddLink(&ntree,
-                normalize_position,
-                normalize_position_output,
-                scale_position,
-                scale_position_input);
-
-    normalize_position->custom1 = NODE_VECTOR_MATH_NORMALIZE;
-    normalize_position->typeinfo->updatefunc(&ntree, normalize_position);
-
-    bNode *input_position = nodeAddStaticNode(nullptr, &ntree, GEO_NODE_INPUT_POSITION);
-    input_position->locx = primitive_node->locx - primitive_node->width * 2.5f;
-    input_position->locy = primitive_node->locy - primitive_node->height;
-
-    bNodeSocket *input_position_output = nodeFindSocket(input_position, SOCK_OUT, "Position");
-    BLI_assert(input_position_output);
-    bNodeSocket *normalize_position_input = nodeFindSocket(normalize_position, SOCK_IN, "Vector");
-    BLI_assert(normalize_position_input);
-    nodeAddLink(&ntree,
-                input_position,
-                input_position_output,
-                normalize_position,
-                normalize_position_input);
-
-    bNodeLink *input_factor = primitive_nodes_inputs.lookup_default(primitive_node, nullptr);
-    if (input_factor == nullptr) {
-      continue;
-    }
-
-    bNodeSocket *scale_position_input_scale = nodeFindSocket(scale_position, SOCK_IN, "Scale");
-    BLI_assert(scale_position_input_scale);
-
-    nodeAddLink(&ntree,
-                input_factor->fromnode,
-                input_factor->fromsock,
-                scale_position,
-                scale_position_input_scale);
-  }
-}
-
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2649,15 +2556,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         pchan->color.custom.select[3] = 255;
         pchan->color.custom.active[3] = 255;
       }
-    }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 10)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type != NTREE_GEOMETRY) {
-        continue;
-      }
-      geometry_nodes_flat_ico_sphere(*ntree);
     }
   }
 

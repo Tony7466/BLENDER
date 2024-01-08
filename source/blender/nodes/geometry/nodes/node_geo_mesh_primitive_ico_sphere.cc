@@ -86,12 +86,11 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
 
   BMO_op_callf(bm,
                BMO_FLAG_DEFAULTS,
-               "create_icosphere subdivisions=%i radius=%f matrix=%m4 calc_uvs=%b flat=%b",
+               "create_icosphere subdivisions=%i radius=%f matrix=%m4 calc_uvs=%b",
                subdivisions,
                std::abs(radius),
                transform.ptr(),
-               create_uv_map,
-               true);
+               create_uv_map);
 
   BMeshToMeshParams params{};
   params.calc_object_remap = false;
