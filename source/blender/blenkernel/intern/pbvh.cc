@@ -1210,6 +1210,18 @@ static void calc_node_vert_normals(const GroupedSpan<int> vert_to_face_map,
 
 static void update_normals_faces(PBVH &pbvh, Span<PBVHNode *> nodes, Mesh &mesh)
 {
+  /* Position changes are tracked on a per-node level, so all the vertex and face normals for every
+   * affected node are recalculated. However, the additional complexity comes from the fact that
+   * changing vertex normals also changes surrounding face normals. Those changed face normals then
+   * change the normals of all connected vertices, which can be in other nodes. So the set of
+   * vertices that need recalculated normals can propagate into unchanged/untagged PBVH nodes.
+   *
+   * Currently we have no good way of finding neighboring PBVH nodes, so we use the verted to
+   * face topology map to find those neighboring vertices that need normal recalculation.
+   *
+   * Those boundary face and vertex indices are deduplicated with #VectorSet in order to avoid
+   * duplicate work recalculation for the same vertex, and to make parallel storage for vertices
+   * during reclculation thread-safe. */
   const Span<float3> positions = pbvh.vert_positions;
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
