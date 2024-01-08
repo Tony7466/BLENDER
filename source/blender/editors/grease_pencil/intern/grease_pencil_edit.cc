@@ -1738,13 +1738,13 @@ static bool grease_pencil_separate_selected(bContext &C,
   /* Iterate through all the drawings at current scene frame. */
   const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings(scene,
                                                                             grease_pencil_src);
-  threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+  for (const MutableDrawingInfo &info : drawings_src) {
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
 
     if (selected_points.is_empty()) {
-      return;
+      continue;
     }
 
     /* Insert Keyframe at current frame/layer */
@@ -1765,7 +1765,7 @@ static bool grease_pencil_separate_selected(bContext &C,
     drawing_dst->tag_topology_changed();
 
     changed = true;
-  });
+  };
 
   if (changed) {
 
@@ -1817,13 +1817,13 @@ static bool grease_pencil_separate_layer(bContext &C,
     /* Iterate through all the drawings at current frame. */
     const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
         scene, grease_pencil_src, *layer_src);
-    threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+    for (const MutableDrawingInfo &info : drawings_src) {
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       IndexMaskMemory memory;
       const IndexMask strokes = retrieve_editable_strokes(object_src, info.drawing, memory);
 
       if (strokes.is_empty()) {
-        return;
+        continue;
       }
 
       /* Insert Keyframe at current frame. */
@@ -1851,7 +1851,7 @@ static bool grease_pencil_separate_layer(bContext &C,
       drawing_dst->tag_topology_changed();
 
       changed = true;
-    });
+    };
 
     /* Remove unused material slots from target object. */
     remove_unused_materials(&bmain, object_dst);
@@ -1895,14 +1895,14 @@ static bool grease_pencil_separate_material(bContext &C,
     /* Iterate through all the drawings at current scene frame. */
     const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings(scene,
                                                                               grease_pencil_src);
-    threading::parallel_for_each(drawings_src, [&](const MutableDrawingInfo &info) {
+    for (const MutableDrawingInfo &info : drawings_src) {
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       IndexMaskMemory memory;
       const IndexMask strokes = retrieve_editable_strokes_by_material(
           *static_cast<Object *>(&object_src), info.drawing, memory, mat_i);
 
       if (strokes.is_empty()) {
-        return;
+        continue;
       }
 
       GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
@@ -1928,7 +1928,7 @@ static bool grease_pencil_separate_material(bContext &C,
       WM_event_add_notifier(&C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
 
       changed = true;
-    });
+    };
 
     /* Remove unused material slots from target object. */
     remove_unused_materials(&bmain, object_dst);
