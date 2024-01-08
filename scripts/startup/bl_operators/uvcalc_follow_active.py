@@ -205,14 +205,6 @@ def extend(obj, EXTEND_MODE, use_uv_selection):
     for f_triple in walk_face():
         apply_uv(*f_triple)
 
-    # Propagate UV changes across boundary of selection.
-    for (v, original_uv, source) in uv_updates:
-        # Visit all loops associated with our vertex.
-        for loop in v.link_loops:
-            # If the loop's UV matches the original, assign the new UV.
-            if loop[uv_act].uv == original_uv:
-                loop[uv_act].uv = source
-
     bmesh.update_edit_mesh(me, loop_triangles=False)
     return STATUS_OK
 
