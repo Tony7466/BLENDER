@@ -66,6 +66,7 @@ def report_personal_weekly_get(username, start, verbose=True):
     pulls_closed = set()
     pulls_commented = set()
     pulls_created = set()
+    pulls_worked = set()
 
     issues_closed = set()
     issues_commented = set()
@@ -106,6 +107,7 @@ def report_personal_weekly_get(username, start, verbose=True):
             elif op_type == "create_pull_request":
                 fullname = activity["repo"]["full_name"] + "/pulls/" + activity["content"].split('|')[0]
                 pulls_created.add(fullname)
+                pulls_worked.add(fullname)
             elif op_type == "commit_repo":
                 if activity["ref_name"] == "refs/heads/main" and activity["content"]:
                     content_json = json.loads(activity["content"])
@@ -178,12 +180,41 @@ def report_personal_weekly_get(username, start, verbose=True):
             pull_data = gitea_json_issue_get_cached(pull)
             if pull_data["user"]["login"] != username:
                 pulls_reviewed.append(pull)
+            else:
+                pulls_worked.add(pull)
 
     # Print triaging stats
 
+    def print_pulls(pulls):
+        for pull in pulls:
+            pull_data = gitea_json_issue_get_cached(pull)
+            title = pull_data["title"]
+            owner, repo, _, number = pull.split('/')
+            print(f"* {owner}/{repo}!{number}: {title}")
+
     issues_involved = issues_closed | issues_commented | issues_created
 
-    print("**Involved in %s reports:**                                     " % len(issues_involved))
+    # **This week:** triaging, bug fixing and worked on:
+    # * blender/blender!{pull_number}: Title
+    did_triage = len(issues_confirmed) or len(issues_archived) or len(issues_duplicated)
+    did_fix = len(issues_fixed)
+    workded_on_pulls = len(pulls_worked)
+    end_str = "                                         \n"
+    print("**This week:**", end=" " if did_triage or did_fix or workded_on_pulls else end_str)
+    if did_triage:
+        print("triaging", end=", " if did_fix and workded_on_pulls else " and " if did_fix or workded_on_pulls else end_str)
+    if did_fix:
+        print("bug fixing", end=" and " if workded_on_pulls else end_str)
+    if workded_on_pulls:
+        print("worked on:", end=end_str)
+        print_pulls(pulls_worked)
+
+    print()
+    print("**Next Week:** Triaging, bug fixing and finalize pull requests.")
+    print()
+
+    # Summary
+    print("**Involved in %s reports:**" % len(issues_involved))
     print("* Confirmed: %s" % len(issues_confirmed))
     print("* Closed as Resolved: %s" % len(issues_fixed))
     print("* Closed as Archived: %s" % len(issues_archived))
@@ -194,13 +225,6 @@ def report_personal_weekly_get(username, start, verbose=True):
     print()
 
     # Print review stats
-    def print_pulls(pulls):
-        for pull in pulls:
-            pull_data = gitea_json_issue_get_cached(pull)
-            title = pull_data["title"]
-            owner, repo, _, number = pull.split('/')
-            print(f"* {owner}/{repo}!{number}: {title}")
-
     print("**Review: %s**" % len(pulls_reviewed))
     print_pulls(pulls_reviewed)
     print()
