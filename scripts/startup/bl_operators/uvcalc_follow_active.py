@@ -6,7 +6,6 @@ from bpy.types import Operator
 
 from bpy.props import (
     EnumProperty,
-    BoolProperty,
 )
 
 STATUS_OK = (1 << 0)
@@ -17,7 +16,7 @@ STATUS_ERR_MISSING_UV_LAYER = (1 << 4)
 STATUS_ERR_NO_FACES_SELECTED = (1 << 5)
 
 
-def extend(obj, EXTEND_MODE, use_uv_selection, rip_modified_quads):
+def extend(obj, EXTEND_MODE, use_uv_selection):
     import bmesh
     from .uvcalc_transform import is_face_uv_selected
 
@@ -33,7 +32,7 @@ def extend(obj, EXTEND_MODE, use_uv_selection, rip_modified_quads):
         return STATUS_ERR_NOT_SELECTED  # Active face is not selected.
     if len(f_act.verts) != 4:
         return STATUS_ERR_NOT_QUAD  # Active face is not a quad
-    if not me.uv_layers:
+    if not bm.loops.layers.uv:
         return STATUS_ERR_MISSING_UV_LAYER  # Object's mesh doesn't have any UV layers.
 
     uv_act = bm.loops.layers.uv.active  # Always use the active UV layer.
@@ -206,22 +205,12 @@ def extend(obj, EXTEND_MODE, use_uv_selection, rip_modified_quads):
     for f_triple in walk_face():
         apply_uv(*f_triple)
 
-    if not rip_modified_quads:
-        # Propagate UV changes across boundary of selection.
-        for (v, original_uv, source) in uv_updates:
-            # Visit all loops associated with our vertex.
-            for loop in v.link_loops:
-                # If the loop's UV matches the original, assign the new UV.
-                if loop[uv_act].uv == original_uv:
-                    loop[uv_act].uv = source
-
     bmesh.update_edit_mesh(me, loop_triangles=False)
     return STATUS_OK
 
 
 def main(context, operator):
     use_uv_selection = True
-    view = context.space_data
     if context.space_data and context.space_data.type == 'VIEW_3D':
         use_uv_selection = False  # When called from the 3D editor, UV selection is ignored.
 
@@ -233,7 +222,7 @@ def main(context, operator):
     for ob in ob_list:
         num_meshes += 1
 
-        ret = extend(ob, operator.properties.mode, use_uv_selection, operator.properties.rip_modified_quads)
+        ret = extend(ob, operator.properties.mode, use_uv_selection)
         if ret != STATUS_OK:
             num_errors += 1
             status |= ret
@@ -243,6 +232,10 @@ def main(context, operator):
             operator.report({'ERROR'}, "Active face must be a quad")
         elif status & STATUS_ERR_NOT_SELECTED:
             operator.report({'ERROR'}, "Active face not selected")
+        elif status & STATUS_ERR_NO_FACES_SELECTED:
+            operator.report({'ERROR'}, "No selected faces")
+        elif status & STATUS_ERR_MISSING_UV_LAYER:
+            operator.report({'ERROR'}, "No UV layers")
         else:
             assert status & STATUS_ERR_ACTIVE_FACE != 0
             operator.report({'ERROR'}, "No active face")
@@ -263,12 +256,6 @@ class FollowActiveQuads(Operator):
             ('LENGTH_AVERAGE', "Length Average", "Average space UVs edge length of each loop"),
         ),
         default='LENGTH_AVERAGE',
-    )
-
-    rip_modified_quads: BoolProperty(
-        name="Rip Modified UVs",
-        description="Disconnect modified UV quads from their neighbors",
-        default=True,
     )
 
     @classmethod
