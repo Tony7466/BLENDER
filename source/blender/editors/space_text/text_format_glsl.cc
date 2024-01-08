@@ -103,6 +103,7 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "switch"
     "texel" 
     "uniform"
+    "using"
     "uvec2"
     "uvec3"
     "uvec4" 
@@ -118,6 +119,7 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "#else"
     "#if"
     "#version"
+    "#pragma"
 
 };
 
@@ -162,6 +164,10 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "dFdy"
     "distance" 
     "dot"
+    "dxdx"
+    "dxdy"
+    "dydx"
+    "dydy"
     "EmitStreamVertex"
     "EmitVertex"
     "EndPrimitive"
