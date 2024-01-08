@@ -343,7 +343,6 @@ extern const MeshExtract extract_edituv_lines;
 extern const MeshExtract extract_edituv_points;
 extern const MeshExtract extract_edituv_fdots;
 extern const MeshExtract extract_pos_nor;
-extern const MeshExtract extract_pos_nor_hq;
 extern const MeshExtract extract_lnor_hq;
 extern const MeshExtract extract_lnor;
 extern const MeshExtract extract_uv;
