@@ -521,7 +521,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
         /* clang-format off */
 
         /* Special vars(v) or built-in keywords(b) */
-        /* keep in sync with `txtfmt_osl_format_identifier()`. */
+        /* keep in sync with `txtfmt_glsl_format_identifier()`. */
 
     if       ((i = txtfmt_glsl_find_specialvar(str))   != -1) {prev = FMT_TYPE_SPECIAL;}
      else if ((i = txtfmt_glsl_find_builtinfunc(str))  != -1) {prev = FMT_TYPE_KEYWORD;}
