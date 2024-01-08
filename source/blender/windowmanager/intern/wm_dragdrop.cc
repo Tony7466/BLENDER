@@ -109,18 +109,18 @@ wmDropBox *WM_dropbox_add(ListBase *lb,
                           void (*cancel)(Main *, wmDrag *, wmDropBox *),
                           WMDropboxTooltipFunc tooltip)
 {
+  if (WM_operatortype_find(idname, true) == nullptr) {
+    printf("Error: dropbox with unknown operator: %s\n", idname);
+    return nullptr;
+  }
+
   wmDropBox *drop = MEM_cnew<wmDropBox>(__func__);
   drop->poll = poll;
   drop->copy = copy;
   drop->cancel = cancel;
   drop->tooltip = tooltip;
-  drop->ot = WM_operatortype_find(idname, false);
+  STRNCPY(drop->opname, idname);
 
-  if (drop->ot == nullptr) {
-    MEM_freeN(drop);
-    printf("Error: dropbox with unknown operator: %s\n", idname);
-    return nullptr;
-  }
   WM_operator_properties_alloc(&(drop->ptr), &(drop->properties), idname);
 
   BLI_addtail(lb, drop);
@@ -350,7 +350,10 @@ static char *dropbox_tooltip(bContext *C, wmDrag *drag, const int xy[2], wmDropB
     tooltip = drop->tooltip(C, drag, xy, drop);
   }
   if (!tooltip) {
-    tooltip = BLI_strdup(WM_operatortype_name(drop->ot, drop->ptr).c_str());
+    wmOperatorType *drop_ot = WM_operatortype_find(drop->opname, false);
+    if (drop_ot) {
+      tooltip = BLI_strdup(WM_operatortype_name(drop_ot, drop->ptr).c_str());
+    }
   }
   /* XXX Doing translation here might not be ideal, but later we have no more
    *     access to ot (and hence op context)... */
@@ -384,7 +387,8 @@ static wmDropBox *dropbox_active(bContext *C,
           }
 
           const wmOperatorCallContext opcontext = wm_drop_operator_context_get(drop);
-          if (WM_operator_poll_context(C, drop->ot, opcontext)) {
+          wmOperatorType *drop_ot = WM_operatortype_find(drop->opname, false);
+          if (drop_ot && WM_operator_poll_context(C, drop_ot, opcontext)) {
             CTX_store_set(C, nullptr);
             return drop;
           }
@@ -479,8 +483,11 @@ void wm_drop_prepare(bContext *C, wmDrag *drag, wmDropBox *drop)
   /* Optionally copy drag information to operator properties. Don't call it if the
    * operator fails anyway, it might do more than just set properties (e.g.
    * typically import an asset). */
-  if (drop->copy && WM_operator_poll_context(C, drop->ot, opcontext)) {
-    drop->copy(C, drag, drop);
+  if (drop->copy) {
+    wmOperatorType *drop_ot = WM_operatortype_find(drop->opname, false);
+    if (drop_ot && WM_operator_poll_context(C, drop_ot, opcontext)) {
+      drop->copy(C, drag, drop);
+    }
   }
 
   wm_drags_exit(CTX_wm_manager(C), CTX_wm_window(C));

@@ -3354,8 +3354,11 @@ static eHandlerActionFlag wm_handlers_do_intern(bContext *C,
                   event->customdata = &single_lb;
 
                   const wmOperatorCallContext opcontext = wm_drop_operator_context_get(drop);
-                  int op_retval = wm_operator_call_internal(
-                      C, drop->ot, drop->ptr, nullptr, opcontext, false, event);
+                  wmOperatorType *drop_ot = WM_operatortype_find(drop->opname, false);
+                  int op_retval =
+                      drop_ot ? wm_operator_call_internal(
+                                    C, drop_ot, drop->ptr, nullptr, opcontext, false, event) :
+                                OPERATOR_CANCELLED;
                   OPERATOR_RETVAL_CHECK(op_retval);
 
                   if ((op_retval & OPERATOR_CANCELLED) && drop->cancel) {

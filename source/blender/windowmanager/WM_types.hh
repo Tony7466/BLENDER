@@ -1344,10 +1344,12 @@ struct wmDropBox {
   WMDropboxTooltipFunc tooltip;
 
   /**
-   * If poll succeeds, operator is called.
-   * Not saved in file, so can be pointer.
+   * If poll succeeds, operator is called (`64 = OP_MAX_TYPENAME`).
+   *
+   * \note Use the operator name instead of referencing the #wmOperatorType
+   * to support scripts reloading, see: #116687.
    */
-  wmOperatorType *ot;
+  char opname[64];
 
   /** Operator properties, assigned to ptr->data and can be written to a file. */
   IDProperty *properties;
