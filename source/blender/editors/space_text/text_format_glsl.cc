@@ -115,12 +115,15 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "volatile"
     "while"
     "#define"
-    "#endif"
+    "#defined"
+    "#elif"
     "#else"
+    "#endif"
     "#if"
-    "#version"
+    "#ifdef"
     "#pragma"
-
+    "#version"
+    
 };
 
 static const Span<const char *> textformat_glsl_literals_builtinfunc(
@@ -211,10 +214,10 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "isnan"
     "isinf"
     "length"
-    "lessThan"s
+    "lessThan"
     "lessThanEqual"
     "log"
-    "log2
+    "log2"
     "matrixCompMult"
     "max"
     "memoryBarrier"
@@ -281,8 +284,9 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "unpackUnorm2x16"
     "unpackUnorm4x8"
     "usubBorrow"
+    
 
-/*Add in futur verion when GLSL 4.5 support in Blender*/
+  /*Add in futur verion when GLSL 4.5 support in Blender*/
   /*"textureSamples"*/
 
   /*Built-In Variable */
