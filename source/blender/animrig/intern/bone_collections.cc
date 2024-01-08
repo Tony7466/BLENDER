@@ -453,7 +453,7 @@ void ANIM_armature_bonecoll_active_runtime_refresh(struct bArmature *armature)
     index++;
   }
 
-  /* No bone collection with the name was found, so better to clear everything.*/
+  /* No bone collection with the name was found, so better to clear everything. */
   armature_bonecoll_active_clear(armature);
 }
 
@@ -681,7 +681,7 @@ void ANIM_armature_bonecoll_remove_from_index(bArmature *armature, int index)
              armature_bonecoll_is_child_of(
                  armature, parent_bcoll_index, active_collection_index - 1))
     {
-      /* The child preceeding active_collection_index is a sibling of the removed collection. */
+      /* The child preceding active_collection_index is a sibling of the removed collection. */
       ANIM_armature_bonecoll_active_index_set(armature, active_collection_index - 1);
     }
     else {
@@ -721,7 +721,7 @@ int ANIM_armature_bonecoll_get_index_by_name(bArmature *armature, const char *na
   return -1;
 }
 
-/* Clear BONE_COLLECTION_ANCESTORS_VISIBLE on all decendents of this bone collection. */
+/** Clear #BONE_COLLECTION_ANCESTORS_VISIBLE on all decedents of this bone collection. */
 static void ancestors_visible_descendants_clear(bArmature *armature, BoneCollection *parent_bcoll)
 {
   for (BoneCollection *bcoll : armature->collection_children(parent_bcoll)) {
@@ -730,7 +730,7 @@ static void ancestors_visible_descendants_clear(bArmature *armature, BoneCollect
   }
 }
 
-/* Set or clear BONE_COLLECTION_ANCESTORS_VISIBLE on all decendents of this bone collection. */
+/** Set or clear #BONE_COLLECTION_ANCESTORS_VISIBLE on all decedents of this bone collection. */
 static void ancestors_visible_descendants_update(bArmature *armature, BoneCollection *parent_bcoll)
 {
   if (!parent_bcoll->is_visible_effectively()) {
@@ -749,7 +749,7 @@ static void ancestors_visible_descendants_update(bArmature *armature, BoneCollec
   }
 }
 
-/* Set/clear BONE_COLLECTION_ANCESTORS_VISIBLE on this bone collection and all its decendents. */
+/** Set/clear BONE_COLLECTION_ANCESTORS_VISIBLE on this bone collection and all its decedents. */
 static void ancestors_visible_update(bArmature *armature,
                                      const BoneCollection *parent_bcoll,
                                      BoneCollection *bcoll)
@@ -1150,11 +1150,11 @@ bool armature_bonecoll_is_child_of(const bArmature *armature,
          potential_child_index < upper_bound;
 }
 
-bool armature_bonecoll_is_decendent_of(const bArmature *armature,
+bool armature_bonecoll_is_descendant_of(const bArmature *armature,
                                        const int potential_parent_index,
-                                       const int potential_decendent_index)
+                                       const int potential_descendant_index)
 {
-  if (armature_bonecoll_is_child_of(armature, potential_parent_index, potential_decendent_index)) {
+  if (armature_bonecoll_is_child_of(armature, potential_parent_index, potential_descendant_index)) {
     /* Found a direct child. */
     return true;
   }
@@ -1163,7 +1163,7 @@ bool armature_bonecoll_is_decendent_of(const bArmature *armature,
   const int upper_bound = potential_parent->child_index + potential_parent->child_count;
 
   for (int visit_index = potential_parent->child_index; visit_index < upper_bound; visit_index++) {
-    if (armature_bonecoll_is_decendent_of(armature, visit_index, potential_decendent_index)) {
+    if (armature_bonecoll_is_descendant_of(armature, visit_index, potential_descendant_index)) {
       return true;
     }
   }
