@@ -1216,8 +1216,8 @@ static void update_normals_faces(PBVH &pbvh, Span<PBVHNode *> nodes, Mesh &mesh)
    * change the normals of all connected vertices, which can be in other nodes. So the set of
    * vertices that need recalculated normals can propagate into unchanged/untagged PBVH nodes.
    *
-   * Currently we have no good way of finding neighboring PBVH nodes, so we use the verted to
-   * face topology map to find those neighboring vertices that need normal recalculation.
+   * Currently we have no good way of finding neighboring PBVH nodes, so we use the vertex to
+   * face topology map to find the neighboring vertices that need normal recalculation.
    *
    * Those boundary face and vertex indices are deduplicated with #VectorSet in order to avoid
    * duplicate work recalculation for the same vertex, and to make parallel storage for vertices
