@@ -1,1 +1,2 @@
 Referenced by issue #112299, Operator (e.g `bpy.ops.object.data_transfer()`) crashes when using `context.copy()` via addon
+Referenced by issue #116854, Hard crash using template_keymap_item_properties with wm.context_toggle
