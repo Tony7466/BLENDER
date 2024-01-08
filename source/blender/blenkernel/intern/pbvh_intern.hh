@@ -11,8 +11,6 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-#include "DNA_meshdata_types.h"
-
 /** \file
  * \ingroup bke
  */
@@ -185,10 +183,10 @@ struct PBVH {
 
   BMLog *bm_log;
 
-  blender::GroupedSpan<int> pmap;
+  blender::GroupedSpan<int> vert_to_face_map;
 
   CustomDataLayer *color_layer;
-  eAttrDomain color_domain;
+  blender::bke::AttrDomain color_domain;
 
   /* Initialize this to true, instead of waiting for a draw engine
    * to set it. Prevents a crash in draw manager instancing code.

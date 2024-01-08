@@ -78,7 +78,7 @@ static void translate_pointcloud(PointCloud &pointcloud, const float3 translatio
 
   MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
   SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
-      "position", ATTR_DOMAIN_POINT);
+      "position", AttrDomain::Point);
   translate_positions(position.span, translation);
   position.finish();
 
@@ -93,7 +93,7 @@ static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transfo
 {
   MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
   SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
-      "position", ATTR_DOMAIN_POINT);
+      "position", AttrDomain::Point);
   transform_positions(position.span, transform);
   position.finish();
 }
@@ -103,7 +103,8 @@ static void translate_greasepencil(GreasePencil &grease_pencil, const float3 tra
   using namespace blender::bke::greasepencil;
   for (const int layer_index : grease_pencil.layers().index_range()) {
     if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
-                                                                          layer_index)) {
+                                                                          layer_index))
+    {
       drawing->strokes_for_write().translate(translation);
     }
   }
@@ -114,7 +115,8 @@ static void transform_greasepencil(GreasePencil &grease_pencil, const float4x4 &
   using namespace blender::bke::greasepencil;
   for (const int layer_index : grease_pencil.layers().index_range()) {
     if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
-                                                                          layer_index)) {
+                                                                          layer_index))
+    {
       drawing->strokes_for_write().transform(transform);
     }
   }

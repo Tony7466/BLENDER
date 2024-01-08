@@ -34,7 +34,6 @@
 
 #include "BKE_DerivedMesh.hh"
 #include "BKE_bvhutils.hh"
-#include "BKE_colorband.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
@@ -80,7 +79,7 @@ using blender::bke::GeometrySet;
 using blender::bke::MeshComponent;
 
 /* very slow! enable for testing only! */
-//#define USE_MODIFIER_VALIDATE
+// #define USE_MODIFIER_VALIDATE
 
 #ifdef USE_MODIFIER_VALIDATE
 #  define ASSERT_IS_VALID_MESH(mesh) \
@@ -537,13 +536,13 @@ static void set_rest_position(Mesh &mesh)
   if (positions) {
     if (positions.sharing_info && positions.varray.is_span()) {
       attributes.add<float3>("rest_position",
-                             ATTR_DOMAIN_POINT,
+                             AttrDomain::Point,
                              AttributeInitShared(positions.varray.get_internal_span().data(),
                                                  *positions.sharing_info));
     }
     else {
       attributes.add<float3>(
-          "rest_position", ATTR_DOMAIN_POINT, AttributeInitVArray(positions.varray));
+          "rest_position", AttrDomain::Point, AttributeInitVArray(positions.varray));
     }
   }
 }
@@ -632,7 +631,7 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
       }
 
       if (mti->type == ModifierTypeType::OnlyDeform && !sculpt_dyntopo) {
-        blender::bke::ScopedModifierTimer modifier_timer{*md};
+        ScopedModifierTimer modifier_timer{*md};
         if (!mesh_final) {
           mesh_final = BKE_mesh_copy_for_eval(mesh_input);
           ASSERT_IS_VALID_MESH(mesh_final);
@@ -675,7 +674,8 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
     }
 
     if ((mti->flags & eModifierTypeFlag_RequiresOriginalData) &&
-        have_non_onlydeform_modifiers_applied) {
+        have_non_onlydeform_modifiers_applied)
+    {
       BKE_modifier_set_error(ob, md, "Modifier requires original data, bad stack position");
       continue;
     }
@@ -762,7 +762,8 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
          * These are created when either requested by evaluation, or if
          * following modifiers requested them. */
         if (need_mapping ||
-            ((nextmask.vmask | nextmask.emask | nextmask.pmask) & CD_MASK_ORIGINDEX)) {
+            ((nextmask.vmask | nextmask.emask | nextmask.pmask) & CD_MASK_ORIGINDEX))
+        {
           /* calc */
           CustomData_add_layer(
               &mesh_final->vert_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh_final->verts_num);
