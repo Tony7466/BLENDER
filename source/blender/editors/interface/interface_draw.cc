@@ -610,6 +610,30 @@ static void waveform_draw_one(float *waveform, int waveform_num, const float col
   GPU_batch_discard(batch);
 }
 
+
+static void waveform_draw_rgb(float *waveform, int waveform_num, float *col)
+{
+  GPUVertFormat format = {0};
+  const uint pos_id = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  const uint col_id = GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+
+  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+  GPU_vertbuf_data_alloc(vbo, waveform_num);
+
+  GPU_vertbuf_attr_fill(vbo, pos_id, waveform);
+
+  GPU_vertbuf_attr_fill(vbo, col_id, col);
+
+  GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_POINTS, vbo, nullptr, GPU_BATCH_OWNS_VBO);
+  GPU_batch_program_set_builtin(batch, GPU_SHADER_3D_SMOOTH_COLOR);
+
+  GPU_batch_draw(batch);
+
+  GPU_batch_discard(batch);
+}
+
+
+
 void ui_draw_but_WAVEFORM(ARegion * /*region*/,
                           uiBut *but,
                           const uiWidgetColors * /*wcol*/,
@@ -686,8 +710,6 @@ void ui_draw_but_WAVEFORM(ARegion * /*region*/,
 
   /* Flush text cache before drawing things on top. */
   BLF_batch_draw_flush();
-
-  GPU_blend(GPU_BLEND_ALPHA);
 
   GPUVertFormat *format = immVertexFormat();
   const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -907,7 +929,7 @@ static void vectorscope_draw_target(
               polar_to_y(centery, diam, tampli + dampli, tangle - dangle));
   immEnd();
   /* big target vary by 10 degree and 20% amplitude */
-  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.12f);
+  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.25f);
   dangle = DEG2RADF(10.0f);
   dampli = 0.2f * tampli;
   dangle2 = DEG2RADF(5.0f);
@@ -988,6 +1010,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   const float diam = (w < h) ? w : h;
 
   const float alpha = scopes->vecscope_alpha * scopes->vecscope_alpha * scopes->vecscope_alpha;
+  const float vecsope_col[3] = {alpha, alpha, alpha};
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -1014,7 +1037,41 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.08f);
+  /* circles */
+  const int increment = 15;
+  const int num_points = int(360 / increment);
+  const float r = 0.5f;
+
+  GPU_blend(GPU_BLEND_NONE);
+  immBegin(GPU_PRIM_TRI_FAN, num_points + 2);
+  immUniformColor3f(0.16f, 0.16f, 0.16f);
+  immVertex2f(pos, centerx, centery);
+
+  for (int i = 0; i <= 360; i += increment) {
+    const float a = DEG2RADF(float(i));
+    immVertex2f(pos, polar_to_x(centerx, diam, r, a), polar_to_y(centery, diam, r, a));
+  }
+
+  immEnd();
+
+  for (int j = 0; j < 5; j++) {
+    if (j == 4)
+      continue;
+
+    GPU_blend(GPU_BLEND_ADDITIVE);
+    immUniformColor3f(0.2f, 0.2f, 0.2f);
+    immBegin(GPU_PRIM_LINE_LOOP, num_points);
+
+    for (int i = 0; i < 360; i += increment) {
+      const float a = DEG2RADF(float(i));
+      const float r = (j + 1) * 0.1f;
+      immVertex2f(pos, polar_to_x(centerx, diam, r, a), polar_to_y(centery, diam, r, a));
+    }
+
+    immEnd();
+  }
+
+  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.1f);
   /* draw grid elements */
   /* cross */
   immBegin(GPU_PRIM_LINES, 4);
@@ -1027,19 +1084,10 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   immEnd();
 
-  /* circles */
-  for (int j = 0; j < 5; j++) {
-    const int increment = 15;
-    immBegin(GPU_PRIM_LINE_LOOP, int(360 / increment));
-    for (int i = 0; i <= 360 - increment; i += increment) {
-      const float a = DEG2RADF(float(i));
-      const float r = (j + 1) * 0.1f;
-      immVertex2f(pos, polar_to_x(centerx, diam, r, a), polar_to_y(centery, diam, r, a));
-    }
-    immEnd();
-  }
+
   /* skin tone line */
-  immUniformColor4f(1.0f, 0.4f, 0.0f, 0.2f);
+  GPU_blend(GPU_BLEND_ADDITIVE);
+  immUniformColor3f(0.5f, 0.5f, 0.5f);
 
   immBegin(GPU_PRIM_LINES, 2);
   immVertex2f(
@@ -1055,16 +1103,14 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   if (scopes->ok && scopes->vecscope != nullptr) {
     /* pixel point cloud */
-    const float col[3] = {alpha, alpha, alpha};
-
-    GPU_blend(GPU_BLEND_ADDITIVE);
-    GPU_point_size(1.0);
+    GPU_blend(GPU_BLEND_ALPHA);
+    GPU_point_size(5.0);
 
     GPU_matrix_push();
     GPU_matrix_translate_2f(centerx, centery);
     GPU_matrix_scale_1f(diam);
 
-    waveform_draw_one(scopes->vecscope, scopes->waveform_tot, col);
+    waveform_draw_rgb(scopes->vecscope, scopes->waveform_tot, scopes->vecscope_rgb);
 
     GPU_matrix_pop();
   }

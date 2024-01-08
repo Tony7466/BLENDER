@@ -163,6 +163,7 @@ typedef struct Scopes {
   float *waveform_2;
   float *waveform_3;
   float *vecscope;
+  float *vecscope_rgb;
   int waveform_tot;
   char _pad[4];
 } Scopes;

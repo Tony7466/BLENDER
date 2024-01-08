@@ -1761,6 +1761,8 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
 
   drw_engines_draw_scene();
 
+  // Clean up
+
   /* Fix 3D view "lagging" on APPLE and WIN32+NVIDIA. (See #56996, #61474) */
   if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
     GPU_flush();
