@@ -123,7 +123,7 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "#ifdef"
     "#pragma"
     "#version"
-    
+
 };
 
 static const Span<const char *> textformat_glsl_literals_builtinfunc(
@@ -285,7 +285,6 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "unpackUnorm4x8"
     "usubBorrow"
     
-
   /*Add in futur verion when GLSL 4.5 support in Blender*/
   /*"textureSamples"*/
 
@@ -577,6 +576,6 @@ void ED_text_format_register_glsl()
 
     BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
     BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
-    BLI_assert(text_format_string_literals_check_sorted_array());
+    BLI_assert(text_format_string_literals_check_sorted_array(textformat_glsl_literals_builtinfunc_data));
     BLI_assert(text_format_string_literals_check_sorted_array());
 }
