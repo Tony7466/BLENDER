@@ -85,13 +85,13 @@ inline void scatter(const Span<T> src,
 
 template<typename T>
 inline void scatter(const Span<T> src,
-                    const IndexMask mask,
+                    const IndexMask indices,
                     MutableSpan<T> dst,
                     const int64_t grain_size = 4096)
 {
-  BLI_assert(mask.size() == src.size());
-  BLI_assert(mask.min_array_size() <= dst.size());
-  mask.foreach_index_optimized<int>(
+  BLI_assert(indices.size() == src.size());
+  BLI_assert(indices.min_array_size() <= dst.size());
+  indices.foreach_index_optimized<int>(
       GrainSize(grain_size), [&](const int index, const int pos) { dst[index] = src[pos]; });
 }
 
