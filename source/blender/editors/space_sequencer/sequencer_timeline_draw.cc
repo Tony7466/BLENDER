@@ -1223,8 +1223,7 @@ static void draw_seq_missing_media(TimelineDrawContext *timeline_ctx,
   immUniform1f("xscale", -1.5f);
 
   for (const StripDrawContext &strip_ctx : strips) {
-    bool missing = blender::seq::media_presence_is_missing(
-        &timeline_ctx->ed->runtime.media_presence, strip_ctx.seq);
+    bool missing = blender::seq::media_presence_is_missing(timeline_ctx->scene, strip_ctx.seq);
     if (missing) {
       immRectf(
           pos, strip_ctx.left_handle, strip_ctx.bottom, strip_ctx.right_handle, strip_ctx.top);

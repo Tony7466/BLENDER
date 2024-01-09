@@ -10,6 +10,7 @@
 
 #include "DNA_scene_types.h"
 
+struct bSound;
 struct ListBase;
 struct Mask;
 struct Scene;
@@ -56,28 +57,32 @@ void SEQ_set_scale_to_fit(const Sequence *seq,
 void SEQ_ensure_unique_name(Sequence *seq, Scene *scene);
 
 namespace blender::seq {
-struct MediaPresence;
 
 /**
  * Check whether a sequence strip has missing media.
  * Results of the query for this strip will be cached into #MediaPresence cache. The cache
  * will be created on demand.
  *
- * \param presence Media presence cache.
+ * \param scene Scene to query.
  * \param seq Sequencer strip.
  * \return True if media file is missing.
  */
-bool media_presence_is_missing(MediaPresence **presence, const Sequence *seq);
+bool media_presence_is_missing(Scene *scene, const Sequence *seq);
 
 /**
  * Invalidate media presence cache for the given strip.
  */
-void media_presence_invalidate_strip(MediaPresence *presence, const Sequence *seq);
+void media_presence_invalidate_strip(Scene *scene, const Sequence *seq);
+
+/**
+ * Invalidate media presence cache for the given sound.
+ */
+void media_presence_invalidate_sound(Scene *scene, const bSound *sound);
 
 /**
  * Free media presence cache, if it was created.
  */
-void media_presence_free(MediaPresence **presence);
+void media_presence_free(Scene *scene);
 
 /**
  * Free media presence caches in all scenes of bmain.

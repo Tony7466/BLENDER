@@ -293,7 +293,7 @@ void SEQ_editing_free(Scene *scene, const bool do_id_user)
 
   BLI_freelistN(&ed->metastack);
   SEQ_sequence_lookup_free(scene);
-  blender::seq::media_presence_free(&ed->runtime.media_presence);
+  blender::seq::media_presence_free(scene);
   SEQ_channels_free(&ed->channels);
 
   MEM_freeN(ed);
