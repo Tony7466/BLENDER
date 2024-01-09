@@ -14,9 +14,6 @@
 namespace blender::ed::curves {
 /* Stores information need to create new curves by copying data from original ones. */
 struct CurvesCopy {
-  /* Same semantics as in #CurvesGeometry.curve_offsets. */
-  blender::Array<int> curve_offsets;
-
   /**
    * Buffer for intervals of all curves. Beginning and end of a curve can be determined only by
    * #curve_interval_ranges. For ex. [0, 3, 4, 4, 4] indicates one copy interval for first curve
@@ -38,8 +35,7 @@ struct CurvesCopy {
   blender::Array<bool> is_first_selected;
 
   CurvesCopy(const int curve_num, const int curve_intervals_size)
-      : curve_offsets(curve_num + 1),
-        curve_intervals(curve_intervals_size),
+      : curve_intervals(curve_intervals_size),
         curve_interval_ranges(curve_num),
         is_first_selected(curve_num)
   {
@@ -111,11 +107,12 @@ static bool handle_range(const int curve_index,
 static void calc_curve_offset(const int curve_index,
                               int &interval_offset,
                               const Span<int> offsets,
+                              MutableSpan<int> new_offsets,
                               CurvesCopy &extr)
 {
   const int points_in_curve = (offsets[curve_index + 1] - offsets[curve_index] +
                                extr.curve_interval_ranges[curve_index].size() - 1);
-  extr.curve_offsets[curve_index + 1] = extr.curve_offsets[curve_index] + points_in_curve;
+  new_offsets[curve_index + 1] = new_offsets[curve_index] + points_in_curve;
   interval_offset += extr.curve_interval_ranges[curve_index].size() + 1;
 }
 
@@ -124,6 +121,7 @@ static void finish_curve(int &curve_index,
                          int ins,
                          int last_elem,
                          const Span<int> offsets,
+                         MutableSpan<int> new_offsets,
                          CurvesCopy &extr)
 {
   if (extr.curve_intervals[interval_offset + ins - 1] != last_elem ||
@@ -140,7 +138,7 @@ static void finish_curve(int &curve_index,
     ins++;
   }
   extr.curve_interval_ranges[curve_index] = IndexRange(interval_offset, ins - 1);
-  calc_curve_offset(curve_index, interval_offset, offsets, extr);
+  calc_curve_offset(curve_index, interval_offset, offsets, new_offsets, extr);
   curve_index++;
 }
 
@@ -149,12 +147,13 @@ static void finish_curve_or_full_copy(int &curve_index,
                                       int ins,
                                       const std::optional<IndexRange> prev_range,
                                       const Span<int> offsets,
+                                      MutableSpan<int> new_offsets,
                                       CurvesCopy &extr)
 {
   const int last = offsets[curve_index + 1] - 1;
 
   if (prev_range.has_value() && prev_range.value().last() >= offsets[curve_index]) {
-    finish_curve(curve_index, interval_offset, ins, last, offsets, extr);
+    finish_curve(curve_index, interval_offset, ins, last, offsets, new_offsets, extr);
   }
   else {
     /* Copy full curve if previous selected point vas not on this curve. */
@@ -163,7 +162,7 @@ static void finish_curve_or_full_copy(int &curve_index,
     extr.is_first_selected[curve_index] = false;
     extr.curve_intervals[interval_offset] = first;
     extr.curve_intervals[interval_offset + 1] = last;
-    calc_curve_offset(curve_index, interval_offset, offsets, extr);
+    calc_curve_offset(curve_index, interval_offset, offsets, new_offsets, extr);
     curve_index++;
   }
 }
@@ -174,7 +173,9 @@ static void finish_curve_or_full_copy(int &curve_index,
  * \param offsets: offsets of original curve.
  * \param selection: selected points.
  */
-static const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const IndexMask &selection)
+static const CurvesCopy calc_curves_extrusion(const Span<int> offsets,
+                                              const IndexMask &selection,
+                                              MutableSpan<int> new_offsets)
 {
   const int curve_num = offsets.size() - 1;
   CurvesCopy extr(curve_num, selection.size() * 2 + curve_num * 2);
@@ -184,13 +185,14 @@ static const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const Ind
   int curve_index = 0;
   int interval_offset = 0;
   extr.curve_intervals[interval_offset] = offsets[0];
-  extr.curve_offsets[0] = offsets[0];
+  new_offsets[0] = offsets[0];
 
   selection.foreach_range([&](const IndexRange range) {
     /* Beginning of the range outside current curve. */
     if (range.first() > offsets[curve_index + 1] - 1) {
       do {
-        finish_curve_or_full_copy(curve_index, interval_offset, ins, prev_range, offsets, extr);
+        finish_curve_or_full_copy(
+            curve_index, interval_offset, ins, prev_range, offsets, new_offsets, extr);
       } while (range.first() > offsets[curve_index + 1] - 1);
       ins = 0;
       extr.curve_intervals[interval_offset] = offsets[curve_index];
@@ -198,7 +200,13 @@ static const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const Ind
 
     IndexRange range_to_handle = range;
     while (!handle_range(curve_index, interval_offset, ins, range_to_handle, offsets, extr)) {
-      finish_curve(curve_index, interval_offset, ins, offsets[curve_index + 1] - 1, offsets, extr);
+      finish_curve(curve_index,
+                   interval_offset,
+                   ins,
+                   offsets[curve_index + 1] - 1,
+                   offsets,
+                   new_offsets,
+                   extr);
       ins = 0;
       extr.curve_intervals[interval_offset] = offsets[curve_index];
     }
@@ -206,7 +214,8 @@ static const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const Ind
   });
 
   do {
-    finish_curve_or_full_copy(curve_index, interval_offset, ins, prev_range, offsets, extr);
+    finish_curve_or_full_copy(
+        curve_index, interval_offset, ins, prev_range, offsets, new_offsets, extr);
     prev_range.reset();
   } while (curve_index < offsets.size() - 1);
   return extr;
@@ -228,17 +237,12 @@ static void curves_obj_extrude(Curves *curves_id)
   const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
   const Span<int> old_offsets = curves.offsets();
-  CurvesCopy curves_copy = calc_curves_extrusion(old_offsets, extruded_points);
-
-  const Span<int> curve_offsets = {curves_copy.curve_offsets.data(),
-                                   curves_copy.curve_offsets.size()};
-
   bke::CurvesGeometry new_curves = bke::curves::copy_only_curve_domain(curves);
-  new_curves.resize(curve_offsets.last(), curves.curves_num());
+  new_curves.resize(0, curves.curves_num());
+  MutableSpan<int> new_offsets = new_curves.offsets_for_write();
 
-  MutableSpan<int> offsets = new_curves.offsets_for_write();
-
-  offsets.copy_from(curve_offsets);
+  CurvesCopy curves_copy = calc_curves_extrusion(old_offsets, extruded_points, new_offsets);
+  new_curves.resize(new_offsets.last(), curves.curves_num());
 
   const Span<int> curve_intervals = {curves_copy.curve_intervals.data(),
                                      curves_copy.curve_intervals.size()};
@@ -253,7 +257,7 @@ static void curves_obj_extrude(Curves *curves_id)
       bool is_selected = curves_copy.is_first_selected[curve];
 
       for (const int i : curves_copy.curve_interval_ranges[curve]) {
-        const int dest_index = curve_offsets[curve] + curve_intervals[i] - first_value + i -
+        const int dest_index = new_offsets[curve] + curve_intervals[i] - first_value + i -
                                first_index;
         const int size = curve_intervals[i + 1] - curve_intervals[i] + 1;
         GMutableSpan selection_span = selection.span.slice(IndexRange(dest_index, size));
