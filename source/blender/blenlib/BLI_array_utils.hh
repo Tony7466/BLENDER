@@ -91,8 +91,9 @@ inline void scatter(const Span<T> src,
 {
   BLI_assert(indices.size() == src.size());
   BLI_assert(indices.min_array_size() <= dst.size());
-  indices.foreach_index_optimized<int>(
-      GrainSize(grain_size), [&](const int index, const int pos) { dst[index] = src[pos]; });
+  indices.foreach_index_optimized<int64_t>(
+      GrainSize(grain_size),
+      [&](const int64_t index, const int64_t pos) { dst[index] = src[pos]; });
 }
 
 /**
