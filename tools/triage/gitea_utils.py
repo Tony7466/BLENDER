@@ -62,6 +62,16 @@ def gitea_json_issue_get(issue_fullname):
     return url_json_get(url)
 
 
+def gitea_json_pull_request_get(repo_fullname, id):
+    """
+    Get pull request JSON data.
+    :param repo_fullname: string in the format "{owner}/{repo}"
+    :param id: number of the pull request, without # prefix.
+    """
+    url = f"{BASE_API_URL}/repos/{repo_fullname}/pulls/{id}"
+    return url_json_get(url)
+
+
 def gitea_json_activities_get(username, date):
     """
     List a user's activity feeds.
