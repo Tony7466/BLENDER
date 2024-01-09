@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <atomic>
+
 #include "BKE_attribute.hh"
 #include "BKE_mesh.hh"
 
@@ -204,9 +206,12 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bke::AnonymousAttributePropagationInfo propagation_info =
       params.get_output_propagation_info("Geometry");
 
+  std::atomic<bool> has_reorder = false;
+  std::atomic<bool> has_unsupported = false;
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     for (const auto [type, domains] : geometry::components_supported_reordering().items()) {
       if (!domains.contains(domain)) {
+        has_unsupported = true;
         continue;
       }
       const bke::GeometryComponent *src_component = geometry_set.get_component(type);
@@ -222,8 +227,13 @@ static void node_geo_exec(GeoNodeExecParams params)
           *src_component, *indices, domain, propagation_info);
       geometry_set.remove(type);
       geometry_set.add(*dst_component.get());
+      has_reorder = true;
     }
   });
+
+  if (has_unsupported && !has_reorder) {
+    params.error_message_add(NodeWarningType::Info, TIP_("Attempt to sort unsupported element"));
+  }
 
   params.set_output("Geometry", std::move(geometry_set));
 }
