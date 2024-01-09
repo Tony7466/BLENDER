@@ -1,11 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_context.hh"
-#include "BKE_screen.hh"
-
-#include "BLI_path_util.h"
-#include "BLI_string.h"
-#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -17,7 +14,6 @@
 #include "RNA_define.hh"
 
 #include "UI_interface.hh"
-#include "UI_resources.hh"
 
 #include "WM_api.hh"
 
@@ -41,15 +37,13 @@ int filesel_drop_import_invoke(bContext *C, wmOperator *op, const wmEvent * /* e
   return OPERATOR_RUNNING_MODAL;
 }
 
-void filepath_label_draw(bContext *C, wmOperator *op)
+void filepath_label_draw(const bContext *C, const wmOperator *op)
 {
   if (SpaceFile *sfile = CTX_wm_space_file(C); sfile && sfile->op == op) {
     return;
   }
-  /**
-   * Check if the operator is running in 3D viewport or the outliner, if so, that means that  the
-   * operator is running as a dialog popup.
-   */
+  /* Check if the operator is running in 3D viewport or the outliner, if so, that means that  the
+   * operator is running as a dialog popup. */
   const View3D *v3d = CTX_wm_view3d(C);
   const SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   if (v3d || space_outliner) {
