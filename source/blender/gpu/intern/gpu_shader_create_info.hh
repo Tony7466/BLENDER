@@ -509,11 +509,6 @@ struct ShaderCreateInfo {
       {
         return u == other.u;
       }
-
-      uint32_t hash() const
-      {
-        return u;
-      }
     };
 
     Type type;

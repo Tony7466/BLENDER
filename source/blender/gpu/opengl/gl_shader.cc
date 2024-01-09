@@ -610,10 +610,6 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
   /* NOTE: We define macros in GLSL to trigger compilation error if the resource names
    * are reused for local variables. This is to match other backend behavior which needs accessors
    * macros. */
-  /* Add an identifier that where the specialization constants will be added. */
-  if (!info.specialization_constants_.is_empty()) {
-    ss << "\n/* GPU_GL_SPECIALIZATION_CONSTANTS. */\n";
-  }
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, res, info.auto_resource_location_);
@@ -649,9 +645,15 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
 
 std::string GLShader::constants_declare(const ShaderCreateInfo &info) const
 {
-  std::stringstream ss;
 
-  ss << "\n/* Specialization Constants. */\n";
+  std::stringstream ss;
+  if (info.specialization_constants_.is_empty()) {
+    return ss.str();
+  }
+
+  /* Add an identifier that where the specialization constants will be added. */
+  ss << "\n/* GPU_GL_SPECIALIZATION_CONSTANTS. */\n";
+  ss << "/* Specialization Constants. */\n";
   for (int constant_index : IndexRange(constants.types.size())) {
     const char *name = nullptr;
     /*
@@ -1497,7 +1499,9 @@ GLSources &GLSources::operator=(Span<const char *> other)
   for (const char *other_source : other) {
     append(GLSource(other_source));
     /* Note we use last().source as this will only check generated sources. */
-    if (last().source.find("GPU_GL_SPECIALIZATION_CONSTANTS") != std::string::npos) {
+    if (constants_source_index_ == -1 &&
+        last().source.find("GPU_GL_SPECIALIZATION_CONSTANTS") != std::string::npos)
+    {
       constants_source_index_ = size() - 1;
     }
   }

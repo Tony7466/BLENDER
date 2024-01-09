@@ -44,6 +44,13 @@ class Shader {
     /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
      * that however it wants (i.e: bind another shader instead). */
     Vector<Value> values;
+
+    /**
+     * OpenGL needs to know if a different program needs to be attached when constants are
+     * changed. Vulkan and Metal uses pipelines and don't have this issue. Attribute can be
+     * removed after the OpenGL backend has been phased out.
+     */
+    bool is_dirty;
   } constants;
 
  protected:

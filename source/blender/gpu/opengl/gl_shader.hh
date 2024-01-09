@@ -18,6 +18,19 @@
 #include "gpu_shader_private.hh"
 
 namespace blender {
+template<>
+struct DefaultHash<Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value>> {
+  uint64_t operator()(
+      const Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value> &key) const
+  {
+    uint64_t hash = 0;
+    for (const gpu::shader::ShaderCreateInfo::SpecializationConstant::Value &value : key) {
+      hash = hash * 33 + value.u;
+    }
+    return hash;
+  }
+};
+
 namespace gpu {
 
 /**
@@ -105,6 +118,7 @@ class GLShader : public Shader {
      */
     void ensure_program_linked(GLShader &shader);
   };
+
   SpecializationPrograms programs_;
   void update_program_and_sources(GLSources &stage_sources, MutableSpan<const char *> sources);
 
