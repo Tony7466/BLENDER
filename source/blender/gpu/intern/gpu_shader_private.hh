@@ -44,9 +44,6 @@ class Shader {
     /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
      * that however it wants (i.e: bind another shader instead). */
     Vector<Value> values;
-
-    /** Have the values changed? */
-    bool dirty = false;
   } constants;
 
  protected:
@@ -89,6 +86,7 @@ class Shader {
   void specialization_constants_init(const shader::ShaderCreateInfo &info);
 
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
+  virtual std::string constants_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string fragment_interface_declare(const shader::ShaderCreateInfo &info) const = 0;
@@ -122,7 +120,6 @@ class Shader {
   static void set_srgb_uniform(GPUShader *shader);
   static void set_framebuffer_srgb_target(int use_srgb_to_linear);
 
- protected:
   void print_log(Span<const char *> sources,
                  const char *log,
                  const char *stage,

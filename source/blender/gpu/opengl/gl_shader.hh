@@ -39,6 +39,15 @@ struct GLSource {
 class GLSources : public Vector<GLSource> {
  public:
   GLSources &operator=(Span<const char *> other);
+  Vector<const char *> update_constants_source(const StringRefNull constants_patch) const;
+
+ private:
+  void update_patch_index();
+  /**
+   * Index into self where the constants needs to be applied before.
+   * -1 means no constants will be applied.
+   */
+  int32_t constants_source_index_ = -1;
 };
 
 /**
@@ -58,6 +67,7 @@ class GLShader : public Shader {
     GLuint frag_shader = 0;
     GLuint compute_shader = 0;
     ~SpecializationProgram();
+    void link(Shader &shader);
   };
 
   struct SpecializationPrograms {
@@ -85,25 +95,15 @@ class GLShader : public Shader {
 
    public:
     /**
-     * Ensure that the active specialization program #active points to the specialization
-     * constants of the current values inside `Shader::constants.values`
-     */
-    void ensure_active();
-
-    /**
-     * Ensure that there is an active specialization program. This method only sets an
-     * specialization program when there is no active program set yet.
-     *
-     * This is useful for functionality that doesn't require the correct specialization yet, but
-     * checks some shared property of this shader.
-     */
-    void ensure_any_active();
-
-    /**
      * Make sure that the active is filled. It might still point to an instance that isn't fully
      * compiled.
      */
     void ensure_program_created(const GLShader &shader);
+
+    /**
+     * Make sure that active is filled reflecting the current state of shader.constants.values.
+     */
+    void ensure_program_linked(GLShader &shader);
   };
   SpecializationPrograms programs_;
   void update_program_and_sources(GLSources &stage_sources, MutableSpan<const char *> sources);
@@ -126,7 +126,7 @@ class GLShader : public Shader {
   void warm_cache(int /*limit*/) override{};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
-  std::string constants_declare() const;
+  std::string constants_declare(const shader::ShaderCreateInfo &info) const override;
   std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string fragment_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string geometry_interface_declare(const shader::ShaderCreateInfo &info) const override;
@@ -173,7 +173,9 @@ class GLShader : public Shader {
   const char *glsl_patch_get(GLenum gl_stage);
 
   /** Create, compile and attach the shader stage to the shader program. */
-  GLuint create_shader_stage(GLenum gl_stage, MutableSpan<const char *> sources);
+  GLuint create_shader_stage(GLenum gl_stage,
+                             MutableSpan<const char *> sources,
+                             const GLSources &gl_sources);
 
   /**
    * \brief features available on newer implementation such as native barycentric coordinates

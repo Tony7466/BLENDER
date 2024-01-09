@@ -301,6 +301,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
   shader->specialization_constants_init(info);
 
   std::string defines = shader->defines_declare(info);
+  std::string constants = shader->constants_declare(info);
   std::string resources = shader->resources_declare(info);
 
   if (info.legacy_resource_location_ == false) {
@@ -330,6 +331,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
     }
     sources.append(defines.c_str());
     sources.extend(typedefs);
+    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(interface.c_str());
     sources.extend(code);
@@ -351,6 +353,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
     }
     sources.append(defines.c_str());
     sources.extend(typedefs);
+    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(interface.c_str());
     sources.extend(code);
@@ -370,6 +373,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
     sources.append("#define GPU_GEOMETRY_SHADER\n");
     sources.append(defines.c_str());
     sources.extend(typedefs);
+    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(layout.c_str());
     sources.append(interface.c_str());
@@ -388,6 +392,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
     sources.append("#define GPU_COMPUTE_SHADER\n");
     sources.append(defines.c_str());
     sources.extend(typedefs);
+    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(layout.c_str());
     sources.extend(code);
@@ -557,7 +562,6 @@ void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
     constants.types.append(sc.type);
     constants.values.append(sc.default_value);
   }
-  constants.dirty = true;
 }
 
 void GPU_shader_constant_int_ex(GPUShader *sh, int location, int value)

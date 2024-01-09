@@ -995,10 +995,8 @@ void VKShader::uniform_int(int location, int comp_len, int array_size, const int
   push_constants.push_constant_set(location, comp_len, array_size, data);
 }
 
-std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) const
+std::string VKShader::constants_declare(const shader::ShaderCreateInfo &info) const
 {
-  VKShaderInterface interface;
-  interface.init(info);
   std::stringstream ss;
 
   /* TODO: Add support for specialization constants at compile time. */
@@ -1024,6 +1022,13 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
         break;
     }
   }
+  return ss.str();
+}
+std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) const
+{
+  VKShaderInterface interface;
+  interface.init(info);
+  std::stringstream ss;
 
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
