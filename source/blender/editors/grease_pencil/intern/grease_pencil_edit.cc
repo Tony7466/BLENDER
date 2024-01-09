@@ -1672,7 +1672,7 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
 
     VArray<int> vcuts = {};
 
-    if (selection_domain == bke::AttrDomain::Curve || (!only_selected)) {
+    if (selection_domain == bke::AttrDomain::Curve || !only_selected) {
       /* Subdivide entire selected curve, every stroke subdivides to the same cut. */
       vcuts = VArray<int>::ForSingle(cuts, curves.points_num());
     }
@@ -1690,19 +1690,22 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
 
       /* The cut is after each point, so the last point selected wouldn't need to be registered. */
       for (const int curves_i : curves.curves_range()) {
-        for (const int points_i : points_by_curve[curves_i]) {
+        /* Only check the last point if the curve is cyclic. */
+        for (const int points_i : points_by_curve[curves_i].drop_back(cyclic[curves_i])) {
           const bool is_cyclic = cyclic[curves_i];
           /* The point itself should be selected. */
-          if (!selection[points_i]){ continue; }
+          if (!selection[points_i]) {
+            continue;
+          }
           /* If the next point in the curve is selected, then cut this segment. */
-          if ((points_i < points_by_curve[curves_i].last()) && selection[points_i + 1]){
+          if ((points_i < points_by_curve[curves_i].last()) && selection[points_i + 1]) {
             use_cuts[points_i] = cuts;
           }
           /* Or when the curve is cyclic, the first and the last points are both selected. */
-          else if (is_cyclic && (points_i == points_by_curve[curves_i].last()) &&
-                selection[points_by_curve[curves_i].first()])
+          else if (points_i == points_by_curve[curves_i].last() &&
+                   selection[points_by_curve[curves_i].first()])
           {
-            use_cuts[points_i] = cuts;
+            use_cuts[points_by_curve[curves_i].last()] = cuts;
           }
         }
       }
