@@ -1482,6 +1482,7 @@ class I18n:
             if langs:
                 translations &= langs
             translations = [('"' + lng + '"', " " * (len(lng) + 6), self.trans[lng]) for lng in sorted(translations)]
+            print("Translated keys saved to .py file:")
             print(*(k for k in keys.keys()))
             for key in keys.keys():
                 if ref.msgs[key].is_commented:
