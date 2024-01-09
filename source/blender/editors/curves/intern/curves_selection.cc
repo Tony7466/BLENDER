@@ -191,9 +191,9 @@ static bool contains(const VArray<bool> &varray,
           return init;
         }
         constexpr int64_t MaxChunkSize = 512;
-        for (int64_t start = range.start(); start < range.one_after_last(); start += MaxChunkSize)
-        {
-          const int64_t end = std::min<int64_t>(start + MaxChunkSize, range.one_after_last());
+        const int64_t slice_end = range.one_after_last();
+        for (int64_t start = range.start(); start < slice_end; start += MaxChunkSize) {
+          const int64_t end = std::min<int64_t>(start + MaxChunkSize, slice_end);
           const int64_t size = end - start;
           const IndexMask sliced_mask = indices_to_check.slice(start, size);
           std::array<bool, MaxChunkSize> values;
