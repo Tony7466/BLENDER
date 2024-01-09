@@ -12,10 +12,8 @@
  *   - The depth scale is constant and set to 100.
  *   - The motion scale is defined by the shutter_speed. */
 
+#pragma BLENDER_REQUIRE(gpu_shader_compositor_motion_blur_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_compositor_texture_utilities.glsl)
-
-/* The tiles are square and of size 32, as defined in the compositor_max_velocity shader */
-#define MOTION_BLUR_TILE_SIZE 32
 
 const float depth_scale = 100.0;
 
@@ -162,8 +160,16 @@ void main()
   ivec2 tile = (texel + ivec2(rand * 2.0 - 1.0 * float(MOTION_BLUR_TILE_SIZE) * 0.25)) /
                MOTION_BLUR_TILE_SIZE;
 
-  vec4 max_motion = texture_load(max_velocity_tx, tile) *
-                    vec4(vec2(shutter_speed), vec2(-shutter_speed));
+  vec4 max_motion;
+  /* Load dilation result from the indirection table. */
+  ivec2 tile_prev;
+  motion_blur_tile_indirection_load(tile_indirection_buf, MOTION_PREV, uvec2(tile), tile_prev);
+  max_motion.xy = texture_load(max_velocity_tx, tile_prev).xy;
+  ivec2 tile_next;
+  motion_blur_tile_indirection_load(tile_indirection_buf, MOTION_NEXT, uvec2(tile), tile_next);
+  max_motion.zw = texture_load(max_velocity_tx, tile_next).zw;
+
+  max_motion *= vec4(vec2(shutter_speed), vec2(-shutter_speed));
 
   Accumulator accum;
   accum.weight = vec3(0.0, 0.0, 1.0);

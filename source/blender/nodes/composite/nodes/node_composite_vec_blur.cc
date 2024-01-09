@@ -6,6 +6,8 @@
  * \ingroup cmpnodes
  */
 
+#include <cstdint>
+
 #include "BLI_math_vector.hh"
 
 #include "UI_interface.hh"
@@ -13,6 +15,8 @@
 
 #include "GPU_compute.h"
 #include "GPU_shader.h"
+#include "GPU_storage_buffer.h"
+#include "GPU_vertex_buffer.h"
 
 #include "COM_node_operation.hh"
 #include "COM_result.hh"
@@ -83,10 +87,10 @@ class VectorBlurOperation : public NodeOperation {
     }
 
     Result max_tile_velocity = compute_max_tile_velocity();
-    Result max_neighbour_tile_velocity = compute_max_neighbour_tile_velocity(max_tile_velocity);
+    GPUStorageBuf *tile_indirection_buffer = dilate_max_velocity(max_tile_velocity);
+    compute_motion_blur(max_tile_velocity, tile_indirection_buffer);
     max_tile_velocity.release();
-    compute_motion_blur(max_neighbour_tile_velocity);
-    max_neighbour_tile_velocity.release();
+    GPU_storagebuf_free(tile_indirection_buffer);
   }
 
   /* Reduces each 32x32 block of velocity pixels into a single velocity whose magnitude is largest.
@@ -115,10 +119,12 @@ class VectorBlurOperation : public NodeOperation {
     return output;
   }
 
-  Result compute_max_neighbour_tile_velocity(Result &max_tile_velocity)
+  GPUStorageBuf *dilate_max_velocity(Result &max_tile_velocity)
   {
-    GPUShader *shader = context().get_shader("compositor_motion_blur_max_neighbour_tile_velocity");
+    GPUShader *shader = context().get_shader("compositor_motion_blur_max_velocity_dilate");
     GPU_shader_bind(shader);
+
+    GPU_shader_uniform_1f(shader, "shutter_speed", get_shutter_speed());
 
     max_tile_velocity.bind_as_texture(shader, "input_tx");
 
@@ -126,16 +132,25 @@ class VectorBlurOperation : public NodeOperation {
     output.allocate_texture(max_tile_velocity.domain());
     output.bind_as_image(shader, "output_img");
 
-    compute_dispatch_threads_at_least(shader, output.domain().size);
+    /* The shader assumes a maximum input size of 16k, and since the max tile velocity image is
+     * composed of blocks of 32, we get 16k / 32 = 512. So the table is 512x512, but we store two
+     * tables for the previous and next velocities, so we double that. */
+    const int size = sizeof(uint32_t) * 512 * 512 * 2;
+    GPUStorageBuf *tile_indirection_buffer = GPU_storagebuf_create_ex(
+        size, nullptr, GPU_USAGE_DEVICE_ONLY, __func__);
+    const int slot = GPU_shader_get_ssbo_binding(shader, "tile_indirection_buf");
+    GPU_storagebuf_bind(tile_indirection_buffer, slot);
+
+    compute_dispatch_threads_at_least(shader, max_tile_velocity.domain().size);
 
     GPU_shader_unbind();
     max_tile_velocity.unbind_as_texture();
-    output.unbind_as_image();
+    GPU_storagebuf_unbind(tile_indirection_buffer);
 
-    return output;
+    return tile_indirection_buffer;
   }
 
-  void compute_motion_blur(Result &max_tile_velocity)
+  void compute_motion_blur(Result &max_tile_velocity, GPUStorageBuf *tile_indirection_buffer)
   {
     GPUShader *shader = context().get_shader("compositor_motion_blur");
     GPU_shader_bind(shader);
@@ -153,6 +168,9 @@ class VectorBlurOperation : public NodeOperation {
     velocity.bind_as_texture(shader, "velocity_tx");
 
     max_tile_velocity.bind_as_texture(shader, "max_velocity_tx");
+
+    const int slot = GPU_shader_get_ssbo_binding(shader, "tile_indirection_buf");
+    GPU_storagebuf_bind(tile_indirection_buffer, slot);
 
     Result &output = get_result("Image");
     const Domain domain = compute_domain();

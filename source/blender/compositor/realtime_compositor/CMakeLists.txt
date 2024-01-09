@@ -184,7 +184,7 @@ set(GLSL_SRC
   shaders/compositor_morphological_distance_threshold.glsl
   shaders/compositor_morphological_step.glsl
   shaders/compositor_motion_blur.glsl
-  shaders/compositor_motion_blur_max_neighbour_tile_velocity.glsl
+  shaders/compositor_motion_blur_max_velocity_dilate.glsl
   shaders/compositor_movie_distortion.glsl
   shaders/compositor_normalize.glsl
   shaders/compositor_parallel_reduction.glsl
@@ -237,6 +237,7 @@ set(GLSL_SRC
   shaders/library/gpu_shader_compositor_luminance_matte.glsl
   shaders/library/gpu_shader_compositor_main.glsl
   shaders/library/gpu_shader_compositor_map_value.glsl
+  shaders/library/gpu_shader_compositor_motion_blur_lib.glsl
   shaders/library/gpu_shader_compositor_normal.glsl
   shaders/library/gpu_shader_compositor_ocio_processor.glsl
   shaders/library/gpu_shader_compositor_posterize.glsl
