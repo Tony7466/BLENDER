@@ -34,19 +34,23 @@ def main():
         for activity in gitea_json_activities_get(username, day_str):
             op_type = activity["op_type"]
             if op_type == "commit_repo":
-                if activity["content"]:
-                    content_json = json.loads(activity["content"])
-                    repo_fullname = activity["repo"]["full_name"]
-                    if activity["ref_name"] == "refs/heads/main":
-                        if ".profile" in repo_fullname:
-                            continue
-                        for commit in content_json["Commits"]:
-                            commit_hash = commit["Sha1"][:10]
-                            title = commit["Message"].split("\n", 1)[0]
-                            commit_url = f"https://projects.blender.org/{repo_fullname}/commit/{commit_hash}"
-                            commit_data = f"{title} ([{commit_hash[:7]}]({commit_url}))"
-                            commit_lines.append(commit_data)
-            if op_type in ("comment_pull", "create_pull_request", "merge_pull_request"):
+                if not activity["content"]:
+                    continue
+                content_json = json.loads(activity["content"])
+                repo_fullname = activity["repo"]["full_name"]
+                if activity["ref_name"] != "refs/heads/main":
+                    continue
+                if ".profile" in repo_fullname:
+                    continue
+                for commit in content_json["Commits"]:
+                    if commit["AuthorName"] != activity["act_user"]["full_name"]:
+                        continue
+                    commit_hash = commit["Sha1"][:10]
+                    title = commit["Message"].split("\n", 1)[0]
+                    commit_url = f"https://projects.blender.org/{repo_fullname}/commit/{commit_hash}"
+                    commit_data = f"{title} ([{commit_hash[:7]}]({commit_url}))"
+                    commit_lines.append(commit_data)
+            elif op_type in ("comment_pull", "create_pull_request", "merge_pull_request"):
                 pull_request_id = activity["content"].split("|")[0]
                 repo_fullname = activity["repo"]["full_name"]
                 touched_pull_request_ids.add((repo_fullname, pull_request_id))
