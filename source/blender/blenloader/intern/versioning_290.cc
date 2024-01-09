@@ -680,8 +680,8 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
   }
 
   /**
-   * Subversion bump and do-versioning should be done
-   * as part of the code submission.
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_290 in this file.
@@ -1977,8 +1977,8 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   /**
-   * Subversion bump and do-versioning should be done
-   * as part of the code submission.
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Be sure to check when bumping the version:
    * - `versioning_userdef.cc`, #blo_do_versions_userdef
