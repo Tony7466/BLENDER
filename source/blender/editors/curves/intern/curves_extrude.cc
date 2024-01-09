@@ -260,8 +260,13 @@ static void curves_obj_extrude(Curves *curves_id)
   const Span<int> curve_intervals = {curves_copy.curve_intervals.data(),
                                      curves_copy.curve_intervals.size()};
 
-  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      new_curves, bke::AttrDomain::Point, CD_PROP_BOOL);
+  const bke::AttributeAccessor src_attributes = curves.attributes();
+  const GVArraySpan src_selection = *src_attributes.lookup(".selection", bke::AttrDomain::Point);
+  const CPPType &src_selection_type = src_selection.type();
+  bke::GSpanAttributeWriter dst_selection = ensure_selection_attribute(
+      new_curves,
+      bke::AttrDomain::Point,
+      src_selection_type.is<bool>() ? CD_PROP_BOOL : CD_PROP_FLOAT);
 
   threading::parallel_for(curves.curves_range(), 256, [&](IndexRange curves_range) {
     for (const int curve : curves_range) {
@@ -273,20 +278,28 @@ static void curves_obj_extrude(Curves *curves_id)
         const int dest_index = new_offsets[curve] + curve_intervals[i] - first_value + i -
                                first_index;
         const int size = curve_intervals[i + 1] - curve_intervals[i] + 1;
-        GMutableSpan selection_span = selection.span.slice(IndexRange(dest_index, size));
-        fill_selection(selection_span, is_selected);
+        GMutableSpan dst_span = dst_selection.span.slice(IndexRange(dest_index, size));
+        if (is_selected) {
+          src_selection_type.copy_assign_n(
+              src_selection.slice(IndexRange(curve_intervals[i], size)).data(),
+              dst_span.data(),
+              size);
+        }
+        else {
+          fill_selection(dst_span, false);
+        }
 
         is_selected = !is_selected;
       }
     }
   });
-  selection.finish();
+  dst_selection.finish();
 
   const Span<int> intervals = compress_intervals(curves_copy.curve_interval_ranges,
                                                  curves_copy.curve_intervals);
 
   bke::MutableAttributeAccessor dst_attributes = new_curves.attributes_for_write();
-  const bke::AttributeAccessor src_attributes = curves.attributes();
+
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
            src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, {}, {".selection"}))
   {
