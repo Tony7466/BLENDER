@@ -1314,7 +1314,7 @@ void CURVES_OT_draw(wmOperatorType *ot)
   prop = RNA_def_boolean(ot->srna, "is_curve_2d", false, "Curve 2D", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-  prop = RNA_def_boolean(ot->srna, "bezier_as_nurbs", false, "as NURBS", "");
+  prop = RNA_def_boolean(ot->srna, "bezier_as_nurbs", false, "As NURBS", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
