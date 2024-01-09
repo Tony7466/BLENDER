@@ -212,19 +212,17 @@ static const CurvesCopy calc_curves_extrusion(const Span<int> offsets, const Ind
   return extr;
 }
 
-static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
+static void curves_obj_extrude(Curves *curves_id)
 {
-  Object *obedit = CTX_data_edit_object(C);
-  Curves *curves_id = static_cast<Curves *>(obedit->data);
   const bke::AttrDomain selection_domain = bke::AttrDomain(curves_id->selection_domain);
   if (selection_domain != bke::AttrDomain::Point) {
-    return OPERATOR_FINISHED;
+    return;
   }
 
   IndexMaskMemory memory;
   const IndexMask extruded_points = retrieve_selected_points(*curves_id, memory);
   if (extruded_points.is_empty()) {
-    return OPERATOR_FINISHED;
+    return;
   }
 
   const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
@@ -288,9 +286,14 @@ static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
     });
     attribute.dst.finish();
   }
-
   curves_id->geometry.wrap() = std::move(new_curves);
+}
 
+static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
+{
+  for (Curves *curves_id : get_unique_editable_curves(*C)) {
+    curves_obj_extrude(curves_id);
+  }
   return OPERATOR_FINISHED;
 }
 
