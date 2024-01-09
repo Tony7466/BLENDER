@@ -93,6 +93,7 @@ typedef enum ModifierType {
   eModifierType_MeshToVolume = 58,
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
+  eModifierType_GreasePencilOpacity = 61,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2484,3 +2485,8 @@ typedef enum VolumeToMeshResolutionMode {
 typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
+
+typedef struct GreasePencilOpacityModifierData {
+  ModifierData modifier;
+
+} GreasePencilOpacityModifierData;

@@ -46,6 +46,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
     def draw(self, _context):
         layout = self.layout
+        ob_type = _context.object.type
         layout.operator("wm.call_menu", text="Add Modifier", icon='ADD').name = "OBJECT_MT_modifier_add"
         layout.template_modifiers()
 
@@ -71,7 +72,7 @@ class OBJECT_MT_modifier_add(ModifierAddMenu, Menu):
         if geometry_nodes_supported:
             self.operator_modifier_add(layout, 'NODES')
             layout.separator()
-        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE', 'GREASEPENCIL'}:
             layout.menu("OBJECT_MT_modifier_add_edit")
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'VOLUME'}:
             layout.menu("OBJECT_MT_modifier_add_generate")
@@ -105,6 +106,8 @@ class OBJECT_MT_modifier_add_edit(ModifierAddMenu, Menu):
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_EDIT')
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_MIX')
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_PROXIMITY')
+        if ob_type == 'GREASEPENCIL':
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_OPACITY')
         layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 

@@ -100,6 +100,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Proximity",
      "Set the vertex group weights based on the distance to another target object"},
+    {eModifierType_GreasePencilOpacity,
+     "GREASE_PENCIL_OPACITY",
+     ICON_MOD_OPACITY,
+     "Opacity",
+     "Opacity of the strokes"},
 
     RNA_ENUM_ITEM_HEADING(N_("Generate"), nullptr),
     {eModifierType_Array,
@@ -7423,6 +7428,22 @@ static void rna_def_modifier_volume_to_mesh(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "GreasePencilOpacityModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Opacity Modifier", "");
+  RNA_def_struct_sdna(srna, "GreasePencilOpacityModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_OPACITY);
+
+  RNA_define_lib_overridable(true);
+
+  // TODO
+
+  RNA_define_lib_overridable(false);
+}
+
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7583,6 +7604,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_mesh_to_volume(brna);
   rna_def_modifier_volume_displace(brna);
   rna_def_modifier_volume_to_mesh(brna);
+  rna_def_modifier_grease_pencil_opacity(brna);
 }
 
 #endif
