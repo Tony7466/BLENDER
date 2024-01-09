@@ -19,6 +19,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "GEO_reorder.hh"
+
 namespace blender::geometry {
 
 const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain> &
