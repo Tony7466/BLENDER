@@ -1,2 +1,3 @@
 Referenced by issue #115451, Node resizing is broken
 Referenced by commit f8c8878232236c11c0dfbaf1cbe53621b2489a6d, Fix #115451: hard to resize collapsed nodes
+Referenced by commit d19e7cbb5ae7323650d11aa1174952b71b8b1ddc, Fix #115540: nodes with sockets only on one side are hard to resize
