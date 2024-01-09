@@ -1677,26 +1677,30 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       vcuts = VArray<int>::ForSingle(cuts, curves.points_num());
     }
     else if (selection_domain == bke::AttrDomain::Point) {
-      /* Subdivide between selected points. Only cut between selected points. */
-      /* Make the cut array the same length as point count for specifying */
-      /* cut/uncut for each segment. */
-      Array<int> use_cuts(curves.points_num(), 0);
+      /* Subdivide between selected points. Only cut between selected points.
+       * Make the cut array the same length as point count for specifying
+       * cut/uncut for each segment. */
       const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
           ".selection", bke::AttrDomain::Point, true);
 
       const OffsetIndices points_by_curve = curves.points_by_curve();
       const VArray<bool> cyclic = curves.cyclic();
 
+      Array<int> use_cuts(curves.points_num(), 0);
+
       /* The cut is after each point, so the last point selected wouldn't need to be registered. */
       for (const int curves_i : curves.curves_range()) {
         for (const int points_i : points_by_curve[curves_i]) {
-          const bool cyc = cyclic[curves_i];
-          if (selection[points_i] && /* Point is selected. */
-              /* And either the next point is selected... */
-              (((points_i < points_by_curve[curves_i].last()) && selection[points_i + 1]) ||
-               /* Or when the curve is cyclic, the first and the last are both selected.  */
-               (cyc && (points_i == points_by_curve[curves_i].last()) &&
-                selection[points_by_curve[curves_i].first()])))
+          const bool is_cyclic = cyclic[curves_i];
+          /* The point itself should be selected. */
+          if (!selection[points_i]){ continue; }
+          /* If the next point in the curve is selected, then cut this segment. */
+          if ((points_i < points_by_curve[curves_i].last()) && selection[points_i + 1]){
+            use_cuts[points_i] = cuts;
+          }
+          /* Or when the curve is cyclic, the first and the last points are both selected. */
+          else if (is_cyclic && (points_i == points_by_curve[curves_i].last()) &&
+                selection[points_by_curve[curves_i].first()])
           {
             use_cuts[points_i] = cuts;
           }
@@ -1705,15 +1709,13 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       vcuts = VArray<int>::ForContainer(use_cuts);
     }
 
-    blender::bke::AnonymousAttributePropagationInfo pinfo;
-    curves = blender::geometry::subdivide_curves(curves, strokes, vcuts, pinfo);
+    curves = geometry::subdivide_curves(curves, strokes, vcuts, {});
     info.drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
   });
 
   if (changed) {
-    /* Notifiers. */
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
 
@@ -1732,16 +1734,16 @@ static void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
       "between "
       "them";
 
-  /* api callbacks */
+  /* API callbacks. */
   ot->exec = gpencil_stroke_subdivide_exec;
   ot->poll = ed::greasepencil::editable_grease_pencil_poll;
 
-  /* flags */
+  /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  /* properties */
-  prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 10, "Number of Cuts", "", 1, 5);
-  /* avoid re-using last var because it can cause _very_ high value and annoy users */
+  /* Properties. */
+  prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 32, "Number of Cuts", "", 1, 5);
+  /* Avoid re-using last var because it can cause _very_ high value and annoy users. */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   RNA_def_boolean(ot->srna,
@@ -1758,7 +1760,7 @@ static void grease_pencil_operatormarcos_define()
   wmOperatorType *ot;
 
   ot = WM_operatortype_append_macro("GREASE_PENCIL_OT_stroke_subdivide_smooth",
-                                    "Subdivide And Smooth",
+                                    "Subdivide and Smooth",
                                     "Subdivide strokes and smooth them",
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
   WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_subdivide");
