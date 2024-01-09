@@ -6,6 +6,8 @@
 
 /** \file
  * \ingroup bli
+ *
+ * Contains the same definitions as the C++20 <numbers> header and will be replaced when we switch.
  */
 
 #include <type_traits>
