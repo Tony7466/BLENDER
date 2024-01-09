@@ -248,7 +248,8 @@ void gaussian_blur_1D(const GSpan src,
     using T = decltype(dummy);
     /* Reduces unnecessary code generation. */
     if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
-                  std::is_same_v<T, float3>) {
+                  std::is_same_v<T, float3>)
+    {
       gaussian_blur_1D(src.typed<T>(),
                        iterations,
                        influence,
@@ -1690,9 +1691,9 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
 
       /* The cut is after each point, so the last point selected wouldn't need to be registered. */
       for (const int curves_i : curves.curves_range()) {
-        /* Only check the last point if the curve is cyclic. */
-        for (const int points_i : points_by_curve[curves_i].drop_back(cyclic[curves_i])) {
-          const bool is_cyclic = cyclic[curves_i];
+        /* No need to loop to the last point since the cut is registered on the point before the
+         * segment. */
+        for (const int points_i : points_by_curve[curves_i].drop_back(1)) {
           /* The point itself should be selected. */
           if (!selection[points_i]) {
             continue;
@@ -1701,13 +1702,10 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
           if ((points_i < points_by_curve[curves_i].last()) && selection[points_i + 1]) {
             use_cuts[points_i] = cuts;
           }
-          /* Or when the curve is cyclic, the first and the last points are both selected. */
-          else if (points_i == points_by_curve[curves_i].last() &&
-                   selection[points_by_curve[curves_i].first()])
-          {
-            use_cuts[points_by_curve[curves_i].last()] = cuts;
-          }
         }
+        /* Always register the last point in the curve, the subdiv call will check for cyclic
+         * curves and cut them correctly. */
+        use_cuts[points_by_curve[curves_i].last()] = cuts;
       }
       vcuts = VArray<int>::ForContainer(use_cuts);
     }
