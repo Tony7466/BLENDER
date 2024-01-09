@@ -360,7 +360,7 @@ static void rna_Action_show_errors_update(bContext *C, PointerRNA * /*ptr*/)
     return;
   }
 
-  if (ac.ads->filterflag & ADS_FILTER_ONLY_ERRORS) {
+  if (!(ac.ads->filterflag & ADS_FILTER_ONLY_ERRORS)) {
     return;
   }
 
