@@ -863,6 +863,7 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.bind_texture("depth_tx", &src_depth_tx_);
+      sub.bind_texture("hiz_tx", &inst_.hiz_buffer.front.ref_tx_);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
       sub.bind_resources(inst_.lights);
       sub.dispatch(&dispatch_depth_scan_size_);
@@ -1280,7 +1281,8 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
   int3 target_size(1);
   GPU_texture_get_mipmap_size(depth_tx, 0, target_size);
 
-  dispatch_depth_scan_size_ = math::divide_ceil(target_size, int3(SHADOW_DEPTH_SCAN_GROUP_SIZE));
+  dispatch_depth_scan_size_ = math::divide_ceil(
+      target_size, int3(SHADOW_DEPTH_SCAN_GROUP_SIZE * SHADOW_TAG_USAGE_NUM_CELLS_PER_THREAD_DIM));
 
   pixel_world_radius_ = screen_pixel_radius(view, int2(target_size));
   tilemap_projection_ratio_ = tilemap_pixel_radius() / pixel_world_radius_;
