@@ -2,158 +2,196 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/* An implementation of the paper:
+/* This is identical to the EEVEE implementation in eevee_motion_blur_gather_comp.glsl with the
+ * necessary adjustments to make it work for the compositor:
  *
- *   Guertin, Jean-Philippe, Morgan McGuire, and Derek Nowrouzezahrai. "A Fast and Stable
- *   Feature-Aware Motion Blur Filter." High performance graphics. 2014.
- *
- * Which is based on the paper:
- *
- *   McGuire, Morgan, et al. "A reconstruction filter for plausible motion blur." Proceedings of
- *   the ACM SIGGRAPH Symposium on Interactive 3D Graphics and Games. 2012.
- */
+ *   - depth_compare() uses an inverted sign since the depth texture stores linear depth.
+ *   - The next velocities are inverted since the velocity textures stores the previous and next
+ *     velocities in the same direction.
+ *   - The samples count is a variable uniform and not fixed to 8 samples.
+ *   - The depth scale is constant and set to 100.
+ *   - The motion scale is defined by the shutter_speed. */
 
-#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_compositor_texture_utilities.glsl)
 
 /* The tiles are square and of size 32, as defined in the compositor_max_velocity shader */
-#define TILE_SIZE 32
+#define MOTION_BLUR_TILE_SIZE 32
 
-/* Computes the R2 low discrepancy grid remapped to the [0, 1] range as described in section
- * "Dithering in computer graphics" of the article:
- *
- *   https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
- *
- * This is a better alternative to the halton sequence proposed by the motion blur paper. */
-float r2_low_discrepancy_grid(ivec2 p)
+const float depth_scale = 100.0;
+
+/* Interleaved gradient noise by Jorge Jimenez
+ * http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare. */
+float interleaved_gradient_noise(ivec2 p)
 {
-  float x = p.x / 1.32471795724474602596;
-  float y = p.y / (1.32471795724474602596 * 1.32471795724474602596);
-  return fract(x + y) * 2.0 - 1.0;
+  return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
 }
 
-/* Find the tile that the given texel belongs to, which is just the tile divided by the tile size.
- * However, to avoid visible discontinuities, we stochastically offset into neighbouring tile at
- * tile boundaries as described in section "4.2. Tile Boundary Discontinuities" of the Guertin
- * paper.
- *
- * TODO: Only offset into vertical and horizontal tiles. Remove the trigonometric functions. */
-ivec2 compute_tile_texel(ivec2 texel, float quasirandom_value)
+vec2 spread_compare(float center_motion_length, float sample_motion_length, float offset_length)
 {
-  const ivec2 tile_size = ivec2(32);
-  float angle = quasirandom_value * M_PI;
-  ivec2 offset = ivec2(vec2(cos(angle), sin(angle)) * tile_size / 4.0);
-  return (texel + offset) / tile_size;
+  return clamp(vec2(center_motion_length, sample_motion_length) - offset_length + 1.0, 0.0, 1.0);
 }
 
-/* Returns 1 if z_a is less than z_b, that is, in terms of depth, closer to the camera than z_b.
- * Returns zero otherwise. However, the values gradually decreases from 1 to zero in regions where
- * both values are close. This is described in section "5. Implementation and Results" of the
- * Guertin paper. */
-float soft_depth_compare(float z_a, float z_b)
+vec2 depth_compare(float center_depth, float sample_depth)
 {
-  return clamp(1.0 - (z_a - z_b) / min(z_a, z_b), 0.0, 1.0);
+  vec2 depth_scale = vec2(depth_scale, -depth_scale);
+  return clamp(0.5 + depth_scale * (sample_depth - center_depth), 0.0, 1.0);
 }
 
-/* A cone shaped window function as described in "Figure 4" of the McGuire paper. A unit dirac
- * delta function when the scale is 0. */
-float cone_window_function(float x, float scale)
+/* Kill contribution if not going the same direction. */
+float dir_compare(vec2 offset, vec2 sample_motion, float sample_motion_length)
 {
-  if (scale == 0.0) {
-    return x == 0.0 ? 1.0 : 0.0;
+  if (sample_motion_length < 0.5) {
+    return 1.0;
   }
-  return clamp(1.0 - x / scale, 0.0, 1.0);
+  return (dot(offset, sample_motion) > 0.0) ? 1.0 : 0.0;
 }
 
-/* A cylinder shaped window function as described in "Figure 4" of the McGuire paper. A unit dirac
- * delta function when the scale is 0. */
-float cylinder_window_function(float x, float scale)
+/* Return background (x) and foreground (y) weights. */
+vec2 sample_weights(float center_depth,
+                    float sample_depth,
+                    float center_motion_length,
+                    float sample_motion_length,
+                    float offset_length)
 {
-  if (scale == 0.0) {
-    return x == 0.0 ? 1.0 : 0.0;
+  /* Classify foreground/background. */
+  vec2 depth_weight = depth_compare(center_depth, sample_depth);
+  /* Weight if sample is overlapping or under the center pixel. */
+  vec2 spread_weight = spread_compare(center_motion_length, sample_motion_length, offset_length);
+  return depth_weight * spread_weight;
+}
+
+struct Accumulator {
+  vec4 fg;
+  vec4 bg;
+  /** x: Background, y: Foreground, z: dir. */
+  vec3 weight;
+};
+
+void gather_sample(vec2 screen_uv,
+                   float center_depth,
+                   float center_motion_len,
+                   vec2 offset,
+                   float offset_len,
+                   const bool next,
+                   inout Accumulator accum)
+{
+  vec2 sample_uv = screen_uv - offset / vec2(texture_size(input_tx));
+  vec4 sample_vectors = texture(velocity_tx, sample_uv) *
+                        vec4(vec2(shutter_speed), vec2(-shutter_speed));
+  vec2 sample_motion = (next) ? sample_vectors.zw : sample_vectors.xy;
+  float sample_motion_len = length(sample_motion);
+  float sample_depth = texture(depth_tx, sample_uv).r;
+  vec4 sample_color = texture(input_tx, sample_uv);
+
+  vec3 weights;
+  weights.xy = sample_weights(
+      center_depth, sample_depth, center_motion_len, sample_motion_len, offset_len);
+  weights.z = dir_compare(offset, sample_motion, sample_motion_len);
+  weights.xy *= weights.z;
+
+  accum.fg += sample_color * weights.y;
+  accum.bg += sample_color * weights.x;
+  accum.weight += weights;
+}
+
+void gather_blur(vec2 screen_uv,
+                 vec2 center_motion,
+                 float center_depth,
+                 vec2 max_motion,
+                 float ofs,
+                 const bool next,
+                 inout Accumulator accum)
+{
+  float center_motion_len = length(center_motion);
+  float max_motion_len = length(max_motion);
+
+  /* Tile boundaries randomization can fetch a tile where there is less motion than this pixel.
+   * Fix this by overriding the max_motion. */
+  if (max_motion_len < center_motion_len) {
+    max_motion_len = center_motion_len;
+    max_motion = center_motion;
   }
-  return 1.0 - smoothstep(0.95 * scale, 1.05 * scale, x);
-}
 
-/* A translation of the psudo code in "Appendix A: Pseudocode" of the Guertin paper. */
-void main()
-{
-  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-
-  float quasirandom_value = r2_low_discrepancy_grid(texel);
-  ivec2 tile_texel = compute_tile_texel(texel, quasirandom_value);
-
-  vec2 max_velocity = texture_load(max_velocity_tx, tile_texel).xy * shutter_speed;
-  float max_velocity_length = length(max_velocity);
-  max_velocity /= max_velocity_length != 0.0 ? max_velocity_length : 1.0;
-
-  vec4 pixel_color = texture_load(input_tx, texel);
-  if (max_velocity_length <= 0.5) {
-    imageStore(output_img, texel, pixel_color);
+  if (max_motion_len < 0.5) {
     return;
   }
 
-  vec2 pixel_velocity = texture_load(velocity_tx, texel).xy * shutter_speed;
-  float pixel_velocity_length = length(pixel_velocity);
-  pixel_velocity /= pixel_velocity_length != 0.0 ? pixel_velocity_length : 1.0;
-
-  vec2 perpendicular_max_velocity = max_velocity.yx * vec2(-1.0, 1.0);
-  bool should_invert = dot(perpendicular_max_velocity, pixel_velocity) < 0.0;
-  perpendicular_max_velocity *= should_invert ? -1.0 : 1.0;
-
-  const float velocity_threshold = 1.5;
-  float center_mix_factor = clamp((pixel_velocity_length - 0.5) / velocity_threshold, 0.0, 1.0);
-  vec2 center_velocity = mix(perpendicular_max_velocity, pixel_velocity, center_mix_factor);
-  float center_velocity_length = length(center_velocity);
-  center_velocity /= center_velocity_length != 0.0 ? center_velocity_length : 1.0;
-
-  float pixel_depth = texture_load(depth_tx, texel).x;
-
-  float center_bias = 40.0;
-  float center_weight = samples_count / (center_bias * max(1.0, pixel_velocity_length));
-
-  float accumulated_weight = center_weight;
-  vec4 accumulated_color = pixel_color * center_weight;
-  for (int i = 0; i < samples_count; i++) {
-    const float max_jitter = 0.95;
-    float jitter = quasirandom_value * max_jitter;
-    float parameter = mix(-1.0, 1.0, (i + 1 + jitter) / (samples_count + 1));
-    float velocity_parameter = parameter * max_velocity_length;
-    float velocity_magnitude = abs(velocity_parameter);
-
-    bool use_center_velocity = i % 2 == 0;
-    vec2 velocity = use_center_velocity ? center_velocity : max_velocity;
-
-    vec2 sample_position = texel + velocity_parameter * velocity;
-    vec2 sample_sampler_position = (sample_position + 0.5) / texture_size(input_tx);
-
-    float sample_depth = texture(velocity_tx, sample_sampler_position).x;
-
-    vec2 sample_velocity = texture(velocity_tx, sample_sampler_position).xy * shutter_speed;
-    float sample_velocity_length = length(sample_velocity);
-    sample_velocity /= sample_velocity_length != 0.0 ? sample_velocity_length : 1.0;
-
-    float foreground = soft_depth_compare(pixel_depth, sample_depth);
-    float background = soft_depth_compare(sample_depth, pixel_depth);
-
-    float foreground_weight = max(0.0, dot(velocity, sample_velocity));
-    float background_weight = max(0.0, dot(velocity, center_velocity));
-
-    float weight = 0.0;
-    weight += foreground * cone_window_function(velocity_magnitude, sample_velocity_length) *
-              foreground_weight;
-    weight += background * cone_window_function(velocity_magnitude, pixel_velocity_length) *
-              background_weight;
-    weight += cylinder_window_function(velocity_magnitude,
-                                       min(sample_velocity_length, pixel_velocity_length)) *
-              max(foreground_weight, background_weight) * 2.0;
-
-    vec4 color = texture(input_tx, sample_sampler_position);
-
-    accumulated_weight += weight;
-    accumulated_color += color * weight;
+  int i;
+  float t, inc = 1.0 / float(samples_count);
+  for (i = 0, t = ofs * inc; i < samples_count; i++, t += inc) {
+    gather_sample(screen_uv,
+                  center_depth,
+                  center_motion_len,
+                  max_motion * t,
+                  max_motion_len * t,
+                  next,
+                  accum);
   }
 
-  accumulated_color /= accumulated_weight != 0.0 ? accumulated_weight : 1.0;
-  imageStore(output_img, texel, accumulated_color);
+  if (center_motion_len < 0.5) {
+    return;
+  }
+
+  for (i = 0, t = ofs * inc; i < samples_count; i++, t += inc) {
+    /* Also sample in center motion direction.
+     * Allow recovering motion where there is conflicting
+     * motion between foreground and background. */
+    gather_sample(screen_uv,
+                  center_depth,
+                  center_motion_len,
+                  center_motion * t,
+                  center_motion_len * t,
+                  next,
+                  accum);
+  }
+}
+
+void main()
+{
+  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+  vec2 uv = (vec2(texel) + 0.5) / vec2(texture_size(input_tx));
+
+  /* Data of the center pixel of the gather (target). */
+  float center_depth = texture_load(depth_tx, texel).x;
+  vec4 center_motion = texture(velocity_tx, uv) * vec4(vec2(shutter_speed), vec2(-shutter_speed));
+  vec4 center_color = textureLod(input_tx, uv, 0.0);
+
+  /* Randomize tile boundary to avoid ugly discontinuities. Randomize 1/4th of the tile.
+   * Note this randomize only in one direction but in practice it's enough. */
+  float rand = interleaved_gradient_noise(texel);
+  ivec2 tile = (texel + ivec2(rand * 2.0 - 1.0 * float(MOTION_BLUR_TILE_SIZE) * 0.25)) /
+               MOTION_BLUR_TILE_SIZE;
+
+  vec4 max_motion = texture_load(max_velocity_tx, tile) *
+                    vec4(vec2(shutter_speed), vec2(-shutter_speed));
+
+  Accumulator accum;
+  accum.weight = vec3(0.0, 0.0, 1.0);
+  accum.bg = vec4(0.0);
+  accum.fg = vec4(0.0);
+  /* First linear gather. time = [T - delta, T] */
+  gather_blur(uv, center_motion.xy, center_depth, max_motion.xy, rand, false, accum);
+  /* Second linear gather. time = [T, T + delta] */
+  gather_blur(uv, center_motion.zw, center_depth, max_motion.zw, rand, true, accum);
+
+#if 1 /* Own addition. Not present in reference implementation. */
+  /* Avoid division by 0.0. */
+  float w = 1.0 / (50.0 * float(samples_count) * 4.0);
+  accum.bg += center_color * w;
+  accum.weight.x += w;
+  /* NOTE: In Jimenez's presentation, they used center sample.
+   * We use background color as it contains more information for foreground
+   * elements that have not enough weights.
+   * Yield better blur in complex motion. */
+  center_color = accum.bg / accum.weight.x;
+#endif
+  /* Merge background. */
+  accum.fg += accum.bg;
+  accum.weight.y += accum.weight.x;
+  /* Balance accumulation for failed samples.
+   * We replace the missing foreground by the background. */
+  float blend_fac = clamp(1.0 - accum.weight.y / accum.weight.z, 0.0, 1.0);
+  vec4 out_color = (accum.fg / accum.weight.z) + center_color * blend_fac;
+
+  imageStore(output_img, texel, out_color);
 }
