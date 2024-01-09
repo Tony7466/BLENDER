@@ -1,1 +1,2 @@
 Referenced by issue #115432, Regression: UV Follow Active Quads operator moves unselected vertices in UV editor
+Referenced by commit 71af74622f771867c049c2bd79047089077271eb, Fix #115432: UV Follow Active Quads operator moves unselected vertices
