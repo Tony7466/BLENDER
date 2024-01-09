@@ -790,6 +790,16 @@ void ANIM_armature_bonecoll_is_visible_set(bArmature *armature,
   }
 }
 
+void ANIM_armature_bonecoll_is_expanded_set(BoneCollection *bcoll, bool is_expanded)
+{
+  if (is_expanded) {
+    bcoll->flags |= BONE_COLLECTION_EXPANDED;
+  }
+  else {
+    bcoll->flags &= ~BONE_COLLECTION_EXPANDED;
+  }
+}
+
 /* Store the bone's membership on the collection. */
 static void add_membership(BoneCollection *bcoll, Bone *bone)
 {

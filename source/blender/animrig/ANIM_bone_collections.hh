@@ -237,6 +237,11 @@ void ANIM_armature_bonecoll_is_visible_set(bArmature *armature,
                                            bool is_visible);
 
 /**
+ * Expand or collapse a bone collection in the tree view.
+ */
+void ANIM_armature_bonecoll_is_expanded_set(BoneCollection *bcoll, bool is_expanded);
+
+/**
  * Assign the bone to the bone collection.
  *
  * No-op if the bone is already a member of the collection.

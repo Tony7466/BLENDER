@@ -3181,5 +3181,9 @@ bool BoneCollection::is_visible_effectively() const
 {
   return this->is_visible() && this->is_visible_ancestors();
 }
+bool BoneCollection::is_expanded() const
+{
+  return this->flags & BONE_COLLECTION_EXPANDED;
+}
 
 /** \} */

@@ -353,7 +353,7 @@ void AbstractTreeViewItem::collapse_chevron_click_fn(bContext *C,
   AbstractTreeViewItem *hovered_item = from_item_handle<AbstractTreeViewItem>(hovered_item_handle);
   BLI_assert(hovered_item != nullptr);
 
-  hovered_item->toggle_collapsed();
+  hovered_item->toggle_collapsed_from_view(*C);
   /* When collapsing an item with an active child, make this collapsed item active instead so the
    * active item stays visible. */
   if (hovered_item->has_active_child()) {
@@ -503,22 +503,60 @@ bool AbstractTreeViewItem::is_collapsed() const
   return is_collapsible() && !is_open_;
 }
 
-void AbstractTreeViewItem::toggle_collapsed()
+bool AbstractTreeViewItem::toggle_collapsed()
 {
-  is_open_ = !is_open_;
+  return set_collapsed(is_open_);
 }
 
-void AbstractTreeViewItem::set_collapsed(const bool collapsed)
+bool AbstractTreeViewItem::set_collapsed(const bool collapsed)
 {
+  if (!is_collapsible()) {
+    return false;
+  }
+  if (collapsed == is_collapsed()) {
+    return false;
+  }
+
   is_open_ = !collapsed;
+  return true;
 }
 
 bool AbstractTreeViewItem::is_collapsible() const
 {
+  BLI_assert_msg(get_tree_view().is_reconstructed(),
+                 "State can't be queried until reconstruction is completed");
   if (children_.is_empty()) {
     return false;
   }
   return this->supports_collapsing();
+}
+
+void AbstractTreeViewItem::on_collapsed(bContext & /*C*/)
+{
+  /* Do nothing by default. */
+}
+
+std::optional<bool> AbstractTreeViewItem::should_be_collapsed() const
+{
+  return std::nullopt;
+}
+
+void AbstractTreeViewItem::toggle_collapsed_from_view(bContext &C)
+{
+  if (toggle_collapsed()) {
+    on_collapsed(C);
+  }
+}
+
+void AbstractTreeViewItem::change_state_delayed()
+{
+  AbstractViewItem::change_state_delayed();
+
+  const std::optional<bool> should_be_collapsed = this->should_be_collapsed();
+  if (should_be_collapsed.has_value()) {
+    /* This reflects an external state change and therefore shouldn't call #on_collapsed(). */
+    set_collapsed(*should_be_collapsed);
+  }
 }
 
 void AbstractTreeViewItem::ensure_parents_uncollapsed()

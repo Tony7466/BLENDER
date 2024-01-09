@@ -300,6 +300,13 @@ typedef struct BoneCollection {
    * \see is_visible
    */
   bool is_visible_effectively() const;
+
+  /**
+   * Whether or not this bone collection is expanded in the tree view.
+   *
+   * This corresponds to the #BONE_COLLECTION_EXPANDED flag.
+   */
+  bool is_expanded() const;
 #endif
 } BoneCollection;
 
@@ -509,8 +516,10 @@ typedef enum eBoneCollection_Flag {
    * runtime struct yet, and the addition of one more flag doesn't seem worth
    * the effort. */
   BONE_COLLECTION_ANCESTORS_VISIBLE = (1 << 3),
+
+  BONE_COLLECTION_EXPANDED = (1 << 4), /* Expanded in the tree view. */
 } eBoneCollection_Flag;
-ENUM_OPERATORS(eBoneCollection_Flag, BONE_COLLECTION_ANCESTORS_VISIBLE)
+ENUM_OPERATORS(eBoneCollection_Flag, BONE_COLLECTION_EXPANDED)
 
 #ifdef __cplusplus
 
