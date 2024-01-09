@@ -557,6 +557,7 @@ void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
     constants.types.append(sc.type);
     constants.values.append(sc.default_value);
   }
+  constants.dirty = true;
 }
 
 void GPU_shader_constant_int_ex(GPUShader *sh, int location, int value)

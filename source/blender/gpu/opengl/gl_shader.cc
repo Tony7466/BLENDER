@@ -51,12 +51,8 @@ GLShader::~GLShader()
        * does not have a GPUContext. */
   BLI_assert(GLContext::get() != nullptr);
 #endif
-  /* Invalid handles are silently ignored. */
-  glDeleteShader(vert_shader_);
-  glDeleteShader(geom_shader_);
-  glDeleteShader(frag_shader_);
-  glDeleteShader(compute_shader_);
-  glDeleteProgram(shader_program_);
+  /* Actual destruction of the program is done when destroying SpecializationProgram. */
+  active_program_ = 0;
 }
 
 /** \} */
@@ -620,21 +616,23 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
    * macros. */
 
   ss << "\n/* Specialization Constants (pass-through). */\n";
+  int constant_index = 0;
   for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+    const Value &value = constants.values[constant_index++];
     switch (sc.type) {
       case Type::INT:
-        ss << "const int " << sc.name << "=" << std::to_string(sc.default_value.i) << ";\n";
+        ss << "const int " << sc.name << "=" << std::to_string(value.i) << ";\n";
         break;
       case Type::UINT:
-        ss << "const uint " << sc.name << "=" << std::to_string(sc.default_value.u) << "u;\n";
+        ss << "const uint " << sc.name << "=" << std::to_string(value.u) << "u;\n";
         break;
       case Type::BOOL:
-        ss << "const bool " << sc.name << "=" << (sc.default_value.u ? "true" : "false") << ";\n";
+        ss << "const bool " << sc.name << "=" << (value.u ? "true" : "false") << ";\n";
         break;
       case Type::FLOAT:
         /* Use uint representation to allow exact same bit pattern even if NaN. */
-        ss << "const float " << sc.name << "= uintBitsToFloat("
-           << std::to_string(sc.default_value.u) << "u);\n";
+        ss << "const float " << sc.name << "= uintBitsToFloat(" << std::to_string(value.u)
+           << "u);\n";
         break;
       default:
         BLI_assert_unreachable();
@@ -1304,8 +1302,11 @@ void GLShader::unbind()
 void GLShader::transform_feedback_names_set(Span<const char *> name_list,
                                             const eGPUShaderTFBType geom_type)
 {
-  glTransformFeedbackVaryings(
-      shader_program_, name_list.size(), name_list.data(), GL_INTERLEAVED_ATTRIBS);
+  BLI_assert(programs_);
+  glTransformFeedbackVaryings(programs_.active->shader_program,
+                              name_list.size(),
+                              name_list.data(),
+                              GL_INTERLEAVED_ATTRIBS);
   transform_feedback_type_ = geom_type;
 }
 
@@ -1408,7 +1409,33 @@ void GLShader::uniform_int(int location, int comp_len, int array_size, const int
 
 int GLShader::program_handle_get() const
 {
-  return int(this->shader_program_);
+  BLI_assert(programs_.active);
+  return programs_.active->shader_program;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Specialization Constants
+ * \{ */
+
+GLShader::SpecializationProgram::~SpecializationProgram()
+{
+  /* Invalid handles are silently ignored. */
+  glDeleteShader(vert_shader);
+  glDeleteShader(geom_shader);
+  glDeleteShader(frag_shader);
+  glDeleteShader(compute_shader);
+  glDeleteProgram(shader_program);
+}
+
+void GLShader::SpecializationPrograms::ensure_active() {}
+
+void GLShader::SpecializationPrograms::ensure_any_active()
+{
+  if (active == nullptr) {
+    ensure_active();
+  }
 }
 
 /** \} */

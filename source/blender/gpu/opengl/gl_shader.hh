@@ -12,6 +12,8 @@
 
 #include <epoxy/gl.h>
 
+#include "BLI_map.hh"
+
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_private.hh"
 
@@ -26,13 +28,47 @@ class GLShader : public Shader {
   friend shader::StageInterfaceInfo;
 
  private:
-  /** Handle for full program (links shader stages below). */
-  GLuint shader_program_ = 0;
-  /** Individual shader stages. */
-  GLuint vert_shader_ = 0;
-  GLuint geom_shader_ = 0;
-  GLuint frag_shader_ = 0;
-  GLuint compute_shader_ = 0;
+  struct SpecializationProgram {
+    /** Handle for full program (links shader stages below). */
+    GLuint shader_program = 0;
+    /** Individual shader stages. */
+    GLuint vert_shader = 0;
+    GLuint geom_shader = 0;
+    GLuint frag_shader = 0;
+    GLuint compute_shader = 0;
+    ~SpecializationProgram();
+  };
+  struct SpecializationPrograms {
+    using Key = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
+
+   private:
+    Map<Key, SpecializationProgram> entries;
+
+   public:
+    /**
+     * Points to the active specialization program. Use `ensure_active` or `ensure_any_active` to
+     * set this attribute.
+     */
+    SpecializationProgram *active = nullptr;
+
+   public:
+    /**
+     * Ensure that the active specialization program #active points to the specialization
+     * constants of the current values inside `Shader::constants.values`
+     */
+    void ensure_active();
+
+    /**
+     * Ensure that there is an active specialization program. This method only sets an
+     * specialization program when there is no active program set yet.
+     *
+     * This is useful for functionality that doesn't require the correct specialization yet, but
+     * checks some shared property of this shader.
+     */
+    void ensure_any_active();
+  };
+  SpecializationPrograms programs_;
+
   /** True if any shader failed to compile. */
   bool compilation_failed_ = false;
 
@@ -84,7 +120,8 @@ class GLShader : public Shader {
 
   bool is_compute() const
   {
-    return compute_shader_ != 0;
+    programs_.ensure_any_active();
+    return programs_.active->compute_shader_ != 0;
   }
 
  private:

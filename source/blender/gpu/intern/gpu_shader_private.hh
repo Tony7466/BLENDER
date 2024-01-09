@@ -44,6 +44,9 @@ class Shader {
     /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
      * that however it wants (i.e: bind another shader instead). */
     Vector<Value> values;
+
+    /** Have the values changed? */
+    bool dirty = false;
   } constants;
 
  protected:
