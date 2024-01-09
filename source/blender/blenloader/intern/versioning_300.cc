@@ -1381,7 +1381,8 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
+   * Subversion bump and do-versioning should be done
+   * as part of the code submission.
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_300 in this file.
@@ -1390,9 +1391,6 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
 
 static void version_switch_node_input_prefix(Main *bmain)
@@ -4567,7 +4565,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
+   * Subversion bump and do-versioning should be done
+   * as part of the code submission.
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_300 in this file.
@@ -4576,7 +4575,4 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }

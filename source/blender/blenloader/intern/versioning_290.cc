@@ -680,7 +680,8 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
+   * Subversion bump and do-versioning should be done
+   * as part of the code submission.
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_290 in this file.
@@ -689,9 +690,6 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
 
 static void panels_remove_x_closed_flag_recursive(Panel *panel)
@@ -1979,7 +1977,8 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
+   * Subversion bump and do-versioning should be done
+   * as part of the code submission.
    *
    * \note Be sure to check when bumping the version:
    * - `versioning_userdef.cc`, #blo_do_versions_userdef
@@ -1987,7 +1986,4 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
