@@ -2,10 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_curves_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_pointcloud_types.h"
-
 #include "BKE_anonymous_attribute_id.hh"
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
@@ -13,15 +9,20 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
+#include "BKE_pointcloud.h"
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_multi_value_map.hh"
 
+#include "DNA_curves_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_pointcloud_types.h"
+
 namespace blender::geometry {
 
-const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain>
-    &components_supported_reordering()
+const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain> &
+components_supported_reordering()
 {
   using namespace bke;
   const static MultiValueMap<GeometryComponent::Type, AttrDomain> supported_types_and_domains =
@@ -217,15 +218,10 @@ static void reorder_instaces(const bke::Instances &src_instances,
 }
 
 static void clean_unused_attributes(const bke::AnonymousAttributePropagationInfo &propagation_info,
-                                    bke::GeometryComponent &component)
+                                    bke::MutableAttributeAccessor attributes)
 {
-  std::optional<bke::MutableAttributeAccessor> attributes = component.attributes_for_write();
-  if (!attributes.has_value()) {
-    return;
-  }
-
   Vector<std::string> unused_ids;
-  attributes->for_all(
+  attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
         if (!id.is_anonymous()) {
           return true;
@@ -238,8 +234,52 @@ static void clean_unused_attributes(const bke::AnonymousAttributePropagationInfo
       });
 
   for (const std::string &unused_id : unused_ids) {
-    attributes->remove(unused_id);
+    attributes.remove(unused_id);
   }
+}
+
+Mesh *reorder_mesh_copy(const Mesh &src_mesh,
+                        Span<int> old_by_new_map,
+                        bke::AttrDomain domain,
+                        const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  Mesh *dst_mesh = BKE_mesh_copy_for_eval(&src_mesh);
+  clean_unused_attributes(propagation_info, dst_mesh->attributes_for_write());
+  reorder_mesh(src_mesh, old_by_new_map, domain, *dst_mesh);
+  return dst_mesh;
+}
+
+PointCloud *reorder_points_copy(const PointCloud &src_pointcloud,
+                                Span<int> old_by_new_map,
+                                const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  PointCloud *dst_pointcloud = BKE_pointcloud_copy_for_eval(&src_pointcloud);
+  clean_unused_attributes(propagation_info, dst_pointcloud->attributes_for_write());
+  reorder_points(src_pointcloud, old_by_new_map, *dst_pointcloud);
+  return dst_pointcloud;
+}
+
+Curves *reorder_curves_copy(const Curves &src_curves,
+                            Span<int> old_by_new_map,
+                            const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  const bke::CurvesGeometry src_curve_geometry = src_curves.geometry.wrap();
+  Curves *dst_curves = BKE_curves_copy_for_eval(&src_curves);
+  bke::CurvesGeometry dst_curve_geometry = dst_curves->geometry.wrap();
+  clean_unused_attributes(propagation_info, dst_curve_geometry.attributes_for_write());
+  reorder_curves(src_curve_geometry, old_by_new_map, dst_curve_geometry);
+  return dst_curves;
+}
+
+bke::Instances *reorder_instaces_copy(
+    const bke::Instances &src_instances,
+    Span<int> old_by_new_map,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  bke::Instances *dst_instances = new bke::Instances(src_instances);
+  clean_unused_attributes(propagation_info, dst_instances->attributes_for_write());
+  reorder_instaces(src_instances, old_by_new_map, *dst_instances);
+  return dst_instances;
 }
 
 bke::GeometryComponentPtr reordered_component_copy(
@@ -249,47 +289,43 @@ bke::GeometryComponentPtr reordered_component_copy(
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   BLI_assert(!src_component.is_empty());
-  bke::GeometryComponentPtr dst_component = src_component.copy();
-  bke::GeometryComponent *component = const_cast<bke::GeometryComponent *>(dst_component.get());
-
-  clean_unused_attributes(propagation_info, *component);
 
   if (const bke::MeshComponent *src_mesh_component = dynamic_cast<const bke::MeshComponent *>(
           &src_component))
   {
-    bke::MeshComponent &dst_mesh_component = *static_cast<bke::MeshComponent *>(component);
-    reorder_mesh(
-        *src_mesh_component->get(), old_by_new_map, domain, *dst_mesh_component.get_for_write());
+    Mesh *result_mesh = reorder_mesh_copy(
+        *src_mesh_component->get(), old_by_new_map, domain, propagation_info);
+    return bke::GeometryComponentPtr(new bke::MeshComponent(result_mesh));
   }
   else if (const bke::PointCloudComponent *src_points_component =
                dynamic_cast<const bke::PointCloudComponent *>(&src_component))
   {
-    bke::PointCloudComponent &dst_points_component = *static_cast<bke::PointCloudComponent *>(
-        component);
-    BLI_assert(domain == bke::AttrDomain::Point);
-    reorder_points(
-        *src_points_component->get(), old_by_new_map, *dst_points_component.get_for_write());
+    bke::PointCloudComponent dst_points_component;
+    PointCloud *result_point_cloud = reorder_points_copy(
+        *src_points_component->get(), old_by_new_map, propagation_info);
+    dst_points_component.replace(result_point_cloud);
+    // return new bke::GeometryComponent(std::move(dst_points_component));
   }
   else if (const bke::CurveComponent *src_curves_component =
                dynamic_cast<const bke::CurveComponent *>(&src_component))
   {
-    bke::CurveComponent &dst_curves_component = *static_cast<bke::CurveComponent *>(component);
-    BLI_assert(domain == bke::AttrDomain::Curve);
-    reorder_curves(src_curves_component->get()->geometry.wrap(),
-                   old_by_new_map,
-                   dst_curves_component.get_for_write()->geometry.wrap());
+    bke::CurveComponent dst_curves_component;
+    Curves *result_curves = reorder_curves_copy(
+        *src_curves_component->get(), old_by_new_map, propagation_info);
+    dst_curves_component.replace(result_curves);
+    // return new bke::GeometryComponent(std::move(dst_curves_component));
   }
   else if (const bke::InstancesComponent *src_instances_component =
                dynamic_cast<const bke::InstancesComponent *>(&src_component))
   {
-    bke::InstancesComponent &dst_instances_component = *static_cast<bke::InstancesComponent *>(
-        component);
-    BLI_assert(domain == bke::AttrDomain::Instance);
-    reorder_instaces(
-        *src_instances_component->get(), old_by_new_map, *dst_instances_component.get_for_write());
+    bke::InstancesComponent dst_instances_component;
+    bke::Instances *result_instances = reorder_instaces_copy(
+        *src_instances_component->get(), old_by_new_map, propagation_info);
+    dst_instances_component.replace(result_instances);
+    // return new bke::GeometryComponent(std::move(dst_instances_component));
   }
 
-  return dst_component;
+  BLI_assert_unreachable();
 }
 
 }  // namespace blender::geometry

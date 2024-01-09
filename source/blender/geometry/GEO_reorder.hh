@@ -13,8 +13,26 @@
 
 namespace blender::geometry {
 
-const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain>
-    &components_supported_reordering();
+const MultiValueMap<bke::GeometryComponent::Type, bke::AttrDomain> &
+components_supported_reordering();
+
+Mesh *reorder_mesh_copy(const Mesh &src_mesh,
+                        Span<int> old_by_new_map,
+                        bke::AttrDomain domain,
+                        const bke::AnonymousAttributePropagationInfo &propagation_info);
+
+PointCloud *reorder_points_copy(const PointCloud &src_pointcloud,
+                                Span<int> old_by_new_map,
+                                const bke::AnonymousAttributePropagationInfo &propagation_info);
+
+Curves *reorder_curves_copy(const Curves &src_curves,
+                            Span<int> old_by_new_map,
+                            const bke::AnonymousAttributePropagationInfo &propagation_info);
+
+bke::Instances *reorder_instaces_copy(
+    const bke::Instances &src_instances,
+    Span<int> old_by_new_map,
+    const bke::AnonymousAttributePropagationInfo &propagation_info);
 
 bke::GeometryComponentPtr reordered_component_copy(
     const bke::GeometryComponent &src_component,

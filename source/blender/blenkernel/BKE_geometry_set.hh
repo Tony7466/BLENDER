@@ -447,6 +447,7 @@ class MeshComponent : public GeometryComponent {
 
  public:
   MeshComponent();
+  MeshComponent(Mesh *mesh, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~MeshComponent();
   GeometryComponentPtr copy() const override;
 

@@ -28,6 +28,11 @@ namespace blender::bke {
 
 MeshComponent::MeshComponent() : GeometryComponent(Type::Mesh) {}
 
+MeshComponent::MeshComponent(Mesh *mesh, GeometryOwnershipType ownership)
+    : mesh_(mesh), GeometryComponent(Type::Mesh)
+{
+}
+
 MeshComponent::~MeshComponent()
 {
   this->clear();
