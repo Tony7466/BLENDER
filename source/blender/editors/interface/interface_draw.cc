@@ -1038,7 +1038,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   /* circles */
-  const int increment = 15;
+  const int increment = 6;
   const int num_points = int(360 / increment);
   const float r = 0.5f;
 
@@ -1104,7 +1104,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   if (scopes->ok && scopes->vecscope != nullptr) {
     /* pixel point cloud */
     GPU_blend(GPU_BLEND_ALPHA);
-    GPU_point_size(5.0);
+    GPU_point_size(1.0);
 
     GPU_matrix_push();
     GPU_matrix_translate_2f(centerx, centery);
