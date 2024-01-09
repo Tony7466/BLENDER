@@ -1806,22 +1806,26 @@ static void geometry_nodes_uv_sphere_uvmap(bNodeTree &ntree)
 {
   blender::Map<bNode *, bNodeLink *> primitive_nodes_inputs;
   blender::MultiValueMap<bNode *, bNodeLink *> primitive_nodes_outputs;
-  
+
   LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
     bNode *to_node = link->tonode;
-    if ((to_node->type == GEO_NODE_MESH_PRIMITIVE_UV_SPHERE) && (link->tosock == nodeFindSocket(to_node, SOCK_IN, "Segments"))) {
+    if ((to_node->type == GEO_NODE_MESH_PRIMITIVE_UV_SPHERE) &&
+        (STREQ(link->tosock->name, "Segments")))
+    {
       primitive_nodes_inputs.add(to_node, link);
     }
     bNode *from_node = link->fromnode;
-    if ((from_node->type == GEO_NODE_MESH_PRIMITIVE_UV_SPHERE) && (link->fromsock == nodeFindSocket(from_node, SOCK_OUT, "Mesh"))) {
+    if ((from_node->type == GEO_NODE_MESH_PRIMITIVE_UV_SPHERE) &&
+        (STREQ(link->fromsock->name, "Mesh")))
+    {
       primitive_nodes_outputs.add(from_node, link);
     }
   }
-  
+
   for (bNode *primitive_node : primitive_nodes_outputs.keys()) {
     bNodeSocket *segments_input = nodeFindSocket(primitive_node, SOCK_IN, "Segments");
     bNodeSocket *mesh_output = nodeFindSocket(primitive_node, SOCK_OUT, "Mesh");
-    
+
     bNode *transform_node = nodeAddStaticNode(nullptr, &ntree, GEO_NODE_TRANSFORM_GEOMETRY);
     transform_node->locx = primitive_node->locx + primitive_node->width * 1.25f;
     transform_node->locy = primitive_node->locy;
@@ -1835,55 +1839,56 @@ static void geometry_nodes_uv_sphere_uvmap(bNodeTree &ntree)
       link->fromsock = geometry_output;
     }
     nodeAddLink(&ntree, primitive_node, mesh_output, transform_node, geometry_input);
-    
+
     bNode *euler_node = nodeAddStaticNode(nullptr, &ntree, FN_NODE_EULER_TO_ROTATION);
     euler_node->locx = primitive_node->locx;
     euler_node->locy = primitive_node->locy - primitive_node->height * 1.25f;
-    
+
     bNodeSocket *euler_input = nodeFindSocket(euler_node, SOCK_IN, "Euler");
     bNodeSocket *rotation_output = nodeFindSocket(euler_node, SOCK_OUT, "Rotation");
-    
+
     nodeAddLink(&ntree, euler_node, rotation_output, transform_node, rotation_input);
-    
+
     bNode *combine_node = nodeAddStaticNode(nullptr, &ntree, SH_NODE_COMBXYZ);
     combine_node->locx = euler_node->locx - euler_node->width * 1.25f;
     combine_node->locy = euler_node->locy;
-    
+
     bNodeSocket *z_input = nodeFindSocket(combine_node, SOCK_IN, "Z");
     bNodeSocket *vector_output = nodeFindSocket(combine_node, SOCK_OUT, "Vector");
-    
+
     nodeAddLink(&ntree, combine_node, vector_output, euler_node, euler_input);
-    
+
     bNode *divide_node = nodeAddStaticNode(nullptr, &ntree, SH_NODE_MATH);
     divide_node->locx = combine_node->locx - combine_node->width * 1.25f;
     divide_node->locy = combine_node->locy;
-    
+
     divide_node->custom1 = NODE_MATH_DIVIDE;
     divide_node->typeinfo->updatefunc(&ntree, divide_node);
-    bNodeSocket *dividend_input = static_cast<bNodeSocket *>(BLI_findlink(&divide_node->inputs, 0));
+    bNodeSocket *dividend_input = static_cast<bNodeSocket *>(
+        BLI_findlink(&divide_node->inputs, 0));
     bNodeSocket *divisor_input = static_cast<bNodeSocket *>(BLI_findlink(&divide_node->inputs, 1));
     bNodeSocket *value_output = nodeFindSocket(divide_node, SOCK_OUT, "Value");
-    
-    *version_cycles_node_socket_float_value(dividend_input) = M_PI * 2;
-    
+
+    *version_cycles_node_socket_float_value(dividend_input) = M_PI * 2.0f;
+
     nodeAddLink(&ntree, divide_node, value_output, combine_node, z_input);
-    
+
     if (primitive_nodes_inputs.contains(primitive_node)) {
       bNodeLink *link = primitive_nodes_inputs.lookup(primitive_node);
       nodeAddLink(&ntree, link->fromnode, link->fromsock, divide_node, divisor_input);
+      continue;
     }
-    else{
-      bNode *segments_node = nodeAddStaticNode(nullptr, &ntree, FN_NODE_INPUT_INT);
-      segments_node->locx = divide_node->locx - divide_node->width * 1.25f;
-      segments_node->locy = primitive_node->locy;
-      
-      NodeInputInt *node_storage = static_cast<NodeInputInt *>(segments_node->storage);
-      node_storage->integer = *version_cycles_node_socket_int_value(segments_input);
-      
-      bNodeSocket *integer_output = nodeFindSocket(segments_node, SOCK_OUT, "Integer");
-      nodeAddLink(&ntree, segments_node, integer_output, primitive_node, segments_input);
-      nodeAddLink(&ntree, segments_node, integer_output, divide_node, divisor_input);
-    }
+
+    bNode *segments_node = nodeAddStaticNode(nullptr, &ntree, FN_NODE_INPUT_INT);
+    segments_node->locx = divide_node->locx - divide_node->width * 1.25f;
+    segments_node->locy = primitive_node->locy;
+
+    NodeInputInt *node_storage = static_cast<NodeInputInt *>(segments_node->storage);
+    node_storage->integer = segments_input->default_value_typed<bNodeSocketValueInt>()->value;
+
+    bNodeSocket *integer_output = nodeFindSocket(segments_node, SOCK_OUT, "Integer");
+    nodeAddLink(&ntree, segments_node, integer_output, primitive_node, segments_input);
+    nodeAddLink(&ntree, segments_node, integer_output, divide_node, divisor_input);
   }
 }
 
@@ -2652,7 +2657,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       geometry_nodes_uv_sphere_uvmap(*ntree);
     }
   }
-  
+
   /**
    * Versioning code until next subversion bump goes here.
    *

@@ -120,7 +120,6 @@ void add_realize_instances_before_socket(bNodeTree *ntree,
                                          bNode *node,
                                          bNodeSocket *geometry_socket);
 
-int *version_cycles_node_socket_int_value(bNodeSocket *socket);
 float *version_cycles_node_socket_float_value(bNodeSocket *socket);
 float *version_cycles_node_socket_rgba_value(bNodeSocket *socket);
 float *version_cycles_node_socket_vector_value(bNodeSocket *socket);
