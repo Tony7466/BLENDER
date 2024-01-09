@@ -218,7 +218,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       if (!indices.has_value()) {
         continue;
       }
-      bke::GeometryComponentPtr dst_component = geometry::reordered_component_copy(
+      bke::GeometryComponentPtr dst_component = geometry::reordered_component(
           *src_component, *indices, domain, propagation_info);
       geometry_set.remove(type);
       geometry_set.add(*dst_component.get());

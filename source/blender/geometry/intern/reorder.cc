@@ -81,9 +81,9 @@ static Array<int> invert_permutation(const Span<int> permutation)
   return data;
 }
 
-static void reorder_mesh_verts(const Mesh &src_mesh,
-                               const Span<int> old_by_new_map,
-                               Mesh &dst_mesh)
+static void reorder_mesh_verts_exec(const Mesh &src_mesh,
+                                    const Span<int> old_by_new_map,
+                                    Mesh &dst_mesh)
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Point,
@@ -99,9 +99,9 @@ static void reorder_mesh_verts(const Mesh &src_mesh,
       new_by_old_map.as_span(), dst_mesh.corner_verts(), dst_mesh.corner_verts_for_write());
 }
 
-static void reorder_mesh_edges(const Mesh &src_mesh,
-                               const Span<int> old_by_new_map,
-                               Mesh &dst_mesh)
+static void reorder_mesh_edges_exec(const Mesh &src_mesh,
+                                    const Span<int> old_by_new_map,
+                                    Mesh &dst_mesh)
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Edge,
@@ -114,9 +114,9 @@ static void reorder_mesh_edges(const Mesh &src_mesh,
       new_by_old_map.as_span(), dst_mesh.corner_edges(), dst_mesh.corner_edges_for_write());
 }
 
-static void reorder_mesh_faces(const Mesh &src_mesh,
-                               const Span<int> old_by_new_map,
-                               Mesh &dst_mesh)
+static void reorder_mesh_faces_exec(const Mesh &src_mesh,
+                                    const Span<int> old_by_new_map,
+                                    Mesh &dst_mesh)
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Face,
@@ -136,20 +136,20 @@ static void reorder_mesh_faces(const Mesh &src_mesh,
                                     dst_mesh.attributes_for_write());
 }
 
-static void reorder_mesh(const Mesh &src_mesh,
-                         const Span<int> old_by_new_map,
-                         const bke::AttrDomain domain,
-                         Mesh &dst_mesh)
+static void reorder_mesh_exec(const Mesh &src_mesh,
+                              const Span<int> old_by_new_map,
+                              const bke::AttrDomain domain,
+                              Mesh &dst_mesh)
 {
   switch (domain) {
     case bke::AttrDomain::Point:
-      reorder_mesh_verts(src_mesh, old_by_new_map, dst_mesh);
+      reorder_mesh_verts_exec(src_mesh, old_by_new_map, dst_mesh);
       break;
     case bke::AttrDomain::Edge:
-      reorder_mesh_edges(src_mesh, old_by_new_map, dst_mesh);
+      reorder_mesh_edges_exec(src_mesh, old_by_new_map, dst_mesh);
       break;
     case bke::AttrDomain::Face:
-      reorder_mesh_faces(src_mesh, old_by_new_map, dst_mesh);
+      reorder_mesh_faces_exec(src_mesh, old_by_new_map, dst_mesh);
       break;
     default:
       break;
@@ -158,9 +158,9 @@ static void reorder_mesh(const Mesh &src_mesh,
   dst_mesh.tag_topology_changed();
 }
 
-static void reorder_points(const PointCloud &src_pointcloud,
-                           const Span<int> old_by_new_map,
-                           PointCloud &dst_pointcloud)
+static void reorder_points_exec(const PointCloud &src_pointcloud,
+                                const Span<int> old_by_new_map,
+                                PointCloud &dst_pointcloud)
 {
   bke::gather_attributes(src_pointcloud.attributes(),
                          bke::AttrDomain::Point,
@@ -172,9 +172,9 @@ static void reorder_points(const PointCloud &src_pointcloud,
   dst_pointcloud.tag_radii_changed();
 }
 
-static void reorder_curves(const bke::CurvesGeometry &src_curves,
-                           const Span<int> old_by_new_map,
-                           bke::CurvesGeometry &dst_curves)
+static void reorder_curves_exec(const bke::CurvesGeometry &src_curves,
+                                const Span<int> old_by_new_map,
+                                bke::CurvesGeometry &dst_curves)
 {
   bke::gather_attributes(src_curves.attributes(),
                          bke::AttrDomain::Curve,
@@ -197,9 +197,9 @@ static void reorder_curves(const bke::CurvesGeometry &src_curves,
   dst_curves.tag_topology_changed();
 }
 
-static void reorder_instaces(const bke::Instances &src_instances,
-                             const Span<int> old_by_new_map,
-                             bke::Instances &dst_instances)
+static void reorder_instaces_exec(const bke::Instances &src_instances,
+                                  const Span<int> old_by_new_map,
+                                  bke::Instances &dst_instances)
 {
   bke::gather_attributes(src_instances.attributes(),
                          bke::AttrDomain::Instance,
@@ -238,51 +238,50 @@ static void clean_unused_attributes(const bke::AnonymousAttributePropagationInfo
   }
 }
 
-Mesh *reorder_mesh_copy(const Mesh &src_mesh,
-                        Span<int> old_by_new_map,
-                        bke::AttrDomain domain,
-                        const bke::AnonymousAttributePropagationInfo &propagation_info)
+Mesh *reorder_mesh(const Mesh &src_mesh,
+                   Span<int> old_by_new_map,
+                   bke::AttrDomain domain,
+                   const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   Mesh *dst_mesh = BKE_mesh_copy_for_eval(&src_mesh);
   clean_unused_attributes(propagation_info, dst_mesh->attributes_for_write());
-  reorder_mesh(src_mesh, old_by_new_map, domain, *dst_mesh);
+  reorder_mesh_exec(src_mesh, old_by_new_map, domain, *dst_mesh);
   return dst_mesh;
 }
 
-PointCloud *reorder_points_copy(const PointCloud &src_pointcloud,
-                                Span<int> old_by_new_map,
-                                const bke::AnonymousAttributePropagationInfo &propagation_info)
+PointCloud *reorder_points(const PointCloud &src_pointcloud,
+                           Span<int> old_by_new_map,
+                           const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   PointCloud *dst_pointcloud = BKE_pointcloud_copy_for_eval(&src_pointcloud);
   clean_unused_attributes(propagation_info, dst_pointcloud->attributes_for_write());
-  reorder_points(src_pointcloud, old_by_new_map, *dst_pointcloud);
+  reorder_points_exec(src_pointcloud, old_by_new_map, *dst_pointcloud);
   return dst_pointcloud;
 }
 
-Curves *reorder_curves_copy(const Curves &src_curves,
-                            Span<int> old_by_new_map,
-                            const bke::AnonymousAttributePropagationInfo &propagation_info)
+Curves *reorder_curves(const Curves &src_curves,
+                       Span<int> old_by_new_map,
+                       const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const bke::CurvesGeometry src_curve_geometry = src_curves.geometry.wrap();
   Curves *dst_curves = BKE_curves_copy_for_eval(&src_curves);
   bke::CurvesGeometry dst_curve_geometry = dst_curves->geometry.wrap();
   clean_unused_attributes(propagation_info, dst_curve_geometry.attributes_for_write());
-  reorder_curves(src_curve_geometry, old_by_new_map, dst_curve_geometry);
+  reorder_curves_exec(src_curve_geometry, old_by_new_map, dst_curve_geometry);
   return dst_curves;
 }
 
-bke::Instances *reorder_instaces_copy(
-    const bke::Instances &src_instances,
-    Span<int> old_by_new_map,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+bke::Instances *reorder_instaces(const bke::Instances &src_instances,
+                                 Span<int> old_by_new_map,
+                                 const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   bke::Instances *dst_instances = new bke::Instances(src_instances);
   clean_unused_attributes(propagation_info, dst_instances->attributes_for_write());
-  reorder_instaces(src_instances, old_by_new_map, *dst_instances);
+  reorder_instaces_exec(src_instances, old_by_new_map, *dst_instances);
   return dst_instances;
 }
 
-bke::GeometryComponentPtr reordered_component_copy(
+bke::GeometryComponentPtr reordered_component(
     const bke::GeometryComponent &src_component,
     const Span<int> old_by_new_map,
     const bke::AttrDomain domain,
@@ -293,39 +292,34 @@ bke::GeometryComponentPtr reordered_component_copy(
   if (const bke::MeshComponent *src_mesh_component = dynamic_cast<const bke::MeshComponent *>(
           &src_component))
   {
-    Mesh *result_mesh = reorder_mesh_copy(
+    Mesh *result_mesh = reorder_mesh(
         *src_mesh_component->get(), old_by_new_map, domain, propagation_info);
     return bke::GeometryComponentPtr(new bke::MeshComponent(result_mesh));
   }
   else if (const bke::PointCloudComponent *src_points_component =
                dynamic_cast<const bke::PointCloudComponent *>(&src_component))
   {
-    bke::PointCloudComponent dst_points_component;
-    PointCloud *result_point_cloud = reorder_points_copy(
+    PointCloud *result_point_cloud = reorder_points(
         *src_points_component->get(), old_by_new_map, propagation_info);
-    dst_points_component.replace(result_point_cloud);
-    // return new bke::GeometryComponent(std::move(dst_points_component));
+    return bke::GeometryComponentPtr(new bke::PointCloudComponent(result_point_cloud));
   }
   else if (const bke::CurveComponent *src_curves_component =
                dynamic_cast<const bke::CurveComponent *>(&src_component))
   {
-    bke::CurveComponent dst_curves_component;
-    Curves *result_curves = reorder_curves_copy(
+    Curves *result_curves = reorder_curves(
         *src_curves_component->get(), old_by_new_map, propagation_info);
-    dst_curves_component.replace(result_curves);
-    // return new bke::GeometryComponent(std::move(dst_curves_component));
+    return bke::GeometryComponentPtr(new bke::CurveComponent(result_curves));
   }
   else if (const bke::InstancesComponent *src_instances_component =
                dynamic_cast<const bke::InstancesComponent *>(&src_component))
   {
-    bke::InstancesComponent dst_instances_component;
-    bke::Instances *result_instances = reorder_instaces_copy(
+    bke::Instances *result_instances = reorder_instaces(
         *src_instances_component->get(), old_by_new_map, propagation_info);
-    dst_instances_component.replace(result_instances);
-    // return new bke::GeometryComponent(std::move(dst_instances_component));
+    return bke::GeometryComponentPtr(new bke::InstancesComponent(result_instances));
   }
 
   BLI_assert_unreachable();
+  return {};
 }
 
 }  // namespace blender::geometry
