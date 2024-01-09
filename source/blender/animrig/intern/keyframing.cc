@@ -483,7 +483,7 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
 
   const bool success = insert_keyframe_value(fcu, cfra, curval, keytype, flag);
 
-  if (!success) {
+  if (!success && reports != nullptr) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Failed to insert keys on F-Curve with path '%s[%d]', ensure that it is not "
@@ -896,10 +896,18 @@ int insert_key_action(Main *bmain,
   int property_array_index = 0;
   int inserted_keys = 0;
   for (float value : values) {
-    FCurve *fcurve = action_fcurve_ensure(
-        bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
-    const bool inserted_key = insert_keyframe_value(
-        fcurve, frame, value, key_type, insert_key_flag);
+    const bool inserted_key = insert_keyframe_fcurve_value(bmain,
+                                                           nullptr,
+                                                           ptr,
+                                                           nullptr,
+                                                           action,
+                                                           group.c_str(),
+                                                           rna_path.c_str(),
+                                                           property_array_index,
+                                                           nullptr,
+                                                           value,
+                                                           key_type,
+                                                           insert_key_flag);
     if (inserted_key) {
       inserted_keys++;
     }
