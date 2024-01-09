@@ -46,6 +46,79 @@
 
 /* own include */
 
+bool paint_deselect_all_visible(
+    bContext *C, Object *ob, int action, bool flush_flags, const short select_mode)
+{
+  using namespace blender;
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == nullptr) {
+    return false;
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_elem;
+  VArray<bool> hide_elem;
+  if (select_mode & SCE_SELECT_VERTEX) {
+    select_elem = attributes.lookup_or_add_for_write_span<bool>(".select_vert",
+                                                                bke::AttrDomain::Point);
+    hide_elem = *attributes.lookup_or_default<bool>(".hide_vert", bke::AttrDomain::Point, false);
+  }
+  else {
+    select_elem = attributes.lookup_or_add_for_write_span<bool>(".select_poly",
+                                                                bke::AttrDomain::Face);
+    hide_elem = *attributes.lookup_or_default<bool>(".hide_poly", bke::AttrDomain::Face, false);
+  }
+
+  if (action == SEL_TOGGLE) {
+    action = SEL_SELECT;
+
+    for (int i = 0; i < hide_elem.size(); i++) {
+      if (!hide_elem[i] && select_elem.span[i]) {
+        action = SEL_DESELECT;
+        break;
+      }
+    }
+  }
+
+  bool changed = false;
+
+  for (int i = 0; i < hide_elem.size(); i++) {
+    if (hide_elem[i]) {
+      continue;
+    }
+    const bool old_selection = select_elem.span[i];
+    switch (action) {
+      case SEL_SELECT:
+        select_elem.span[i] = true;
+        break;
+      case SEL_DESELECT:
+        select_elem.span[i] = false;
+        break;
+      case SEL_INVERT:
+        select_elem.span[i] = !select_elem.span[i];
+        changed = true;
+        break;
+    }
+    if (old_selection != select_elem.span[i]) {
+      changed = true;
+    }
+  }
+
+  select_elem.finish();
+
+  if (changed) {
+    if (flush_flags) {
+      if (select_mode & SCE_SELECT_VERTEX) {
+        paintvert_flush_flags(ob);
+      }
+      else {
+        paintface_flush_flags(C, ob, true, false);
+      }
+    }
+  }
+  return changed;
+}
+
 void paintface_flush_flags(bContext *C,
                            Object *ob,
                            const bool flush_selection,
@@ -657,61 +730,7 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
 
 bool paintface_deselect_all_visible(bContext *C, Object *ob, int action, bool flush_flags)
 {
-  using namespace blender;
-  Mesh *mesh = BKE_mesh_from_object(ob);
-  if (mesh == nullptr) {
-    return false;
-  }
-
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
-      ".hide_poly", bke::AttrDomain::Face, false);
-  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
-      ".select_poly", bke::AttrDomain::Face);
-
-  if (action == SEL_TOGGLE) {
-    action = SEL_SELECT;
-
-    for (int i = 0; i < mesh->faces_num; i++) {
-      if (!hide_poly[i] && select_poly.span[i]) {
-        action = SEL_DESELECT;
-        break;
-      }
-    }
-  }
-
-  bool changed = false;
-
-  for (int i = 0; i < mesh->faces_num; i++) {
-    if (hide_poly[i]) {
-      continue;
-    }
-    const bool old_selection = select_poly.span[i];
-    switch (action) {
-      case SEL_SELECT:
-        select_poly.span[i] = true;
-        break;
-      case SEL_DESELECT:
-        select_poly.span[i] = false;
-        break;
-      case SEL_INVERT:
-        select_poly.span[i] = !select_poly.span[i];
-        changed = true;
-        break;
-    }
-    if (old_selection != select_poly.span[i]) {
-      changed = true;
-    }
-  }
-
-  select_poly.finish();
-
-  if (changed) {
-    if (flush_flags) {
-      paintface_flush_flags(C, ob, true, false);
-    }
-  }
-  return changed;
+  return paint_deselect_all_visible(C, ob, action, flush_flags, SCE_SELECT_FACE);
 }
 
 bool paintface_minmax(Object *ob, float r_min[3], float r_max[3])
@@ -1086,70 +1105,7 @@ void paintvert_tag_select_update(bContext *C, Object *ob)
 
 bool paintvert_deselect_all_visible(Object *ob, int action, bool flush_flags)
 {
-  using namespace blender;
-  Mesh *mesh = BKE_mesh_from_object(ob);
-  if (mesh == nullptr) {
-    return false;
-  }
-
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  const VArray<bool> hide_vert = *attributes.lookup_or_default<bool>(
-      ".hide_vert", bke::AttrDomain::Point, false);
-  bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
-      ".select_vert", bke::AttrDomain::Point);
-
-  if (action == SEL_TOGGLE) {
-    action = SEL_SELECT;
-
-    for (int i = 0; i < mesh->verts_num; i++) {
-      if (!hide_vert[i] && select_vert.span[i]) {
-        action = SEL_DESELECT;
-        break;
-      }
-    }
-  }
-
-  bool changed = false;
-  for (int i = 0; i < mesh->verts_num; i++) {
-    if (hide_vert[i]) {
-      continue;
-    }
-    const bool old_selection = select_vert.span[i];
-    switch (action) {
-      case SEL_SELECT:
-        select_vert.span[i] = true;
-        break;
-      case SEL_DESELECT:
-        select_vert.span[i] = false;
-        break;
-      case SEL_INVERT:
-        select_vert.span[i] = !select_vert.span[i];
-        break;
-    }
-    if (old_selection != select_vert.span[i]) {
-      changed = true;
-    }
-  }
-
-  select_vert.finish();
-
-  if (changed) {
-    /* handle mselect */
-    if (action == SEL_SELECT) {
-      /* pass */
-    }
-    else if (ELEM(action, SEL_DESELECT, SEL_INVERT)) {
-      BKE_mesh_mselect_clear(mesh);
-    }
-    else {
-      BKE_mesh_mselect_validate(mesh);
-    }
-
-    if (flush_flags) {
-      paintvert_flush_flags(ob);
-    }
-  }
-  return changed;
+  return paint_deselect_all_visible(nullptr, ob, action, flush_flags, SCE_SELECT_VERTEX);
 }
 
 void paintvert_select_ungrouped(Object *ob, bool extend, bool flush_flags)

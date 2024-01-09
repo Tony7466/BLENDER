@@ -378,6 +378,9 @@ void ED_keymap_mesh(wmKeyConfig *keyconf);
 
 /* `editface.cc` */
 
+bool paint_deselect_all_visible(
+    bContext *C, Object *ob, int action, bool flush_flags, const short select_mode);
+
 /**
  * Copy the face flags, most importantly selection from the mesh to the final derived mesh,
  * use in object mode when selecting faces (while painting).
