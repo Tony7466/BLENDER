@@ -21,6 +21,27 @@ namespace blender {
 namespace gpu {
 
 /**
+ * Shaders that uses specialization constants must keep track of the sources in order to rebuild
+ * shader stages.
+ *
+ * Some sources are shared and won't be copied. For example for dependencies. In this case we
+ * would only store the source_ref.
+ *
+ * Other sources would be stored in the #source attribute. #source_ref
+ * would still be updated. These would include shader create info sources.
+ */
+struct GLSource {
+  std::string source;
+  StringRefNull source_ref;
+
+  GLSource(const char *other_source);
+};
+class GLSources : public Vector<GLSource> {
+ public:
+  GLSources &operator=(Span<const char *> other);
+};
+
+/**
  * Implementation of shader compilation and uniforms handling using OpenGL.
  */
 class GLShader : public Shader {
@@ -38,6 +59,7 @@ class GLShader : public Shader {
     GLuint compute_shader = 0;
     ~SpecializationProgram();
   };
+
   struct SpecializationPrograms {
     using Key = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
 
@@ -50,6 +72,16 @@ class GLShader : public Shader {
      * set this attribute.
      */
     SpecializationProgram *active = nullptr;
+
+    /**
+     * When the shader uses Specialization Constants these attribute contains the sources for
+     * rebuild shader stages. When Specialization Constants aren't used they are kept empty to
+     * reduce memory requirements.
+     */
+    GLSources vertex_sources;
+    GLSources geometry_sources;
+    GLSources fragment_sources;
+    GLSources compute_sources;
 
    public:
     /**
@@ -66,8 +98,15 @@ class GLShader : public Shader {
      * checks some shared property of this shader.
      */
     void ensure_any_active();
+
+    /**
+     * Make sure that the active is filled. It might still point to an instance that isn't fully
+     * compiled.
+     */
+    void ensure_program_created(const GLShader &shader);
   };
   SpecializationPrograms programs_;
+  void update_program_and_sources(GLSources &stage_sources, MutableSpan<const char *> sources);
 
   /** True if any shader failed to compile. */
   bool compilation_failed_ = false;
@@ -87,6 +126,7 @@ class GLShader : public Shader {
   void warm_cache(int /*limit*/) override{};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
+  std::string constants_declare() const;
   std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string fragment_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string geometry_interface_declare(const shader::ShaderCreateInfo &info) const override;
@@ -120,8 +160,13 @@ class GLShader : public Shader {
 
   bool is_compute() const
   {
-    programs_.ensure_any_active();
-    return programs_.active->compute_shader_ != 0;
+    if (!programs_.vertex_sources.is_empty()) {
+      return false;
+    }
+    if (!programs_.compute_sources.is_empty()) {
+      return true;
+    }
+    return programs_.active->compute_shader;
   }
 
  private:
