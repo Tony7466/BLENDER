@@ -923,6 +923,12 @@ void BKE_screen_view3d_shading_init(View3DShading *shading)
   memcpy(shading, shading_default, sizeof(*shading));
 }
 
+void BKE_screen_view3d_onion_skinning_init(View3DOnionSkinning *onion_skinning)
+{
+  const View3DOnionSkinning *onion_skinning_default = DNA_struct_default_get(View3DOnionSkinning);
+  memcpy(onion_skinning, onion_skinning_default, sizeof(*onion_skinning));
+}
+
 ARegion *BKE_screen_find_main_region_at_xy(const bScreen *screen,
                                            const int space_type,
                                            const int xy[2])

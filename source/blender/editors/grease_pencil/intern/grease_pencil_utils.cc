@@ -244,9 +244,57 @@ static Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &la
   if (use_multi_frame_editing) {
     for (const auto [frame_number, frame] : layer.frames().items()) {
       if (frame_number != current_frame && frame.is_selected()) {
-        frame_numbers.append_unchecked(frame_number);
+        frame_numbers.append(frame_number);
       }
     }
+  }
+  return frame_numbers.as_span();
+}
+
+static Array<int> get_ghost_frame_numbers_for_layer(const View3DOnionSkinning &settings,
+                                                    const bke::greasepencil::Layer &layer,
+                                                    const int current_frame)
+{
+  Vector<int> frame_numbers;
+  switch (settings.mode) {
+    case GP_ONION_MODE_ABSOLUTE: {
+      for (int frame = current_frame - settings.num_frames_before;
+           frame <= current_frame + settings.num_frames_after;
+           frame++)
+      {
+        if (frame != current_frame) {
+          frame_numbers.append(frame);
+        }
+      }
+      break;
+    }
+    case GP_ONION_MODE_RELATIVE: {
+      const Span<int> sorted_keys = layer.sorted_keys();
+      const int current_index = -1 +
+                                binary_search::find_predicate_begin(
+                                    sorted_keys, [&](int frame) { return frame > current_frame; });
+      const int start_index = math::max(0, current_index - settings.num_frames_before);
+      const int end_index = math::min(int(sorted_keys.size() - 1),
+                                      current_index + settings.num_frames_after);
+      const int frames_size = end_index - start_index + 1;
+      for (const int frame_i : IndexRange(start_index, frames_size)) {
+        const int frame = sorted_keys[frame_i];
+        if (frame != current_frame) {
+          frame_numbers.append(frame);
+        }
+      }
+      break;
+    }
+    case GP_ONION_MODE_SELECTED: {
+      for (const auto [frame_number, frame] : layer.frames().items()) {
+        if (frame_number != current_frame && frame.is_selected()) {
+          frame_numbers.append(frame_number);
+        }
+      }
+      break;
+    }
+    default:
+      BLI_assert_unreachable();
   }
   return frame_numbers.as_span();
 }
@@ -279,7 +327,9 @@ Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
   return editable_drawings.as_span();
 }
 
-Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePencil &grease_pencil)
+Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
+                                             const GreasePencil &grease_pencil,
+                                             const View3DOnionSkinning *onion_skinning_settings)
 {
   using namespace blender::bke::greasepencil;
   const int current_frame = scene.r.cfra;
@@ -298,7 +348,31 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePen
         layer, current_frame, use_multi_frame_editing);
     for (const int frame_number : frame_numbers) {
       if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number)) {
-        visible_drawings.append({*drawing, layer_i, frame_number});
+        DrawingInfo info(*drawing, layer_i, frame_number);
+        visible_drawings.append(std::move(info));
+      }
+    }
+    /* Append ghost frames. */
+    if (onion_skinning_settings != nullptr && layer.use_onion_skinning()) {
+      const Array<int> ghost_frame_numbers = get_ghost_frame_numbers_for_layer(
+          *onion_skinning_settings, layer, current_frame);
+      for (const int frame_number : ghost_frame_numbers) {
+        if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number)) {
+          DrawingInfo info(*drawing, layer_i, frame_number);
+
+          GhostingInfo ghost_info;
+          /* TODO: Fading of opacity the further away we are from the current frame. */
+          ghost_info.opacity = onion_skinning_settings->opacity;
+          if (frame_number < current_frame) {
+            ghost_info.tint = onion_skinning_settings->color_before;
+          }
+          else {
+            ghost_info.tint = onion_skinning_settings->color_after;
+          }
+          info.ghost_info.emplace(std::move(ghost_info));
+
+          visible_drawings.append(std::move(info));
+        }
       }
     }
   }

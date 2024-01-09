@@ -470,6 +470,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(View3D),
     SDNA_DEFAULT_DECL_EX(View3DOverlay, View3D.overlay),
     SDNA_DEFAULT_DECL_EX(View3DShading, View3D.shading),
+    SDNA_DEFAULT_DECL_EX(View3DOnionSkinning, View3D.onion_skinning),
     SDNA_DEFAULT_DECL_EX(View3DCursor, Scene.cursor),
 
     /* DNA_volume_defaults.h */

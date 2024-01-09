@@ -1527,8 +1527,7 @@ static void rna_3DViewShading_render_pass_set(PointerRNA *ptr, int value)
     STRNCPY(shading->aov_name, aov->name);
   }
   else if (value == EEVEE_RENDER_PASS_BLOOM &&
-           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0))
-  {
+           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0)) {
     shading->render_pass = EEVEE_RENDER_PASS_COMBINED;
   }
   else {
@@ -1606,6 +1605,17 @@ static PointerRNA rna_SpaceView3D_overlay_get(PointerRNA *ptr)
 static char *rna_View3DOverlay_path(const PointerRNA * /*ptr*/)
 {
   return BLI_strdup("overlay");
+}
+
+static PointerRNA rna_SpaceView3D_onion_skinning_get(PointerRNA *ptr)
+{
+  View3D *v3d = static_cast<View3D *>(ptr->data);
+  return RNA_pointer_create(ptr->owner_id, &RNA_View3DOnionSkinning, &v3d->onion_skinning);
+}
+
+static char *rna_View3DOnionSkinning_path(const PointerRNA * /*ptr*/)
+{
+  return BLI_strdup("onion_skinning");
 }
 
 /* Space Image Editor */
@@ -4927,6 +4937,75 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 }
 
+static void rna_def_space_view3d_onion_skinning(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem onion_skinning_modes_items[] = {
+      {V3D_ONION_SKINNING_MODE_ABSOLUTE,
+       "ABSOLUTE",
+       0,
+       "Frames",
+       "Frames in absolute range of the scene frame"},
+      {V3D_ONION_SKINNING_MODE_RELATIVE,
+       "RELATIVE",
+       0,
+       "Keyframes",
+       "Frames in relative range of the keyframes"},
+      {V3D_ONION_SKINNING_MODE_SELECTED, "SELECTED", 0, "Selected", "Only selected keyframes"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  srna = RNA_def_struct(brna, "View3DOnionSkinning", nullptr);
+  RNA_def_struct_path_func(srna, "rna_View3DOnionSkinning_path");
+  RNA_def_struct_ui_text(srna,
+                         "3D View Onion Skinning Settings",
+                         "Settings for display of ghost frames in the 3D viewport");
+
+  prop = RNA_def_property(srna, "frames_before", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "num_frames_before");
+  RNA_def_property_range(prop, 0, 120);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Frames Before", "Maximum number of frames to show before current frame");
+
+  prop = RNA_def_property(srna, "frames_after", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "num_frames_after");
+  RNA_def_property_range(prop, 0, 120);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Frames After", "Maximum number of frames to show after current frame");
+
+  prop = RNA_def_property(srna, "color_before", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, nullptr, "color_before");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Color Before", "Base color for ghost frames before the current frame");
+
+  prop = RNA_def_property(srna, "color_after", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, nullptr, "color_after");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Color After", "Base color for ghost frames after the current frame");
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "mode");
+  RNA_def_property_enum_items(prop, onion_skinning_modes_items);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Mode", "Onion Skinning mode to display frames");
+
+  prop = RNA_def_property(srna, "opacity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "opacity");
+  RNA_def_property_range(prop, 0.0, 1.0f);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Opacity", "Change fade opacity of displayed ghost frames");
+}
+
 static void rna_def_space_view3d(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -5279,8 +5358,17 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Overlay Settings", "Settings for display of overlays in the 3D viewport");
 
+  prop = RNA_def_property(srna, "onion_skinning", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_struct_type(prop, "View3DOnionSkinning");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_SpaceView3D_onion_skinning_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Onion Skinning Settings", "Settings for onion skinning in the 3D viewport");
+
   rna_def_space_view3d_shading(brna);
   rna_def_space_view3d_overlay(brna);
+  rna_def_space_view3d_onion_skinning(brna);
 
   /* *** Animated *** */
   RNA_define_animate_sdna(true);

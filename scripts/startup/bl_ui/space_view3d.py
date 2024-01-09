@@ -1053,6 +1053,14 @@ class VIEW3D_HT_header(Header):
         ):
             sub.popover(panel="VIEW3D_PT_overlay_bones", text="", icon='POSE_HLT')
 
+        # Onion Skinning toggle & popover
+        if obj.type in {'GREASEPENCIL'}:
+            row = layout.row(align=True)
+            row.active = overlay.show_overlays
+            row.prop(overlay, "use_gpencil_onion_skin", icon='ONIONSKIN_ON', text="")
+            sub = row.row(align=True)
+            sub.popover(panel="VIEW3D_PT_onion_skinning_options", text="")
+
         row = layout.row()
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
@@ -7810,6 +7818,37 @@ class VIEW3D_PT_overlay_grease_pencil_options(Panel):
             col = split.column()
             col.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
 
+class VIEW3D_PT_onion_skinning_options(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = ""
+    bl_ui_units_x = 13
+
+    @classmethod
+    def poll(cls, context):
+        # For now, only Grease Pencil objects use onion skinning
+        return context.object and context.object.type == 'GREASEPENCIL'
+
+    def draw(self, context):
+        layout = self.layout
+        view = context.space_data
+
+        onion_skinning = view.onion_skinning
+        row = layout.row()
+        row.prop(onion_skinning, "mode", expand=True)
+
+        split = layout.split()
+        row = split.row()
+        row.prop(onion_skinning, "frames_before", text="Before")
+        row = split.row()
+        row.prop(onion_skinning, "frames_after", text="After")
+
+        split = layout.split()
+        row = split.row()
+        row.prop(onion_skinning, "color_before", text="")
+        row = split.row()
+        row.prop(onion_skinning, "color_after", text="")
+
 
 class VIEW3D_PT_quad_view(Panel):
     bl_space_type = 'VIEW_3D'
@@ -8970,6 +9009,7 @@ classes = (
     VIEW3D_PT_overlay_bones,
     VIEW3D_PT_overlay_sculpt,
     VIEW3D_PT_overlay_sculpt_curves,
+    VIEW3D_PT_onion_skinning_options,
     VIEW3D_PT_snapping,
     VIEW3D_PT_proportional_edit,
     VIEW3D_PT_gpencil_origin,

@@ -393,8 +393,21 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   BLI_assert(cache->geom_batch == nullptr);
 
   /* Get the visible drawings. */
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const View3DOnionSkinning *onion_skinning = [&]() -> const View3DOnionSkinning * {
+    if (draw_ctx->v3d == nullptr) {
+      return nullptr;
+    }
+    if ((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) != 0) {
+      return nullptr;
+    }
+    if ((draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) == 0) {
+      return nullptr;
+    }
+    return &draw_ctx->v3d->onion_skinning;
+  }();
   const Array<ed::greasepencil::DrawingInfo> drawings =
-      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, onion_skinning);
 
   /* First, count how many vertices and triangles are needed for the whole object. Also record the
    * offsets into the curves for the vertices and triangles. */

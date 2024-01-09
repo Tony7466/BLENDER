@@ -243,6 +243,39 @@ typedef enum eHandleDisplay {
   CURVE_HANDLE_NONE = 2,
 } eHandleDisplay;
 
+typedef struct View3DOnionSkinning {
+  /**
+   * Opacity for the ghost frames.
+   */
+  float opacity;
+  /**
+   * Onion skinning mode.
+   */
+  int8_t mode;
+  /**
+   * Onion skinning filtering flag.
+   */
+  uint8_t filter;
+  char _pad[2];
+  /**
+   * Number of ghost frames shown before.
+   */
+  int16_t num_frames_before;
+  /**
+   * Number of ghost frames shown after.
+   */
+  int16_t num_frames_after;
+  /**
+   * Color of the ghost frames before.
+   */
+  float color_before[3];
+  /**
+   * Color of the ghost frames after.
+   */
+  float color_after[3];
+  char _pad2[4];
+} View3DOnionSkinning;
+
 typedef struct View3D_Runtime {
   /** Nkey panel stores stuff here. */
   void *properties_storage;
@@ -352,6 +385,7 @@ typedef struct View3D {
   /** Display settings. */
   View3DShading shading;
   View3DOverlay overlay;
+  View3DOnionSkinning onion_skinning;
 
   /** Path to the viewer node that is currently previewed. This is retrieved from the workspace. */
   ViewerPath viewer_path;
@@ -698,6 +732,30 @@ enum {
   V3D_GIZMO_SHOW_CAMERA_LENS = (1 << 0),
   V3D_GIZMO_SHOW_CAMERA_DOF_DIST = (1 << 2),
 };
+
+/** #View3d.onion_skinning.mode  */
+enum {
+  V3D_ONION_SKINNING_MODE_ABSOLUTE = 0,
+  V3D_ONION_SKINNING_MODE_RELATIVE = 1,
+  V3D_ONION_SKINNING_MODE_SELECTED = 2,
+};
+
+/** #View3d.onion_skinning.filter */
+enum {
+  /** Flag for filtering the onion skinning per keyframe type.
+   * \note needs to match order of `eBezTriple_KeyframeType`.
+   */
+  V3D_ONION_SKINNING_FILTER_KEYTYPE_KEYFRAME = (1 << 0),
+  V3D_ONION_SKINNING_FILTER_KEYTYPE_EXTREME = (1 << 1),
+  V3D_ONION_SKINNING_FILTER_KEYTYPE_BREAKDOWN = (1 << 2),
+  V3D_ONION_SKINNING_FILTER_KEYTYPE_JITTER = (1 << 3),
+  V3D_ONION_SKINNING_FILTER_KEYTYPE_MOVEHOLD = (1 << 4),
+};
+
+#define V3D_ONION_SKINNING_FILTER_ALL \
+  (V3D_ONION_SKINNING_FILTER_KEYTYPE_KEYFRAME | V3D_ONION_SKINNING_FILTER_KEYTYPE_EXTREME | \
+   V3D_ONION_SKINNING_FILTER_KEYTYPE_BREAKDOWN | V3D_ONION_SKINNING_FILTER_KEYTYPE_JITTER | \
+   V3D_ONION_SKINNING_FILTER_KEYTYPE_MOVEHOLD)
 
 /** #ToolSettings.plane_depth */
 typedef enum {

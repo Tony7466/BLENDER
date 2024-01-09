@@ -66,6 +66,17 @@
     .normals_constant_screen_size = 7.0f, \
   }
 
+#define _DNA_DEFAULT_View3DOnionSkinning \
+  { \
+    .opacity = 0.5f, \
+    .mode = V3D_ONION_SKINNING_MODE_RELATIVE, \
+    .filter = V3D_ONION_SKINNING_FILTER_ALL, \
+    .num_frames_before = 1, \
+    .num_frames_after = 1, \
+    .color_before = {0.018500f, 0.147027f, 0.016807f}, \
+    .color_after = {0.014444f, 0.007499f, 0.242281f}, \
+  }
+
 #define _DNA_DEFAULT_View3DCursor \
   { \
     .rotation_mode = ROT_MODE_XYZ, \
@@ -82,6 +93,7 @@
     .gridsubdiv = 10, \
     .shading = _DNA_DEFAULT_View3DShading, \
     .overlay = _DNA_DEFAULT_View3DOverlay, \
+    .onion_skinning = _DNA_DEFAULT_View3DOnionSkinning, \
  \
     .gridflag = V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_FLOOR | V3D_SHOW_ORTHO_GRID, \
  \

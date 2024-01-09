@@ -39,6 +39,7 @@ struct ScrVert;
 struct SpaceType;
 struct View3D;
 struct View3DShading;
+struct View3DOnionSkinning;
 struct WorkSpace;
 struct bContext;
 struct bScreen;
@@ -663,6 +664,7 @@ float BKE_screen_view3d_zoom_to_fac(float camzoom);
 float BKE_screen_view3d_zoom_from_fac(float zoomfac);
 
 void BKE_screen_view3d_shading_init(View3DShading *shading);
+void BKE_screen_view3d_onion_skinning_init(View3DOnionSkinning *onion_skinning);
 
 /* Screen. */
 

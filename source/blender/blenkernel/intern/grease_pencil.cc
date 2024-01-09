@@ -769,7 +769,7 @@ Span<FramesMapKey> Layer::sorted_keys() const
 
 FramesMapKey Layer::frame_key_at(const int frame_number) const
 {
-  Span<int> sorted_keys = this->sorted_keys();
+  Span<FramesMapKey> sorted_keys = this->sorted_keys();
   /* No keyframes, return no drawing. */
   if (sorted_keys.is_empty()) {
     return -1;

@@ -25,6 +25,7 @@ struct ToolSettings;
 struct Scene;
 struct ViewDepths;
 struct View3D;
+struct View3DOnionSkinning;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
@@ -159,10 +160,21 @@ bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
 
+struct GhostingInfo {
+  float opacity;
+  float3 tint;
+};
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
   const int layer_index;
   const int frame_number;
+  /* Populated if the drawing is only visible as a ghost. */
+  std::optional<GhostingInfo> ghost_info = {};
+
+  DrawingInfo(const bke::greasepencil::Drawing &drawing, int layer_index, int frame_number)
+      : drawing(drawing), layer_index(layer_index), frame_number(frame_number)
+  {
+  }
 };
 struct MutableDrawingInfo {
   bke::greasepencil::Drawing &drawing;
@@ -171,8 +183,10 @@ struct MutableDrawingInfo {
 };
 Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                      GreasePencil &grease_pencil);
-Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
-                                             const GreasePencil &grease_pencil);
+Array<DrawingInfo> retrieve_visible_drawings(
+    const Scene &scene,
+    const GreasePencil &grease_pencil,
+    const View3DOnionSkinning *onion_skinning_settings = nullptr);
 
 IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
