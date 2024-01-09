@@ -38,6 +38,8 @@ def main():
                     continue
                 content_json = json.loads(activity["content"])
                 repo_fullname = activity["repo"]["full_name"]
+                if activity["repo"]["name"] == "blender" and activity["repo"]["full_name"] != "blender/blender":
+                    continue
                 if activity["ref_name"] != "refs/heads/main":
                     continue
                 if ".profile" in repo_fullname:
