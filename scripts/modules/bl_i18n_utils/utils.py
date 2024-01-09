@@ -1506,17 +1506,17 @@ class I18n:
                     ret.append(tab + " ((), ()),")
                 else:
                     if len(sources) > 1:
-                        ret.append(tab + ' (("' + sources[0] + '",')
-                        ret += [tab + '   "' + s + '",' for s in sources[1:-1]]
-                        ret.append(tab + '   "' + sources[-1] + '"),')
+                        ret.append(tab + f' (({sources[0]!r},')
+                        ret += [tab + f'   {s!r},' for s in sources[1:-1]]
+                        ret.append(tab + f'   {sources[-1]!r}),')
                     else:
-                        ret.append(tab + " ((" + ('"' + sources[0] + '",' if sources else "") + "),")
+                        ret.append(tab + " ((" + (f'{sources[0]!r},' if sources else "") + "),")
                     if len(gen_comments) > 1:
-                        ret.append(tab + '  ("' + gen_comments[0] + '",')
-                        ret += [tab + '   "' + s + '",' for s in gen_comments[1:-1]]
-                        ret.append(tab + '   "' + gen_comments[-1] + '")),')
+                        ret.append(tab + f'  ({gen_comments[0]!r},')
+                        ret += [tab + f'   {s!r},' for s in gen_comments[1:-1]]
+                        ret.append(tab + f'   {gen_comments[-1]!r})),')
                     else:
-                        ret.append(tab + "  (" + ('"' + gen_comments[0] + '",' if gen_comments else "") + ")),")
+                        ret.append(tab + "  (" + (f'{gen_comments[0]!r},' if gen_comments else "") + ")),")
                 # All languages
                 for lngstr, lngsp, trans in translations:
                     if trans.msgs[key].is_commented:
