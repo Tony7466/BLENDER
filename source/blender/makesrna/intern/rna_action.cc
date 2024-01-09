@@ -359,8 +359,8 @@ static void rna_Action_show_errors_update(bContext *C, PointerRNA * /*ptr*/)
   if (ANIM_animdata_get_context(C, &ac) == 0) {
     return;
   }
-  const bool show_only_errors_enabled = ac.ads->filterflag & ADS_FILTER_ONLY_ERRORS;
-  if (!show_only_errors_enabled) {
+
+  if (ac.ads->filterflag & ADS_FILTER_ONLY_ERRORS) {
     return;
   }
 
