@@ -1108,7 +1108,7 @@ class _defs_edit_mesh:
             label="Knife",
             cursor='KNIFE',
             icon="ops.mesh.knife_tool",
-            widget=None,
+            widget="VIEW3D_GGT_mesh_knife_tool",
             keymap=(),
             draw_settings=draw_settings,
             options={'KEYMAP_FALLBACK'},

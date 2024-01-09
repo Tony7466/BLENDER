@@ -99,6 +99,8 @@ BMEditMesh *BKE_editmesh_from_object(Object *ob);
  */
 void BKE_editmesh_free_data(BMEditMesh *em);
 
+void BKE_editmesh_vert_coords_set(
+    Depsgraph *depsgraph, BMEditMesh *em, Scene *scene, Object *ob, float (*r_cos_cage)[3]);
 float (*BKE_editmesh_vert_coords_alloc(
     Depsgraph *depsgraph, BMEditMesh *em, Scene *scene, Object *ob, int *r_vert_len))[3];
 float (*BKE_editmesh_vert_coords_alloc_orco(BMEditMesh *em, int *r_vert_len))[3];

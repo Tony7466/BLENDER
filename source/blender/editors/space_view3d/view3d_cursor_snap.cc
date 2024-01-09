@@ -667,6 +667,7 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
   const bool use_surface_co = snap_data->is_enabled ||
                               tool_settings->plane_depth == V3D_PLACE_DEPTH_SURFACE;
 
+  Object *ob = nullptr;
   float co[3], no[3], face_nor[3], obmat[4][4], omat[3][3];
   eSnapMode snap_elem = SCE_SNAP_TO_NONE;
   int snap_elem_index[3] = {-1, -1, -1};
@@ -699,6 +700,9 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
                                          SNAP_GEOM_FINAL :
                                      (state->flag & V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE) ?
                                          SNAP_GEOM_CAGE :
+                                     (state->flag &
+                                      V3D_SNAPCURSOR_SNAP_EDIT_GEOM_ORIG_MATCHING_CAGE) ?
+                                         SNAP_GEOM_EDIT_MATCHING_CAGE :
                                          SNAP_GEOM_EDIT;
 
       bool use_occlusion_test = (state->flag & V3D_SNAPCURSOR_OCCLUSION_ALWAYS_TRUE) ? false :
@@ -723,7 +727,7 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
                                                              co,
                                                              no,
                                                              &index,
-                                                             nullptr,
+                                                             &ob,
                                                              obmat,
                                                              face_nor);
     }
@@ -834,6 +838,7 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
   copy_v3_v3_int(snap_data->elem_index, snap_elem_index);
 
   copy_m3_m3(snap_data->plane_omat, omat);
+  snap_data->object = ob;
 
   v3d_cursor_eventstate_save_xy(data_intern, x, y);
 }

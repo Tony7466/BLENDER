@@ -370,7 +370,7 @@ static ID *data_for_snap(Object *ob_eval, eSnapEditType edit_mode_type, bool *r_
     case OB_MESH: {
       Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
       if (BKE_object_is_in_editmode(ob_eval)) {
-        if (edit_mode_type == SNAP_GEOM_EDIT) {
+        if (ELEM(edit_mode_type, SNAP_GEOM_EDIT, SNAP_GEOM_EDIT_MATCHING_CAGE)) {
           return nullptr;
         }
 

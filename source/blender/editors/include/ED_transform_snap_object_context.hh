@@ -27,10 +27,16 @@ struct View3D;
 
 /* ED_transform_snap_object_*** API */
 
+/** Indicates which type of geometry in edit-mode to snap. */
 enum eSnapEditType {
+  /* Geometry with all modifiers enabled. (Equivalent to #BMEditMesh::mesh_eval_final). */
   SNAP_GEOM_FINAL = 0,
+  /* Geometry with modifiers enabled for the cage. (Equivalent to #BMEditMesh::mesh_eval_cage). */
   SNAP_GEOM_CAGE = 1,
-  SNAP_GEOM_EDIT = 2, /* Bmesh for mesh-type. */
+  /* Original geometry without modifiers. (Equivalent to #BMesh with the original coordinates). */
+  SNAP_GEOM_EDIT = 2,
+  /* Original geometry but the position of the verties is modified to better match the Cage. */
+  SNAP_GEOM_EDIT_MATCHING_CAGE = 3,
 };
 
 /** used for storing multiple hits */

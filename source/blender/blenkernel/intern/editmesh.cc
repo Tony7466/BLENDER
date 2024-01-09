@@ -189,12 +189,10 @@ static void cage_mapped_verts_callback(void *user_data,
   }
 }
 
-float (*BKE_editmesh_vert_coords_alloc(
-    Depsgraph *depsgraph, BMEditMesh *em, Scene *scene, Object *ob, int *r_vert_len))[3]
+void BKE_editmesh_vert_coords_set(
+    Depsgraph *depsgraph, BMEditMesh *em, Scene *scene, Object *ob, float (*r_cos_cage)[3])
 {
   Mesh *cage = editbmesh_get_eval_cage(depsgraph, scene, ob, em, &CD_MASK_BAREMESH);
-  float(*cos_cage)[3] = static_cast<float(*)[3]>(
-      MEM_callocN(sizeof(*cos_cage) * em->bm->totvert, __func__));
 
   /* When initializing cage verts, we only want the first cage coordinate for each vertex,
    * so that e.g. mirror or array use original vertex coordinates and not mirrored or duplicate. */
@@ -202,12 +200,21 @@ float (*BKE_editmesh_vert_coords_alloc(
 
   CageUserData data;
   data.totvert = em->bm->totvert;
-  data.cos_cage = cos_cage;
+  data.cos_cage = r_cos_cage;
   data.visit_bitmap = visit_bitmap;
 
   BKE_mesh_foreach_mapped_vert(cage, cage_mapped_verts_callback, &data, MESH_FOREACH_NOP);
 
   MEM_freeN(visit_bitmap);
+}
+
+float (*BKE_editmesh_vert_coords_alloc(
+    Depsgraph *depsgraph, BMEditMesh *em, Scene *scene, Object *ob, int *r_vert_len))[3]
+{
+  float(*cos_cage)[3] = static_cast<float(*)[3]>(
+      MEM_callocN(sizeof(*cos_cage) * em->bm->totvert, __func__));
+
+  BKE_editmesh_vert_coords_set(depsgraph, em, scene, ob, cos_cage);
 
   if (r_vert_len) {
     *r_vert_len = em->bm->totvert;

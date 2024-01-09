@@ -246,4 +246,5 @@ void ED_gizmotypes_snap_3d_data_get(const bContext *C,
                                     float r_loc[3],
                                     float r_nor[3],
                                     int r_elem_index[3],
-                                    eSnapMode *r_snap_elem);
+                                    eSnapMode *r_snap_elem,
+                                    Object **r_object);

@@ -422,7 +422,8 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
               snap_gizmo->ptr, ruler_info->snap_data.prop_snap_source_type, snap_type);
         }
 
-        ED_gizmotypes_snap_3d_data_get(C, snap_gizmo, co, nullptr, nullptr, snap_source_type);
+        ED_gizmotypes_snap_3d_data_get(
+            C, snap_gizmo, co, nullptr, nullptr, snap_source_type, nullptr);
       }
 
 #ifdef USE_AXIS_CONSTRAINTS
@@ -1073,7 +1074,7 @@ static int gizmo_ruler_modal(bContext *C,
 #else
   /* Ensure snap is up to date. */
   ED_gizmotypes_snap_3d_data_get(
-      C, ruler_info->snap_data.gizmo, nullptr, nullptr, nullptr, nullptr);
+      C, ruler_info->snap_data.gizmo, nullptr, nullptr, nullptr, nullptr, nullptr);
   const bool do_snap = ED_gizmotypes_snap_3d_is_enabled(ruler_info->snap_data.gizmo);
 #endif
 

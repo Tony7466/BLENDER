@@ -300,10 +300,16 @@ enum eV3DSnapCursor {
   V3D_SNAPCURSOR_TOGGLE_ALWAYS_TRUE = 1 << 0,
   V3D_SNAPCURSOR_OCCLUSION_ALWAYS_TRUE = 1 << 1,
   V3D_SNAPCURSOR_OCCLUSION_ALWAYS_FALSE = 1 << 2, /* TODO. */
+  /* The parameters below define which type of geometry of the edit-mode to snap.
+   * If not defined, the default is snap to geometry without modifiers (#SNAP_GEOM_EDIT).
+   * See #eSnapSelect for more details.*/
   V3D_SNAPCURSOR_SNAP_EDIT_GEOM_FINAL = 1 << 3,
   V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE = 1 << 4,
+  /* It has the same number of elements as the original geometry, but the position of the verties
+     is modified to better match the Cage. This is useful for Knife tool snapping.( */
+  V3D_SNAPCURSOR_SNAP_EDIT_GEOM_ORIG_MATCHING_CAGE = 1 << 5,
 };
-ENUM_OPERATORS(eV3DSnapCursor, V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE)
+ENUM_OPERATORS(eV3DSnapCursor, V3D_SNAPCURSOR_SNAP_EDIT_GEOM_ORIG_MATCHING_CAGE)
 
 struct V3DSnapCursorData {
   eSnapMode type_source;
@@ -313,6 +319,7 @@ struct V3DSnapCursorData {
   float obmat[4][4];
   int elem_index[3];
   float plane_omat[3][3];
+  struct Object *object;
   bool is_snap_invert;
 
   /** Enabled when snap is activated, even if it didn't find anything. */

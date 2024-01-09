@@ -78,12 +78,22 @@ struct SnapCache_EditMesh : public SnapObjectContext::SnapCache {
 
 static Mesh *create_mesh(SnapObjectContext *sctx,
                          Object *ob_eval,
-                         eSnapEditType /*edit_mode_type*/)
+                         eSnapEditType edit_mode_type)
 {
   Mesh *mesh = static_cast<Mesh *>(BKE_id_new_nomain(ID_ME, nullptr));
   BMEditMesh *em = BKE_editmesh_from_object(ob_eval);
   BMesh *bm = em->bm;
   BM_mesh_bm_to_me_compact(*bm, *mesh, nullptr, false);
+
+  if (edit_mode_type == SNAP_GEOM_EDIT_MATCHING_CAGE) {
+    Scene *scene_eval = DEG_get_evaluated_scene(sctx->runtime.depsgraph);
+    BKE_editmesh_vert_coords_set(
+        sctx->runtime.depsgraph,
+        em,
+        scene_eval,
+        ob_eval,
+        reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data()));
+  }
 
   bke::MutableAttributeAccessor attrs = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> hide_vert = attrs.lookup_or_add_for_write_only_span<bool>(

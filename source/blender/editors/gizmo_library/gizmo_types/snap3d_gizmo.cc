@@ -64,7 +64,8 @@ void ED_gizmotypes_snap_3d_data_get(const bContext *C,
                                     float r_loc[3],
                                     float r_nor[3],
                                     int r_elem_index[3],
-                                    eSnapMode *r_snap_elem)
+                                    eSnapMode *r_snap_elem,
+                                    Object **r_object)
 {
   if (C) {
     /* Snap values are updated too late at the cursor. Be sure to update ahead of time. */
@@ -93,6 +94,9 @@ void ED_gizmotypes_snap_3d_data_get(const bContext *C,
   }
   if (r_snap_elem) {
     *r_snap_elem = snap_data->type_target;
+  }
+  if (r_object) {
+    *r_object = snap_data->object;
   }
 }
 

@@ -46,6 +46,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
+#include "ED_gizmo_library.hh"
 #include "ED_mesh.hh"
 #include "ED_numinput.hh"
 #include "ED_screen.hh"
@@ -322,6 +323,8 @@ struct KnifeTool_OpData {
   bool is_drag_undo;
 
   bool depth_test;
+
+  wmGizmo *snap_gizmo;
 };
 
 enum {
@@ -1833,6 +1836,58 @@ static void knife_join_edge(KnifeEdge *newkfe, KnifeEdge *kfe)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Snap Gizmo Utils
+ * \{ */
+
+static wmGizmo *knifetool_snap_gizmo_find(ARegion *region)
+{
+  wmGizmoMap *gzmap = region->gizmo_map;
+  wmGizmoGroup *gzgroup = gzmap ? WM_gizmomap_group_find(gzmap, "VIEW3D_GGT_mesh_knife_tool") :
+                                  NULL;
+  if (gzgroup != NULL) {
+    return static_cast<wmGizmo *>(gzgroup->gizmos.first);
+  }
+  return NULL;
+}
+
+static void knife_get_snap_from_gizmo(KnifeTool_OpData *kcd, KnifePosData *r_kpd)
+{
+  if (!kcd->snap_gizmo) {
+    return;
+  }
+
+  Object *ob;
+  int snap_elem_index[3];
+  ED_gizmotypes_snap_3d_data_get(
+      kcd->vc.C, kcd->snap_gizmo, r_kpd->cage, NULL, snap_elem_index, NULL, &ob);
+
+  knife_project_v2(kcd, r_kpd->cage, r_kpd->mval);
+
+  if (ob) {
+    ob = DEG_get_original_object(ob);
+  }
+
+  const int ob_index = kcd->objects.first_index_of_try(ob);
+  r_kpd->ob_index = ob_index;
+
+  if (ob_index != -1) {
+    BMEditMesh *em = BKE_editmesh_from_object(ob);
+    BMesh *bm = em->bm;
+    if (snap_elem_index[0] != -1) {
+      r_kpd->vert = get_bm_knife_vert(kcd, BM_vert_at_index(bm, snap_elem_index[0]), ob_index);
+    }
+    else if (snap_elem_index[1] != -1) {
+      r_kpd->edge = get_bm_knife_edge(kcd, BM_edge_at_index(bm, snap_elem_index[1]), ob_index);
+    }
+    else if (snap_elem_index[2] != -1) {
+      r_kpd->bmface = BM_face_at_index(bm, snap_elem_index[2]);
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Cut/Hit Utils
  * \{ */
 
@@ -1843,6 +1898,12 @@ static void knife_snap_curr(KnifeTool_OpData *kcd, const float2 &mval);
 static void knife_start_cut(KnifeTool_OpData *kcd, const float2 &mval)
 {
   knife_snap_curr(kcd, mval);
+
+  if (kcd->snap_gizmo) {
+    /* Use knife's snap system as it handles added hits, modifier keys and constraints. */
+    WM_gizmo_set_flag(kcd->snap_gizmo, WM_GIZMO_HIDDEN, true);
+  }
+
   kcd->prev = kcd->curr;
   kcd->mdata.is_stored = false;
 }
@@ -3770,6 +3831,10 @@ static void knife_snap_curr(KnifeTool_OpData *kcd, const float2 &mval)
 {
   knife_pos_data_clear(&kcd->curr);
 
+  if (kcd->snap_gizmo && !(kcd->snap_gizmo->flag & WM_GIZMO_HIDDEN)) {
+    knife_get_snap_from_gizmo(kcd, &kcd->curr);
+  }
+
   if (knife_find_closest_face(kcd, mval, &kcd->curr)) {
     if (!kcd->ignore_edge_snapping || !kcd->ignore_vert_snapping) {
       KnifePosData kpos_tmp = kcd->curr;
@@ -4097,6 +4162,8 @@ static void knifetool_init(ViewContext *vc,
   kcd->num.val_flag[0] |= NUM_NO_NEGATIVE;
   kcd->num.unit_sys = scene->unit.system;
   kcd->num.unit_type[0] = B_UNIT_NONE;
+
+  kcd->snap_gizmo = knifetool_snap_gizmo_find(kcd->vc.region);
 }
 
 /* called when modal loop selection is done... */
@@ -4145,6 +4212,10 @@ static void knifetool_exit_ex(KnifeTool_OpData *kcd)
   /* Line-hits cleanup. */
   if (kcd->linehits) {
     MEM_freeN(kcd->linehits);
+  }
+
+  if (kcd->snap_gizmo) {
+    WM_gizmo_set_flag(kcd->snap_gizmo, WM_GIZMO_HIDDEN, false);
   }
 
   /* Destroy kcd itself. */
