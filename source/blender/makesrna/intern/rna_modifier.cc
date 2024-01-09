@@ -195,6 +195,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_WIREFRAME,
      "Wireframe",
      "Convert faces into thickened edges"},
+    {eModifierType_Hello,
+     "HELLO",
+     ICON_GREASEPENCIL,
+     "Hello",
+     "Hello Grease Pencil modifier"},
 
     RNA_ENUM_ITEM_HEADING(N_("Deform"), nullptr),
     {eModifierType_Armature,
@@ -7423,6 +7428,17 @@ static void rna_def_modifier_volume_to_mesh(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_hello(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "HelloModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Hello Modifier", "Hello modifier");
+  RNA_def_struct_sdna(srna, "HelloModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_GREASEPENCIL);
+}
+
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7583,6 +7599,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_mesh_to_volume(brna);
   rna_def_modifier_volume_displace(brna);
   rna_def_modifier_volume_to_mesh(brna);
+  rna_def_modifier_hello(brna);
 }
 
 #endif

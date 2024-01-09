@@ -73,7 +73,7 @@ class OBJECT_MT_modifier_add(ModifierAddMenu, Menu):
             layout.separator()
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
             layout.menu("OBJECT_MT_modifier_add_edit")
-        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'VOLUME'}:
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'VOLUME', 'GREASEPENCIL'}:
             layout.menu("OBJECT_MT_modifier_add_generate")
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE', 'VOLUME'}:
             layout.menu("OBJECT_MT_modifier_add_deform")
@@ -147,6 +147,8 @@ class OBJECT_MT_modifier_add_generate(ModifierAddMenu, Menu):
             self.operator_modifier_add(layout, 'WELD')
         if ob_type == 'MESH':
             self.operator_modifier_add(layout, 'WIREFRAME')
+        if ob_type == 'GREASEPENCIL':
+            self.operator_modifier_add(layout, 'HELLO')
         layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 
