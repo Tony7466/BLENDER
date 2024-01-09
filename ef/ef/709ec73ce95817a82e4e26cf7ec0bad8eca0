@@ -2,3 +2,4 @@ Referenced by issue #40009, Double click list renaming not working on heavy scen
 Referenced by pull request #115831, UI: dont run update functions if button values did not change
 Referenced by commit eb7d5d097247318439663cd3514447bade52a530, Fix #115933: Assert with invalid time-stamp on X11 with XIM input
 Referenced by issue #116627, GHOST/X11 asserts in a debug build on a Linux system with 50+ days uptime
+Referenced by commit 89ad66fbbd38c1ba750a1243ef2ae533e656e278, Fix #1092563: invalid event timestamps on X11 after 49 days uptime
