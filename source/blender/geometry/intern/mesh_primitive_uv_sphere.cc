@@ -67,13 +67,13 @@ BLI_NOINLINE static void calculate_sphere_vertex_data(MutableSpan<float3> positi
   const float delta_theta = M_PI / rings;
   const float delta_phi = (2.0f * M_PI) / segments;
 
-  Array<float, 64> segment_cosines(segments + 1);
-  for (const int segment : IndexRange(1, segments)) {
+  Array<float, 64> segment_cosines(segments);
+  for (const int segment : IndexRange(segments)) {
     const float phi = segment * delta_phi;
     segment_cosines[segment] = std::cos(phi);
   }
-  Array<float, 64> segment_sines(segments + 1);
-  for (const int segment : IndexRange(1, segments)) {
+  Array<float, 64> segment_sines(segments);
+  for (const int segment : IndexRange(segments)) {
     const float phi = segment * delta_phi;
     segment_sines[segment] = std::sin(phi);
   }
@@ -86,7 +86,7 @@ BLI_NOINLINE static void calculate_sphere_vertex_data(MutableSpan<float3> positi
     const float theta = ring * delta_theta;
     const float sin_theta = std::sin(theta);
     const float z = std::cos(theta);
-    for (const int segment : IndexRange(1, segments)) {
+    for (const int segment : IndexRange(segments)) {
       const float x = sin_theta * segment_cosines[segment];
       const float y = sin_theta * segment_sines[segment];
       positions[vert_index] = float3(x, y, z) * radius;
@@ -251,11 +251,7 @@ BLI_NOINLINE static void calculate_sphere_uvs(Mesh *mesh,
 
   for (const int i_segment : IndexRange(segments)) {
     const int loop_start = i_segment * 3;
-    float segment = float(i_segment + 1);
-    if (i_segment == (segments - 1))
-    {
-      segment = 0.0f;
-    }
+    const float segment = float(i_segment);
     uvs[loop_start + 0] = float2((segment + 0.5f) * segments_inv, 0.0f);
     uvs[loop_start + 1] = float2(segment * segments_inv, dy);
     uvs[loop_start + 2] = float2((segment + 1.0f) * segments_inv, dy);
@@ -267,11 +263,7 @@ BLI_NOINLINE static void calculate_sphere_uvs(Mesh *mesh,
     const float ring = float(i_ring);
     for (const int i_segment : IndexRange(segments)) {
       const int loop_start = ring_loop_start + i_segment * 4;
-      float segment = float(i_segment + 1);
-      if (i_segment == (segments - 1))
-      {
-        segment = 0.0f;
-      }
+      const float segment = float(i_segment);
       uvs[loop_start + 0] = float2(segment * segments_inv, ring / rings);
       uvs[loop_start + 1] = float2(segment * segments_inv, (ring + 1.0f) / rings);
       uvs[loop_start + 2] = float2((segment + 1.0f) * segments_inv, (ring + 1.0f) / rings);
@@ -282,11 +274,7 @@ BLI_NOINLINE static void calculate_sphere_uvs(Mesh *mesh,
   const int bottom_loop_start = rings_loop_start + segments * (rings - 2) * 4;
   for (const int i_segment : IndexRange(segments)) {
     const int loop_start = bottom_loop_start + i_segment * 3;
-    float segment = float(i_segment + 1);
-    if (i_segment == (segments - 1))
-    {
-      segment = 0.0f;
-    }
+    const float segment = float(i_segment);
     uvs[loop_start + 0] = float2((segment + 0.5f) * segments_inv, 1.0f);
     uvs[loop_start + 1] = float2((segment + 1.0f) * segments_inv, 1.0f - dy);
     uvs[loop_start + 2] = float2(segment * segments_inv, 1.0f - dy);
