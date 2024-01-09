@@ -20,11 +20,11 @@
 #include "text_format.hh"
 
 /*---------------------------------------------------------------------*/
-/*Define all keywords who can use*/
+/* Define all keywords who can use
+*/
 
 static int textformat_glsl_literals_builtinfunc_data[]
 {
-    "Array"
     "attribute"
     "bool"
     "break"
@@ -114,16 +114,17 @@ static int textformat_glsl_literals_builtinfunc_data[]
     "void"
     "volatile"
     "while"
-    "#define"
-    "#defined"
-    "#elif"
-    "#else"
-    "#endif"
-    "#if"
-    "#ifdef"
-    "#pragma"
-    "#version"
-
+    "define"
+    "defined"
+    "elif"
+    "else"
+    "endif"
+    "if"
+    "ifdef"
+    "ifndef"
+    "pragma"
+    "version"
+    
 };
 
 static const Span<const char *> textformat_glsl_literals_builtinfunc(
@@ -167,10 +168,6 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "dFdy"
     "distance" 
     "dot"
-    "dxdx"
-    "dxdy"
-    "dydx"
-    "dydy"
     "EmitStreamVertex"
     "EmitVertex"
     "EndPrimitive"
@@ -192,7 +189,6 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "greaterThan"
     "greaterThanEqual"
     "groupMemoryBarrier"
-    "idexp"
     "imageAtomicAdd"
     "imageAtomicAnd"
     "imageAtomicCompSwap"
@@ -213,6 +209,7 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "intBitsToFloat"
     "isnan"
     "isinf"
+    "ldexp"
     "length"
     "lessThan"
     "lessThanEqual"
@@ -285,10 +282,10 @@ static const char * text_format_glsl_literals_reserved_data[]{
     "unpackUnorm4x8"
     "usubBorrow"
     
-  /*Add in futur verion when GLSL 4.5 support in Blender*/
-  /*"textureSamples"*/
+  /* Add in futur verion when GLSL 4.5 support in Blender */
+  /* "textureSamples" */
 
-  /*Built-In Variable */
+  /* Built-In Variable */
 
     "gl_ClipDistance"
     "gl_FragCoord"
@@ -324,22 +321,22 @@ static const char * text_format_glsl_literals_reserved_data[]{
 static const Span<const char * > text_format_glsl_literals_reserved(
     text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
 
-/*GLSL shader types*/
+/* GLSL shader types */
 static const char *text_format_glsl_literals_specialvar_data[]{
-    /* Force single column , sorted list*/
-    /*clang-format off*/
+    /* Force single column , sorted list */
+    /* clang-format off */
     "displacement",
     "shader",
     "surface",
     "volume",
-    /*clang-format on*/
+    /* clang-format on*/
 };
 static const Span<const char*> text_format_glsl_literals_specialvar(
     *text_format_glsl_literals_specialvar_data,
     ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
 
 /*---------------------------------------------------------------------*/
-/*name local functions 
+/* name local functions 
 */
 
 static int txtfmt_glsl_find_builtinfunc(const char *string)
@@ -398,7 +395,8 @@ static char txtfmt_glsl_format_identifier(const char *str)
     return fmt;
 }
 /*-----------------------------------------------------------------*/
-/*name format line implementation*/
+/* name format line implementation
+*/
 static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool do_next)
 {
     FlattenString fs;
@@ -409,17 +407,17 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
 
       if (line->prev && line->prev->format != nullptr) {
     fmt = line->prev->format;
-    cont = fmt[strlen(fmt) + 1]; /* Just after the null-terminator */
+    cont = fmt[strlen(fmt) + 1]; /* Just after the null-terminator. */
     BLI_assert((FMT_CONT_ALL & cont) == cont);
   }
   else {
     cont = FMT_CONT_NOP;
   }
 
-  /* Get original continuation from this line */
+  /* Get original continuation from this line. */
   if (line->format != nullptr) {
     fmt = line->format;
-    cont_orig = fmt[strlen(fmt) + 1]; /* Just after the null-terminator */
+    cont_orig = fmt[strlen(fmt) + 1]; /* Just after the null-terminator. */
     BLI_assert((FMT_CONT_ALL & cont_orig) == cont_orig);
   }
   else {
@@ -435,7 +433,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
   fmt = line->format;
 
   while (*str) {
-    /* Handle escape sequences by skipping both \ and next char */
+    /* Handle escape sequences by skipping both \ and next char. */
     if (*str == '\\') {
       *fmt = prev;
       fmt++;
@@ -499,7 +497,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
       else if (*str == ' ') {
         *fmt = FMT_TYPE_WHITESPACE;
       }
-      /* Numbers (digits not part of an identifier and periods followed by digits) */
+      /* Numbers (digits not part of an identifier and periods followed by digits). */
       else if ((prev != FMT_TYPE_DEFAULT && text_check_digit(*str)) ||
                (*str == '.' && text_check_digit(*(str + 1))))
       {
@@ -548,12 +546,12 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
     str++;
   }
 
-  /* Terminate and add continuation char */
+  /* Terminate and add continuation char. */
   *fmt = '\0';
   fmt++;
   *fmt = cont;
 
-  /* If continuation has changed and we're allowed, process the next line */
+  /* If continuation has changed and we're allowed, process the next line. */
   if (cont != cont_orig && do_next && line->next) {
     txtfmt_glsl_format_line(st, line->next, do_next);
   }
@@ -561,7 +559,8 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
   flatten_string_free(&fs);
 }
 /*-----------------------------------------------------------------*/
-/*name registration*/
+/* name registration 
+*/
 
 void ED_text_format_register_glsl()
 {
