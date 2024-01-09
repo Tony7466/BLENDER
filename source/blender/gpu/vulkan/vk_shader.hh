@@ -30,8 +30,8 @@ class VKShader : public Shader {
   /* TODO: Should we move descriptor set layout and pipeline layout to VKShaderInterface? */
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
-  VKPipeline pipeline_;
-
+  std::unique_ptr<VKPipeline> pipeline_;
+  Vector<uint32_t> specialization_values_;
  public:
   VKShader(const char *name);
   virtual ~VKShader();
@@ -110,6 +110,10 @@ class VKShader : public Shader {
   {
     return vk_descriptor_set_layout_;
   }
+  
+  VkSpecializationInfo build_specialzation();
+
+  const VkSpecializationInfo specialzation_ensure() ;
 
  private:
   Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);

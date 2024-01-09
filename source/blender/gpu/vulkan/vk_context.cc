@@ -192,6 +192,7 @@ void VKContext::bind_compute_pipeline()
 {
   VKShader *shader = unwrap(this->shader);
   BLI_assert(shader);
+  shader->specialzation_ensure();
   VKPipeline &pipeline = shader->pipeline_get();
   pipeline.bind(*this, VK_PIPELINE_BIND_POINT_COMPUTE);
   pipeline.update_push_constants(*this);

@@ -672,7 +672,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert((fragment_module_ != VK_NULL_HANDLE && info->tf_type_ == GPU_SHADER_TFB_NONE) ||
                (fragment_module_ == VK_NULL_HANDLE && info->tf_type_ != GPU_SHADER_TFB_NONE));
     BLI_assert(compute_module_ == VK_NULL_HANDLE);
-    pipeline_ = VKPipeline::create_graphics_pipeline(vk_interface->push_constants_layout_get());
+    pipeline_.reset(VKPipeline::create_graphics_pipeline(vk_interface->push_constants_layout_get()));
     result = true;
   }
   else {
@@ -680,9 +680,13 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert(geometry_module_ == VK_NULL_HANDLE);
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
-    pipeline_ = VKPipeline::create_compute_pipeline(
-        compute_module_, vk_pipeline_layout_, vk_interface->push_constants_layout_get());
-    result = pipeline_.is_valid();
+    auto specialization_info = build_specialzation();
+    pipeline_.reset(
+        VKPipeline::create_compute_pipeline(compute_module_,
+                                                    vk_pipeline_layout_,
+                                                    vk_interface->push_constants_layout_get(),
+                                                    &specialization_info));
+    result = pipeline_->is_valid();
   }
 
   if (result) {
@@ -1001,9 +1005,10 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   interface.init(info);
   std::stringstream ss;
 
-  /* TODO: Add support for specialization constants at compile time. */
   ss << "\n/* Specialization Constants (pass-through). */\n";
+  int constant_id = 0;
   for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+    ss << "layout(constant_id = " << std::to_string(constant_id++) << ") ";
     switch (sc.type) {
       case Type::INT:
         ss << "const int " << sc.name << "=" << std::to_string(sc.default_value.i) << ";\n";
@@ -1016,8 +1021,8 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
         break;
       case Type::FLOAT:
         /* Use uint representation to allow exact same bit pattern even if NaN. */
-        ss << "const float " << sc.name << "= uintBitsToFloat("
-           << std::to_string(sc.default_value.u) << "u);\n";
+        /* we can assign only the value of "const".  */
+        ss << "const float " << sc.name << "= " << std::to_string(sc.default_value.f) << ";\n";
         break;
       default:
         BLI_assert_unreachable();
@@ -1392,7 +1397,7 @@ int VKShader::program_handle_get() const
 
 VKPipeline &VKShader::pipeline_get()
 {
-  return pipeline_;
+  return *pipeline_;
 }
 
 const VKShaderInterface &VKShader::interface_get() const
@@ -1403,4 +1408,59 @@ const VKShaderInterface &VKShader::interface_get() const
   return *static_cast<const VKShaderInterface *>(interface);
 }
 
+VkSpecializationInfo VKShader::build_specialzation()
+{
+  if (constants.values.size() <= 0) {
+    VkSpecializationInfo null = {};
+    return null;
+  }
+  static Vector<VkSpecializationMapEntry> entries;
+  entries.resize(constants.values.size());
+  specialization_values_.clear();
+  for (int i = 0; i < constants.values.size(); i++) {
+    entries[i].constantID = i;
+    entries[i].offset = sizeof(uint32_t) * i;
+    entries[i].size = sizeof(uint32_t);
+    specialization_values_.append(constants.values[i].u);
+  };
+  return {/* uint32_t mapEntryCount */ static_cast<uint32_t>(entries.size()),
+          /* const VkSpecializationMapEntry *pMapEntries */ entries.data(),
+          /* size_t dataSize */ constants.values.size() * sizeof(uint32_t),
+          /* const void *pData */ constants.values.data()};
+};
+
+const VkSpecializationInfo VKShader::specialzation_ensure()
+{
+  VkSpecializationInfo null = {};
+  if (constants.values.size() > 0) {
+    bool update = false;
+    if (specialization_values_.size() != constants.values.size()) {
+      update = true;
+    }
+    else {
+      for (int i = 0; i < constants.values.size(); i++) {
+        if (specialization_values_[i] != constants.values[i].u) {
+          update = true;
+          break;
+        }
+      }
+    }
+    if (update) {
+      auto info = build_specialzation();
+      if (is_graphics_shader()) {
+        return info;
+      }
+      else {
+        pipeline_.reset(VKPipeline::create_compute_pipeline(
+            compute_module_,
+            vk_pipeline_layout_,
+            reinterpret_cast<VKShaderInterface *>(interface)->push_constants_layout_get(),
+            &info));
+        return null;
+      }
+    }
+    BLI_assert(pipeline_->is_valid() == true);
+  }
+  return null;
+};
 }  // namespace blender::gpu

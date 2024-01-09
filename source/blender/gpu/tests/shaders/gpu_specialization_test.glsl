@@ -12,6 +12,7 @@ void main()
   data_out[3] = int(bool_in);
 
 #  if defined(GPU_VERTEX_SHADER)
+  gl_PointSize = 1.f;
   gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
 #  endif
 }
