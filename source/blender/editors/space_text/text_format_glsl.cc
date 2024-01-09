@@ -323,7 +323,7 @@ static const Span<const char * > text_format_glsl_literals_reserved(
     text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
 
 /* GLSL shader types */
-static const char *text_format_glsl_literals_specialvar_data[]{
+static const char *text_format_glsl_literals_specialvar_data[] = {
     /* Force single column , sorted list */
     /* clang-format off */
     "displacement",
@@ -388,12 +388,11 @@ static char txtfmt_glsl_format_identifier(const char *str)
 
     /* clang-format off */
 
-
-    if       (txtfmt_glsl_find_specialvar(str)   != -1) {fmt = FMT_TYPE_SPECIAL;}
-     else if (txtfmt_glsl_find_builtfunc(str)    != -1) {fmt = FMT_TYPE_KEYWORD;}
-     else if (txtfmt_glsl_find_reserved(str)     != -1) {fmt = FMT_TYPE_RESERVED;}
-     else if (txtfmt_glsl_find_preprocessor(str) != -1) {fmt = FMT_TYPE_DIRECTIVE;}
-     else                                               {fmt = FMT_TYPE_DEFAULT;}
+   if        (txtfmt_glsl_find_specialvar(str)   != -1) {fmt = FMT_TYPE_SPECIAL;
+   } else if (txtfmt_glsl_find_builtfunc(str)    != -1) {fmt = FMT_TYPE_KEYWORD;
+   } else if (txtfmt_glsl_find_reserved(str)     != -1) {fmt = FMT_TYPE_RESERVED;
+   } else if (txtfmt_glsl_find_preprocessor(str) != -1) {fmt = FMT_TYPE_DIRECTIVE;
+   } else                                               {fmt = FMT_TYPE_DEFAULT;
 
     /* clang-format on */
 
@@ -526,12 +525,12 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_glsl_format_identifier()`. */
 
-    if       ((i = txtfmt_glsl_find_specialvar(str))   != -1) {prev = FMT_TYPE_SPECIAL;}
-     else if ((i = txtfmt_glsl_find_builtinfunc(str))  != -1) {prev = FMT_TYPE_KEYWORD;}
-     else if ((i = txtfmt_glsl_find_reserved(str))     != -1) {prev = FMT_TYPE_RESERVED;}
-     else if ((i = txtfmt_glsl_find_preprocessor(str)) != -1) {prev = FMT_TYPE_DIRECTIVE;}
-
-         /* clang-format on */
+        if       ((i = txtfmt_glsl_find_specialvar(str))   != -1) {prev = FMT_TYPE_SPECIAL;
+        }else if ((i = txtfmt_glsl_find_builtinfunc(str))  != -1) {prev = FMT_TYPE_KEYWORD;
+        }else if ((i = txtfmt_glsl_find_reserved(str))     != -1) {prev = FMT_TYPE_RESERVED;
+        }else if ((i = txtfmt_glsl_find_preprocessor(str)) != -1) {prev = FMT_TYPE_DIRECTIVE;
+        }
+        /* clang-format on */
 
         if (i > 0) {
           if (prev == FMT_TYPE_DIRECTIVE) { /* can contain utf8 */
