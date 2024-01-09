@@ -1582,56 +1582,51 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   {
     debug_name_ = "Repeat Zone";
 
-    const int iteration_input_index = inputs_.append_and_get_index_as(
-        "Iterations", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
-    zone_info.indices.inputs.main.append(iteration_input_index);
+    zone_info.indices.inputs.main.append(inputs_.append_and_get_index_as(
+        "Iterations", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used));
     for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_front(1).drop_back(1)) {
-      const int input_index = inputs_.append_and_get_index_as(
-          socket->name, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
-      zone_info.indices.inputs.main.append(input_index);
+      zone_info.indices.inputs.main.append(inputs_.append_and_get_index_as(
+          socket->name, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe));
     }
 
     for (const bNodeLink *link : zone.border_links) {
-      const int border_link_index = inputs_.append_and_get_index_as(
-          link->fromsock->name,
-          *link->tosock->typeinfo->geometry_nodes_cpp_type,
-          lf::ValueUsage::Maybe);
-      zone_info.indices.inputs.border_links.append(border_link_index);
+      zone_info.indices.inputs.border_links.append(
+          inputs_.append_and_get_index_as(link->fromsock->name,
+                                          *link->tosock->typeinfo->geometry_nodes_cpp_type,
+                                          lf::ValueUsage::Maybe));
     }
 
     for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
-      const int output_usage_index = inputs_.append_and_get_index_as(
-          "Usage", CPPType::get<bool>(), lf::ValueUsage::Maybe);
-      zone_info.indices.inputs.output_usages.append(output_usage_index);
-      const int output_index = outputs_.append_and_get_index_as(
-          socket->name, *socket->typeinfo->geometry_nodes_cpp_type);
-      zone_info.indices.outputs.main.append(output_index);
+      zone_info.indices.inputs.output_usages.append(
+          inputs_.append_and_get_index_as("Usage", CPPType::get<bool>(), lf::ValueUsage::Maybe));
+      zone_info.indices.outputs.main.append(outputs_.append_and_get_index_as(
+          socket->name, *socket->typeinfo->geometry_nodes_cpp_type));
     }
 
     for ([[maybe_unused]] const bNodeSocket *socket :
          zone.input_node->input_sockets().drop_back(1))
     {
-      const int input_usage_index = outputs_.append_and_get_index_as("Usage",
-                                                                     CPPType::get<bool>());
-      zone_info.indices.outputs.input_usages.append(input_usage_index);
+      zone_info.indices.outputs.input_usages.append(
+          outputs_.append_and_get_index_as("Usage", CPPType::get<bool>()));
     }
 
     for ([[maybe_unused]] const bNodeLink *link : zone.border_links) {
-      const int border_link_usage_index = outputs_.append_and_get_index_as("Border Link Usage",
-                                                                           CPPType::get<bool>());
-      zone_info.indices.outputs.border_link_usages.append(border_link_usage_index);
+      zone_info.indices.outputs.border_link_usages.append(
+          outputs_.append_and_get_index_as("Border Link Usage", CPPType::get<bool>()));
     }
 
     for (const auto item : body_fn_.indices.inputs.attributes_by_field_source_index.items()) {
-      const int index = inputs_.append_and_get_index_as(
-          "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe);
-      zone_info.indices.inputs.attributes_by_field_source_index.add_new(item.key, index);
+      zone_info.indices.inputs.attributes_by_field_source_index.add_new(
+          item.key,
+          inputs_.append_and_get_index_as(
+              "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe));
     }
     for (const auto item : body_fn_.indices.inputs.attributes_by_caller_propagation_index.items())
     {
-      const int index = inputs_.append_and_get_index_as(
-          "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe);
-      zone_info.indices.inputs.attributes_by_caller_propagation_index.add_new(item.key, index);
+      zone_info.indices.inputs.attributes_by_caller_propagation_index.add_new(
+          item.key,
+          inputs_.append_and_get_index_as(
+              "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe));
     }
   }
 
@@ -2190,12 +2185,10 @@ struct GeometryNodesLazyFunctionBuilder {
 
     if (zone.input_node != nullptr) {
       for (const bNodeSocket *bsocket : zone.input_node->input_sockets().drop_back(1)) {
-        const int input_index = lf_zone_inputs.append_and_get_index(
-            &lf_graph.add_input(*bsocket->typeinfo->geometry_nodes_cpp_type, bsocket->name));
-        zone_info.indices.inputs.main.append(input_index);
-        const int input_usage_index = lf_zone_outputs.append_and_get_index(
-            &lf_graph.add_output(CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name)));
-        zone_info.indices.outputs.input_usages.append(input_usage_index);
+        zone_info.indices.inputs.main.append(lf_zone_inputs.append_and_get_index(
+            &lf_graph.add_input(*bsocket->typeinfo->geometry_nodes_cpp_type, bsocket->name)));
+        zone_info.indices.outputs.input_usages.append(lf_zone_outputs.append_and_get_index(
+            &lf_graph.add_output(CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name))));
       }
     }
 
@@ -2205,12 +2198,10 @@ struct GeometryNodesLazyFunctionBuilder {
         zone, lf_graph, lf_zone_outputs, zone_info.indices.outputs.border_link_usages);
 
     for (const bNodeSocket *bsocket : zone.output_node->output_sockets().drop_back(1)) {
-      const int output_index = lf_zone_outputs.append_and_get_index(
-          &lf_graph.add_output(*bsocket->typeinfo->geometry_nodes_cpp_type, bsocket->name));
-      zone_info.indices.outputs.main.append(output_index);
-      const int output_usage_index = lf_zone_inputs.append_and_get_index(
-          &lf_graph.add_input(CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name)));
-      zone_info.indices.inputs.output_usages.append(output_usage_index);
+      zone_info.indices.outputs.main.append(lf_zone_outputs.append_and_get_index(
+          &lf_graph.add_output(*bsocket->typeinfo->geometry_nodes_cpp_type, bsocket->name)));
+      zone_info.indices.inputs.output_usages.append(lf_zone_inputs.append_and_get_index(
+          &lf_graph.add_input(CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name))));
     }
 
     lf::Node &lf_simulation_usage_node = [&]() -> lf::Node & {
@@ -2286,17 +2277,15 @@ struct GeometryNodesLazyFunctionBuilder {
     for (const auto item : lf_attribute_set_by_field_source_index.items()) {
       lf::OutputSocket &lf_attribute_set_socket = *item.value;
       if (lf_attribute_set_socket.node().is_interface()) {
-        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
-        zone_info.indices.inputs.attributes_by_field_source_index.add_new(item.key,
-                                                                          zone_input_index);
+        zone_info.indices.inputs.attributes_by_field_source_index.add_new(
+            item.key, lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket));
       }
     }
     for (const auto item : lf_attribute_set_by_caller_propagation_index.items()) {
       lf::OutputSocket &lf_attribute_set_socket = *item.value;
       if (lf_attribute_set_socket.node().is_interface()) {
-        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
-        zone_info.indices.inputs.attributes_by_caller_propagation_index.add_new(item.key,
-                                                                                zone_input_index);
+        zone_info.indices.inputs.attributes_by_caller_propagation_index.add_new(
+            item.key, lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket));
       }
     }
     this->link_attribute_set_inputs(lf_graph,
@@ -2354,10 +2343,9 @@ struct GeometryNodesLazyFunctionBuilder {
           *bsocket->typeinfo->geometry_nodes_cpp_type, bsocket->name);
       lf::GraphOutputSocket &lf_input_usage = lf_body_graph.add_output(
           CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name));
-      const int input_index = lf_body_inputs.append_and_get_index(&lf_input);
-      body_fn.indices.inputs.main.append(input_index);
-      const int input_usage = lf_body_outputs.append_and_get_index(&lf_input_usage);
-      body_fn.indices.outputs.input_usages.append(input_usage);
+      body_fn.indices.inputs.main.append(lf_body_inputs.append_and_get_index(&lf_input));
+      body_fn.indices.outputs.input_usages.append(
+          lf_body_outputs.append_and_get_index(&lf_input_usage));
       graph_params.lf_output_by_bsocket.add_new(bsocket, &lf_input);
     }
 
@@ -2373,10 +2361,9 @@ struct GeometryNodesLazyFunctionBuilder {
           CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name));
       graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_output);
       graph_params.usage_by_bsocket.add(bsocket, &lf_output_usage);
-      const int output_index = lf_body_outputs.append_and_get_index(&lf_output);
-      body_fn.indices.outputs.main.append(output_index);
-      const int output_usage_index = lf_body_inputs.append_and_get_index(&lf_output_usage);
-      body_fn.indices.inputs.output_usages.append(output_usage_index);
+      body_fn.indices.outputs.main.append(lf_body_outputs.append_and_get_index(&lf_output));
+      body_fn.indices.inputs.output_usages.append(
+          lf_body_inputs.append_and_get_index(&lf_output_usage));
     }
 
     this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
@@ -2418,17 +2405,15 @@ struct GeometryNodesLazyFunctionBuilder {
     for (const auto item : lf_attribute_set_by_field_source_index.items()) {
       lf::OutputSocket &lf_attribute_set_socket = *item.value;
       if (lf_attribute_set_socket.node().is_interface()) {
-        const int body_input_index = lf_body_inputs.append_and_get_index(&lf_attribute_set_socket);
-        body_fn.indices.inputs.attributes_by_field_source_index.add_new(item.key,
-                                                                        body_input_index);
+        body_fn.indices.inputs.attributes_by_field_source_index.add_new(
+            item.key, lf_body_inputs.append_and_get_index(&lf_attribute_set_socket));
       }
     }
     for (const auto item : lf_attribute_set_by_caller_propagation_index.items()) {
       lf::OutputSocket &lf_attribute_set_socket = *item.value;
       if (lf_attribute_set_socket.node().is_interface()) {
-        const int body_input_index = lf_body_inputs.append_and_get_index(&lf_attribute_set_socket);
-        body_fn.indices.inputs.attributes_by_caller_propagation_index.add_new(item.key,
-                                                                              body_input_index);
+        body_fn.indices.inputs.attributes_by_caller_propagation_index.add_new(
+            item.key, lf_body_inputs.append_and_get_index(&lf_attribute_set_socket));
       }
     }
     this->link_attribute_set_inputs(lf_body_graph,
@@ -2460,10 +2445,9 @@ struct GeometryNodesLazyFunctionBuilder {
                                       Vector<int> &r_indices)
   {
     for (const bNodeLink *border_link : zone.border_links) {
-      const int input_index = r_lf_graph_inputs.append_and_get_index(
+      r_indices.append(r_lf_graph_inputs.append_and_get_index(
           &lf_graph.add_input(*border_link->tosock->typeinfo->geometry_nodes_cpp_type,
-                              StringRef("Link from ") + border_link->fromsock->name));
-      r_indices.append(input_index);
+                              StringRef("Link from ") + border_link->fromsock->name)));
     }
   }
 
@@ -2473,9 +2457,8 @@ struct GeometryNodesLazyFunctionBuilder {
                                            Vector<int> &r_indices)
   {
     for (const bNodeLink *border_link : zone.border_links) {
-      const int input_usage_index = r_lf_graph_outputs.append_and_get_index(&lf_graph.add_output(
-          CPPType::get<bool>(), StringRef("Usage: Link from ") + border_link->fromsock->name));
-      r_indices.append(input_usage_index);
+      r_indices.append(r_lf_graph_outputs.append_and_get_index(&lf_graph.add_output(
+          CPPType::get<bool>(), StringRef("Usage: Link from ") + border_link->fromsock->name)));
     }
   }
 
