@@ -883,7 +883,11 @@ endif()
 if(WITH_GTESTS)
   set(TEST_SRC)
   set(TEST_INC)
-  set(TEST_LIB)
+  set(TEST_LIB
+    bf_intern_ghost
+    bf_imbuf
+    bf_windowmanager
+  )
 
   if(WITH_GPU_DRAW_TESTS)
     list(APPEND TEST_SRC
@@ -893,13 +897,13 @@ if(WITH_GTESTS)
       tests/immediate_test.cc
       tests/index_buffer_test.cc
       tests/push_constants_test.cc
+      tests/shader_create_info_test.cc
       tests/shader_test.cc
       tests/specialization_constants_test.cc
       tests/state_blend_test.cc
       tests/storage_buffer_test.cc
       tests/texture_test.cc
       tests/vertex_buffer_test.cc
-      tests/shader_create_info_test.cc
     )
   endif()
 
@@ -918,12 +922,13 @@ if(WITH_GTESTS)
   endif()
 
   if (TEST_SRC)
-    list(APPEND TEST_SRC
+    set(TEST_COMMON_SRC
       tests/gpu_testing.cc
       tests/gpu_testing.hh
     )
 
-    include(GTestTesting)
-    blender_add_test_lib(bf_gpu_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+    blender_add_test_suite_lib(gpu
+      "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}" "${TEST_COMMON_SRC}"
+    )
   endif()
 endif()
