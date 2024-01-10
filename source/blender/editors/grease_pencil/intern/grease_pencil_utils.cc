@@ -263,12 +263,12 @@ Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
   Vector<MutableDrawingInfo> editable_drawings;
   Span<const Layer *> layers = grease_pencil.layers();
   for (const int layer_i : layers.index_range()) {
-    const Layer *layer = layers[layer_i];
-    if (!layer->is_editable()) {
+    const Layer &layer = *layers[layer_i];
+    if (!layer.is_editable()) {
       continue;
     }
     const Array<int> frame_numbers = get_frame_numbers_for_layer(
-        *layer, current_frame, use_multi_frame_editing);
+        layer, current_frame, use_multi_frame_editing);
     for (const int frame_number : frame_numbers) {
       if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
         editable_drawings.append({*drawing, layer_i, frame_number});
@@ -280,7 +280,9 @@ Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
 }
 
 Array<MutableDrawingInfo> retrieve_editable_drawings_by_layer(
-    const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer)
+    const Scene &scene,
+    GreasePencil &grease_pencil,
+    const blender::bke::greasepencil::Layer &layer)
 {
   using namespace blender::bke::greasepencil;
   const int current_frame = scene.r.cfra;
@@ -289,13 +291,11 @@ Array<MutableDrawingInfo> retrieve_editable_drawings_by_layer(
                                         GP_USE_MULTI_FRAME_EDITING) != 0;
 
   Vector<MutableDrawingInfo> editable_drawings;
-  if (layer.is_editable()) {
-    const Array<int> frame_numbers = get_frame_numbers_for_layer(
-        layer, current_frame, use_multi_frame_editing);
-    for (const int frame_number : frame_numbers) {
-      if (Drawing *drawing = grease_pencil.get_editable_drawing_at(&layer, frame_number)) {
-        editable_drawings.append({*drawing, layer.drawing_index_at(frame_number), frame_number});
-      }
+  const Array<int> frame_numbers = get_frame_numbers_for_layer(
+      layer, current_frame, use_multi_frame_editing);
+  for (const int frame_number : frame_numbers) {
+    if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
+      editable_drawings.append({*drawing, layer.drawing_index_at(frame_number), frame_number});
     }
   }
 
@@ -313,12 +313,12 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePen
   Vector<DrawingInfo> visible_drawings;
   Span<const Layer *> layers = grease_pencil.layers();
   for (const int layer_i : layers.index_range()) {
-    const Layer *layer = layers[layer_i];
-    if (!layer->is_visible()) {
+    const Layer &layer = *layers[layer_i];
+    if (!layer.is_visible()) {
       continue;
     }
     const Array<int> frame_numbers = get_frame_numbers_for_layer(
-        *layer, current_frame, use_multi_frame_editing);
+        layer, current_frame, use_multi_frame_editing);
     for (const int frame_number : frame_numbers) {
       if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number)) {
         visible_drawings.append({*drawing, layer_i, frame_number});
