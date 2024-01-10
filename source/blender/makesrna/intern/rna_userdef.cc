@@ -450,7 +450,6 @@ static bUserAssetLibrary *rna_userdef_asset_library_new(const char *name, const 
 {
   bUserAssetLibrary *new_library = BKE_preferences_asset_library_add(
       &U, name ? name : "", directory ? directory : "");
-  U.active_asset_library = BLI_findindex(&U.asset_libraries, new_library);
 
   /* Trigger refresh for the Asset Browser. */
   WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
