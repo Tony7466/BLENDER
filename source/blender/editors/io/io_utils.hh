@@ -22,10 +22,5 @@ namespace blender::ed::io {
  */
 int filesel_drop_import_invoke(bContext *C, wmOperator *op, const wmEvent *event);
 
-/**
- * Shows filepath information if the operator is running as a dialog popup.
- */
-void filepath_label_draw(const bContext *C, const wmOperator *op);
-
 bool poll_file_object_drop(const bContext *C, blender::bke::FileHandlerType *fh);
 }  // namespace blender::ed::io

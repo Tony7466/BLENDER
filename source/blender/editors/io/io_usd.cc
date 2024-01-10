@@ -598,14 +598,13 @@ static void wm_usd_import_cancel(bContext * /*C*/, wmOperator *op)
   free_operator_customdata(op);
 }
 
-static void wm_usd_import_draw(bContext *C, wmOperator *op)
+static void wm_usd_import_draw(bContext */*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   PointerRNA *ptr = op->ptr;
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  blender::ed::io::filepath_label_draw(C, op);
   uiLayout *box = uiLayoutBox(layout);
   uiLayout *col = uiLayoutColumnWithHeading(box, true, IFACE_("Data Types"));
   uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);

@@ -471,7 +471,6 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
-  blender::ed::io::filepath_label_draw(C, op);
   ui_obj_import_settings(op->layout, &ptr);
 }
 

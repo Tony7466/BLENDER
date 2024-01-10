@@ -794,9 +794,8 @@ static void uiCollada_importSettings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(box, imfptr, "keep_bind_info", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_collada_import_draw(bContext *C, wmOperator *op)
+static void wm_collada_import_draw(bContext */*C*/, wmOperator *op)
 {
-  blender::ed::io::filepath_label_draw(C, op);
   uiCollada_importSettings(op->layout, op->ptr);
 }
 

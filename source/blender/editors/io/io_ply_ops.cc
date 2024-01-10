@@ -300,9 +300,8 @@ static void ui_ply_import_settings(uiLayout *layout, PointerRNA *ptr)
   uiItemR(col, ptr, "import_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_ply_import_draw(bContext *C, wmOperator *op)
+static void wm_ply_import_draw(bContext */*C*/, wmOperator *op)
 {
-  blender::ed::io::filepath_label_draw(C, op);
   ui_ply_import_settings(op->layout, op->ptr);
 }
 

@@ -586,9 +586,8 @@ static void ui_alembic_import_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(col, imfptr, "always_add_cache_reader", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_alembic_import_draw(bContext *C, wmOperator *op)
+static void wm_alembic_import_draw(bContext * /*C*/, wmOperator *op)
 {
-  blender::ed::io::filepath_label_draw(C, op);
   ui_alembic_import_settings(op->layout, op->ptr);
 }
 

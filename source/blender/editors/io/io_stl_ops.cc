@@ -251,9 +251,8 @@ static void ui_stl_import_settings(uiLayout *layout, PointerRNA *ptr)
   uiItemR(col, ptr, "use_mesh_validate", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_stl_import_draw(bContext *C, wmOperator *op)
+static void wm_stl_import_draw(bContext * /*C*/, wmOperator *op)
 {
-  blender::ed::io::filepath_label_draw(C, op);
   ui_stl_import_settings(op->layout, op->ptr);
 }
 

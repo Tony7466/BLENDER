@@ -138,9 +138,8 @@ static void ui_gpencil_import_svg_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(col, imfptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_gpencil_import_svg_draw(bContext *C, wmOperator *op)
+static void wm_gpencil_import_svg_draw(bContext * /*C*/, wmOperator *op)
 {
-  blender::ed::io::filepath_label_draw(C, op);
   ui_gpencil_import_svg_settings(op->layout, op->ptr);
 }
 
