@@ -7,6 +7,7 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/tokens.h>
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_material.h"
@@ -15,6 +16,7 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 
 #include "hydra_scene_delegate.h"
@@ -162,7 +164,7 @@ void CurvesData::write_curves()
   MutableSpan(vertices_.data(), vertices_.size()).copy_from(positions.cast<pxr::GfVec3f>());
 
   const VArray<float> radii = *curves.attributes().lookup_or_default<float>(
-      "radius", ATTR_DOMAIN_POINT, 0.01f);
+      "radius", bke::AttrDomain::Point, 0.01f);
   widths_.resize(curves.points_num());
   for (const int i : curves.points_range()) {
     widths_[i] = radii[i] * 2.0f;
