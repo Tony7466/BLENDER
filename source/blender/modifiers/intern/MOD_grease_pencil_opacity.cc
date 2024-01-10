@@ -93,18 +93,24 @@ static void free_data(ModifierData *md)
 }
 
 static void modify_curves(ModifierData *md,
-                          const ModifierEvalContext * /*ctx*/,
+                          const ModifierEvalContext *ctx,
                           bke::CurvesGeometry &curves)
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-  UNUSED_VARS(omd);
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
       "opacity", bke::AttrDomain::Point);
 
-  for (const int i : opacities.span.index_range()) {
-    opacities.span[i] *= 0.5f;
+  OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  IndexMaskMemory mask_memory;
+  IndexMask curves_mask = greasepencil::get_filtered_stroke_mask(
+      ctx->object, curves, omd->filter, mask_memory);
+  for (const int64_t i : curves_mask.index_range()) {
+    const int64_t curve_i = curves_mask[i];
+    for (const int64_t point_i : points_by_curve[curve_i]) {
+      opacities.span[point_i] *= 0.5f;
+    }
   }
 
   opacities.finish();
@@ -114,11 +120,9 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
+  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   const int frame = scene->r.cfra;
-
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-  UNUSED_VARS(omd);
 
   GreasePencil *grease_pencil = geometry_set->get_grease_pencil_for_write();
   if (grease_pencil == nullptr) {
