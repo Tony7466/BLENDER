@@ -119,6 +119,12 @@ class VectorBlurOperation : public NodeOperation {
     return output;
   }
 
+  /* The max tile velocity image computes the maximum within 32x32 blocks, while the velocity can
+   * in fact extend beyond such a small block. So we dilate the max blocks by taking the maximum
+   * along the path of each of the max velocity tiles. Since the shader uses custom max atomics,
+   * the output will be an indirection buffer that points to a particular tile in the original max
+   * tile velocity image. This is done as a form of performance optimization, see the shader for
+   * more information. */
   GPUStorageBuf *dilate_max_velocity(Result &max_tile_velocity)
   {
     GPUShader *shader = context().get_shader("compositor_motion_blur_max_velocity_dilate");
