@@ -34,7 +34,7 @@
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_movieclip.h"
 #include "BKE_scene.h"
@@ -238,6 +238,7 @@ void SEQ_render_new_render_data(Main *bmain,
   r_context->is_proxy_render = false;
   r_context->view_id = 0;
   r_context->gpu_offscreen = nullptr;
+  r_context->gpu_viewport = nullptr;
   r_context->task_id = SEQ_TASK_MAIN_RENDER;
   r_context->is_prefetch_render = false;
 }
@@ -697,7 +698,8 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
+      (ibuf->x != context->rectx || ibuf->y != context->recty))
+  {
     use_preprocess = true;
   }
 
@@ -1209,7 +1211,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
     if (sanim && sanim->anim) {
       short fps_denom;
       float fps_num;
-      IMB_anim_get_fps(sanim->anim, &fps_denom, &fps_num, true);
+      IMB_anim_get_fps(sanim->anim, true, &fps_denom, &fps_num);
       seq->strip->stripdata->orig_fps = fps_denom / fps_num;
     }
     seq->strip->stripdata->orig_width = ibuf->x;
@@ -1224,7 +1226,7 @@ static ImBuf *seq_get_movieclip_ibuf(Sequence *seq, MovieClipUser user)
   ImBuf *ibuf = nullptr;
   float tloc[2], tscale, tangle;
   if (seq->clip_flag & SEQ_MOVIECLIP_RENDER_STABILIZED) {
-    ibuf = BKE_movieclip_get_stable_ibuf(seq->clip, &user, tloc, &tscale, &tangle, 0);
+    ibuf = BKE_movieclip_get_stable_ibuf(seq->clip, &user, 0, tloc, &tscale, &tangle);
   }
   else {
     ibuf = BKE_movieclip_get_ibuf_flag(seq->clip, &user, seq->clip->flag, MOVIECLIP_CACHE_SKIP);
@@ -1430,14 +1432,14 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
    */
 
   const bool is_rendering = G.is_rendering;
-  const bool is_background = G.background;
-  const bool do_seq_gl = is_rendering ? false : (context->scene->r.seq_prev_type) != OB_RENDER;
+  bool do_seq_gl = !context->for_render && (context->scene->r.seq_prev_type) != OB_RENDER &&
+                   BLI_thread_is_main();
+
   bool have_comp = false;
   bool use_gpencil = true;
   /* do we need to re-evaluate the frame after rendering? */
   bool is_frame_update = false;
   Scene *scene;
-  int is_thread_main = BLI_thread_is_main();
 
   /* don't refer to seq->scene above this point!, it can be nullptr */
   if (seq->scene == nullptr) {
@@ -1498,7 +1500,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
   is_frame_update = (orig_data.timeline_frame != scene->r.cfra) ||
                     (orig_data.subframe != scene->r.subframe);
 
-  if ((sequencer_view3d_fn && do_seq_gl && camera) && is_thread_main) {
+  if ((sequencer_view3d_fn && do_seq_gl && camera)) {
     char err_out[256] = "unknown";
     int width, height;
     BKE_render_resolution(&scene->r, false, &width, &height);
@@ -1534,6 +1536,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         scene->r.alphamode,
         viewname,
         context->gpu_offscreen,
+        context->gpu_viewport,
         err_out);
     if (ibuf == nullptr) {
       fprintf(stderr, "seq_render_scene_strip failed to get opengl buffer: %s\n", err_out);
@@ -1544,36 +1547,39 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
     const int totviews = BKE_scene_multiview_num_views_get(&scene->r);
     ImBuf **ibufs_arr;
 
-    ibufs_arr = static_cast<ImBuf **>(
-        MEM_callocN(sizeof(ImBuf *) * totviews, "Sequence Image Views Imbufs"));
-
-    /* XXX: this if can be removed when sequence preview rendering uses the job system
+    /*
+     * XXX: this if can be removed when sequence preview rendering uses the job system
      *
-     * disable rendered preview for sequencer while rendering -- it's very much possible
-     * that preview render will went into conflict with final render
+     * Disable rendered preview for sequencer while rendering - invoked render job will
+     * conflict with already running render
      *
      * When rendering from command line renderer is called from main thread, in this
      * case it's always safe to render scene here
      */
-    if (!is_thread_main || is_rendering == false || is_background || context->for_render) {
-      if (re == nullptr) {
-        re = RE_NewSceneRender(scene);
-      }
-
-      const float subframe = frame - floorf(frame);
-
-      RE_RenderFrame(re,
-                     context->bmain,
-                     scene,
-                     have_comp ? nullptr : view_layer,
-                     camera,
-                     floorf(frame),
-                     subframe,
-                     false);
-
-      /* restore previous state after it was toggled on & off by RE_RenderFrame */
-      G.is_rendering = is_rendering;
+    if (!context->for_render && (is_rendering && !G.background)) {
+      goto finally;
     }
+
+    ibufs_arr = static_cast<ImBuf **>(
+        MEM_callocN(sizeof(ImBuf *) * totviews, "Sequence Image Views Imbufs"));
+
+    if (re == nullptr) {
+      re = RE_NewSceneRender(scene);
+    }
+
+    const float subframe = frame - floorf(frame);
+
+    RE_RenderFrame(re,
+                   context->bmain,
+                   scene,
+                   have_comp ? nullptr : view_layer,
+                   camera,
+                   floorf(frame),
+                   subframe,
+                   false);
+
+    /* restore previous state after it was toggled on & off by RE_RenderFrame */
+    G.is_rendering = is_rendering;
 
     for (int view_id = 0; view_id < totviews; view_id++) {
       SeqRenderData localcontext = *context;

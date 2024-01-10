@@ -27,8 +27,6 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -47,7 +45,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_curve.hh"
 #include "BKE_displist.h"
@@ -59,7 +57,7 @@
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node.hh"
@@ -68,7 +66,7 @@
 #include "BKE_object_types.hh"
 #include "BKE_preview_image.hh"
 #include "BKE_scene.h"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -325,8 +323,8 @@ Material *BKE_gpencil_material_add(Main *bmain, const char *name)
 Material ***BKE_object_material_array_p(Object *ob)
 {
   if (ob->type == OB_MESH) {
-    Mesh *me = static_cast<Mesh *>(ob->data);
-    return &(me->mat);
+    Mesh *mesh = static_cast<Mesh *>(ob->data);
+    return &(mesh->mat);
   }
   if (ELEM(ob->type, OB_CURVES_LEGACY, OB_FONT, OB_SURF)) {
     Curve *cu = static_cast<Curve *>(ob->data);
@@ -362,8 +360,8 @@ Material ***BKE_object_material_array_p(Object *ob)
 short *BKE_object_material_len_p(Object *ob)
 {
   if (ob->type == OB_MESH) {
-    Mesh *me = static_cast<Mesh *>(ob->data);
-    return &(me->totcol);
+    Mesh *mesh = static_cast<Mesh *>(ob->data);
+    return &(mesh->totcol);
   }
   if (ELEM(ob->type, OB_CURVES_LEGACY, OB_FONT, OB_SURF)) {
     Curve *cu = static_cast<Curve *>(ob->data);
@@ -464,6 +462,9 @@ static void material_data_index_remove_id(ID *id, short index)
     case ID_CU_LEGACY:
       BKE_curve_material_index_remove((Curve *)id, index);
       break;
+    case ID_GP:
+      BKE_grease_pencil_material_index_remove(reinterpret_cast<GreasePencil *>(id), index);
+      break;
     case ID_MB:
     case ID_CV:
     case ID_PT:
@@ -502,6 +503,9 @@ bool BKE_object_material_slot_used(Object *object, short actcol)
       return false;
     case ID_GD_LEGACY:
       return BKE_gpencil_material_index_used((bGPdata *)ob_data, actcol - 1);
+    case ID_GP:
+      return BKE_grease_pencil_material_index_used(reinterpret_cast<GreasePencil *>(ob_data),
+                                                   actcol - 1);
     default:
       return false;
   }
@@ -923,7 +927,8 @@ void BKE_objects_materials_test_all(Main *bmain, ID *id)
   BKE_main_lock(bmain);
   int processed_objects = 0;
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     if (ob->data == id) {
       BKE_object_material_resize(bmain, ob, *totcol, false);
       processed_objects++;
@@ -1359,14 +1364,14 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
     }
   }
 
-  /* check indices from mesh */
-  if (ELEM(ob->type, OB_MESH, OB_CURVES_LEGACY, OB_SURF, OB_FONT)) {
+  /* check indices from mesh and grease pencil. */
+  if (ELEM(ob->type, OB_MESH, OB_CURVES_LEGACY, OB_SURF, OB_FONT, OB_GREASE_PENCIL)) {
     material_data_index_remove_id((ID *)ob->data, actcol - 1);
     if (ob->runtime->curve_cache) {
       BKE_displist_free(&ob->runtime->curve_cache->disp);
     }
   }
-  /* check indices from gpencil */
+  /* check indices from gpencil legacy. */
   else if (ob->type == OB_GPENCIL_LEGACY) {
     BKE_gpencil_material_index_reassign((bGPdata *)ob->data, ob->totcol, actcol - 1);
   }
@@ -1632,6 +1637,14 @@ static bool texpaint_slot_node_find_cb(bNode *node, void *userdata)
 
 bNode *BKE_texpaint_slot_material_find_node(Material *ma, short texpaint_slot)
 {
+  if (ma->texpaintslot == nullptr) {
+    return nullptr;
+  }
+
+  if (texpaint_slot >= ma->tot_slots) {
+    return nullptr;
+  }
+
   TexPaintSlot *slot = &ma->texpaintslot[texpaint_slot];
   FindTexPaintNodeData find_data = {slot, nullptr};
   ntree_foreach_texnode_recursive(ma->nodetree,
