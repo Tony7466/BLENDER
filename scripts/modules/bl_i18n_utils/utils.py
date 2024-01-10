@@ -734,6 +734,7 @@ class I18nMessages:
         self._reverse_cache = None
         if rebuild_now:
             src_to_msg, ctxt_to_msg, msgid_to_msg, msgstr_to_msg = {}, {}, {}, {}
+            ctxt_to_msg.setdefault(self.settings.DEFAULT_CONTEXT, set())
             for key, msg in self.msgs.items():
                 if msg.is_commented:
                     continue
@@ -782,7 +783,7 @@ class I18nMessages:
         elbl = getattr(msgs, msgmap["enum_label"]["msgstr"])
         if elbl:
             # Enum items' labels have no i18n context...
-            k = ctxt_to_msg.get(self.settings.DEFAULT_CONTEXT, set()).copy()
+            k = ctxt_to_msg[self.settings.DEFAULT_CONTEXT].copy()
             if elbl in msgid_to_msg:
                 k &= msgid_to_msg[elbl]
             elif elbl in msgstr_to_msg:
@@ -815,7 +816,7 @@ class I18nMessages:
         print("button label: " + blbl)
         if blbl and elbl not in blbls and (rlbl not in blbls or rna_ctxt != self.settings.DEFAULT_CONTEXT):
             # Always Default context for button label :/
-            k = ctxt_to_msg.get(self.settings.DEFAULT_CONTEXT, set()).copy()
+            k = ctxt_to_msg[self.settings.DEFAULT_CONTEXT].copy()
             found = False
             for bl in blbls:
                 if bl in msgid_to_msg:
@@ -836,7 +837,7 @@ class I18nMessages:
         etip = getattr(msgs, msgmap["enum_tip"]["msgstr"])
         # print("enum tip: " + etip)
         if etip:
-            k = ctxt_to_msg.get(self.settings.DEFAULT_CONTEXT, set()).copy()
+            k = ctxt_to_msg[self.settings.DEFAULT_CONTEXT].copy()
             if etip in msgid_to_msg:
                 k &= msgid_to_msg[etip]
             elif etip in msgstr_to_msg:
@@ -850,7 +851,7 @@ class I18nMessages:
         rtip = getattr(msgs, msgmap["rna_tip"]["msgstr"])
         # print("rna tip: " + rtip)
         if rtip:
-            k = ctxt_to_msg.get(self.settings.DEFAULT_CONTEXT, set()).copy()
+            k = ctxt_to_msg[self.settings.DEFAULT_CONTEXT].copy()
             if k and rtip in msgid_to_msg:
                 k &= msgid_to_msg[rtip]
             elif k and rtip in msgstr_to_msg:
@@ -865,7 +866,7 @@ class I18nMessages:
         btip = getattr(msgs, msgmap["but_tip"]["msgstr"])
         # print("button tip: " + btip)
         if btip and btip not in {rtip, etip}:
-            k = ctxt_to_msg.get(self.settings.DEFAULT_CONTEXT, set()).copy()
+            k = ctxt_to_msg[self.settings.DEFAULT_CONTEXT].copy()
             if btip in msgid_to_msg:
                 k &= msgid_to_msg[btip]
             elif btip in msgstr_to_msg:
