@@ -15,6 +15,8 @@
 
 #include "BLT_translation.h"
 
+#include "BLO_read_write.hh"
+
 #include "DNA_defaults.h"
 #include "DNA_material_types.h"
 #include "DNA_screen_types.h"
@@ -64,8 +66,10 @@ static void init_data(ModifierData *md)
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
-  const GreasePencilSmoothModifierData *gmd = reinterpret_cast<const GreasePencilSmoothModifierData *>(md);
-  GreasePencilSmoothModifierData *tgmd = reinterpret_cast<GreasePencilSmoothModifierData *>(target);
+  const GreasePencilSmoothModifierData *gmd =
+      reinterpret_cast<const GreasePencilSmoothModifierData *>(md);
+  GreasePencilSmoothModifierData *tgmd = reinterpret_cast<GreasePencilSmoothModifierData *>(
+      target);
 
   if (tgmd->curve_intensity != nullptr) {
     BKE_curvemapping_free(tgmd->curve_intensity);
@@ -93,10 +97,20 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void deform_stroke(ModifierData *md,
-                          Depsgraph *depsgraph,
-                          Object *ob,
-                          GreasePencil *gp)
+static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
+{
+  const GreasePencilSmoothModifierData *mmd = (const GreasePencilSmoothModifierData *)md;
+
+  BLO_write_struct(writer, GreasePencilSmoothModifierData, mmd);
+}
+
+static void blend_read(BlendDataReader *reader, ModifierData *md)
+{
+  GreasePencilSmoothModifierData *mmd = (GreasePencilSmoothModifierData *)md;
+  UNUSED_VARS(reader, mmd);
+}
+
+static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, GreasePencil *gp)
 {
   GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
 
@@ -121,12 +135,13 @@ static void deform_stroke(ModifierData *md,
     return;
   }
 
-  /* TODO: 
-  * 1. Vertex weight scaling of smoothing influence.
-  * 2. Layer and material filter. */
+  /* TODO:
+   * 1. Vertex weight scaling of smoothing influence.
+   * 2. Layer and material filter. */
 
   bool changed = false;
-  const Array<ed::greasepencil::MutableDrawingInfo> drawings = blender::ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
+  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      blender::ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     if (curves.points_num() == 0) {
@@ -148,56 +163,56 @@ static void deform_stroke(ModifierData *md,
     if (smooth_position) {
       bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
       ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                             point_selection,
-                             cyclic,
-                             strokes,
-                             iterations,
-                             influence,
-                             smooth_ends,
-                             keep_shape,
-                             positions.span);
+                                               point_selection,
+                                               cyclic,
+                                               strokes,
+                                               iterations,
+                                               influence,
+                                               smooth_ends,
+                                               keep_shape,
+                                               positions.span);
       positions.finish();
       changed = true;
     }
     if (smooth_opacity && info.drawing.opacities().is_span()) {
       bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
       ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                             point_selection,
-                             cyclic,
-                             strokes,
-                             iterations,
-                             influence,
-                             smooth_ends,
-                             false,
-                             opacities.span);
+                                               point_selection,
+                                               cyclic,
+                                               strokes,
+                                               iterations,
+                                               influence,
+                                               smooth_ends,
+                                               false,
+                                               opacities.span);
       opacities.finish();
       changed = true;
     }
     if (smooth_radius && info.drawing.radii().is_span()) {
       bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
       ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                             point_selection,
-                             cyclic,
-                             strokes,
-                             iterations,
-                             influence,
-                             smooth_ends,
-                             false,
-                             radii.span);
+                                               point_selection,
+                                               cyclic,
+                                               strokes,
+                                               iterations,
+                                               influence,
+                                               smooth_ends,
+                                               false,
+                                               radii.span);
       radii.finish();
       changed = true;
     }
     if (smooth_radius && info.drawing.radii().is_span()) {
       bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
       ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                             point_selection,
-                             cyclic,
-                             strokes,
-                             iterations,
-                             influence,
-                             smooth_ends,
-                             false,
-                             radii.span);
+                                               point_selection,
+                                               cyclic,
+                                               strokes,
+                                               iterations,
+                                               influence,
+                                               smooth_ends,
+                                               false,
+                                               radii.span);
       radii.finish();
       changed = true;
     }
@@ -216,8 +231,8 @@ static void modify_geometry_set(ModifierData *md,
   if (!gp) {
     return;
   }
-  
-  deform_stroke(md,ctx->depsgraph,ctx->object,gp);
+
+  deform_stroke(md, ctx->depsgraph, ctx->object, gp);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -258,11 +273,11 @@ static void panel_register(ARegionType *region_type)
   PanelType *mask_panel_type = modifier_subpanel_register(
       region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
-                            "curve",
-                            "",
-                            gpencil_modifier_curve_header_draw,
-                            gpencil_modifier_curve_panel_draw,
-                            mask_panel_type);
+                             "curve",
+                             "",
+                             gpencil_modifier_curve_header_draw,
+                             gpencil_modifier_curve_panel_draw,
+                             mask_panel_type);
 }
 
 ModifierTypeInfo modifierType_GreasePencilSmooth = {
@@ -295,6 +310,6 @@ ModifierTypeInfo modifierType_GreasePencilSmooth = {
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
     /*panel_register*/ panel_register,
-    /*blend_write*/ nullptr,
-    /*blend_read*/ nullptr,
+    /*blend_write*/ blend_write,
+    /*blend_read*/ blend_read,
 };
