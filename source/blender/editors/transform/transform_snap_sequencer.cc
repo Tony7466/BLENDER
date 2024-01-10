@@ -12,7 +12,9 @@
 
 #include "BLI_blenlib.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
+
+#include "DNA_sequence_types.h"
 
 #include "ED_screen.hh"
 #include "ED_transform.hh"

@@ -8,13 +8,14 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_report.h"
 
 #include "SEQ_relations.hh"
@@ -87,7 +88,7 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
 
   const blender::Map selection = SEQ_retiming_selection_get(SEQ_editing_get(t->scene));
 
-  if (selection.size() == 0) {
+  if (selection.is_empty()) {
     return;
   }
 

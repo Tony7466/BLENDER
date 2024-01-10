@@ -27,11 +27,11 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
@@ -372,7 +372,7 @@ static void lattice_deform_coords_impl(const Object *ob_lattice,
         dvert = ((Lattice *)ob_target->data)->dvert;
       }
       else {
-        dvert = BKE_mesh_deform_verts((Mesh *)ob_target->data);
+        dvert = ((Mesh *)ob_target->data)->deform_verts().data();
       }
     }
   }
