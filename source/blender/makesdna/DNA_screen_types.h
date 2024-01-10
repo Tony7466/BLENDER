@@ -436,6 +436,17 @@ typedef struct ARegion_Runtime {
   struct GHash *block_name_map;
 } ARegion_Runtime;
 
+typedef struct LayoutPanelState {
+  struct LayoutPanelState *next, *prev;
+  char *identifier;
+  uint8_t flag;
+  char _pad[7];
+} LayoutPanelState;
+
+enum LayoutPanelStateFlag {
+  LAYOUT_PANEL_STATE_FLAG_OPEN = (1 << 0),
+};
+
 typedef struct ARegion {
   struct ARegion *next, *prev;
 
@@ -501,6 +512,8 @@ typedef struct ARegion {
   /** Blend in/out. */
   struct wmTimer *regiontimer;
   struct wmDrawBuffer *draw_buffer;
+
+  ListBase layout_panel_states;
 
   /** Use this string to draw info. */
   char *headerstr;

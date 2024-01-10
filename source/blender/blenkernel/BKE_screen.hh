@@ -27,6 +27,7 @@ struct BlendWriter;
 struct Header;
 struct ID;
 struct IDRemapper;
+struct LayoutPanelState;
 struct LibraryForeachIDData;
 struct ListBase;
 struct Menu;
@@ -605,6 +606,8 @@ void BKE_screen_area_free(ScrArea *area);
  */
 void BKE_region_callback_free_gizmomap_set(void (*callback)(wmGizmoMap *));
 void BKE_region_callback_refresh_tag_gizmomap_set(void (*callback)(wmGizmoMap *));
+
+LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region, const char *identifier);
 
 /**
  * Find a region of type \a region_type in provided \a regionbase.

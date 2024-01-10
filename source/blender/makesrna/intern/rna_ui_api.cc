@@ -780,16 +780,30 @@ static uiLayout *rna_uiLayoutColumnWithHeading(
   return uiLayoutColumnWithHeading(layout, align, heading);
 }
 
+struct uiLayout *rna_uiLayoutPanelCustom(uiLayout *layout,
+                                         bContext *C,
+                                         PointerRNA *data,
+                                         const char *property,
+                                         const char *text,
+                                         const char *text_ctxt,
+                                         const bool translate)
+{
+  text = rna_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
+  return uiLayoutPanel(C, layout, text, data, property);
+}
+
 struct uiLayout *rna_uiLayoutPanel(uiLayout *layout,
                                    bContext *C,
-                                   PointerRNA *data,
-                                   const char *property,
+                                   const char *identifier,
                                    const char *text,
                                    const char *text_ctxt,
                                    const bool translate)
 {
-  text = rna_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
-  return uiLayoutPanel(C, layout, text, data, property);
+  text = RNA_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
+  ARegion *region = CTX_wm_region(C);
+  LayoutPanelState *state = BKE_region_layout_panel_state_ensure(region, identifier);
+  PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
+  return uiLayoutPanel(C, layout, text, &state_ptr, "is_open");
 }
 
 static void rna_uiLayout_template_node_asset_menu_items(uiLayout *layout,
@@ -1060,11 +1074,36 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_boolean(func, "align", false, "", "Align buttons to each other");
   api_ui_item_common_heading(func);
 
+  func = RNA_def_function(srna, "panel_custom", "rna_uiLayoutPanelCustom");
+  RNA_def_function_ui_description(
+      func, "Sub-layout. Items placed in this sublayout are placed into a collapsable panel");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  parm = RNA_def_pointer(
+      func, "data", "AnyType", "", "Data from which to take the open-state property");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  parm = RNA_def_string(
+      func,
+      "property",
+      nullptr,
+      0,
+      "",
+      "Identifier of boolean property that determines whether the panel is open or closed");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  api_ui_item_common_text(func);
+  parm = RNA_def_pointer(
+      func,
+      "layout",
+      "UILayout",
+      "",
+      "Sub-layout to put items in. May be none in which case the panel collapsed");
+  RNA_def_function_return(func, parm);
+
   func = RNA_def_function(srna, "panel", "rna_uiLayoutPanel");
   RNA_def_function_ui_description(
       func, "Sub-layout. Items placed in this sublayout are placed into a collapsable panel");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
-  api_ui_item_rna_common(func);
+  parm = RNA_def_string(func, "identifier", nullptr, 0, "", "Identifier of the panel");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   api_ui_item_common_text(func);
   parm = RNA_def_pointer(
       func,
