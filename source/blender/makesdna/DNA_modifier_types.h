@@ -2486,7 +2486,29 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
+typedef struct GreasePencilModifierFilterData {
+  /** Filter by layer name. */
+  char layername[64];
+  /** Filter by stroke material. */
+  struct Material *material;
+  /** Filter by layer pass. */
+  int layer_pass;
+  /** Filter by material pass. */
+  int material_pass;
+  /** GreasePencilModifierFilterFlag */
+  int flag;
+  char _pad[4];
+} GreasePencilModifierFilterData;
+
+typedef enum GreasePencilModifierFilterFlag {
+  GREASE_PENCIL_FILTER_INVERT_LAYER = (1 << 0),
+  GREASE_PENCIL_FILTER_INVERT_LAYER_PASS = (1 << 1),
+  GREASE_PENCIL_FILTER_INVERT_MATERIAL = (1 << 2),
+  GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS = (1 << 3),
+} GreasePencilModifierFilterFlag;
+
 typedef struct GreasePencilOpacityModifierData {
   ModifierData modifier;
-
+  GreasePencilModifierFilterData filter;
+  void *_pad;
 } GreasePencilOpacityModifierData;

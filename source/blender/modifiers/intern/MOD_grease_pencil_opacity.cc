@@ -36,6 +36,8 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
+#include <iostream>
+
 namespace blender {
 
 using bke::greasepencil::Drawing;
@@ -48,7 +50,14 @@ static void init_data(ModifierData *md)
 
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(omd, modifier));
 
-  MEMCPY_STRUCT_AFTER(omd, DNA_struct_default_get(GreasePencilOpacityModifierData), modifier);
+  // XXX Why is this crashing, but the expanded code below works fine?!?
+  // MEMCPY_STRUCT_AFTER(omd, DNA_struct_default_get(GreasePencilOpacityModifierData), modifier);
+  {
+    CHECK_TYPE_NONCONST(omd);
+    memcpy((char *)(omd) + OFFSETOF_STRUCT_AFTER(omd, modifier),
+           (const char *)(md) + OFFSETOF_STRUCT_AFTER(omd, modifier),
+           sizeof(*(omd)) - OFFSETOF_STRUCT_AFTER(omd, modifier));
+  }
 
   // TODO
 }
@@ -113,7 +122,11 @@ static void modify_geometry_set(ModifierData *md,
     return;
   }
 
-  Vector<Drawing *> drawings = greasepencil::get_drawings_for_write(*grease_pencil, frame);
+  IndexMaskMemory mask_memory;
+  IndexMask layer_mask = greasepencil::get_filtered_layer_mask(
+      *grease_pencil, omd->filter, mask_memory);
+  Vector<Drawing *> drawings = greasepencil::get_drawings_for_write(
+      *grease_pencil, layer_mask, frame);
   for (Drawing *drawing : drawings) {
     modify_curves(md, ctx, drawing->strokes_for_write());
   }
