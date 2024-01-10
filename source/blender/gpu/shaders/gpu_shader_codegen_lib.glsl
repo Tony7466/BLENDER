@@ -177,18 +177,20 @@ struct ClosureOcclusion {
 };
 
 struct ClosureDiffuse {
-  packed_vec3 color;
 #ifndef CLOSURE_NO_WEIGHT
   float weight;
-  vec3 color;
-  vec3 N;
+#endif
+  packed_vec3 color;
+  packed_vec3 N;
 };
 
 struct ClosureSubsurface {
+#ifndef CLOSURE_NO_WEIGHT
   float weight;
-  vec3 color;
-  vec3 N;
-  vec3 sss_radius;
+#endif
+  packed_vec3 color;
+  packed_vec3 N;
+  packed_vec3 sss_radius;
 };
 
 struct ClosureTranslucent {
@@ -241,7 +243,7 @@ struct ClosureVolumeAbsorption {
 #ifndef CLOSURE_NO_WEIGHT
   float weight;
 #endif
-  vec3 absorption;
+  packed_vec3 absorption;
 };
 
 struct ClosureEmission {
