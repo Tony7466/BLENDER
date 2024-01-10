@@ -511,11 +511,6 @@ void DeferredLayer::end_sync()
   if (closure_bits_ & evaluated_closures) {
     RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
 
-    /* NOTE: For tile-based GPU architectures, barriers are not always needed if implicit local
-     * ordering is guaranteed via either blending order or explicit raster_order_groups. */
-    bool is_tbdr_arch_metal = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR) &&
-                              (GPU_backend_get_type() == GPU_BACKEND_METAL);
-
     /* Add the stencil classification step at the end of the GBuffer pass. */
     {
       GPUShader *sh = inst_.shaders.static_shader_get(DEFERRED_TILE_CLASSIFY);
@@ -535,7 +530,6 @@ void DeferredLayer::end_sync()
       else {
         /* The shader cannot set the stencil directly. So we do one fullscreen pass for each
          * stencil bit we need to set and accumulate the result. */
-        sub.clear_stencil(0x0u);
         for (size_t i = 0; i <= log2_ceil(closure_count_); i++) {
           int stencil_value = 1 << i;
           sub.push_constant("current_bit", stencil_value);
@@ -711,7 +705,7 @@ void DeferredLayer::render(View &main_view,
       /* FIXME(fclem): Metal has bug in backend. */
       GPU_backend_get_type() == GPU_BACKEND_METAL)
   {
-    inst_.gbuffer.header_tx.clear(int4(0));
+    inst_.gbuffer.header_tx.clear(uint4(0));
   }
 
   if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
@@ -719,14 +713,21 @@ void DeferredLayer::render(View &main_view,
     GPU_framebuffer_bind(gbuffer_fb);
   }
   else {
+    if (!GPU_stencil_export_support()) {
+      /* Clearing custom load-store framebuffers is invalid,
+       * clear the stencil as a regular framebuffer first. */
+      GPU_framebuffer_bind(gbuffer_fb);
+      GPU_framebuffer_clear_stencil(gbuffer_fb, 0x0u);
+    }
     GPU_framebuffer_bind_ex(
         gbuffer_fb,
         {
             {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Depth */
             {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Combined */
             {GPU_LOADACTION_CLEAR, GPU_STOREACTION_STORE, {0}}, /* GBuf Header */
+            {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Normal*/
             {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Closure */
-            {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Color */
+            {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Closure 2*/
         });
   }
 
