@@ -233,7 +233,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (has_unsupported && !has_reorder) {
     params.error_message_add(NodeWarningType::Info,
-                             TIP_("Domain and geometry t7ype combination is unsupported"));
+                             TIP_("Domain and geometry type combination is unsupported"));
   }
 
   params.set_output("Geometry", std::move(geometry_set));
