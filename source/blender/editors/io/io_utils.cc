@@ -190,7 +190,7 @@ void filepath_label_draw(const bContext *C, const wmOperator *op)
       uiItemL(box, filepath, ED_file_extension_icon(filepath));
       return;
     }
-    std::string label = fmt::format(TIP_("Importing {} files."), files_len);
+    std::string label = fmt::format(TIP_("Importing {} files"), files_len);
     uiItemL(box, label.c_str(), ICON_FILE_3D);
   }
 }

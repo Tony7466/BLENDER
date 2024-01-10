@@ -254,6 +254,7 @@ set(INC
   ../../windowmanager
   ../../editors/asset
   ../../editors/include
+  ../../editors/io
   ../../render
   ../../../../intern/clog
   ../../../../intern/cycles/blender

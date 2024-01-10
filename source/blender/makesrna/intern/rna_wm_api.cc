@@ -20,6 +20,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "UI_interface.hh"
+#include "io_utils.hh"
 
 #include "wm_cursors.hh"
 #include "wm_event_types.hh"
@@ -864,6 +865,15 @@ void RNA_api_wm(StructRNA *srna)
       func,
       "Operator dialog (non-autoexec popup) invoke "
       "(show operator properties and only execute it on click on OK button)");
+  rna_generic_op_invoke(func, WM_GEN_INVOKE_SIZE | WM_GEN_INVOKE_RETURN);
+
+  /* invoked dialog opens popup with OK button, does not auto-exec operator. */
+  func = RNA_def_function(
+      srna, "invoke_path_drop_dialog", "blender::ed::io::operator_path_drop_dialog_popup");
+  RNA_def_function_ui_description(
+      func,
+      "Operator dialog (non-autoexec popup) invoke for file handlers import operators"
+      "(show path drop and operator properties and only execute it on click on OK button)");
   rna_generic_op_invoke(func, WM_GEN_INVOKE_SIZE | WM_GEN_INVOKE_RETURN);
 
   /* invoke enum */
