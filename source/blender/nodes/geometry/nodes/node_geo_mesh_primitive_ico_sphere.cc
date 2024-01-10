@@ -2,11 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <iostream>
-
 #include <array>
 
-#include "DNA_mesh_types.h"
+#include <iostream>
 
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
@@ -25,9 +23,14 @@
 
 #include "BLI_timeit.hh"
 
+#include "DNA_mesh_types.h"
+
 #include "GEO_randomize.hh"
 
-#include "bmesh.hh"
+#include "NOD_rna_define.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -46,10 +49,18 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(12)
       .description("Number of subdivisions on top of the basic icosahedron");
 
-  b.add_input<decl::Bool>("New");
-
   b.add_output<decl::Geometry>("Mesh");
   b.add_output<decl::Vector>("UV Map").field_on_all();
+}
+
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "sphere_mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = int(GEO_NODE_ICO_SPHERE_SPHERICAL);
 }
 
 static Bounds<float3> calculate_bounds_ico_sphere(const float radius, const int subdivisions)
@@ -78,63 +89,6 @@ static Bounds<float3> calculate_bounds_ico_sphere(const float radius, const int 
   const float3 bounds_max(x_max, y_max, radius);
 
   return {bounds_min, bounds_max};
-}
-
-static Mesh *create_ico_sphere_mesh(const int subdivisions,
-                                    const float radius,
-                                    const AttributeIDRef &uv_map_id)
-{
-  if (subdivisions >= 3) {
-    /* Most nodes don't need this because they internally use multi-threading which triggers
-     * lazy-threading without any extra code. */
-    lazy_threading::send_hint();
-  }
-
-  const float4x4 transform = float4x4::identity();
-
-  const bool create_uv_map = bool(uv_map_id);
-
-  BMeshCreateParams bmesh_create_params{};
-  bmesh_create_params.use_toolflags = true;
-  const BMAllocTemplate allocsize = {0, 0, 0, 0};
-  BMesh *bm = BM_mesh_create(&allocsize, &bmesh_create_params);
-  BM_data_layer_add_named(bm, &bm->ldata, CD_PROP_FLOAT2, "UVMap");
-  /* Make sure the associated boolean layers exists as well. Normally this would be done when
-   * adding a UV layer via python or when copying from Mesh, but when we 'manually' create the UV
-   * layer we need to make sure the boolean layers exist as well. */
-  BM_uv_map_ensure_select_and_pin_attrs(bm);
-
-  BMO_op_callf(bm,
-               BMO_FLAG_DEFAULTS,
-               "create_icosphere subdivisions=%i radius=%f matrix=%m4 calc_uvs=%b",
-               subdivisions,
-               std::abs(radius),
-               transform.ptr(),
-               create_uv_map);
-
-  BMeshToMeshParams params{};
-  params.calc_object_remap = false;
-  Mesh *mesh = reinterpret_cast<Mesh *>(BKE_id_new_nomain(ID_ME, nullptr));
-  BKE_id_material_eval_ensure_default_slot(&mesh->id);
-  BM_mesh_bm_to_me(nullptr, bm, mesh, &params);
-  BM_mesh_free(bm);
-
-  /* The code above generates a "UVMap" attribute. The code below renames that attribute, we don't
-   * have a simple utility for that yet though so there is some overhead right now. */
-  MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  if (create_uv_map) {
-    const VArraySpan orig_uv_map = *attributes.lookup<float2>("UVMap");
-    SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
-        uv_map_id, AttrDomain::Corner);
-    uv_map.span.copy_from(orig_uv_map);
-    uv_map.finish();
-  }
-  attributes.remove("UVMap");
-
-  geometry::debug_randomize_mesh_order(mesh);
-
-  mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, subdivisions));
-  return mesh;
 }
 
 static constexpr int base_verts_num = 12;
@@ -475,7 +429,6 @@ static Span<float2> base_face_uv_positions()
   return base_uv;
 }
 
-/*
 static void interpolate_edge_verts(const int edge_verts_num,
                                    const Span<float3> base_verts,
                                    MutableSpan<float3> edge_verts)
@@ -534,7 +487,6 @@ static void interpolate_face_verts(const int line_subdiv,
     }
   }
 }
-*/
 
 static void interpolate_edge_verts_linear(const int edge_verts_num,
                                           const Span<float3> base_verts,
@@ -1138,7 +1090,8 @@ static void uv_vert_positions(const int edge_edges_num,
 
 static Mesh *ico_sphere(const int subdivisions,
                         const float radius,
-                        const AttributeIDRef &uv_map_id)
+                        const AttributeIDRef &uv_map_id,
+                        const GeometryNodeIcoSphereMode sphere_mode)
 {
   std::cout << std::endl;
   BLI_assert(subdivisions > 0);
@@ -1175,10 +1128,20 @@ static Mesh *ico_sphere(const int subdivisions,
 
   base_ico_sphere_positions(positions.take_front(base_verts_num));
 
-  interpolate_edge_verts_linear(
-      edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
-  interpolate_face_verts_linear(
-      line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+  switch (sphere_mode) {
+    case GEO_NODE_ICO_SPHERE_SPHERICAL:
+      interpolate_edge_verts(
+          edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
+      interpolate_face_verts(
+          line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+      break;
+    case GEO_NODE_ICO_SPHERE_LINEAR:
+      interpolate_edge_verts_linear(
+          edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
+      interpolate_face_verts_linear(
+          line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+      break;
+  }
 
   const IndexRange edge_edges(base_edges_num * edge_edges_num);
   const IndexRange face_edges(edge_edges.one_after_last(), face_edges_num * base_faces_num * 3);
@@ -1189,13 +1152,6 @@ static Mesh *ico_sphere(const int subdivisions,
 
   corner_edges_topology(edge_edges_num, face_faces_num, corner_edges);
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
-
-  {
-    SCOPED_TIMER_AVERAGED("new_old_normalize");
-    std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
-      return math::normalize(pos);
-    });
-  }
 
   {
     SCOPED_TIMER_AVERAGED("Scaling");
@@ -1233,19 +1189,28 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   const int subdivisions = math::max<int>(1, params.extract_input<int>("Subdivisions"));
   const float radius = params.extract_input<float>("Radius");
-
-  const bool new_type = params.extract_input<bool>("New");
+  const GeometryNodeIcoSphereMode sphere_mode = GeometryNodeIcoSphereMode(params.node().custom1);
 
   AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
-
-  if (new_type) {
-    Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get());
-    params.set_output("Mesh", GeometrySet::from_mesh(mesh));
-    return;
-  }
-
-  Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+  Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get(), sphere_mode);
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+}
+
+static void node_rna(StructRNA *srna)
+{
+  static const EnumPropertyItem sphere_mode_items[] = {
+      {GEO_NODE_ICO_SPHERE_LINEAR, "LINEAR", ICON_NONE, "Linear", ""},
+      {GEO_NODE_ICO_SPHERE_SPHERICAL, "SPHERICAL", ICON_NONE, "Spherical", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "sphere_mode",
+                    "Sphere Mode",
+                    "Mode of sphere positions",
+                    sphere_mode_items,
+                    NOD_inline_enum_accessors(custom1),
+                    GEO_NODE_ICO_SPHERE_SPHERICAL);
 }
 
 static void node_register()
@@ -1255,8 +1220,12 @@ static void node_register()
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE, "Ico Sphere", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
+  ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
+  ntype.initfunc = node_init;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

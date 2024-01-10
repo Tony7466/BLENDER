@@ -2801,6 +2801,11 @@ typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
 
+typedef enum GeometryNodeIcoSphereMode {
+  GEO_NODE_ICO_SPHERE_LINEAR = 0,
+  GEO_NODE_ICO_SPHERE_SPHERICAL = 1,
+} GeometryNodeIcoSphereMode;
+
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,
   NODE_COMBSEP_COLOR_HSV = 1,
