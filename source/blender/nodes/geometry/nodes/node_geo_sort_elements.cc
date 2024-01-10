@@ -210,14 +210,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   std::atomic<bool> has_unsupported = false;
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     for (const auto [type, domains] : geometry::components_supported_reordering().items()) {
-      if (!domains.contains(domain)) {
-        has_unsupported = true;
-        continue;
-      }
       const bke::GeometryComponent *src_component = geometry_set.get_component(type);
       if (src_component == nullptr || src_component->is_empty()) {
         continue;
       }
+      if (!domains.contains(domain)) {
+        has_unsupported = true;
+        continue;
+      }
+      has_reorder = true;
       const std::optional<Array<int>> indices = sorted_indices(
           *src_component, selection_field, group_id_field, weight_field, domain);
       if (!indices.has_value()) {
@@ -227,13 +228,12 @@ static void node_geo_exec(GeoNodeExecParams params)
           *src_component, *indices, domain, propagation_info);
       geometry_set.remove(type);
       geometry_set.add(*dst_component.get());
-      has_reorder = true;
     }
   });
 
   if (has_unsupported && !has_reorder) {
     params.error_message_add(NodeWarningType::Info,
-                             TIP_("Domain and geometry type combination is unsupported"));
+                             TIP_("Domain and geometry t7ype combination is unsupported"));
   }
 
   params.set_output("Geometry", std::move(geometry_set));
