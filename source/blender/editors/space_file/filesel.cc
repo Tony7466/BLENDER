@@ -181,8 +181,16 @@ static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
     else {
       params->type = FILE_SPECIAL;
     }
-
-    if (auto dir = blender::bke::file_handler_last_dir_get(op->idname); dir.data()) {
+    /* Check before if the operator has explicit requested to load a directory in the fileselect.
+     */
+    bool has_explicit_filepath = (is_filepath &&
+                                  RNA_struct_property_is_set(op->ptr, "filepath")) ||
+                                 (is_directory &&
+                                  RNA_struct_property_is_set(op->ptr, "directory"));
+    /* Use the file handler to get previously used settings. */
+    if (auto dir = blender::bke::file_handler_last_dir_get(op->idname);
+        !has_explicit_filepath && dir.data())
+    {
       STRNCPY(params->dir, dir.data());
       auto filename = blender::bke::file_handler_last_filename_get(op->idname);
       if (filename.data()) {
