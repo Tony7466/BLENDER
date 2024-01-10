@@ -1892,6 +1892,7 @@ static void rna_def_operator_options_runtime(BlenderRNA *brna)
   prop = RNA_def_property(srna, "is_dialog_popup", PROP_BOOLEAN, PROP_BOOLEAN);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", OP_IS_DIALOG_POPUP);
   RNA_def_property_ui_text(prop, "Dialog popup", "Operator is running as dialog popup");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 static void rna_def_operator_common(StructRNA *srna)
