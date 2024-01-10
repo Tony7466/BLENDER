@@ -23,15 +23,14 @@
 
 #include "BLT_translation.h"
 
-#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_lattice.hh"
@@ -75,7 +74,8 @@ static int point_data_used(PointDensity *pd)
     if (ELEM(pd->ob_color_source,
              TEX_PD_COLOR_VERTCOL,
              TEX_PD_COLOR_VERTWEIGHT,
-             TEX_PD_COLOR_VERTNOR)) {
+             TEX_PD_COLOR_VERTNOR))
+    {
       pd_bitflag |= POINT_DATA_COLOR;
     }
   }

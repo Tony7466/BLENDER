@@ -18,9 +18,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
@@ -150,8 +147,8 @@ class TextureMarginMap {
  */
 #define PackDijkstraPixel(dist, dir) (0x80000000 + ((dist) << 4) + (dir))
 #define DijkstraPixelGetDistance(dp) (((dp) ^ 0x80000000) >> 4)
-#define DijkstraPixelGetDirection(dp) ((dp)&0xF)
-#define IsDijkstraPixel(dp) ((dp)&0x80000000)
+#define DijkstraPixelGetDirection(dp) ((dp) & 0xF)
+#define IsDijkstraPixel(dp) ((dp) & 0x80000000)
 #define DijkstraPixelIsUnset(dp) ((dp) == 0xFFFFFFFF)
 
   /**
@@ -568,13 +565,14 @@ void RE_generate_texturemargin_adjacentfaces(ImBuf *ibuf,
                                              char const *uv_layer,
                                              const float uv_offset[2])
 {
+  using namespace blender;
   const blender::StringRef uv_map_name = (uv_layer && uv_layer[0]) ?
                                              uv_layer :
                                              CustomData_get_active_layer_name(&mesh->corner_data,
                                                                               CD_PROP_FLOAT2);
   const blender::bke::AttributeAccessor attributes = mesh->attributes();
-  const blender::VArraySpan<blender::float2> uv_map = *attributes.lookup<blender::float2>(
-      uv_map_name, ATTR_DOMAIN_CORNER);
+  const VArraySpan<float2> uv_map = *attributes.lookup<float2>(uv_map_name,
+                                                               bke::AttrDomain::Corner);
 
   blender::render::texturemargin::generate_margin(ibuf,
                                                   mask,

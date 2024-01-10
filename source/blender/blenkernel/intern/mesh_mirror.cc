@@ -11,7 +11,6 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
@@ -125,6 +124,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
                                                         int *r_vert_merge_map_len)
 {
   using namespace blender;
+  using namespace blender::bke;
   const float tolerance_sq = mmd->tolerance * mmd->tolerance;
   const bool do_vtargetmap = (mmd->flag & MOD_MIR_NO_MERGE) == 0 && r_vert_merge_map != nullptr;
 
@@ -244,7 +244,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
        */
       if (use_correct_order_on_merge) {
         if (UNLIKELY(len_squared_v3v3(positions[vert_index_prev], positions[vert_index]) <
-                     tolerance_sq)) {
+                     tolerance_sq))
+        {
           *vtmap_b = i;
           (*r_vert_merge_map_len)++;
 
@@ -261,7 +262,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
       }
       else {
         if (UNLIKELY(len_squared_v3v3(positions[vert_index_prev], positions[vert_index]) <
-                     tolerance_sq)) {
+                     tolerance_sq))
+        {
           *vtmap_a = src_verts_num + i;
           (*r_vert_merge_map_len)++;
 
@@ -407,8 +409,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
     /* calculate custom normals into loop_normals, then mirror first half into second half */
     const bke::AttributeAccessor attributes = result->attributes();
-    const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", ATTR_DOMAIN_EDGE);
-    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+    const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", AttrDomain::Edge);
+    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
     blender::bke::mesh::normals_calc_loop(result->vert_positions(),
                                           result_edges,
                                           result_faces,
@@ -454,7 +456,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
         for (int i = 0; i < src_verts_num; dvert++, i++) {
           /* merged vertices get both groups, others get flipped */
           if (use_correct_order_on_merge && do_vtargetmap &&
-              ((*r_vert_merge_map)[i + src_verts_num] != -1)) {
+              ((*r_vert_merge_map)[i + src_verts_num] != -1))
+          {
             BKE_defvert_flip_merged(dvert - src_verts_num, flip_map, flip_map_len);
           }
           else if (!use_correct_order_on_merge && do_vtargetmap && ((*r_vert_merge_map)[i] != -1))

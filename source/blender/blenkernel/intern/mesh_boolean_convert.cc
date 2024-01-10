@@ -8,8 +8,6 @@
 
 #include <iostream>
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_attribute.hh"
@@ -418,7 +416,7 @@ static void copy_face_attributes(Mesh *dest_mesh,
 
   /* Fix material indices after they have been transferred as a generic attribute. */
   const VArray<int> src_material_indices = *orig_me->attributes().lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_FACE, 0);
+      "material_index", bke::AttrDomain::Face, 0);
   const int src_index = src_material_indices[index_in_orig_me];
   if (material_remap.index_range().contains(src_index)) {
     const int remapped_index = material_remap[src_index];
@@ -738,7 +736,7 @@ static Mesh *imesh_to_mesh(IMesh *im, MeshesToIMeshInfo &mim)
    * and set the vertices in the appropriate loops. */
   bke::SpanAttributeWriter<int> dst_material_indices =
       result->attributes_for_write().lookup_or_add_for_write_only_span<int>("material_index",
-                                                                            ATTR_DOMAIN_FACE);
+                                                                            bke::AttrDomain::Face);
   int cur_loop_index = 0;
   MutableSpan<int> dst_corner_verts = result->corner_verts_for_write();
   MutableSpan<int> dst_face_offsets = result->face_offsets_for_write();
@@ -775,9 +773,7 @@ static Mesh *imesh_to_mesh(IMesh *im, MeshesToIMeshInfo &mim)
   }
   dst_material_indices.finish();
 
-  /* BKE_mesh_calc_edges will calculate and populate all the
-   * MEdges from the MPolys. */
-  BKE_mesh_calc_edges(result, false, false);
+  bke::mesh_calc_edges(*result, false, false);
   merge_edge_customdata_layers(result, mim);
 
   /* Now that the MEdges are populated, we can copy over the required attributes and custom layers.

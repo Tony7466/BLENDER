@@ -14,6 +14,7 @@
 #include "BLI_bit_span_ops.hh"
 #include "BLI_bitmap.h"
 #include "BLI_bounds.hh"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -25,9 +26,6 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_ccg.h"
@@ -53,18 +51,19 @@ using blender::float3;
 using blender::MutableSpan;
 using blender::Span;
 using blender::Vector;
+using blender::bke::AttrDomain;
 
 #define LEAF_LIMIT 10000
 
 /* Uncomment to test if triangles of the same face are
  * properly clustered into single nodes.
  */
-//#define TEST_PBVH_FACE_SPLIT
+// #define TEST_PBVH_FACE_SPLIT
 
 /* Uncomment to test that faces are only assigned to one PBVHNode */
-//#define VALIDATE_UNIQUE_NODE_FACES
+// #define VALIDATE_UNIQUE_NODE_FACES
 
-//#define PERFCNTRS
+// #define PERFCNTRS
 #define STACK_FIXED_DEPTH 100
 
 struct PBVHStack {
@@ -725,7 +724,7 @@ PBVH *build_mesh(Mesh *mesh)
   update_mesh_pointers(pbvh.get(), mesh);
   const Span<int> tri_faces = pbvh->corner_tri_faces;
 
-  pbvh->vert_bitmap = blender::Array<bool>(totvert, false);
+  Array<bool> vert_bitmap(totvert, false);
   pbvh->totvert = totvert;
 
 #ifdef TEST_PBVH_FACE_SPLIT
@@ -760,9 +759,9 @@ PBVH *build_mesh(Mesh *mesh)
 
   if (corner_tris_num) {
     const AttributeAccessor attributes = mesh->attributes();
-    const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
-    const VArraySpan material_index = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
-    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+    const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", AttrDomain::Face);
+    const VArraySpan material_index = *attributes.lookup<int>("material_index", AttrDomain::Face);
+    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
     pbvh_build(pbvh.get(),
                corner_verts,
                corner_tris,
@@ -770,7 +769,7 @@ PBVH *build_mesh(Mesh *mesh)
                hide_poly,
                material_index,
                sharp_face,
-               pbvh->vert_bitmap,
+               vert_bitmap,
                &cb,
                prim_bounds,
                corner_tris_num);
@@ -779,9 +778,6 @@ PBVH *build_mesh(Mesh *mesh)
     test_face_boundaries(pbvh, tri_faces);
 #endif
   }
-
-  /* Clear the bitmap so it can be used as an update tag later on. */
-  pbvh->vert_bitmap.fill(false);
 
   BKE_pbvh_update_active_vcol(pbvh.get(), mesh);
 
@@ -842,8 +838,8 @@ PBVH *build_grids(const CCGKey *key, Mesh *mesh, SubdivCCG *subdiv_ccg)
 
   if (!grids.is_empty()) {
     const AttributeAccessor attributes = mesh->attributes();
-    const VArraySpan material_index = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
-    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+    const VArraySpan material_index = *attributes.lookup<int>("material_index", AttrDomain::Face);
+    const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
     pbvh_build(pbvh.get(),
                {},
                {},
@@ -1132,65 +1128,124 @@ static bool update_search(PBVHNode *node, const int flag)
 }
 
 static void normals_calc_faces(const Span<float3> positions,
-                               const blender::OffsetIndices<int> faces,
+                               const OffsetIndices<int> faces,
                                const Span<int> corner_verts,
-                               const Span<int> mask,
+                               const Span<int> face_indices,
                                MutableSpan<float3> face_normals)
 {
-  threading::parallel_for(mask.index_range(), 512, [&](const IndexRange range) {
-    for (const int i : mask.slice(range)) {
-      face_normals[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
+  for (const int i : face_indices) {
+    face_normals[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
+  }
+}
+
+static void calc_boundary_face_normals(const Span<float3> positions,
+                                       const OffsetIndices<int> faces,
+                                       const Span<int> corner_verts,
+                                       const Span<int> face_indices,
+                                       MutableSpan<float3> face_normals)
+{
+  threading::parallel_for(face_indices.index_range(), 512, [&](const IndexRange range) {
+    normals_calc_faces(positions, faces, corner_verts, face_indices.slice(range), face_normals);
+  });
+}
+
+static void calc_node_face_normals(const Span<float3> positions,
+                                   const OffsetIndices<int> faces,
+                                   const Span<int> corner_verts,
+                                   const PBVH &pbvh,
+                                   const Span<const PBVHNode *> nodes,
+                                   MutableSpan<float3> face_normals)
+{
+  threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    Vector<int> &node_faces = all_index_data.local();
+    for (const PBVHNode *node : nodes.slice(range)) {
+      normals_calc_faces(positions,
+                         faces,
+                         corner_verts,
+                         node_face_indices_calc_mesh(pbvh, *node, node_faces),
+                         face_normals);
     }
   });
 }
 
-static void normals_calc_verts_simple(const blender::GroupedSpan<int> vert_to_face_map,
+static void normals_calc_verts_simple(const GroupedSpan<int> vert_to_face_map,
                                       const Span<float3> face_normals,
-                                      const Span<int> mask,
+                                      const Span<int> verts,
                                       MutableSpan<float3> vert_normals)
 {
-  threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
-    for (const int vert : mask.slice(range)) {
-      float3 normal(0.0f);
-      for (const int face : vert_to_face_map[vert]) {
-        normal += face_normals[face];
-      }
-      vert_normals[vert] = math::normalize(normal);
+  for (const int vert : verts) {
+    float3 normal(0.0f);
+    for (const int face : vert_to_face_map[vert]) {
+      normal += face_normals[face];
+    }
+    vert_normals[vert] = math::normalize(normal);
+  }
+}
+
+static void calc_boundary_vert_normals(const GroupedSpan<int> vert_to_face_map,
+                                       const Span<float3> face_normals,
+                                       const Span<int> verts,
+                                       MutableSpan<float3> vert_normals)
+{
+  threading::parallel_for(verts.index_range(), 1024, [&](const IndexRange range) {
+    normals_calc_verts_simple(vert_to_face_map, face_normals, verts.slice(range), vert_normals);
+  });
+}
+
+static void calc_node_vert_normals(const GroupedSpan<int> vert_to_face_map,
+                                   const Span<float3> face_normals,
+                                   const Span<PBVHNode *> nodes,
+                                   MutableSpan<float3> vert_normals)
+{
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (const PBVHNode *node : nodes.slice(range)) {
+      normals_calc_verts_simple(vert_to_face_map,
+                                face_normals,
+                                node->vert_indices.as_span().take_front(node->uniq_verts),
+                                vert_normals);
     }
   });
 }
 
-static void pbvh_faces_update_normals(PBVH &pbvh, Span<PBVHNode *> nodes, Mesh &mesh)
+static void update_normals_faces(PBVH &pbvh, Span<PBVHNode *> nodes, Mesh &mesh)
 {
+  /* Position changes are tracked on a per-node level, so all the vertex and face normals for every
+   * affected node are recalculated. However, the additional complexity comes from the fact that
+   * changing vertex normals also changes surrounding face normals. Those changed face normals then
+   * change the normals of all connected vertices, which can be in other nodes. So the set of
+   * vertices that need recalculated normals can propagate into unchanged/untagged PBVH nodes.
+   *
+   * Currently we have no good way of finding neighboring PBVH nodes, so we use the vertex to
+   * face topology map to find the neighboring vertices that need normal recalculation.
+   *
+   * Those boundary face and vertex indices are deduplicated with #VectorSet in order to avoid
+   * duplicate work recalculation for the same vertex, and to make parallel storage for vertices
+   * during reclculation thread-safe. */
   const Span<float3> positions = pbvh.vert_positions;
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
 
-  MutableSpan<bool> update_tags = pbvh.vert_bitmap;
-
-  VectorSet<int> faces_to_update;
+  VectorSet<int> boundary_faces;
   for (const PBVHNode *node : nodes) {
-    for (const int vert : node->vert_indices.as_span().take_front(node->uniq_verts)) {
-      if (update_tags[vert]) {
-        faces_to_update.add_multiple(pbvh.pmap[vert]);
-      }
+    for (const int vert : node->vert_indices.as_span().drop_front(node->uniq_verts)) {
+      boundary_faces.add_multiple(pbvh.vert_to_face_map[vert]);
     }
   }
 
-  if (faces_to_update.is_empty()) {
-    return;
-  }
-
-  VectorSet<int> verts_to_update;
+  VectorSet<int> boundary_verts;
   threading::parallel_invoke(
       [&]() {
         if (pbvh.deformed) {
-          normals_calc_faces(
-              positions, faces, corner_verts, faces_to_update, pbvh.face_normals_deformed);
+          calc_node_face_normals(
+              positions, faces, corner_verts, pbvh, nodes, pbvh.face_normals_deformed);
+          calc_boundary_face_normals(
+              positions, faces, corner_verts, boundary_faces, pbvh.face_normals_deformed);
         }
         else {
           mesh.runtime->face_normals_cache.update([&](Vector<float3> &r_data) {
-            normals_calc_faces(positions, faces, corner_verts, faces_to_update, r_data);
+            calc_node_face_normals(positions, faces, corner_verts, pbvh, nodes, r_data);
+            calc_boundary_face_normals(positions, faces, corner_verts, boundary_faces, r_data);
           });
           /* #SharedCache::update() reallocates cached vectors if they were shared initially. */
           pbvh.face_normals = mesh.runtime->face_normals_cache.data();
@@ -1198,28 +1253,28 @@ static void pbvh_faces_update_normals(PBVH &pbvh, Span<PBVHNode *> nodes, Mesh &
       },
       [&]() {
         /* Update all normals connected to affected faces, even if not explicitly tagged. */
-        verts_to_update.reserve(faces_to_update.size());
-        for (const int face : faces_to_update) {
-          verts_to_update.add_multiple(corner_verts.slice(faces[face]));
-        }
-
-        for (const int vert : verts_to_update) {
-          update_tags[vert] = false;
-        }
-        for (PBVHNode *node : nodes) {
-          node->flag &= ~PBVH_UpdateNormals;
+        boundary_verts.reserve(boundary_faces.size());
+        for (const int face : boundary_faces) {
+          boundary_verts.add_multiple(corner_verts.slice(faces[face]));
         }
       });
 
   if (pbvh.deformed) {
-    normals_calc_verts_simple(
-        pbvh.pmap, pbvh.face_normals, verts_to_update, pbvh.vert_normals_deformed);
+    calc_node_vert_normals(
+        pbvh.vert_to_face_map, pbvh.face_normals, nodes, pbvh.vert_normals_deformed);
+    calc_boundary_vert_normals(
+        pbvh.vert_to_face_map, pbvh.face_normals, boundary_verts, pbvh.vert_normals_deformed);
   }
   else {
     mesh.runtime->vert_normals_cache.update([&](Vector<float3> &r_data) {
-      normals_calc_verts_simple(pbvh.pmap, pbvh.face_normals, verts_to_update, r_data);
+      calc_node_vert_normals(pbvh.vert_to_face_map, pbvh.face_normals, nodes, r_data);
+      calc_boundary_vert_normals(pbvh.vert_to_face_map, pbvh.face_normals, boundary_verts, r_data);
     });
     pbvh.vert_normals = mesh.runtime->vert_normals_cache.data();
+  }
+
+  for (PBVHNode *node : nodes) {
+    node->flag &= ~PBVH_UpdateNormals;
   }
 }
 
@@ -1232,7 +1287,7 @@ void update_normals(PBVH &pbvh, SubdivCCG *subdiv_ccg)
     bmesh_normals_update(nodes);
   }
   else if (pbvh.header.type == PBVH_FACES) {
-    pbvh_faces_update_normals(pbvh, nodes, *pbvh.mesh);
+    update_normals_faces(pbvh, nodes, *pbvh.mesh);
   }
   else if (pbvh.header.type == PBVH_GRIDS) {
     IndexMaskMemory memory;
@@ -1335,7 +1390,7 @@ void node_update_mask_mesh(const Span<float> mask, PBVHNode &node)
 static void update_mask_mesh(const Mesh &mesh, const Span<PBVHNode *> nodes)
 {
   const AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT);
+  const VArraySpan<float> mask = *attributes.lookup<float>(".sculpt_mask", AttrDomain::Point);
   if (mask.is_empty()) {
     for (PBVHNode *node : nodes) {
       node->flag &= ~PBVH_FullyMasked;
@@ -1457,7 +1512,7 @@ void node_update_visibility_mesh(const Span<bool> hide_vert, PBVHNode &node)
 static void update_visibility_faces(const Mesh &mesh, const Span<PBVHNode *> nodes)
 {
   const AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
+  const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", AttrDomain::Point);
   if (hide_vert.is_empty()) {
     for (PBVHNode *node : nodes) {
       node->flag &= ~PBVH_FullyHidden;
@@ -1592,11 +1647,11 @@ IndexMask nodes_to_face_selection_grids(const SubdivCCG &subdiv_ccg,
 
 /***************************** PBVH Access ***********************************/
 
-bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, eAttrDomain *r_domain)
+bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, AttrDomain *r_domain)
 {
   *r_layer = BKE_id_attribute_search_for_write(
       &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
-  *r_domain = *r_layer ? BKE_id_attribute_domain(&mesh->id, *r_layer) : ATTR_DOMAIN_POINT;
+  *r_domain = *r_layer ? BKE_id_attribute_domain(&mesh->id, *r_layer) : AttrDomain::Point;
   return *r_layer != nullptr;
 }
 
@@ -1677,7 +1732,7 @@ void BKE_pbvh_node_mark_redraw(PBVHNode *node)
 
 void BKE_pbvh_node_mark_normals_update(PBVHNode *node)
 {
-  node->flag |= PBVH_UpdateNormals;
+  node->flag |= PBVH_UpdateNormals | PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
 }
 
 void BKE_pbvh_node_fully_hidden_set(PBVHNode *node, int fully_hidden)
@@ -1729,12 +1784,6 @@ void BKE_pbvh_node_fully_unmasked_set(PBVHNode *node, int fully_masked)
 bool BKE_pbvh_node_fully_unmasked_get(const PBVHNode *node)
 {
   return (node->flag & PBVH_Leaf) && (node->flag & PBVH_FullyUnmasked);
-}
-
-void BKE_pbvh_vert_tag_update_normal(PBVH *pbvh, PBVHVertRef vertex)
-{
-  BLI_assert(pbvh->header.type == PBVH_FACES);
-  pbvh->vert_bitmap[vertex.i] = true;
 }
 
 blender::Span<int> BKE_pbvh_node_get_loops(const PBVHNode *node)
@@ -1853,17 +1902,6 @@ void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
   if (r_orco_verts) {
     *r_orco_verts = node->bm_orvert;
   }
-}
-
-bool BKE_pbvh_node_has_vert_with_normal_update_tag(PBVH *pbvh, PBVHNode *node)
-{
-  BLI_assert(pbvh->header.type == PBVH_FACES);
-  for (const int vert : node->vert_indices) {
-    if (pbvh->vert_bitmap[vert]) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /********************************* Ray-cast ***********************************/
@@ -2070,7 +2108,8 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
            * uninitialized values. This stores the closest vertex in the current intersecting
            * triangle. */
           if (j == 0 ||
-              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co)) {
+              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
+          {
             copy_v3_v3(nearest_vertex_co, co[j]);
             r_active_vertex->i = corner_verts[tri[j]];
             *r_active_face_index = pbvh->corner_tri_faces[tri_i];
@@ -2133,7 +2172,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
         }
 
         if (ray_face_intersection_quad(
-                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth)) {
+                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
+        {
           hit = true;
 
           if (r_face_normal) {
@@ -2152,7 +2192,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
                * uninitialized values. This stores the closest vertex in the current intersecting
                * quad. */
               if (j == 0 || len_squared_v3v3(location, co[j]) <
-                                len_squared_v3v3(location, nearest_vertex_co)) {
+                                len_squared_v3v3(location, nearest_vertex_co))
+              {
                 copy_v3_v3(nearest_vertex_co, co[j]);
 
                 r_active_vertex->i = gridkey->grid_area * grid_index +
@@ -2597,7 +2638,7 @@ static blender::draw::pbvh::PBVH_GPU_Args pbvh_draw_args_init(const Mesh &mesh,
       args.face_normals = pbvh.face_normals;
       /* Retrieve data from the original mesh. Ideally that would be passed to this function to
        * make it clearer when each is used. */
-      args.hide_poly = *pbvh.mesh->attributes().lookup<bool>(".hide_poly", ATTR_DOMAIN_FACE);
+      args.hide_poly = *pbvh.mesh->attributes().lookup<bool>(".hide_poly", AttrDomain::Face);
 
       args.prim_indices = node.prim_indices;
       args.tri_faces = mesh.corner_tri_faces();
@@ -2816,7 +2857,6 @@ void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const Span<float3> vert_positions)
       /* no need for float comparison here (memory is exactly equal or not) */
       if (memcmp(positions[a], vert_positions[a], sizeof(float[3])) != 0) {
         positions[a] = vert_positions[a];
-        BKE_pbvh_vert_tag_update_normal(pbvh, BKE_pbvh_make_vref(a));
       }
     }
 
@@ -3042,9 +3082,9 @@ void BKE_pbvh_update_active_vcol(PBVH *pbvh, Mesh *mesh)
   BKE_pbvh_get_color_layer(mesh, &pbvh->color_layer, &pbvh->color_domain);
 }
 
-void BKE_pbvh_pmap_set(PBVH *pbvh, const blender::GroupedSpan<int> pmap)
+void BKE_pbvh_pmap_set(PBVH *pbvh, const blender::GroupedSpan<int> vert_to_face_map)
 {
-  pbvh->pmap = pmap;
+  pbvh->vert_to_face_map = vert_to_face_map;
 }
 
 void BKE_pbvh_ensure_node_loops(PBVH *pbvh)
@@ -3164,7 +3204,7 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
       }
       else {
         SpanAttributeWriter<bool> hide_poly = attributes.lookup_or_add_for_write_span<bool>(
-            ".hide_poly", ATTR_DOMAIN_FACE, AttributeInitConstruct());
+            ".hide_poly", AttrDomain::Face, AttributeInitConstruct());
         hide_poly.span.fill(false);
         index_mask::masked_fill(hide_poly.span, true, hidden_faces);
         hide_poly.finish();

@@ -11,8 +11,6 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-#include "DNA_meshdata_types.h"
-
 /** \file
  * \ingroup bke
  */
@@ -163,10 +161,6 @@ struct PBVH {
   CCGKey gridkey;
   SubdivCCG *subdiv_ccg;
 
-  /* Used during BVH build and later to mark that a vertex needs to update
-   * (its normal must be recalculated). */
-  blender::Array<bool> vert_bitmap;
-
 #ifdef PERFCNTRS
   int perf_modified;
 #endif
@@ -185,10 +179,10 @@ struct PBVH {
 
   BMLog *bm_log;
 
-  blender::GroupedSpan<int> pmap;
+  blender::GroupedSpan<int> vert_to_face_map;
 
   CustomDataLayer *color_layer;
-  eAttrDomain color_domain;
+  blender::bke::AttrDomain color_domain;
 
   /* Initialize this to true, instead of waiting for a draw engine
    * to set it. Prevents a crash in draw manager instancing code.

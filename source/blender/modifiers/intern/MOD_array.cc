@@ -20,7 +20,6 @@
 
 #include "DNA_curve_types.h"
 #include "DNA_defaults.h"
-#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -30,6 +29,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
+#include "BKE_customdata.hh"
 #include "BKE_displist.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
@@ -249,7 +249,8 @@ static void dm_mvert_map_doubles(int *doubles_map,
          * But if other potential targets are farther,
          * then there will be no mapping at all for this source. */
         while (best_target_vertex != -1 &&
-               !ELEM(doubles_map[best_target_vertex], -1, best_target_vertex)) {
+               !ELEM(doubles_map[best_target_vertex], -1, best_target_vertex))
+        {
           if (compare_len_v3v3(vert_positions[sve_source->vertex_num],
                                vert_positions[doubles_map[best_target_vertex]],
                                dist))
@@ -341,11 +342,12 @@ static void mesh_merge_transform(Mesh *result,
 
   const bke::AttributeAccessor cap_attributes = cap_mesh->attributes();
   if (const VArray cap_material_indices = *cap_attributes.lookup<int>("material_index",
-                                                                      ATTR_DOMAIN_FACE))
+                                                                      bke::AttrDomain::Face))
   {
     bke::MutableAttributeAccessor result_attributes = result->attributes_for_write();
     bke::SpanAttributeWriter<int> result_material_indices =
-        result_attributes.lookup_or_add_for_write_span<int>("material_index", ATTR_DOMAIN_FACE);
+        result_attributes.lookup_or_add_for_write_span<int>("material_index",
+                                                            bke::AttrDomain::Face);
     cap_material_indices.materialize(
         result_material_indices.span.slice(cap_faces_index, cap_nfaces));
     result_material_indices.finish();

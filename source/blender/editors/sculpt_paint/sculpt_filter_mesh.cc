@@ -8,6 +8,7 @@
 
 #include "DNA_modifier_types.h"
 #include "DNA_windowmanager_types.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_hash.h"
@@ -19,8 +20,6 @@
 #include "BLI_task.h"
 
 #include "BLT_translation.h"
-
-#include "DNA_meshdata_types.h"
 
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
@@ -530,9 +529,6 @@ static void mesh_filter_task(Object *ob,
       add_v3_v3v3(final_pos, orig_co, disp);
     }
     copy_v3_v3(vd.co, final_pos);
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 

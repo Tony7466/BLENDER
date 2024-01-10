@@ -27,6 +27,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 
+#include "DNA_meshdata_types.h"
+
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
@@ -326,7 +328,8 @@ bool MeshImporter::is_nice_mesh(COLLADAFW::Mesh *mesh)
 
     else if (!ELEM(type,
                    COLLADAFW::MeshPrimitive::TRIANGLES,
-                   COLLADAFW::MeshPrimitive::TRIANGLE_FANS)) {
+                   COLLADAFW::MeshPrimitive::TRIANGLE_FANS))
+    {
       fprintf(stderr, "ERROR: Primitive type %s is not supported.\n", type_str);
       return false;
     }
@@ -621,7 +624,7 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter material_indices = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", ATTR_DOMAIN_FACE);
+      "material_index", bke::AttrDomain::Face);
 
   bool *sharp_faces = static_cast<bool *>(CustomData_get_layer_named_for_write(
       &mesh->face_data, CD_PROP_BOOL, "sharp_face", mesh->faces_num));
@@ -719,7 +722,8 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
         }
 
         for (uint uvset_index = 0; uvset_index < index_list_array_uvcoord.getCount();
-             uvset_index++) {
+             uvset_index++)
+        {
           COLLADAFW::IndexList &index_list = *index_list_array_uvcoord[uvset_index];
           blender::float2 *mloopuv = static_cast<blender::float2 *>(
               CustomData_get_layer_named_for_write(&mesh->corner_data,
@@ -1162,7 +1166,7 @@ bool MeshImporter::write_geometry(const COLLADAFW::Geometry *geom)
   blender::Vector<blender::float3> loop_normals;
   read_polys(mesh, blender_mesh, loop_normals);
 
-  BKE_mesh_calc_edges(blender_mesh, false, false);
+  blender::bke::mesh_calc_edges(*blender_mesh, false, false);
 
   /* We must apply custom normals after edges have been calculated, because
    * BKE_mesh_set_custom_normals()'s internals expect mesh->medge to be populated

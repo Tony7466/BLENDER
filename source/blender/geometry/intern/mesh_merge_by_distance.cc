@@ -14,11 +14,9 @@
 #include "BLI_offset_indices.hh"
 #include "BLI_vector.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
+#include "DNA_meshdata_types.h"
 
 #include "GEO_mesh_merge_by_distance.hh"
 #include "GEO_randomize.hh"
@@ -262,7 +260,8 @@ static void weld_assert_poly_no_vert_repetition(const WeldPoly *wp,
   Array<int, 64> verts(wp->loop_len);
   WeldLoopOfPolyIter iter;
   if (!weld_iter_loop_of_poly_begin(
-          iter, *wp, wloop, corner_verts, corner_edges, loop_map, nullptr)) {
+          iter, *wp, wloop, corner_verts, corner_edges, loop_map, nullptr))
+  {
     return;
   }
   else {
@@ -1171,7 +1170,8 @@ static void weld_poly_find_doubles(const Span<int> corner_verts,
 
     WeldLoopOfPolyIter iter;
     if (!weld_iter_loop_of_poly_begin(
-            iter, wp, wloop, corner_verts, corner_edges, loop_map, nullptr)) {
+            iter, wp, wloop, corner_verts, corner_edges, loop_map, nullptr))
+    {
       continue;
     }
 

@@ -23,7 +23,7 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_callbacks.h"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
@@ -687,7 +687,8 @@ static bool bake_objects_check(Main *bmain,
 
     LISTBASE_FOREACH (CollectionPointerLink *, link, selected_objects) {
       if (!bake_object_check(
-              scene, view_layer, static_cast<Object *>(link->ptr.data), target, reports)) {
+              scene, view_layer, static_cast<Object *>(link->ptr.data), target, reports))
+      {
         return false;
       }
     }
@@ -1177,18 +1178,19 @@ static void convert_float_color_to_byte_color(const MPropCol *float_colors,
 
 static bool bake_targets_output_vertex_colors(BakeTargets *targets, Object *ob)
 {
+  using namespace blender;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   BMEditMesh *em = mesh->edit_mesh;
   const CustomDataLayer *active_color_layer = BKE_id_attributes_color_find(
       &mesh->id, mesh->active_color_attribute);
   BLI_assert(active_color_layer != nullptr);
-  const eAttrDomain domain = BKE_id_attribute_domain(&mesh->id, active_color_layer);
+  const bke::AttrDomain domain = BKE_id_attribute_domain(&mesh->id, active_color_layer);
 
   const int channels_num = targets->channels_num;
   const bool is_noncolor = targets->is_noncolor;
   const float *result = targets->result;
 
-  if (domain == ATTR_DOMAIN_POINT) {
+  if (domain == bke::AttrDomain::Point) {
     const int totvert = mesh->verts_num;
     const int totloop = mesh->corners_num;
 
@@ -1248,7 +1250,7 @@ static bool bake_targets_output_vertex_colors(BakeTargets *targets, Object *ob)
 
     MEM_SAFE_FREE(num_loops_for_vertex);
   }
-  else if (domain == ATTR_DOMAIN_CORNER) {
+  else if (domain == bke::AttrDomain::Corner) {
     if (em) {
       /* Copy to bmesh. */
       const int active_color_offset = CustomData_get_offset_named(
@@ -1738,7 +1740,8 @@ static int bake(const BakeAPIRender *bkr,
   else {
     /* save the results */
     if (bake_targets_output(
-            bkr, &targets, ob_low, ob_low_eval, me_low_eval, pixel_array_low, reports)) {
+            bkr, &targets, ob_low, ob_low_eval, me_low_eval, pixel_array_low, reports))
+    {
       op_result = OPERATOR_FINISHED;
     }
     else {

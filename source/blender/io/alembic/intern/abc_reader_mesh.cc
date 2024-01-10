@@ -17,8 +17,6 @@
 
 #include "DNA_customdata_types.h"
 #include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "BLI_compiler_compat.h"
@@ -30,6 +28,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -241,7 +240,7 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
     }
   }
 
-  BKE_mesh_calc_edges(config.mesh, false, false);
+  bke::mesh_calc_edges(*config.mesh, false, false);
   if (seen_invalid_geometry) {
     if (config.modifier_error_message) {
       *config.modifier_error_message = "Mesh hash invalid geometry; more details on the console";
@@ -401,63 +400,6 @@ static void *add_customdata_cb(Mesh *mesh, const char *name, int data_type)
   cd_ptr = CustomData_add_layer_named(
       &mesh->corner_data, cd_data_type, CD_SET_DEFAULT, numloops, name);
   return cd_ptr;
-}
-
-static V3fArraySamplePtr get_velocity_prop(const ICompoundProperty &schema,
-                                           const ISampleSelector &selector,
-                                           const std::string &name)
-{
-  for (size_t i = 0; i < schema.getNumProperties(); i++) {
-    const PropertyHeader &header = schema.getPropertyHeader(i);
-
-    if (header.isCompound()) {
-      const ICompoundProperty &prop = ICompoundProperty(schema, header.getName());
-
-      if (has_property(prop, name)) {
-        /* Header cannot be null here, as its presence is checked via has_property, so it is safe
-         * to dereference. */
-        const PropertyHeader *header = prop.getPropertyHeader(name);
-        if (!IV3fArrayProperty::matches(*header)) {
-          continue;
-        }
-
-        const IV3fArrayProperty &velocity_prop = IV3fArrayProperty(prop, name, 0);
-        if (velocity_prop) {
-          return velocity_prop.getValue(selector);
-        }
-      }
-    }
-    else if (header.isArray()) {
-      if (header.getName() == name && IV3fArrayProperty::matches(header)) {
-        const IV3fArrayProperty &velocity_prop = IV3fArrayProperty(schema, name, 0);
-        return velocity_prop.getValue(selector);
-      }
-    }
-  }
-
-  return V3fArraySamplePtr();
-}
-
-static void read_velocity(const V3fArraySamplePtr &velocities,
-                          const CDStreamConfig &config,
-                          const float velocity_scale)
-{
-  const int num_velocity_vectors = int(velocities->size());
-  if (num_velocity_vectors != config.mesh->verts_num) {
-    /* Files containing videogrammetry data may be malformed and export velocity data on missing
-     * frames (most likely by copying the last valid data). */
-    return;
-  }
-
-  CustomDataLayer *velocity_layer = BKE_id_attribute_new(
-      &config.mesh->id, "velocity", CD_PROP_FLOAT3, ATTR_DOMAIN_POINT, nullptr);
-  float(*velocity)[3] = (float(*)[3])velocity_layer->data;
-
-  for (int i = 0; i < num_velocity_vectors; i++) {
-    const Imath::V3f &vel_in = (*velocities)[i];
-    copy_zup_from_yup(velocity[i], vel_in.getValue());
-    mul_v3_fl(velocity[i], velocity_scale);
-  }
 }
 
 template<typename SampleType>
@@ -834,7 +776,7 @@ Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
       std::map<std::string, int> mat_map;
       bke::MutableAttributeAccessor attributes = new_mesh->attributes_for_write();
       bke::SpanAttributeWriter<int> material_indices =
-          attributes.lookup_or_add_for_write_span<int>("material_index", ATTR_DOMAIN_FACE);
+          attributes.lookup_or_add_for_write_span<int>("material_index", bke::AttrDomain::Face);
       assign_facesets_to_material_indices(sample_sel, material_indices.span, mat_map);
       material_indices.finish();
     }
@@ -895,7 +837,7 @@ void AbcMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const ISampleSel
   std::map<std::string, int> mat_map;
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", ATTR_DOMAIN_FACE);
+      "material_index", bke::AttrDomain::Face);
   assign_facesets_to_material_indices(sample_sel, material_indices.span, mat_map);
   material_indices.finish();
   utils::assign_materials(bmain, m_object, mat_map);

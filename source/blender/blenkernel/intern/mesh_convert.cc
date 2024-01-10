@@ -13,8 +13,6 @@
 #include "DNA_curve_types.h"
 #include "DNA_key_types.h"
 #include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
@@ -124,11 +122,11 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
 
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_only_span<int>(
-      "material_index", ATTR_DOMAIN_FACE);
+      "material_index", AttrDomain::Face);
   SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
-      "sharp_face", ATTR_DOMAIN_FACE);
+      "sharp_face", AttrDomain::Face);
   SpanAttributeWriter<float2> uv_attribute = attributes.lookup_or_add_for_write_span<float2>(
-      DATA_("UVMap"), ATTR_DOMAIN_CORNER);
+      DATA_("UVMap"), AttrDomain::Corner);
   MutableSpan<float2> uv_map = uv_attribute.span;
 
   int dst_vert = 0;
@@ -302,7 +300,7 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
   }
 
   if (faces_num) {
-    BKE_mesh_calc_edges(mesh, true, false);
+    mesh_calc_edges(*mesh, true, false);
   }
 
   material_indices.finish();

@@ -186,7 +186,8 @@ ModifierData *ED_object_modifier_add(
       md = static_cast<ModifierData *>(ob->modifiers.first);
 
       while (md &&
-             BKE_modifier_get_info((ModifierType)md->type)->type == ModifierTypeType::OnlyDeform) {
+             BKE_modifier_get_info((ModifierType)md->type)->type == ModifierTypeType::OnlyDeform)
+      {
         md = md->next;
       }
 
@@ -668,7 +669,7 @@ bool ED_object_modifier_convert_psys_to_mesh(ReportList * /*reports*/,
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
-      ".select_vert", ATTR_DOMAIN_POINT);
+      ".select_vert", bke::AttrDomain::Point);
 
   int edge_index = 0;
 
@@ -775,7 +776,8 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
 
   if (build_shapekey_layers && mesh->key) {
     if (KeyBlock *kb = static_cast<KeyBlock *>(
-            BLI_findlink(&mesh->key->block, ob_eval->shapenr - 1))) {
+            BLI_findlink(&mesh->key->block, ob_eval->shapenr - 1)))
+    {
       BKE_keyblock_convert_to_mesh(
           kb,
           reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data()),
@@ -911,7 +913,7 @@ static bool modifier_apply_shape(Main *bmain,
 }
 
 static bool meta_data_matches(const std::optional<blender::bke::AttributeMetaData> meta_data,
-                              const eAttrDomainMask domains,
+                              const AttrDomainMask domains,
                               const eCustomDataMask types)
 {
   if (!meta_data) {
