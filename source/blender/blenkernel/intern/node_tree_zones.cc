@@ -353,7 +353,7 @@ static std::unique_ptr<bNodeTreeZones> discover_tree_zones(const bNodeTree &tree
 
   update_zone_border_links(tree, *tree_zones);
 
-  // std::cout << *tree_zones << std::endl;
+  std::cout << *tree_zones << std::endl;
   return tree_zones;
 }
 
@@ -549,13 +549,10 @@ std::ostream &operator<<(std::ostream &stream, const bNodeTreeZone &zone)
   stream << "; Input: " << (zone.input_node ? zone.input_node->name : "null");
   stream << ", Output: " << (zone.output_node ? zone.output_node->name : "null");
 
-  stream << "; Border Links: {";
+  stream << "; Border Links: {\n";
   for (const bNodeLink *border_link : zone.border_links) {
-    stream << border_link->fromnode->name << ": " << border_link->fromsock->name;
-    stream << " -> " << border_link->tonode->name << ": " << border_link->tosock->name;
-    if (border_link != zone.border_links.last()) {
-      stream << ", ";
-    }
+    stream << "  " << border_link->fromnode->name << ": " << border_link->fromsock->name << " -> ";
+    stream << border_link->tonode->name << ": " << border_link->tosock->name << ";\n";
   }
   stream << "}.";
   return stream;
