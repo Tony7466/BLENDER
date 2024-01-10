@@ -36,7 +36,7 @@
 
 #  include "DEG_depsgraph.hh"
 
-#  include "ANIM_fcurve.hh"
+#  include "ANIM_action.hh"
 
 #  include "WM_api.hh"
 
@@ -654,6 +654,16 @@ static void rna_def_dopesheet(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Display Movie Clips", "Include visualization of movie clip related animation data");
   RNA_def_property_ui_icon(prop, ICON_TRACKER, 0);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
+
+  prop = RNA_def_property(srna, "show_driver_fallback_as_error", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "filterflag2", ADS_FILTER_DRIVER_FALLBACK_AS_ERROR);
+  RNA_def_property_ui_text(
+      prop,
+      "Variable Fallback As Error",
+      "Include drivers that relied on any fallback values for their evaluation "
+      "in the Only Show Errors filter, even if the driver evaluation succeeded");
+  RNA_def_property_ui_icon(prop, ICON_RNA, 0);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 }
 

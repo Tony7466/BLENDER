@@ -4,8 +4,8 @@
 
 #include "workbench_private.hh"
 
-#include "BKE_volume.h"
-#include "BKE_volume_render.h"
+#include "BKE_volume.hh"
+#include "BKE_volume_render.hh"
 #include "BLI_rand.h"
 #include "DNA_fluid_types.h"
 #include "DNA_modifier_types.h"
@@ -45,7 +45,7 @@ void VolumePass::object_sync_volume(Manager &manager,
   /* Create 3D textures. */
   Volume *volume = static_cast<Volume *>(ob->data);
   BKE_volume_load(volume, G.main);
-  const VolumeGrid *volume_grid = BKE_volume_grid_active_get_for_read(volume);
+  const bke::VolumeGridData *volume_grid = BKE_volume_grid_active_get_for_read(volume);
   if (volume_grid == nullptr) {
     return;
   }

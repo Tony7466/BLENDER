@@ -38,12 +38,12 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_nla.h"
 #include "BKE_node.h"
@@ -604,7 +604,8 @@ static int animsys_quaternion_evaluate_fcurves(PathResolvedRNA quat_rna,
 
   int fcurve_offset = 0;
   for (; fcurve_offset < 4 && quat_curve_fcu;
-       ++fcurve_offset, quat_curve_fcu = quat_curve_fcu->next) {
+       ++fcurve_offset, quat_curve_fcu = quat_curve_fcu->next)
+  {
     if (!STREQ(quat_curve_fcu->rna_path, first_fcurve->rna_path)) {
       /* This should never happen when the quaternion is fully keyed. Some
        * people do use half-keyed quaternions, though, so better to check. */
@@ -1197,7 +1198,7 @@ static void nlaeval_snapshot_init(NlaEvalSnapshot *snapshot,
                                   NlaEvalSnapshot *base)
 {
   snapshot->base = base;
-  snapshot->size = MAX2(16, nlaeval->num_channels);
+  snapshot->size = std::max(16, nlaeval->num_channels);
   snapshot->channels = static_cast<NlaEvalChannelSnapshot **>(
       MEM_callocN(sizeof(*snapshot->channels) * snapshot->size, "NlaEvalSnapshot::channels"));
 }

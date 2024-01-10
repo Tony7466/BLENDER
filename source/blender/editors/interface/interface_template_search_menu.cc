@@ -36,7 +36,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_screen.hh"
 
@@ -53,7 +53,7 @@
 #include "interface_intern.hh"
 
 /* For key-map item access. */
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Menu Search Template Implementation

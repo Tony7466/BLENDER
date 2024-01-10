@@ -19,6 +19,8 @@
 /* Needed for the instance iterator. */
 #include "DNA_object_types.h"
 
+#include "BKE_object_types.hh"
+
 struct BLI_Iterator;
 struct CustomData_MeshMasks;
 struct Depsgraph;
@@ -131,13 +133,13 @@ bool DEG_is_fully_evaluated(const Depsgraph *depsgraph);
 /** \name DEG object iterators
  * \{ */
 
-typedef enum DegIterFlag {
+enum DegIterFlag {
   DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY = (1 << 0),
   DEG_ITER_OBJECT_FLAG_LINKED_INDIRECTLY = (1 << 1),
   DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET = (1 << 2),
   DEG_ITER_OBJECT_FLAG_VISIBLE = (1 << 3),
   DEG_ITER_OBJECT_FLAG_DUPLI = (1 << 4),
-} DegIterFlag;
+};
 ENUM_OPERATORS(DegIterFlag, DEG_ITER_OBJECT_FLAG_DUPLI)
 
 struct DEGObjectIterSettings {
@@ -193,10 +195,12 @@ struct DEGObjectIterData {
   /* Temporary storage to report fully populated DNA to the render engine or
    * other users of the iterator. */
   Object temp_dupli_object;
+  blender::bke::ObjectRuntime temp_dupli_object_runtime;
 
   /* **** Iteration over ID nodes **** */
   size_t id_node_index;
   size_t num_id_nodes;
+  DEGObjectIterData &operator=(const DEGObjectIterData &other);
 };
 
 void DEG_iterator_objects_begin(BLI_Iterator *iter, DEGObjectIterData *data);

@@ -8,7 +8,6 @@ import bpy
 from bpy.types import (
     Menu,
     Operator,
-    bpy_prop_array,
 )
 from bpy.props import (
     BoolProperty,
@@ -35,7 +34,7 @@ def _rna_path_prop_search_for_context_impl(context, edit_text, unique_attrs):
     line = context_prefix + edit_text
     cursor = len(line)
     namespace = {"context": context}
-    comp_prefix, _, comp_options = intellisense.expand(line=line, cursor=len(line), namespace=namespace, private=False)
+    comp_prefix, _, comp_options = intellisense.expand(line=line, cursor=cursor, namespace=namespace, private=False)
     prefix = comp_prefix[len(context_prefix):]  # Strip "context."
     for attr in comp_options.split("\n"):
         if attr.endswith((
@@ -66,7 +65,6 @@ def rna_path_prop_search_for_context(self, context, edit_text):
             # Users are very unlikely to be setting shortcuts in the preferences, skip this.
             if area.type == 'PREFERENCES':
                 continue
-            space = area.spaces.active
             # Ignore the same region type multiple times in an area.
             # Prevents the 3D-viewport quad-view from attempting to expand 3 extra times for e.g.
             region_type_unique = set()
@@ -1029,15 +1027,13 @@ class WM_OT_url_open(Operator):
     def _add_utm_param_to_url(url, utm_source):
         import urllib.parse
 
-        # Make sure we have a scheme otherwise we can't parse the url.
-        if not url.startswith(("http://", "https://")):
-            url = "https://" + url
-
         # Parse the URL to get its domain and query parameters.
+        if not urllib.parse.urlparse(url).scheme:
+            url = "https://" + url
         parsed_url = urllib.parse.urlparse(url)
-        domain = parsed_url.netloc
 
         # Only add a utm source if it points to a blender.org domain.
+        domain = parsed_url.netloc
         if not (domain.endswith(".blender.org") or domain == "blender.org"):
             return url
 

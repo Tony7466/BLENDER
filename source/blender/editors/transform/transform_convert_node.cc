@@ -15,10 +15,10 @@
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_report.h"
 
 #include "ED_node.hh"
@@ -155,7 +155,8 @@ static void node_snap_grid_apply(TransInfo *t)
   using namespace blender;
 
   if (!(transform_snap_is_active(t) &&
-        (t->tsnap.mode & (SCE_SNAP_TO_INCREMENT | SCE_SNAP_TO_GRID)))) {
+        (t->tsnap.mode & (SCE_SNAP_TO_INCREMENT | SCE_SNAP_TO_GRID))))
+  {
     return;
   }
 

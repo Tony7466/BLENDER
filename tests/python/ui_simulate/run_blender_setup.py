@@ -1,8 +1,10 @@
+# SPDX-FileCopyrightText: 2019-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
 Utility script, called by ``run.py`` to run inside Blender,
-to avoid boiler plate code having to be added into each test.
+to avoid boilerplate code having to be added into each test.
 """
 
 import os
@@ -62,7 +64,7 @@ def main():
     parser = create_parser()
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 
-    # Check if `bpy.app.use_event_simulate` has been enabled by the test it's self.
+    # Check if `bpy.app.use_event_simulate` has been enabled by the test itself.
     # When writing tests, it's useful if the test can temporarily be set to keep the window open.
 
     def on_error():
