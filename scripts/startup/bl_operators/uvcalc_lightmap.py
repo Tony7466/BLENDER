@@ -312,7 +312,7 @@ def lightmap_uvpack(
             num_tri_pairs = int(len(tri_lengths) / 2)
             wm.progress_begin(0, num_tri_pairs)  # log unwrap progress
             pairs_added = 0
-            tri_equality_threshold = 0.00001
+            tri_equality_threshold = 0.00001  # add multiple pairs at once that are within this threshold
             for i in range(len(tri_lengths)):
                 if added_ids[i]:
                     continue
@@ -330,8 +330,9 @@ def lightmap_uvpack(
                 pairs_added = pairs_added + 1
                 added_ids[nearest] = True
 
-                # look in threshold vicinity to add all similar/equal tris in one go
-                if False and dist < tri_equality_threshold:
+                # look in threshold proximity to add all similar/equal tris in one go.
+                # this code is not necessary but acts as a shortcut (~9% performance improvement)
+                if dist < tri_equality_threshold:
                     cluster_tri_ids = [idx for _, idx, _ in kd.find_range(sorted_l, tri_equality_threshold) if
                                        not added_ids[idx]]
 
