@@ -259,7 +259,7 @@ void gaussian_blur_1D(const GSpan src,
   });
 }
 
-static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
+void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
                                    const VArray<bool> &point_selection,
                                    const VArray<bool> &cyclic,
                                    const IndexMask &curves_to_smooth,

@@ -17,6 +17,8 @@ set(INC
   ../render
   ../windowmanager
   ../../../intern/eigen
+  ../gpencil_modifiers_legacy
+  ../gpencil_modifiers_legacy/intern
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -44,7 +46,7 @@ set(SRC
   intern/MOD_edgesplit.cc
   intern/MOD_explode.cc
   intern/MOD_fluid.cc
-  intern/MOD_generic.cc
+  intern/MOD_grease_pencil_smooth.cc
   intern/MOD_hook.cc
   intern/MOD_laplaciandeform.cc
   intern/MOD_laplaciansmooth.cc

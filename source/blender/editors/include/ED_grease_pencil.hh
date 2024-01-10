@@ -219,6 +219,16 @@ void gaussian_blur_1D(const GSpan src,
                       bool is_cyclic,
                       GMutableSpan dst);
 
+void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
+                            const VArray<bool> &point_selection,
+                            const VArray<bool> &cyclic,
+                            const IndexMask &curves_to_smooth,
+                            const int64_t iterations,
+                            const float influence,
+                            const bool smooth_ends,
+                            const bool keep_shape,
+                            GMutableSpan data);
+
 int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        float epsilon,
                                        FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,

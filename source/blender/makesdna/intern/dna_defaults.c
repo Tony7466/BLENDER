@@ -293,6 +293,9 @@ SDNA_DEFAULT_DECL_STRUCT(WeightVGProximityModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WeldModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WireframeModifierData);
 
+/* Grease Pencil 3.0 modifiers. */
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilSmoothModifierData);
+
 /* DNA_gpencil_modifier_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(ArmatureGpencilModifierData);
 SDNA_DEFAULT_DECL_STRUCT(ArrayGpencilModifierData);
@@ -536,6 +539,9 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(WeightVGProximityModifierData),
     SDNA_DEFAULT_DECL(WeldModifierData),
     SDNA_DEFAULT_DECL(WireframeModifierData),
+
+    /* Grease Pencil 3.0 defaults. */
+    SDNA_DEFAULT_DECL(GreasePencilSmoothModifierData),
 
     /* DNA_gpencil_modifier_defaults.h */
     SDNA_DEFAULT_DECL(ArmatureGpencilModifierData),
