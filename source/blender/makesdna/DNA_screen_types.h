@@ -438,12 +438,14 @@ typedef struct ARegion_Runtime {
 
 typedef struct LayoutPanelState {
   struct LayoutPanelState *next, *prev;
+  /** Identifier of the panel. */
   char *idname;
   uint8_t flag;
   char _pad[7];
 } LayoutPanelState;
 
 enum LayoutPanelStateFlag {
+  /** If set, the panel is currently open. Otherwise it is collapsed. */
   LAYOUT_PANEL_STATE_FLAG_OPEN = (1 << 0),
 };
 
@@ -513,6 +515,7 @@ typedef struct ARegion {
   struct wmTimer *regiontimer;
   struct wmDrawBuffer *draw_buffer;
 
+  /** #LayoutPanelState. */
   ListBase layout_panel_states;
 
   /** Use this string to draw info. */
