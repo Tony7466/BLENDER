@@ -438,7 +438,7 @@ typedef struct ARegion_Runtime {
 
 typedef struct LayoutPanelState {
   struct LayoutPanelState *next, *prev;
-  char *identifier;
+  char *idname;
   uint8_t flag;
   char _pad[7];
 } LayoutPanelState;

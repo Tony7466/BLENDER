@@ -794,14 +794,15 @@ struct uiLayout *rna_uiLayoutPanelCustom(uiLayout *layout,
 
 struct uiLayout *rna_uiLayoutPanel(uiLayout *layout,
                                    bContext *C,
-                                   const char *identifier,
+                                   const char *idname,
                                    const char *text,
                                    const char *text_ctxt,
-                                   const bool translate)
+                                   const bool translate,
+                                   const bool open_by_default)
 {
   text = RNA_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
   ARegion *region = CTX_wm_region(C);
-  LayoutPanelState *state = BKE_region_layout_panel_state_ensure(region, identifier);
+  LayoutPanelState *state = BKE_region_layout_panel_state_ensure(region, idname, open_by_default);
   PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
   return uiLayoutPanel(C, layout, text, &state_ptr, "is_open");
 }
@@ -1102,9 +1103,14 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_ui_description(
       func, "Sub-layout. Items placed in this sublayout are placed into a collapsable panel");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
-  parm = RNA_def_string(func, "identifier", nullptr, 0, "", "Identifier of the panel");
+  parm = RNA_def_string(func, "idname", nullptr, 0, "", "Identifier of the panel");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   api_ui_item_common_text(func);
+  RNA_def_boolean(func,
+                  "open_by_default",
+                  false,
+                  "Open by Default",
+                  "When true, the panel will be open the first time it is shown");
   parm = RNA_def_pointer(
       func,
       "layout",

@@ -607,7 +607,13 @@ void BKE_screen_area_free(ScrArea *area);
 void BKE_region_callback_free_gizmomap_set(void (*callback)(wmGizmoMap *));
 void BKE_region_callback_refresh_tag_gizmomap_set(void (*callback)(wmGizmoMap *));
 
-LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region, const char *identifier);
+/**
+ * Get the layout panel state for the given idname. If it does not exist yet, initialize a new
+ * panel state with the given default value.
+ */
+LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region,
+                                                       const char *idname,
+                                                       bool open_by_default);
 
 /**
  * Find a region of type \a region_type in provided \a regionbase.

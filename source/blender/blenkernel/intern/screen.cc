@@ -366,7 +366,7 @@ ARegion *BKE_area_region_copy(const SpaceType *st, const ARegion *region)
   BLI_listbase_clear(&newar->layout_panel_states);
   LISTBASE_FOREACH (LayoutPanelState *, src_state, &region->layout_panel_states) {
     LayoutPanelState *new_state = MEM_new<LayoutPanelState>(__func__, *src_state);
-    new_state->identifier = BLI_strdup(src_state->identifier);
+    new_state->idname = BLI_strdup(src_state->idname);
     BLI_addtail(&newar->layout_panel_states, new_state);
   }
 
@@ -494,15 +494,18 @@ void BKE_region_callback_free_gizmomap_set(void (*callback)(wmGizmoMap *))
   region_free_gizmomap_callback = callback;
 }
 
-LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region, const char *identifier)
+LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region,
+                                                       const char *idname,
+                                                       const bool open_by_default)
 {
   LISTBASE_FOREACH (LayoutPanelState *, state, &region->layout_panel_states) {
-    if (STREQ(state->identifier, identifier)) {
+    if (STREQ(state->idname, idname)) {
       return state;
     }
   }
   LayoutPanelState *state = MEM_cnew<LayoutPanelState>(__func__);
-  state->identifier = BLI_strdup(identifier);
+  state->idname = BLI_strdup(idname);
+  SET_FLAG_FROM_TEST(state->flag, open_by_default, LAYOUT_PANEL_STATE_FLAG_OPEN);
   BLI_addtail(&region->layout_panel_states, state);
   return state;
 }
@@ -583,7 +586,7 @@ void BKE_area_region_free(SpaceType *st, ARegion *region)
   }
 
   LISTBASE_FOREACH (LayoutPanelState *, state, &region->layout_panel_states) {
-    MEM_freeN(state->identifier);
+    MEM_freeN(state->idname);
   }
   BLI_freelistN(&region->layout_panel_states);
 
@@ -1103,7 +1106,7 @@ static void write_area(BlendWriter *writer, ScrArea *area)
 
     BLO_write_struct_list(writer, LayoutPanelState, &region->layout_panel_states);
     LISTBASE_FOREACH (LayoutPanelState *, state, &region->layout_panel_states) {
-      BLO_write_string(writer, state->identifier);
+      BLO_write_string(writer, state->idname);
     }
   }
 
@@ -1175,7 +1178,7 @@ static void direct_link_region(BlendDataReader *reader, ARegion *region, int spa
 
   BLO_read_list(reader, &region->layout_panel_states);
   LISTBASE_FOREACH (LayoutPanelState *, state, &region->layout_panel_states) {
-    BLO_read_data_address(reader, &state->identifier);
+    BLO_read_data_address(reader, &state->idname);
   }
 
   if (spacetype == SPACE_EMPTY) {
