@@ -1690,24 +1690,27 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       Array<int> use_cuts(curves.points_num(), 0);
 
       /* The cut is after each point, so the last point selected wouldn't need to be registered. */
-      for (const int curves_i : curves.curves_range()) {
+      for (const int curve : curves.curves_range()) {
+        const int last_point = points_by_curve[curve].last();
         /* No need to loop to the last point since the cut is registered on the point before the
          * segment. */
-        for (const int points_i : points_by_curve[curves_i].drop_back(1)) {
+        for (const int point : points_by_curve[curve].drop_back(1)) {
           /* The point itself should be selected. */
-          if (!selection[points_i]) {
+          if (!selection[point]) {
             continue;
           }
           /* If the next point in the curve is selected, then cut this segment. */
-          if ((points_i < points_by_curve[curves_i].last()) && selection[points_i + 1]) {
-            use_cuts[points_i] = cuts;
+          if (selection[point + 1]) {
+            use_cuts[point] = cuts;
+            /* Always register the last point in the curve, the subdiv call will
+             * check whether it's cyclic and cut it accordingly. */
+            if (point + 1 == last_point) {
+              use_cuts[last_point] = cuts;
+            }
           }
         }
-        /* Always register the last point in the curve, the subdiv call will check for cyclic
-         * curves and cut them correctly. */
-        use_cuts[points_by_curve[curves_i].last()] = cuts;
       }
-      vcuts = VArray<int>::ForContainer(use_cuts);
+      vcuts = VArray<int>::ForContainer(std::move(use_cuts));
     }
 
     curves = geometry::subdivide_curves(curves, strokes, vcuts, {});
