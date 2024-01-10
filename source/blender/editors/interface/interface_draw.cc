@@ -618,17 +618,15 @@ static void waveform_draw_rgb(float *waveform, int waveform_num, float *col)
   const uint col_id = GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+
   GPU_vertbuf_data_alloc(vbo, waveform_num);
-
   GPU_vertbuf_attr_fill(vbo, pos_id, waveform);
-
   GPU_vertbuf_attr_fill(vbo, col_id, col);
 
   GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_POINTS, vbo, nullptr, GPU_BATCH_OWNS_VBO);
+
   GPU_batch_program_set_builtin(batch, GPU_SHADER_3D_SMOOTH_COLOR);
-
   GPU_batch_draw(batch);
-
   GPU_batch_discard(batch);
 }
 
@@ -640,17 +638,15 @@ static void circle_draw_rgb(float *points, int tot_points, float *col)
   const uint col_id = GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+
   GPU_vertbuf_data_alloc(vbo, tot_points);
-
   GPU_vertbuf_attr_fill(vbo, pos_id, points);
-
   GPU_vertbuf_attr_fill(vbo, col_id, col);
 
   GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_LINE_LOOP, vbo, nullptr, GPU_BATCH_OWNS_VBO);
+
   GPU_batch_program_set_builtin(batch, GPU_SHADER_3D_SMOOTH_COLOR);
-
   GPU_batch_draw(batch);
-
   GPU_batch_discard(batch);
 }
 
@@ -949,7 +945,7 @@ static void vectorscope_draw_target(
               polar_to_x(centerx, diam, tampli + dampli, tangle - dangle),
               polar_to_y(centery, diam, tampli + dampli, tangle - dangle));
 
-  //draw text
+  /* draw color letter as text */
   BLF_color4f(BLF_default(), 1.0f, 1.0f, 1.0f, 0.3f);
   BLF_draw_default(polar_to_x(centerx, diam, tampli, tangle) + 5,
                    polar_to_y(centery, diam, tampli, tangle),
@@ -969,12 +965,12 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   Scopes *scopes = (Scopes *)but->poin;
 
   const float colors[6][3] = {
-        {0.75, 0.0, 0.0},   // Red
-        {0.75, 0.75, 0.0},  // Yellow
-        {0.0, 0.75, 0.0},   // Green
-        {0.0, 0.75, 0.75},  // Cyan
-        {0.0, 0.0, 0.75},   // Blue
-        {0.75, 0.0, 0.75},  // Magenta
+        {0.75, 0.0, 0.0},   /* Red */
+        {0.75, 0.75, 0.0},  /* Yellow */
+        {0.0, 0.75, 0.0},   /* Green */
+        {0.0, 0.75, 0.75},  /* Cyan */
+        {0.0, 0.0, 0.75},   /* Blue */
+        {0.75, 0.0, 0.75},  /* Magenta */
   };
 
   const char color_names[6][4] = {"R", "Y", "G", "C", "B", "M"};
@@ -1032,23 +1028,18 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
     const float a = DEG2RADF(float(i));
     immVertex2f(pos, polar_to_x(centerx, diam, r, a), polar_to_y(centery, diam, r, a));
   }
-
   immEnd();
 
+  /* draw skin tone line */
   float circle_points[(tot_points * 2)+3] = {};
   float circle_vertex_colors[(tot_points * 4)+5] = {};
 
   float step = 360.0f / float(tot_points);
 
   for (int i = 0; i < tot_points; i++) {
-      // Calculate the angle in degrees for this point
       float angle = step * i;
-
-      // Convert angle to radians
       const float a = DEG2RADF(angle);
 
-
-      // Calculate the position values
       const float x = polar_to_x(centerx, diam, 0.5f, a);
       const float y = polar_to_y(centery, diam, 0.5f, a);
 
@@ -1058,11 +1049,9 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
       circle_points[i * 2] = x;
       circle_points[i * 2 + 1] = y;
 
-      // Compute RGB values
       float r = 0.0f, g = 0.0f, b = 0.0f;
       yuv_to_rgb(0.5f, u, v, &r, &g, &b, BLI_YUV_ITU_BT709);
 
-      // Set the color values
       circle_vertex_colors[i * 4] = r;
       circle_vertex_colors[i * 4 + 1] = g;
       circle_vertex_colors[i * 4 + 2] = b;
@@ -1072,7 +1061,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   GPU_blend(GPU_BLEND_ALPHA);
   circle_draw_rgb(circle_points, tot_points, circle_vertex_colors);
 
-  //inner circles
+  /* inner circles */
   for (int j = 0; j < 5; j++) {
     if (j == 4)
       continue;
@@ -1090,9 +1079,9 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
     immEnd();
   }
 
-  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.1f);
   /* draw grid elements */
   /* cross */
+  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.1f);
   immBegin(GPU_PRIM_LINES, 4);
 
   immVertex2f(pos, centerx - (diam * 0.5f) - 5, centery);
@@ -1102,7 +1091,6 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   immVertex2f(pos, centerx, centery + (diam * 0.5f) + 5);
 
   immEnd();
-
 
   /* skin tone line */
   GPU_blend(GPU_BLEND_ADDITIVE);

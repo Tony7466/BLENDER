@@ -166,7 +166,6 @@ typedef struct Scopes {
   float *waveform_3;
   float *vecscope;
   float *vecscope_rgb;
-  char _pad[8];  // Adjusted for alignment
 } Scopes;
 
 /** #Scopes.wavefrm_mode */
