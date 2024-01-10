@@ -33,6 +33,10 @@ struct FileHandlerType {
   /** List of file extensions supported by the file handler. */
   Vector<std::string> file_extensions;
 
+  /** Last file select directory where the import/export operator where executed. */
+  std::string last_import_dir;
+  std::string last_import_filename;
+
   /** RNA integration. */
   ExtensionRNA rna_ext;
 
@@ -71,4 +75,8 @@ Span<std::unique_ptr<FileHandlerType>> file_handlers();
 blender::Vector<FileHandlerType *> file_handlers_poll_file_drop(
     const bContext *C, const blender::Span<std::string> paths);
 
+void file_handler_last_dir_set(StringRef opname, StringRef dir);
+StringRef file_handler_last_dir_get(StringRef opname);
+void file_handler_last_filename_set(StringRef opname, StringRef dir);
+StringRef file_handler_last_filename_get(StringRef opname);
 }  // namespace blender::bke

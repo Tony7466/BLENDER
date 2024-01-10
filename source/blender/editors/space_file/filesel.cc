@@ -43,6 +43,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_context.hh"
+#include "BKE_file_handler.hh"
 #include "BKE_idtype.h"
 #include "BKE_main.hh"
 #include "BKE_preferences.h"
@@ -181,7 +182,14 @@ static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
       params->type = FILE_SPECIAL;
     }
 
-    if (is_filepath && RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+    if (auto dir = blender::bke::file_handler_last_dir_get(op->idname); dir.data()) {
+      STRNCPY(params->dir, dir.data());
+      auto filename = blender::bke::file_handler_last_filename_get(op->idname);
+      if (filename.data()) {
+        STRNCPY(params->dir, dir.data());
+      }
+    }
+    else if (is_filepath && RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
       char filepath[FILE_MAX];
       RNA_string_get(op->ptr, "filepath", filepath);
       if (params->type == FILE_LOADLIB) {

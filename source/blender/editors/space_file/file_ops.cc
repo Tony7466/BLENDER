@@ -14,6 +14,7 @@
 #include "BKE_appdir.h"
 #include "BKE_blendfile.hh"
 #include "BKE_context.hh"
+#include "BKE_file_handler.hh"
 #include "BKE_global.h"
 #include "BKE_main.hh"
 #include "BKE_report.h"
@@ -2086,7 +2087,9 @@ static bool file_execute(bContext *C, SpaceFile *sfile)
     char filepath[FILE_MAX];
 
     sfile->op = nullptr;
-
+    FileSelectParams *params = ED_fileselect_get_active_params(sfile);
+    blender::bke::file_handler_last_dir_set(op->idname, params->dir);
+    blender::bke::file_handler_last_filename_set(op->idname, params->file);
     file_sfile_to_operator_ex(C, bmain, op, sfile, filepath);
 
     if (BLI_exists(params->dir)) {

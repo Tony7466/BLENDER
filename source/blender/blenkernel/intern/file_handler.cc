@@ -117,4 +117,61 @@ blender::Vector<int64_t> FileHandlerType::filter_supported_paths(
   return indices;
 }
 
+void file_handler_last_dir_set(StringRef opname, StringRef dir)
+{
+  {
+    auto itr = std::find_if(file_handlers().begin(),
+                            file_handlers().end(),
+                            [opname](const std::unique_ptr<FileHandlerType> &file_handler) {
+                              return opname == file_handler->import_operator;
+                            });
+    if (itr != file_handlers().end()) {
+      itr->get()->last_import_dir = dir;
+    }
+  }
+}
+
+StringRef file_handler_last_dir_get(StringRef opname)
+{
+  {
+    auto itr = std::find_if(file_handlers().begin(),
+                            file_handlers().end(),
+                            [opname](const std::unique_ptr<FileHandlerType> &file_handler) {
+                              return opname == file_handler->import_operator;
+                            });
+    if (itr != file_handlers().end()) {
+      return itr->get()->last_import_dir;
+    }
+  }
+  return nullptr;
+}
+
+void file_handler_last_filename_set(StringRef opname, StringRef dir)
+{
+  {
+    auto itr = std::find_if(file_handlers().begin(),
+                            file_handlers().end(),
+                            [opname](const std::unique_ptr<FileHandlerType> &file_handler) {
+                              return opname == file_handler->import_operator;
+                            });
+    if (itr != file_handlers().end()) {
+      itr->get()->last_import_filename = dir;
+    }
+  }
+}
+
+StringRef file_handler_last_filename_get(StringRef opname)
+{
+  {
+    auto itr = std::find_if(file_handlers().begin(),
+                            file_handlers().end(),
+                            [opname](const std::unique_ptr<FileHandlerType> &file_handler) {
+                              return opname == file_handler->import_operator;
+                            });
+    if (itr != file_handlers().end()) {
+      return itr->get()->last_import_filename;
+    }
+  }
+  return nullptr;
+}
 }  // namespace blender::bke
