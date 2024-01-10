@@ -991,8 +991,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   const float centery = rect.ymin + h * 0.5f;
   const float diam = (w < h) ? w : h;
 
-  const float alpha = scopes->vecscope_alpha * scopes->vecscope_alpha * scopes->vecscope_alpha;
-  const float vecsope_col[3] = {alpha, alpha, alpha};
+  const float alpha = scopes->vecscope_alpha;
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -1123,14 +1122,21 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   if (scopes->ok && scopes->vecscope != nullptr) {
     /* pixel point cloud */
-    GPU_blend(GPU_BLEND_ALPHA);
     GPU_point_size(1.0);
 
     GPU_matrix_push();
     GPU_matrix_translate_2f(centerx, centery);
     GPU_matrix_scale_1f(diam);
 
-    waveform_draw_rgb(scopes->vecscope, scopes->waveform_tot, scopes->vecscope_rgb);
+    const float col[3] = {alpha, alpha, alpha};
+    if (scopes->vecscope_mode == SCOPES_VECSCOPE_RGB) {
+      GPU_blend(GPU_BLEND_ALPHA);
+      waveform_draw_rgb(scopes->vecscope, scopes->waveform_tot, scopes->vecscope_rgb);
+    }
+    else if (scopes->vecscope_mode == SCOPES_VECSCOPE_LUMA) {
+      GPU_blend(GPU_BLEND_ADDITIVE);
+      waveform_draw_one(scopes->vecscope, scopes->waveform_tot, col);
+    }
 
     GPU_matrix_pop();
   }
