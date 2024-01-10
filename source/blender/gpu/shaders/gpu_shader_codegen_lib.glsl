@@ -180,10 +180,15 @@ struct ClosureDiffuse {
   packed_vec3 color;
 #ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
-  packed_vec3 N;
-  packed_vec3 sss_radius;
-  uint sss_id;
+  vec3 color;
+  vec3 N;
+};
+
+struct ClosureSubsurface {
+  float weight;
+  vec3 color;
+  vec3 N;
+  vec3 sss_radius;
 };
 
 struct ClosureTranslucent {
@@ -257,7 +262,14 @@ ClosureDiffuse to_closure_diffuse(ClosureUndetermined cl)
   ClosureDiffuse closure;
   closure.N = cl.N;
   closure.color = cl.color;
-  /* TODO(fclem): BSSSRDF closure. */
+  return closure;
+}
+
+ClosureSubsurface to_closure_subsurface(ClosureUndetermined cl)
+{
+  ClosureSubsurface closure;
+  closure.N = cl.N;
+  closure.color = cl.color;
   closure.sss_radius = cl.data.xyz;
   return closure;
 }
