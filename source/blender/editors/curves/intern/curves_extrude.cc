@@ -11,6 +11,8 @@
 
 #include "ED_curves.hh"
 
+#include "DEG_depsgraph.hh"
+
 namespace blender::ed::curves {
 
 /**
@@ -329,6 +331,7 @@ static void extrude_curves(Curves &curves_id)
     attribute.dst.finish();
   }
   curves_id.geometry.wrap() = std::move(new_curves);
+  DEG_id_tag_update(&curves_id.id, ID_RECALC_GEOMETRY);
 }
 
 static int curves_extrude_exec(bContext *C, wmOperator * /*op*/)
