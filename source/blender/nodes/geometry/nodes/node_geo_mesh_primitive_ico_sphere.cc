@@ -48,9 +48,6 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Bool>("New");
 
-  b.add_input<decl::Bool>("New with old alg");
-  b.add_input<decl::Bool>("Normalize old");
-
   b.add_output<decl::Geometry>("Mesh");
   b.add_output<decl::Vector>("UV Map").field_on_all();
 }
@@ -478,6 +475,7 @@ static Span<float2> base_face_uv_positions()
   return base_uv;
 }
 
+/*
 static void interpolate_edge_verts(const int edge_verts_num,
                                    const Span<float3> base_verts,
                                    MutableSpan<float3> edge_verts)
@@ -536,6 +534,7 @@ static void interpolate_face_verts(const int line_subdiv,
     }
   }
 }
+*/
 
 static void interpolate_edge_verts_linear(const int edge_verts_num,
                                           const Span<float3> base_verts,
@@ -1139,9 +1138,7 @@ static void uv_vert_positions(const int edge_edges_num,
 
 static Mesh *ico_sphere(const int subdivisions,
                         const float radius,
-                        const AttributeIDRef &uv_map_id,
-                        const bool new_old,
-                        const bool new_old_normalize)
+                        const AttributeIDRef &uv_map_id)
 {
   std::cout << std::endl;
   BLI_assert(subdivisions > 0);
@@ -1178,18 +1175,10 @@ static Mesh *ico_sphere(const int subdivisions,
 
   base_ico_sphere_positions(positions.take_front(base_verts_num));
 
-  if (new_old) {
-    interpolate_edge_verts_linear(
-        edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
-    interpolate_face_verts_linear(
-        line_subdiv, positions.slice(vert_points), positions.slice(face_points));
-  }
-  else {
-    interpolate_edge_verts(
-        edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
-    interpolate_face_verts(
-        line_subdiv, positions.slice(vert_points), positions.slice(face_points));
-  }
+  interpolate_edge_verts_linear(
+      edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
+  interpolate_face_verts_linear(
+      line_subdiv, positions.slice(vert_points), positions.slice(face_points));
 
   const IndexRange edge_edges(base_edges_num * edge_edges_num);
   const IndexRange face_edges(edge_edges.one_after_last(), face_edges_num * base_faces_num * 3);
@@ -1201,7 +1190,7 @@ static Mesh *ico_sphere(const int subdivisions,
   corner_edges_topology(edge_edges_num, face_faces_num, corner_edges);
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
 
-  if (new_old && new_old_normalize) {
+  {
     SCOPED_TIMER_AVERAGED("new_old_normalize");
     std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
       return math::normalize(pos);
@@ -1247,14 +1236,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const bool new_type = params.extract_input<bool>("New");
 
-  const bool new_old = params.extract_input<bool>("New with old alg");
-
-  const bool new_old_normalize = params.extract_input<bool>("Normalize old");
-
   AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   if (new_type) {
-    Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get(), new_old, new_old_normalize);
+    Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get());
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
     return;
   }
