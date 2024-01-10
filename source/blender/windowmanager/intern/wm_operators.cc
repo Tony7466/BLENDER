@@ -1854,7 +1854,7 @@ int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width)
 {
   wmOpPopUp *data = static_cast<wmOpPopUp *>(
       MEM_callocN(sizeof(wmOpPopUp), "WM_operator_props_dialog_popup"));
-
+  op->flag |= OP_IS_DIALOG_POPUP;
   data->op = op;
   data->width = width * UI_SCALE_FAC;
   /* Actual height depends on the content. */

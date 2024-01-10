@@ -682,4 +682,8 @@ enum {
    * (the region-type is maintained to prevent errors).
    */
   OP_IS_MODAL_CURSOR_REGION = (1 << 3),
+  /**
+   * So we can detect when the operator is running as a dialog popup.
+   */
+  OP_IS_DIALOG_POPUP = (1 << 4),
 };
