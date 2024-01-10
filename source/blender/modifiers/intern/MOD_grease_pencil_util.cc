@@ -13,17 +13,92 @@
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_lib_query.h"
 #include "BKE_material.h"
 
 #include "DEG_depsgraph_query.hh"
+
+#include "MOD_ui_common.hh"
+
+#include "RNA_access.hh"
+
+#include "UI_interface.hh"
 
 namespace blender::greasepencil {
 
 using bke::greasepencil::Drawing;
 using bke::greasepencil::Layer;
+
+void init_data_filter(GreasePencilModifierFilterData * /*filter_data*/) {}
+
+void copy_data_filter(const GreasePencilModifierFilterData *filter_data_src,
+                      GreasePencilModifierFilterData *filter_data_dst,
+                      const int /*flag*/)
+{
+  memcpy((char *)filter_data_dst,
+         (const char *)filter_data_src,
+         sizeof(GreasePencilModifierFilterData));
+}
+
+void free_data_filter(GreasePencilModifierFilterData * /*filter_data*/) {}
+
+void foreach_ID_link_filter(GreasePencilModifierFilterData *filter_data,
+                            Object *ob,
+                            IDWalkFunc walk,
+                            void *user_data)
+{
+  walk(user_data, ob, (ID **)&filter_data->material, IDWALK_CB_USER);
+}
+
+static void filter_panel_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *row, *col, *sub;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ob_ptr;
+  PointerRNA *modifier_ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
+  PointerRNA ptr = RNA_pointer_get(modifier_ptr, "filter");
+
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+
+  uiLayoutSetPropSep(layout, true);
+
+  col = uiLayoutColumn(layout, true);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "layer", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_layer", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+
+  row = uiLayoutRow(col, true);
+  uiItemR(row, &ptr, "layer_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_layer_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+
+  col = uiLayoutColumn(layout, true);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "material", &obj_data_ptr, "materials", nullptr, ICON_SHADING_TEXTURE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_material", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+
+  row = uiLayoutRow(col, true);
+  uiItemR(row, &ptr, "material_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_material_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+}
+
+void filter_subpanel_register(ARegionType *region_type, PanelType *panel_type)
+{
+  modifier_subpanel_register(
+      region_type, "influence", "Influence", nullptr, filter_panel_draw, panel_type);
+}
 
 /**
  * Get a list of pass IDs used by grease pencil materials.
@@ -60,14 +135,14 @@ static IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
         if (layer_name_filter) {
           const Layer &layer = *layers[layer_i];
           const bool match = (layer.name() == layer_name_filter.value());
-          if (match ^ layer_filter_invert) {
+          if (match == layer_filter_invert) {
             return false;
           }
         }
         if (layer_pass_filter) {
           const int layer_pass = layer_passes.get(layer_i);
           const bool match = (layer_pass == layer_pass_filter.value());
-          if (match ^ layer_pass_filter_invert) {
+          if (match == layer_pass_filter_invert) {
             return false;
           }
         }
@@ -83,8 +158,8 @@ IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
   /* TODO Add an option to toggle pass filter on and off, instead of using "pass > 0". */
   return get_filtered_layer_mask(
       grease_pencil,
-      filter_data.layername[0] != '\0' ? std::make_optional<StringRef>(filter_data.layername) :
-                                         std::nullopt,
+      filter_data.layer_name[0] != '\0' ? std::make_optional<StringRef>(filter_data.layer_name) :
+                                          std::nullopt,
       filter_data.layer_pass > 0 ? std::make_optional<int>(filter_data.layer_pass) : std::nullopt,
       filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER,
       filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER_PASS,
@@ -109,7 +184,7 @@ static Vector<bool> is_material_affected_by_modifier(const Object *ob,
     for (const int stroke_i : result.index_range()) {
       const int material_index = stroke_materials.get(stroke_i);
       const bool match = (material_index == material_filter_index);
-      if (match ^ material_filter_invert) {
+      if (match == material_filter_invert) {
         result[stroke_i] = false;
       }
     }
@@ -120,7 +195,7 @@ static Vector<bool> is_material_affected_by_modifier(const Object *ob,
       const int material_index = stroke_materials.get(stroke_i);
       const int material_pass = material_pass_by_index[material_index];
       const bool match = (material_pass == material_pass_filter.value());
-      if (match ^ material_pass_filter_invert) {
+      if (match == material_pass_filter_invert) {
         result[stroke_i] = false;
       }
     }

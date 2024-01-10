@@ -2488,7 +2488,7 @@ typedef enum VolumeToMeshFlag {
 
 typedef struct GreasePencilModifierFilterData {
   /** Filter by layer name. */
-  char layername[64];
+  char layer_name[64];
   /** Filter by stroke material. */
   struct Material *material;
   /** Filter by layer pass. */

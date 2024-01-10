@@ -59,7 +59,7 @@ static void init_data(ModifierData *md)
            sizeof(*(omd)) - OFFSETOF_STRUCT_AFTER(omd, modifier));
   }
 
-  // TODO
+  greasepencil::init_data_filter(&omd->filter);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -68,9 +68,7 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   GreasePencilOpacityModifierData *tomd = (GreasePencilOpacityModifierData *)target;
 
   BKE_modifier_copydata_generic(md, target, flag);
-
-  // TODO
-  UNUSED_VARS(omd, tomd);
+  greasepencil::copy_data_filter(&omd->filter, &tomd->filter, flag);
 }
 
 static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
@@ -81,12 +79,17 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   UNUSED_VARS(omd, r_cddata_masks);
 }
 
+static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
+{
+  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  greasepencil::foreach_ID_link_filter(&omd->filter, ob, walk, user_data);
+}
+
 static void free_data(ModifierData *md)
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
 
-  // TODO
-  UNUSED_VARS(omd);
+  greasepencil::free_data_filter(&omd->filter);
 }
 
 static void modify_curves(ModifierData *md,
@@ -148,7 +151,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GreasePencilOpacity, panel_draw);
+  PanelType *panel_type = modifier_panel_register(
+      region_type, eModifierType_GreasePencilOpacity, panel_draw);
+  greasepencil::filter_subpanel_register(region_type, panel_type);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -195,7 +200,7 @@ ModifierTypeInfo modifierType_GreasePencilOpacity = {
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
-    /*foreach_ID_link*/ nullptr,
+    /*foreach_ID_link*/ blender::foreach_ID_link,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
     /*panel_register*/ blender::panel_register,
