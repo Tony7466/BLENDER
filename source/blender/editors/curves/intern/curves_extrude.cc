@@ -44,9 +44,9 @@ static Span<int> compress_intervals(const Span<IndexRange> curve_interval_ranges
  */
 static bool handle_range(const int curve_index,
                          const int interval_offset,
+                         const Span<int> offsets,
                          int &current_interval,
                          IndexRange &range,
-                         const Span<int> offsets,
                          MutableSpan<int> curve_intervals,
                          MutableSpan<bool> is_first_selected)
 {
@@ -192,9 +192,9 @@ static void calc_curves_extrusion(const IndexMask &selection,
     IndexRange range_to_handle = range;
     while (!handle_range(curve_index,
                          interval_offset,
+                         offsets,
                          current_interval,
                          range_to_handle,
-                         offsets,
                          curve_intervals,
                          is_first_selected))
     {
