@@ -10,10 +10,16 @@
 
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
+#include "DNA_scene_types.h"
 
+#include "BKE_curves.hh"
+#include "BKE_geometry_set.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_modifier.hh"
 
 #include "BLO_read_write.hh"
+
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -26,10 +32,15 @@
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
+#include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
 namespace blender {
+
+using bke::greasepencil::Drawing;
+using bke::greasepencil::FramesMapKey;
+using bke::greasepencil::Layer;
 
 static void init_data(ModifierData *md)
 {
@@ -69,14 +80,43 @@ static void free_data(ModifierData *md)
   UNUSED_VARS(omd);
 }
 
+static void modify_curves(ModifierData *md,
+                          const ModifierEvalContext * /*ctx*/,
+                          bke::CurvesGeometry &curves)
+{
+  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  UNUSED_VARS(omd);
+
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", bke::AttrDomain::Point);
+
+  for (const int i : opacities.span.index_range()) {
+    opacities.span[i] *= 0.5f;
+  }
+
+  opacities.finish();
+}
+
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+  const int frame = scene->r.cfra;
 
-  // TODO
-  UNUSED_VARS(omd, ctx, geometry_set);
+  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  UNUSED_VARS(omd);
+
+  GreasePencil *grease_pencil = geometry_set->get_grease_pencil_for_write();
+  if (grease_pencil == nullptr) {
+    return;
+  }
+
+  Vector<Drawing *> drawings = greasepencil::get_drawings_for_write(*grease_pencil, frame);
+  for (Drawing *drawing : drawings) {
+    modify_curves(md, ctx, drawing->strokes_for_write());
+  }
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -119,7 +159,7 @@ ModifierTypeInfo modifierType_GreasePencilOpacity = {
     /*struct_name*/ "GreasePencilOpacityModifierData",
     /*struct_size*/ sizeof(GreasePencilOpacityModifierData),
     /*srna*/ &RNA_GreasePencilOpacityModifier,
-    /*type*/ ModifierTypeType::NonGeometrical,
+    /*type*/ ModifierTypeType::Nonconstructive,
     /*flags*/
     static_cast<ModifierTypeFlag>(
         eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
