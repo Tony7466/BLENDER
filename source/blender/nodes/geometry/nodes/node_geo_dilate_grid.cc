@@ -65,13 +65,12 @@ static void try_dilate_grid(GeoNodeExecParams params,
     return;
   }
 
-  bke::VolumeGrid<T> output_grid(&grid.get_for_write());
-  openvdb::tools::dilateActiveValues(
-      output_grid.grid_for_write(output_grid.get_for_write().tree_access_token()).tree(),
-      iterations,
-      BKE_volume_vdb_neighbors_mode(neighbors_mode));
+  bke::VolumeTreeAccessToken tree_token;
+  openvdb::tools::dilateActiveValues(grid.grid_for_write(tree_token).tree(),
+                                     iterations,
+                                     BKE_volume_vdb_neighbors_mode(neighbors_mode));
 
-  params.set_output("Grid", output_grid);
+  params.set_output("Grid", grid);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

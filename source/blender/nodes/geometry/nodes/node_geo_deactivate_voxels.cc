@@ -58,14 +58,12 @@ struct DeactivateVoxelsOp {
     const T value = params.extract_input<T>("Value");
     const T tolerance = params.extract_input<T>("Tolerance");
 
-    bke::VolumeGrid<T> output_grid(&grid.get_for_write());
+    bke::VolumeTreeAccessToken tree_token;
+    openvdb::tools::deactivate(grid.grid_for_write(tree_token),
+                               Converter::to_openvdb(value),
+                               Converter::to_openvdb(tolerance));
 
-    openvdb::tools::deactivate(
-        output_grid.grid_for_write(output_grid.get_for_write().tree_access_token()),
-        Converter::to_openvdb(value),
-        Converter::to_openvdb(tolerance));
-
-    return output_grid;
+    return grid;
   }
 };
 

@@ -205,8 +205,8 @@ struct ExtrapolateOp {
       return;
     }
 
-    const openvdb::FloatGrid::ConstPtr vdb_input_grid = this->input_grid.grid_ptr(
-        input_grid.get().tree_access_token());
+    bke::VolumeTreeAccessToken tree_token;
+    const openvdb::FloatGrid::ConstPtr vdb_input_grid = this->input_grid.grid_ptr(tree_token);
     const fn::Field<T> boundary_field = this->params.extract_input<fn::Field<T>>("Boundary Value");
     const T background = this->params.extract_input<T>("Background");
     const float iso_value = this->params.extract_input<float>("Iso Value");

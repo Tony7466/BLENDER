@@ -78,7 +78,8 @@ static bke::GVolumeGrid filter_grid(GeoNodeExecParams params)
     return {};
   }
   bool has_error = false;
-  const GridType &vdb_grid = grid.grid(grid.get().tree_access_token());
+  bke::VolumeTreeAccessToken main_tree_token;
+  const GridType &vdb_grid = grid.grid(main_tree_token);
   if (!vdb_grid.hasUniformVoxels()) {
     params.error_message_add(geo_eval_log::NodeWarningType::Error, "Grid has non-uniform scale");
     has_error = true;
@@ -90,12 +91,10 @@ static bke::GVolumeGrid filter_grid(GeoNodeExecParams params)
   if (has_error) {
     return {};
   }
-  const MaskType *mask_ptr = mask ? &mask.grid(mask->tree_access_token()) : nullptr;
+  bke::VolumeTreeAccessToken mask_tree_token;
+  const MaskType *mask_ptr = mask ? &mask.grid(mask_tree_token) : nullptr;
 
-  bke::VolumeGrid<float> output_grid(&grid.get_for_write());
-
-  openvdb::tools::LevelSetFilter<GridType, MaskType> filter(
-      output_grid.grid_for_write(output_grid->tree_access_token()));
+  openvdb::tools::LevelSetFilter<GridType, MaskType> filter(grid.grid_for_write(main_tree_token));
 
   switch (operation) {
     case GEO_NODE_GRID_FILTER_MEAN: {
@@ -128,7 +127,7 @@ static bke::GVolumeGrid filter_grid(GeoNodeExecParams params)
     }
   }
 
-  return output_grid;
+  return grid;
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

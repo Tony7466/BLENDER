@@ -104,8 +104,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
   }
 
-  const openvdb::FloatTree &input_tree =
-      input_grid.grid(input_grid.get().tree_access_token()).tree();
+  bke::VolumeTreeAccessToken input_tree_token;
+  const openvdb::FloatTree &input_tree = input_grid.grid(input_tree_token).tree();
 
   const double epsilon = openvdb::math::Delta<float>::value();
   openvdb::math::pcg::State pcg_state = openvdb::math::pcg::terminationDefaults<float>();
@@ -117,10 +117,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   using PreconditionerType = openvdb::math::pcg::IncompleteCholeskyPreconditioner<
       openvdb::tools::poisson::LaplacianMatrix>;
 
-  openvdb::FloatTree::Ptr output_tree; 
+  openvdb::FloatTree::Ptr output_tree;
   if (boundary_grid) {
-    BoundaryOp boundary_op{
-        boundary_grid.grid(boundary_grid.get().tree_access_token()).getAccessor()};
+    bke::VolumeTreeAccessToken boundary_tree_token;
+    BoundaryOp boundary_op{boundary_grid.grid(boundary_tree_token).getAccessor()};
     output_tree =
         openvdb::tools::poisson::solveWithBoundaryConditionsAndPreconditioner<PreconditionerType>(
             input_tree, boundary_op, pcg_state, interrupter, staggered);
@@ -132,10 +132,9 @@ static void node_geo_exec(GeoNodeExecParams params)
             input_tree, boundary_op, pcg_state, interrupter, staggered);
   }
 
-  openvdb::FloatGrid::Ptr output_grid_vdb =
-      input_grid.grid(input_grid.get().tree_access_token()).copyWithNewTree();
+  openvdb::FloatGrid::Ptr output_grid_vdb = input_grid.grid(input_tree_token).copyWithNewTree();
   output_grid_vdb->setTree(output_tree);
-  bke::GVolumeGrid output_grid(output_grid_vdb);
+  bke::GVolumeGrid output_grid(std::move(output_grid_vdb));
 
   params.set_output("Grid", output_grid);
   params.set_output<bool>("Success", std::move(pcg_state.success));

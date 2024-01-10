@@ -176,7 +176,8 @@ struct GridToPointsOp {
       params.set_default_remaining_outputs();
       return;
     }
-    const GridType &vdb_grid = grid.grid(grid.get().tree_access_token());
+    bke::VolumeTreeAccessToken tree_token;
+    const GridType &vdb_grid = grid.grid(tree_token);
     const bool use_tiles = params.extract_input<bool>("Use Tiles");
 
     PointData<T> point_data(vdb_grid,

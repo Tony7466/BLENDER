@@ -271,12 +271,12 @@ template<typename OutputGridPtr> struct TopologyInitOp {
       return;
     }
     bke::VolumeGrid<T> typed_topology_grid = this->topology_grid.typed<T>();
-    typename std::shared_ptr<const bke::OpenvdbGridType<T>> vdb_grid =
-        typed_topology_grid.grid_ptr(typed_topology_grid.get().tree_access_token());
+    bke::VolumeTreeAccessToken tree_token;
+    const bke::OpenvdbGridType<T> &vdb_grid = typed_topology_grid.grid(tree_token);
 
-    output_grid->setTransform(vdb_grid->transform().copy());
-    output_grid->insertMeta(*vdb_grid);
-    output_grid->topologyUnion(*vdb_grid);
+    output_grid->setTransform(vdb_grid.transform().copy());
+    output_grid->insertMeta(vdb_grid);
+    output_grid->topologyUnion(vdb_grid);
   }
 };
 

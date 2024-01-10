@@ -77,19 +77,19 @@ struct GridFilterOp {
     using MaskType = bke::OpenvdbGridType<float>;
     using Converter = bke::grids::Converter<T>;
 
-    const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(params.node().custom1);
+    const GeometryNodeGridFilterOperation operation = GeometryNodeGridFilterOperation(
+        params.node().custom1);
 
     auto grid = this->params.extract_input<bke::VolumeGrid<T>>("Grid");
     const auto mask = this->params.extract_input<bke::VolumeGrid<float>>("Mask");
     if (!grid) {
       return {};
     }
-    std::shared_ptr<bke::OpenvdbGridType<T>> output_grid = grid.grid_ptr_for_write(grid.get().tree_access_token());
-    const bke::OpenvdbGridType<float> *mask_ptr = mask ?
-                                                      &mask.grid(mask.get().tree_access_token()) :
-                                                      nullptr;
+    bke::VolumeTreeAccessToken mask_tree_token;
+    const bke::OpenvdbGridType<float> *mask_ptr = mask ? &mask.grid(mask_tree_token) : nullptr;
 
-    openvdb::tools::Filter<GridType, MaskType> filter(*output_grid);
+    bke::VolumeTreeAccessToken tree_token;
+    openvdb::tools::Filter<GridType, MaskType> filter(grid.grid_for_write(tree_token));
 
     switch (operation) {
       case GEO_NODE_GRID_FILTER_MEAN: {
@@ -122,7 +122,7 @@ struct GridFilterOp {
         break;
     }
 
-    return bke::GVolumeGrid(output_grid);
+    return bke::GVolumeGrid(grid);
   }
 };
 

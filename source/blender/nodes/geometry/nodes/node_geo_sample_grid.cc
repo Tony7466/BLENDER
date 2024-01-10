@@ -156,11 +156,9 @@ template<typename T> class SampleGridFunction : public mf::MultiFunction {
     const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
     MutableSpan<T> dst = params.uninitialized_single_output<T>(1, "Value");
 
-    sample_grid<T, GridType>(volume_grid_.grid(volume_grid_.get().tree_access_token()),
-                             positions,
-                             mask,
-                             dst,
-                             interpolation_mode_);
+    bke::VolumeTreeAccessToken tree_token;
+    sample_grid<T, GridType>(
+        volume_grid_.grid(tree_token), positions, mask, dst, interpolation_mode_);
   }
 };
 
