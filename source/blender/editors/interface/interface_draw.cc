@@ -633,6 +633,27 @@ static void waveform_draw_rgb(float *waveform, int waveform_num, float *col)
 }
 
 
+static void circle_draw_rgb(float *points, int tot_points, float *col)
+{
+  GPUVertFormat format = {0};
+  const uint pos_id = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  const uint col_id = GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+
+  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+  GPU_vertbuf_data_alloc(vbo, tot_points);
+
+  GPU_vertbuf_attr_fill(vbo, pos_id, points);
+
+  GPU_vertbuf_attr_fill(vbo, col_id, col);
+
+  GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_LINE_LOOP, vbo, nullptr, GPU_BATCH_OWNS_VBO);
+  GPU_batch_program_set_builtin(batch, GPU_SHADER_3D_SMOOTH_COLOR);
+
+  GPU_batch_draw(batch);
+
+  GPU_batch_discard(batch);
+}
+
 
 void ui_draw_but_WAVEFORM(ARegion * /*region*/,
                           uiBut *but,
@@ -885,7 +906,7 @@ static float polar_to_y(float center, float diam, float ampli, float angle)
 }
 
 static void vectorscope_draw_target(
-    uint pos, float centerx, float centery, float diam, const float colf[3])
+    uint pos, float centerx, float centery, float diam, const float colf[3], const char *name)
 {
   float y, u, v;
   float tangle = 0.0f, tampli;
@@ -927,56 +948,15 @@ static void vectorscope_draw_target(
   immVertex2f(pos,
               polar_to_x(centerx, diam, tampli + dampli, tangle - dangle),
               polar_to_y(centery, diam, tampli + dampli, tangle - dangle));
-  immEnd();
-  /* big target vary by 10 degree and 20% amplitude */
-  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.25f);
-  dangle = DEG2RADF(10.0f);
-  dampli = 0.2f * tampli;
-  dangle2 = DEG2RADF(5.0f);
-  dampli2 = 0.5f * dampli;
-  immBegin(GPU_PRIM_LINE_STRIP, 3);
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli + dampli - dampli2, tangle + dangle),
-              polar_to_y(centery, diam, tampli + dampli - dampli2, tangle + dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli + dampli, tangle + dangle),
-              polar_to_y(centery, diam, tampli + dampli, tangle + dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli + dampli, tangle + dangle - dangle2),
-              polar_to_y(centery, diam, tampli + dampli, tangle + dangle - dangle2));
-  immEnd();
-  immBegin(GPU_PRIM_LINE_STRIP, 3);
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli - dampli + dampli2, tangle + dangle),
-              polar_to_y(centery, diam, tampli - dampli + dampli2, tangle + dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli - dampli, tangle + dangle),
-              polar_to_y(centery, diam, tampli - dampli, tangle + dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli - dampli, tangle + dangle - dangle2),
-              polar_to_y(centery, diam, tampli - dampli, tangle + dangle - dangle2));
-  immEnd();
-  immBegin(GPU_PRIM_LINE_STRIP, 3);
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli - dampli + dampli2, tangle - dangle),
-              polar_to_y(centery, diam, tampli - dampli + dampli2, tangle - dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli - dampli, tangle - dangle),
-              polar_to_y(centery, diam, tampli - dampli, tangle - dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli - dampli, tangle - dangle + dangle2),
-              polar_to_y(centery, diam, tampli - dampli, tangle - dangle + dangle2));
-  immEnd();
-  immBegin(GPU_PRIM_LINE_STRIP, 3);
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli + dampli - dampli2, tangle - dangle),
-              polar_to_y(centery, diam, tampli + dampli - dampli2, tangle - dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli + dampli, tangle - dangle),
-              polar_to_y(centery, diam, tampli + dampli, tangle - dangle));
-  immVertex2f(pos,
-              polar_to_x(centerx, diam, tampli + dampli, tangle - dangle + dangle2),
-              polar_to_y(centery, diam, tampli + dampli, tangle - dangle + dangle2));
+
+  //draw text
+  BLF_color4f(BLF_default(), 1.0f, 1.0f, 1.0f, 0.3f);
+  BLF_draw_default(polar_to_x(centerx, diam, tampli, tangle) + 5,
+                   polar_to_y(centery, diam, tampli, tangle),
+                   0,
+                   name,
+                   strlen(name));
+
   immEnd();
 }
 
@@ -989,13 +969,15 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   Scopes *scopes = (Scopes *)but->poin;
 
   const float colors[6][3] = {
-      {0.75, 0.0, 0.0},
-      {0.75, 0.75, 0.0},
-      {0.0, 0.75, 0.0},
-      {0.0, 0.75, 0.75},
-      {0.0, 0.0, 0.75},
-      {0.75, 0.0, 0.75},
+        {0.75, 0.0, 0.0},   // Red
+        {0.75, 0.75, 0.0},  // Yellow
+        {0.0, 0.75, 0.0},   // Green
+        {0.0, 0.75, 0.75},  // Cyan
+        {0.0, 0.0, 0.75},   // Blue
+        {0.75, 0.0, 0.75},  // Magenta
   };
+
+  const char color_names[6][4] = {"R", "Y", "G", "C", "B", "M"};
 
   rctf rect{};
   rect.xmin = float(recti->xmin + 1);
@@ -1039,11 +1021,11 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   /* circles */
   const int increment = 6;
-  const int num_points = int(360 / increment);
+  const int tot_points = int(360 / increment);
   const float r = 0.5f;
 
   GPU_blend(GPU_BLEND_NONE);
-  immBegin(GPU_PRIM_TRI_FAN, num_points + 2);
+  immBegin(GPU_PRIM_TRI_FAN, tot_points + 2);
   immUniformColor3f(0.16f, 0.16f, 0.16f);
   immVertex2f(pos, centerx, centery);
 
@@ -1054,13 +1036,51 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   immEnd();
 
+  float circle_points[(tot_points * 2)+3] = {};
+  float circle_vertex_colors[(tot_points * 4)+5] = {};
+
+  float step = 360.0f / float(tot_points);
+
+  for (int i = 0; i < tot_points; i++) {
+      // Calculate the angle in degrees for this point
+      float angle = step * i;
+
+      // Convert angle to radians
+      const float a = DEG2RADF(angle);
+
+
+      // Calculate the position values
+      const float x = polar_to_x(centerx, diam, 0.5f, a);
+      const float y = polar_to_y(centery, diam, 0.5f, a);
+
+      const float u = polar_to_x(0.0f, 1.0, 1.0f, a);
+      const float v = polar_to_y(0.0f, 1.0, 1.0f, a);
+
+      circle_points[i * 2] = x;
+      circle_points[i * 2 + 1] = y;
+
+      // Compute RGB values
+      float r = 0.0f, g = 0.0f, b = 0.0f;
+      yuv_to_rgb(0.5f, u, v, &r, &g, &b, BLI_YUV_ITU_BT709);
+
+      // Set the color values
+      circle_vertex_colors[i * 4] = r;
+      circle_vertex_colors[i * 4 + 1] = g;
+      circle_vertex_colors[i * 4 + 2] = b;
+      circle_vertex_colors[i * 4 + 3] = 0.7f;
+    }
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  circle_draw_rgb(circle_points, tot_points, circle_vertex_colors);
+
+  //inner circles
   for (int j = 0; j < 5; j++) {
     if (j == 4)
       continue;
 
     GPU_blend(GPU_BLEND_ADDITIVE);
     immUniformColor3f(0.2f, 0.2f, 0.2f);
-    immBegin(GPU_PRIM_LINE_LOOP, num_points);
+    immBegin(GPU_PRIM_LINE_LOOP, tot_points);
 
     for (int i = 0; i < 360; i += increment) {
       const float a = DEG2RADF(float(i));
@@ -1087,7 +1107,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   /* skin tone line */
   GPU_blend(GPU_BLEND_ADDITIVE);
-  immUniformColor3f(0.5f, 0.5f, 0.5f);
+  immUniformColor3f(0.25f, 0.25f, 0.25f);
 
   immBegin(GPU_PRIM_LINES, 2);
   immVertex2f(
@@ -1098,7 +1118,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   /* saturation points */
   for (int i = 0; i < 6; i++) {
-    vectorscope_draw_target(pos, centerx, centery, diam, colors[i]);
+    vectorscope_draw_target(pos, centerx, centery, diam, colors[i], color_names[i]);
   }
 
   if (scopes->ok && scopes->vecscope != nullptr) {
