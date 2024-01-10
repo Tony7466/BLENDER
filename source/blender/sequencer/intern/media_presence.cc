@@ -140,11 +140,4 @@ void media_presence_free(Scene *scene)
   }
 }
 
-void media_presence_free_all(Main *bmain)
-{
-  LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-    media_presence_free(scene);
-  }
-}
-
 }  // namespace blender::seq

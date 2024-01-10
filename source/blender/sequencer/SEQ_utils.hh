@@ -84,9 +84,4 @@ void media_presence_invalidate_sound(Scene *scene, const bSound *sound);
  */
 void media_presence_free(Scene *scene);
 
-/**
- * Free media presence caches in all scenes of bmain.
- */
-void media_presence_free_all(Main *bmain);
-
 }  // namespace blender::seq

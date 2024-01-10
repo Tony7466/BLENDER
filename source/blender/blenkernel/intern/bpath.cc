@@ -70,7 +70,6 @@
 #include "CLG_log.h"
 
 #include "SEQ_iterator.hh"
-#include "SEQ_utils.hh"
 
 #ifndef _MSC_VER
 #  include "BLI_strict_flags.h"
@@ -255,9 +254,6 @@ void BKE_bpath_missing_files_check(Main *bmain, ReportList *reports)
   if (BLI_listbase_is_empty(&reports->list)) {
     BKE_reportf(reports, RPT_INFO, "No missing files");
   }
-
-  /* Clear sequencer media presence caches. */
-  blender::seq::media_presence_free_all(bmain);
 }
 
 /** \} */
@@ -416,9 +412,6 @@ void BKE_bpath_missing_files_find(Main *bmain,
   path_data.flag = eBPathForeachFlag(flag);
   path_data.user_data = &data;
   BKE_bpath_foreach_path_main(&path_data);
-
-  /* Clear sequencer media presence caches. */
-  blender::seq::media_presence_free_all(bmain);
 }
 
 #undef MAX_DIR_RECURSE

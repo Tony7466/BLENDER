@@ -1072,6 +1072,7 @@ static int sequencer_refresh_all_exec(bContext *C, wmOperator * /*op*/)
   Editing *ed = SEQ_editing_get(scene);
 
   SEQ_relations_free_imbuf(scene, &ed->seqbase, false);
+  blender::seq::media_presence_free(scene);
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
