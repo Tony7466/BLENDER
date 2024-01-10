@@ -1642,6 +1642,62 @@ static void GREASE_PENCIL_OT_clean_loose(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Move To Layer Operator
+ * \{ */
+
+static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
+{
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  bke::greasepencil::Layer *target_layer = nullptr;
+
+  /* TO_DO: Move strokes to selected layer */
+
+  return OPERATOR_CANCELLED;
+}
+
+static int grease_pencil_move_to_layer_invoke(bContext *C,
+                                              wmOperator *op,
+                                              const wmEvent * /*event*/)
+{
+
+  const int tmp = ed::greasepencil::new_layer_dialog(C, op);
+  if (tmp != 0) {
+    return tmp;
+  }
+  return grease_pencil_move_to_layer_exec(C, op);
+}
+
+static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers. */
+  ot->name = "Move to Layer";
+  ot->idname = "GREASE_PENCIL_OT_move_to_layer";
+  ot->description = "Move selected strokes to another layer";
+
+  /* callbacks. */
+  ot->invoke = grease_pencil_move_to_layer_invoke;
+  ot->exec = grease_pencil_move_to_layer_exec;
+  ot->poll = ot->poll = editable_grease_pencil_poll;
+
+  /* flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Grease Pencil layer to use. */
+  prop = RNA_def_int(ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_string(
+      ot->srna, "new_layer_name", nullptr, MAX_NAME, "Name", "Name of the newly added layer");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  ot->prop = prop;
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -1662,6 +1718,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_duplicate);
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
+  WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)

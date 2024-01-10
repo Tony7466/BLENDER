@@ -5823,8 +5823,8 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout = self.layout
         layout.operator("grease_pencil.stroke_simplify", text="Simplify")
 
-        layout.separator()
-
+        layout.separator()        
+        layout.menu("GREASE_PENCIL_MT_move_to_layer")
         layout.operator("grease_pencil.set_active_material")
 
         layout.separator()

@@ -22,6 +22,24 @@
 
 namespace blender::ed::greasepencil {
 
+int new_layer_dialog(bContext *C, wmOperator *op)
+{
+  Object *object = CTX_data_active_object(C);
+  PropertyRNA *prop;
+  if (RNA_int_get(op->ptr, "layer") == -1) {
+    prop = RNA_struct_find_property(op->ptr, "new_layer_name");
+    if (!RNA_property_is_set(op->ptr, prop)) {
+      int new_layer_name_length;
+      char *new_layer_name = RNA_string_get_alloc(
+          op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
+      RNA_property_string_set(op->ptr, prop, new_layer_name);
+
+      return WM_operator_props_dialog_popup(C, op, 200);
+    }
+  }
+  return 0;
+}
+
 void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer)
 {
   using namespace blender::bke::greasepencil;

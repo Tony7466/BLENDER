@@ -16,6 +16,8 @@
 
 #include "ED_keyframes_edit.hh"
 
+#include "WM_api.hh"
+
 struct bContext;
 struct Main;
 struct Object;
@@ -57,6 +59,8 @@ blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSetting
 /** \} */
 
 namespace blender::ed::greasepencil {
+
+int new_layer_dialog(bContext *C, wmOperator *op);
 
 enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke };
 
