@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  PUBLIC .
+  .
   ../blenkernel
   ../blenloader
   ../gpu
@@ -88,6 +88,15 @@ set(LIB
 )
 
 if(WITH_IMAGE_OPENEXR)
+  # Keep until APPLE/ARM libraries are updated.
+  if(APPLE)
+    if(CMAKE_OSX_ARCHITECTURES MATCHES arm64)
+      list(APPEND INC_SYS
+        ${IMATH_INCLUDE_DIRS}
+      )
+    endif()
+  endif()
+
   list(APPEND LIB
     bf_imbuf_openexr
   )
@@ -188,4 +197,3 @@ set_source_files_properties(
 )
 
 blender_add_lib(bf_imbuf "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-add_library(bf::imbuf ALIAS bf_imbuf)

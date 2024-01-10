@@ -2070,11 +2070,17 @@ void ui_fontscale(float *points, float aspect)
 
 void ui_but_to_pixelrect(rcti *rect, const ARegion *region, const uiBlock *block, const uiBut *but)
 {
-  rctf rectf;
+  *rect = ui_to_pixelrect(region, block, (but) ? &but->rect : &block->rect);
+}
 
-  ui_block_to_window_rctf(region, block, &rectf, (but) ? &but->rect : &block->rect);
-  BLI_rcti_rctf_copy_round(rect, &rectf);
-  BLI_rcti_translate(rect, -region->winrct.xmin, -region->winrct.ymin);
+rcti ui_to_pixelrect(const ARegion *region, const uiBlock *block, const rctf *src_rect)
+{
+  rctf rectf;
+  ui_block_to_window_rctf(region, block, &rectf, src_rect);
+  rcti recti;
+  BLI_rcti_rctf_copy_round(&recti, &rectf);
+  BLI_rcti_translate(&recti, -region->winrct.xmin, -region->winrct.ymin);
+  return recti;
 }
 
 static bool ui_but_pixelrect_in_view(const ARegion *region, const rcti *rect)
@@ -2129,7 +2135,8 @@ void UI_block_draw(const bContext *C, uiBlock *block)
     ui_draw_menu_back(&style, block, &rect);
   }
   else if (block->panel) {
-    ui_draw_aligned_panel(&style,
+    ui_draw_aligned_panel(region,
+                          &style,
                           block,
                           &rect,
                           UI_panel_category_is_visible(region),
@@ -2465,7 +2472,8 @@ bool ui_but_is_bool(const uiBut *but)
   }
 
   if ((but->rnaprop && RNA_property_type(but->rnaprop) == PROP_ENUM) &&
-      (but->type == UI_BTYPE_ROW)) {
+      (but->type == UI_BTYPE_ROW))
+  {
     return true;
   }
 
@@ -4349,6 +4357,8 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
     }
     if (!item->identifier[0] && item->name) {
       categories++;
+      /* The category name adds to the column length. */
+      col_rows++;
     }
     if (item->icon) {
       has_item_with_icon = true;
@@ -4375,7 +4385,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
   }
 
   /* If the estimated width is greater than available size, collapse to one column. */
-  if (columns > 1 && text_width > win->sizex) {
+  if (columns > 1 && text_width > WM_window_pixels_x(win)) {
     columns = 1;
     rows = totitems;
   }
@@ -6380,7 +6390,7 @@ void UI_but_func_search_set(uiBut *but,
   search_but->arg_free_fn = search_arg_free_fn;
 
   if (search_exec_fn) {
-#ifdef DEBUG
+#ifndef NDEBUG
     if (but->func) {
       /* watch this, can be cause of much confusion, see: #47691 */
       printf("%s: warning, overwriting button callback with search function callback!\n",

@@ -19,27 +19,45 @@ struct Object;
 struct bContext;
 struct wmJobWorkerStatus;
 
-/* Behavior when the name of an imported material
- * conflicts with an existing material. */
+/**
+ * Behavior when the name of an imported material
+ * conflicts with an existing material.
+ */
 typedef enum eUSDMtlNameCollisionMode {
   USD_MTL_NAME_COLLISION_MAKE_UNIQUE = 0,
   USD_MTL_NAME_COLLISION_REFERENCE_EXISTING = 1,
 } eUSDMtlNameCollisionMode;
 
-/* Behavior when importing textures from a package
- * (e.g., USDZ archive) or from a URI path. */
+/**
+ *  Behavior when importing textures from a package
+ * (e.g., USDZ archive) or from a URI path.
+ */
 typedef enum eUSDTexImportMode {
   USD_TEX_IMPORT_NONE = 0,
   USD_TEX_IMPORT_PACK,
   USD_TEX_IMPORT_COPY,
 } eUSDTexImportMode;
 
-/* Behavior when the name of an imported texture
- * file conflicts with an existing file. */
+/**
+ * Behavior when the name of an imported texture
+ * file conflicts with an existing file.
+ */
 typedef enum eUSDTexNameCollisionMode {
   USD_TEX_NAME_COLLISION_USE_EXISTING = 0,
   USD_TEX_NAME_COLLISION_OVERWRITE = 1,
 } eUSDTexNameCollisionMode;
+
+typedef enum eSubdivExportMode {
+  /** Subdivision scheme = None, export base mesh without subdivision. */
+  USD_SUBDIV_IGNORE = 0,
+  /** Subdivision scheme = None, export subdivided mesh. */
+  USD_SUBDIV_TESSELLATE = 1,
+  /**
+   * Apply the USD subdivision scheme that is the closest match to Blender.
+   * Reverts to #USD_SUBDIV_TESSELLATE if the subdivision method is not supported.
+   */
+  USD_SUBDIV_BEST_MATCH = 2,
+} eSubdivExportMode;
 
 struct USDExportParams {
   bool export_animation = false;
@@ -48,6 +66,10 @@ struct USDExportParams {
   bool export_normals = true;
   bool export_mesh_colors = true;
   bool export_materials = true;
+  bool export_armatures = true;
+  bool export_shapekeys = true;
+  bool only_deform_bones = false;
+  eSubdivExportMode export_subdiv = USD_SUBDIV_BEST_MATCH;
   bool selected_objects_only = false;
   bool visible_objects_only = true;
   bool use_instancing = false;
@@ -82,7 +104,7 @@ struct USDImportParams {
   bool import_blendshapes;
   char *prim_path_mask;
   bool import_subdiv;
-  bool import_instance_proxies;
+  bool support_scene_instancing;
   bool create_collection;
   bool import_guide;
   bool import_proxy;
@@ -98,13 +120,16 @@ struct USDImportParams {
   eUSDTexNameCollisionMode tex_name_collision_mode;
   bool import_all_materials;
 
-  /** Communication structure between the wmJob management code and the worker code. Currently used
-   * to generate safely reports from the worker thread. */
+  /**
+   * Communication structure between the wmJob management code and the worker code. Currently used
+   * to generate safely reports from the worker thread.
+   */
   wmJobWorkerStatus *worker_status;
 };
 
-/* This struct is in place to store the mesh sequence parameters needed when reading a data from a
- * usd file for the mesh sequence cache.
+/**
+ * This struct is in place to store the mesh sequence parameters needed when reading a data from a
+ * USD file for the mesh sequence cache.
  */
 typedef struct USDMeshReadParams {
   double motion_sample_time; /* USD TimeCode in frames. */
@@ -113,15 +138,15 @@ typedef struct USDMeshReadParams {
 
 USDMeshReadParams create_mesh_read_params(double motion_sample_time, int read_flags);
 
-/* The USD_export takes a as_background_job parameter, and returns a boolean.
+/**
+ * The USD_export takes a `as_background_job` parameter, and returns a boolean.
  *
- * When as_background_job=true, returns false immediately after scheduling
+ * When `as_background_job=true`, returns false immediately after scheduling
  * a background job.
  *
- * When as_background_job=false, performs the export synchronously, and returns
+ * When `as_background_job=false`, performs the export synchronously, and returns
  * true when the export was ok, and false if there were any errors.
  */
-
 bool USD_export(struct bContext *C,
                 const char *filepath,
                 const struct USDExportParams *params,
@@ -172,7 +197,7 @@ struct CacheReader *CacheReader_open_usd_object(struct CacheArchiveHandle *handl
 void USD_CacheReader_incref(struct CacheReader *reader);
 void USD_CacheReader_free(struct CacheReader *reader);
 
-/* Data for registering USD IO hooks. */
+/** Data for registering USD IO hooks. */
 typedef struct USDHook {
 
   /* Identifier used for class name. */
@@ -187,10 +212,11 @@ typedef struct USDHook {
 } USDHook;
 
 void USD_register_hook(struct USDHook *hook);
-/* Remove the given entry from the list of registered hooks.
+/**
+ * Remove the given entry from the list of registered hooks.
  * Note that this does not free the allocated memory for the
- * hook instance, so a separate call to MEM_freeN(hook) is
- * required.  */
+ * hook instance, so a separate call to `MEM_freeN(hook)` is required.
+ */
 void USD_unregister_hook(struct USDHook *hook);
 USDHook *USD_find_hook_name(const char name[]);
 
