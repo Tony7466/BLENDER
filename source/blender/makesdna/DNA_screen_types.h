@@ -545,6 +545,7 @@ enum {
 enum {
   SCREEN_DEPRECATED = 1,
   SCREEN_COLLAPSE_STATUSBAR = 2,
+  SCREEN_SHOW_TOPTOOLBAR = 4,
 };
 
 /** #bScreen.state */

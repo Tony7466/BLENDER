@@ -11,8 +11,98 @@ from bpy.app.translations import (
 )
 
 
+class TOPBAR_HT_tool_bar(Header):
+    bl_space_type = 'TOPBAR'
+    bl_region_type = 'WINDOW'
+
+    def draw(self, context):
+        import sys
+        region = context.region
+        layout = self.layout
+        window = context.window
+        screen = context.screen
+        scene = context.scene
+
+        layout.operator_context = 'INVOKE_AREA'
+
+        if context.blend_data.is_saved:
+            layout.operator_context = 'EXEC_AREA'
+            layout.operator("wm.save_mainfile", text="", icon='FILE_TICK', emboss=False)
+        else:
+            layout.operator_context = 'INVOKE_AREA'
+            layout.operator("wm.save_as_mainfile", text="", icon='FILE_TICK', emboss=False)
+
+        layout.separator()
+
+        layout.menu("TOPBAR_MT_file_new", text="", icon='FILE_NEW')
+
+        row = layout.row(align=True)
+        row.operator("wm.open_mainfile", text="", icon='FILE_FOLDER', emboss=False)
+        sub = row.row(align=True)
+        sub.menu("TOPBAR_MT_file_open_recent", text="", icon='TRIA_DOWN')
+
+        layout.separator()
+
+        layout.operator_context = 'INVOKE_DEFAULT'
+
+        layout.operator("ed.undo", icon='LOOP_BACK', text="", emboss=False)
+        layout.operator("ed.redo", icon='LOOP_FORWARDS', text="", emboss=False)
+        layout.menu("TOPBAR_MT_undo_history", text="", icon='TRIA_DOWN')
+        layout.operator("screen.repeat_last", icon='FILE_REFRESH', text="", emboss=False)
+        layout.operator("screen.redo_last", icon='OPTIONS', text="", emboss=False)
+
+        layout.separator()
+
+        layout.operator("wm.search_menu", text="", icon='VIEWZOOM', emboss=False)
+        layout.operator("screen.userpref_show", text="", icon='PREFERENCES', emboss=False)
+        layout.operator("wm.window_new", icon='WINDOW', text="", emboss=False)
+
+        if sys.platform[:3] == "win":
+            layout.operator("wm.console_toggle", icon='CONSOLE', text="", emboss=False)
+
+        layout.separator()
+
+        tool_settings = context.tool_settings
+        layout.prop(tool_settings, "use_keyframe_insert_auto", text="", toggle=True, emboss=False)
+
+        row = layout.row(align=True)
+        row.operator("screen.frame_jump", text="", icon='REW', emboss=False).end = False
+        row.operator("screen.keyframe_jump", text="", icon='PREV_KEYFRAME', emboss=False).next = False
+        if not screen.is_animation_playing:
+            # if using JACK and A/V sync:
+            #   hide the play-reversed button
+            #   since JACK transport doesn't support reversed playback
+            if scene.sync_mode == 'AUDIO_SYNC' and context.preferences.system.audio_device == 'JACK':
+                row.scale_x = 2
+                row.operator("screen.animation_play", text="", icon='PLAY', emboss=False)
+                row.scale_x = 1
+            else:
+                row.operator("screen.animation_play", text="", icon='PLAY_REVERSE', emboss=False).reverse = True
+                row.operator("screen.animation_play", text="", icon='PLAY', emboss=False)
+        else:
+            row.scale_x = 2
+            row.operator("screen.animation_play", text="", icon='PAUSE', emboss=False)
+            row.scale_x = 1
+        row.operator("screen.keyframe_jump", text="", icon='NEXT_KEYFRAME', emboss=False).next = True
+        row.operator("screen.frame_jump", text="", icon='FF', emboss=False).end = True
+
+        layout.prop(scene, "frame_current", text="")
+
+        layout.separator()
+
+        layout.operator("render.render", text="", icon='RENDER_STILL', emboss=False).use_viewport = True
+        props = layout.operator("render.render", text="", icon='RENDER_ANIMATION', emboss=False)
+        props.animation = True
+        props.use_viewport = True
+        rd = scene.render
+        if rd.has_multiple_engines:
+            layout.label(text="Render Engine")
+            layout.prop(rd, "engine", text="")
+
+
 class TOPBAR_HT_upper_bar(Header):
     bl_space_type = 'TOPBAR'
+    bl_region_type = 'HEADER'
 
     def draw(self, context):
         region = context.region
@@ -665,6 +755,7 @@ class TOPBAR_MT_window(Menu):
 
         layout.separator()
 
+        layout.prop(context.screen, "show_toptoolbar")
         layout.prop(context.screen, "show_statusbar")
 
         layout.separator()
@@ -920,6 +1011,7 @@ class TOPBAR_PT_name_marker(Panel):
 
 
 classes = (
+    TOPBAR_HT_tool_bar,
     TOPBAR_HT_upper_bar,
     TOPBAR_MT_file_context_menu,
     TOPBAR_MT_workspace_menu,

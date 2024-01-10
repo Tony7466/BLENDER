@@ -687,6 +687,11 @@ static void rna_def_screen(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_Screen_fullscreen_get", nullptr);
   RNA_def_property_ui_text(prop, "Maximize", "An area is maximized, filling this screen");
 
+  prop = RNA_def_property(srna, "show_toptoolbar", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SCREEN_SHOW_TOPTOOLBAR);
+  RNA_def_property_ui_text(prop, "Show Top Buttons", "Show Top Button Bar");
+  RNA_def_property_update(prop, 0, "rna_Screen_bar_update");
+
   /* Status Bar. */
 
   prop = RNA_def_property(srna, "show_statusbar", PROP_BOOLEAN, PROP_NONE);
