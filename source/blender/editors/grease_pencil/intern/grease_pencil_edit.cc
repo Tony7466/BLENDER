@@ -1895,7 +1895,6 @@ static bool grease_pencil_separate_selected(bContext &C,
   };
 
   if (changed) {
-
     grease_pencil_dst.set_active_layer(0);
 
     /* Add object materials to target object. */
@@ -1996,7 +1995,6 @@ static bool grease_pencil_separate_material(bContext &C,
 
   /* Create a new object for each material. */
   for (const int mat_i : IndexRange(object_src.totcol).drop_front(1)) {
-
     Object *object_dst = duplicate_grease_pencil_object(
         &bmain, &scene, &view_layer, &base_prev, grease_pencil_src);
 
