@@ -7193,9 +7193,7 @@ void uiTemplateCacheFile(uiLayout *layout,
 /* -------------------------------------------------------------------- */
 /** \name Recent Files Template
  * \{ */
-static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
-                                               struct uiTooltipData *tip,
-                                               void *argN)
+static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *tip, void *argN)
 {
   char *path = (char *)argN;
 
@@ -7255,7 +7253,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/,
 
     if (status.st_size > 0) {
       char size[16];
-      BLI_filelist_entry_size_to_string(NULL, status.st_size, false, size);
+      BLI_filelist_entry_size_to_string(nullptr, status.st_size, false, size);
       UI_tooltip_text_field_add(tip,
                                 BLI_sprintfN("%s: %s", N_("Size"), size),
                                 nullptr,
@@ -7308,11 +7306,6 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
     uiBut *but = ui_but_last(block);
     UI_but_func_tooltip_custom_set(
         but, uiTemplateRecentFiles_tooltip_func, BLI_strdup(recent->filepath), MEM_freeN);
-  }
-
-  if (i > 0) {
-    uiItemS(layout);
-    uiItemO(layout, nullptr, ICON_TRASH, "WM_OT_clear_recent_files");
   }
 
   return i;
