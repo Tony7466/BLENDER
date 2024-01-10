@@ -164,8 +164,8 @@ void USDCurvesReader::read_curve_sample(Curves *cu, const double motionSampleTim
 
   if (usdWidths.size()) {
     bke::SpanAttributeWriter<float> radii =
-        geometry.attributes_for_write().lookup_or_add_for_write_span<float>("radius",
-                                                                            ATTR_DOMAIN_POINT);
+        geometry.attributes_for_write().lookup_or_add_for_write_span<float>(
+            "radius", bke::AttrDomain::Point);
     for (const int i_point : geometry.points_range()) {
       radii.span[i_point] = usdWidths[i_point];
     }

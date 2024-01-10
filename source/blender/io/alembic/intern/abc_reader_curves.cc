@@ -372,8 +372,8 @@ void AbcCurveReader::read_curves_sample(Curves *curves,
 
   if (data.radii) {
     bke::SpanAttributeWriter<float> radii =
-        geometry.attributes_for_write().lookup_or_add_for_write_span<float>("radius",
-                                                                            ATTR_DOMAIN_POINT);
+        geometry.attributes_for_write().lookup_or_add_for_write_span<float>(
+            "radius", bke::AttrDomain::Point);
 
     for (const int i_curve : geometry.curves_range()) {
       int position_offset = data.offset_in_alembic[i_curve];

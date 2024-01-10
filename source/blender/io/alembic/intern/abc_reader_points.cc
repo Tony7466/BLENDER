@@ -164,13 +164,13 @@ void AbcPointsReader::read_geometry(bke::GeometrySet &geometry_set,
   bke::MutableAttributeAccessor attribute_accessor = point_cloud->attributes_for_write();
 
   bke::SpanAttributeWriter<float3> positions_writer =
-      attribute_accessor.lookup_or_add_for_write_span<float3>("position", ATTR_DOMAIN_POINT);
+      attribute_accessor.lookup_or_add_for_write_span<float3>("position", bke::AttrDomain::Point);
   MutableSpan<float3> point_positions = positions_writer.span;
   N3fArraySamplePtr normals = read_points_sample(m_schema, sample_sel, point_positions);
   positions_writer.finish();
 
   bke::SpanAttributeWriter<float> point_radii_writer =
-      attribute_accessor.lookup_or_add_for_write_span<float>("radius", ATTR_DOMAIN_POINT);
+      attribute_accessor.lookup_or_add_for_write_span<float>("radius", bke::AttrDomain::Point);
   MutableSpan<float> point_radii = point_radii_writer.span;
 
   if (radii) {
@@ -185,7 +185,7 @@ void AbcPointsReader::read_geometry(bke::GeometrySet &geometry_set,
 
   if (normals) {
     bke::SpanAttributeWriter<float3> normals_writer =
-        attribute_accessor.lookup_or_add_for_write_span<float3>("N", ATTR_DOMAIN_POINT);
+        attribute_accessor.lookup_or_add_for_write_span<float3>("N", bke::AttrDomain::Point);
     MutableSpan<float3> point_normals = normals_writer.span;
     for (size_t i = 0; i < normals->size(); i++) {
       Imath::V3f nor_in = (*normals)[i];
