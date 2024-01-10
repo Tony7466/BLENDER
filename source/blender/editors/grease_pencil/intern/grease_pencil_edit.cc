@@ -1762,18 +1762,6 @@ static void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
 
 /** \} */
 
-static void grease_pencil_operatormarcos_define()
-{
-  wmOperatorType *ot;
-
-  ot = WM_operatortype_append_macro("GREASE_PENCIL_OT_stroke_subdivide_smooth",
-                                    "Subdivide and Smooth",
-                                    "Subdivide strokes and smooth them",
-                                    OPTYPE_UNDO | OPTYPE_REGISTER);
-  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_subdivide");
-  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_smooth");
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Move To Layer Operator
  * \{ */
@@ -1830,6 +1818,18 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
 
 /** \} */
 
+static void grease_pencil_operatormarcos_define()
+{
+  wmOperatorType *ot;
+
+  ot = WM_operatortype_append_macro("GREASE_PENCIL_OT_stroke_subdivide_smooth",
+                                    "Subdivide and Smooth",
+                                    "Subdivide strokes and smooth them",
+                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_subdivide");
+  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_smooth");
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -1850,8 +1850,8 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_duplicate);
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
-  WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_subdivide);
+  WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);
 
   grease_pencil_operatormarcos_define();
 }
