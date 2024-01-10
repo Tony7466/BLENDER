@@ -1129,12 +1129,12 @@ static int add_material_from_template(Main &bmain, Object &ob, const ColorTempla
   return index;
 }
 
-static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
-                                               const Span<float> radii,
-                                               const Span<float> opacities,
-                                               const Span<int> offsets,
-                                               const Span<int> materials,
-                                               const float4x4 &matrix)
+bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
+                                        const Span<float> radii,
+                                        const Span<float> opacities,
+                                        const Span<int> offsets,
+                                        const Span<int> materials,
+                                        const float4x4 &matrix)
 {
   using namespace blender::bke;
   CurvesGeometry curves(offsets.last(), offsets.size() - 1);
