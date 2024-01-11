@@ -29,6 +29,6 @@ struct BakeDataBlockID {
   BLI_STRUCT_EQUALITY_OPERATORS_2(BakeDataBlockID, id_name, lib_name)
 };
 
-struct BakeMaterialsList : public Vector<BakeDataBlockID> {};
+struct BakeMaterialsList : public Vector<std::optional<BakeDataBlockID>> {};
 
 }  // namespace blender::bke::bake
