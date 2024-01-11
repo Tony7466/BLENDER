@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_compositor_motion_blur_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_compositor_texture_utilities.glsl)
 
-const float depth_scale = 100.0;
+const float g_depth_scale = 100.0;
 
 /* Interleaved gradient noise by Jorge Jimenez
  * http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare. */
@@ -31,7 +31,7 @@ vec2 spread_compare(float center_motion_length, float sample_motion_length, floa
 
 vec2 depth_compare(float center_depth, float sample_depth)
 {
-  vec2 depth_scale = vec2(depth_scale, -depth_scale);
+  vec2 depth_scale = vec2(g_depth_scale, -g_depth_scale);
   return clamp(0.5 + depth_scale * (sample_depth - center_depth), 0.0, 1.0);
 }
 
