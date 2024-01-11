@@ -496,7 +496,7 @@ void BKE_region_callback_free_gizmomap_set(void (*callback)(wmGizmoMap *))
 
 LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region,
                                                        const char *idname,
-                                                       const bool open_by_default)
+                                                       const bool default_closed)
 {
   LISTBASE_FOREACH (LayoutPanelState *, state, &region->layout_panel_states) {
     if (STREQ(state->idname, idname)) {
@@ -505,7 +505,7 @@ LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region,
   }
   LayoutPanelState *state = MEM_cnew<LayoutPanelState>(__func__);
   state->idname = BLI_strdup(idname);
-  SET_FLAG_FROM_TEST(state->flag, open_by_default, LAYOUT_PANEL_STATE_FLAG_OPEN);
+  SET_FLAG_FROM_TEST(state->flag, !default_closed, LAYOUT_PANEL_STATE_FLAG_OPEN);
   BLI_addtail(&region->layout_panel_states, state);
   return state;
 }

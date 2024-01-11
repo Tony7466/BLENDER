@@ -613,7 +613,7 @@ void BKE_region_callback_refresh_tag_gizmomap_set(void (*callback)(wmGizmoMap *)
  */
 LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region,
                                                        const char *idname,
-                                                       bool open_by_default);
+                                                       bool default_closed);
 
 /**
  * Find a region of type \a region_type in provided \a regionbase.
