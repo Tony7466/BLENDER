@@ -36,18 +36,18 @@ namespace blender::greasepencil {
 using bke::greasepencil::Drawing;
 using bke::greasepencil::Layer;
 
-void init_data_filter(GreasePencilModifierFilterData * /*filter_data*/) {}
+void init_filter_data(GreasePencilModifierFilterData * /*filter_data*/) {}
 
-void copy_data_filter(const GreasePencilModifierFilterData *filter_data_src,
+void copy_filter_data(const GreasePencilModifierFilterData *filter_data_src,
                       GreasePencilModifierFilterData *filter_data_dst,
                       const int /*flag*/)
 {
   memcpy(filter_data_dst, filter_data_src, sizeof(GreasePencilModifierFilterData));
 }
 
-void free_data_filter(GreasePencilModifierFilterData * /*filter_data*/) {}
+void free_filter_data(GreasePencilModifierFilterData * /*filter_data*/) {}
 
-void foreach_ID_link_filter(GreasePencilModifierFilterData *filter_data,
+void foreach_filter_ID_link(GreasePencilModifierFilterData *filter_data,
                             Object *ob,
                             IDWalkFunc walk,
                             void *user_data)
@@ -55,7 +55,7 @@ void foreach_ID_link_filter(GreasePencilModifierFilterData *filter_data,
   walk(user_data, ob, (ID **)&filter_data->material, IDWALK_CB_USER);
 }
 
-void draw_influence_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
+void draw_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
 {
   PointerRNA ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");

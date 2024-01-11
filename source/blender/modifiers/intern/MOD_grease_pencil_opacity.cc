@@ -59,7 +59,7 @@ static void init_data(ModifierData *md)
            sizeof(*(omd)) - OFFSETOF_STRUCT_AFTER(omd, modifier));
   }
 
-  greasepencil::init_data_filter(&omd->filter);
+  greasepencil::init_filter_data(&omd->filter);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -68,7 +68,7 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   GreasePencilOpacityModifierData *tomd = (GreasePencilOpacityModifierData *)target;
 
   BKE_modifier_copydata_generic(md, target, flag);
-  greasepencil::copy_data_filter(&omd->filter, &tomd->filter, flag);
+  greasepencil::copy_filter_data(&omd->filter, &tomd->filter, flag);
 }
 
 static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
@@ -82,14 +82,14 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-  greasepencil::foreach_ID_link_filter(&omd->filter, ob, walk, user_data);
+  greasepencil::foreach_filter_ID_link(&omd->filter, ob, walk, user_data);
 }
 
 static void free_data(ModifierData *md)
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
 
-  greasepencil::free_data_filter(&omd->filter);
+  greasepencil::free_filter_data(&omd->filter);
 }
 
 static void modify_curves(ModifierData *md,
@@ -150,7 +150,7 @@ static void panel_draw(const bContext *C, Panel *panel)
           C, layout, "Influence", ptr, "open_influence_panel"))
   {
     PointerRNA filter_ptr = RNA_pointer_get(ptr, "filter");
-    greasepencil::draw_influence_settings(C, influence_panel, &filter_ptr);
+    greasepencil::draw_filter_settings(C, influence_panel, &filter_ptr);
   }
 
   uiLayoutSetPropSep(layout, true);
