@@ -1549,7 +1549,7 @@ void GLShader::GLProgram::link(Shader &shader)
   }
 }
 
-void GLShader::SpecializationPrograms::init()
+void GLShader::GLPrograms::init()
 {
   if (program_active) {
     return;
@@ -1562,7 +1562,7 @@ void GLShader::SpecializationPrograms::init()
   }
 }
 
-GLuint GLShader::SpecializationPrograms::program_get()
+GLuint GLShader::GLPrograms::program_get()
 {
   if (shader_.constants.types.is_empty()) {
     /* Early exit for shaders that doesn't use specialization constants. The active shader should

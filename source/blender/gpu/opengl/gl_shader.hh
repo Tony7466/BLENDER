@@ -83,7 +83,7 @@ class GLShader : public Shader {
     void link(Shader &shader);
   };
 
-  struct SpecializationPrograms {
+  struct GLPrograms {
     using Key = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
 
    private:
@@ -108,7 +108,7 @@ class GLShader : public Shader {
     GLSources compute_sources;
 
    public:
-    SpecializationPrograms(GLShader &shader) : shader_(shader) {}
+    GLPrograms(GLShader &shader) : shader_(shader) {}
 
     /**
      * Initialize this instance.
@@ -127,7 +127,7 @@ class GLShader : public Shader {
     GLuint program_get();
   };
 
-  SpecializationPrograms programs_;
+  GLPrograms programs_;
   Vector<const char *> specialization_constant_names_;
   void update_program_and_sources(GLSources &stage_sources, MutableSpan<const char *> sources);
 

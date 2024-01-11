@@ -533,7 +533,7 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
   int constant_id = 0;
   for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_) {
     copy_input_name(input, constant.name, name_buffer_, name_buffer_offset);
-    input->location = input->binding = constant_id++;
+    input->location = constant_id++;
     input++;
   }
 
