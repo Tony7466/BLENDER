@@ -28,10 +28,10 @@
 
 #include "BKE_addon.h"
 #include "BKE_blender_version.h"
-#include "BKE_colorband.h"
+#include "BKE_colorband.hh"
 #include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_preferences.h"
 
 #include "BLO_readfile.h"
@@ -141,17 +141,11 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #blo_do_versions_userdef in this file.
-   * - "versioning_{BLENDER_VERSION}.c"
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a USER_VERSION_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 
 #undef FROM_DEFAULT_V4_UCHAR
 
@@ -267,6 +261,18 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (userdef->pad_rot_angle == 0.0f) {
     userdef->pad_rot_angle = 15.0f;
   }
+
+  /* If the userdef was created on a different platform, it may have an
+   * unsupported GPU backend selected.  If so, pick a supported default. */
+#ifdef __APPLE__
+  if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
+    userdef->gpu_backend = GPU_BACKEND_METAL;
+  }
+#else
+  if (userdef->gpu_backend == GPU_BACKEND_METAL) {
+    userdef->gpu_backend = GPU_BACKEND_OPENGL;
+  }
+#endif
 
   /* graph editor - unselected F-Curve visibility */
   if (userdef->fcu_inactive_alpha == 0) {
@@ -862,15 +868,6 @@ void blo_do_versions_userdef(UserDef *userdef)
     BKE_addon_remove_safe(&userdef->addons, "io_scene_obj");
   }
 
-  if (!USER_VERSION_ATLEAST(400, 12)) {
-#ifdef __APPLE__
-    /* Drop OpenGL support on MAC devices as they don't support OpenGL 4.3. */
-    if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
-      userdef->gpu_backend = GPU_BACKEND_METAL;
-    }
-#endif
-  }
-
   if (!USER_VERSION_ATLEAST(400, 15)) {
     userdef->node_preview_res = 120;
   }
@@ -905,21 +902,18 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #do_versions_theme in this file.
-   * - "versioning_{BLENDER_VERSION}.c"
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
+  if (!USER_VERSION_ATLEAST(401, 9)) {
     userdef->key_insert_channels = (USER_ANIM_KEY_CHANNEL_LOCATION |
                                     USER_ANIM_KEY_CHANNEL_ROTATION | USER_ANIM_KEY_CHANNEL_SCALE |
                                     USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
   }
+
+  /**
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a USER_VERSION_ATLEAST check.
+   *
+   * \note Keep this message at the bottom of the function.
+   */
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
     do_versions_theme(userdef, btheme);
