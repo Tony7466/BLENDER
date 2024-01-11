@@ -52,7 +52,7 @@ static void node_composit_init_vecblur(bNodeTree * /*ntree*/, bNode *node)
   NodeBlurData *nbd = MEM_cnew<NodeBlurData>(__func__);
   node->storage = nbd;
   nbd->samples = 32;
-  nbd->fac = 1.0f;
+  nbd->fac = 0.5f;
 }
 
 static void node_composit_buts_vecblur(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -130,7 +130,7 @@ class VectorBlurOperation : public NodeOperation {
     GPUShader *shader = context().get_shader("compositor_motion_blur_max_velocity_dilate");
     GPU_shader_bind(shader);
 
-    GPU_shader_uniform_1f(shader, "shutter_speed", get_shutter_speed());
+    GPU_shader_uniform_1f(shader, "shutter_speed", node_storage(bnode()).fac);
 
     max_tile_velocity.bind_as_texture(shader, "input_tx");
 
@@ -162,7 +162,7 @@ class VectorBlurOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "samples_count", node_storage(bnode()).samples);
-    GPU_shader_uniform_1f(shader, "shutter_speed", get_shutter_speed());
+    GPU_shader_uniform_1f(shader, "shutter_speed", node_storage(bnode()).fac);
 
     Result &input = get_input("Image");
     input.bind_as_texture(shader, "input_tx");
@@ -191,13 +191,6 @@ class VectorBlurOperation : public NodeOperation {
     velocity.unbind_as_texture();
     max_tile_velocity.unbind_as_texture();
     output.unbind_as_image();
-  }
-
-  /* The shutter speed is across the previous and next velocities, so divide by two to get the
-   * shutter speed for each one. */
-  float get_shutter_speed()
-  {
-    return node_storage(bnode()).fac / 2.0f;
   }
 };
 
