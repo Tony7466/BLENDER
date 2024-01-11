@@ -120,6 +120,11 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
   dst.runtime->evaluated_length_cache = src.runtime->evaluated_length_cache;
   dst.runtime->evaluated_tangent_cache = src.runtime->evaluated_tangent_cache;
   dst.runtime->evaluated_normal_cache = src.runtime->evaluated_normal_cache;
+
+  if (src.runtime->bake_materials) {
+    dst.runtime->bake_materials = std::make_unique<blender::bke::bake::BakeMaterialsList>(
+        *src.runtime->bake_materials);
+  }
 }
 
 CurvesGeometry::CurvesGeometry(const CurvesGeometry &other) : CurvesGeometry()

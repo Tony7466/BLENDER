@@ -87,6 +87,11 @@ static void pointcloud_copy_data(Main * /*bmain*/,
 
   pointcloud_dst->runtime = new blender::bke::PointCloudRuntime();
   pointcloud_dst->runtime->bounds_cache = pointcloud_src->runtime->bounds_cache;
+  if (pointcloud_src->runtime->bake_materials) {
+    pointcloud_dst->runtime->bake_materials =
+        std::make_unique<blender::bke::bake::BakeMaterialsList>(
+            *pointcloud_src->runtime->bake_materials);
+  }
 
   pointcloud_dst->batch_cache = nullptr;
 }
