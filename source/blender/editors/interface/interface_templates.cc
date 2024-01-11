@@ -95,6 +95,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "BKE_workspace.h"
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
 #include "UI_string_search.hh"
@@ -1649,6 +1650,50 @@ ID *UI_context_active_but_get_tab_ID(bContext *C)
   return nullptr;
 }
 
+static void template_ID_workspace_tabs_tooltip_func(bContext *C,
+                                                    struct uiTooltipData *tip,
+                                                    void *argN)
+{
+  bScreen *screen = (bScreen *)argN;
+  wmWindow *win = CTX_wm_window(C);
+  int thumb_width = 160 * UI_SCALE_FAC;
+  int thumb_height = int(float(win->sizey) / float(win->sizex) * float(thumb_width));
+  ImBuf *thumb = IMB_allocImBuf(thumb_width, thumb_height, 32, IB_rect);
+
+  /* How big is this layout? */
+  rcti screen_rect = {INT32_MAX, INT32_MIN, INT32_MAX, INT32_MIN};
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    screen_rect.xmin = MIN2(screen_rect.xmin, area->totrct.xmin);
+    screen_rect.xmax = MAX2(screen_rect.xmax, area->totrct.xmax);
+    screen_rect.ymin = MIN2(screen_rect.ymin, area->totrct.ymin);
+    screen_rect.ymax = MAX2(screen_rect.ymax, area->totrct.ymax);
+  }
+
+  float scalex = BLI_rcti_size_x(&screen_rect) / thumb_width;
+  float scaley = BLI_rcti_size_y(&screen_rect) / thumb_height;
+
+  float col[4];
+  UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, col);
+  IMB_rectfill(thumb, col);
+
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    UI_GetThemeColorType4fv(TH_BACK, area->type ? area->type->spaceid : area->spacetype, col);
+    IMB_rectfill_area_replace(
+        thumb,
+        col,
+        int(float(area->totrct.xmin - screen_rect.xmin) / scalex) + U.pixelsize,
+        int(float(area->totrct.ymin - screen_rect.ymin) / scaley) + U.pixelsize,
+        int(float(area->totrct.xmax - screen_rect.xmin) / scalex) - U.pixelsize,
+        int(float(area->totrct.ymax - screen_rect.ymin) / scaley) - U.pixelsize);
+  }
+
+  UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+
+  short size[2] = {thumb_width, thumb_height};
+  UI_tooltip_image_field_add(tip, thumb, size);
+  IMB_freeImBuf(thumb);
+}
+
 static void template_ID_tabs(const bContext *C,
                              uiLayout *layout,
                              TemplateID *template_id,
@@ -1695,6 +1740,14 @@ static void template_ID_tabs(const bContext *C,
     UI_but_drag_set_id(tab, id);
     tab->custom_data = (void *)id;
     tab->menu = mt;
+
+    if (type == &RNA_WorkSpace) {
+      WorkSpace *ws = (WorkSpace *)link->data;
+      WorkSpaceLayout *wsl = (WorkSpaceLayout *)ws->layouts.first;
+      bScreen *screen = wsl->screen;
+      UI_but_func_tooltip_custom_set(
+          tab, template_ID_workspace_tabs_tooltip_func, screen, nullptr);
+    }
 
     UI_but_drawflag_enable(tab, but_align);
   }
