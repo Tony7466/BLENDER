@@ -638,20 +638,18 @@ static void tree_element_ebone_activate(bContext *C,
   EditBone *ebone = static_cast<EditBone *>(te->directdata);
 
   if (set == OL_SETSEL_NORMAL) {
-    if (!(ebone->flag & BONE_HIDDEN_A)) {
-      uint bases_len = 0;
+    uint bases_len = 0;
 
-      ObjectsInModeParams ob_params{};
-      ob_params.object_mode = OB_MODE_EDIT;
-      ob_params.no_dup_data = true;
+    ObjectsInModeParams ob_params{};
+    ob_params.object_mode = OB_MODE_EDIT;
+    ob_params.no_dup_data = true;
 
-      Base **bases = BKE_view_layer_array_from_bases_in_mode_params(
-          scene, view_layer, nullptr, &bases_len, &ob_params);
-      ED_armature_edit_deselect_all_multi_ex(bases, bases_len);
-      MEM_freeN(bases);
+    Base **bases = BKE_view_layer_array_from_bases_in_mode_params(
+        scene, view_layer, nullptr, &bases_len, &ob_params);
+    ED_armature_edit_deselect_all_multi_ex(bases, bases_len);
+    MEM_freeN(bases);
 
-      tree_element_active_ebone__sel(C, arm, ebone, true);
-    }
+    tree_element_active_ebone__sel(C, arm, ebone, true);
   }
   else if (set == OL_SETSEL_EXTEND) {
     if (!(ebone->flag & BONE_HIDDEN_A)) {
