@@ -301,9 +301,9 @@ enum PropertyFlag {
   PROP_NO_DEG_UPDATE = (1 << 30),
 
   /**
-   * Filepaths that refer to output get a special treatment such
+   * File-paths that refer to output get a special treatment such
    * as having the +/- operators available in the file browser.
-   **/
+   */
   PROP_PATH_OUTPUT = (1 << 2),
 };
 ENUM_OPERATORS(PropertyFlag, PROP_TEXTEDIT_UPDATE)
@@ -446,6 +446,11 @@ enum RawPropertyType {
   PROP_RAW_BOOLEAN,
   PROP_RAW_DOUBLE,
   PROP_RAW_FLOAT,
+  PROP_RAW_UINT8,
+  PROP_RAW_UINT16,
+  PROP_RAW_INT64,
+  PROP_RAW_UINT64,
+  PROP_RAW_INT8,
 };
 
 struct RawArray {

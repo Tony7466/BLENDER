@@ -506,7 +506,7 @@ static bool rna_Armature_collections_override_apply(Main *bmain,
       /* These are stored by Blender when overridable properties are changed on the root
        * collections, However, these are *also* created on the `armature.collections_all` property,
        * which is actually where these per-collection overrides are handled. This doesn't seem to
-       * be proper behaviour, but I (Sybren) also don't want to spam the console about this as this
+       * be proper behavior, but I (Sybren) also don't want to spam the console about this as this
        * is not something a user could fix. */
       return false;
     default:
@@ -1975,7 +1975,6 @@ static void rna_def_armature_collections(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "bArmature");
   RNA_def_struct_ui_text(
       srna, "Armature Bone Collections", "The Bone Collections of this Armature");
-
 
   prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "BoneCollection");
