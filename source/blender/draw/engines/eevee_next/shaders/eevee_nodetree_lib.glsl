@@ -8,13 +8,13 @@
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
 
-vec3 g_emission;
-vec3 g_transmittance;
+packed_vec3 g_emission;
+packed_vec3 g_transmittance;
 float g_holdout;
 
-vec3 g_volume_scattering;
+packed_vec3 g_volume_scattering;
 float g_volume_anisotropy;
-vec3 g_volume_absorption;
+packed_vec3 g_volume_absorption;
 
 /* The Closure type is never used. Use float as dummy type. */
 #define Closure float

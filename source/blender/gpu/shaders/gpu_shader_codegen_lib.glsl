@@ -156,7 +156,7 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 
 struct ClosureUndetermined {
   /* Additional data different for each closure type. */
-  vec4 data;
+  packed_vec4 data;
   packed_vec3 color;
 #ifndef CLOSURE_NO_WEIGHT
   float weight;
@@ -305,20 +305,20 @@ ClosureRefraction to_closure_refraction(ClosureUndetermined cl)
 
 struct GlobalData {
   /** World position. */
-  vec3 P;
+  packed_vec3 P;
   /** Surface Normal. Normalized, overridden by bump displacement. */
-  vec3 N;
+  packed_vec3 N;
   /** Raw interpolated normal (non-normalized) data. */
-  vec3 Ni;
+  packed_vec3 Ni;
   /** Geometric Normal. */
-  vec3 Ng;
+  packed_vec3 Ng;
   /** Curve Tangent Space. */
-  vec3 curve_T, curve_B, curve_N;
+  packed_vec3 curve_T, curve_B, curve_N;
   /** Barycentric coordinates. */
-  vec2 barycentric_coords;
-  vec3 barycentric_dists;
+  packed_vec2 barycentric_coords;
+  packed_vec3 barycentric_dists;
   /** Ray properties (approximation). */
-  int ray_type;
+
   float ray_depth;
   float ray_length;
   /** Hair time along hair length. 0 at base 1 at tip. */
@@ -330,7 +330,9 @@ struct GlobalData {
   /** Index of the strand for per strand effects. */
   int hair_strand_id;
   /** Is hair. */
-  bool is_strand;
+  uchar is_strand;
+  /** Ray type. */
+  uchar ray_type;
 };
 
 GlobalData g_data;

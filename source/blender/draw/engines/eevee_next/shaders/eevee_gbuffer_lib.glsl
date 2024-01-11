@@ -52,20 +52,20 @@ struct GBufferDataUndetermined {
 /* Result of Packing the GBuffer. */
 struct GBufferWriter {
   /* TODO(fclem): Better packing. */
-  vec4 data[GBUFFER_DATA_MAX];
+  packed_vec4 data[GBUFFER_DATA_MAX];
   packed_vec2 N[GBUFFER_NORMAL_MAX];
   uint header;
   /* Only used for book-keeping. Not actually written. Can be derived from header. */
-  int closure_count BITFIELD(3);
-  int layer_data BITFIELD(4);
-  int layer_normal BITFIELD(3);
+  uchar closure_count;
+  uchar layer_data;
+  uchar layer_normal;
 };
 
 /* Result of loading the GBuffer. */
 struct GBufferReader {
   ClosureUndetermined closures[GBUFFER_LAYER_MAX];
   /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
-  vec3 surface_N;
+  packed_vec3 surface_N;
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;
@@ -82,10 +82,10 @@ struct GBufferReader {
   bool has_any_surface BITFIELD(1);
 
   /* Number of valid closure encoded in the gbuffer. */
-  int closure_count BITFIELD(3);
+  uchar closure_count;
   /* Only used for book-keeping when reading. */
-  int layer_data BITFIELD(4);
-  int layer_normal BITFIELD(3);
+  uchar layer_data;
+  uchar layer_normal;
 };
 
 /** \} */
