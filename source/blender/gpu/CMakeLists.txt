@@ -842,9 +842,9 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   setup_platform_linker_flags(shader_builder)
 
   if (WITH_BUILD_INFO)
-    target_link_libraries(shader_builder PUBLIC buildinfoobj)
+    target_link_libraries(shader_builder PRIVATE buildinfoobj)
   endif()
-  target_link_libraries(shader_builder PUBLIC
+  target_link_libraries(shader_builder PRIVATE
     bf_gpu
     bf_intern_clog
     bf_blenlib
