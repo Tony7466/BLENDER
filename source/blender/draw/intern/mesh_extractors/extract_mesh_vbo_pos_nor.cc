@@ -6,7 +6,7 @@
  * \ingroup draw
  */
 
-#include "MEM_guardedalloc.h"
+#include "BLI_array_utils.hh"
 
 #include "extract_mesh.hh"
 
@@ -18,9 +18,19 @@ namespace blender::draw {
 /** \name Extract Position and Vertex Normal
  * \{ */
 
-struct MeshExtract_PosNor_Data {
-  float3 *vbo_data;
-};
+static void extract_mesh_loose_edge_positions(const Span<float3> vert_positions,
+                                              const Span<int2> edges,
+                                              const Span<int> loose_edge_indices,
+                                              MutableSpan<float3> positions)
+{
+  threading::parallel_for(loose_edge_indices.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int2 edge = edges[loose_edge_indices[i]];
+      positions[i * 2 + 0] = vert_positions[edge[0]];
+      positions[i * 2 + 1] = vert_positions[edge[1]];
+    }
+  });
+}
 
 static void extract_pos_init(const MeshRenderData &mr,
                              MeshBatchCache & /*cache*/,
@@ -36,8 +46,21 @@ static void extract_pos_init(const MeshRenderData &mr,
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr.loop_len + mr.loop_loose_len);
 
-  MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(tls_data);
-  data->vbo_data = static_cast<float3 *>(GPU_vertbuf_get_data(vbo));
+  MutableSpan vbo_data(static_cast<float3 *>(GPU_vertbuf_get_data(vbo)),
+                       GPU_vertbuf_get_vertex_len(vbo));
+  if (mr.extract_type == MR_EXTRACT_MESH) {
+    array_utils::gather(
+        mr.vert_positions, mr.corner_verts, vbo_data.take_front(mr.corner_verts.size()));
+    extract_mesh_loose_edge_positions(mr.vert_positions,
+                                      mr.edges,
+                                      mr.loose_edges,
+                                      vbo_data.slice(mr.loop_len, mr.loose_edges.size() * 2));
+    array_utils::gather(
+        mr.vert_positions, mr.loose_verts, vbo_data.take_back(mr.loose_verts.size()));
+  }
+  else {
+    *static_cast<float3 **>(tls_data) = vbo_data.data();
+  }
 }
 
 static void extract_pos_iter_face_bm(const MeshRenderData &mr,
@@ -45,22 +68,13 @@ static void extract_pos_iter_face_bm(const MeshRenderData &mr,
                                      const int /*f_index*/,
                                      void *_data)
 {
-  MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
+  float3 *data = *static_cast<float3 **>(_data);
   BMLoop *l_iter, *l_first;
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
     const int l_index = BM_elem_index_get(l_iter);
-    data->vbo_data[l_index] = bm_vert_co_get(mr, l_iter->v);
+    data[l_index] = bm_vert_co_get(mr, l_iter->v);
   } while ((l_iter = l_iter->next) != l_first);
-}
-
-static void extract_pos_iter_face_mesh(const MeshRenderData &mr, const int face_index, void *_data)
-{
-  MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
-  for (const int corner : mr.faces[face_index]) {
-    const int vert_i = mr.corner_verts[corner];
-    data->vbo_data[corner] = mr.vert_positions[vert_i];
-  }
 }
 
 static void extract_pos_iter_loose_edge_bm(const MeshRenderData &mr,
@@ -68,21 +82,10 @@ static void extract_pos_iter_loose_edge_bm(const MeshRenderData &mr,
                                            const int loose_edge_i,
                                            void *_data)
 {
-  MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
+  float3 *data = *static_cast<float3 **>(_data);
   int index = mr.loop_len + loose_edge_i * 2;
-  data->vbo_data[index + 0] = bm_vert_co_get(mr, eed->v1);
-  data->vbo_data[index + 1] = bm_vert_co_get(mr, eed->v2);
-}
-
-static void extract_pos_iter_loose_edge_mesh(const MeshRenderData &mr,
-                                             const int2 edge,
-                                             const int loose_edge_i,
-                                             void *_data)
-{
-  MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
-  const int index = mr.loop_len + loose_edge_i * 2;
-  data->vbo_data[index + 0] = mr.vert_positions[edge[0]];
-  data->vbo_data[index + 1] = mr.vert_positions[edge[1]];
+  data[index + 0] = bm_vert_co_get(mr, eed->v1);
+  data[index + 1] = bm_vert_co_get(mr, eed->v2);
 }
 
 static void extract_pos_iter_loose_vert_bm(const MeshRenderData &mr,
@@ -90,21 +93,10 @@ static void extract_pos_iter_loose_vert_bm(const MeshRenderData &mr,
                                            const int loose_vert_i,
                                            void *_data)
 {
-  MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
+  float3 *data = *static_cast<float3 **>(_data);
   const int offset = mr.loop_len + (mr.edge_loose_len * 2);
   const int index = offset + loose_vert_i;
-  data->vbo_data[index] = bm_vert_co_get(mr, eve);
-}
-
-static void extract_pos_iter_loose_vert_mesh(const MeshRenderData &mr,
-                                             const int loose_vert_i,
-                                             void *_data)
-{
-  MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
-  const int offset = mr.loop_len + (mr.edge_loose_len * 2);
-  const int index = offset + loose_vert_i;
-  const int v_index = mr.loose_verts[loose_vert_i];
-  data->vbo_data[index] = mr.vert_positions[v_index];
+  data[index] = bm_vert_co_get(mr, eve);
 }
 
 static GPUVertFormat *get_normals_format()
@@ -297,15 +289,12 @@ constexpr MeshExtract create_extractor_pos()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_pos_init;
   extractor.iter_face_bm = extract_pos_iter_face_bm;
-  extractor.iter_face_mesh = extract_pos_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_pos_iter_loose_edge_bm;
-  extractor.iter_loose_edge_mesh = extract_pos_iter_loose_edge_mesh;
   extractor.iter_loose_vert_bm = extract_pos_iter_loose_vert_bm;
-  extractor.iter_loose_vert_mesh = extract_pos_iter_loose_vert_mesh;
   extractor.init_subdiv = extract_pos_init_subdiv;
   extractor.iter_loose_geom_subdiv = extract_pos_loose_geom_subdiv;
   extractor.data_type = MR_DATA_NONE;
-  extractor.data_size = sizeof(MeshExtract_PosNor_Data);
+  extractor.data_size = sizeof(float3 *);
   extractor.use_threading = true;
   extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.pos);
   return extractor;

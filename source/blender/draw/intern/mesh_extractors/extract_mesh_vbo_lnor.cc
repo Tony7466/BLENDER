@@ -155,39 +155,38 @@ static void extract_lnor_init(const MeshRenderData &mr,
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr.loop_len);
 
-  MutableSpan vbo_data(static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo)),
-                       GPU_vertbuf_get_vertex_len(vbo));
   if (mr.extract_type == MR_EXTRACT_MESH) {
+    MutableSpan vbo_data(static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo)), mr.loop_len);
     extract_normals_mesh(mr, vbo_data);
     extract_paint_overlay_flags(mr, vbo_data);
   }
   else {
-    *(GPUPackedNormal **)tls_data = vbo_data.data();
+    *(GPUPackedNormal **)tls_data = static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo));
   }
 }
 
 static void extract_lnor_iter_face_bm(const MeshRenderData &mr,
                                       const BMFace *f,
                                       const int /*f_index*/,
-                                      void *data)
+                                      void *data_v)
 {
+  GPUPackedNormal *data = *(GPUPackedNormal **)data_v;
   BMLoop *l_iter, *l_first;
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
     const int l_index = BM_elem_index_get(l_iter);
     if (!mr.loop_normals.is_empty()) {
-      (*(GPUPackedNormal **)data)[l_index] = GPU_normal_convert_i10_v3(mr.loop_normals[l_index]);
+      data[l_index] = GPU_normal_convert_i10_v3(mr.loop_normals[l_index]);
     }
     else {
       if (BM_elem_flag_test(f, BM_ELEM_SMOOTH)) {
-        (*(GPUPackedNormal **)data)[l_index] = GPU_normal_convert_i10_v3(
-            bm_vert_no_get(mr, l_iter->v));
+        data[l_index] = GPU_normal_convert_i10_v3(bm_vert_no_get(mr, l_iter->v));
       }
       else {
-        (*(GPUPackedNormal **)data)[l_index] = GPU_normal_convert_i10_v3(bm_face_no_get(mr, f));
+        data[l_index] = GPU_normal_convert_i10_v3(bm_face_no_get(mr, f));
       }
     }
-    (*(GPUPackedNormal **)data)[l_index].w = BM_elem_flag_test(f, BM_ELEM_HIDDEN) ? -1 : 0;
+    data[l_index].w = BM_elem_flag_test(f, BM_ELEM_HIDDEN) ? -1 : 0;
   } while ((l_iter = l_iter->next) != l_first);
 }
 
@@ -247,14 +246,13 @@ static void extract_lnor_hq_init(const MeshRenderData &mr,
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr.loop_len);
 
-  MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(vbo)),
-                       GPU_vertbuf_get_vertex_len(vbo));
   if (mr.extract_type == MR_EXTRACT_MESH) {
+    MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(vbo)), mr.loop_len);
     extract_normals_mesh(mr, vbo_data);
     extract_paint_overlay_flags(mr, vbo_data);
   }
   else {
-    *(short4 **)tls_data = vbo_data.data();
+    *(short4 **)tls_data = static_cast<short4 *>(GPU_vertbuf_get_data(vbo));
   }
 }
 
