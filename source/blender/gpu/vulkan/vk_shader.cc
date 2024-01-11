@@ -995,7 +995,7 @@ void VKShader::uniform_int(int location, int comp_len, int array_size, const int
   push_constants.push_constant_set(location, comp_len, array_size, data);
 }
 
-std::string VKShader::constants_declare(const shader::ShaderCreateInfo &info) const
+std::string VKShader::constants_declare(const shader::ShaderCreateInfo &info)
 {
   std::stringstream ss;
 

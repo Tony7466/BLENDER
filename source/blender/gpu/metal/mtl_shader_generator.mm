@@ -787,7 +787,7 @@ std::string MTLShader::resources_declare(const ShaderCreateInfo &info) const
   return ss.str();
 }
 
-std::string MTLShader::constants_declare(const ShaderCreateInfo & /*info*/) const
+std::string MTLShader::constants_declare(const ShaderCreateInfo & /*info*/)
 {
   /* NOTE: Specialization Constants must be declared in program scope. This is done in
    * `generate_specialization_constant_declarations`. */

@@ -121,6 +121,7 @@ class GLShader : public Shader {
   };
 
   SpecializationPrograms programs_;
+  Vector<const char *> specialization_constant_names_;
   void update_program_and_sources(GLSources &stage_sources, MutableSpan<const char *> sources);
 
   /** True if any shader failed to compile. */
@@ -141,7 +142,7 @@ class GLShader : public Shader {
   void warm_cache(int /*limit*/) override{};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
-  std::string constants_declare(const shader::ShaderCreateInfo &info) const override;
+  std::string constants_declare(const shader::ShaderCreateInfo &info) override;
   std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string fragment_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string geometry_interface_declare(const shader::ShaderCreateInfo &info) const override;

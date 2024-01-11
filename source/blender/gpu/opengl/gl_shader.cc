@@ -643,7 +643,7 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
   return ss.str();
 }
 
-std::string GLShader::constants_declare(const ShaderCreateInfo &info) const
+std::string GLShader::constants_declare(const ShaderCreateInfo &info)
 {
 
   std::stringstream ss;
@@ -652,24 +652,21 @@ std::string GLShader::constants_declare(const ShaderCreateInfo &info) const
     return ss.str();
   }
 
+  /* Extract the constants names from info and store them locally. When shader needs to be
+   * recompiled it cannot access the shader create info anymore. In that case a dummy shader create
+   * info is used that doesn't contain any information. */
+  if (specialization_constant_names_.is_empty()) {
+    for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_)
+    {
+      specialization_constant_names_.append(constant.name.c_str());
+    }
+  }
+
   /* Add an identifier that where the specialization constants will be added. */
   ss << "\n/* GPU_GL_SPECIALIZATION_CONSTANTS. */\n";
   ss << "/* Specialization Constants. */\n";
   for (int constant_index : IndexRange(constants.types.size())) {
-    const char *name = nullptr;
-    /*
-     * When compiling GL shaders with specialization constants there is a dependency cycle.
-     * interface is only available after a program is linked as bindings can be retrieved from the
-     * linked shader. although we should prefer interface the first time we need to retrieve the
-     * name from ShaderCreateInfo.
-     */
-    if (interface) {
-      const ShaderInput *input = interface->constant_get(constant_index);
-      name = interface->input_name_get(input);
-    }
-    else if (!info.specialization_constants_.is_empty()) {
-      name = info.specialization_constants_[constant_index].name.c_str();
-    }
+    const StringRefNull name = specialization_constant_names_[constant_index];
     gpu::shader::Type constant_type = constants.types[constant_index];
     const shader::ShaderCreateInfo::SpecializationConstant::Value &value =
         constants.values[constant_index];
