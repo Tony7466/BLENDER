@@ -1,3 +1,4 @@
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by issue #115978, FCurve extrapolation ignored in whenever anything is present in the NLA
 Referenced by pull request #116382, Fix #115978: FCurve extrapolation ignored in NLA.
+Referenced by commit d499710218319b1d8993546c5bfdccd0f4610a9d, Fix #115978: FCurve extrapolation ignored in NLA.
