@@ -104,10 +104,8 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
 {
   SpaceText *stextn = static_cast<SpaceText *>(MEM_dupallocN(sl));
 
-  /* clear or remove stuff from old */
+  /* Add it own runtime data. */
   stextn->runtime = MEM_new<SpaceText_Runtime>(__func__);
-
-  stextn->runtime->drawcache = nullptr; /* space need its own cache */
 
   return (SpaceLink *)stextn;
 }
@@ -477,4 +475,9 @@ void ED_spacetype_text()
   ED_text_format_register_osl();
   ED_text_format_register_pov();
   ED_text_format_register_pov_ini();
+}
+
+int ED_text_visible_lines_get(const SpaceText *st)
+{
+  return st->runtime->viewlines;
 }
