@@ -151,8 +151,8 @@ typedef enum {
    */
   eModifierFlag_Active = (1 << 2),
   /**
-   * Only set on modifiers in evaluated objects. The flag indicates that the user modified inputs
-   * to the modifier which might invalidate simulation caches.
+   * Only set on modifiers in evaluated objects. The flag indicates that the user modified
+   * inputs to the modifier which might invalidate simulation caches.
    */
   eModifierFlag_UserModified = (1 << 3),
 } ModifierFlag;
@@ -2484,3 +2484,26 @@ typedef enum VolumeToMeshResolutionMode {
 typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
+
+typedef struct GreasePencilModifierFilterData {
+  /** Filter by layer name. */
+  char layer_name[64];
+  /** Filter by stroke material. */
+  struct Material *material;
+  /** Filter by layer pass. */
+  int layer_pass;
+  /** Filter by material pass. */
+  int material_pass;
+  /** GreasePencilModifierFilterFlag */
+  int flag;
+  char _pad[4];
+} GreasePencilModifierFilterData;
+
+typedef enum GreasePencilModifierFilterFlag {
+  GREASE_PENCIL_FILTER_USE_LAYER_PASS = (1 << 0),
+  GREASE_PENCIL_FILTER_USE_MATERIAL_PASS = (1 << 1),
+  GREASE_PENCIL_FILTER_INVERT_LAYER = (1 << 2),
+  GREASE_PENCIL_FILTER_INVERT_LAYER_PASS = (1 << 3),
+  GREASE_PENCIL_FILTER_INVERT_MATERIAL = (1 << 4),
+  GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS = (1 << 5),
+} GreasePencilModifierFilterFlag;
