@@ -37,6 +37,7 @@
 #include "DNA_pointcloud_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_shader_fx_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
@@ -679,18 +680,11 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #blo_do_versions_290 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
 
 static void panels_remove_x_closed_flag_recursive(Panel *panel)
@@ -1978,15 +1972,9 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
