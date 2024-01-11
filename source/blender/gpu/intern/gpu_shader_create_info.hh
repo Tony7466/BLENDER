@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include "GPU_material.h"
