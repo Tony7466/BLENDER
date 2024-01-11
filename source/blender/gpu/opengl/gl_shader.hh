@@ -41,12 +41,13 @@ namespace gpu {
  * would only store the source_ref.
  *
  * Other sources would be stored in the #source attribute. #source_ref
- * would still be updated. These would include shader create info sources.
+ * would still be updated.
  */
 struct GLSource {
   std::string source;
   StringRefNull source_ref;
 
+  GLSource() = default;
   GLSource(const char *other_source);
 };
 class GLSources : public Vector<GLSource> {
@@ -72,9 +73,9 @@ class GLShader : public Shader {
 
  private:
   struct SpecializationProgram {
-    /** Handle for full program (links shader stages below). */
+    /** Handle for program. */
     GLuint shader_program = 0;
-    /** Individual shader stages. */
+    /** Handle for individual shader stages. */
     GLuint vert_shader = 0;
     GLuint geom_shader = 0;
     GLuint frag_shader = 0;
@@ -91,15 +92,15 @@ class GLShader : public Shader {
 
    public:
     /**
-     * Points to the active specialization program. Use `ensure_active` or `ensure_any_active` to
-     * set this attribute.
+     * Points to the active specialization program. When binding a shader the active shader is
+     * setup.
      */
     SpecializationProgram *active = nullptr;
 
     /**
      * When the shader uses Specialization Constants these attribute contains the sources for
-     * rebuild shader stages. When Specialization Constants aren't used they are kept empty to
-     * reduce memory requirements.
+     * rebuild shader stages. When Specialization Constants aren't used they are empty to
+     * reduce memory needs.
      */
     GLSources vertex_sources;
     GLSources geometry_sources;

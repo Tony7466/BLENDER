@@ -856,8 +856,8 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       }
       /* Declare image. */
       using Resource = ShaderCreateInfo::Resource;
-      /* NOTE(fclem): Using the attachment index as resource index might be problematic as it
-       * might collide with other resources. */
+      /* NOTE(fclem): Using the attachment index as resource index might be problematic as it might
+       * collide with other resources. */
       Resource res(Resource::BindType::SAMPLER, input.index);
       res.sampler.type = image_type;
       res.sampler.sampler = GPUSamplerState::default_sampler();
@@ -1200,9 +1200,7 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage,
   }
 
   /* Patch the shader sources to include specialization constants.
-   * `constants_source` must to be scoped at function level.
-   * `sources` parameter is used when there are no specialization constants to reduce memory
-   * copies. */
+   * `constants_source` must to be scoped at function level. */
   std::string constants_source;
   const bool has_specialization_constants = !constants.types.is_empty();
   if (has_specialization_constants && interface) {
@@ -1494,15 +1492,16 @@ GLSource::GLSource(const char *other)
 GLSources &GLSources::operator=(Span<const char *> other)
 {
   clear();
-  /* Allocate one more to store the constants. */
   reserve(other.size());
 
   for (const char *other_source : other) {
     append(GLSource(other_source));
-    /* Note we use last().source as this will only check generated sources. */
+    /* NOTE: `last().source` is used as that will only check not statically defined sources. */
     if (constants_source_index_ == -1 &&
         last().source.find("GPU_GL_SPECIALIZATION_CONSTANTS") != std::string::npos)
     {
+      /* Specialization Constants are cleared as it will be regenerated each time. */
+      last().source.clear();
       constants_source_index_ = size() - 1;
     }
   }
@@ -1572,8 +1571,8 @@ void GLShader::SpecializationPrograms::ensure_program_created(const GLShader &sh
 void GLShader::SpecializationPrograms::ensure_program_linked(GLShader &shader)
 {
   if (shader.constants.types.is_empty()) {
-    /* Early exit, shader doesn't use specialization constants. Shader that was linked
-     * during shader creation should be used. */
+    /* Early exit for shaders that doesn't use specialization constants. The active shader should
+     * already be setup. */
     BLI_assert(active && active->shader_program);
     return;
   }
