@@ -1200,6 +1200,10 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   }
 
   /** Generate structs from MSL Interface. **/
+  if (msl_iface.uses_gl_Position) {
+    ss_vertex << "float4 gl_Position;" << std::endl;
+  }
+
   /* Generate VertexIn struct. */
   if (!msl_iface.uses_ssbo_vertex_fetch_mode) {
     ss_vertex << msl_iface.generate_msl_vertex_in_struct();
@@ -1208,9 +1212,6 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   ss_vertex << msl_iface.generate_msl_uniform_structs(ShaderStage::VERTEX);
 
   /* Conditionally use global GL variables. */
-  if (msl_iface.uses_gl_Position) {
-    ss_vertex << "float4 gl_Position;" << std::endl;
-  }
   if (msl_iface.uses_gl_PointSize) {
     ss_vertex << "float gl_PointSize = 1.0;" << std::endl;
   }
@@ -1313,6 +1314,18 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     ss_fragment << "class " << get_stage_class_name(ShaderStage::FRAGMENT) << " {" << std::endl;
     ss_fragment << "public:" << std::endl;
 
+    /** GL globals. */
+    /* gl_FragCoord will always be assigned to the output position from vertex shading. */
+    ss_fragment << "float4 gl_FragCoord;" << std::endl;
+    if (msl_iface.uses_gl_FragColor) {
+      ss_fragment << "float4 gl_FragColor;" << std::endl;
+    }
+
+    /* Global barycentrics. */
+    if (msl_iface.uses_barycentrics) {
+      ss_fragment << "vec3 gpu_BaryCoord;\n";
+    }
+
     /* In/out interface values */
     /* Generate additional shader interface struct members from create-info. */
     for (const StageInterfaceInfo *iface : info->vertex_out_interfaces_) {
@@ -1341,20 +1354,23 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     ss_fragment << msl_iface.generate_msl_fragment_struct(false);
     ss_fragment << msl_iface.generate_msl_uniform_structs(ShaderStage::FRAGMENT);
 
-    /** GL globals. */
-    /* gl_FragCoord will always be assigned to the output position from vertex shading. */
-    ss_fragment << "float4 gl_FragCoord;" << std::endl;
-    if (msl_iface.uses_gl_FragColor) {
-      ss_fragment << "float4 gl_FragColor;" << std::endl;
+    /* Add Texture members. */
+    for (const MSLTextureResource &tex : msl_iface.texture_samplers) {
+      if (bool(tex.stage & ShaderStage::FRAGMENT)) {
+        ss_fragment << "\tthread " << tex.get_msl_typestring_wrapper(false) << ";" << std::endl;
+      }
     }
+
+    if (msl_iface.uses_gl_PointCoord) {
+      ss_fragment << "float2 gl_PointCoord;" << std::endl;
+    }
+
+    /* Place single-channel members at end for better packing. */
     if (msl_iface.uses_gl_FragDepth) {
       ss_fragment << "float gl_FragDepth;" << std::endl;
     }
     if (msl_iface.uses_gl_FragStencilRefARB) {
       ss_fragment << "int gl_FragStencilRefARB;" << std::endl;
-    }
-    if (msl_iface.uses_gl_PointCoord) {
-      ss_fragment << "float2 gl_PointCoord;" << std::endl;
     }
     if (msl_iface.uses_gl_FrontFacing) {
       ss_fragment << "MTLBOOL gl_FrontFacing;" << std::endl;
@@ -1363,24 +1379,12 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
       ss_fragment << "uint gl_PrimitiveID;" << std::endl;
     }
 
-    /* Global barycentrics. */
-    if (msl_iface.uses_barycentrics) {
-      ss_fragment << "vec3 gpu_BaryCoord;\n";
-    }
-
     /* Render target array index and viewport array index passed from vertex shader. */
     if (msl_iface.uses_gpu_layer) {
       ss_fragment << "int gpu_Layer = 0;" << std::endl;
     }
     if (msl_iface.uses_gpu_viewport_index) {
       ss_fragment << "int gpu_ViewportIndex = 0;" << std::endl;
-    }
-
-    /* Add Texture members. */
-    for (const MSLTextureResource &tex : msl_iface.texture_samplers) {
-      if (bool(tex.stage & ShaderStage::FRAGMENT)) {
-        ss_fragment << "\tthread " << tex.get_msl_typestring_wrapper(false) << ";" << std::endl;
-      }
     }
 
     /* Inject Main GLSL Fragment Source into output stream. */
