@@ -8,7 +8,7 @@
 
 #include <cstring>
 
-#include "BLI_blendlib.h"
+#include "BLI_blenlib.h"
 
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
@@ -21,7 +21,7 @@
 /* Define all keywords who can use
 */
 
-static const textformat_glsl_literals_builtinfunc_data[] = {
+static const char *text_format_osl_literals_builtinfunc_data[] = {
     /* clang-format off */
     "attribute"
     "bool"
@@ -129,7 +129,8 @@ static const Span<const char *> textformat_glsl_literals_builtinfunc(
     textformat_glsl_literals_builtinfunc_data,
     ARRAY_SIZE(textformat_glsl_literals_builtinfunc_data));
 
-static const char * text_format_glsl_literals_reserved_data[] = {
+static const char * text_format_glsl_literals_reserved_data[] 
+{
     /* clang-format off */
     "abs"
     "acos"
@@ -321,7 +322,8 @@ static const Span<const char * > text_format_glsl_literals_reserved(
     text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
 
 /* GLSL shader types */
-static const char *text_format_glsl_literals_specialvar_data[] = {
+static const char *text_format_glsl_literals_specialvar_data[] 
+{
     /* Force single column , sorted list */
     /* clang-format off */
     "displacement",
