@@ -188,7 +188,7 @@ static void extract_lnor_init_subdiv(const DRWSubdivCache &subdiv_cache,
                                      void * /*data*/)
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
-  GPUVertBuf *pos_nor = cache.final.buff.vbo.pos_nor;
+  GPUVertBuf *pos_nor = cache.final.buff.vbo.pos;
   BLI_assert(pos_nor);
   GPU_vertbuf_init_build_on_device(vbo, get_subdiv_lnor_format(), subdiv_cache.num_subdiv_loops);
   draw_subdiv_build_lnor_buffer(subdiv_cache, pos_nor, vbo);
@@ -203,7 +203,7 @@ constexpr MeshExtract create_extractor_lnor()
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(GPUPackedNormal *);
   extractor.use_threading = true;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.lnor);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.nor);
   return extractor;
 }
 
@@ -299,13 +299,13 @@ constexpr MeshExtract create_extractor_lnor_hq()
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(short4 *);
   extractor.use_threading = true;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.lnor);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.nor);
   return extractor;
 }
 
 /** \} */
 
-const MeshExtract extract_lnor = create_extractor_lnor();
-const MeshExtract extract_lnor_hq = create_extractor_lnor_hq();
+const MeshExtract extract_nor = create_extractor_lnor();
+const MeshExtract extract_nor_hq = create_extractor_lnor_hq();
 
 }  // namespace blender::draw

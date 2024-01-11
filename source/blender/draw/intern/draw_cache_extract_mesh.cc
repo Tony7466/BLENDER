@@ -626,8 +626,8 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
     } \
   } while (0)
 
-  EXTRACT_ADD_REQUESTED(vbo, pos_nor);
-  EXTRACT_ADD_REQUESTED(vbo, lnor);
+  EXTRACT_ADD_REQUESTED(vbo, pos);
+  EXTRACT_ADD_REQUESTED(vbo, nor);
   EXTRACT_ADD_REQUESTED(vbo, uv);
   EXTRACT_ADD_REQUESTED(vbo, tan);
   EXTRACT_ADD_REQUESTED(vbo, sculpt_data);
@@ -807,11 +807,11 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   EXTRACT_ADD_REQUESTED(ibo, tris);
 
   /* Orcos are extracted at the same time as positions. */
-  if (DRW_vbo_requested(mbuflist->vbo.pos_nor) || DRW_vbo_requested(mbuflist->vbo.orco)) {
-    extractors.append(&extract_pos_nor);
+  if (DRW_vbo_requested(mbuflist->vbo.pos) || DRW_vbo_requested(mbuflist->vbo.orco)) {
+    extractors.append(&extract_pos);
   }
 
-  EXTRACT_ADD_REQUESTED(vbo, lnor);
+  EXTRACT_ADD_REQUESTED(vbo, nor);
   for (int i = 0; i < GPU_MAX_ATTR; i++) {
     EXTRACT_ADD_REQUESTED(vbo, attr[i]);
   }

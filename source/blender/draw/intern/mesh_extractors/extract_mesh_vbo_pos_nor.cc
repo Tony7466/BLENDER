@@ -307,12 +307,12 @@ constexpr MeshExtract create_extractor_pos()
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(MeshExtract_PosNor_Data);
   extractor.use_threading = true;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.pos_nor);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.pos);
   return extractor;
 }
 
 /** \} */
 
-const MeshExtract extract_pos_nor = create_extractor_pos();
+const MeshExtract extract_pos = create_extractor_pos();
 
 }  // namespace blender::draw
