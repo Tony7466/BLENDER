@@ -59,7 +59,7 @@ static void init_data(ModifierData *md)
            sizeof(*(omd)) - OFFSETOF_STRUCT_AFTER(omd, modifier));
   }
 
-  greasepencil::init_influence_data(&omd->influence);
+  greasepencil::init_influence_data(&omd->influence, true);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -67,8 +67,17 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   const GreasePencilOpacityModifierData *omd = (const GreasePencilOpacityModifierData *)md;
   GreasePencilOpacityModifierData *tomd = (GreasePencilOpacityModifierData *)target;
 
+  greasepencil::free_influence_data(&tomd->influence);
+
   BKE_modifier_copydata_generic(md, target, flag);
   greasepencil::copy_influence_data(&omd->influence, &tomd->influence, flag);
+}
+
+static void free_data(ModifierData *md)
+{
+  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+
+  greasepencil::free_influence_data(&omd->influence);
 }
 
 static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
@@ -83,13 +92,6 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
   greasepencil::foreach_influence_ID_link(&omd->influence, ob, walk, user_data);
-}
-
-static void free_data(ModifierData *md)
-{
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-
-  greasepencil::free_influence_data(&omd->influence);
 }
 
 static void modify_curves(ModifierData *md,
@@ -152,9 +154,11 @@ static void panel_draw(const bContext *C, Panel *panel)
     PointerRNA layer_filter_ptr = RNA_pointer_get(ptr, "layer_filter");
     PointerRNA material_filter_ptr = RNA_pointer_get(ptr, "material_filter");
     PointerRNA vertex_group_ptr = RNA_pointer_get(ptr, "vertex_group");
+    PointerRNA custom_curve_ptr = RNA_pointer_get(ptr, "custom_curve");
     greasepencil::draw_layer_filter_settings(C, influence_panel, &layer_filter_ptr);
     greasepencil::draw_material_filter_settings(C, influence_panel, &material_filter_ptr);
     greasepencil::draw_vertex_group_settings(C, influence_panel, &vertex_group_ptr);
+    greasepencil::draw_custom_curve_settings(C, influence_panel, &custom_curve_ptr);
   }
 
   uiLayoutSetPropSep(layout, true);

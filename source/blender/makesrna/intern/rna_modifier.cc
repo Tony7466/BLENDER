@@ -7593,11 +7593,35 @@ static void rna_def_modifier_grease_pencil_vertex_group(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_grease_pencil_custom_curve(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilModifierCustomCurveData", nullptr);
+  RNA_def_struct_ui_text(srna,
+                         "Grease Pencil Modifier Custom Curve",
+                         "Custom curve settings for grease pencil modifiers");
+  RNA_def_struct_sdna(srna, "GreasePencilModifierCustomCurveData");
+
+  prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE);
+  RNA_def_property_ui_text(
+      prop, "Use Custom Curve", "Use a custom curve to define a factor along the strokes");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "curve");
+  RNA_def_property_ui_text(prop, "Curve", "Custom curve to apply effect");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+}
+
 /** Utility function to register common influence properties for grease pencil modifiers. */
 static void rna_def_modifier_grease_pencil_influence_properties(StructRNA *srna,
                                                                 const char *layer_filter_sdna,
                                                                 const char *material_filter_sdna,
-                                                                const char *vertex_group_sdna)
+                                                                const char *vertex_group_sdna,
+                                                                const char *custom_curve_sdna)
 {
   PropertyRNA *prop;
 
@@ -7619,6 +7643,12 @@ static void rna_def_modifier_grease_pencil_influence_properties(StructRNA *srna,
     RNA_def_property_struct_type(prop, "GreasePencilModifierVertexGroupData");
     RNA_def_property_ui_text(prop, "Vertex Group", "Vertex group settings");
   }
+  if (custom_curve_sdna) {
+    prop = RNA_def_property(srna, "custom_curve", PROP_POINTER, PROP_NONE);
+    RNA_def_property_pointer_sdna(prop, nullptr, custom_curve_sdna);
+    RNA_def_property_struct_type(prop, "GreasePencilModifierCustomCurveData");
+    RNA_def_property_ui_text(prop, "Custom Curve", "Custom curve settings");
+  }
 }
 
 static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
@@ -7631,8 +7661,11 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "GreasePencilOpacityModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_OPACITY);
 
-  rna_def_modifier_grease_pencil_influence_properties(
-      srna, "influence.layer_filter", "influence.material_filter", "influence.vertex_group");
+  rna_def_modifier_grease_pencil_influence_properties(srna,
+                                                      "influence.layer_filter",
+                                                      "influence.material_filter",
+                                                      "influence.vertex_group",
+                                                      "influence.custom_curve");
 
   prop = RNA_def_property(srna, "open_influence_panel", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
@@ -7812,6 +7845,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_layer_filter(brna);
   rna_def_modifier_grease_pencil_material_filter(brna);
   rna_def_modifier_grease_pencil_vertex_group(brna);
+  rna_def_modifier_grease_pencil_custom_curve(brna);
 }
 
 #endif

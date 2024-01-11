@@ -15,6 +15,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 
+#include "BKE_colortools.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.h"
@@ -36,16 +37,31 @@ namespace blender::greasepencil {
 using bke::greasepencil::Drawing;
 using bke::greasepencil::Layer;
 
-void init_influence_data(GreasePencilModifierInfluenceData * /*influence_data*/) {}
+void init_influence_data(GreasePencilModifierInfluenceData *influence_data,
+                         const bool has_custom_curve)
+{
+  if (has_custom_curve) {
+    influence_data->custom_curve.curve = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+    BKE_curvemapping_init(influence_data->custom_curve.curve);
+  }
+}
 
 void copy_influence_data(const GreasePencilModifierInfluenceData *influence_data_src,
                          GreasePencilModifierInfluenceData *influence_data_dst,
                          const int /*flag*/)
 {
   memcpy(influence_data_dst, influence_data_src, sizeof(GreasePencilModifierInfluenceData));
+  influence_data_dst->custom_curve.curve = BKE_curvemapping_copy(
+      influence_data_src->custom_curve.curve);
 }
 
-void free_influence_data(GreasePencilModifierInfluenceData * /*influence_data*/) {}
+void free_influence_data(GreasePencilModifierInfluenceData *influence_data)
+{
+  if (influence_data->custom_curve.curve) {
+    BKE_curvemapping_free(influence_data->custom_curve.curve);
+    influence_data->custom_curve.curve = nullptr;
+  }
+}
 
 void foreach_influence_ID_link(GreasePencilModifierInfluenceData *influence_data,
                                Object *ob,
@@ -112,7 +128,7 @@ void draw_material_filter_settings(const bContext * /*C*/, uiLayout *layout, Poi
 void draw_vertex_group_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
 {
   PointerRNA ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
-  bool has_vertex_group = RNA_string_length(ptr, "name") != 0;
+  bool has_vertex_group = RNA_string_length(ptr, "vertex_group_name") != 0;
   uiLayout *row, *sub;
 
   uiLayoutSetPropSep(layout, true);
@@ -123,6 +139,18 @@ void draw_vertex_group_settings(const bContext * /*C*/, uiLayout *layout, Pointe
   uiLayoutSetActive(sub, has_vertex_group);
   uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, ptr, "invert_vertex_group", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+}
+
+void draw_custom_curve_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
+{
+  bool use_custom_curve = RNA_boolean_get(ptr, "use_custom_curve");
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, ptr, "use_custom_curve", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (use_custom_curve) {
+    uiTemplateCurveMapping(layout, ptr, "curve", 0, false, false, false, false);
+  }
 }
 
 /**
