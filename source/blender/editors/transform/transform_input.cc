@@ -10,6 +10,7 @@
 #include <cstdlib>
 
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
 #include "BKE_context.hh"
@@ -331,7 +332,8 @@ static int transform_seq_slide_cursor_get(TransInfo *t)
 
     const Scene *scene = t->scene;
     if (SEQ_time_right_handle_frame_get(scene, seq1) !=
-        SEQ_time_left_handle_frame_get(scene, seq2)) {
+        SEQ_time_left_handle_frame_get(scene, seq2))
+    {
       return WM_CURSOR_NSEW_SCROLL;
     }
 

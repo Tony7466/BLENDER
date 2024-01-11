@@ -12,7 +12,6 @@
 
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -23,9 +22,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.hh"
+#include "BKE_attribute.hh"
 #include "BKE_blender.h"
 #include "BKE_cdderivedmesh.h"
 #include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_material.h"
@@ -114,6 +115,7 @@ struct MultiresBakeJob {
 
 static bool multiresbake_check(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   Scene *scene = CTX_data_scene(C);
   Object *ob;
   Mesh *mesh;
@@ -157,16 +159,19 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
       break;
     }
 
-    if (!CustomData_has_layer(&mesh->loop_data, CD_PROP_FLOAT2)) {
+    if (!CustomData_has_layer(&mesh->corner_data, CD_PROP_FLOAT2)) {
       BKE_report(op->reports, RPT_ERROR, "Mesh should be unwrapped before multires data baking");
 
       ok = false;
     }
     else {
-      const int *material_indices = BKE_mesh_material_indices(mesh);
+      const bke::AttributeAccessor attributes = mesh->attributes();
+      const VArraySpan material_indices = *attributes.lookup<int>("material_index",
+                                                                  bke::AttrDomain::Face);
       a = mesh->faces_num;
       while (ok && a--) {
-        Image *ima = bake_object_image_get(ob, material_indices ? material_indices[a] : 0);
+        Image *ima = bake_object_image_get(ob,
+                                           material_indices.is_empty() ? 0 : material_indices[a]);
 
         if (!ima) {
           BKE_report(

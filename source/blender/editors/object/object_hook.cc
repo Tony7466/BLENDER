@@ -344,7 +344,7 @@ static bool object_hook_index_array(Main *bmain,
 
       em = mesh->edit_mesh;
 
-      BKE_editmesh_looptri_and_normals_calc(em);
+      BKE_editmesh_looptris_and_normals_calc(em);
 
       /* check selected vertices first */
       if (return_editmesh_indexar(em, r_indexar_num, r_indexar, r_cent) == 0) {
@@ -603,6 +603,7 @@ static int add_hook_object(const bContext *C,
   /* apparently this call goes from right to left... */
   mul_m4_series(hmd->parentinv, pose_mat, object_eval->world_to_object, obedit->object_to_world);
 
+  DEG_id_tag_update(&obedit->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
 
   return true;
