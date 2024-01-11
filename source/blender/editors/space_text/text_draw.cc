@@ -1163,8 +1163,6 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
       immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  /* Draw the selection */
-  //
   const int char_width_px = st->runtime->cwidth_px;
   const float pixel_size = U.pixelsize;
 
@@ -1215,17 +1213,7 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
     ret_char = text_get_char_pos(st, text_line->line, char_idx) - st->left + offset_char;
   };
 
-  /** Set alpha uniform color with custom alpha. */
-  auto set_alpha_color = [](const ThemeColorID color, const float alpha) {
-    float highlight_color[4];
-    UI_GetThemeColor4fv(color, highlight_color);
-    highlight_color[3] = alpha;
-    immUniformColor4fv(highlight_color);
-    GPU_blend(GPU_BLEND_ALPHA);
-  };
-
   /** Highlight text search. */
-
   ScrArea *area = CTX_wm_area(C);
   ARegion *ui_region = BKE_area_find_region_type(area, RGN_TYPE_UI);
   bool highlight_text_search = false;
@@ -1243,7 +1231,8 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
 
   if (highlight_text_search && text_search) {
     const auto &string_matches = text_search->string_matches();
-    set_alpha_color(TH_WIRE_INNER, 0.5f);
+    immUniformThemeColor(TH_SHADE1);
+    GPU_blend(GPU_BLEND_ALPHA);
     auto string_match_itr = std::lower_bound(
         string_matches.begin(), string_matches.end(), st->top, [](const StringMatch &sm, int top) {
           return sm.line_index < top;
@@ -1281,7 +1270,8 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
     int cursor_line, cursor_char;
     get_coords(text->curl, text->curc, cursor_line, cursor_char);
 
-    set_alpha_color(TH_SHADE2, 0.7f);
+    immUniformThemeColor(TH_SHADE2);
+    GPU_blend(GPU_BLEND_ALPHA);
     if (select_line < cursor_line || (select_line == cursor_line && select_char < cursor_char)) {
       highlight_text(select_line, select_char, cursor_line, cursor_char);
     }
@@ -1325,7 +1315,7 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
     }
 
     if (!(y1 < 0 || y2 > region->winy)) { /* check we need to draw */
-      set_alpha_color(TH_TEXT, 0.1f);
+      immUniformThemeColorAlpha(TH_TEXT, 0.1f);
       immRecti(pos, 0, y1, region->winx, y2);
       GPU_blend(GPU_BLEND_NONE);
     }
