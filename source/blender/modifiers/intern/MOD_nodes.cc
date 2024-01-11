@@ -178,6 +178,14 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
     }
   }
 
+  for (const NodesModifierDataBlockMapItem &item :
+       Span(nmd->data_block_map_items, nmd->data_block_map_items_num))
+  {
+    if (item.id) {
+      used_ids.add(item.id);
+    }
+  }
+
   for (ID *id : used_ids) {
     switch ((ID_Type)GS(id->name)) {
       case ID_OB: {
@@ -1428,7 +1436,7 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
   std::mutex mutex_;
   Map<bake::BakeDataBlockID, ID *> old_mappings;
   Map<bake::BakeDataBlockID, ID *> new_mappings;
-  Set<bake::BakeDataBlockID> missing;
+  VectorSet<bake::BakeDataBlockID> missing;
 
   ID *lookup_or_try_add(const bake::BakeDataBlockID &key, std::optional<ID_Type> type) override
   {

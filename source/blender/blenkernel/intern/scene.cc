@@ -24,6 +24,7 @@
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_rigidbody_types.h"
@@ -78,6 +79,7 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.hh"
 #include "BKE_mask.h"
+#include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
@@ -115,6 +117,8 @@
 #include "IMB_imbuf.h"
 
 #include "DRW_engine.hh"
+
+#include "MOD_nodes.hh"
 
 #include "bmesh.hh"
 
@@ -2609,6 +2613,52 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
 
   const bool backup = false;
   DEG_ids_clear_recalc(depsgraph, backup);
+
+  if (DEG_is_active(depsgraph)) {
+    DEG_foreach_ID(depsgraph, [&](ID *id) {
+      if (GS(id->name) != ID_OB) {
+        return;
+      }
+      Object *ob_orig = reinterpret_cast<Object *>(id);
+      Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_orig);
+      LISTBASE_FOREACH (ModifierData *, md_eval, &ob_eval->modifiers) {
+        if (md_eval->type != eModifierType_Nodes) {
+          continue;
+        }
+        NodesModifierData *nmd_eval = reinterpret_cast<NodesModifierData *>(md_eval);
+        if (nmd_eval->runtime->missing_data_blocks.is_empty()) {
+          continue;
+        }
+        NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(
+            BKE_modifiers_findby_session_uuid(ob_orig, &md_eval->session_uuid));
+        const int old_items_num = nmd_orig->data_block_map_items_num;
+        const int new_items_num = old_items_num + nmd_eval->runtime->missing_data_blocks.size();
+        nmd_orig->data_block_map_items = reinterpret_cast<NodesModifierDataBlockMapItem *>(
+            MEM_recallocN(nmd_orig->data_block_map_items,
+                          sizeof(NodesModifierDataBlockMapItem) * new_items_num));
+        for (const int i : nmd_eval->runtime->missing_data_blocks.index_range()) {
+          NodesModifierDataBlockMapItem &item_orig =
+              nmd_orig->data_block_map_items[old_items_num + i];
+          const blender::bke::bake::BakeDataBlockID &data_block_id =
+              nmd_eval->runtime->missing_data_blocks[i];
+
+          item_orig.id_name = BLI_strdup(data_block_id.id_name.c_str());
+          if (!data_block_id.lib_name.empty()) {
+            item_orig.lib_name = BLI_strdup(data_block_id.lib_name.c_str());
+          }
+          ID *id_orig = BKE_libblock_find_name_and_library(
+              bmain, item_orig.id_name, item_orig.lib_name);
+          if (id_orig) {
+            item_orig.id = id_orig;
+            id_us_plus(id_orig);
+          }
+        }
+        nmd_orig->data_block_map_items_num = new_items_num;
+
+        nmd_eval->runtime->missing_data_blocks.clear();
+      }
+    });
+  }
 }
 
 void BKE_scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain)

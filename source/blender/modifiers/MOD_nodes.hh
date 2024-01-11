@@ -5,7 +5,7 @@
 #pragma once
 
 #include "BKE_bake_data_block_id.hh"
-#include "BLI_set.hh"
+#include "BLI_vector_set.hh"
 
 struct NodesModifierData;
 struct Object;
@@ -39,7 +39,7 @@ struct NodesModifierRuntime {
    */
   std::shared_ptr<bke::bake::ModifierCache> cache;
 
-  Set<bke::bake::BakeDataBlockID> missing_data_blocks;
+  VectorSet<bke::bake::BakeDataBlockID> missing_data_blocks;
 };
 
 }  // namespace blender
