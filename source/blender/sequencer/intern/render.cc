@@ -1058,6 +1058,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
     ibuf = seq_render_image_strip_view(context, seq, filepath, prefix, ext, context->view_id);
   }
 
+  blender::seq::media_presence_set_missing(context->scene, seq, ibuf == nullptr);
   if (ibuf == nullptr) {
     return create_missing_media_image(context, s_elem);
   }
@@ -1221,6 +1222,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
     ibuf = seq_render_movie_strip_view(context, seq, timeline_frame, sanim, r_is_proxy_image);
   }
 
+  blender::seq::media_presence_set_missing(context->scene, seq, ibuf == nullptr);
   if (ibuf == nullptr) {
     return create_missing_media_image(context, seq->strip->stripdata);
   }

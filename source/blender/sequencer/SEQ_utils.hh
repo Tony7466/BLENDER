@@ -70,6 +70,11 @@ namespace blender::seq {
 bool media_presence_is_missing(Scene *scene, const Sequence *seq);
 
 /**
+ * Set or change the missing media cache value for a given strip.
+ */
+void media_presence_set_missing(Scene *scene, const Sequence *seq, bool missing);
+
+/**
  * Invalidate media presence cache for the given strip.
  */
 void media_presence_invalidate_strip(Scene *scene, const Sequence *seq);
