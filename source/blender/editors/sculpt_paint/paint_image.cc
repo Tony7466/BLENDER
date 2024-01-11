@@ -31,7 +31,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colorband.h"
+#include "BKE_colorband.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
@@ -59,7 +59,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -297,7 +297,8 @@ static bool image_paint_poll_ex(bContext *C, bool check_tool)
 
     if (sima) {
       if (sima->image != nullptr &&
-          (ID_IS_LINKED(sima->image) || ID_IS_OVERRIDE_LIBRARY(sima->image))) {
+          (ID_IS_LINKED(sima->image) || ID_IS_OVERRIDE_LIBRARY(sima->image)))
+      {
         return false;
       }
       if (sima->mode == SI_MODE_PAINT) {

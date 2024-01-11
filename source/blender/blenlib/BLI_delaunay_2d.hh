@@ -74,20 +74,6 @@ enum CDT_output_type {
 
 namespace blender::meshintersect {
 
-/** #vec2<Arith_t> is a 2d vector with #Arith_t as the type for coordinates. */
-template<typename Arith_t> struct vec2_impl;
-template<> struct vec2_impl<double> {
-  typedef double2 type;
-};
-
-#ifdef WITH_GMP
-template<> struct vec2_impl<mpq_class> {
-  typedef mpq2 type;
-};
-#endif
-
-template<typename Arith_t> using vec2 = typename vec2_impl<Arith_t>::type;
-
 /**
  * Input to Constrained Delaunay Triangulation.
  * Input vertex coordinates are stored in `vert`. For the rest of the input,
@@ -138,9 +124,9 @@ template<typename Arith_t> using vec2 = typename vec2_impl<Arith_t>::type;
  * If this is not needed, set need_ids to false and the execution may be much
  * faster in some circumstances.
  */
-template<typename Arith_t> class CDT_input {
+template<typename T> class CDT_input {
  public:
-  Span<vec2<Arith_t>> vert;
+  Span<VecBase<T, 2>> vert;
   Span<std::pair<int, int>> edge;
   OffsetIndices<int> face_offsets;
   Span<int> face_vert_indices;
@@ -170,9 +156,9 @@ template<typename Arith_t> class CDT_input {
  * edge is part of a given output edge. See the comment below for how
  * to decode the entries in the edge_orig table.
  */
-template<typename Arith_t> class CDT_result {
+template<typename T> class CDT_result {
  public:
-  Array<vec2<Arith_t>> vert;
+  Array<VecBase<T, 2>> vert;
   Array<std::pair<int, int>> edge;
   Array<Vector<int>> face;
   /* The orig vectors are only populated if the need_ids input field is true. */

@@ -4839,7 +4839,7 @@ def km_pose(params):
         op_menu("VIEW3D_MT_bone_options_enable", {"type": 'W', "value": 'PRESS', "shift": True, "ctrl": True}),
         op_menu("VIEW3D_MT_bone_options_disable", {"type": 'W', "value": 'PRESS', "alt": True}),
         ("armature.collection_show_all", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True}, None),
-        op_menu("VIEW3D_MT_bone_collections", {"type": 'M', "value": 'PRESS', "shift": True}),
+        ("armature.assign_to_collection", {"type": 'M', "value": 'PRESS', "shift": True}, None),
         ("armature.move_to_collection", {"type": 'M', "value": 'PRESS'}, None),
         ("transform.bbone_resize", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
@@ -5779,7 +5779,7 @@ def km_edit_armature(params):
         op_menu("VIEW3D_MT_bone_options_disable", {"type": 'W', "value": 'PRESS', "alt": True}),
         # Armature/bone layers.
         ("armature.collection_show_all", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True}, None),
-        op_menu("VIEW3D_MT_bone_collections", {"type": 'M', "value": 'PRESS', "shift": True}),
+        ("armature.assign_to_collection", {"type": 'M', "value": 'PRESS', "shift": True}, None),
         ("armature.move_to_collection", {"type": 'M', "value": 'PRESS'}, None),
         # Special transforms.
         op_tool_optional(
@@ -6077,6 +6077,7 @@ def km_edit_curves(params):
         ("curves.set_selection_domain", {"type": 'TWO', "value": 'PRESS'}, {"properties": [("domain", 'CURVE')]}),
         ("curves.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
         *_template_items_select_actions(params, "curves.select_all"),
+        ("curves.extrude_move", {"type": 'E', "value": 'PRESS'}, None),
         ("curves.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("curves.delete", {"type": 'X', "value": 'PRESS'}, None),
         ("curves.delete", {"type": 'DEL', "value": 'PRESS'}, None),
@@ -6084,6 +6085,10 @@ def km_edit_curves(params):
         ("curves.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         *_template_items_proportional_editing(
             params, connected=True, toggle_data_path='tool_settings.use_proportional_edit'),
+        ("curves.tilt_clear", {"type": 'T', "value": 'PRESS', "alt": True}, None),
+        op_tool_optional(
+            ("transform.tilt", {"type": 'T', "value": 'PRESS', "ctrl": True}, None),
+            (op_tool_cycle, "builtin.tilt"), params),
         ("transform.transform", {"type": 'S', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'CURVE_SHRINKFATTEN')]}),
     ])
