@@ -388,11 +388,11 @@ static char txtfmt_glsl_format_identifier(const char *str)
 
     /* clang-format off */
 
-   if        (txtfmt_glsl_find_specialvar(str)    != -1) {fmt = FMT_TYPE_SPECIAL;}
-     else if (txtfmt_glsl_find_builtinfunc(str)   != -1) {fmt = FMT_TYPE_KEYWORD;}
-     else if (txtfmt_glsl_find_reserved(str)      != -1) {fmt = FMT_TYPE_RESERVED;}
-     else if (txtfmt_glsl_find_preprocessor(str)  != -1) {fmt = FMT_TYPE_DIRECTIVE;}
-     else                                                {fmt = FMT_TYPE_DEFAULT;}
+   if        (txtfmt_glsl_find_specialvar(str)    != -1) {fmt = FMT_TYPE_SPECIAL;
+   } else if (txtfmt_glsl_find_builtinfunc(str)   != -1) {fmt = FMT_TYPE_KEYWORD;
+   } else if (txtfmt_glsl_find_reserved(str)      != -1) {fmt = FMT_TYPE_RESERVED;
+   } else if (txtfmt_glsl_find_preprocessor(str)  != -1) {fmt = FMT_TYPE_DIRECTIVE;
+   } else                                                {fmt = FMT_TYPE_DEFAULT;
 
     /* clang-format on */
 
@@ -403,13 +403,13 @@ static char txtfmt_glsl_format_identifier(const char *str)
 */
 static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool do_next)
 {
-    FlattenString fs;
-    const char *str;
-    char *fmt;
-    char cont_orig, cont, find, prev = '';
-    int len, i;
+  FlattenString fs;
+  const char *str;
+  char *fmt;
+  char cont_orig, cont, find, prev = ' ';
+  int len, i;
 
-      if (line->prev && line->prev->format != nullptr) {
+  if (line->prev && line->prev->format != nullptr) {
     fmt = line->prev->format;
     cont = fmt[strlen(fmt) + 1]; /* Just after the null-terminator. */
     BLI_assert((FMT_CONT_ALL & cont) == cont);
@@ -577,7 +577,7 @@ void ED_text_format_register_glsl()
   tft.format_identifier = txtfmt_glsl_format_identifier;
   tft.format_line = txtfmt_glsl_format_line;
   tft.ext = ext;
-  tft.comment_line = "//";
+  tft.comment_line = "/**/";
 
   ED_text_format_register(&tft);
 
