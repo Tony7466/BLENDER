@@ -611,9 +611,9 @@ void BKE_region_callback_refresh_tag_gizmomap_set(void (*callback)(wmGizmoMap *)
  * Get the layout panel state for the given idname. If it does not exist yet, initialize a new
  * panel state with the given default value.
  */
-LayoutPanelState *BKE_region_layout_panel_state_ensure(ARegion *region,
-                                                       const char *idname,
-                                                       bool default_closed);
+LayoutPanelState *BKE_panel_layout_panel_state_ensure(Panel *panel,
+                                                      const char *idname,
+                                                      bool default_closed);
 
 /**
  * Find a region of type \a region_type in provided \a regionbase.

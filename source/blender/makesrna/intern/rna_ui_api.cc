@@ -801,8 +801,8 @@ struct uiLayout *rna_uiLayoutPanel(uiLayout *layout,
                                    const bool default_closed)
 {
   text = RNA_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
-  ARegion *region = CTX_wm_region(C);
-  LayoutPanelState *state = BKE_region_layout_panel_state_ensure(region, idname, default_closed);
+  Panel *panel = uiLayoutGetRootPanel(layout);
+  LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(panel, idname, default_closed);
   PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
   return uiLayoutPanel(C, layout, text, &state_ptr, "is_open");
 }
