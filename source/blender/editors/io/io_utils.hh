@@ -22,7 +22,6 @@ namespace blender::ed::io {
  */
 int filesel_drop_import_invoke(bContext *C, wmOperator *op, const wmEvent *event);
 
-
 int operator_path_drop_dialog_popup(bContext *C, wmOperator *op, const int width);
 
 bool poll_file_object_drop(const bContext *C, blender::bke::FileHandlerType *fh);
