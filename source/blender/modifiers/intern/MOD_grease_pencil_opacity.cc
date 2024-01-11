@@ -151,8 +151,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   {
     PointerRNA layer_filter_ptr = RNA_pointer_get(ptr, "layer_filter");
     PointerRNA material_filter_ptr = RNA_pointer_get(ptr, "material_filter");
+    PointerRNA vertex_group_ptr = RNA_pointer_get(ptr, "vertex_group");
     greasepencil::draw_layer_filter_settings(C, influence_panel, &layer_filter_ptr);
     greasepencil::draw_material_filter_settings(C, influence_panel, &material_filter_ptr);
+    greasepencil::draw_vertex_group_settings(C, influence_panel, &vertex_group_ptr);
   }
 
   uiLayoutSetPropSep(layout, true);

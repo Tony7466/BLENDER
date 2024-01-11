@@ -1743,6 +1743,14 @@ static void rna_GreasePencilModifierMaterialFilter_material_set(PointerRNA *ptr,
   }
 }
 
+static void rna_GreasePencilModifierVertexGroupData_name_set(PointerRNA *ptr, const char *value)
+{
+  GreasePencilModifierVertexGroupData *vgroup_data =
+      static_cast<GreasePencilModifierVertexGroupData *>(ptr->data);
+  rna_object_vgroup_name_set(
+      ptr, value, vgroup_data->vertex_group_name, sizeof(vgroup_data->vertex_group_name));
+}
+
 #else
 
 static void rna_def_modifier_panel_open_prop(StructRNA *srna, const char *identifier, const int id)
@@ -7480,7 +7488,8 @@ static void rna_def_modifier_grease_pencil_layer_filter(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_layer_pass", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_USE_LAYER_PASS);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER);
   RNA_def_property_ui_text(prop, "Use Layer Pass", "Use layer pass filter");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -7491,12 +7500,14 @@ static void rna_def_modifier_grease_pencil_layer_filter(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "invert_layer", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_INVERT_LAYER);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER);
   RNA_def_property_ui_text(prop, "Invert Layer", "Invert layer filter");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "invert_layer_pass", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_INVERT_LAYER_PASS);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER);
   RNA_def_property_ui_text(prop, "Invert Layer Pass", "Invert layer pass filter");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -7527,7 +7538,8 @@ static void rna_def_modifier_grease_pencil_material_filter(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_material_pass", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_USE_MATERIAL_PASS);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER);
   RNA_def_property_ui_text(prop, "Use Material Pass", "Use material pass filter");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -7538,13 +7550,44 @@ static void rna_def_modifier_grease_pencil_material_filter(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "invert_material", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_INVERT_MATERIAL);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER);
   RNA_def_property_ui_text(prop, "Invert Material", "Invert material filter");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "invert_material_pass", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER);
   RNA_def_property_ui_text(prop, "Invert Material Pass", "Invert material pass filter");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_grease_pencil_vertex_group(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilModifierVertexGroupData", nullptr);
+  RNA_def_struct_ui_text(srna,
+                         "Grease Pencil Modifier Vertex Group",
+                         "Vertex group settings for grease pencil modifiers");
+  RNA_def_struct_sdna(srna, "GreasePencilModifierVertexGroupData");
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "vertex_group_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "vertex_group_name");
+  RNA_def_property_ui_text(prop, "Name", "Vertex group name for modulating the deform");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_GreasePencilModifierVertexGroupData_name_set");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "invert_vertex_group", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
+  RNA_def_property_ui_text(prop, "Invert Vertex Group", "Invert vertex group weights");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
@@ -7553,7 +7596,8 @@ static void rna_def_modifier_grease_pencil_material_filter(BlenderRNA *brna)
 /** Utility function to register common influence properties for grease pencil modifiers. */
 static void rna_def_modifier_grease_pencil_influence_properties(StructRNA *srna,
                                                                 const char *layer_filter_sdna,
-                                                                const char *material_filter_sdna)
+                                                                const char *material_filter_sdna,
+                                                                const char *vertex_group_sdna)
 {
   PropertyRNA *prop;
 
@@ -7569,6 +7613,12 @@ static void rna_def_modifier_grease_pencil_influence_properties(StructRNA *srna,
     RNA_def_property_struct_type(prop, "GreasePencilModifierMaterialFilter");
     RNA_def_property_ui_text(prop, "Material Filter", "Material filter settings");
   }
+  if (vertex_group_sdna) {
+    prop = RNA_def_property(srna, "vertex_group", PROP_POINTER, PROP_NONE);
+    RNA_def_property_pointer_sdna(prop, nullptr, vertex_group_sdna);
+    RNA_def_property_struct_type(prop, "GreasePencilModifierVertexGroupData");
+    RNA_def_property_ui_text(prop, "Vertex Group", "Vertex group settings");
+  }
 }
 
 static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
@@ -7582,7 +7632,7 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_MOD_OPACITY);
 
   rna_def_modifier_grease_pencil_influence_properties(
-      srna, "influence.layer_filter", "influence.material_filter");
+      srna, "influence.layer_filter", "influence.material_filter", "influence.vertex_group");
 
   prop = RNA_def_property(srna, "open_influence_panel", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
@@ -7761,6 +7811,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_opacity(brna);
   rna_def_modifier_grease_pencil_layer_filter(brna);
   rna_def_modifier_grease_pencil_material_filter(brna);
+  rna_def_modifier_grease_pencil_vertex_group(brna);
 }
 
 #endif
