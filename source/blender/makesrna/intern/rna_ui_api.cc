@@ -1099,9 +1099,9 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_ui_description(
       func,
       "Similar to `.panel(...)` but instead of storing whether it is open or closed in the "
-      "region, it is stored in the provided boolean property. This can be used when creating a "
-      "dynamic number of panels where it is difficult to generate a unique idname for every "
-      "panel");
+      "region, it is stored in the provided boolean property. This should be used when multiple "
+      "instances of the same panel can exist. For example one for every item in a collection "
+      "property or list");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
       func, "data", "AnyType", "", "Data from which to take the open-state property");
