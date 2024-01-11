@@ -2511,6 +2511,13 @@ typedef enum GreasePencilModifierFilterFlag {
 
 typedef struct GreasePencilOpacityModifierData {
   ModifierData modifier;
+  /** GreasePencilOpacityModifierFlag */
+  int flag;
+  char _pad1[4];
   GreasePencilModifierFilterData filter;
-  void *_pad;
+  void *_pad2;
 } GreasePencilOpacityModifierData;
+
+typedef enum GreasePencilOpacityModifierFlag {
+  MOD_GREASE_PENCIL_OPACITY_OPEN_INFLUENCE_PANEL = (1 << 0),
+} GreasePencilOpacityModifierFlag;

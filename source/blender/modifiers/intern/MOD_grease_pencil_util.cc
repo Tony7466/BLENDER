@@ -27,6 +27,7 @@
 #include "MOD_ui_common.hh"
 
 #include "RNA_access.hh"
+#include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
 
@@ -54,60 +55,49 @@ void foreach_ID_link_filter(GreasePencilModifierFilterData *filter_data,
   walk(user_data, ob, (ID **)&filter_data->material, IDWALK_CB_USER);
 }
 
-static void filter_panel_draw(const bContext * /*C*/, Panel *panel)
+void draw_influence_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
 {
-  uiLayout *row, *col, *sub;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ob_ptr;
-  PointerRNA *modifier_ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
-  PointerRNA ptr = RNA_pointer_get(modifier_ptr, "filter");
-
+  PointerRNA ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-  const bool use_layer_pass = RNA_boolean_get(&ptr, "use_layer_pass");
-  const bool use_material_pass = RNA_boolean_get(&ptr, "use_material_pass");
+  const bool use_layer_pass = RNA_boolean_get(ptr, "use_layer_pass");
+  const bool use_material_pass = RNA_boolean_get(ptr, "use_material_pass");
+  uiLayout *row, *col, *sub;
 
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "layer", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
+  uiItemPointerR(row, ptr, "layer", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "invert_layer", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(sub, ptr, "invert_layer", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
   /* TODO Would be nice to have the checkbox in the same line as the pass button. */
   row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "use_layer_pass", UI_ITEM_NONE, "Filter by layer pass", ICON_NONE);
+  uiItemR(row, ptr, "use_layer_pass", UI_ITEM_NONE, "Filter by layer pass", ICON_NONE);
   row = uiLayoutRow(col, true);
   uiLayoutSetActive(row, use_layer_pass);
-  uiItemR(row, &ptr, "layer_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "layer_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "invert_layer_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(sub, ptr, "invert_layer_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "material", &obj_data_ptr, "materials", nullptr, ICON_SHADING_TEXTURE);
+  uiItemPointerR(row, ptr, "material", &obj_data_ptr, "materials", nullptr, ICON_SHADING_TEXTURE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "invert_material", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(sub, ptr, "invert_material", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
   /* TODO Would be nice to have the checkbox in the same line as the pass button. */
   row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "use_material_pass", UI_ITEM_NONE, "Filter by material pass", ICON_NONE);
+  uiItemR(row, ptr, "use_material_pass", UI_ITEM_NONE, "Filter by material pass", ICON_NONE);
   row = uiLayoutRow(col, true);
   uiLayoutSetActive(row, use_material_pass);
-  uiItemR(row, &ptr, "material_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "material_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "invert_material_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
-}
-
-void filter_subpanel_register(ARegionType *region_type, PanelType *panel_type)
-{
-  modifier_subpanel_register(
-      region_type, "influence", "Influence", nullptr, filter_panel_draw, panel_type);
+  uiItemR(sub, ptr, "invert_material_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 }
 
 /**

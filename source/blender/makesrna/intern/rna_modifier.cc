@@ -7548,6 +7548,13 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "GreasePencilModifierFilter");
   RNA_def_property_ui_text(prop, "Filter", "Filter settings");
 
+  prop = RNA_def_property(srna, "open_influence_panel", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", MOD_GREASE_PENCIL_OPACITY_OPEN_INFLUENCE_PANEL);
+  RNA_def_property_ui_text(prop, "Open Influence Panel", "Open the influence panel");
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
+
   RNA_define_lib_overridable(true);
 
   // TODO

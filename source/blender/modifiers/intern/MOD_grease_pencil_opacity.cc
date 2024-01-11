@@ -139,12 +139,19 @@ static void modify_geometry_set(ModifierData *md,
   }
 }
 
-static void panel_draw(const bContext * /*C*/, Panel *panel)
+static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
+
+  if (uiLayout *influence_panel = uiLayoutPanel(
+          C, layout, "Influence", ptr, "open_influence_panel"))
+  {
+    PointerRNA filter_ptr = RNA_pointer_get(ptr, "filter");
+    greasepencil::draw_influence_settings(C, influence_panel, &filter_ptr);
+  }
 
   uiLayoutSetPropSep(layout, true);
 
@@ -155,9 +162,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(
-      region_type, eModifierType_GreasePencilOpacity, panel_draw);
-  greasepencil::filter_subpanel_register(region_type, panel_type);
+  modifier_panel_register(region_type, eModifierType_GreasePencilOpacity, panel_draw);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)

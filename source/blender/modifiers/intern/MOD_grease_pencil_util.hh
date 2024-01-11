@@ -14,9 +14,12 @@
 #include "BKE_modifier.hh"
 
 struct ARegionType;
+struct bContext;
 struct GreasePencil;
 struct GreasePencilModifierFilterData;
 struct PanelType;
+struct PointerRNA;
+struct uiLayout;
 namespace blender::bke {
 class CurvesGeometry;
 namespace greasepencil {
@@ -35,7 +38,8 @@ void foreach_ID_link_filter(GreasePencilModifierFilterData *filter_data,
                             Object *ob,
                             IDWalkFunc walk,
                             void *user_data);
-void filter_subpanel_register(ARegionType *region_type, PanelType *panel_type);
+
+void draw_influence_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
 
 IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
                                   const GreasePencilModifierFilterData &filter_data,
