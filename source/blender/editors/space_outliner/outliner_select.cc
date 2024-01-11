@@ -1569,14 +1569,13 @@ void outliner_item_select(bContext *C,
   }
 }
 
-/* A simple but apparently effective solution for recursive selections. */
 static void do_outliner_select_recursive(ListBase *lb, bool selecting, Collection *in_collection)
 {
   LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     /* The desired behavior is only to select collections and object hierarchies
-       recursively. So if this isn't a collection or an object, skip it. */
+     *  recursively. So if this isn't a collection or an object, skip it. */
     if (tselem->type == TSE_LAYER_COLLECTION) {
       tselem->flag = selecting ? (tselem->flag | TSE_SELECTED) : (tselem->flag & ~TSE_SELECTED);
       /* Restrict sub-tree selections to this collection. This prevents undesirable behavior in
@@ -1640,12 +1639,12 @@ static bool do_outliner_range_select_recursive(ListBase *lb,
     if (!(tselem->flag & TSE_CLOSED) || recurse) {
       /* If this tree element is a collection, then it sets the precedent for inclusion
          of its subobjects. */
-      Collection *in_collection2 = in_collection;
+      Collection *child_collection = in_collection;
       if (tselem->type == TSE_LAYER_COLLECTION) {
-        in_collection2 = static_cast<LayerCollection *>(te->directdata)->collection;
+        child_collection = static_cast<LayerCollection *>(te->directdata)->collection;
       }
       selecting = do_outliner_range_select_recursive(
-          &te->subtree, active, cursor, selecting, recurse, in_collection2);
+          &te->subtree, active, cursor, selecting, recurse, child_collection);
     }
   }
 
@@ -1777,13 +1776,13 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
        to prevent selecting across collection boundaries. (Object hierarchies might cross
        collection boundaries, i.e., children may be in different collections from their
        parents.) */
-    Collection *in_collection = nullptr;
+    Collection *parent_collection = nullptr;
     if (recurse) {
       if (activate_tselem->type == TSE_LAYER_COLLECTION) {
-        in_collection = static_cast<LayerCollection *>(activate_te->directdata)->collection;
+        parent_collection = static_cast<LayerCollection *>(activate_te->directdata)->collection;
       }
       else if (activate_tselem->type == TSE_SOME_ID && activate_te->idcode == ID_OB) {
-        in_collection = BKE_collection_object_find(
+        parent_collection = BKE_collection_object_find(
             CTX_data_main(C),
             CTX_data_scene(C),
             nullptr,
@@ -1802,9 +1801,9 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     }
 
     if (use_range) {
-      do_outliner_range_select(C, space_outliner, activate_te, extend, recurse, in_collection);
+      do_outliner_range_select(C, space_outliner, activate_te, extend, recurse, parent_collection);
       if (recurse) {
-        do_outliner_select_recursive(&activate_te->subtree, /*selecting=*/true, in_collection);
+        do_outliner_select_recursive(&activate_te->subtree, /*selecting=*/true, parent_collection);
       }
     }
     else {
@@ -1812,8 +1811,8 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
                                                                           view_mval[0]);
 
       /* Always select unless already active and selected */
-      bool select = !extend ||
-                    !(activate_tselem->flag & TSE_ACTIVE && activate_tselem->flag & TSE_SELECTED);
+      bool select = !extend || !(activate_tselem->flag & TSE_ACTIVE) ||
+                    !(activate_tselem->flag & TSE_SELECTED);
 
       /* If we're CTRL+double-clicking and the element is aleady selected, skip the activation
          straight to deselection */
@@ -1832,7 +1831,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
           /* Select or deselect object hierarchy recursively. */
           outliner_item_select(C, space_outliner, activate_te, select_flag);
 
-          do_outliner_select_recursive(&activate_te->subtree, select, in_collection);
+          do_outliner_select_recursive(&activate_te->subtree, select, parent_collection);
         }
         else {
           /* Double-clicked, but it wasn't on the icon. */
