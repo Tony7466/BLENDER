@@ -130,6 +130,7 @@ static void __cpuid(
 
 char *BLI_cpu_brand_string(void)
 {
+#if !defined(_M_ARM64)
   char buf[49] = {0};
   int result[4] = {0};
   __cpuid(result, 0x80000000);
@@ -141,11 +142,15 @@ char *BLI_cpu_brand_string(void)
     /* TODO(sergey): Make it a bit more presentable by removing trademark. */
     return brand;
   }
+#else
+  return BLI_windows_get_processor_manufacturer();
+#endif
   return NULL;
 }
 
 int BLI_cpu_support_sse41(void)
 {
+#if !defined(_M_ARM64)
   int result[4], num;
   __cpuid(result, 0);
   num = result[0];
@@ -154,6 +159,7 @@ int BLI_cpu_support_sse41(void)
     __cpuid(result, 0x00000001);
     return (result[2] & ((int)1 << 19)) != 0;
   }
+#endif
   return 0;
 }
 

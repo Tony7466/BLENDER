@@ -47,7 +47,7 @@ void Manager::begin_sync()
   acquired_textures.clear();
   layer_attributes.clear();
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && !defined(_M_ARM64)
   /* Detect uninitialized data. */
   memset(matrix_buf.current().data(),
          0xF0,

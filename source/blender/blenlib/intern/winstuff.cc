@@ -487,6 +487,24 @@ bool BLI_windows_get_directx_driver_version(const wchar_t *deviceSubString,
   return false;
 }
 
+char* BLI_windows_get_processor_manufacturer()
+{
+  DWORD vendorIdentifierLength = 255;
+  char vendorIdentifier[255];
+  if(RegGetValueA(HKEY_LOCAL_MACHINE, 
+                 "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+                 "VendorIdentifier",
+                 RRF_RT_REG_SZ,
+                 nullptr,
+                 &vendorIdentifier,
+                 &vendorIdentifierLength) != ERROR_SUCCESS)
+  {
+    return NULL;
+  }
+
+  return vendorIdentifier;
+}
+
 #else
 
 /* intentionally empty for UNIX */

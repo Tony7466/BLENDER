@@ -14,7 +14,7 @@ if(WIN32)
 
   set(GMP_CONFIGURE_ENV set AR=${arlib_joint_path} && set NM=${GMP_NM} && ${CONFIGURE_ENV_NO_PERL} && set CC=${GMP_CC_CXX} && set CXX=${GMP_CC_CXX} && set CFLAGS=${GMP_CFLAGS} && set AS=:)
 
-  set(GMP_OPTIONS --disable-static --enable-shared --enable-cxx --verbose gmp_cv_check_libm_for_build=no ac_cv_prog_LEX=: ac_cv_prog_YACC=: ac_cv_prog_ac_ct_STRIP=: ac_cv_prog_RANLIB=:)
+  set(GMP_OPTIONS --disable-static --enable-shared --enable-cxx --verbose gmp_cv_check_libm_for_build=no ac_cv_prog_LEX=: ac_cv_prog_YACC=: ac_cv_prog_ac_ct_STRIP=: ac_cv_prog_RANLIB=: lt_cv_to_host_file_cmd=func_convert_file_noop lt_cv_to_tool_file_cmd=func_convert_file_noop)
 
   if(BLENDER_PLATFORM_ARM)
     set(GMP_OPTIONS ${GMP_OPTIONS} --enable-assembly=no --build=aarch64-pc-mingw32)

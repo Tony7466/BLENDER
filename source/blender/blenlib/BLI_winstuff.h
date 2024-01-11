@@ -92,6 +92,10 @@ bool BLI_windows_update_pinned_launcher(const char *launcher_path);
 bool BLI_windows_get_directx_driver_version(const wchar_t *deviceSubString,
                                             long long *r_driverVersion);
 
+/* Gets the processor manufacturer from the Windows Registry
+ * (useful on ARM64 where there is no CPUID) */
+char* BLI_windows_get_processor_manufacturer();
+
 /**
  * Set the `root_dir` to the default root directory on MS-Windows,
  * The string is guaranteed to be set with a length of 3 & null terminated,

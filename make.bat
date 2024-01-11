@@ -42,17 +42,25 @@ if "%FORMAT%" == "1" (
 call "%BLENDER_DIR%\build_files\windows\detect_architecture.cmd"
 if errorlevel 1 goto EOF
 
-if "%BUILD_VS_YEAR%" == "" (
-	call "%BLENDER_DIR%\build_files\windows\autodetect_msvc.cmd"
+if "%USE_OWN_VCVARS%" == "1" (
+	call "%BLENDER_DIR%\build_files\windows\detect_custom_vcvars.cmd"
 	if errorlevel 1 (
-		echo Visual Studio not found ^(try with the 'verbose' switch for more information^)
+		echo Visual Studio ^(via own environment^) not found ^(try with the 'verbose' switch for more information^)
 		goto EOF
 	)
 ) else (
-	call "%BLENDER_DIR%\build_files\windows\detect_msvc%BUILD_VS_YEAR%.cmd"
-	if errorlevel 1 (
-		echo Visual Studio %BUILD_VS_YEAR% not found ^(try with the 'verbose' switch for more information^)
-		goto EOF
+	if "%BUILD_VS_YEAR%" == "" (
+		call "%BLENDER_DIR%\build_files\windows\autodetect_msvc.cmd"
+		if errorlevel 1 (
+			echo Visual Studio not found ^(try with the 'verbose' switch for more information^)
+			goto EOF
+		)
+	) else (
+		call "%BLENDER_DIR%\build_files\windows\detect_msvc%BUILD_VS_YEAR%.cmd"
+		if errorlevel 1 (
+			echo Visual Studio %BUILD_VS_YEAR% not found ^(try with the 'verbose' switch for more information^)
+			goto EOF
+		)
 	)
 )
 

@@ -36,32 +36,83 @@ if(NOT BLENDER_PLATFORM_ARM)
   )
 endif()
 
+set(EMBREE_GENERATOR ${PLATFORM_ALT_GENERATOR})
+set(EMBREE_PATCH_COMMAND ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/embree/src/external_embree < ${PATCH_DIR}/embree.diff)
+set(EMBREE_GENERATOR_TOOLSET ${CMAKE_GENERATOR_TOOLSET})
+
 if(NOT APPLE)
   if(WIN32)
-    # Levels below -O2 don't work well for Embree+SYCL.
-    string(REGEX REPLACE "-O[A-Za-z0-9]" "" EMBREE_CLANG_CMAKE_CXX_FLAGS_DEBUG ${BLENDER_CLANG_CMAKE_C_FLAGS_DEBUG})
-    string(APPEND EMBREE_CLANG_CMAKE_CXX_FLAGS_DEBUG " -O2")
-    string(REGEX REPLACE "-O[A-Za-z0-9]" "" EMBREE_CLANG_CMAKE_C_FLAGS_DEBUG ${BLENDER_CLANG_CMAKE_C_FLAGS_DEBUG})
-    string(APPEND EMBREE_CLANG_CMAKE_C_FLAGS_DEBUG " -O2")
-    set(EMBREE_CMAKE_FLAGS
-      -DCMAKE_BUILD_TYPE=${BUILD_MODE}
-      -DCMAKE_CXX_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELEASE}
-      -DCMAKE_CXX_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_CXX_FLAGS_MINSIZEREL}
-      -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELWITHDEBINFO}
-      -DCMAKE_CXX_FLAGS_DEBUG=${EMBREE_CLANG_CMAKE_CXX_FLAGS_DEBUG}
-      -DCMAKE_C_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_C_FLAGS_RELEASE}
-      -DCMAKE_C_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_C_FLAGS_MINSIZEREL}
-      -DCMAKE_C_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_C_FLAGS_RELWITHDEBINFO}
-      -DCMAKE_C_FLAGS_DEBUG=${EMBREE_CLANG_CMAKE_C_FLAGS_DEBUG}
-      -DCMAKE_CXX_STANDARD=17
-    )
-    set(EMBREE_EXTRA_ARGS
-      -DCMAKE_CXX_COMPILER=${LIBDIR}/dpcpp/bin/clang++.exe
-      -DCMAKE_C_COMPILER=${LIBDIR}/dpcpp/bin/clang.exe
-      -DCMAKE_SHARED_LINKER_FLAGS=-L"${LIBDIR}/dpcpp/lib"
-      -DEMBREE_SYCL_SUPPORT=ON
-      ${EMBREE_EXTRA_ARGS}
-    )
+    if(BLENDER_PLATFORM_ARM)
+      set(EMBREE_LLVM_INSTALL_PATH ${LIBDIR}/llvm)
+
+      set(EMBREE_CMAKE_FLAGS
+        -DCMAKE_BUILD_TYPE=${BUILD_MODE}
+      )
+      set(EMBREE_EXTRA_ARGS
+        -DCMAKE_CXX_COMPILER=${EMBREE_LLVM_INSTALL_PATH}/bin/clang-cl.exe
+        -DCMAKE_C_COMPILER=${EMBREE_LLVM_INSTALL_PATH}/bin/clang-cl.exe
+        -DCMAKE_C_FLAGS_INIT="--target=arm64-pc-windows-msvc"
+        -DCMAKE_CXX_FLAGS_INIT="--target=arm64-pc-windows-msvc"
+        -DCMAKE_SHARED_LINKER_FLAGS=-L"${LIBDIR}/llvm/lib"
+        ${EMBREE_EXTRA_ARGS}
+      )
+
+      # We want the VS2019 tools for embree, as they are stable.
+      # We cannot use VS2022 easily, unless we specify an older (unsupported) toolset such as 17.35,
+      # as the newer toolsets mandate LLVM 16, which we cannot use currently, due to lack of support in OSL and ISPC.
+      set(EMBREE_VCTOOLS_REQUIRED_VERSION 14.29)
+
+      # Extract the list of installed tools that match the required version from the `VCToolsInstallDir` env var
+      file(TO_CMAKE_PATH $ENV{VCToolsInstallDir} EMBREE_VCTOOLSINSTALLDIR_PATH)
+      cmake_path(GET EMBREE_VCTOOLSINSTALLDIR_PATH PARENT_PATH EMBREE_VCTOOLSDIR_PATH)
+      file(GLOB EMBREE_INSTALLED_VCTOOLS RELATIVE ${EMBREE_VCTOOLSDIR_PATH} ${EMBREE_VCTOOLSDIR_PATH}/${EMBREE_VCTOOLS_REQUIRED_VERSION}*)
+
+      # Check that at least one the installed tool versions (there may be different subversions) is present
+      if(NOT EMBREE_INSTALLED_VCTOOLS)
+        message(FATAL_ERROR "When building for Windows ARM64 platforms, embree requires VC Tools ${EMBREE_VCTOOLS_REQUIRED_VERSION} to be installed alongside the current version.")
+      endif()
+
+      # Get the last item in the list (latest, when list is sorted)
+      list(SORT EMBREE_INSTALLED_VCTOOLS)
+      list(GET EMBREE_INSTALLED_VCTOOLS -1 EMBREE_VCTOOLS_VERSION)
+
+      # Configure our in file and temporarily store it in the build dir (with modified extension so nothing else picks it up)
+      # This feels icky, but boost does something similar, and we haven't called ExternalProject_Add yet, so the embree dir does not yet exist
+      configure_file(${PATCH_DIR}/embree_Directory.Build.Props.in ${BUILD_DIR}/embree_Directory.Build.Props_temp)
+
+      # Update the patch command to copy the configured build props file in
+      set(EMBREE_PATCH_COMMAND COMMAND ${CMAKE_COMMAND} -E copy ${BUILD_DIR}/embree_Directory.Build.Props_temp ${BUILD_DIR}/embree/src/external_embree-build/Directory.Build.Props && ${EMBREE_PATCH_COMMAND})
+
+      # This all only works if we use the VS generator (with clangcl toolset), so switch back to that 
+      # Note: there is literally no way to get ninja to use a different toolset other than manually overwriting every env var, or calling a nested vcvarsall, both of which are *messy*
+      set(EMBREE_GENERATOR ${CMAKE_GENERATOR})
+      set(EMBREE_GENERATOR_TOOLSET ClangCL)
+    else()
+      # Levels below -O2 don't work well for Embree+SYCL.
+      string(REGEX REPLACE "-O[A-Za-z0-9]" "" EMBREE_CLANG_CMAKE_CXX_FLAGS_DEBUG ${BLENDER_CLANG_CMAKE_C_FLAGS_DEBUG})
+      string(APPEND EMBREE_CLANG_CMAKE_CXX_FLAGS_DEBUG " -O2")
+      string(REGEX REPLACE "-O[A-Za-z0-9]" "" EMBREE_CLANG_CMAKE_C_FLAGS_DEBUG ${BLENDER_CLANG_CMAKE_C_FLAGS_DEBUG})
+      string(APPEND EMBREE_CLANG_CMAKE_C_FLAGS_DEBUG " -O2")
+      set(EMBREE_CMAKE_FLAGS
+        -DCMAKE_BUILD_TYPE=${BUILD_MODE}
+        -DCMAKE_CXX_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELEASE}
+        -DCMAKE_CXX_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_CXX_FLAGS_MINSIZEREL}
+        -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELWITHDEBINFO}
+        -DCMAKE_CXX_FLAGS_DEBUG=${EMBREE_CLANG_CMAKE_CXX_FLAGS_DEBUG}
+        -DCMAKE_C_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_C_FLAGS_RELEASE}
+        -DCMAKE_C_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_C_FLAGS_MINSIZEREL}
+        -DCMAKE_C_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_C_FLAGS_RELWITHDEBINFO}
+        -DCMAKE_C_FLAGS_DEBUG=${EMBREE_CLANG_CMAKE_C_FLAGS_DEBUG}
+        -DCMAKE_CXX_STANDARD=17
+      )
+      set(EMBREE_EXTRA_ARGS
+        -DCMAKE_CXX_COMPILER=${LIBDIR}/dpcpp/bin/clang++.exe
+        -DCMAKE_C_COMPILER=${LIBDIR}/dpcpp/bin/clang.exe
+        -DCMAKE_SHARED_LINKER_FLAGS=-L"${LIBDIR}/dpcpp/lib"
+        -DEMBREE_SYCL_SUPPORT=ON
+        ${EMBREE_EXTRA_ARGS}
+      )
+    endif()
   else()
     set(EMBREE_EXTRA_ARGS
       -DCMAKE_CXX_COMPILER=${LIBDIR}/dpcpp/bin/clang++
@@ -84,14 +135,21 @@ ExternalProject_Add(external_embree
   URL file://${PACKAGE_DIR}/${EMBREE_FILE}
   DOWNLOAD_DIR ${DOWNLOAD_DIR}
   URL_HASH ${EMBREE_HASH_TYPE}=${EMBREE_HASH}
-  CMAKE_GENERATOR ${PLATFORM_ALT_GENERATOR}
+  CMAKE_GENERATOR ${EMBREE_GENERATOR}
+  CMAKE_GENERATOR_TOOLSET ${EMBREE_GENERATOR_TOOLSET}
   PREFIX ${BUILD_DIR}/embree
-  PATCH_COMMAND ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/embree/src/external_embree < ${PATCH_DIR}/embree.diff
+  PATCH_COMMAND ${EMBREE_PATCH_COMMAND}
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/embree ${EMBREE_CMAKE_FLAGS} ${EMBREE_EXTRA_ARGS}
   INSTALL_DIR ${LIBDIR}/embree
 )
 
-if(NOT APPLE)
+if(WIN32 AND BLENDER_PLATFORM_ARM)
+  add_dependencies(
+    external_embree
+    external_tbb
+    ll
+  )
+elseif(NOT APPLE)
   add_dependencies(
     external_embree
     external_tbb
@@ -117,8 +175,14 @@ if(WIN32)
     ExternalProject_Add_Step(external_embree after_install
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/embree/bin/embree4_d.dll ${HARVEST_TARGET}/embree/bin/embree4_d.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/embree/lib/embree4_d.lib ${HARVEST_TARGET}/embree/lib/embree4_d.lib
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/embree/lib/embree4_sycl_d.lib ${HARVEST_TARGET}/embree/lib/embree4_sycl_d.lib
       DEPENDEES install
     )
+
+    if(NOT BLENDER_PLATFORM_ARM)
+      ExternalProjext_Add_Step(external_embree after_install
+        COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/embree/lib/embree4_sycl_d.lib ${HARVEST_TARGET}/embree/lib/embree4_sycl_d.lib
+        DEPENDEES install
+      )
+    endif()
   endif()
 endif()

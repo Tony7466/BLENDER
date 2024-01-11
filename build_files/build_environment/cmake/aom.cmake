@@ -2,7 +2,11 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-if(NOT WIN32)
+if(WIN32)
+  if(BLENDER_PLATFORM_ARM)
+    set(AOM_EXTRA_ARGS_WIN32 -DAOM_TARGET_CPU=generic)
+  endif() 
+else()
   set(AOM_CMAKE_FLAGS ${DEFAULT_CMAKE_FLAGS})
 endif()
 

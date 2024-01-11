@@ -1,6 +1,6 @@
-diff -Naur external_levelzero_org/CMakeLists.txt external_levelzero/CMakeLists.txt
---- external_levelzero_org/CMakeLists.txt       2022-03-07 13:22:11 -0700
-+++ external_levelzero/CMakeLists.txt   2022-03-29 13:22:15 -0600
+diff -Naur level-zero-clean/CMakeLists.txt level-zero-dirty/CMakeLists.txt
+--- level-zero-clean/CMakeLists.txt	2023-01-13 15:45:39.659959600 +0000
++++ level-zero-dirty/CMakeLists.txt	2023-01-13 15:46:48.800007100 +0000
 @@ -77,9 +77,6 @@
      #enabling Control Flow Guard
      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /guard:cf")
@@ -9,5 +9,14 @@ diff -Naur external_levelzero_org/CMakeLists.txt external_levelzero/CMakeLists.t
 -    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Qspectre")
 -    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Qspectre")
  endif()
-
+ 
  #CXX compiler support
+@@ -113,7 +110,7 @@
+     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
+ 		
+     # enable CET shadow stack
+-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /CETCOMPAT")
++    #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /CETCOMPAT")
+ 
+     #Use of sccache with MSVC requires workaround of replacing /Zi with /Z7
+     #https://github.com/mozilla/sccache

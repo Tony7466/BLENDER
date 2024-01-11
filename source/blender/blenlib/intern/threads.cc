@@ -411,7 +411,11 @@ void BLI_spin_lock(SpinLock *spin)
 #elif defined(__APPLE__)
   BLI_mutex_lock(spin);
 #elif defined(_MSC_VER)
+#  if defined(_M_ARM64)
+  while (InterlockedExchangeAcquire((volatile long *)spin, 1)) {
+#  else
   while (InterlockedExchangeAcquire(spin, 1)) {
+#  endif
     while (*spin) {
       /* Spin-lock hint for processors with hyper-threading. */
       YieldProcessor();

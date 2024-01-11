@@ -50,6 +50,8 @@ if NOT "%1" == "" (
 		goto ERR
 	) else if "%1" == "x64" (
 		set BUILD_ARCH=x64
+	) else if "%1" == "arm64" (
+		set BUILD_ARCH=arm64
 	) else if "%1" == "2019" (
 		set BUILD_VS_YEAR=2019
 	) else if "%1" == "2019pre" (
@@ -66,6 +68,8 @@ if NOT "%1" == "" (
 	) else if "%1" == "2022b" (
 		set BUILD_VS_YEAR=2022
 		set VSWHERE_ARGS=-products Microsoft.VisualStudio.Product.BuildTools
+	) else if "%1" == "own_vcvars" (
+		set USE_OWN_VCVARS=1
 	) else if "%1" == "packagename" (
 		set BUILD_CMAKE_ARGS=%BUILD_CMAKE_ARGS% -DCPACK_OVERRIDE_PACKAGENAME="%2"
 		shift /1

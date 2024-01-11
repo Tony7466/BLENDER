@@ -605,7 +605,7 @@ mark_as_advanced(WITH_CYCLES_PRECOMPUTE)
 mark_as_advanced(CYCLES_TEST_DEVICES)
 
 # NVIDIA CUDA & OptiX
-if(NOT APPLE)
+if(NOT APPLE AND NOT (WIN32 AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_CUDA "Enable Cycles NVIDIA CUDA compute support" ON)
   option(WITH_CYCLES_DEVICE_OPTIX "Enable Cycles NVIDIA OptiX support" ON)
   mark_as_advanced(WITH_CYCLES_DEVICE_CUDA)
@@ -640,7 +640,7 @@ When set, this path will be used at runtime to compile OptiX kernels."
 endif()
 
 # AMD HIP
-if(NOT APPLE)
+if(NOT APPLE AND NOT (WIN32 AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_HIP "Enable Cycles AMD HIP support" ON)
   option(WITH_CYCLES_HIP_BINARIES "Build Cycles AMD HIP binaries" OFF)
   # Radeon VII (gfx906) not currently working with HIP SDK, so left out of the list.
@@ -2126,6 +2126,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # of the C++ standard chosen above.
 if(MSVC)
   string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus")
+  string(APPEND CMAKE_C_FLAGS " /Zc:__cplusplus")
+  if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "ARM64")
+    string(APPEND CMAKE_CXX_FLAGS " /Zc:preprocessor")
+    string(APPEND CMAKE_C_FLAGS " /Zc:preprocessor")
+  endif()
 endif()
 
 # Visual Studio has all standards it supports available by default
