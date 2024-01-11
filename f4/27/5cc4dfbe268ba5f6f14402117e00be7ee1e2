@@ -1,2 +1,3 @@
 Referenced by issue #116489, Blender crashing when switching to the shading tab
 Referenced by issue #116548, EEVEE-Next roughness not working plus overall performance WAY worse
+Referenced by commit 935ed0791f07ea21d1697aef6abbe036dc0cf3b6, Fix #116709: EEVEE-Next: Missing gbuffer closure writes
