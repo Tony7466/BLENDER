@@ -16,7 +16,9 @@
 struct ARegionType;
 struct bContext;
 struct GreasePencil;
-struct GreasePencilModifierFilterData;
+struct GreasePencilModifierInfluenceData;
+struct GreasePencilModifierLayerFilter;
+struct GreasePencilModifierMaterialFilter;
 struct PanelType;
 struct PointerRNA;
 struct uiLayout;
@@ -29,25 +31,26 @@ class Drawing;
 
 namespace blender::greasepencil {
 
-void init_filter_data(GreasePencilModifierFilterData *filter_data);
-void copy_filter_data(const GreasePencilModifierFilterData *filter_data_src,
-                      GreasePencilModifierFilterData *filter_data_dst,
-                      int flag);
-void free_filter_data(GreasePencilModifierFilterData *filter_data);
-void foreach_filter_ID_link(GreasePencilModifierFilterData *filter_data,
-                            Object *ob,
-                            IDWalkFunc walk,
-                            void *user_data);
+void init_influence_data(GreasePencilModifierInfluenceData *influence_data);
+void copy_influence_data(const GreasePencilModifierInfluenceData *influence_data_src,
+                         GreasePencilModifierInfluenceData *influence_data_dst,
+                         int flag);
+void free_influence_data(GreasePencilModifierInfluenceData *influence_data);
+void foreach_influence_ID_link(GreasePencilModifierInfluenceData *influence_data,
+                               Object *ob,
+                               IDWalkFunc walk,
+                               void *user_data);
 
-void draw_filter_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
+void draw_layer_filter_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
+void draw_material_filter_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
 
 IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
-                                  const GreasePencilModifierFilterData &filter_data,
+                                  const GreasePencilModifierLayerFilter &filter,
                                   IndexMaskMemory &memory);
 
 IndexMask get_filtered_stroke_mask(const Object *ob,
                                    const bke::CurvesGeometry &curves,
-                                   const GreasePencilModifierFilterData &filter_data,
+                                   const GreasePencilModifierMaterialFilter &filter,
                                    IndexMaskMemory &memory);
 
 Vector<bke::greasepencil::Drawing *> get_drawings_for_write(GreasePencil &grease_pencil,

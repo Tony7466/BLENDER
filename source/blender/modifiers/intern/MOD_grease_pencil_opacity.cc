@@ -59,7 +59,7 @@ static void init_data(ModifierData *md)
            sizeof(*(omd)) - OFFSETOF_STRUCT_AFTER(omd, modifier));
   }
 
-  greasepencil::init_filter_data(&omd->filter);
+  greasepencil::init_influence_data(&omd->influence);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -68,7 +68,7 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   GreasePencilOpacityModifierData *tomd = (GreasePencilOpacityModifierData *)target;
 
   BKE_modifier_copydata_generic(md, target, flag);
-  greasepencil::copy_filter_data(&omd->filter, &tomd->filter, flag);
+  greasepencil::copy_influence_data(&omd->influence, &tomd->influence, flag);
 }
 
 static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
@@ -82,14 +82,14 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-  greasepencil::foreach_filter_ID_link(&omd->filter, ob, walk, user_data);
+  greasepencil::foreach_influence_ID_link(&omd->influence, ob, walk, user_data);
 }
 
 static void free_data(ModifierData *md)
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
 
-  greasepencil::free_filter_data(&omd->filter);
+  greasepencil::free_influence_data(&omd->influence);
 }
 
 static void modify_curves(ModifierData *md,
@@ -105,7 +105,7 @@ static void modify_curves(ModifierData *md,
   OffsetIndices<int> points_by_curve = curves.points_by_curve();
   IndexMaskMemory mask_memory;
   IndexMask curves_mask = greasepencil::get_filtered_stroke_mask(
-      ctx->object, curves, omd->filter, mask_memory);
+      ctx->object, curves, omd->influence.material_filter, mask_memory);
   for (const int64_t i : curves_mask.index_range()) {
     const int64_t curve_i = curves_mask[i];
     for (const int64_t point_i : points_by_curve[curve_i]) {
@@ -131,7 +131,7 @@ static void modify_geometry_set(ModifierData *md,
 
   IndexMaskMemory mask_memory;
   IndexMask layer_mask = greasepencil::get_filtered_layer_mask(
-      *grease_pencil, omd->filter, mask_memory);
+      *grease_pencil, omd->influence.layer_filter, mask_memory);
   Vector<Drawing *> drawings = greasepencil::get_drawings_for_write(
       *grease_pencil, layer_mask, frame);
   for (Drawing *drawing : drawings) {
@@ -149,8 +149,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   if (uiLayout *influence_panel = uiLayoutPanel(
           C, layout, "Influence", ptr, "open_influence_panel"))
   {
-    PointerRNA filter_ptr = RNA_pointer_get(ptr, "filter");
-    greasepencil::draw_filter_settings(C, influence_panel, &filter_ptr);
+    PointerRNA layer_filter_ptr = RNA_pointer_get(ptr, "layer_filter");
+    PointerRNA material_filter_ptr = RNA_pointer_get(ptr, "material_filter");
+    greasepencil::draw_layer_filter_settings(C, influence_panel, &layer_filter_ptr);
+    greasepencil::draw_material_filter_settings(C, influence_panel, &material_filter_ptr);
   }
 
   uiLayoutSetPropSep(layout, true);
