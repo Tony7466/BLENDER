@@ -126,7 +126,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
 };
 
 static const Span<const char *> text_format_glsl_literals_builtinfunc(
-    textformat_glsl_literals_builtinfunc_data,
+    text_format_glsl_literals_builtinfunc_data,
     ARRAY_SIZE(text_format_glsl_literals_builtinfunc_data));
 
 static const char *text_format_glsl_literals_reserved_data[] = {
@@ -574,7 +574,7 @@ void ED_text_format_register_glsl()
   static TextFormatType tft = {nullptr};
   static const char *ext[] = {"glsl", nullptr};
 
-   tft.format_identifier = txtfmt_glsl_format_identifier;
+  tft.format_identifier = txtfmt_glsl_format_identifier;
   tft.format_line = txtfmt_glsl_format_line;
   tft.ext = ext;
   tft.comment_line = "//";
