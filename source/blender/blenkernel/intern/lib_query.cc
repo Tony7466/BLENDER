@@ -20,7 +20,7 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.h"
 
 /* status */
@@ -653,7 +653,10 @@ bool BKE_library_ID_is_indirectly_used(Main *bmain, void *idv)
   return library_ID_is_used(bmain, idv, true);
 }
 
-void BKE_library_ID_test_usages(Main *bmain, void *idv, bool *is_used_local, bool *is_used_linked)
+void BKE_library_ID_test_usages(Main *bmain,
+                                void *idv,
+                                bool *r_is_used_local,
+                                bool *r_is_used_linked)
 {
   IDUsersIter iter;
   ListBase *lb_array[INDEX_ID_MAX];
@@ -683,8 +686,8 @@ void BKE_library_ID_test_usages(Main *bmain, void *idv, bool *is_used_local, boo
     }
   }
 
-  *is_used_local = (iter.count_direct != 0);
-  *is_used_linked = (iter.count_indirect != 0);
+  *r_is_used_local = (iter.count_direct != 0);
+  *r_is_used_linked = (iter.count_indirect != 0);
 }
 
 /* ***** IDs usages.checking/tagging. ***** */
@@ -780,7 +783,7 @@ static bool lib_query_unused_ids_tag_recurse(Main *bmain,
             bmain, tag, do_local_ids, do_linked_ids, id_from, r_num_tagged))
     {
       /* Dependency loop case, ignore the `id_from` tag value here (as it should not be considered
-       * as valid yet), and presume that this is a 'valid user' case for now. . */
+       * as valid yet), and presume that this is a 'valid user' case for now. */
       is_part_of_dependency_loop = true;
       continue;
     }
@@ -848,7 +851,8 @@ void BKE_lib_query_unused_ids_tag(Main *bmain,
   BKE_main_relations_create(bmain, 0);
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
     if (lib_query_unused_ids_tag_recurse(
-            bmain, tag, do_local_ids, do_linked_ids, id, r_num_tagged)) {
+            bmain, tag, do_local_ids, do_linked_ids, id, r_num_tagged))
+    {
       /* This root processed ID is part of one or more dependency loops.
        *
        * If it was not tagged, and its matching relations entry is not marked as processed, it

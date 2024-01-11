@@ -158,7 +158,9 @@ void RNA_def_depsgraph(struct BlenderRNA *brna);
 void RNA_def_dynamic_paint(struct BlenderRNA *brna);
 void RNA_def_fcurve(struct BlenderRNA *brna);
 void RNA_def_gpencil(struct BlenderRNA *brna);
+#ifdef WITH_GREASE_PENCIL_V3
 void RNA_def_grease_pencil(struct BlenderRNA *brna);
+#endif
 void RNA_def_greasepencil_modifier(struct BlenderRNA *brna);
 void RNA_def_shader_fx(struct BlenderRNA *brna);
 void RNA_def_curves(struct BlenderRNA *brna);
@@ -466,7 +468,7 @@ void RNA_api_region_view3d(struct StructRNA *srna);
 void RNA_api_texture(struct StructRNA *srna);
 void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, bool metastrip);
 void RNA_api_sequence_elements(BlenderRNA *brna, PropertyRNA *cprop);
-void RNA_api_sequence_retiming_handles(BlenderRNA *brna, PropertyRNA *cprop);
+void RNA_api_sequence_retiming_keys(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_api_sound(struct StructRNA *srna);
 void RNA_api_vfont(struct StructRNA *srna);
 void RNA_api_workspace(struct StructRNA *srna);
@@ -500,7 +502,9 @@ void RNA_def_main_actions(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_particles(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_palettes(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_gpencil_legacy(BlenderRNA *brna, PropertyRNA *cprop);
+#ifdef WITH_GREASE_PENCIL_V3
 void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop);
+#endif
 void RNA_def_main_movieclips(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_masks(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_linestyles(BlenderRNA *brna, PropertyRNA *cprop);
@@ -653,25 +657,30 @@ void rna_RenderPass_rect_set(PointerRNA *ptr, const float *values);
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 #  define USE_RNA_RANGE_CHECK
 #  define TYPEOF_MAX(x) \
-    _Generic((x), bool : 1, char \
-             : CHAR_MAX, signed char \
-             : SCHAR_MAX, unsigned char \
-             : UCHAR_MAX, signed short \
-             : SHRT_MAX, unsigned short \
-             : USHRT_MAX, signed int \
-             : INT_MAX, unsigned int \
-             : UINT_MAX, float \
-             : FLT_MAX, double \
-             : DBL_MAX)
+    _Generic((x), \
+        bool: 1, \
+        char: CHAR_MAX, \
+        signed char: SCHAR_MAX, \
+        unsigned char: UCHAR_MAX, \
+        signed short: SHRT_MAX, \
+        unsigned short: USHRT_MAX, \
+        signed int: INT_MAX, \
+        unsigned int: UINT_MAX, \
+        float: FLT_MAX, \
+        double: DBL_MAX)
 
 #  define TYPEOF_MIN(x) \
-    _Generic((x), bool : 0, char \
-             : CHAR_MIN, signed char \
-             : SCHAR_MIN, unsigned char : 0, signed short \
-             : SHRT_MIN, unsigned short : 0, signed int \
-             : INT_MIN, unsigned int : 0, float \
-             : -FLT_MAX, double \
-             : -DBL_MAX)
+    _Generic((x), \
+        bool: 0, \
+        char: CHAR_MIN, \
+        signed char: SCHAR_MIN, \
+        unsigned char: 0, \
+        signed short: SHRT_MIN, \
+        unsigned short: 0, \
+        signed int: INT_MIN, \
+        unsigned int: 0, \
+        float: -FLT_MAX, \
+        double: -DBL_MAX)
 #endif
 
 #ifdef __cplusplus

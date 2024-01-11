@@ -25,10 +25,10 @@ class MTLVertBuf : public VertBuf {
   friend class MTLShader;       /* For transform feedback. */
   friend class MTLBatch;
   friend class MTLContext;    /* For transform feedback. */
-  friend class MTLStorageBuf; /* For bind as SSBO resource access. */
+  friend class MTLStorageBuf; /* For bind as SSBO resource access and copy sub. */
 
  private:
-  /** Metal buffer allocation. **/
+  /** Metal buffer allocation. */
   gpu::MTLBuffer *vbo_ = nullptr;
   /** Texture used if the buffer is bound as buffer texture. Init on first use. */
   ::GPUTexture *buffer_texture_ = nullptr;

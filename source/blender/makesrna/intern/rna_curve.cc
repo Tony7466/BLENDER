@@ -152,13 +152,13 @@ static const EnumPropertyItem curve2d_fill_mode_items[] = {
 
 #  include "DNA_object_types.h"
 
-#  include "BKE_curve.h"
+#  include "BKE_curve.hh"
 #  include "BKE_curveprofile.h"
-#  include "BKE_main.h"
-#  include "BKE_vfont.h"
+#  include "BKE_main.hh"
+#  include "BKE_vfont.hh"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "WM_api.hh"
 
@@ -176,7 +176,8 @@ static Nurb *curve_nurb_from_point(Curve *cu, const void *point, int *nu_index, 
   for (nu = static_cast<Nurb *>(nurbs->first); nu; nu = nu->next, i++) {
     if (nu->type == CU_BEZIER) {
       if (point >= static_cast<void *>(nu->bezt) &&
-          point < static_cast<void *>(nu->bezt + nu->pntsu)) {
+          point < static_cast<void *>(nu->bezt + nu->pntsu))
+      {
         break;
       }
     }
@@ -318,13 +319,13 @@ static void rna_Curve_material_index_range(
 static int rna_ChariInfo_material_index_get(PointerRNA *ptr)
 {
   CharInfo *info = static_cast<CharInfo *>(ptr->data);
-  return info->mat_nr ? info->mat_nr - 1 : 0;
+  return info->mat_nr ? info->mat_nr : 0;
 }
 
 static void rna_ChariInfo_material_index_set(PointerRNA *ptr, int value)
 {
   CharInfo *info = static_cast<CharInfo *>(ptr->data);
-  info->mat_nr = value + 1;
+  info->mat_nr = value;
 }
 
 static void rna_Curve_active_textbox_index_range(

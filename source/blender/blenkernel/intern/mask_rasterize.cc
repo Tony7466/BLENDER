@@ -50,6 +50,8 @@
  * - Campbell
  */
 
+#include <algorithm> /* For `min/max`. */
+
 #include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
@@ -279,18 +281,19 @@ static void maskrasterize_spline_differentiate_point_outset(float (*diff_feather
 
   for (k = 0; k < tot_diff_point; k++) {
 
-    /* co_prev = diff_points[k_prev]; */ /* precalc */
+    // co_prev = diff_points[k_prev]; /* Precalculate. */
     co_curr = diff_points[k_curr];
     co_next = diff_points[k_next];
 
-    // sub_v2_v2v2(d_prev, co_prev, co_curr); /* precalc */
+    // sub_v2_v2v2(d_prev, co_prev, co_curr); /* Precalculate. */
     sub_v2_v2v2(d_next, co_curr, co_next);
 
     // normalize_v2(d_prev); /* precalc */
     normalize_v2(d_next);
 
     if ((do_test == false) ||
-        (len_squared_v2v2(diff_feather_points[k], diff_points[k]) < ofs_squared)) {
+        (len_squared_v2v2(diff_feather_points[k], diff_points[k]) < ofs_squared))
+    {
 
       add_v2_v2v2(d, d_prev, d_next);
 
@@ -303,7 +306,7 @@ static void maskrasterize_spline_differentiate_point_outset(float (*diff_feather
     /* use next iter */
     copy_v2_v2(d_prev, d_next);
 
-    /* k_prev = k_curr; */ /* precalc */
+    // k_prev = k_curr; /* Precalculate. */
     k_curr = k_next;
     k_next++;
   }
@@ -537,7 +540,8 @@ static void layer_bucket_init(MaskRasterLayer *layer, const float pixel_size)
           buckets_face[bucket_index] = bucket;
 
           for (bucket_node = bucketstore[bucket_index]; bucket_node;
-               bucket_node = bucket_node->next) {
+               bucket_node = bucket_node->next)
+          {
             *bucket = POINTER_AS_UINT(bucket_node->link);
             bucket++;
           }
@@ -630,7 +634,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
 
       const uint resol_a = BKE_mask_spline_resolution(spline, width, height) / 4;
       const uint resol_b = BKE_mask_spline_feather_resolution(spline, width, height) / 4;
-      const uint resol = CLAMPIS(MAX2(resol_a, resol_b), 4, 512);
+      const uint resol = CLAMPIS(std::max(resol_a, resol_b), 4, 512);
 
       diff_points = BKE_mask_spline_differentiate_with_resolution(spline, resol, &tot_diff_point);
 

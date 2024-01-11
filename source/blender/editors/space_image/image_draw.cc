@@ -34,7 +34,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_moviecache.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_paint.hh"
 
@@ -62,7 +62,7 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "image_intern.h"
+#include "image_intern.hh"
 
 static void draw_render_info(
     const bContext *C, Scene *scene, Image *ima, ARegion *region, float zoomx, float zoomy)
@@ -590,7 +590,8 @@ void ED_space_image_grid_steps(SpaceImage *sima,
         BLI_assert(pixel_width > 0 && pixel_height > 0);
         grid_steps_x[step] = 1.0f / pixel_width;
         grid_steps_y[step] = 1.0f / pixel_height;
-      } break;
+        break;
+      }
       default:
         BLI_assert_unreachable();
     }

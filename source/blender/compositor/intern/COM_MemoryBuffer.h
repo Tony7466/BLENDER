@@ -13,6 +13,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
+#include <cstring>
+
 struct ColormanageProcessor;
 struct ImBuf;
 
@@ -603,12 +605,16 @@ class MemoryBuffer {
                  int to_x,
                  int to_y,
                  int to_channel_offset);
-  void copy_from(const struct ImBuf *src, const rcti &area, bool ensure_linear_space = false);
+  void copy_from(const struct ImBuf *src,
+                 const rcti &area,
+                 bool ensure_premultiplied = false,
+                 bool ensure_linear_space = false);
   void copy_from(const struct ImBuf *src,
                  const rcti &area,
                  int channel_offset,
                  int elem_size,
                  int to_channel_offset,
+                 bool ensure_premultiplied = false,
                  bool ensure_linear_space = false);
   void copy_from(const struct ImBuf *src,
                  const rcti &src_area,
@@ -617,6 +623,7 @@ class MemoryBuffer {
                  int to_x,
                  int to_y,
                  int to_channel_offset,
+                 bool ensure_premultiplied = false,
                  bool ensure_linear_space = false);
 
   void fill(const rcti &area, const float *value);

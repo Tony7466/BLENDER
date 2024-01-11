@@ -21,11 +21,11 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
 #include "RNA_access.hh"
@@ -43,9 +43,9 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "SEQ_iterator.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -68,6 +68,7 @@ static void snap_target_view3d_fn(TransInfo *t, float *vec);
 static void snap_target_uv_fn(TransInfo *t, float *vec);
 static void snap_target_node_fn(TransInfo *t, float *vec);
 static void snap_target_sequencer_fn(TransInfo *t, float *vec);
+static void snap_target_nla_fn(TransInfo *t, float *vec);
 
 static void snap_source_median_fn(TransInfo *t);
 static void snap_source_center_fn(TransInfo *t);
@@ -128,8 +129,26 @@ bool validSnap(const TransInfo *t)
 
 void transform_snap_flag_from_modifiers_set(TransInfo *t)
 {
-  if (ELEM(t->spacetype, SPACE_GRAPH, SPACE_ACTION, SPACE_NLA)) {
+  if (ELEM(t->spacetype, SPACE_ACTION, SPACE_NLA)) {
     /* Those space-types define their own invert behavior instead of toggling it on/off. */
+    return;
+  }
+  if (t->spacetype == SPACE_GRAPH) {
+    /* This is to stay consistent with the behavior from 3.6. */
+    if (t->modifiers & MOD_SNAP_INVERT) {
+      t->tsnap.mode |= SCE_SNAP_TO_INCREMENT;
+    }
+    else {
+      t->tsnap.mode &= ~SCE_SNAP_TO_INCREMENT;
+    }
+    /* In 3.6 when snapping was disabled, pressing the invert button would turn on snapping.
+     * But it wouldn't turn it off when it was enabled. */
+    if ((t->modifiers & MOD_SNAP) || (t->modifiers & MOD_SNAP_INVERT)) {
+      t->tsnap.flag |= SCE_SNAP;
+    }
+    else {
+      t->tsnap.flag &= ~SCE_SNAP;
+    }
     return;
   }
   SET_FLAG_FROM_TEST(t->tsnap.flag,
@@ -145,6 +164,10 @@ bool transform_snap_is_active(const TransInfo *t)
 
 bool transformModeUseSnap(const TransInfo *t)
 {
+  /* The animation editors should not depend on the snapping options of the 3D viewport. */
+  if (ELEM(t->spacetype, SPACE_ACTION, SPACE_GRAPH, SPACE_NLA)) {
+    return true;
+  }
   ToolSettings *ts = t->settings;
   if (t->mode == TFM_TRANSLATION) {
     return (ts->snap_transform_mode_flag & SCE_SNAP_TRANSFORM_MODE_TRANSLATE) != 0;
@@ -155,7 +178,13 @@ bool transformModeUseSnap(const TransInfo *t)
   if (t->mode == TFM_RESIZE) {
     return (ts->snap_transform_mode_flag & SCE_SNAP_TRANSFORM_MODE_SCALE) != 0;
   }
-  if (ELEM(t->mode, TFM_VERT_SLIDE, TFM_EDGE_SLIDE, TFM_SEQ_SLIDE, TFM_TIME_TRANSLATE)) {
+  if (ELEM(t->mode,
+           TFM_VERT_SLIDE,
+           TFM_EDGE_SLIDE,
+           TFM_SEQ_SLIDE,
+           TFM_TIME_TRANSLATE,
+           TFM_TIME_EXTEND))
+  {
     return true;
   }
 
@@ -248,10 +277,10 @@ void drawSnapping(TransInfo *t)
     }
 
     ED_view3d_cursor_snap_draw_util(
-        rv3d, source_loc, target_loc, t->tsnap.snapNormal, col, activeCol, t->tsnap.target_type);
+        rv3d, source_loc, target_loc, t->tsnap.source_type, t->tsnap.target_type, col, activeCol);
 
     /* Draw normal if needed. */
-    if (usingSnappingNormal(t) && validSnappingNormal(t)) {
+    if (usingSnappingNormal(t) && validSnappingNormal(t) && target_loc) {
       uint pos = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
@@ -377,7 +406,8 @@ static bool applyFaceProject(TransInfo *t, TransDataContainer *tc, TransData *td
   }
 
   if (ED_view3d_project_float_global(t->region, iloc, mval_fl, V3D_PROJ_TEST_NOP) !=
-      V3D_PROJ_RET_OK) {
+      V3D_PROJ_RET_OK)
+  {
     return false;
   }
 
@@ -563,6 +593,7 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
 void resetSnapping(TransInfo *t)
 {
   t->tsnap.status = SNAP_RESETTED;
+  t->tsnap.source_type = SCE_SNAP_TO_NONE;
   t->tsnap.target_type = SCE_SNAP_TO_NONE;
   t->tsnap.mode = SCE_SNAP_TO_NONE;
   t->tsnap.target_operation = SCE_SNAP_TARGET_ALL;
@@ -816,7 +847,8 @@ void initSnapping(TransInfo *t, wmOperator *op)
   /* if snap property exists */
   PropertyRNA *prop;
   if (op && (prop = RNA_struct_find_property(op->ptr, "snap")) &&
-      RNA_property_is_set(op->ptr, prop)) {
+      RNA_property_is_set(op->ptr, prop))
+  {
     if (RNA_property_boolean_get(op->ptr, prop)) {
       t->modifiers |= MOD_SNAP;
 
@@ -836,7 +868,8 @@ void initSnapping(TransInfo *t, wmOperator *op)
       }
 
       if ((prop = RNA_struct_find_property(op->ptr, "snap_point")) &&
-          RNA_property_is_set(op->ptr, prop)) {
+          RNA_property_is_set(op->ptr, prop))
+      {
         RNA_property_float_get_array(op->ptr, prop, t->tsnap.snap_target);
         t->modifiers |= MOD_SNAP_FORCED;
         t->tsnap.status |= SNAP_TARGET_FOUND;
@@ -844,7 +877,8 @@ void initSnapping(TransInfo *t, wmOperator *op)
 
       /* snap align only defined in specific cases */
       if ((prop = RNA_struct_find_property(op->ptr, "snap_align")) &&
-          RNA_property_is_set(op->ptr, prop)) {
+          RNA_property_is_set(op->ptr, prop))
+      {
         SET_FLAG_FROM_TEST(
             t->tsnap.flag, RNA_property_boolean_get(op->ptr, prop), SCE_SNAP_ROTATE);
 
@@ -959,6 +993,11 @@ static void setSnappingCallback(TransInfo *t)
   }
   else if (t->spacetype == SPACE_SEQ) {
     t->tsnap.snap_target_fn = snap_target_sequencer_fn;
+    /* The target is calculated along with the snap point. */
+    return;
+  }
+  else if (t->spacetype == SPACE_NLA) {
+    t->tsnap.snap_target_fn = snap_target_nla_fn;
     /* The target is calculated along with the snap point. */
     return;
   }
@@ -1199,6 +1238,17 @@ static void snap_target_sequencer_fn(TransInfo *t, float * /*vec*/)
   }
 }
 
+static void snap_target_nla_fn(TransInfo *t, float *vec)
+{
+  BLI_assert(t->spacetype == SPACE_NLA);
+  if (transform_snap_nla_calc(t, vec)) {
+    t->tsnap.status |= (SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);
+  }
+  else {
+    t->tsnap.status &= ~(SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1270,6 +1320,7 @@ static void snap_source_center_fn(TransInfo *t)
     TargetSnapOffset(t, nullptr);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 
@@ -1280,6 +1331,7 @@ static void snap_source_active_fn(TransInfo *t)
     if (calculateCenterActive(t, true, t->tsnap.snap_source)) {
       TargetSnapOffset(t, nullptr);
       t->tsnap.status |= SNAP_SOURCE_FOUND;
+      t->tsnap.source_type = SCE_SNAP_TO_NONE;
     }
     else {
       /* No active, default to median, */
@@ -1296,6 +1348,7 @@ static void snap_source_median_fn(TransInfo *t)
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     tranform_snap_target_median_calc(t, t->tsnap.snap_source);
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 
@@ -1312,27 +1365,30 @@ static void snap_source_closest_fn(TransInfo *t)
       FOREACH_TRANS_DATA_CONTAINER (t, tc) {
         TransData *td;
         for (td = tc->data, i = 0; i < tc->data_len && td->flag & TD_SELECTED; i++, td++) {
-          const BoundBox *bb = nullptr;
+          std::optional<blender::Bounds<blender::float3>> bounds;
 
           if ((t->options & CTX_OBMODE_XFORM_OBDATA) == 0) {
-            bb = BKE_object_boundbox_get(td->ob);
+            bounds = BKE_object_boundbox_get(td->ob);
           }
 
           /* use boundbox if possible */
-          if (bb) {
+          if (bounds) {
+            BoundBox bb;
+            BKE_boundbox_init_from_minmax(&bb, bounds->min, bounds->max);
             int j;
 
             for (j = 0; j < 8; j++) {
               float loc[3];
               float dist;
 
-              copy_v3_v3(loc, bb->vec[j]);
+              copy_v3_v3(loc, bb.vec[j]);
               mul_m4_v3(td->ext->obmat, loc);
 
               dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
               if ((dist != TRANSFORM_DIST_INVALID) &&
-                  (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
+                  (closest == nullptr || fabsf(dist) < fabsf(dist_closest)))
+              {
                 copy_v3_v3(t->tsnap.snap_source, loc);
                 closest = td;
                 dist_closest = dist;
@@ -1349,7 +1405,8 @@ static void snap_source_closest_fn(TransInfo *t)
             dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
             if ((dist != TRANSFORM_DIST_INVALID) &&
-                (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
+                (closest == nullptr || fabsf(dist) < fabsf(dist_closest)))
+            {
               copy_v3_v3(t->tsnap.snap_source, loc);
               closest = td;
             }
@@ -1374,7 +1431,8 @@ static void snap_source_closest_fn(TransInfo *t)
           dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
           if ((dist != TRANSFORM_DIST_INVALID) &&
-              (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
+              (closest == nullptr || fabsf(dist) < fabsf(dist_closest)))
+          {
             copy_v3_v3(t->tsnap.snap_source, loc);
             closest = td;
             dist_closest = dist;
@@ -1386,6 +1444,7 @@ static void snap_source_closest_fn(TransInfo *t)
     TargetSnapOffset(t, closest);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 

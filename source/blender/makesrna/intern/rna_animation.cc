@@ -51,12 +51,6 @@ const EnumPropertyItem rna_enum_keying_flag_items[] = {
      0,
      "Visual Keying",
      "Insert keyframes based on 'visual transforms'"},
-    {INSERTKEY_XYZ2RGB,
-     "INSERTKEY_XYZ_TO_RGB",
-     0,
-     "XYZ=RGB Colors",
-     "Color for newly added transformation F-Curves (Location, Rotation, Scale) "
-     "and also Color is based on the transform axis"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -72,12 +66,6 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
      0,
      "Visual Keying",
      "Insert keyframes based on 'visual transforms'"},
-    {INSERTKEY_XYZ2RGB,
-     "INSERTKEY_XYZ_TO_RGB",
-     0,
-     "XYZ=RGB Colors",
-     "Color for newly added transformation F-Curves (Location, Rotation, Scale) "
-     "and also Color is based on the transform axis"},
     {INSERTKEY_REPLACE,
      "INSERTKEY_REPLACE",
      0,
@@ -106,8 +94,8 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 #  include "BKE_fcurve.h"
 #  include "BKE_nla.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "DNA_object_types.h"
 
@@ -464,7 +452,8 @@ static void rna_KeyingSet_name_set(PointerRNA *ptr, const char *value)
            * conflicts
            */
           for (agrp = static_cast<bActionGroup *>(adt->action->groups.first); agrp;
-               agrp = agrp->next) {
+               agrp = agrp->next)
+          {
             if (STREQ(ks->name, agrp->name)) {
               /* there should only be one of these in the action, so can stop... */
               STRNCPY(agrp->name, value);
@@ -877,17 +866,6 @@ static void rna_def_common_keying_flags(StructRNA *srna, short reg)
     RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
   }
 
-  prop = RNA_def_property(srna, "use_insertkey_override_xyz_to_rgb", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "keyingoverride", INSERTKEY_XYZ2RGB);
-  RNA_def_property_ui_text(
-      prop,
-      "Override F-Curve Colors - XYZ to RGB",
-      "Override default setting to set color for newly added transformation F-Curves "
-      "(Location, Rotation, Scale) to be based on the transform axis");
-  if (reg) {
-    RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-  }
-
   /* value to override defaults with */
   prop = RNA_def_property(srna, "use_insertkey_needed", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "keyingflag", INSERTKEY_NEEDED);
@@ -902,16 +880,6 @@ static void rna_def_common_keying_flags(StructRNA *srna, short reg)
   RNA_def_property_boolean_sdna(prop, nullptr, "keyingflag", INSERTKEY_MATRIX);
   RNA_def_property_ui_text(
       prop, "Insert Keyframes - Visual", "Insert keyframes based on 'visual transforms'");
-  if (reg) {
-    RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-  }
-
-  prop = RNA_def_property(srna, "use_insertkey_xyz_to_rgb", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "keyingflag", INSERTKEY_XYZ2RGB);
-  RNA_def_property_ui_text(prop,
-                           "F-Curve Colors - XYZ to RGB",
-                           "Color for newly added transformation F-Curves (Location, Rotation, "
-                           "Scale) is based on the transform axis");
   if (reg) {
     RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
   }
@@ -1292,7 +1260,7 @@ static void rna_api_animdata_drivers(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  /* PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   RNA_def_property_srna(cprop, "AnimDataDrivers");
   srna = RNA_def_struct(brna, "AnimDataDrivers", nullptr);

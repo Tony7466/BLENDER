@@ -8,14 +8,15 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_task.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_ccg.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -24,10 +25,13 @@
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 #include <cmath>
 #include <cstdlib>
+
+using blender::float3;
+using blender::MutableSpan;
 
 struct MultiplaneScrapeSampleData {
   float area_cos[2][3];
@@ -41,6 +45,7 @@ static void calc_multiplane_scrape_surface_task(Object *ob,
                                                 PBVHNode *node,
                                                 MultiplaneScrapeSampleData *mssd)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
@@ -55,8 +60,7 @@ static void calc_multiplane_scrape_surface_task(Object *ob,
   test_radius *= brush->normal_radius_factor;
   test.radius_squared = test_radius * test_radius;
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
 
@@ -68,7 +72,7 @@ static void calc_multiplane_scrape_surface_task(Object *ob,
     copy_v3_v3(normal, vd.no ? vd.no : vd.fno);
     mul_v3_m4v3(local_co, mat, vd.co);
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     /* Use the brush falloff to weight the sampled normals. */
     const float fade = SCULPT_brush_strength_factor(ss,
@@ -77,7 +81,7 @@ static void calc_multiplane_scrape_surface_task(Object *ob,
                                                     sqrtf(test.dist),
                                                     vd.no,
                                                     vd.fno,
-                                                    vd.mask ? *vd.mask : 0.0f,
+                                                    vd.mask,
                                                     vd.vertex,
                                                     thread_id,
                                                     &automask_data);
@@ -104,21 +108,19 @@ static void do_multiplane_scrape_brush_task(Object *ob,
                                             const float angle,
                                             PBVHNode *node)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
-  float(*proxy)[3];
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
   const float bstrength = fabsf(ss->cache->bstrength);
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, node)->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
 
@@ -161,7 +163,7 @@ static void do_multiplane_scrape_brush_task(Object *ob,
       continue;
     }
 
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     /* Deform the local space along the Y axis to avoid artifacts on curved strokes. */
     /* This produces a not round brush tip. */
@@ -172,23 +174,19 @@ static void do_multiplane_scrape_brush_task(Object *ob,
                                                                 len_v3(local_co),
                                                                 vd.no,
                                                                 vd.fno,
-                                                                vd.mask ? *vd.mask : 0.0f,
+                                                                vd.mask,
                                                                 vd.vertex,
                                                                 thread_id,
                                                                 &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], val, fade);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
 
 /* Public functions. */
 
-void SCULPT_do_multiplane_scrape_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+void SCULPT_do_multiplane_scrape_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
   SculptSession *ss = ob->sculpt;

@@ -59,8 +59,6 @@ void text_update_cursor_moved(bContext *C);
 
 #define SUGG_LIST_SIZE 7
 #define SUGG_LIST_WIDTH 20
-#define DOC_WIDTH 40
-#define DOC_HEIGHT 10
 
 #define TOOL_SUGG_LIST 0x01
 
@@ -152,7 +150,7 @@ void TEXT_OT_find(wmOperatorType *ot);
 void TEXT_OT_find_set_selected(wmOperatorType *ot);
 void TEXT_OT_replace(wmOperatorType *ot);
 void TEXT_OT_replace_set_selected(wmOperatorType *ot);
-void TEXT_OT_jump_to_file_at_point_internal(wmOperatorType *ot);
+void TEXT_OT_jump_to_file_at_point(wmOperatorType *ot);
 
 /* text_find = open properties, activate search button */
 void TEXT_OT_start_find(wmOperatorType *ot);

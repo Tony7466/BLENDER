@@ -11,11 +11,8 @@
 #include "blender/sync.h"
 #include "blender/util.h"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const struct Volume *volume,
-                                                             const struct VolumeGrid *grid);
-#endif
+#include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 
 CCL_NAMESPACE_BEGIN
 
@@ -25,8 +22,8 @@ class BlenderSmokeLoader : public ImageLoader {
   BlenderSmokeLoader(BL::Object &b_ob, AttributeStandard attribute)
       : b_domain(object_fluid_gas_domain_find(b_ob)), attribute(attribute)
   {
-    BL::Mesh b_mesh(b_ob.data());
-    mesh_texture_space(b_mesh, texspace_loc, texspace_size);
+    mesh_texture_space(
+        *static_cast<const ::Mesh *>(b_ob.data().ptr.data), texspace_loc, texspace_size);
   }
 
   bool load_metadata(const ImageDeviceFeatures &, ImageMetaData &metadata) override
@@ -232,16 +229,9 @@ class BlenderVolumeLoader : public VDBImageLoader {
 #ifdef WITH_OPENVDB
     for (BL::VolumeGrid &b_volume_grid : b_volume.grids) {
       if (b_volume_grid.name() == grid_name) {
-        const bool unload = !b_volume_grid.is_loaded();
-
-        ::Volume *volume = (::Volume *)b_volume.ptr.data;
-        const VolumeGrid *volume_grid = (VolumeGrid *)b_volume_grid.ptr.data;
-        grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
-
-        if (unload) {
-          b_volume_grid.unload();
-        }
-
+        const auto *volume_grid = static_cast<const blender::bke::VolumeGridData *>(
+            b_volume_grid.ptr.data);
+        grid = volume_grid->grid_ptr(tree_access_token);
         break;
       }
     }
@@ -265,6 +255,10 @@ class BlenderVolumeLoader : public VDBImageLoader {
   }
 
   BL::Volume b_volume;
+#ifdef WITH_OPENVDB
+  /* Store tree user so that the OPENVDB grid that is shared with Blender is not unloaded. */
+  blender::bke::VolumeTreeAccessToken tree_access_token;
+#endif
 };
 
 static void sync_volume_object(BL::BlendData &b_data,

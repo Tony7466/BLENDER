@@ -36,7 +36,7 @@
 #include "DNA_view3d_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_curve_legacy.h"
@@ -44,10 +44,10 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_library.h"
-#include "BKE_main.h"
+#include "BKE_library.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -58,7 +58,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -69,7 +69,6 @@
 
 #include "ED_armature.hh"
 #include "ED_gpencil_legacy.hh"
-#include "ED_keyframing.hh"
 #include "ED_object.hh"
 #include "ED_outliner.hh"
 #include "ED_screen.hh"
@@ -78,9 +77,11 @@
 #include "ED_transform_snap_object_context.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "ANIM_keyframing.hh"
+
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -1575,7 +1576,8 @@ static int gpencil_strokes_copy_exec(bContext *C, wmOperator *op)
 
         char **ma_name_val;
         if (!BLI_ghash_ensure_p(
-                gpencil_strokes_copypastebuf_colors, &gps->mat_nr, (void ***)&ma_name_val)) {
+                gpencil_strokes_copypastebuf_colors, &gps->mat_nr, (void ***)&ma_name_val))
+        {
           char *ma_name = static_cast<char *>(BLI_ghash_lookup(ma_to_name, ma));
           *ma_name_val = static_cast<char *>(MEM_dupallocN(ma_name));
         }
@@ -1761,7 +1763,7 @@ static int gpencil_strokes_paste_exec(bContext *C, wmOperator *op)
         }
 
         bGPDframe *gpf;
-        if (IS_AUTOKEY_ON(scene) || (gpl->actframe == nullptr)) {
+        if (blender::animrig::is_autokey_on(scene) || (gpl->actframe == nullptr)) {
           gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
         }
         else {
@@ -2846,7 +2848,7 @@ static bool gpencil_snap_poll(bContext *C)
          ((area != nullptr) && (area->spacetype == SPACE_VIEW3D));
 }
 
-static int gpencil_snap_to_grid(bContext *C, wmOperator * /*op*/)
+static int gpencil_snap_to_grid_exec(bContext *C, wmOperator * /*op*/)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ARegion *region = CTX_wm_region(C);
@@ -2964,7 +2966,7 @@ void GPENCIL_OT_snap_to_grid(wmOperatorType *ot)
   ot->description = "Snap selected points to the nearest grid points";
 
   /* callbacks */
-  ot->exec = gpencil_snap_to_grid;
+  ot->exec = gpencil_snap_to_grid_exec;
   ot->poll = gpencil_snap_poll;
 
   /* flags */
@@ -2977,7 +2979,7 @@ void GPENCIL_OT_snap_to_grid(wmOperatorType *ot)
 /** \name Snapping Selection to Cursor Operator
  * \{ */
 
-static int gpencil_snap_to_cursor(bContext *C, wmOperator *op)
+static int gpencil_snap_to_cursor_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
@@ -3066,7 +3068,7 @@ void GPENCIL_OT_snap_to_cursor(wmOperatorType *ot)
   ot->description = "Snap selected points/strokes to the cursor";
 
   /* callbacks */
-  ot->exec = gpencil_snap_to_cursor;
+  ot->exec = gpencil_snap_to_cursor_exec;
   ot->poll = gpencil_snap_poll;
 
   /* flags */
@@ -3144,7 +3146,7 @@ static bool gpencil_stroke_points_centroid(Depsgraph *depsgraph,
   return changed;
 }
 
-static int gpencil_snap_cursor_to_sel(bContext *C, wmOperator *op)
+static int gpencil_snap_cursor_to_sel_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = CTX_data_active_object(C);
@@ -3195,7 +3197,7 @@ void GPENCIL_OT_snap_cursor_to_selected(wmOperatorType *ot)
   ot->description = "Snap cursor to center of selected points";
 
   /* callbacks */
-  ot->exec = gpencil_snap_cursor_to_sel;
+  ot->exec = gpencil_snap_cursor_to_sel_exec;
   ot->poll = gpencil_snap_poll;
 
   /* flags */
@@ -3302,7 +3304,8 @@ static int gpencil_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
           }
           /* skip hidden or locked colors */
           if (!gp_style || (gp_style->flag & GP_MATERIAL_HIDE) ||
-              (gp_style->flag & GP_MATERIAL_LOCKED)) {
+              (gp_style->flag & GP_MATERIAL_LOCKED))
+          {
             continue;
           }
 
@@ -3448,12 +3451,14 @@ static int gpencil_stroke_caps_set_exec(bContext *C, wmOperator *op)
 
           /* skip strokes that are not selected or invalid for current view */
           if (((gps->flag & GP_STROKE_SELECT) == 0) ||
-              (ED_gpencil_stroke_can_use(C, gps) == false)) {
+              (ED_gpencil_stroke_can_use(C, gps) == false))
+          {
             continue;
           }
           /* skip hidden or locked colors */
           if (!gp_style || (gp_style->flag & GP_MATERIAL_HIDE) ||
-              (gp_style->flag & GP_MATERIAL_LOCKED)) {
+              (gp_style->flag & GP_MATERIAL_LOCKED))
+          {
             continue;
           }
 

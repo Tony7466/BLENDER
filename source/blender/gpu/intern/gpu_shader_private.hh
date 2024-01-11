@@ -16,6 +16,8 @@
 #include "gpu_shader_interface.hh"
 #include "gpu_vertex_buffer_private.hh"
 
+#include "BLI_map.hh"
+
 #include <string>
 
 namespace blender {
@@ -31,6 +33,18 @@ class Shader {
  public:
   /** Uniform & attribute locations for shader. */
   ShaderInterface *interface = nullptr;
+
+  /**
+   * Specialization constants as a Struct-of-Arrays. Allow simpler comparison and reset.
+   * The backend is free to implement their support as they see fit.
+   */
+  struct Constants {
+    using Value = shader::ShaderCreateInfo::SpecializationConstant::Value;
+    Vector<gpu::shader::Type> types;
+    /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
+     * that however it wants (i.e: bind another shader instead). */
+    Vector<Value> values;
+  } constants;
 
  protected:
   /** For debugging purpose. */
@@ -68,6 +82,9 @@ class Shader {
   virtual void uniform_float(int location, int comp_len, int array_size, const float *data) = 0;
   virtual void uniform_int(int location, int comp_len, int array_size, const int *data) = 0;
 
+  /* Add specialization constant declarations to shader instance. */
+  void specialization_constants_init(const shader::ShaderCreateInfo &info);
+
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const = 0;
@@ -78,6 +95,10 @@ class Shader {
 
   /* DEPRECATED: Kept only because of BGL API. */
   virtual int program_handle_get() const = 0;
+
+  /* Only used by SSBO Vertex fetch. */
+  virtual bool get_uses_ssbo_vertex_fetch() const = 0;
+  virtual int get_ssbo_vertex_fetch_output_num_verts() const = 0;
 
   inline const char *const name_get() const
   {
@@ -131,6 +152,7 @@ struct LogCursor {
   int source = -1;
   int row = -1;
   int column = -1;
+  StringRef file_name_and_error_line = {};
 };
 
 struct GPULogItem {
@@ -141,7 +163,9 @@ struct GPULogItem {
 
 class GPULogParser {
  public:
-  virtual const char *parse_line(const char *log_line, GPULogItem &log_item) = 0;
+  virtual const char *parse_line(const char *source_combined,
+                                 const char *log_line,
+                                 GPULogItem &log_item) = 0;
 
  protected:
   const char *skip_severity(const char *log_line,

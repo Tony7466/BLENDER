@@ -15,8 +15,8 @@
  * Then the shading pass will shade the areas with stencil not equal 0 differently.
  */
 
-#include "BKE_object.h"
-#include "DRW_render.h"
+#include "BKE_object.hh"
+#include "DRW_render.hh"
 #include "GPU_compute.h"
 
 #include "workbench_private.hh"
@@ -183,11 +183,13 @@ void ShadowPass::ShadowView::setup(View &view, float3 light_direction, bool forc
 bool ShadowPass::ShadowView::debug_object_culling(Object *ob)
 {
   printf("Test %s\n", ob->id.name);
-  const BoundBox *_bbox = BKE_object_boundbox_get(ob);
+  const Bounds<float3> bounds = *BKE_object_boundbox_get(ob);
+  BoundBox bb;
+  BKE_boundbox_init_from_minmax(&bb, bounds.min, bounds.max);
   for (int p : IndexRange(extruded_frustum_.planes_count)) {
     float4 plane = extruded_frustum_.planes[p];
     bool separating_axis = true;
-    for (float3 corner : _bbox->vec) {
+    for (float3 corner : bb.vec) {
       corner = math::transform_point(float4x4(ob->object_to_world), corner);
       float signed_distance = math::dot(corner, float3(plane)) - plane.w;
       if (signed_distance <= 0) {
@@ -305,12 +307,12 @@ ShadowPass::~ShadowPass()
   }
 }
 
-PassMain::Sub *&ShadowPass::get_pass_ptr(PassType type, bool manifold, bool cap /*= false*/)
+PassMain::Sub *&ShadowPass::get_pass_ptr(PassType type, bool manifold, bool cap /*=false*/)
 {
   return passes_[type][manifold][cap];
 }
 
-GPUShader *ShadowPass::get_shader(bool depth_pass, bool manifold, bool cap /*= false*/)
+GPUShader *ShadowPass::get_shader(bool depth_pass, bool manifold, bool cap /*=false*/)
 {
   GPUShader *&shader = shaders_[depth_pass][manifold][cap];
 
@@ -478,6 +480,11 @@ void ShadowPass::draw(Manager &manager,
   manager.submit(fail_ps_, view_);
   view_.set_mode(FORCED_FAIL);
   manager.submit(forced_fail_ps_, view_);
+}
+
+bool ShadowPass::is_debug()
+{
+  return DEBUG_SHADOW_VOLUME;
 }
 
 }  // namespace blender::workbench

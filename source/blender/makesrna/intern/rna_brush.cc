@@ -453,7 +453,7 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 #  include "RNA_access.hh"
 
 #  include "BKE_brush.hh"
-#  include "BKE_colorband.h"
+#  include "BKE_colorband.hh"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_icons.h"
 #  include "BKE_material.h"
@@ -1647,7 +1647,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
 
   /* gradient control */
   prop = RNA_def_property(srna, "hardness", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_sdna(prop, nullptr, "hardeness");
+  RNA_def_property_float_sdna(prop, nullptr, "hardness");
   RNA_def_property_range(prop, 0.001f, 1.0f);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(

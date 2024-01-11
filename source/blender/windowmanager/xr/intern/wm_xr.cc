@@ -12,10 +12,10 @@
 
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
@@ -31,7 +31,7 @@
 #include "WM_api.hh"
 
 #include "wm_surface.hh"
-#include "wm_xr_intern.h"
+#include "wm_xr_intern.hh"
 
 struct wmXrErrorHandlerData {
   wmWindowManager *wm;

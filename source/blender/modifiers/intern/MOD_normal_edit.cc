@@ -25,12 +25,13 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -38,7 +39,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
@@ -59,7 +60,7 @@ static void generate_vert_coordinates(Mesh *mesh,
   INIT_MINMAX(min_co, max_co);
 
   const Span<float3> positions = mesh->vert_positions();
-  for (int i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->verts_num; i++) {
     copy_v3_v3(r_cos[i], positions[i]);
     if (r_size != nullptr && ob_center == nullptr) {
       minmax_v3v3_v3(min_co, max_co, r_cos[i]);
@@ -232,6 +233,7 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
                                          blender::MutableSpan<int> corner_edges,
                                          const blender::OffsetIndices<int> faces)
 {
+  using namespace blender;
   Object *ob_target = enmd->target;
 
   const bool do_facenors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
@@ -321,19 +323,19 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
   if (do_facenors_fix) {
     faces_check_flip(*mesh, nos, mesh->face_normals());
   }
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
-  blender::bke::mesh::normals_loop_custom_set(vert_positions,
-                                              edges,
-                                              faces,
-                                              corner_verts,
-                                              corner_edges,
-                                              mesh->vert_normals(),
-                                              mesh->face_normals(),
-                                              sharp_faces,
-                                              sharp_edges,
-                                              nos,
-                                              clnors);
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
+  bke::mesh::normals_corner_custom_set(vert_positions,
+                                       edges,
+                                       faces,
+                                       corner_verts,
+                                       corner_edges,
+                                       mesh->vert_normals(),
+                                       mesh->face_normals(),
+                                       sharp_faces,
+                                       sharp_edges,
+                                       nos,
+                                       clnors);
 
   MEM_freeN(cos);
   MEM_freeN(done_verts);
@@ -358,6 +360,7 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
                                               blender::MutableSpan<int> corner_edges,
                                               const blender::OffsetIndices<int> faces)
 {
+  using namespace blender;
   Object *ob_target = enmd->target;
 
   const bool do_facenors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
@@ -426,19 +429,19 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
   if (do_facenors_fix) {
     faces_check_flip(*mesh, nos, mesh->face_normals());
   }
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
-  blender::bke::mesh::normals_loop_custom_set(positions,
-                                              edges,
-                                              faces,
-                                              corner_verts,
-                                              corner_edges,
-                                              mesh->vert_normals(),
-                                              mesh->face_normals(),
-                                              sharp_faces,
-                                              sharp_edges,
-                                              nos,
-                                              clnors);
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
+  bke::mesh::normals_corner_custom_set(positions,
+                                       edges,
+                                       faces,
+                                       corner_verts,
+                                       corner_edges,
+                                       mesh->vert_normals(),
+                                       mesh->face_normals(),
+                                       sharp_faces,
+                                       sharp_edges,
+                                       nos,
+                                       clnors);
 }
 
 static bool is_valid_target(NormalEditModifierData *enmd)
@@ -473,23 +476,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                     (enmd->mix_limit == float(M_PI)));
 
   /* Do not run that modifier at all if auto-smooth is disabled! */
-  if (!is_valid_target_with_error(ctx->object, enmd) || mesh->totloop == 0) {
-    return mesh;
-  }
-
-  /* XXX TODO(Rohan Rathi):
-   * Once we fully switch to Mesh evaluation of modifiers,
-   * we can expect to get that flag from the COW copy.
-   * But for now, it is lost in the DM intermediate step,
-   * so we need to directly check orig object's data. */
-#if 0
-  if (!(mesh->flag & ME_AUTOSMOOTH))
-#else
-  if (!(((Mesh *)ob->data)->flag & ME_AUTOSMOOTH))
-#endif
-  {
-    BKE_modifier_set_error(
-        ob, (ModifierData *)enmd, "Enable 'Auto Smooth' in Object Data Properties");
+  if (!is_valid_target_with_error(ctx->object, enmd) || mesh->corners_num == 0) {
     return mesh;
   }
 
@@ -515,11 +502,11 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
 
   blender::Array<blender::float3> loop_normals;
 
-  CustomData *ldata = &result->loop_data;
+  CustomData *ldata = &result->corner_data;
 
   bke::MutableAttributeAccessor attributes = result->attributes_for_write();
   bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
-      "sharp_edge", ATTR_DOMAIN_EDGE);
+      "sharp_edge", bke::AttrDomain::Edge);
 
   blender::short2 *clnors = static_cast<blender::short2 *>(
       CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
@@ -527,23 +514,20 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
     clnors = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
     loop_normals.reinitialize(corner_verts.size());
-    const bool *sharp_faces = static_cast<const bool *>(
-        CustomData_get_layer_named(&result->face_data, CD_PROP_BOOL, "sharp_face"));
-    blender::bke::mesh::normals_calc_loop(positions,
-                                          edges,
-                                          faces,
-                                          corner_verts,
-                                          corner_edges,
-                                          result->corner_to_face_map(),
-                                          result->vert_normals(),
-                                          result->face_normals(),
-                                          sharp_edges.span.data(),
-                                          sharp_faces,
-                                          clnors,
-                                          true,
-                                          result->smoothresh,
-                                          nullptr,
-                                          loop_normals);
+    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
+    blender::bke::mesh::normals_calc_corners(positions,
+                                             edges,
+                                             faces,
+                                             corner_verts,
+                                             corner_edges,
+                                             result->corner_to_face_map(),
+                                             result->vert_normals(),
+                                             result->face_normals(),
+                                             sharp_edges.span,
+                                             sharp_faces,
+                                             clnors,
+                                             nullptr,
+                                             loop_normals);
   }
 
   if (clnors == nullptr) {
@@ -558,7 +542,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                  ctx,
                                  ob,
                                  result,
-                                 {clnors, result->totloop},
+                                 {clnors, result->corners_num},
                                  loop_normals,
                                  enmd->mix_mode,
                                  enmd->mix_factor,
@@ -578,7 +562,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                       ctx,
                                       ob,
                                       result,
-                                      {clnors, result->totloop},
+                                      {clnors, result->corners_num},
                                       loop_normals,
                                       enmd->mix_mode,
                                       enmd->mix_factor,
@@ -738,7 +722,7 @@ ModifierTypeInfo modifierType_NormalEdit = {
     /*struct_name*/ "NormalEditModifierData",
     /*struct_size*/ sizeof(NormalEditModifierData),
     /*srna*/ &RNA_NormalEditModifier,
-    /*type*/ eModifierTypeType_Constructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_NORMALEDIT,

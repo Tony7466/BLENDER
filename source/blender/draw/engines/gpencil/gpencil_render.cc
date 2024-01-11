@@ -7,13 +7,13 @@
  */
 #include "BLI_rect.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_pipeline.h"
 

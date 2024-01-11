@@ -23,24 +23,25 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_bvhutils.h"
-#include "BKE_context.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -504,7 +505,6 @@ static int remove_particle_dupliob_exec(bContext *C, wmOperator * /*op*/)
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_system", &RNA_ParticleSystem);
   ParticleSystem *psys = static_cast<ParticleSystem *>(ptr.data);
   ParticleSettings *part;
-  ParticleDupliWeight *dw;
 
   if (!psys) {
     return OPERATOR_CANCELLED;
@@ -518,8 +518,8 @@ static int remove_particle_dupliob_exec(bContext *C, wmOperator * /*op*/)
       break;
     }
   }
-  dw = static_cast<ParticleDupliWeight *>(part->instance_weights.last);
 
+  ParticleDupliWeight *dw = static_cast<ParticleDupliWeight *>(part->instance_weights.last);
   if (dw) {
     dw->flag |= PART_DUPLIW_CURRENT;
   }
@@ -750,7 +750,7 @@ static bool remap_hair_emitter(Depsgraph *depsgraph,
   /* BMESH_ONLY, deform dm may not have tessface */
   BKE_mesh_tessface_ensure(mesh);
 
-  numverts = mesh->totvert;
+  numverts = mesh->verts_num;
   blender::MutableSpan<blender::float3> positions = mesh->vert_positions_for_write();
 
   /* convert to global coordinates */
@@ -762,7 +762,7 @@ static bool remap_hair_emitter(Depsgraph *depsgraph,
     mface = static_cast<const MFace *>(CustomData_get_layer(&mesh->fdata_legacy, CD_MFACE));
     BKE_bvhtree_from_mesh_get(&bvhtree, mesh, BVHTREE_FROM_FACES, 2);
   }
-  else if (mesh->totedge != 0) {
+  else if (mesh->edges_num != 0) {
     edges = static_cast<const vec2i *>(
         CustomData_get_layer_named(&mesh->edge_data, CD_PROP_INT32_2D, ".edge_verts"));
     BKE_bvhtree_from_mesh_get(&bvhtree, mesh, BVHTREE_FROM_EDGES, 2);
@@ -1067,7 +1067,8 @@ static void remove_particle_systems_from_object(Object *ob_to)
     if (ELEM(md->type,
              eModifierType_ParticleSystem,
              eModifierType_DynamicPaint,
-             eModifierType_Fluid)) {
+             eModifierType_Fluid))
+    {
       BLI_remlink(&ob_to->modifiers, md);
       BKE_modifier_free(md);
     }

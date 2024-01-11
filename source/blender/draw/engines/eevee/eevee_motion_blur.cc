@@ -8,16 +8,16 @@
  * Gather all screen space effects technique such as Bloom, Motion Blur, DoF, SSAO, SSR, ...
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_rand.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_animsys.h"
 #include "BKE_camera.h"
 #include "BKE_duplilist.h"
-#include "BKE_object.h"
-#include "BKE_screen.h"
+#include "BKE_object.hh"
+#include "BKE_screen.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_camera_types.h"
@@ -29,8 +29,8 @@
 
 #include "ED_screen.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_batch.h"
 #include "GPU_texture.h"
@@ -278,6 +278,7 @@ void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
                                              EEVEE_Data *vedata,
                                              Object *ob)
 {
+  using namespace blender::draw;
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
@@ -433,6 +434,7 @@ static void motion_blur_remove_vbo_reference_from_batch(GPUBatch *batch,
 
 void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
 {
+  using namespace blender::draw;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
   GHashIterator ghi;

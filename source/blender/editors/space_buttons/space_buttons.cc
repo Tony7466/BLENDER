@@ -15,12 +15,12 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_gpencil_modifier_legacy.h" /* Types for registering panels. */
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_modifier.h"
-#include "BKE_screen.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_modifier.hh"
+#include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
 
 #include "ED_buttons.hh"
@@ -146,7 +146,7 @@ static void buttons_main_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Property Editor", SPACE_PROPERTIES, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Property Editor", SPACE_PROPERTIES, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -536,7 +536,7 @@ static void buttons_operatortypes()
 
 static void buttons_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Property Editor", SPACE_PROPERTIES, 0);
+  WM_keymap_ensure(keyconf, "Property Editor", SPACE_PROPERTIES, RGN_TYPE_WINDOW);
 }
 
 /** \} */

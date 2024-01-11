@@ -42,26 +42,26 @@
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h" /* BKE_ST_MAXNAME */
-#include "BKE_unit.h"
+#include "BKE_screen.hh" /* BKE_ST_MAXNAME */
+#include "BKE_unit.hh"
 
 #include "BKE_idtype.h"
 
@@ -76,6 +76,7 @@
 
 #include "ED_fileselect.hh"
 #include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
 #include "ED_numinput.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
@@ -96,12 +97,12 @@
 
 #include "wm.hh"
 #include "wm_draw.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_event_types.hh"
 #include "wm_files.hh"
 #include "wm_window.hh"
 #ifdef WITH_XR_OPENXR
-#  include "wm_xr.h"
+#  include "wm_xr.hh"
 #endif
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
@@ -568,6 +569,11 @@ static const char *wm_context_member_from_ptr(const bContext *C,
               TEST_PTR_DATA_TYPE("space_data.dopesheet", RNA_DopeSheet, ptr, ads);
               break;
             }
+            case SPACE_NODE: {
+              const SpaceNode *snode = (SpaceNode *)space_data;
+              TEST_PTR_DATA_TYPE("space_data.overlay", RNA_SpaceNodeOverlay, ptr, snode);
+              break;
+            }
           }
         }
 
@@ -826,8 +832,6 @@ static bool operator_last_properties_init_impl(wmOperator *op, IDProperty *last_
   IDPropertyTemplate val = {0};
   IDProperty *replaceprops = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
 
-  CLOG_INFO(WM_LOG_OPERATORS, 1, "loading previous properties for '%s'", op->type->idname);
-
   PropertyRNA *iterprop = RNA_struct_iterator_property(op->type->srna);
 
   RNA_PROP_BEGIN (op->ptr, itemptr, iterprop) {
@@ -853,6 +857,9 @@ static bool operator_last_properties_init_impl(wmOperator *op, IDProperty *last_
   }
   RNA_PROP_END;
 
+  if (changed) {
+    CLOG_INFO(WM_LOG_OPERATORS, 1, "loading previous properties for '%s'", op->type->idname);
+  }
   IDP_MergeGroup(op->properties, replaceprops, true);
   IDP_FreeProperty(replaceprops);
   return changed;
@@ -881,7 +888,9 @@ bool WM_operator_last_properties_store(wmOperator *op)
   }
 
   if (op->properties) {
-    CLOG_INFO(WM_LOG_OPERATORS, 1, "storing properties for '%s'", op->type->idname);
+    if (!BLI_listbase_is_empty(&op->properties->data.group)) {
+      CLOG_INFO(WM_LOG_OPERATORS, 1, "storing properties for '%s'", op->type->idname);
+    }
     op->type->last_properties = IDP_CopyProperty(op->properties);
   }
 
@@ -1177,6 +1186,215 @@ int WM_enum_search_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/
   return OPERATOR_INTERFACE;
 }
 
+static void wm_operator_block_cancel(bContext *C, void *arg_op, void *arg_block)
+{
+  wmOperator *op = static_cast<wmOperator *>(arg_op);
+  uiBlock *block = static_cast<uiBlock *>(arg_block);
+  UI_popup_block_close(C, CTX_wm_window(C), block);
+  WM_redraw_windows(C);
+  if (op) {
+    if (op->type->cancel) {
+      op->type->cancel(C, op);
+    }
+    WM_operator_free(op);
+  }
+}
+
+static void wm_operator_block_confirm(bContext *C, void *arg_op, void *arg_block)
+{
+  wmOperator *op = static_cast<wmOperator *>(arg_op);
+  uiBlock *block = static_cast<uiBlock *>(arg_block);
+  UI_popup_block_close(C, CTX_wm_window(C), block);
+  WM_redraw_windows(C);
+  if (op) {
+    WM_operator_call_ex(C, op, true);
+  }
+}
+
+static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_op)
+{
+  wmOperator *op = static_cast<wmOperator *>(arg_op);
+
+  wmConfirmDetails confirm = {{0}};
+
+  STRNCPY(confirm.title, WM_operatortype_description(C, op->type, op->ptr).c_str());
+  STRNCPY(confirm.confirm_button, WM_operatortype_name(op->type, op->ptr).c_str());
+  STRNCPY(confirm.cancel_button, IFACE_("Cancel"));
+  confirm.icon = ALERT_ICON_WARNING;
+  confirm.size = WM_WARNING_SIZE_SMALL;
+  confirm.position = WM_WARNING_POSITION_MOUSE;
+  confirm.confirm_default = true;
+  confirm.cancel_default = false;
+  confirm.mouse_move_quit = false;
+  confirm.red_alert = false;
+
+  /* uiBlock.flag */
+  int block_flags = UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT;
+
+  if (op->type->confirm) {
+    op->type->confirm(C, op, &confirm);
+  }
+  if (confirm.mouse_move_quit) {
+    block_flags |= UI_BLOCK_MOVEMOUSE_QUIT;
+  }
+  if (confirm.icon < ALERT_ICON_WARNING || confirm.icon >= ALERT_ICON_MAX) {
+    confirm.icon = ALERT_ICON_QUESTION;
+  }
+
+  uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_block_flag_enable(block, block_flags);
+
+  const uiStyle *style = UI_style_get_dpi();
+  int text_width = MAX2(
+      120 * UI_SCALE_FAC,
+      BLF_width(style->widget.uifont_id, confirm.title, ARRAY_SIZE(confirm.title)));
+  if (confirm.message[0]) {
+    text_width = MAX2(
+        text_width,
+        BLF_width(style->widget.uifont_id, confirm.message, ARRAY_SIZE(confirm.message)));
+  }
+  if (confirm.message2[0]) {
+    text_width = MAX2(
+        text_width,
+        BLF_width(style->widget.uifont_id, confirm.message2, ARRAY_SIZE(confirm.message2)));
+  }
+
+  const bool small = confirm.size == WM_WARNING_SIZE_SMALL;
+  const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
+  const short icon_size = (small ? (confirm.message[0] ? 48 : 32) : 64) * UI_SCALE_FAC;
+  const int dialog_width = icon_size + text_width + (style->columnspace * 2.5);
+  const float split_factor = (float)icon_size / (float)(dialog_width - style->columnspace);
+
+  uiLayout *block_layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, UI_UNIT_Y, 0, style);
+
+  /* Split layout to put alert icon on left side. */
+  uiLayout *split_block = uiLayoutSplit(block_layout, split_factor, false);
+
+  /* Alert icon on the left. */
+  uiLayout *layout = uiLayoutRow(split_block, true);
+  /* Using 'align_left' with 'row' avoids stretching the icon along the width of column. */
+  uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_LEFT);
+  uiDefButAlert(block, confirm.icon, 0, 0, icon_size, icon_size);
+
+  /* The rest of the content on the right. */
+  layout = uiLayoutColumn(split_block, true);
+
+  if (confirm.title[0]) {
+    if (!confirm.message[0]) {
+      uiItemS(layout);
+    }
+    uiItemL_ex(layout, confirm.title, ICON_NONE, true, false);
+  }
+  if (confirm.message[0]) {
+    uiItemL(layout, confirm.message, ICON_NONE);
+  }
+  if (confirm.message2[0]) {
+    uiItemL(layout, confirm.message2, ICON_NONE);
+  }
+
+  uiItemS_ex(layout, small ? 0.5f : 4.0f);
+
+  /* Buttons. */
+
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
+
+  uiBut *confirm_but = nullptr;
+  uiBut *cancel_but = nullptr;
+  uiLayout *split = uiLayoutSplit(small ? block_layout : layout, 0.0f, true);
+  uiLayoutSetScaleY(split, small ? 1.1f : 1.2f);
+  uiLayoutColumn(split, false);
+
+  if (windows_layout) {
+    confirm_but = uiDefIconTextBut(block,
+                                   UI_BTYPE_BUT,
+                                   0,
+                                   0,
+                                   confirm.confirm_button,
+                                   0,
+                                   0,
+                                   0,
+                                   UI_UNIT_Y,
+                                   nullptr,
+                                   0,
+                                   0,
+                                   0,
+                                   0,
+                                   nullptr);
+    uiLayoutColumn(split, false);
+  }
+
+  cancel_but = uiDefIconTextBut(block,
+                                UI_BTYPE_BUT,
+                                0,
+                                0,
+                                confirm.cancel_button,
+                                0,
+                                0,
+                                0,
+                                UI_UNIT_Y,
+                                nullptr,
+                                0,
+                                0,
+                                0,
+                                0,
+                                nullptr);
+
+  if (!windows_layout) {
+    uiLayoutColumn(split, false);
+    confirm_but = uiDefIconTextBut(block,
+                                   UI_BTYPE_BUT,
+                                   0,
+                                   0,
+                                   confirm.confirm_button,
+                                   0,
+                                   0,
+                                   0,
+                                   UI_UNIT_Y,
+                                   nullptr,
+                                   0,
+                                   0,
+                                   0,
+                                   0,
+                                   nullptr);
+  }
+
+  UI_block_func_set(block, nullptr, nullptr, nullptr);
+  UI_but_func_set(confirm_but, wm_operator_block_confirm, op, block);
+  UI_but_func_set(cancel_but, wm_operator_block_cancel, op, block);
+  UI_but_drawflag_disable(confirm_but, UI_BUT_TEXT_LEFT);
+  UI_but_drawflag_disable(cancel_but, UI_BUT_TEXT_LEFT);
+
+  if (confirm.red_alert) {
+    UI_but_flag_enable(confirm_but, UI_BUT_REDALERT);
+  }
+  else {
+    if (confirm.cancel_default) {
+      UI_but_flag_enable(cancel_but, UI_BUT_ACTIVE_DEFAULT);
+    }
+    else if (confirm.confirm_default) {
+      UI_but_flag_enable(confirm_but, UI_BUT_ACTIVE_DEFAULT);
+    }
+  }
+
+  if (confirm.position == WM_WARNING_POSITION_MOUSE) {
+    int bounds_offset[2];
+    bounds_offset[0] = uiLayoutGetWidth(layout) * (windows_layout ? -0.33f : -0.66f);
+    bounds_offset[1] = UI_UNIT_Y * (confirm.message[0] ? 3.1 : 2.5);
+    UI_block_bounds_set_popup(block, padding, bounds_offset);
+  }
+  else if (confirm.position == WM_WARNING_POSITION_CENTER) {
+    UI_block_bounds_set_centered(block, padding);
+  }
+
+  return block;
+}
+
 int WM_operator_confirm_message_ex(bContext *C,
                                    wmOperator *op,
                                    const char *title,
@@ -1204,6 +1422,11 @@ int WM_operator_confirm_message_ex(bContext *C,
 
 int WM_operator_confirm_message(bContext *C, wmOperator *op, const char *message)
 {
+  if (op->type->confirm) {
+    UI_popup_block_invoke(C, wm_block_confirm_create, op, nullptr);
+    return OPERATOR_RUNNING_MODAL;
+  }
+
   return WM_operator_confirm_message_ex(
       C, op, IFACE_("OK?"), ICON_QUESTION, message, WM_OP_EXEC_REGION_WIN);
 }
@@ -1470,8 +1693,8 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   UI_block_flag_disable(block, UI_BLOCK_LOOP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_REGULAR);
 
-  /* intentionally don't use 'UI_BLOCK_MOVEMOUSE_QUIT', some dialogues have many items
-   * where quitting by accident is very annoying */
+  /* Intentionally don't use #UI_BLOCK_MOVEMOUSE_QUIT, some dialogs have many items
+   * where quitting by accident is very annoying. */
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NUMSELECT);
 
   uiLayout *layout = UI_block_layout(
@@ -1868,6 +2091,9 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
       STRNCPY(g_search_text, buffer);
       MEM_SAFE_FREE(buffer);
     }
+  }
+  else {
+    g_search_text[0] = '\0';
   }
 
   data.search_type = search_type;
@@ -2350,14 +2576,10 @@ static void radial_control_set_initial_mouse(bContext *C, RadialControl *rc, con
     d[0] *= zoom[0];
     d[1] *= zoom[1];
   }
-  /* Grease pencil draw tool needs to rescale the cursor size. If we don't do that
-   * the size of the radial is not equals to the actual stroke size. */
+  rc->scale_fac = 1.0f;
   if (rc->ptr.owner_id && GS(rc->ptr.owner_id->name) == ID_BR && rc->prop == &rna_Brush_size) {
-    rc->scale_fac = ED_gpencil_radial_control_scale(
-        C, (Brush *)rc->ptr.owner_id, rc->initial_value, event->mval);
-  }
-  else {
-    rc->scale_fac = 1.0f;
+    Brush *brush = reinterpret_cast<Brush *>(rc->ptr.owner_id);
+    rc->scale_fac = ED_gpencil_radial_control_scale(C, brush, rc->initial_value, event->mval);
   }
 
   rc->initial_mouse[0] -= d[0];
@@ -2381,8 +2603,7 @@ static void radial_control_set_tex(RadialControl *rc)
                                             ibuf->y,
                                             1,
                                             GPU_R8,
-                                            GPU_TEXTURE_USAGE_SHADER_READ |
-                                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                            GPU_TEXTURE_USAGE_SHADER_READ,
                                             ibuf->float_buffer.data);
 
         GPU_texture_filter_mode(rc->texture, true);
@@ -3886,6 +4107,7 @@ void wm_operatortypes_register()
   WM_operatortype_append(WM_OT_recover_auto_save);
   WM_operatortype_append(WM_OT_save_as_mainfile);
   WM_operatortype_append(WM_OT_save_mainfile);
+  WM_operatortype_append(WM_OT_clear_recent_files);
   WM_operatortype_append(WM_OT_redraw_timer);
   WM_operatortype_append(WM_OT_memory_statistics);
   WM_operatortype_append(WM_OT_debug_menu);
@@ -4101,7 +4323,7 @@ static void gesture_zoom_border_modal_keymap(wmKeyConfig *keyconf)
 
 void wm_window_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Window", 0, 0);
+  WM_keymap_ensure(keyconf, "Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   wm_gizmos_keymap(keyconf);
   gesture_circle_modal_keymap(keyconf);

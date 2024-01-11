@@ -15,19 +15,21 @@
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
+
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "DEG_depsgraph_query.h"
+
+#include "DEG_depsgraph_query.hh"
+
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_task.h"
@@ -757,7 +759,8 @@ static bool lineart_shadow_cast_onto_triangle(LineartData *ld,
      * the edge
      */
     if (!(pi && LRT_DOUBLE_CLOSE_ENOUGH(ratio[0], 1.0f) &&
-          LRT_DOUBLE_CLOSE_ENOUGH(ratio[1], 0.0f))) {
+          LRT_DOUBLE_CLOSE_ENOUGH(ratio[1], 0.0f)))
+    {
       trie[pi] = 1;
       pi++;
     }

@@ -6,16 +6,16 @@
  * \ingroup depsgraph
  */
 
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node_operation.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
 
-#include "intern/depsgraph.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_factory.h"
-#include "intern/node/deg_node_id.h"
+#include "intern/depsgraph.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_factory.hh"
+#include "intern/node/deg_node_id.hh"
 
 namespace blender::deg {
 
@@ -246,6 +246,7 @@ void OperationNode::tag_update(Depsgraph *graph, eUpdateSource source)
     case DEG_UPDATE_SOURCE_TIME:
     case DEG_UPDATE_SOURCE_RELATIONS:
     case DEG_UPDATE_SOURCE_VISIBILITY:
+    case DEG_UPDATE_SOURCE_SIDE_EFFECT_REQUEST:
       /* Currently nothing. */
       break;
     case DEG_UPDATE_SOURCE_USER_EDIT:

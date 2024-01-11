@@ -27,6 +27,7 @@
 #include "DNA_texture_types.h"
 
 #include "BLI_alloca.h"
+#include "BLI_fileops.h"
 #include "BLI_fnmatch.h"
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
@@ -34,8 +35,7 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
@@ -44,12 +44,12 @@
 
 #include "BKE_action.h"
 #include "BKE_blender_version.h"
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 #include "BKE_cachefile.h"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
@@ -59,19 +59,21 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.hh"
 #include "BKE_linestyle.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_packedFile.h"
 #include "BKE_particle.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "BLO_readfile.h"
+
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_fileselect.hh"
 #include "ED_info.hh"
@@ -79,6 +81,11 @@
 #include "ED_render.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
+
+#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
+#include "IMB_metadata.h"
+#include "IMB_thumbs.h"
 
 #include "RE_engine.h"
 
@@ -90,6 +97,7 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 #include "interface_intern.hh"
 
@@ -423,7 +431,7 @@ static void id_search_cb(const bContext *C,
   ListBase *lb = template_ui->idlb;
   const int flag = RNA_property_flag(template_ui->prop);
 
-  blender::string_search::StringSearch<ID> search;
+  blender::ui::string_search::StringSearch<ID> search;
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
@@ -453,7 +461,8 @@ static void id_search_cb_tagged(const bContext *C,
   ListBase *lb = template_ui->idlb;
   const int flag = RNA_property_flag(template_ui->prop);
 
-  blender::string_search::StringSearch<ID> search;
+  blender::string_search::StringSearch<ID> search{nullptr,
+                                                  blender::string_search::MainWordsHeuristic::All};
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
@@ -1017,7 +1026,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
           template_id_liboverride_hierarchy_make(C, bmain, template_ui, &idptr, &undo_push_label);
         }
         else {
-          BKE_lib_override_library_make_local(id);
+          BKE_lib_override_library_make_local(bmain, id);
           /* Reassign to get proper updates/notifiers. */
           idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
           RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, nullptr);
@@ -1107,7 +1116,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
       case ID_GD_LEGACY:
-        return N_("Browse Grease Pencil (legacy) Data to be linked");
+        return N_("Browse Grease Pencil Data to be linked");
       case ID_MC:
         return N_("Browse Movie Clip to be linked");
       case ID_MSK:
@@ -1129,7 +1138,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
       case ID_VO:
         return N_("Browse Volume Data to be linked");
       case ID_GP:
-        return N_("Browse Grease Pencil Data to be linked");
+        return N_("Browse Grease Pencil v3 Data to be linked");
 
       /* Use generic text. */
       case ID_LI:
@@ -1470,7 +1479,7 @@ static void template_ID(const bContext *C,
         uiDefIconButO(block,
                       /* Using `_N` version allows us to get the 'active' state by default. */
                       UI_BTYPE_ICON_TOGGLE_N,
-                      "ASSET_OT_clear",
+                      "ASSET_OT_clear_single",
                       WM_OP_INVOKE_DEFAULT,
                       /* 'active' state of a toggle button uses icon + 1, so to get proper asset
                        * icon we need to pass its value - 1 here. */
@@ -2771,7 +2780,8 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
         (layout_flags & UI_TEMPLATE_OP_PROPS_COMPACT));
 
     if ((return_info & UI_PROP_BUTS_NONE_ADDED) &&
-        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY)) {
+        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY))
+    {
       uiItemL(layout, IFACE_("No Properties"), ICON_NONE);
     }
   }
@@ -2876,19 +2886,25 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
 
     PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
 
+    bool all_booleans = true;
     RNA_STRUCT_BEGIN (&ptr, prop) {
       if (RNA_property_flag(prop) & PROP_HIDDEN) {
         continue;
       }
       if (op->type->poll_property &&
-          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data)) {
+          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data))
+      {
         continue;
       }
       if (RNA_property_type(prop) != PROP_BOOLEAN) {
-        return false;
+        all_booleans = false;
+        break;
       }
     }
     RNA_STRUCT_END;
+    if (all_booleans == false) {
+      return false;
+    }
   }
 
   return true;
@@ -3474,7 +3490,7 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_ARROW_LEFTRIGHT,
                      IFACE_("Flip Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -3517,12 +3533,16 @@ static uiBlock *colorband_tools_func(bContext *C, ARegion *region, void *coba_v)
                      CB_FUNC_DISTRIBUTE_EVENLY,
                      "");
 
+    uiItemS(layout);
+
     uiItemO(layout, IFACE_("Eyedropper"), ICON_EYEDROPPER, "UI_OT_eyedropper_colorramp");
+
+    uiItemS(layout);
 
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
-                     ICON_BLANK1,
+                     ICON_LOOP_BACK,
                      IFACE_("Reset Color Ramp"),
                      0,
                      yco -= UI_UNIT_Y,
@@ -3703,7 +3723,7 @@ static void colorband_buttons_layout(uiLayout *layout,
                      UI_UNIT_Y,
                      &coba->cur,
                      0.0,
-                     float(MAX2(0, coba->tot - 1)),
+                     float(std::max(0, coba->tot - 1)),
                      0,
                      0,
                      TIP_("Choose active color stop"));
@@ -3730,7 +3750,7 @@ static void colorband_buttons_layout(uiLayout *layout,
                      UI_UNIT_Y,
                      &coba->cur,
                      0.0,
-                     float(MAX2(0, coba->tot - 1)),
+                     float(std::max(0, coba->tot - 1)),
                      0,
                      0,
                      TIP_("Choose active color stop"));
@@ -4575,7 +4595,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   CurveMap *cm = &cumap->cm[cumap->cur];
   uiBut *bt;
   const float dx = UI_UNIT_X;
-  int bg = -1;
+  eButGradientType bg = UI_GRAD_NONE;
 
   uiBlock *block = uiLayoutGetBlock(layout);
 
@@ -4762,7 +4782,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   row = uiLayoutRow(layout, false);
   uiButCurveMapping *curve_but = (uiButCurveMapping *)uiDefBut(
       block, UI_BTYPE_CURVE, 0, "", 0, 0, size, 8.0f * UI_UNIT_X, cumap, 0.0f, 1.0f, -1, 0, "");
-  curve_but->gradient_type = eButGradientType(bg);
+  curve_but->gradient_type = bg;
 
   /* Sliders for selected curve point. */
   int i;
@@ -4809,7 +4829,8 @@ static void curvemap_buttons_layout(uiLayout *layout,
                       TIP_("Auto Handle"));
     UI_but_func_set(bt, curvemap_tools_handle_auto, cumap, nullptr);
     if (((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
-        ((cmp->flag & CUMA_HANDLE_VECTOR) == false)) {
+        ((cmp->flag & CUMA_HANDLE_VECTOR) == false))
+    {
       bt->flag |= UI_SELECT_DRAW;
     }
 
@@ -5291,8 +5312,15 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
    * after a preset is selected would be more complicated. */
   uiLayout *row = uiLayoutRow(layout, true);
-  bt = uiDefBlockBut(
-      block, CurveProfile_buttons_presets, profile, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
+  bt = uiDefBlockBut(block,
+                     CurveProfile_buttons_presets,
+                     profile,
+                     IFACE_("Preset"),
+                     0,
+                     0,
+                     UI_UNIT_X,
+                     UI_UNIT_X,
+                     "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
   /* Show a "re-apply" preset button when it has been changed from the preset. */
@@ -5303,7 +5331,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                             UI_BTYPE_BUT,
                             0,
                             ICON_NONE,
-                            "Apply Preset",
+                            IFACE_("Apply Preset"),
                             0,
                             0,
                             UI_UNIT_X,
@@ -5830,7 +5858,7 @@ void uiTemplatePalette(uiLayout *layout, PointerRNA *ptr, const char *propname, 
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
   uiBut *but = nullptr;
 
-  const int cols_per_row = MAX2(uiLayoutGetWidth(layout) / UI_UNIT_X, 1);
+  const int cols_per_row = std::max(uiLayoutGetWidth(layout) / UI_UNIT_X, 1);
 
   if (!prop) {
     RNA_warning("property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
@@ -7165,10 +7193,97 @@ void uiTemplateCacheFile(uiLayout *layout,
 /* -------------------------------------------------------------------- */
 /** \name Recent Files Template
  * \{ */
+static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *tip, void *argN)
+{
+  char *path = (char *)argN;
+
+  /* File path. */
+  char root[FILE_MAX];
+  BLI_path_split_dir_part(path, root, FILE_MAX);
+  UI_tooltip_text_field_add(tip, BLI_strdup(root), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
+  UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+
+  /* Blender version. */
+  char version_st[128] = {0};
+  /* Load the thumbnail from cache if existing, but don't create if not. */
+  ImBuf *thumb = IMB_thumb_read(path, THB_LARGE);
+  if (thumb) {
+    /* Look for version in existing thumbnail if available. */
+    IMB_metadata_get_field(
+        thumb->metadata, "Thumb::Blender::Version", version_st, sizeof(version_st));
+  }
+
+  eFileAttributes attributes = BLI_file_attributes(path);
+  if (!version_st[0] && !(attributes & FILE_ATTR_OFFLINE)) {
+    /* Load Blender version directly from the file. */
+    short version = BLO_version_from_file(path);
+    if (version != 0) {
+      SNPRINTF(version_st, "%d.%01d", version / 100, version % 100);
+    }
+  }
+
+  if (version_st[0]) {
+    UI_tooltip_text_field_add(tip,
+                              BLI_sprintfN("Blender %s", version_st),
+                              nullptr,
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+  }
+
+  BLI_stat_t status;
+  if (BLI_stat(path, &status) != -1) {
+    char date_st[FILELIST_DIRENTRY_DATE_LEN], time_st[FILELIST_DIRENTRY_TIME_LEN];
+    bool is_today, is_yesterday;
+    std::string day_string = ("");
+    BLI_filelist_entry_datetime_to_string(
+        nullptr, int64_t(status.st_mtime), false, time_st, date_st, &is_today, &is_yesterday);
+    if (is_today || is_yesterday) {
+      day_string = (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
+    }
+    UI_tooltip_text_field_add(tip,
+                              BLI_sprintfN("%s: %s%s%s",
+                                           N_("Modified"),
+                                           day_string.c_str(),
+                                           (is_today || is_yesterday) ? "" : date_st,
+                                           (is_today || is_yesterday) ? time_st : ""),
+                              nullptr,
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
+
+    if (status.st_size > 0) {
+      char size[16];
+      BLI_filelist_entry_size_to_string(nullptr, status.st_size, false, size);
+      UI_tooltip_text_field_add(tip,
+                                BLI_sprintfN("%s: %s", N_("Size"), size),
+                                nullptr,
+                                UI_TIP_STYLE_NORMAL,
+                                UI_TIP_LC_NORMAL);
+    }
+  }
+
+  if (!thumb) {
+    /* try to load from the blend file itself. */
+    BlendThumbnail *data = BLO_thumbnail_from_file(path);
+    thumb = BKE_main_thumbnail_to_imbuf(nullptr, data);
+    if (data) {
+      MEM_freeN(data);
+    }
+  }
+
+  if (thumb) {
+    float scale = (72.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
+    short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
+    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_image_field_add(tip, thumb, size);
+    IMB_freeImBuf(thumb);
+  }
+}
 
 int uiTemplateRecentFiles(uiLayout *layout, int rows)
 {
-  int i;
+  int i = 0;
   LISTBASE_FOREACH_INDEX (RecentFile *, recent, &G.recent_files, i) {
     if (i >= rows) {
       break;
@@ -7186,6 +7301,11 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
                 &ptr);
     RNA_string_set(&ptr, "filepath", recent->filepath);
     RNA_boolean_set(&ptr, "display_file_selector", false);
+
+    uiBlock *block = uiLayoutGetBlock(layout);
+    uiBut *but = ui_but_last(block);
+    UI_but_func_tooltip_custom_set(
+        but, uiTemplateRecentFiles_tooltip_func, BLI_strdup(recent->filepath), MEM_freeN);
   }
 
   return i;

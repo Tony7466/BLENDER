@@ -40,20 +40,20 @@
 #include "BKE_action.h"
 #include "BKE_brush.hh"
 #include "BKE_collection.h"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_tracking.h"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -76,8 +76,8 @@
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -721,7 +721,8 @@ void gpencil_point_to_xy_fl(const GP_SpaceConversion *gsc,
 
   if (gps->flag & GP_STROKE_3DSPACE) {
     if (ED_view3d_project_float_global(region, &pt->x, xyval, V3D_PROJ_TEST_NOP) ==
-        V3D_PROJ_RET_OK) {
+        V3D_PROJ_RET_OK)
+    {
       *r_x = xyval[0];
       *r_y = xyval[1];
     }
@@ -877,7 +878,8 @@ void gpencil_stroke_convertcoords_tpoint(Scene *scene,
                                            rvec);
 
     if (ED_view3d_project_float_global(region, rvec, mval_prj, V3D_PROJ_TEST_NOP) ==
-        V3D_PROJ_RET_OK) {
+        V3D_PROJ_RET_OK)
+    {
       float dvec[3];
       float xy_delta[2];
       sub_v2_v2v2(xy_delta, mval_prj, point2D->m_xy);
@@ -1774,7 +1776,7 @@ float ED_gpencil_cursor_radius(bContext *C, int x, int y)
     float brush_size = float(brush->size);
     bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
     if (gpl != nullptr) {
-      brush_size = MAX2(1.0f, brush_size + gpl->line_change);
+      brush_size = std::max(1.0f, brush_size + gpl->line_change);
     }
 
     /* Convert the 3D offset distance to a brush radius. */
@@ -2691,7 +2693,12 @@ void ED_gpencil_select_curve_toggle_all(bContext *C, int action)
             break;
           case SEL_INVERT:
             gpc_pt->flag ^= GP_CURVE_POINT_SELECT;
-            BEZT_SEL_INVERT(bezt);
+            if (gpc_pt->flag & GP_CURVE_POINT_SELECT) {
+              BEZT_SEL_ALL(bezt);
+            }
+            else {
+              BEZT_DESEL_ALL(bezt);
+            }
             break;
           default:
             break;

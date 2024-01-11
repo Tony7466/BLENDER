@@ -25,12 +25,12 @@
 
 #include "BKE_action.h"
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 #include "DNA_meshdata_types.h"
@@ -48,8 +48,8 @@
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -401,7 +401,8 @@ static bool do_weight_paint_normalize(MDeformVert *dvert,
     for (int i = dvert->totweight; i != 0; i--, dw++) {
       if (dw->def_nr < defbase_tot && vgroup_bone_deformed[dw->def_nr]) {
         if ((vgroup_locked[dw->def_nr] == false) &&
-            !(lock_active_vgroup && active_vgroup == dw->def_nr)) {
+            !(lock_active_vgroup && active_vgroup == dw->def_nr))
+        {
           dw->weight = 0.0f;
         }
       }
@@ -417,7 +418,8 @@ static bool do_weight_paint_normalize(MDeformVert *dvert,
       if (dw->def_nr < defbase_tot && vgroup_bone_deformed[dw->def_nr] && dw->weight > FLT_EPSILON)
       {
         if ((vgroup_locked[dw->def_nr] == false) &&
-            !(lock_active_vgroup && active_vgroup == dw->def_nr)) {
+            !(lock_active_vgroup && active_vgroup == dw->def_nr))
+        {
           dw->weight *= fac;
           CLAMP(dw->weight, 0.0f, 1.0f);
         }
@@ -433,7 +435,8 @@ static bool do_weight_paint_normalize(MDeformVert *dvert,
       if (dw->def_nr < defbase_tot && vgroup_bone_deformed[dw->def_nr] && dw->weight > FLT_EPSILON)
       {
         if ((vgroup_locked[dw->def_nr] == false) &&
-            !(lock_active_vgroup && active_vgroup == dw->def_nr)) {
+            !(lock_active_vgroup && active_vgroup == dw->def_nr))
+        {
           dw->weight = fac;
         }
       }

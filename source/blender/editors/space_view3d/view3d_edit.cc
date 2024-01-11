@@ -21,16 +21,16 @@
 #include "BLI_math_vector.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_camera.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -638,7 +638,8 @@ static int background_image_remove_exec(bContext *C, wmOperator *op)
 
   if (bgpic_rem) {
     if (ID_IS_OVERRIDE_LIBRARY(cam) &&
-        (bgpic_rem->flag & CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL) == 0) {
+        (bgpic_rem->flag & CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL) == 0)
+    {
       BKE_reportf(op->reports,
                   RPT_WARNING,
                   "Cannot remove background image %d from camera '%s', as it is from the linked "

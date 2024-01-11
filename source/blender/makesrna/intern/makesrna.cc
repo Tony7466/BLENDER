@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 
 #include "MEM_guardedalloc.h"
 
@@ -46,7 +47,7 @@ void BLI_system_backtrace(FILE *fp)
 {
   (void)fp;
 }
-#endif
+#endif /* !NDEBUG */
 
 /* Replace if different */
 #define TMP_EXT ".tmp"
@@ -645,6 +646,12 @@ static void rna_float_print(FILE *f, float num)
   }
   else if ((fabsf(num) < float(INT64_MAX)) && (int64_t(num) == num)) {
     fprintf(f, "%.1ff", num);
+  }
+  else if (num == std::numeric_limits<float>::infinity()) {
+    fprintf(f, "std::numeric_limits<float>::infinity()");
+  }
+  else if (num == -std::numeric_limits<float>::infinity()) {
+    fprintf(f, "-std::numeric_limits<float>::infinity()");
   }
   else {
     fprintf(f, "%.10ff", num);
@@ -1531,7 +1538,8 @@ static char *rna_def_property_length_func(
   else if (prop->type == PROP_COLLECTION) {
     if (!manualfunc) {
       if (prop->type == PROP_COLLECTION &&
-          (!(dp->dnalengthname || dp->dnalengthfixed) || !dp->dnaname)) {
+          (!(dp->dnalengthname || dp->dnalengthfixed) || !dp->dnaname))
+      {
         CLOG_ERROR(&LOG, "%s.%s has no valid dna info.", srna->identifier, prop->identifier);
         DefRNA.error = true;
         return nullptr;
@@ -1960,8 +1968,20 @@ static void rna_set_raw_property(PropertyDefRNA *dp, PropertyRNA *prop)
     prop->rawtype = PROP_RAW_CHAR;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
+  else if (STREQ(dp->dnatype, "int8_t")) {
+    prop->rawtype = PROP_RAW_INT8;
+    prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
+  }
+  else if (STREQ(dp->dnatype, "uchar")) {
+    prop->rawtype = PROP_RAW_UINT8;
+    prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
+  }
   else if (STREQ(dp->dnatype, "short")) {
     prop->rawtype = PROP_RAW_SHORT;
+    prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
+  }
+  else if (STREQ(dp->dnatype, "ushort")) {
+    prop->rawtype = PROP_RAW_UINT16;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "int")) {
@@ -1974,6 +1994,14 @@ static void rna_set_raw_property(PropertyDefRNA *dp, PropertyRNA *prop)
   }
   else if (STREQ(dp->dnatype, "double")) {
     prop->rawtype = PROP_RAW_DOUBLE;
+    prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
+  }
+  else if (STREQ(dp->dnatype, "int64_t")) {
+    prop->rawtype = PROP_RAW_INT64;
+    prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
+  }
+  else if (STREQ(dp->dnatype, "uint64_t")) {
+    prop->rawtype = PROP_RAW_UINT64;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
 }
@@ -2374,7 +2402,7 @@ static void rna_def_property_funcs_header(FILE *f, StructRNA *srna, PropertyDefR
     }
     case PROP_POINTER: {
       fprintf(f, "PointerRNA %sget(PointerRNA *ptr);\n", func);
-      /*fprintf(f, "void %sset(PointerRNA *ptr, PointerRNA value);\n", func); */
+      // fprintf(f, "void %sset(PointerRNA *ptr, PointerRNA value);\n", func);
       break;
     }
     case PROP_COLLECTION: {
@@ -3954,6 +3982,12 @@ static void rna_generate_static_function_prototypes(BlenderRNA * /*brna*/,
     dfunc = rna_find_function_def(func);
 
     if (dfunc->call) {
+      if (strstr(dfunc->call, "<")) {
+        /* Can't generate the declaration for templates. We'll still get compile errors when trying
+         * to call it with a wrong signature. */
+        continue;
+      }
+
       if (first) {
         fprintf(f, "/* Repeated prototypes to detect errors */\n\n");
         first = 0;
@@ -4216,8 +4250,9 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
        * we'll probably have to revisit. :/ */
       StructRNA *type = rna_find_struct((const char *)pprop->type);
       if (type && (type->flag & STRUCT_ID) &&
-          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED)) {
-        prop->flag |= PROP_PTR_NO_OWNERSHIP;
+          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED))
+      {
+        RNA_def_property_flag(prop, PROP_PTR_NO_OWNERSHIP);
       }
       break;
     }
@@ -4228,8 +4263,9 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
        * we'll probably have to revisit. :/ */
       StructRNA *type = rna_find_struct((const char *)cprop->item_type);
       if (type && (type->flag & STRUCT_ID) &&
-          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED)) {
-        prop->flag |= PROP_PTR_NO_OWNERSHIP;
+          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED))
+      {
+        RNA_def_property_flag(prop, PROP_PTR_NO_OWNERSHIP);
       }
       break;
     }
@@ -4732,7 +4768,9 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_dynamicpaint.cc", nullptr, RNA_def_dynamic_paint},
     {"rna_fcurve.cc", "rna_fcurve_api.cc", RNA_def_fcurve},
     {"rna_gpencil_legacy.cc", nullptr, RNA_def_gpencil},
+#ifdef WITH_GREASE_PENCIL_V3
     {"rna_grease_pencil.cc", nullptr, RNA_def_grease_pencil},
+#endif
     {"rna_curves.cc", nullptr, RNA_def_curves},
     {"rna_image.cc", "rna_image_api.cc", RNA_def_image},
     {"rna_key.cc", nullptr, RNA_def_key},
@@ -4806,6 +4844,7 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#include <float.h>\n");
   fprintf(f, "#include <stdio.h>\n");
   fprintf(f, "#include <limits.h>\n");
+  fprintf(f, "#include <limits>\n");
   fprintf(f, "#include <string.h>\n\n");
   fprintf(f, "#include <stddef.h>\n\n");
 
@@ -4818,9 +4857,9 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#include \"BLI_blenlib.h\"\n\n");
   fprintf(f, "#include \"BLI_utildefines.h\"\n\n");
 
-  fprintf(f, "#include \"BKE_context.h\"\n");
+  fprintf(f, "#include \"BKE_context.hh\"\n");
   fprintf(f, "#include \"BKE_lib_id.h\"\n");
-  fprintf(f, "#include \"BKE_main.h\"\n");
+  fprintf(f, "#include \"BKE_main.hh\"\n");
   fprintf(f, "#include \"BKE_report.h\"\n");
 
   fprintf(f, "#include \"RNA_define.hh\"\n");

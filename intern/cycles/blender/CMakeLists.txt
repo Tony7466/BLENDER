@@ -41,6 +41,7 @@ set(SRC
   viewport.cpp
   volume.cpp
 
+  attribute_convert.h
   CCL_api.h
   device.h
   display_driver.h
@@ -113,6 +114,9 @@ endif()
 
 if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+  list(APPEND INC
+    ../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )

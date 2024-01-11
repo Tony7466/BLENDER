@@ -38,11 +38,11 @@
 
 #include "IMB_imbuf.h"
 
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
 #include "BKE_anim_data.h"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_icons.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
@@ -60,7 +60,7 @@
 
 #include "RE_texture.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "BLO_read_write.hh"
 
@@ -201,7 +201,7 @@ IDTypeInfo IDType_ID_TE = {
     /*main_listbase_index*/ INDEX_ID_TE,
     /*struct_size*/ sizeof(Tex),
     /*name*/ "Texture",
-    /*name_plural*/ "textures",
+    /*name_plural*/ N_("textures"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_TEXTURE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

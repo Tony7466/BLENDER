@@ -20,8 +20,8 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_layer.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
 #include "BKE_outliner_treehash.hh"
 
 #include "ED_screen.hh"
@@ -334,7 +334,7 @@ TreeElement *AbstractTreeDisplay::add_element(ListBase *lb,
   else if (ELEM(type, TSE_POSE_BASE, TSE_POSE_CHANNEL)) {
     /* pass */
   }
-  else if (ELEM(type, TSE_POSEGRP, TSE_POSEGRP_BASE)) {
+  else if (ELEM(type, TSE_BONE_COLLECTION, TSE_BONE_COLLECTION_BASE)) {
     /* pass */
   }
   else if (ELEM(type, TSE_R_LAYER, TSE_R_LAYER_BASE)) {

@@ -8,12 +8,12 @@
  * Screen space reflections and refractions techniques.
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_dynstr.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_platform.h"
 #include "GPU_texture.h"
