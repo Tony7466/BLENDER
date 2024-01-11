@@ -21,7 +21,7 @@
 /* Define all keywords who can use
 */
 
-static const char *text_format_osl_literals_builtinfunc_data[] = {
+static const char *text_format_glsl_literals_builtinfunc_data[] = {
     /* clang-format off */
     "attribute"
     "bool"
@@ -125,12 +125,12 @@ static const char *text_format_osl_literals_builtinfunc_data[] = {
     /* clang-format on */
 };
 
-static const Span<const char *> textformat_glsl_literals_builtinfunc(
+static const Span<const char *> text_format_glsl_literals_builtinfunc(
     textformat_glsl_literals_builtinfunc_data,
-    ARRAY_SIZE(textformat_glsl_literals_builtinfunc_data));
+    ARRAY_SIZE(text_format_glsl_literals_builtinfunc_data));
 
-static const char * text_format_glsl_literals_reserved_data[] 
-{
+static const char *text_format_glsl_literals_reserved_data[] = {
+    /* Force single column, sorted list. */
     /* clang-format off */
     "abs"
     "acos"
@@ -322,8 +322,8 @@ static const Span<const char * > text_format_glsl_literals_reserved(
     text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
 
 /* GLSL shader types */
-static const char *text_format_glsl_literals_specialvar_data[] 
-{
+static const char *text_format_glsl_literals_specialvar_data[] = {
+
     /* Force single column , sorted list */
     /* clang-format off */
     "displacement",
@@ -342,7 +342,7 @@ static const Span<const char*> text_format_glsl_literals_specialvar(
 
 static int txtfmt_glsl_find_builtinfunc(const char *string)
 {
-    const int i = text_format_string_literal_find(textformat_glsl_literals_builtinfunc, string);
+    const int i = text_format_string_literal_find(text_format_glsl_literals_builtinfunc, string);
 
     if (i == 0 || text_check_identifier(string[i])){
         return -1;
@@ -578,7 +578,7 @@ void ED_text_format_register_glsl()
   tft.comment_line = "/**/"
   ED_text_format_register(&tft);
 
-  BLI_assert(text_format_string_literals_check_sorted_array(textformat_glsl_literals_builtinfunc_data));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_builtinfunc_data));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
 }
