@@ -125,8 +125,9 @@ static IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
                                          const bool layer_pass_filter_invert,
                                          IndexMaskMemory &memory)
 {
+  const IndexMask full_mask = grease_pencil.layers().index_range();
   if (!layer_name_filter && !layer_pass_filter) {
-    return {};
+    return full_mask;
   }
 
   bke::AttributeAccessor layer_attributes = grease_pencil.attributes();
@@ -135,7 +136,7 @@ static IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
       layer_attributes.lookup_or_default<int>("pass", bke::AttrDomain::Layer, 0).varray;
 
   IndexMask result = IndexMask::from_predicate(
-      grease_pencil.layers().index_range(), GrainSize(4096), memory, [&](const int64_t layer_i) {
+      full_mask, GrainSize(4096), memory, [&](const int64_t layer_i) {
         if (layer_name_filter) {
           const Layer &layer = *layers[layer_i];
           const bool match = (layer.name() == layer_name_filter.value());
@@ -178,8 +179,9 @@ static IndexMask get_filtered_stroke_mask(const Object *ob,
                                           const bool material_pass_filter_invert,
                                           IndexMaskMemory &memory)
 {
+  const IndexMask full_mask = curves.curves_range();
   if (!material_filter && !material_pass_filter) {
-    return {};
+    return full_mask;
   }
 
   const int material_filter_index = BKE_grease_pencil_object_material_index_get(
@@ -191,7 +193,7 @@ static IndexMask get_filtered_stroke_mask(const Object *ob,
       attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
 
   IndexMask result = IndexMask::from_predicate(
-      curves.curves_range(), GrainSize(4096), memory, [&](const int64_t stroke_i) {
+      full_mask, GrainSize(4096), memory, [&](const int64_t stroke_i) {
         const int material_index = stroke_materials.get(stroke_i);
         if (material_filter != nullptr) {
           const bool match = (material_index == material_filter_index);
