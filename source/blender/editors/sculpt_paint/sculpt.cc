@@ -5302,7 +5302,7 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
        * sculpt mode has special requirements and is expected to have sole ownership of the mesh it
        * modifies, it's generally okay. */
       if (use_pbvh_draw) {
-        /* When drawing from PBVH is used vertex and face normals are updated later in
+        /* When drawing from PBVH is used, vertex and face normals are updated later in
          * #bke::pbvh::update_normals. However, we update the mesh's bounds eagerly here since they
          * are trivial to access from the PBVH. Updating the object's evaluated geometry bounding
          * box is necessary because sculpt strokes don't cause an object reevaluation. */
