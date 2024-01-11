@@ -32,7 +32,7 @@
 
 #include "mesh_extractors/extract_mesh.hh"
 
-#define DEBUG_TIME
+// #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
 #  include "PIL_time_utildefines.h"
@@ -549,10 +549,11 @@ static TaskNode *mesh_extract_render_data_node_create(TaskGraph *task_graph,
   MeshRenderDataUpdateTaskData *task_data = new MeshRenderDataUpdateTaskData(
       mr, cache, iter_type, data_flag);
 
-  TaskNode *task_node = BLI_task_graph_node_create(task_graph,
-                                                   mesh_extract_render_data_node_exec,
-                                                   task_data,
-                                                   mesh_render_data_update_task_data_free);
+  TaskNode *task_node = BLI_task_graph_node_create(
+      task_graph,
+      mesh_extract_render_data_node_exec,
+      task_data,
+      (TaskGraphNodeFreeFunction)mesh_render_data_update_task_data_free);
   return task_node;
 }
 
