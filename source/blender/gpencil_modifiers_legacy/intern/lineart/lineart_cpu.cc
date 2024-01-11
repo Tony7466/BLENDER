@@ -9,11 +9,16 @@
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
+#include "BLI_array.hh"
+#include "BLI_vector.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector_types.hh"
+#include "BLI_math_base.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_sort.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -32,6 +37,7 @@
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -40,6 +46,7 @@
 #include "BKE_object.hh"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
+#include "BKE_curves.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -51,13 +58,16 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_modifier_types.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "RE_pipeline.h"
 #include "intern/render_types.h"
 
-#include "lineart_intern.h"
+#include "ED_grease_pencil.hh"
+
+#include "lineart_intern.hh"
 
 #include <algorithm> /* For `min/max`. */
 
@@ -3542,7 +3552,15 @@ static void lineart_destroy_render_data(LineartData *ld)
   lineart_mem_destroy(&ld->render_data_pool);
 }
 
-void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd)
+void MOD_lineart_wrap_modifier_v3(LineartGpencilModifierData* lmd_legacy, GreasePencilLineartModifierData* lmd){
+  memcpy(((char*)&lmd)+sizeof(ModifierData),lmd_legacy+sizeof(GpencilModifierData),sizeof(GreasePencilLineartModifierData)-sizeof(ModifierData));
+}
+
+void MOD_lineart_unwrap_modifier_v3(LineartGpencilModifierData* lmd_legacy, GreasePencilLineartModifierData* lmd){
+  memcpy(((char*)&lmd_legacy)+sizeof(GpencilModifierData),lmd+sizeof(ModifierData),sizeof(GreasePencilLineartModifierData)-sizeof(ModifierData));
+}
+
+void MOD_lineart_destroy_render_data_v3(GreasePencilLineartModifierData *lmd)
 {
   LineartData *ld = lmd->la_data_ptr;
 
@@ -3556,6 +3574,14 @@ void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd)
   if (G.debug_value == 4000) {
     printf("LRT: Destroyed render data.\n");
   }
+}
+
+void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd_legacy)
+{
+  GreasePencilLineartModifierData lmd;
+  MOD_lineart_wrap_modifier_v3(lmd_legacy, &lmd);
+  MOD_lineart_destroy_render_data_v3(&lmd);
+  MOD_lineart_unwrap_modifier_v3(lmd_legacy, &lmd);
 }
 
 static LineartCache *lineart_init_cache()
@@ -3575,8 +3601,8 @@ void MOD_lineart_clear_cache(LineartCache **lc)
   (*lc) = nullptr;
 }
 
-static LineartData *lineart_create_render_buffer(Scene *scene,
-                                                 LineartGpencilModifierData *lmd,
+static LineartData *lineart_create_render_buffer_v3(Scene *scene,
+                                                 GreasePencilLineartModifierData *lmd,
                                                  Object *camera,
                                                  Object *active_camera,
                                                  LineartCache *lc)
@@ -3714,6 +3740,19 @@ static LineartData *lineart_create_render_buffer(Scene *scene,
 
   ld->thread_count = BKE_render_num_threads(&scene->r);
 
+  return ld;
+}
+
+static LineartData *lineart_create_render_buffer(Scene *scene,
+                                                 LineartGpencilModifierData *lmd_legacy,
+                                                 Object *camera,
+                                                 Object *active_camera,
+                                                 LineartCache *lc){
+  LineartData* ld=0;
+  GreasePencilLineartModifierData lmd;
+  MOD_lineart_wrap_modifier_v3(lmd_legacy, &lmd);
+  ld=lineart_create_render_buffer_v3(scene,&lmd,camera,active_camera,lc);
+  MOD_lineart_unwrap_modifier_v3(lmd_legacy, &lmd);
   return ld;
 }
 
@@ -4994,8 +5033,8 @@ LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *self,
   return nullptr;
 }
 
-bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
-                                       LineartGpencilModifierData *lmd,
+bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
+                                       GreasePencilLineartModifierData *lmd,
                                        LineartCache **cached_result,
                                        bool enable_stroke_depth_offset)
 {
@@ -5036,7 +5075,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   LineartCache *lc = lineart_init_cache();
   *cached_result = lc;
 
-  ld = lineart_create_render_buffer(
+  ld = lineart_create_render_buffer_v3(
       scene, lmd, lineart_camera, use_render_camera_override ? lineart_camera : scene->camera, lc);
 
   /* Triangle thread testing data size varies depending on the thread count.
@@ -5046,15 +5085,15 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   LineartData *shadow_rb = nullptr;
   LineartElementLinkNode *shadow_veln, *shadow_eeln;
   ListBase *shadow_elns = ld->conf.shadow_selection ? &lc->shadow_elns : nullptr;
-  bool shadow_generated = lineart_main_try_generate_shadow(depsgraph,
-                                                           scene,
-                                                           ld,
-                                                           lmd,
-                                                           &lc->shadow_data_pool,
-                                                           &shadow_veln,
-                                                           &shadow_eeln,
-                                                           shadow_elns,
-                                                           &shadow_rb);
+  bool shadow_generated = lineart_main_try_generate_shadow_v3(depsgraph,
+                                                              scene,
+                                                              ld,
+                                                              lmd,
+                                                              &lc->shadow_data_pool,
+                                                              &shadow_veln,
+                                                              &shadow_eeln,
+                                                              shadow_elns,
+                                                              &shadow_rb);
 
   /* Get view vector before loading geometries, because we detect feature lines there. */
   lineart_main_get_view_vector(ld);
@@ -5185,6 +5224,18 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   }
 
   return true;
+}
+
+bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
+                                       LineartGpencilModifierData *lmd_legacy,
+                                       LineartCache **cached_result,
+                                       bool enable_stroke_depth_offset){
+  bool ret=false;
+  GreasePencilLineartModifierData lmd;
+  MOD_lineart_wrap_modifier_v3(lmd_legacy, &lmd);
+  ret = MOD_lineart_compute_feature_lines_v3(depsgraph,&lmd,cached_result,enable_stroke_depth_offset);
+  MOD_lineart_unwrap_modifier_v3(lmd_legacy, &lmd);
+  return ret;
 }
 
 static void lineart_gpencil_generate(LineartCache *cache,
@@ -5418,6 +5469,225 @@ static void lineart_gpencil_generate(LineartCache *cache,
   }
 }
 
+typedef struct LineartChainWriteInfo{
+  LineartEdgeChain* chain;
+  int point_count;
+}LineartChainWriteInfo;
+
+static void lineart_gpencil_generate_v3(LineartCache *cache,
+                                        Depsgraph *depsgraph,
+                                        Object *gpencil_object,
+                                        float (*gp_obmat_inverse)[4],
+                                        blender::bke::greasepencil::Drawing &drawing,
+                                        int level_start,
+                                        int level_end,
+                                        int material_nr,
+                                        Object *source_object,
+                                        Collection *source_collection,
+                                        int types,
+                                        uchar mask_switches,
+                                        uchar material_mask_bits,
+                                        uchar intersection_mask,
+                                        int16_t thickness,
+                                        float opacity,
+                                        uchar shaodow_selection,
+                                        uchar silhouette_mode,
+                                        const char *source_vgname,
+                                        const char *vgname,
+                                        int modifier_flags,
+                                        int modifier_calculation_flags)
+{
+  if (cache == nullptr) {
+    if (G.debug_value == 4000) {
+      printf("nullptr Lineart cache!\n");
+    }
+    return;
+  }
+
+  int stroke_count = 0;
+  int color_idx = 0;
+
+  Object *orig_ob = nullptr;
+  if (source_object) {
+    orig_ob = source_object->id.orig_id ? (Object *)source_object->id.orig_id : source_object;
+  }
+
+  Collection *orig_col = nullptr;
+  if (source_collection) {
+    orig_col = source_collection->id.orig_id ? (Collection *)source_collection->id.orig_id :
+                                               source_collection;
+  }
+
+  /* (!orig_col && !orig_ob) means the whole scene is selected. */
+
+  int enabled_types = cache->all_enabled_edge_types;
+  bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP;
+  bool match_output = modifier_calculation_flags & LRT_GPENCIL_MATCH_OUTPUT_VGROUP;
+  bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
+
+  blender::Vector<LineartChainWriteInfo> writer={};
+  writer.reserve(128);
+  int total_point_count=0;
+
+  LISTBASE_FOREACH (LineartEdgeChain *, ec, &cache->chains) {
+
+    if (ec->picked) {
+      continue;
+    }
+    if (!(ec->type & (types & enabled_types))) {
+      continue;
+    }
+    if (ec->level > level_end || ec->level < level_start) {
+      continue;
+    }
+    if (orig_ob && orig_ob != ec->object_ref) {
+      continue;
+    }
+    if (orig_col && ec->object_ref) {
+      if (BKE_collection_has_object_recursive_instanced(orig_col, (Object *)ec->object_ref)) {
+        if (modifier_flags & LRT_GPENCIL_INVERT_COLLECTION) {
+          continue;
+        }
+      }
+      else {
+        if (!(modifier_flags & LRT_GPENCIL_INVERT_COLLECTION)) {
+          continue;
+        }
+      }
+    }
+    if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_ENABLE) {
+      if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_MATCH) {
+        if (ec->material_mask_bits != material_mask_bits) {
+          continue;
+        }
+      }
+      else {
+        if (!(ec->material_mask_bits & material_mask_bits)) {
+          continue;
+        }
+      }
+    }
+    if (ec->type & LRT_EDGE_FLAG_INTERSECTION) {
+      if (mask_switches & LRT_GPENCIL_INTERSECTION_MATCH) {
+        if (ec->intersection_mask != intersection_mask) {
+          continue;
+        }
+      }
+      else {
+        if ((intersection_mask) && !(ec->intersection_mask & intersection_mask)) {
+          continue;
+        }
+      }
+    }
+    if (shaodow_selection) {
+      if (ec->shadow_mask_bits != LRT_SHADOW_MASK_UNDEFINED) {
+        /* TODO(@Yiming): Give a behavior option for how to display undefined shadow info. */
+        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED &&
+            !(ec->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED))
+        {
+          continue;
+        }
+        if (shaodow_selection == LRT_SHADOW_FILTER_SHADED &&
+            !(ec->shadow_mask_bits & LRT_SHADOW_MASK_SHADED))
+        {
+          continue;
+        }
+        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
+          uint32_t test_bits = ec->shadow_mask_bits & LRT_SHADOW_TEST_SHAPE_BITS;
+          if ((test_bits != LRT_SHADOW_MASK_ILLUMINATED) &&
+              (test_bits != (LRT_SHADOW_MASK_SHADED | LRT_SHADOW_MASK_ILLUMINATED_SHAPE)))
+          {
+            continue;
+          }
+        }
+      }
+    }
+    if (silhouette_mode && (ec->type & (LRT_EDGE_FLAG_CONTOUR))) {
+      bool is_silhouette = false;
+      if (orig_col) {
+        if (!ec->silhouette_backdrop) {
+          is_silhouette = true;
+        }
+        else if (!BKE_collection_has_object_recursive_instanced(orig_col, ec->silhouette_backdrop))
+        {
+          is_silhouette = true;
+        }
+      }
+      else {
+        if ((!orig_ob) && (!ec->silhouette_backdrop)) {
+          is_silhouette = true;
+        }
+      }
+
+      if ((silhouette_mode == LRT_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
+          ec->silhouette_backdrop != ec->object_ref)
+      {
+        is_silhouette = true;
+      }
+
+      if (inverse_silhouette) {
+        is_silhouette = !is_silhouette;
+      }
+      if (!is_silhouette) {
+        continue;
+      }
+    }
+
+    /* Preserved: If we ever do asynchronous generation, this picked flag should be set here. */
+    // ec->picked = 1;
+
+    const int count = MOD_lineart_chain_count(ec);
+    if (count < 2) {
+      continue;
+    }
+
+    total_point_count+=count;
+    writer.append({ ec, count });
+
+    stroke_count++;
+    
+    /* TODO: Debug random color feature not implemented for v3 yet. */
+  }
+
+  if(!total_point_count || !stroke_count){
+    return;
+  }
+  
+  blender::Array<blender::float3> positions(total_point_count);
+  blender::Array<float> radiis(total_point_count);
+  blender::Array<float> opacities(total_point_count);
+  blender::Array<int> materials(stroke_count);
+  blender::Array<int> curves(stroke_count+1);
+  int up_to_point=0;
+
+  for(int chain_i : writer.index_range()){
+    LineartChainWriteInfo &cwi=writer[chain_i];
+    int i;
+    LISTBASE_FOREACH_INDEX (LineartEdgeChainItem *, eci, &cwi.chain->chain, i) {
+      int point_i=i+up_to_point;
+      float *point = (float *)&positions[point_i];
+      //mul_v3_m4v3(point, gp_obmat_inverse, eci->gpos);
+      copy_v3_v3(point, eci->gpos);
+      radiis[point_i] = (float)thickness/1000.0f;
+      opacities[point_i] = opacity;
+    }
+    curves[chain_i] = up_to_point;
+    materials[chain_i] = max_ii(material_nr, 0);
+    up_to_point += cwi.point_count;
+    /* TODO: Vertex weight transfer not implemented for v3 yet. */
+  }
+  curves[writer.index_range().last()+1] = up_to_point;
+
+  blender::float4x4 mat(gp_obmat_inverse);
+  drawing.strokes_for_write() =
+    blender::ed::greasepencil::create_drawing_data(positions,radiis,opacities,curves,materials.as_span(),mat);
+  drawing.tag_topology_changed();
+
+  if (G.debug_value == 4000) {
+    printf("LRT: Generated %d strokes.\n", stroke_count);
+  }
+}
+
 void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   Depsgraph *depsgraph,
                                   Object *ob,
@@ -5470,6 +5740,75 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                            gp_obmat_inverse,
                            gpl,
                            gpf,
+                           level_start,
+                           level_end,
+                           mat_nr,
+                           source_object,
+                           source_collection,
+                           use_types,
+                           mask_switches,
+                           material_mask_bits,
+                           intersection_mask,
+                           thickness,
+                           opacity,
+                           shadow_selection,
+                           silhouette_mode,
+                           source_vgname,
+                           vgname,
+                           modifier_flags,
+                           modifier_calculation_flags);
+}
+
+void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
+                                  Depsgraph *depsgraph,
+                                  Object *ob,
+                                  struct GreasePencilDrawing &drawing,
+                                  int8_t source_type,
+                                  void *source_reference,
+                                  int level_start,
+                                  int level_end,
+                                  int mat_nr,
+                                  int16_t edge_types,
+                                  uchar mask_switches,
+                                  uchar material_mask_bits,
+                                  uchar intersection_mask,
+                                  int16_t thickness,
+                                  float opacity,
+                                  uchar shadow_selection,
+                                  uchar silhouette_mode,
+                                  const char *source_vgname,
+                                  const char *vgname,
+                                  int modifier_flags,
+                                  int modifier_calculation_flags)
+{
+
+  if (!ob) {
+    return;
+  }
+
+  Object *source_object = nullptr;
+  Collection *source_collection = nullptr;
+  int16_t use_types = edge_types;
+  if (source_type == LRT_SOURCE_OBJECT) {
+    if (!source_reference) {
+      return;
+    }
+    source_object = (Object *)source_reference;
+  }
+  else if (source_type == LRT_SOURCE_COLLECTION) {
+    if (!source_reference) {
+      return;
+    }
+    source_collection = (Collection *)source_reference;
+  }
+
+  float gp_obmat_inverse[4][4];
+  invert_m4_m4(gp_obmat_inverse, ob->object_to_world);
+  lineart_gpencil_generate_v3(cache,
+                           depsgraph,
+                           ob,
+                           gp_obmat_inverse,
+                           reinterpret_cast<blender::bke::greasepencil::Drawing&>(drawing),
                            level_start,
                            level_end,
                            mat_nr,

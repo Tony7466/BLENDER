@@ -47,6 +47,8 @@
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
+#include "MOD_lineart.h"
+#include "MOD_gpencil_legacy_lineart.h"
 
 #include "RNA_prototypes.h"
 #include "RNA_access.hh"
@@ -729,6 +731,104 @@ static void panel_register(ARegionType *region_type)
       region_type, "bake", "Bake", nullptr, bake_panel_draw, panel_type);
 }
 
+static void generate_strokes_actual(
+    ModifierData *md, Depsgraph *depsgraph, Object *ob, blender::bke::greasepencil::Drawing &drawing)
+{
+  GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
+
+  if (G.debug_value == 4000) {
+    printf("LRT: Generating from modifier.\n");
+  }
+
+  MOD_lineart_gpencil_generate_v3(
+      lmd->cache,
+      depsgraph,
+      ob,
+      drawing,
+      lmd->source_type,
+      lmd->source_type == LRT_SOURCE_OBJECT ? (void *)lmd->source_object :
+                                              (void *)lmd->source_collection,
+      lmd->level_start,
+      lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
+      lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
+      lmd->edge_types,
+      lmd->mask_switches,
+      lmd->material_mask_bits,
+      lmd->intersection_mask,
+      lmd->thickness,
+      lmd->opacity,
+      lmd->shadow_selection,
+      lmd->silhouette_selection,
+      lmd->source_vertex_group,
+      lmd->vgname,
+      lmd->flags,
+      lmd->calculation_flags);
+}
+
+static void generate_strokes(ModifierData *md, Depsgraph *depsgraph, Object *ob, GreasePencil* gpd)
+{
+  GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
+  if(!gpd){
+    return;
+  }
+
+  ///* Guard early, don't trigger calculation when no grease-pencil frame is present.
+  // * Probably should disable in the #isModifierDisabled() function
+  // * but we need additional argument for depsgraph and `gpd`. */
+  //bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
+  //if (gpl == nullptr) {
+  //  return;
+  //}
+  ///* Need to call this or we don't get active frame (user may haven't selected any one). */
+  //BKE_gpencil_frame_active_set(depsgraph, gpd);
+  //bGPDframe *gpf = gpl->actframe;
+  //if (gpf == nullptr) {
+  //  return;
+  //}
+
+  /* Check all parameters required are filled. */
+  //if (isModifierDisabled(md)) {
+  //  return;
+  //}
+
+  LineartCache *local_lc = gpd->runtime->lineart_cache;
+  if (!gpd->runtime->lineart_cache) {
+    MOD_lineart_compute_feature_lines_v3(
+        depsgraph, lmd, &gpd->runtime->lineart_cache, !(ob->dtx & OB_DRAW_IN_FRONT));
+    MOD_lineart_destroy_render_data_v3(lmd);
+  }
+  else {
+    if (!(lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+      MOD_lineart_compute_feature_lines_v3(depsgraph, lmd, &local_lc, !(ob->dtx & OB_DRAW_IN_FRONT));
+      MOD_lineart_destroy_render_data_v3(lmd);
+    }
+    MOD_lineart_chain_clear_picked_flag(local_lc);
+    lmd->cache = local_lc;
+  }
+
+  /* New layer and new empty drawing for now. */
+
+  gpd->layers_for_write()={};
+  blender::bke::greasepencil::Layer &layer = gpd->add_layer("New Layer");
+  GreasePencilFrame *frame = layer.add_frame(0,0,0);
+
+  gpd->drawings()={};
+  gpd->add_empty_drawings(1);
+  blender::bke::greasepencil::Drawing &drawing=*gpd->get_editable_drawing_at(&layer,0);
+
+  generate_strokes_actual(md, depsgraph, ob, drawing);
+
+  if (!(lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+    /* Clear local cache. */
+    if (local_lc != gpd->runtime->lineart_cache) {
+      MOD_lineart_clear_cache(&local_lc);
+    }
+    /* Restore the original cache pointer so the modifiers below still have access to the "global"
+     * cache. */
+    lmd->cache = gpd->runtime->lineart_cache;
+  }
+}
+
 // unused yet
 static int generate_gpencil_strokes(GreasePencil &gp){
     int vert_num=2;
@@ -768,9 +868,12 @@ static void modify_geometry_set(ModifierData *md,
     GreasePencil *gp=geometry_set->get_grease_pencil_for_write();
     if (!gp){ return; }
 
-    if(generate_gpencil_strokes(*gp)){
-        DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
-    }
+    generate_strokes(md,ctx->depsgraph,ctx->object, gp);
+    DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
+
+    //if(generate_gpencil_strokes(*gp)){
+    //    DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
+    //}
 
     //geometry_set->replace_grease_pencil(gp);
 }

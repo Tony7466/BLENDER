@@ -688,6 +688,8 @@ class GreasePencilRuntime {
   /* The frame on which the object was evaluated (only valid for evaluated object). */
   int eval_frame = 0;
 
+  struct ::LineartCache *lineart_cache;
+
  public:
   GreasePencilRuntime() {}
   ~GreasePencilRuntime() {}

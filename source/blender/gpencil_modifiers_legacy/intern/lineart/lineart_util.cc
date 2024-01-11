@@ -18,7 +18,7 @@
 
 #include "MOD_lineart.h"
 
-#include "lineart_intern.h"
+#include "lineart_intern.hh"
 
 /* Line art memory and list helper */
 

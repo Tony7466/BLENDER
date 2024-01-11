@@ -9,7 +9,7 @@
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
-#include "lineart_intern.h"
+#include "lineart_intern.hh"
 
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
@@ -1133,10 +1133,10 @@ static void lineart_shadow_register_enclosed_shapes(LineartData *ld, LineartData
   }
 }
 
-bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
+bool lineart_main_try_generate_shadow_v3(Depsgraph *depsgraph,
                                       Scene *scene,
                                       LineartData *original_ld,
-                                      LineartGpencilModifierData *lmd,
+                                      GreasePencilLineartModifierData *lmd,
                                       LineartStaticMemPool *shadow_data_pool,
                                       LineartElementLinkNode **r_veln,
                                       LineartElementLinkNode **r_eeln,
@@ -1289,6 +1289,23 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
   }
 
   return any_generated;
+}
+
+bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
+                                      Scene *scene,
+                                      LineartData *original_ld,
+                                      LineartGpencilModifierData *lmd_legacy,
+                                      LineartStaticMemPool *shadow_data_pool,
+                                      LineartElementLinkNode **r_veln,
+                                      LineartElementLinkNode **r_eeln,
+                                      ListBase *r_calculated_edges_eln_list,
+                                      LineartData **r_shadow_ld_if_reproject){
+  bool ret=false;
+  GreasePencilLineartModifierData lmd;
+  MOD_lineart_wrap_modifier_v3(lmd_legacy, &lmd);
+  ret = lineart_main_try_generate_shadow_v3(depsgraph,scene,original_ld,&lmd,shadow_data_pool,r_veln,r_eeln,r_calculated_edges_eln_list,r_shadow_ld_if_reproject);
+  MOD_lineart_unwrap_modifier_v3(lmd_legacy, &lmd);
+  return ret;
 }
 
 struct LineartShadowFinalizeData {

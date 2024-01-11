@@ -1155,12 +1155,20 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
   VirtualModifierData virtualModifierData;
   ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtualModifierData);
 
+  bool is_first_lineart = true;
+  GreasePencilLineartLimitInfo info = BKE_grease_pencil_get_lineart_modifier_limits(object);
+
   /* Evaluate modifiers. */
   for (; md; md = md->next) {
     const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
 
     if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
       continue;
+    }
+
+    if (md->type == eModifierType_GreasePencilLineart) {
+      BKE_grease_pencil_set_lineart_modifier_limits(md, &info, is_first_lineart);
+      is_first_lineart = false;
     }
 
     if (mti->modify_geometry_set != nullptr) {

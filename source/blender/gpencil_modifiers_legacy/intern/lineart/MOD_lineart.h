@@ -862,10 +862,15 @@ struct bGPDframe;
 struct bGPDlayer;
 struct Depsgraph;
 struct LineartGpencilModifierData;
+struct GreasePencilLineartModifierData;
 struct LineartData;
 struct Scene;
 
-void MOD_lineart_destroy_render_data(struct LineartGpencilModifierData *lmd);
+void MOD_lineart_wrap_modifier_v3(LineartGpencilModifierData* lmd_legacy, GreasePencilLineartModifierData* lmd);
+void MOD_lineart_unwrap_modifier_v3(LineartGpencilModifierData* lmd_legacy, GreasePencilLineartModifierData* lmd);
+
+void MOD_lineart_destroy_render_data(struct LineartGpencilModifierData *lmd_legacy);
+void MOD_lineart_destroy_render_data_v3(struct GreasePencilLineartModifierData *lmd);
 
 void MOD_lineart_chain_feature_lines(LineartData *ld);
 void MOD_lineart_chain_split_for_fixed_occlusion(LineartData *ld);
@@ -896,9 +901,14 @@ void MOD_lineart_finalize_chains(LineartData *ld);
  * \return True when a change is made.
  */
 bool MOD_lineart_compute_feature_lines(struct Depsgraph *depsgraph,
-                                       struct LineartGpencilModifierData *lmd,
+                                       struct LineartGpencilModifierData *lmd_legacy,
                                        struct LineartCache **cached_result,
                                        bool enable_stroke_depth_offset);
+bool MOD_lineart_compute_feature_lines_v3(struct Depsgraph *depsgraph,
+                                          struct GreasePencilLineartModifierData *lmd,
+                                          struct LineartCache **cached_result,
+                                          bool enable_stroke_depth_offset);
+
 
 /**
  * This only gets initial "biggest" tile.
@@ -909,6 +919,8 @@ LineartBoundingArea *MOD_lineart_get_parent_bounding_area(LineartData *ld, doubl
  * Wrapper for more convenience.
  */
 LineartBoundingArea *MOD_lineart_get_bounding_area(LineartData *ld, double x, double y);
+
+struct GreasePencilDrawing;
 
 /**
  * Wrapper for external calls.
@@ -931,6 +943,27 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   float opacity,
                                   uint8_t shadow_selection,
                                   uint8_t silhouette_mode,
+                                  const char *source_vgname,
+                                  const char *vgname,
+                                  int modifier_flags,
+                                  int modifier_calculation_flags);
+void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
+                                  Depsgraph *depsgraph,
+                                  Object *ob,
+                                  struct GreasePencilDrawing &drawing,
+                                  int8_t source_type,
+                                  void *source_reference,
+                                  int level_start,
+                                  int level_end,
+                                  int mat_nr,
+                                  int16_t edge_types,
+                                  uchar mask_switches,
+                                  uchar material_mask_bits,
+                                  uchar intersection_mask,
+                                  int16_t thickness,
+                                  float opacity,
+                                  uchar shadow_selection,
+                                  uchar silhouette_mode,
                                   const char *source_vgname,
                                   const char *vgname,
                                   int modifier_flags,

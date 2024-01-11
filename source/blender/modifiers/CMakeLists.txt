@@ -17,6 +17,9 @@ set(INC
   ../render
   ../windowmanager
   ../../../intern/eigen
+  ../gpencil_modifiers_legacy
+  ../gpencil_modifiers_legacy/intern
+  ../gpencil_modifiers_legacy/intern/lineart
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
