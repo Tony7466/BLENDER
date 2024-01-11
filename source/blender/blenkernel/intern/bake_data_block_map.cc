@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <ostream>
+
 #include "BLI_hash.hh"
 
 #include "BKE_bake_data_block_map.hh"
@@ -21,6 +23,11 @@ BakeDataBlockID::BakeDataBlockID(const ID &id)
   if (id.lib) {
     this->lib_name = id.lib->id.name + 2;
   }
+}
+
+std::ostream &operator<<(std::ostream &stream, const BakeDataBlockID &id)
+{
+  return stream << "(" << id.id_name << ", Lib: " << id.lib_name << ")";
 }
 
 uint64_t BakeDataBlockID::hash() const

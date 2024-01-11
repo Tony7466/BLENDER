@@ -1423,13 +1423,47 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
 };
 
 class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
- private:
-  Map<bake::BakeDataBlockID, ID *> new_mappings_;
-
  public:
+  /** Protects access to everything except `old_mappings` which is read-only during evaluation. */
+  std::mutex mutex_;
+  Map<bake::BakeDataBlockID, ID *> old_mappings;
+  Map<bake::BakeDataBlockID, ID *> new_mappings;
+  Set<bake::BakeDataBlockID> missing;
+
   ID *lookup_or_try_add(const bake::BakeDataBlockID &key, std::optional<ID_Type> type) override
   {
-    ID *id = new_mappings_.lookup_default(key, nullptr);
+    if (ID *id = this->lookup_in_map(this->old_mappings, key, type)) {
+      return id;
+    }
+    if (this->old_mappings.contains(key)) {
+      /* Don't allow overwriting old mappings. */
+      return nullptr;
+    }
+    std::lock_guard lock{mutex_};
+    if (ID *id = this->lookup_in_map(this->new_mappings, key, type)) {
+      return id;
+    }
+    this->missing.add(key);
+    return nullptr;
+  }
+
+  void try_add(ID &id) override
+  {
+    bake::BakeDataBlockID key{id};
+    if (this->old_mappings.contains(key)) {
+      return;
+    }
+    std::lock_guard lock{mutex_};
+    this->missing.add(key);
+    this->new_mappings.add(std::move(key), &id);
+  }
+
+ private:
+  ID *lookup_in_map(Map<bake::BakeDataBlockID, ID *> &map,
+                    const bake::BakeDataBlockID &key,
+                    const std::optional<ID_Type> &type)
+  {
+    ID *id = map.lookup_default(key, nullptr);
     if (!id) {
       return nullptr;
     }
@@ -1437,11 +1471,6 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
       return nullptr;
     }
     return id;
-  }
-
-  void try_add(ID &id) override
-  {
-    new_mappings_.add(bake::BakeDataBlockID(id), &id);
   }
 };
 
@@ -1512,6 +1541,12 @@ static void modifyGeometry(ModifierData *md,
   NodesModifierBakeParams bake_params{*nmd, *ctx};
   call_data.bake_params = &bake_params;
   NodesModifierBakeDataBlockMap data_block_map;
+  for (const NodesModifierDataBlockMapItem &item :
+       Span(nmd->data_block_map_items, nmd->data_block_map_items_num))
+  {
+    data_block_map.old_mappings.add(
+        bake::BakeDataBlockID(StringRef(item.id_name), StringRef(item.lib_name)), item.id);
+  }
   call_data.bake_data_block_map = &data_block_map;
 
   Set<ComputeContextHash> socket_log_contexts;
@@ -1537,6 +1572,8 @@ static void modifyGeometry(ModifierData *md,
   if (logging_enabled(ctx)) {
     nmd_orig->runtime->eval_log = std::move(eval_log);
   }
+
+  nmd->runtime->missing_data_blocks = std::move(data_block_map.missing);
 
   if (use_orig_index_verts || use_orig_index_edges || use_orig_index_faces) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {

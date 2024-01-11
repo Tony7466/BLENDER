@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include "BKE_bake_data_block_id.hh"
+#include "BLI_set.hh"
+
 struct NodesModifierData;
 struct Object;
 
@@ -35,6 +38,8 @@ struct NodesModifierRuntime {
    * used by the evaluated modifier.
    */
   std::shared_ptr<bke::bake::ModifierCache> cache;
+
+  Set<bke::bake::BakeDataBlockID> missing_data_blocks;
 };
 
 }  // namespace blender

@@ -26,6 +26,8 @@ struct BakeDataBlockID {
 
   uint64_t hash() const;
 
+  friend std::ostream &operator<<(std::ostream &stream, const BakeDataBlockID &id);
+
   BLI_STRUCT_EQUALITY_OPERATORS_2(BakeDataBlockID, id_name, lib_name)
 };
 
