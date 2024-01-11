@@ -18,35 +18,52 @@ namespace blender::draw {
 /** \name Extract Loop Normal
  * \{ */
 
-static void compress_normals(const Span<float3> src, MutableSpan<GPUPackedNormal> dst)
+template<typename GPUType> inline GPUType convert_normal(const float3 &src);
+
+template<> inline GPUPackedNormal convert_normal(const float3 &src)
+{
+  return GPU_normal_convert_i10_v3(src);
+}
+
+template<> inline short4 convert_normal(const float3 &src)
+{
+  short4 dst;
+  normal_float_to_short_v3(dst, src);
+  return dst;
+}
+
+template<typename GPUType>
+static void extract_normals(const Span<float3> src, MutableSpan<GPUType> dst)
 {
   threading::parallel_for(src.index_range(), 2048, [&](const IndexRange range) {
     for (const int vert : range) {
-      dst[vert] = GPU_normal_convert_i10_v3(src[vert]);
+      dst[vert] = convert_normal<GPUType>(src[vert]);
     }
   });
 }
 
-static void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUPackedNormal> normals)
+template<typename GPUType>
+static void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals)
 {
-  const Span<float3> vert_normals = mr.vert_normals;
-  Array<GPUPackedNormal> vert_normals_converted(vert_normals.size());
-  compress_normals(vert_normals, vert_normals_converted);
+  Array<GPUType> vert_normals_converted(mr.vert_normals.size());
+  extract_normals(mr.vert_normals, vert_normals_converted.as_mutable_span());
   array_utils::gather(vert_normals_converted.as_span(), mr.corner_verts, normals);
 }
 
-static void extract_face_normals(const MeshRenderData &mr, MutableSpan<GPUPackedNormal> normals)
+template<typename GPUType>
+static void extract_face_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals)
 {
   const OffsetIndices faces = mr.faces;
   const Span<float3> face_normals = mr.face_normals;
   threading::parallel_for(faces.index_range(), 4096, [&](const IndexRange range) {
     for (const int face : range) {
-      normals.slice(faces[face]).fill(GPU_normal_convert_i10_v3(face_normals[face]));
+      normals.slice(faces[face]).fill(convert_normal<GPUType>(face_normals[face]));
     }
   });
 }
 
-static void extract_normals_mesh(const MeshRenderData &mr, MutableSpan<GPUPackedNormal> normals)
+template<typename GPUType>
+static void extract_normals_mesh(const MeshRenderData &mr, MutableSpan<GPUType> normals)
 {
   if (mr.normals_domain == bke::MeshNormalDomain::Face) {
     extract_face_normals(mr, normals);
@@ -55,7 +72,7 @@ static void extract_normals_mesh(const MeshRenderData &mr, MutableSpan<GPUPacked
     extract_vert_normals(mr, normals);
   }
   else if (!mr.loop_normals.is_empty()) {
-    compress_normals(mr.loop_normals, normals);
+    extract_normals(mr.loop_normals, normals);
   }
   else if (mr.sharp_faces.is_empty()) {
     extract_vert_normals(mr, normals);
@@ -69,11 +86,11 @@ static void extract_normals_mesh(const MeshRenderData &mr, MutableSpan<GPUPacked
     threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
       for (const int face : range) {
         if (sharp_faces[face]) {
-          normals.slice(faces[face]).fill(GPU_normal_convert_i10_v3(face_normals[face]));
+          normals.slice(faces[face]).fill(convert_normal<GPUType>(face_normals[face]));
         }
         else {
           for (const int corner : faces[face]) {
-            normals[corner] = GPU_normal_convert_i10_v3(vert_normals[corner_verts[corner]]);
+            normals[corner] = convert_normal<GPUType>(vert_normals[corner_verts[corner]]);
           }
         }
       }
@@ -81,8 +98,8 @@ static void extract_normals_mesh(const MeshRenderData &mr, MutableSpan<GPUPacked
   }
 }
 
-static void extract_paint_overlay_flags(const MeshRenderData &mr,
-                                        MutableSpan<GPUPackedNormal> normals)
+template<typename GPUType>
+static void extract_paint_overlay_flags(const MeshRenderData &mr, MutableSpan<GPUType> normals)
 {
   if (mr.select_poly.is_empty() && mr.hide_poly.is_empty() && (!mr.edit_bmesh || !mr.v_origindex))
   {
@@ -127,7 +144,7 @@ static void extract_paint_overlay_flags(const MeshRenderData &mr,
 static void extract_lnor_init(const MeshRenderData &mr,
                               MeshBatchCache & /*cache*/,
                               void *buf,
-                              void * /*tls_data*/)
+                              void *tls_data)
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   static GPUVertFormat format = {0};
@@ -143,6 +160,9 @@ static void extract_lnor_init(const MeshRenderData &mr,
   if (mr.extract_type == MR_EXTRACT_MESH) {
     extract_normals_mesh(mr, vbo_data);
     extract_paint_overlay_flags(mr, vbo_data);
+  }
+  else {
+    *(GPUPackedNormal **)tls_data = vbo_data.data();
   }
 }
 
@@ -227,7 +247,15 @@ static void extract_lnor_hq_init(const MeshRenderData &mr,
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr.loop_len);
 
-  *(short4 **)tls_data = static_cast<short4 *>(GPU_vertbuf_get_data(vbo));
+  MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(vbo)),
+                       GPU_vertbuf_get_vertex_len(vbo));
+  if (mr.extract_type == MR_EXTRACT_MESH) {
+    extract_normals_mesh(mr, vbo_data);
+    extract_paint_overlay_flags(mr, vbo_data);
+  }
+  else {
+    *(short4 **)tls_data = vbo_data.data();
+  }
 }
 
 static void extract_lnor_hq_iter_face_bm(const MeshRenderData &mr,
@@ -253,49 +281,12 @@ static void extract_lnor_hq_iter_face_bm(const MeshRenderData &mr,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_lnor_hq_iter_face_mesh(const MeshRenderData &mr,
-                                           const int face_index,
-                                           void *data)
-{
-  const bool hidden = !mr.hide_poly.is_empty() && mr.hide_poly[face_index];
-
-  for (const int corner : mr.faces[face_index]) {
-    const int vert = mr.corner_verts[corner];
-    short4 *lnor_data = &(*(short4 **)data)[corner];
-    if (!mr.loop_normals.is_empty()) {
-      normal_float_to_short_v3(&lnor_data->x, mr.loop_normals[corner]);
-    }
-    else if (mr.normals_domain == bke::MeshNormalDomain::Face ||
-             (!mr.sharp_faces.is_empty() && mr.sharp_faces[face_index]))
-    {
-      normal_float_to_short_v3(&lnor_data->x, mr.face_normals[face_index]);
-    }
-    else {
-      normal_float_to_short_v3(&lnor_data->x, mr.vert_normals[vert]);
-    }
-
-    /* Flag for paint mode overlay.
-     * Only use origindex in edit mode where it is used to display the edge-normals.
-     * In paint mode it will use the un-mapped data to draw the wire-frame. */
-    if (hidden || (mr.edit_bmesh && (mr.v_origindex) && mr.v_origindex[vert] == ORIGINDEX_NONE)) {
-      lnor_data->w = -1;
-    }
-    else if (!mr.select_poly.is_empty() && mr.select_poly[face_index]) {
-      lnor_data->w = 1;
-    }
-    else {
-      lnor_data->w = 0;
-    }
-  }
-}
-
 constexpr MeshExtract create_extractor_lnor_hq()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lnor_hq_init;
   extractor.init_subdiv = extract_lnor_init_subdiv;
   extractor.iter_face_bm = extract_lnor_hq_iter_face_bm;
-  extractor.iter_face_mesh = extract_lnor_hq_iter_face_mesh;
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(short4 *);
   extractor.use_threading = true;
