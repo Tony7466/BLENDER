@@ -151,14 +151,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   if (uiLayout *influence_panel = uiLayoutPanel(
           C, layout, "Influence", ptr, "open_influence_panel"))
   {
-    PointerRNA layer_filter_ptr = RNA_pointer_get(ptr, "layer_filter");
-    PointerRNA material_filter_ptr = RNA_pointer_get(ptr, "material_filter");
-    PointerRNA vertex_group_ptr = RNA_pointer_get(ptr, "vertex_group");
-    PointerRNA custom_curve_ptr = RNA_pointer_get(ptr, "custom_curve");
-    greasepencil::draw_layer_filter_settings(C, influence_panel, &layer_filter_ptr);
-    greasepencil::draw_material_filter_settings(C, influence_panel, &material_filter_ptr);
-    greasepencil::draw_vertex_group_settings(C, influence_panel, &vertex_group_ptr);
-    greasepencil::draw_custom_curve_settings(C, influence_panel, &custom_curve_ptr);
+    greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
+    greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
+    greasepencil::draw_vertex_group_settings(C, influence_panel, ptr);
+    greasepencil::draw_custom_curve_settings(C, influence_panel, ptr);
   }
 
   uiLayoutSetPropSep(layout, true);
