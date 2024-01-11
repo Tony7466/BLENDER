@@ -5821,6 +5821,8 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        layout.operator("grease_pencil.stroke_subdivide", text="Subdivide")
+        layout.operator("grease_pencil.stroke_subdivide_smooth", text="Subdivide and Smooth")
         layout.operator("grease_pencil.stroke_simplify", text="Simplify")
 
         layout.separator()
@@ -5833,6 +5835,11 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.operator("grease_pencil.stroke_switch_direction")
         layout.operator_menu_enum("grease_pencil.caps_set", text="Set Caps", property="type")
 
+        layout.separator()
+
+        layout.operator("grease_pencil.set_uniform_thickness")
+        layout.operator("grease_pencil.set_uniform_opacity")
+
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
     bl_label = "Point"
@@ -5840,10 +5847,6 @@ class VIEW3D_MT_edit_greasepencil_point(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.operator("grease_pencil.stroke_smooth", text="Smooth Points")
-
-        layout.separator()
-        layout.operator("grease_pencil.set_uniform_thickness")
-        layout.operator("grease_pencil.set_uniform_opacity")
 
 
 class VIEW3D_MT_edit_curves(Menu):
@@ -8151,6 +8154,8 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.label(text="Point", icon='GP_SELECT_POINTS')
 
             # Main Strokes Operators
+            col.operator("grease_pencil.stroke_subdivide", text="Subdivide")
+            col.operator("grease_pencil.stroke_subdivide_smooth", text="Subdivide and Smooth")
             col.operator("grease_pencil.stroke_simplify", text="Simplify")
 
             col.separator()
@@ -8177,6 +8182,8 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.label(text="Stroke", icon='GP_SELECT_STROKES')
 
             # Main Strokes Operators
+            col.operator("grease_pencil.stroke_subdivide", text="Subdivide")
+            col.operator("grease_pencil.stroke_subdivide_smooth", text="Subdivide and Smooth")
             col.operator("grease_pencil.stroke_simplify", text="Simplify")
 
             col.separator()

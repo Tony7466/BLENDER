@@ -66,15 +66,15 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "wm.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_event_types.hh"
 #include "wm_surface.hh"
 #include "wm_window.hh"
-#include "wm_window_private.h"
+#include "wm_window_private.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -3354,8 +3354,10 @@ static eHandlerActionFlag wm_handlers_do_intern(bContext *C,
                   event->customdata = &single_lb;
 
                   const wmOperatorCallContext opcontext = wm_drop_operator_context_get(drop);
-                  int op_retval = wm_operator_call_internal(
-                      C, drop->ot, drop->ptr, nullptr, opcontext, false, event);
+                  int op_retval =
+                      drop->ot ? wm_operator_call_internal(
+                                     C, drop->ot, drop->ptr, nullptr, opcontext, false, event) :
+                                 OPERATOR_CANCELLED;
                   OPERATOR_RETVAL_CHECK(op_retval);
 
                   if ((op_retval & OPERATOR_CANCELLED) && drop->cancel) {

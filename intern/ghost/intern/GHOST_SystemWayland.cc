@@ -425,7 +425,7 @@ struct GWL_Cursor {
    * The size of the cursor (when looking up a cursor theme).
    * This must be scaled by the maximum output scale when passing to wl_cursor_theme_load.
    * See #update_cursor_scale.
-   * */
+   */
   int theme_size = 0;
   int custom_scale = 1;
 };
@@ -2345,6 +2345,9 @@ static char *read_file_as_buffer(const int fd, const bool nil_terminate, size_t 
       if (len_chunk <= 0) {
         if (UNLIKELY(len_chunk < 0)) {
           ok = false;
+        }
+        if (chunk == chunk_first) {
+          chunk_first = nullptr;
         }
         free(chunk);
         break;

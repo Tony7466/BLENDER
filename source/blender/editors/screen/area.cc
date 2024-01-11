@@ -30,7 +30,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "ED_asset.hh"
@@ -2992,7 +2992,7 @@ static void ed_panel_draw(const bContext *C,
       h = -yco;
       h += style->panelspace;
       if (!ends_with_layout_panel_header) {
-        /* Last layout panel header ends together with the panel.*/
+        /* Last layout panel header ends together with the panel. */
         h += style->panelspace;
       }
     }
