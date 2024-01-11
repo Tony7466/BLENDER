@@ -28,10 +28,10 @@
 
 #include "BKE_addon.h"
 #include "BKE_blender_version.h"
-#include "BKE_colorband.h"
+#include "BKE_colorband.hh"
 #include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_preferences.h"
 
 #include "BLO_readfile.h"
@@ -141,17 +141,11 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #blo_do_versions_userdef in this file.
-   * - "versioning_{BLENDER_VERSION}.c"
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a USER_VERSION_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 
 #undef FROM_DEFAULT_V4_UCHAR
 
@@ -905,18 +899,18 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
+  if (!USER_VERSION_ATLEAST(401, 9)) {
+    userdef->key_insert_channels = (USER_ANIM_KEY_CHANNEL_LOCATION |
+                                    USER_ANIM_KEY_CHANNEL_ROTATION | USER_ANIM_KEY_CHANNEL_SCALE |
+                                    USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
+  }
+
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #do_versions_theme in this file.
-   * - "versioning_{BLENDER_VERSION}.c"
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a USER_VERSION_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
     do_versions_theme(userdef, btheme);

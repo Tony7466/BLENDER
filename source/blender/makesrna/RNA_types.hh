@@ -108,7 +108,7 @@ enum PropertyScaleType {
   PROP_SCALE_CUBIC = 2,
 };
 
-#define RNA_SUBTYPE_UNIT(subtype) ((subtype)&0x00FF0000)
+#define RNA_SUBTYPE_UNIT(subtype) ((subtype) & 0x00FF0000)
 #define RNA_SUBTYPE_VALUE(subtype) ((subtype) & ~0x00FF0000)
 #define RNA_SUBTYPE_UNIT_VALUE(subtype) ((subtype) >> 16)
 
@@ -446,6 +446,11 @@ enum RawPropertyType {
   PROP_RAW_BOOLEAN,
   PROP_RAW_DOUBLE,
   PROP_RAW_FLOAT,
+  PROP_RAW_UINT8,
+  PROP_RAW_UINT16,
+  PROP_RAW_INT64,
+  PROP_RAW_UINT64,
+  PROP_RAW_INT8,
 };
 
 struct RawArray {
