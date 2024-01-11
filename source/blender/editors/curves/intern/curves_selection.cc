@@ -128,6 +128,16 @@ void fill_selection_true(GMutableSpan selection)
   }
 }
 
+void fill_selection(GMutableSpan selection, bool value)
+{
+  if (selection.type().is<bool>()) {
+    selection.typed<bool>().fill(value);
+  }
+  else if (selection.type().is<float>()) {
+    selection.typed<float>().fill(value ? 1.0f : 0.0f);
+  }
+}
+
 void fill_selection_false(GMutableSpan selection, const IndexMask &mask)
 {
   if (selection.type().is<bool>()) {
@@ -173,7 +183,7 @@ static bool contains(const VArray<bool> &varray,
           for (const int64_t segment_i : IndexRange(sliced_mask.segments_num())) {
             const IndexMaskSegment segment = sliced_mask.segment(segment_i);
             for (const int i : segment) {
-              if (span[i]) {
+              if (span[i] == value) {
                 return true;
               }
             }
@@ -191,13 +201,15 @@ static bool contains(const VArray<bool> &varray,
           return init;
         }
         constexpr int64_t MaxChunkSize = 512;
-        for (int64_t start = range.start(); start < range.last(); start += MaxChunkSize) {
-          const int64_t end = std::min<int64_t>(start + MaxChunkSize, range.last());
+        const int64_t slice_end = range.one_after_last();
+        for (int64_t start = range.start(); start < slice_end; start += MaxChunkSize) {
+          const int64_t end = std::min<int64_t>(start + MaxChunkSize, slice_end);
           const int64_t size = end - start;
           const IndexMask sliced_mask = indices_to_check.slice(start, size);
           std::array<bool, MaxChunkSize> values;
+          auto values_end = values.begin() + size;
           varray.materialize_compressed(sliced_mask, values);
-          if (std::find(values.begin(), values.end(), true) != values.end()) {
+          if (std::find(values.begin(), values_end, value) != values_end) {
             return true;
           }
         }

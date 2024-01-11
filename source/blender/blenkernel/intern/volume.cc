@@ -165,7 +165,6 @@ static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, con
   }
 #endif
 
-  volume_dst->runtime->default_simplify_level = volume_src->runtime->default_simplify_level;
   volume_dst->runtime->frame = volume_src->runtime->frame;
   STRNCPY(volume_dst->runtime->velocity_x_grid, volume_src->runtime->velocity_x_grid);
   STRNCPY(volume_dst->runtime->velocity_y_grid, volume_src->runtime->velocity_y_grid);
@@ -228,9 +227,6 @@ static void volume_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Volume *volume = (Volume *)id;
   const bool is_undo = BLO_write_is_undo(writer);
-
-  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
-  volume->runtime->grids = nullptr;
 
   /* Do not store packed files in case this is a library override ID. */
   if (ID_IS_OVERRIDE_LIBRARY(volume) && !is_undo) {
@@ -560,11 +556,11 @@ bool BKE_volume_save(const Volume *volume,
   openvdb::GridCPtrVec vdb_grids;
 
   /* Tree users need to be kept alive for as long as the grids may be accessed. */
-  blender::Vector<blender::bke::VolumeTreeAccessToken> tree_users;
+  blender::Vector<blender::bke::VolumeTreeAccessToken> tree_tokens;
 
   for (const GVolumeGrid &grid : grids) {
-    tree_users.append(grid->tree_access_token());
-    vdb_grids.push_back(grid->grid_ptr(tree_users.last()));
+    tree_tokens.append_as();
+    vdb_grids.push_back(grid->grid_ptr(tree_tokens.last()));
   }
 
   try {
@@ -598,9 +594,9 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
     std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
-      blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
+      blender::bke::VolumeTreeAccessToken tree_token;
       result = blender::bounds::merge(result,
-                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(access_token)));
+                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(tree_token)));
     }
     return result;
   }
@@ -653,7 +649,6 @@ static void volume_update_simplify_level(Main *bmain, Volume *volume, const Deps
 {
 #ifdef WITH_OPENVDB
   const int simplify_level = BKE_volume_simplify_level(depsgraph);
-  volume->runtime->default_simplify_level = simplify_level;
 
   /* Replace grids with the new simplify level variants from the cache. */
   if (BKE_volume_load(volume, bmain)) {

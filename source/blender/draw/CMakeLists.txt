@@ -466,6 +466,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_bxdf_lib.glsl
   engines/eevee_next/shaders/eevee_bxdf_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_camera_lib.glsl
+  engines/eevee_next/shaders/eevee_closure_lib.glsl
   engines/eevee_next/shaders/eevee_colorspace_lib.glsl
   engines/eevee_next/shaders/eevee_cryptomatte_lib.glsl
   engines/eevee_next/shaders/eevee_cubemap_lib.glsl
@@ -538,6 +539,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_offset_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_load_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_lib.glsl
+  engines/eevee_next/shaders/eevee_lightprobe_volume_eval_lib.glsl
   engines/eevee_next/shaders/eevee_lookdev_display_frag.glsl
   engines/eevee_next/shaders/eevee_lookdev_display_vert.glsl
   engines/eevee_next/shaders/eevee_ltc_lib.glsl
