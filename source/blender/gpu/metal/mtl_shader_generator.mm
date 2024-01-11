@@ -787,6 +787,13 @@ std::string MTLShader::resources_declare(const ShaderCreateInfo &info) const
   return ss.str();
 }
 
+std::string MTLShader::constants_declare(const ShaderCreateInfo & /*info*/) const
+{
+  /* NOTE: Specialization Constants must be declared in program scope. This is done in
+   * `generate_specialization_constant_declarations`. */
+  return "";
+}
+
 std::string MTLShader::vertex_interface_declare(const shader::ShaderCreateInfo &info) const
 {
   /* NOTE(Metal): We only use the upfront preparation functions to populate members which
