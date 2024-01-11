@@ -2511,6 +2511,14 @@ typedef struct GreasePencilModifierVertexGroupData {
   char _pad[4];
 } GreasePencilModifierVertexGroupData;
 
+typedef struct GreasePencilModifierCustomCurveData {
+  struct CurveMapping *curve;
+  /** GreasePencilModifierFilterFlag */
+  int flag;
+  char _pad1[4];
+  void *_pad2;
+} GreasePencilModifierCustomCurveData;
+
 typedef enum GreasePencilModifierInfluenceFlag {
   GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER = (1 << 0),
   GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER = (1 << 1),
@@ -2519,6 +2527,7 @@ typedef enum GreasePencilModifierInfluenceFlag {
   GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER = (1 << 4),
   GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER = (1 << 5),
   GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP = (1 << 6),
+  GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE = (1 << 7),
 } GreasePencilModifierInfluenceFlag;
 /**
  * Combined generic influence data for grease pencil modifiers.
@@ -2528,4 +2537,5 @@ typedef struct GreasePencilModifierInfluenceData {
   GreasePencilModifierLayerFilter layer_filter;
   GreasePencilModifierMaterialFilter material_filter;
   GreasePencilModifierVertexGroupData vertex_group;
+  GreasePencilModifierCustomCurveData custom_curve;
 } GreasePencilModifierInfluenceData;
