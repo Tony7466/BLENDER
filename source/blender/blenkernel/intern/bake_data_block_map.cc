@@ -10,12 +10,12 @@
 
 namespace blender::bke::bake {
 
-BakeDataBlockKey::BakeDataBlockKey(StringRef id_name, StringRef lib_name)
-    : id_name(id_name), lib_name(lib_name)
+BakeDataBlockID::BakeDataBlockID(std::string id_name, std::string lib_name)
+    : id_name(std::move(id_name)), lib_name(std::move(lib_name))
 {
 }
 
-BakeDataBlockKey::BakeDataBlockKey(const ID &id)
+BakeDataBlockID::BakeDataBlockID(const ID &id)
 {
   this->id_name = id.name + 2;
   if (id.lib) {
@@ -23,7 +23,7 @@ BakeDataBlockKey::BakeDataBlockKey(const ID &id)
   }
 }
 
-uint64_t BakeDataBlockKey::hash() const
+uint64_t BakeDataBlockID::hash() const
 {
   return get_default_hash_2(this->id_name, this->lib_name);
 }

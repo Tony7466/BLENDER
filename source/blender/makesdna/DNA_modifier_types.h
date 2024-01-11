@@ -2337,7 +2337,7 @@ typedef struct NodesModifierSettings {
  * Maps a name (+ optional library name) to a data-block. The name can be stored on disk and is
  * remapped to the data-block when the data is loaded.
  *
- * At run-time, #BakeDataBlockKey is used to pair up the data-block and library name.
+ * At run-time, #BakeDataBlockID is used to pair up the data-block and library name.
  */
 typedef struct NodesModifierDataBlockMapItem {
   /**
