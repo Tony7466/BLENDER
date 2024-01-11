@@ -1708,7 +1708,7 @@ static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
   return &settings->properties;
 }
 
-bool rna_GreasePencilModifierFilter_material_poll(PointerRNA *ptr, PointerRNA value)
+bool rna_GreasePencilModifierMaterialFilter_material_poll(PointerRNA *ptr, PointerRNA value)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   Material *ma = reinterpret_cast<Material *>(value.owner_id);
@@ -1716,18 +1716,18 @@ bool rna_GreasePencilModifierFilter_material_poll(PointerRNA *ptr, PointerRNA va
   return BKE_grease_pencil_object_material_index_get(ob, ma) != -1;
 }
 
-static void rna_GreasePencilModifierFilter_material_set(PointerRNA *ptr,
-                                                        PointerRNA value,
-                                                        ReportList *reports)
+static void rna_GreasePencilModifierMaterialFilter_material_set(PointerRNA *ptr,
+                                                                PointerRNA value,
+                                                                ReportList *reports)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
-  GreasePencilModifierFilterData *filter_data = static_cast<GreasePencilModifierFilterData *>(
+  GreasePencilModifierMaterialFilter *filter = static_cast<GreasePencilModifierMaterialFilter *>(
       ptr->data);
   Material *ma = reinterpret_cast<Material *>(value.owner_id);
 
   if (ma == nullptr || BKE_grease_pencil_object_material_index_get(ob, ma) != -1) {
     id_lib_extern(reinterpret_cast<ID *>(ob));
-    filter_data->material = ma;
+    filter->material = ma;
   }
   else {
     BKE_reportf(
@@ -7456,15 +7456,16 @@ static void rna_def_modifier_volume_to_mesh(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
-static void rna_def_modifier_grease_pencil_filter(BlenderRNA *brna)
+static void rna_def_modifier_grease_pencil_layer_filter(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "GreasePencilModifierFilter", nullptr);
-  RNA_def_struct_ui_text(
-      srna, "Grease Pencil Modifier Filter", "Filter settings for grease pencil modifiers");
-  RNA_def_struct_sdna(srna, "GreasePencilModifierFilterData");
+  srna = RNA_def_struct(brna, "GreasePencilModifierLayerFilter", nullptr);
+  RNA_def_struct_ui_text(srna,
+                         "Grease Pencil Modifier Layer Filter",
+                         "Layer filter settings for grease pencil modifiers");
+  RNA_def_struct_sdna(srna, "GreasePencilModifierLayerFilter");
 
   RNA_define_lib_overridable(true);
 
@@ -7494,13 +7495,29 @@ static void rna_def_modifier_grease_pencil_filter(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Invert Layer Pass", "Invert layer pass filter");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_grease_pencil_material_filter(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilModifierMaterialFilter", nullptr);
+  RNA_def_struct_ui_text(srna,
+                         "Grease Pencil Modifier Material Filter",
+                         "Material filter settings for grease pencil modifiers");
+  RNA_def_struct_sdna(srna, "GreasePencilModifierMaterialFilter");
+
+  RNA_define_lib_overridable(true);
+
   prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(prop,
                                  nullptr,
-                                 "rna_GreasePencilModifierFilter_material_set",
+                                 "rna_GreasePencilModifierMaterialFilter_material_set",
                                  nullptr,
-                                 "rna_GreasePencilModifierFilter_material_poll");
+                                 "rna_GreasePencilModifierMaterialFilter_material_poll");
   RNA_def_property_ui_text(prop, "Material", "Material used for filtering");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -7526,6 +7543,27 @@ static void rna_def_modifier_grease_pencil_filter(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
+}
+
+/** Utility function to register common influence properties for grease pencil modifiers. */
+static void rna_def_modifier_grease_pencil_influence_properties(StructRNA *srna,
+                                                                const char *layer_filter_sdna,
+                                                                const char *material_filter_sdna)
+{
+  PropertyRNA *prop;
+
+  if (layer_filter_sdna) {
+    prop = RNA_def_property(srna, "layer_filter", PROP_POINTER, PROP_NONE);
+    RNA_def_property_pointer_sdna(prop, nullptr, layer_filter_sdna);
+    RNA_def_property_struct_type(prop, "GreasePencilModifierLayerFilter");
+    RNA_def_property_ui_text(prop, "Layer Filter", "Layer filter settings");
+  }
+  if (material_filter_sdna) {
+    prop = RNA_def_property(srna, "material_filter", PROP_POINTER, PROP_NONE);
+    RNA_def_property_pointer_sdna(prop, nullptr, material_filter_sdna);
+    RNA_def_property_struct_type(prop, "GreasePencilModifierMaterialFilter");
+    RNA_def_property_ui_text(prop, "Material Filter", "Material filter settings");
+  }
 }
 
 void RNA_def_modifier(BlenderRNA *brna)
@@ -7688,7 +7726,8 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_mesh_to_volume(brna);
   rna_def_modifier_volume_displace(brna);
   rna_def_modifier_volume_to_mesh(brna);
-  rna_def_modifier_grease_pencil_filter(brna);
+  rna_def_modifier_grease_pencil_layer_filter(brna);
+  rna_def_modifier_grease_pencil_material_filter(brna);
 }
 
 #endif

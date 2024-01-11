@@ -36,31 +36,30 @@ namespace blender::greasepencil {
 using bke::greasepencil::Drawing;
 using bke::greasepencil::Layer;
 
-void init_filter_data(GreasePencilModifierFilterData * /*filter_data*/) {}
+void init_influence_data(GreasePencilModifierInfluenceData * /*influence_data*/) {}
 
-void copy_filter_data(const GreasePencilModifierFilterData *filter_data_src,
-                      GreasePencilModifierFilterData *filter_data_dst,
-                      const int /*flag*/)
+void copy_influence_data(const GreasePencilModifierInfluenceData *influence_data_src,
+                         GreasePencilModifierInfluenceData *influence_data_dst,
+                         const int /*flag*/)
 {
-  memcpy(filter_data_dst, filter_data_src, sizeof(GreasePencilModifierFilterData));
+  memcpy(influence_data_dst, influence_data_src, sizeof(GreasePencilModifierInfluenceData));
 }
 
-void free_filter_data(GreasePencilModifierFilterData * /*filter_data*/) {}
+void free_influence_data(GreasePencilModifierInfluenceData * /*influence_data*/) {}
 
-void foreach_filter_ID_link(GreasePencilModifierFilterData *filter_data,
-                            Object *ob,
-                            IDWalkFunc walk,
-                            void *user_data)
+void foreach_influence_ID_link(GreasePencilModifierInfluenceData *influence_data,
+                               Object *ob,
+                               IDWalkFunc walk,
+                               void *user_data)
 {
-  walk(user_data, ob, (ID **)&filter_data->material, IDWALK_CB_USER);
+  walk(user_data, ob, (ID **)&influence_data->material_filter.material, IDWALK_CB_USER);
 }
 
-void draw_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
+void draw_layer_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
 {
   PointerRNA ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
   const bool use_layer_pass = RNA_boolean_get(ptr, "use_layer_pass");
-  const bool use_material_pass = RNA_boolean_get(ptr, "use_material_pass");
   uiLayout *row, *col, *sub;
 
   uiLayoutSetPropSep(layout, true);
@@ -81,6 +80,16 @@ void draw_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, ptr, "invert_layer_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+}
+
+void draw_material_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
+{
+  PointerRNA ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+  const bool use_material_pass = RNA_boolean_get(ptr, "use_material_pass");
+  uiLayout *row, *col, *sub;
+
+  uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
@@ -157,18 +166,18 @@ static IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
 }
 
 IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
-                                  const GreasePencilModifierFilterData &filter_data,
+                                  const GreasePencilModifierLayerFilter &filter,
                                   IndexMaskMemory &memory)
 {
   return get_filtered_layer_mask(grease_pencil,
-                                 filter_data.layer_name[0] != '\0' ?
-                                     std::make_optional<StringRef>(filter_data.layer_name) :
+                                 filter.layer_name[0] != '\0' ?
+                                     std::make_optional<StringRef>(filter.layer_name) :
                                      std::nullopt,
-                                 (filter_data.flag & GREASE_PENCIL_FILTER_USE_LAYER_PASS) ?
-                                     std::make_optional<int>(filter_data.layer_pass) :
+                                 (filter.flag & GREASE_PENCIL_FILTER_USE_LAYER_PASS) ?
+                                     std::make_optional<int>(filter.layer_pass) :
                                      std::nullopt,
-                                 filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER,
-                                 filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER_PASS,
+                                 filter.flag & GREASE_PENCIL_FILTER_INVERT_LAYER,
+                                 filter.flag & GREASE_PENCIL_FILTER_INVERT_LAYER_PASS,
                                  memory);
 }
 
@@ -216,18 +225,18 @@ static IndexMask get_filtered_stroke_mask(const Object *ob,
 
 IndexMask get_filtered_stroke_mask(const Object *ob,
                                    const bke::CurvesGeometry &curves,
-                                   const GreasePencilModifierFilterData &filter_data,
+                                   const GreasePencilModifierMaterialFilter &filter,
                                    IndexMaskMemory &memory)
 {
   /* TODO Add an option to toggle pass filter on and off, instead of using "pass > 0". */
   return get_filtered_stroke_mask(ob,
                                   curves,
-                                  filter_data.material,
-                                  (filter_data.flag & GREASE_PENCIL_FILTER_USE_MATERIAL_PASS) ?
-                                      std::make_optional<int>(filter_data.material_pass) :
+                                  filter.material,
+                                  (filter.flag & GREASE_PENCIL_FILTER_USE_MATERIAL_PASS) ?
+                                      std::make_optional<int>(filter.material_pass) :
                                       std::nullopt,
-                                  filter_data.flag & GREASE_PENCIL_FILTER_INVERT_MATERIAL,
-                                  filter_data.flag & GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS,
+                                  filter.flag & GREASE_PENCIL_FILTER_INVERT_MATERIAL,
+                                  filter.flag & GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS,
                                   memory);
 }
 
