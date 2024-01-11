@@ -179,7 +179,6 @@ void InstancerData::update_instance(DupliObject *dupli)
         nm_inst->data->init();
       }
       ID_LOG(2, "Nonmesh %s %d", nm_inst->data->id->name, int(nm_inst->transforms.size()));
-      auto trans = gf_matrix_from_transform(dupli->mat).ExtractTranslation();
       nm_inst->transforms.push_back(gf_matrix_from_transform(psys->imat) *
                                     gf_matrix_from_transform(dupli->mat));
     }
