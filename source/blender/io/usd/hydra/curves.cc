@@ -21,11 +21,11 @@
 
 #include "hydra_scene_delegate.h"
 
-PXR_NAMESPACE_OPEN_SCOPE
-TF_DEFINE_PRIVATE_TOKENS(tokens_, (st));
-PXR_NAMESPACE_CLOSE_SCOPE
-
 namespace blender::io::hydra {
+
+namespace usdtokens {
+static const pxr::TfToken st("st", pxr::TfToken::Immortal);
+}
 
 CurvesData::CurvesData(HydraSceneDelegate *scene_delegate,
                        const Object *object,
@@ -89,7 +89,7 @@ pxr::VtValue CurvesData::get_data(pxr::TfToken const &key) const
   else if (key == pxr::HdTokens->widths) {
     return pxr::VtValue(widths_);
   }
-  else if (key == pxr::tokens_->st) {
+  else if (key == usdtokens::st) {
     return pxr::VtValue(uvs_);
   }
   return pxr::VtValue();
@@ -134,7 +134,7 @@ pxr::HdPrimvarDescriptorVector CurvesData::primvar_descriptors(
   else if (interpolation == pxr::HdInterpolationUniform) {
     if (!uvs_.empty()) {
       primvars.emplace_back(
-          pxr::tokens_->st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
+          usdtokens::st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
     }
   }
   return primvars;
