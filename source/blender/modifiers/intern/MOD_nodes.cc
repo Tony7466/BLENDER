@@ -39,6 +39,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_bake_data_block_map.hh"
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_customdata.hh"
@@ -1421,6 +1422,29 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   }
 };
 
+class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
+ private:
+  Map<bake::BakeDataBlockID, ID *> new_mappings_;
+
+ public:
+  ID *lookup_or_try_add(const bake::BakeDataBlockID &key, std::optional<ID_Type> type) override
+  {
+    ID *id = new_mappings_.lookup_default(key, nullptr);
+    if (!id) {
+      return nullptr;
+    }
+    if (type && GS(id->name) != *type) {
+      return nullptr;
+    }
+    return id;
+  }
+
+  void try_add(ID &id) override
+  {
+    new_mappings_.add(bake::BakeDataBlockID(id), &id);
+  }
+};
+
 static void modifyGeometry(ModifierData *md,
                            const ModifierEvalContext *ctx,
                            bke::GeometrySet &geometry_set)
@@ -1487,6 +1511,8 @@ static void modifyGeometry(ModifierData *md,
   call_data.simulation_params = &simulation_params;
   NodesModifierBakeParams bake_params{*nmd, *ctx};
   call_data.bake_params = &bake_params;
+  NodesModifierBakeDataBlockMap data_block_map;
+  call_data.bake_data_block_map = &data_block_map;
 
   Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {

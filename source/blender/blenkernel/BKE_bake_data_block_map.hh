@@ -32,7 +32,7 @@ struct BakeDataBlockMap {
    * Tries to add the data block to the map. This may not succeed in all cases, e.g. if the
    * implementation does not allow inserting new mapping items.
    */
-  virtual void try_add(const ID &id) = 0;
+  virtual void try_add(ID &id) = 0;
 };
 
 }  // namespace blender::bke::bake
