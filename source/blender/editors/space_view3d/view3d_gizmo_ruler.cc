@@ -516,7 +516,8 @@ static RulerItem *gzgroup_ruler_item_first_get(wmGizmoGroup *gzgroup)
 
 #define RULER_ID "RulerData3D"
 
-/* GP data creation has to happen before the undo step is stored. */
+/* GP data creation has to happen before the undo step is stored.
+ * See also #116734. */
 static void view3d_ruler_gpencil_ensure(bContext *C)
 {
   // RulerInfo *ruler_info = gzgroup->customdata;
@@ -525,6 +526,7 @@ static void view3d_ruler_gpencil_ensure(bContext *C)
   if (scene->gpd == nullptr) {
     scene->gpd = BKE_gpencil_data_addnew(bmain, "Annotations");
     DEG_id_tag_update_ex(bmain, &scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_relations_tag_update(bmain);
   }
 }
 
