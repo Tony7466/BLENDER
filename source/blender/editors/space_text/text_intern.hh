@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "DNA_vec_types.h"
+
 /* internal exports only */
 
 struct ARegion;
