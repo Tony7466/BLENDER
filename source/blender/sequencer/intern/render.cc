@@ -231,7 +231,7 @@ void SEQ_render_new_render_data(Main *bmain,
   r_context->rectx = rectx;
   r_context->recty = recty;
   r_context->preview_render_size = preview_render_size;
-  r_context->never_show_missing_media = false;
+  r_context->ignore_missing_media = false;
   r_context->for_render = for_render;
   r_context->motion_blur_samples = 0;
   r_context->motion_blur_shutter = 0;
@@ -968,7 +968,7 @@ static bool seq_image_strip_is_multiview_render(
 
 static ImBuf *create_missing_media_image(const SeqRenderData *context, const StripElem *orig)
 {
-  if (context->never_show_missing_media) {
+  if (context->ignore_missing_media) {
     return nullptr;
   }
   if (context->scene == nullptr || context->scene->ed == nullptr ||
