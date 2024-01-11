@@ -647,7 +647,8 @@ std::string GLShader::constants_declare(const ShaderCreateInfo &info) const
 {
 
   std::stringstream ss;
-  if (info.specialization_constants_.is_empty()) {
+  const bool has_specialization_constants = !constants.types.is_empty();
+  if (!has_specialization_constants) {
     return ss.str();
   }
 
