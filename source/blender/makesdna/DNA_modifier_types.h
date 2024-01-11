@@ -2501,10 +2501,12 @@ typedef struct GreasePencilModifierFilterData {
 } GreasePencilModifierFilterData;
 
 typedef enum GreasePencilModifierFilterFlag {
-  GREASE_PENCIL_FILTER_INVERT_LAYER = (1 << 0),
-  GREASE_PENCIL_FILTER_INVERT_LAYER_PASS = (1 << 1),
-  GREASE_PENCIL_FILTER_INVERT_MATERIAL = (1 << 2),
-  GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS = (1 << 3),
+  GREASE_PENCIL_FILTER_USE_LAYER_PASS = (1 << 0),
+  GREASE_PENCIL_FILTER_USE_MATERIAL_PASS = (1 << 1),
+  GREASE_PENCIL_FILTER_INVERT_LAYER = (1 << 2),
+  GREASE_PENCIL_FILTER_INVERT_LAYER_PASS = (1 << 3),
+  GREASE_PENCIL_FILTER_INVERT_MATERIAL = (1 << 4),
+  GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS = (1 << 5),
 } GreasePencilModifierFilterFlag;
 
 typedef struct GreasePencilOpacityModifierData {

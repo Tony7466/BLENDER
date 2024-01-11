@@ -7478,6 +7478,11 @@ static void rna_def_modifier_grease_pencil_filter(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Layer", "Layer name");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  prop = RNA_def_property(srna, "use_layer_pass", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_USE_LAYER_PASS);
+  RNA_def_property_ui_text(prop, "Use Layer Pass", "Use layer pass filter");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   prop = RNA_def_property(srna, "layer_pass", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "layer_pass");
   RNA_def_property_range(prop, 0, 100);
@@ -7502,6 +7507,11 @@ static void rna_def_modifier_grease_pencil_filter(BlenderRNA *brna)
                                  nullptr,
                                  "rna_GreasePencilModifierFilter_material_poll");
   RNA_def_property_ui_text(prop, "Material", "Material used for filtering");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_material_pass", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_FILTER_USE_MATERIAL_PASS);
+  RNA_def_property_ui_text(prop, "Use Material Pass", "Use material pass filter");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "material_pass", PROP_INT, PROP_NONE);

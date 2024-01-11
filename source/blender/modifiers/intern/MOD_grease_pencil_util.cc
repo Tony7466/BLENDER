@@ -20,6 +20,8 @@
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 
+#include "DNA_defaults.h"
+
 #include "DEG_depsgraph_query.hh"
 
 #include "MOD_ui_common.hh"
@@ -39,9 +41,7 @@ void copy_data_filter(const GreasePencilModifierFilterData *filter_data_src,
                       GreasePencilModifierFilterData *filter_data_dst,
                       const int /*flag*/)
 {
-  memcpy((char *)filter_data_dst,
-         (const char *)filter_data_src,
-         sizeof(GreasePencilModifierFilterData));
+  memcpy(filter_data_dst, filter_data_src, sizeof(GreasePencilModifierFilterData));
 }
 
 void free_data_filter(GreasePencilModifierFilterData * /*filter_data*/) {}
@@ -64,6 +64,8 @@ static void filter_panel_draw(const bContext * /*C*/, Panel *panel)
   PointerRNA ptr = RNA_pointer_get(modifier_ptr, "filter");
 
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+  const bool use_layer_pass = RNA_boolean_get(&ptr, "use_layer_pass");
+  const bool use_material_pass = RNA_boolean_get(&ptr, "use_material_pass");
 
   uiLayoutSetPropSep(layout, true);
 
@@ -74,7 +76,11 @@ static void filter_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "invert_layer", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
+  /* TODO Would be nice to have the checkbox in the same line as the pass button. */
   row = uiLayoutRow(col, true);
+  uiItemR(row, &ptr, "use_layer_pass", UI_ITEM_NONE, "Filter by layer pass", ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiLayoutSetActive(row, use_layer_pass);
   uiItemR(row, &ptr, "layer_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropDecorate(sub, false);
@@ -87,7 +93,11 @@ static void filter_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "invert_material", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
+  /* TODO Would be nice to have the checkbox in the same line as the pass button. */
   row = uiLayoutRow(col, true);
+  uiItemR(row, &ptr, "use_material_pass", UI_ITEM_NONE, "Filter by material pass", ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiLayoutSetActive(row, use_material_pass);
   uiItemR(row, &ptr, "material_pass", UI_ITEM_NONE, nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropDecorate(sub, false);
@@ -160,15 +170,16 @@ IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
                                   const GreasePencilModifierFilterData &filter_data,
                                   IndexMaskMemory &memory)
 {
-  /* TODO Add an option to toggle pass filter on and off, instead of using "pass > 0". */
-  return get_filtered_layer_mask(
-      grease_pencil,
-      filter_data.layer_name[0] != '\0' ? std::make_optional<StringRef>(filter_data.layer_name) :
-                                          std::nullopt,
-      filter_data.layer_pass > 0 ? std::make_optional<int>(filter_data.layer_pass) : std::nullopt,
-      filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER,
-      filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER_PASS,
-      memory);
+  return get_filtered_layer_mask(grease_pencil,
+                                 filter_data.layer_name[0] != '\0' ?
+                                     std::make_optional<StringRef>(filter_data.layer_name) :
+                                     std::nullopt,
+                                 (filter_data.flag & GREASE_PENCIL_FILTER_USE_LAYER_PASS) ?
+                                     std::make_optional<int>(filter_data.layer_pass) :
+                                     std::nullopt,
+                                 filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER,
+                                 filter_data.flag & GREASE_PENCIL_FILTER_INVERT_LAYER_PASS,
+                                 memory);
 }
 
 static IndexMask get_filtered_stroke_mask(const Object *ob,
@@ -222,7 +233,7 @@ IndexMask get_filtered_stroke_mask(const Object *ob,
   return get_filtered_stroke_mask(ob,
                                   curves,
                                   filter_data.material,
-                                  filter_data.material_pass > 0 ?
+                                  (filter_data.flag & GREASE_PENCIL_FILTER_USE_MATERIAL_PASS) ?
                                       std::make_optional<int>(filter_data.material_pass) :
                                       std::nullopt,
                                   filter_data.flag & GREASE_PENCIL_FILTER_INVERT_MATERIAL,
