@@ -35,7 +35,7 @@ extern "C" char datatoc_glsl_shader_defines_glsl[];
 /** \name Creation / Destruction
  * \{ */
 
-GLShader::GLShader(const char *name) : Shader(name)
+GLShader::GLShader(const char *name) : Shader(name), programs_(*this)
 {
 #if 0 /* Would be nice to have, but for now the Deferred compilation \
        * does not have a GPUContext. */
@@ -645,7 +645,6 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
 
 std::string GLShader::constants_declare(const ShaderCreateInfo &info)
 {
-
   std::stringstream ss;
   const bool has_specialization_constants = !constants.types.is_empty();
   if (!has_specialization_constants) {
@@ -1243,7 +1242,7 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage,
 
   debug::object_label(gl_stage, shader, name);
 
-  glAttachShader(programs_.active->shader_program, shader);
+  glAttachShader(programs_.program_active->program_id, shader);
   return shader;
 }
 
@@ -1255,34 +1254,34 @@ void GLShader::update_program_and_sources(GLSources &stage_sources,
     stage_sources = sources;
   }
 
-  programs_.ensure_program_created(*this);
+  programs_.init();
 }
 
 void GLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
 {
   update_program_and_sources(programs_.vertex_sources, sources);
-  programs_.active->vert_shader = this->create_shader_stage(
+  programs_.program_active->vert_shader = this->create_shader_stage(
       GL_VERTEX_SHADER, sources, programs_.vertex_sources);
 }
 
 void GLShader::geometry_shader_from_glsl(MutableSpan<const char *> sources)
 {
   update_program_and_sources(programs_.geometry_sources, sources);
-  programs_.active->geom_shader = this->create_shader_stage(
+  programs_.program_active->geom_shader = this->create_shader_stage(
       GL_GEOMETRY_SHADER, sources, programs_.geometry_sources);
 }
 
 void GLShader::fragment_shader_from_glsl(MutableSpan<const char *> sources)
 {
   update_program_and_sources(programs_.fragment_sources, sources);
-  programs_.active->frag_shader = this->create_shader_stage(
+  programs_.program_active->frag_shader = this->create_shader_stage(
       GL_FRAGMENT_SHADER, sources, programs_.fragment_sources);
 }
 
 void GLShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
 {
   update_program_and_sources(programs_.compute_sources, sources);
-  programs_.active->compute_shader = this->create_shader_stage(
+  programs_.program_active->compute_shader = this->create_shader_stage(
       GL_COMPUTE_SHADER, sources, programs_.compute_sources);
 }
 
@@ -1303,14 +1302,14 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
     }
   }
 
-  GLuint shader_program = programs_.active->shader_program;
-  glLinkProgram(shader_program);
+  GLuint program_id = programs_.program_active->program_id;
+  glLinkProgram(program_id);
 
   GLint status;
-  glGetProgramiv(shader_program, GL_LINK_STATUS, &status);
+  glGetProgramiv(program_id, GL_LINK_STATUS, &status);
   if (!status) {
     char log[5000];
-    glGetProgramInfoLog(shader_program, sizeof(log), nullptr, log);
+    glGetProgramInfoLog(program_id, sizeof(log), nullptr, log);
     Span<const char *> sources;
     GLLogParser parser;
     this->print_log(sources, log, "Linking", true, &parser);
@@ -1318,10 +1317,10 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
   }
 
   if (info != nullptr && info->legacy_resource_location_ == false) {
-    interface = new GLShaderInterface(shader_program, *info);
+    interface = new GLShaderInterface(program_id, *info);
   }
   else {
-    interface = new GLShaderInterface(shader_program);
+    interface = new GLShaderInterface(program_id);
   }
 
   return true;
@@ -1335,9 +1334,8 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
 
 void GLShader::bind()
 {
-  programs_.ensure_program_linked(*this);
-  BLI_assert(programs_.active->shader_program != 0);
-  glUseProgram(programs_.active->shader_program);
+  GLuint program_id = programs_.program_get();
+  glUseProgram(program_id);
 }
 
 void GLShader::unbind()
@@ -1358,11 +1356,8 @@ void GLShader::unbind()
 void GLShader::transform_feedback_names_set(Span<const char *> name_list,
                                             const eGPUShaderTFBType geom_type)
 {
-  BLI_assert(programs_.active->shader_program);
-  glTransformFeedbackVaryings(programs_.active->shader_program,
-                              name_list.size(),
-                              name_list.data(),
-                              GL_INTERLEAVED_ATTRIBS);
+  glTransformFeedbackVaryings(
+      programs_.program_get(), name_list.size(), name_list.data(), GL_INTERLEAVED_ATTRIBS);
   transform_feedback_type_ = geom_type;
 }
 
@@ -1465,8 +1460,8 @@ void GLShader::uniform_int(int location, int comp_len, int array_size, const int
 
 int GLShader::program_handle_get() const
 {
-  BLI_assert(programs_.active);
-  return programs_.active->shader_program;
+  BLI_assert(programs_.program_active);
+  return programs_.program_active->program_id;
 }
 
 /** \} */
@@ -1529,75 +1524,86 @@ Vector<const char *> GLSources::update_constants_source(const StringRefNull cons
 /** \name Specialization Constants
  * \{ */
 
-GLShader::SpecializationProgram::~SpecializationProgram()
+GLShader::GLProgram::~GLProgram()
 {
   /* Invalid handles are silently ignored. */
   glDeleteShader(vert_shader);
   glDeleteShader(geom_shader);
   glDeleteShader(frag_shader);
   glDeleteShader(compute_shader);
-  glDeleteProgram(shader_program);
+  glDeleteProgram(program_id);
 }
 
-void GLShader::SpecializationProgram::link(Shader &shader)
+void GLShader::GLProgram::link(Shader &shader)
 {
-  glLinkProgram(shader_program);
+  glLinkProgram(program_id);
 
   GLint status;
-  glGetProgramiv(shader_program, GL_LINK_STATUS, &status);
+  glGetProgramiv(program_id, GL_LINK_STATUS, &status);
   if (!status) {
     char log[5000];
-    glGetProgramInfoLog(shader_program, sizeof(log), nullptr, log);
+    glGetProgramInfoLog(program_id, sizeof(log), nullptr, log);
     Span<const char *> sources;
     GLLogParser parser;
     shader.print_log(sources, log, "Linking", true, &parser);
   }
 }
 
-void GLShader::SpecializationPrograms::ensure_program_created(const GLShader &shader)
+void GLShader::SpecializationPrograms::init()
 {
-  if (active == nullptr) {
-    active = &entries.lookup_or_add_default(shader.constants.values);
-    if (!active->shader_program) {
-      active->shader_program = glCreateProgram();
-      debug::object_label(GL_PROGRAM, active->shader_program, shader.name_get());
-    }
-  }
-}
-
-void GLShader::SpecializationPrograms::ensure_program_linked(GLShader &shader)
-{
-  if (shader.constants.types.is_empty()) {
-    /* Early exit for shaders that doesn't use specialization constants. The active shader should
-     * already be setup. */
-    BLI_assert(active && active->shader_program);
+  if (program_active) {
     return;
   }
 
-  active = &entries.lookup_or_add_default(shader.constants.values);
-  if (!active->shader_program) {
-    active->shader_program = glCreateProgram();
-    debug::object_label(GL_PROGRAM, active->shader_program, shader.name_get());
+  program_active = &program_cache_.lookup_or_add_default(shader_.constants.values);
+  if (!program_active->program_id) {
+    program_active->program_id = glCreateProgram();
+    debug::object_label(GL_PROGRAM, program_active->program_id, shader_.name_get());
+  }
+}
+
+GLuint GLShader::SpecializationPrograms::program_get()
+{
+  if (shader_.constants.types.is_empty()) {
+    /* Early exit for shaders that doesn't use specialization constants. The active shader should
+     * already be setup. */
+    BLI_assert(program_active && program_active->program_id);
+    return program_active->program_id;
+  }
+
+  if (!shader_.constants.is_dirty) {
+    /* Early exit when constants didn't change since the last call. */
+    BLI_assert(program_active && program_active->program_id);
+    return program_active->program_id;
+  }
+
+  program_active = &program_cache_.lookup_or_add_default(shader_.constants.values);
+  if (!program_active->program_id) {
+    program_active->program_id = glCreateProgram();
+    debug::object_label(GL_PROGRAM, program_active->program_id, shader_.name_get());
     MutableSpan<const char *> no_sources;
     if (!vertex_sources.is_empty()) {
-      active->vert_shader = shader.create_shader_stage(
+      program_active->vert_shader = shader_.create_shader_stage(
           GL_VERTEX_SHADER, no_sources, vertex_sources);
     }
     if (!geometry_sources.is_empty()) {
-      active->geom_shader = shader.create_shader_stage(
+      program_active->geom_shader = shader_.create_shader_stage(
           GL_GEOMETRY_SHADER, no_sources, geometry_sources);
     }
     if (!fragment_sources.is_empty()) {
-      active->frag_shader = shader.create_shader_stage(
+      program_active->frag_shader = shader_.create_shader_stage(
           GL_FRAGMENT_SHADER, no_sources, fragment_sources);
     }
     if (!compute_sources.is_empty()) {
-      active->compute_shader = shader.create_shader_stage(
+      program_active->compute_shader = shader_.create_shader_stage(
           GL_COMPUTE_SHADER, no_sources, compute_sources);
     }
 
-    active->link(shader);
+    program_active->link(shader_);
   }
+
+  shader_.constants.is_dirty = false;
+  return program_active->program_id;
 }
 
 /** \} */

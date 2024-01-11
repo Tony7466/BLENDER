@@ -56,7 +56,6 @@ class GLSources : public Vector<GLSource> {
   Vector<const char *> update_constants_source(const StringRefNull constants_patch) const;
 
  private:
-  void update_patch_index();
   /**
    * Index into self where the constants needs to be applied before.
    * -1 means no constants will be applied.
@@ -72,15 +71,15 @@ class GLShader : public Shader {
   friend shader::StageInterfaceInfo;
 
  private:
-  struct SpecializationProgram {
+  struct GLProgram {
     /** Handle for program. */
-    GLuint shader_program = 0;
+    GLuint program_id = 0;
     /** Handle for individual shader stages. */
     GLuint vert_shader = 0;
     GLuint geom_shader = 0;
     GLuint frag_shader = 0;
     GLuint compute_shader = 0;
-    ~SpecializationProgram();
+    ~GLProgram();
     void link(Shader &shader);
   };
 
@@ -88,14 +87,15 @@ class GLShader : public Shader {
     using Key = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
 
    private:
-    Map<Key, SpecializationProgram> entries;
+    GLShader &shader_;
+    Map<Key, GLProgram> program_cache_;
 
    public:
     /**
-     * Points to the active specialization program. When binding a shader the active shader is
+     * Points to the active program. When binding a shader the active shader is
      * setup.
      */
-    SpecializationProgram *active = nullptr;
+    GLProgram *program_active = nullptr;
 
     /**
      * When the shader uses Specialization Constants these attribute contains the sources for
@@ -108,16 +108,23 @@ class GLShader : public Shader {
     GLSources compute_sources;
 
    public:
-    /**
-     * Make sure that the active is filled. It might still point to an instance that isn't fully
-     * compiled.
-     */
-    void ensure_program_created(const GLShader &shader);
+    SpecializationPrograms(GLShader &shader) : shader_(shader) {}
 
     /**
-     * Make sure that active is filled reflecting the current state of shader.constants.values.
+     * Initialize this instance.
+     *
+     * - Ensures that entries at least has a default GLProgram.
+     * - Ensures that active is set.
+     * - Active GLProgram has a shader_program (at least in creation state).
+     * - Does nothing when instance was already initialized.
      */
-    void ensure_program_linked(GLShader &shader);
+    void init();
+
+    /**
+     * Return a GLProgram program id that reflects the current state of shader.constants.values.
+     * The returned program_id is in linked state, or an error happened during linking.
+     */
+    GLuint program_get();
   };
 
   SpecializationPrograms programs_;
@@ -182,7 +189,7 @@ class GLShader : public Shader {
     if (!programs_.compute_sources.is_empty()) {
       return true;
     }
-    return programs_.active->compute_shader;
+    return programs_.program_active->compute_shader;
   }
 
  private:
