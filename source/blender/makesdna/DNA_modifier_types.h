@@ -2503,14 +2503,23 @@ typedef struct GreasePencilModifierMaterialFilter {
   int flag;
 } GreasePencilModifierMaterialFilter;
 
-typedef enum GreasePencilModifierFilterFlag {
-  GREASE_PENCIL_FILTER_INVERT_LAYER = (1 << 0),
-  GREASE_PENCIL_FILTER_USE_LAYER_PASS = (1 << 1),
-  GREASE_PENCIL_FILTER_INVERT_LAYER_PASS = (1 << 2),
-  GREASE_PENCIL_FILTER_INVERT_MATERIAL = (1 << 3),
-  GREASE_PENCIL_FILTER_USE_MATERIAL_PASS = (1 << 4),
-  GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS = (1 << 5),
-} GreasePencilModifierFilterFlag;
+typedef struct GreasePencilModifierVertexGroupData {
+  /** #MAX_VGROUP_NAME. */
+  char vertex_group_name[64];
+  /** GreasePencilModifierFilterFlag */
+  int flag;
+  char _pad[4];
+} GreasePencilModifierVertexGroupData;
+
+typedef enum GreasePencilModifierInfluenceFlag {
+  GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER = (1 << 0),
+  GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER = (1 << 1),
+  GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER = (1 << 2),
+  GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER = (1 << 3),
+  GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER = (1 << 4),
+  GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER = (1 << 5),
+  GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP = (1 << 6),
+} GreasePencilModifierInfluenceFlag;
 /**
  * Combined generic influence data for grease pencil modifiers.
  * Not all parts may be used by all modifier types.
@@ -2518,4 +2527,5 @@ typedef enum GreasePencilModifierFilterFlag {
 typedef struct GreasePencilModifierInfluenceData {
   GreasePencilModifierLayerFilter layer_filter;
   GreasePencilModifierMaterialFilter material_filter;
+  GreasePencilModifierVertexGroupData vertex_group;
 } GreasePencilModifierInfluenceData;

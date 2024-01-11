@@ -43,6 +43,7 @@ void foreach_influence_ID_link(GreasePencilModifierInfluenceData *influence_data
 
 void draw_layer_filter_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
 void draw_material_filter_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
+void draw_vertex_group_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr);
 
 IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
                                   const GreasePencilModifierLayerFilter &filter,

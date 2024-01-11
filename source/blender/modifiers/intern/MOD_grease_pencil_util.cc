@@ -109,6 +109,22 @@ void draw_material_filter_settings(const bContext * /*C*/, uiLayout *layout, Poi
   uiItemR(sub, ptr, "invert_material_pass", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 }
 
+void draw_vertex_group_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
+{
+  PointerRNA ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
+  bool has_vertex_group = RNA_string_length(ptr, "name") != 0;
+  uiLayout *row, *sub;
+
+  uiLayoutSetPropSep(layout, true);
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, ptr, "vertex_group_name", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, ptr, "invert_vertex_group", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
+}
+
 /**
  * Get a list of pass IDs used by grease pencil materials.
  * This way the material pass can be looked up by index instead of having to get the material for
@@ -173,11 +189,11 @@ IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
                                  filter.layer_name[0] != '\0' ?
                                      std::make_optional<StringRef>(filter.layer_name) :
                                      std::nullopt,
-                                 (filter.flag & GREASE_PENCIL_FILTER_USE_LAYER_PASS) ?
+                                 (filter.flag & GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER) ?
                                      std::make_optional<int>(filter.layer_pass) :
                                      std::nullopt,
-                                 filter.flag & GREASE_PENCIL_FILTER_INVERT_LAYER,
-                                 filter.flag & GREASE_PENCIL_FILTER_INVERT_LAYER_PASS,
+                                 filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER,
+                                 filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER,
                                  memory);
 }
 
@@ -229,15 +245,16 @@ IndexMask get_filtered_stroke_mask(const Object *ob,
                                    IndexMaskMemory &memory)
 {
   /* TODO Add an option to toggle pass filter on and off, instead of using "pass > 0". */
-  return get_filtered_stroke_mask(ob,
-                                  curves,
-                                  filter.material,
-                                  (filter.flag & GREASE_PENCIL_FILTER_USE_MATERIAL_PASS) ?
-                                      std::make_optional<int>(filter.material_pass) :
-                                      std::nullopt,
-                                  filter.flag & GREASE_PENCIL_FILTER_INVERT_MATERIAL,
-                                  filter.flag & GREASE_PENCIL_FILTER_INVERT_MATERIAL_PASS,
-                                  memory);
+  return get_filtered_stroke_mask(
+      ob,
+      curves,
+      filter.material,
+      (filter.flag & GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER) ?
+          std::make_optional<int>(filter.material_pass) :
+          std::nullopt,
+      filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER,
+      filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER,
+      memory);
 }
 
 Vector<bke::greasepencil::Drawing *> get_drawings_for_write(GreasePencil &grease_pencil,
