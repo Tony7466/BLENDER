@@ -6,7 +6,7 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "UI_resources.hh"
 
@@ -48,7 +48,7 @@
 #include "overlay_private.hh"
 
 #include "draw_common.h"
-#include "draw_manager_text.h"
+#include "draw_manager_text.hh"
 
 void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 {

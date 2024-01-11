@@ -50,13 +50,13 @@
 #include "WM_types.hh"
 #include "wm.hh"
 #include "wm_draw.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_files.hh"
-#include "wm_platform_support.h"
+#include "wm_platform_support.hh"
 #include "wm_window.hh"
-#include "wm_window_private.h"
+#include "wm_window_private.hh"
 #ifdef WITH_XR_OPENXR
-#  include "wm_xr.h"
+#  include "wm_xr.hh"
 #endif
 
 #include "ED_anim_api.hh"
@@ -784,7 +784,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     }
 #endif
     /* until screens get drawn, make it nice gray */
-    GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
+    GPU_clear_color(0.25f, 0.25f, 0.25f, 1.0f);
 
     /* needed here, because it's used before it reads userdef */
     WM_window_set_dpi(win);
@@ -792,7 +792,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     wm_window_swap_buffers(win);
 
     /* Clear double buffer to avoids flickering of new windows on certain drivers. (See #97600) */
-    GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
+    GPU_clear_color(0.25f, 0.25f, 0.25f, 1.0f);
 
     GPU_render_end();
   }
@@ -1323,7 +1323,8 @@ static void ghost_event_proc_timestamp_warning(GHOST_EventHandle ghost_event)
   const uint64_t now_ms = GHOST_GetMilliSeconds(g_system);
   /* Ensure the reference time occurred in the last #event_time_ok_ms.
    * If not, the reference time it's self may be a bad time-stamp. */
-  if ((event_ms_ref < (now_ms - event_time_ok_ms)) || (event_ms_ref > (now_ms + event_time_ok_ms)))
+  if (event_ms_ref < event_time_error_ms || (event_ms_ref < (now_ms - event_time_ok_ms)) ||
+      (event_ms_ref > (now_ms + event_time_ok_ms)))
   {
     /* Skip, the reference time not recent enough to be used. */
     return;
@@ -1334,11 +1335,11 @@ static void ghost_event_proc_timestamp_warning(GHOST_EventHandle ghost_event)
    * Different input methods may detect and trigger events in a way that wont ensure
    * monotonic event times, so only consider this an error for large time deltas. */
   double time_delta = 0.0;
-  if (event_ms_ref < (event_ms - event_time_error_ms)) {
+  if (event_ms < (event_ms_ref - event_time_error_ms)) {
     /* New event time is after (to be expected). */
     time_delta = double(now_ms - event_ms) / -1000.0;
   }
-  else if (event_ms_ref > (event_ms + event_time_error_ms)) {
+  else if (event_ms > (event_ms_ref + event_time_error_ms)) {
     /* New event time is before (unexpected but not an error). */
     time_delta = double(event_ms - now_ms) / 1000.0;
   }
@@ -1361,10 +1362,13 @@ static void ghost_event_proc_timestamp_warning(GHOST_EventHandle ghost_event)
   }
 
   fprintf(stderr,
-          "GHOST: suspicious time-stamp from far in the %s: %.2f %s, type %d\n",
+          "GHOST: suspicious time-stamp from far in the %s: %.2f %s, "
+          "absolute value is %" PRIu64 ", current time is %" PRIu64 ", for type %d\n",
           time_delta < 0.0f ? "past" : "future",
           std::abs(time_delta),
           time_unit,
+          event_ms,
+          now_ms,
           int(GHOST_GetEventType(ghost_event)));
 }
 #endif /* !NDEBUG */
@@ -1727,7 +1731,7 @@ static bool wm_window_timers_process(const bContext *C, int *sleep_us_p)
   bool has_event = false;
 
   const int sleep_us = *sleep_us_p;
-  /* The nearest time an active timer is scheduled to run.  */
+  /* The nearest time an active timer is scheduled to run. */
   double ntime_min = DBL_MAX;
 
   /* Mutable in case the timer gets removed. */

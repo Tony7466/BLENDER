@@ -118,12 +118,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_hiz_update_layer";
     case HORIZON_DENOISE:
       return "eevee_horizon_denoise";
-    case HORIZON_SCAN_DIFFUSE:
-      return "eevee_horizon_scan_diffuse";
-    case HORIZON_SCAN_REFLECT:
-      return "eevee_horizon_scan_reflect";
-    case HORIZON_SCAN_REFRACT:
-      return "eevee_horizon_scan_refract";
+    case HORIZON_SCAN:
+      return "eevee_horizon_scan";
     case HORIZON_SETUP:
       return "eevee_horizon_setup";
     case LOOKDEV_DISPLAY:
@@ -192,36 +188,20 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
-    case RAY_DENOISE_SPATIAL_DIFFUSE:
-      return "eevee_ray_denoise_spatial_diffuse";
-    case RAY_DENOISE_SPATIAL_REFLECT:
-      return "eevee_ray_denoise_spatial_reflect";
-    case RAY_DENOISE_SPATIAL_REFRACT:
-      return "eevee_ray_denoise_spatial_refract";
+    case RAY_DENOISE_SPATIAL:
+      return "eevee_ray_denoise_spatial";
     case RAY_DENOISE_TEMPORAL:
       return "eevee_ray_denoise_temporal";
-    case RAY_DENOISE_BILATERAL_DIFFUSE:
-      return "eevee_ray_denoise_bilateral_diffuse";
-    case RAY_DENOISE_BILATERAL_REFLECT:
-      return "eevee_ray_denoise_bilateral_reflect";
-    case RAY_DENOISE_BILATERAL_REFRACT:
-      return "eevee_ray_denoise_bilateral_refract";
-    case RAY_GENERATE_DIFFUSE:
-      return "eevee_ray_generate_diffuse";
-    case RAY_GENERATE_REFLECT:
-      return "eevee_ray_generate_reflect";
-    case RAY_GENERATE_REFRACT:
-      return "eevee_ray_generate_refract";
+    case RAY_DENOISE_BILATERAL:
+      return "eevee_ray_denoise_bilateral";
+    case RAY_GENERATE:
+      return "eevee_ray_generate";
     case RAY_TRACE_FALLBACK:
       return "eevee_ray_trace_fallback";
     case RAY_TRACE_PLANAR:
       return "eevee_ray_trace_planar";
-    case RAY_TRACE_SCREEN_DIFFUSE:
-      return "eevee_ray_trace_screen_diffuse";
-    case RAY_TRACE_SCREEN_REFLECT:
-      return "eevee_ray_trace_screen_reflect";
-    case RAY_TRACE_SCREEN_REFRACT:
-      return "eevee_ray_trace_screen_refract";
+    case RAY_TRACE_SCREEN:
+      return "eevee_ray_trace_screen";
     case RAY_TILE_CLASSIFY:
       return "eevee_ray_tile_classify";
     case RAY_TILE_COMPACT:
@@ -397,7 +377,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   bool supports_render_passes = (pipeline_type == MAT_PIPE_DEFERRED);
   /* Opaque forward do support AOVs and render pass if not using transparency. */
   if (!GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT) &&
-      (pipeline_type == MAT_PIPE_FORWARD)) {
+      (pipeline_type == MAT_PIPE_FORWARD))
+  {
     supports_render_passes = true;
   }
 
@@ -406,8 +387,56 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.additional_info("eevee_cryptomatte_out");
   }
 
-  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE) && pipeline_type == MAT_PIPE_FORWARD) {
-    info.define("SSS_TRANSMITTANCE");
+  int lit_closure_count = 0;
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_DIFFUSE)) {
+    info.define("MAT_DIFFUSE");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_GLOSSY)) {
+    info.define("MAT_REFLECTION");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT)) {
+    info.define("MAT_TRANSLUCENT");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE)) {
+    info.define("MAT_SUBSURFACE");
+    lit_closure_count++;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_REFRACT)) {
+    info.define("MAT_REFRACTION");
+    /* TODO(fclem): Support refracted lights. */
+  }
+
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT | GPU_MATFLAG_SUBSURFACE)) {
+    info.define("SHADOW_SUBSURFACE");
+  }
+
+  if ((pipeline_type == MAT_PIPE_FORWARD) ||
+      GPU_material_flag_get(gpumat, GPU_MATFLAG_SHADER_TO_RGBA))
+  {
+    switch (lit_closure_count) {
+      case 0:
+        /* Define nothing. This will in turn define SKIP_LIGHT_EVAL. */
+        break;
+      /* These need to be separated since the strings need to be static. */
+      case 1:
+        info.define("LIGHT_CLOSURE_EVAL_COUNT", "1");
+        break;
+      case 2:
+        info.define("LIGHT_CLOSURE_EVAL_COUNT", "2");
+        break;
+      case 3:
+        info.define("LIGHT_CLOSURE_EVAL_COUNT", "3");
+        break;
+      case 4:
+        info.define("LIGHT_CLOSURE_EVAL_COUNT", "4");
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_BARYCENTRIC)) {
