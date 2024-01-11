@@ -50,6 +50,8 @@ char *MSLGeneratorInterface::msl_patch_default = nullptr;
 #define FRAGMENT_OUT_STRUCT_NAME "FragmentOut"
 #define FRAGMENT_TILE_IN_STRUCT_NAME "FragmentTileIn"
 
+#define ATOMIC_DEFINE_STR "#define MTL_SUPPORTS_TEXTURE_ATOMICS 1\n"
+
 /* -------------------------------------------------------------------- */
 /** \name Shader Translation utility functions.
  * \{ */
@@ -1035,6 +1037,11 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     msl_iface.uses_gl_FragDepth = (info->depth_write_ != DepthWrite::UNCHANGED) &&
                                   shd_builder_->glsl_fragment_source_.find("gl_FragDepth") !=
                                       std::string::npos;
+
+    /* TODO(fclem): Add to create info. */
+    msl_iface.uses_gl_FragStencilRefARB = shd_builder_->glsl_fragment_source_.find(
+                                              "gl_FragStencilRefARB") != std::string::npos;
+
     msl_iface.depth_write = info->depth_write_;
 
     /* Early fragment tests. */
@@ -1059,6 +1066,15 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Setup `stringstream` for populating generated MSL shader vertex/frag shaders. */
   std::stringstream ss_vertex;
   std::stringstream ss_fragment;
+  ss_vertex << "#line 1 \"msl_wrapper_code\"\n";
+  ss_fragment << "#line 1 \"msl_wrapper_code\"\n";
+
+  if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC) &&
+      MTLBackend::get_capabilities().supports_texture_atomics)
+  {
+    ss_vertex << ATOMIC_DEFINE_STR;
+    ss_fragment << ATOMIC_DEFINE_STR;
+  }
 
   /* Generate specialization constants. */
   generate_specialization_constant_declarations(info, ss_vertex);
@@ -1334,6 +1350,9 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     if (msl_iface.uses_gl_FragDepth) {
       ss_fragment << "float gl_FragDepth;" << std::endl;
     }
+    if (msl_iface.uses_gl_FragStencilRefARB) {
+      ss_fragment << "int gl_FragStencilRefARB;" << std::endl;
+    }
     if (msl_iface.uses_gl_PointCoord) {
       ss_fragment << "float2 gl_PointCoord;" << std::endl;
     }
@@ -1521,6 +1540,11 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
 
   ss_compute << "#define GPU_ARB_texture_cube_map_array 1\n"
                 "#define GPU_ARB_shader_draw_parameters 1\n";
+  if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC) &&
+      MTLBackend::get_capabilities().supports_texture_atomics)
+  {
+    ss_compute << ATOMIC_DEFINE_STR;
+  }
 
   generate_specialization_constant_declarations(info, ss_compute);
 
@@ -2992,6 +3016,10 @@ std::string MSLGeneratorInterface::generate_msl_fragment_struct(bool is_input)
                                                                                      "any"));
     out << "\tfloat fragdepth [[depth(" << out_depth_argument << ")]];" << std::endl;
   }
+  /* Add gl_FragStencilRefARB output if used. */
+  if (!is_input && this->uses_gl_FragStencilRefARB) {
+    out << "\tuint fragstencil [[stencil]];" << std::endl;
+  }
   if (is_input) {
     out << "} " FRAGMENT_TILE_IN_STRUCT_NAME ";" << std::endl;
   }
@@ -3426,6 +3454,12 @@ std::string MSLGeneratorInterface::generate_msl_fragment_output_population()
   /* Output gl_FragDepth. */
   if (this->uses_gl_FragDepth) {
     out << "\toutput.fragdepth = " << shader_stage_inst_name << ".gl_FragDepth;" << std::endl;
+  }
+
+  /* Output gl_FragStencilRefARB. */
+  if (this->uses_gl_FragStencilRefARB) {
+    out << "\toutput.fragstencil = uint(" << shader_stage_inst_name << ".gl_FragStencilRefARB);"
+        << std::endl;
   }
 
   /* Output attributes. */
@@ -4027,7 +4061,7 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
     case ImageType::INT_2D_ARRAY_ATOMIC:
     case ImageType::UINT_2D_ARRAY_ATOMIC: {
       if (supports_native_atomics) {
-        return "_mtl_combined_image_sampler_2d";
+        return "_mtl_combined_image_sampler_2d_array";
       }
       else {
         return "_mtl_combined_image_sampler_2d_array_atomic_fallback";

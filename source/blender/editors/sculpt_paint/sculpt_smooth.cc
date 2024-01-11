@@ -234,10 +234,6 @@ static void do_enhance_details_brush_task(Object *ob,
     float disp[3];
     madd_v3_v3v3fl(disp, vd.co, ss->cache->detail_directions[vd.index], fade);
     SCULPT_clip(sd, ss, vd.co, disp);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -335,7 +331,7 @@ void do_smooth_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float 
 
   SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
 
-  for (const int iteration : IndexRange(count)) {
+  for (const int iteration : IndexRange(count + 1)) {
     const float strength = (iteration != count) ? 1.0f : last;
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int i : range) {
@@ -384,9 +380,6 @@ static void smooth_position_node(
     sub_v3_v3v3(val, avg, vd.co);
     madd_v3_v3v3fl(val, vd.co, val, fade);
     SCULPT_clip(sd, ss, vd.co, val);
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -407,7 +400,7 @@ void do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstre
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);
 
-  for (const int iteration : IndexRange(count)) {
+  for (const int iteration : IndexRange(count + 1)) {
     const float strength = (iteration != count) ? 1.0f : last;
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int i : range) {
@@ -527,9 +520,6 @@ static void do_surface_smooth_brush_laplacian_task(Object *ob, const Brush *brus
     surface_smooth_laplacian_step(
         ss, disp, vd.co, ss->cache->surface_smooth_laplacian_disp, vd.vertex, orig_data.co, alpha);
     madd_v3_v3fl(vd.co, disp, clamp_f(fade, 0.0f, 1.0f));
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
