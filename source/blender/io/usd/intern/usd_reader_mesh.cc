@@ -109,7 +109,7 @@ static void assign_materials(Main *bmain,
       if (!usd_mat) {
         CLOG_WARN(&LOG,
                   "WARNING: Couldn't construct USD material from prim %s",
-                  item->key.GetAsString().c_str());
+                  item.key.GetAsString().c_str());
         continue;
       }
 
@@ -119,7 +119,7 @@ static void assign_materials(Main *bmain,
       if (!assigned_mat) {
         CLOG_WARN(&LOG,
                   "Couldn't create Blender material from USD material %s",
-                  item->key.GetAsString().c_str());
+                  item.key.GetAsString().c_str());
         continue;
       }
 
