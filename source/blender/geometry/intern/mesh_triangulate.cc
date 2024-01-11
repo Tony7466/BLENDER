@@ -499,18 +499,6 @@ static void calc_edges(const OffsetIndices<int> src_faces,
 
 namespace deduplication {
 
-struct TriangleRef {
-  const int *verts;
-  uint64_t hash() const
-  {
-    return get_default_hash_3(verts[0], verts[1], verts[2]);
-  }
-  friend bool operator==(const TriangleRef &a, const TriangleRef &b)
-  {
-    return a.verts[0] == b.verts[0] && a.verts[1] == b.verts[1] && a.verts[2] == b.verts[2];
-  }
-};
-
 static GroupedSpan<int> build_vert_to_tri_map(const int verts_num,
                                               const Span<int3> vert_tris,
                                               Array<int> &r_offsets,
@@ -580,22 +568,20 @@ static IndexMask calc_unselected_faces(const Mesh &mesh,
 
   Array<int> vert_to_tri_offsets;
   Array<int> vert_to_tri_indices;
-  const GroupedSpan<int> vert_to_tri_map = build_vert_to_tri_map(
+  const GroupedSpan<int> vert_to_tri = build_vert_to_tri_map(
       mesh.verts_num, corner_map.cast<int3>(), vert_to_tri_offsets, vert_to_tri_indices);
   return IndexMask::from_predicate(unselected, GrainSize(1024), memory, [&](const int i) {
     const Span<int> face_verts = src_corner_verts.slice(src_faces[i]);
     if (face_verts.size() != 3) {
       return true;
     }
-    for (const int vert : face_verts) {
-      for (const int tri : vert_to_tri_map[vert]) {
-        // TODO: Better performance check.
-        if (Set<int, 3>(Span(&vert_tris[tri].x, 3)) == Set<int, 3>(face_verts)) {
-          return false;
-        }
-      }
-    }
-    return true;
+    /* TODO: Sorting the three values with a few comparisons would be faster than a #Set. */
+    const Set<int, 3> vert_set(face_verts);
+    return std::none_of(face_verts.begin(), face_verts.end(), [&](const int vert) {
+      return std::none_of(vert_to_tri[vert].begin(), vert_to_tri[vert].end(), [&](const int tri) {
+        return Set<int, 3>(Span(&vert_tris[tri].x, 3)) == vert_set;
+      });
+    });
   });
 }
 
@@ -611,6 +597,60 @@ static std::optional<int> find_edge_duplicate(const GroupedSpan<int> vert_to_edg
     }
   }
   return std::nullopt;
+}
+
+/**
+ * Given all the edges on the new mesh, find new edges that are duplicates of existing edges.
+ * If there are any, remove them and references to them in the corner edge array.
+ *
+ * \return The final number of edges in the mesh.
+ */
+static int calc_new_edges(const Mesh &src_mesh,
+                          const Span<int2> src_edges,
+                          const GroupedSpan<int> vert_to_edge,
+                          const IndexRange new_edges_range,
+                          MutableSpan<int2> edges,
+                          MutableSpan<int> corner_edges)
+{
+  if (src_mesh.no_overlapping_topology()) {
+    return edges.size();
+  }
+  const Span<int2> new_edges = edges.slice(new_edges_range);
+  Array<int> duplicate_remap(new_edges.size());
+  threading::parallel_for(new_edges.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      duplicate_remap[i] = find_edge_duplicate(vert_to_edge, src_edges, new_edges[i]).value_or(-1);
+    }
+  });
+  IndexMaskMemory memory;
+  const IndexMask non_duplicate_new_edges = IndexMask::from_predicate(
+      new_edges.index_range(), GrainSize(4096), memory, [&](const int i) {
+        return duplicate_remap[i] == -1;
+      });
+  if (non_duplicate_new_edges.size() == new_edges.size()) {
+    return edges.size();
+  }
+
+  non_duplicate_new_edges.foreach_index_optimized<int>(
+      GrainSize(4096), [&](const int index, const int pos) {
+        duplicate_remap[index] = pos + new_edges_range.start();
+      });
+  threading::parallel_for(corner_edges.index_range(), 4096, [&](const IndexRange range) {
+    for (const int corner : range) {
+      const int edge = corner_edges[corner];
+      if (edge < new_edges_range.start()) {
+        continue;
+      }
+      const int remap_index = edge - new_edges_range.start();
+      corner_edges[corner] = duplicate_remap[remap_index];
+    }
+  });
+
+  Array<int2> edges_with_duplicates(new_edges);
+  array_utils::gather(edges_with_duplicates.as_span(),
+                      non_duplicate_new_edges,
+                      edges.slice(new_edges_range.start(), non_duplicate_new_edges.size()));
+  return src_edges.size() + non_duplicate_new_edges.size();
 }
 
 }  // namespace deduplication
@@ -703,10 +743,17 @@ std::optional<Mesh *> mesh_triangulate(
       src_mesh, src_faces, src_corner_verts, selection, corner_map, memory);
   const IndexRange unselected_range(tris_range.one_after_last(), unselected.size());
 
-  /* Create a mesh with no face corners. We don't know the number of corners from unselected faces.
-   * We have to create the face offsets anyway, this will give us the number of corners. */
-  Mesh *mesh = create_mesh_no_attributes(
-      src_mesh, src_mesh.verts_num, 0, tris_range.size() + unselected.size(), 0);
+  /* Create a mesh with no face corners.
+   *  - We haven't yet counted the number of corners from unselected faces. Creating the final face
+   *    offsets will give us that number anyway, so wait to create the edges.
+   *  - The number of edges is a guess that doesn't include deduplication of new edges with
+   *    existing edges. If those are found, the mesh will be resized later.
+   *  - Don't create attributes to facilite implicit sharing of the positions array. */
+  Mesh *mesh = create_mesh_no_attributes(src_mesh,
+                                         src_mesh.verts_num,
+                                         src_edges.size() + tri_edges_range.size(),
+                                         tris_range.size() + unselected.size(),
+                                         0);
 
   /* Find the face corner ranges using the offsets array from the new mesh. That gives us the
    * final number of face corners. */
@@ -715,10 +762,11 @@ std::optional<Mesh *> mesh_triangulate(
   const OffsetIndices faces_unselected = faces.slice(unselected_range);
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  attributes.add<int2>(".edge_verts", bke::AttrDomain::Edge, bke::AttributeInitConstruct());
   attributes.add<int>(".corner_vert", bke::AttrDomain::Corner, bke::AttributeInitConstruct());
   attributes.add<int>(".corner_edge", bke::AttrDomain::Corner, bke::AttributeInitConstruct());
 
-  Array<int2> edges(src_edges.size() + tri_edges_range.size());
+  MutableSpan<int2> edges_with_duplicates = mesh->edges_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
 
@@ -734,7 +782,7 @@ std::optional<Mesh *> mesh_triangulate(
                      faces.slice(ngon_tris_range),
                      ngon_edges_range.start(),
                      corner_map.as_mutable_span().slice(ngon_corners_range),
-                     edges.as_mutable_span().slice(ngon_edges_range),
+                     edges_with_duplicates.slice(ngon_edges_range),
                      corner_edges);
   }
 
@@ -743,50 +791,35 @@ std::optional<Mesh *> mesh_triangulate(
                      corner_map.as_mutable_span().slice(quad_corners_range),
                      corner_verts,
                      quad_edges_range.start(),
-                     edges.as_mutable_span().slice(quad_edges_range),
+                     edges_with_duplicates.slice(quad_edges_range),
                      corner_edges.slice(quad_corners_range));
+  }
+
+  {
+    Array<int> vert_to_edge_offsets;
+    Array<int> vert_to_edge_indices;
+    const GroupedSpan<int> src_vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
+        src_edges, src_mesh.verts_num, vert_to_edge_offsets, vert_to_edge_indices);
+
+    mesh->edges_num = deduplication::calc_new_edges(src_mesh,
+                                                    src_edges,
+                                                    src_vert_to_edge_map,
+                                                    tri_edges_range,
+                                                    edges_with_duplicates,
+                                                    corner_edges);
+
+    edges_with_duplicates.take_front(src_edges.size()).copy_from(src_edges);
   }
 
   /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
    * Use the #CustomData API for better support for vertex groups. */
   CustomData_merge(&src_mesh.vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
 
-  // TODO: CLEANUP, OPTIMIZE
-  Array<int> src_vert_to_edge_offsets;
-  Array<int> src_vert_to_edge_indices;
-  const GroupedSpan<int> src_vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
-      src_edges, src_mesh.verts_num, src_vert_to_edge_offsets, src_vert_to_edge_indices);
-
-  const Span<int2> new_edges = edges.as_span().slice(tri_edges_range);
-  Array<int> duplicate_remap(new_edges.size());
-  const IndexMask non_duplicate_new_edges = IndexMask::from_predicate(
-      src_edges.index_range(), GrainSize(1024), memory, [&](const int i) {
-        if (const std::optional<int> src_edge = deduplication::find_edge_duplicate(
-                src_vert_to_edge_map, src_edges, new_edges[i]))
-        {
-          duplicate_remap[i] = *src_edge;
-          return true;
-        }
-        duplicate_remap[i] = tri_edges_range.start() + i;
-        return true;
-      });
-  for (const int i : corner_edges.slice(tri_corners_range)) {
-    corner_edges[i] = duplicate_remap[corner_edges[i]];
-  }
-
-  Array<int2> deduplicated_edges(src_edges.size() + non_duplicate_new_edges.size());
-  array_utils::copy(src_edges, deduplicated_edges.as_mutable_span().take_front(src_edges.size()));
-  array_utils::gather(new_edges,
-                      non_duplicate_new_edges,
-                      deduplicated_edges.as_mutable_span().drop_front(src_edges.size()));
-  mesh->edges_num = deduplicated_edges.size();
-  mesh->edges_for_write().copy_from(deduplicated_edges);
-
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
            src_attributes, attributes, ATTR_DOMAIN_MASK_EDGE, propagation_info, {".edge_verts"}))
   {
     attribute.dst.span.slice(src_edges_range).copy_from(attribute.src);
-    GMutableSpan new_data = attribute.dst.span.slice(tri_edges_range);
+    GMutableSpan new_data = attribute.dst.span.drop_front(src_edges.size());
     /* It would be reasonable interpolate data from connected edges within each face.
      * Currently the data from new edges is just set to the type's default value. */
     const void *default_value = new_data.type().default_value();
@@ -801,7 +834,7 @@ std::optional<Mesh *> mesh_triangulate(
     MutableSpan dst(static_cast<int *>(CustomData_add_layer(
                         &mesh->edge_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->edges_num)),
                     mesh->edges_num);
-    dst.slice(tri_edges_range).fill(ORIGINDEX_NONE);
+    dst.drop_front(src_edges.size()).fill(ORIGINDEX_NONE);
     array_utils::copy(src, dst.slice(src_edges_range));
   }
 
@@ -850,6 +883,7 @@ std::optional<Mesh *> mesh_triangulate(
   if (src_mesh.no_overlapping_topology()) {
     mesh->tag_overlapping_none();
   }
+  BLI_assert(BKE_mesh_is_valid(mesh));
   return mesh;
 }
 
