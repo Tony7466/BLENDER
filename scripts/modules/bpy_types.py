@@ -538,6 +538,22 @@ class EditBone(StructRNA, _GenericBone, metaclass=StructMetaPropGroup):
             self.align_roll(matrix @ z_vec)
 
 
+class BoneCollection(StructRNA, metaclass=StructMetaPropGroup):
+    __slots__ = ()
+
+    @property
+    def bones_recursive(self):
+        """A set of all bones assigned to this bone collection and its child collections."""
+        bones = set()
+        collections = [self]
+
+        while collections:
+            visit = collections.pop()
+            bones.update(visit.bones)
+            collections.extend(visit.children)
+        return bones
+
+
 def ord_ind(i1, i2):
     if i1 < i2:
         return i1, i2
@@ -1205,6 +1221,10 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
 
 
 class AssetShelf(StructRNA, metaclass=RNAMeta):
+    __slots__ = ()
+
+
+class FileHandler(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
 

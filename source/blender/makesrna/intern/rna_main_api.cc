@@ -51,7 +51,7 @@
 #  include "BKE_object.hh"
 #  include "BKE_paint.hh"
 #  include "BKE_particle.h"
-#  include "BKE_pointcloud.h"
+#  include "BKE_pointcloud.hh"
 #  include "BKE_scene.h"
 #  include "BKE_sound.h"
 #  include "BKE_speaker.h"
@@ -306,12 +306,12 @@ static Mesh *rna_Main_meshes_new(Main *bmain, const char *name)
   char safe_name[MAX_ID_NAME - 2];
   rna_idname_validate(name, safe_name);
 
-  Mesh *me = BKE_mesh_add(bmain, safe_name);
-  id_us_min(&me->id);
+  Mesh *mesh = BKE_mesh_add(bmain, safe_name);
+  id_us_min(&mesh->id);
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
 
-  return me;
+  return mesh;
 }
 
 /* copied from Mesh_getFromObject and adapted to RNA interface */

@@ -23,6 +23,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.hh"
@@ -32,6 +33,8 @@
 
 #include <cmath>
 #include <cstdlib>
+
+namespace blender::ed::sculpt_paint::mask {
 
 enum eSculptMaskFilterTypes {
   MASK_FILTER_SMOOTH = 0,
@@ -62,7 +65,7 @@ static EnumPropertyItem prop_mask_filter_types[] = {
 
 static void mask_filter_task(SculptSession *ss,
                              const int mode,
-                             float *prev_mask,
+                             const Span<float> prev_mask,
                              const SculptMaskWriteInfo mask_write,
                              PBVHNode *node)
 {
@@ -88,7 +91,7 @@ static void mask_filter_task(SculptSession *ss,
     switch (mode) {
       case MASK_FILTER_SMOOTH:
       case MASK_FILTER_SHARPEN: {
-        float val = SCULPT_neighbor_mask_average(ss, vd.vertex);
+        float val = smooth::neighbor_mask_average(ss, mask_write, vd.vertex);
 
         val -= mask;
 
@@ -158,8 +161,6 @@ static void mask_filter_task(SculptSession *ss,
 
 static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 {
-  using namespace blender;
-  using namespace blender::ed::sculpt_paint;
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const Scene *scene = CTX_data_scene(C);
@@ -177,14 +178,14 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   int num_verts = SCULPT_vertex_count_get(ss);
 
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, {});
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
   undo::push_begin(ob, op);
 
   for (PBVHNode *node : nodes) {
-    undo::push_node(ob, node, SculptUndoType::Mask);
+    undo::push_node(ob, node, undo::Type::Mask);
   }
 
-  float *prev_mask = nullptr;
+  Array<float> prev_mask;
   int iterations = RNA_int_get(op->ptr, "iterations");
 
   /* Auto iteration count calculates the number of iteration based on the vertices of the mesh to
@@ -199,11 +200,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   for (int i = 0; i < iterations; i++) {
     if (ELEM(filter_type, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
-      prev_mask = static_cast<float *>(MEM_mallocN(num_verts * sizeof(float), __func__));
-      for (int j = 0; j < num_verts; j++) {
-        PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, j);
-        prev_mask[j] = SCULPT_vertex_mask_get(ss, vertex);
-      }
+      prev_mask = duplicate_mask(*ob);
     }
 
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -211,10 +208,6 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
         mask_filter_task(ss, filter_type, prev_mask, mask_write, nodes[i]);
       }
     });
-
-    if (ELEM(filter_type, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
-      MEM_freeN(prev_mask);
-    }
   }
 
   undo::push_end(ob);
@@ -260,3 +253,5 @@ void SCULPT_OT_mask_filter(wmOperatorType *ot)
       "Auto Iteration Count",
       "Use a automatic number of iterations based on the number of vertices of the sculpt");
 }
+
+}  // namespace blender::ed::sculpt_paint::mask
