@@ -888,6 +888,68 @@ void BKE_modifier_path_init(char *path, int path_maxncpy, const char *name)
   BLI_path_join(path, path_maxncpy, blendfile_path[0] ? "//" : BKE_tempdir_session(), name);
 }
 
+
+GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object *ob)
+{
+  GreasePencilLineartLimitInfo info = {0};
+  bool is_first = true;
+  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+    if (md->type == eModifierType_GreasePencilLineart) {
+      GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
+      if (is_first || (lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+        info.min_level = MIN2(info.min_level, lmd->level_start);
+        info.max_level = MAX2(info.max_level,
+                              (lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
+        info.edge_types |= lmd->edge_types;
+        info.shadow_selection = MAX2(lmd->shadow_selection, info.shadow_selection);
+        info.silhouette_selection = MAX2(lmd->silhouette_selection, info.silhouette_selection);
+        is_first = false;
+      }
+    }
+  }
+  return info;
+}
+
+void BKE_grease_pencil_set_lineart_modifier_limits(ModifierData *md,
+                                             const GreasePencilLineartLimitInfo *info,
+                                             const bool is_first_lineart)
+{
+  BLI_assert(md->type == eModifierType_GreasePencilLineart);
+  GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
+  if (is_first_lineart || lmd->flags & LRT_GPENCIL_USE_CACHE) {
+    lmd->level_start_override = info->min_level;
+    lmd->level_end_override = info->max_level;
+    lmd->edge_types_override = info->edge_types;
+    lmd->shadow_selection_override = info->shadow_selection;
+    lmd->shadow_use_silhouette_override = info->silhouette_selection;
+  }
+  else {
+    lmd->level_start_override = lmd->level_start;
+    lmd->level_end_override = lmd->level_end;
+    lmd->edge_types_override = lmd->edge_types;
+    lmd->shadow_selection_override = lmd->shadow_selection;
+    lmd->shadow_use_silhouette_override = lmd->silhouette_selection;
+  }
+}
+
+bool BKE_grease_pencil_is_first_lineart_in_stack(const Object *ob, const ModifierData *md)
+{
+  if (md->type != eModifierType_GreasePencilLineart) {
+    return false;
+  }
+  LISTBASE_FOREACH (ModifierData *, gmd, &ob->modifiers) {
+    if (gmd->type == eModifierType_GreasePencilLineart) {
+      if (gmd == md) {
+        return true;
+      }
+      return false;
+    }
+  }
+  /* If we reach here it means md is not in ob's modifier stack. */
+  BLI_assert(false);
+  return false;
+}
+
 /**
  * Call when #ModifierTypeInfo.depends_on_normals callback requests normals.
  */

@@ -93,7 +93,7 @@ typedef enum ModifierType {
   eModifierType_MeshToVolume = 58,
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
-  eModifierType_Hello = 61,
+  eModifierType_GreasePencilLineart = 61,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2486,14 +2486,140 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
+typedef enum eGreasePencilLineartSource {
+  LINEART_SOURCE_COLLECTION = 0,
+  LINEART_SOURCE_OBJECT = 1,
+  LINEART_SOURCE_SCENE = 2,
+} eGreasePencilLineartSource;
 
-typedef struct HelloModifierData {
+typedef enum eGreasePencilLineartShadowFilter {
+  /* These options need to be ordered in this way because those latter options requires line art to
+   * run a few extra stages. Having those values set up this way will allow
+   * #BKE_gpencil_get_lineart_modifier_limits() to find out maximum stages needed in multiple
+   * cached line art modifiers. */
+  LINEART_SHADOW_FILTER_NONE = 0,
+  LINEART_SHADOW_FILTER_ILLUMINATED = 1,
+  LINEART_SHADOW_FILTER_SHADED = 2,
+  LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES = 3,
+} eGreasePencilLineartShadowFilter;
+
+typedef enum eGreasePencilLineartSilhouetteFilter {
+  LINEART_SILHOUETTE_FILTER_NONE = 0,
+  LINEART_SILHOUETTE_FILTER_GROUP = (1 << 0),
+  LINEART_SILHOUETTE_FILTER_INDIVIDUAL = (1 << 1),
+} eGreasePencilLineartSilhouetteFilter;
+
+/* This enum is for modifier internal state only. */
+typedef enum eGreasePencilLineartFlags {
+  /* These two moved to #eLineartMainFlags to keep consistent with flag variable purpose. */
+  /* LINEART_GPENCIL_INVERT_SOURCE_VGROUP = (1 << 0), */
+  /* LINEART_GPENCIL_MATCH_OUTPUT_VGROUP = (1 << 1), */
+  LINEART_GPENCIL_BINARY_WEIGHTS = (1 << 2) /* Deprecated, this is removed for lack of use case. */,
+  LINEART_GPENCIL_IS_BAKED = (1 << 3),
+  LINEART_GPENCIL_USE_CACHE = (1 << 4),
+  LINEART_GPENCIL_OFFSET_TOWARDS_CUSTOM_CAMERA = (1 << 5),
+  LINEART_GPENCIL_INVERT_COLLECTION = (1 << 6),
+  LINEART_GPENCIL_INVERT_SILHOUETTE_FILTER = (1 << 7),
+} eGreasePencilLineartFlags;
+
+typedef enum eGreasePencilLineartMaskSwitches {
+  LINEART_GPENCIL_MATERIAL_MASK_ENABLE = (1 << 0),
+  /** When set, material mask bit comparisons are done with bit wise "AND" instead of "OR". */
+  LINEART_GPENCIL_MATERIAL_MASK_MATCH = (1 << 1),
+  LINEART_GPENCIL_INTERSECTION_MATCH = (1 << 2),
+} eGreasePencilLineartMaskSwitches;
+
+struct LineartCache;
+
+typedef struct GreasePencilLineartModifierData {
   ModifierData modifier;
 
-  struct Object *object;
+  uint16_t edge_types; /* line type enable flags, bits in eLineartEdgeFlag */
 
-  float threshold;
-  float adaptivity;
+  /** Object or Collection, from #eGreasePencilLineartSource. */
+  char source_type;
 
-  void *_pad1;
-} HelloModifierData;
+  char use_multiple_levels;
+  short level_start;
+  short level_end;
+
+  struct Object *source_camera;
+  struct Object *light_contour_object;
+
+  struct Object *source_object;
+  struct Collection *source_collection;
+
+  struct Material *target_material;
+  char target_layer[64];
+
+  /**
+   * These two variables are to pass on vertex group information from mesh to strokes.
+   * `vgname` specifies which vertex groups our strokes from source_vertex_group will go to.
+   */
+  char source_vertex_group[64];
+  char vgname[64];
+
+  /* Camera focal length is divided by (1 + over-scan), before calculation, which give a wider FOV,
+   * this doesn't change coordinates range internally (-1, 1), but makes the calculated frame
+   * bigger than actual output. This is for the easier shifting calculation. A value of 0.5 means
+   * the "internal" focal length become 2/3 of the actual camera. */
+  float overscan;
+
+  /* Values for point light and directional (sun) light. */
+  /* For point light, fov always gonna be 120 deg horizontal, with 3 "cameras" covering 360 deg. */
+  float shadow_camera_fov;
+  float shadow_camera_size;
+  float shadow_camera_near;
+  float shadow_camera_far;
+
+  float opacity;
+  short thickness;
+
+  unsigned char mask_switches; /* #eGreasePencilLineartMaskSwitches */
+  unsigned char material_mask_bits;
+  unsigned char intersection_mask;
+
+  unsigned char shadow_selection;
+  unsigned char silhouette_selection;
+  char _pad[1];
+
+  /** `0..1` range for cosine angle */
+  float crease_threshold;
+
+  /** `0..PI` angle, for splitting strokes at sharp points. */
+  float angle_splitting_threshold;
+
+  /** Strength for smoothing jagged chains. */
+  float chain_smooth_tolerance;
+
+  /* CPU mode */
+  float chaining_image_threshold;
+
+  /* eLineartMainFlags, for one time calculation. */
+  int calculation_flags;
+
+  /* #eGreasePencilLineartFlags, modifier internal state. */
+  int flags;
+
+  /* Move strokes towards camera to avoid clipping while preserve depth for the viewport. */
+  float stroke_depth_offset;
+
+  /* Runtime data. */
+
+  /* Because we can potentially only compute features lines once per modifier stack (Use Cache), we
+   * need to have these override values to ensure that we have the data we need is computed and
+   * stored in the cache. */
+  char level_start_override;
+  char level_end_override;
+  short edge_types_override;
+  char shadow_selection_override;
+  char shadow_use_silhouette_override;
+
+  char _pad2[6];
+
+  struct LineartCache *cache;
+  /** Keep a pointer to the render buffer so we can call destroy from #ModifierData. */
+  struct LineartData *la_data_ptr;
+
+  void *_pad5;
+} GreasePencilLineartModifierData;

@@ -44,11 +44,11 @@ set(SRC
   intern/MOD_edgesplit.cc
   intern/MOD_explode.cc
   intern/MOD_fluid.cc
-  intern/MOD_generic.cc
   intern/MOD_hook.cc
   intern/MOD_laplaciandeform.cc
   intern/MOD_laplaciansmooth.cc
   intern/MOD_lattice.cc
+  intern/MOD_lineart.cc
   intern/MOD_mask.cc
   intern/MOD_mesh_to_volume.cc
   intern/MOD_meshcache.cc
