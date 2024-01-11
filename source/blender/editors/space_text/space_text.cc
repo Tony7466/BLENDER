@@ -104,7 +104,7 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
 {
   SpaceText *stextn = static_cast<SpaceText *>(MEM_dupallocN(sl));
 
-  /* Add it own runtime data. */
+  /* Add its own runtime data. */
   stextn->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
   return (SpaceLink *)stextn;
