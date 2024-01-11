@@ -8,6 +8,8 @@
  * Main functions for boolean on a #BMesh (used by the tool and modifier)
  */
 
+#include <functional>
+
 #include "BLI_array.hh"
 #include "BLI_math_mpq.hh"
 #include "BLI_mesh_boolean.hh"
@@ -300,7 +302,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
   BMIter iter;
   BMFace *bmf = static_cast<BMFace *>(BM_iter_new(&iter, bm, BM_FACES_OF_MESH, nullptr));
   while (bmf != nullptr) {
-#  ifdef DEBUG
+#  ifndef NDEBUG
     iter.count = BM_iter_mesh_count(BM_FACES_OF_MESH, bm);
 #  endif
     BMFace *bmf_next = static_cast<BMFace *>(BM_iter_step(&iter));
@@ -318,7 +320,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out, bool keep_hidden
   }
   BMVert *bmv = static_cast<BMVert *>(BM_iter_new(&iter, bm, BM_VERTS_OF_MESH, nullptr));
   while (bmv != nullptr) {
-#  ifdef DEBUG
+#  ifndef NDEBUG
     iter.count = BM_iter_mesh_count(BM_VERTS_OF_MESH, bm);
 #  endif
     BMVert *bmv_next = static_cast<BMVert *>(BM_iter_step(&iter));
