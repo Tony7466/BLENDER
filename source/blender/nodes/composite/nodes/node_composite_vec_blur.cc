@@ -52,7 +52,7 @@ static void node_composit_init_vecblur(bNodeTree * /*ntree*/, bNode *node)
   NodeBlurData *nbd = MEM_cnew<NodeBlurData>(__func__);
   node->storage = nbd;
   nbd->samples = 32;
-  nbd->fac = 0.5f;
+  nbd->fac = 0.25f;
 }
 
 static void node_composit_buts_vecblur(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
