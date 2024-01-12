@@ -447,7 +447,9 @@ void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache *cache
   if (saved_active_brush) {
     Scene *scene = CTX_data_scene(C);
     BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
-    BKE_paint_brush_set(paint, saved_active_brush);
+    if (BKE_paint_brush_set(paint, saved_active_brush)) {
+      DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 }
 /* Initialize the stroke cache invariants from operator properties */
@@ -609,7 +611,9 @@ void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 
   STRNCPY(cache->saved_active_brush_name, cur_brush->id.name + 2);
 
-  BKE_paint_brush_set(paint, smooth_brush);
+  if (BKE_paint_brush_set(paint, smooth_brush)) {
+    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  }
   cache->saved_smooth_size = BKE_brush_size_get(scene, smooth_brush);
   BKE_brush_size_set(scene, smooth_brush, cur_brush_size);
   BKE_curvemapping_init(smooth_brush->curve);
@@ -855,7 +859,7 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
       depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     }
     ED_object_vpaintmode_enter_ex(bmain, depsgraph, scene, ob);
-    BKE_paint_toolslots_brush_validate(bmain, &ts->vpaint->paint);
+    BKE_paint_toolslots_brush_validate(bmain, &ts->vpaint->paint, &scene->id);
   }
 
   BKE_mesh_batch_cache_dirty_tag((Mesh *)ob->data, BKE_MESH_BATCH_DIRTY_ALL);

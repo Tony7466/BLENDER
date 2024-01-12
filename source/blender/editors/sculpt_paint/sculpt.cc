@@ -4171,7 +4171,9 @@ static void smooth_brush_toggle_on(const bContext *C,
 
   STRNCPY(cache->saved_active_brush_name, cur_brush->id.name + 2);
 
-  BKE_paint_brush_set(paint, smooth_brush);
+  if (BKE_paint_brush_set(paint, smooth_brush)) {
+    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  }
   cache->saved_smooth_size = BKE_brush_size_get(scene, smooth_brush);
   BKE_brush_size_set(scene, smooth_brush, cur_brush_size);
   BKE_curvemapping_init(smooth_brush->curve);
@@ -4206,7 +4208,9 @@ static void smooth_brush_toggle_off(const bContext *C,
   if (saved_active_brush) {
     Scene *scene = CTX_data_scene(C);
     BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
-    BKE_paint_brush_set(paint, saved_active_brush);
+    if (BKE_paint_brush_set(paint, saved_active_brush)) {
+      DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 }
 

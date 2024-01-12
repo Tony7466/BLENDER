@@ -528,11 +528,13 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
   return nullptr;
 }
 
-Paint *BKE_paint_get_active_from_context(const bContext *C)
+Paint *BKE_paint_get_active_from_context_with_id(const bContext *C, ID **r_id)
 {
   Scene *sce = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   SpaceImage *sima;
+
+  *r_id = nullptr;
 
   if (sce && view_layer) {
     ToolSettings *ts = sce->toolsettings;
@@ -549,15 +551,26 @@ Paint *BKE_paint_get_active_from_context(const bContext *C)
         }
       }
       else {
+        *r_id = &sce->id;
         return &ts->imapaint.paint;
       }
     }
     else {
-      return BKE_paint_get_active(sce, view_layer);
+      Paint *paint = BKE_paint_get_active(sce, view_layer);
+      if (paint) {
+        *r_id = &sce->id;
+      }
+      return paint;
     }
   }
 
   return nullptr;
+}
+
+Paint *BKE_paint_get_active_from_context(const bContext *C)
+{
+  ID *id = nullptr;
+  return BKE_paint_get_active_from_context_with_id(C, &id);
 }
 
 ePaintMode BKE_paintmode_get_active_from_context(const bContext *C)
@@ -660,15 +673,25 @@ const Brush *BKE_paint_brush_for_read(const Paint *p)
   return p ? p->brush : nullptr;
 }
 
-void BKE_paint_brush_set(Paint *p, Brush *br)
+bool BKE_paint_brush_set(Paint *p, Brush *br)
 {
-  if (p) {
+  bool changed = false;
+  if (p == nullptr) {
+    return changed;
+  }
+
+  if (p->brush != br) {
     id_us_min((ID *)p->brush);
     id_us_plus((ID *)br);
     p->brush = br;
-
-    BKE_paint_toolslots_brush_update(p);
+    changed = true;
   }
+
+  if (BKE_paint_toolslots_brush_update(p)) {
+    changed = true;
+  }
+
+  return changed;
 }
 
 void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
@@ -1189,7 +1212,9 @@ void BKE_paint_init(Main *bmain, Scene *sce, ePaintMode mode, const uchar col[3]
         brush = BKE_brush_add(bmain, "Brush", ob_mode);
         id_us_min(&brush->id); /* Fake user only. */
       }
-      BKE_paint_brush_set(paint, brush);
+      if (BKE_paint_brush_set(paint, brush)) {
+        DEG_id_tag_update(&sce->id, ID_RECALC_COPY_ON_WRITE);
+      }
     }
   }
 
@@ -2693,7 +2718,8 @@ static void sculpt_attribute_update_refs(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
 
-  /* Run twice, in case sculpt_attr_update had to recreate a layer and messed up #BMesh offsets. */
+  /* Run twice, in case sculpt_attr_update had to recreate a layer and messed up #BMesh offsets.
+   */
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < SCULPT_MAX_ATTRIBUTES; j++) {
       SculptAttribute *attr = ss->temp_attributes + j;

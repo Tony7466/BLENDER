@@ -195,12 +195,13 @@ const char *BKE_paint_get_tool_enum_translation_context_from_paintmode(ePaintMod
 const char *BKE_paint_get_tool_prop_id_from_paintmode(ePaintMode mode);
 uint BKE_paint_get_brush_tool_offset_from_paintmode(ePaintMode mode);
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer);
+Paint *BKE_paint_get_active_from_context_with_id(const bContext *C, struct ID **r_id);
 Paint *BKE_paint_get_active_from_context(const bContext *C);
 ePaintMode BKE_paintmode_get_active_from_context(const bContext *C);
 ePaintMode BKE_paintmode_get_from_tool(const bToolRef *tref);
 Brush *BKE_paint_brush(Paint *paint);
 const Brush *BKE_paint_brush_for_read(const Paint *p);
-void BKE_paint_brush_set(Paint *paint, Brush *br);
+bool BKE_paint_brush_set(Paint *paint, Brush *br);
 Palette *BKE_paint_palette(Paint *paint);
 void BKE_paint_palette_set(Paint *p, Palette *palette);
 void BKE_paint_curve_clamp_endpoint_add_index(PaintCurve *pc, int add_index);
@@ -257,13 +258,15 @@ void BKE_paint_stroke_get_average(const Scene *scene, const Object *ob, float st
 
 void BKE_paint_toolslots_init_from_main(Main *bmain);
 void BKE_paint_toolslots_len_ensure(Paint *paint, int len);
-void BKE_paint_toolslots_brush_update_ex(Paint *paint, Brush *brush);
-void BKE_paint_toolslots_brush_update(Paint *paint);
+bool BKE_paint_toolslots_brush_update_ex(Paint *paint, Brush *brush);
+bool BKE_paint_toolslots_brush_update(Paint *paint);
 /**
  * Run this to ensure brush types are set for each slot on entering modes
  * (for new scenes for example).
+ * \param paint_owner_id: The owner to tag if the brush changes (may be null).
+ * \return true when a change was made.
  */
-void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint);
+void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint, ID *paint_owner_id);
 Brush *BKE_paint_toolslots_brush_get(Paint *paint, int slot_index);
 
 /* .blend I/O */

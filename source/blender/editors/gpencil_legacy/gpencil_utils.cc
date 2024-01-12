@@ -1428,14 +1428,15 @@ Object *ED_gpencil_add_object(bContext *C, const float loc[3], ushort local_view
 void ED_gpencil_add_defaults(bContext *C, Object *ob)
 {
   Main *bmain = CTX_data_main(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
+  Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
 
   BKE_paint_ensure(ts, (Paint **)&ts->gp_paint);
   Paint *paint = &ts->gp_paint->paint;
   /* if not exist, create a new one */
   if ((paint->brush == nullptr) || (paint->brush->gpencil_settings == nullptr)) {
     /* create new brushes */
-    BKE_brush_gpencil_paint_presets(bmain, ts, true);
+    BKE_brush_gpencil_paint_presets(bmain, scene, true);
   }
 
   /* ensure a color exists and is assigned to object */

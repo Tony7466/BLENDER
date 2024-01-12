@@ -37,6 +37,8 @@
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.hh" /* own include */
@@ -205,9 +207,10 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
                   BKE_brush_sculpt_reset(brush);
                 }
               }
-              BKE_paint_brush_set(paint, brush);
             }
-            BKE_paint_brush_set(paint, brush);
+            if (BKE_paint_brush_set(paint, brush)) {
+              DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+            }
           }
         }
       }

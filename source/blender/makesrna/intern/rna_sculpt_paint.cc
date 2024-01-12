@@ -457,11 +457,16 @@ static char *rna_ParticleBrush_path(const PointerRNA * /*ptr*/)
 
 static void rna_Paint_brush_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
+  ID *id = ptr->owner_id;
   Paint *paint = static_cast<Paint *>(ptr->data);
   Brush *br = paint->brush;
   BKE_paint_invalidate_overlay_all();
   /* Needed because we're not calling 'BKE_paint_brush_set' which handles this. */
-  BKE_paint_toolslots_brush_update(paint);
+  if (BKE_paint_toolslots_brush_update(paint)) {
+    if (id != nullptr) {
+      DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
+    }
+  }
   WM_main_add_notifier(NC_BRUSH | NA_SELECTED, br);
 }
 

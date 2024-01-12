@@ -2130,7 +2130,8 @@ static void gpencil_brush_delete_mode_brushes(Main *bmain,
 static int gpencil_brush_reset_all_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
+  Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
   const enum eContextObjectMode mode = CTX_data_mode_enum(C);
   Paint *paint = nullptr;
 
@@ -2187,19 +2188,19 @@ static int gpencil_brush_reset_all_exec(bContext *C, wmOperator * /*op*/)
 
     switch (mode) {
       case CTX_MODE_PAINT_GPENCIL_LEGACY: {
-        BKE_brush_gpencil_paint_presets(bmain, ts, true);
+        BKE_brush_gpencil_paint_presets(bmain, scene, true);
         break;
       }
       case CTX_MODE_SCULPT_GPENCIL_LEGACY: {
-        BKE_brush_gpencil_sculpt_presets(bmain, ts, true);
+        BKE_brush_gpencil_sculpt_presets(bmain, scene, true);
         break;
       }
       case CTX_MODE_WEIGHT_GPENCIL_LEGACY: {
-        BKE_brush_gpencil_weight_presets(bmain, ts, true);
+        BKE_brush_gpencil_weight_presets(bmain, scene, true);
         break;
       }
       case CTX_MODE_VERTEX_GPENCIL_LEGACY: {
-        BKE_brush_gpencil_vertex_presets(bmain, ts, true);
+        BKE_brush_gpencil_vertex_presets(bmain, scene, true);
         break;
       }
       default: {
@@ -2207,12 +2208,14 @@ static int gpencil_brush_reset_all_exec(bContext *C, wmOperator * /*op*/)
       }
     }
 
-    BKE_paint_toolslots_brush_validate(bmain, paint);
+    BKE_paint_toolslots_brush_validate(bmain, paint, &scene->id);
 
     /* Set Again the first brush of the mode. */
     Brush *deft_brush = gpencil_brush_get_first_by_mode(bmain, paint, mode, tool);
     if (deft_brush) {
-      BKE_paint_brush_set(paint, deft_brush);
+      if (BKE_paint_brush_set(paint, deft_brush)) {
+        DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+      }
     }
     /* notifiers */
     DEG_relations_tag_update(bmain);

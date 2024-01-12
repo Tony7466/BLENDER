@@ -60,19 +60,19 @@ void BKE_brush_sculpt_reset(Brush *brush);
 /**
  * Create a set of grease pencil Drawing presets.
  */
-void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts, bool reset);
+void BKE_brush_gpencil_paint_presets(Main *bmain, Scene *scene, bool reset);
 /**
  * Create a set of grease pencil Vertex Paint presets.
  */
-void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts, bool reset);
+void BKE_brush_gpencil_vertex_presets(Main *bmain, Scene *scene, bool reset);
 /**
  * Create a set of grease pencil Sculpt Paint presets.
  */
-void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts, bool reset);
+void BKE_brush_gpencil_sculpt_presets(Main *bmain, Scene *scene, bool reset);
 /**
  * Create a set of grease pencil Weight Paint presets.
  */
-void BKE_brush_gpencil_weight_presets(Main *bmain, ToolSettings *ts, bool reset);
+void BKE_brush_gpencil_weight_presets(Main *bmain, Scene *scene, bool reset);
 void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, short type);
 
 void BKE_brush_jitter_pos(const Scene *scene,

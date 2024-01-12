@@ -1216,14 +1216,16 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
 
   /* if brush doesn't exist, create a new set (fix damaged files from old versions) */
   if ((paint->brush == nullptr) || (paint->brush->gpencil_settings == nullptr)) {
-    BKE_brush_gpencil_paint_presets(bmain, ts, true);
+    BKE_brush_gpencil_paint_presets(bmain, scene, true);
   }
 
   /* Set Draw brush. */
   Brush *brush = BKE_paint_toolslots_brush_get(paint, 0);
 
   BKE_brush_tool_set(brush, paint, 0);
-  BKE_paint_brush_set(paint, brush);
+  if (BKE_paint_brush_set(paint, brush)) {
+    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  }
   tgpi->brush = brush;
 
   /* control points */

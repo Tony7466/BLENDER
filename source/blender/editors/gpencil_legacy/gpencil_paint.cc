@@ -1960,7 +1960,8 @@ static Brush *gpencil_get_default_eraser(Main *bmain, ToolSettings *ts)
   brush_dft->gpencil_tool = GPAINT_TOOL_ERASE;
   brush_dft->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_SOFT;
 
-  /* reset current brush */
+  /* Reset current brush.
+   * No need to take the scene to update. */
   BKE_paint_brush_set(paint, brush_prev);
 
   return brush_dft;
@@ -1999,7 +2000,7 @@ static void gpencil_init_drawing_brush(bContext *C, tGPsdata *p)
   /* if not exist, create a new one */
   if ((paint->brush == nullptr) || (paint->brush->gpencil_settings == nullptr)) {
     /* create new brushes */
-    BKE_brush_gpencil_paint_presets(bmain, ts, true);
+    BKE_brush_gpencil_paint_presets(bmain, scene, true);
     changed = true;
   }
   /* Be sure curves are initialized. */

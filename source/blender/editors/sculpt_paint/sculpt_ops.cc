@@ -517,7 +517,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
       depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     }
     ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, op->reports);
-    BKE_paint_toolslots_brush_validate(bmain, &ts->sculpt->paint);
+    BKE_paint_toolslots_brush_validate(bmain, &ts->sculpt->paint, &scene->id);
 
     if (ob->mode & mode_flag) {
       Mesh *mesh = static_cast<Mesh *>(ob->data);

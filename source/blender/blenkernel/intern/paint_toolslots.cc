@@ -16,6 +16,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "DEG_depsgraph.hh"
+
 #include "BKE_brush.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.hh"
@@ -39,10 +41,11 @@ void BKE_paint_toolslots_len_ensure(Paint *paint, int len)
   }
 }
 
-static void paint_toolslots_init(Main *bmain, Paint *paint)
+static bool paint_toolslots_init(Main *bmain, Paint *paint)
 {
+  bool changed = false;
   if (paint == nullptr) {
-    return;
+    return changed;
   }
   const eObjectMode ob_mode = eObjectMode(paint->runtime.ob_mode);
   BLI_assert(paint->runtime.tool_offset && ob_mode);
@@ -55,9 +58,11 @@ static void paint_toolslots_init(Main *bmain, Paint *paint)
       if (paint->tool_slots[slot_index].brush == nullptr) {
         paint->tool_slots[slot_index].brush = brush;
         id_us_plus(&brush->id);
+        changed = true;
       }
     }
   }
+  return changed;
 }
 
 /**
@@ -113,7 +118,7 @@ void BKE_paint_toolslots_init_from_main(Main *bmain)
 
 /** \} */
 
-void BKE_paint_toolslots_brush_update_ex(Paint *paint, Brush *brush)
+bool BKE_paint_toolslots_brush_update_ex(Paint *paint, Brush *brush)
 {
   const uint tool_offset = paint->runtime.tool_offset;
   UNUSED_VARS_NDEBUG(tool_offset);
@@ -121,28 +126,34 @@ void BKE_paint_toolslots_brush_update_ex(Paint *paint, Brush *brush)
   const int slot_index = BKE_brush_tool_get(brush, paint);
   BKE_paint_toolslots_len_ensure(paint, slot_index + 1);
   PaintToolSlot *tslot = &paint->tool_slots[slot_index];
+  if (tslot->brush == brush) {
+    return false;
+  }
   id_us_plus(&brush->id);
   if (tslot->brush) {
     id_us_min(&tslot->brush->id);
   }
+
   tslot->brush = brush;
+  return true;
 }
 
-void BKE_paint_toolslots_brush_update(Paint *paint)
+bool BKE_paint_toolslots_brush_update(Paint *paint)
 {
   if (paint->brush == nullptr) {
-    return;
+    return false;
   }
-  BKE_paint_toolslots_brush_update_ex(paint, paint->brush);
+  return BKE_paint_toolslots_brush_update_ex(paint, paint->brush);
 }
 
-void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint)
+void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint, ID *paint_owner_id)
 {
   /* Clear slots with invalid slots or mode (unlikely but possible). */
   const uint tool_offset = paint->runtime.tool_offset;
   UNUSED_VARS_NDEBUG(tool_offset);
   const eObjectMode ob_mode = eObjectMode(paint->runtime.ob_mode);
   BLI_assert(tool_offset && ob_mode);
+  bool changed = false;
   for (int i = 0; i < paint->tool_slots_len; i++) {
     PaintToolSlot *tslot = &paint->tool_slots[i];
     if (tslot->brush) {
@@ -150,15 +161,24 @@ void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint)
       {
         id_us_min(&tslot->brush->id);
         tslot->brush = nullptr;
+        changed = true;
       }
     }
   }
 
   /* Unlikely but possible the active brush is not currently using a slot. */
-  BKE_paint_toolslots_brush_update(paint);
+  if (BKE_paint_toolslots_brush_update(paint)) {
+    changed = true;
+  }
 
   /* Fill slots from brushes. */
-  paint_toolslots_init(bmain, paint);
+  if (paint_toolslots_init(bmain, paint)) {
+    changed = true;
+  }
+
+  if (changed && paint_owner_id) {
+    DEG_id_tag_update(paint_owner_id, ID_RECALC_COPY_ON_WRITE);
+  }
 }
 
 Brush *BKE_paint_toolslots_brush_get(Paint *paint, int slot_index)

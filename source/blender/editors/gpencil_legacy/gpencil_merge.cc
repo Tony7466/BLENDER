@@ -88,12 +88,11 @@ static void gpencil_insert_points_to_stroke(bGPDstroke *gps,
 static bGPDstroke *gpencil_prepare_stroke(bContext *C, wmOperator *op, int totpoints)
 {
   Main *bmain = CTX_data_main(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
+  Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-
-  Scene *scene = CTX_data_scene(C);
 
   const bool back = RNA_boolean_get(op->ptr, "back");
   const bool additive = RNA_boolean_get(op->ptr, "additive");
@@ -103,7 +102,7 @@ static bGPDstroke *gpencil_prepare_stroke(bContext *C, wmOperator *op, int totpo
   /* if not exist, create a new one */
   if ((paint->brush == nullptr) || (paint->brush->gpencil_settings == nullptr)) {
     /* create new brushes */
-    BKE_brush_gpencil_paint_presets(bmain, ts, false);
+    BKE_brush_gpencil_paint_presets(bmain, scene, false);
   }
   Brush *brush = paint->brush;
 

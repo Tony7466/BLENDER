@@ -43,6 +43,8 @@
 #include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
@@ -54,7 +56,8 @@
 static int brush_add_exec(bContext *C, wmOperator * /*op*/)
 {
   // int type = RNA_enum_get(op->ptr, "type");
-  Paint *paint = BKE_paint_get_active_from_context(C);
+  ID *paint_id = nullptr;
+  Paint *paint = BKE_paint_get_active_from_context_with_id(C, &paint_id);
   Brush *br = BKE_paint_brush(paint);
   Main *bmain = CTX_data_main(C);
   ePaintMode mode = BKE_paintmode_get_active_from_context(C);
@@ -67,7 +70,11 @@ static int brush_add_exec(bContext *C, wmOperator * /*op*/)
   }
   id_us_min(&br->id); /* fake user only */
 
-  BKE_paint_brush_set(paint, br);
+  if (BKE_paint_brush_set(paint, br)) {
+    if (paint_id != nullptr) {
+      DEG_id_tag_update(paint_id, ID_RECALC_COPY_ON_WRITE);
+    }
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -246,7 +253,11 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator * /*op*/)
 
   if (br) {
     id_us_min(&br->id); /* fake user only */
-    BKE_paint_brush_set(paint, br);
+    if (BKE_paint_brush_set(paint, br)) {
+      /* NOTE: if this brush is not part of a scene, the tagging is not needed. */
+      Scene *scene = CTX_data_scene(C);
+      DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 
   return OPERATOR_FINISHED;
@@ -907,7 +918,9 @@ static bool brush_generic_tool_set(bContext *C,
   }
 
   if (brush) {
-    BKE_paint_brush_set(paint, brush);
+    if (BKE_paint_brush_set(paint, brush)) {
+      //
+    }
     BKE_paint_invalidate_overlay_all();
 
     WM_main_add_notifier(NC_BRUSH | NA_EDITED, brush);

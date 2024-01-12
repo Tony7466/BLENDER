@@ -40,6 +40,8 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
+#include "DEG_depsgraph.hh"
+
 #include "RE_texture.h" /* RE_texture_evaluate */
 
 #include "BLO_read_write.hh"
@@ -1368,10 +1370,11 @@ static Brush *gpencil_brush_ensure(
   return brush;
 }
 
-void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts, const bool reset)
+void BKE_brush_gpencil_paint_presets(Main *bmain, Scene *scene, const bool reset)
 {
   bool r_new = false;
 
+  ToolSettings *ts = scene->toolsettings;
   Paint *paint = &ts->gp_paint->paint;
   Brush *brush_prev = paint->brush;
   Brush *brush, *deft_draw;
@@ -1469,10 +1472,11 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts, const bool r
   }
 }
 
-void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts, const bool reset)
+void BKE_brush_gpencil_vertex_presets(Main *bmain, Scene *scene, const bool reset)
 {
   bool r_new = false;
 
+  ToolSettings *ts = scene->toolsettings;
   Paint *vertexpaint = &ts->gp_vertexpaint->paint;
   Brush *brush_prev = vertexpaint->brush;
   Brush *brush, *deft_vertex;
@@ -1515,10 +1519,11 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts, const bool 
   }
 }
 
-void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts, const bool reset)
+void BKE_brush_gpencil_sculpt_presets(Main *bmain, Scene *scene, const bool reset)
 {
   bool r_new = false;
 
+  ToolSettings *ts = scene->toolsettings;
   Paint *sculptpaint = &ts->gp_sculptpaint->paint;
   Brush *brush_prev = sculptpaint->brush;
   Brush *brush, *deft_sculpt;
@@ -1592,13 +1597,15 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts, const bool 
   }
 }
 
-void BKE_brush_gpencil_weight_presets(Main *bmain, ToolSettings *ts, const bool reset)
+void BKE_brush_gpencil_weight_presets(Main *bmain, Scene *scene, const bool reset)
 {
+  ToolSettings *ts = scene->toolsettings;
   bool r_new = false;
 
   Paint *weightpaint = &ts->gp_weightpaint->paint;
   Brush *brush_prev = weightpaint->brush;
   Brush *brush, *deft_weight;
+  bool changed = false;
 
   /* Weight Draw brush. */
   brush = gpencil_brush_ensure(bmain, ts, "Weight Draw", OB_MODE_WEIGHT_GPENCIL_LEGACY, &r_new);
@@ -1627,12 +1634,16 @@ void BKE_brush_gpencil_weight_presets(Main *bmain, ToolSettings *ts, const bool 
 
   /* Set default brush. */
   if (reset || brush_prev == nullptr) {
-    BKE_paint_brush_set(weightpaint, deft_weight);
+    changed |= BKE_paint_brush_set(weightpaint, deft_weight);
   }
   else {
     if (brush_prev != nullptr) {
-      BKE_paint_brush_set(weightpaint, brush_prev);
+      changed |= BKE_paint_brush_set(weightpaint, brush_prev);
     }
+  }
+
+  if (changed) {
+    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
   }
 }
 
