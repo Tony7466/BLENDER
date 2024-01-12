@@ -108,7 +108,7 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
                                 const IndexMask &curves_mask)
 {
   const bool use_uniform_opacity = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY);
-  const bool use_vgroup_opacity = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_VERTEX_GROUP);
+  const bool use_weight_as_factor = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_WEIGHT_AS_FACTOR);
   const bool invert_vertex_group = (omd.influence.flag &
                                     GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
   const bool use_curve = (omd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE);
@@ -135,7 +135,7 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
       if (use_uniform_opacity) {
         opacities.span[point_i] = std::clamp(curve_factor, 0.0f, 1.0f);
       }
-      else if (use_vgroup_opacity) {
+      else if (use_weight_as_factor) {
         /* Use vertex group weights as opacity factors. */
         const float vgroup_weight = vgroup_weights[point_i];
         const float point_factor = vgroup_weight;
@@ -162,7 +162,7 @@ static void modify_fill_color(const GreasePencilOpacityModifierData &omd,
                               bke::CurvesGeometry &curves,
                               const IndexMask &curves_mask)
 {
-  const bool use_vgroup_opacity = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_VERTEX_GROUP);
+  const bool use_vgroup_opacity = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_WEIGHT_AS_FACTOR);
   const bool invert_vertex_group = (omd.influence.flag &
                                     GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();

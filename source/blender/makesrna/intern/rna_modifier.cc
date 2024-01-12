@@ -1764,6 +1764,26 @@ static void rna_GreasePencilModifier_material_set(PointerRNA *ptr,
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilOpacity);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOpacity);
 
+static void rna_GreasePencilOpacityModifier_opacity_factor_range(
+    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
+{
+  GreasePencilOpacityModifierData *omd = static_cast<GreasePencilOpacityModifierData *>(ptr->data);
+
+  *min = 0.0f;
+  *softmin = 0.0f;
+  *softmax = (omd->flag & MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY) ? 1.0f : 2.0f;
+  *max = *softmax;
+}
+
+static void rna_GreasePencilOpacityModifier_opacity_factor_max_set(PointerRNA *ptr, float value)
+{
+  GreasePencilOpacityModifierData *omd = static_cast<GreasePencilOpacityModifierData *>(ptr->data);
+
+  omd->color_factor = (omd->flag & MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY) ?
+                          std::min(value, 1.0f) :
+                          value;
+}
+
 #else
 
 static void rna_def_modifier_panel_open_prop(StructRNA *srna, const char *identifier, const int id)
@@ -7615,7 +7635,36 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
 
   RNA_define_lib_overridable(true);
 
-  // TODO
+  prop = RNA_def_property(srna, "color_factor", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "color_factor");
+  RNA_def_property_ui_range(prop, 0, 2.0, 0.1, 2);
+  RNA_def_property_float_funcs(prop,
+                               nullptr,
+                               "rna_GreasePencilOpacityModifier_opacity_factor_max_set",
+                               "rna_GreasePencilOpacityModifier_opacity_factor_range");
+  RNA_def_property_ui_text(prop, "Opacity Factor", "Factor of opacity");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "hardness_factor", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "hardness_factor");
+  RNA_def_property_range(prop, 0.0, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0, FLT_MAX, 0.1, 2);
+  RNA_def_property_ui_text(prop, "Hardness Factor", "Factor of stroke hardness");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_weight_as_factor", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", MOD_GREASE_PENCIL_OPACITY_USE_WEIGHT_AS_FACTOR);
+  RNA_def_property_ui_text(
+      prop, "Use Weight as Factor", "Use vertex group weight as factor instead of influence");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_uniform_opacity", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY);
+  RNA_def_property_ui_text(
+      prop, "Uniform Opacity", "Replace the stroke opacity instead of modulating each point");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
 }
