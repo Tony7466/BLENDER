@@ -1516,7 +1516,8 @@ const VKShaderInterface &VKShader::interface_get() const
   return *static_cast<const VKShaderInterface *>(interface);
 }
 
-VkSpecializationInfo VKShader::build_specialzation(){
+VkSpecializationInfo VKShader::build_specialzation()
+{
   if (constants.values.size() <= 0) {
     VkSpecializationInfo null = {};
     return null;
@@ -1531,7 +1532,7 @@ VkSpecializationInfo VKShader::build_specialzation(){
     specialization_values_.append(constants.values[i].u);
   };
   return {/* uint32_t mapEntryCount */ static_cast<uint32_t>(entries.size()),
-         /* const VkSpecializationMapEntry *pMapEntries */ entries.data(),
+          /* const VkSpecializationMapEntry *pMapEntries */ entries.data(),
           /* size_t dataSize */ constants.values.size() * sizeof(uint32_t),
           /* const void *pData */ constants.values.data()};
 };
@@ -1547,7 +1548,7 @@ VkSpecializationInfo VKShader::specialzation_ensure()
     else {
       for (int i = 0; i < constants.values.size(); i++) {
         if (specialization_values_[i] != constants.values[i].u) {
-         update = true;
+          update = true;
           break;
         }
       }
@@ -1561,12 +1562,13 @@ VkSpecializationInfo VKShader::specialzation_ensure()
         if (pipeline_.is_valid()) {
           pipeline_.destroy();
         }
-        pipeline_ = VKPipeline::create_compute_pipeline(compute_module_,
-                                                        vk_pipeline_layout_,
-                                                        reinterpret_cast<VKShaderInterface*>(interface)->push_constants_layout_get(),
-                                                        &info);
-        
-       return null;
+        pipeline_ = VKPipeline::create_compute_pipeline(
+            compute_module_,
+            vk_pipeline_layout_,
+            reinterpret_cast<VKShaderInterface *>(interface)->push_constants_layout_get(),
+            &info);
+
+        return null;
       }
       BLI_assert(pipeline_.is_valid() == true);
     }

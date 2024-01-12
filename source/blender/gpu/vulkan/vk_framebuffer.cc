@@ -392,21 +392,16 @@ void VKFrameBuffer::read(eGPUFrameBufferBits plane,
                          int slot,
                          void *r_data)
 {
-  VKContext &context = *VKContext::get();
   GPUAttachment *attachment = nullptr;
   switch (plane) {
     case GPU_COLOR_BIT:
       attachment = &attachments_[GPU_FB_COLOR_ATTACHMENT0 + slot];
-      color_attachment_layout_ensure(
-          context, slot, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       break;
 
     case GPU_DEPTH_BIT:
       attachment = attachments_[GPU_FB_DEPTH_ATTACHMENT].tex ?
                        &attachments_[GPU_FB_DEPTH_ATTACHMENT] :
                        &attachments_[GPU_FB_DEPTH_STENCIL_ATTACHMENT];
-      depth_attachment_layout_ensure(
-          context, VK_IMAGE_LAYOUT_MAX_ENUM, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       break;
 
     default:
@@ -646,7 +641,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       if (tex) {
         dirty_subpass_ = reinterpret_cast<Texture *>(tex)->subpass_bits_get().disable != 0;
         if (!reassign) {
-          attachment_reference->attachment = attachment_reference->attachment =
+          attachment_reference->attachment =
               renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
         }
         renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;

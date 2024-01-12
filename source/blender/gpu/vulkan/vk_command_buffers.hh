@@ -156,7 +156,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
     return submission_id_;
   }
   void viewport_set(const int viewport[GPU_MAX_VIEWPORTS][4], int size = 1);
-  void scissor_set(const int scissor[4],int size = 1);
+  void scissor_set(const int scissor[4], int size = 1);
 
  private:
   void init_command_pool(const VKDevice &device);

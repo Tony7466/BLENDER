@@ -61,7 +61,7 @@ class VKPipeline : NonCopyable {
   static VKPipeline create_compute_pipeline(VkShaderModule compute_module,
                                             VkPipelineLayout &pipeline_layouts,
                                             const VKPushConstants::Layout &push_constants_layout,
-                                            const VkSpecializationInfo* specialzation);
+                                            const VkSpecializationInfo *specialzation);
   static VKPipeline create_graphics_pipeline(const VKPushConstants::Layout &push_constants_layout);
 
   VKPushConstants &push_constants_get()

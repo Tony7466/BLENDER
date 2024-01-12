@@ -47,7 +47,7 @@ VKPipeline VKPipeline::create_compute_pipeline(
     VkShaderModule compute_module,
     VkPipelineLayout &pipeline_layout,
     const VKPushConstants::Layout &push_constants_layout,
-    const VkSpecializationInfo* specialzation)
+    const VkSpecializationInfo *specialzation)
 {
   VK_ALLOCATION_CALLBACKS
   const VKDevice &device = VKBackend::get().device_get();
@@ -106,7 +106,7 @@ void VKPipeline::finalize(VKContext &context,
   BLI_assert(vertex_module != VK_NULL_HANDLE);
 
   VK_ALLOCATION_CALLBACKS
-  VKShader* shader = reinterpret_cast<VKShader *>(context.shader);
+  VKShader *shader = reinterpret_cast<VKShader *>(context.shader);
   Vector<VkPipelineShaderStageCreateInfo> pipeline_stages;
   VkPipelineShaderStageCreateInfo vertex_stage_info = {};
   vertex_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -183,7 +183,7 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pDepthStencilState = &state_manager.depth_stencil_state;
   /* Viewport state. */
   VkPipelineViewportStateCreateInfo viewport_state = {
-    VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+      VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
   pipeline_create_info.pViewportState = &viewport_state;
   pipeline_create_info.pDynamicState = &state_manager.dynamic_state;
   viewport_state.pViewports = VK_NULL_HANDLE;

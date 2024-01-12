@@ -6,9 +6,9 @@
 
 void main()
 {
-#ifdef GPU_VERTEX_SHADER
+#  ifdef GPU_VERTEX_SHADER
   gl_PointSize = 1.f;
-#endif
+#  endif
   data_out[0] = int(float_in);
   data_out[1] = int(uint_in);
   data_out[2] = int(int_in);
