@@ -1569,29 +1569,41 @@ void outliner_item_select(bContext *C,
   }
 }
 
+static bool can_select_recursive(TreeElement *te, Collection *in_collection)
+{
+  if (te->store_elem->type == TSE_LAYER_COLLECTION) {
+    return true;
+  }
+
+  if (te->store_elem->type == TSE_SOME_ID && te->idcode == ID_OB) {
+    /* Only actually select the object if
+     * 1. We are not restricted to any collection, or
+     * 2. The object is in fact in the given collection. */
+    if (!in_collection || BKE_collection_has_object_recursive(
+                              in_collection, reinterpret_cast<Object *>(te->store_elem->id)))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 static void do_outliner_select_recursive(ListBase *lb, bool selecting, Collection *in_collection)
 {
   LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
-
-    /* The desired behavior is only to select collections and object hierarchies
-     *  recursively. So if this isn't a collection or an object, skip it. */
-    if (tselem->type == TSE_LAYER_COLLECTION) {
+    /* Recursive selection only on collections or objects. */
+    if (can_select_recursive(te, in_collection)) {
       tselem->flag = selecting ? (tselem->flag | TSE_SELECTED) : (tselem->flag & ~TSE_SELECTED);
-      /* Restrict sub-tree selections to this collection. This prevents undesirable behavior in
-         the edge-case where there is an object which is part of this collection, but which has
-         children that are part of another collection. */
-      do_outliner_select_recursive(
-          &te->subtree, selecting, static_cast<LayerCollection *>(te->directdata)->collection);
-    }
-    else if (tselem->type == TSE_SOME_ID && te->idcode == ID_OB) {
-      /* Only actually select the object if
-         1. We are not restricted to any collection, or
-         2. The object is in fact in the given collection. */
-      if (!in_collection || BKE_collection_has_object_recursive(
-                                in_collection, reinterpret_cast<Object *>(tselem->id)))
-      {
-        tselem->flag = selecting ? (tselem->flag | TSE_SELECTED) : (tselem->flag & ~TSE_SELECTED);
+      if (tselem->type == TSE_LAYER_COLLECTION) {
+        /* Restrict sub-tree selections to this collection. This prevents undesirable behavior in
+         * the edge-case where there is an object which is part of this collection, but which has
+         * children that are part of another collection. */
+        do_outliner_select_recursive(
+            &te->subtree, selecting, static_cast<LayerCollection *>(te->directdata)->collection);
+      }
+      else {
         do_outliner_select_recursive(&te->subtree, selecting, in_collection);
       }
     }
@@ -1611,17 +1623,7 @@ static bool do_outliner_range_select_recursive(ListBase *lb,
   LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
 
-    /* If recurse is true, we are in recursive selection mode meaning we double clicked
-       on an icon. In this case, we want to be consistent with ordinary (non-range) recursive
-       selection mode by only selecting layer collections and objects. The object condition
-       is kinda gross but necessary for consistent behavior in the recursive case. Essentially
-       we need to be sure that the object belongs to the right collection before setting the
-       SELECTED flag. */
-    bool can_select = !recurse || (tselem->type == TSE_LAYER_COLLECTION ||
-                                   (tselem->type == TSE_SOME_ID && te->idcode == ID_OB &&
-                                    (!in_collection ||
-                                     BKE_collection_has_object_recursive(
-                                         in_collection, reinterpret_cast<Object *>(tselem->id)))));
+    bool can_select = !recurse || can_select_recursive(te, in_collection);
 
     /* Remember if we are selecting before we potentially change the selecting state. */
     bool selecting_before = selecting;
