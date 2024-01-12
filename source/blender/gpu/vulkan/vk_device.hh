@@ -179,6 +179,7 @@ class VKDevice : public NonCopyable {
 
   bool is_initialized() const;
   void init(void *ghost_context);
+  void reinit();
   /**
    * Initialize a dummy buffer that can be bound for missing attributes.
    *
