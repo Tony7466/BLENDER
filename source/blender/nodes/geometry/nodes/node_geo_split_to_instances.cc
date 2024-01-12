@@ -86,7 +86,7 @@ struct SplitGroups {
   field_evaluator.add(group_id_field);
   field_evaluator.evaluate();
 
-  const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = field_evaluator.get_evaluated_selection_as_mask();
   if (selection.is_empty()) {
     return true;
   }

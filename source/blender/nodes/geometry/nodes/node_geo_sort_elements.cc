@@ -138,7 +138,7 @@ static std::optional<Array<int>> sorted_indices(const bke::GeometryComponent &co
   evaluator.add(group_id_field);
   evaluator.add(weight_field);
   evaluator.evaluate();
-  const IndexMask mask = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &mask = evaluator.get_evaluated_selection_as_mask();
   const VArray<int> group_id = evaluator.get_evaluated<int>(0);
   const VArray<float> weight = evaluator.get_evaluated<float>(1);
 

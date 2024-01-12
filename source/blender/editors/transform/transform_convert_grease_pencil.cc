@@ -91,7 +91,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     const Array<ed::greasepencil::MutableDrawingInfo> drawings = all_drawings[i];
     for (ed::greasepencil::MutableDrawingInfo info : drawings) {
       bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-      const IndexMask points = points_per_layer_per_object[layer_offset];
+      const IndexMask &points = points_per_layer_per_object[layer_offset];
 
       std::optional<MutableSpan<float>> value_attribute;
       if (t->mode == TFM_CURVE_SHRINKFATTEN) {

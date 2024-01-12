@@ -74,7 +74,7 @@ static void add_instances_from_component(
   evaluator.add(params.get_input<Field<float3>>("Scale"), &scales);
   evaluator.evaluate();
 
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.is_empty()) {
     return;
   }

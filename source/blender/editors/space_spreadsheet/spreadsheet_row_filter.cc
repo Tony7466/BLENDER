@@ -39,7 +39,7 @@ static IndexMask apply_filter_operation(const VArray<T> &data,
 
 static IndexMask apply_row_filter(const SpreadsheetRowFilter &row_filter,
                                   const Map<StringRef, const ColumnValues *> &columns,
-                                  const IndexMask prev_mask,
+                                  const IndexMask &prev_mask,
                                   IndexMaskMemory &memory)
 {
   const ColumnValues &column = *columns.lookup(row_filter.column_name);
@@ -337,7 +337,7 @@ static IndexMask apply_row_filter(const SpreadsheetRowFilter &row_filter,
         prev_mask,
         memory);
   }
-  return prev_mask;
+  return IndexMask(prev_mask);
 }
 
 static bool use_row_filters(const SpaceSpreadsheet &sspreadsheet)
@@ -403,7 +403,7 @@ IndexMask spreadsheet_filter_rows(const SpaceSpreadsheet &sspreadsheet,
     }
   }
 
-  return mask;
+  return IndexMask(mask);
 }
 
 SpreadsheetRowFilter *spreadsheet_row_filter_new()

@@ -360,9 +360,9 @@ bool GeometryDataSource::has_selection_filter() const
 IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) const
 {
   std::lock_guard lock{mutex_};
-  const IndexMask full_range(this->tot_rows());
+  IndexMask full_range(this->tot_rows());
   if (full_range.is_empty()) {
-    return full_range;
+    return IndexMask(full_range);
   }
 
   switch (component_->type()) {
@@ -411,7 +411,7 @@ IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) co
         return IndexMask::from_bools(selection, memory);
       }
 
-      return full_range;
+      return IndexMask(full_range);
     }
     case bke::GeometryComponent::Type::Curve: {
       BLI_assert(object_eval_->type == OB_CURVES);
@@ -425,7 +425,7 @@ IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) co
         default:
           BLI_assert_unreachable();
       }
-      return full_range;
+      return IndexMask(full_range);
     }
     case bke::GeometryComponent::Type::PointCloud: {
       BLI_assert(object_eval_->type == OB_POINTCLOUD);
@@ -435,7 +435,7 @@ IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) co
       return IndexMask::from_bools(selection, memory);
     }
     default:
-      return full_range;
+      return IndexMask(full_range);
   }
 }
 

@@ -43,7 +43,7 @@ static void set_id_in_component(GeometryComponent &component,
   else {
     evaluator.add(id_field);
     evaluator.evaluate();
-    const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+    const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
     const VArray<int> result_ids = evaluator.get_evaluated<int>(0);
     SpanAttributeWriter<int> id_attribute = attributes.lookup_or_add_for_write_span<int>("id",
                                                                                          domain);

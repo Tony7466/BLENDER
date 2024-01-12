@@ -127,7 +127,7 @@ static void set_position_in_grease_pencil(GreasePencilComponent &grease_pencil_c
     evaluator.add(offset_field);
     evaluator.evaluate();
 
-    const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+    const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
     if (selection.is_empty()) {
       continue;
     }
@@ -163,7 +163,7 @@ static void set_position_in_component(GeometrySet &geometry,
   evaluator.add(offset_field);
   evaluator.evaluate();
 
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.is_empty()) {
     return;
   }

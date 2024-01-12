@@ -54,7 +54,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
   BLI_assert(min_size <= max_size);
   UNUSED_VARS_NDEBUG(min_size);
 
-  static IndexMask static_mask = []() {
+  static IndexMask static_mask([]() -> IndexMask {
     static Array<const int16_t *> indices_by_segment(segments_num);
     /* The offsets and cumulative segment sizes array contain the same values here, so just use a
      * single array for both. */
@@ -83,8 +83,8 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     data.begin_index_in_segment_ = 0;
     data.end_index_in_segment_ = max_segment_size;
 
-    return mask;
-  }();
+    return IndexMask(mask);
+  }());
   return static_mask;
 }
 
@@ -122,7 +122,7 @@ IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
   const RawMaskIterator first_it = this->index_to_iterator(start);
   const RawMaskIterator last_it = this->index_to_iterator(start + size - 1);
 
-  IndexMask sliced = *this;
+  IndexMask sliced(*this);
   sliced.indices_num_ = size;
   sliced.segments_num_ = last_it.segment_i - first_it.segment_i + 1;
   sliced.indices_by_segment_ += first_it.segment_i;
@@ -130,7 +130,7 @@ IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
   sliced.cumulative_segment_sizes_ += first_it.segment_i;
   sliced.begin_index_in_segment_ = first_it.index_in_segment;
   sliced.end_index_in_segment_ = last_it.index_in_segment + 1;
-  return sliced;
+  return IndexMask(sliced);
 }
 
 IndexMask IndexMask::slice_and_offset(const IndexRange range,
@@ -153,7 +153,7 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
   }
   IndexMask sliced_mask = this->slice(start, size);
   if (offset == 0) {
-    return sliced_mask;
+    return IndexMask(sliced_mask);
   }
   if (std::optional<IndexRange> range = sliced_mask.to_range()) {
     return range->shift(offset);
@@ -164,7 +164,7 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
     new_segment_offsets[i] = sliced_mask.segment_offsets_[i] + offset;
   }
   sliced_mask.segment_offsets_ = new_segment_offsets.data();
-  return sliced_mask;
+  return IndexMask(sliced_mask);
 }
 
 /**
@@ -263,7 +263,7 @@ static IndexMask mask_from_segments(const Span<IndexMaskSegment> segments, Index
   data.cumulative_segment_sizes_ = cumulative_segment_sizes.data();
   data.begin_index_in_segment_ = 0;
   data.end_index_in_segment_ = segments.last().size();
-  return mask;
+  return IndexMask(mask);
 }
 
 /**
@@ -576,14 +576,16 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
 {
   const CommonVArrayInfo info = bools.common_info();
   if (info.type == CommonVArrayInfo::Type::Single) {
-    return *static_cast<const bool *>(info.data) ? universe : IndexMask();
+    if (*static_cast<const bool *>(info.data)) {
+      return IndexMask(universe);
+    }
+    return {};
   }
   if (info.type == CommonVArrayInfo::Type::Span) {
     const Span<bool> span(static_cast<const bool *>(info.data), bools.size());
     return IndexMask::from_bools(universe, span, memory);
   }
-  return IndexMask::from_predicate(
-      universe, GrainSize(512), memory, [&](const int64_t index) { return bools[index]; });
+  return IndexMask::from_predicate(universe, GrainSize(512), memory, [&](const int64_t index) { return bools[index]; });
 }
 
 IndexMask IndexMask::from_union(const IndexMask &mask_a,

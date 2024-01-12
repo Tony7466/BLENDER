@@ -41,7 +41,7 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
   evaluator.add(std::move(position_field));
   evaluator.add(std::move(radius_field));
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.is_empty()) {
     return;
   }

@@ -62,7 +62,7 @@ static void set_handle_type(bke::CurvesGeometry &curves,
   fn::FieldEvaluator evaluator{field_context, curves.points_num()};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
 
   if (mode & GEO_NODE_CURVE_HANDLE_LEFT) {
     index_mask::masked_fill<int8_t>(

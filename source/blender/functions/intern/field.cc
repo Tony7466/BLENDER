@@ -733,7 +733,7 @@ GPointer FieldConstant::value() const
 /** \name #FieldEvaluator
  * \{ */
 
-static IndexMask index_mask_from_selection(const IndexMask full_mask,
+static IndexMask index_mask_from_selection(const IndexMask &full_mask,
                                            const VArray<bool> &selection,
                                            ResourceScope &scope)
 {
@@ -774,7 +774,7 @@ int FieldEvaluator::add(GField field)
 
 static IndexMask evaluate_selection(const Field<bool> &selection_field,
                                     const FieldContext &context,
-                                    IndexMask full_mask,
+                                    const IndexMask &full_mask,
                                     ResourceScope &scope)
 {
   if (selection_field) {
@@ -782,7 +782,7 @@ static IndexMask evaluate_selection(const Field<bool> &selection_field,
         evaluate_fields(scope, {selection_field}, full_mask, context)[0].typed<bool>();
     return index_mask_from_selection(full_mask, selection, scope);
   }
-  return full_mask;
+  return IndexMask(full_mask);
 }
 
 void FieldEvaluator::evaluate()
@@ -819,7 +819,7 @@ IndexMask FieldEvaluator::get_evaluated_as_mask(const int field_index)
   return index_mask_from_selection(mask_, varray, scope_);
 }
 
-IndexMask FieldEvaluator::get_evaluated_selection_as_mask()
+const IndexMask &FieldEvaluator::get_evaluated_selection_as_mask()
 {
   BLI_assert(is_evaluated_);
   return selection_mask_;

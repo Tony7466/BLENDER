@@ -262,7 +262,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
   const VArray<int> counts = evaluator.get_evaluated<int>(0);
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
 
@@ -448,7 +448,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   const VArray<int> counts = evaluator.get_evaluated<int>(0);
 
   int total_faces = 0;
@@ -633,7 +633,7 @@ static void duplicate_edges(GeometrySet &geometry_set,
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
   const VArray<int> counts = evaluator.get_evaluated<int>(0);
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
 
   Array<int> offset_data;
   const OffsetIndices<int> duplicates = accumulate_counts_to_offsets(
@@ -714,7 +714,7 @@ static void duplicate_points_curve(GeometrySet &geometry_set,
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
   const VArray<int> counts = evaluator.get_evaluated<int>(0);
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
 
   Array<int> offset_data;
   const OffsetIndices<int> duplicates = accumulate_counts_to_offsets(
@@ -787,7 +787,7 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
   const VArray<int> counts = evaluator.get_evaluated<int>(0);
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
 
   Array<int> offset_data;
   const OffsetIndices<int> duplicates = accumulate_counts_to_offsets(
@@ -838,7 +838,7 @@ static void duplicate_points_pointcloud(GeometrySet &geometry_set,
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
   const VArray<int> counts = evaluator.get_evaluated<int>(0);
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
 
   Array<int> offset_data;
   const OffsetIndices<int> duplicates = accumulate_counts_to_offsets(
@@ -932,7 +932,7 @@ static void duplicate_instances(GeometrySet &geometry_set,
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   const VArray<int> counts = evaluator.get_evaluated<int>(0);
 
   Array<int> offset_data;

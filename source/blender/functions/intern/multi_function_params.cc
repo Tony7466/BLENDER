@@ -15,7 +15,7 @@ void ParamsBuilder::add_unused_output_for_unsupporting_function(const CPPType &t
   actual_params_.append_unchecked_as(std::in_place_type<GMutableSpan>, span);
   if (!type.is_trivially_destructible()) {
     scope.add_destruct_call(
-        [&type, buffer, mask = mask_]() { type.destruct_indices(buffer, mask); });
+        [&type, buffer, &mask = mask_]() { type.destruct_indices(buffer, mask); });
   }
 }
 

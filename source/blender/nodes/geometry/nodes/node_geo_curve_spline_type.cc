@@ -61,7 +61,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     fn::FieldEvaluator evaluator{field_context, src_curves.curves_num()};
     evaluator.set_selection(selection_field);
     evaluator.evaluate();
-    const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+    const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
     if (selection.is_empty()) {
       return;
     }

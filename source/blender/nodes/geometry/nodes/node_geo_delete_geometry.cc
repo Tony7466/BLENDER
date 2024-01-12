@@ -36,7 +36,7 @@ static std::optional<bke::CurvesGeometry> separate_curves_selection(
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.size() == domain_size) {
     return std::nullopt;
   }
@@ -64,7 +64,7 @@ static std::optional<PointCloud *> separate_point_cloud_selection(
   fn::FieldEvaluator evaluator{context, src_pointcloud.totpoint};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.size() == src_pointcloud.totpoint) {
     return std::nullopt;
   }
@@ -92,7 +92,7 @@ static void delete_selected_instances(GeometrySet &geometry_set,
   fn::FieldEvaluator evaluator{field_context, instances.instances_num()};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.is_empty()) {
     geometry_set.remove<InstancesComponent>();
     return;
@@ -140,7 +140,7 @@ static std::optional<GreasePencil *> separate_grease_pencil_layer_selection(
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
 
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.size() == attributes.domain_size(AttrDomain::Layer)) {
     return std::nullopt;
   }

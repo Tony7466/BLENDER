@@ -295,7 +295,7 @@ static AxisScaleParams evaluate_axis_scale_fields(FieldEvaluator &evaluator,
   evaluator.add(fields.center, &out.centers);
   evaluator.add(fields.axis, &out.axis_vectors);
   evaluator.evaluate();
-  out.selection = evaluator.get_evaluated_selection_as_mask();
+  out.selection = IndexMask(evaluator.get_evaluated_selection_as_mask());
   return out;
 }
 
@@ -317,7 +317,7 @@ static UniformScaleParams evaluate_uniform_scale_fields(FieldEvaluator &evaluato
   evaluator.add(fields.scale, &out.scales);
   evaluator.add(fields.center, &out.centers);
   evaluator.evaluate();
-  out.selection = evaluator.get_evaluated_selection_as_mask();
+  out.selection = IndexMask(evaluator.get_evaluated_selection_as_mask());
   return out;
 }
 

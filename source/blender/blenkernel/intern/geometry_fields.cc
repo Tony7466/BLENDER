@@ -694,7 +694,7 @@ bool try_capture_field_on_geometry(MutableAttributeAccessor attributes,
       evaluator.set_selection(selection);
       evaluator.evaluate();
 
-      const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+      const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
 
       array_utils::copy(evaluator.get_evaluated(0), selection, dst_attribute.span);
 

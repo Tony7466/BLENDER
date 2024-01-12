@@ -34,7 +34,7 @@ static void rotate_instances(GeoNodeExecParams &params, bke::Instances &instance
   evaluator.add(params.extract_input<Field<bool>>("Local Space"));
   evaluator.evaluate();
 
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   const VArray<math::Quaternion> rotations = evaluator.get_evaluated<math::Quaternion>(0);
   const VArray<float3> pivots = evaluator.get_evaluated<float3>(1);
   const VArray<bool> local_spaces = evaluator.get_evaluated<bool>(2);

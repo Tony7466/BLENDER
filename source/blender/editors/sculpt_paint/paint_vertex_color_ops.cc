@@ -179,7 +179,7 @@ static IndexMask get_selected_indices(const Mesh &mesh,
   return IndexMask(attributes.domain_size(domain));
 }
 
-static void face_corner_color_equalize_verts(Mesh &mesh, const IndexMask selection)
+static void face_corner_color_equalize_verts(Mesh &mesh, const IndexMask &selection)
 {
   using namespace blender;
   const StringRef name = mesh.active_color_attribute;

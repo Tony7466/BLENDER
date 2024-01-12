@@ -267,7 +267,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
   evaluator.set_selection(selection_field);
   evaluator.add_with_destination(count_field, dst_offsets.drop_back(1));
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
 
@@ -435,7 +435,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   fn::FieldEvaluator evaluator{field_context, src_curves.curves_num()};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
 

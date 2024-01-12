@@ -42,7 +42,7 @@ static void assign_material_to_id_geometry(ID *id,
   fn::FieldEvaluator selection_evaluator{field_context, domain_size};
   selection_evaluator.set_selection(selection_field);
   selection_evaluator.evaluate();
-  const IndexMask selection = selection_evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = selection_evaluator.get_evaluated_selection_as_mask();
 
   if (selection.size() != attributes.domain_size(domain)) {
     /* If the entire geometry isn't selected, and there is no material slot yet, add an empty

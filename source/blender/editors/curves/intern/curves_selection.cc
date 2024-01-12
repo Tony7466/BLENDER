@@ -38,7 +38,10 @@ IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves, IndexMaskM
     const VArray<bool> selection = *attributes.lookup_or_default<bool>(
         ".selection", bke::AttrDomain::Point, true);
     if (selection.is_single()) {
-      return selection.get_internal_single() ? IndexMask(curves_range) : IndexMask();
+      if (selection.get_internal_single()) {
+        return IndexMask(curves_range);
+      }
+      return IndexMask();
     }
     const OffsetIndices points_by_curve = curves.points_by_curve();
     return IndexMask::from_predicate(

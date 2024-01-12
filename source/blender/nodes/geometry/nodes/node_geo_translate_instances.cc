@@ -30,7 +30,7 @@ static void translate_instances(GeoNodeExecParams &params, bke::Instances &insta
   evaluator.add(params.extract_input<Field<bool>>("Local Space"));
   evaluator.evaluate();
 
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   const VArray<float3> translations = evaluator.get_evaluated<float3>(0);
   const VArray<bool> local_spaces = evaluator.get_evaluated<bool>(1);
 

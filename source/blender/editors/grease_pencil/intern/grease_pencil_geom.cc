@@ -164,10 +164,10 @@ IndexMask polyline_detect_corners(Span<float2> points,
 
   BLI_assert(samples_max < std::numeric_limits<int>::max());
   Span<int> indices(reinterpret_cast<int *>(r_corners), r_corner_len);
-  const IndexMask corner_mask = IndexMask::from_indices<int>(indices, memory);
+
   /* Free the c-style array. */
-  free(r_corners);
-  return corner_mask;
+  BLI_SCOPED_DEFER([&](){ free(r_corners); });
+  return IndexMask::from_indices<int>(indices, memory);
 }
 
 }  // namespace blender::ed::greasepencil

@@ -29,7 +29,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       fn::FieldEvaluator selection_evaluator{field_context, mesh->edges_num};
       selection_evaluator.set_selection(selection_field);
       selection_evaluator.evaluate();
-      const IndexMask mask = selection_evaluator.get_evaluated_selection_as_mask();
+      const IndexMask &mask = selection_evaluator.get_evaluated_selection_as_mask();
       if (mask.is_empty()) {
         return;
       }

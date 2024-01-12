@@ -324,7 +324,7 @@ static void extrude_mesh_vertices(Mesh &mesh,
   evaluator.add_with_destination(offset_field, offsets.as_mutable_span());
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   if (selection.is_empty()) {
     return;
   }
@@ -504,7 +504,7 @@ static void extrude_mesh_edges(Mesh &mesh,
   edge_evaluator.set_selection(selection_field);
   edge_evaluator.add(offset_field);
   edge_evaluator.evaluate();
-  const IndexMask edge_selection = edge_evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &edge_selection = edge_evaluator.get_evaluated_selection_as_mask();
   const VArray<float3> edge_offsets = edge_evaluator.get_evaluated<float3>(0);
   if (edge_selection.is_empty()) {
     return;
@@ -786,7 +786,7 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   face_evaluator.set_selection(selection_field);
   face_evaluator.add(offset_field);
   face_evaluator.evaluate();
-  const IndexMask face_selection = face_evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &face_selection = face_evaluator.get_evaluated_selection_as_mask();
   const VArray<float3> face_position_offsets = face_evaluator.get_evaluated<float3>(0);
   if (face_selection.is_empty()) {
     return;
@@ -1168,7 +1168,7 @@ static void extrude_individual_mesh_faces(
   face_evaluator.set_selection(selection_field);
   face_evaluator.add_with_destination(offset_field, face_offset.as_mutable_span());
   face_evaluator.evaluate();
-  const IndexMask face_selection = face_evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &face_selection = face_evaluator.get_evaluated_selection_as_mask();
   if (face_selection.is_empty()) {
     return;
   }

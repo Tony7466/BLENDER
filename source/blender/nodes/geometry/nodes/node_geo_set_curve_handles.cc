@@ -98,7 +98,7 @@ static void set_position_in_component(bke::CurvesGeometry &curves,
   evaluator.add(position_field);
   evaluator.add(offset_field);
   evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const IndexMask &selection = evaluator.get_evaluated_selection_as_mask();
   const VArray<float3> new_positions = evaluator.get_evaluated<float3>(0);
   const VArray<float3> new_offsets = evaluator.get_evaluated<float3>(1);
 

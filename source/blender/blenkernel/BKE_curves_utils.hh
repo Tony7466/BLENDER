@@ -504,10 +504,10 @@ IndexMask indices_for_type(const VArray<int8_t> &types,
 void foreach_curve_by_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,
                            const IndexMask &selection,
-                           FunctionRef<void(IndexMask)> catmull_rom_fn,
-                           FunctionRef<void(IndexMask)> poly_fn,
-                           FunctionRef<void(IndexMask)> bezier_fn,
-                           FunctionRef<void(IndexMask)> nurbs_fn);
+                           FunctionRef<void(const IndexMask &)> catmull_rom_fn,
+                           FunctionRef<void(const IndexMask &)> poly_fn,
+                           FunctionRef<void(const IndexMask &)> bezier_fn,
+                           FunctionRef<void(const IndexMask &)> nurbs_fn);
 
 /** \} */
 

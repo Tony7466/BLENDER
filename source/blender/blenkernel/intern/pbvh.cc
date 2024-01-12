@@ -3184,9 +3184,7 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
       CCGKey key = pbvh->gridkey;
 
       IndexMaskMemory memory;
-      const IndexMask hidden_faces =
-          grid_hidden.is_empty() ?
-              IndexMask::from_predicate(faces.index_range(),
+      const IndexMask hidden_faces = IndexMask::from_predicate(grid_hidden.is_empty() ? IndexRange(0) : faces.index_range(),
                                         GrainSize(1024),
                                         memory,
                                         [&](const int i) {
@@ -3195,8 +3193,7 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
                                               face.begin(), face.end(), [&](const int corner) {
                                                 return grid_hidden[corner][key.grid_area - 1];
                                               });
-                                        }) :
-              IndexMask();
+                                        });
 
       MutableAttributeAccessor attributes = mesh->attributes_for_write();
       if (hidden_faces.is_empty()) {

@@ -76,8 +76,7 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
           return {};
         }
         const AttrDomain domain = context.domain();
-        const IndexMask domain_mask = (domain == AttrDomain::Face) ? mask :
-                                                                     IndexMask(mesh->faces_num);
+        const IndexMask domain_mask = [&](){ if (domain == AttrDomain::Face) ? { return mask; } else { return IndexMask(mesh->faces_num); }};
         const AttributeAccessor attributes = mesh->attributes();
         VArray<bool> selection = select_by_material(
             {mesh->mat, mesh->totcol}, material_, attributes, AttrDomain::Face, domain_mask);

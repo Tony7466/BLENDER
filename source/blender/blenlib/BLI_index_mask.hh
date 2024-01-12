@@ -172,6 +172,8 @@ class IndexMask : private IndexMaskData {
   /** Construct a mask that contains the indices in the range. This takes O(1) time. */
   IndexMask(IndexRange range);
 
+  explicit IndexMask(const IndexMask &other) = default;
+
   /** Construct a mask from unique sorted indices. */
   template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
   /** Construct a mask from the indices of set bits. */
