@@ -274,7 +274,7 @@ class MTLShader : public Shader {
             NSString *fragment_function_name_);
   ~MTLShader();
 
-  void init(const ShaderCreateInfo & /*info*/) override {}
+  void init(const shader::ShaderCreateInfo & /*info*/) override {}
 
   /* Assign GLSL source. */
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
