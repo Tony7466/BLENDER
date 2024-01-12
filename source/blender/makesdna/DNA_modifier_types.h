@@ -93,7 +93,7 @@ typedef enum ModifierType {
   eModifierType_MeshToVolume = 58,
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
-  eModifierType_Hello = 61,
+  eModifierType_GreasePencilSubdiv = 61,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2487,13 +2487,27 @@ typedef enum VolumeToMeshFlag {
 } VolumeToMeshFlag;
 
 
-typedef struct HelloModifierData {
+typedef struct GreasePencilSubdivModifierData {
   ModifierData modifier;
-
-  struct Object *object;
-
-  float threshold;
-  float adaptivity;
+  /** Material for filtering. */
+  struct Material *material;
+  /** Layer name. */
+  char layername[64];
+  /** Material name. */
+  char materialname[64] DNA_DEPRECATED;
+  /** Custom index for passes. */
+  int pass_index;
+  /** Flags. */
+  int flag;
+  /** Factor of subdivision. */
+  int level;
+  /** Custom index for passes. */
+  int layer_pass;
+  /** Type of subdivision */
+  short type;
+  char _pad[6];
 
   void *_pad1;
-} HelloModifierData;
+} GreasePencilSubdivModifierData;
+
+/* enum is kept in legacy dna. */

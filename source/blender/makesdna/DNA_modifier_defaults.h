@@ -801,4 +801,15 @@
     .mat_ofs = 0, \
   }
 
+#define _DNA_DEFAULT_GreasePencilSubdivModifierData \
+  { \
+    .material = NULL, \
+    .layername = "", \
+    .pass_index = 0, \
+    .flag = 0, \
+    .level = 1, \
+    .layer_pass = 0, \
+    .type = 0, \
+  }
+
 /* clang-format off */

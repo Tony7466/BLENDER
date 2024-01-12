@@ -12,6 +12,7 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_cachefile_types.h"
+#include "DNA_gpencil_modifier_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
@@ -195,11 +196,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_WIREFRAME,
      "Wireframe",
      "Convert faces into thickened edges"},
-    {eModifierType_Hello,
-     "HELLO",
+    {eModifierType_GreasePencilSubdiv,
+     "GREASEPENCIL_SUBDIV",
      ICON_GREASEPENCIL,
-     "Hello",
-     "Hello Grease Pencil modifier"},
+     "Subdivide strokes",
+     "Grease Pencil subdivide modifier"},
 
     RNA_ENUM_ITEM_HEADING(N_("Deform"), nullptr),
     {eModifierType_Armature,
@@ -7428,15 +7429,85 @@ static void rna_def_modifier_volume_to_mesh(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
-static void rna_def_modifier_hello(BlenderRNA *brna)
+static void rna_def_modifier_grease_pencil_subdiv(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "HelloModifier", "Modifier");
-  RNA_def_struct_ui_text(srna, "Hello Modifier", "Hello modifier");
-  RNA_def_struct_sdna(srna, "HelloModifierData");
-  RNA_def_struct_ui_icon(srna, ICON_GREASEPENCIL);
+  static const EnumPropertyItem gpencil_subdivision_type_items[] = {
+      {GP_SUBDIV_CATMULL, "CATMULL_CLARK", 0, "Catmull-Clark", ""},
+      {GP_SUBDIV_SIMPLE, "SIMPLE", 0, "Simple", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  srna = RNA_def_struct(brna, "GreasePencilSubdivModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Subdivision Modifier", "Subdivide Stroke modifier");
+  RNA_def_struct_sdna(srna, "GreasePencilSubdivModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_SUBSURF);
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "layername");
+  RNA_def_property_ui_text(prop, "Layer", "Layer name");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  //prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
+  //RNA_def_property_flag(prop, PROP_EDITABLE);
+  //RNA_def_property_pointer_funcs(prop,
+  //                               nullptr,
+  //                               "rna_GreasePencilSubdivModifier_material_set",
+  //                               nullptr,
+  //                               "rna_GpencilModifier_material_poll");
+  //RNA_def_property_ui_text(prop, "Material", "Material used for filtering effect");
+  //RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "level", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "level");
+  RNA_def_property_range(prop, 0, 16);
+  RNA_def_property_ui_range(prop, 0.0, 5.0, 1, 0);
+  RNA_def_property_ui_text(prop, "Level", "Number of subdivisions");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "subdivision_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "type");
+  RNA_def_property_enum_items(prop, gpencil_subdivision_type_items);
+  RNA_def_property_ui_text(prop, "Subdivision Type", "Select type of subdivision algorithm");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "pass_index");
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_text(prop, "Pass", "Pass index");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "invert_layers", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_SUBDIV_INVERT_LAYER);
+  RNA_def_property_ui_text(prop, "Inverse Layers", "Inverse filter");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "invert_materials", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_SUBDIV_INVERT_MATERIAL);
+  RNA_def_property_ui_text(prop, "Inverse Materials", "Inverse filter");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "invert_material_pass", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_SUBDIV_INVERT_PASS);
+  RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "layer_pass", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "layer_pass");
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_text(prop, "Pass", "Layer pass index");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "invert_layer_pass", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_SUBDIV_INVERT_LAYERPASS);
+  RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
 }
 
 void RNA_def_modifier(BlenderRNA *brna)
@@ -7599,7 +7670,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_mesh_to_volume(brna);
   rna_def_modifier_volume_displace(brna);
   rna_def_modifier_volume_to_mesh(brna);
-  rna_def_modifier_hello(brna);
+  rna_def_modifier_grease_pencil_subdiv(brna);
 }
 
 #endif

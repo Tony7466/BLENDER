@@ -270,6 +270,6 @@ void modifier_type_init(ModifierTypeInfo *types[])
   INIT_TYPE(VolumeDisplace);
   INIT_TYPE(VolumeToMesh);
   INIT_TYPE(Nodes);
-  INIT_TYPE(Hello);
+  INIT_TYPE(GreasePencilSubdiv);
 #undef INIT_TYPE
 }
