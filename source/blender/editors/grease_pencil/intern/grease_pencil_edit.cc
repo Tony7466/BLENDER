@@ -1843,7 +1843,7 @@ static bke::greasepencil::Layer &find_or_create_layer_by_name(
   bke::gather_attributes(grease_pencil_src.attributes(),
                          bke::AttrDomain::Layer,
                          {},
-                         {".layers"},
+                         {},
                          Span({layer_index}),
                          grease_pencil_dst.attributes_for_write());
 
