@@ -274,29 +274,42 @@ int WM_event_drag_direction(const wmEvent *event)
       event->xy[1] - event->prev_press_xy[1],
   };
 
-  int theta = round_fl_to_int(4.0f * atan2f(float(delta[1]), float(delta[0])) / float(M_PI));
-  int val = KM_DIRECTION_W;
+  const bool left_right = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT;
+  const bool up_down = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_UP_DOWN;
+  int val = up_down ? KM_DIRECTION_S : KM_DIRECTION_W;
 
-  if (theta == 0) {
-    val = KM_DIRECTION_E;
+  if (left_right || up_down) {
+    float thetaf = 4.0f * atan2f((float)delta[1], (float)delta[0]) / (float)M_PI;
+    if (left_right && thetaf > -2.0f && thetaf < 2.0f) {
+      val = KM_DIRECTION_E;
+    }
+    else if (up_down && thetaf > 0.0f) {
+      val = KM_DIRECTION_N;
+    }
   }
-  else if (theta == 1) {
-    val = KM_DIRECTION_NE;
-  }
-  else if (theta == 2) {
-    val = KM_DIRECTION_N;
-  }
-  else if (theta == 3) {
-    val = KM_DIRECTION_NW;
-  }
-  else if (theta == -1) {
-    val = KM_DIRECTION_SE;
-  }
-  else if (theta == -2) {
-    val = KM_DIRECTION_S;
-  }
-  else if (theta == -3) {
-    val = KM_DIRECTION_SW;
+  else {
+    int theta = round_fl_to_int(4.0f * atan2f((float)delta[1], (float)delta[0]) / (float)M_PI);
+    if (theta == 0) {
+      val = KM_DIRECTION_E;
+    }
+    else if (theta == 1) {
+      val = KM_DIRECTION_NE;
+    }
+    else if (theta == 2) {
+      val = KM_DIRECTION_N;
+    }
+    else if (theta == 3) {
+      val = KM_DIRECTION_NW;
+    }
+    else if (theta == -1) {
+      val = KM_DIRECTION_SE;
+    }
+    else if (theta == -2) {
+      val = KM_DIRECTION_S;
+    }
+    else if (theta == -3) {
+      val = KM_DIRECTION_SW;
+    }
   }
 
 #if 0

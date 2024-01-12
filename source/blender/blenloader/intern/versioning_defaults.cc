@@ -188,6 +188,8 @@ static void blo_update_defaults_screen(bScreen *screen,
       v3d->overlay.vertex_paint_mode_opacity = 1.0f;
       /* Use dimmed selected edges. */
       v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_EDGES;
+      /* Show xray facedots */
+      v3d->overlay.edit_flag |= V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
       /* grease pencil settings */
       v3d->vertex_opacity = 1.0f;
       v3d->gp_flag |= V3D_GP_SHOW_EDIT_LINES;
@@ -378,6 +380,25 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (idprop) {
     IDP_ClearProperty(idprop);
   }
+
+  /* X-Ray. */
+  ts->xray_button = true;
+  ts->auto_xray_object = true;
+  ts->auto_xray_edit = true;
+  ts->auto_xray_box = true;
+  ts->auto_xray_lasso = true;
+  ts->auto_xray_circle = true;
+  ts->select_through = true;
+  ts->select_through_object = true;
+  ts->select_through_box = true;
+  ts->select_through_lasso = true;
+  ts->select_through_circle = true;
+
+  /* Viewport-Facing Select */
+  ts->viewport_facing_select_mode = 1;
+  ts->viewport_facing_select_vert = 1;
+  ts->viewport_facing_select_edge = 1;
+  ts->viewport_facing_select_face = 1;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
