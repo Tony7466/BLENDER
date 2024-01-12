@@ -532,11 +532,19 @@ void DeferredLayer::end_sync()
       else {
         /* The shader cannot set the stencil directly. So we do one full-screen pass for each
          * stencil bit we need to set and accumulate the result. */
-        for (size_t i = 0; i <= log2_ceil(closure_count_); i++) {
-          int stencil_value = 1 << i;
-          sub.push_constant("current_bit", stencil_value);
-          sub.state_stencil(stencil_value, 0xFFu, 0xFFu);
-          sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+        int count = log2_ceil(closure_count_);
+        for (size_t i = 0; i <= count; i++) {
+           int stencil_value = 1 << i;
+           sub.push_constant("current_bit", stencil_value);
+           sub.state_stencil(stencil_value, 0xFFu, 0xFFu);
+           sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+          if (count != i) {
+            sub.subpass_transition(GPU_ATTACHEMENT_WRITE, /* Needed for depth test. */
+                                   {GPU_ATTACHEMENT_IGNORE,
+                                    GPU_ATTACHEMENT_READ, /* Header. */
+                                    GPU_ATTACHEMENT_IGNORE,
+                                    GPU_ATTACHEMENT_IGNORE});
+          }
         }
       }
     }

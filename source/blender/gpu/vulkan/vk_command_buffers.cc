@@ -373,6 +373,7 @@ void VKCommandBuffers::dispatch(int groups_x_len, int groups_y_len, int groups_z
   VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdDispatch(command_buffer.vk_command_buffer(), groups_x_len, groups_y_len, groups_z_len);
   command_buffer.command_recorded();
+  submit();
 }
 
 void VKCommandBuffers::dispatch(VKStorageBuffer &command_storage_buffer)
@@ -382,6 +383,7 @@ void VKCommandBuffers::dispatch(VKStorageBuffer &command_storage_buffer)
   VKCommandBuffer &command_buffer = command_buffer_get(Type::DataTransferCompute);
   vkCmdDispatchIndirect(command_buffer.vk_command_buffer(), command_storage_buffer.vk_handle(), 0);
   command_buffer.command_recorded();
+  submit();
 }
 
 void VKCommandBuffers::copy(VKBuffer &dst_buffer,

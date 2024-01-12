@@ -72,7 +72,7 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
     render_pass_type = eRenderpassType::ShaderBinding;
   }
   if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {
-    if ((GPU_TEXTURE_USAGE_GENERAL != usage) && (!(format_flag & GPU_FORMAT_SRGB)) &&
+    if ((!(format_flag & GPU_FORMAT_SRGB)) &&
         (!(format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL))))
     {
       result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);

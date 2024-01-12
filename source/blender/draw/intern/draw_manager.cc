@@ -117,6 +117,7 @@ void Manager::end_sync()
   // debug_bind();
 
   /* Dispatch compute to finalize the resources on GPU. Save a bit of CPU time. */
+  GPU_texture_unbind_all();
   uint thread_groups = divide_ceil_u(resource_len_, DRW_FINALIZE_GROUP_SIZE);
   GPUShader *shader = DRW_shader_draw_resource_finalize_get();
   GPU_shader_bind(shader);

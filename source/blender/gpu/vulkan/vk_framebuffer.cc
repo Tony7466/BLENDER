@@ -368,7 +368,7 @@ void VKFrameBuffer::subpass_transition(const GPUAttachmentState /*depth_attachme
         if (type_index == i) {
           reinterpret_cast<VKStateManager *>(VKContext::get()->state_manager)
               ->input_attachment_bind(reinterpret_cast<Texture *>(attachments_[type].tex),
-                                      input_order);
+                                      type_index);
           break;
         }
         input_order++;
