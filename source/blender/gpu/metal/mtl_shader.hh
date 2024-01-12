@@ -274,6 +274,8 @@ class MTLShader : public Shader {
             NSString *fragment_function_name_);
   ~MTLShader();
 
+  void init(const ShaderCreateInfo & /*info*/) override {}
+
   /* Assign GLSL source. */
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
   void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
@@ -307,7 +309,7 @@ class MTLShader : public Shader {
    * These aren't all used by Metal, as certain parts of source code generation
    * for shader entry-points and resource mapping occur during `finalize`. */
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
-  std::string constants_declare(const shader::ShaderCreateInfo &info) override;
+  std::string constants_declare(const shader::ShaderCreateInfo &info) const override;
   std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string fragment_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string geometry_interface_declare(const shader::ShaderCreateInfo &info) const override;

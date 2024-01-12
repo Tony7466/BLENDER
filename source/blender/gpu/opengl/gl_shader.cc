@@ -51,6 +51,14 @@ GLShader::~GLShader()
 #endif
 }
 
+void GLShader::init(const shader::ShaderCreateInfo &info)
+{
+  /* Extract the constants names from info and store them locally. */
+  for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_) {
+    specialization_constant_names_.append(constant.name.c_str());
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -643,22 +651,12 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
   return ss.str();
 }
 
-std::string GLShader::constants_declare(const ShaderCreateInfo &info)
+std::string GLShader::constants_declare(const ShaderCreateInfo & /*info*/) const
 {
   std::stringstream ss;
   const bool has_specialization_constants = !constants.types.is_empty();
   if (!has_specialization_constants) {
     return ss.str();
-  }
-
-  /* Extract the constants names from info and store them locally. When shader needs to be
-   * recompiled it cannot access the shader create info anymore. In that case a dummy shader create
-   * info is used that doesn't contain any information. */
-  if (specialization_constant_names_.is_empty()) {
-    for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_)
-    {
-      specialization_constant_names_.append(constant.name.c_str());
-    }
   }
 
   /* Add an identifier that where the specialization constants will be added. */

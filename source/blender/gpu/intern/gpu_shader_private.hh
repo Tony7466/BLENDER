@@ -67,6 +67,8 @@ class Shader {
   Shader(const char *name);
   virtual ~Shader();
 
+  virtual void init(const shader::ShaderCreateInfo &info) = 0;
+
   virtual void vertex_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual void geometry_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual void fragment_shader_from_glsl(MutableSpan<const char *> sources) = 0;
@@ -93,7 +95,7 @@ class Shader {
   void specialization_constants_init(const shader::ShaderCreateInfo &info);
 
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
-  virtual std::string constants_declare(const shader::ShaderCreateInfo &info) = 0;
+  virtual std::string constants_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string fragment_interface_declare(const shader::ShaderCreateInfo &info) const = 0;

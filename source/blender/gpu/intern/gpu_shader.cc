@@ -297,7 +297,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
   }
 
   Shader *shader = GPUBackend::get()->shader_alloc(info.name_.c_str());
-
+  shader->init(info);
   shader->specialization_constants_init(info);
 
   std::string defines = shader->defines_declare(info);

@@ -140,6 +140,8 @@ class GLShader : public Shader {
   GLShader(const char *name);
   ~GLShader();
 
+  void init(const shader::ShaderCreateInfo &info) override;
+
   /** Return true on success. */
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
   void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
@@ -149,7 +151,7 @@ class GLShader : public Shader {
   void warm_cache(int /*limit*/) override{};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
-  std::string constants_declare(const shader::ShaderCreateInfo &info) override;
+  std::string constants_declare(const shader::ShaderCreateInfo &info) const override;
   std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string fragment_interface_declare(const shader::ShaderCreateInfo &info) const override;
   std::string geometry_interface_declare(const shader::ShaderCreateInfo &info) const override;
