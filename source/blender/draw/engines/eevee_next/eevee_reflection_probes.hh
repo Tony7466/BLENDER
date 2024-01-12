@@ -78,11 +78,11 @@ struct ReflectionProbeAtlasCoordinate {
     return coord;
   }
 
-  ReflectionProbeWriteCoordinate as_write_coord(int atlas_extent) const
+  ReflectionProbeWriteCoordinate as_write_coord(int atlas_extent, int mip_lvl) const
   {
     ReflectionProbeWriteCoordinate coord;
-    coord.extent = atlas_extent >> layer_subdivision;
-    coord.offset = area_location() * coord.extent;
+    coord.extent = atlas_extent >> (layer_subdivision + mip_lvl);
+    coord.offset = (area_location() * coord.extent) >> mip_lvl;
     coord.layer = layer;
     return coord;
   }
@@ -158,10 +158,11 @@ class ReflectionProbeModule {
   ReflectionProbeDataBuf data_buf_;
   ReflectionProbes probes_;
 
-  ReflectionProbe world_probe_data;
-
   /** Probes texture stored in octahedral mapping. */
   Texture probes_tx_ = {"Probes"};
+  /* Reference to a specific mip map layer of a texture. */
+  GPUTexture *atlas_dst_mip_tx_ = nullptr;
+  GPUTexture *atlas_src_mip_tx_ = nullptr;
 
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
   PassSimple update_irradiance_ps_ = {"Probe.UpdateIrradiance"};

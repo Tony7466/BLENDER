@@ -30,8 +30,6 @@ void main()
   ReflectionProbeWriteCoordinate write_coord = reinterpret_as_write_coord(write_coord_packed);
   ReflectionProbeWriteCoordinate world_coord = reinterpret_as_write_coord(world_coord_packed);
 
-  ivec3 texture_size = imageSize(octahedral_img);
-
   /* Texel in probe. */
   ivec2 local_texel = ivec2(gl_GlobalInvocationID.xy);
 
@@ -43,7 +41,7 @@ void main()
   /* Texel in probe atlas. */
   ivec2 texel = local_texel + write_coord.offset;
   /* UV in probe atlas. */
-  vec2 atlas_uv = (vec2(texel) + 0.5) / vec2(texture_size.xy);
+  vec2 atlas_uv = (vec2(texel) + 0.5) / vec2(imageSize(atlas_dst_mip_img).xy);
   /* UV in sampling area. */
   vec2 sampling_uv = (atlas_uv - sample_coord.offset) / sample_coord.scale;
   /* Direction in world space. */
@@ -54,13 +52,13 @@ void main()
   col.a = 1.0 - col.a;
 
   /* Composite world into reflection probes. */
-  // bool is_world = all(equal(probe_coord_packed, world_coord_packed));
-  // if (!is_world && col.a != 1.0) {
-  // int scaling = world_coord.extent / write_coord.extent;
-  // ivec2 world_texel = local_texel * scaling + world_coord.offset;
-  // vec4 world_col = imageLoad(octahedral_img, ivec3(world_texel, world_coord.layer));
-  // col.rgb = mix(world_col.rgb, col.rgb, col.a);
-  // }
+  bool is_world = all(equal(write_coord_packed, world_coord_packed));
+  if (!is_world && col.a != 1.0) {
+    ivec2 world_texel = local_texel + world_coord.offset;
+    vec4 world_col = imageLoad(atlas_src_mip_img, ivec3(world_texel, world_coord.layer));
+    // vec4 world_col = vec4((vec2(local_texel) + 0.5) / vec2(write_coord.extent), 0.0, 1.0);
+    col.rgb = mix(world_col.rgb, col.rgb, col.a);
+  }
 
-  imageStore(octahedral_img, ivec3(texel, write_coord.layer), col);
+  imageStore(atlas_dst_mip_img, ivec3(texel, write_coord.layer), col);
 }
