@@ -43,8 +43,8 @@ set(SRC
   intern/BLI_mmap.c
   intern/BLI_timer.c
   intern/DLRB_tree.c
-  intern/array_store.c
-  intern/array_store_utils.c
+  intern/array_store.cc
+  intern/array_store_utils.cc
   intern/array_utils.c
   intern/array_utils.cc
   intern/astar.c
@@ -292,6 +292,7 @@ set(SRC
   BLI_math_matrix.hh
   BLI_math_matrix_types.hh
   BLI_math_mpq.hh
+  BLI_math_numbers.hh
   BLI_math_quaternion.hh
   BLI_math_quaternion_types.hh
   BLI_math_rotation.h

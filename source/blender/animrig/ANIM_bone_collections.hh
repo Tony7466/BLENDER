@@ -49,8 +49,11 @@ BoneCollection *ANIM_bonecoll_new(const char *name) ATTR_WARN_UNUSED_RESULT;
  * of a bArmature. Normally bone collections are owned (and thus managed) by the armature.
  *
  * \see ANIM_armature_bonecoll_remove
+ *
+ * \param do_id_user_count whether to update user counts for IDs referenced from IDProperties of
+ * the bone collection. Needs to be false when freeing a CoW copy, true otherwise.
  */
-void ANIM_bonecoll_free(BoneCollection *bcoll);
+void ANIM_bonecoll_free(BoneCollection *bcoll, bool do_id_user_count = true);
 
 /**
  * Recalculate the armature & bone runtime data.
@@ -68,7 +71,7 @@ void ANIM_armature_runtime_free(bArmature *armature);
 /**
  * Add a new bone collection to the given armature.
  *
- * \param parent_index Index into the Armature's `collections_array`. -1 adds it
+ * \param parent_index: Index into the Armature's `collections_array`. -1 adds it
  * as a root (i.e. parentless) collection.
  *
  * The Armature owns the returned pointer.
@@ -327,29 +330,51 @@ int armature_bonecoll_find_index(const bArmature *armature, const ::BoneCollecti
  */
 int armature_bonecoll_find_parent_index(const bArmature *armature, int bcoll_index);
 
+/**
+ * Find the child number of this bone collection.
+ *
+ * This is the offset of this collection relative to the parent's first child.
+ * In other words, the first child has number 0, second child has number 1, etc.
+ *
+ * This requires a scan of the array, hence the function is called 'find' and not 'get'.
+ */
+int armature_bonecoll_child_number_find(const bArmature *armature, const ::BoneCollection *bcoll);
+
+/**
+ * Move this bone collection to a new child number.
+ *
+ * \return the new absolute index of the bone collection, or -1 if the new child number was not
+ * valid.
+ *
+ * \see armature_bonecoll_child_number_find
+ */
+int armature_bonecoll_child_number_set(bArmature *armature,
+                                       ::BoneCollection *bcoll,
+                                       int new_child_number);
+
 bool armature_bonecoll_is_root(const bArmature *armature, int bcoll_index);
 
 bool armature_bonecoll_is_child_of(const bArmature *armature,
                                    int potential_parent_index,
                                    int potential_child_index);
 
-bool armature_bonecoll_is_decendent_of(const bArmature *armature,
-                                       int potential_parent_index,
-                                       int potential_decendent_index);
+bool armature_bonecoll_is_descendant_of(const bArmature *armature,
+                                        int potential_parent_index,
+                                        int potential_descendant_index);
 
 bool bonecoll_has_children(const BoneCollection *bcoll);
 
 /**
  * Move a bone collection from one parent to another.
  *
- * \param from_bcoll_index index of the bone collection to move.
- * \param to_child_num gap index of where to insert the collection; 0 to make it
+ * \param from_bcoll_index: Index of the bone collection to move.
+ * \param to_child_num: Gap index of where to insert the collection; 0 to make it
  * the first child, and parent->child_count to make it the last child. -1 also
  * works as an indicator for the last child, as that makes it possible to call
  * this function without requiring the caller to find the BoneCollection* of the
  * parent.
- * \param from_parent_index index of its current parent (-1 if it is a root collection).
- * \param to_parent_index index of the new parent (-1 if it is to become a root collection).
+ * \param from_parent_index: Index of its current parent (-1 if it is a root collection).
+ * \param to_parent_index: Index of the new parent (-1 if it is to become a root collection).
  * \return the collection's new index in the collections_array.
  */
 int armature_bonecoll_move_to_parent(bArmature *armature,

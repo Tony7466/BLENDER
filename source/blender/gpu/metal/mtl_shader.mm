@@ -181,7 +181,7 @@ void MTLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
   shd_builder_->source_from_msl_ = false;
 
   /* Remove #version tag entry. */
-  sources[0] = "";
+  sources[SOURCES_INDEX_VERSION] = "";
 
   /* Consolidate GLSL vertex sources. */
   std::stringstream ss;
@@ -203,7 +203,7 @@ void MTLShader::fragment_shader_from_glsl(MutableSpan<const char *> sources)
   shd_builder_->source_from_msl_ = false;
 
   /* Remove #version tag entry. */
-  sources[0] = "";
+  sources[SOURCES_INDEX_VERSION] = "";
 
   /* Consolidate GLSL fragment sources. */
   std::stringstream ss;
@@ -231,7 +231,7 @@ void MTLShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
   shd_builder_->source_from_msl_ = false;
 
   /* Remove #version tag entry. */
-  sources[0] = "";
+  sources[SOURCES_INDEX_VERSION] = "";
 
   /* Consolidate GLSL compute sources. */
   std::stringstream ss;
@@ -374,7 +374,8 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
             NSNotFound)
         {
           const char *errors_c_str = [[error localizedDescription] UTF8String];
-          const char *sources_c_str = shd_builder_->glsl_fragment_source_.c_str();
+          const char *sources_c_str = (is_compute) ? shd_builder_->glsl_compute_source_.c_str() :
+                                                     shd_builder_->glsl_fragment_source_.c_str();
 
           MTLLogParser parser;
           print_log(Span<const char *>(&sources_c_str, 1),
@@ -1501,6 +1502,7 @@ MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLConte
 
     /* Compile PSO. */
     MTLComputePipelineDescriptor *desc = [[MTLComputePipelineDescriptor alloc] init];
+    desc.label = [NSString stringWithUTF8String:this->name];
     desc.maxTotalThreadsPerThreadgroup = 1024;
     desc.computeFunction = compute_function;
 
