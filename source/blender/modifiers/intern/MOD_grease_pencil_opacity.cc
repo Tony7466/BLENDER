@@ -51,15 +51,7 @@ static void init_data(ModifierData *md)
 
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(omd, modifier));
 
-  // XXX Why is this crashing, but the expanded code below works fine?!?
-  // MEMCPY_STRUCT_AFTER(omd, DNA_struct_default_get(GreasePencilOpacityModifierData), modifier);
-  {
-    CHECK_TYPE_NONCONST(omd);
-    memcpy((char *)(omd) + OFFSETOF_STRUCT_AFTER(omd, modifier),
-           (const char *)(md) + OFFSETOF_STRUCT_AFTER(omd, modifier),
-           sizeof(*(omd)) - OFFSETOF_STRUCT_AFTER(omd, modifier));
-  }
-
+  MEMCPY_STRUCT_AFTER(omd, DNA_struct_default_get(GreasePencilOpacityModifierData), modifier);
   greasepencil::init_influence_data(&omd->influence, true);
 }
 
@@ -79,14 +71,6 @@ static void free_data(ModifierData *md)
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
 
   greasepencil::free_influence_data(&omd->influence);
-}
-
-static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
-{
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-
-  // TODO
-  UNUSED_VARS(omd, r_cddata_masks);
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
@@ -352,7 +336,7 @@ ModifierTypeInfo modifierType_GreasePencilOpacity = {
     /*modify_geometry_set*/ blender::modify_geometry_set,
 
     /*init_data*/ blender::init_data,
-    /*required_data_mask*/ blender::required_data_mask,
+    /*required_data_mask*/ nullptr,
     /*free_data*/ blender::free_data,
     /*is_disabled*/ nullptr,
     /*update_depsgraph*/ nullptr,
