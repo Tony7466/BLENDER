@@ -664,7 +664,7 @@ static void import_endjob(void *user_data)
       break;
   }
 
-  WM_main_add_notifier(NC_SCENE | ND_FRAME, data->scene);
+  WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
   report_job_duration(data);
 }
 
@@ -772,7 +772,7 @@ static AbcObjectReader *get_abc_reader(CacheReader *reader, Object *ob, const ch
   IObject iobject = abc_reader->iobject();
 
   if (!iobject.valid()) {
-    *err_str = TIP_("Invalid object: verify object path");
+    *err_str = RPT_("Invalid object: verify object path");
     return nullptr;
   }
 
