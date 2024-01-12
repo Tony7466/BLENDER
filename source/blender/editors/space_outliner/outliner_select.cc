@@ -1805,7 +1805,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     if (use_range) {
       do_outliner_range_select(C, space_outliner, activate_te, extend, recurse, parent_collection);
       if (recurse) {
-        do_outliner_select_recursive(&activate_te->subtree, /*selecting=*/true, parent_collection);
+        do_outliner_select_recursive(&activate_te->subtree, true, parent_collection);
       }
     }
     else {
@@ -1831,7 +1831,6 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
         if (outliner_item_is_co_over_icon(activate_te, view_mval[0])) {
           /* Select or deselect object hierarchy recursively. */
           outliner_item_select(C, space_outliner, activate_te, select_flag);
-
           do_outliner_select_recursive(&activate_te->subtree, select, parent_collection);
         }
         else {
