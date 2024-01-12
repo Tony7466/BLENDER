@@ -12,6 +12,7 @@
 #include "BLI_math_vector.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_hash.h"
 
 #include "BLT_translation.h"
 
@@ -49,6 +50,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "RNA_prototypes.h"
+#include "RNA_access.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -88,13 +90,13 @@ static void copy_data(const ModifierData *md, ModifierData *target, int flag)
     tgmd->curve_intensity = nullptr;
   }
 
-  BKE_modifier_copydata_generic(md, target, int flag);
+  BKE_modifier_copydata_generic(md, target, flag);
 
   tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
 }
 
 
-static bool depends_on_time(ModifierData *md)
+static bool depends_on_time(Scene * /*scene*/, ModifierData *md)
 {
   GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
   return (mmd->flag & GP_NOISE_USE_RANDOM) != 0;
@@ -127,7 +129,7 @@ static void deform_stroke(ModifierData *md,
   MDeformVert *dvert = nullptr;
   /* Noise value in range [-1..1] */
   float3 vec1, vec2;
-  const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
+  //const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
   const bool invert_group = (mmd->flag & GP_NOISE_INVERT_VGROUP) != 0;
   const bool use_curve = (mmd->flag & GP_NOISE_CUSTOM_CURVE) != 0 && mmd->curve_intensity;
   const int cfra = int(DEG_get_ctime(depsgraph));
@@ -152,12 +154,10 @@ static void deform_stroke(ModifierData *md,
   //}
 
   bke::CurvesGeometry &strokes = drawing->strokes_for_write();
-  for(const int stroke_i : strokes.curve_num()){
-    bke::CurvesGeometry *stroke = strokes[stroke_i];
+  for(const int stroke_i : strokes.offsets()){
 
     int seed = mmd->seed;
-    /* FIXME(fclem): This is really slow. We should get the stroke index in another way. */
-    int stroke_seed = BLI_findindex(&gpf->strokes, gps);
+    int stroke_seed = stroke_i;
     seed += stroke_seed;
 
     /* Make sure different modifiers get different seeds. */
@@ -170,7 +170,8 @@ static void deform_stroke(ModifierData *md,
       }
       else {
         /* If change every keyframe, use the last keyframe. */
-        seed += gpf->framenum;
+        /* TODO: not correct. */
+        seed += cfra;
       }
     }
 
@@ -178,14 +179,14 @@ static void deform_stroke(ModifierData *md,
     float noise_scale = clamp_f(mmd->noise_scale, 0.0f, 1.0f);
 
     /* Calculate or get stroke normals. */
-    Span<float3> normals = stroke->evaluated_normals();
+    Span<float3> normals = strokes.evaluated_normals();
     MutableSpan<float3> positions = strokes.positions_for_write();
-    MutableSpan<float> radiis = strokes.radii_for_write();
-    MutableSpan<float> opacities = strokes.opacities_for_write();
-    OffsetIndices<int> curves = stroke->points_by_curve();
-    const int points_num = stroke->points_num();
+    MutableSpan<float> radiis = drawing->radii_for_write();
+    MutableSpan<float> opacities = drawing->opacities_for_write();
+    OffsetIndices<int> curves = strokes.points_by_curve();
+    const int points_num = strokes.points_num();
 
-    for (const int curve : curves){
+    for (const int curve : curves.index_range()){
 
       int len = ceilf(curves[curve].size() * noise_scale) + 2;
       float *noise_table_position = (mmd->factor > 0.0f) ?
@@ -206,7 +207,7 @@ static void deform_stroke(ModifierData *md,
         // TODO: vertex group filtering.
         float weight = 1.0f;
         if (use_curve) {
-          float value = float(i) / (points_num - 1);
+          float value = float(point) / (points_num - 1);
           weight *= BKE_curvemapping_evaluateF(mmd->curve_intensity, 0, value);
         }
 
@@ -217,10 +218,10 @@ static void deform_stroke(ModifierData *md,
           }
           else if (point != curves[curve].last()) {
             /* Initial vector (p1 -> p0). */
-            vec1 = positions[point] - positions[point + 1]
+            vec1 = positions[point] - positions[point + 1];
             /* if vec2 is zero, set to something */
             if (math::length(vec1) < 1e-8f) {
-              line = float3(1.0f, 0.0f, 0.0f);
+              vec1 = float3(1.0f, 0.0f, 0.0f);
             }
           }
           else {
@@ -229,7 +230,7 @@ static void deform_stroke(ModifierData *md,
           }
 
           /* Vector orthogonal to normal. */
-          vec2 = math::cross(vec1, normal);
+          vec2 = math::cross(vec1, normals[point]);
           math::normalize(vec2);
 
           float noise = table_sample(noise_table_position,
@@ -274,44 +275,104 @@ static void modify_geometry_set(ModifierData *md,
 {
     GreasePencil *gp=geometry_set->get_grease_pencil_for_write();
     if (!gp){ return; }
+    
+  Array<ed::greasepencil::MutableDrawingInfo> drawings = ed::greasepencil::retrieve_editable_drawings(*DEG_get_evaluated_scene(ctx->depsgraph),*gp);
 
-  Array<mutabled = ed::greasepencil::retrieve_editable_drawings(*DEG_get_evaluated_scene(ctx->depsgraph),*gp);
-
-  deform_stroke(md,ctx->depsgraph,ctx->ob,gp,)
+  threading::parallel_for_each(drawings,[&](const ed::greasepencil::MutableDrawingInfo &drawing){
+    deform_stroke(md,ctx->depsgraph,ctx->object,gp,&drawing.drawing);
+  });
 }
 
+static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
+{
+  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+
+  walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
+}
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ob_ptr;
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
-  
-  uiItemL(layout, "What's going on", 0);
+
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, ptr, "factor", UI_ITEM_NONE, IFACE_("Position"), ICON_NONE);
+  uiItemR(col, ptr, "factor_strength", UI_ITEM_NONE, IFACE_("Strength"), ICON_NONE);
+  uiItemR(col, ptr, "factor_thickness", UI_ITEM_NONE, IFACE_("Thickness"), ICON_NONE);
+  uiItemR(col, ptr, "factor_uvs", UI_ITEM_NONE, IFACE_("UV"), ICON_NONE);
+  uiItemR(col, ptr, "noise_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "noise_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_panel_end(layout, ptr);
+}
+
+static void random_header_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiItemR(layout, ptr, "use_random", UI_ITEM_NONE, IFACE_("Randomize"), ICON_NONE);
+}
+
+static void random_panel_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, RNA_boolean_get(ptr, "use_random"));
+
+  uiItemR(layout, ptr, "random_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  const int mode = RNA_enum_get(ptr, "random_mode");
+  if (mode != GP_NOISE_RANDOM_KEYFRAME) {
+    uiItemR(layout, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+}
+
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+  uiItemL(layout,"Filtering INOP",0);
+  
+  //modifier_masking_panel_draw(panel, true, true);
 }
 
 static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_GreasePencilNoise, panel_draw);
+  modifier_subpanel_register(
+      region_type, "randomize", "", random_header_draw, random_panel_draw, panel_type);
+  PanelType *mask_panel_type = modifier_subpanel_register(
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
+  modifier_subpanel_register(region_type,
+                                     "curve",
+                                     "",
+                                     modifier_grease_pencil_curve_header_draw,
+                                     modifier_grease_pencil_curve_panel_draw,
+                                     mask_panel_type);
 }
 
-ModifierTypeInfo modifierType_Hello = {
-    /*idname*/ "Hello Modifier",
-    /*name*/ N_("Hello Modifier"),
-    /*struct_name*/ "HelloModifierData",
-    /*struct_size*/ sizeof(HelloModifierData),
-    /*srna*/ &RNA_HelloModifier,
-    /*type*/ ModifierTypeType::Nonconstructive,
+ModifierTypeInfo modifierType_GreasePencilNoise = {
+    /*idname*/ "Grease Pencil Noise Modifier",
+    /*name*/ N_("Noise Modifier"),
+    /*struct_name*/ "GreasePencilNoiseModifierData",
+    /*struct_size*/ sizeof(GreasePencilNoiseModifierData),
+    /*srna*/ &RNA_GreasePencilNoiseModifier,
+    /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
     /*icon*/ ICON_GREASEPENCIL,
 
-    /*copy_data*/ nullptr,
+    /*copy_data*/ copy_data,
 
     /*deform_verts*/ nullptr,
     /*deform_matrices*/ nullptr,
@@ -327,7 +388,7 @@ ModifierTypeInfo modifierType_Hello = {
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ depends_on_time,
     /*depends_on_normals*/ nullptr,
-    /*foreach_ID_link*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
     /*panel_register*/ panel_register,

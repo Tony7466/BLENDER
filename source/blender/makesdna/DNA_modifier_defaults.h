@@ -801,4 +801,24 @@
     .mat_ofs = 0, \
   }
 
+
+#define _DNA_DEFAULT_GreasePencilNoiseModifierData \
+  { \
+    .material = NULL, \
+    .layername = "", \
+    .vgname = "", \
+    .pass_index = 0, \
+    .flag = GP_NOISE_FULL_STROKE | GP_NOISE_USE_RANDOM, \
+    .factor = 0.5f, \
+    .factor_strength = 0.0f, \
+    .factor_thickness = 0.0f, \
+    .factor_uvs = 0.0f, \
+    .noise_scale = 0.0f, \
+    .noise_offset = 0.0f, \
+    .step = 4, \
+    .layer_pass = 0, \
+    .seed = 1, \
+    .curve_intensity = NULL, \
+  }
+
 /* clang-format off */
