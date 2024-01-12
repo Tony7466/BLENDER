@@ -117,7 +117,7 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
                                              1.0f;
 
       if (use_uniform_opacity) {
-        opacities.span[point_i] = std::clamp(curve_factor, 0.0f, 1.0f);
+        opacities.span[point_i] = std::clamp(omd.color_factor * curve_factor, 0.0f, 1.0f);
       }
       else if (use_weight_as_factor) {
         /* Use vertex group weights as opacity factors. */
