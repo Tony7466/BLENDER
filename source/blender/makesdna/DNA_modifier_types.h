@@ -93,7 +93,7 @@ typedef enum ModifierType {
   eModifierType_MeshToVolume = 58,
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
-  eModifierType_Hello = 61,
+  eModifierType_GreasePencilNoise = 61,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2486,14 +2486,37 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
-
-typedef struct HelloModifierData {
+typedef struct GreasePencilNoiseModifierData {
   ModifierData modifier;
+  /** Material for filtering. */
+  struct Material *material;
+  /** Layer name. */
+  char layername[64];
+  /** Material name. */
+  char materialname[64] DNA_DEPRECATED;
+  /** Optional vertex-group name, #MAX_VGROUP_NAME. */
+  char vgname[64];
+  /** Custom index for passes. */
+  int pass_index;
+  /** Several flags. */
+  int flag;
+  /** Factor of noise. */
+  float factor;
+  float factor_strength;
+  float factor_thickness;
+  float factor_uvs;
+  /** Noise Frequency scaling */
+  float noise_scale;
+  float noise_offset;
+  short noise_mode;
+  char _pad[2];
+  /** How many frames before recalculate randoms. */
+  int step;
+  /** Custom index for passes. */
+  int layer_pass;
+  /** Random seed */
+  int seed;
+  struct CurveMapping *curve_intensity;
+} GreasePencilNoiseModifierData;
 
-  struct Object *object;
-
-  float threshold;
-  float adaptivity;
-
-  void *_pad1;
-} HelloModifierData;
+/* Enum in old dna file. */
