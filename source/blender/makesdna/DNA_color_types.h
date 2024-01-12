@@ -80,8 +80,10 @@ typedef struct CurveMapping {
   float sample[3];
 
   short tone;
+
   char _pad[6];
 } CurveMapping;
+
 
 /** #CurveMapping.flag */
 typedef enum eCurveMappingFlags {

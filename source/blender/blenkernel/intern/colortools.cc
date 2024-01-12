@@ -637,12 +637,14 @@ static float curvemap_calc_extend(const CurveMapping *cumap,
   return 0.0f;
 }
 
+
 /* only creates a table for a single channel in CurveMapping */
 static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
 {
   const rctf *clipr = &cumap->clipr;
   CurveMapPoint *cmp = cuma->curve;
   BezTriple *bezt;
+  const bool use_wrapping = true;
 
   if (cuma->curve == nullptr) {
     return;
@@ -653,7 +655,8 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   cuma->maxtable = clipr->xmax;
 
   /* Rely on Blender interpolation for bezier curves, support extra functionality here as well. */
-  bezt = static_cast<BezTriple *>(MEM_callocN((cuma->totpoint + 2) * sizeof(BezTriple), "beztarr"));
+  int bezt_count = cuma->totpoint + (use_wrapping ? 2 : 0);
+  bezt = static_cast<BezTriple *>(MEM_callocN(bezt_count * sizeof(BezTriple), "beztarr"));
 
   for (int a = 0; a < cuma->totpoint; a++) {
     cuma->mintable = min_ff(cuma->mintable, cmp[a].x);
@@ -671,82 +674,136 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
     }
   }
 
-  BezTriple bezt_pre = bezt[cuma->totpoint];
-  bezt_pre.h1 = bezt_pre.h2 = bezt[cuma->totpoint - 1].h2;
-  bezt_pre.vec[1][0] = bezt[cuma->totpoint - 1].vec[1][0] - 1.0f;
-  bezt_pre.vec[1][1] = bezt[cuma->totpoint - 1].vec[1][1];
+  const BezTriple *bezt_next = nullptr;
+  const BezTriple *bezt_prev = nullptr;
 
-  BezTriple bezt_post = bezt[cuma->totpoint + 1];
-  bezt_post.h1 = bezt_post.h2 = bezt[0].h1;
-  bezt_post.vec[1][0] = bezt[0].vec[1][0] + 1.0f;
-  bezt_post.vec[1][1] = bezt[0].vec[1][1];
+  BezTriple bezt_pre;
+  BezTriple bezt_post;
 
-  // Handle the first point
-  const BezTriple *bezt_next = &bezt[1];
-  calchandle_curvemap(&bezt_pre, nullptr, &bezt[0]);
-  calchandle_curvemap(&bezt[0], &bezt_pre, bezt_next);
-  const BezTriple *bezt_prev = &bezt[0];
+  if (use_wrapping) {
+    bezt_pre = bezt[cuma->totpoint];
+    bezt_pre.h1 = bezt_pre.h2 = bezt[cuma->totpoint - 1].h2;
+    bezt_pre.vec[1][0] = bezt[cuma->totpoint - 1].vec[1][0] - 1.0f;
+    bezt_pre.vec[1][1] = bezt[cuma->totpoint - 1].vec[1][1];
 
-  // Handle the points in between
-  for (int a = 1; a < cuma->totpoint - 1; a++) {
-    bezt_next = &bezt[a + 1];
-    calchandle_curvemap(&bezt[a], bezt_prev, bezt_next);
-    bezt_prev = &bezt[a];
+    bezt_post = bezt[cuma->totpoint + 1];
+    bezt_post.h1 = bezt_post.h2 = bezt[0].h1;
+    bezt_post.vec[1][0] = bezt[0].vec[1][0] + 1.0f;
+    bezt_post.vec[1][1] = bezt[0].vec[1][1];
+
+    // Handle first element
+    bezt_next = &bezt[1];
+    calchandle_curvemap(&bezt_pre, nullptr, &bezt[0]);
+    calchandle_curvemap(&bezt[0], &bezt_pre, bezt_next);
+    bezt_prev = &bezt[0];
+
+    // Process middle elements
+    for (int a = 1; a < cuma->totpoint - 1; a++) {
+      bezt_next = &bezt[a + 1];
+      calchandle_curvemap(&bezt[a], bezt_prev, bezt_next);
+      bezt_prev = &bezt[a];
+    }
+
+    // Handle last element
+    bezt_next = &bezt_post;
+    calchandle_curvemap(&bezt_post, &bezt[cuma->totpoint - 1], nullptr);
+    calchandle_curvemap(&bezt[cuma->totpoint - 1], bezt_prev, &bezt_post);
+
+    bezt_pre.vec[0][0] = bezt[cuma->totpoint - 1].vec[0][0] - 1.0f;
+    bezt_pre.vec[0][1] = bezt[cuma->totpoint - 1].vec[0][1];
+    bezt_pre.vec[2][0] = bezt[cuma->totpoint - 1].vec[2][0] - 1.0f;
+    bezt_pre.vec[2][1] = bezt[cuma->totpoint - 1].vec[2][1];
+
+    bezt_post.vec[0][0] = bezt[0].vec[0][0] + 1.0f;
+    bezt_post.vec[0][1] = bezt[0].vec[0][1];
+    bezt_post.vec[2][0] = bezt[0].vec[2][0] + 1.0f;
+    bezt_post.vec[2][1] = bezt[0].vec[2][1];
   }
+  else {
+    for (int a = 0; a < cuma->totpoint; a++) {
+      bezt_next = (a != cuma->totpoint - 1) ? &bezt[a + 1] : nullptr;
+      calchandle_curvemap(&bezt[a], bezt_prev, bezt_next);
+      bezt_prev = &bezt[a];
+    }
 
-  // Handle the last point
-  bezt_next = &bezt_post;
-  calchandle_curvemap(&bezt_post, &bezt[cuma->totpoint - 1], nullptr);
-  calchandle_curvemap(&bezt[cuma->totpoint - 1], bezt_prev, &bezt_post);
+    /* first and last handle need correction, instead of pointing to center of next/prev,
+     * we let it point to the closest handle */
+    if (cuma->totpoint > 2) {
+      float hlen, nlen, vec[3];
 
-  bezt_pre.vec[0][0] = bezt[cuma->totpoint - 1].vec[0][0] - 1.0f;
-  bezt_pre.vec[0][1] = bezt[cuma->totpoint - 1].vec[0][1];
-  bezt_pre.vec[2][0] = bezt[cuma->totpoint - 1].vec[2][0] - 1.0f;
-  bezt_pre.vec[2][1] = bezt[cuma->totpoint - 1].vec[2][1];
+      if (bezt[0].h2 == HD_AUTO) {
 
-  bezt_post.vec[0][0] = bezt[0].vec[0][0] + 1.0f;
-  bezt_post.vec[0][1] = bezt[0].vec[0][1];
-  bezt_post.vec[2][0] = bezt[0].vec[2][0] + 1.0f;
-  bezt_post.vec[2][1] = bezt[0].vec[2][1];
+        hlen = len_v3v3(bezt[0].vec[1], bezt[0].vec[2]); /* original handle length */
+        /* clip handle point */
+        copy_v3_v3(vec, bezt[1].vec[0]);
+        if (vec[0] < bezt[0].vec[1][0]) {
+          vec[0] = bezt[0].vec[1][0];
+        }
+
+        sub_v3_v3(vec, bezt[0].vec[1]);
+        nlen = len_v3(vec);
+        if (nlen > FLT_EPSILON) {
+          mul_v3_fl(vec, hlen / nlen);
+          add_v3_v3v3(bezt[0].vec[2], vec, bezt[0].vec[1]);
+          sub_v3_v3v3(bezt[0].vec[0], bezt[0].vec[1], vec);
+        }
+      }
+      int a = cuma->totpoint - 1;
+      if (bezt[a].h2 == HD_AUTO) {
+
+        hlen = len_v3v3(bezt[a].vec[1], bezt[a].vec[0]); /* original handle length */
+        /* clip handle point */
+        copy_v3_v3(vec, bezt[a - 1].vec[2]);
+        if (vec[0] > bezt[a].vec[1][0]) {
+          vec[0] = bezt[a].vec[1][0];
+        }
+
+        sub_v3_v3(vec, bezt[a].vec[1]);
+        nlen = len_v3(vec);
+        if (nlen > FLT_EPSILON) {
+          mul_v3_fl(vec, hlen / nlen);
+          add_v3_v3v3(bezt[a].vec[0], vec, bezt[a].vec[1]);
+          sub_v3_v3v3(bezt[a].vec[2], bezt[a].vec[1], vec);
+        }
+      }
+    }
+  }
 
   /* make the bezier curve */
   if (cuma->table) {
     MEM_freeN(cuma->table);
   }
 
-  int totpoint = (cuma->totpoint+1) * CM_RESOL;
-  float *allpoints = static_cast<float *>(MEM_callocN(totpoint * 2 * sizeof(float), "table"));
-  float *point = allpoints;
+  int totpoint;
+  float *allpoints = nullptr;
+  float *point = nullptr;
 
-  for (int a = 0; a < cuma->totpoint; a++, point += 2 * CM_RESOL) {
-    int b;
-    float shift_x;
+  if (use_wrapping) {
+    totpoint = (cuma->totpoint + 1) * CM_RESOL;
+    allpoints = static_cast<float *>(MEM_callocN(totpoint * 2 * sizeof(float), "table"));
+    point = allpoints;
 
-
-    if (a == 0) {
-      b = cuma->totpoint - 1;
-      shift_x = -1.0f;
-
-      BKE_curve_correct_bezpart(bezt_pre.vec[1], bezt_pre.vec[2], bezt[a].vec[0], bezt[a].vec[1]);
-      BKE_curve_forward_diff_bezier(bezt_pre.vec[1][0],
-                                    bezt_pre.vec[2][0],
-                                    bezt[a].vec[0][0],
-                                    bezt[a].vec[1][0],
-                                    point,
-                                    CM_RESOL - 1,
-                                    sizeof(float[2]));
-      BKE_curve_forward_diff_bezier(bezt_pre.vec[1][1],
-                                    bezt_pre.vec[2][1],
-                                    bezt[a].vec[0][1],
-                                    bezt[a].vec[1][1],
-                                    point + 1,
-                                    CM_RESOL - 1,
-                                    sizeof(float[2]));
-
+    // Handle first element
+    BKE_curve_correct_bezpart(bezt_pre.vec[1], bezt_pre.vec[2], bezt[0].vec[0], bezt[0].vec[1]);
+    BKE_curve_forward_diff_bezier(bezt_pre.vec[1][0],
+                                  bezt_pre.vec[2][0],
+                                  bezt[0].vec[0][0],
+                                  bezt[0].vec[1][0],
+                                  point,
+                                  CM_RESOL - 1,
+                                  sizeof(float[2]));
+    BKE_curve_forward_diff_bezier(bezt_pre.vec[1][1],
+                                  bezt_pre.vec[2][1],
+                                  bezt[0].vec[0][1],
+                                  bezt[0].vec[1][1],
+                                  point + 1,
+                                  CM_RESOL - 1,
+                                  sizeof(float[2]));
     point += 2 * CM_RESOL;
-    }
-    if (a < cuma->totpoint - 1) {
-      b = a + 1;
+
+    // Process middle elements
+    for (int a = 0; a < cuma->totpoint - 1; a++, point += 2 * CM_RESOL) {
+      int b = a + 1;
       BKE_curve_correct_bezpart(bezt[a].vec[1], bezt[a].vec[2], bezt[b].vec[0], bezt[b].vec[1]);
       BKE_curve_forward_diff_bezier(bezt[a].vec[1][0],
                                     bezt[a].vec[2][0],
@@ -762,31 +819,67 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
                                     point + 1,
                                     CM_RESOL - 1,
                                     sizeof(float[2]));
-
-
     }
-    else if (a == cuma->totpoint - 1) {
-      b = 0;
-      shift_x = 1.0f;
 
-      BKE_curve_correct_bezpart(bezt[a].vec[1], bezt[a].vec[2], bezt_post.vec[0], bezt_post.vec[1]);
+    // Handle last element
+    BKE_curve_correct_bezpart(bezt[cuma->totpoint - 1].vec[1],
+                              bezt[cuma->totpoint - 1].vec[2],
+                              bezt_post.vec[0],
+                              bezt_post.vec[1]);
+    BKE_curve_forward_diff_bezier(bezt[cuma->totpoint - 1].vec[1][0],
+                                  bezt[cuma->totpoint - 1].vec[2][0],
+                                  bezt_post.vec[0][0],
+                                  bezt_post.vec[1][0],
+                                  point,
+                                  CM_RESOL - 1,
+                                  sizeof(float[2]));
+    BKE_curve_forward_diff_bezier(bezt[cuma->totpoint - 1].vec[1][1],
+                                  bezt[cuma->totpoint - 1].vec[2][1],
+                                  bezt_post.vec[0][1],
+                                  bezt_post.vec[1][1],
+                                  point + 1,
+                                  CM_RESOL - 1,
+                                  sizeof(float[2]));
+  }
+  else {
+    totpoint = (cuma->totpoint - 1) * CM_RESOL;
+    allpoints = static_cast<float *>(MEM_callocN(totpoint * 2 * sizeof(float), "table"));
+    point = allpoints;
+
+    for (int a = 0; a < cuma->totpoint - 1; a++, point += 2 * CM_RESOL) {
+      BKE_curve_correct_bezpart(
+          bezt[a].vec[1], bezt[a].vec[2], bezt[a + 1].vec[0], bezt[a + 1].vec[1]);
       BKE_curve_forward_diff_bezier(bezt[a].vec[1][0],
                                     bezt[a].vec[2][0],
-                                    bezt_post.vec[0][0],
-                                    bezt_post.vec[1][0],
+                                    bezt[a + 1].vec[0][0],
+                                    bezt[a + 1].vec[1][0],
                                     point,
                                     CM_RESOL - 1,
                                     sizeof(float[2]));
       BKE_curve_forward_diff_bezier(bezt[a].vec[1][1],
                                     bezt[a].vec[2][1],
-                                    bezt_post.vec[0][1],
-                                    bezt_post.vec[1][1],
+                                    bezt[a + 1].vec[0][1],
+                                    bezt[a + 1].vec[1][1],
                                     point + 1,
                                     CM_RESOL - 1,
                                     sizeof(float[2]));
-
-
     }
+
+    /* store first and last handle for extrapolation, unit length */
+    cuma->ext_in[0] = bezt[0].vec[0][0] - bezt[0].vec[1][0];
+    cuma->ext_in[1] = bezt[0].vec[0][1] - bezt[0].vec[1][1];
+    float ext_in_range = sqrtf(cuma->ext_in[0] * cuma->ext_in[0] +
+                               cuma->ext_in[1] * cuma->ext_in[1]);
+    cuma->ext_in[0] /= ext_in_range;
+    cuma->ext_in[1] /= ext_in_range;
+
+    int out_a = cuma->totpoint - 1;
+    cuma->ext_out[0] = bezt[out_a].vec[1][0] - bezt[out_a].vec[2][0];
+    cuma->ext_out[1] = bezt[out_a].vec[1][1] - bezt[out_a].vec[2][1];
+    float ext_out_range = sqrtf(cuma->ext_out[0] * cuma->ext_out[0] +
+                                cuma->ext_out[1] * cuma->ext_out[1]);
+    cuma->ext_out[0] /= ext_out_range;
+    cuma->ext_out[1] /= ext_out_range;
   }
 
   /* cleanup */
@@ -798,6 +891,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   /* now make a table with CM_TABLE equal x distances */
   float *firstpoint = allpoints;
   float *lastpoint = allpoints + 2 * (totpoint - 1);
+
   point = allpoints;
 
   cmp = static_cast<CurveMapPoint *>(
@@ -811,16 +905,45 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
     while (cur_x >= point[0] && point != lastpoint) {
       point += 2;
     }
-    float fac1 = point[0] - point[-2];
-    float fac2 = point[0] - cur_x;
-    if (fac1 > FLT_EPSILON) {
-      fac1 = fac2 / fac1;
+
+    if (use_wrapping) {
+      float fac1 = point[0] - point[-2];
+      float fac2 = point[0] - cur_x;
+      if (fac1 > FLT_EPSILON) {
+        fac1 = fac2 / fac1;
+      }
+      else {
+        fac1 = 0.0f;
+      }
+      cmp[a].y = fac1 * point[-1] + (1.0f - fac1) * point[1];
     }
     else {
-      fac1 = 0.0f;
+      /* Check if we are on or outside the start or end point. */
+      if (point == firstpoint || (point == lastpoint && cur_x >= point[0])) {
+        if (compare_ff(cur_x, point[0], 1e-6f)) {
+          /* When on the point exactly, use the value directly to avoid precision
+           * issues with extrapolation of extreme slopes. */
+          cmp[a].y = point[1];
+        }
+        else {
+          /* Extrapolate values that lie outside the start and end point. */
+          cmp[a].y = curvemap_calc_extend(cumap, cuma, cur_x, firstpoint, lastpoint);
+        }
+      }
+      else {
+        float fac1 = point[0] - point[-2];
+        float fac2 = point[0] - cur_x;
+        if (fac1 > FLT_EPSILON) {
+          fac1 = fac2 / fac1;
+        }
+        else {
+          fac1 = 0.0f;
+        }
+        cmp[a].y = fac1 * point[-1] + (1.0f - fac1) * point[1];
+      }
     }
-    cmp[a].y = fac1 * point[-1] + (1.0f - fac1) * point[1];
   }
+
 
   MEM_freeN(allpoints);
   cuma->table = cmp;
