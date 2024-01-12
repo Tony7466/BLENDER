@@ -264,6 +264,26 @@ class LayerViewItem : public AbstractTreeViewItem {
                         UI_UNIT_X,
                         UI_UNIT_Y,
                         &layer_ptr,
+                        "use_onion_skinning",
+                        0,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        nullptr);
+    if (!layer_.parent_group().use_onion_skinning()) {
+      UI_but_flag_enable(but, UI_BUT_INACTIVE);
+    }
+
+    but = uiDefIconButR(block,
+                        UI_BTYPE_ICON_TOGGLE,
+                        0,
+                        ICON_NONE,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        &layer_ptr,
                         "hide",
                         0,
                         0.0f,

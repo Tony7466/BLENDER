@@ -299,15 +299,15 @@ static void grease_pencil_onion_skinning_batch_ensure(Object &object,
 
   GhostFrameBatchCache frame_cache;
   /* TODO: We shouldn't have to use `DrawingInfo` here. */
-  Vector<ed::greasepencil::DrawingInfo> drawings(drawing_indices.size());
+  Vector<ed::greasepencil::DrawingInfo> drawings;
   for (const int i : drawing_indices.index_range()) {
-    const Drawing &drawing = reinterpret_cast<const GreasePencilDrawing *>(
-                                 grease_pencil.drawing(drawing_indices[i]))
-                                 ->wrap();
-    drawings.append({drawing});
+    const Drawing *drawing = &reinterpret_cast<const GreasePencilDrawing *>(
+                                  grease_pencil.drawing(drawing_indices[i]))
+                                  ->wrap();
+    drawings.append({*drawing, -1, 0});
   }
 
-  VisibleDrawingsOffsetInfo offsets_info;
+  VisibleDrawingsOffsetInfo offsets_info = {};
   get_visible_drawings_offsets_info(object, drawings.as_span(), offsets_info);
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;

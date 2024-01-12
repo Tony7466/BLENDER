@@ -113,7 +113,7 @@ class ObjectModule {
                           Framebuffer &scene_fb,
                           TextureFromPool &depth_tx,
                           PassSortable &main_ps,
-                          View3DOnionSkinning &onion_skinning_settings)
+                          const View3DOnionSkinning &onion_skinning_settings)
   {
     using namespace blender::bke::greasepencil;
 
@@ -212,15 +212,8 @@ class ObjectModule {
 
     if (use_onion_) {
       const int current_frame = scene_->r.cfra;
-      for (int frame = current_frame - onion_skinning_settings.num_frames_before;
-           frame <= current_frame + onion_skinning_settings.num_frames_after;
-           frame++)
-      {
-        if (frame != current_frame) {
-        }
-      }
-
-      const Map<int, Array<int>> ghost_frames;
+      const Map<int, Vector<int>> ghost_frames = this->get_ghost_frames_indices_map(
+          grease_pencil, onion_skinning_settings, current_frame);
       for (const auto &[frame_number, drawing_indices] : ghost_frames.items()) {
         GPUVertBuf *position_tx = DRW_cache_grease_pencil_ghost_frame_points_buffer_get(
             object, frame_number, drawing_indices);
@@ -355,19 +348,23 @@ class ObjectModule {
     return plane_mat;
   }
 
-  Map<int, int> get_ghost_frame_numbers_for_layer(const View3DOnionSkinning &settings,
-                                                  const bke::greasepencil::Layer &layer,
+  Map<int, int> get_ghost_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
+                                                  const View3DOnionSkinning &settings,
                                                   const int current_frame)
   {
     Map<int, int> frame_numbers;
     switch (settings.mode) {
       case GP_ONION_MODE_ABSOLUTE: {
-        for (int frame = current_frame - settings.num_frames_before;
-             frame <= current_frame + settings.num_frames_after;
-             frame++)
+        for (int frame_number = current_frame - settings.num_frames_before;
+             frame_number <= current_frame + settings.num_frames_after;
+             frame_number++)
         {
-          if (frame != current_frame) {
-            frame_numbers.append(frame);
+          if (frame_number != current_frame) {
+            GreasePencilFrame frame = layer.frames().lookup_default(frame_number,
+                                                                    GreasePencilFrame::null());
+            if (!frame.is_null()) {
+              frame_numbers.add(frame_number, frame.drawing_index);
+            }
           }
         }
         break;
@@ -383,9 +380,10 @@ class ObjectModule {
                                         current_index + settings.num_frames_after);
         const int frames_size = end_index - start_index + 1;
         for (const int frame_i : IndexRange(start_index, frames_size)) {
-          const int frame = sorted_keys[frame_i];
-          if (frame != current_frame) {
-            frame_numbers.append(frame);
+          const int frame_number = sorted_keys[frame_i];
+          if (frame_number != current_frame) {
+            GreasePencilFrame frame = layer.frames().lookup(frame_number);
+            frame_numbers.add(frame_number, frame.drawing_index);
           }
         }
         break;
@@ -404,8 +402,11 @@ class ObjectModule {
     return frame_numbers;
   }
 
-  Map<int, Vector<int>> get_ghost_frames_indices_map()
+  Map<int, Vector<int>> get_ghost_frames_indices_map(const GreasePencil &grease_pencil,
+                                                     const View3DOnionSkinning &settings,
+                                                     const int current_frame)
   {
+    using namespace blender::bke::greasepencil;
     Map<int, Vector<int>> ghost_frames_indices_map;
     Span<const Layer *> layers = grease_pencil.layers();
     for (const int layer_i : layers.index_range()) {
@@ -414,17 +415,12 @@ class ObjectModule {
         continue;
       }
       const Map<int, int> frame_numbers = get_ghost_frame_numbers_for_layer(
-          settings, layer, current_frame);
+          layer, settings, current_frame);
       for (const auto &[frame_i, drawing_i] : frame_numbers.items()) {
-        ghost_frames_indices_map.add_or_modify(
-            frame_i,
-            [&](Vector<int> *vec) { *vec = Vector<int>({drawing_i}); },
-            [&](Vector<int> *vec) { vec->append(drawing_i); });
-      }
-      if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame)) {
-        visible_drawings.append({*drawing, layer_i, frame});
+        ghost_frames_indices_map.lookup_or_add_default(frame_i).append(drawing_i);
       }
     }
+    return ghost_frames_indices_map;
   }
 };
 
