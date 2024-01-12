@@ -295,7 +295,6 @@ IndexMask get_filtered_stroke_mask(const Object *ob,
                                    const GreasePencilModifierInfluenceData &influence_data,
                                    IndexMaskMemory &memory)
 {
-  /* TODO Add an option to toggle pass filter on and off, instead of using "pass > 0". */
   return get_filtered_stroke_mask(
       ob,
       curves,
