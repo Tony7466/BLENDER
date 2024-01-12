@@ -2576,7 +2576,8 @@ static void rna_ViewLayer_remove(
   }
 }
 
-static void rna_ViewLayer_move(ID *id, Scene * /*sce*/, ReportList *reports, int from, int to)
+static void rna_ViewLayer_move(
+    ID *id, Scene * /*sce*/, Main *bmain, ReportList *reports, int from, int to)
 {
   if (from == to) {
     return;
@@ -5757,7 +5758,7 @@ static void rna_def_view_layers(BlenderRNA *brna, PropertyRNA *cprop)
 
   func = RNA_def_function(srna, "move", "rna_ViewLayer_move");
   RNA_def_function_ui_description(func, "Move a view layer");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_int(
       func, "from_index", -1, INT_MIN, INT_MAX, "From Index", "Index to move", 0, 10000);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
