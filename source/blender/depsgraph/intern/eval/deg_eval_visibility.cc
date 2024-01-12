@@ -182,10 +182,19 @@ void deg_graph_flush_visibility_flags(Depsgraph *graph)
           target_affects_visible_id = false;
         }
 
+        const IDNode *id_node_from = comp_from->owner;
+
+        /* Do not force object to be visible via the collection geometry component: if the object
+         * is restricted within a collection it is to be skipped from evaluation. */
+        if (id_node_from->id_type == ID_OB && comp_to->type == NodeType::GEOMETRY &&
+            comp_to->owner->id_type == ID_GR)
+        {
+          target_affects_visible_id = false;
+        }
+
         /* Visibility component forces all components of the current ID to be considered as
          * affecting directly visible. */
         if (comp_from->type == NodeType::VISIBILITY) {
-          const IDNode *id_node_from = comp_from->owner;
           if (target_possibly_affects_visible_id) {
             for (ComponentNode *comp_node : id_node_from->components.values()) {
               comp_node->possibly_affects_visible_id |= target_possibly_affects_visible_id;
