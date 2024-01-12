@@ -25,7 +25,6 @@
 #include "ED_scene.hh"
 #include "ED_transform.hh"
 
-#include "ANIM_driver.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
 
