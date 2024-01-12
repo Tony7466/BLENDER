@@ -40,6 +40,10 @@ void foreach_influence_ID_link(GreasePencilModifierInfluenceData *influence_data
                                Object *ob,
                                IDWalkFunc walk,
                                void *user_data);
+void write_influence_data(BlendWriter *writer,
+                          const GreasePencilModifierInfluenceData *influence_data);
+void read_influence_data(BlendDataReader *reader,
+                         GreasePencilModifierInfluenceData *influence_data);
 
 void draw_layer_filter_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
 void draw_material_filter_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);

@@ -317,12 +317,14 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
   const GreasePencilOpacityModifierData *omd = (const GreasePencilOpacityModifierData *)md;
 
   BLO_write_struct(writer, GreasePencilOpacityModifierData, omd);
+  greasepencil::write_influence_data(writer, &omd->influence);
 }
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-  UNUSED_VARS(reader, omd);
+
+  greasepencil::read_influence_data(reader, &omd->influence);
 }
 
 }  // namespace blender

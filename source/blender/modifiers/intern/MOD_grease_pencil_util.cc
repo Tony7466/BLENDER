@@ -21,6 +21,8 @@
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 
+#include "BLO_read_write.hh"
+
 #include "DNA_defaults.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -68,6 +70,23 @@ void foreach_influence_ID_link(GreasePencilModifierInfluenceData *influence_data
                                void *user_data)
 {
   walk(user_data, ob, (ID **)&influence_data->material, IDWALK_CB_USER);
+}
+
+void write_influence_data(BlendWriter *writer,
+                          const GreasePencilModifierInfluenceData *influence_data)
+{
+  if (influence_data->custom_curve) {
+    BKE_curvemapping_blend_write(writer, influence_data->custom_curve);
+  }
+}
+
+void read_influence_data(BlendDataReader *reader,
+                         GreasePencilModifierInfluenceData *influence_data)
+{
+  BLO_read_data_address(reader, &influence_data->custom_curve);
+  if (influence_data->custom_curve) {
+    BKE_curvemapping_blend_read(reader, influence_data->custom_curve);
+  }
 }
 
 void draw_layer_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
