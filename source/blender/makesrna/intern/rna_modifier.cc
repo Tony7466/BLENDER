@@ -7635,6 +7635,7 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   // TODO
 
   RNA_define_lib_overridable(false);
+}
 
 void RNA_def_modifier(BlenderRNA *brna)
 {

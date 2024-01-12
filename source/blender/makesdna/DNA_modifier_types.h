@@ -2547,10 +2547,26 @@ typedef struct GreasePencilOpacityModifierData {
   GreasePencilModifierInfluenceData influence;
   /** GreasePencilOpacityModifierFlag */
   int flag;
-  char _pad1[4];
+  /** GreasePencilModifierColorMode */
+  char color_mode;
+  char _pad1[3];
+  float color_factor;
+  float hardness_factor;
   void *_pad2;
 } GreasePencilOpacityModifierData;
 
+/** Which attributes are affected by color modifiers. */
+typedef enum GreasePencilModifierColorMode {
+  MOD_GREASE_PENCIL_COLOR_STROKE = 0,
+  MOD_GREASE_PENCIL_COLOR_FILL = 1,
+  MOD_GREASE_PENCIL_COLOR_BOTH = 2,
+  MOD_GREASE_PENCIL_COLOR_HARDNESS = 3,
+} GreasePencilModifierColorMode;
+
 typedef enum GreasePencilOpacityModifierFlag {
   MOD_GREASE_PENCIL_OPACITY_OPEN_INFLUENCE_PANEL = (1 << 0),
+  /* Use vertex group as opacity factors instead of influence. */
+  MOD_GREASE_PENCIL_OPACITY_USE_VERTEX_GROUP = (1 << 1),
+  /* Set the opacity for every point in a stroke, otherwise multiply existing opacity. */
+  MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY = (1 << 2),
 } GreasePencilOpacityModifierFlag;
