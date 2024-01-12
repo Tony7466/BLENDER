@@ -1209,10 +1209,6 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage,
   /* Patch the shader code using the first source slot. */
   sources[SOURCES_INDEX_VERSION] = glsl_patch_get(gl_stage);
 
-  for (const char *source : sources) {
-    std::cout << source << "\n";
-  }
-
   glShaderSource(shader, sources.size(), sources.data(), nullptr);
   glCompileShader(shader);
 
@@ -1484,6 +1480,11 @@ GLSources &GLSources::operator=(Span<const char *> other)
   reserve(other.size());
 
   for (const char *other_source : other) {
+    /* Don't store empty string as compilers can optimize these away and result in pointing to a
+     * string that isn't c-str compliant anymore. */
+    if (other_source[0] == '\0') {
+      continue;
+    }
     append(GLSource(other_source));
   }
 
