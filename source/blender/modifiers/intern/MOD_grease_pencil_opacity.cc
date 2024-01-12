@@ -268,6 +268,33 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
+  uiLayoutSetPropSep(layout, true);
+
+  const GreasePencilModifierColorMode color_mode = GreasePencilModifierColorMode(
+      RNA_enum_get(ptr, "color_mode"));
+
+  uiItemR(layout, ptr, "color_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  if (color_mode == MOD_GREASE_PENCIL_COLOR_HARDNESS) {
+    uiItemR(layout, ptr, "hardness_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else {
+    const bool use_uniform_opacity = RNA_boolean_get(ptr, "use_uniform_opacity");
+    const bool use_weight_as_factor = RNA_boolean_get(ptr, "use_weight_as_factor");
+
+    uiItemR(layout, ptr, "use_uniform_opacity", UI_ITEM_NONE, nullptr, ICON_NONE);
+    const char *text = (use_uniform_opacity) ? IFACE_("Opacity") : IFACE_("Opacity Factor");
+
+    uiLayout *row = uiLayoutRow(layout, true);
+    uiLayoutSetActive(row, !use_weight_as_factor || use_uniform_opacity);
+    uiItemR(row, ptr, "color_factor", UI_ITEM_NONE, text, ICON_NONE);
+    if (!use_uniform_opacity) {
+      uiLayout *sub = uiLayoutRow(row, true);
+      uiLayoutSetActive(sub, true);
+      uiItemR(row, ptr, "use_weight_as_factor", UI_ITEM_NONE, "", ICON_MOD_VERTEX_WEIGHT);
+    }
+  }
+
   if (uiLayout *influence_panel = uiLayoutPanel(
           C, layout, "Influence", ptr, "open_influence_panel"))
   {
@@ -276,10 +303,6 @@ static void panel_draw(const bContext *C, Panel *panel)
     greasepencil::draw_vertex_group_settings(C, influence_panel, ptr);
     greasepencil::draw_custom_curve_settings(C, influence_panel, ptr);
   }
-
-  uiLayoutSetPropSep(layout, true);
-
-  // TODO
 
   modifier_panel_end(layout, ptr);
 }

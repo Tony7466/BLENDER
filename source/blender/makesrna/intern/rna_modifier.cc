@@ -7614,6 +7614,14 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem color_mode_items[] = {
+      {MOD_GREASE_PENCIL_COLOR_BOTH, "BOTH", 0, "Stroke & Fill", "Modify fill and stroke colors"},
+      {MOD_GREASE_PENCIL_COLOR_STROKE, "STROKE", 0, "Stroke", "Modify stroke color only"},
+      {MOD_GREASE_PENCIL_COLOR_FILL, "FILL", 0, "Fill", "Modify fill color only"},
+      {MOD_GREASE_PENCIL_COLOR_HARDNESS, "HARDNESS", 0, "Hardness", "Modify stroke hardness"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "GreasePencilOpacityModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Grease Pencil Opacity Modifier", "");
   RNA_def_struct_sdna(srna, "GreasePencilOpacityModifierData");
@@ -7634,6 +7642,11 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, color_mode_items);
+  RNA_def_property_ui_text(prop, "Color Mode", "Attributes to modify");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "color_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "color_factor");
