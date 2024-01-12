@@ -65,8 +65,10 @@ Shader::~Shader()
 static void standard_defines(Vector<const char *> &sources)
 {
   BLI_assert(sources.is_empty());
-  /* Version needs to be first. Exact values will be added by implementation. */
+  /* Version and specialization constants needs to be first.
+   * Exact values will be added by implementation. */
   sources.append("version");
+  sources.append("/* specialization_constants */");
   /* Define to identify code usage in shading language. */
   sources.append("#define GPU_SHADER\n");
   /* some useful defines to detect GPU type */
@@ -325,13 +327,13 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
+    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_VERTEX_SHADER\n");
     if (!info.geometry_source_.is_empty()) {
       sources.append("#define USE_GEOMETRY_SHADER\n");
     }
     sources.append(defines.c_str());
     sources.extend(typedefs);
-    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(interface.c_str());
     sources.extend(code);
@@ -347,13 +349,13 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
+    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_FRAGMENT_SHADER\n");
     if (!info.geometry_source_.is_empty()) {
       sources.append("#define USE_GEOMETRY_SHADER\n");
     }
     sources.append(defines.c_str());
     sources.extend(typedefs);
-    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(interface.c_str());
     sources.extend(code);
@@ -370,10 +372,10 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
+    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_GEOMETRY_SHADER\n");
     sources.append(defines.c_str());
     sources.extend(typedefs);
-    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(layout.c_str());
     sources.append(interface.c_str());
@@ -389,10 +391,10 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
+    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_COMPUTE_SHADER\n");
     sources.append(defines.c_str());
     sources.extend(typedefs);
-    sources.append(constants.c_str());
     sources.append(resources.c_str());
     sources.append(layout.c_str());
     sources.extend(code);

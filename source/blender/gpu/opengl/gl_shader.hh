@@ -53,14 +53,7 @@ struct GLSource {
 class GLSources : public Vector<GLSource> {
  public:
   GLSources &operator=(Span<const char *> other);
-  Vector<const char *> update_constants_source(const StringRefNull constants_patch) const;
-
- private:
-  /**
-   * Index into self where the constants needs to be applied before.
-   * -1 means no constants will be applied.
-   */
-  int32_t constants_source_index_ = -1;
+  Vector<const char *> sources_get() const;
 };
 
 /**
@@ -80,56 +73,51 @@ class GLShader : public Shader {
     GLuint frag_shader = 0;
     GLuint compute_shader = 0;
     ~GLProgram();
-    void link(Shader &shader);
   };
 
-  struct GLPrograms {
-    using Key = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
+  using GLProgramCacheKey = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
+  Map<GLProgramCacheKey, GLProgram> program_cache_;
 
-   private:
-    GLShader &shader_;
-    Map<Key, GLProgram> program_cache_;
+  /**
+   * Points to the active program. When binding a shader the active program is
+   * setup.
+   */
+  GLProgram *program_active_ = nullptr;
 
-   public:
-    /**
-     * Points to the active program. When binding a shader the active shader is
-     * setup.
-     */
-    GLProgram *program_active = nullptr;
+  /**
+   * When the shader uses Specialization Constants these attribute contains the sources to
+   * rebuild shader stages. When Specialization Constants aren't used they are empty to
+   * reduce memory needs.
+   */
+  GLSources vertex_sources_;
+  GLSources geometry_sources_;
+  GLSources fragment_sources_;
+  GLSources compute_sources_;
 
-    /**
-     * When the shader uses Specialization Constants these attribute contains the sources for
-     * rebuild shader stages. When Specialization Constants aren't used they are empty to
-     * reduce memory needs.
-     */
-    GLSources vertex_sources;
-    GLSources geometry_sources;
-    GLSources fragment_sources;
-    GLSources compute_sources;
-
-   public:
-    GLPrograms(GLShader &shader) : shader_(shader) {}
-
-    /**
-     * Initialize this instance.
-     *
-     * - Ensures that entries at least has a default GLProgram.
-     * - Ensures that active is set.
-     * - Active GLProgram has a shader_program (at least in creation state).
-     * - Does nothing when instance was already initialized.
-     */
-    void init();
-
-    /**
-     * Return a GLProgram program id that reflects the current state of shader.constants.values.
-     * The returned program_id is in linked state, or an error happened during linking.
-     */
-    GLuint program_get();
-  };
-
-  GLPrograms programs_;
   Vector<const char *> specialization_constant_names_;
+
+  /**
+   * Initialize an this instance.
+   *
+   * - Ensures that program_cache at least has a default GLProgram.
+   * - Ensures that active program is set.
+   * - Active GLProgram has a shader_program (at least in creation state).
+   * - Does nothing when instance was already initialized.
+   */
+  void init_program();
+
   void update_program_and_sources(GLSources &stage_sources, MutableSpan<const char *> sources);
+
+  /**
+   * Link the active program.
+   */
+  bool program_link();
+
+  /**
+   * Return a GLProgram program id that reflects the current state of shader.constants.values.
+   * The returned program_id is in linked state, or an error happened during linking.
+   */
+  GLuint program_get();
 
   /** True if any shader failed to compile. */
   bool compilation_failed_ = false;
@@ -185,13 +173,13 @@ class GLShader : public Shader {
 
   bool is_compute() const
   {
-    if (!programs_.vertex_sources.is_empty()) {
+    if (!vertex_sources_.is_empty()) {
       return false;
     }
-    if (!programs_.compute_sources.is_empty()) {
+    if (!compute_sources_.is_empty()) {
       return true;
     }
-    return programs_.program_active->compute_shader;
+    return program_active_->compute_shader != 0;
   }
 
  private:

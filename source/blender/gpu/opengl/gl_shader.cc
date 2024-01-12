@@ -35,7 +35,7 @@ extern "C" char datatoc_glsl_shader_defines_glsl[];
 /** \name Creation / Destruction
  * \{ */
 
-GLShader::GLShader(const char *name) : Shader(name), programs_(*this)
+GLShader::GLShader(const char *name) : Shader(name)
 {
 #if 0 /* Would be nice to have, but for now the Deferred compilation \
        * does not have a GPUContext. */
@@ -660,7 +660,6 @@ std::string GLShader::constants_declare(const ShaderCreateInfo & /*info*/) const
   }
 
   /* Add an identifier that where the specialization constants will be added. */
-  ss << "\n/* GPU_GL_SPECIALIZATION_CONSTANTS. */\n";
   ss << "/* Specialization Constants. */\n";
   for (int constant_index : IndexRange(constants.types.size())) {
     const StringRefNull name = specialization_constant_names_[constant_index];
@@ -1196,15 +1195,23 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage,
   /* Patch the shader sources to include specialization constants.
    * `constants_source` must to be scoped at function level. */
   std::string constants_source;
+  Vector<const char *> recreated_sources;
+
   const bool has_specialization_constants = !constants.types.is_empty();
   if (has_specialization_constants && interface) {
     static shader::ShaderCreateInfo dummy_create_info("Dummy");
     constants_source = constants_declare(dummy_create_info);
-    sources = gl_sources.update_constants_source(constants_source);
+    recreated_sources = gl_sources.sources_get();
+    sources = recreated_sources;
+    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants_source.c_str();
   }
 
   /* Patch the shader code using the first source slot. */
-  sources[0] = glsl_patch_get(gl_stage);
+  sources[SOURCES_INDEX_VERSION] = glsl_patch_get(gl_stage);
+
+  for (const char *source : sources) {
+    std::cout << source << "\n";
+  }
 
   glShaderSource(shader, sources.size(), sources.data(), nullptr);
   glCompileShader(shader);
@@ -1240,7 +1247,7 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage,
 
   debug::object_label(gl_stage, shader, name);
 
-  glAttachShader(programs_.program_active->program_id, shader);
+  glAttachShader(program_active_->program_id, shader);
   return shader;
 }
 
@@ -1252,35 +1259,36 @@ void GLShader::update_program_and_sources(GLSources &stage_sources,
     stage_sources = sources;
   }
 
-  programs_.init();
+  // TODO remove!
+  init_program();
 }
 
 void GLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  update_program_and_sources(programs_.vertex_sources, sources);
-  programs_.program_active->vert_shader = this->create_shader_stage(
-      GL_VERTEX_SHADER, sources, programs_.vertex_sources);
+  update_program_and_sources(vertex_sources_, sources);
+  program_active_->vert_shader = this->create_shader_stage(
+      GL_VERTEX_SHADER, sources, vertex_sources_);
 }
 
 void GLShader::geometry_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  update_program_and_sources(programs_.geometry_sources, sources);
-  programs_.program_active->geom_shader = this->create_shader_stage(
-      GL_GEOMETRY_SHADER, sources, programs_.geometry_sources);
+  update_program_and_sources(geometry_sources_, sources);
+  program_active_->geom_shader = this->create_shader_stage(
+      GL_GEOMETRY_SHADER, sources, geometry_sources_);
 }
 
 void GLShader::fragment_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  update_program_and_sources(programs_.fragment_sources, sources);
-  programs_.program_active->frag_shader = this->create_shader_stage(
-      GL_FRAGMENT_SHADER, sources, programs_.fragment_sources);
+  update_program_and_sources(fragment_sources_, sources);
+  program_active_->frag_shader = this->create_shader_stage(
+      GL_FRAGMENT_SHADER, sources, fragment_sources_);
 }
 
 void GLShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  update_program_and_sources(programs_.compute_sources, sources);
-  programs_.program_active->compute_shader = this->create_shader_stage(
-      GL_COMPUTE_SHADER, sources, programs_.compute_sources);
+  update_program_and_sources(compute_sources_, sources);
+  program_active_->compute_shader = this->create_shader_stage(
+      GL_COMPUTE_SHADER, sources, compute_sources_);
 }
 
 bool GLShader::finalize(const shader::ShaderCreateInfo *info)
@@ -1296,24 +1304,15 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
     sources.append(source.c_str());
     geometry_shader_from_glsl(sources);
     if (!constants.types.is_empty()) {
-      programs_.geometry_sources = sources;
+      geometry_sources_ = sources;
     }
   }
 
-  GLuint program_id = programs_.program_active->program_id;
-  glLinkProgram(program_id);
-
-  GLint status;
-  glGetProgramiv(program_id, GL_LINK_STATUS, &status);
-  if (!status) {
-    char log[5000];
-    glGetProgramInfoLog(program_id, sizeof(log), nullptr, log);
-    Span<const char *> sources;
-    GLLogParser parser;
-    this->print_log(sources, log, "Linking", true, &parser);
+  if (!program_link()) {
     return false;
   }
 
+  GLuint program_id = program_get();
   if (info != nullptr && info->legacy_resource_location_ == false) {
     interface = new GLShaderInterface(program_id, *info);
   }
@@ -1332,7 +1331,7 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
 
 void GLShader::bind()
 {
-  GLuint program_id = programs_.program_get();
+  GLuint program_id = program_get();
   glUseProgram(program_id);
 }
 
@@ -1355,7 +1354,7 @@ void GLShader::transform_feedback_names_set(Span<const char *> name_list,
                                             const eGPUShaderTFBType geom_type)
 {
   glTransformFeedbackVaryings(
-      programs_.program_get(), name_list.size(), name_list.data(), GL_INTERLEAVED_ATTRIBS);
+      program_get(), name_list.size(), name_list.data(), GL_INTERLEAVED_ATTRIBS);
   transform_feedback_type_ = geom_type;
 }
 
@@ -1458,8 +1457,8 @@ void GLShader::uniform_int(int location, int comp_len, int array_size, const int
 
 int GLShader::program_handle_get() const
 {
-  BLI_assert(programs_.program_active);
-  return programs_.program_active->program_id;
+  BLI_assert(program_active_);
+  return program_active_->program_id;
 }
 
 /** \} */
@@ -1486,32 +1485,18 @@ GLSources &GLSources::operator=(Span<const char *> other)
 
   for (const char *other_source : other) {
     append(GLSource(other_source));
-    /* NOTE: `last().source` is used as that will only check not statically defined sources. */
-    if (constants_source_index_ == -1 &&
-        last().source.find("GPU_GL_SPECIALIZATION_CONSTANTS") != std::string::npos)
-    {
-      /* Specialization Constants are cleared as it will be regenerated each time. */
-      last().source.clear();
-      constants_source_index_ = size() - 1;
-    }
   }
 
   return *this;
 }
 
-Vector<const char *> GLSources::update_constants_source(const StringRefNull constants_patch) const
+Vector<const char *> GLSources::sources_get() const
 {
   Vector<const char *> result;
   result.reserve(size());
 
-  for (int64_t source_index : IndexRange(size())) {
-    if (source_index == constants_source_index_) {
-      result.append(constants_patch.c_str());
-    }
-    else {
-      const GLSource &source = (*this)[source_index];
-      result.append(source.source_ref.c_str());
-    }
+  for (const GLSource &source : *this) {
+    result.append(source.source_ref.c_str());
   }
   return result;
 }
@@ -1532,8 +1517,9 @@ GLShader::GLProgram::~GLProgram()
   glDeleteProgram(program_id);
 }
 
-void GLShader::GLProgram::link(Shader &shader)
+bool GLShader::program_link()
 {
+  GLuint program_id = program_active_->program_id;
   glLinkProgram(program_id);
 
   GLint status;
@@ -1543,65 +1529,68 @@ void GLShader::GLProgram::link(Shader &shader)
     glGetProgramInfoLog(program_id, sizeof(log), nullptr, log);
     Span<const char *> sources;
     GLLogParser parser;
-    shader.print_log(sources, log, "Linking", true, &parser);
+    print_log(sources, log, "Linking", true, &parser);
   }
+
+  return bool(status);
 }
 
-void GLShader::GLPrograms::init()
+void GLShader::init_program()
 {
-  if (program_active) {
+  if (program_active_) {
     return;
   }
 
-  program_active = &program_cache_.lookup_or_add_default(shader_.constants.values);
-  if (!program_active->program_id) {
-    program_active->program_id = glCreateProgram();
-    debug::object_label(GL_PROGRAM, program_active->program_id, shader_.name_get());
+  // TODO: move to GLShader::init and read default values from info.
+  program_active_ = &program_cache_.lookup_or_add_default(constants.values);
+  if (!program_active_->program_id) {
+    program_active_->program_id = glCreateProgram();
+    debug::object_label(GL_PROGRAM, program_active_->program_id, name);
   }
 }
 
-GLuint GLShader::GLPrograms::program_get()
+GLuint GLShader::program_get()
 {
-  if (shader_.constants.types.is_empty()) {
+  if (constants.types.is_empty()) {
     /* Early exit for shaders that doesn't use specialization constants. The active shader should
      * already be setup. */
-    BLI_assert(program_active && program_active->program_id);
-    return program_active->program_id;
+    BLI_assert(program_active_ && program_active_->program_id);
+    return program_active_->program_id;
   }
 
-  if (!shader_.constants.is_dirty) {
+  if (!constants.is_dirty) {
     /* Early exit when constants didn't change since the last call. */
-    BLI_assert(program_active && program_active->program_id);
-    return program_active->program_id;
+    BLI_assert(program_active_ && program_active_->program_id);
+    return program_active_->program_id;
   }
 
-  program_active = &program_cache_.lookup_or_add_default(shader_.constants.values);
-  if (!program_active->program_id) {
-    program_active->program_id = glCreateProgram();
-    debug::object_label(GL_PROGRAM, program_active->program_id, shader_.name_get());
+  program_active_ = &program_cache_.lookup_or_add_default(constants.values);
+  if (!program_active_->program_id) {
+    program_active_->program_id = glCreateProgram();
+    debug::object_label(GL_PROGRAM, program_active_->program_id, name);
     MutableSpan<const char *> no_sources;
-    if (!vertex_sources.is_empty()) {
-      program_active->vert_shader = shader_.create_shader_stage(
-          GL_VERTEX_SHADER, no_sources, vertex_sources);
+    if (!vertex_sources_.is_empty()) {
+      program_active_->vert_shader = create_shader_stage(
+          GL_VERTEX_SHADER, no_sources, vertex_sources_);
     }
-    if (!geometry_sources.is_empty()) {
-      program_active->geom_shader = shader_.create_shader_stage(
-          GL_GEOMETRY_SHADER, no_sources, geometry_sources);
+    if (!geometry_sources_.is_empty()) {
+      program_active_->geom_shader = create_shader_stage(
+          GL_GEOMETRY_SHADER, no_sources, geometry_sources_);
     }
-    if (!fragment_sources.is_empty()) {
-      program_active->frag_shader = shader_.create_shader_stage(
-          GL_FRAGMENT_SHADER, no_sources, fragment_sources);
+    if (!fragment_sources_.is_empty()) {
+      program_active_->frag_shader = create_shader_stage(
+          GL_FRAGMENT_SHADER, no_sources, fragment_sources_);
     }
-    if (!compute_sources.is_empty()) {
-      program_active->compute_shader = shader_.create_shader_stage(
-          GL_COMPUTE_SHADER, no_sources, compute_sources);
+    if (!compute_sources_.is_empty()) {
+      program_active_->compute_shader = create_shader_stage(
+          GL_COMPUTE_SHADER, no_sources, compute_sources_);
     }
 
-    program_active->link(shader_);
+    program_link();
   }
 
-  shader_.constants.is_dirty = false;
-  return program_active->program_id;
+  constants.is_dirty = false;
+  return program_active_->program_id;
 }
 
 /** \} */

@@ -26,6 +26,14 @@ namespace gpu {
 class GPULogParser;
 
 /**
+ * Compilation is done on a list of GLSL sources. This list contains placeholders that should be
+ * provided by the backend shader. These defines contains the locations where the backend can patch
+ * the sources.
+ */
+#define SOURCES_INDEX_VERSION 0
+#define SOURCES_INDEX_SPECIALIZATION_CONSTANTS 1
+
+/**
  * Implementation of shader compilation and uniforms handling.
  * Base class which is then specialized for each implementation (GL, VK, ...).
  */
