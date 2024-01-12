@@ -98,7 +98,7 @@ class TestPropArray(unittest.TestCase):
                             for array_1d in array_2d[:]
                             for flat_elem in array_1d[:])
             case _:
-                raise AssertionError("Number of dimensions must be 1, 2 or 3, but was %i", num_dims)
+                raise AssertionError("Number of dimensions must be 1, 2 or 3, but was %i" % num_dims)
 
         return (expected_dtype, wrong_kind_dtype, wrong_size_dtype, expected_length, too_short_length,
                 get_flat_iterable_all_dimensions)
