@@ -54,7 +54,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "ED_image.hh"
@@ -1623,11 +1623,9 @@ static float paint_and_tex_color_alpha(VPaint *vp,
                                        Color *r_color)
 {
   ColorPaint4f rgba;
-  ColorPaint4f rgba_br = toFloat(*r_color);
-
   paint_and_tex_color_alpha_intern(vp, &vpd->vc, v_co, &rgba.r);
 
-  rgb_uchar_to_float(&rgba_br.r, (const uchar *)&vpd->paintcol);
+  ColorPaint4f rgba_br = toFloat(vpd->paintcol);
   mul_v3_v3(rgba_br, rgba);
 
   *r_color = fromFloat<Color>(rgba_br);
