@@ -1809,8 +1809,7 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
   /* Grease Pencil layer to use. */
   prop = RNA_def_int(ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-
-  prop = RNA_def_string(
+  RNA_def_string(
       ot->srna, "new_layer_name", nullptr, MAX_NAME, "Name", "Name of the newly added layer");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   ot->prop = prop;
