@@ -1250,7 +1250,6 @@ void GLShader::update_program_and_sources(GLSources &stage_sources,
     stage_sources = sources;
   }
 
-  // TODO remove!
   init_program();
 }
 
@@ -1537,7 +1536,6 @@ void GLShader::init_program()
     return;
   }
 
-  // TODO: move to GLShader::init and read default values from info.
   program_active_ = &program_cache_.lookup_or_add_default(constants.values);
   if (!program_active_->program_id) {
     program_active_->program_id = glCreateProgram();
