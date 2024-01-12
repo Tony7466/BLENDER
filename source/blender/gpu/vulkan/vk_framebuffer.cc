@@ -917,7 +917,7 @@ void VKFrameBuffer::create()
     vk_framebuffer_create_info_.height = height_;
     vk_framebuffer_create_info_.pAttachments = data.data();
   }
-  if (viewport_[0][2] == 0 || (!dirty_state_ && width_ != 0)) {
+  if (viewport_[0][2] != width_ || (!dirty_state_ && width_ != 0)) {
     viewport_reset();
     scissor_reset();
   }
@@ -1150,6 +1150,11 @@ void VKFrameBuffer::dynamic_state_set()
   VKCommandBuffers &command_buffers = VKContext::get()->command_buffers_get();
   BLI_assert(viewport_[0][2] > 0 && viewport_[0][3] > 0);
   command_buffers.viewport_set(viewport_, size);
+  if (scissor_[2] == 0) {
+    for (int i = 0; i < 4; i++) {
+      scissor_[i] = viewport_[0][i];
+    }
+  }
   command_buffers.scissor_set(scissor_);
   dirty_state_ = false;
 }

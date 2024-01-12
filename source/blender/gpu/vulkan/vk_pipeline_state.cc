@@ -69,7 +69,6 @@ void VKPipelineStateManager::set_state(const GPUState &state, const GPUStateMuta
   }
   if (changed.stencil_test != 0 || changed.stencil_op != 0) {
     set_stencil_test((eGPUStencilTest)state.stencil_test, (eGPUStencilOp)state.stencil_op);
-    set_stencil_mask((eGPUStencilTest)state.stencil_test, mutable_state);
   }
   if (changed.clip_distances != 0) {
     set_clip_distances(state.clip_distances, current_.clip_distances);
@@ -90,6 +89,7 @@ void VKPipelineStateManager::set_state(const GPUState &state, const GPUStateMuta
     set_shadow_bias(state.shadow_bias);
   }
   current_ = state;
+  set_stencil_mask((eGPUStencilTest)state.stencil_test, mutable_state);
 }
 
 void VKPipelineStateManager::force_state(const GPUState &state,

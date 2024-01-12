@@ -12,6 +12,7 @@
 #include "vk_context.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
+#include "vk_shader.hh"
 #include "vk_state_manager.hh"
 #include "vk_vertex_attribute_object.hh"
 
@@ -155,17 +156,6 @@ void VKPipeline::finalize(VKContext &context,
           VK_TRUE;
   pipeline_create_info.pInputAssemblyState = &pipeline_input_assembly;
 
-  VKPipelineStateManager &state_manager = state_manager_get();
-  /* Viewport state. */
-  VkPipelineViewportStateCreateInfo viewport_state = {};
-  viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-  pipeline_create_info.pViewportState = &viewport_state;
-  pipeline_create_info.pDynamicState = &state_manager.dynamic_state;
-  viewport_state.pViewports = VK_NULL_HANDLE;
-  viewport_state.viewportCount = (framebuffer.is_multi_viewport()) ? GPU_MAX_VIEWPORTS : 1;
-  viewport_state.pScissors = VK_NULL_HANDLE;
-  viewport_state.scissorCount = 1;
-
   /* Multi-sample state. */
   VkPipelineMultisampleStateCreateInfo multisample_state = {};
   multisample_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -174,12 +164,20 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pMultisampleState = &multisample_state;
 
   /* States from the state manager. */
-
+  VKPipelineStateManager &state_manager = state_manager_get();
   state_manager.finalize_color_blend_state(framebuffer);
   pipeline_create_info.pColorBlendState = &state_manager.pipeline_color_blend_state;
   pipeline_create_info.pRasterizationState = &state_manager.rasterization_state;
   pipeline_create_info.pDepthStencilState = &state_manager.depth_stencil_state;
-
+  /* Viewport state. */
+  VkPipelineViewportStateCreateInfo viewport_state = {
+    VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+  pipeline_create_info.pViewportState = &viewport_state;
+  pipeline_create_info.pDynamicState = &state_manager.dynamic_state;
+  viewport_state.pViewports = VK_NULL_HANDLE;
+  viewport_state.viewportCount = (framebuffer.is_multi_viewport()) ? GPU_MAX_VIEWPORTS : 1;
+  viewport_state.pScissors = VK_NULL_HANDLE;
+  viewport_state.scissorCount = 1;
   const VKDevice &device = VKBackend::get().device_get();
   vkCreateGraphicsPipelines(device.device_get(),
                             device.vk_pipeline_cache_get(),
