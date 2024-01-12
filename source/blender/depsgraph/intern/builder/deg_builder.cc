@@ -177,7 +177,9 @@ const char *DepsgraphBuilder::get_rna_path_relative_to_scene_camera(const Scene 
 
 void deg_graph_build_finalize(Main *bmain, Depsgraph *graph)
 {
+  deg_graph_eval_visibility_flags(graph);
   deg_graph_flush_visibility_flags(graph);
+
   deg_graph_remove_unused_noops(graph);
 
   /* Re-tag IDs for update if it was tagged before the relations

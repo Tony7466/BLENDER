@@ -27,14 +27,11 @@
 
 namespace blender::deg {
 
-void deg_evaluate_object_node_visibility(::Depsgraph *depsgraph, IDNode *id_node)
+static bool deg_evaluate_node_visibility(Depsgraph *graph, IDNode *id_node)
 {
   BLI_assert(GS(id_node->id_cow->name) == ID_OB);
 
-  Depsgraph *graph = reinterpret_cast<Depsgraph *>(depsgraph);
   const Object *object = reinterpret_cast<const Object *>(id_node->id_cow);
-
-  DEG_debug_print_eval(depsgraph, __func__, object->id.name, &object->id);
 
   const int required_flags = (graph->mode == DAG_EVAL_VIEWPORT) ? BASE_ENABLED_VIEWPORT :
                                                                   BASE_ENABLED_RENDER;
@@ -42,9 +39,22 @@ void deg_evaluate_object_node_visibility(::Depsgraph *depsgraph, IDNode *id_node
   const bool is_enabled = !graph->use_visibility_optimization ||
                           object->base_flag & required_flags;
 
-  if (id_node->is_enabled_on_eval != is_enabled) {
-    id_node->is_enabled_on_eval = is_enabled;
+  if (id_node->is_enabled_on_eval == is_enabled) {
+    return false;
+  }
 
+  id_node->is_enabled_on_eval = is_enabled;
+  return true;
+}
+
+void deg_evaluate_object_node_visibility(::Depsgraph *depsgraph, IDNode *id_node)
+{
+  Depsgraph *graph = reinterpret_cast<Depsgraph *>(depsgraph);
+  const Object *object = reinterpret_cast<const Object *>(id_node->id_cow);
+
+  DEG_debug_print_eval(depsgraph, __func__, object->id.name, &object->id);
+
+  if (deg_evaluate_node_visibility(graph, id_node)) {
     /* Tag dependency graph for changed visibility, so that it is updated on all dependencies prior
      * to a pass of an actual evaluation. */
     graph->need_update_nodes_visibility = true;
@@ -85,6 +95,13 @@ void deg_evaluate_object_modifiers_mode_node_visibility(::Depsgraph *depsgraph, 
 
       graph->need_update_nodes_visibility = true;
     }
+  }
+}
+
+void deg_graph_eval_visibility_flags(Depsgraph *graph)
+{
+  for (IDNode *id_node : graph->id_nodes) {
+    deg_evaluate_node_visibility(graph, id_node);
   }
 }
 
