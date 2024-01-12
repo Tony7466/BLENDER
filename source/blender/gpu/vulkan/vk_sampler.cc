@@ -32,8 +32,9 @@ void VKSampler::create(const GPUSamplerState &sampler_state)
   sampler_info.addressModeU = to_vk_sampler_address_mode(sampler_state.extend_x);
   sampler_info.addressModeV = sampler_info.addressModeW = to_vk_sampler_address_mode(
       sampler_state.extend_yz);
-  sampler_info.minLod = -1000;
+  sampler_info.minLod = 0;
   sampler_info.maxLod = 1000;
+
   if (sampler_state.type == GPU_SAMPLER_STATE_TYPE_PARAMETERS) {
     /* Apply filtering. */
     if (sampler_state.filtering & GPU_SAMPLER_FILTERING_LINEAR) {
@@ -43,11 +44,12 @@ void VKSampler::create(const GPUSamplerState &sampler_state)
     if (sampler_state.filtering & GPU_SAMPLER_FILTERING_MIPMAP) {
       sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     }
-    if (device.physical_device_features_get().samplerAnisotropy == VK_TRUE &&
-        sampler_state.filtering & GPU_SAMPLER_FILTERING_ANISOTROPIC)
+    if ((sampler_state.filtering & GPU_SAMPLER_FILTERING_ANISOTROPIC) &&
+        (U.anisotropic_filter > 1) &&
+        (device.physical_device_features_get().samplerAnisotropy == VK_TRUE))
     {
       sampler_info.anisotropyEnable = VK_TRUE;
-      sampler_info.maxAnisotropy = min_ff(16.0f, max_ff(1.0f, U.anisotropic_filter));
+      sampler_info.maxAnisotropy = U.anisotropic_filter;
     }
   }
   else if (sampler_state.type == GPU_SAMPLER_STATE_TYPE_CUSTOM) {

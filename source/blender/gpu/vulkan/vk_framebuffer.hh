@@ -65,8 +65,8 @@ class VKFrameBuffer : public FrameBuffer {
 
  public:
   /**
-   * Create a conventional framebuffer to attach texture to.
-   **/
+   * Create a conventional frame-buffer to attach texture to.
+   */
   VKFrameBuffer(const char *name);
 
   ~VKFrameBuffer();

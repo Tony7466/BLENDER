@@ -308,7 +308,7 @@ const ShaderInput *VKShaderInterface::shader_input_get(
     case shader::ShaderCreateInfo::Resource::BindType::IMAGE:
       /* Not really nice, but the binding namespace between OpenGL and Vulkan don't match. To fix
        * this we need to check if one of both cases return a binding.
-       * TODO: we might want to introduce a different API to fix this.  */
+       * TODO: we might want to introduce a different API to fix this. */
       return texture_get((binding >= image_offset_) ? binding : binding + image_offset_);
     case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
     case shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT:
