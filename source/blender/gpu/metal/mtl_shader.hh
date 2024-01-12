@@ -163,7 +163,7 @@ struct MTLShaderBuilder {
  * - set MSL source.
  * - set Vertex/Fragment function names.
  * - Create and populate #MTLShaderInterface.
- **/
+ */
 class MTLShader : public Shader {
   friend shader::ShaderCreateInfo;
   friend shader::StageInterfaceInfo;
@@ -273,6 +273,8 @@ class MTLShader : public Shader {
             NSString *vertex_function_name_,
             NSString *fragment_function_name_);
   ~MTLShader();
+
+  void init(const shader::ShaderCreateInfo & /*info*/) override {}
 
   /* Assign GLSL source. */
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
