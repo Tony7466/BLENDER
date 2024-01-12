@@ -2486,39 +2486,27 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
-typedef struct GreasePencilModifierLayerFilter {
-  /** Filter by layer name. */
-  char layer_name[64];
-  /** Filter by layer pass. */
-  int layer_pass;
-  /** GreasePencilModifierFilterFlag */
-  int flag;
-} GreasePencilModifierLayerFilter;
-
-typedef struct GreasePencilModifierMaterialFilter {
-  /** Filter by stroke material. */
-  struct Material *material;
-  /** Filter by material pass. */
-  int material_pass;
-  /** GreasePencilModifierFilterFlag */
-  int flag;
-} GreasePencilModifierMaterialFilter;
-
-typedef struct GreasePencilModifierVertexGroupData {
-  /** #MAX_VGROUP_NAME. */
-  char vertex_group_name[64];
-  /** GreasePencilModifierFilterFlag */
-  int flag;
-  char _pad[4];
-} GreasePencilModifierVertexGroupData;
-
-typedef struct GreasePencilModifierCustomCurveData {
-  struct CurveMapping *curve;
-  /** GreasePencilModifierFilterFlag */
+/**
+ * Common influence data for grease pencil modifiers.
+ * Not all parts may be used by all modifier types.
+ */
+typedef struct GreasePencilModifierInfluenceData {
+  /** GreasePencilModifierInfluenceFlag */
   int flag;
   char _pad1[4];
+  /** Filter by layer name. */
+  char layer_name[64];
+  /** Filter by stroke material. */
+  struct Material *material;
+  /** Filter by layer pass. */
+  int layer_pass;
+  /** Filter by material pass. */
+  int material_pass;
+  /** #MAX_VGROUP_NAME. */
+  char vertex_group_name[64];
+  struct CurveMapping *custom_curve;
   void *_pad2;
-} GreasePencilModifierCustomCurveData;
+} GreasePencilModifierInfluenceData;
 
 typedef enum GreasePencilModifierInfluenceFlag {
   GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER = (1 << 0),
@@ -2530,17 +2518,6 @@ typedef enum GreasePencilModifierInfluenceFlag {
   GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP = (1 << 6),
   GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE = (1 << 7),
 } GreasePencilModifierInfluenceFlag;
-
-/**
- * Combined generic influence data for grease pencil modifiers.
- * Not all parts may be used by all modifier types.
- */
-typedef struct GreasePencilModifierInfluenceData {
-  GreasePencilModifierLayerFilter layer_filter;
-  GreasePencilModifierMaterialFilter material_filter;
-  GreasePencilModifierVertexGroupData vertex_group;
-  GreasePencilModifierCustomCurveData custom_curve;
-} GreasePencilModifierInfluenceData;
 
 typedef struct GreasePencilOpacityModifierData {
   ModifierData modifier;

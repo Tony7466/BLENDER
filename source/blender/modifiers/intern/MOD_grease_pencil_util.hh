@@ -47,12 +47,12 @@ void draw_vertex_group_settings(const bContext *C, uiLayout *layout, PointerRNA 
 void draw_custom_curve_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr);
 
 IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
-                                  const GreasePencilModifierLayerFilter &filter,
+                                  const GreasePencilModifierInfluenceData &influence_data,
                                   IndexMaskMemory &memory);
 
 IndexMask get_filtered_stroke_mask(const Object *ob,
                                    const bke::CurvesGeometry &curves,
-                                   const GreasePencilModifierMaterialFilter &filter,
+                                   const GreasePencilModifierInfluenceData &influence_data,
                                    IndexMaskMemory &memory);
 
 Vector<bke::greasepencil::Drawing *> get_drawings_for_write(GreasePencil &grease_pencil,

@@ -97,9 +97,9 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 
 /* XXX Placeholder for vertex groupn weights. */
 static VArray<float> get_grease_pencil_modifier_vertex_weights(
-    const bke::CurvesGeometry &curves, const GreasePencilModifierVertexGroupData &vertex_group)
+    const bke::CurvesGeometry &curves, const GreasePencilModifierInfluenceData &influence_data)
 {
-  const bool use_vertex_group = (vertex_group.vertex_group_name[0] != '\0');
+  const bool use_vertex_group = (influence_data.vertex_group_name[0] != '\0');
   return VArray<float>::ForSingle(use_vertex_group ? 1.0f : 0.0f, curves.point_num);
 }
 
@@ -109,13 +109,12 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
 {
   const bool use_uniform_opacity = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY);
   const bool use_vgroup_opacity = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_VERTEX_GROUP);
-  const bool invert_vertex_group = (omd.influence.vertex_group.flag &
+  const bool invert_vertex_group = (omd.influence.flag &
                                     GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
-  const bool use_curve = (omd.influence.custom_curve.flag &
-                          GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE);
+  const bool use_curve = (omd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  const VArray<float> vgroup_weights = get_grease_pencil_modifier_vertex_weights(
-      curves, omd.influence.vertex_group);
+  const VArray<float> vgroup_weights = get_grease_pencil_modifier_vertex_weights(curves,
+                                                                                 omd.influence);
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
@@ -129,10 +128,9 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
       const float curve_input = points_range.size() >= 2 ? (float(point_i - points_range.first()) /
                                                             float(points_range.size() - 1)) :
                                                            0.0f;
-      const float curve_factor = use_curve ?
-                                     BKE_curvemapping_evaluateF(
-                                         omd.influence.custom_curve.curve, 0, curve_input) :
-                                     1.0f;
+      const float curve_factor = use_curve ? BKE_curvemapping_evaluateF(
+                                                 omd.influence.custom_curve, 0, curve_input) :
+                                             1.0f;
 
       if (use_uniform_opacity) {
         opacities.span[point_i] = std::clamp(curve_factor, 0.0f, 1.0f);
@@ -165,11 +163,11 @@ static void modify_fill_color(const GreasePencilOpacityModifierData &omd,
                               const IndexMask &curves_mask)
 {
   const bool use_vgroup_opacity = (omd.flag & MOD_GREASE_PENCIL_OPACITY_USE_VERTEX_GROUP);
-  const bool invert_vertex_group = (omd.influence.vertex_group.flag &
+  const bool invert_vertex_group = (omd.influence.flag &
                                     GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  const VArray<float> vgroup_weights = get_grease_pencil_modifier_vertex_weights(
-      curves, omd.influence.vertex_group);
+  const VArray<float> vgroup_weights = get_grease_pencil_modifier_vertex_weights(curves,
+                                                                                 omd.influence);
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   /* Fill color opacity per stroke. */
@@ -221,7 +219,7 @@ static void modify_curves(ModifierData *md,
 
   IndexMaskMemory mask_memory;
   IndexMask curves_mask = greasepencil::get_filtered_stroke_mask(
-      ctx->object, curves, omd->influence.material_filter, mask_memory);
+      ctx->object, curves, omd->influence, mask_memory);
 
   switch (omd->color_mode) {
     case MOD_GREASE_PENCIL_COLOR_STROKE:
@@ -255,7 +253,7 @@ static void modify_geometry_set(ModifierData *md,
 
   IndexMaskMemory mask_memory;
   IndexMask layer_mask = greasepencil::get_filtered_layer_mask(
-      *grease_pencil, omd->influence.layer_filter, mask_memory);
+      *grease_pencil, omd->influence, mask_memory);
   Vector<Drawing *> drawings = greasepencil::get_drawings_for_write(
       *grease_pencil, layer_mask, frame);
   for (Drawing *drawing : drawings) {

@@ -41,8 +41,8 @@ void init_influence_data(GreasePencilModifierInfluenceData *influence_data,
                          const bool has_custom_curve)
 {
   if (has_custom_curve) {
-    influence_data->custom_curve.curve = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
-    BKE_curvemapping_init(influence_data->custom_curve.curve);
+    influence_data->custom_curve = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+    BKE_curvemapping_init(influence_data->custom_curve);
   }
 }
 
@@ -51,15 +51,14 @@ void copy_influence_data(const GreasePencilModifierInfluenceData *influence_data
                          const int /*flag*/)
 {
   memcpy(influence_data_dst, influence_data_src, sizeof(GreasePencilModifierInfluenceData));
-  influence_data_dst->custom_curve.curve = BKE_curvemapping_copy(
-      influence_data_src->custom_curve.curve);
+  influence_data_dst->custom_curve = BKE_curvemapping_copy(influence_data_src->custom_curve);
 }
 
 void free_influence_data(GreasePencilModifierInfluenceData *influence_data)
 {
-  if (influence_data->custom_curve.curve) {
-    BKE_curvemapping_free(influence_data->custom_curve.curve);
-    influence_data->custom_curve.curve = nullptr;
+  if (influence_data->custom_curve) {
+    BKE_curvemapping_free(influence_data->custom_curve);
+    influence_data->custom_curve = nullptr;
   }
 }
 
@@ -68,7 +67,7 @@ void foreach_influence_ID_link(GreasePencilModifierInfluenceData *influence_data
                                IDWalkFunc walk,
                                void *user_data)
 {
-  walk(user_data, ob, (ID **)&influence_data->material_filter.material, IDWALK_CB_USER);
+  walk(user_data, ob, (ID **)&influence_data->material, IDWALK_CB_USER);
 }
 
 void draw_layer_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
@@ -212,19 +211,20 @@ static IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
 }
 
 IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
-                                  const GreasePencilModifierLayerFilter &filter,
+                                  const GreasePencilModifierInfluenceData &influence_data,
                                   IndexMaskMemory &memory)
 {
-  return get_filtered_layer_mask(grease_pencil,
-                                 filter.layer_name[0] != '\0' ?
-                                     std::make_optional<StringRef>(filter.layer_name) :
-                                     std::nullopt,
-                                 (filter.flag & GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER) ?
-                                     std::make_optional<int>(filter.layer_pass) :
-                                     std::nullopt,
-                                 filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER,
-                                 filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER,
-                                 memory);
+  return get_filtered_layer_mask(
+      grease_pencil,
+      influence_data.layer_name[0] != '\0' ?
+          std::make_optional<StringRef>(influence_data.layer_name) :
+          std::nullopt,
+      (influence_data.flag & GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER) ?
+          std::make_optional<int>(influence_data.layer_pass) :
+          std::nullopt,
+      influence_data.flag & GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER,
+      influence_data.flag & GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER,
+      memory);
 }
 
 static IndexMask get_filtered_stroke_mask(const Object *ob,
@@ -271,19 +271,19 @@ static IndexMask get_filtered_stroke_mask(const Object *ob,
 
 IndexMask get_filtered_stroke_mask(const Object *ob,
                                    const bke::CurvesGeometry &curves,
-                                   const GreasePencilModifierMaterialFilter &filter,
+                                   const GreasePencilModifierInfluenceData &influence_data,
                                    IndexMaskMemory &memory)
 {
   /* TODO Add an option to toggle pass filter on and off, instead of using "pass > 0". */
   return get_filtered_stroke_mask(
       ob,
       curves,
-      filter.material,
-      (filter.flag & GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER) ?
-          std::make_optional<int>(filter.material_pass) :
+      influence_data.material,
+      (influence_data.flag & GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER) ?
+          std::make_optional<int>(influence_data.material_pass) :
           std::nullopt,
-      filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER,
-      filter.flag & GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER,
+      influence_data.flag & GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER,
+      influence_data.flag & GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER,
       memory);
 }
 
