@@ -655,7 +655,6 @@ std::string GLShader::constants_declare() const
 {
   std::stringstream ss;
 
-  /* Add an identifier that where the specialization constants will be added. */
   ss << "/* Specialization Constants. */\n";
   for (int constant_index : IndexRange(constants.types.size())) {
     const StringRefNull name = specialization_constant_names_[constant_index];
