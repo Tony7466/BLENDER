@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2019-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2019-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -9,6 +9,7 @@
 #
 
 set(WITH_ASSERT_ABORT                 ON  CACHE BOOL "" FORCE)
+set(WITH_ASSERT_RELEASE               ON  CACHE BOOL "" FORCE)
 set(WITH_BUILDINFO                    OFF CACHE BOOL "" FORCE)
 # Sadly ASAN is more often broken than working with MSVC do not enable it in the
 # developer profile for now.

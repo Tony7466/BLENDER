@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,8 @@
  */
 
 #include "gpencil_shader.hh"
+
+#include <iostream>
 
 namespace blender::draw::greasepencil {
 
@@ -36,7 +38,7 @@ ShaderModule::ShaderModule()
     shader = nullptr;
   }
 
-#ifdef DEBUG
+#ifndef NDEBUG
   /* Ensure all shader are described. */
   for (auto i : IndexRange(MAX_SHADER_TYPE)) {
     const char *name = static_shader_create_info_name_get(eShaderType(i));
@@ -72,7 +74,7 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
     case LAYER_BLEND:
       return "gpencil_layer_blend";
     case DEPTH_MERGE:
-      return "gpencil_depth_merge";
+      return "grease_pencil_depth_merge";
     case MASK_INVERT:
       return "gpencil_mask_invert";
     case FX_COMPOSITE:

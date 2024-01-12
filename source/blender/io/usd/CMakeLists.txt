@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2019 Blender Foundation
+# SPDX-FileCopyrightText: 2019 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -13,6 +13,17 @@ if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN -DBOOST_DEBUG_PYTHON)
 endif()
 add_definitions(-DBOOST_ALL_NO_LIB)
+
+# Precompiled Linux libs are made with GCC, and USD uses some extensions
+# which lead to an incompatible ABI for Clang. Using those extensions with
+# Clang as well works around the issue.
+if(UNIX AND NOT APPLE)
+  if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    if(EXISTS ${LIBDIR})
+      add_definitions(-DARCH_HAS_GNU_STL_EXTENSIONS)
+    endif()
+  endif()
+endif()
 
 # USD headers use deprecated TBB headers, silence warning.
 add_definitions(-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
@@ -46,11 +57,19 @@ endif()
 set(INC
   .
   ../common
+  ../../blenkernel
   ../../blenloader
+  ../../blentranslation
+  ../../bmesh
   ../../editors/include
   ../../imbuf
   ../../makesrna
+  ../../nodes
+  ../../python/intern
+  ../../windowmanager
   ../../../../intern/utfconv
+  # RNA_prototypes.h
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -61,11 +80,15 @@ set(INC_SYS
 )
 
 set(SRC
+  intern/usd_armature_utils.cc
   intern/usd_asset_utils.cc
+  intern/usd_blend_shape_utils.cc
   intern/usd_capi_export.cc
   intern/usd_capi_import.cc
   intern/usd_hierarchy_iterator.cc
+  intern/usd_hook.cc
   intern/usd_writer_abstract.cc
+  intern/usd_writer_armature.cc
   intern/usd_writer_camera.cc
   intern/usd_writer_curves.cc
   intern/usd_writer_hair.cc
@@ -79,22 +102,32 @@ set(SRC
   intern/usd_reader_camera.cc
   intern/usd_reader_curve.cc
   intern/usd_reader_geom.cc
+  intern/usd_reader_instance.cc
   intern/usd_reader_light.cc
   intern/usd_reader_material.cc
   intern/usd_reader_mesh.cc
   intern/usd_reader_nurbs.cc
   intern/usd_reader_prim.cc
   intern/usd_reader_shape.cc
+  intern/usd_reader_skeleton.cc
   intern/usd_reader_stage.cc
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
+  intern/usd_skel_convert.cc
+  intern/usd_skel_root_utils.cc
 
   usd.h
+  usd.hh
 
+  intern/usd_armature_utils.h
   intern/usd_asset_utils.h
+  intern/usd_blend_shape_utils.h
   intern/usd_exporter_context.h
+  intern/usd_hash_types.h
   intern/usd_hierarchy_iterator.h
+  intern/usd_hook.h
   intern/usd_writer_abstract.h
+  intern/usd_writer_armature.h
   intern/usd_writer_camera.h
   intern/usd_writer_curves.h
   intern/usd_writer_hair.h
@@ -108,28 +141,63 @@ set(SRC
   intern/usd_reader_camera.h
   intern/usd_reader_curve.h
   intern/usd_reader_geom.h
+  intern/usd_reader_instance.h
   intern/usd_reader_light.h
   intern/usd_reader_material.h
   intern/usd_reader_mesh.h
   intern/usd_reader_nurbs.h
   intern/usd_reader_prim.h
   intern/usd_reader_shape.h
+  intern/usd_reader_skeleton.h
   intern/usd_reader_stage.h
   intern/usd_reader_volume.h
   intern/usd_reader_xform.h
+  intern/usd_skel_convert.h
+  intern/usd_skel_root_utils.h
 )
 
+if(WITH_HYDRA)
+  list(APPEND SRC
+    hydra/curves.cc
+    hydra/hydra_scene_delegate.cc
+    hydra/id.cc
+    hydra/image.cc
+    hydra/instancer.cc
+    hydra/light.cc
+    hydra/material.cc
+    hydra/mesh.cc
+    hydra/object.cc
+    hydra/usd_scene_delegate.cc
+    hydra/volume.cc
+    hydra/volume_modifier.cc
+    hydra/world.cc
+
+    hydra/curves.h
+    hydra/hydra_scene_delegate.h
+    hydra/id.h
+    hydra/image.h
+    hydra/instancer.h
+    hydra/light.h
+    hydra/material.h
+    hydra/mesh.h
+    hydra/object.h
+    hydra/usd_scene_delegate.h
+    hydra/volume.h
+    hydra/volume_modifier.h
+    hydra/world.h
+  )
+endif()
+
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::animrig
   bf_imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_io_common
-  PRIVATE bf::windowmanager
 )
 
 list(APPEND LIB
@@ -142,6 +210,9 @@ list(APPEND LIB
 
 if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+  list(APPEND INC
+    ../../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
@@ -150,10 +221,18 @@ if(WITH_OPENVDB)
   )
 endif()
 
-blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
+  list(APPEND LIB MaterialXCore)
+endif()
+
+blender_add_lib(bf_io_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# RNA_prototypes.h
+add_dependencies(bf_io_usd bf_rna)
 
 if(COMMAND target_precompile_headers)
-  target_precompile_headers(bf_usd PRIVATE intern/usd_precomp.h)
+  target_precompile_headers(bf_io_usd PRIVATE intern/usd_precomp.h)
 endif()
 
 if(WITH_GTESTS)
@@ -173,9 +252,9 @@ if(WITH_GTESTS)
   set(TEST_INC
   )
   set(TEST_LIB
+    bf_blenloader_test_util
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_io_usd_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_lib(io_usd "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()
 
 # In CMAKE version 3.21 and up, we can instead use the `NO_CACHE` option for

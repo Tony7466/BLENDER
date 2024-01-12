@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -59,32 +59,40 @@ static PyObject *pygpu_platform_version_get(PyObject * /*self*/)
   return PyUnicode_FromString(GPU_platform_version());
 }
 
-PyDoc_STRVAR(
-    pygpu_platform_device_type_get_doc,
-    ".. function:: device_type_get()\n"
-    "\n"
-    "   Get GPU device type.\n"
-    "\n"
-    "   :return: Device type ('APPLE', 'NVIDIA', 'AMD', 'INTEL', 'SOFTWARE', 'UNKNOWN').\n"
-    "   :rtype: str\n");
+PyDoc_STRVAR(pygpu_platform_device_type_get_doc,
+             ".. function:: device_type_get()\n"
+             "\n"
+             "   Get GPU device type.\n"
+             "\n"
+             "   :return: Device type ('APPLE', 'NVIDIA', 'AMD', 'INTEL', 'SOFTWARE', 'QUALCOMM', "
+             "'UNKNOWN').\n"
+             "   :rtype: str\n");
 static PyObject *pygpu_platform_device_type_get(PyObject * /*self*/)
 {
+  const char *device;
   if (GPU_type_matches(GPU_DEVICE_APPLE, GPU_OS_ANY, GPU_DRIVER_ANY)) {
-    return PyUnicode_FromString("APPLE");
+    device = "APPLE";
   }
-  if (GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_ANY)) {
-    return PyUnicode_FromString("NVIDIA");
+  else if (GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+    device = "NVIDIA";
   }
-  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
-    return PyUnicode_FromString("AMD");
+  else if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+    device = "AMD";
   }
-  if (GPU_type_matches(GPU_DEVICE_INTEL | GPU_DEVICE_INTEL_UHD, GPU_OS_ANY, GPU_DRIVER_ANY)) {
-    return PyUnicode_FromString("INTEL");
+  else if (GPU_type_matches(GPU_DEVICE_INTEL | GPU_DEVICE_INTEL_UHD, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+    device = "INTEL";
   }
-  if (GPU_type_matches(GPU_DEVICE_SOFTWARE, GPU_OS_ANY, GPU_DRIVER_ANY)) {
-    return PyUnicode_FromString("SOFTWARE");
+  else if (GPU_type_matches(GPU_DEVICE_SOFTWARE, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+    device = "SOFTWARE";
   }
-  return PyUnicode_FromString("UNKNOWN");
+  /* Right now we can only detect Qualcomm GPUs on Windows, not other OSes */
+  else if (GPU_type_matches(GPU_DEVICE_QUALCOMM, GPU_OS_WIN, GPU_DRIVER_ANY)) {
+    device = "QUALCOMM";
+  }
+  else {
+    device = "UNKNOWN";
+  }
+  return PyUnicode_FromString(device);
 }
 
 PyDoc_STRVAR(pygpu_platform_backend_type_get_doc,
@@ -96,19 +104,28 @@ PyDoc_STRVAR(pygpu_platform_backend_type_get_doc,
              "   :rtype: str\n");
 static PyObject *pygpu_platform_backend_type_get(PyObject * /*self*/)
 {
+  const char *backend = "UNKNOWN";
   switch (GPU_backend_get_type()) {
-    case GPU_BACKEND_VULKAN:
-      return PyUnicode_FromString("VULKAN");
-    case GPU_BACKEND_METAL:
-      return PyUnicode_FromString("METAL");
-    case GPU_BACKEND_NONE:
-      return PyUnicode_FromString("NONE");
-    case GPU_BACKEND_OPENGL:
-      return PyUnicode_FromString("OPENGL");
+    case GPU_BACKEND_VULKAN: {
+      backend = "VULKAN";
+      break;
+    }
+    case GPU_BACKEND_METAL: {
+      backend = "METAL";
+      break;
+    }
+    case GPU_BACKEND_NONE: {
+      backend = "NONE";
+      break;
+    }
+    case GPU_BACKEND_OPENGL: {
+      backend = "OPENGL";
+      break;
+    }
     case GPU_BACKEND_ANY:
       break;
   }
-  return PyUnicode_FromString("UNKNOWN");
+  return PyUnicode_FromString(backend);
 }
 
 /** \} */

@@ -40,7 +40,8 @@
 #define ccl_device_inline inline
 #define ccl_noinline __attribute__((noinline))
 #define ccl_inline_constant const constexpr
-#define ccl_static_constant const
+#define ccl_device_constant static constexpr
+#define ccl_static_constexpr static constexpr
 #define ccl_device_forceinline __attribute__((always_inline))
 #define ccl_device_noinline ccl_device ccl_noinline
 #define ccl_device_noinline_cpu ccl_device
@@ -49,6 +50,7 @@
 #define ccl_loop_no_unroll
 #define ccl_optional_struct_init
 #define ccl_private
+#define ccl_ray_data ccl_private
 #define ccl_gpu_shared
 #define ATTR_FALLTHROUGH __attribute__((fallthrough))
 #define ccl_constant const
@@ -222,15 +224,7 @@ ccl_device_forceinline int __float_as_int(float x)
 #define fmodf(x, y) sycl::fmod((x), (y))
 #define lgammaf(x) sycl::lgamma((x))
 
-/* `sycl::native::cos` precision is not sufficient and `-ffast-math` lets
- * the current DPC++ compiler overload `sycl::cos` with it.
- * We work around this issue by directly calling the SPIRV implementation which
- * provides greater precision. */
-#if defined(__SYCL_DEVICE_ONLY__) && defined(__SPIR__)
-#  define cosf(x) __spirv_ocl_cos(((float)(x)))
-#else
-#  define cosf(x) sycl::cos(((float)(x)))
-#endif
+#define cosf(x) sycl::native::cos(((float)(x)))
 #define sinf(x) sycl::native::sin(((float)(x)))
 #define powf(x, y) sycl::native::powr(((float)(x)), ((float)(y)))
 #define tanf(x) sycl::native::tan(((float)(x)))

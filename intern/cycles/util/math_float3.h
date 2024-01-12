@@ -158,7 +158,7 @@ ccl_device_inline float3 operator/=(float3 &a, float f)
   return a = a * invf;
 }
 
-#  if !(defined(__KERNEL_METAL__) || defined(__KERNEL_CUDA__))
+#  if !(defined(__KERNEL_METAL__) || defined(__KERNEL_CUDA__) || defined(__KERNEL_HIP__))
 ccl_device_inline packed_float3 operator*=(packed_float3 &a, const float3 b)
 {
   a = float3(a) * b;
@@ -406,6 +406,12 @@ ccl_device_inline float3 safe_normalize(const float3 a)
 {
   float t = len(a);
   return (t != 0.0f) ? a * (1.0f / t) : a;
+}
+
+ccl_device_inline float3 safe_normalize_fallback(const float3 a, const float3 fallback)
+{
+  float t = len(a);
+  return (t != 0.0f) ? a * (1.0f / t) : fallback;
 }
 
 ccl_device_inline float3 safe_normalize_len(const float3 a, ccl_private float *t)

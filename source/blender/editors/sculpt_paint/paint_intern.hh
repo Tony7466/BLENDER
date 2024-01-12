@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,13 +8,14 @@
 
 #pragma once
 
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "BLI_compiler_compat.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
-#include "ED_select_utils.h"
+#include "ED_select_utils.hh"
 
 #include "DNA_scene_types.h"
 
@@ -34,6 +35,7 @@ struct SpaceImage;
 struct VPaint;
 struct ViewContext;
 struct bContext;
+struct ReportList;
 struct wmEvent;
 struct wmKeyConfig;
 struct wmKeyMap;
@@ -105,13 +107,14 @@ bool PAINT_brush_tool_poll(bContext *C);
 /**
  * Delete overlay cursor textures to preserve memory and invalidate all overlay flags.
  */
-void paint_cursor_delete_textures(void);
+void paint_cursor_delete_textures();
 
-/* paint_vertex.c */
+/* `paint_vertex.cc` */
 
 bool weight_paint_poll(bContext *C);
 bool weight_paint_poll_ignore_tool(bContext *C);
 bool weight_paint_mode_poll(bContext *C);
+bool weight_paint_mode_region_view3d_poll(bContext *C);
 bool vertex_paint_poll(bContext *C);
 bool vertex_paint_poll_ignore_tool(bContext *C);
 /**
@@ -119,9 +122,9 @@ bool vertex_paint_poll_ignore_tool(bContext *C);
  */
 bool vertex_paint_mode_poll(bContext *C);
 
-typedef void (*VPaintTransform_Callback)(const float col[3],
-                                         const void *user_data,
-                                         float r_col[3]);
+using VPaintTransform_Callback = void (*)(const float col[3],
+                                          const void *user_data,
+                                          float r_col[3]);
 
 void PAINT_OT_weight_paint_toggle(wmOperatorType *ot);
 void PAINT_OT_weight_paint(wmOperatorType *ot);
@@ -141,7 +144,7 @@ void PAINT_OT_vertex_paint(wmOperatorType *ot);
  */
 unsigned int ED_vpaint_blend_tool(int tool, uint col, uint paintcol, int alpha_i);
 
-/* paint_vertex_weight_utils.c */
+/* `paint_vertex_weight_utils.cc` */
 
 /**
  * \param weight: Typically the current weight: #MDeformWeight.weight
@@ -170,7 +173,7 @@ bool ED_wpaint_ensure_data(bContext *C,
 /** Return -1 when invalid. */
 int ED_wpaint_mirror_vgroup_ensure(Object *ob, int vgroup_active);
 
-/* paint_vertex_color_ops.c */
+/* `paint_vertex_color_ops.cc` */
 
 void PAINT_OT_vertex_color_set(wmOperatorType *ot);
 void PAINT_OT_vertex_color_from_weight(wmOperatorType *ot);
@@ -180,13 +183,13 @@ void PAINT_OT_vertex_color_hsv(wmOperatorType *ot);
 void PAINT_OT_vertex_color_invert(wmOperatorType *ot);
 void PAINT_OT_vertex_color_levels(wmOperatorType *ot);
 
-/* paint_vertex_weight_ops.c */
+/* `paint_vertex_weight_ops.cc` */
 
 void PAINT_OT_weight_from_bones(wmOperatorType *ot);
 void PAINT_OT_weight_sample(wmOperatorType *ot);
 void PAINT_OT_weight_sample_group(wmOperatorType *ot);
 
-/* paint_vertex_proj.c */
+/* `paint_vertex_proj.cc` */
 
 VertProjHandle *ED_vpaint_proj_handle_create(Depsgraph *depsgraph,
                                              Scene *scene,
@@ -199,7 +202,7 @@ void ED_vpaint_proj_handle_update(Depsgraph *depsgraph,
                                   const float mval_fl[2]);
 void ED_vpaint_proj_handle_free(VertProjHandle *vp_handle);
 
-/* paint_image.c */
+/* `paint_image.cc` */
 
 struct ImagePaintPartialRedraw {
   rcti dirty_region;
@@ -208,7 +211,7 @@ struct ImagePaintPartialRedraw {
 bool image_texture_paint_poll(bContext *C);
 void imapaint_image_update(
     SpaceImage *sima, Image *image, ImBuf *ibuf, ImageUser *iuser, short texpaint);
-ImagePaintPartialRedraw *get_imapaintpartial(void);
+ImagePaintPartialRedraw *get_imapaintpartial();
 void set_imapaintpartial(ImagePaintPartialRedraw *ippr);
 void imapaint_region_tiles(
     ImBuf *ibuf, int x, int y, int w, int h, int *tx, int *ty, int *tw, int *th);
@@ -309,7 +312,7 @@ void paint_curve_mask_cache_update(CurveMaskCache *curve_mask_cache,
                                    float radius,
                                    const float cursor_position[2]);
 
-/* sculpt_uv.c */
+/* `sculpt_uv.cc` */
 
 void SCULPT_OT_uv_sculpt_stroke(wmOperatorType *ot);
 
@@ -444,49 +447,37 @@ BLI_INLINE void flip_qt(float quat[4], const ePaintSymmetryFlags symm)
 }
 
 /* stroke operator */
-typedef enum BrushStrokeMode {
+enum BrushStrokeMode {
   BRUSH_STROKE_NORMAL,
   BRUSH_STROKE_INVERT,
   BRUSH_STROKE_SMOOTH,
-} BrushStrokeMode;
+};
 
 /* paint_hide.cc */
 
-typedef enum {
-  PARTIALVIS_HIDE,
-  PARTIALVIS_SHOW,
-} PartialVisAction;
-
-typedef enum {
-  PARTIALVIS_INSIDE,
-  PARTIALVIS_OUTSIDE,
-  PARTIALVIS_ALL,
-  PARTIALVIS_MASKED,
-} PartialVisArea;
+namespace blender::ed::sculpt_paint::hide {
+void sync_all_from_faces(Object &object);
+void mesh_show_all(Object &object, Span<PBVHNode *> nodes);
+void grids_show_all(Depsgraph &depsgraph, Object &object, Span<PBVHNode *> nodes);
+void tag_update_visibility(const bContext &C);
 
 void PAINT_OT_hide_show(wmOperatorType *ot);
+void PAINT_OT_visibility_invert(wmOperatorType *ot);
+}  // namespace blender::ed::sculpt_paint::hide
 
-/* paint_mask.c */
+/* `paint_mask.cc` */
 
-/* The gesture API doesn't write to this enum type,
- * it writes to eSelectOp from ED_select_utils.h.
- * We must thus map the modes here to the desired
- * eSelectOp modes.
- *
- * Fixes #102349.
- */
-typedef enum {
-  PAINT_MASK_FLOOD_VALUE = SEL_OP_SUB,
-  PAINT_MASK_FLOOD_VALUE_INVERSE = SEL_OP_ADD,
-  PAINT_MASK_INVERT = SEL_OP_XOR,
-} PaintMaskFloodMode;
+namespace blender::ed::sculpt_paint::mask {
+
+Array<float> duplicate_mask(const Object &object);
 
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);
 void PAINT_OT_mask_box_gesture(wmOperatorType *ot);
 void PAINT_OT_mask_line_gesture(wmOperatorType *ot);
+}  // namespace blender::ed::sculpt_paint::mask
 
-/* paint_curve.c */
+/* `paint_curve.cc` */
 
 void PAINTCURVE_OT_new(wmOperatorType *ot);
 void PAINTCURVE_OT_add_point(wmOperatorType *ot);

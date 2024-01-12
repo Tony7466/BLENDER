@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -40,11 +40,15 @@
  * if any of these reference becomes invalid.
  */
 
-#include "BKE_image.h"
+#include "BLI_listbase_wrapper.hh"
 #include "BLI_vector.hh"
-#include "DRW_gpu_wrapper.hh"
+
+#include "BKE_image.h"
+
 #include "GPU_debug.h"
 #include "GPU_material.h"
+
+#include "DRW_gpu_wrapper.hh"
 
 #include "draw_command.hh"
 #include "draw_handle.hh"
@@ -54,6 +58,8 @@
 #include "draw_state.h"
 
 #include "intern/gpu_codegen.h"
+
+#include <sstream>
 
 namespace blender::draw {
 using namespace blender::draw;
@@ -213,6 +219,14 @@ class PassBase {
   void framebuffer_set(GPUFrameBuffer **framebuffer);
 
   /**
+   * Start a new sub-pass and change framebuffer attachments status.
+   * \note Affect the currently bound framebuffer at the time of submission and execution.
+   * \note States are copied and stored in the command.
+   */
+  void subpass_transition(GPUAttachmentState depth_attachment,
+                          Span<GPUAttachmentState> color_attachments);
+
+  /**
    * Bind a material shader along with its associated resources. Any following bind() or
    * push_constant() call will use its interface.
    * IMPORTANT: Assumes material is compiled and can be used (no compilation error).
@@ -347,6 +361,38 @@ class PassBase {
   void push_constant(const char *name, const int3 *data, int array_len = 1);
   void push_constant(const char *name, const int4 *data, int array_len = 1);
   void push_constant(const char *name, const float4x4 *data);
+
+  /**
+   * Update a shader specialization constant.
+   *
+   * IMPORTANT: Non-specialized constants can have undefined values.
+   * Specialize every constant before binding a shader.
+   *
+   * Reference versions are to be used when the resource might change between the time it is
+   * referenced and the time it is dereferenced for drawing.
+   *
+   * IMPORTANT: Will keep a reference to the data and dereference it upon drawing. Make sure data
+   * still alive until pass submission.
+   */
+  void specialize_constant(GPUShader *shader, const char *name, const float &data);
+  void specialize_constant(GPUShader *shader, const char *name, const int &data);
+  void specialize_constant(GPUShader *shader, const char *name, const uint &data);
+  void specialize_constant(GPUShader *shader, const char *name, const bool &data);
+  void specialize_constant(GPUShader *shader, const char *name, const float *data);
+  void specialize_constant(GPUShader *shader, const char *name, const int *data);
+  void specialize_constant(GPUShader *shader, const char *name, const uint *data);
+  void specialize_constant(GPUShader *shader, const char *name, const bool *data);
+
+  /**
+   * Custom resource binding.
+   * Syntactic sugar to avoid calling `resources.bind_resources(pass)` which is semantically less
+   * pleasing.
+   * `U` type must have a `bind_resources<Pass<T> &pass>()` method.
+   */
+  template<class U> void bind_resources(U &resources)
+  {
+    resources.bind_resources(*this);
+  }
 
   /**
    * Turn the pass into a string for inspection.
@@ -548,6 +594,9 @@ template<class T> void PassBase<T>::submit(command::RecordingState &state) const
       case command::Type::FramebufferBind:
         commands_[header.index].framebuffer_bind.execute();
         break;
+      case command::Type::SubPassTransition:
+        commands_[header.index].subpass_transition.execute();
+        break;
       case command::Type::ShaderBind:
         commands_[header.index].shader_bind.execute(state);
         break;
@@ -556,6 +605,9 @@ template<class T> void PassBase<T>::submit(command::RecordingState &state) const
         break;
       case command::Type::PushConstant:
         commands_[header.index].push_constant.execute(state);
+        break;
+      case command::Type::SpecializeConstant:
+        commands_[header.index].specialize_constant.execute();
         break;
       case command::Type::Draw:
         commands_[header.index].draw.execute(state);
@@ -608,6 +660,9 @@ template<class T> std::string PassBase<T>::serialize(std::string line_prefix) co
         break;
       case Type::FramebufferBind:
         ss << line_prefix << commands_[header.index].framebuffer_bind.serialize() << std::endl;
+        break;
+      case Type::SubPassTransition:
+        ss << line_prefix << commands_[header.index].subpass_transition.serialize() << std::endl;
         break;
       case Type::ShaderBind:
         ss << line_prefix << commands_[header.index].shader_bind.serialize() << std::endl;
@@ -671,8 +726,24 @@ inline void PassBase<T>::draw(GPUBatch *batch,
     return;
   }
   BLI_assert(shader_);
-  draw_commands_buf_.append_draw(
-      headers_, commands_, batch, instance_len, vertex_len, vertex_first, handle, custom_id);
+#ifdef WITH_METAL_BACKEND
+  /* TEMP: Note, shader_ is passed as part of the draw as vertex-expansion properties for SSBO
+   * vertex fetch need extracting at command generation time. */
+  GPUShader *draw_shader = GPU_shader_uses_ssbo_vertex_fetch(shader_) ? shader_ : nullptr;
+#endif
+  draw_commands_buf_.append_draw(headers_,
+                                 commands_,
+                                 batch,
+                                 instance_len,
+                                 vertex_len,
+                                 vertex_first,
+                                 handle,
+                                 custom_id
+#ifdef WITH_METAL_BACKEND
+                                 ,
+                                 draw_shader
+#endif
+  );
 }
 
 template<class T>
@@ -823,6 +894,25 @@ template<class T> inline void PassBase<T>::framebuffer_set(GPUFrameBuffer **fram
   create_command(Type::FramebufferBind).framebuffer_bind = {framebuffer};
 }
 
+template<class T>
+inline void PassBase<T>::subpass_transition(GPUAttachmentState depth_attachment,
+                                            Span<GPUAttachmentState> color_attachments)
+{
+  uint8_t color_states[8] = {GPU_ATTACHEMENT_IGNORE};
+  for (auto i : color_attachments.index_range()) {
+    color_states[i] = uint8_t(color_attachments[i]);
+  }
+  create_command(Type::SubPassTransition).subpass_transition = {uint8_t(depth_attachment),
+                                                                {color_states[0],
+                                                                 color_states[1],
+                                                                 color_states[2],
+                                                                 color_states[3],
+                                                                 color_states[4],
+                                                                 color_states[5],
+                                                                 color_states[6],
+                                                                 color_states[7]}};
+}
+
 template<class T> inline void PassBase<T>::material_set(Manager &manager, GPUMaterial *material)
 {
   GPUPass *gpupass = GPU_material_get_pass(material);
@@ -852,6 +942,10 @@ template<class T> inline void PassBase<T>::material_set(Manager &manager, GPUMat
     else if (tex->colorband) {
       /* Color Ramp */
       bind_texture(tex->sampler_name, *tex->colorband);
+    }
+    else if (tex->sky) {
+      /* Sky */
+      bind_texture(tex->sampler_name, *tex->sky, tex->sampler_state);
     }
   }
 
@@ -1166,6 +1260,84 @@ template<class T> inline void PassBase<T>::push_constant(const char *name, const
   create_command(Type::PushConstant) = commands[0];
   create_command(Type::None) = commands[1];
   create_command(Type::None) = commands[2];
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Resource bind Implementation
+ * \{ */
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const int &constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const uint &constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const float &constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const bool &constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const int *constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const uint *constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const float *constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
+}
+
+template<class T>
+inline void PassBase<T>::specialize_constant(GPUShader *shader,
+                                             const char *constant_name,
+                                             const bool *constant_value)
+{
+  create_command(Type::SpecializeConstant).specialize_constant = {
+      shader, GPU_shader_get_constant(shader, constant_name), constant_value};
 }
 
 /** \} */

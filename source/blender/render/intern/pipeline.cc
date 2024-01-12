@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,7 +31,6 @@
 #include "BLI_fileops.h"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -45,32 +44,34 @@
 #include "BKE_animsys.h" /* <------ should this be here?, needed for sequencer update */
 #include "BKE_callbacks.h"
 #include "BKE_camera.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 #include "BKE_writeavi.h" /* <------ should be replaced once with generic movie module */
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_debug.h"
-#include "DEG_depsgraph_query.h"
+#include "COM_render_context.hh"
+
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_debug.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
@@ -82,12 +83,13 @@
 #include "RE_pipeline.h"
 #include "RE_texture.h"
 
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
 
+#include "GPU_capabilities.h"
 #include "GPU_context.h"
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #ifdef WITH_FREESTYLE
 #  include "FRS_freestyle.h"
@@ -170,6 +172,12 @@ static bool do_write_image_or_movie(Render *re,
 static void result_nothing(void * /*arg*/, RenderResult * /*rr*/) {}
 static void result_rcti_nothing(void * /*arg*/, RenderResult * /*rr*/, rcti * /*rect*/) {}
 static void current_scene_nothing(void * /*arg*/, Scene * /*scene*/) {}
+static bool prepare_viewlayer_nothing(void * /*arg*/,
+                                      ViewLayer * /*vl*/,
+                                      Depsgraph * /*depsgraph*/)
+{
+  return true;
+}
 static void stats_nothing(void * /*arg*/, RenderStats * /*rs*/) {}
 static void float_nothing(void * /*arg*/, float /*val*/) {}
 static bool default_break(void * /*arg*/)
@@ -437,7 +445,7 @@ void RE_AcquireResultImage(Render *re, RenderResult *rr, const int view_id)
       /* The render result uses shallow initialization, and the caller is not expected to
        * explicitly free it. So simply assign the buffers as a shallow copy here as well.
        *
-       * The thread safety is ensured via the  re->resultmutex. */
+       * The thread safety is ensured via the `re->resultmutex`. */
       rr->ibuf = rv->ibuf;
 
       /* active layer */
@@ -544,17 +552,18 @@ Render *RE_NewSceneRender(const Scene *scene)
 void RE_InitRenderCB(Render *re)
 {
   /* set default empty callbacks */
-  re->display_init = result_nothing;
-  re->display_clear = result_nothing;
-  re->display_update = result_rcti_nothing;
-  re->current_scene_update = current_scene_nothing;
-  re->progress = float_nothing;
-  re->test_break = default_break;
+  re->display_init_cb = result_nothing;
+  re->display_clear_cb = result_nothing;
+  re->display_update_cb = result_rcti_nothing;
+  re->current_scene_update_cb = current_scene_nothing;
+  re->prepare_viewlayer_cb = prepare_viewlayer_nothing;
+  re->progress_cb = float_nothing;
+  re->test_break_cb = default_break;
   if (G.background) {
-    re->stats_draw = stats_background;
+    re->stats_draw_cb = stats_background;
   }
   else {
-    re->stats_draw = stats_nothing;
+    re->stats_draw_cb = stats_nothing;
   }
   /* clear callback handles */
   re->dih = re->dch = re->duh = re->sdh = re->prh = re->tbh = nullptr;
@@ -651,7 +660,8 @@ void RE_FreeUnusedGPUResources()
        * race condition here because we are on the main thread and new jobs can only
        * be started from the main thread. */
       if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER) ||
-          WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE)) {
+          WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE))
+      {
         do_free = false;
         break;
       }
@@ -873,47 +883,55 @@ void RE_InitState(Render *re,
 
 void RE_display_init_cb(Render *re, void *handle, void (*f)(void *handle, RenderResult *rr))
 {
-  re->display_init = f;
+  re->display_init_cb = f;
   re->dih = handle;
 }
 void RE_display_clear_cb(Render *re, void *handle, void (*f)(void *handle, RenderResult *rr))
 {
-  re->display_clear = f;
+  re->display_clear_cb = f;
   re->dch = handle;
 }
 void RE_display_update_cb(Render *re,
                           void *handle,
                           void (*f)(void *handle, RenderResult *rr, rcti *rect))
 {
-  re->display_update = f;
+  re->display_update_cb = f;
   re->duh = handle;
 }
 void RE_current_scene_update_cb(Render *re, void *handle, void (*f)(void *handle, Scene *scene))
 {
-  re->current_scene_update = f;
+  re->current_scene_update_cb = f;
   re->suh = handle;
 }
 void RE_stats_draw_cb(Render *re, void *handle, void (*f)(void *handle, RenderStats *rs))
 {
-  re->stats_draw = f;
+  re->stats_draw_cb = f;
   re->sdh = handle;
 }
 void RE_progress_cb(Render *re, void *handle, void (*f)(void *handle, float))
 {
-  re->progress = f;
+  re->progress_cb = f;
   re->prh = handle;
 }
 
 void RE_draw_lock_cb(Render *re, void *handle, void (*f)(void *handle, bool lock))
 {
-  re->draw_lock = f;
+  re->draw_lock_cb = f;
   re->dlh = handle;
 }
 
 void RE_test_break_cb(Render *re, void *handle, bool (*f)(void *handle))
 {
-  re->test_break = f;
+  re->test_break_cb = f;
   re->tbh = handle;
+}
+
+void RE_prepare_viewlayer_cb(Render *re,
+                             void *handle,
+                             bool (*f)(void *handle, ViewLayer *vl, Depsgraph *depsgraph))
+{
+  re->prepare_viewlayer_cb = f;
+  re->prepare_vl_handle = handle;
 }
 
 /** \} */
@@ -1034,8 +1052,8 @@ static void render_result_uncrop(Render *re)
 
       BLI_rw_mutex_unlock(&re->resultmutex);
 
-      re->display_init(re->dih, re->result);
-      re->display_update(re->duh, re->result, nullptr);
+      re->display_init(re->result);
+      re->display_update(re->result, nullptr);
 
       /* restore the disprect from border */
       re->disprect = orig_disprect;
@@ -1064,7 +1082,7 @@ static void do_render_engine(Render *re)
   /* now use renderdata and camera to set viewplane */
   RE_SetCamera(re, camera);
 
-  re->current_scene_update(re->suh, re->scene);
+  re->current_scene_update(re->scene);
   RE_engine_render(re, false);
 
   /* when border render, check if we have to insert it in black */
@@ -1098,13 +1116,13 @@ static void do_render_compositor_scene(Render *re, Scene *sce, int cfra)
   resc->scene = sce;
 
   /* copy callbacks */
-  resc->display_update = re->display_update;
+  resc->display_update_cb = re->display_update_cb;
   resc->duh = re->duh;
-  resc->test_break = re->test_break;
+  resc->test_break_cb = re->test_break_cb;
   resc->tbh = re->tbh;
-  resc->stats_draw = re->stats_draw;
+  resc->stats_draw_cb = re->stats_draw_cb;
   resc->sdh = re->sdh;
-  resc->current_scene_update = re->current_scene_update;
+  resc->current_scene_update_cb = re->current_scene_update_cb;
   resc->suh = re->suh;
 
   do_render_engine(resc);
@@ -1158,7 +1176,8 @@ static void do_render_compositor_scenes(Render *re)
       if (node->id && node->id != (ID *)re->scene) {
         Scene *scene = (Scene *)node->id;
         if (!BLI_gset_haskey(scenes_rendered, scene) &&
-            render_scene_has_layers_to_render(scene, nullptr)) {
+            render_scene_has_layers_to_render(scene, nullptr))
+        {
           do_render_compositor_scene(re, scene, cfra);
           BLI_gset_add(scenes_rendered, scene);
           node->typeinfo->updatefunc(restore_scene->nodetree, node);
@@ -1174,7 +1193,7 @@ static void do_render_compositor_scenes(Render *re)
 
   if (changed_scene) {
     /* If rendered another scene, switch back to the current scene with compositing nodes. */
-    re->current_scene_update(re->suh, re->scene);
+    re->current_scene_update(re->scene);
   }
 }
 
@@ -1186,7 +1205,7 @@ static void render_compositor_stats(void *arg, const char *str)
   RenderStats i;
   memcpy(&i, &re->i, sizeof(i));
   i.infostr = str;
-  re->stats_draw(re->sdh, &i);
+  re->stats_draw(&i);
 }
 
 /* Render compositor nodes, along with any scenes required for them.
@@ -1228,7 +1247,7 @@ static void do_render_compositor(Render *re)
     BLI_rw_mutex_unlock(&re->resultmutex);
   }
 
-  if (!re->test_break(re->tbh)) {
+  if (!re->test_break()) {
 
     if (ntree) {
       ntreeCompositTagRender(re->pipeline_scene_eval);
@@ -1240,10 +1259,10 @@ static void do_render_compositor(Render *re)
         do_render_compositor_scenes(re);
       }
 
-      if (!re->test_break(re->tbh)) {
+      if (!re->test_break()) {
         ntree->runtime->stats_draw = render_compositor_stats;
-        ntree->runtime->test_break = re->test_break;
-        ntree->runtime->progress = re->progress;
+        ntree->runtime->test_break = re->test_break_cb;
+        ntree->runtime->progress = re->progress_cb;
         ntree->runtime->sdh = re;
         ntree->runtime->tbh = re->tbh;
         ntree->runtime->prh = re->prh;
@@ -1252,10 +1271,18 @@ static void do_render_compositor(Render *re)
           /* If we have consistent depsgraph now would be a time to update them. */
         }
 
+        blender::realtime_compositor::RenderContext compositor_render_context;
         LISTBASE_FOREACH (RenderView *, rv, &re->result->views) {
-          ntreeCompositExecTree(
-              re, re->pipeline_scene_eval, ntree, &re->r, true, G.background == 0, rv->name);
+          ntreeCompositExecTree(re,
+                                re->pipeline_scene_eval,
+                                ntree,
+                                &re->r,
+                                true,
+                                G.background == 0,
+                                rv->name,
+                                &compositor_render_context);
         }
+        compositor_render_context.save_file_outputs(re->pipeline_scene_eval);
 
         ntree->runtime->stats_draw = nullptr;
         ntree->runtime->test_break = nullptr;
@@ -1268,7 +1295,7 @@ static void do_render_compositor(Render *re)
   /* Weak: the display callback wants an active render-layer pointer. */
   if (re->result != nullptr) {
     re->result->renlay = render_get_single_layer(re, re->result);
-    re->display_update(re->duh, re->result, nullptr);
+    re->display_update(re->result, nullptr);
   }
 }
 
@@ -1406,7 +1433,7 @@ static void do_render_sequencer(Render *re)
 
     /* would mark display buffers as invalid */
     RE_SetActiveRenderView(re, rv->name);
-    re->display_update(re->duh, re->result, nullptr);
+    re->display_update(re->result, nullptr);
   }
 
   recurs_depth--;
@@ -1416,10 +1443,10 @@ static void do_render_sequencer(Render *re)
 
   /* set overall progress of sequence rendering */
   if (re->r.efra != re->r.sfra) {
-    re->progress(re->prh, float(cfra - re->r.sfra) / (re->r.efra - re->r.sfra));
+    re->progress(float(cfra - re->r.sfra) / (re->r.efra - re->r.sfra));
   }
   else {
-    re->progress(re->prh, 1.0f);
+    re->progress(1.0f);
   }
 }
 
@@ -1430,7 +1457,7 @@ static void do_render_full_pipeline(Render *re)
 {
   bool render_seq = false;
 
-  re->current_scene_update(re->suh, re->scene);
+  re->current_scene_update_cb(re->suh, re->scene);
 
   BKE_scene_camera_switch_update(re->scene);
 
@@ -1445,13 +1472,13 @@ static void do_render_full_pipeline(Render *re)
   }
   else if (RE_seq_render_active(re->scene, &re->r)) {
     /* NOTE: do_render_sequencer() frees rect32 when sequencer returns float images. */
-    if (!re->test_break(re->tbh)) {
+    if (!re->test_break()) {
       do_render_sequencer(re);
       render_seq = true;
     }
 
-    re->stats_draw(re->sdh, &re->i);
-    re->display_update(re->duh, re->result, nullptr);
+    re->stats_draw(&re->i);
+    re->display_update(re->result, nullptr);
   }
   else {
     do_render_compositor(re);
@@ -1459,7 +1486,7 @@ static void do_render_full_pipeline(Render *re)
 
   re->i.lastframetime = PIL_check_seconds_timer() - re->i.starttime;
 
-  re->stats_draw(re->sdh, &re->i);
+  re->stats_draw(&re->i);
 
   /* save render result stamp if needed */
   if (re->result != nullptr) {
@@ -1472,7 +1499,7 @@ static void do_render_full_pipeline(Render *re)
     /* stamp image info here */
     if ((re->r.stamp & R_STAMP_ALL) && (re->r.stamp & R_STAMP_DRAW)) {
       renderresult_stampinfo(re);
-      re->display_update(re->duh, re->result, nullptr);
+      re->display_update(re->result, nullptr);
     }
   }
 }
@@ -1614,6 +1641,32 @@ static int check_compositor_output(Scene *scene)
   return node_tree_has_compositor_output(scene->nodetree);
 }
 
+/* Identify if the compositor can run on the GPU. Currently, this only checks if the compositor is
+ * set to GPU and the render size exceeds what can be allocated as a texture in it. */
+static bool is_compositing_possible_on_gpu(Scene *scene, ReportList *reports)
+{
+  /* CPU compositor can always run. */
+  if (!U.experimental.use_full_frame_compositor ||
+      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_REALTIME)
+  {
+    return true;
+  }
+
+  int width, height;
+  BKE_render_resolution(&scene->r, false, &width, &height);
+  const int max_texture_size = GPU_max_texture_size();
+
+  /* There is no way to know if the render size is too large except if we actually allocate a test
+   * texture, which we want to avoid due its cost. So we employ a heuristic that so far has worked
+   * with all known GPU drivers. */
+  if (size_t(width) * height > (size_t(max_texture_size) * max_texture_size) / 4) {
+    BKE_report(reports, RPT_ERROR, "Render size too large for GPU, use CPU compositor instead");
+    return false;
+  }
+
+  return true;
+}
+
 bool RE_is_rendering_allowed(Scene *scene,
                              ViewLayer *single_layer,
                              Object *camera_override,
@@ -1623,7 +1676,8 @@ bool RE_is_rendering_allowed(Scene *scene,
 
   if (scene->r.mode & R_BORDER) {
     if (scene->r.border.xmax <= scene->r.border.xmin ||
-        scene->r.border.ymax <= scene->r.border.ymin) {
+        scene->r.border.ymax <= scene->r.border.ymin)
+    {
       BKE_report(reports, RPT_ERROR, "No border area selected");
       return false;
     }
@@ -1645,6 +1699,10 @@ bool RE_is_rendering_allowed(Scene *scene,
 
     if (!check_compositor_output(scene)) {
       BKE_report(reports, RPT_ERROR, "No render output node in scene");
+      return false;
+    }
+
+    if (!is_compositing_possible_on_gpu(scene, reports)) {
       return false;
     }
   }
@@ -1764,8 +1822,8 @@ static bool render_init_from_main(Render *re,
   /* Init-state makes new result, have to send changed tags around. */
   ntreeCompositTagRender(re->scene);
 
-  re->display_init(re->dih, re->result);
-  re->display_clear(re->dch, re->result);
+  re->display_init(re->result);
+  re->display_clear(re->result);
 
   return true;
 }
@@ -1820,21 +1878,6 @@ static void render_pipeline_free(Render *re)
   /* Destroy the opengl context in the correct thread. */
   RE_blender_gpu_context_free(re);
   RE_system_gpu_context_free(re);
-
-  /* In the case the engine did not mark tiles as finished (un-highlight, which could happen in
-   * the case of cancelled render) ensure the storage is empty. */
-  if (re->highlighted_tiles != nullptr) {
-    BLI_mutex_lock(&re->highlighted_tiles_mutex);
-
-    /* Rendering is supposed to be finished here, so no new tiles are expected to be written.
-     * Only make it so possible read-only access to the highlighted tiles is thread-safe. */
-    BLI_assert(re->highlighted_tiles);
-
-    BLI_gset_free(re->highlighted_tiles, MEM_freeN);
-    re->highlighted_tiles = nullptr;
-
-    BLI_mutex_unlock(&re->highlighted_tiles_mutex);
-  }
 }
 
 void RE_RenderFrame(Render *re,
@@ -1949,7 +1992,7 @@ void RE_RenderFreestyleStrokes(Render *re, Main *bmain, Scene *scene, const bool
 
 void RE_RenderFreestyleExternal(Render *re)
 {
-  if (re->test_break(re->tbh)) {
+  if (re->test_break()) {
     return;
   }
 
@@ -2381,7 +2424,7 @@ void RE_RenderAnim(Render *re,
     do_render_full_pipeline(re);
     totrendered++;
 
-    if (re->test_break(re->tbh) == 0) {
+    if (re->test_break_cb(re->tbh) == 0) {
       if (!G.is_break) {
         if (!do_write_image_or_movie(re, bmain, scene, mh, totvideos, nullptr)) {
           G.is_break = true;
@@ -2460,7 +2503,10 @@ void RE_RenderAnim(Render *re,
 void RE_PreviewRender(Render *re, Main *bmain, Scene *sce)
 {
   /* Ensure within GPU render boundary. */
-  GPU_render_begin();
+  const bool use_gpu = GPU_backend_get_type() != GPU_BACKEND_NONE;
+  if (use_gpu) {
+    GPU_render_begin();
+  }
 
   Object *camera;
   int winx, winy;
@@ -2484,7 +2530,9 @@ void RE_PreviewRender(Render *re, Main *bmain, Scene *sce)
   }
 
   /* Close GPU render boundary. */
-  GPU_render_end();
+  if (use_gpu) {
+    GPU_render_end();
+  }
 }
 
 /* NOTE: repeated win/disprect calc... solve that nicer, also in compo. */

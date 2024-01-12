@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -318,6 +318,15 @@ TEST(index_mask, ComplementFuzzy)
     complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
     mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
   }
+}
+
+TEST(index_mask, OffsetIndexRangeFind)
+{
+  IndexMask mask = IndexRange(1, 2);
+  auto result = mask.find(1);
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(mask.iterator_to_index(*result), 0);
+  EXPECT_EQ(mask[0], 1);
 }
 
 }  // namespace blender::index_mask::tests

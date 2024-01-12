@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_node_types.h"
 
 #include "BKE_compute_contexts.hh"
+
+#include <ostream>
 
 namespace blender::bke {
 
@@ -21,7 +23,7 @@ void ModifierComputeContext::print_current_in_line(std::ostream &stream) const
   stream << "Modifier: " << modifier_name_;
 }
 
-NodeGroupComputeContext::NodeGroupComputeContext(
+GroupNodeComputeContext::GroupNodeComputeContext(
     const ComputeContext *parent,
     const int32_t node_id,
     const std::optional<ComputeContextHash> &cached_hash)
@@ -43,23 +45,21 @@ NodeGroupComputeContext::NodeGroupComputeContext(
   }
 }
 
-NodeGroupComputeContext::NodeGroupComputeContext(const ComputeContext *parent, const bNode &node)
-    : NodeGroupComputeContext(parent, node.identifier)
+GroupNodeComputeContext::GroupNodeComputeContext(const ComputeContext *parent,
+                                                 const bNode &node,
+                                                 const bNodeTree &caller_tree)
+    : GroupNodeComputeContext(parent, node.identifier)
 {
-#ifdef DEBUG
-  debug_node_name_ = node.name;
-#endif
+  caller_group_node_ = &node;
+  caller_tree_ = &caller_tree;
 }
 
-void NodeGroupComputeContext::print_current_in_line(std::ostream &stream) const
+void GroupNodeComputeContext::print_current_in_line(std::ostream &stream) const
 {
-#ifdef DEBUG
-  if (!debug_node_name_.empty()) {
-    stream << "Node: " << debug_node_name_;
+  if (caller_group_node_ != nullptr) {
+    stream << "Node: " << caller_group_node_->name;
     return;
   }
-#endif
-  stream << "Node ID: " << node_id_;
 }
 
 SimulationZoneComputeContext::SimulationZoneComputeContext(const ComputeContext *parent,

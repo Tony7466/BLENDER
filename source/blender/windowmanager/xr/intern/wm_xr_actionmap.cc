@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,7 @@
 #include <cmath>
 #include <cstring>
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
 
 #include "BLI_listbase.h"
@@ -23,10 +23,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm_xr_intern.h"
+#include "wm_xr_intern.hh"
 
 #define WM_XR_ACTIONMAP_STR_DEFAULT "actionmap"
 #define WM_XR_ACTIONMAP_ITEM_STR_DEFAULT "action"

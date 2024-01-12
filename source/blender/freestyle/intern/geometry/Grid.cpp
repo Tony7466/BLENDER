@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,17 +58,17 @@ void firstIntersectionGridVisitor::examineOccluder(Polygon3r *occ)
 #else
         if (tmp_t < t_) {
 #endif
-        occluder_ = occ;
-        u_ = tmp_u;
-        v_ = tmp_v;
-        t_ = tmp_t;
+          occluder_ = occ;
+          u_ = tmp_u;
+          v_ = tmp_v;
+          t_ = tmp_t;
+        }
+      }
+      else {
+        occ->userdata2 = nullptr;
       }
     }
-    else {
-      occ->userdata2 = nullptr;
-    }
   }
-}
 }  // namespace Freestyle
 
 bool firstIntersectionGridVisitor::stop()
@@ -336,7 +336,7 @@ void Grid::initRay(const Vec3r &orig, const Vec3r &end, uint timestamp)
 
   for (uint i = 0; i < 3; i++) {
     _current_cell[i] = uint(floor((orig[i] - _orig[i]) / _cell_size[i]));
-    // soc unused - unsigned u = _current_cell[i];
+    // soc unused - uint u = _current_cell[i];
     _pt[i] = orig[i] - _orig[i] - _current_cell[i] * _cell_size[i];
   }
   //_ray_occluders.clear();
@@ -357,7 +357,7 @@ bool Grid::initInfiniteRay(const Vec3r &orig, const Vec3r &dir, uint timestamp)
   if (box.inside(orig)) {
     for (uint i = 0; i < 3; i++) {
       _current_cell[i] = uint(floor((orig[i] - _orig[i]) / _cell_size[i]));
-      // soc unused - unsigned u = _current_cell[i];
+      // soc unused - uint u = _current_cell[i];
       _pt[i] = orig[i] - _orig[i] - _current_cell[i] * _cell_size[i];
     }
   }
@@ -372,7 +372,7 @@ bool Grid::initInfiniteRay(const Vec3r &orig, const Vec3r &dir, uint timestamp)
         if (_current_cell[i] == _cells_nb[i]) {
           _current_cell[i] = _cells_nb[i] - 1;
         }
-        // soc unused - unsigned u = _current_cell[i];
+        // soc unused - uint u = _current_cell[i];
         _pt[i] = newOrig[i] - _orig[i] - _current_cell[i] * _cell_size[i];
       }
     }

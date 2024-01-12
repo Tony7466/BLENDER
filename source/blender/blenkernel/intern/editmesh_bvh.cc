@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010 Blender Foundation
+/* SPDX-FileCopyrightText: 2010 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,9 +9,10 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_kdopbvh.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 
 #include "BKE_editmesh_bvh.h" /* own include */
 
@@ -57,7 +58,7 @@ BMBVHTree *BKE_bmbvh_new_ex(BMesh *bm,
   BMFace *f_test, *f_test_prev;
   bool test_fn_ret;
 
-  /* BKE_editmesh_looptri_calc() must be called already */
+  /* BKE_editmesh_looptris_calc() must be called already */
   BLI_assert(looptris_tot != 0 || bm->totface == 0);
 
   if (cos_cage) {
@@ -206,7 +207,7 @@ static void bmbvh_tri_from_face(const float *cos[3],
   }
 }
 
-/* Taken from `bvhutils.c`. */
+/* Taken from `bvhutils.cc`. */
 
 /* -------------------------------------------------------------------- */
 /* BKE_bmbvh_ray_cast */
@@ -308,8 +309,8 @@ BMFace *BKE_bmbvh_ray_cast(BMBVHTree *bmtree,
   hit.index = -1;
 
   /* ok to leave 'uv' uninitialized */
-  bmcb_data.looptris = (const BMLoop *(*)[3])bmtree->looptris;
-  bmcb_data.cos_cage = (const float(*)[3])bmtree->cos_cage;
+  bmcb_data.looptris = const_cast<const BMLoop *(*)[3]>(bmtree->looptris);
+  bmcb_data.cos_cage = bmtree->cos_cage;
 
   BLI_bvhtree_ray_cast(bmtree->tree, co, dir, radius, &hit, bmbvh_ray_cast_cb, &bmcb_data);
 
@@ -373,8 +374,8 @@ BMFace *BKE_bmbvh_ray_cast_filter(BMBVHTree *bmtree,
   hit.index = -1;
 
   /* ok to leave 'uv' uninitialized */
-  bmcb_data->looptris = (const BMLoop *(*)[3])bmtree->looptris;
-  bmcb_data->cos_cage = (const float(*)[3])bmtree->cos_cage;
+  bmcb_data->looptris = const_cast<const BMLoop *(*)[3]>(bmtree->looptris);
+  bmcb_data->cos_cage = bmtree->cos_cage;
 
   BLI_bvhtree_ray_cast(
       bmtree->tree, co, dir, radius, &hit, bmbvh_ray_cast_cb_filter, &bmcb_data_filter);
@@ -436,8 +437,8 @@ BMVert *BKE_bmbvh_find_vert_closest(BMBVHTree *bmtree, const float co[3], const 
   hit.dist_sq = dist_max_sq;
   hit.index = -1;
 
-  bmcb_data.looptris = (const BMLoop *(*)[3])bmtree->looptris;
-  bmcb_data.cos_cage = (const float(*)[3])bmtree->cos_cage;
+  bmcb_data.looptris = const_cast<const BMLoop *(*)[3]>(bmtree->looptris);
+  bmcb_data.cos_cage = bmtree->cos_cage;
   bmcb_data.dist_max_sq = dist_max_sq;
 
   BLI_bvhtree_find_nearest(bmtree->tree, co, &hit, bmbvh_find_vert_closest_cb, &bmcb_data);
@@ -495,8 +496,8 @@ BMFace *BKE_bmbvh_find_face_closest(BMBVHTree *bmtree, const float co[3], const 
   hit.dist_sq = dist_max_sq;
   hit.index = -1;
 
-  bmcb_data.looptris = (const BMLoop *(*)[3])bmtree->looptris;
-  bmcb_data.cos_cage = (const float(*)[3])bmtree->cos_cage;
+  bmcb_data.looptris = const_cast<const BMLoop *(*)[3]>(bmtree->looptris);
+  bmcb_data.cos_cage = bmtree->cos_cage;
   bmcb_data.dist_max_sq = dist_max_sq;
 
   BLI_bvhtree_find_nearest(bmtree->tree, co, &hit, bmbvh_find_face_closest_cb, &bmcb_data);

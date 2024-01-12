@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -98,8 +98,8 @@ class SMAABlendingWeightCalculationOperation : public MultiThreadedOperation {
   /**
    * These functions allows to perform diagonal pattern searches.
    */
-  int search_diag1(int x, int y, int dir, bool *found);
-  int search_diag2(int x, int y, int dir, bool *found);
+  int search_diag1(int x, int y, int dir, bool *r_found);
+  int search_diag2(int x, int y, int dir, bool *r_found);
   /**
    * This searches for diagonal patterns and returns the corresponding weights.
    */

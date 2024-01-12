@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,15 +24,16 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
 #include "BLI_math_base.h"
+#include "BLI_math_color.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_deform.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 #include "bmesh_py_types_meshdata.h"
 
 #include "../generic/py_capi_utils.h"

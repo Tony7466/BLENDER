@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -211,7 +211,8 @@ static PyObject *py_kdtree_find(PyKDTree *self, PyObject *args, PyObject *kwargs
   const char *keywords[] = {"co", "filter", nullptr};
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwargs, "O|$O:find", (char **)keywords, &py_co, &py_filter)) {
+          args, kwargs, "O|$O:find", (char **)keywords, &py_co, &py_filter))
+  {
     return nullptr;
   }
 
@@ -230,7 +231,7 @@ static PyObject *py_kdtree_find(PyKDTree *self, PyObject *args, PyObject *kwargs
     BLI_kdtree_3d_find_nearest(self->obj, co, &nearest);
   }
   else {
-    PyKDTree_NearestData data = {0};
+    PyKDTree_NearestData data = {nullptr};
 
     data.py_filter = py_filter;
     data.is_error = false;
@@ -424,7 +425,7 @@ PyTypeObject PyKDTree_Type = {
     /*tp_init*/ (initproc)PyKDTree__tp_init,
     /*tp_alloc*/ (allocfunc)PyType_GenericAlloc,
     /*tp_new*/ (newfunc)PyType_GenericNew,
-    /*tp_free*/ (freefunc)0,
+    /*tp_free*/ (freefunc) nullptr,
     /*tp_is_gc*/ nullptr,
     /*tp_bases*/ nullptr,
     /*tp_mro*/ nullptr,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,11 +30,12 @@
 #include "GPU_texture.h"
 #include "GPU_viewport.h"
 
-#include "ED_view3d_offscreen.h"
+#include "ED_view3d_offscreen.hh"
 
 #include "../mathutils/mathutils.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 
 #include "gpu_py.h"
 #include "gpu_py_texture.h"
@@ -240,11 +241,12 @@ static PyObject *pygpu_offscreen_unbind(BPyGPUOffScreen *self, PyObject *args, P
 
   static const char *_keywords[] = {"restore", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "|$" /* Optional keyword only arguments. */
       "O&" /* `restore` */
       ":unbind",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, PyC_ParseBool, &restore)) {
     return nullptr;
@@ -270,13 +272,14 @@ static PyObject *pygpu_offscreen__tp_new(PyTypeObject * /*self*/, PyObject *args
 
   static const char *_keywords[] = {"width", "height", "format", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "i"  /* `width` */
       "i"  /* `height` */
       "|$" /* Optional keyword only arguments. */
       "O&" /* `format` */
       ":GPUOffScreen.__new__",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, &width, &height, PyC_ParseStringEnum, &pygpu_textureformat))
@@ -391,6 +394,7 @@ static PyObject *pygpu_offscreen_draw_view3d(BPyGPUOffScreen *self, PyObject *ar
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O"  /* `scene` */
       "O"  /* `view_layer` */
       "O"  /* `view3d` */
@@ -402,7 +406,7 @@ static PyObject *pygpu_offscreen_draw_view3d(BPyGPUOffScreen *self, PyObject *ar
       "O&" /* `draw_background` */
       ":draw_view3d",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,

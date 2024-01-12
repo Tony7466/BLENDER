@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -25,8 +25,8 @@ from typing import (
     Tuple,
 )
 
-VERSION_MIN = (8, 0, 0)
-VERSION_MAX_RECOMMENDED = (12, 0, 0)
+VERSION_MIN = (17, 0, 6)
+VERSION_MAX_RECOMMENDED = (17, 0, 6)
 CLANG_FORMAT_CMD = "clang-format"
 
 BASE_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -37,7 +37,8 @@ extensions = (
     ".c", ".cc", ".cpp", ".cxx",
     ".h", ".hh", ".hpp", ".hxx",
     ".m", ".mm",
-    ".osl", ".glsl",
+    ".osl", ".glsl", ".msl",
+    ".metal",
 )
 
 extensions_only_retab = (

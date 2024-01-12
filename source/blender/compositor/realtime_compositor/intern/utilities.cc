@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -122,10 +122,14 @@ InputDescriptor input_descriptor_from_input_socket(const bNodeSocket *socket)
   if (!node_declaration) {
     return input_descriptor;
   }
-  const SocketDeclarationPtr &socket_declaration = node_declaration->inputs[socket->index()];
+  const SocketDeclaration *socket_declaration = node_declaration->inputs[socket->index()];
   input_descriptor.domain_priority = socket_declaration->compositor_domain_priority();
-  input_descriptor.skip_realization = socket_declaration->compositor_skip_realization();
   input_descriptor.expects_single_value = socket_declaration->compositor_expects_single_value();
+
+  input_descriptor.realization_options.realize_on_operation_domain = bool(
+      socket_declaration->compositor_realization_options() &
+      CompositorInputRealizationOptions::RealizeOnOperationDomain);
+
   return input_descriptor;
 }
 
@@ -189,7 +193,7 @@ void compute_preview_from_result(Context &context, const DNode &node, Result &in
   bNodePreview *preview = bke::node_preview_verify(
       root_tree->previews, node.instance_key(), preview_size.x, preview_size.y, true);
 
-  GPUShader *shader = context.shader_manager().get("compositor_compute_preview");
+  GPUShader *shader = context.get_shader("compositor_compute_preview");
   GPU_shader_bind(shader);
 
   if (input_result.type() == ResultType::Float) {
@@ -198,7 +202,7 @@ void compute_preview_from_result(Context &context, const DNode &node, Result &in
 
   input_result.bind_as_texture(shader, "input_tx");
 
-  Result preview_result = Result::Temporary(ResultType::Color, context.texture_pool());
+  Result preview_result = context.create_temporary_result(ResultType::Color);
   preview_result.allocate_texture(Domain(preview_size));
   preview_result.bind_as_image(shader, "preview_img");
 

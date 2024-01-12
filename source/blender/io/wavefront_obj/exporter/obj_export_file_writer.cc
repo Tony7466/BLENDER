@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <sstream>
 
 #include "BKE_attribute.hh"
 #include "BKE_blender_version.h"
@@ -261,7 +262,7 @@ void OBJWriter::write_vertex_coords(FormatHandler &fh,
   if (write_colors && !name.is_empty()) {
     const bke::AttributeAccessor attributes = mesh->attributes();
     const VArray<ColorGeometry4f> attribute = *attributes.lookup_or_default<ColorGeometry4f>(
-        name, ATTR_DOMAIN_POINT, {0.0f, 0.0f, 0.0f, 0.0f});
+        name, bke::AttrDomain::Point, {0.0f, 0.0f, 0.0f, 0.0f});
 
     BLI_assert(tot_count == attribute.size());
     obj_parallel_chunked_output(fh, tot_count, [&](FormatHandler &buf, int i) {
@@ -320,14 +321,14 @@ OBJWriter::func_vert_uv_normal_indices OBJWriter::get_poly_element_writer(
   return &OBJWriter::write_vert_indices;
 }
 
-static int get_smooth_group(const OBJMesh &mesh, const OBJExportParams &params, int poly_idx)
+static int get_smooth_group(const OBJMesh &mesh, const OBJExportParams &params, int face_idx)
 {
-  if (poly_idx < 0) {
+  if (face_idx < 0) {
     return NEGATIVE_INIT;
   }
   int group = SMOOTH_GROUP_DISABLED;
-  if (mesh.is_ith_poly_smooth(poly_idx)) {
-    group = !params.export_smooth_groups ? SMOOTH_GROUP_DEFAULT : mesh.ith_smooth_group(poly_idx);
+  if (mesh.is_ith_poly_smooth(face_idx)) {
+    group = !params.export_smooth_groups ? SMOOTH_GROUP_DEFAULT : mesh.ith_smooth_group(face_idx);
   }
   return group;
 }
@@ -335,24 +336,24 @@ static int get_smooth_group(const OBJMesh &mesh, const OBJExportParams &params, 
 void OBJWriter::write_poly_elements(FormatHandler &fh,
                                     const IndexOffsets &offsets,
                                     const OBJMesh &obj_mesh_data,
-                                    std::function<const char *(int)> matname_fn)
+                                    FunctionRef<const char *(int)> matname_fn)
 {
   const func_vert_uv_normal_indices poly_element_writer = get_poly_element_writer(
       obj_mesh_data.tot_uv_vertices());
 
-  const int tot_polygons = obj_mesh_data.tot_polygons();
+  const int tot_faces = obj_mesh_data.tot_faces();
   const int tot_deform_groups = obj_mesh_data.tot_deform_groups();
   threading::EnumerableThreadSpecific<Vector<float>> group_weights;
   const bke::AttributeAccessor attributes = obj_mesh_data.get_mesh()->attributes();
   const VArray<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_FACE, 0);
+      "material_index", bke::AttrDomain::Face, 0);
 
-  obj_parallel_chunked_output(fh, tot_polygons, [&](FormatHandler &buf, int idx) {
+  obj_parallel_chunked_output(fh, tot_faces, [&](FormatHandler &buf, int idx) {
     /* Polygon order for writing into the file is not necessarily the same
      * as order in the mesh; it will be sorted by material indices. Remap current
      * and previous indices here according to the order. */
-    int prev_i = obj_mesh_data.remap_poly_index(idx - 1);
-    int i = obj_mesh_data.remap_poly_index(idx);
+    int prev_i = obj_mesh_data.remap_face_index(idx - 1);
+    int i = obj_mesh_data.remap_face_index(idx);
 
     Span<int> poly_vertex_indices = obj_mesh_data.calc_poly_vertex_indices(i);
     Span<int> poly_uv_indices = obj_mesh_data.calc_poly_uv_indices(i);
@@ -404,7 +405,7 @@ void OBJWriter::write_poly_elements(FormatHandler &fh,
       }
     }
 
-    /* Write polygon elements. */
+    /* Write face elements. */
     (this->*poly_element_writer)(buf,
                                  offsets,
                                  poly_vertex_indices,
@@ -668,7 +669,7 @@ void MTLWriter::write_materials(const char *blen_filepath,
                                 const char *dest_dir,
                                 bool write_pbr)
 {
-  if (mtlmaterials_.size() == 0) {
+  if (mtlmaterials_.is_empty()) {
     return;
   }
 
@@ -708,7 +709,7 @@ Vector<int> MTLWriter::add_materials(const OBJMesh &mesh_to_export)
   Vector<int> r_mtl_indices;
   r_mtl_indices.resize(mesh_to_export.tot_materials());
   for (int16_t i = 0; i < mesh_to_export.tot_materials(); i++) {
-    const Material *material = mesh_to_export.get_object_material(i);
+    const Material *material = mesh_to_export.materials[i];
     if (!material) {
       r_mtl_indices[i] = -1;
       continue;

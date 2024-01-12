@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,7 +47,8 @@ static int WithinImageBoundaryUP1D___init__(BPy_WithinImageBoundaryUP1D *self,
   double xmin, ymin, xmax, ymax;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "dddd", (char **)kwlist, &xmin, &ymin, &xmax, &ymax)) {
+          args, kwds, "dddd", (char **)kwlist, &xmin, &ymin, &xmax, &ymax))
+  {
     return -1;
   }
   self->py_up1D.up1D = new Predicates1D::WithinImageBoundaryUP1D(xmin, ymin, xmax, ymax);

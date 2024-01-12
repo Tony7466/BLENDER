@@ -23,7 +23,7 @@
 
 #define IMAGIC 0732
 
-typedef struct {
+struct IMAGE {
   ushort imagic; /* Stuff saved on disk. */
   ushort type;
   ushort dim;
@@ -36,7 +36,7 @@ typedef struct {
   char name[80];
   uint colormap;
   uchar _pad2[404];
-} IMAGE;
+};
 
 #define HEADER_SIZE 512
 
@@ -59,9 +59,9 @@ BLI_STATIC_ASSERT(sizeof(IMAGE) == HEADER_SIZE, "Invalid header size");
 #define BPPMASK 0x00ff
 // #define ITYPE_VERBATIM      0x0000 /* UNUSED */
 #define ITYPE_RLE 0x0100
-#define ISRLE(type) (((type)&0xff00) == ITYPE_RLE)
+#define ISRLE(type) (((type) & 0xff00) == ITYPE_RLE)
 // #define ISVERBATIM(type)    (((type) & 0xff00) == ITYPE_VERBATIM)
-#define BPP(type) ((type)&BPPMASK)
+#define BPP(type) ((type) & BPPMASK)
 #define RLE(bpp) (ITYPE_RLE | (bpp))
 // #define VERBATIM(bpp)       (ITYPE_VERBATIM | (bpp)) /* UNUSED */
 // #define IBUFSIZE(pixels)    ((pixels + (pixels >> 6)) << 2) /* UNUSED */

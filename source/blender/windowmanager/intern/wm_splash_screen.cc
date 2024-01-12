@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,13 +25,12 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
 #include "BKE_blender_version.h"
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
 #include "BLT_translation.h"
 
@@ -41,16 +40,16 @@
 #include "IMB_imbuf_types.h"
 
 #include "ED_datafiles.h"
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 
 static void wm_block_close(bContext *C, void *arg_block, void * /*arg*/)
 {
@@ -128,7 +127,7 @@ static void wm_block_splash_image_roundcorners_add(ImBuf *ibuf)
     }
   }
 }
-#endif /* WITH_HEADLESS */
+#endif /* !WITH_HEADLESS */
 
 static ImBuf *wm_block_splash_image(int width, int *r_height)
 {
@@ -263,7 +262,7 @@ void WM_OT_splash(wmOperatorType *ot)
 static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
-  const int text_points_max = MAX2(style->widget.points, style->widgetlabel.points);
+  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
   const int dialog_width = text_points_max * 42 * UI_SCALE_FAC;
 
   uiBlock *block = UI_block_begin(C, region, "about", UI_EMBOSS);
@@ -305,7 +304,7 @@ static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg
     row = uiLayoutRow(layout, false);
     uiItemS_ex(row, 2.7f);
   }
-#endif /* WITH_HEADLESS */
+#endif /* !WITH_HEADLESS */
 
   uiLayout *col = uiLayoutColumn(layout, true);
 

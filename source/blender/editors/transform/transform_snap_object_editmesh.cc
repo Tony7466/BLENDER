@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,19 +6,19 @@
  * \ingroup edtransform
  */
 
-#include "BLI_math.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.h"
 
-#include "BKE_bvhutils.h"
-#include "BKE_editmesh.h"
+#include "BKE_bvhutils.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "transform_snap_object.hh"
 
@@ -184,13 +184,13 @@ static void snap_cache_tri_ensure(SnapCache_EditMesh *em_cache, SnapObjectContex
       BLI_assert(poly_to_tri_count(bm->totface, bm->totloop) == em->tottri);
 
       blender::BitVector<> elem_mask(em->tottri);
-      int looptri_num_active = BM_iter_mesh_bitmap_from_filter_tessface(
+      int looptris_num_active = BM_iter_mesh_bitmap_from_filter_tessface(
           bm,
           elem_mask,
           sctx->callbacks.edit_mesh.test_face_fn,
           sctx->callbacks.edit_mesh.user_data);
 
-      bvhtree_from_editmesh_looptri_ex(&treedata, em, elem_mask, looptri_num_active, 0.0f, 4, 6);
+      bvhtree_from_editmesh_looptris_ex(&treedata, em, elem_mask, looptris_num_active, 0.0f, 4, 6);
     }
     else {
       /* Only cache if BVH-tree is created without a mask.
@@ -198,7 +198,7 @@ static void snap_cache_tri_ensure(SnapCache_EditMesh *em_cache, SnapObjectContex
       BKE_bvhtree_from_editmesh_get(&treedata,
                                     em,
                                     4,
-                                    BVHTREE_FROM_EM_LOOPTRI,
+                                    BVHTREE_FROM_EM_LOOPTRIS,
                                     /* WORKAROUND: avoid updating while transforming. */
                                     G.moving ? nullptr : &em_cache->mesh_runtime->bvh_cache,
                                     &em_cache->mesh_runtime->eval_mutex);
@@ -261,13 +261,13 @@ static SnapCache_EditMesh *editmesh_snapdata_init(SnapObjectContext *sctx,
  * \{ */
 
 /* Callback to ray-cast with back-face culling (#EditMesh). */
-static void editmesh_looptri_raycast_backface_culling_cb(void *userdata,
-                                                         int index,
-                                                         const BVHTreeRay *ray,
-                                                         BVHTreeRayHit *hit)
+static void editmesh_looptris_raycast_backface_culling_cb(void *userdata,
+                                                          int index,
+                                                          const BVHTreeRay *ray,
+                                                          BVHTreeRayHit *hit)
 {
   BMEditMesh *em = static_cast<BMEditMesh *>(userdata);
-  const BMLoop **ltri = (const BMLoop **)em->looptris[index];
+  const BMLoop **ltri = const_cast<const BMLoop **>(em->looptris[index]);
 
   const float *t0, *t1, *t2;
   t0 = ltri[0]->v->co;
@@ -291,6 +291,7 @@ static void editmesh_looptri_raycast_backface_culling_cb(void *userdata,
 
 static bool raycastEditMesh(SnapCache_EditMesh *em_cache,
                             SnapObjectContext *sctx,
+                            Object *ob_eval,
                             BMEditMesh *em,
                             const float4x4 &obmat,
                             const uint ob_index)
@@ -305,12 +306,15 @@ static bool raycastEditMesh(SnapCache_EditMesh *em_cache,
   /* local scale in normal direction */
   ray_normal_local = math::normalize_and_get_length(ray_normal_local, local_scale);
 
-  local_depth = sctx->ret.ray_depth_max;
+  const bool is_in_front = sctx->runtime.params.use_occlusion_test &&
+                           (ob_eval->dtx & OB_DRAW_IN_FRONT) != 0;
+  const float depth_max = is_in_front ? sctx->ret.ray_depth_max_in_front : sctx->ret.ray_depth_max;
+  local_depth = depth_max;
   if (local_depth != BVH_RAYCAST_DIST_MAX) {
     local_depth *= local_scale;
   }
 
-  /* Test BoundBox */
+  /* Test bounding box */
 
   /* was BKE_boundbox_ray_hit_check, see: cf6ca226fa58 */
   if (!isect_ray_aabb_v3_simple(
@@ -351,7 +355,7 @@ static bool raycastEditMesh(SnapCache_EditMesh *em_cache,
                              ray_start_local,
                              ray_normal_local,
                              0.0f,
-                             sctx->ret.ray_depth_max,
+                             depth_max,
                              raycast_all_cb,
                              &data);
 
@@ -368,22 +372,17 @@ static bool raycastEditMesh(SnapCache_EditMesh *em_cache,
                              0.0f,
                              &hit,
                              sctx->runtime.params.use_backface_culling ?
-                                 editmesh_looptri_raycast_backface_culling_cb :
+                                 editmesh_looptris_raycast_backface_culling_cb :
                                  em_cache->raycast_callback,
                              em) != -1)
     {
       hit.dist += len_diff;
       hit.dist /= local_scale;
-      if (hit.dist <= sctx->ret.ray_depth_max) {
-        sctx->ret.loc = math::transform_point(obmat, float3(hit.co));
-        sctx->ret.no = math::normalize(math::transform_direction(obmat, float3(hit.no)));
-
-        sctx->ret.ray_depth_max = hit.dist;
-
-        sctx->ret.index = BM_elem_index_get(em->looptris[hit.index][0]->f);
-
+      if (hit.dist <= depth_max) {
+        hit.index = BM_elem_index_get(em->looptris[hit.index][0]->f);
         retval = true;
       }
+      SnapData::register_result_raycast(sctx, ob_eval, nullptr, obmat, &hit, is_in_front);
     }
   }
 
@@ -407,14 +406,10 @@ static bool nearest_world_editmesh(SnapCache_EditMesh *em_cache,
     return false;
   }
 
-  float4x4 imat = math::invert(obmat);
-  float3 init_co = math::transform_point(imat, float3(sctx->runtime.init_co));
-  float3 curr_co = math::transform_point(imat, float3(sctx->runtime.curr_co));
-
   BVHTreeNearest nearest{};
-  nearest.dist_sq = sctx->ret.dist_px_sq;
+  nearest.dist_sq = sctx->ret.dist_nearest_sq;
   if (nearest_world_tree(
-          sctx, em_cache->bvhtree[2], em_cache->nearest_callback, init_co, curr_co, em, &nearest))
+          sctx, em_cache->bvhtree[2], em_cache->nearest_callback, obmat, em, &nearest))
   {
     SnapData::register_result(sctx, ob_eval, nullptr, obmat, &nearest);
     return true;
@@ -466,20 +461,20 @@ eSnapMode snap_polygon_editmesh(SnapObjectContext *sctx,
                                 const ID * /*id*/,
                                 const float4x4 &obmat,
                                 eSnapMode snap_to_flag,
-                                int polygon)
+                                int face)
 {
   eSnapMode elem = SCE_SNAP_TO_NONE;
 
   BMEditMesh *em = BKE_editmesh_from_object(ob_eval);
   SnapData_EditMesh nearest2d(sctx, em->bm, obmat);
-  nearest2d.clip_planes_enable(sctx);
+  nearest2d.clip_planes_enable(sctx, ob_eval);
 
   BVHTreeNearest nearest{};
   nearest.index = -1;
   nearest.dist_sq = sctx->ret.dist_px_sq;
 
   BM_mesh_elem_table_ensure(em->bm, BM_FACE);
-  BMFace *f = BM_face_at_index(em->bm, polygon);
+  BMFace *f = BM_face_at_index(em->bm, face);
   BMLoop *l_iter, *l_first;
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   if (snap_to_flag & SCE_SNAP_TO_EDGE) {
@@ -559,7 +554,10 @@ static eSnapMode snapEditMesh(SnapCache_EditMesh *em_cache,
         auto test_looseverts_fn = [](BMElem *elem, void *user_data) {
           SnapObjectContext *sctx_ = static_cast<SnapObjectContext *>(user_data);
           BMVert *v = reinterpret_cast<BMVert *>(elem);
-          if (v->e) {
+          if (v->e && (!sctx_->callbacks.edit_mesh.test_edge_fn ||
+                       sctx_->callbacks.edit_mesh.test_edge_fn(
+                           v->e, sctx_->callbacks.edit_mesh.user_data)))
+          {
             return false;
           }
           return sctx_->callbacks.edit_mesh.test_vert_fn(v, sctx_->callbacks.edit_mesh.user_data);
@@ -618,7 +616,7 @@ static eSnapMode snapEditMesh(SnapCache_EditMesh *em_cache,
    * alpha is 1.0 in this case. But even with the alpha being 1.0, the edit mesh is still not
    * occluded. */
   const bool skip_occlusion_plane = XRAY_FLAG_ENABLED(sctx->runtime.v3d);
-  nearest2d.clip_planes_enable(sctx, skip_occlusion_plane);
+  nearest2d.clip_planes_enable(sctx, ob_eval, skip_occlusion_plane);
 
   BVHTreeNearest nearest{};
   nearest.index = -1;
@@ -698,7 +696,7 @@ eSnapMode snap_object_editmesh(SnapObjectContext *sctx,
   }
 
   if (snap_mode_used & SCE_SNAP_TO_FACE) {
-    if (raycastEditMesh(em_cache, sctx, em, obmat, sctx->runtime.object_index++)) {
+    if (raycastEditMesh(em_cache, sctx, ob_eval, em, obmat, sctx->runtime.object_index++)) {
       return SCE_SNAP_TO_FACE;
     }
   }

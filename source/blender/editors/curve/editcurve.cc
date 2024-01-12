@@ -16,39 +16,43 @@
 #include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object_types.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_transform.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
@@ -56,12 +60,12 @@ extern "C" {
 #include "curve_fit_nd.h"
 }
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 void selectend_nurb(Object *obedit, enum eEndPoint_Types selfirst, bool doswap, bool selstatus);
 static void adduplicateflagNurb(
@@ -3474,7 +3478,8 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
           }
 
           if (BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, bezt) &&
-              BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, nextbezt)) {
+              BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, nextbezt))
+          {
             float prevvec[3][3];
 
             memcpy(prevvec, bezt->vec, sizeof(float[9]));
@@ -3527,13 +3532,11 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->pntsv == 1) {
       BPoint *nextbp;
 
-      /*
-       * All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
+      /* NOTE(@nzc): All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
        * are handled together with the regular NURB plane division, as it
-       * should be. I split it off just now, let's see if it is
-       * stable... nzc 30-5-'00
-       */
-      /* count */
+       * should be. I split it off just now, let's see if it is stable. */
+
+      /* Count. */
       a = nu->pntsu;
       bp = nu->bp;
       while (a--) {
@@ -3593,7 +3596,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->type == CU_NURBS) {
       /* This is a very strange test ... */
       /**
-       * Subdivide NURB surfaces - nzc 30-5-'00 -
+       * NOTE(@nzc): Subdivide NURB surfaces
        *
        * Subdivision of a NURB curve can be effected by adding a
        * control point (insertion of a knot), or by raising the
@@ -3719,7 +3722,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
           }
         }
 
-        if (sel) { /* V ! */
+        if (sel) { /* V direction. */
           bpn = bpnew = static_cast<BPoint *>(
               MEM_mallocN((sel + nu->pntsv) * nu->pntsu * sizeof(BPoint), "subdivideNurb4"));
           bp = nu->bp;
@@ -3767,7 +3770,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
             }
           }
 
-          if (sel) { /* U ! */
+          if (sel) { /* U direction. */
             /* Inserting U points is sort of 'default' Flat curves only get
              * U points inserted in them. */
             bpn = bpnew = static_cast<BPoint *>(
@@ -3973,6 +3976,9 @@ static int set_handle_type_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
   const int handle_type = RNA_enum_get(op->ptr, "type");
+  const bool hide_handles = (v3d && (v3d->overlay.handle_display == CURVE_HANDLE_NONE));
+  const eNurbHandleTest_Mode handle_mode = hide_handles ? NURB_HANDLE_TEST_KNOT_ONLY :
+                                                          NURB_HANDLE_TEST_KNOT_OR_EACH;
 
   uint objects_len;
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
@@ -3986,7 +3992,7 @@ static int set_handle_type_exec(bContext *C, wmOperator *op)
     }
 
     ListBase *editnurb = object_editcurve_get(obedit);
-    BKE_nurbList_handles_set(editnurb, handle_type);
+    BKE_nurbList_handles_set(editnurb, handle_mode, handle_type);
 
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
@@ -4555,7 +4561,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     }
 
     /* find both nurbs and points, nu1 will be put behind nu2 */
-    for (nu = static_cast<Nurb *>(nubase->first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, nubase) {
       if (nu->pntsu == 1) {
         nu->flagu &= ~CU_NURB_CYCLIC;
       }
@@ -4663,7 +4669,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
           MEM_freeN(nu1->bp);
           nu1->bp = bp;
 
-          /* a = nu1->pntsu + nu1->orderu; */ /* UNUSED */
+          // a = nu1->pntsu + nu1->orderu; /* UNUSED */
 
           nu1->pntsu += nu2->pntsu;
           BLI_remlink(nubase, nu2);
@@ -4785,11 +4791,9 @@ void CURVE_OT_make_segment(wmOperatorType *ot)
 bool ED_curve_editnurb_select_pick(bContext *C,
                                    const int mval[2],
                                    const int dist_px,
-                                   const bool vert_without_handles,
                                    const SelectPick_Params *params)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   Nurb *nu;
   BezTriple *bezt = nullptr;
   BPoint *bp = nullptr;
@@ -4798,17 +4802,17 @@ bool ED_curve_editnurb_select_pick(bContext *C,
   bool changed = false;
 
   view3d_operator_needs_opengl(C);
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   copy_v2_v2_int(vc.mval, mval);
 
-  const bool use_handle_select = vert_without_handles &&
-                                 (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
+  const bool use_handle_select = (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
 
   bool found = ED_curve_pick_vert_ex(&vc, true, dist_px, &nu, &bezt, &bp, &hand, &basact);
 
   if (params->sel_op == SEL_OP_SET) {
     if ((found && params->select_passthrough) &&
-        (((bezt ? (&bezt->f1)[hand] : bp->f1) & SELECT) != 0)) {
+        (((bezt ? (&bezt->f1)[hand] : bp->f1) & SELECT) != 0))
+    {
       found = false;
     }
     else if (found || params->deselect_all) {
@@ -5614,15 +5618,14 @@ static int add_vertex_exec(bContext *C, wmOperator *op)
 static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
-
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   if (vc.rv3d && !RNA_struct_property_is_set(op->ptr, "location")) {
     Curve *cu;
     float location[3];
     const bool use_proj = ((vc.scene->toolsettings->snap_flag & SCE_SNAP) &&
-                           (vc.scene->toolsettings->snap_mode == SCE_SNAP_TO_FACE));
+                           (vc.scene->toolsettings->snap_mode &
+                            (SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_PROJECT)));
 
     Nurb *nu;
     BezTriple *bezt;
@@ -5703,7 +5706,12 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     RNA_float_set_array(op->ptr, "location", location);
   }
 
-  return add_vertex_exec(C, op);
+  /* Support dragging to move after extrude, see: #114282. */
+  int retval = add_vertex_exec(C, op);
+  if (retval & OPERATOR_FINISHED) {
+    retval |= OPERATOR_PASS_THROUGH;
+  }
+  return WM_operator_flag_only_pass_through_on_press(retval, event);
 }
 
 void CURVE_OT_vertex_add(wmOperatorType *ot)
@@ -5795,7 +5803,7 @@ void CURVE_OT_extrude(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* to give to transform */
-  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
 }
 
 /** \} */
@@ -7139,10 +7147,10 @@ static int match_texture_space_exec(bContext *C, wmOperator * /*op*/)
   float min[3], max[3], texspace_size[3], texspace_location[3];
   int a;
 
-  BLI_assert(object_eval->runtime.curve_cache != nullptr);
+  BLI_assert(object_eval->runtime->curve_cache != nullptr);
 
   INIT_MINMAX(min, max);
-  BKE_displist_minmax(&object_eval->runtime.curve_cache->disp, min, max);
+  BKE_displist_minmax(&object_eval->runtime->curve_cache->disp, min, max);
 
   mid_v3_v3v3(texspace_location, min, max);
 

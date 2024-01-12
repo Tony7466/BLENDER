@@ -1,9 +1,10 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2024 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
+  ../blenkernel
   ../blenloader
   ../gpu
   ../makesrna
@@ -73,7 +74,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   bf_blenloader
   PRIVATE bf::dna
@@ -87,6 +88,15 @@ set(LIB
 )
 
 if(WITH_IMAGE_OPENEXR)
+  # Keep until APPLE/ARM libraries are updated.
+  if(APPLE)
+    if(CMAKE_OSX_ARCHITECTURES MATCHES arm64)
+      list(APPEND INC_SYS
+        ${IMATH_INCLUDE_DIRS}
+      )
+    endif()
+  endif()
+
   list(APPEND LIB
     bf_imbuf_openexr
   )
@@ -187,3 +197,10 @@ set_source_files_properties(
 )
 
 blender_add_lib(bf_imbuf "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_SRC
+    intern/transform_test.cc
+  )
+  blender_add_test_suite_lib(imbuf "${TEST_SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+endif()

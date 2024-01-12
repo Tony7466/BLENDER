@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,33 +14,35 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "DNA_mesh_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_wrapper.hh"
+#include "BKE_object.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "bmesh.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "bmesh.hh"
+
+#include "ED_gizmo_library.hh"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Shared Internal API
@@ -133,15 +135,15 @@ static int gizmo_preselect_elem_test_select(bContext *C, wmGizmo *gz, const int 
     View3D *v3d = CTX_wm_view3d(C);
     BKE_view_layer_synced_ensure(scene, view_layer);
     if ((gz_ele->bases) == nullptr ||
-        (gz_ele->bases[0] != BKE_view_layer_active_base_get(view_layer))) {
+        (gz_ele->bases[0] != BKE_view_layer_active_base_get(view_layer)))
+    {
       MEM_SAFE_FREE(gz_ele->bases);
       gz_ele->bases = BKE_view_layer_array_from_bases_in_edit_mode(
           scene, view_layer, v3d, &gz_ele->bases_len);
     }
   }
 
-  ViewContext vc;
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   copy_v2_v2_int(vc.mval, mval);
 
   {
@@ -239,7 +241,8 @@ static int gizmo_preselect_elem_test_select(bContext *C, wmGizmo *gz, const int 
     {
       Object *ob = gz_ele->bases[gz_ele->base_index]->object;
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-      Mesh *me_eval = (Mesh *)DEG_get_evaluated_id(depsgraph, static_cast<ID *>(ob->data));
+      Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+      Mesh *me_eval = BKE_object_get_editmesh_eval_cage(ob_eval);
       if (BKE_mesh_wrapper_vert_len(me_eval) == bm->totvert) {
         coords = BKE_mesh_wrapper_vert_coords(me_eval);
       }
@@ -370,8 +373,7 @@ static int gizmo_preselect_edgering_test_select(bContext *C, wmGizmo *gz, const 
     }
   }
 
-  ViewContext vc;
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   copy_v2_v2_int(vc.mval, mval);
 
   uint base_index;

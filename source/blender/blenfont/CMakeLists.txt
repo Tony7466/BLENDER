@@ -1,9 +1,11 @@
-# SPDX-FileCopyrightText: 2008 Blender Foundation
+# SPDX-FileCopyrightText: 2008 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   PUBLIC .
+  ../blenkernel
+  ../blentranslation
   ../gpu
   ../imbuf
   ../makesrna
@@ -29,9 +31,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
   PRIVATE bf::dna
   bf_gpu
   PRIVATE bf::intern::guardedalloc
@@ -41,7 +41,7 @@ set(LIB
 
 if(WIN32)
   list(APPEND SRC
-    intern/blf_font_win32_compat.c
+    intern/blf_font_win32_compat.cc
   )
 endif()
 

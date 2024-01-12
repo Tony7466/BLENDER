@@ -90,40 +90,44 @@ def get_device_type(context):
     return context.preferences.addons[__package__].preferences.compute_device_type
 
 
+def backend_has_active_gpu(context):
+    return context.preferences.addons[__package__].preferences.has_active_device()
+
+
 def use_cpu(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'NONE' or cscene.device == 'CPU')
+    return (get_device_type(context) == 'NONE' or cscene.device == 'CPU' or not backend_has_active_gpu(context))
 
 
 def use_metal(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'METAL' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'METAL' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_cuda(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'CUDA' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'CUDA' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_hip(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'HIP' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'HIP' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_optix(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'OPTIX' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'OPTIX' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_oneapi(context):
     cscene = context.scene.cycles
 
-    return (get_device_type(context) == 'ONEAPI' and cscene.device == 'GPU')
+    return (get_device_type(context) == 'ONEAPI' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
 
 def use_multi_device(context):
@@ -137,7 +141,7 @@ def show_device_active(context):
     cscene = context.scene.cycles
     if cscene.device != 'GPU':
         return True
-    return context.preferences.addons[__package__].preferences.has_active_device()
+    return backend_has_active_gpu(context)
 
 
 def get_effective_preview_denoiser(context):
@@ -375,7 +379,8 @@ class CYCLES_RENDER_PT_sampling_advanced(CyclesButtonsPanel, Panel):
         layout.separator()
 
         heading = layout.column(align=True, heading="Scrambling Distance")
-        heading.active = cscene.sampling_pattern == 'TABULATED_SOBOL'
+        # Tabulated Sobol is used when the debug UI is turned off.
+        heading.active = cscene.sampling_pattern == 'TABULATED_SOBOL' or not CyclesDebugButtonsPanel.poll(context)
         heading.prop(cscene, "auto_scrambling_distance", text="Automatic")
         heading.prop(cscene, "preview_scrambling_distance", text="Viewport")
         heading.prop(cscene, "scrambling_distance", text="Multiplier")
@@ -891,7 +896,7 @@ class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
         sub.prop(view_layer, "use_motion_blur", text="Motion Blur")
         sub.active = rd.use_motion_blur
         sub = col.row()
-        sub.prop(view_layer.cycles, 'use_denoising', text='Denoising')
+        sub.prop(view_layer.cycles, "use_denoising", text="Denoising")
         sub.active = scene.cycles.use_denoising
 
 
@@ -1367,10 +1372,14 @@ class CYCLES_OBJECT_PT_light_linking(CyclesButtonsPanel, Panel):
 
         row = layout.row()
         col = row.column()
-        col.template_light_linking_collection(light_linking, "receiver_collection")
+        col.template_light_linking_collection(row, light_linking, "receiver_collection")
 
         col = row.column()
         sub = col.column(align=True)
+        prop = sub.operator("object.light_linking_receivers_link", icon='ADD', text="")
+        prop.link_state = 'INCLUDE'
+        sub.operator("object.light_linking_unlink_from_collection", icon='REMOVE', text="")
+        sub = col.column()
         sub.menu("CYCLES_OBJECT_MT_light_linking_context_menu", icon='DOWNARROW_HLT', text="")
 
 
@@ -1399,10 +1408,14 @@ class CYCLES_OBJECT_PT_shadow_linking(CyclesButtonsPanel, Panel):
 
         row = layout.row()
         col = row.column()
-        col.template_light_linking_collection(light_linking, "blocker_collection")
+        col.template_light_linking_collection(row, light_linking, "blocker_collection")
 
         col = row.column()
         sub = col.column(align=True)
+        prop = sub.operator("object.light_linking_blockers_link", icon='ADD', text="")
+        prop.link_state = 'INCLUDE'
+        sub.operator("object.light_linking_unlink_from_collection", icon='REMOVE', text="")
+        sub = col.column()
         sub.menu("CYCLES_OBJECT_MT_shadow_linking_context_menu", icon='DOWNARROW_HLT', text="")
 
 
@@ -1955,9 +1968,10 @@ class CYCLES_MATERIAL_PT_settings_surface(CyclesButtonsPanel, Panel):
         cmat = mat.cycles
 
         col = layout.column()
-        col.prop(cmat, "displacement_method", text="Displacement")
+        col.prop(mat, "displacement_method", text="Displacement")
         col.prop(cmat, "emission_sampling")
-        col.prop(cmat, "use_transparent_shadow")
+        col.prop(mat, "use_transparent_shadow")
+        col.prop(cmat, "use_bump_map_correction")
 
     def draw(self, context):
         self.draw_shared(self, context.material)
@@ -2262,6 +2276,7 @@ class CYCLES_RENDER_PT_simplify_viewport(CyclesButtonsPanel, Panel):
         col.prop(rd, "simplify_child_particles", text="Child Particles")
         col.prop(cscene, "texture_limit", text="Texture Limit")
         col.prop(rd, "simplify_volumes", text="Volume Resolution")
+        col.prop(rd, "use_simplify_normals", text="Normals")
 
 
 class CYCLES_RENDER_PT_simplify_render(CyclesButtonsPanel, Panel):
@@ -2430,10 +2445,11 @@ def draw_device(self, context):
 
         from . import engine
         if engine.with_osl() and (
-                use_cpu(context) or
-                (use_optix(context) and (engine.osl_version()[1] >= 13 or engine.osl_version()[0] > 1))
-        ):
-            col.prop(cscene, "shading_system")
+            use_cpu(context) or (
+                use_optix(context) and (
+                engine.osl_version()[1] >= 13 or engine.osl_version()[0] > 1))):
+            osl_col = layout.column()
+            osl_col.prop(cscene, "shading_system")
 
 
 def draw_pause(self, context):

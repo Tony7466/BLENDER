@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,53 +17,53 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
 #ifdef RNA_RUNTIME
 
 #  include "BKE_action.h"
-#  include "BKE_armature.h"
-#  include "BKE_brush.h"
+#  include "BKE_armature.hh"
+#  include "BKE_brush.hh"
 #  include "BKE_camera.h"
 #  include "BKE_collection.h"
-#  include "BKE_curve.h"
+#  include "BKE_curve.hh"
 #  include "BKE_curves.h"
 #  include "BKE_displist.h"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_icons.h"
 #  include "BKE_idtype.h"
 #  include "BKE_image.h"
-#  include "BKE_lattice.h"
-#  include "BKE_lib_remap.h"
+#  include "BKE_lattice.hh"
+#  include "BKE_lib_remap.hh"
 #  include "BKE_light.h"
 #  include "BKE_lightprobe.h"
 #  include "BKE_linestyle.h"
 #  include "BKE_mask.h"
 #  include "BKE_material.h"
 #  include "BKE_mball.h"
-#  include "BKE_mesh.h"
+#  include "BKE_mesh.hh"
 #  include "BKE_movieclip.h"
 #  include "BKE_node.h"
-#  include "BKE_object.h"
-#  include "BKE_paint.h"
+#  include "BKE_object.hh"
+#  include "BKE_paint.hh"
 #  include "BKE_particle.h"
-#  include "BKE_pointcloud.h"
+#  include "BKE_pointcloud.hh"
 #  include "BKE_scene.h"
 #  include "BKE_sound.h"
 #  include "BKE_speaker.h"
 #  include "BKE_text.h"
 #  include "BKE_texture.h"
-#  include "BKE_vfont.h"
-#  include "BKE_volume.h"
+#  include "BKE_vfont.hh"
+#  include "BKE_volume.hh"
 #  include "BKE_workspace.h"
 #  include "BKE_world.h"
 
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "DNA_armature_types.h"
 #  include "DNA_brush_types.h"
@@ -91,8 +91,8 @@
 #  include "DNA_volume_types.h"
 #  include "DNA_world_types.h"
 
-#  include "ED_node.h"
-#  include "ED_screen.h"
+#  include "ED_node.hh"
+#  include "ED_screen.hh"
 
 #  include "BLT_translation.h"
 
@@ -100,8 +100,8 @@
 #    include "BPY_extern.h"
 #  endif
 
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 static void rna_idname_validate(const char *name, char *r_name)
 {
@@ -306,12 +306,12 @@ static Mesh *rna_Main_meshes_new(Main *bmain, const char *name)
   char safe_name[MAX_ID_NAME - 2];
   rna_idname_validate(name, safe_name);
 
-  Mesh *me = BKE_mesh_add(bmain, safe_name);
-  id_us_min(&me->id);
+  Mesh *mesh = BKE_mesh_add(bmain, safe_name);
+  id_us_min(&mesh->id);
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
 
-  return me;
+  return mesh;
 }
 
 /* copied from Mesh_getFromObject and adapted to RNA interface */
@@ -849,7 +849,8 @@ void RNA_api_main(StructRNA * /*srna*/)
    * for now they are all in collections bpy.data.images.new(...) */
   func = RNA_def_function(srna, "add_image", "rna_Main_add_image");
   RNA_def_function_ui_description(func, "Add a new image");
-  parm = RNA_def_string_file_path(func, "filepath", nullptr, 0, "", "File path to load image from");
+  parm = RNA_def_string_file_path(
+      func, "filepath", nullptr, 0, "", "File path to load image from");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "image", "Image", "", "New image");
   RNA_def_function_return(func, parm);
@@ -2040,6 +2041,7 @@ void RNA_def_main_gpencil_legacy(BlenderRNA *brna, PropertyRNA *cprop)
       func, "do_ui_user", true, "", "Make sure interface does not reference this grease pencil");
 }
 
+#  ifdef WITH_GREASE_PENCIL_V3
 void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
@@ -2049,6 +2051,7 @@ void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "Main");
   RNA_def_struct_ui_text(srna, "Main Grease Pencils", "Collection of grease pencils");
 }
+#  endif
 
 void RNA_def_main_movieclips(BlenderRNA *brna, PropertyRNA *cprop)
 {

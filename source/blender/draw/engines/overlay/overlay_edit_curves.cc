@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,26 +6,29 @@
  * \ingroup draw_engine
  */
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 
 #include "overlay_private.hh"
 
 void OVERLAY_edit_curves_init(OVERLAY_Data *vedata)
 {
+  using namespace blender;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Object *obact_orig = DEG_get_original_object(draw_ctx->obact);
 
   const Curves &curves_id = *static_cast<const Curves *>(obact_orig->data);
-  pd->edit_curves.do_points = curves_id.selection_domain == ATTR_DOMAIN_POINT;
+  pd->edit_curves.do_points = bke::AttrDomain(curves_id.selection_domain) ==
+                              bke::AttrDomain::Point;
   pd->edit_curves.do_zbufclip = XRAY_FLAG_ENABLED(draw_ctx->v3d);
 
   /* Create view with depth offset. */
@@ -64,6 +67,7 @@ void OVERLAY_edit_curves_cache_init(OVERLAY_Data *vedata)
 
 static void overlay_edit_curves_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob, bool in_front)
 {
+  using namespace blender::draw;
   Curves *curves = static_cast<Curves *>(ob->data);
 
   if (pd->edit_curves.do_points) {

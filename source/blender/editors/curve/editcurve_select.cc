@@ -15,30 +15,31 @@
 #include "BLI_heap_simple.h"
 #include "BLI_kdtree.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_fcurve.h"
 #include "BKE_layer.h"
 #include "BKE_report.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities
@@ -212,9 +213,8 @@ bool ED_curve_nurb_deselect_all(const Nurb *nu)
 int ED_curve_select_count(const View3D *v3d, const EditNurb *editnurb)
 {
   int sel = 0;
-  Nurb *nu;
 
-  for (nu = static_cast<Nurb *>(editnurb->nurbs.first); nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, &editnurb->nurbs) {
     sel += ED_curve_nurb_select_count(v3d, nu);
   }
 
@@ -256,8 +256,7 @@ bool ED_curve_deselect_all_multi_ex(Base **bases, int bases_len)
 bool ED_curve_deselect_all_multi(bContext *C)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   uint bases_len = 0;
   Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d, &bases_len);
@@ -273,16 +272,36 @@ bool ED_curve_select_swap(EditNurb *editnurb, bool hide_handles)
   int a;
   bool changed = false;
 
+  /* This could be an argument to swap individual handle selection.
+   * At the moment this is always used though. */
+  bool swap_handles = false;
+
+  /* When hiding handles, ignore handle selection. */
+  if (hide_handles) {
+    swap_handles = true;
+  }
+
   LISTBASE_FOREACH (Nurb *, nu, &editnurb->nurbs) {
     if (nu->type == CU_BEZIER) {
       bezt = nu->bezt;
       a = nu->pntsu;
       while (a--) {
         if (bezt->hide == 0) {
-          bezt->f2 ^= SELECT; /* always do the center point */
-          if (!hide_handles) {
-            bezt->f1 ^= SELECT;
-            bezt->f3 ^= SELECT;
+          if (swap_handles) {
+            bezt->f2 ^= SELECT; /* always do the center point */
+            if (!hide_handles) {
+              bezt->f1 ^= SELECT;
+              bezt->f3 ^= SELECT;
+            }
+          }
+          else {
+            BLI_assert(!hide_handles);
+            if (BEZT_ISSEL_ANY(bezt)) {
+              BEZT_DESEL_ALL(bezt);
+            }
+            else {
+              BEZT_SEL_ALL(bezt);
+            }
           }
           changed = true;
         }
@@ -336,7 +355,8 @@ static void select_adjacent_cp(ListBase *editnurb,
           break;
         }
         if ((lastsel == false) && (bezt->hide == 0) &&
-            ((bezt->f2 & SELECT) || (selstatus == false))) {
+            ((bezt->f2 & SELECT) || (selstatus == false)))
+        {
           bezt += next;
           if (!(bezt->f2 & SELECT) || (selstatus == false)) {
             bool sel = select_beztriple(bezt, selstatus, SELECT, VISIBLE);
@@ -682,7 +702,6 @@ void CURVE_OT_select_linked(wmOperatorType *ot)
 static int select_linked_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   Nurb *nu;
   BezTriple *bezt;
   BPoint *bp;
@@ -691,7 +710,7 @@ static int select_linked_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
   Base *basact = nullptr;
 
   view3d_operator_needs_opengl(C);
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   copy_v2_v2_int(vc.mval, event->mval);
 
   if (!ED_curve_pick_vert(&vc, 1, &nu, &bezt, &bp, nullptr, &basact)) {
@@ -1068,7 +1087,8 @@ static void curve_select_less(Object *obedit)
           else {
             bp -= nu->pntsu;
             if (BLI_BITMAP_TEST(selbpoints, a + nu->pntsu) ||
-                ((bp->hide == 0) && (bp->f1 & SELECT))) {
+                ((bp->hide == 0) && (bp->f1 & SELECT)))
+            {
               sel++;
             }
             bp += nu->pntsu;
@@ -1627,7 +1647,8 @@ static bool curve_nurb_select_similar_type(Object *ob,
           case SIMCURHAND_RADIUS: {
             float radius_ref = bezt->radius;
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, radius_ref, thresh, eSimilarCmp(compare))) {
+                    tree_1d, radius_ref, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -1635,7 +1656,8 @@ static bool curve_nurb_select_similar_type(Object *ob,
           case SIMCURHAND_WEIGHT: {
             float weight_ref = bezt->weight;
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, weight_ref, thresh, eSimilarCmp(compare))) {
+                    tree_1d, weight_ref, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -1674,7 +1696,8 @@ static bool curve_nurb_select_similar_type(Object *ob,
           case SIMCURHAND_RADIUS: {
             float radius_ref = bp->radius;
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, radius_ref, thresh, eSimilarCmp(compare))) {
+                    tree_1d, radius_ref, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -1682,7 +1705,8 @@ static bool curve_nurb_select_similar_type(Object *ob,
           case SIMCURHAND_WEIGHT: {
             float weight_ref = bp->weight;
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, weight_ref, thresh, eSimilarCmp(compare))) {
+                    tree_1d, weight_ref, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -1904,7 +1928,8 @@ static void curve_select_shortest_path_curve(Nurb *nu, int vert_src, int vert_ds
 
   if (nu->flagu & CU_NURB_CYCLIC) {
     if (curve_calc_dist_span(nu, vert_src, vert_dst) >
-        curve_calc_dist_span(nu, vert_dst, vert_src)) {
+        curve_calc_dist_span(nu, vert_dst, vert_src))
+    {
       SWAP(int, vert_src, vert_dst);
     }
   }
@@ -1935,7 +1960,7 @@ static void curve_select_shortest_path_surf(Nurb *nu, int vert_src, int vert_dst
   struct PointAdj {
     int vert, vert_prev;
     float cost;
-  } * data;
+  } *data;
 
   /* init connectivity data */
   data = static_cast<PointAdj *>(MEM_mallocN(sizeof(*data) * vert_num, __func__));
@@ -2008,7 +2033,6 @@ static void curve_select_shortest_path_surf(Nurb *nu, int vert_src, int vert_dst
 static int edcu_shortest_path_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   Nurb *nu_dst;
   BezTriple *bezt_dst;
   BPoint *bp_dst;
@@ -2017,7 +2041,7 @@ static int edcu_shortest_path_pick_invoke(bContext *C, wmOperator *op, const wmE
   Base *basact = nullptr;
 
   view3d_operator_needs_opengl(C);
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   copy_v2_v2_int(vc.mval, event->mval);
 
   if (!ED_curve_pick_vert(&vc, 1, &nu_dst, &bezt_dst, &bp_dst, nullptr, &basact)) {

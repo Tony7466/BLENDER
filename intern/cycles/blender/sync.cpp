@@ -120,8 +120,7 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
         if (geom->is_mesh()) {
           Mesh *mesh = static_cast<Mesh *>(geom);
           if (mesh->get_subdivision_type() != Mesh::SUBDIVISION_NONE) {
-            PointerRNA id_ptr;
-            RNA_id_pointer_create((::ID *)iter.first.id, &id_ptr);
+            PointerRNA id_ptr = RNA_id_pointer_create((::ID *)iter.first.id);
             geometry_map.set_recalc(BL::ID(id_ptr));
           }
         }
@@ -188,7 +187,8 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
           if (updated_geometry) {
             BL::Object::particle_systems_iterator b_psys;
             for (b_ob.particle_systems.begin(b_psys); b_psys != b_ob.particle_systems.end();
-                 ++b_psys) {
+                 ++b_psys)
+            {
               particle_system_map.set_recalc(b_ob);
             }
           }
@@ -356,8 +356,14 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
     scene->light_manager->tag_update(scene, LightManager::UPDATE_ALL);
   }
 
-  SamplingPattern sampling_pattern = (SamplingPattern)get_enum(
-      cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);
+  SamplingPattern sampling_pattern;
+  if (use_developer_ui) {
+    sampling_pattern = (SamplingPattern)get_enum(
+        cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);
+  }
+  else {
+    sampling_pattern = SAMPLING_PATTERN_TABULATED_SOBOL;
+  }
   integrator->set_sampling_pattern(sampling_pattern);
 
   int samples = 1;
@@ -400,7 +406,8 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
   /* Only use scrambling distance in the viewport if user wants to. */
   bool preview_scrambling_distance = get_boolean(cscene, "preview_scrambling_distance");
   if ((preview && !preview_scrambling_distance) ||
-      sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
+      sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY)
+  {
     scrambling_distance = 1.0f;
   }
 
@@ -794,15 +801,19 @@ SceneParams BlenderSync::get_scene_params(BL::Scene &b_scene,
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
   const bool shadingsystem = RNA_boolean_get(&cscene, "shading_system");
 
-  if (shadingsystem == 0)
+  if (shadingsystem == 0) {
     params.shadingsystem = SHADINGSYSTEM_SVM;
-  else if (shadingsystem == 1)
+  }
+  else if (shadingsystem == 1) {
     params.shadingsystem = SHADINGSYSTEM_OSL;
+  }
 
-  if (background || (use_developer_ui && get_enum(cscene, "debug_bvh_type")))
+  if (background || (use_developer_ui && get_enum(cscene, "debug_bvh_type"))) {
     params.bvh_type = BVH_TYPE_STATIC;
-  else
+  }
+  else {
     params.bvh_type = BVH_TYPE_DYNAMIC;
+  }
 
   params.use_bvh_spatial_split = RNA_boolean_get(&cscene, "debug_use_spatial_splits");
   params.use_bvh_compact_structure = RNA_boolean_get(&cscene, "debug_use_compact_bvh");
@@ -904,10 +915,12 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine &b_engine,
   /* shading system - scene level needs full refresh */
   const bool shadingsystem = RNA_boolean_get(&cscene, "shading_system");
 
-  if (shadingsystem == 0)
+  if (shadingsystem == 0) {
     params.shadingsystem = SHADINGSYSTEM_SVM;
-  else if (shadingsystem == 1)
+  }
+  else if (shadingsystem == 1) {
     params.shadingsystem = SHADINGSYSTEM_OSL;
+  }
 
   /* Time limit. */
   if (background) {

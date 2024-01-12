@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,8 +16,8 @@
 
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_main_idmap.h" /* own include */
+#include "BKE_main.hh"
+#include "BKE_main_idmap.hh" /* own include */
 
 /** \file
  * \ingroup bke

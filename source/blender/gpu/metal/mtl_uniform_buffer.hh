@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@ class MTLStorageBuf;
 
 /**
  * Implementation of Uniform Buffers using Metal.
- **/
+ */
 class MTLUniformBuf : public UniformBuf {
   friend class MTLStorageBuf; /* For bind as SSBO resource access. */
 

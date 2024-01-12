@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,25 +13,26 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_movieclip.h"
 #include "BKE_report.h"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_clip.h"
-#include "ED_screen.h"
+#include "ED_clip.hh"
+#include "ED_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BLT_translation.h"
 
@@ -332,16 +333,16 @@ void CLIP_OT_delete_marker(wmOperatorType *ot)
 /** \name Slide Marker Operator
  * \{ */
 
-typedef enum eSlideAction {
+enum eSlideAction {
   SLIDE_ACTION_NONE,
 
   SLIDE_ACTION_POS,
   SLIDE_ACTION_SIZE,
   SLIDE_ACTION_OFFSET,
   SLIDE_ACTION_TILT_SIZE,
-} eSlideAction;
+};
 
-typedef struct {
+struct SlideMarkerData {
   short area;
   eSlideAction action;
   MovieTrackingTrack *track;
@@ -357,7 +358,7 @@ typedef struct {
   float old_search_min[2], old_search_max[2], old_pos[2];
   float old_corners[4][2];
   float (*old_markers)[2];
-} SlideMarkerData;
+};
 
 static void slide_marker_tilt_slider_relative(const float pattern_corners[4][2], float r_slider[2])
 {
@@ -1296,7 +1297,7 @@ static int average_tracks_exec(bContext *C, wmOperator *op)
   }
 
   /* Create new empty track, which will be the averaged result.
-   * Makes it simple to average all selection  to it. */
+   * Makes it simple to average all selection to it. */
   MovieTrackingTrack *result_track = BKE_tracking_track_add_empty(tracking,
                                                                   &tracking_object->tracks);
 
@@ -1761,8 +1762,8 @@ void CLIP_OT_clean_tracks(wmOperatorType *ot)
               0,
               INT_MAX,
               "Tracked Frames",
-              "Effect on tracks which are tracked less than "
-              "specified amount of frames",
+              "Affect tracks which are tracked less than the "
+              "specified number of frames",
               0,
               INT_MAX);
   RNA_def_float(ot->srna,
@@ -1771,7 +1772,7 @@ void CLIP_OT_clean_tracks(wmOperatorType *ot)
                 0.0f,
                 FLT_MAX,
                 "Reprojection Error",
-                "Effect on tracks which have got larger reprojection error",
+                "Affect tracks which have a larger reprojection error",
                 0.0f,
                 100.0f);
   RNA_def_enum(ot->srna, "action", actions_items, 0, "Action", "Cleanup action to execute");

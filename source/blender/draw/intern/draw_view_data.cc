@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,11 +11,11 @@
 #include "GPU_capabilities.h"
 #include "GPU_viewport.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "draw_instance_data.h"
 
-#include "draw_manager_text.h"
+#include "draw_manager_text.hh"
 
 #include "draw_manager.h"
 #include "draw_manager.hh"
@@ -43,7 +43,7 @@ struct DRWViewData {
   DRWViewData()
   {
     /* Only for GL >= 4.3 implementation for now. */
-    if (GPU_shader_storage_buffer_objects_support() && GPU_compute_shader_support()) {
+    if (GPU_compute_shader_support()) {
       manager = new draw::Manager();
     }
   };

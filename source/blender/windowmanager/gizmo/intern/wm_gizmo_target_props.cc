@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,27 +7,28 @@
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 
-#include "ED_keyframing.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_keyframing.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
+
+#include "ANIM_keyframing.hh"
 
 /* own includes */
-#include "wm_gizmo_intern.h"
-#include "wm_gizmo_wmapi.h"
+#include "wm_gizmo_intern.hh"
+#include "wm_gizmo_wmapi.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Property Definition
@@ -344,7 +345,8 @@ void WM_gizmo_target_property_anim_autokey(bContext *C,
     Scene *scene = CTX_data_scene(C);
     const float cfra = float(scene->r.cfra);
     const int index = gz_prop->index == -1 ? 0 : gz_prop->index;
-    ED_autokeyframe_property(C, scene, &gz_prop->ptr, gz_prop->prop, index, cfra, false);
+    blender::animrig::autokeyframe_property(
+        C, scene, &gz_prop->ptr, gz_prop->prop, index, cfra, false);
   }
 }
 

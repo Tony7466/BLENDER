@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,19 +19,23 @@
 
 #include "BKE_action.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+
+#ifdef RNA_RUNTIME
+#  include "ANIM_fcurve.hh"
+#endif
 
 const EnumPropertyItem rna_enum_fmodifier_type_items[] = {
-    {FMODIFIER_TYPE_NULL, "nullptr", 0, "Invalid", ""},
+    {FMODIFIER_TYPE_NULL, "NULL", 0, "Invalid", ""},
     {FMODIFIER_TYPE_GENERATOR,
      "GENERATOR",
      0,
@@ -179,7 +183,7 @@ static const EnumPropertyItem rna_enum_driver_target_context_property_items[] = 
 
 #ifdef RNA_RUNTIME
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static StructRNA *rna_FModifierType_refine(PointerRNA *ptr)
 {
@@ -217,8 +221,8 @@ static StructRNA *rna_FModifierType_refine(PointerRNA *ptr)
 #  include "BKE_fcurve.h"
 #  include "BKE_fcurve_driver.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 /**
  * \warning this isn't efficient but it's unavoidable
@@ -537,7 +541,7 @@ static void rna_FKeyframe_ctrlpoint_ui_set(PointerRNA *ptr, const float *values)
   const float value_delta = values[1] - bezt->vec[1][1];
 
   /* To match the behavior of transforming the keyframe Co using the Graph Editor
-   * (transform_convert_graph.c) flushTransGraphData(), we will also move the handles by
+   * (`transform_convert_graph.cc`) flushTransGraphData(), we will also move the handles by
    * the same amount as the Co delta. */
 
   bezt->vec[0][0] += frame_delta;
@@ -1051,11 +1055,10 @@ static void rna_FModifierStepped_frame_end_set(PointerRNA *ptr, float value)
 static BezTriple *rna_FKeyframe_points_insert(
     ID *id, FCurve *fcu, Main *bmain, float frame, float value, int keyframe_type, int flag)
 {
-  int index = insert_vert_fcurve(fcu,
-                                 frame,
-                                 value,
-                                 eBezTriple_KeyframeType(keyframe_type),
-                                 eInsertKeyFlags(flag) | INSERTKEY_NO_USERPREF);
+  using namespace blender::animrig;
+  KeyframeSettings settings = get_keyframe_settings(false);
+  settings.keyframe_type = eBezTriple_KeyframeType(keyframe_type);
+  int index = insert_vert_fcurve(fcu, {frame, value}, settings, eInsertKeyFlags(flag));
 
   if ((fcu->bezt) && (index >= 0)) {
     rna_tag_animation_update(bmain, id);
@@ -1971,6 +1974,28 @@ static void rna_def_drivertarget(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Context Property", "Type of a context-dependent data-block to access property from");
   RNA_def_property_update(prop, 0, "rna_DriverTarget_update_data");
+
+  prop = RNA_def_property(srna, "use_fallback_value", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "options", DTAR_OPTION_USE_FALLBACK);
+  RNA_def_property_ui_text(prop,
+                           "Use Fallback",
+                           "Use the fallback value if the data path can't be resolved, instead of "
+                           "failing to evaluate the driver");
+  RNA_def_property_update(prop, 0, "rna_DriverTarget_update_data");
+
+  prop = RNA_def_property(srna, "fallback_value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "fallback_value");
+  RNA_def_property_ui_text(
+      prop, "Fallback", "The value to use if the data path can't be resolved");
+  RNA_def_property_update(prop, 0, "rna_DriverTarget_update_data");
+
+  prop = RNA_def_property(srna, "is_fallback_used", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", DTAR_FLAG_FALLBACK_USED);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Is Fallback Used",
+      "Indicates that the most recent variable evaluation used the fallback value");
 }
 
 static void rna_def_drivervar(BlenderRNA *brna)
@@ -2050,7 +2075,7 @@ static void rna_def_drivervar(BlenderRNA *brna)
 static void rna_def_channeldriver_variables(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-  /* PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;
@@ -2170,8 +2195,9 @@ static void rna_def_fpoint(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
-/* duplicate of BezTriple in rna_curve.c
- * but with F-Curve specific options updates/functionality
+/**
+ * Duplicate of #BezTriple in `rna_curve.cc`
+ * but with F-Curve specific options updates/functionality.
  */
 static void rna_def_fkeyframe(BlenderRNA *brna)
 {

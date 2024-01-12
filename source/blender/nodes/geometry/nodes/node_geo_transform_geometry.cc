@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,9 @@
 #  include <openvdb/openvdb.h>
 #endif
 
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
-#include "BLI_math_matrix_types.hh"
+#include "BLI_math_rotation.hh"
 #include "BLI_task.hh"
 
 #include "DNA_mesh_types.h"
@@ -15,21 +16,21 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
-#include "BKE_pointcloud.h"
-#include "BKE_volume.h"
-#include "BKE_volume_openvdb.hh"
+#include "BKE_pointcloud.hh"
+#include "BKE_volume.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
 
-static bool use_translate(const float3 rotation, const float3 scale)
+static bool use_translate(const math::Quaternion &rotation, const float3 scale)
 {
-  if (compare_ff(math::length_squared(rotation), 0.0f, 1e-9f) != 1) {
+  if (math::angle_of(rotation).radian() > 1e-7f) {
     return false;
   }
   if (compare_ff(scale.x, 1.0f, 1e-9f) != 1 || compare_ff(scale.y, 1.0f, 1e-9f) != 1 ||
@@ -61,7 +62,7 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
 static void transform_mesh(Mesh &mesh, const float4x4 &transform)
 {
   transform_positions(mesh.vert_positions_for_write(), transform);
-  BKE_mesh_tag_positions_changed(&mesh);
+  mesh.tag_positions_changed();
 }
 
 static void translate_pointcloud(PointCloud &pointcloud, const float3 translation)
@@ -77,7 +78,7 @@ static void translate_pointcloud(PointCloud &pointcloud, const float3 translatio
 
   MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
   SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
-      "position", ATTR_DOMAIN_POINT);
+      "position", AttrDomain::Point);
   translate_positions(position.span, translation);
   position.finish();
 
@@ -92,9 +93,33 @@ static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transfo
 {
   MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
   SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
-      "position", ATTR_DOMAIN_POINT);
+      "position", AttrDomain::Point);
   transform_positions(position.span, transform);
   position.finish();
+}
+
+static void translate_greasepencil(GreasePencil &grease_pencil, const float3 translation)
+{
+  using namespace blender::bke::greasepencil;
+  for (const int layer_index : grease_pencil.layers().index_range()) {
+    if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
+                                                                          layer_index))
+    {
+      drawing->strokes_for_write().translate(translation);
+    }
+  }
+}
+
+static void transform_greasepencil(GreasePencil &grease_pencil, const float4x4 &transform)
+{
+  using namespace blender::bke::greasepencil;
+  for (const int layer_index : grease_pencil.layers().index_range()) {
+    if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
+                                                                          layer_index))
+    {
+      drawing->strokes_for_write().transform(transform);
+    }
+  }
 }
 
 static void translate_instances(bke::Instances &instances, const float3 translation)
@@ -133,15 +158,15 @@ static void transform_volume(GeoNodeExecParams &params,
   bool found_too_small_scale = false;
   const int grids_num = BKE_volume_num_grids(&volume);
   for (const int i : IndexRange(grids_num)) {
-    VolumeGrid *volume_grid = BKE_volume_grid_get_for_write(&volume, i);
-    float4x4 grid_matrix;
-    BKE_volume_grid_transform_matrix(volume_grid, grid_matrix.ptr());
+    bke::VolumeGridData *volume_grid = BKE_volume_grid_get_for_write(&volume, i);
+
+    float4x4 grid_matrix = bke::volume_grid::get_transform_matrix(*volume_grid);
     grid_matrix = transform * grid_matrix;
     const float determinant = math::determinant(grid_matrix);
     if (!BKE_volume_grid_determinant_valid(determinant)) {
       found_too_small_scale = true;
       /* Clear the tree because it is too small. */
-      BKE_volume_grid_clear_tree(volume, *volume_grid);
+      bke::volume_grid::clear_tree(*volume_grid);
       if (determinant == 0) {
         /* Reset rotation and scale. */
         grid_matrix.x_axis() = float3(1, 0, 0);
@@ -155,7 +180,7 @@ static void transform_volume(GeoNodeExecParams &params,
         grid_matrix.z_axis() = math::normalize(grid_matrix.z_axis());
       }
     }
-    BKE_volume_grid_transform_matrix_set(&volume, volume_grid, grid_matrix.ptr());
+    bke::volume_grid::set_transform_matrix(*volume_grid, grid_matrix);
   }
   if (found_too_small_scale) {
     params.error_message_add(NodeWarningType::Warning,
@@ -215,6 +240,9 @@ static void translate_geometry_set(GeoNodeExecParams &params,
   if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
     translate_pointcloud(*pointcloud, translation);
   }
+  if (GreasePencil *grease_pencil = geometry.get_grease_pencil_for_write()) {
+    translate_greasepencil(*grease_pencil, translation);
+  }
   if (Volume *volume = geometry.get_volume_for_write()) {
     translate_volume(params, *volume, translation, depsgraph);
   }
@@ -240,6 +268,9 @@ void transform_geometry_set(GeoNodeExecParams &params,
   if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
     transform_pointcloud(*pointcloud, transform);
   }
+  if (GreasePencil *grease_pencil = geometry.get_grease_pencil_for_write()) {
+    transform_greasepencil(*grease_pencil, transform);
+  }
   if (Volume *volume = geometry.get_volume_for_write()) {
     transform_volume(params, *volume, transform, depsgraph);
   }
@@ -253,7 +284,7 @@ void transform_geometry_set(GeoNodeExecParams &params,
 
 void transform_mesh(Mesh &mesh,
                     const float3 translation,
-                    const float3 rotation,
+                    const math::Quaternion rotation,
                     const float3 scale)
 {
   const float4x4 matrix = math::from_loc_rot_scale<float4x4>(translation, rotation, scale);
@@ -268,7 +299,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
   b.add_input<decl::Vector>("Translation").subtype(PROP_TRANSLATION);
-  b.add_input<decl::Vector>("Rotation").subtype(PROP_EULER);
+  b.add_input<decl::Rotation>("Rotation");
   b.add_input<decl::Vector>("Scale").default_value({1, 1, 1}).subtype(PROP_XYZ);
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
@@ -277,7 +308,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   const float3 translation = params.extract_input<float3>("Translation");
-  const float3 rotation = params.extract_input<float3>("Rotation");
+  const math::Quaternion rotation = params.extract_input<math::Quaternion>("Rotation");
   const float3 scale = params.extract_input<float3>("Scale");
 
   /* Use only translation if rotation and scale don't apply. */
@@ -293,17 +324,17 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   params.set_output("Geometry", std::move(geometry_set));
 }
-}  // namespace blender::nodes::node_geo_transform_geometry_cc
 
-void register_node_type_geo_transform_geometry()
+static void register_node()
 {
-  namespace file_ns = blender::nodes::node_geo_transform_geometry_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_TRANSFORM_GEOMETRY, "Transform Geometry", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node)
+
+}  // namespace blender::nodes::node_geo_transform_geometry_cc

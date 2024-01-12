@@ -10,30 +10,30 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines_stack.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_editmesh_bvh.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "ED_mesh.h"
-#include "ED_screen.h"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "BLT_translation.h"
 
@@ -241,7 +241,7 @@ static BMLoop *get_next_loop(
           BM_loop_calc_face_direction(l_tmp, tdir);
           cross_v3_v3v3(vec_accum, l_tmp->f->no, tdir);
 #if 0
-          /* rough guess, we can  do better! */
+          /* Rough guess, we can do better! */
           normalize_v3_length(vec_accum,
                               (BM_edge_calc_length(e_prev) + BM_edge_calc_length(e_next)) / 2.0f);
 #else
@@ -296,7 +296,7 @@ static BMLoop *get_next_loop(
   return nullptr;
 }
 
-static void edge_slide_projmat_get(TransInfo *t, TransDataContainer *tc, float r_projectMat[4][4])
+static blender::float4x4 edge_slide_projmat_get(TransInfo *t, TransDataContainer *tc)
 {
   RegionView3D *rv3d = nullptr;
 
@@ -307,16 +307,14 @@ static void edge_slide_projmat_get(TransInfo *t, TransDataContainer *tc, float r
 
   if (!rv3d) {
     /* Ok, let's try to survive this. */
-    unit_m4(r_projectMat);
+    return blender::float4x4::identity();
   }
-  else {
-    ED_view3d_ob_project_mat_get(rv3d, tc->obedit, r_projectMat);
-  }
+  return ED_view3d_ob_project_mat_get(rv3d, tc->obedit);
 }
 
 static void edge_slide_pair_project(TransDataEdgeSlideVert *sv,
                                     ARegion *region,
-                                    float projectMat[4][4],
+                                    const float projectMat[4][4],
                                     float r_sco_a[3],
                                     float r_sco_b[3])
 {
@@ -371,7 +369,7 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
                                      EdgeSlideData *sld,
                                      const int *sv_table,
                                      const int loop_nr,
-                                     const float mval[2],
+                                     const blender::float2 &mval,
                                      const bool use_occlude_geometry,
                                      const bool use_calc_direction)
 {
@@ -379,7 +377,6 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
   BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
   ARegion *region = t->region;
   View3D *v3d = nullptr;
-  float projectMat[4][4];
   BMBVHTree *bmbvh;
 
   /* only for use_calc_direction */
@@ -392,7 +389,7 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
     v3d = static_cast<View3D *>(t->area ? t->area->spacedata.first : nullptr);
   }
 
-  edge_slide_projmat_get(t, tc, projectMat);
+  const blender::float4x4 projection = edge_slide_projmat_get(t, tc);
 
   if (use_occlude_geometry) {
     bmbvh = BKE_bmbvh_new_from_editmesh(em, BMBVH_RESPECT_HIDDEN, nullptr, false);
@@ -441,7 +438,7 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
         continue;
       }
 
-      edge_slide_pair_project(sv, region, projectMat, sco_a, sco_b);
+      edge_slide_pair_project(sv, region, projection.ptr(), sco_a, sco_b);
 
       /* global direction */
       dist_sq = dist_squared_to_line_segment_v2(mval, sco_b, sco_a);
@@ -492,28 +489,25 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
 static void calcEdgeSlide_even(TransInfo *t,
                                TransDataContainer *tc,
                                EdgeSlideData *sld,
-                               const float mval[2])
+                               const blender::float2 &mval)
 {
   TransDataEdgeSlideVert *sv = sld->sv;
 
   if (sld->totsv > 0) {
     ARegion *region = t->region;
-    float projectMat[4][4];
 
     int i = 0;
 
-    float v_proj[2];
-    float dist_sq = 0;
     float dist_min_sq = FLT_MAX;
 
-    edge_slide_projmat_get(t, tc, projectMat);
+    const blender::float4x4 projection = edge_slide_projmat_get(t, tc);
 
     for (i = 0; i < sld->totsv; i++, sv++) {
       /* Set length */
       sv->edge_len = len_v3v3(sv->dir_side[0], sv->dir_side[1]);
 
-      ED_view3d_project_float_v2_m4(region, sv->v->co, v_proj, projectMat);
-      dist_sq = len_squared_v2v2(mval, v_proj);
+      const blender::float2 v_proj = ED_view3d_project_float_v2_m4(region, sv->v->co, projection);
+      const float dist_sq = len_squared_v2v2(mval, v_proj);
       if (dist_sq < dist_min_sq) {
         dist_min_sq = dist_sq;
         sld->curr_sv_index = i;
@@ -536,7 +530,6 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
   int sv_tot;
   int *sv_table; /* BMVert -> sv_array index */
   EdgeSlideData *sld = static_cast<EdgeSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
-  const float mval[2] = {float(t->mval[0]), float(t->mval[1])};
   int numsel, i, loop_nr;
   bool use_occlude_geometry = false;
   View3D *v3d = nullptr;
@@ -686,7 +679,7 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       }
     }
 
-    /* !BM_edge_is_boundary(e); */
+    /* Equivalent to `!BM_edge_is_boundary(e)`. */
     if (l_b != l_a) {
       BMEdge *e_next = get_other_edge(v, e);
       if (e_next) {
@@ -876,10 +869,10 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
                             !XRAY_ENABLED(v3d));
   }
 
-  calcEdgeSlide_mval_range(t, tc, sld, sv_table, loop_nr, mval, use_occlude_geometry, true);
+  calcEdgeSlide_mval_range(t, tc, sld, sv_table, loop_nr, t->mval, use_occlude_geometry, true);
 
   if (rv3d) {
-    calcEdgeSlide_even(t, tc, sld, mval);
+    calcEdgeSlide_even(t, tc, sld, t->mval);
   }
 
   MEM_freeN(sv_table);
@@ -901,7 +894,6 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
   int sv_tot;
   int *sv_table; /* BMVert -> sv_array index */
   EdgeSlideData *sld = static_cast<EdgeSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
-  const float mval[2] = {float(t->mval[0]), float(t->mval[1])};
   int loop_nr;
   bool use_occlude_geometry = false;
   View3D *v3d = nullptr;
@@ -1061,10 +1053,10 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
                             !XRAY_ENABLED(v3d));
   }
 
-  calcEdgeSlide_mval_range(t, tc, sld, sv_table, loop_nr, mval, use_occlude_geometry, false);
+  calcEdgeSlide_mval_range(t, tc, sld, sv_table, loop_nr, t->mval, use_occlude_geometry, false);
 
   if (rv3d) {
-    calcEdgeSlide_even(t, tc, sld, mval);
+    calcEdgeSlide_even(t, tc, sld, t->mval);
   }
 
   MEM_freeN(sv_table);
@@ -1433,7 +1425,7 @@ static void doEdgeSlide(TransInfo *t, float perc)
   }
 }
 
-static void applyEdgeSlide(TransInfo *t, const int[2] /*mval*/)
+static void applyEdgeSlide(TransInfo *t)
 {
   char str[UI_MAX_DRAW_STR];
   size_t ofs = 0;
@@ -1483,7 +1475,7 @@ static void applyEdgeSlide(TransInfo *t, const int[2] /*mval*/)
   /* do stuff here */
   doEdgeSlide(t, final);
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }
@@ -1606,13 +1598,12 @@ void transform_mode_edge_slide_reproject_input(TransInfo *t)
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     EdgeSlideData *sld = static_cast<EdgeSlideData *>(tc->custom.mode.data);
     if (sld) {
-      float projectMat[4][4];
-      edge_slide_projmat_get(t, tc, projectMat);
+      const blender::float4x4 projection = edge_slide_projmat_get(t, tc);
 
       TransDataEdgeSlideVert *curr_sv = &sld->sv[sld->curr_sv_index];
 
       float mval_dir[3], sco_a[3], sco_b[3];
-      edge_slide_pair_project(curr_sv, region, projectMat, sco_a, sco_b);
+      edge_slide_pair_project(curr_sv, region, projection.ptr(), sco_a, sco_b);
       sub_v3_v3v3(mval_dir, sco_b, sco_a);
       edge_slide_data_init_mval(&t->mouse, sld, mval_dir);
     }

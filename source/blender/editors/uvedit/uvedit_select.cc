@@ -14,7 +14,6 @@
 
 #include "DNA_image_types.h"
 #include "DNA_material_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -27,38 +26,42 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_lasso_2d.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
+#include "BLT_translation.h"
+
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_image.h"
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_uvedit.h"
+#include "ED_image.hh"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_uvedit.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "uvedit_intern.h"
 
@@ -797,7 +800,7 @@ static BMLoop *uvedit_loop_find_other_boundary_loop_with_visible_face(const Scen
 
 UvNearestHit uv_nearest_hit_init_dist_px(const View2D *v2d, const float dist_px)
 {
-  UvNearestHit hit = {0};
+  UvNearestHit hit = {nullptr};
   hit.dist_sq = square_f(U.pixelsize * dist_px);
   hit.scale[0] = UI_view2d_scale_get_x(v2d);
   hit.scale[1] = UI_view2d_scale_get_y(v2d);
@@ -806,7 +809,7 @@ UvNearestHit uv_nearest_hit_init_dist_px(const View2D *v2d, const float dist_px)
 
 UvNearestHit uv_nearest_hit_init_max(const View2D *v2d)
 {
-  UvNearestHit hit = {0};
+  UvNearestHit hit = {nullptr};
   hit.dist_sq = FLT_MAX;
   hit.scale[0] = UI_view2d_scale_get_x(v2d);
   hit.scale[1] = UI_view2d_scale_get_y(v2d);
@@ -1088,7 +1091,7 @@ bool ED_uvedit_nearest_uv_multi(const View2D *v2d,
                                 const Scene *scene,
                                 Object **objects,
                                 const uint objects_len,
-                                const int mval[2],
+                                const float mval_fl[2],
                                 const bool ignore_selected,
                                 float *dist_sq,
                                 float r_uv[2])
@@ -1100,8 +1103,6 @@ bool ED_uvedit_nearest_uv_multi(const View2D *v2d,
   UI_view2d_view_to_region_fl(v2d, 0.0f, 0.0f, &offset[0], &offset[1]);
 
   float co[2];
-
-  const float mval_fl[2] = {float(mval[0]), float(mval[1])};
   sub_v2_v2v2(co, mval_fl, offset);
 
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
@@ -1910,7 +1911,7 @@ static void uv_select_linked_multi(Scene *scene,
           if (iterv->separate) {
             startv = iterv;
           }
-          if (iterv->poly_index == a) {
+          if (iterv->face_index == a) {
             break;
           }
         }
@@ -1919,9 +1920,9 @@ static void uv_select_linked_multi(Scene *scene,
           if ((startv != iterv) && (iterv->separate)) {
             break;
           }
-          if (!flag[iterv->poly_index]) {
-            flag[iterv->poly_index] = 1;
-            stack[stacksize] = iterv->poly_index;
+          if (!flag[iterv->face_index]) {
+            flag[iterv->face_index] = 1;
+            stack[stacksize] = iterv->face_index;
             stacksize++;
           }
         }
@@ -3161,11 +3162,13 @@ static int uv_select_split_exec(bContext *C, wmOperator *op)
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
 
         if (BM_ELEM_CD_GET_BOOL(l, offsets.select_vert) ||
-            BM_ELEM_CD_GET_BOOL(l, offsets.select_edge)) {
+            BM_ELEM_CD_GET_BOOL(l, offsets.select_edge))
+        {
           is_sel = true;
         }
         if (!BM_ELEM_CD_GET_BOOL(l, offsets.select_vert) ||
-            !BM_ELEM_CD_GET_BOOL(l, offsets.select_edge)) {
+            !BM_ELEM_CD_GET_BOOL(l, offsets.select_edge))
+        {
           is_unsel = true;
         }
 
@@ -3257,7 +3260,7 @@ static void uv_select_flush_from_tag_sticky_loc_internal(const Scene *scene,
       start_vlist = vlist_iter;
     }
 
-    if (efa_index == vlist_iter->poly_index) {
+    if (efa_index == vlist_iter->face_index) {
       break;
     }
 
@@ -3270,13 +3273,13 @@ static void uv_select_flush_from_tag_sticky_loc_internal(const Scene *scene,
       break;
     }
 
-    if (efa_index != vlist_iter->poly_index) {
+    if (efa_index != vlist_iter->face_index) {
       BMLoop *l_other;
-      efa_vlist = BM_face_at_index(em->bm, vlist_iter->poly_index);
-      /* tf_vlist = BM_ELEM_CD_GET_VOID_P(efa_vlist, cd_poly_tex_offset); */ /* UNUSED */
+      efa_vlist = BM_face_at_index(em->bm, vlist_iter->face_index);
+      // tf_vlist = BM_ELEM_CD_GET_VOID_P(efa_vlist, cd_poly_tex_offset); /* UNUSED */
 
       l_other = static_cast<BMLoop *>(
-          BM_iter_at_index(em->bm, BM_LOOPS_OF_FACE, efa_vlist, vlist_iter->loop_of_poly_index));
+          BM_iter_at_index(em->bm, BM_LOOPS_OF_FACE, efa_vlist, vlist_iter->loop_of_face_index));
 
       uvedit_uv_select_set(scene, em->bm, l_other, select, false, offsets);
     }
@@ -3313,7 +3316,8 @@ static void uv_select_flush_from_tag_face(const Scene *scene, Object *obedit, co
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
   if ((ts->uv_flag & UV_SYNC_SELECTION) == 0 &&
-      ELEM(ts->uv_sticky, SI_STICKY_VERTEX, SI_STICKY_LOC)) {
+      ELEM(ts->uv_sticky, SI_STICKY_VERTEX, SI_STICKY_LOC))
+  {
 
     uint efa_index;
 
@@ -3456,7 +3460,8 @@ static void uv_select_flush_from_loop_edge_flag(const Scene *scene, BMEditMesh *
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
   if ((ts->uv_flag & UV_SYNC_SELECTION) == 0 &&
-      ELEM(ts->uv_sticky, SI_STICKY_LOC, SI_STICKY_VERTEX)) {
+      ELEM(ts->uv_sticky, SI_STICKY_LOC, SI_STICKY_VERTEX))
+  {
     /* Use UV edge selection to identify which verts must to be selected */
     uint efa_index;
     /* Clear UV vert flags */
@@ -4076,7 +4081,8 @@ static bool do_lasso_select_mesh_uv(bContext *C,
           BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
             float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
             if (do_lasso_select_mesh_uv_is_edge_inside(
-                    region, &rect, mcoords, mcoords_len, luv, luv_prev)) {
+                    region, &rect, mcoords, mcoords_len, luv, luv_prev))
+            {
               uvedit_edge_select_set_with_sticky(scene, em, l_prev, select, false, offsets);
               changed = true;
             }
@@ -4568,21 +4574,24 @@ static float get_uv_vert_needle(const eUVSelectSimilar type,
       BM_ITER_ELEM (f, &iter, vert, BM_FACES_OF_VERT) {
         result += BM_face_calc_area_uv(f, offsets.uv);
       }
-    } break;
+      break;
+    }
     case UV_SSIM_AREA_3D: {
       BMFace *f;
       BMIter iter;
       BM_ITER_ELEM (f, &iter, vert, BM_FACES_OF_VERT) {
         result += BM_face_calc_area_with_mat3(f, ob_m3);
       }
-    } break;
+      break;
+    }
     case UV_SSIM_SIDES: {
       BMEdge *e;
       BMIter iter;
       BM_ITER_ELEM (e, &iter, vert, BM_EDGES_OF_VERT) {
         result += 1.0f;
       }
-    } break;
+      break;
+    }
     case UV_SSIM_PIN:
       return BM_ELEM_CD_GET_BOOL(loop, offsets.pin) ? 1.0f : 0.0f;
     default:
@@ -4610,19 +4619,21 @@ static float get_uv_edge_needle(const eUVSelectSimilar type,
       BM_ITER_ELEM (f, &iter, edge, BM_FACES_OF_EDGE) {
         result += BM_face_calc_area_uv(f, offsets.uv);
       }
-    } break;
+      break;
+    }
     case UV_SSIM_AREA_3D: {
       BMFace *f;
       BMIter iter;
       BM_ITER_ELEM (f, &iter, edge, BM_FACES_OF_EDGE) {
         result += BM_face_calc_area_with_mat3(f, ob_m3);
       }
-    } break;
+      break;
+    }
     case UV_SSIM_LENGTH_UV: {
       float *luv_a = BM_ELEM_CD_GET_FLOAT_P(loop_a, offsets.uv);
       float *luv_b = BM_ELEM_CD_GET_FLOAT_P(loop_b, offsets.uv);
       return len_v2v2(luv_a, luv_b);
-    } break;
+    }
     case UV_SSIM_LENGTH_3D:
       return len_v3v3(edge->v1->co, edge->v2->co);
     case UV_SSIM_SIDES: {
@@ -4631,8 +4642,9 @@ static float get_uv_edge_needle(const eUVSelectSimilar type,
       BM_ITER_ELEM (e, &iter, edge, BM_FACES_OF_EDGE) {
         result += 1.0f;
       }
-    } break;
-    case UV_SSIM_PIN:
+      break;
+    }
+    case UV_SSIM_PIN: {
       if (BM_ELEM_CD_GET_BOOL(loop_a, offsets.pin)) {
         result += 1.0f;
       }
@@ -4640,6 +4652,7 @@ static float get_uv_edge_needle(const eUVSelectSimilar type,
         result += 1.0f;
       }
       break;
+    }
     default:
       BLI_assert_unreachable();
       return false;
@@ -4674,7 +4687,8 @@ static float get_uv_face_needle(const eUVSelectSimilar type,
           result += 1.0f;
         }
       }
-    } break;
+      break;
+    }
     case UV_SSIM_MATERIAL:
       return face->mat_nr;
     case UV_SSIM_WINDING:
@@ -5270,6 +5284,7 @@ void UV_OT_select_similar(wmOperatorType *ot)
   /* properties */
   PropertyRNA *prop = ot->prop = RNA_def_enum(
       ot->srna, "type", uv_select_similar_type_items, SIMVERT_NORMAL, "Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_enum_funcs(prop, uv_select_similar_type_itemf);
   RNA_def_enum(ot->srna, "compare", prop_similar_compare_types, SIM_CMP_EQ, "Compare", "");
   RNA_def_float(ot->srna, "threshold", 0.0f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);

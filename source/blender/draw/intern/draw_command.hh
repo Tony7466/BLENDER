@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -98,8 +98,10 @@ enum class Type : uint8_t {
   DrawIndirect,
   FramebufferBind,
   PushConstant,
+  SpecializeConstant,
   ResourceBind,
   ShaderBind,
+  SubPassTransition,
   StateSet,
   StencilSet,
 
@@ -129,6 +131,16 @@ struct ShaderBind {
 
 struct FramebufferBind {
   GPUFrameBuffer **framebuffer;
+
+  void execute() const;
+  std::string serialize() const;
+};
+
+struct SubPassTransition {
+  /** \note uint8_t storing `GPUAttachmentState` for compactness. */
+  uint8_t depth_state;
+  /** \note 8 is GPU_FB_MAX_COLOR_ATTACHMENT. */
+  uint8_t color_states[8];
 
   void execute() const;
   std::string serialize() const;
@@ -176,17 +188,17 @@ struct ResourceBind {
       : slot(slot_), is_reference(false), type(Type::StorageBuf), storage_buf(res){};
   ResourceBind(int slot_, GPUStorageBuf **res)
       : slot(slot_), is_reference(true), type(Type::StorageBuf), storage_buf_ref(res){};
-  ResourceBind(int slot_, GPUUniformBuf *res, Type /* type */)
+  ResourceBind(int slot_, GPUUniformBuf *res, Type /*type*/)
       : slot(slot_), is_reference(false), type(Type::UniformAsStorageBuf), uniform_buf(res){};
-  ResourceBind(int slot_, GPUUniformBuf **res, Type /* type */)
+  ResourceBind(int slot_, GPUUniformBuf **res, Type /*type*/)
       : slot(slot_), is_reference(true), type(Type::UniformAsStorageBuf), uniform_buf_ref(res){};
-  ResourceBind(int slot_, GPUVertBuf *res, Type /* type */)
+  ResourceBind(int slot_, GPUVertBuf *res, Type /*type*/)
       : slot(slot_), is_reference(false), type(Type::VertexAsStorageBuf), vertex_buf(res){};
-  ResourceBind(int slot_, GPUVertBuf **res, Type /* type */)
+  ResourceBind(int slot_, GPUVertBuf **res, Type /*type*/)
       : slot(slot_), is_reference(true), type(Type::VertexAsStorageBuf), vertex_buf_ref(res){};
-  ResourceBind(int slot_, GPUIndexBuf *res, Type /* type */)
+  ResourceBind(int slot_, GPUIndexBuf *res, Type /*type*/)
       : slot(slot_), is_reference(false), type(Type::IndexAsStorageBuf), index_buf(res){};
-  ResourceBind(int slot_, GPUIndexBuf **res, Type /* type */)
+  ResourceBind(int slot_, GPUIndexBuf **res, Type /*type*/)
       : slot(slot_), is_reference(true), type(Type::IndexAsStorageBuf), index_buf_ref(res){};
   ResourceBind(int slot_, draw::Image *res)
       : slot(slot_), is_reference(false), type(Type::Image), texture(draw::as_texture(res)){};
@@ -285,12 +297,64 @@ struct PushConstant {
   std::string serialize() const;
 };
 
+struct SpecializeConstant {
+  /* Shader to set the constant in. */
+  GPUShader *shader;
+  /* Value of the constant or a reference to it. */
+  union {
+    int int_value;
+    int uint_value;
+    float float_value;
+    bool bool_value;
+    const int *int_ref;
+    const int *uint_ref;
+    const float *float_ref;
+    const bool *bool_ref;
+  };
+
+  int location;
+
+  enum class Type : uint8_t {
+    IntValue = 0,
+    UintValue,
+    FloatValue,
+    BoolValue,
+    IntReference,
+    UintReference,
+    FloatReference,
+    BoolReference,
+  } type;
+
+  SpecializeConstant() = default;
+
+  SpecializeConstant(GPUShader *sh, int loc, const float &val)
+      : shader(sh), float_value(val), location(loc), type(Type::FloatValue){};
+  SpecializeConstant(GPUShader *sh, int loc, const int &val)
+      : shader(sh), int_value(val), location(loc), type(Type::IntValue){};
+  SpecializeConstant(GPUShader *sh, int loc, const bool &val)
+      : shader(sh), bool_value(val), location(loc), type(Type::BoolValue){};
+  SpecializeConstant(GPUShader *sh, int loc, const float *val)
+      : shader(sh), float_ref(val), location(loc), type(Type::FloatReference){};
+  SpecializeConstant(GPUShader *sh, int loc, const int *val)
+      : shader(sh), int_ref(val), location(loc), type(Type::IntReference){};
+  SpecializeConstant(GPUShader *sh, int loc, const bool *val)
+      : shader(sh), bool_ref(val), location(loc), type(Type::BoolReference){};
+
+  void execute() const;
+  std::string serialize() const;
+};
+
 struct Draw {
   GPUBatch *batch;
   uint instance_len;
   uint vertex_len;
   uint vertex_first;
   ResourceHandle handle;
+#ifdef WITH_METAL_BACKEND
+  /* Shader is required for extracting SSBO vertex fetch expansion parameters during draw command
+   * generation. */
+  GPUShader *shader;
+#endif
 
   void execute(RecordingState &state) const;
   std::string serialize() const;
@@ -385,7 +449,9 @@ union Undetermined {
   ShaderBind shader_bind;
   ResourceBind resource_bind;
   FramebufferBind framebuffer_bind;
+  SubPassTransition subpass_transition;
   PushConstant push_constant;
+  SpecializeConstant specialize_constant;
   Draw draw;
   DrawMulti draw_multi;
   DrawIndirect draw_indirect;
@@ -399,7 +465,7 @@ union Undetermined {
 };
 
 /** Try to keep the command size as low as possible for performance. */
-BLI_STATIC_ASSERT(sizeof(Undetermined) <= 24, "One of the command type is too large.")
+BLI_STATIC_ASSERT(sizeof(Undetermined) <= /*24*/ 32, "One of the command type is too large.")
 
 /** \} */
 
@@ -426,7 +492,10 @@ class DrawCommandBuf {
   uint resource_id_count_ = 0;
 
  public:
-  void clear(){};
+  void clear()
+  {
+    resource_id_buf_.trim_to_next_power_of_2(resource_id_count_);
+  };
 
   void append_draw(Vector<Header, 0> &headers,
                    Vector<Undetermined, 0> &commands,
@@ -435,14 +504,28 @@ class DrawCommandBuf {
                    uint vertex_len,
                    uint vertex_first,
                    ResourceHandle handle,
-                   uint /*custom_id*/)
+                   uint /*custom_id*/
+#ifdef WITH_METAL_BACKEND
+                   ,
+                   GPUShader *shader = nullptr
+#endif
+  )
   {
     vertex_first = vertex_first != -1 ? vertex_first : 0;
     instance_len = instance_len != -1 ? instance_len : 1;
 
     int64_t index = commands.append_and_get_index({});
     headers.append({Type::Draw, uint(index)});
-    commands[index].draw = {batch, instance_len, vertex_len, vertex_first, handle};
+    commands[index].draw = {batch,
+                            instance_len,
+                            vertex_len,
+                            vertex_first,
+                            handle
+#ifdef WITH_METAL_BACKEND
+                            ,
+                            shader
+#endif
+    };
   }
 
   void bind(RecordingState &state,
@@ -523,6 +606,11 @@ class DrawMultiBuf {
  public:
   void clear()
   {
+    group_buf_.trim_to_next_power_of_2(group_count_);
+    /* Two commands per group (inverted and non-inverted scale). */
+    command_buf_.trim_to_next_power_of_2(group_count_ * 2);
+    prototype_buf_.trim_to_next_power_of_2(prototype_count_);
+    resource_id_buf_.trim_to_next_power_of_2(resource_id_count_);
     header_id_counter_ = 0;
     group_count_ = 0;
     prototype_count_ = 0;
@@ -536,7 +624,12 @@ class DrawMultiBuf {
                    uint vertex_len,
                    uint vertex_first,
                    ResourceHandle handle,
-                   uint custom_id)
+                   uint custom_id
+#ifdef WITH_METAL_BACKEND
+                   ,
+                   GPUShader *shader
+#endif
+  )
   {
     /* Custom draw-calls cannot be batched and will produce one group per draw. */
     const bool custom_group = ((vertex_first != 0 && vertex_first != -1) || vertex_len != -1);
@@ -575,6 +668,11 @@ class DrawMultiBuf {
       group.back_proto_len = 0;
       group.vertex_len = vertex_len;
       group.vertex_first = vertex_first;
+#ifdef WITH_METAL_BACKEND
+      /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
+       */
+      group.gpu_shader = shader;
+#endif
       /* Custom group are not to be registered in the group_ids_. */
       if (!custom_group) {
         group_id = new_group_id;
@@ -588,6 +686,11 @@ class DrawMultiBuf {
       DrawGroup &group = group_buf_[group_id];
       group.len += instance_len;
       group.front_facing_len += inverted ? 0 : instance_len;
+#ifdef WITH_METAL_BACKEND
+      /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
+       */
+      group.gpu_shader = shader;
+#endif
       /* For serialization only. */
       (inverted ? group.back_proto_len : group.front_proto_len)++;
     }

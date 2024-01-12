@@ -1,11 +1,14 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../blenkernel
+  ../../blentranslation
   ../../makesrna
   ../../sequencer
+  ../../windowmanager
 )
 
 set(INC_SYS
@@ -14,16 +17,15 @@ set(INC_SYS
 
 set(SRC
   scene_edit.cc
+  scene_fps.cc
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 

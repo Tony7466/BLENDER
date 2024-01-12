@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
 
 #include "curves_sculpt_intern.hh"
 
-#include "ED_curves_sculpt.h"
+#include "ED_curves_sculpt.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -29,7 +29,7 @@ bke::SpanAttributeWriter<float> float_selection_ensure(Curves &curves_id)
     }
   }
   else {
-    const eAttrDomain domain = eAttrDomain(curves_id.selection_domain);
+    const bke::AttrDomain domain = bke::AttrDomain(curves_id.selection_domain);
     const int64_t size = attributes.domain_size(domain);
     attributes.add(".selection",
                    domain,

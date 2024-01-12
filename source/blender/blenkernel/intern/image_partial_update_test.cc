@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "testing/testing.h"
@@ -10,7 +10,7 @@
 #include "BKE_idtype.h"
 #include "BKE_image.h"
 #include "BKE_image_partial_update.hh"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_moviecache.h"

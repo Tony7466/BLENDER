@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,13 +6,15 @@
  * \ingroup bke
  */
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_noise.h"
 
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_particle.h"
 
 #include "particle_private.h"
@@ -524,7 +526,7 @@ void do_kink(ParticleKey *state,
       sub_v3_v3v3(par_vec, state->co, state_co);
 
       length = normalize_v3(par_vec);
-      mul_v3_fl(par_vec, MIN2(length, amplitude / 2.0f));
+      mul_v3_fl(par_vec, std::min(length, amplitude / 2.0f));
 
       add_v3_v3v3(state_co, par_co, y_vec);
       add_v3_v3(state_co, z_vec);

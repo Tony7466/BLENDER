@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "BKE_cryptomatte.hh"
@@ -27,7 +27,8 @@ void Cryptomatte::begin_sync()
     session_.reset(BKE_cryptomatte_init_from_view_layer(inst_.view_layer));
 
     for (const std::string &layer_name :
-         bke::cryptomatte::BKE_cryptomatte_layer_names_get(*session_)) {
+         bke::cryptomatte::BKE_cryptomatte_layer_names_get(*session_))
+    {
       StringRef layer_name_ref = layer_name;
       bke::cryptomatte::CryptomatteLayer *layer = bke::cryptomatte::BKE_cryptomatte_layer_get(
           *session_, layer_name);

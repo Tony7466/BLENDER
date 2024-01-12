@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -64,7 +64,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_endian_switch.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
@@ -223,6 +223,7 @@ SDNA_DEFAULT_DECL_STRUCT(Tex);
 
 /* DNA_userdef_types.h */
 SDNA_DEFAULT_DECL_STRUCT(bUserAssetLibrary);
+SDNA_DEFAULT_DECL_STRUCT(bUserExtensionRepo);
 
 /* DNA_view3d_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(View3D);
@@ -335,7 +336,7 @@ extern const bTheme U_theme_default;
  * Prevent assigning the wrong struct types since all elements in #DNA_default_table are `void *`.
  */
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
-#  define SDNA_TYPE_CHECKED(v, t) (&(v) + (_Generic((v), t : 0)))
+#  define SDNA_TYPE_CHECKED(v, t) (&(v) + (_Generic((v), t: 0)))
 #else
 #  define SDNA_TYPE_CHECKED(v, t) (&(v))
 #endif
@@ -463,6 +464,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL_EX(UserDef_FileSpaceData, UserDef.file_space_data),
     SDNA_DEFAULT_DECL_EX(WalkNavigation, UserDef.walk_navigation),
     SDNA_DEFAULT_DECL(bUserAssetLibrary),
+    SDNA_DEFAULT_DECL(bUserExtensionRepo),
 
     /* DNA_view3d_defaults.h */
     SDNA_DEFAULT_DECL(View3D),

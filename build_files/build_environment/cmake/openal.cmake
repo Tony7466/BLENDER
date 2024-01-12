@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2002-2022 Blender Foundation
+# SPDX-FileCopyrightText: 2002-2022 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -8,8 +8,8 @@ if(BUILD_MODE STREQUAL Release)
     -DALSOFT_NO_CONFIG_UTIL=ON
     -DALSOFT_EXAMPLES=OFF
     -DALSOFT_TESTS=OFF
-    -DALSOFT_CONFIG=OFF
-    -DALSOFT_HRTF_DEFS=OFF
+    -DALSOFT_INSTALL_CONFIG=OFF
+    -DALSOFT_INSTALL_HRTF_DATA=OFF
     -DALSOFT_INSTALL=ON
     -DALSOFT_BACKEND_SNDIO=OFF
   )

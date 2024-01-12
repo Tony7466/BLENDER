@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,15 +12,15 @@
 
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "GHOST_C-api.h"
 
@@ -28,10 +28,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "wm_surface.h"
-#include "wm_xr_intern.h"
+#include "wm_surface.hh"
+#include "wm_xr_intern.hh"
 
 struct wmXrErrorHandlerData {
   wmWindowManager *wm;

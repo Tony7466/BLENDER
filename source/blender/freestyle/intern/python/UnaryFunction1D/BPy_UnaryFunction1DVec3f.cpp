@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -70,7 +70,8 @@ static int UnaryFunction1DVec3f___init__(BPy_UnaryFunction1DVec3f *self,
   PyObject *obj = nullptr;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj)) {
+          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj))
+  {
     return -1;
   }
 

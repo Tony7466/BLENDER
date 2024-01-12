@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -140,6 +140,11 @@ struct DictionaryEntryParser {
     return get_double(IDP_KEY_VALUE);
   }
 
+  std::optional<int> get_enum_value() const
+  {
+    return get_enum(IDP_KEY_VALUE);
+  }
+
   const ArrayValue *get_array_value() const
   {
     return get_array(IDP_KEY_VALUE);
@@ -192,6 +197,21 @@ struct DictionaryEntryParser {
   }
 
   std::optional<int32_t> get_int(StringRef key) const
+  {
+    const DictionaryValue::LookupValue *value_ptr = lookup.lookup_ptr(key);
+    if (value_ptr == nullptr) {
+      return std::nullopt;
+    }
+    const DictionaryValue::LookupValue &value = *value_ptr;
+
+    if (value->type() != eValueType::Int) {
+      return std::nullopt;
+    }
+
+    return value->as_int_value()->value();
+  }
+
+  std::optional<int32_t> get_enum(StringRef key) const
   {
     const DictionaryValue::LookupValue *value_ptr = lookup.lookup_ptr(key);
     if (value_ptr == nullptr) {

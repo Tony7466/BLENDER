@@ -27,7 +27,10 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_base_safe.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_noise.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
@@ -35,24 +38,25 @@
 #include "PIL_time.h"
 
 #include "BKE_anim_path.h" /* needed for where_on_path */
-#include "BKE_bvhutils.h"
+#include "BKE_bvhutils.hh"
 #include "BKE_collection.h"
 #include "BKE_collision.h"
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
 #include "BKE_effect.h"
 #include "BKE_fluid.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_mesh.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_mesh.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_physics.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_physics.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_texture.h"
 
@@ -148,13 +152,13 @@ static void precalculate_effector(Depsgraph *depsgraph, EffectorCache *eff)
   if (eff->pd->forcefield == PFIELD_GUIDE && eff->ob->type == OB_CURVES_LEGACY) {
     Curve *cu = static_cast<Curve *>(eff->ob->data);
     if (cu->flag & CU_PATH) {
-      if (eff->ob->runtime.curve_cache == nullptr ||
-          eff->ob->runtime.curve_cache->anim_path_accum_length == nullptr)
+      if (eff->ob->runtime->curve_cache == nullptr ||
+          eff->ob->runtime->curve_cache->anim_path_accum_length == nullptr)
       {
         BKE_displist_make_curveTypes(depsgraph, eff->scene, eff->ob, false);
       }
 
-      if (eff->ob->runtime.curve_cache->anim_path_accum_length) {
+      if (eff->ob->runtime->curve_cache->anim_path_accum_length) {
         BKE_where_on_path(
             eff->ob, 0.0, eff->guide_loc, eff->guide_dir, nullptr, &eff->guide_radius, nullptr);
         mul_m4_v3(eff->ob->object_to_world, eff->guide_loc);
@@ -459,7 +463,7 @@ void pd_point_from_soft(Scene *scene, float *loc, float *vel, int index, Effecte
 /************************************************/
 
 // triangle - ray callback function
-static void eff_tri_ray_hit(void * /*userData*/,
+static void eff_tri_ray_hit(void * /*user_data*/,
                             int /*index*/,
                             const BVHTreeRay * /*ray*/,
                             BVHTreeRayHit *hit)
@@ -479,7 +483,6 @@ static float eff_calc_visibility(ListBase *colliders,
 {
   const int raycast_flag = BVH_RAYCAST_DEFAULT & ~BVH_RAYCAST_WATERTIGHT;
   ListBase *colls = colliders;
-  ColliderCache *col;
   float norm[3], len = 0.0;
   float visibility = 1.0, absorption = 0.0;
 
@@ -497,7 +500,7 @@ static float eff_calc_visibility(ListBase *colliders,
   len = normalize_v3(norm);
 
   /* check all collision objects */
-  for (col = static_cast<ColliderCache *>(colls->first); col; col = col->next) {
+  LISTBASE_FOREACH (ColliderCache *, col, colls) {
     CollisionModifierData *collmd = col->collmd;
 
     if (col->ob == eff->ob) {
@@ -635,7 +638,7 @@ float effector_falloff(EffectorCache *eff,
           break;
         }
 
-        r_fac = RAD2DEGF(saacos(fac / len_v3(efd->vec_to_point2)));
+        r_fac = RAD2DEGF(safe_acosf(fac / len_v3(efd->vec_to_point2)));
         falloff *= falloff_func_rad(eff->pd, r_fac);
 
         break;
@@ -667,12 +670,12 @@ bool closest_point_on_surface(SurfaceModifierData *surmd,
     }
 
     if (surface_vel) {
-      const int *corner_verts = bvhtree->corner_verts;
-      const MLoopTri *lt = &bvhtree->looptri[nearest.index];
+      const int *corner_verts = bvhtree->corner_verts.data();
+      const blender::int3 &tri = bvhtree->corner_tris[nearest.index];
 
-      copy_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[lt->tri[0]]]);
-      add_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[lt->tri[1]]]);
-      add_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[lt->tri[2]]]);
+      copy_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[tri[0]]]);
+      add_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[tri[1]]]);
+      add_v3_v3(surface_vel, surmd->runtime.vert_velocities[corner_verts[tri[2]]]);
 
       mul_v3_fl(surface_vel, (1.0f / 3.0f));
     }
@@ -692,7 +695,8 @@ bool get_effector_data(EffectorCache *eff,
   /* In case surface object is in Edit mode when loading the .blend,
    * surface modifier is never executed and bvhtree never built, see #48415. */
   if (eff->pd && eff->pd->shape == PFIELD_SHAPE_SURFACE && eff->surmd &&
-      eff->surmd->runtime.bvhtree) {
+      eff->surmd->runtime.bvhtree)
+  {
     /* closest point in the object surface is an effector */
     float vec[3];
 
@@ -709,8 +713,8 @@ bool get_effector_data(EffectorCache *eff,
   else if (eff->pd && eff->pd->shape == PFIELD_SHAPE_POINTS) {
     /* TODO: hair and points object support */
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(eff->ob);
-    const float(*positions)[3] = BKE_mesh_vert_positions(me_eval);
-    const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me_eval);
+    const blender::Span<blender::float3> positions = me_eval->vert_positions();
+    const blender::Span<blender::float3> vert_normals = me_eval->vert_normals();
     if (me_eval != nullptr) {
       copy_v3_v3(efd->loc, positions[*efd->index]);
       copy_v3_v3(efd->nor, vert_normals[*efd->index]);
@@ -825,7 +829,7 @@ static void get_effector_tot(
   if (eff->pd->shape == PFIELD_SHAPE_POINTS) {
     /* TODO: hair and points object support */
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(eff->ob);
-    *tot = me_eval != nullptr ? me_eval->totvert : 1;
+    *tot = me_eval != nullptr ? me_eval->verts_num : 1;
 
     if (*tot && eff->pd->forcefield == PFIELD_HARMONIC && point->index >= 0) {
       *p = point->index % *tot;
@@ -838,14 +842,15 @@ static void get_effector_tot(
     if (eff->pd->forcefield == PFIELD_CHARGE) {
       /* Only the charge of the effected particle is used for
        * interaction, not fall-offs. If the fall-offs aren't the
-       * same this will be unphysical, but for animation this
+       * same this will be nonphysical, but for animation this
        * could be the wanted behavior. If you want physical
        * correctness the fall-off should be spherical 2.0 anyways.
        */
       efd->charge = eff->pd->f_strength;
     }
     else if (eff->pd->forcefield == PFIELD_HARMONIC &&
-             (eff->pd->flag & PFIELD_MULTIPLE_SPRINGS) == 0) {
+             (eff->pd->flag & PFIELD_MULTIPLE_SPRINGS) == 0)
+    {
       /* every particle is mapped to only one harmonic effector particle */
       *p = point->index % eff->psys->totpart;
       *tot = *p + 1;
@@ -872,7 +877,6 @@ static void do_texture_effector(EffectorCache *eff,
   float nabla = eff->pd->tex_nabla;
   int hasrgb;
   short mode = eff->pd->tex_mode;
-  bool scene_color_manage;
 
   if (!eff->pd->tex) {
     return;
@@ -894,10 +898,8 @@ static void do_texture_effector(EffectorCache *eff,
     madd_v3_v3fl(tex_co, efd->nor, fac);
   }
 
-  scene_color_manage = BKE_scene_check_color_management_enabled(eff->scene);
-
   hasrgb = multitex_ext(
-      eff->pd->tex, tex_co, nullptr, nullptr, 0, result, 0, nullptr, scene_color_manage, false);
+      eff->pd->tex, tex_co, nullptr, nullptr, 0, result, 0, nullptr, true, false);
 
   if (hasrgb && mode == PFIELD_TEX_RGB) {
     force[0] = (0.5f - result->trgba[0]) * strength;
@@ -908,42 +910,15 @@ static void do_texture_effector(EffectorCache *eff,
     strength /= nabla;
 
     tex_co[0] += nabla;
-    multitex_ext(eff->pd->tex,
-                 tex_co,
-                 nullptr,
-                 nullptr,
-                 0,
-                 result + 1,
-                 0,
-                 nullptr,
-                 scene_color_manage,
-                 false);
+    multitex_ext(eff->pd->tex, tex_co, nullptr, nullptr, 0, result + 1, 0, nullptr, true, false);
 
     tex_co[0] -= nabla;
     tex_co[1] += nabla;
-    multitex_ext(eff->pd->tex,
-                 tex_co,
-                 nullptr,
-                 nullptr,
-                 0,
-                 result + 2,
-                 0,
-                 nullptr,
-                 scene_color_manage,
-                 false);
+    multitex_ext(eff->pd->tex, tex_co, nullptr, nullptr, 0, result + 2, 0, nullptr, true, false);
 
     tex_co[1] -= nabla;
     tex_co[2] += nabla;
-    multitex_ext(eff->pd->tex,
-                 tex_co,
-                 nullptr,
-                 nullptr,
-                 0,
-                 result + 3,
-                 0,
-                 nullptr,
-                 scene_color_manage,
-                 false);
+    multitex_ext(eff->pd->tex, tex_co, nullptr, nullptr, 0, result + 3, 0, nullptr, true, false);
 
     if (mode == PFIELD_TEX_GRAD || !hasrgb) { /* if we don't have rgb fall back to grad */
       /* generate intensity if texture only has rgb value */
@@ -1182,7 +1157,6 @@ void BKE_effectors_apply(ListBase *effectors,
    *   (particles are guided along a curve bezier or old nurbs)
    *   (is independent of other effectors)
    */
-  EffectorCache *eff;
   EffectorData efd;
   int p = 0, tot = 1, step = 1;
 
@@ -1190,7 +1164,7 @@ void BKE_effectors_apply(ListBase *effectors,
   /* Check for min distance here? (yes would be cool to add that, ton) */
 
   if (effectors) {
-    for (eff = static_cast<EffectorCache *>(effectors->first); eff; eff = eff->next) {
+    LISTBASE_FOREACH (EffectorCache *, eff, effectors) {
       /* object effectors were fully checked to be OK to evaluate! */
 
       get_effector_tot(eff, &efd, point, &tot, &p, &step);

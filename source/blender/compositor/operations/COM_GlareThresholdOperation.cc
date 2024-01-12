@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,8 @@ GlareThresholdOperation::GlareThresholdOperation()
   this->add_input_socket(DataType::Color, ResizeMode::FitAny);
   this->add_output_socket(DataType::Color);
   input_program_ = nullptr;
+
+  flags_.can_be_constant = true;
 }
 
 void GlareThresholdOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

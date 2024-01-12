@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,8 +16,8 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "rna_internal.h"
 
 #ifdef RNA_RUNTIME
@@ -26,15 +26,15 @@
 #  include "DNA_scene_types.h"
 
 #  include "BKE_deform.h"
-#  include "BKE_lattice.h"
-#  include "BKE_main.h"
+#  include "BKE_lattice.hh"
+#  include "BKE_main.hh"
 #  include "BLI_string.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "ED_lattice.h"
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "ED_lattice.hh"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 static void rna_LatticePoint_co_get(PointerRNA *ptr, float *values)
 {
@@ -126,7 +126,8 @@ static void rna_Lattice_update_size(Main *bmain, Scene *scene, PointerRNA *ptr)
 
   /* #BKE_lattice_resize needs an object, any object will have the same result */
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     if (ob->data == lt) {
       BKE_lattice_resize(lt, newu, newv, neww, ob);
       if (lt->editlatt) {

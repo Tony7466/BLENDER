@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -195,7 +195,7 @@
     .current_xnew = NULL, \
     .current_x = NULL, \
     .current_v = NULL, \
-    .tri = NULL, \
+    .vert_tris = NULL, \
     .mvert_num = 0, \
     .tri_num = 0, \
     .time_x = -1000.0f, \
@@ -444,7 +444,7 @@
     .offset = {0.0f, 0.0f, 0.0f}, \
   }
 
-/* Some fields are initialized in #initData. */
+/* Some fields are initialized in #init_data. */
 #define _DNA_DEFAULT_OceanModifierData \
   { \
     .ocean = NULL, \

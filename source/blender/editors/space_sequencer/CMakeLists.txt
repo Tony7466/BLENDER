@@ -1,15 +1,18 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blenloader
+  ../../blentranslation
   ../../draw
   ../../gpu
   ../../imbuf
   ../../makesrna
   ../../sequencer
+  ../../windowmanager
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -23,37 +26,39 @@ set(SRC
   sequencer_buttons.cc
   sequencer_channels_draw.cc
   sequencer_channels_edit.cc
+  sequencer_clipboard.cc
   sequencer_drag_drop.cc
-  sequencer_draw.cc
   sequencer_edit.cc
-  sequencer_gizmo_retime.cc
-  sequencer_gizmo_retime_type.cc
   sequencer_modifier.cc
   sequencer_ops.cc
   sequencer_preview.cc
+  sequencer_preview_draw.cc
   sequencer_proxy.cc
+  sequencer_quads_batch.cc
   sequencer_retiming.cc
+  sequencer_retiming_draw.cc
   sequencer_scopes.cc
   sequencer_select.cc
   sequencer_thumbnails.cc
+  sequencer_timeline_draw.cc
   sequencer_view.cc
   space_sequencer.cc
 
-  sequencer_intern.h
+  sequencer_intern.hh
+  sequencer_quads_batch.hh
+  sequencer_scopes.hh
 )
 
 set(LIB
   PRIVATE bf::blenfont
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_interface
   bf_editor_util
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
+  PRIVATE bf::animrig
 )
 
 if(WITH_AUDASPACE)
@@ -67,6 +72,16 @@ if(WITH_AUDASPACE)
     )
   endif()
   add_definitions(-DWITH_AUDASPACE)
+endif()
+
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${TBB_LIBRARIES}
+  )
 endif()
 
 

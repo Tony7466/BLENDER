@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,18 +22,18 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    const Mesh *mesh = geometry_set.get_mesh_for_read();
+    const Mesh *mesh = geometry_set.get_mesh();
     if (mesh == nullptr) {
       geometry_set.remove_geometry_during_modify();
       return;
     }
 
-    const bke::MeshFieldContext context{*mesh, ATTR_DOMAIN_EDGE};
-    fn::FieldEvaluator evaluator{context, mesh->totedge};
+    const bke::MeshFieldContext context{*mesh, AttrDomain::Edge};
+    fn::FieldEvaluator evaluator{context, mesh->edges_num};
     evaluator.add(params.get_input<Field<bool>>("Selection"));
     evaluator.evaluate();
     const IndexMask selection = evaluator.get_evaluated_as_mask(0);
-    if (selection.size() == 0) {
+    if (selection.is_empty()) {
       geometry_set.remove_geometry_during_modify();
       return;
     }
@@ -47,16 +47,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curve", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_mesh_to_curve_cc
-
-void register_node_type_geo_mesh_to_curve()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_mesh_to_curve_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MESH_TO_CURVE, "Mesh to Curve", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_mesh_to_curve_cc

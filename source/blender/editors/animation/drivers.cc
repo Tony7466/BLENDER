@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,26 +22,28 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
+
+#include "ANIM_fcurve.hh"
 
 #include "anim_intern.h"
 
@@ -93,6 +95,7 @@ FCurve *alloc_driver_fcurve(const char rna_path[],
                             const int array_index,
                             eDriverFCurveCreationMode creation_mode)
 {
+  using namespace blender::animrig;
   FCurve *fcu = BKE_fcurve_create();
 
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
@@ -122,10 +125,9 @@ FCurve *alloc_driver_fcurve(const char rna_path[],
        * - These are configured to 0,0 and 1,1 to give a 1-1 mapping
        *   which can be easily tweaked from there.
        */
-      insert_vert_fcurve(
-          fcu, 0.0f, 0.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST | INSERTKEY_NO_USERPREF);
-      insert_vert_fcurve(
-          fcu, 1.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST | INSERTKEY_NO_USERPREF);
+      const KeyframeSettings settings = get_keyframe_settings(false);
+      insert_vert_fcurve(fcu, {0.0f, 0.0f}, settings, INSERTKEY_FAST);
+      insert_vert_fcurve(fcu, {1.0f, 1.0f}, settings, INSERTKEY_FAST);
       fcu->extend = FCURVE_EXTRAPOLATE_LINEAR;
       BKE_fcurve_handles_recalc(fcu);
     }
@@ -177,7 +179,7 @@ static int add_driver_with_target(ReportList * /*reports*/,
     if ((RNA_property_unit(dst_prop) == PROP_UNIT_ROTATION) &&
         (RNA_property_unit(src_prop) != PROP_UNIT_ROTATION))
     {
-      /* Rotation Destination:  normal -> radians,  so convert src to radians
+      /* Rotation Destination: normal -> radians, so convert src to radians
        * (However, if both input and output is a rotation, don't apply such corrections)
        */
       STRNCPY(driver->expression, "radians(var)");
@@ -294,15 +296,15 @@ int ANIM_add_driver_with_target(ReportList *reports,
                                 int driver_type,
                                 short mapping_type)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
 
-  PointerRNA id_ptr2, ptr2;
+  PointerRNA ptr2;
   PropertyRNA *prop2;
   int done_tot = 0;
 
   /* validate pointers first - exit if failure */
-  RNA_id_pointer_create(dst_id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(dst_id);
   if (RNA_path_resolve_property(&id_ptr, dst_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -313,7 +315,7 @@ int ANIM_add_driver_with_target(ReportList *reports,
     return 0;
   }
 
-  RNA_id_pointer_create(src_id, &id_ptr2);
+  PointerRNA id_ptr2 = RNA_id_pointer_create(src_id);
   if ((RNA_path_resolve_property(&id_ptr2, src_path, &ptr2, &prop2) == false) ||
       (mapping_type == CREATEDRIVER_MAPPING_NONE))
   {
@@ -324,14 +326,13 @@ int ANIM_add_driver_with_target(ReportList *reports,
 
   /* handle curve-property mappings based on mapping_type */
   switch (mapping_type) {
-    case CREATEDRIVER_MAPPING_N_N: /* N-N - Try to match as much as possible, * then use the first
-    one */
-    {
+    /* N-N - Try to match as much as possible, then use the first one. */
+    case CREATEDRIVER_MAPPING_N_N: {
       /* Use the shorter of the two (to avoid out of bounds access) */
       int dst_len = RNA_property_array_check(prop) ? RNA_property_array_length(&ptr, prop) : 1;
       int src_len = RNA_property_array_check(prop) ? RNA_property_array_length(&ptr2, prop2) : 1;
 
-      int len = MIN2(dst_len, src_len);
+      int len = std::min(dst_len, src_len);
 
       for (int i = 0; i < len; i++) {
         done_tot += add_driver_with_target(reports,
@@ -350,8 +351,8 @@ int ANIM_add_driver_with_target(ReportList *reports,
       }
       break;
     }
-
-    case CREATEDRIVER_MAPPING_1_N: /* 1-N - Specified target index for all */
+      /* 1-N - Specified target index for all. */
+    case CREATEDRIVER_MAPPING_1_N:
     default: {
       int len = RNA_property_array_check(prop) ? RNA_property_array_length(&ptr, prop) : 1;
 
@@ -373,8 +374,8 @@ int ANIM_add_driver_with_target(ReportList *reports,
       break;
     }
 
-    case CREATEDRIVER_MAPPING_1_1: /* 1-1 - Use the specified index (unless -1) */
-    {
+      /* 1-1 - Use the specified index (unless -1). */
+    case CREATEDRIVER_MAPPING_1_1: {
       done_tot = add_driver_with_target(reports,
                                         dst_id,
                                         dst_path,
@@ -401,14 +402,14 @@ int ANIM_add_driver_with_target(ReportList *reports,
 int ANIM_add_driver(
     ReportList *reports, ID *id, const char rna_path[], int array_index, short flag, int type)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   FCurve *fcu;
   int array_index_max;
   int done_tot = 0;
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,
@@ -592,12 +593,12 @@ bool ANIM_driver_can_paste()
 bool ANIM_copy_driver(
     ReportList *reports, ID *id, const char rna_path[], int array_index, short /*flag*/)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   FCurve *fcu;
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(reports,
                 RPT_ERROR,
@@ -640,12 +641,12 @@ bool ANIM_copy_driver(
 bool ANIM_paste_driver(
     ReportList *reports, ID *id, const char rna_path[], int array_index, short /*flag*/)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   FCurve *fcu;
 
   /* validate pointer first - exit if failure */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
     BKE_reportf(
         reports,

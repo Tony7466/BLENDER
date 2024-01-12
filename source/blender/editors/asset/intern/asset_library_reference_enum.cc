@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,9 +17,11 @@
 
 #include "DNA_userdef_types.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_prototypes.h"
 
 #include "ED_asset_library.h"
 
@@ -32,7 +34,7 @@ int ED_asset_library_reference_to_enum_value(const AssetLibraryReference *librar
 
   /* Note that the path isn't checked for validity here. If an invalid library path is used, the
    * Asset Browser can give a nice hint on what's wrong. */
-  const bUserAssetLibrary *user_library = BKE_preferences_asset_library_find_from_index(
+  const bUserAssetLibrary *user_library = BKE_preferences_asset_library_find_index(
       &U, library->custom_library_index);
   if (user_library) {
     return ASSET_LIBRARY_CUSTOM + library->custom_library_index;
@@ -53,7 +55,7 @@ AssetLibraryReference ED_asset_library_reference_from_enum_value(int value)
     return library;
   }
 
-  const bUserAssetLibrary *user_library = BKE_preferences_asset_library_find_from_index(
+  const bUserAssetLibrary *user_library = BKE_preferences_asset_library_find_index(
       &U, value - ASSET_LIBRARY_CUSTOM);
 
   /* Note that there is no check if the path exists here. If an invalid library path is used, the
@@ -78,25 +80,16 @@ const EnumPropertyItem *ED_asset_library_reference_to_rna_enum_itemf(const bool 
   int totitem = 0;
 
   if (include_generated) {
-    const EnumPropertyItem generated_items[] = {
-        {ASSET_LIBRARY_ALL, "ALL", 0, "All", "Show assets from all of the listed asset libraries"},
-        RNA_ENUM_ITEM_SEPR,
-        {ASSET_LIBRARY_LOCAL,
-         "LOCAL",
-         ICON_CURRENT_FILE,
-         "Current File",
-         "Show the assets currently available in this Blender session"},
-        {ASSET_LIBRARY_ESSENTIALS,
-         "ESSENTIALS",
-         0,
-         "Essentials",
-         "Show the basic building blocks and utilities coming with Blender"},
-        {0, nullptr, 0, nullptr, nullptr},
-    };
-
     /* Add predefined libraries that are generated and not simple directories that can be written
      * to. */
-    RNA_enum_items_add(&item, &totitem, generated_items);
+    BLI_assert(rna_enum_asset_library_type_items[0].value == ASSET_LIBRARY_ALL);
+    RNA_enum_item_add(&item, &totitem, &rna_enum_asset_library_type_items[0]);
+    RNA_enum_item_add_separator(&item, &totitem);
+
+    BLI_assert(rna_enum_asset_library_type_items[1].value == ASSET_LIBRARY_LOCAL);
+    RNA_enum_item_add(&item, &totitem, &rna_enum_asset_library_type_items[1]);
+    BLI_assert(rna_enum_asset_library_type_items[2].value == ASSET_LIBRARY_ESSENTIALS);
+    RNA_enum_item_add(&item, &totitem, &rna_enum_asset_library_type_items[2]);
   }
 
   /* Add separator if needed. */

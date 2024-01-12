@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,21 +26,21 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_pchanmap.h"
 
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
 
-#include "intern/depsgraph_type.h"
+#include "intern/depsgraph_type.hh"
 
 namespace blender::deg {
 
@@ -63,7 +63,8 @@ bool DepsgraphRelationBuilder::build_layer_collection(LayerCollection *layer_col
   const ComponentKey collection_hierarchy_key{&collection->id, NodeType::HIERARCHY};
 
   LISTBASE_FOREACH (
-      LayerCollection *, child_layer_collection, &layer_collection->layer_collections) {
+      LayerCollection *, child_layer_collection, &layer_collection->layer_collections)
+  {
     if (build_layer_collection(child_layer_collection)) {
       Collection *child_collection = child_layer_collection->collection;
       const ComponentKey child_collection_hierarchy_key{&child_collection->id,
@@ -118,9 +119,7 @@ void DepsgraphRelationBuilder::build_view_layer(Scene *scene,
 
   build_view_layer_collections(view_layer);
 
-  if (scene->camera != nullptr) {
-    build_object(scene->camera);
-  }
+  build_scene_camera(scene);
   /* Rigidbody. */
   if (scene->rigidbody_world != nullptr) {
     build_rigidbody(scene);

@@ -1,17 +1,21 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
   intern
+  ../blenkernel
   ../blenloader
+  ../blentranslation
+  ../bmesh
   ../editors/include
   ../functions
   ../geometry
   ../makesrna
   ../nodes
   ../render
+  ../windowmanager
   ../../../intern/eigen
 
   # RNA_prototypes.h
@@ -102,14 +106,11 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenfont
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
   PRIVATE bf::depsgraph
   PUBLIC bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_ALEMBIC)
@@ -118,7 +119,7 @@ if(WITH_ALEMBIC)
     ../io/alembic
   )
   list(APPEND LIB
-    bf_alembic
+    bf_io_alembic
   )
 endif()
 
@@ -128,7 +129,7 @@ if(WITH_USD)
     ../io/usd
   )
   list(APPEND LIB
-    bf_usd
+    bf_io_usd
   )
 endif()
 

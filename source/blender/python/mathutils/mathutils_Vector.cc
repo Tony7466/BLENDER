@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,10 @@
 
 #include "mathutils.h"
 
-#include "BLI_math.h"
+#include "BLI_math_base_safe.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "../generic/py_capi_utils.h"
@@ -692,7 +695,7 @@ static PyObject *Vector_to_3d(VectorObject *self)
     return nullptr;
   }
 
-  memcpy(tvec, self->vec, sizeof(float) * MIN2(self->vec_num, 3));
+  memcpy(tvec, self->vec, sizeof(float) * std::min(self->vec_num, 3));
   return Vector_CreatePyObject(tvec, 3, Py_TYPE(self));
 }
 PyDoc_STRVAR(Vector_to_4d_doc,
@@ -710,7 +713,7 @@ static PyObject *Vector_to_4d(VectorObject *self)
     return nullptr;
   }
 
-  memcpy(tvec, self->vec, sizeof(float) * MIN2(self->vec_num, 4));
+  memcpy(tvec, self->vec, sizeof(float) * std::min(self->vec_num, 4));
   return Vector_CreatePyObject(tvec, 4, Py_TYPE(self));
 }
 
@@ -1080,7 +1083,7 @@ PyDoc_STRVAR(
     "   :rtype: float\n");
 static PyObject *Vector_angle(VectorObject *self, PyObject *args)
 {
-  const int vec_num = MIN2(self->vec_num, 3); /* 4D angle makes no sense */
+  const int vec_num = std::min(self->vec_num, 3); /* 4D angle makes no sense */
   float tvec[MAX_DIMENSIONS];
   PyObject *value;
   double dot = 0.0f, dot_self = 0.0f, dot_other = 0.0f;
@@ -1128,7 +1131,7 @@ static PyObject *Vector_angle(VectorObject *self, PyObject *args)
     return nullptr;
   }
 
-  return PyFloat_FromDouble(saacos(dot / (sqrt(dot_self) * sqrt(dot_other))));
+  return PyFloat_FromDouble(safe_acosf(dot / (sqrt(dot_self) * sqrt(dot_other))));
 }
 
 /** \} */
@@ -2693,8 +2696,8 @@ static int Vector_swizzle_set(VectorObject *self, PyObject *value, void *closure
     size_from = axis_from;
   }
   else if ((void)PyErr_Clear(), /* run but ignore the result */
-           (size_from = (size_t)mathutils_array_parse(
-                vec_assign, 2, 4, value, "Vector.**** = swizzle assignment")) == size_t(-1))
+           (size_from = size_t(mathutils_array_parse(
+                vec_assign, 2, 4, value, "Vector.**** = swizzle assignment"))) == size_t(-1))
   {
     return -1;
   }
@@ -2755,10 +2758,26 @@ static int Vector_swizzle_set(VectorObject *self, PyObject *value, void *closure
 #endif
 
 static PyGetSetDef Vector_getseters[] = {
-    {"x", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_x_doc, (void *)0},
-    {"y", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_y_doc, (void *)1},
-    {"z", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_z_doc, (void *)2},
-    {"w", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_w_doc, (void *)3},
+    {"x",
+     (getter)Vector_axis_get,
+     (setter)Vector_axis_set,
+     Vector_axis_x_doc,
+     POINTER_FROM_INT(0)},
+    {"y",
+     (getter)Vector_axis_get,
+     (setter)Vector_axis_set,
+     Vector_axis_y_doc,
+     POINTER_FROM_INT(1)},
+    {"z",
+     (getter)Vector_axis_get,
+     (setter)Vector_axis_set,
+     Vector_axis_z_doc,
+     POINTER_FROM_INT(2)},
+    {"w",
+     (getter)Vector_axis_get,
+     (setter)Vector_axis_set,
+     Vector_axis_w_doc,
+     POINTER_FROM_INT(3)},
     {"length", (getter)Vector_length_get, (setter)Vector_length_set, Vector_length_doc, nullptr},
     {"length_squared",
      (getter)Vector_length_squared_get,

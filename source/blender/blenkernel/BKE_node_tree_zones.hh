@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,7 +33,11 @@ class bNodeTreeZone {
   Vector<bNodeTreeZone *> child_zones;
   /** Direct children nodes excluding nodes that belong to child zones. */
   Vector<const bNode *> child_nodes;
-  /** Links that enter the zone through the zone border. */
+  /**
+   * Links that enter the zone through the zone border and carry information. This excludes muted
+   * and unavailable links as well as links that are dangling because they are only connected to a
+   * reroute.
+   */
   Vector<const bNodeLink *> border_links;
 
   bool contains_node_recursively(const bNode &node) const;

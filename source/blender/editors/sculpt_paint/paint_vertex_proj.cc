@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,22 +11,22 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_mesh_iterators.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_object.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_mesh_iterators.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_object.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "BLI_math_vector.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
+
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "paint_intern.hh" /* own include */
 
@@ -57,12 +57,12 @@ struct VertProjUpdate {
 /* -------------------------------------------------------------------- */
 /* Internal Init */
 
-static void vpaint_proj_dm_map_cosnos_init__map_cb(void *userData,
+static void vpaint_proj_dm_map_cosnos_init__map_cb(void *user_data,
                                                    int index,
                                                    const float co[3],
                                                    const float no[3])
 {
-  VertProjHandle *vp_handle = static_cast<VertProjHandle *>(userData);
+  VertProjHandle *vp_handle = static_cast<VertProjHandle *>(user_data);
   CoNo *co_no = &vp_handle->vcosnos[index];
 
   /* check if we've been here before (normal should not be 0) */
@@ -81,11 +81,11 @@ static void vpaint_proj_dm_map_cosnos_init(Depsgraph *depsgraph,
                                            Object *ob,
                                            VertProjHandle *vp_handle)
 {
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
 
-  memset(vp_handle->vcosnos, 0, sizeof(*vp_handle->vcosnos) * me->totvert);
+  memset(vp_handle->vcosnos, 0, sizeof(*vp_handle->vcosnos) * mesh->verts_num);
   BKE_mesh_foreach_mapped_vert(
       me_eval, vpaint_proj_dm_map_cosnos_init__map_cb, vp_handle, MESH_FOREACH_USE_NORMAL);
 }
@@ -95,12 +95,12 @@ static void vpaint_proj_dm_map_cosnos_init(Depsgraph *depsgraph,
 
 /* Same as init but take mouse location into account */
 
-static void vpaint_proj_dm_map_cosnos_update__map_cb(void *userData,
+static void vpaint_proj_dm_map_cosnos_update__map_cb(void *user_data,
                                                      int index,
                                                      const float co[3],
                                                      const float no[3])
 {
-  VertProjUpdate *vp_update = static_cast<VertProjUpdate *>(userData);
+  VertProjUpdate *vp_update = static_cast<VertProjUpdate *>(user_data);
   VertProjHandle *vp_handle = vp_update->vp_handle;
 
   CoNo *co_no = &vp_handle->vcosnos[index];
@@ -141,7 +141,7 @@ static void vpaint_proj_dm_map_cosnos_update(Depsgraph *depsgraph,
   VertProjUpdate vp_update = {vp_handle, region, mval_fl};
 
   Object *ob = vp_handle->ob;
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
@@ -149,7 +149,7 @@ static void vpaint_proj_dm_map_cosnos_update(Depsgraph *depsgraph,
   /* quick sanity check - we shouldn't have to run this if there are no modifiers */
   BLI_assert(BLI_listbase_is_empty(&ob->modifiers) == false);
 
-  copy_vn_fl(vp_handle->dists_sq, me->totvert, FLT_MAX);
+  copy_vn_fl(vp_handle->dists_sq, mesh->verts_num, FLT_MAX);
   BKE_mesh_foreach_mapped_vert(
       me_eval, vpaint_proj_dm_map_cosnos_update__map_cb, &vp_update, MESH_FOREACH_USE_NORMAL);
 }
@@ -164,18 +164,19 @@ VertProjHandle *ED_vpaint_proj_handle_create(Depsgraph *depsgraph,
 {
   VertProjHandle *vp_handle = static_cast<VertProjHandle *>(
       MEM_mallocN(sizeof(VertProjHandle), __func__));
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   /* setup the handle */
   vp_handle->vcosnos = static_cast<CoNo *>(
-      MEM_mallocN(sizeof(CoNo) * me->totvert, "vertexcosnos map"));
+      MEM_mallocN(sizeof(CoNo) * mesh->verts_num, "vertexcosnos map"));
   vp_handle->use_update = false;
 
   /* sets 'use_update' if needed */
   vpaint_proj_dm_map_cosnos_init(depsgraph, scene, ob, vp_handle);
 
   if (vp_handle->use_update) {
-    vp_handle->dists_sq = static_cast<float *>(MEM_mallocN(sizeof(float) * me->totvert, __func__));
+    vp_handle->dists_sq = static_cast<float *>(
+        MEM_mallocN(sizeof(float) * mesh->verts_num, __func__));
 
     vp_handle->ob = ob;
     vp_handle->scene = scene;

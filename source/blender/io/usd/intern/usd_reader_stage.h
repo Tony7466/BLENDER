@@ -5,19 +5,26 @@
 
 struct Main;
 
+#include "WM_types.hh"
+
 #include "usd.h"
+#include "usd_hash_types.h"
 #include "usd_reader_prim.h"
 
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/imageable.h>
 
-#include <vector>
+#include <string>
 
 struct ImportSettings;
 
 namespace blender::io::usd {
 
-typedef std::map<pxr::SdfPath, std::vector<USDPrimReader *>> ProtoReaderMap;
+/**
+ * Map a USD prototype prim path to the list of readers that convert
+ * the prototype data.
+ */
+using ProtoReaderMap = blender::Map<pxr::SdfPath, blender::Vector<USDPrimReader *>>;
 
 class USDStageReader {
 
@@ -26,11 +33,14 @@ class USDStageReader {
   USDImportParams params_;
   ImportSettings settings_;
 
-  std::vector<USDPrimReader *> readers_;
+  blender::Vector<USDPrimReader *> readers_;
 
   /* USD material prim paths encountered during stage
    * traversal, for importing unused materials. */
-  std::vector<std::string> material_paths_;
+  blender::Vector<std::string> material_paths_;
+
+  /* Readers for scene-graph instance prototypes. */
+  ProtoReaderMap proto_readers_;
 
  public:
   USDStageReader(pxr::UsdStageRefPtr stage,
@@ -44,6 +54,13 @@ class USDStageReader {
   USDPrimReader *create_reader(const pxr::UsdPrim &prim);
 
   void collect_readers(struct Main *bmain);
+
+  /**
+   * Complete setting up the armature modifiers that
+   * were created for skinned meshes by setting the
+   * modifier object on the corresponding modifier.
+   */
+  void process_armature_modifiers() const;
 
   /* Convert every material prim on the stage to a Blender
    * material, including materials not used by any geometry.
@@ -72,17 +89,32 @@ class USDStageReader {
     return settings_;
   }
 
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return params_.worker_status ? params_.worker_status->reports : nullptr;
+  }
+
   void clear_readers();
 
-  const std::vector<USDPrimReader *> &readers() const
+  void clear_proto_readers();
+
+  const blender::Vector<USDPrimReader *> &readers() const
   {
     return readers_;
   };
 
   void sort_readers();
 
+  /**
+   * Create prototype collections for instancing by the USD instance readers.
+   */
+  void create_proto_collections(Main *bmain, Collection *parent_collection);
+
  private:
-  USDPrimReader *collect_readers(Main *bmain, const pxr::UsdPrim &prim);
+  USDPrimReader *collect_readers(Main *bmain,
+                                 const pxr::UsdPrim &prim,
+                                 blender::Vector<USDPrimReader *> &r_readers);
 
   /**
    * Returns true if the given prim should be included in the
@@ -102,7 +134,7 @@ class USDStageReader {
    */
   bool include_by_purpose(const pxr::UsdGeomImageable &imageable) const;
 
-  /*
+  /**
    * Returns true if the specified UsdPrim is a UsdGeom primitive,
    * procedural shape, such as UsdGeomCube.
    */

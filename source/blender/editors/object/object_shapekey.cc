@@ -18,7 +18,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -26,31 +26,30 @@
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_context.h"
-#include "BKE_crazyspace.h"
+#include "BKE_context.hh"
+#include "BKE_crazyspace.hh"
 #include "BKE_key.h"
-#include "BKE_lattice.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_lattice.hh"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "object_intern.h"
 
@@ -115,14 +114,14 @@ static bool object_shape_key_mirror(
         MEM_callocN(sizeof(char) * kb->totelem, "shape_key_mirror"));
 
     if (ob->type == OB_MESH) {
-      Mesh *me = static_cast<Mesh *>(ob->data);
+      Mesh *mesh = static_cast<Mesh *>(ob->data);
       int i1, i2;
       float *fp1, *fp2;
       float tvec[3];
 
       ED_mesh_mirror_spatial_table_begin(ob, nullptr, nullptr);
 
-      for (i1 = 0; i1 < me->totvert; i1++) {
+      for (i1 = 0; i1 < mesh->verts_num; i1++) {
         i2 = mesh_get_x_mirror_vert(ob, nullptr, i1, use_topology);
         if (i2 == i1) {
           fp1 = ((float *)kb->data) + i1 * 3;
@@ -339,18 +338,16 @@ static bool shape_key_remove_poll_property(const bContext * /*C*/,
   return true;
 }
 
-static char *shape_key_remove_get_description(bContext * /*C*/,
-                                              wmOperatorType * /*ot*/,
-                                              PointerRNA *ptr)
+static std::string shape_key_remove_get_description(bContext * /*C*/,
+                                                    wmOperatorType * /*ot*/,
+                                                    PointerRNA *ptr)
 {
   const bool do_apply_mix = RNA_boolean_get(ptr, "apply_mix");
-
   if (do_apply_mix) {
-    return BLI_strdup(
-        TIP_("Apply current visible shape to the object data, and delete all shape keys"));
+    return TIP_("Apply current visible shape to the object data, and delete all shape keys");
   }
 
-  return nullptr;
+  return "";
 }
 
 void OBJECT_OT_shape_key_remove(wmOperatorType *ot)
@@ -394,7 +391,7 @@ static int shape_key_clear_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  for (kb = static_cast<KeyBlock *>(key->block.first); kb; kb = kb->next) {
+  LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
     kb->curval = 0.0f;
   }
 
@@ -431,7 +428,7 @@ static int shape_key_retime_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  for (kb = static_cast<KeyBlock *>(key->block.first); kb; kb = kb->next) {
+  LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
     kb->pos = cfra;
     cfra += 0.1f;
   }

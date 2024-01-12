@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
  *
- * This file deals with array access for 'BPy_PropertyArrayRNA' from bpy_rna.c
+ * This file deals with array access for 'BPy_PropertyArrayRNA' from `bpy_rna.cc`.
  */
 
 #include <Python.h>
@@ -14,13 +14,13 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "bpy_rna.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BPY_extern_clog.h"
 
@@ -36,10 +36,10 @@
 
 struct ItemConvertArgData;
 
-typedef void (*ItemConvertFunc)(const ItemConvertArgData *arg, PyObject *, char *);
-typedef int (*ItemTypeCheckFunc)(PyObject *);
-typedef void (*RNA_SetArrayFunc)(PointerRNA *, PropertyRNA *, const char *);
-typedef void (*RNA_SetIndexFunc)(PointerRNA *, PropertyRNA *, int index, void *);
+using ItemConvertFunc = void (*)(const ItemConvertArgData *arg, PyObject *py_data, char *data);
+using ItemTypeCheckFunc = int (*)(PyObject *py_data);
+using RNA_SetArrayFunc = void (*)(PointerRNA *ptr, PropertyRNA *prop, const char *data);
+using RNA_SetIndexFunc = void (*)(PointerRNA *ptr, PropertyRNA *prop, int index, void *data_item);
 
 struct ItemConvertArgData {
   union {

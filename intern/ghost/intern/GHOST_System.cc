@@ -30,8 +30,9 @@ GHOST_System::GHOST_System()
       m_windowManager(nullptr),
       m_eventManager(nullptr),
 #ifdef WITH_INPUT_NDOF
-      m_ndofManager(0),
+      m_ndofManager(nullptr),
 #endif
+      m_preFullScreenSetting{0},
       m_multitouchGestures(true),
       m_tabletAPI(GHOST_kTabletAutomatic),
       m_is_debug_enabled(false)
@@ -58,13 +59,6 @@ GHOST_TSuccess GHOST_System::putClipboardImage(uint * /*rgba*/,
                                                int /*height*/) const
 {
   return GHOST_kFailure;
-}
-
-uint64_t GHOST_System::getMilliSeconds() const
-{
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::steady_clock::now().time_since_epoch())
-      .count();
 }
 
 GHOST_ITimerTask *GHOST_System::installTimer(uint64_t delay,
@@ -266,7 +260,7 @@ GHOST_TSuccess GHOST_System::removeEventConsumer(GHOST_IEventConsumer *consumer)
   return success;
 }
 
-GHOST_TSuccess GHOST_System::pushEvent(GHOST_IEvent *event)
+GHOST_TSuccess GHOST_System::pushEvent(const GHOST_IEvent *event)
 {
   GHOST_TSuccess success;
   if (m_eventManager) {
@@ -338,6 +332,11 @@ void GHOST_System::setTabletAPI(GHOST_TTabletAPI api)
 GHOST_TTabletAPI GHOST_System::getTabletAPI()
 {
   return m_tabletAPI;
+}
+
+GHOST_TSuccess GHOST_System::getPixelAtCursor(float[3] /* r_color */) const
+{
+  return GHOST_kFailure;
 }
 
 #ifdef WITH_INPUT_NDOF

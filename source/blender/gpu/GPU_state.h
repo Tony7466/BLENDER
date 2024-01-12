@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -156,7 +156,7 @@ void GPU_line_smooth(bool enable);
 /**
  * \note By convention, this is set as needed and not reset back to 1.0.
  * This means code that draws lines must always set the line width beforehand,
- * but is not expected to restore it's previous value.
+ * but is not expected to restore its previous value.
  */
 void GPU_line_width(float width);
 void GPU_logic_op_xor_set(bool enable);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,7 +14,7 @@
 #include "../generic/py_capi_utils.h"
 
 #ifdef WITH_OPENSUBDIV
-#  include "opensubdiv_capi.h"
+#  include "opensubdiv_capi.hh"
 #endif
 
 static PyTypeObject BlenderAppOpenSubdivType;

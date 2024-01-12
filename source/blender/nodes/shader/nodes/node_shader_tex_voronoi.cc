@@ -1,13 +1,20 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
+
+#include "BKE_texture.h"
 
 #include "BLI_noise.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "NOD_multi_function.hh"
+
+#include "RNA_access.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_tex_voronoi_cc {
 
@@ -229,7 +236,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     BLI_assert(feature >= 0 && feature <= 4);
-    if ELEM (metric_, SHD_VORONOI_MINKOWSKI) {
+    if (ELEM(metric_, SHD_VORONOI_MINKOWSKI)) {
       static std::array<mf::Signature, 12> signatures{
           create_signature(1, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
           create_signature(2, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
