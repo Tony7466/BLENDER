@@ -1002,7 +1002,7 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator *op)
     }
 
     /* Find slot index. */
-    material_index = BKE_grease_pencil_object_material_index_get(object, ma);
+    material_index = BKE_object_material_index_get(object, ma);
   }
 
   if (material_index == -1) {
