@@ -1639,8 +1639,8 @@ static bool do_outliner_range_select_recursive(ListBase *lb,
 
     /* Don't look inside closed elements, unless we're forcing the recursion all the way down. */
     if (!(tselem->flag & TSE_CLOSED) || recurse) {
-      /* If this tree element is a collection, then it sets the precedent for inclusion
-         of its subobjects. */
+      /* If this tree element is a collection, then it sets
+       * the precedent for inclusion of its subobjects. */
       Collection *child_collection = in_collection;
       if (tselem->type == TSE_LAYER_COLLECTION) {
         child_collection = static_cast<LayerCollection *>(te->directdata)->collection;
@@ -1775,9 +1775,9 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
     /* If we're recursing, we need to know the collection of the selected item in order
-       to prevent selecting across collection boundaries. (Object hierarchies might cross
-       collection boundaries, i.e., children may be in different collections from their
-       parents.) */
+     * to prevent selecting across collection boundaries. (Object hierarchies might cross
+     * collection boundaries, i.e., children may be in different collections from their
+     * parents.) */
     Collection *parent_collection = nullptr;
     if (recurse) {
       if (activate_tselem->type == TSE_LAYER_COLLECTION) {
@@ -1793,9 +1793,9 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     }
 
     /* If we're not recursing (not double clicking), and we are extending or range selecting by
-       holding CTRL or SHIFT, ignore events when the cursor is over the icon. This disambiguates
-       the case where we are recursing *and* holding CTRL or SHIFT in order to extend or range
-       select recursively. */
+     * holding CTRL or SHIFT, ignore events when the cursor is over the icon. This disambiguates
+     * the case where we are recursing *and* holding CTRL or SHIFT in order to extend or range
+     * select recursively. */
     if (!recurse && (extend || use_range) &&
         outliner_item_is_co_over_icon(activate_te, view_mval[0]))
     {
@@ -1811,13 +1811,12 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     else {
       const bool is_over_name_icons = outliner_item_is_co_over_name_icons(activate_te,
                                                                           view_mval[0]);
-
-      /* Always select unless already active and selected */
+      /* Always select unless already active and selected. */
       bool select = !extend || !(activate_tselem->flag & TSE_ACTIVE) ||
                     !(activate_tselem->flag & TSE_SELECTED);
 
-      /* If we're CTRL+double-clicking and the element is aleady selected, skip the activation
-         straight to deselection */
+      /* If we're CTRL+double-clicking and the element is aleady
+       * selected, skip the activation and go straight to deselection. */
       if (extend && recurse && activate_tselem->flag & TSE_SELECTED) {
         select = false;
       }
@@ -1826,8 +1825,8 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
                                 (is_over_name_icons ? OL_ITEM_SELECT_DATA : 0) |
                                 (extend ? OL_ITEM_EXTEND : 0);
 
-      /* The recurse flag is set when the user double-clicks to select everything in a
-         collection or hierarchy. */
+      /* The recurse flag is set when the user double-clicks
+       * to select everything in a collection or hierarchy. */
       if (recurse) {
         if (outliner_item_is_co_over_icon(activate_te, view_mval[0])) {
           /* Select or deselect object hierarchy recursively. */
