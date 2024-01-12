@@ -31,7 +31,7 @@ class VKShader : public Shader {
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   VKPipeline pipeline_;
-
+  Vector<uint32_t> specialization_values_;
  public:
   VKShader(const char *name);
   virtual ~VKShader();
@@ -113,7 +113,8 @@ class VKShader : public Shader {
     return vk_descriptor_set_layout_;
   }
   Vector<VkDescriptorSetLayoutBinding> bindings;
-
+  VkSpecializationInfo specialzation_ensure();
+  VkSpecializationInfo build_specialzation();
  private:
   Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
   void build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module);

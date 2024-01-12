@@ -47,6 +47,7 @@ class VKPipeline : NonCopyable {
   virtual ~VKPipeline();
   VKPipeline(VKPushConstants &&push_constants);
   VKPipeline(VkPipeline vk_pipeline, VKPushConstants &&push_constants);
+  void destroy();
   VKPipeline &operator=(VKPipeline &&other)
   {
     active_vk_pipeline_ = other.active_vk_pipeline_;
@@ -59,7 +60,8 @@ class VKPipeline : NonCopyable {
 
   static VKPipeline create_compute_pipeline(VkShaderModule compute_module,
                                             VkPipelineLayout &pipeline_layouts,
-                                            const VKPushConstants::Layout &push_constants_layout);
+                                            const VKPushConstants::Layout &push_constants_layout,
+                                            const VkSpecializationInfo* specialzation);
   static VKPipeline create_graphics_pipeline(const VKPushConstants::Layout &push_constants_layout);
 
   VKPushConstants &push_constants_get()

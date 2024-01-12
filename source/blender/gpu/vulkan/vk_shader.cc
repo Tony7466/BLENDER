@@ -766,8 +766,11 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert(geometry_module_ == VK_NULL_HANDLE);
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
-    pipeline_ = VKPipeline::create_compute_pipeline(
-        compute_module_, vk_pipeline_layout_, vk_interface->push_constants_layout_get());
+    auto specialization_info = build_specialzation();
+    pipeline_ = VKPipeline::create_compute_pipeline(compute_module_,
+                                                    vk_pipeline_layout_,
+                                                    vk_interface->push_constants_layout_get(),
+                                                    &specialization_info);
     result = pipeline_.is_valid();
   }
 
@@ -1106,8 +1109,10 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   std::stringstream ss;
 
   /* TODO: Add support for specialization constants at compile time. */
+  int constant_id = 0;
   ss << "\n/* Specialization Constants (pass-through). */\n";
   for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+    ss << "layout(constant_id = " << std::to_string(constant_id++) << ") ";
     switch (sc.type) {
       case Type::INT:
         ss << "const int " << sc.name << "=" << std::to_string(sc.default_value.i) << ";\n";
@@ -1118,12 +1123,11 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
       case Type::BOOL:
         ss << "const bool " << sc.name << "=" << (sc.default_value.u ? "true" : "false") << ";\n";
         break;
-      case Type::FLOAT:
-        /* Use uint representation to allow exact same bit pattern even if NaN. uintBitsToFloat
-         * isn't supported during global const initialization.  */
-        ss << "#define " << sc.name << " uintBitsToFloat(" << std::to_string(sc.default_value.u)
-           << "u)\n";
-        break;
+      case Type::FLOAT: {
+        /* Use uint representation to allow exact same bit pattern even if NaN. */
+        float f = *reinterpret_cast<float *>(const_cast<uint32_t *>(&sc.default_value.u));
+        ss << "const float " << sc.name << "=" << std::to_string(f) << ";\n";
+      }
       default:
         BLI_assert_unreachable();
         break;
@@ -1282,7 +1286,7 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
     /* Declare global for input. */
     ss << to_string(input.type) << " " << input.name << ";\n";
     ss << "layout(input_attachment_index = " << std::to_string(input.raster_order_group)
-       << ",binding = " << std::to_string(input.index) << " ) uniform "
+       << ",binding = " << std::to_string(0) << " ) uniform "
        << print_subpass_qualifier(input.type) << " " << image_name << ";\n ";
     std::stringstream ss_pre;
     char swizzle[] = "xyzw";
@@ -1511,5 +1515,63 @@ const VKShaderInterface &VKShader::interface_get() const
                  "instance created in the finalize method.");
   return *static_cast<const VKShaderInterface *>(interface);
 }
+
+VkSpecializationInfo VKShader::build_specialzation(){
+  if (constants.values.size() <= 0) {
+    VkSpecializationInfo null = {};
+    return null;
+  }
+  static Vector<VkSpecializationMapEntry> entries;
+  entries.resize(constants.values.size());
+  specialization_values_.clear();
+  for (int i = 0; i < constants.values.size(); i++) {
+    entries[i].constantID = i;
+    entries[i].offset = sizeof(uint32_t) * i;
+    entries[i].size = sizeof(uint32_t);
+    specialization_values_.append(constants.values[i].u);
+  };
+  return {/* uint32_t mapEntryCount */ static_cast<uint32_t>(entries.size()),
+         /* const VkSpecializationMapEntry *pMapEntries */ entries.data(),
+          /* size_t dataSize */ constants.values.size() * sizeof(uint32_t),
+          /* const void *pData */ constants.values.data()};
+};
+
+VkSpecializationInfo VKShader::specialzation_ensure()
+{
+  VkSpecializationInfo null = {};
+  if (constants.values.size() > 0) {
+    bool update = false;
+    if (specialization_values_.size() != constants.values.size()) {
+      update = true;
+    }
+    else {
+      for (int i = 0; i < constants.values.size(); i++) {
+        if (specialization_values_[i] != constants.values[i].u) {
+         update = true;
+          break;
+        }
+      }
+    }
+    if (update) {
+      auto info = build_specialzation();
+      if (is_graphics_shader()) {
+        return build_specialzation();
+      }
+      else {
+        if (pipeline_.is_valid()) {
+          pipeline_.destroy();
+        }
+        pipeline_ = VKPipeline::create_compute_pipeline(compute_module_,
+                                                        vk_pipeline_layout_,
+                                                        reinterpret_cast<VKShaderInterface*>(interface)->push_constants_layout_get(),
+                                                        &info);
+        
+       return null;
+      }
+      BLI_assert(pipeline_.is_valid() == true);
+    }
+  }
+  return null;
+};
 
 }  // namespace blender::gpu
