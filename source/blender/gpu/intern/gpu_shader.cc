@@ -303,7 +303,6 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
   shader->specialization_constants_init(info);
 
   std::string defines = shader->defines_declare(info);
-  std::string constants = shader->constants_declare(info);
   std::string resources = shader->resources_declare(info);
 
   if (info.legacy_resource_location_ == false) {
@@ -327,7 +326,6 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
-    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_VERTEX_SHADER\n");
     if (!info.geometry_source_.is_empty()) {
       sources.append("#define USE_GEOMETRY_SHADER\n");
@@ -349,7 +347,6 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
-    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_FRAGMENT_SHADER\n");
     if (!info.geometry_source_.is_empty()) {
       sources.append("#define USE_GEOMETRY_SHADER\n");
@@ -372,7 +369,6 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
-    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_GEOMETRY_SHADER\n");
     sources.append(defines.c_str());
     sources.extend(typedefs);
@@ -391,7 +387,6 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
     Vector<const char *> sources;
     standard_defines(sources);
-    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants.c_str();
     sources.append("#define GPU_COMPUTE_SHADER\n");
     sources.append(defines.c_str());
     sources.extend(typedefs);

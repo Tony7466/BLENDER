@@ -651,13 +651,9 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
   return ss.str();
 }
 
-std::string GLShader::constants_declare(const ShaderCreateInfo & /*info*/) const
+std::string GLShader::constants_declare() const
 {
   std::stringstream ss;
-  const bool has_specialization_constants = !constants.types.is_empty();
-  if (!has_specialization_constants) {
-    return ss.str();
-  }
 
   /* Add an identifier that where the specialization constants will be added. */
   ss << "/* Specialization Constants. */\n";
@@ -1192,22 +1188,21 @@ GLuint GLShader::create_shader_stage(GLenum gl_stage,
     return 0;
   }
 
-  /* Patch the shader sources to include specialization constants.
-   * `constants_source` must to be scoped at function level. */
+  /* Patch the shader sources to include specialization constants. */
   std::string constants_source;
   Vector<const char *> recreated_sources;
-
   const bool has_specialization_constants = !constants.types.is_empty();
-  if (has_specialization_constants && interface) {
-    static shader::ShaderCreateInfo dummy_create_info("Dummy");
-    constants_source = constants_declare(dummy_create_info);
-    recreated_sources = gl_sources.sources_get();
-    sources = recreated_sources;
-    sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants_source.c_str();
+  if (has_specialization_constants) {
+    constants_source = constants_declare();
+    if (sources.is_empty()) {
+      recreated_sources = gl_sources.sources_get();
+      sources = recreated_sources;
+    }
   }
 
   /* Patch the shader code using the first source slot. */
   sources[SOURCES_INDEX_VERSION] = glsl_patch_get(gl_stage);
+  sources[SOURCES_INDEX_SPECIALIZATION_CONSTANTS] = constants_source.c_str();
 
   glShaderSource(shader, sources.size(), sources.data(), nullptr);
   glCompileShader(shader);
