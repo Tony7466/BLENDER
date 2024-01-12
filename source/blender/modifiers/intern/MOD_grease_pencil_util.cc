@@ -86,6 +86,8 @@ void read_influence_data(BlendDataReader *reader,
   BLO_read_data_address(reader, &influence_data->custom_curve);
   if (influence_data->custom_curve) {
     BKE_curvemapping_blend_read(reader, influence_data->custom_curve);
+    /* Make sure the internal table exists. */
+    BKE_curvemapping_init(influence_data->custom_curve);
   }
 }
 
