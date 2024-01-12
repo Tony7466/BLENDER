@@ -11,7 +11,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_type_conversions.hh"
 
 #include "DNA_mesh_types.h"
@@ -319,7 +319,8 @@ GVArray CurvesFieldInput::get_varray_for_context(const fn::FieldContext &context
     }
   }
   if (const CurvesFieldContext *curves_context = dynamic_cast<const CurvesFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context(curves_context->curves(), curves_context->domain(), mask);
   }
   return {};
@@ -838,7 +839,8 @@ std::optional<AttrDomain> try_detect_field_domain(const GeometryComponent &compo
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input)) {
+              &field_input))
+      {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
@@ -861,13 +863,15 @@ std::optional<AttrDomain> try_detect_field_domain(const GeometryComponent &compo
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input)) {
+              &field_input))
+      {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
       }
       else if (const auto *curves_field_input = dynamic_cast<const CurvesFieldInput *>(
-                   &field_input)) {
+                   &field_input))
+      {
         if (!handle_domain(curves_field_input->preferred_domain(curves->geometry.wrap()))) {
           return std::nullopt;
         }

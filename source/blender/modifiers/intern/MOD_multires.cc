@@ -22,6 +22,7 @@
 
 #include "BKE_cdderivedmesh.h"
 #include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
@@ -328,7 +329,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   const bool is_sculpt_mode = CTX_data_active_object(C)->mode & OB_MODE_SCULPT;
   uiBlock *block = uiLayoutGetBlock(panel->layout);
-  UI_block_lock_set(block, !is_sculpt_mode, IFACE_("Sculpt Base Mesh"));
+  UI_block_lock_set(block, !is_sculpt_mode, N_("Sculpt Base Mesh"));
   uiItemR(col, ptr, "use_sculpt_base_mesh", UI_ITEM_NONE, IFACE_("Sculpt Base Mesh"), ICON_NONE);
   UI_block_lock_clear(block);
 
