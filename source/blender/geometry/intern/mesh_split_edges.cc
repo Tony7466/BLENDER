@@ -8,6 +8,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -527,7 +528,7 @@ void split_edges(Mesh &mesh,
 
   Array<int> edge_to_corner_offsets;
   Array<int> edge_to_corner_indices;
-  const GroupedSpan<int> edge_to_corner_map = bke::mesh::build_edge_to_loop_map(
+  const GroupedSpan<int> edge_to_corner_map = bke::mesh::build_edge_to_corner_map(
       mesh.corner_edges(), orig_edges.size(), edge_to_corner_offsets, edge_to_corner_indices);
 
   Array<int> vert_to_edge_offsets;
