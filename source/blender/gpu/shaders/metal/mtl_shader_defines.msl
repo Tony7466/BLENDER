@@ -380,13 +380,6 @@ struct SStruct {
 #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
 #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
 
-/* Fast store variant for single-channel writes. Special case which avoids unnecessary vector
- * pack/unpback. */
-#define imageStoreFast_1chFloat(_tex, _coord, _value) \
-  _texture_write_internal_fast(_tex, _coord, _value)
-#define imageStoreFast_1chUint(_tex, _coord, _value) \
-  _texture_write_internal_fast(_tex, _coord, _value)
-
 /* Cube-map support always available when using Metal. */
 #define textureLod_cubemapArray(tex, co, lod) textureLod(tex, co, lod)
 

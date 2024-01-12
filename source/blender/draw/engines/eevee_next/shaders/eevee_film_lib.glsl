@@ -578,7 +578,7 @@ void film_store_depth(ivec2 texel_film, float value, out float out_depth)
 
   out_depth = film_depth_convert_to_scene(value);
 
-  imageStoreFast_1chFloat(depth_img, texel_film, out_depth);
+  imageStoreFast(depth_img, texel_film, vec4(out_depth));
 }
 
 void film_store_distance(ivec2 texel, float value)

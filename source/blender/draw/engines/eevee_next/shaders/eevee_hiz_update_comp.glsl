@@ -53,16 +53,16 @@ void main()
 #endif
 
   if (update_mip_0) {
-    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(0, 1), samp.x);
-    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(1, 1), samp.y);
-    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(1, 0), samp.z);
-    imageStoreFast_1chFloat(out_mip_0, src_px + ivec2(0, 0), samp.w);
+    imageStoreFast(out_mip_0, src_px + ivec2(0, 1), samp.xxxx);
+    imageStoreFast(out_mip_0, src_px + ivec2(1, 1), samp.yyyy);
+    imageStoreFast(out_mip_0, src_px + ivec2(1, 0), samp.zzzz);
+    imageStoreFast(out_mip_0, src_px + ivec2(0, 0), samp.wwww);
   }
 
   /* Level 1. (No load) */
   float max_depth = reduce_max(samp);
   ivec2 dst_px = ivec2(kernel_origin + local_px);
-  imageStoreFast_1chFloat(out_mip_1, dst_px, max_depth);
+  imageStoreFast(out_mip_1, dst_px, vec4(max_depth));
   store_local_depth(local_px, max_depth);
 
   /* Level 2-5. */
@@ -75,7 +75,7 @@ void main()
   if (active_thread) { \
     max_depth = reduce_max(load_local_depths(local_px)); \
     dst_px = ivec2((kernel_origin >> mask_shift) + local_px); \
-    imageStoreFast_1chFloat(out_mip__, dst_px, max_depth); \
+    imageStoreFast(out_mip__, dst_px, vec4(max_depth)); \
   } \
   barrier(); /* Wait for previous reads to finish. */ \
   if (active_thread) { \
@@ -112,7 +112,7 @@ void main()
       /* Level 6. */
       float max_depth = reduce_max(samp);
       ivec2 dst_px = ivec2(kernel_origin + local_px);
-      imageStoreFast_1chFloat(out_mip_6, dst_px, max_depth);
+      imageStoreFast(out_mip_6, dst_px, vec4(max_depth));
       store_local_depth(local_px, max_depth);
 
       mask_shift = 1;
