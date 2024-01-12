@@ -622,7 +622,8 @@ inline void TreeNode::set_selected(const bool selected)
 }
 inline bool TreeNode::use_onion_skinning() const
 {
-  return ((this->flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0);
+  return ((this->flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0) &&
+         (!this->parent_group() || this->parent_group()->as_node().use_onion_skinning());
 }
 inline bool TreeNode::is_child_of(const LayerGroup &group) const
 {

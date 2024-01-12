@@ -112,7 +112,8 @@ class ObjectModule {
                           Framebuffer &main_fb,
                           Framebuffer &scene_fb,
                           TextureFromPool &depth_tx,
-                          PassSortable &main_ps)
+                          PassSortable &main_ps,
+                          View3DOnionSkinning &onion_skinning_settings)
   {
     using namespace blender::bke::greasepencil;
 
@@ -172,6 +173,18 @@ class ObjectModule {
     ob.material_offset = material_offset;
 
     if (do_layer_blending) {
+      // for (const int layer_i : grease_pencil.layers().index_range()) {
+      //   gpObject &ob = objects_buf_.get_or_resize(layer_i);
+      //   ob.is_shadeless = false;
+      //   ob.stroke_order3d = false;
+      //   ob.tint = float4(1.0);  // frame_tint_get(gpd, frame.gpf, current_frame_);
+      //   ob.layer_offset = layer_i;
+      //   ob.material_offset = material_offset;
+
+      //   object_subpass.bind_texture("gp_pos_tx", position_tx);
+      //   object_subpass.bind_texture("gp_col_tx", color_tx);
+      //   object_subpass.draw(geom, handle);
+      // }
       /* TODO: Do layer blending. */
       // for (const LayerData &layer : frame.layers) {
       //    UNUSED_VARS(layer);
@@ -195,6 +208,28 @@ class ObjectModule {
       object_subpass.bind_texture("gp_pos_tx", position_tx);
       object_subpass.bind_texture("gp_col_tx", color_tx);
       object_subpass.draw(geom, handle);
+    }
+
+    if (use_onion_) {
+      const int current_frame = scene_->r.cfra;
+      for (int frame = current_frame - onion_skinning_settings.num_frames_before;
+           frame <= current_frame + onion_skinning_settings.num_frames_after;
+           frame++)
+      {
+        if (frame != current_frame) {
+        }
+      }
+
+      const Map<int, Array<int>> ghost_frames;
+      for (const auto &[frame_number, drawing_indices] : ghost_frames.items()) {
+        GPUVertBuf *position_tx = DRW_cache_grease_pencil_ghost_frame_points_buffer_get(
+            object, frame_number, drawing_indices);
+        GPUBatch *geom = DRW_cache_grease_pencil_ghost_frame_geom_get(
+            object, frame_number, drawing_indices);
+
+        object_subpass.bind_texture("gp_pos_tx", position_tx);
+        object_subpass.draw(geom, handle);
+      }
     }
 
     /** Merging the object depth buffer into the scene depth buffer. */
@@ -318,6 +353,78 @@ class ObjectModule {
     plane_mat = scale(plane_mat, float3(radius));
     plane_mat.location() = transform_point(object_to_world, center);
     return plane_mat;
+  }
+
+  Map<int, int> get_ghost_frame_numbers_for_layer(const View3DOnionSkinning &settings,
+                                                  const bke::greasepencil::Layer &layer,
+                                                  const int current_frame)
+  {
+    Map<int, int> frame_numbers;
+    switch (settings.mode) {
+      case GP_ONION_MODE_ABSOLUTE: {
+        for (int frame = current_frame - settings.num_frames_before;
+             frame <= current_frame + settings.num_frames_after;
+             frame++)
+        {
+          if (frame != current_frame) {
+            frame_numbers.append(frame);
+          }
+        }
+        break;
+      }
+      case GP_ONION_MODE_RELATIVE: {
+        const Span<int> sorted_keys = layer.sorted_keys();
+        const int current_index = -1 +
+                                  binary_search::find_predicate_begin(sorted_keys, [&](int frame) {
+                                    return frame > current_frame;
+                                  });
+        const int start_index = math::max(0, current_index - settings.num_frames_before);
+        const int end_index = math::min(int(sorted_keys.size() - 1),
+                                        current_index + settings.num_frames_after);
+        const int frames_size = end_index - start_index + 1;
+        for (const int frame_i : IndexRange(start_index, frames_size)) {
+          const int frame = sorted_keys[frame_i];
+          if (frame != current_frame) {
+            frame_numbers.append(frame);
+          }
+        }
+        break;
+      }
+      case GP_ONION_MODE_SELECTED: {
+        for (const auto [frame_number, frame] : layer.frames().items()) {
+          if (frame_number != current_frame && frame.is_selected()) {
+            frame_numbers.add(frame_number, frame.drawing_index);
+          }
+        }
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
+    }
+    return frame_numbers;
+  }
+
+  Map<int, Vector<int>> get_ghost_frames_indices_map()
+  {
+    Map<int, Vector<int>> ghost_frames_indices_map;
+    Span<const Layer *> layers = grease_pencil.layers();
+    for (const int layer_i : layers.index_range()) {
+      const Layer &layer = *layers[layer_i];
+      if (!layer.is_visible() || !layer.use_onion_skinning()) {
+        continue;
+      }
+      const Map<int, int> frame_numbers = get_ghost_frame_numbers_for_layer(
+          settings, layer, current_frame);
+      for (const auto &[frame_i, drawing_i] : frame_numbers.items()) {
+        ghost_frames_indices_map.add_or_modify(
+            frame_i,
+            [&](Vector<int> *vec) { *vec = Vector<int>({drawing_i}); },
+            [&](Vector<int> *vec) { vec->append(drawing_i); });
+      }
+      if (const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame)) {
+        visible_drawings.append({*drawing, layer_i, frame});
+      }
+    }
   }
 };
 

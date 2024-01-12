@@ -92,6 +92,8 @@ class Instance {
   Manager *manager_ = nullptr;
   draw::View view_ = {"MainView"};
 
+  const View3DOnionSkinning *onion_skinning_settings_ = nullptr;
+
   /** \note Needs not to be temporary variable since it is dereferenced later. */
   std::array<float4, 2> clear_colors_ = {float4(0.0f, 0.0f, 0.0f, 0.0f),
                                          float4(1.0f, 1.0f, 1.0f, 1.0f)};
@@ -114,6 +116,7 @@ class Instance {
     if (viewport_draw_view != nullptr) {
       view_.sync(viewport_draw_view);
     }
+    onion_skinning_settings_ = &v3d->onion_skinning;
 
     const Scene *scene = DEG_get_evaluated_scene(depsgraph_);
 
@@ -162,7 +165,7 @@ class Instance {
     switch (object_ref.object->type) {
       case OB_GREASE_PENCIL:
         objects.sync_grease_pencil(
-            *manager_, object_ref, main_fb_, scene_fb_, depth_tx_, main_ps_);
+            *manager_, object_ref, main_fb_, scene_fb_, depth_tx_, main_ps_, onion_skinning_settings_);
         break;
       case OB_LAMP:
         lights.sync(object_ref);
