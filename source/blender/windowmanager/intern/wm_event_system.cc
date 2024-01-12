@@ -1366,10 +1366,10 @@ bool WM_operator_is_repeat(const bContext *C, const wmOperator *op)
   return (op_prev && (op->type == op_prev->type));
 }
 
-static wmOperator *wm_operator_create(wmWindowManager *wm,
-                                      wmOperatorType *ot,
-                                      PointerRNA *properties,
-                                      ReportList *reports)
+wmOperator *wm_operator_create(wmWindowManager *wm,
+                               wmOperatorType *ot,
+                               PointerRNA *properties,
+                               ReportList *reports)
 {
   /* Operator-type names are static still. pass to allocation name for debugging. */
   wmOperator *op = MEM_cnew<wmOperator>(ot->idname);

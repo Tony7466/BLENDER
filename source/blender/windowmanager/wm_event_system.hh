@@ -199,3 +199,7 @@ wmOperatorCallContext wm_drop_operator_context_get(const wmDropBox *drop);
  * Called in #wm_draw_window_onscreen.
  */
 void wm_drags_draw(bContext *C, wmWindow *win);
+wmOperator *wm_operator_create(wmWindowManager *wm,
+                               wmOperatorType *ot,
+                               PointerRNA *properties,
+                               ReportList *reports);

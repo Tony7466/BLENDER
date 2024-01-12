@@ -1354,6 +1354,11 @@ wmDrag *WM_drag_data_create(
  */
 void WM_event_start_prepared_drag(bContext *C, wmDrag *drag);
 void WM_event_drag_image(wmDrag *, const ImBuf *, float scale);
+/**
+ * Updates the `drag` event to include all selected files in the space file where the event
+ * started.
+ */
+void WM_event_drag_space_file_paths(const bContext *, wmDrag *drag);
 void WM_drag_free(wmDrag *drag);
 void WM_drag_data_free(eWM_DragDataType dragtype, void *poin);
 void WM_drag_free_list(ListBase *lb);
