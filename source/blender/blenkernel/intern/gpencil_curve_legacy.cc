@@ -34,7 +34,7 @@
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_object.hh"
 
@@ -479,7 +479,8 @@ void BKE_gpencil_convert_curve(Main *bmain,
                                const float sample)
 {
   if (ELEM(nullptr, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL_LEGACY) ||
-      (ob_gp->data == nullptr)) {
+      (ob_gp->data == nullptr))
+  {
     return;
   }
 

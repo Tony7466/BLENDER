@@ -34,7 +34,7 @@
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_movieclip.h"
 #include "BKE_scene.h"
@@ -238,6 +238,7 @@ void SEQ_render_new_render_data(Main *bmain,
   r_context->is_proxy_render = false;
   r_context->view_id = 0;
   r_context->gpu_offscreen = nullptr;
+  r_context->gpu_viewport = nullptr;
   r_context->task_id = SEQ_TASK_MAIN_RENDER;
   r_context->is_prefetch_render = false;
 }
@@ -697,7 +698,8 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
+      (ibuf->x != context->rectx || ibuf->y != context->recty))
+  {
     use_preprocess = true;
   }
 
@@ -1534,6 +1536,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         scene->r.alphamode,
         viewname,
         context->gpu_offscreen,
+        context->gpu_viewport,
         err_out);
     if (ibuf == nullptr) {
       fprintf(stderr, "seq_render_scene_strip failed to get opengl buffer: %s\n", err_out);

@@ -36,7 +36,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.hh"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
@@ -347,7 +347,7 @@ bool CurvesEditHints::is_valid() const
 
 void curves_normals_point_domain_calc(const CurvesGeometry &curves, MutableSpan<float3> normals)
 {
-  const bke::CurvesFieldContext context(curves, ATTR_DOMAIN_POINT);
+  const bke::CurvesFieldContext context(curves, AttrDomain::Point);
   fn::FieldEvaluator evaluator(context, curves.points_num());
   fn::Field<float3> field(std::make_shared<bke::NormalFieldInput>());
   evaluator.add_with_destination(std::move(field), normals);
