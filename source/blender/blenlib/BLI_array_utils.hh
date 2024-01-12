@@ -85,7 +85,7 @@ inline void scatter(const Span<T> src,
 
 template<typename T>
 inline void scatter(const Span<T> src,
-                    const IndexMask indices,
+                    const IndexMask &indices,
                     MutableSpan<T> dst,
                     const int64_t grain_size = 4096)
 {
