@@ -1542,8 +1542,8 @@ MTLComputePipelineStateInstance *MTLShader::bake_compute_pipeline_state(MTLConte
      * dispatch size, recompile with increased limit. NOTE: This will result in a performance drop,
      * ideally the source shader should be modified to reduce local register pressure, or, local
      * workgroup size should be reduced.
-     * Similarly, the custom tuning parameter "MTL_MAX_THREADS_PER_THREADGROUP" can be specified to
-     * a sufficiently large value.  */
+     * Similarly, the custom tuning parameter "mtl_max_total_threads_per_threadgroup" can be
+     * specified to a sufficiently large value to avoid this.  */
     if (pso) {
       uint num_required_threads_per_threadgroup = compute_pso_common_state_.threadgroup_x_len *
                                                   compute_pso_common_state_.threadgroup_y_len *
