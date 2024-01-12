@@ -1854,6 +1854,14 @@ static void draw_property_for_socket(const bContext &C,
 
   const int input_index =
       const_cast<const bNodeTree *>(nmd->node_group)->interface_inputs().first_index(&socket);
+  bool has_gizmo = false;
+  for (auto key :
+       nmd->node_group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.keys())
+  {
+    if (key.input_index == input_index) {
+      has_gizmo = true;
+    }
+  }
 
   /* Use #uiItemPointerR to draw pointer properties because #uiItemR would not have enough
    * information about what type of ID to select for editing the values. This is because
@@ -1898,6 +1906,9 @@ static void draw_property_for_socket(const bContext &C,
         uiItemR(row, md_ptr, rna_path, UI_ITEM_NONE, name, ICON_NONE);
       }
     }
+  }
+  if (has_gizmo) {
+    uiItemL(row, "", ICON_GIZMO);
   }
   if (!nodes::input_has_attribute_toggle(*nmd->node_group, input_index)) {
     uiItemL(row, "", ICON_BLANK1);
