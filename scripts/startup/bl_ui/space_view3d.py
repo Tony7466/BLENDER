@@ -5831,6 +5831,7 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.separator()
 
+        layout.menu("VIEW3D_MT_grease_pencil_assign_material")
         layout.operator("grease_pencil.set_active_material")
 
         layout.separator()
@@ -5843,10 +5844,6 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.operator("grease_pencil.set_uniform_thickness")
         layout.operator("grease_pencil.set_uniform_opacity")
-
-        layout.separator()
-
-        layout.menu("VIEW3D_MT_grease_pencil_assign_material")
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
