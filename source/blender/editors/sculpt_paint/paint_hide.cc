@@ -157,7 +157,8 @@ void mesh_show_all(Object &object, const Span<PBVHNode *> nodes)
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (const VArray<bool> attribute = *attributes.lookup<bool>(".hide_vert",
-                                                              bke::AttrDomain::Point)) {
+                                                              bke::AttrDomain::Point))
+  {
     const VArraySpan hide_vert(attribute);
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (PBVHNode *node : nodes.slice(range)) {
@@ -224,7 +225,7 @@ static void partialvis_update_mesh(Object &object,
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (action == VisAction::Show && !attributes.contains(".hide_vert")) {
-    /* If everything is already visible, don't do anything.*/
+    /* If everything is already visible, don't do anything. */
     return;
   }
 
@@ -235,7 +236,7 @@ static void partialvis_update_mesh(Object &object,
       const Span<float3> positions = BKE_pbvh_get_vert_positions(&pbvh);
       vert_hide_update(object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
         for (const int i : verts.index_range()) {
-          if (isect_point_planes_v3(planes, 4, positions[verts[i]])) {
+          if (isect_point_planes_v3(planes, 4, positions[verts[i]]) == (area == VisArea::Inside)) {
             hide[i] = value;
           }
         }
@@ -381,7 +382,9 @@ static void partialvis_update_grids(Depsgraph &depsgraph,
             for (const int y : IndexRange(key.grid_size)) {
               for (const int x : IndexRange(key.grid_size)) {
                 CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
-                if (isect_point_planes_v3(planes, 4, CCG_elem_co(&key, elem))) {
+                if (isect_point_planes_v3(planes, 4, CCG_elem_co(&key, elem)) ==
+                    (area == VisArea::Inside))
+                {
                   hide[y * key.grid_size + x].set(value);
                 }
               }
