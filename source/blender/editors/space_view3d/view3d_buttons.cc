@@ -186,7 +186,7 @@ static void editmesh_partial_update_update_fn(bContext *C,
 
   BMEditMesh *em = static_cast<BMEditMesh *>(arg1);
 
-  BKE_editmesh_looptri_and_normals_calc_with_partial(em, bmpinfo);
+  BKE_editmesh_looptris_and_normals_calc_with_partial(em, bmpinfo);
 }
 
 /** \} */
@@ -1008,7 +1008,8 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
       /* Vertices */
 
       if (apply_vcos || median->bv_weight || median->v_crease || median->skin[0] ||
-          median->skin[1]) {
+          median->skin[1])
+      {
         if (median->bv_weight) {
           if (!CustomData_has_layer_named(&bm->vdata, CD_PROP_FLOAT, "bevel_weight_vert")) {
             BM_data_layer_add_named(bm, &bm->vdata, CD_PROP_FLOAT, "bevel_weight_vert");

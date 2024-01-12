@@ -14,58 +14,22 @@
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_forward_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
-vec4 closure_to_rgba(Closure cl)
+/* Global thickness because it is needed for closure_to_rgba. */
+float g_thickness;
+
+vec4 closure_to_rgba(Closure cl_unused)
 {
-  vec3 diffuse_light = vec3(0.0);
-  vec3 reflection_light = vec3(0.0);
-  vec3 refraction_light = vec3(0.0);
-  float shadow = 1.0;
-
-  float vPz = dot(drw_view_forward(), g_data.P) - dot(drw_view_forward(), drw_view_position());
-  vec3 V = drw_world_incident_vector(g_data.P);
-
-  ClosureLightStack stack;
-
-  ClosureLight cl_diff;
-  cl_diff.N = g_diffuse_data.N;
-  cl_diff.ltc_mat = LTC_LAMBERT_MAT;
-  cl_diff.type = LIGHT_DIFFUSE;
-  stack.cl[0] = cl_diff;
-
-  ClosureLight cl_refl;
-  cl_refl.N = g_reflection_data.N;
-  cl_refl.ltc_mat = LTC_GGX_MAT(dot(g_reflection_data.N, V), g_reflection_data.roughness);
-  cl_refl.type = LIGHT_SPECULAR;
-  stack.cl[1] = cl_refl;
-
-  float thickness = 0.01; /* TODO(fclem) thickness. */
-  light_eval(stack, g_data.P, g_data.Ng, V, vPz, thickness);
-
-  vec2 noise_probe = interlieved_gradient_noise(gl_FragCoord.xy, vec2(0, 1), vec2(0.0));
-  LightProbeSample samp = lightprobe_load(g_data.P, g_data.Ng, V);
-
-  diffuse_light += stack.cl[0].light_shadowed;
-  diffuse_light += lightprobe_eval(samp, g_diffuse_data, g_data.P, V, noise_probe);
-
-  reflection_light += stack.cl[1].light_shadowed;
-  reflection_light += lightprobe_eval(samp, g_reflection_data, g_data.P, V, noise_probe);
-
-  vec4 out_color;
-  out_color.rgb = g_emission;
-  out_color.rgb += g_diffuse_data.color * g_diffuse_data.weight * diffuse_light;
-  out_color.rgb += g_reflection_data.color * g_reflection_data.weight * reflection_light;
-
-  out_color.a = saturate(1.0 - average(g_transmittance));
+  vec3 radiance, transmittance;
+  forward_lighting_eval(g_thickness, radiance, transmittance);
 
   /* Reset for the next closure tree. */
   closure_weights_reset();
 
-  return out_color;
+  return vec4(radiance, saturate(1.0 - average(transmittance)));
 }
 
 void main()
@@ -84,7 +48,7 @@ void main()
 
   g_holdout = saturate(g_holdout);
 
-  float thickness = nodetree_thickness();
+  g_thickness = max(0.0, nodetree_thickness());
 
   g_diffuse_data.color *= g_diffuse_data.weight;
   g_reflection_data.color *= g_reflection_data.weight;
@@ -121,27 +85,31 @@ void main()
 
   /* ----- GBuffer output ----- */
 
-  GBufferDataPacked gbuf = gbuffer_pack(
-      g_diffuse_data, g_reflection_data, g_refraction_data, out_normal, thickness);
+  GBufferDataUndetermined gbuf_data;
+  gbuf_data.diffuse = g_diffuse_data;
+  gbuf_data.translucent = g_translucent_data;
+  gbuf_data.reflection = g_reflection_data;
+  gbuf_data.refraction = g_refraction_data;
+  gbuf_data.surface_N = g_data.N;
+  gbuf_data.thickness = g_thickness;
+  gbuf_data.object_id = resource_id;
+
+  GBufferWriter gbuf = gbuffer_pack(gbuf_data);
 
   /* Output header and first closure using frame-buffer attachment. */
   out_gbuf_header = gbuf.header;
-  out_gbuf_color = gbuf.color[0];
-  out_gbuf_closure = gbuf.closure[0];
+  out_gbuf_closure1 = gbuf.data[0];
+  out_gbuf_closure2 = gbuf.data[1];
+  out_gbuf_normal = gbuf.N[0];
 
   /* Output remaining closures using image store. */
-  /* NOTE: The image view start at layer 1 so all destination layer is `closure_index - 1`. */
-  if (gbuffer_header_unpack(gbuf.header, 1) != GBUF_NONE) {
-    imageStore(out_gbuf_color_img, ivec3(out_texel, 1 - 1), gbuf.color[1]);
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 1 - 1), gbuf.closure[1]);
+  /* NOTE: The image view start at layer 2 so all destination layer is `layer - 2`. */
+  for (int layer = 2; layer < GBUFFER_DATA_MAX && layer < gbuf.layer_data; layer++) {
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, layer - 2), gbuf.data[layer]);
   }
-  if (gbuffer_header_unpack(gbuf.header, 2) != GBUF_NONE) {
-    imageStore(out_gbuf_color_img, ivec3(out_texel, 2 - 1), gbuf.color[2]);
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 2 - 1), gbuf.closure[2]);
-  }
-  if (gbuffer_header_unpack(gbuf.header, 3) != GBUF_NONE) {
-    /* No color for SSS. */
-    imageStore(out_gbuf_closure_img, ivec3(out_texel, 3 - 1), gbuf.closure[3]);
+  /* NOTE: The image view start at layer 1 so all destination layer is `layer - 1`. */
+  for (int layer = 1; layer < GBUFFER_NORMAL_MAX && layer < gbuf.layer_normal; layer++) {
+    imageStore(out_gbuf_normal_img, ivec3(out_texel, layer - 1), gbuf.N[layer].xyyy);
   }
 
   /* ----- Radiance output ----- */

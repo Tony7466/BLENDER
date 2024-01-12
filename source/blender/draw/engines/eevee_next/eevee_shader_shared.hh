@@ -1182,6 +1182,7 @@ enum eClosureBits : uint32_t {
   CLOSURE_SSS = (1u << 1u),
   CLOSURE_REFLECTION = (1u << 2u),
   CLOSURE_REFRACTION = (1u << 3u),
+  CLOSURE_TRANSLUCENT = (1u << 4u),
   CLOSURE_TRANSPARENCY = (1u << 8u),
   CLOSURE_EMISSION = (1u << 9u),
   CLOSURE_HOLDOUT = (1u << 10u),
@@ -1194,16 +1195,19 @@ enum GBufferMode : uint32_t {
   /** None mode for pixels not rendered. */
   GBUF_NONE = 0u,
 
-  GBUF_REFLECTION = 1u,
-  GBUF_REFRACTION = 2u,
-  GBUF_DIFFUSE = 3u,
-  GBUF_SSS = 4u,
+  GBUF_DIFFUSE = 1u,
+  GBUF_TRANSLUCENT = 2u,
+  GBUF_REFLECTION = 3u,
+  GBUF_REFRACTION = 4u,
+  GBUF_SUBSURFACE = 5u,
 
-  /** Special configurations. Packs multiple closures into 1 layer. */
-  GBUF_OPAQUE_DIELECTRIC = 14u,
+  /** Parameter Optimized. Packs one closure into less layer. */
+  GBUF_REFLECTION_COLORLESS = 12u,
+  GBUF_REFRACTION_COLORLESS = 13u,
 
-  /** Set for surfaces without lit closures. This stores only the normal to the surface. */
-  GBUF_UNLIT = 15u,
+  /** Special configurations. Packs multiple closures into less layer. */
+  /* TODO(@fclem): This is isn't currently working due to monolithic nature of the evaluation. */
+  GBUF_METAL_CLEARCOAT = 15u,
 
   /** IMPORTANT: Needs to be less than 16 for correct packing in g-buffer header. */
 };
@@ -1231,10 +1235,11 @@ struct RayTraceData {
   float roughness_mask_bias;
   /** If set to true will bypass spatial denoising. */
   bool1 skip_denoise;
+  /** If set to false will bypass tracing for refractive closures. */
+  bool1 trace_refraction;
   /** Closure being ray-traced. */
-  eClosureBits closure_active;
   int closure_index;
-  int _pad1;
+  int _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 
@@ -1426,7 +1431,7 @@ BLI_STATIC_ASSERT_ALIGN(ProbePlanarDisplayData, 16)
 struct PipelineInfoData {
   float alpha_hash_scale;
   bool1 is_probe_reflection;
-  float _pad1;
+  bool1 use_combined_lightprobe_eval;
   float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(PipelineInfoData, 16)
@@ -1474,6 +1479,15 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 
 /* __cplusplus is true when compiling with MSL, so include if inside a shader. */
 #if !defined(__cplusplus) || defined(GPU_SHADER)
+
+#  if defined(GPU_FRAGMENT_SHADER)
+#    define UTIL_TEXEL vec2(gl_FragCoord.xy)
+#  elif defined(GPU_COMPUTE_SHADER)
+#    define UTIL_TEXEL vec2(gl_GlobalInvocationID.xy)
+#  else
+#    define UTIL_TEXEL vec2(gl_VertexID, 0)
+#  endif
+
 /* Fetch texel. Wrapping if above range. */
 float4 utility_tx_fetch(sampler2DArray util_tx, float2 texel, float layer)
 {
