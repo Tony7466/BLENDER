@@ -154,7 +154,7 @@ static void deform_stroke(ModifierData *md,
   //}
 
   bke::CurvesGeometry &strokes = drawing->strokes_for_write();
-  for(const int stroke_i : strokes.offsets()){
+  for(const int stroke_i : strokes.curves_range()){
 
     int seed = mmd->seed;
     int stroke_seed = stroke_i;
@@ -186,23 +186,22 @@ static void deform_stroke(ModifierData *md,
     OffsetIndices<int> curves = strokes.points_by_curve();
     const int points_num = strokes.points_num();
 
-    for (const int curve : curves.index_range()){
 
-      int len = ceilf(curves[curve].size() * noise_scale) + 2;
-      float *noise_table_position = (mmd->factor > 0.0f) ?
-                                        noise_table(len, int(floor(mmd->noise_offset)), seed + 2) :
-                                        nullptr;
-      float *noise_table_strength = (mmd->factor_strength > 0.0f) ?
-                                        noise_table(len, int(floor(mmd->noise_offset)), seed + 3) :
-                                        nullptr;
-      float *noise_table_thickness = (mmd->factor_thickness > 0.0f) ?
-                                        noise_table(len, int(floor(mmd->noise_offset)), seed) :
-                                        nullptr;
-      float *noise_table_uvs = (mmd->factor_uvs > 0.0f) ?
-                                  noise_table(len, int(floor(mmd->noise_offset)), seed + 4) :
-                                  nullptr;
+    int len = ceilf(curves[stroke_i].size() * noise_scale) + 2;
+    float *noise_table_position = (mmd->factor > 0.0f) ?
+                                      noise_table(len, int(floor(mmd->noise_offset)), seed + 2) :
+                                      nullptr;
+    float *noise_table_strength = (mmd->factor_strength > 0.0f) ?
+                                      noise_table(len, int(floor(mmd->noise_offset)), seed + 3) :
+                                      nullptr;
+    float *noise_table_thickness = (mmd->factor_thickness > 0.0f) ?
+                                      noise_table(len, int(floor(mmd->noise_offset)), seed) :
+                                      nullptr;
+    float *noise_table_uvs = (mmd->factor_uvs > 0.0f) ?
+                                noise_table(len, int(floor(mmd->noise_offset)), seed + 4) :
+                                nullptr;
 
-      for (const int point : curves[curve].index_range()){
+    for (const int point : curves[stroke_i].index_range()){
 
         // TODO: vertex group filtering.
         float weight = 1.0f;
@@ -216,7 +215,7 @@ static void deform_stroke(ModifierData *md,
           if (points_num == 1) {
             vec1 = float3(1.0f, 0.0f, 0.0f);
           }
-          else if (point != curves[curve].last()) {
+          else if (point != curves[stroke_i].last()) {
             /* Initial vector (p1 -> p0). */
             vec1 = positions[point] - positions[point + 1];
             /* if vec2 is zero, set to something */
@@ -258,13 +257,12 @@ static void deform_stroke(ModifierData *md,
         //  pt->uv_rot += (noise * 2.0f - 1.0f) * weight * mmd->factor_uvs * M_PI_2;
         //  CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
         //}
-      }
-
-      MEM_SAFE_FREE(noise_table_position);
-      MEM_SAFE_FREE(noise_table_strength);
-      MEM_SAFE_FREE(noise_table_thickness);
-      MEM_SAFE_FREE(noise_table_uvs);
     }
+
+    MEM_SAFE_FREE(noise_table_position);
+    MEM_SAFE_FREE(noise_table_strength);
+    MEM_SAFE_FREE(noise_table_thickness);
+    MEM_SAFE_FREE(noise_table_uvs);
   }
 }
 
