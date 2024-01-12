@@ -636,7 +636,7 @@ void ANIM_keyingset_info_unregister(Main *bmain, KeyingSetInfo *keyingset_info)
   /* Find relevant builtin KeyingSets which use this, and remove them. */
   /* TODO: this isn't done now, since unregister is really only used at the moment when we
    * reload the scripts, which kind of defeats the purpose of "builtin"? */
-  LISTBASE_FOREACH (KeyingSet *, keyingset, &builtin_keyingsets) {
+  LISTBASE_FOREACH_MUTABLE (KeyingSet *, keyingset, &builtin_keyingsets) {
     /* Remove if matching typeinfo name. */
     if (!STREQ(keyingset->typeinfo, keyingset_info->idname)) {
       continue;
@@ -660,7 +660,7 @@ void ANIM_keyingset_info_unregister(Main *bmain, KeyingSetInfo *keyingset_info)
 void ANIM_keyingset_infos_exit()
 {
   /* Free type infos. */
-  LISTBASE_FOREACH (KeyingSetInfo *, keyingset_info, &keyingset_type_infos) {
+  LISTBASE_FOREACH_MUTABLE (KeyingSetInfo *, keyingset_info, &keyingset_type_infos) {
     /* Free extra RNA data, and remove from list. */
     if (keyingset_info->rna_ext.free) {
       keyingset_info->rna_ext.free(keyingset_info->rna_ext.data);
