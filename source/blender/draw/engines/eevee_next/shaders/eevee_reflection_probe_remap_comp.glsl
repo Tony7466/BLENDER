@@ -56,7 +56,6 @@ void main()
   if (!is_world && col.a != 1.0) {
     ivec2 world_texel = local_texel + world_coord.offset;
     vec4 world_col = imageLoad(atlas_src_mip_img, ivec3(world_texel, world_coord.layer));
-    // vec4 world_col = vec4((vec2(local_texel) + 0.5) / vec2(write_coord.extent), 0.0, 1.0);
     col.rgb = mix(world_col.rgb, col.rgb, col.a);
   }
 
