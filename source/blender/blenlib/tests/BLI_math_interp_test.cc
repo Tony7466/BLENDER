@@ -4,7 +4,7 @@
 
 #include "testing/testing.h"
 
-#include "BLI_math_interp.h"
+#include "BLI_math_interp.hh"
 
 static constexpr int image_width = 3;
 static constexpr int image_height = 3;

@@ -10,7 +10,7 @@
 #include <type_traits>
 
 #include "BLI_math_color_blend.h"
-#include "BLI_math_interp.h"
+#include "BLI_math_interp.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
