@@ -237,6 +237,10 @@ static void undo_history_draw_menu(const bContext *C, Menu *menu)
 
   /* Reverse the order so the most recent state is first in the menu. */
   int i = undo_step_count_all - 1;
+
+  /* Is this step an undo or a redo? */
+  bool is_undo = false;
+
   for (UndoStep *us = static_cast<UndoStep *>(wm->undo_stack->steps.last); us; us = us->prev, i--)
   {
     if (us->skip) {
@@ -246,14 +250,23 @@ static void undo_history_draw_menu(const bContext *C, Menu *menu)
       column = uiLayoutColumn(split, false);
     }
     const bool is_active = (us == wm->undo_stack->step_active);
-    uiLayout *row = uiLayoutRow(column, false);
-    uiLayoutSetEnabled(row, !is_active);
-    uiItemIntO(row,
+    if (is_active) {
+      if (undo_step_count > 0) {
+        /* Horizontal line to indicate current position. */
+        uiItemS_ex(column, 0.2f);
+      }
+      /* Items from now on are undo, before this were redo. */
+      is_undo = true;
+    }
+
+    const int undo_step = MAX2(is_undo ? i - 1 : i, 0);
+
+    uiItemIntO(column,
                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, us->name),
                is_active ? ICON_LAYER_ACTIVE : ICON_NONE,
                "ED_OT_undo_history",
                "item",
-               i);
+               undo_step);
     undo_step_count += 1;
   }
 }
