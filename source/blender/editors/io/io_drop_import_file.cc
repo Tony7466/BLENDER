@@ -127,6 +127,7 @@ struct ImportGroup {
 struct DropImportData {
   blender::Vector<ImportGroup> import_groups;
   blender::Vector<std::string> paths;
+  int active = 0;
 
   int count = 0;
   ~DropImportData()
@@ -219,32 +220,29 @@ static void wm_drop_import_file_draw(bContext *C, wmOperator *op)
   DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
 
   uiLayout *col = uiLayoutColumn(row, false);
-  uiLayout *sub_row1 = uiLayoutRow(col, false);
+
+  uiItemR(uiLayoutRow(col, false), op->ptr, "import_group", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiLayout *box = uiLayoutBox(col);
 
-  uiItemR(sub_row1, op->ptr, "import_group", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  int group = RNA_enum_get(op->ptr, "import_group");
-  std::string extension_count;
-  for (int64_t idx = 0; idx < drop_import_data.import_groups[group].extensions.size(); idx++) {
-    if (!extension_count.empty()) {
-      extension_count += " ";
-    }
-    extension_count += fmt::format(TIP_("{} files {}/{}"),
-                                   drop_import_data.import_groups[group].extensions[idx],
-                                   drop_import_data.import_groups[group].count[idx],
-                                   drop_import_data.count);
-  }
+  auto &group = drop_import_data.import_groups[RNA_enum_get(op->ptr, "import_group")];
 
-  if (drop_import_data.import_groups[group].file_handlers.size() > 1) {
+  if (group.file_handlers.size() > 1) {
     uiItemR(box, op->ptr, "file_handler", eUI_Item_Flag(0), "", ICON_NONE);
   }
 
-  drop_import_file_draw_import_operator(C, box, drop_import_data.import_groups[group].op);
+  drop_import_file_draw_import_operator(C, box, group.op);
 
+  std::string extension_count;
+  for (int64_t idx = 0; idx < group.extensions.size(); idx++) {
+    if (!extension_count.empty()) {
+      extension_count += " ";
+    }
+    extension_count += fmt::format(
+        TIP_("{} files {}/{}"), group.extensions[idx], group.count[idx], drop_import_data.count);
+  }
   uiItemL(uiLayoutBox(box), extension_count.c_str(), ICON_INFO);
 
-  uiLayout *sub_row = uiLayoutRow(op->layout, true);
-  uiBlock *block = uiLayoutGetBlock(sub_row);
+  uiBlock *block = uiLayoutGetBlock(uiLayoutRow(op->layout, true));
   uiBut *but = uiDefBut(block,
                         UI_BTYPE_BUT,
                         0,
@@ -319,7 +317,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
     }
   }
 
-  for (auto &&group : drop_import_data->import_groups) {
+  for (auto &group : drop_import_data->import_groups) {
     drop_import_data->count += std::accumulate(group.count.begin(), group.count.end(), 0);
     group.op = wm_operator_create(
         CTX_wm_manager(C),
