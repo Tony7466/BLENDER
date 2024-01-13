@@ -8,12 +8,9 @@
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_mesh.hh"
-#include "BKE_pointcloud.h"
 #include "BKE_type_conversions.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_pointcloud_types.h"
+#include "DNA_meshdata_types.h"
 
 #include "BLI_array_utils.hh"
 #include "BLI_color.hh"
@@ -31,6 +28,74 @@
 #include "attribute_access_intern.hh"
 
 namespace blender::bke {
+
+const blender::CPPType *custom_data_type_to_cpp_type(const eCustomDataType type)
+{
+  switch (type) {
+    case CD_PROP_FLOAT:
+      return &CPPType::get<float>();
+    case CD_PROP_FLOAT2:
+      return &CPPType::get<float2>();
+    case CD_PROP_FLOAT3:
+      return &CPPType::get<float3>();
+    case CD_PROP_INT32:
+      return &CPPType::get<int>();
+    case CD_PROP_INT32_2D:
+      return &CPPType::get<int2>();
+    case CD_PROP_COLOR:
+      return &CPPType::get<ColorGeometry4f>();
+    case CD_PROP_BOOL:
+      return &CPPType::get<bool>();
+    case CD_PROP_INT8:
+      return &CPPType::get<int8_t>();
+    case CD_PROP_BYTE_COLOR:
+      return &CPPType::get<ColorGeometry4b>();
+    case CD_PROP_QUATERNION:
+      return &CPPType::get<math::Quaternion>();
+    case CD_PROP_STRING:
+      return &CPPType::get<MStringProperty>();
+    default:
+      return nullptr;
+  }
+}
+
+eCustomDataType cpp_type_to_custom_data_type(const blender::CPPType &type)
+{
+  if (type.is<float>()) {
+    return CD_PROP_FLOAT;
+  }
+  if (type.is<float2>()) {
+    return CD_PROP_FLOAT2;
+  }
+  if (type.is<float3>()) {
+    return CD_PROP_FLOAT3;
+  }
+  if (type.is<int>()) {
+    return CD_PROP_INT32;
+  }
+  if (type.is<int2>()) {
+    return CD_PROP_INT32_2D;
+  }
+  if (type.is<ColorGeometry4f>()) {
+    return CD_PROP_COLOR;
+  }
+  if (type.is<bool>()) {
+    return CD_PROP_BOOL;
+  }
+  if (type.is<int8_t>()) {
+    return CD_PROP_INT8;
+  }
+  if (type.is<ColorGeometry4b>()) {
+    return CD_PROP_BYTE_COLOR;
+  }
+  if (type.is<math::Quaternion>()) {
+    return CD_PROP_QUATERNION;
+  }
+  if (type.is<MStringProperty>()) {
+    return CD_PROP_STRING;
+  }
+  return static_cast<eCustomDataType>(-1);
+}
 
 std::ostream &operator<<(std::ostream &stream, const AttributeIDRef &attribute_id)
 {
@@ -871,29 +936,6 @@ void gather_attributes(const AttributeAccessor src_attributes,
   });
 }
 
-static bool indices_are_range(const Span<int> indices, const IndexRange range)
-{
-  if (indices.size() != range.size()) {
-    return false;
-  }
-  return threading::parallel_reduce(
-      range,
-      4096,
-      true,
-      [&](const IndexRange range, const bool init) {
-        if (!init) {
-          return false;
-        }
-        for (const int i : range) {
-          if (indices[i] != i) {
-            return false;
-          }
-        }
-        return true;
-      },
-      std::logical_and());
-}
-
 void gather_attributes(const AttributeAccessor src_attributes,
                        const AttrDomain domain,
                        const AnonymousAttributePropagationInfo &propagation_info,
@@ -901,7 +943,7 @@ void gather_attributes(const AttributeAccessor src_attributes,
                        const Span<int> indices,
                        MutableAttributeAccessor dst_attributes)
 {
-  if (indices_are_range(indices, IndexRange(src_attributes.domain_size(domain)))) {
+  if (array_utils::indices_are_range(indices, IndexRange(src_attributes.domain_size(domain)))) {
     copy_attributes(src_attributes, domain, propagation_info, skip, dst_attributes);
   }
   else {
