@@ -112,16 +112,6 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "void"
     "volatile"
     "while"
-    "define"
-    "defined"
-    "elif"
-    "else"
-    "endif"
-    "if"
-    "ifdef"
-    "ifndef"
-    "pragma"
-    "version"
     /* clang-format on */
 };
 
@@ -336,6 +326,21 @@ static const Span<const char*> text_format_glsl_literals_specialvar(
     *text_format_glsl_literals_specialvar_data,
     ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
 
+static const char *text_format_glsl_literals_preprocessor[] = {
+
+    "define"
+    "defined"
+    "elif"
+    "else"
+    "endif"
+    "if"
+    "ifdef"
+    "ifndef"
+    "pragma"
+    "version"
+};
+static const Span<const char *>text_format_glsl_literals_preprocessor(
+  text_format_glsl_literals_preprocessor, ARRAY_SIZE(text_format_glsl_literals_preprocessor));
 /*---------------------------------------------------------------------*/
 /* name local functions 
 */
@@ -370,6 +375,8 @@ static int txtfmt_glsl_find_specialvar(const char *string)
 }
 static int txtfmt_glsl_find_preprocessor(const char *string)
 {
+    const int i = text_format_string_literal_find(text_format_glsl_literals_preprocessor);
+
     if (string[0] == '#'){
         int i = 1;
         while (text_check_whitespace(string[i])){
@@ -393,7 +400,7 @@ static char txtfmt_glsl_format_identifier(const char *str)
    } else if (txtfmt_glsl_find_reserved(str)      != -1) {fmt = FMT_TYPE_RESERVED;
    } else if (txtfmt_glsl_find_preprocessor(str)  != -1) {fmt = FMT_TYPE_DIRECTIVE;
    } else                                                {fmt = FMT_TYPE_DEFAULT;
-
+   }
     /* clang-format on */
 
     return fmt;
@@ -574,8 +581,8 @@ void ED_text_format_register_glsl()
   static TextFormatType tft = {nullptr};
   static const char *ext[] = {"glsl", nullptr};
 
-  tft.format_identifier = txtfmt_glsl_format_identifier;
-  tft.format_line = txtfmt_glsl_format_line;
+  tft.format_identifier = txtfmt_glsl_format_identifier();
+  tft.format_line = txtfmt_glsl_format_line();
   tft.ext = ext;
   tft.comment_line = "/**/";
 
@@ -584,6 +591,7 @@ void ED_text_format_register_glsl()
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_builtinfunc_data));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_preprocessor));
 }
 
 /** \} */
