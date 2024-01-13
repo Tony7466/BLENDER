@@ -1795,6 +1795,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   bke::greasepencil::Layer *target_layer = nullptr;
+  int layer_num = RNA_int_get(op->ptr, "layer");
 
   /* TO_DO: Move strokes to selected layer */
 
