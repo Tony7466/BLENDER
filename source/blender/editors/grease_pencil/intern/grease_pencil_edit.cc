@@ -13,6 +13,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
+#include "BLI_string.h"
 #include "BLT_translation.h"
 
 #include "DNA_material_types.h"
@@ -1792,14 +1793,62 @@ static void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
 
 static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 {
+  using namespace bke::greasepencil;
+
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  bke::greasepencil::Layer *target_layer = nullptr;
-  int layer_num = RNA_int_get(op->ptr, "layer");
+  const Layer *layer_dst = nullptr;
+  int layer_index = RNA_int_get(op->ptr, "layer");
+  /*const bool use_autolock = bool(grease_pencil.flag & GP_DATA_AUTOLOCK_LAYERS);*/
+  /*const bool is_multiedit = bool(GREASE_PENCIL_MULTIEDIT_SESSIONS_ON(grease_pencil));*/
 
-  /* TO_DO: Move strokes to selected layer */
+  printf("Layer index: %d \n", layer_index);
 
-  return OPERATOR_CANCELLED;
+  /* If autolock enabled, disabled now. */
+  /*if (use_autolock) {
+    grease_pencil.flag &= ~GP_DATA_AUTOLOCK_LAYERS;
+  }*/
+
+  /* Try to get layer */
+  if (layer_index > -1) {
+    layer_dst = grease_pencil.layers()[layer_index];
+    /*layer_dst = grease_pencil.layers().get(layer_index, layer_dst);*/
+    printf("Get Layer name: %s \n", layer_dst->base.name);
+  }
+  else {
+    /* Create a new layer. */
+    PropertyRNA *prop;
+    char name[128];
+    prop = RNA_struct_find_property(op->ptr, "new_layer_name");
+    if (RNA_property_is_set(op->ptr, prop)) {
+      RNA_property_string_get(op->ptr, prop, name);
+    }
+    else {
+      STRNCPY(name, "Layer");
+    }
+    layer_dst = &grease_pencil.add_layer(name);
+    printf("New Layer name: %s \n", layer_dst->base.name);
+  }
+
+  if (layer_dst == nullptr) {
+    ///* back autolock status */
+    // if (use_autolock) {
+    //   gpd->flag |= GP_DATA_AUTOLOCK_LAYERS;
+    // }
+    BKE_reportf(op->reports, RPT_ERROR, "There is no layer number %d", layer_index);
+    return OPERATOR_CANCELLED;
+  }
+
+  /* TODO: move strokes to target layer. */
+
+  /* back autolock status */
+  /*if (use_autolock) {
+    gpd->flag |= GP_DATA_AUTOLOCK_LAYERS;
+  }*/
+
+  /* updates */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
 static int grease_pencil_move_to_layer_invoke(bContext *C,

@@ -33,7 +33,6 @@ int new_layer_dialog(bContext *C, wmOperator *op)
       char *new_layer_name = RNA_string_get_alloc(
           op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
       RNA_property_string_set(op->ptr, prop, new_layer_name);
-
       return WM_operator_props_dialog_popup(C, op, 200);
     }
   }
