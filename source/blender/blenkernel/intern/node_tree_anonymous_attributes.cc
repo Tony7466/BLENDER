@@ -395,7 +395,7 @@ static AnonymousAttributeInferencingResult analyze_anonymous_attribute_usages(
           break;
         }
         /* The repeat output node needs special handling for two reasons:
-         * -It propagates data directly from the zone input in case the iteration count is zero.
+         * - It propagates data directly from the zone input in case the iteration count is zero.
          * - Fields coming out of the repeat zone are wrapped by a new #FieldSource, because the
          *   intermediate fields from within the zone are not available afterwards. */
         case GEO_NODE_REPEAT_OUTPUT: {
