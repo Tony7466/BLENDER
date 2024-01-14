@@ -38,8 +38,6 @@ struct NodesModifierRuntime {
    * used by the evaluated modifier.
    */
   std::shared_ptr<bke::bake::ModifierCache> cache;
-
-  VectorSet<bke::bake::BakeDataBlockID> missing_data_blocks;
 };
 
 }  // namespace blender

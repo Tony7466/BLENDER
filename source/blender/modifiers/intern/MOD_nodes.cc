@@ -56,6 +56,7 @@
 #include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
+#include "BKE_scene_writeback_sync.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
@@ -1581,7 +1582,34 @@ static void modifyGeometry(ModifierData *md,
     nmd_orig->runtime->eval_log = std::move(eval_log);
   }
 
-  nmd->runtime->missing_data_blocks = std::move(data_block_map.missing);
+  if (!data_block_map.missing.is_empty()) {
+    Main *bmain = DEG_get_bmain(ctx->depsgraph);
+    bke::scene::sync_writeback::add(
+        *ctx->depsgraph, [bmain, nmd_orig, missing = std::move(data_block_map.missing)]() {
+          const int old_items_num = nmd_orig->data_block_map_items_num;
+          const int new_items_num = old_items_num + missing.size();
+          nmd_orig->data_block_map_items = reinterpret_cast<NodesModifierDataBlockMapItem *>(
+              MEM_recallocN(nmd_orig->data_block_map_items,
+                            sizeof(NodesModifierDataBlockMapItem) * new_items_num));
+          for (const int i : missing.index_range()) {
+            NodesModifierDataBlockMapItem &item_orig =
+                nmd_orig->data_block_map_items[old_items_num + i];
+            const blender::bke::bake::BakeDataBlockID &data_block_id = missing[i];
+
+            item_orig.id_name = BLI_strdup(data_block_id.id_name.c_str());
+            if (!data_block_id.lib_name.empty()) {
+              item_orig.lib_name = BLI_strdup(data_block_id.lib_name.c_str());
+            }
+            ID *id_orig = BKE_libblock_find_name_and_library(
+                bmain, item_orig.id_name, item_orig.lib_name);
+            if (id_orig) {
+              item_orig.id = id_orig;
+              id_us_plus(id_orig);
+            }
+          }
+          nmd_orig->data_block_map_items_num = new_items_num;
+        });
+  }
 
   if (use_orig_index_verts || use_orig_index_edges || use_orig_index_faces) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
