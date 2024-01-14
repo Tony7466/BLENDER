@@ -1,12 +1,15 @@
 /* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_file_handler.hh"
 #include "BKE_screen.hh"
-#include "BLT_translation.h"
+
 #include "ED_fileselect.hh"
 
 #include "CLG_log.h"
@@ -28,6 +31,7 @@
 
 #include <fmt/format.h>
 #include <numeric>
+
 static CLG_LogRef LOG = {"io.drop_import_file"};
 
 /** Returns the list of file paths stored in #WM_OT_drop_import_file operator properties. */
@@ -71,8 +75,8 @@ static blender::Vector<blender::bke::FileHandlerType *> drop_import_file_poll_fi
 /**
  * Sets in the PointerRNA `ptr` all paths, returns`true` if pointer supports multiple paths.
  */
-static bool file_handler_import_operator_create_ptr(PointerRNA &ptr,
-                                                    const blender::Span<std::string> paths)
+static bool file_handler_import_operator_paths_set(PointerRNA &ptr,
+                                                   const blender::Span<std::string> paths)
 {
 
   PropertyRNA *filepath_prop = RNA_struct_find_property_check(ptr, "filepath", PROP_STRING);
@@ -133,8 +137,6 @@ struct ImportGroup {
 struct DropImportData {
   blender::Vector<ImportGroup> import_groups;
   blender::Vector<std::string> paths;
-  int active = 0;
-
   int count = 0;
   ~DropImportData()
   {
@@ -204,7 +206,7 @@ static void drop_import_file_exec_import(bContext &C, wmOperator *op)
       paths.append(path);
     }
     while (!paths.is_empty()) {
-      const bool all = file_handler_import_operator_create_ptr(*import_group.op->ptr, paths);
+      const bool all = file_handler_import_operator_paths_set(*import_group.op->ptr, paths);
       if (all) {
         paths.clear();
       }
@@ -335,8 +337,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
         CTX_wm_reports(C));
     WM_operator_last_properties_init(group.op);
 
-    /** If a import group only can be handled only by one file hander the tab will display its
-     * label. */
+    /** If a import group can be handled only by one file hander the tab will display its label. */
     if (group.file_handlers.size() == 1) {
       group.label = group.file_handlers[0]->label;
       continue;
