@@ -123,10 +123,9 @@ float G1_Smith_GGX_opti(float NX, float a2)
 }
 
 /* Compute the GGX BRDF without the Fresnel term, multiplied by the cosine foreshortening term. */
-float bsdf_ggx(vec3 N, vec3 L, vec3 V, float roughness)
+float bsdf_ggx(vec3 N, vec3 L, vec3 V, float roughness_squared)
 {
-  float a = roughness;
-  float a2 = a * a;
+  float a2 = roughness_squared;
 
   vec3 H = normalize(L + V);
   float NH = max(dot(N, H), 1e-8);
