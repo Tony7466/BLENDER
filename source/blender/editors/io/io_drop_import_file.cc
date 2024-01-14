@@ -30,7 +30,7 @@
 #include <numeric>
 static CLG_LogRef LOG = {"io.drop_import_file"};
 
-/* Retuns the list of file paths stored in #WM_OT_drop_import_file operator properties. */
+/** Returns the list of file paths stored in #WM_OT_drop_import_file operator properties. */
 static blender::Vector<std::string> drop_import_file_paths(const wmOperator *op)
 {
   blender::Vector<std::string> result;
@@ -54,21 +54,22 @@ static blender::Vector<std::string> drop_import_file_paths(const wmOperator *op)
 
 /**
  * Return a vector of file handlers that support any file path in `paths` and the call to
- * `poll_drop` returns #true. Unlike `BKE_file_handlers_poll_file_drop`, it ensures that file
+ * `poll_drop` returns #true. Unlike `bke::file_handlers_poll_file_drop`, it ensures that file
  * handlers have a valid import operator.
  */
 static blender::Vector<blender::bke::FileHandlerType *> drop_import_file_poll_file_handlers(
     const bContext *C, const blender::Span<std::string> paths, const bool quiet = true)
 {
-  auto file_handlers = blender::bke::file_handlers_poll_file_drop(C, paths);
-  file_handlers.remove_if([quiet](const blender::bke::FileHandlerType *file_handler) {
+  using namespace blender;
+  auto file_handlers = bke::file_handlers_poll_file_drop(C, paths);
+  file_handlers.remove_if([quiet](const bke::FileHandlerType *file_handler) {
     return WM_operatortype_find(file_handler->import_operator, quiet) == nullptr;
   });
   return file_handlers;
 }
 
 /**
- * Sets in PointerRNA `ptr` all paths, returns`true` if pointer supports multiple paths.
+ * Sets in the PointerRNA `ptr` all paths, returns`true` if pointer supports multiple paths.
  */
 static bool file_handler_import_operator_create_ptr(PointerRNA &ptr,
                                                     const blender::Span<std::string> paths)
@@ -110,11 +111,16 @@ static bool file_handler_import_operator_create_ptr(PointerRNA &ptr,
     const char *message =
         "Expected operator properties filepath or files and directory not found. Refer to "
         "FileHandler documentation for details.";
-    CLOG_WARN(&LOG, TIP_(message));
+    CLOG_WARN(&LOG, message);
   }
   return directory_prop && files_prop;
 }
 
+/**
+ * Set of file handlers that supports handling a set of extensions.
+ * Only the #active_file_handler would be used to handle the import of files whose extension is
+ * listed in the import group.
+ */
 struct ImportGroup {
   blender::Vector<std::string> extensions;
   blender::Vector<int> count;
@@ -221,6 +227,7 @@ static void wm_drop_import_file_draw(bContext *C, wmOperator *op)
 
   uiLayout *col = uiLayoutColumn(row, false);
 
+  /* Tab enum. */
   uiItemR(uiLayoutRow(col, false), op->ptr, "import_group", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiLayout *box = uiLayoutBox(col);
 
@@ -272,7 +279,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
-  DropImportData *drop_import_data = MEM_new<DropImportData>("");
+  DropImportData *drop_import_data = MEM_new<DropImportData>(__func__);
   op->customdata = active_drop_import_data = drop_import_data;
   drop_import_data->paths = paths;
 
@@ -281,6 +288,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
     if (!extension) {
       continue;
     }
+    /* Skip already listed extensions.*/
     auto itr = std::find_if(
         drop_import_data->import_groups.begin(),
         drop_import_data->import_groups.end(),
@@ -293,7 +301,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
     ImportGroup group{};
     group.extensions.append(extension);
     group.count.append(1);
-
+    /* Check file handlers that support current extension. */
     for (blender::bke::FileHandlerType *fh : file_handlers) {
       if (fh->file_extensions.contains(extension)) {
         group.file_handlers.append_non_duplicates(fh);
@@ -303,28 +311,32 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
       CLOG_WARN(&LOG, "%s skipped.", path.c_str());
       continue;
     }
-    /** Join extensions with same file handlers. */
-    bool append = true;
+    bool merged = false;
+    /** Merge extensions with same file handlers. */
     for (auto &&test_group : drop_import_data->import_groups) {
       if (test_group.file_handlers == group.file_handlers) {
         test_group.extensions.extend(group.extensions);
         test_group.count.extend(group.count);
-        append = false;
+        merged = true;
       }
     }
-    if (append) {
+    if (!merged) {
       drop_import_data->import_groups.append(std::move(group));
     }
   }
-
   for (auto &group : drop_import_data->import_groups) {
     drop_import_data->count += std::accumulate(group.count.begin(), group.count.end(), 0);
+
+    /* Initialize selected file handler operator. */
     group.op = wm_operator_create(
         CTX_wm_manager(C),
         WM_operatortype_find(group.file_handlers[0]->import_operator, false),
         nullptr,
         CTX_wm_reports(C));
     WM_operator_last_properties_init(group.op);
+
+    /** If a import group only can be handled only by one file hander the tab will display its
+     * label. */
     if (group.file_handlers.size() == 1) {
       group.label = group.file_handlers[0]->label;
       continue;
@@ -389,11 +401,12 @@ static void drop_import_file_handler_update(bContext *C, PointerRNA *ptr, Proper
   const int group = RNA_enum_get(ptr, "import_group");
   DropImportData &drop_import_data = *active_drop_import_data;
   ImportGroup &import_group = drop_import_data.import_groups[group];
-  const int active_file_handler = RNA_enum_get(ptr, "file_handler");
 
+  const int active_file_handler = RNA_enum_get(ptr, "file_handler");
+  /* Remove previously selected operator in the import group. */
   import_group.active_file_handler = active_file_handler;
   WM_operator_free(import_group.op);
-
+  /* Set selected file handler operator in the import group. */
   import_group.op = wm_operator_create(
       CTX_wm_manager(C),
       WM_operatortype_find(import_group.file_handlers[active_file_handler]->import_operator,
