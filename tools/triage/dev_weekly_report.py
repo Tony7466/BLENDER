@@ -48,9 +48,10 @@ def main():
                     if commit["AuthorName"] != activity["act_user"]["full_name"]:
                         continue
                     commit_hash = commit["Sha1"][:10]
+                    extra_prefix = {"blender/blender-developer-docs" : "Docs: "}.get(repo_fullname, "")
                     title = commit["Message"].split("\n", 1)[0]
                     commit_url = f"https://projects.blender.org/{repo_fullname}/commit/{commit_hash}"
-                    commit_data = f"{title} ([{commit_hash[:7]}]({commit_url}))"
+                    commit_data = f"{extra_prefix}{title} ([{commit_hash[:7]}]({commit_url}))"
                     commit_lines.append(commit_data)
             elif op_type in ("comment_pull", "create_pull_request", "merge_pull_request"):
                 pull_request_id = activity["content"].split("|")[0]
