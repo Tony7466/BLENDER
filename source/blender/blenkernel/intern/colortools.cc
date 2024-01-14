@@ -696,20 +696,20 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
     bezt_post.vec[1][0] = bezt[0].vec[1][0] + 1.0f;
     bezt_post.vec[1][1] = bezt[0].vec[1][1];
 
-    // Handle first element
+    /* Handle first element */
     bezt_next = &bezt[1];
     calchandle_curvemap(&bezt_pre, nullptr, &bezt[0]);
     calchandle_curvemap(&bezt[0], &bezt_pre, bezt_next);
     bezt_prev = &bezt[0];
 
-    // Process middle elements
+    /* Process middle elements */
     for (int a = 1; a < cuma->totpoint - 1; a++) {
       bezt_next = &bezt[a + 1];
       calchandle_curvemap(&bezt[a], bezt_prev, bezt_next);
       bezt_prev = &bezt[a];
     }
 
-    // Handle last element
+    /* Handle last element */
     bezt_next = &bezt_post;
     calchandle_curvemap(&bezt_post, &bezt[cuma->totpoint - 1], nullptr);
     calchandle_curvemap(&bezt[cuma->totpoint - 1], bezt_prev, &bezt_post);
@@ -788,7 +788,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
     allpoints = static_cast<float *>(MEM_callocN(totpoint * 2 * sizeof(float), "table"));
     point = allpoints;
 
-    // Handle first element
+    /* Handle first element */
     BKE_curve_correct_bezpart(bezt_pre.vec[1], bezt_pre.vec[2], bezt[0].vec[0], bezt[0].vec[1]);
     BKE_curve_forward_diff_bezier(bezt_pre.vec[1][0],
                                   bezt_pre.vec[2][0],
@@ -806,7 +806,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
                                   sizeof(float[2]));
     point += 2 * CM_RESOL;
 
-    // Process middle elements
+    /* Process middle elements */
     for (int a = 0; a < cuma->totpoint - 1; a++, point += 2 * CM_RESOL) {
       int b = a + 1;
       BKE_curve_correct_bezpart(bezt[a].vec[1], bezt[a].vec[2], bezt[b].vec[0], bezt[b].vec[1]);
@@ -826,7 +826,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
                                     sizeof(float[2]));
     }
 
-    // Handle last element
+    /* Handle last element */
     BKE_curve_correct_bezpart(bezt[cuma->totpoint - 1].vec[1],
                               bezt[cuma->totpoint - 1].vec[2],
                               bezt_post.vec[0],
@@ -896,7 +896,6 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   /* now make a table with CM_TABLE equal x distances */
   float *firstpoint = allpoints;
   float *lastpoint = allpoints + 2 * (totpoint - 1);
-
   point = allpoints;
 
   cmp = static_cast<CurveMapPoint *>(
@@ -1545,7 +1544,7 @@ void BKE_histogram_update_sample_line(Histogram *hist,
   hist->channels = 3;
   hist->x_resolution = 256;
   hist->xmax = 1.0f;
-  // hist->ymax = 1.0f; /* now do this on the operator _only_ */
+  /* hist->ymax = 1.0f; /* now do this on the operator _only_ */
 
   if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
     return;
