@@ -274,6 +274,11 @@ CurveMapPoint *BKE_curvemap_insert(CurveMap *cuma, float x, float y)
   return newcmp;
 }
 
+void BKE_curvemap_set_wrapping(CurveMap *cuma, bool use_wrapping)
+{
+  cuma->use_wrapping = use_wrapping;
+}
+
 void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope)
 {
   if (cuma->curve) {
@@ -644,7 +649,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   const rctf *clipr = &cumap->clipr;
   CurveMapPoint *cmp = cuma->curve;
   BezTriple *bezt;
-  const bool use_wrapping = true;
+  const bool use_wrapping = cuma->use_wrapping;
 
   if (cuma->curve == nullptr) {
     return;

@@ -869,6 +869,7 @@ static void hue_correct_init_data(SequenceModifierData *smd)
 
     BKE_curvemap_reset(
         cuma, &hcmd->curve_mapping.clipr, hcmd->curve_mapping.preset, CURVEMAP_SLOPE_POSITIVE);
+    BKE_curvemap_set_wrapping(cuma, true);
   }
 
   /* default to showing Saturation */
