@@ -15,6 +15,7 @@
 #include "BKE_global.h"
 
 #include "GPU_compute.h"
+#include "GPU_debug.h"
 #include "GPU_platform.h"
 #include "GPU_shader.h"
 #include "GPU_state.h"
@@ -1211,7 +1212,7 @@ static void drw_draw_pass_ex(DRWPass *pass,
     GPU_front_facing(true);
   }
 
-  DRW_stats_query_start(pass->name);
+  DRW_stats_query_start(pass->name, GPU_PROFILE_LEVEL_PASS);
 
   for (DRWShadingGroup *shgroup = start_group; shgroup; shgroup = shgroup->next) {
     draw_shgroup(shgroup, pass->state);

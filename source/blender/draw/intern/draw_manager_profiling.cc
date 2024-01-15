@@ -119,11 +119,11 @@ static void drw_stats_timer_start_ex(const char *name, const bool is_query)
   }
 }
 
-void DRW_stats_group_start(const char *name)
+void DRW_stats_group_start(const char *name, int profile_level)
 {
   drw_stats_timer_start_ex(name, false);
 
-  GPU_debug_group_begin(name);
+  GPU_debug_group_begin(name, profile_level);
 }
 
 void DRW_stats_group_end()
@@ -135,9 +135,9 @@ void DRW_stats_group_end()
   }
 }
 
-void DRW_stats_query_start(const char *name)
+void DRW_stats_query_start(const char *name, int profile_level)
 {
-  GPU_debug_group_begin(name);
+  GPU_debug_group_begin(name, profile_level);
   drw_stats_timer_start_ex(name, true);
 }
 

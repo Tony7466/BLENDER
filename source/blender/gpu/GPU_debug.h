@@ -52,6 +52,13 @@ extern "C" {
 
 #define GPU_DEBUG_SHADER_COMPILATION_GROUP "Shader Compilation"
 
+enum {
+  GPU_PROFILE_LEVEL_ROOT = 0,
+  GPU_PROFILE_LEVEL_PASS = 1,
+  GPU_PROFILE_LEVEL_SUBPASS = 2,
+  GPU_PROFILE_LEVEL_RESOURCE_SUBPASS = 3,
+};
+
 void GPU_debug_group_begin(const char *name, int profile_level = 0);
 void GPU_debug_group_end(void);
 /**

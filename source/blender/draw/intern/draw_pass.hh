@@ -141,6 +141,7 @@ class PassBase {
 
  public:
   const char *debug_name;
+  int profile_level = GPU_PROFILE_LEVEL_PASS;
 
   bool use_custom_ids;
 
@@ -164,7 +165,8 @@ class PassBase {
   /**
    * Create a sub-pass inside this pass.
    */
-  PassBase<DrawCommandBufType> &sub(const char *name);
+  PassBase<DrawCommandBufType> &sub(const char *name,
+                                    int profile_level = GPU_PROFILE_LEVEL_SUBPASS);
 
   /**
    * Changes the fixed function pipeline state.
@@ -491,12 +493,15 @@ class PassSortable : public PassMain {
     PassMain::init();
   }
 
-  PassMain::Sub &sub(const char *name, float sorting_value)
+  PassMain::Sub &sub(const char *name,
+                     float sorting_value,
+                     int profile_level = GPU_PROFILE_LEVEL_SUBPASS)
   {
     int64_t index = sub_passes_.append_and_get_index(
         PassBase(name, draw_commands_buf_, sub_passes_, shader_));
     headers_.append({Type::SubPass, uint(index)});
     sorting_values_.append(sorting_value);
+    sub_passes_[index].profile_level = profile_level;
     return sub_passes_[index];
   }
 
@@ -571,17 +576,18 @@ template<class T> inline GPUBatch *PassBase<T>::procedural_batch_get(GPUPrimType
   }
 }
 
-template<class T> inline PassBase<T> &PassBase<T>::sub(const char *name)
+template<class T> inline PassBase<T> &PassBase<T>::sub(const char *name, int profile_level)
 {
   int64_t index = sub_passes_.append_and_get_index(
       PassBase(name, draw_commands_buf_, sub_passes_, shader_));
   headers_.append({command::Type::SubPass, uint(index)});
+  sub_passes_[index].profile_level = profile_level;
   return sub_passes_[index];
 }
 
 template<class T> void PassBase<T>::submit(command::RecordingState &state) const
 {
-  GPU_debug_group_begin(debug_name);
+  GPU_debug_group_begin(debug_name, profile_level);
 
   for (const command::Header &header : headers_) {
     switch (header.type) {
