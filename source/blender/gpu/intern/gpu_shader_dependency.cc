@@ -17,6 +17,7 @@
 
 #include "BLI_ghash.h"
 #include "BLI_map.hh"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
 #include "gpu_material_library.h"
@@ -108,6 +109,7 @@ struct GPUSource {
       if (source.find("'") != StringRef::not_found) {
         char_literals_preprocess();
       }
+#ifndef NDEBUG
       if (source.find("drw_print") != StringRef::not_found) {
         string_preprocess();
       }
@@ -119,6 +121,7 @@ struct GPUSource {
       {
         builtins |= shader::BuiltinBits::USE_DEBUG_DRAW;
       }
+#endif
       check_no_quotes();
     }
 
@@ -202,7 +205,7 @@ struct GPUSource {
    */
   void check_no_quotes()
   {
-#ifdef DEBUG
+#ifndef NDEBUG
     int64_t pos = -1;
     do {
       pos = source.find('"', pos + 1);
@@ -572,7 +575,7 @@ struct GPUSource {
       CHECK(char_end, input, cursor, "Malformed char literal. Missing ending `'`.");
 
       StringRef input_char = input.substr(char_start, char_end - char_start);
-      if (input_char.size() == 0) {
+      if (input_char.is_empty()) {
         CHECK(-1, input, cursor, "Malformed char literal. Empty character constant");
       }
 

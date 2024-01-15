@@ -8,13 +8,13 @@
  * Temporal super sampling technique
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "ED_screen.hh"
 
 #include "BLI_rand.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_texture.h"
 #include "eevee_private.h"

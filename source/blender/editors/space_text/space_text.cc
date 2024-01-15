@@ -14,12 +14,12 @@
 
 #include "BLI_blenlib.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_screen.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_screen.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -31,7 +31,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -54,6 +54,8 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
   stext->margin_column = 80;
   stext->showsyntax = true;
   stext->showlinenrs = true;
+
+  stext->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
   /* header */
   region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "header for text"));
@@ -89,9 +91,9 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 static void text_free(SpaceLink *sl)
 {
   SpaceText *stext = (SpaceText *)sl;
-
+  space_text_free_caches(stext);
+  MEM_delete(stext->runtime);
   stext->text = nullptr;
-  text_free_caches(stext);
 }
 
 /* spacetype; init callback */
@@ -101,9 +103,8 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
 {
   SpaceText *stextn = static_cast<SpaceText *>(MEM_dupallocN(sl));
 
-  /* clear or remove stuff from old */
-
-  stextn->runtime.drawcache = nullptr; /* space need its own cache */
+  /* Add its own runtime data. */
+  stextn->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
   return (SpaceLink *)stextn;
 }
@@ -134,7 +135,7 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
       switch (wmn->action) {
         case NA_EDITED:
           if (st->text) {
-            text_drawcache_tag_update(st, true);
+            space_text_drawcache_tag_update(st, true);
             text_update_edited(st->text);
           }
 
@@ -206,7 +207,7 @@ static void text_operatortypes()
   WM_operatortype_append(TEXT_OT_replace_set_selected);
 
   WM_operatortype_append(TEXT_OT_start_find);
-  WM_operatortype_append(TEXT_OT_jump_to_file_at_point_internal);
+  WM_operatortype_append(TEXT_OT_jump_to_file_at_point);
 
   WM_operatortype_append(TEXT_OT_to_3d_object);
 
@@ -217,8 +218,8 @@ static void text_operatortypes()
 
 static void text_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Text Generic", SPACE_TEXT, 0);
-  WM_keymap_ensure(keyconf, "Text", SPACE_TEXT, 0);
+  WM_keymap_ensure(keyconf, "Text Generic", SPACE_TEXT, RGN_TYPE_WINDOW);
+  WM_keymap_ensure(keyconf, "Text", SPACE_TEXT, RGN_TYPE_WINDOW);
 }
 
 const char *text_context_dir[] = {"edit_text", nullptr};
@@ -254,9 +255,9 @@ static void text_main_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_STANDARD, region->winx, region->winy);
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Text Generic", SPACE_TEXT, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Text Generic", SPACE_TEXT, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
-  keymap = WM_keymap_ensure(wm->defaultconf, "Text", SPACE_TEXT, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Text", SPACE_TEXT, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
   /* add drop boxes */
@@ -290,9 +291,9 @@ static void text_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
   int wmcursor = WM_CURSOR_TEXT_EDIT;
 
-  if (st->text && BLI_rcti_isect_pt(&st->runtime.scroll_region_handle,
+  if (st->text && BLI_rcti_isect_pt(&st->runtime->scroll_region_handle,
                                     win->eventstate->xy[0] - region->winrct.xmin,
-                                    st->runtime.scroll_region_handle.ymin))
+                                    st->runtime->scroll_region_handle.ymin))
   {
     wmcursor = WM_CURSOR_DEFAULT;
   }
@@ -316,7 +317,7 @@ static bool text_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*eve
 static void text_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
 static bool text_drop_paste_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
@@ -370,25 +371,13 @@ static void text_properties_region_init(wmWindowManager *wm, ARegion *region)
   ED_region_panels_init(wm, region);
 
   /* own keymaps */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Text Generic", SPACE_TEXT, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Text Generic", SPACE_TEXT, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
 static void text_properties_region_draw(const bContext *C, ARegion *region)
 {
-  SpaceText *st = CTX_wm_space_text(C);
-
   ED_region_panels(C, region);
-
-  /* this flag trick is make sure buttons have been added already */
-  if (st->flags & ST_FIND_ACTIVATE) {
-    if (UI_textbutton_activate_rna(C, region, st, "find_text")) {
-      /* if the panel was already open we need to do another redraw */
-      ScrArea *area = CTX_wm_area(C);
-      WM_event_add_notifier(C, NC_SPACE | ND_SPACE_TEXT, area);
-    }
-    st->flags &= ~ST_FIND_ACTIVATE;
-  }
 }
 
 static void text_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
@@ -406,7 +395,7 @@ static void text_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 static void text_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceText *st = (SpaceText *)sl;
-  memset(&st->runtime, 0x0, sizeof(st->runtime));
+  st->runtime = MEM_new<SpaceText_Runtime>(__func__);
 }
 
 static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)

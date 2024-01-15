@@ -39,7 +39,7 @@
 
 #  include "BKE_mask.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "RNA_access.hh"
 
@@ -317,7 +317,8 @@ static MaskSpline *mask_spline_from_point(Mask *mask, MaskSplinePoint *point)
   {
     MaskSpline *spline;
     for (spline = static_cast<MaskSpline *>(mask_layer->splines.first); spline;
-         spline = spline->next) {
+         spline = spline->next)
+    {
       if (point >= spline->points && point < spline->points + spline->tot_point) {
         return spline;
       }
@@ -893,6 +894,7 @@ static void rna_def_maskSpline(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, spline_offset_mode_items);
   RNA_def_property_ui_text(
       prop, "Feather Offset", "The method used for calculating the feather offset");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MASK);
   RNA_def_property_update(prop, 0, "rna_Mask_update_data");
 
   /* weight interpolation */

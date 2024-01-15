@@ -14,14 +14,14 @@
 
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_material.h"
@@ -64,13 +64,8 @@ struct DRWShaderCompiler {
   bool own_context;
 };
 
-static void drw_deferred_shader_compilation_exec(
-    void *custom_data,
-    /* Cannot be const, this function implements wm_jobs_start_callback.
-     * NOLINTNEXTLINE: readability-non-const-parameter. */
-    bool *stop,
-    bool * /*do_update*/,
-    float * /*progress*/)
+static void drw_deferred_shader_compilation_exec(void *custom_data,
+                                                 wmJobWorkerStatus *worker_status)
 {
   GPU_render_begin();
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
@@ -90,7 +85,7 @@ static void drw_deferred_shader_compilation_exec(
   GPU_context_active_set(blender_gpu_context);
 
   while (true) {
-    if (*stop != 0) {
+    if (worker_status->stop != 0) {
       /* We don't want user to be able to cancel the compilation
        * but wm can kill the task if we are closing blender. */
       break;
@@ -498,6 +493,7 @@ GPUShader *DRW_shader_create_fullscreen_with_shaderlib_ex(const char *frag,
 
 GPUMaterial *DRW_shader_from_world(World *wo,
                                    bNodeTree *ntree,
+                                   eGPUMaterialEngine engine,
                                    const uint64_t shader_id,
                                    const bool is_volume_shader,
                                    bool deferred,
@@ -510,6 +506,7 @@ GPUMaterial *DRW_shader_from_world(World *wo,
                                                 ntree,
                                                 &wo->gpumaterial,
                                                 wo->id.name,
+                                                engine,
                                                 shader_id,
                                                 is_volume_shader,
                                                 false,
@@ -530,6 +527,7 @@ GPUMaterial *DRW_shader_from_world(World *wo,
 
 GPUMaterial *DRW_shader_from_material(Material *ma,
                                       bNodeTree *ntree,
+                                      eGPUMaterialEngine engine,
                                       const uint64_t shader_id,
                                       const bool is_volume_shader,
                                       bool deferred,
@@ -542,6 +540,7 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
                                                 ntree,
                                                 &ma->gpumaterial,
                                                 ma->id.name,
+                                                engine,
                                                 shader_id,
                                                 is_volume_shader,
                                                 false,

@@ -18,7 +18,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 
@@ -37,8 +37,8 @@
 #include "ED_util.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -79,7 +79,7 @@ enum {
 static void gpencil_uv_transform_update_header(wmOperator *op, bContext *C)
 {
   const int mode = RNA_enum_get(op->ptr, "mode");
-  const char *str = TIP_("Confirm: Enter/LClick, Cancel: (Esc/RClick) %s");
+  const char *str = RPT_("Confirm: Enter/LClick, Cancel: (Esc/RClick) %s");
 
   char msg[UI_MAX_DRAW_STR];
   ScrArea *area = CTX_wm_area(C);

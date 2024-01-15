@@ -19,26 +19,26 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_freestyle.h"
 #include "BKE_idtype.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_query.h"
 #include "BKE_linestyle.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_texture.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void linestyle_init_data(ID *id)
 {
@@ -647,7 +647,7 @@ IDTypeInfo IDType_ID_LS = {
     /*main_listbase_index*/ INDEX_ID_LS,
     /*struct_size*/ sizeof(FreestyleLineStyle),
     /*name*/ "FreestyleLineStyle",
-    /*name_plural*/ "linestyles",
+    /*name_plural*/ N_("linestyles"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_FREESTYLELINESTYLE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -711,7 +711,7 @@ static LineStyleModifier *new_modifier(const char *name, int type, size_t size)
   }
   m = (LineStyleModifier *)MEM_callocN(size, "line style modifier");
   m->type = type;
-  STRNCPY(m->name, name);
+  STRNCPY(m->name, DATA_(name));
   m->influence = 1.0f;
   m->flags = LS_MODIFIER_ENABLED | LS_MODIFIER_EXPANDED;
 

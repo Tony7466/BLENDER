@@ -11,7 +11,7 @@
 #include "BKE_bake_items.hh"
 #include "BKE_geometry_fields.hh"
 
-namespace blender::bke {
+namespace blender::bke::bake {
 
 /**
  * Describes how bake items should be mapped to sockets.
@@ -23,7 +23,7 @@ struct BakeSocketConfig {
    * The domain on which an the attribute corresponding to the socket should be stored (only used
    * for some socket types).
    */
-  Vector<eAttrDomain> domains;
+  Vector<AttrDomain> domains;
   /**
    * Determines which geometries a field socket should be evaluated on. This can be used to
    * implement rules like a field should only be evaluated on the preceding or on all geometries.
@@ -67,4 +67,4 @@ void copy_bake_items_to_socket_values(
         make_attribute_field,
     Span<void *> r_socket_values);
 
-}  // namespace blender::bke
+}  // namespace blender::bke::bake

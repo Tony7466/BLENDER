@@ -23,17 +23,17 @@
 
 #include "BKE_bpath.h"
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_icons.h"
 #include "BKE_idtype.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_texture.h"
 
 #include "IMB_colormanagement.h"
@@ -42,7 +42,7 @@
 
 #include "RE_texture.h" /* RE_texture_evaluate */
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void brush_init_data(ID *id)
 {
@@ -415,7 +415,7 @@ IDTypeInfo IDType_ID_BR = {
     /*main_listbase_index*/ INDEX_ID_BR,
     /*struct_size*/ sizeof(Brush),
     /*name*/ "Brush",
-    /*name_plural*/ "brushes",
+    /*name_plural*/ N_("brushes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_BRUSH,
     /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,
@@ -738,7 +738,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->hardeness = 0.9f;
+      brush->gpencil_settings->hardness = 0.9f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
@@ -761,7 +761,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
@@ -776,7 +776,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       /* Curve. */
       custom_curve = brush->gpencil_settings->curve_sensitivity;
-      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f);
+      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
       BKE_curvemapping_init(custom_curve);
       brush_gpencil_curvemap_reset(custom_curve->cm, 3, GPCURVE_PRESET_INK);
 
@@ -796,7 +796,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_settings->flag &= ~GP_BRUSH_GROUP_SETTINGS;
@@ -813,7 +813,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       /* Curve. */
       custom_curve = brush->gpencil_settings->curve_sensitivity;
-      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f);
+      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
       BKE_curvemapping_init(custom_curve);
       brush_gpencil_curvemap_reset(custom_curve->cm, 3, GPCURVE_PRESET_INKNOISE);
 
@@ -833,7 +833,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
@@ -850,7 +850,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       /* Curve. */
       custom_curve = brush->gpencil_settings->curve_sensitivity;
-      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f);
+      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
       BKE_curvemapping_init(custom_curve);
       brush_gpencil_curvemap_reset(custom_curve->cm, 4, GPCURVE_PRESET_MARKER);
 
@@ -870,7 +870,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = 0.3f;
       brush->gpencil_settings->draw_angle = DEG2RAD(35.0f);
       brush->gpencil_settings->draw_angle_factor = 0.5f;
-      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
@@ -886,12 +886,12 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       /* Curve. */
       custom_curve = brush->gpencil_settings->curve_sensitivity;
-      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f);
+      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
       BKE_curvemapping_init(custom_curve);
       brush_gpencil_curvemap_reset(custom_curve->cm, 3, GPCURVE_PRESET_CHISEL_SENSIVITY);
 
       custom_curve = brush->gpencil_settings->curve_strength;
-      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f);
+      BKE_curvemapping_set_defaults(custom_curve, 0, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
       BKE_curvemapping_init(custom_curve);
       brush_gpencil_curvemap_reset(custom_curve->cm, 4, GPCURVE_PRESET_CHISEL_STRENGTH);
 
@@ -912,7 +912,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
@@ -943,7 +943,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->hardeness = 0.8f;
+      brush->gpencil_settings->hardness = 0.8f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
@@ -977,7 +977,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
@@ -1004,7 +1004,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->fill_factor = 1.0f;
 
       brush->gpencil_settings->draw_strength = 1.0f;
-      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
       brush->gpencil_settings->draw_smoothfac = 0.1f;
       brush->gpencil_settings->draw_smoothlvl = 1;
@@ -2116,7 +2116,7 @@ float BKE_brush_sample_tex_3d(const Scene *scene,
     if (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) {
       /* keep coordinates relative to mouse */
 
-      rotation += ups->brush_rotation;
+      rotation -= ups->brush_rotation;
 
       x = point_2d[0] - ups->tex_mouse[0];
       y = point_2d[1] - ups->tex_mouse[1];
@@ -2134,7 +2134,7 @@ float BKE_brush_sample_tex_3d(const Scene *scene,
       y = point_2d[1];
     }
     else if (mtex->brush_map_mode == MTEX_MAP_MODE_RANDOM) {
-      rotation += ups->brush_rotation;
+      rotation -= ups->brush_rotation;
       /* these contain a random coordinate */
       x = point_2d[0] - ups->tex_mouse[0];
       y = point_2d[1] - ups->tex_mouse[1];
@@ -2229,7 +2229,7 @@ float BKE_brush_sample_masktex(
     if (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) {
       /* keep coordinates relative to mouse */
 
-      rotation += ups->brush_rotation_sec;
+      rotation -= ups->brush_rotation_sec;
 
       x = point_2d[0] - ups->mask_tex_mouse[0];
       y = point_2d[1] - ups->mask_tex_mouse[1];
@@ -2247,7 +2247,7 @@ float BKE_brush_sample_masktex(
       y = point_2d[1];
     }
     else if (mtex->brush_map_mode == MTEX_MAP_MODE_RANDOM) {
-      rotation += ups->brush_rotation_sec;
+      rotation -= ups->brush_rotation_sec;
       /* these contain a random coordinate */
       x = point_2d[0] - ups->mask_tex_mouse[0];
       y = point_2d[1] - ups->mask_tex_mouse[1];

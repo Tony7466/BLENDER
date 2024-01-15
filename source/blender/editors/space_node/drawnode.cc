@@ -8,6 +8,7 @@
  */
 
 #include "BLI_color.hh"
+#include "BLI_string.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
 
@@ -17,13 +18,13 @@
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
@@ -42,7 +43,7 @@
 #include "GPU_state.h"
 #include "GPU_uniform_buffer.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -60,10 +61,11 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_geometry.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_shader.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
@@ -90,8 +92,7 @@ static void node_buts_value(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
   /* first output stores value */
   bNodeSocket *output = (bNodeSocket *)node->outputs.first;
-  PointerRNA sockptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output, &sockptr);
+  PointerRNA sockptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output);
 
   uiItemR(layout, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
 }
@@ -101,9 +102,8 @@ static void node_buts_rgb(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   bNode *node = (bNode *)ptr->data;
   /* first output stores value */
   bNodeSocket *output = (bNodeSocket *)node->outputs.first;
-  PointerRNA sockptr;
   uiLayout *col;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output, &sockptr);
+  PointerRNA sockptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output);
 
   col = uiLayoutColumn(layout, false);
   uiTemplateColorPicker(col, &sockptr, "default_value", true, false, false, false);
@@ -189,8 +189,7 @@ static void node_buts_normal(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr
   bNode *node = (bNode *)ptr->data;
   /* first output stores normal */
   bNodeSocket *output = (bNodeSocket *)node->outputs.first;
-  PointerRNA sockptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output, &sockptr);
+  PointerRNA sockptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeSocket, output);
 
   uiItemR(layout, &sockptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
 }
@@ -549,8 +548,7 @@ static void node_composit_buts_image(uiLayout *layout, bContext *C, PointerRNA *
 {
   bNode *node = (bNode *)ptr->data;
 
-  PointerRNA iuserptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage, &iuserptr);
+  PointerRNA iuserptr = RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage);
   uiLayoutSetContextPointer(layout, "image_user", &iuserptr);
   uiTemplateID(layout,
                C,
@@ -577,8 +575,7 @@ static void node_composit_buts_image_ex(uiLayout *layout, bContext *C, PointerRN
 {
   bNode *node = (bNode *)ptr->data;
 
-  PointerRNA iuserptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage, &iuserptr);
+  PointerRNA iuserptr = RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage);
   uiLayoutSetContextPointer(layout, "image_user", &iuserptr);
   uiTemplateImage(layout, C, ptr, "image", &iuserptr, false, true);
 }
@@ -765,7 +762,7 @@ static void node_composit_buts_cryptomatte(uiLayout *layout, bContext *C, Pointe
   uiItemR(row, ptr, "source", DEFAULT_FLAGS | UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
   uiLayout *col = uiLayoutColumn(layout, false);
-  if (node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER) {
+  if (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) {
     uiTemplateID(col,
                  C,
                  ptr,
@@ -791,8 +788,7 @@ static void node_composit_buts_cryptomatte(uiLayout *layout, bContext *C, Pointe
 
     NodeCryptomatte *crypto = (NodeCryptomatte *)node->storage;
     PointerRNA imaptr = RNA_pointer_get(ptr, "image");
-    PointerRNA iuserptr;
-    RNA_pointer_create((ID *)ptr->owner_id, &RNA_ImageUser, &crypto->iuser, &iuserptr);
+    PointerRNA iuserptr = RNA_pointer_create((ID *)ptr->owner_id, &RNA_ImageUser, &crypto->iuser);
     uiLayoutSetContextPointer(layout, "image_user", &iuserptr);
 
     node_buts_image_user(col, C, ptr, &imaptr, &iuserptr, false, false);
@@ -891,13 +887,12 @@ static void node_texture_buts_bricks(uiLayout *layout, bContext * /*C*/, Pointer
 
 static void node_texture_buts_proc(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  PointerRNA tex_ptr;
   bNode *node = (bNode *)ptr->data;
   ID *id = ptr->owner_id;
   Tex *tex = (Tex *)node->storage;
   uiLayout *col, *row;
 
-  RNA_pointer_create(id, &RNA_Texture, tex, &tex_ptr);
+  PointerRNA tex_ptr = RNA_pointer_create(id, &RNA_Texture, tex);
 
   col = uiLayoutColumn(layout, false);
 
@@ -994,9 +989,7 @@ static void node_texture_buts_image(uiLayout *layout, bContext *C, PointerRNA *p
 static void node_texture_buts_image_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   bNode *node = (bNode *)ptr->data;
-  PointerRNA iuserptr;
-
-  RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage, &iuserptr);
+  PointerRNA iuserptr = RNA_pointer_create(ptr->owner_id, &RNA_ImageUser, node->storage);
   uiTemplateImage(layout, C, ptr, "image", &iuserptr, false, false);
 }
 
@@ -1124,21 +1117,21 @@ static void node_socket_undefined_draw_color(bContext * /*C*/,
   r_color[3] = 1.0f;
 }
 
-static void node_socket_undefined_interface_draw(bContext * /*C*/,
-                                                 uiLayout *layout,
-                                                 PointerRNA * /*ptr*/)
-{
-  uiItemL(layout, IFACE_("Undefined Socket Type"), ICON_ERROR);
-}
-
-static void node_socket_undefined_interface_draw_color(bContext * /*C*/,
-                                                       PointerRNA * /*ptr*/,
-                                                       float *r_color)
+static void node_socket_undefined_draw_color_simple(const bNodeSocketType * /*type*/,
+                                                    float *r_color)
 {
   r_color[0] = 1.0f;
   r_color[1] = 0.0f;
   r_color[2] = 0.0f;
   r_color[3] = 1.0f;
+}
+
+static void node_socket_undefined_interface_draw(ID * /*id*/,
+                                                 bNodeTreeInterfaceSocket * /*interface_socket*/,
+                                                 bContext * /*C*/,
+                                                 uiLayout *layout)
+{
+  uiItemL(layout, IFACE_("Undefined Socket Type"), ICON_ERROR);
 }
 
 /** \} */
@@ -1161,8 +1154,8 @@ void ED_node_init_butfuncs()
 
   NodeSocketTypeUndefined.draw = node_socket_undefined_draw;
   NodeSocketTypeUndefined.draw_color = node_socket_undefined_draw_color;
+  NodeSocketTypeUndefined.draw_color_simple = node_socket_undefined_draw_color_simple;
   NodeSocketTypeUndefined.interface_draw = node_socket_undefined_interface_draw;
-  NodeSocketTypeUndefined.interface_draw_color = node_socket_undefined_interface_draw_color;
 
   /* node type ui functions */
   NODE_TYPES_BEGIN (ntype) {
@@ -1208,22 +1201,39 @@ static const float std_node_socket_colors[][4] = {
     {0.65, 0.39, 0.78, 1.0}, /* SOCK_ROTATION */
 };
 
-/* common color callbacks for standard types */
-static void std_node_socket_draw_color(bContext * /*C*/,
-                                       PointerRNA *ptr,
-                                       PointerRNA * /*node_ptr*/,
-                                       float *r_color)
+/* Callback for colors that does not depend on the socket pointer argument to get the type. */
+template<int socket_type>
+void std_node_socket_color_fn(bContext * /*C*/,
+                              PointerRNA * /*ptr*/,
+                              PointerRNA * /*node_ptr*/,
+                              float *r_color)
 {
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
-  copy_v4_v4(r_color, std_node_socket_colors[type]);
-}
-static void std_node_socket_interface_draw_color(bContext * /*C*/, PointerRNA *ptr, float *r_color)
+  copy_v4_v4(r_color, std_node_socket_colors[socket_type]);
+};
+static void std_node_socket_color_simple_fn(const bNodeSocketType *type, float *r_color)
 {
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
-  copy_v4_v4(r_color, std_node_socket_colors[type]);
-}
+  copy_v4_v4(r_color, std_node_socket_colors[type->type]);
+};
+
+using SocketColorFn = void (*)(bContext *C, PointerRNA *ptr, PointerRNA *node_ptr, float *r_color);
+/* Callbacks for all built-in socket types. */
+static const SocketColorFn std_node_socket_color_funcs[] = {
+    std_node_socket_color_fn<SOCK_FLOAT>,
+    std_node_socket_color_fn<SOCK_VECTOR>,
+    std_node_socket_color_fn<SOCK_RGBA>,
+    std_node_socket_color_fn<SOCK_SHADER>,
+    std_node_socket_color_fn<SOCK_BOOLEAN>,
+    nullptr /* UNUSED. */,
+    std_node_socket_color_fn<SOCK_INT>,
+    std_node_socket_color_fn<SOCK_STRING>,
+    std_node_socket_color_fn<SOCK_OBJECT>,
+    std_node_socket_color_fn<SOCK_IMAGE>,
+    std_node_socket_color_fn<SOCK_GEOMETRY>,
+    std_node_socket_color_fn<SOCK_COLLECTION>,
+    std_node_socket_color_fn<SOCK_TEXTURE>,
+    std_node_socket_color_fn<SOCK_MATERIAL>,
+    std_node_socket_color_fn<SOCK_ROTATION>,
+};
 
 /* draw function for file output node sockets,
  * displays only sub-path and format, no value button */
@@ -1244,14 +1254,14 @@ static void node_file_output_socket_draw(bContext *C,
 
   if (imtype == R_IMF_IMTYPE_MULTILAYER) {
     NodeImageMultiFileSocket *input = (NodeImageMultiFileSocket *)sock->storage;
-    RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotLayer, input, &inputptr);
+    inputptr = RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotLayer, input);
 
     uiItemL(row, input->layer, ICON_NONE);
   }
   else {
     NodeImageMultiFileSocket *input = (NodeImageMultiFileSocket *)sock->storage;
     uiBlock *block;
-    RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotFile, input, &inputptr);
+    inputptr = RNA_pointer_create(&ntree->id, &RNA_NodeOutputFileSlotFile, input);
 
     uiItemL(row, input->path, ICON_NONE);
 
@@ -1275,14 +1285,18 @@ static void node_file_output_socket_draw(bContext *C,
 
 static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
 {
-  if (node.runtime->declaration == nullptr) {
+  const nodes::NodeDeclaration *node_decl = node.declaration();
+  if (node_decl == nullptr) {
+    return false;
+  }
+  if (node_decl->skip_updating_sockets) {
     return false;
   }
   if (socket.in_out == SOCK_OUT) {
     return false;
   }
   const int socket_index = BLI_findindex(&node.inputs, &socket);
-  return node.declaration()->inputs[socket_index]->is_attribute_name;
+  return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
 static void std_node_socket_draw(
@@ -1434,36 +1448,42 @@ static void std_node_socket_draw(
   }
 }
 
-static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
+static void std_node_socket_interface_draw(ID *id,
+                                           bNodeTreeInterfaceSocket *interface_socket,
+                                           bContext * /*C*/,
+                                           uiLayout *layout)
 {
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket);
 
-  PointerRNA tree_ptr;
-  RNA_id_pointer_create(ptr->owner_id, &tree_ptr);
+  const bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
+  BLI_assert(typeinfo != nullptr);
+  eNodeSocketDatatype type = eNodeSocketDatatype(typeinfo->type);
 
   uiLayout *col = uiLayoutColumn(layout, false);
 
   switch (type) {
     case SOCK_FLOAT: {
-      uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
+      uiItemR(col, &ptr, "subtype", DEFAULT_FLAGS, IFACE_("Subtype"), ICON_NONE);
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
-      uiItemR(sub, ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
-      uiItemR(sub, ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
+      uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
+      uiItemR(sub, &ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
       break;
     }
     case SOCK_INT: {
-      uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
+      uiItemR(col, &ptr, "subtype", DEFAULT_FLAGS, IFACE_("Subtype"), ICON_NONE);
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
-      uiItemR(sub, ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
-      uiItemR(sub, ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
+      uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
+      uiItemR(sub, &ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
       break;
     }
     case SOCK_VECTOR: {
-      uiItemR(col, ptr, "default_value", UI_ITEM_R_EXPAND, IFACE_("Default"), ICON_NONE);
+      uiItemR(col, &ptr, "subtype", DEFAULT_FLAGS, IFACE_("Subtype"), ICON_NONE);
+      uiItemR(col, &ptr, "default_value", UI_ITEM_R_EXPAND, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
-      uiItemR(sub, ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
-      uiItemR(sub, ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
+      uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
+      uiItemR(sub, &ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
       break;
     }
     case SOCK_BOOLEAN:
@@ -1475,17 +1495,49 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
     case SOCK_IMAGE:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL: {
-      uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       break;
     }
+    case SOCK_SHADER:
+    case SOCK_GEOMETRY:
+      break;
+
+    case SOCK_CUSTOM:
+      BLI_assert_unreachable();
+      break;
   }
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "hide_value", DEFAULT_FLAGS, nullptr, ICON_NONE);
 
-  const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
-  if (sock->in_out == SOCK_IN && node_tree->type == NTREE_GEOMETRY) {
-    uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, ICON_NONE);
+  const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(id);
+  if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
+    if (ELEM(type, SOCK_INT, SOCK_VECTOR)) {
+      uiItemR(col, &ptr, "default_input", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    }
+  }
+
+  {
+    uiLayout *sub = uiLayoutColumn(col, false);
+    uiLayoutSetActive(sub, interface_socket->default_input == NODE_INPUT_DEFAULT_VALUE);
+    uiItemR(sub, &ptr, "hide_value", DEFAULT_FLAGS, nullptr, ICON_NONE);
+  }
+
+  if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
+    if (U.experimental.use_grease_pencil_version3) {
+      if (type == SOCK_BOOLEAN) {
+        uiItemR(col, &ptr, "layer_selection_field", DEFAULT_FLAGS, nullptr, ICON_NONE);
+      }
+    }
+    uiLayout *sub = uiLayoutColumn(col, false);
+    uiLayoutSetActive(sub, !is_layer_selection_field(*interface_socket));
+    uiItemR(sub, &ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    if (nodes::socket_type_supports_fields(type)) {
+      uiLayout *sub_sub = uiLayoutColumn(col, false);
+      uiLayoutSetActive(sub_sub,
+                        (interface_socket->default_input == NODE_INPUT_DEFAULT_VALUE) &&
+                            !is_layer_selection_field(*interface_socket));
+      uiItemR(sub_sub, &ptr, "force_non_field", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    }
   }
 }
 
@@ -1497,15 +1549,20 @@ static void node_socket_virtual_draw_color(bContext * /*C*/,
   copy_v4_v4(r_color, virtual_node_socket_color);
 }
 
+static void node_socket_virtual_draw_color_simple(const bNodeSocketType * /*type*/, float *r_color)
+{
+  copy_v4_v4(r_color, virtual_node_socket_color);
+}
+
 }  // namespace blender::ed::space_node
 
 void ED_init_standard_node_socket_type(bNodeSocketType *stype)
 {
   using namespace blender::ed::space_node;
   stype->draw = std_node_socket_draw;
-  stype->draw_color = std_node_socket_draw_color;
+  stype->draw_color = std_node_socket_color_funcs[stype->type];
+  stype->draw_color_simple = std_node_socket_color_simple_fn;
   stype->interface_draw = std_node_socket_interface_draw;
-  stype->interface_draw_color = std_node_socket_interface_draw_color;
 }
 
 void ED_init_node_socket_type_virtual(bNodeSocketType *stype)
@@ -1513,6 +1570,7 @@ void ED_init_node_socket_type_virtual(bNodeSocketType *stype)
   using namespace blender::ed::space_node;
   stype->draw = node_socket_button_label;
   stype->draw_color = node_socket_virtual_draw_color;
+  stype->draw_color_simple = node_socket_virtual_draw_color_simple;
 }
 
 void ED_node_type_draw_color(const char *idname, float *r_color)
@@ -1570,8 +1628,8 @@ void draw_nodespace_back_pix(const bContext &C,
   DRW_draw_view(&C);
   BLI_thread_unlock(LOCK_DRAW_IMAGE);
   GPU_framebuffer_bind_no_srgb(old_fb);
-  /* Draw manager changes the depth state. Set it back to NONE. Without this the node preview
-   * images aren't drawn correctly. */
+  /* Draw manager changes the depth state. Set it back to NONE. Without this the
+   * node preview images aren't drawn correctly. */
   GPU_depth_test(GPU_DEPTH_NONE);
 
   void *lock;
@@ -1585,7 +1643,8 @@ void draw_nodespace_back_pix(const bContext &C,
     const float x = (region.winx - snode.zoom * ibuf->x) / 2 + offset_x;
     const float y = (region.winy - snode.zoom * ibuf->y) / 2 + offset_y;
 
-    /** \note draw selected info on backdrop */
+    /** \note draw selected info on backdrop
+     */
     if (snode.edittree) {
       bNode *node = (bNode *)snode.edittree->nodes.first;
       rctf *viewer_border = &snode.nodetree->viewer_border;
@@ -1650,7 +1709,7 @@ static void calculate_inner_link_bezier_points(std::array<float2, 4> &points)
     const float dist_y = math::distance(points[0].y, points[3].y);
 
     /* Reduce the handle offset when the link endpoints are close to horizontal. */
-    const float slope = safe_divide(dist_y, dist_x);
+    const float slope = math::safe_divide(dist_y, dist_x);
     const float clamp_factor = math::min(1.0f, slope * (4.5f - 0.25f * float(curving)));
 
     const float handle_offset = curving * 0.1f * dist_x * clamp_factor;
@@ -2066,8 +2125,6 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
   draw_config.th_col2 = th_col2;
   draw_config.th_col3 = th_col3;
 
-  const bNodeTree &node_tree = *snode.edittree;
-
   draw_config.dim_factor = selected ? 1.0f : node_link_dim_factor(v2d, link);
 
   bTheme *btheme = UI_GetTheme();
@@ -2092,9 +2149,11 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
   if (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS &&
       snode.overlay.flag & SN_OVERLAY_SHOW_WIRE_COLORS)
   {
-    PointerRNA from_node_ptr, to_node_ptr;
-    RNA_pointer_create((ID *)&node_tree, &RNA_Node, link.fromnode, &from_node_ptr);
-    RNA_pointer_create((ID *)&node_tree, &RNA_Node, link.tonode, &to_node_ptr);
+    const bNodeTree &node_tree = *snode.edittree;
+    PointerRNA from_node_ptr = RNA_pointer_create(
+        &const_cast<ID &>(node_tree.id), &RNA_Node, link.fromnode);
+    PointerRNA to_node_ptr = RNA_pointer_create(
+        &const_cast<ID &>(node_tree.id), &RNA_Node, link.tonode);
 
     if (link.fromsock) {
       node_socket_color_get(C, node_tree, from_node_ptr, *link.fromsock, draw_config.start_color);

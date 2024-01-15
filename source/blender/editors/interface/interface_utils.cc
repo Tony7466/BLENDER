@@ -18,17 +18,16 @@
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -37,6 +36,7 @@
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "WM_api.hh"
@@ -519,7 +519,7 @@ void ui_rna_collection_search_update_fn(
   char *name;
   bool has_id_icon = false;
 
-  blender::string_search::StringSearch<CollItemSearch> search;
+  blender::ui::string_search::StringSearch<CollItemSearch> search;
 
   if (data->search_prop != nullptr) {
     /* build a temporary list of relevant items first */
@@ -693,8 +693,7 @@ int UI_icon_from_id(const ID *id)
 
   /* otherwise get it through RNA, creating the pointer
    * will set the right type, also with subclassing */
-  PointerRNA ptr;
-  RNA_id_pointer_create((ID *)id, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create((ID *)id);
 
   return (ptr.type) ? RNA_struct_ui_icon(ptr.type) : ICON_NONE;
 }
@@ -970,15 +969,14 @@ uiButStore *UI_butstore_create(uiBlock *block)
 
 void UI_butstore_free(uiBlock *block, uiButStore *bs_handle)
 {
-  /* Workaround for button store being moved into new block,
+  /* NOTE(@ideasman42): Workaround for button store being moved into new block,
    * which then can't use the previous buttons state
-   * ('ui_but_update_from_old_block' fails to find a match),
+   * (#ui_but_update_from_old_block fails to find a match),
    * keeping the active button in the old block holding a reference
    * to the button-state in the new block: see #49034.
    *
    * Ideally we would manage moving the 'uiButStore', keeping a correct state.
-   * All things considered this is the most straightforward fix - Campbell.
-   */
+   * All things considered this is the most straightforward fix. */
   if (block != bs_handle->block && bs_handle->block != nullptr) {
     block = bs_handle->block;
   }

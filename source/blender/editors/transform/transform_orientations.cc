@@ -28,14 +28,14 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_editmesh.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_layer.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -44,9 +44,9 @@
 
 #include "ED_armature.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
-#include "SEQ_select.h"
+#include "SEQ_select.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"
@@ -555,7 +555,7 @@ static int armature_bone_transflags_update_recursive(bArmature *arm,
     bone->flag &= ~BONE_TRANSFORM;
     do_next = do_it;
     if (do_it) {
-      if (ANIM_bonecoll_is_visible(arm, bone)) {
+      if (ANIM_bone_in_visible_collection(arm, bone)) {
         if (bone->flag & BONE_SELECTED) {
           bone->flag |= BONE_TRANSFORM;
           total++;
@@ -633,7 +633,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
 
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
-          const bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
+          const bPoseChannel *pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
           if (pchan && gimbal_axis_pose(ob, pchan, r_mat)) {
             break;
           }
@@ -782,21 +782,21 @@ const char *transform_orientations_spacename_get(TransInfo *t, const short orien
 {
   switch (orient_type) {
     case V3D_ORIENT_GLOBAL:
-      return TIP_("global");
+      return RPT_("global");
     case V3D_ORIENT_GIMBAL:
-      return TIP_("gimbal");
+      return RPT_("gimbal");
     case V3D_ORIENT_NORMAL:
-      return TIP_("normal");
+      return RPT_("normal");
     case V3D_ORIENT_LOCAL:
-      return TIP_("local");
+      return RPT_("local");
     case V3D_ORIENT_VIEW:
-      return TIP_("view");
+      return RPT_("view");
     case V3D_ORIENT_CURSOR:
-      return TIP_("cursor");
+      return RPT_("cursor");
     case V3D_ORIENT_PARENT:
-      return TIP_("parent");
+      return RPT_("parent");
     case V3D_ORIENT_CUSTOM_MATRIX:
-      return TIP_("custom");
+      return RPT_("custom");
     case V3D_ORIENT_CUSTOM:
     default:
       BLI_assert(orient_type >= V3D_ORIENT_CUSTOM);
@@ -1094,7 +1094,8 @@ int getTransformOrientation_ex(const Scene *scene,
               }
               else {
                 if (BM_edge_calc_length_squared(e_pair[0]) <
-                    BM_edge_calc_length_squared(e_pair[1])) {
+                    BM_edge_calc_length_squared(e_pair[1]))
+                {
                   v_pair_swap = true;
                 }
               }
@@ -1361,7 +1362,7 @@ int getTransformOrientation_ex(const Scene *scene,
     float imat[3][3], mat[3][3];
     bool ok = false;
 
-    if (activeOnly && (pchan = BKE_pose_channel_active_if_layer_visible(ob))) {
+    if (activeOnly && (pchan = BKE_pose_channel_active_if_bonecoll_visible(ob))) {
       add_v3_v3(normal, pchan->pose_mat[2]);
       add_v3_v3(plane, pchan->pose_mat[1]);
       ok = true;

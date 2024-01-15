@@ -8,10 +8,10 @@
 #include "usd_reader_xform.h"
 
 #include "BKE_constraint.h"
-#include "BKE_lib_id.h"
-#include "BKE_library.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_lib_id.hh"
+#include "BKE_library.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -31,21 +31,21 @@
 
 namespace blender::io::usd {
 
-void USDXformReader::create_object(Main *bmain, const double /* motionSampleTime */)
+void USDXformReader::create_object(Main *bmain, const double /*motionSampleTime*/)
 {
   object_ = BKE_object_add_only_object(bmain, OB_EMPTY, name_.c_str());
   object_->empty_drawsize = 0.1f;
   object_->data = nullptr;
 }
 
-void USDXformReader::read_object_data(Main * /* bmain */, const double motionSampleTime)
+void USDXformReader::read_object_data(Main * /*bmain*/, const double motionSampleTime)
 {
   bool is_constant;
   float transform_from_usd[4][4];
 
   read_matrix(transform_from_usd, motionSampleTime, import_params_.scale, &is_constant);
 
-  if (!is_constant) {
+  if (!is_constant && settings_->get_cache_file) {
     bConstraint *con = BKE_constraint_add_for_object(
         object_, nullptr, CONSTRAINT_TYPE_TRANSFORM_CACHE);
     bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
@@ -55,7 +55,7 @@ void USDXformReader::read_object_data(Main * /* bmain */, const double motionSam
 
     STRNCPY(data->object_path, prim_path.c_str());
 
-    data->cache_file = settings_->cache_file;
+    data->cache_file = settings_->get_cache_file();
     id_us_plus(&data->cache_file->id);
   }
 

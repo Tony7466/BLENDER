@@ -8,17 +8,17 @@
  * Eevee's indirect lighting cache.
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BKE_global.h"
 
 #include "BLI_endian_switch.h"
 #include "BLI_threads.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_lightprobe_types.h"
@@ -34,7 +34,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "wm_window.hh"
 
@@ -62,13 +62,13 @@
       (IRRADIANCE_MAX_POOL_SIZE / IRRADIANCE_SAMPLE_SIZE_Y)
 
 /* TODO: should be replace by a more elegant alternative. */
-extern "C" void DRW_gpu_context_enable(void);
-extern "C" void DRW_gpu_context_disable(void);
+void DRW_gpu_context_enable(void);
+void DRW_gpu_context_disable(void);
 
-extern "C" void DRW_system_gpu_render_context_enable(void *re_system_gpu_context);
-extern "C" void DRW_system_gpu_render_context_disable(void *re_system_gpu_context);
-extern "C" void DRW_blender_gpu_render_context_enable(void *re_blender_gpu_context);
-extern "C" void DRW_blender_gpu_render_context_disable(void *re_blender_gpu_context);
+void DRW_system_gpu_render_context_enable(void *re_system_gpu_context);
+void DRW_system_gpu_render_context_disable(void *re_system_gpu_context);
+void DRW_blender_gpu_render_context_enable(void *re_blender_gpu_context);
+void DRW_blender_gpu_render_context_disable(void *re_blender_gpu_context);
 
 struct EEVEE_LightBake {
   Depsgraph *depsgraph;
@@ -225,31 +225,31 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
   if (lcache != nullptr) {
     if (!eevee_lightcache_version_check(lcache)) {
       BLI_strncpy(eevee->light_cache_info,
-                  TIP_("Incompatible Light cache version, please bake again"),
+                  N_("Incompatible Light cache version, please bake again"),
                   sizeof(eevee->light_cache_info));
       return;
     }
 
     if (lcache->cube_tx.tex_size[2] > GPU_max_texture_layers()) {
       STRNCPY(eevee->light_cache_info,
-              TIP_("Error: Light cache is too big for the GPU to be loaded"));
+              N_("Error: Light cache is too big for the GPU to be loaded"));
       return;
     }
 
     if (lcache->flag & LIGHTCACHE_INVALID) {
       STRNCPY(eevee->light_cache_info,
-              TIP_("Error: Light cache dimensions not supported by the GPU"));
+              N_("Error: Light cache dimensions not supported by the GPU"));
       return;
     }
 
     if (lcache->flag & LIGHTCACHE_BAKING) {
-      STRNCPY(eevee->light_cache_info, TIP_("Baking light cache"));
+      STRNCPY(eevee->light_cache_info, N_("Baking light cache"));
       return;
     }
 
     if (!eevee_lightcache_can_be_saved(lcache)) {
       STRNCPY(eevee->light_cache_info,
-              TIP_("Error: LightCache is too large and will not be saved to disk"));
+              N_("Error: LightCache is too large and will not be saved to disk"));
       return;
     }
 
@@ -258,14 +258,16 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
 
     int irr_samples = eevee_lightcache_irradiance_sample_count(lcache);
 
+    /* This message needs to be translated here instead of the UI code, otherwise it would already
+     * be formatted and translation would not work. */
     SNPRINTF(eevee->light_cache_info,
-             TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
+             RPT_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
              lcache->cube_len - 1,
              irr_samples,
              formatted_mem);
   }
   else {
-    STRNCPY(eevee->light_cache_info, TIP_("No light cache in this scene"));
+    STRNCPY(eevee->light_cache_info, N_("No light cache in this scene"));
   }
 }
 
@@ -276,7 +278,7 @@ static void irradiance_pool_size_get(int visibility_size, int total_samples, int
                     (visibility_size / IRRADIANCE_SAMPLE_SIZE_Y);
 
   /* The irradiance itself take one layer, hence the +1 */
-  int layer_count = MIN2(irr_per_vis + 1, IRRADIANCE_MAX_POOL_LAYER);
+  int layer_count = std::min(irr_per_vis + 1, IRRADIANCE_MAX_POOL_LAYER);
 
   int texel_count = int(ceilf(float(total_samples) / float(layer_count - 1)));
   r_size[0] = visibility_size *
@@ -671,12 +673,12 @@ static void eevee_lightbake_count_probes(EEVEE_LightBake *lbake)
     if (ob->type == OB_LIGHTPROBE) {
       LightProbe *prb = (LightProbe *)ob->data;
 
-      if (prb->type == LIGHTPROBE_TYPE_GRID) {
+      if (prb->type == LIGHTPROBE_TYPE_VOLUME) {
         lbake->total_irr_samples += prb->grid_resolution_x * prb->grid_resolution_y *
                                     prb->grid_resolution_z;
         lbake->grid_len++;
       }
-      else if (prb->type == LIGHTPROBE_TYPE_CUBE && lbake->cube_len < EEVEE_PROBE_MAX) {
+      else if (prb->type == LIGHTPROBE_TYPE_SPHERE && lbake->cube_len < EEVEE_PROBE_MAX) {
         lbake->cube_len++;
       }
     }
@@ -686,8 +688,7 @@ static void eevee_lightbake_count_probes(EEVEE_LightBake *lbake)
 
 static void eevee_lightbake_create_render_target(EEVEE_LightBake *lbake, int rt_res)
 {
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
-                           GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
   lbake->rt_depth = DRW_texture_create_cube_ex(
       rt_res, GPU_DEPTH_COMPONENT24, usage, DRWTextureFlag(0), nullptr);
   lbake->rt_color = DRW_texture_create_cube_ex(
@@ -787,7 +788,7 @@ wmJob *EEVEE_lightbake_job_create(wmWindowManager *wm,
         MEM_callocN(sizeof(EEVEE_LightBake), "EEVEE_LightBake"));
     /* Cannot reuse depsgraph for now because we cannot get the update from the
      * main database directly. TODO: reuse depsgraph and only update positions. */
-    /* lbake->depsgraph = old_lbake->depsgraph; */
+    // lbake->depsgraph = old_lbake->depsgraph;
     lbake->depsgraph = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_RENDER);
 
     lbake->mutex = BLI_mutex_alloc();
@@ -927,6 +928,7 @@ static void eevee_lightbake_delete_resources(EEVEE_LightBake *lbake)
 /* Cache as in draw cache not light cache. */
 static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lbake)
 {
+  using namespace blender::draw;
   EEVEE_TextureList *txl = vedata->txl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -1334,12 +1336,12 @@ static void eevee_lightbake_gather_probes(EEVEE_LightBake *lbake)
     if (ob->type == OB_LIGHTPROBE) {
       LightProbe *prb = (LightProbe *)ob->data;
 
-      if (prb->type == LIGHTPROBE_TYPE_GRID) {
+      if (prb->type == LIGHTPROBE_TYPE_VOLUME) {
         lbake->grid_prb[grid_len] = prb;
         EEVEE_LightGrid *egrid = &lcache->grid_data[grid_len++];
         EEVEE_lightprobes_grid_data_from_object(ob, egrid, &total_irr_samples);
       }
-      else if (prb->type == LIGHTPROBE_TYPE_CUBE && cube_len < EEVEE_PROBE_MAX) {
+      else if (prb->type == LIGHTPROBE_TYPE_SPHERE && cube_len < EEVEE_PROBE_MAX) {
         lbake->cube_prb[cube_len] = prb;
         EEVEE_LightProbe *eprobe = &lcache->cube_data[cube_len++];
         EEVEE_lightprobes_cube_data_from_object(ob, eprobe);
@@ -1402,7 +1404,7 @@ static bool lightbake_do_sample(EEVEE_LightBake *lbake,
   return true;
 }
 
-void EEVEE_lightbake_job(void *custom_data, bool *stop, bool *do_update, float *progress)
+void EEVEE_lightbake_job(void *custom_data, wmJobWorkerStatus *worker_status)
 {
   EEVEE_LightBake *lbake = (EEVEE_LightBake *)custom_data;
   Depsgraph *depsgraph = lbake->depsgraph;
@@ -1411,9 +1413,9 @@ void EEVEE_lightbake_job(void *custom_data, bool *stop, bool *do_update, float *
   DEG_evaluate_on_framechange(depsgraph, lbake->frame);
 
   lbake->view_layer = DEG_get_evaluated_view_layer(depsgraph);
-  lbake->stop = stop;
-  lbake->do_update = do_update;
-  lbake->progress = progress;
+  lbake->stop = &worker_status->stop;
+  lbake->do_update = &worker_status->do_update;
+  lbake->progress = &worker_status->progress;
 
   if (G.background) {
     /* Make sure to init GL capabilities before counting probes. */
@@ -1474,7 +1476,8 @@ void EEVEE_lightbake_job(void *custom_data, bool *stop, bool *do_update, float *
         lbake->grid_sample_len = prb->grid_resolution_x * prb->grid_resolution_y *
                                  prb->grid_resolution_z;
         for (lbake->grid_sample = 0; lbake->grid_sample < lbake->grid_sample_len;
-             ++lbake->grid_sample) {
+             ++lbake->grid_sample)
+        {
           lightbake_do_sample(lbake, eevee_lightbake_render_grid_sample);
         }
       }

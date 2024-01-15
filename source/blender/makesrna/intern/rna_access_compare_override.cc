@@ -26,18 +26,18 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-//#define DEBUG_OVERRIDE_TIMEIT
+// #define DEBUG_OVERRIDE_TIMEIT
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
 #  include "PIL_time_utildefines.h"
 #  include <stdio.h>
 #endif
 
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_override.hh"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -154,6 +154,12 @@ bool RNA_property_overridable_get(PointerRNA *ptr, PropertyRNA *prop)
     else if (RNA_struct_is_a(ptr->type, &RNA_CameraBackgroundImage)) {
       CameraBGImage *bgpic = static_cast<CameraBGImage *>(ptr->data);
       if (bgpic->flag & CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL) {
+        return true;
+      }
+    }
+    else if (RNA_struct_is_a(ptr->type, &RNA_BoneCollection)) {
+      BoneCollection *bcoll = static_cast<BoneCollection *>(ptr->data);
+      if (bcoll->flags & BONE_COLLECTION_OVERRIDE_LIBRARY_LOCAL) {
         return true;
       }
     }
@@ -703,7 +709,8 @@ bool RNA_struct_override_matches(Main *bmain,
     }
 
     if (!prop_local.is_idprop &&
-        RNA_property_override_flag(prop_local.rnaprop) & PROPOVERRIDE_IGNORE) {
+        RNA_property_override_flag(prop_local.rnaprop) & PROPOVERRIDE_IGNORE)
+    {
       continue;
     }
 
@@ -829,7 +836,8 @@ bool RNA_struct_override_matches(Main *bmain,
       }
 
       if ((do_restore || do_tag_for_restore) &&
-          (report_flags & RNA_OVERRIDE_MATCH_RESULT_CREATED) == 0) {
+          (report_flags & RNA_OVERRIDE_MATCH_RESULT_CREATED) == 0)
+      {
         /* We are allowed to restore to reference's values. */
         if (ELEM(nullptr, op, opop) || opop->operation == LIBOVERRIDE_OP_NOOP) {
           if (RNA_property_editable(ptr_local, rawprop)) {
@@ -1108,7 +1116,7 @@ static void rna_property_override_collection_subitem_name_index_lookup(
    */
   if (item_index != -1) {
     if (RNA_property_collection_lookup_int(ptr, prop, item_index, r_ptr_item_index)) {
-      if (item_name) {
+      if (item_name && r_ptr_item_index->type) {
         if (rna_property_override_collection_subitem_name_id_match(
                 item_name, item_name_len, do_id_pointer, item_id, r_ptr_item_index))
         {
@@ -1594,7 +1602,8 @@ void RNA_struct_override_apply(Main *bmain,
         }
         else if (op->rna_prop_type == PROP_COLLECTION) {
           if (RNA_struct_is_ID(
-                  RNA_property_pointer_type(&rnaapply_ctx.ptr_src, rnaapply_ctx.prop_src))) {
+                  RNA_property_pointer_type(&rnaapply_ctx.ptr_src, rnaapply_ctx.prop_src)))
+          {
             BLI_assert(id_ptr_src->owner_id ==
                        rna_property_override_property_real_id_owner(
                            bmain, &rnaapply_ctx.ptr_src, nullptr, nullptr));

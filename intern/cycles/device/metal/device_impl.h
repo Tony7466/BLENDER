@@ -26,6 +26,7 @@ class MetalDevice : public Device {
   id<MTLLibrary> mtlLibrary[PSO_NUM] = {nil};
   id<MTLArgumentEncoder> mtlBufferKernelParamsEncoder =
       nil; /* encoder used for fetching device pointers from MTLBuffers */
+  id<MTLCommandQueue> mtlComputeCommandQueue = nil;
   id<MTLCommandQueue> mtlGeneralCommandQueue = nil;
   id<MTLArgumentEncoder> mtlAncillaryArgEncoder =
       nil; /* encoder used for fetching device pointers from MTLBuffers */
@@ -47,6 +48,7 @@ class MetalDevice : public Device {
   MetalGPUVendor device_vendor;
 
   uint kernel_features;
+  bool using_nanovdb = false;
   MTLResourceOptions default_storage_mode;
   int max_threads_per_threadgroup;
 
@@ -71,7 +73,7 @@ class MetalDevice : public Device {
   /* Bindless Textures */
   bool is_texture(const TextureInfo &tex);
   device_vector<TextureInfo> texture_info;
-  bool need_texture_info;
+  bool need_texture_info = false;
   id<MTLArgumentEncoder> mtlTextureArgEncoder = nil;
   id<MTLArgumentEncoder> mtlBufferArgEncoder = nil;
   id<MTLBuffer> buffer_bindings_1d = nil;
@@ -82,7 +84,6 @@ class MetalDevice : public Device {
   /* BLAS encoding & lookup */
   id<MTLArgumentEncoder> mtlBlasArgEncoder = nil;
   id<MTLBuffer> blas_buffer = nil;
-  id<MTLBuffer> blas_lookup_buffer = nil;
 
   bool use_metalrt = false;
   MetalPipelineType kernel_specialization_level = PSO_GENERIC;
@@ -121,7 +122,7 @@ class MetalDevice : public Device {
                            const uint kernel_features,
                            string *source = nullptr);
 
-  bool make_source_and_check_if_compile_needed(MetalPipelineType pso_type);
+  void refresh_source_and_kernels_md5(MetalPipelineType pso_type);
 
   void make_source(MetalPipelineType pso_type, const uint kernel_features);
 

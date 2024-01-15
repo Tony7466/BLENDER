@@ -402,8 +402,9 @@ bool GHOST_WindowX11::createX11_XIC()
                     XNDestroyCallback,
                     &destroy,
                     nullptr);
-  if (!m_xic)
+  if (!m_xic) {
     return false;
+  }
 
   ulong fevent;
   XGetICValues(m_xic, XNFilterEvents, &fevent, nullptr);
@@ -637,7 +638,7 @@ int GHOST_WindowX11::icccmGetState() const
   struct {
     CARD32 state;
     XID icon;
-  } * prop_ret;
+  } *prop_ret;
   ulong bytes_after, num_ret;
   Atom type_ret;
   int ret, format_ret;
@@ -1182,6 +1183,7 @@ GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type
                                                    GHOST_kVulkanPlatformX11,
                                                    m_window,
                                                    m_display,
+                                                   nullptr,
                                                    nullptr,
                                                    nullptr,
                                                    1,

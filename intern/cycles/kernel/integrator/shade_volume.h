@@ -236,8 +236,9 @@ ccl_device void volume_shadow_heterogeneous(KernelGlobals kg,
         tp = *throughput * exp(sum);
 
         /* stop if nearly all light is blocked */
-        if (reduce_max(tp) < VOLUME_THROUGHPUT_EPSILON)
+        if (reduce_max(tp) < VOLUME_THROUGHPUT_EPSILON) {
           break;
+        }
       }
     }
 
@@ -396,8 +397,9 @@ ccl_device Spectrum volume_emission_integrate(ccl_private VolumeShaderCoefficien
                                                t;
     }
   }
-  else
+  else {
     emission *= t;
+  }
 
   return emission;
 }
@@ -1210,7 +1212,8 @@ ccl_device void integrator_shade_volume(KernelGlobals kg,
 
 #  ifdef __SHADOW_LINKING__
   if (shadow_linking_schedule_intersection_kernel<DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME>(kg,
-                                                                                         state)) {
+                                                                                         state))
+  {
     return;
   }
 #  endif /* __SHADOW_LINKING__ */

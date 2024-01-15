@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import os
-from os.path import join, splitext
+from os.path import join
 
 from check_mypy_config import PATHS, PATHS_EXCLUDE
 
@@ -63,7 +63,7 @@ def path_expand_with_args(
 
 def main() -> None:
     import sys
-    import subprocess
+    # import subprocess
     import shlex
 
     # Fixed location, so change the current working directory doesn't create cache everywhere.
@@ -95,7 +95,7 @@ def main() -> None:
             f,
             *extra_args,
         )
-        # p = subprocess.Popen(cmd, env=extra_env, stdout=sys.stdout, stderr=sys.stderr)
+        # `p = subprocess.Popen(cmd, env=extra_env, stdout=sys.stdout, stderr=sys.stderr)`
 
         if extra_env:
             for k, v in extra_env.items():

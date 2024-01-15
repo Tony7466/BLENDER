@@ -9,6 +9,8 @@
 #pragma once
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_string_ref.hh"
+
 #include "DNA_object_enums.h"
 #include "DNA_userdef_enums.h"
 #include "DNA_windowmanager_types.h"
@@ -451,7 +453,7 @@ void ED_object_posemode_set_for_weight_paint(bContext *C,
  * Return the index of an object in a mode (typically edit/pose mode).
  *
  * Useful for operators with multi-mode editing to be able to redo an action on an object
- * by it's index which (unlike pointers) the operator can store for redo.
+ * by its index which (unlike pointers) the operator can store for redo.
  *
  * The indices aren't intended to be useful from Python scripts,
  * although they are not prevented from passing them in, this is mainly to enable redo.
@@ -636,3 +638,11 @@ void ED_object_data_xform_by_mat4(XFormObjectData *xod, const float mat[4][4]);
 
 void ED_object_data_xform_restore(XFormObjectData *xod);
 void ED_object_data_xform_tag_update(XFormObjectData *xod);
+
+namespace blender::ed::object {
+
+void ui_template_modifier_asset_menu_items(uiLayout &layout,
+                                           const bContext &C,
+                                           StringRef catalog_path);
+
+}

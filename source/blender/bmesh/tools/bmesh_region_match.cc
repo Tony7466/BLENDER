@@ -29,9 +29,9 @@
 #include "BLI_mempool.h"
 #include "MEM_guardedalloc.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "tools/bmesh_region_match.h" /* own include */
+#include "tools/bmesh_region_match.hh" /* own include */
 
 /* avoid re-creating ghash and pools for each search */
 #define USE_WALKER_REUSE
@@ -382,8 +382,8 @@ static void bm_uuidwalk_rehash(UUIDWalk *uuidwalk)
   UUID_Int *uuid_store;
   uint i;
 
-  uint rehash_store_len_new = MAX2(BLI_ghash_len(uuidwalk->verts_uuid),
-                                   BLI_ghash_len(uuidwalk->faces_uuid));
+  uint rehash_store_len_new = std::max(BLI_ghash_len(uuidwalk->verts_uuid),
+                                       BLI_ghash_len(uuidwalk->faces_uuid));
 
   bm_uuidwalk_rehash_reserve(uuidwalk, rehash_store_len_new);
   uuid_store = uuidwalk->cache.rehash_store;
@@ -677,7 +677,8 @@ static bool bm_uuidwalk_facestep_begin(UUIDWalk *uuidwalk, UUIDFaceStep *fstep)
 static void bm_uuidwalk_facestep_end(UUIDWalk *uuidwalk, UUIDFaceStep *fstep)
 {
   while (
-      UUIDFaceStepItem *fstep_item = static_cast<UUIDFaceStepItem *>(BLI_pophead(&fstep->items))) {
+      UUIDFaceStepItem *fstep_item = static_cast<UUIDFaceStepItem *>(BLI_pophead(&fstep->items)))
+  {
     BLI_mempool_free(uuidwalk->step_pool_items, fstep_item);
   }
 }
@@ -735,13 +736,14 @@ static BMFace **bm_mesh_region_match_pair(
 
   /* setup the initial state */
   if (UNLIKELY(bm_uuidwalk_init_from_edge(w_src, e_src) !=
-               bm_uuidwalk_init_from_edge(w_dst, e_dst))) {
+               bm_uuidwalk_init_from_edge(w_dst, e_dst)))
+  {
     /* should never happen, if verts passed are compatible, but to be safe... */
     goto finally;
   }
 
-  bm_uuidwalk_rehash_reserve(w_src, MAX2(faces_src_region_len, verts_src_region_len));
-  bm_uuidwalk_rehash_reserve(w_dst, MAX2(faces_src_region_len, verts_src_region_len));
+  bm_uuidwalk_rehash_reserve(w_src, std::max(faces_src_region_len, verts_src_region_len));
+  bm_uuidwalk_rehash_reserve(w_dst, std::max(faces_src_region_len, verts_src_region_len));
 
   while (true) {
     bool ok = false;
@@ -766,7 +768,8 @@ static BMFace **bm_mesh_region_match_pair(
       }
 
       if (bm_uuidwalk_facestep_begin(w_src, fstep_src) &&
-          bm_uuidwalk_facestep_begin(w_dst, fstep_dst)) {
+          bm_uuidwalk_facestep_begin(w_dst, fstep_dst))
+      {
         /* Step over face-lists with matching UUID's
          * both lists are sorted, so no need for lookups.
          * The data is created on 'begin' and cleared on 'end' */

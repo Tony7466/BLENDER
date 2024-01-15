@@ -24,7 +24,7 @@
 #include "BLI_ghash.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
 
 #include "RNA_access.hh"
@@ -36,7 +36,7 @@
 #include "WM_types.hh"
 
 #include "wm.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
 
@@ -95,7 +95,7 @@ static wmOperatorType *wm_operatortype_append__begin()
   BLI_assert(ot_prop_basic_count == -1);
 
   ot->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_OperatorProperties);
-  RNA_def_struct_property_tags(ot->srna, rna_enum_operator_property_tags);
+  RNA_def_struct_property_tags(ot->srna, rna_enum_operator_property_tag_items);
   /* Set the default i18n context now, so that opfunc can redefine it if needed! */
   RNA_def_struct_translation_context(ot->srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   ot->translation_context = BLT_I18NCONTEXT_OPERATOR_DEFAULT;
@@ -428,7 +428,8 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
           const rcti *wrap_region = nullptr;
 
           if ((op->opm->flag & OP_IS_MODAL_GRAB_CURSOR) ||
-              (op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY)) {
+              (op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY))
+          {
             wrap = WM_CURSOR_WRAP_XY;
           }
           else if (op->opm->type->flag & OPTYPE_GRAB_CURSOR_X) {
@@ -607,7 +608,7 @@ std::string WM_operatortype_description_or_name(bContext *C,
   if (text.empty()) {
     const std::string text_orig = WM_operatortype_name(ot, properties);
     if (!text_orig.empty()) {
-      text = BLI_strdup(text_orig.c_str());
+      text = BLI_strdupn(text_orig.c_str(), text_orig.size());
     }
   }
   return text;

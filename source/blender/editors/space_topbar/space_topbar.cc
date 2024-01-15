@@ -16,11 +16,11 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_blendfile.h"
-#include "BKE_context.h"
+#include "BKE_blendfile.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_screen.h"
-#include "BKE_undo_system.h"
+#include "BKE_screen.hh"
+#include "BKE_undo_system.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -29,7 +29,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
 
@@ -91,7 +91,7 @@ static void topbar_main_region_init(wmWindowManager *wm, ARegion *region)
   }
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_HEADER, region->winx, region->winy);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -190,22 +190,9 @@ static void recent_files_menu_draw(const bContext * /*C*/, Menu *menu)
 {
   uiLayout *layout = menu->layout;
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
-  if (!BLI_listbase_is_empty(&G.recent_files)) {
-    LISTBASE_FOREACH (RecentFile *, recent, &G.recent_files) {
-      const char *file = BLI_path_basename(recent->filepath);
-      const int icon = BKE_blendfile_extension_check(file) ? ICON_FILE_BLEND : ICON_FILE_BACKUP;
-      PointerRNA ptr;
-      uiItemFullO(layout,
-                  "WM_OT_open_mainfile",
-                  file,
-                  icon,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &ptr);
-      RNA_string_set(&ptr, "filepath", recent->filepath);
-      RNA_boolean_set(&ptr, "display_file_selector", false);
-    }
+  if (uiTemplateRecentFiles(layout, U.recent_files) != 0) {
+    uiItemS(layout);
+    uiItemO(layout, nullptr, ICON_TRASH, "WM_OT_clear_recent_files");
   }
   else {
     uiItemL(layout, IFACE_("No Recent Files"), ICON_NONE);

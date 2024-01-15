@@ -136,22 +136,22 @@ static const EnumPropertyItem part_fluid_type_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_string_utils.h"
+#  include "BLI_string_utils.hh"
 
 #  include "BKE_boids.h"
 #  include "BKE_cloth.hh"
-#  include "BKE_colortools.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
+#  include "BKE_customdata.hh"
 #  include "BKE_deform.h"
 #  include "BKE_effect.h"
 #  include "BKE_material.h"
-#  include "BKE_modifier.h"
+#  include "BKE_modifier.hh"
 #  include "BKE_particle.h"
 #  include "BKE_pointcache.h"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 /* use for object space hair get/set */
 static void rna_ParticleHairKey_location_object_info(PointerRNA *ptr,
@@ -385,7 +385,7 @@ static void rna_Particle_uv_on_emitter(ParticleData *particle,
   int num = particle->num_dmcache;
   int from = modifier->psys->part->from;
 
-  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->corner_data, CD_PROP_FLOAT2)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no UV data");
     return;
   }
@@ -534,7 +534,7 @@ static int rna_ParticleSystem_tessfaceidx_on_emitter(ParticleSystem *particlesys
 
   BKE_mesh_tessface_ensure(modifier->mesh_final); /* BMESH - UNTIL MODIFIER IS UPDATED FOR POLYS */
   totface = modifier->mesh_final->totface_legacy;
-  totvert = modifier->mesh_final->totvert;
+  totvert = modifier->mesh_final->verts_num;
 
   /* 1. check that everything is ok & updated */
   if (!particlesystem || !totface) {
@@ -647,7 +647,7 @@ static void rna_ParticleSystem_uv_on_emitter(ParticleSystem *particlesystem,
     zero_v2(r_uv);
     return;
   }
-  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->corner_data, CD_PROP_FLOAT2)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no UV data");
     zero_v2(r_uv);
     return;
@@ -683,7 +683,7 @@ static void rna_ParticleSystem_mcol_on_emitter(ParticleSystem *particlesystem,
                                                int vcol_no,
                                                float r_mcol[3])
 {
-  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_BYTE_COLOR)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->corner_data, CD_PROP_BYTE_COLOR)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no VCol data");
     zero_v3(r_mcol);
     return;
@@ -1207,7 +1207,7 @@ static size_t rna_ParticleTarget_name_get_impl(PointerRNA *ptr,
     }
   }
 
-  return BLI_strncpy_rlen(value, TIP_("Invalid target!"), value_maxncpy);
+  return BLI_strncpy_rlen(value, RPT_("Invalid target!"), value_maxncpy);
 }
 
 static void rna_ParticleTarget_name_get(PointerRNA *ptr, char *value)
@@ -1781,12 +1781,12 @@ static void rna_def_child_particle(BlenderRNA *brna)
   RNA_def_struct_ui_text(
       srna, "Child Particle", "Child particle interpolated from simulated or edited particles");
 
-  /*  int num, parent; */ /* num is face index on the final derived mesh */
-
-  /*  int pa[4]; */             /* nearest particles to the child, used for the interpolation */
-  /*  float w[4]; */            /* interpolation weights for the above particles */
-  /*  float fuv[4], foffset; */ /* face vertex weights and offset */
-  /*  float rand[3]; */
+  // int num, parent;    /* num is face index on the final derived mesh */
+  //
+  // int pa[4];                /* nearest particles to the child, used for the interpolation */
+  // float w[4];               /* interpolation weights for the above particles */
+  // float fuv[4], foffset;    /* face vertex weights and offset */
+  // float rand[3];
 }
 
 static void rna_def_particle(BlenderRNA *brna)
@@ -1854,9 +1854,9 @@ static void rna_def_particle(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "keys", "totkey");
   RNA_def_property_struct_type(prop, "ParticleKey");
   RNA_def_property_ui_text(prop, "Keyed States", "");
-  /* */
-  /* float fuv[4], foffset; */ /* Coordinates on face/edge number "num" and depth along. */
-                               /* Face normal for volume emission. */
+
+  // float fuv[4], foffset; /* Coordinates on face/edge number "num" and depth along. */
+  //                        /* Face normal for volume emission. */
 
   prop = RNA_def_property(srna, "birth_time", PROP_FLOAT, PROP_TIME);
   RNA_def_property_float_sdna(prop, nullptr, "time");
@@ -1876,12 +1876,10 @@ static void rna_def_particle(BlenderRNA *brna)
   // RNA_def_property_range(prop, lowerLimitf, upperLimitf);
   RNA_def_property_ui_text(prop, "Size", "");
 
-  /* */
-  /*  int num;                 */ /* index to vert/edge/face */
-  /*  int num_dmcache;         */ /* index to derived mesh data (face) to avoid slow lookups */
-                                  /*  int pad; */
-                                  /* */
-                                  /*  int totkey; */
+  // int num; /* index to vert/edge/face */
+  // int num_dmcache; /* index to derived mesh data (face) to avoid slow lookups */
+  // int pad;
+  // int totkey;
 
   /* flag */
   prop = RNA_def_property(srna, "is_exist", PROP_BOOLEAN, PROP_NONE);
@@ -1899,7 +1897,7 @@ static void rna_def_particle(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, alive_items);
   RNA_def_property_ui_text(prop, "Alive State", "");
 
-  /*  short rt2; */
+  // short rt2;
 
   /* UVs */
   func = RNA_def_function(srna, "uv_on_emitter", "rna_Particle_uv_on_emitter");
@@ -2224,6 +2222,7 @@ static void rna_def_particle_settings_mtex(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_mapping_items);
   RNA_def_property_ui_text(prop, "Mapping", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
   RNA_def_property_update(prop, 0, "rna_Particle_reset");
 
   /* map to */
@@ -2430,7 +2429,7 @@ static void rna_def_particle_settings(BlenderRNA *brna)
   static const EnumPropertyItem react_event_items[] = {
       {PART_EVENT_DEATH, "DEATH", 0, "Death", ""},
       {PART_EVENT_COLLIDE, "COLLIDE", 0, "Collision", ""},
-      {PART_EVENT_NEAR, "NEAR", 0, "Near", ""},
+      {PART_EVENT_NEAR, "NEAR", 0, "Proximity", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

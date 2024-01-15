@@ -25,6 +25,9 @@ def canonical_author_map() -> Dict[str, str]:
     # - Keys must be ordered,
     # - Values must also be ordered.
     author_map_valid_to_invalid = {
+        "20kdc <asdd2808@gmail.com>": (
+            "20kdc <20kdc@noreply.localhost>",
+        ),
         "Aaron Carlisle <carlisle.aaron00@gmail.com>": (
             "Aaron <Aaron>",
             "Aaron <carlisle.b3d@gmail.com>",
@@ -91,6 +94,10 @@ def canonical_author_map() -> Dict[str, str]:
         ),
         "Aras Pranckevicius <aras@nesnausk.org>": (
             "Aras Pranckevicius <aras_p>",
+            "Aras Pranckevicius <aras_p@noreply.localhost>",
+        ),
+        "Arye Ramaty <aryeramaty@gmail.com>": (
+            "Arye Ramaty <BelgaratTheGrey>",
         ),
         "Bastien Montagne <bastien@blender.org>": (
             "Bastien Montagne (@mont29) <>",
@@ -254,6 +261,9 @@ def canonical_author_map() -> Dict[str, str]:
             "mano-wii <germano.costa@ig.com.br>",
             "mano-wii <grmncv@gmail.com>",
         ),
+        "Gilberto Rodrigues <gilbertorodrigues@outlook.com>": (
+            "Gilberto Rodrigues <gilberto_rodrigues>",
+        ),
         "Guillermo S. Romero <gsr.b3d@infernal-iceberg.com>": (
             "gsr b3d <gsr.b3d@infernal-iceberg.com>",
         ),
@@ -264,8 +274,9 @@ def canonical_author_map() -> Dict[str, str]:
         "Habib Gahbiche <habibgahbiche@gmail.com>": (
             "Habib Gahbiche <zazizizou>",
         ),
-        "Hans Goudey <h.goudey@me.com>": (
+        "Hans Goudey <hans@blender.org>": (
             "Hans Goudey <HooglyBoogly>",
+            "Hans Goudey <h.goudey@me.com>",
             "Hans Goudey <hooglyboogly@noreply.localhost>",
         ),
         "Harley Acheson <harley.acheson@gmail.com>": (
@@ -302,6 +313,9 @@ def canonical_author_map() -> Dict[str, str]:
         "Ish Bosamiya <ish_bosamiya>": (
             "Ish Bosamiya <ishbosamiya>",
             "Ish Bosamiya <ishbosamiya@gmail.com>",
+        ),
+        "Ivan Kosarev <mail@ivankosarev.com>": (
+            "kosarev <kosarev@noreply.localhost>",
         ),
         "Iyad Ahmed <iyadahmed430@gmail.com>": (
             "Iyad Ahmed <iyadahmed2001>",
@@ -362,6 +376,9 @@ def canonical_author_map() -> Dict[str, str]:
             "Severin <julian_eisel@web.de>",
             "julianeisel <julian_eisel@web.de>",
         ),
+        "Julien Kaspar <julien@blender.org>": (
+            "Julien Kaspar <JulienKaspar>",
+        ),
         "Jun Mizutani <jmztn@noreply.localhost>": (
             "Jun Mizutani <jmztn>",
         ),
@@ -419,6 +436,9 @@ def canonical_author_map() -> Dict[str, str]:
             "Marc Chéhab <marcchehab@noreply.localhost>",
             "Marc Chéhab <marcluzmedia>",
         ),
+        "Marcos Perez <pistolario>": (
+            "Marcos Perez <pistolario@noreply.localhost>",
+        ),
         "Martijn Berger <mberger@denc.com>": (
             "Martijn Berger <martijn.berger@gmail.com>",
             "Martijn Berger <mberger@denc.nl>",
@@ -460,7 +480,8 @@ def canonical_author_map() -> Dict[str, str]:
             "Mikhail <ktdfly>",
             "Mikhail Matrosov <kdtfly>",
         ),
-        "Monique Dewanchand <m.dewanchand@atmind.nl>": (
+        "Monique Dewanchand <mdewanchand@atmind.nl>": (
+            "Monique Dewanchand <m.dewanchand@atmind.nl>",
             "Monique Dewanchand <mdewanchand>",
         ),
         "Nate Rupsis <nrupsis@gmail.com>": (
@@ -504,6 +525,9 @@ def canonical_author_map() -> Dict[str, str]:
             "Pablo Vazquez <contact@pablovazquez.art>",
             "Pablo Vazquez <pablovazquez>",
             "Pablo Vazquez <venomgfx@gmail.com>",
+        ),
+        "Paolo Amadini <paolo.blender.dev@amadzone.org>": (
+            "Paolo Amadini <pamadini@noreply.localhost>",
         ),
         "Pascal Schoen <pascal.schoen@adidas-group.com>": (
             "Pascal Schön <VanCantus>",
@@ -605,6 +629,9 @@ def canonical_author_map() -> Dict[str, str]:
         "Stephan Seitz <theHamsta>": (
             "Stephan <theHamsta>",
         ),
+        "Sun Kim <perplexing.sun@gmail.com>": (
+            "Sun Kim <persun@noreply.localhost>",
+        ),
         "Sybren A. Stüvel <sybren@blender.org>": (
             "Sybren A. StÃ\x83Â¼vel <sybren@stuvel.eu>",
             "Sybren A. Stüvel <sybren>",
@@ -632,11 +659,18 @@ def canonical_author_map() -> Dict[str, str]:
         "Ulysse Martin <you.le@live.fr>": (
             "Ulysse Martin <youle>",
         ),
-        "Vitor Boschi da Silva <vitorboschi>": (
+        "Vasyl Pidhirskyi <vpidhirskyi@gmail.com>": (
+            "Vasyl-Pidhirskyi <vpidhirskyi@gmail.com>",
+        ),
+        "Vitor Boschi <vitorboschi@gmail.com>": (
             "Vitor Boschi <vitorboschi>",
+            "Vitor Boschi da Silva <vitorboschi>"
         ),
         "Vuk Gardašević <lijenstina>": (
             "Vuk GardaÅ¡eviÄ\x87 <lijenstina>",
+        ),
+        "Wannes Malfait <wannes.malfait@gmail.com>": (
+            "Wannes Malfait <Wannes>",
         ),
         "Wayde Moss <wbmoss_dev@yahoo.com>": (
             "Wayde Moss <GuiltyGhost>",
@@ -677,6 +711,9 @@ def canonical_author_map() -> Dict[str, str]:
         "jon denning <gfxcoder@gmail.com>": (
             "Jon Denning <gfxcoder>",
         ),
+        "laurynas <laduem@gmail.com>": (
+            "Laurynas Duburas <laurynas>",
+        ),
         "nBurn <nbwashburn@gmail.com>": (
             "nBurn <nBurn>",
         ),
@@ -685,6 +722,9 @@ def canonical_author_map() -> Dict[str, str]:
         ),
         "ok_what <ip1149a@gmail.com>": (
             "ok what <ok_what>",
+        ),
+        "rajveermalviya <rajveer0malviya@gmail.com>": (
+            "Rajesh Advani <rajeshja>",
         ),
     }
 

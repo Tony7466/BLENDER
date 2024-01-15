@@ -81,9 +81,9 @@ Documentation Checking
 Spell Checkers
    This runs the spell checker from the developer tools repositor.
 
-   * check_spelling_c:      Check for spelling errors (C/C++ only),
-   * check_spelling_osl:    Check for spelling errors (OSL only).
-   * check_spelling_py:     Check for spelling errors (Python only).
+   * check_spelling_c:       Check for spelling errors (C/C++ only),
+   * check_spelling_py:      Check for spelling errors (Python only).
+   * check_spelling_shaders: Check for spelling errors (GLSL,OSL & MSL only).
 
    Note: an additional word-list is maintained at: 'tools/check_source/check_spelling_c_config.py'
 
@@ -199,22 +199,6 @@ ifndef DEPS_INSTALL_DIR
 	endif
 endif
 
-# Allow to use alternative binary (pypy3, etc)
-ifndef PYTHON
-	PYTHON:=python3
-endif
-
-# For macOS python3 is not installed by default, so fallback to python binary
-# in libraries, or python 2 for running make update to get it.
-ifeq ($(OS_NCASE),darwin)
-	ifeq (, $(shell command -v $(PYTHON)))
-		PYTHON:=$(DEPS_INSTALL_DIR)/python/bin/python3.10
-		ifeq (, $(shell command -v $(PYTHON)))
-			PYTHON:=python
-		endif
-	endif
-endif
-
 # Set the LIBDIR, an empty string when not found.
 LIBDIR:=$(wildcard ../lib/${OS_NCASE}_${CPU})
 ifeq (, $(LIBDIR))
@@ -224,11 +208,42 @@ ifeq (, $(LIBDIR))
 	LIBDIR:=$(wildcard ../lib/${OS_NCASE})
 endif
 
+# Find the newest Python version bundled in `LIBDIR`.
+PY_LIB_VERSION:=3.15
+ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
+	PY_LIB_VERSION:=3.14
+	ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
+		PY_LIB_VERSION:=3.13
+		ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
+			PY_LIB_VERSION:=3.12
+			ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
+				PY_LIB_VERSION:=3.11
+				ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
+					PY_LIB_VERSION:=3.10
+				endif
+			endif
+		endif
+	endif
+endif
+
+# Allow to use alternative binary (pypy3, etc)
+ifndef PYTHON
+	# If not overriden, first try using Python from LIBDIR.
+	PYTHON:=$(LIBDIR)/python/bin/python$(PY_LIB_VERSION)
+	ifeq (, $(PYTHON))
+		# If not available, use system python3 or python command.
+		PYTHON:=python3
+		ifeq (, $(shell command -v $(PYTHON)))
+			PYTHON:=python
+		endif
+	endif
+endif
+
 # Use the autopep8 module in ../lib/ (which can be executed via Python directly).
 # Otherwise the "autopep8" command can be used.
 ifndef AUTOPEP8
 	ifneq (, $(LIBDIR))
-		AUTOPEP8:=$(wildcard $(LIBDIR)/python/lib/python3.10/site-packages/autopep8.py)
+		AUTOPEP8:=$(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)/site-packages/autopep8.py)
 	endif
 	ifeq (, $(AUTOPEP8))
 		AUTOPEP8:=autopep8
@@ -489,27 +504,31 @@ check_wiki_file_structure: .FORCE
 	    "$(BLENDER_DIR)/tools/check_wiki/check_wiki_file_structure.py"
 
 check_spelling_py: .FORCE
-	@cd "$(BUILD_DIR)" ; \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/tools/check_source/check_spelling.py" \
-	    "$(BLENDER_DIR)/scripts"
-
-check_spelling_c: .FORCE
-	@cd "$(BUILD_DIR)" ; \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
+	@PYTHONIOENCODING=utf_8 $(PYTHON) \
 	    "$(BLENDER_DIR)/tools/check_source/check_spelling.py" \
 	    --cache-file=$(CHECK_SPELLING_CACHE) \
+	    --match=".*\.(py)$$" \
+	    "$(BLENDER_DIR)/scripts" \
+	    "$(BLENDER_DIR)/source" \
+	    "$(BLENDER_DIR)/tools"
+
+check_spelling_c: .FORCE
+	@PYTHONIOENCODING=utf_8 $(PYTHON) \
+	    "$(BLENDER_DIR)/tools/check_source/check_spelling.py" \
+	    --cache-file=$(CHECK_SPELLING_CACHE) \
+	    --match=".*\.(c|cc|cpp|cxx|h|hh|hpp|hxx|inl|m|mm)$$" \
 	    "$(BLENDER_DIR)/source" \
 	    "$(BLENDER_DIR)/intern/cycles" \
 	    "$(BLENDER_DIR)/intern/guardedalloc" \
-	    "$(BLENDER_DIR)/intern/ghost" \
+	    "$(BLENDER_DIR)/intern/ghost"
 
-check_spelling_osl: .FORCE
-	@cd "$(BUILD_DIR)" ; \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
+check_spelling_shaders: .FORCE
+	@PYTHONIOENCODING=utf_8 $(PYTHON) \
 	    "$(BLENDER_DIR)/tools/check_source/check_spelling.py" \
 	    --cache-file=$(CHECK_SPELLING_CACHE) \
-	    "$(BLENDER_DIR)/intern/cycles/kernel/shaders"
+	    --match=".*\.(osl|metal|msl|glsl)$$" \
+	    "$(BLENDER_DIR)/intern/" \
+	    "$(BLENDER_DIR)/source/"
 
 check_descriptions: .FORCE
 	@$(BLENDER_BIN) --background -noaudio --factory-startup --python \

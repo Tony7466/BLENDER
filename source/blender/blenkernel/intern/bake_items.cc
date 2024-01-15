@@ -6,9 +6,9 @@
 #include "BKE_bake_items_serialize.hh"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
@@ -20,7 +20,7 @@
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
-namespace blender::bke {
+namespace blender::bke::bake {
 
 using namespace io::serialize;
 using DictionaryValuePtr = std::shared_ptr<DictionaryValue>;
@@ -73,4 +73,12 @@ PrimitiveBakeItem::~PrimitiveBakeItem()
 
 StringBakeItem::StringBakeItem(std::string value) : value_(std::move(value)) {}
 
-}  // namespace blender::bke
+BakeStateRef::BakeStateRef(const BakeState &bake_state)
+{
+  this->items_by_id.reserve(bake_state.items_by_id.size());
+  for (auto item : bake_state.items_by_id.items()) {
+    this->items_by_id.add_new(item.key, item.value.get());
+  }
+}
+
+}  // namespace blender::bke::bake

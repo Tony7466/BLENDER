@@ -34,10 +34,10 @@ class CornerNextEdgeFieldInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    if (domain != ATTR_DOMAIN_CORNER) {
+    if (domain != AttrDomain::Corner) {
       return {};
     }
     return VArray<int>::ForSpan(mesh.corner_edges());
@@ -53,9 +53,9 @@ class CornerNextEdgeFieldInput final : public bke::MeshFieldInput {
     return dynamic_cast<const CornerNextEdgeFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
   {
-    return ATTR_DOMAIN_CORNER;
+    return AttrDomain::Corner;
   }
 };
 
@@ -67,20 +67,18 @@ class CornerPreviousEdgeFieldInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    if (domain != ATTR_DOMAIN_CORNER) {
+    if (domain != AttrDomain::Corner) {
       return {};
     }
     const OffsetIndices faces = mesh.faces();
     const Span<int> corner_edges = mesh.corner_edges();
-    Array<int> loop_to_face_map = bke::mesh::build_loop_to_face_map(faces);
+    const Span<int> corner_to_face = mesh.corner_to_face_map();
     return VArray<int>::ForFunc(
-        mesh.totloop,
-        [faces, corner_edges, loop_to_face_map = std::move(loop_to_face_map)](const int corner_i) {
-          return corner_edges[bke::mesh::face_corner_prev(faces[loop_to_face_map[corner_i]],
-                                                          corner_i)];
+        corner_edges.size(), [faces, corner_edges, corner_to_face](const int corner) {
+          return corner_edges[bke::mesh::face_corner_prev(faces[corner_to_face[corner]], corner)];
         });
   }
 
@@ -94,9 +92,9 @@ class CornerPreviousEdgeFieldInput final : public bke::MeshFieldInput {
     return dynamic_cast<const CornerPreviousEdgeFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
   {
-    return ATTR_DOMAIN_CORNER;
+    return AttrDomain::Corner;
   }
 };
 
@@ -108,14 +106,14 @@ static void node_geo_exec(GeoNodeExecParams params)
                       Field<int>(std::make_shared<EvaluateAtIndexInput>(
                           corner_index,
                           Field<int>(std::make_shared<CornerNextEdgeFieldInput>()),
-                          ATTR_DOMAIN_CORNER)));
+                          AttrDomain::Corner)));
   }
   if (params.output_is_required("Previous Edge Index")) {
     params.set_output("Previous Edge Index",
                       Field<int>(std::make_shared<EvaluateAtIndexInput>(
                           corner_index,
                           Field<int>(std::make_shared<CornerPreviousEdgeFieldInput>()),
-                          ATTR_DOMAIN_CORNER)));
+                          AttrDomain::Corner)));
   }
 }
 

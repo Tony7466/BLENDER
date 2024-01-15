@@ -63,7 +63,7 @@ void BKE_nla_tracks_free(ListBase *tracks, bool do_id_user);
  *
  * \param use_same_action: When true, the existing action is used (instead of being duplicated)
  * \param flag: Control ID pointers management, see LIB_ID_CREATE_.../LIB_ID_COPY_...
- * flags in BKE_lib_id.h
+ * flags in BKE_lib_id.hh
  */
 struct NlaStrip *BKE_nlastrip_copy(struct Main *bmain,
                                    struct NlaStrip *strip,
@@ -72,7 +72,7 @@ struct NlaStrip *BKE_nlastrip_copy(struct Main *bmain,
 /**
  * Copy a single NLA Track.
  * \param flag: Control ID pointers management, see LIB_ID_CREATE_.../LIB_ID_COPY_...
- * flags in BKE_lib_id.h
+ * flags in BKE_lib_id.hh
  */
 struct NlaTrack *BKE_nlatrack_copy(struct Main *bmain,
                                    struct NlaTrack *nlt,
@@ -81,7 +81,7 @@ struct NlaTrack *BKE_nlatrack_copy(struct Main *bmain,
 /**
  * Copy all NLA data.
  * \param flag: Control ID pointers management, see LIB_ID_CREATE_.../LIB_ID_COPY_...
- * flags in BKE_lib_id.h
+ * flags in BKE_lib_id.hh
  */
 void BKE_nla_tracks_copy(struct Main *bmain, ListBase *dst, const ListBase *src, int flag);
 
@@ -150,6 +150,38 @@ void BKE_nlatrack_remove(ListBase *tracks, struct NlaTrack *nlt);
  * and the track itself.
  */
 void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user);
+
+/**
+ * Compute the length of the passed strip's clip, unless the clip length
+ * is zero in which case a non-zero value is returned.
+ *
+ * WARNING: this function is *very narrow* and special-cased in its
+ * application.  It was introduced as part of the fix for issue #107030,
+ * as a way to collect a bunch of whack-a-mole inline applications of this
+ * logic in one place.  The logic itself isn't principled in any way,
+ * and should almost certainly not be used anywhere that it isn't already,
+ * short of one of those whack-a-mole inline places being overlooked.
+ *
+ * The underlying purpose of this function is to ensure that the computed
+ * clip length for an NLA strip is (in certain places) never zero, in order to
+ * avoid the strip's scale having to be infinity.  In other words, it's a
+ * hack.  But at least now it's a hack collected in one place.
+ *
+ */
+float BKE_nla_clip_length_get_nonzero(const NlaStrip *strip);
+
+/**
+ * Ensure the passed range has non-zero length, using the same logic as
+ * `BKE_nla_clip_length_get_nonzero` to determine the new non-zero length.
+ *
+ * See the documentation for `BKE_nla_clip_length_get_nonzero` for the
+ * reason this function exists and the issues around its use.
+ *
+ * Usage: both `actstart` and `r_actend` should already be set to the
+ * start/end values of a strip's clip.  `r_actend` will be modified
+ * if necessary to ensure the range is non-zero in length.
+ */
+void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend);
 
 /**
  * Create a NLA Strip referencing the given Action.
@@ -272,6 +304,12 @@ void BKE_nlatrack_solo_toggle(struct AnimData *adt, struct NlaTrack *nlt);
  * Check if there is any space in the given track to add a strip of the given length.
  */
 bool BKE_nlatrack_has_space(struct NlaTrack *nlt, float start, float end);
+
+/**
+ * Check to see if there are any NLA strips in the NLA tracks.
+ */
+bool BKE_nlatrack_has_strips(ListBase *tracks);
+
 /**
  * Rearrange the strips in the track so that they are always in order
  * (usually only needed after a strip has been moved).

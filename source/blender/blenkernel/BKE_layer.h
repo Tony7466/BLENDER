@@ -107,7 +107,7 @@ void BKE_view_layer_base_select_and_set_active(struct ViewLayer *view_layer, str
 /**
  * Only copy internal data of #ViewLayer from source to already allocated/initialized destination.
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
 void BKE_view_layer_copy_data(struct Scene *scene_dst,
                               const struct Scene *scene_src,
@@ -273,8 +273,8 @@ void BKE_view_layer_blend_write(struct BlendWriter *writer,
                                 struct ViewLayer *view_layer);
 void BKE_view_layer_blend_read_data(struct BlendDataReader *reader, struct ViewLayer *view_layer);
 void BKE_view_layer_blend_read_after_liblink(struct BlendLibReader *reader,
-                                   struct ID *self_id,
-                                   struct ViewLayer *view_layer);
+                                             struct ID *self_id,
+                                             struct ViewLayer *view_layer);
 
 /* iterators */
 

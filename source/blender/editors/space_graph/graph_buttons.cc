@@ -26,17 +26,17 @@
 #include "BLT_translation.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
-#include "BKE_screen.h"
-#include "BKE_unit.h"
+#include "BKE_main.hh"
+#include "BKE_screen.hh"
+#include "BKE_unit.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -119,13 +119,10 @@ static void graph_panel_cursor_header(const bContext *C, Panel *panel)
 {
   bScreen *screen = CTX_wm_screen(C);
   SpaceGraph *sipo = CTX_wm_space_graph(C);
-  Scene *scene = CTX_data_scene(C);
-  PointerRNA spaceptr, sceneptr;
   uiLayout *col;
 
   /* get RNA pointers for use when creating the UI elements */
-  RNA_id_pointer_create(&scene->id, &sceneptr);
-  RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo, &spaceptr);
+  PointerRNA spaceptr = RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo);
 
   /* 2D-Cursor */
   col = uiLayoutColumn(panel->layout, false);
@@ -137,13 +134,12 @@ static void graph_panel_cursor(const bContext *C, Panel *panel)
   bScreen *screen = CTX_wm_screen(C);
   SpaceGraph *sipo = CTX_wm_space_graph(C);
   Scene *scene = CTX_data_scene(C);
-  PointerRNA spaceptr, sceneptr;
   uiLayout *layout = panel->layout;
   uiLayout *col, *sub;
 
   /* get RNA pointers for use when creating the UI elements */
-  RNA_id_pointer_create(&scene->id, &sceneptr);
-  RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo, &spaceptr);
+  PointerRNA sceneptr = RNA_id_pointer_create(&scene->id);
+  PointerRNA spaceptr = RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -177,7 +173,6 @@ static void graph_panel_properties(const bContext *C, Panel *panel)
 {
   bAnimListElem *ale;
   FCurve *fcu;
-  PointerRNA fcu_ptr;
   uiLayout *layout = panel->layout;
   uiLayout *col;
   char name[256];
@@ -188,7 +183,7 @@ static void graph_panel_properties(const bContext *C, Panel *panel)
   }
 
   /* F-Curve pointer */
-  RNA_pointer_create(ale->fcurve_owner_id, &RNA_FCurve, fcu, &fcu_ptr);
+  PointerRNA fcu_ptr = RNA_pointer_create(ale->fcurve_owner_id, &RNA_FCurve, fcu);
 
   /* user-friendly 'name' for F-Curve */
   col = uiLayoutColumn(layout, false);
@@ -294,7 +289,7 @@ static void graphedit_activekey_handles_cb(bContext *C, void *fcu_ptr, void *bez
     bezt->h2 = HD_ALIGN;
   }
   else {
-    BKE_nurb_bezt_handle_test(bezt, SELECT, true, false);
+    BKE_nurb_bezt_handle_test(bezt, SELECT, NURB_HANDLE_TEST_EACH, false);
   }
 
   /* now call standard updates */
@@ -369,16 +364,16 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
 
   /* only show this info if there are keyframes to edit */
   if (get_active_fcurve_keyframe_edit(fcu, &bezt, &prevbezt)) {
-    PointerRNA bezt_ptr, id_ptr, fcu_prop_ptr;
+    PointerRNA fcu_prop_ptr;
     PropertyRNA *fcu_prop = nullptr;
     uiBut *but;
     int unit = B_UNIT_NONE;
 
     /* RNA pointer to keyframe, to allow editing */
-    RNA_pointer_create(ale->fcurve_owner_id, &RNA_Keyframe, bezt, &bezt_ptr);
+    PointerRNA bezt_ptr = RNA_pointer_create(ale->fcurve_owner_id, &RNA_Keyframe, bezt);
 
     /* get property that F-Curve affects, for some unit-conversion magic */
-    RNA_id_pointer_create(ale->id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
     if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &fcu_prop_ptr, &fcu_prop)) {
       /* determine the unit for this property */
       unit = RNA_SUBTYPE_UNIT(RNA_property_subtype(fcu_prop));
@@ -592,17 +587,17 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
   else {
     if ((fcu->bezt == nullptr) && (fcu->modifiers.first)) {
       /* modifiers only - so no keyframes to be active */
-      uiItemL(layout, TIP_("F-Curve only has F-Modifiers"), ICON_NONE);
-      uiItemL(layout, TIP_("See Modifiers panel below"), ICON_INFO);
+      uiItemL(layout, RPT_("F-Curve only has F-Modifiers"), ICON_NONE);
+      uiItemL(layout, RPT_("See Modifiers panel below"), ICON_INFO);
     }
     else if (fcu->fpt) {
       /* samples only */
       uiItemL(layout,
-              TIP_("F-Curve doesn't have any keyframes as it only contains sampled points"),
+              RPT_("F-Curve doesn't have any keyframes as it only contains sampled points"),
               ICON_NONE);
     }
     else {
-      uiItemL(layout, TIP_("No active keyframe on F-Curve"), ICON_NONE);
+      uiItemL(layout, RPT_("No active keyframe on F-Curve"), ICON_NONE);
     }
   }
 
@@ -691,30 +686,30 @@ static void driver_dvar_invalid_name_query_cb(bContext *C, void *dvar_v, void * 
   DriverVar *dvar = (DriverVar *)dvar_v;
 
   if (dvar->flag & DVAR_FLAG_INVALID_EMPTY) {
-    uiItemL(layout, TIP_("It cannot be left blank"), ICON_ERROR);
+    uiItemL(layout, RPT_("It cannot be left blank"), ICON_ERROR);
   }
   if (dvar->flag & DVAR_FLAG_INVALID_START_NUM) {
-    uiItemL(layout, TIP_("It cannot start with a number"), ICON_ERROR);
+    uiItemL(layout, RPT_("It cannot start with a number"), ICON_ERROR);
   }
   if (dvar->flag & DVAR_FLAG_INVALID_START_CHAR) {
     uiItemL(layout,
-            TIP_("It cannot start with a special character,"
+            RPT_("It cannot start with a special character,"
                  " including '$', '@', '!', '~', '+', '-', '_', '.', or ' '"),
             ICON_NONE);
   }
   if (dvar->flag & DVAR_FLAG_INVALID_HAS_SPACE) {
-    uiItemL(layout, TIP_("It cannot contain spaces (e.g. 'a space')"), ICON_ERROR);
+    uiItemL(layout, RPT_("It cannot contain spaces (e.g. 'a space')"), ICON_ERROR);
   }
   if (dvar->flag & DVAR_FLAG_INVALID_HAS_DOT) {
-    uiItemL(layout, TIP_("It cannot contain dots (e.g. 'a.dot')"), ICON_ERROR);
+    uiItemL(layout, RPT_("It cannot contain dots (e.g. 'a.dot')"), ICON_ERROR);
   }
   if (dvar->flag & DVAR_FLAG_INVALID_HAS_SPECIAL) {
     uiItemL(layout,
-            TIP_("It cannot contain special (non-alphabetical/numeric) characters"),
+            RPT_("It cannot contain special (non-alphabetical/numeric) characters"),
             ICON_ERROR);
   }
   if (dvar->flag & DVAR_FLAG_INVALID_PY_KEYWORD) {
-    uiItemL(layout, TIP_("It cannot be a reserved keyword in Python"), ICON_INFO);
+    uiItemL(layout, RPT_("It cannot be a reserved keyword in Python"), ICON_INFO);
   }
 
   UI_popup_menu_end(C, pup);
@@ -745,15 +740,28 @@ static bool graph_panel_drivers_poll(const bContext *C, PanelType * /*pt*/)
   return graph_panel_context(C, nullptr, nullptr);
 }
 
+static void graph_panel_driverVar_fallback(uiLayout *layout,
+                                           const DriverTarget *dtar,
+                                           PointerRNA *dtar_ptr)
+{
+  if (dtar->options & DTAR_OPTION_USE_FALLBACK) {
+    uiLayout *row = uiLayoutRow(layout, true);
+    uiItemR(row, dtar_ptr, "use_fallback_value", UI_ITEM_NONE, "", ICON_NONE);
+    uiItemR(row, dtar_ptr, "fallback_value", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else {
+    uiItemR(layout, dtar_ptr, "use_fallback_value", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+}
+
 /* settings for 'single property' driver variable type */
 static void graph_panel_driverVar__singleProp(uiLayout *layout, ID *id, DriverVar *dvar)
 {
   DriverTarget *dtar = &dvar->targets[0];
-  PointerRNA dtar_ptr;
   uiLayout *row, *col;
 
   /* initialize RNA pointer to the target */
-  RNA_pointer_create(id, &RNA_DriverTarget, dtar, &dtar_ptr);
+  PointerRNA dtar_ptr = RNA_pointer_create(id, &RNA_DriverTarget, dtar);
 
   /* Target ID */
   row = uiLayoutRow(layout, false);
@@ -762,19 +770,20 @@ static void graph_panel_driverVar__singleProp(uiLayout *layout, ID *id, DriverVa
 
   /* Target Property */
   if (dtar->id) {
-    PointerRNA root_ptr;
-
     /* get pointer for resolving the property selected */
-    RNA_id_pointer_create(dtar->id, &root_ptr);
+    PointerRNA root_ptr = RNA_id_pointer_create(dtar->id);
 
     /* rna path */
     col = uiLayoutColumn(layout, true);
-    uiLayoutSetRedAlert(col, (dtar->flag & DTAR_FLAG_INVALID));
+    uiLayoutSetRedAlert(col, (dtar->flag & (DTAR_FLAG_INVALID | DTAR_FLAG_FALLBACK_USED)));
     uiTemplatePathBuilder(col,
                           &dtar_ptr,
                           "data_path",
                           &root_ptr,
                           CTX_IFACE_(BLT_I18NCONTEXT_EDITOR_FILEBROWSER, "Path"));
+
+    /* Default value. */
+    graph_panel_driverVar_fallback(layout, dtar, &dtar_ptr);
   }
 }
 
@@ -786,12 +795,11 @@ static void graph_panel_driverVar__rotDiff(uiLayout *layout, ID *id, DriverVar *
   DriverTarget *dtar2 = &dvar->targets[1];
   Object *ob1 = (Object *)dtar->id;
   Object *ob2 = (Object *)dtar2->id;
-  PointerRNA dtar_ptr, dtar2_ptr;
   uiLayout *col;
 
   /* initialize RNA pointer to the target */
-  RNA_pointer_create(id, &RNA_DriverTarget, dtar, &dtar_ptr);
-  RNA_pointer_create(id, &RNA_DriverTarget, dtar2, &dtar2_ptr);
+  PointerRNA dtar_ptr = RNA_pointer_create(id, &RNA_DriverTarget, dtar);
+  PointerRNA dtar2_ptr = RNA_pointer_create(id, &RNA_DriverTarget, dtar2);
 
   /* Object 1 */
   col = uiLayoutColumn(layout, true);
@@ -799,9 +807,7 @@ static void graph_panel_driverVar__rotDiff(uiLayout *layout, ID *id, DriverVar *
   uiItemR(col, &dtar_ptr, "id", UI_ITEM_NONE, IFACE_("Object 1"), ICON_NONE);
 
   if (dtar->id && GS(dtar->id->name) == ID_OB && ob1->pose) {
-    PointerRNA tar_ptr;
-
-    RNA_pointer_create(dtar->id, &RNA_Pose, ob1->pose, &tar_ptr);
+    PointerRNA tar_ptr = RNA_pointer_create(dtar->id, &RNA_Pose, ob1->pose);
     uiItemPointerR(col, &dtar_ptr, "bone_target", &tar_ptr, "bones", "", ICON_BONE_DATA);
   }
 
@@ -811,9 +817,7 @@ static void graph_panel_driverVar__rotDiff(uiLayout *layout, ID *id, DriverVar *
   uiItemR(col, &dtar2_ptr, "id", UI_ITEM_NONE, IFACE_("Object 2"), ICON_NONE);
 
   if (dtar2->id && GS(dtar2->id->name) == ID_OB && ob2->pose) {
-    PointerRNA tar_ptr;
-
-    RNA_pointer_create(dtar2->id, &RNA_Pose, ob2->pose, &tar_ptr);
+    PointerRNA tar_ptr = RNA_pointer_create(dtar2->id, &RNA_Pose, ob2->pose);
     uiItemPointerR(col, &dtar2_ptr, "bone_target", &tar_ptr, "bones", "", ICON_BONE_DATA);
   }
 }
@@ -825,12 +829,11 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
   DriverTarget *dtar2 = &dvar->targets[1];
   Object *ob1 = (Object *)dtar->id;
   Object *ob2 = (Object *)dtar2->id;
-  PointerRNA dtar_ptr, dtar2_ptr;
   uiLayout *col;
 
   /* initialize RNA pointer to the target */
-  RNA_pointer_create(id, &RNA_DriverTarget, dtar, &dtar_ptr);
-  RNA_pointer_create(id, &RNA_DriverTarget, dtar2, &dtar2_ptr);
+  PointerRNA dtar_ptr = RNA_pointer_create(id, &RNA_DriverTarget, dtar);
+  PointerRNA dtar2_ptr = RNA_pointer_create(id, &RNA_DriverTarget, dtar2);
 
   /* Object 1 */
   col = uiLayoutColumn(layout, true);
@@ -838,9 +841,7 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
   uiItemR(col, &dtar_ptr, "id", UI_ITEM_NONE, IFACE_("Object 1"), ICON_NONE);
 
   if (dtar->id && GS(dtar->id->name) == ID_OB && ob1->pose) {
-    PointerRNA tar_ptr;
-
-    RNA_pointer_create(dtar->id, &RNA_Pose, ob1->pose, &tar_ptr);
+    PointerRNA tar_ptr = RNA_pointer_create(dtar->id, &RNA_Pose, ob1->pose);
     uiItemPointerR(
         col, &dtar_ptr, "bone_target", &tar_ptr, "bones", IFACE_("Bone"), ICON_BONE_DATA);
   }
@@ -856,9 +857,7 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
   uiItemR(col, &dtar2_ptr, "id", UI_ITEM_NONE, IFACE_("Object 2"), ICON_NONE);
 
   if (dtar2->id && GS(dtar2->id->name) == ID_OB && ob2->pose) {
-    PointerRNA tar_ptr;
-
-    RNA_pointer_create(dtar2->id, &RNA_Pose, ob2->pose, &tar_ptr);
+    PointerRNA tar_ptr = RNA_pointer_create(dtar2->id, &RNA_Pose, ob2->pose);
     uiItemPointerR(
         col, &dtar2_ptr, "bone_target", &tar_ptr, "bones", IFACE_("Bone"), ICON_BONE_DATA);
   }
@@ -874,11 +873,10 @@ static void graph_panel_driverVar__transChan(uiLayout *layout, ID *id, DriverVar
 {
   DriverTarget *dtar = &dvar->targets[0];
   Object *ob = (Object *)dtar->id;
-  PointerRNA dtar_ptr;
   uiLayout *col, *sub;
 
   /* initialize RNA pointer to the target */
-  RNA_pointer_create(id, &RNA_DriverTarget, dtar, &dtar_ptr);
+  PointerRNA dtar_ptr = RNA_pointer_create(id, &RNA_DriverTarget, dtar);
 
   /* properties */
   col = uiLayoutColumn(layout, true);
@@ -886,9 +884,7 @@ static void graph_panel_driverVar__transChan(uiLayout *layout, ID *id, DriverVar
   uiItemR(col, &dtar_ptr, "id", UI_ITEM_NONE, IFACE_("Object"), ICON_NONE);
 
   if (dtar->id && GS(dtar->id->name) == ID_OB && ob->pose) {
-    PointerRNA tar_ptr;
-
-    RNA_pointer_create(dtar->id, &RNA_Pose, ob->pose, &tar_ptr);
+    PointerRNA tar_ptr = RNA_pointer_create(dtar->id, &RNA_Pose, ob->pose);
     uiItemPointerR(
         col, &dtar_ptr, "bone_target", &tar_ptr, "bones", IFACE_("Bone"), ICON_BONE_DATA);
   }
@@ -914,8 +910,7 @@ static void graph_panel_driverVar__contextProp(uiLayout *layout, ID *id, DriverV
   DriverTarget *dtar = &dvar->targets[0];
 
   /* Initialize RNA pointer to the target. */
-  PointerRNA dtar_ptr;
-  RNA_pointer_create(id, &RNA_DriverTarget, dtar, &dtar_ptr);
+  PointerRNA dtar_ptr = RNA_pointer_create(id, &RNA_DriverTarget, dtar);
 
   /* Target Property. */
   {
@@ -926,13 +921,16 @@ static void graph_panel_driverVar__contextProp(uiLayout *layout, ID *id, DriverV
   /* Target Path */
   {
     uiLayout *col = uiLayoutColumn(layout, true);
-    uiLayoutSetRedAlert(col, (dtar->flag & DTAR_FLAG_INVALID));
+    uiLayoutSetRedAlert(col, (dtar->flag & (DTAR_FLAG_INVALID | DTAR_FLAG_FALLBACK_USED)));
     uiTemplatePathBuilder(col,
                           &dtar_ptr,
                           "data_path",
                           nullptr,
                           CTX_IFACE_(BLT_I18NCONTEXT_EDITOR_FILEBROWSER, "Path"));
   }
+
+  /* Default value. */
+  graph_panel_driverVar_fallback(layout, dtar, &dtar_ptr);
 }
 
 /* ----------------------------------------------------------------- */
@@ -944,8 +942,7 @@ static void graph_draw_driven_property_enabled_btn(uiLayout *layout,
                                                    FCurve *fcu,
                                                    const char *label)
 {
-  PointerRNA fcurve_ptr;
-  RNA_pointer_create(id, &RNA_FCurve, fcu, &fcurve_ptr);
+  PointerRNA fcurve_ptr = RNA_pointer_create(id, &RNA_FCurve, fcu);
 
   uiBlock *block = uiLayoutGetBlock(layout);
   uiDefButR(block,
@@ -980,13 +977,9 @@ static void graph_panel_drivers_header(const bContext *C, Panel *panel)
 
 static void graph_draw_driven_property_panel(uiLayout *layout, ID *id, FCurve *fcu)
 {
-  PointerRNA fcu_ptr;
   uiLayout *row;
   char name[256];
   int icon = 0;
-
-  /* F-Curve pointer */
-  RNA_pointer_create(id, &RNA_FCurve, fcu, &fcu_ptr);
 
   /* get user-friendly 'name' for F-Curve */
   icon = getname_anim_fcurve(name, id, fcu);
@@ -1013,7 +1006,6 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
 {
   ChannelDriver *driver = fcu->driver;
 
-  PointerRNA driver_ptr;
   uiLayout *col, *row, *row_outer;
   uiBlock *block;
   uiBut *but;
@@ -1023,7 +1015,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
   UI_block_func_handle_set(block, do_graph_region_driver_buttons, id);
 
   /* driver-level settings - type, expressions, and errors */
-  RNA_pointer_create(id, &RNA_Driver, driver, &driver_ptr);
+  PointerRNA driver_ptr = RNA_pointer_create(id, &RNA_Driver, driver);
 
   col = uiLayoutColumn(layout, true);
   block = uiLayoutGetBlock(col);
@@ -1062,28 +1054,28 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
     block = uiLayoutGetBlock(col);
 
     if (driver->flag & DRIVER_FLAG_INVALID) {
-      uiItemL(col, TIP_("ERROR: Invalid Python expression"), ICON_CANCEL);
+      uiItemL(col, RPT_("ERROR: Invalid Python expression"), ICON_CANCEL);
     }
     else if (!BKE_driver_has_simple_expression(driver)) {
       if ((G.f & G_FLAG_SCRIPT_AUTOEXEC) == 0) {
         /* TODO: Add button to enable? */
-        uiItemL(col, TIP_("Python restricted for security"), ICON_ERROR);
+        uiItemL(col, RPT_("Python restricted for security"), ICON_ERROR);
       }
       else {
-        uiItemL(col, TIP_("Slow Python expression"), ICON_INFO);
+        uiItemL(col, RPT_("Slow Python expression"), ICON_INFO);
       }
     }
 
     /* Explicit bpy-references are evil. Warn about these to prevent errors */
     /* TODO: put these in a box? */
     if (bpy_data_expr_error || bpy_ctx_expr_error) {
-      uiItemL(col, TIP_("WARNING: Driver expression may not work correctly"), ICON_HELP);
+      uiItemL(col, RPT_("WARNING: Driver expression may not work correctly"), ICON_HELP);
 
       if (bpy_data_expr_error) {
-        uiItemL(col, TIP_("TIP: Use variables instead of bpy.data paths (see below)"), ICON_ERROR);
+        uiItemL(col, RPT_("TIP: Use variables instead of bpy.data paths (see below)"), ICON_ERROR);
       }
       if (bpy_ctx_expr_error) {
-        uiItemL(col, TIP_("TIP: bpy.context is not safe for renderfarm usage"), ICON_ERROR);
+        uiItemL(col, RPT_("TIP: bpy.context is not safe for renderfarm usage"), ICON_ERROR);
       }
     }
   }
@@ -1093,7 +1085,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
     block = uiLayoutGetBlock(col);
 
     if (driver->flag & DRIVER_FLAG_INVALID) {
-      uiItemL(col, TIP_("ERROR: Invalid target channel(s)"), ICON_ERROR);
+      uiItemL(col, RPT_("ERROR: Invalid target channel(s)"), ICON_ERROR);
     }
 
     /* Warnings about a lack of variables
@@ -1103,11 +1095,11 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
      *       property animation
      */
     if (BLI_listbase_is_empty(&driver->variables)) {
-      uiItemL(col, TIP_("ERROR: Driver is useless without any inputs"), ICON_ERROR);
+      uiItemL(col, RPT_("ERROR: Driver is useless without any inputs"), ICON_ERROR);
 
       if (!BLI_listbase_is_empty(&fcu->modifiers)) {
-        uiItemL(col, TIP_("TIP: Use F-Curves for procedural animation instead"), ICON_INFO);
-        uiItemL(col, TIP_("F-Modifiers can generate curves for those too"), ICON_INFO);
+        uiItemL(col, RPT_("TIP: Use F-Curves for procedural animation instead"), ICON_INFO);
+        uiItemL(col, RPT_("F-Modifiers can generate curves for those too"), ICON_INFO);
       }
     }
   }
@@ -1153,7 +1145,6 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
 
   /* loop over targets, drawing them */
   LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
-    PointerRNA dvar_ptr;
     uiLayout *box;
     uiLayout *subrow, *sub;
 
@@ -1162,7 +1153,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
 
     /* 1) header panel */
     box = uiLayoutBox(col);
-    RNA_pointer_create(id, &RNA_DriverVariable, dvar, &dvar_ptr);
+    PointerRNA dvar_ptr = RNA_pointer_create(id, &RNA_DriverVariable, dvar);
 
     row = uiLayoutRow(box, false);
     block = uiLayoutGetBlock(row);
@@ -1380,8 +1371,7 @@ static void graph_panel_drivers_popover(const bContext *C, Panel *panel)
     if (fcu && fcu->driver) {
       ID *id = ptr.owner_id;
 
-      PointerRNA ptr_fcurve;
-      RNA_pointer_create(id, &RNA_FCurve, fcu, &ptr_fcurve);
+      PointerRNA ptr_fcurve = RNA_pointer_create(id, &RNA_FCurve, fcu);
       uiLayoutSetContextPointer(layout, "active_editable_fcurve", &ptr_fcurve);
 
       /* Driven Property Settings */

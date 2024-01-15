@@ -5,8 +5,8 @@
 /** \file
  * \ingroup wm
  */
-#include "wm_platform_support.h"
-#include "wm_window_private.h"
+#include "wm_platform_support.hh"
+#include "wm_window_private.hh"
 
 #include <cstring>
 
@@ -46,7 +46,7 @@ static bool wm_platform_support_check_approval(const char *platform_support_key,
   BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_PLATFORM_SUPPORT_FILE);
   LinkNode *lines = BLI_file_read_as_lines(filepath);
   for (LinkNode *line_node = lines; line_node; line_node = line_node->next) {
-    char *line = static_cast<char *>(line_node->link);
+    const char *line = static_cast<char *>(line_node->link);
     if (STREQ(line, platform_support_key)) {
       result = true;
       break;
@@ -164,7 +164,7 @@ bool WM_platform_support_perform_checks()
       STR_CONCAT(message,
                  slen,
                  CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER,
-                            "Your graphics card or macOS version is not supported."));
+                            "Your graphics card or macOS version is not supported"));
       STR_CONCAT(message, slen, "\n \n");
       STR_CONCAT(message,
                  slen,

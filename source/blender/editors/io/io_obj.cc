@@ -10,8 +10,8 @@
 
 #  include "DNA_space_types.h"
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 
 #  include "BLI_path_util.h"
@@ -34,11 +34,11 @@
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "IO_orientation.h"
-#  include "IO_path_util_types.h"
-#  include "IO_wavefront_obj.h"
+#  include "IO_orientation.hh"
+#  include "IO_path_util_types.hh"
+#  include "IO_wavefront_obj.hh"
 
 #  include "io_obj.hh"
 
@@ -127,7 +127,7 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(
       sub, imfptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selected Only"), ICON_NONE);
   uiItemR(sub, imfptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
-
+  uiItemR(sub, imfptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward Axis"), ICON_NONE);
   uiItemR(sub, imfptr, "up_axis", UI_ITEM_NONE, IFACE_("Up Axis"), ICON_NONE);
 
   col = uiLayoutColumn(box, false);
@@ -193,8 +193,7 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_export_draw(bContext * /*C*/, wmOperator *op)
 {
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, op->type->srna, op->properties, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, op->type->srna, op->properties);
   ui_obj_export_settings(op->layout, &ptr);
 }
 
@@ -335,7 +334,7 @@ void WM_OT_obj_export(wmOperatorType *ot)
                   false,
                   "Export Materials with PBR Extensions",
                   "Export MTL library using PBR extensions (roughness, metallic, sheen, "
-                  "clearcoat, anisotropy, transmission)");
+                  "coat, anisotropy, transmission)");
   RNA_def_enum(ot->srna,
                "path_mode",
                io_obj_path_mode,
@@ -404,6 +403,9 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
   import_params.use_split_groups = RNA_boolean_get(op->ptr, "use_split_groups");
   import_params.import_vertex_groups = RNA_boolean_get(op->ptr, "import_vertex_groups");
   import_params.validate_meshes = RNA_boolean_get(op->ptr, "validate_meshes");
+  char separator[2] = {};
+  RNA_string_get(op->ptr, "collection_separator", separator);
+  import_params.collection_separator = separator[0];
   import_params.relative_paths = ((U.flag & USER_RELPATHS) != 0);
   import_params.clear_selection = true;
 
@@ -466,13 +468,13 @@ static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(col, imfptr, "use_split_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, imfptr, "import_vertex_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, imfptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "collection_separator", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
-  RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
   ui_obj_import_settings(op->layout, &ptr);
 }
 
@@ -544,6 +546,13 @@ void WM_OT_obj_import(wmOperatorType *ot)
                   false,
                   "Validate Meshes",
                   "Check imported mesh objects for invalid data (slow)");
+
+  RNA_def_string(ot->srna,
+                 "collection_separator",
+                 nullptr,
+                 2,
+                 "Path Separator",
+                 "Character used to separate objects name into hierarchical structure");
 
   /* Only show .obj or .mtl files by default. */
   prop = RNA_def_string(ot->srna, "filter_glob", "*.obj;*.mtl", 0, "Extension Filter", "");

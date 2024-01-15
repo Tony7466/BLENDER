@@ -27,7 +27,7 @@ static StructRNA *rna_USDHook_refine(PointerRNA *ptr)
   return (hook->rna_ext.srna) ? hook->rna_ext.srna : &RNA_USDHook;
 }
 
-static bool rna_USDHook_unregister(Main * /* bmain */, StructRNA *type)
+static bool rna_USDHook_unregister(Main * /*bmain*/, StructRNA *type)
 {
   USDHook *hook = static_cast<USDHook *>(RNA_struct_blender_type_get(type));
 
@@ -60,10 +60,9 @@ static StructRNA *rna_USDHook_register(Main *bmain,
   const char *error_prefix = "Registering USD hook class:";
   USDHook dummy_hook = {{0}};
   USDHook *hook;
-  PointerRNA dummy_hook_ptr = {nullptr};
 
   /* setup dummy type info to store static properties in */
-  RNA_pointer_create(nullptr, &RNA_USDHook, &dummy_hook, &dummy_hook_ptr);
+  PointerRNA dummy_hook_ptr = RNA_pointer_create(nullptr, &RNA_USDHook, &dummy_hook);
 
   /* validate the python class */
   if (validate(&dummy_hook_ptr, data, nullptr) != 0) {

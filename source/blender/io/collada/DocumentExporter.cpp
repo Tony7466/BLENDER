@@ -54,7 +54,6 @@
 #include "DNA_image_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -69,15 +68,15 @@
 #include "BKE_action.h" /* pose functions */
 #include "BKE_animsys.h"
 #include "BKE_appdir.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_blender_version.h"
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
 
 #include "ED_keyframing.hh"
@@ -166,7 +165,7 @@ int DocumentExporter::exportCurrentScene()
   Scene *sce = blender_context.get_scene();
   bContext *C = blender_context.get_context();
 
-  PointerRNA sceneptr, unit_settings;
+  PointerRNA unit_settings;
   PropertyRNA *system; /* unused, *scale; */
 
   clear_global_id_map();
@@ -180,7 +179,7 @@ int DocumentExporter::exportCurrentScene()
   /* <asset> */
   COLLADASW::Asset asset(writer);
 
-  RNA_id_pointer_create(&(sce->id), &sceneptr);
+  PointerRNA sceneptr = RNA_id_pointer_create(&sce->id);
   unit_settings = RNA_pointer_get(&sceneptr, "unit_settings");
   system = RNA_struct_find_property(&unit_settings, "system");
   // scale = RNA_struct_find_property(&unit_settings, "scale_length");

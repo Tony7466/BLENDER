@@ -19,7 +19,7 @@
 
 #include "GPU_batch.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /* ******************************************************************** */
 /* Animation Visualization */
@@ -137,7 +137,7 @@ bMotionPath *animviz_verify_motionpaths(ReportList *reports,
                 (pchan) ? pchan->name : ob->id.name,
                 avs->path_sf,
                 avs->path_ef,
-                (avs->path_sf == avs->path_ef) ? TIP_(", cannot have single-frame paths") : "");
+                (avs->path_sf == avs->path_ef) ? RPT_(", cannot have single-frame paths") : "");
     return nullptr;
   }
 

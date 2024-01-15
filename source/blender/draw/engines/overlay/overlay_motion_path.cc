@@ -6,20 +6,20 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
 #include "DNA_armature_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_batch.h"
 
 #include "UI_resources.hh"
 
-#include "draw_manager_text.h"
+#include "draw_manager_text.hh"
 
 #include "overlay_private.hh"
 

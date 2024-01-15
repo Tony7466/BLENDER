@@ -36,13 +36,13 @@
 #include "DNA_view3d_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
@@ -58,14 +58,15 @@
 #include "RNA_enum_types.hh"
 
 #include "ED_gpencil_legacy.hh"
-#include "ED_keyframing.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "ANIM_keyframing.hh"
+
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "gpencil_intern.h"
 
@@ -322,7 +323,7 @@ static void gpencil_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   bGPDstroke *gps = static_cast<bGPDstroke *>(MEM_callocN(sizeof(bGPDstroke), "Temp bGPDstroke"));
   gps->thickness = 2.0f;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->inittime = 0.0f;
@@ -420,38 +421,38 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
   if (tgpi->type == GP_STROKE_LINE) {
     BLI_strncpy(
         msg_str,
-        TIP_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
+        RPT_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
              "adjust subdivision number, Shift to align, Alt to center, E: extrude, G: grab"),
         UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_POLYLINE) {
     BLI_strncpy(msg_str,
-                TIP_("Polyline: ESC to cancel, LMB to set, Enter/MMB to confirm, WHEEL/+- to "
+                RPT_("Polyline: ESC to cancel, LMB to set, Enter/MMB to confirm, WHEEL/+- to "
                      "adjust subdivision number, Shift to align, G: grab"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_BOX) {
     BLI_strncpy(msg_str,
-                TIP_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- "
+                RPT_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- "
                      "to adjust subdivision number, Shift to square, Alt to center, G: grab"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_CIRCLE) {
     BLI_strncpy(msg_str,
-                TIP_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
+                RPT_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
                      "number, Shift to square, Alt to center, G: grab"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_ARC) {
     BLI_strncpy(
         msg_str,
-        TIP_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, "
+        RPT_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, "
              "Shift to square, Alt to center, M: Flip, E: extrude, G: grab"),
         UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_CURVE) {
     BLI_strncpy(msg_str,
-                TIP_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
+                RPT_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
                      "number, Shift to square, Alt to center, E: extrude, G: grab"),
                 UI_MAX_DRAW_STR);
   }
@@ -1264,7 +1265,7 @@ static int gpencil_primitive_invoke(bContext *C, wmOperator *op, const wmEvent *
   bGPdata *gpd = CTX_data_gpencil_data(C);
   tGPDprimitive *tgpi = nullptr;
 
-  if (!IS_AUTOKEY_ON(scene)) {
+  if (!blender::animrig::is_autokey_on(scene)) {
     bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
     if ((gpl == nullptr) || (gpl->actframe == nullptr)) {
       BKE_report(op->reports, RPT_INFO, "No available frame for creating stroke");
@@ -1326,7 +1327,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
 
   /* insert keyframes as required... */
   short add_frame_mode;
-  if (IS_AUTOKEY_ON(tgpi->scene)) {
+  if (blender::animrig::is_autokey_on(tgpi->scene)) {
     if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
       add_frame_mode = GP_GETFRAME_ADD_COPY;
     }
@@ -1349,7 +1350,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
   gps = static_cast<bGPDstroke *>(tgpi->gpf->strokes.first);
   if (gps) {
     gps->thickness = brush->size;
-    gps->hardeness = brush_settings->hardeness;
+    gps->hardness = brush_settings->hardness;
     copy_v2_v2(gps->aspect_ratio, brush_settings->aspect_ratio);
 
     /* Calc geometry data. */

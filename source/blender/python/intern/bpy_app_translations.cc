@@ -242,7 +242,9 @@ static void _build_translations_cache(PyObject *py_messages, const char *locale)
         /* Do not overwrite existing keys! */
         if (BPY_app_translations_py_pgettext(msgctxt, msgid) == msgid) {
           GHashKey *key = _ghashutil_keyalloc(msgctxt, msgid);
-          BLI_ghash_insert(_translations_cache, key, BLI_strdup(PyUnicode_AsUTF8(trans)));
+          Py_ssize_t trans_str_len;
+          const char *trans_str = PyUnicode_AsUTF8AndSize(trans, &trans_str_len);
+          BLI_ghash_insert(_translations_cache, key, BLI_strdupn(trans_str, trans_str_len));
         }
       }
     }
@@ -644,6 +646,29 @@ static PyObject *app_translations_pgettext_tip(BlenderAppTranslations * /*self*/
   return _py_pgettext(args, kw, BLT_translate_do_tooltip);
 }
 
+PyDoc_STRVAR(
+    app_translations_pgettext_rpt_doc,
+    ".. method:: pgettext_rpt(msgid, msgctxt=None)\n"
+    "\n"
+    "   Try to translate the given msgid (with optional msgctxt), if reports' translation "
+    "is enabled.\n"
+    "\n"
+    "   .. note::\n"
+    "      See :func:`pgettext` notes.\n"
+    "\n"
+    "   :arg msgid: The string to translate.\n"
+    "   :type msgid: string\n"
+    "   :arg msgctxt: The translation context (defaults to BLT_I18NCONTEXT_DEFAULT).\n"
+    "   :type msgctxt: string or None\n"
+    "   :return: The translated string (or msgid if no translation was found).\n"
+    "\n");
+static PyObject *app_translations_pgettext_rpt(BlenderAppTranslations * /*self*/,
+                                               PyObject *args,
+                                               PyObject *kw)
+{
+  return _py_pgettext(args, kw, BLT_translate_do_report);
+}
+
 PyDoc_STRVAR(app_translations_pgettext_data_doc,
              ".. method:: pgettext_data(msgid, msgctxt=None)\n"
              "\n"
@@ -670,7 +695,7 @@ PyDoc_STRVAR(
     app_translations_locale_explode_doc,
     ".. method:: locale_explode(locale)\n"
     "\n"
-    "   Return all components and their combinations  of the given ISO locale string.\n"
+    "   Return all components and their combinations of the given ISO locale string.\n"
     "\n"
     "   >>> bpy.app.translations.locale_explode(\"sr_RS@latin\")\n"
     "   (\"sr\", \"RS\", \"latin\", \"sr_RS\", \"sr@latin\")\n"
@@ -738,6 +763,10 @@ static PyMethodDef app_translations_methods[] = {
      (PyCFunction)app_translations_pgettext_tip,
      METH_VARARGS | METH_KEYWORDS | METH_STATIC,
      app_translations_pgettext_tip_doc},
+    {"pgettext_rpt",
+     (PyCFunction)app_translations_pgettext_rpt,
+     METH_VARARGS | METH_KEYWORDS | METH_STATIC,
+     app_translations_pgettext_rpt_doc},
     {"pgettext_data",
      (PyCFunction)app_translations_pgettext_data,
      METH_VARARGS | METH_KEYWORDS | METH_STATIC,
@@ -857,7 +886,8 @@ PyObject *BPY_app_translations_struct()
 
     /* We really populate the contexts' fields here! */
     for (ctxt = _contexts, desc = app_translations_contexts_desc.fields; ctxt->c_id;
-         ctxt++, desc++) {
+         ctxt++, desc++)
+    {
       desc->name = ctxt->py_id;
       desc->doc = nullptr;
     }

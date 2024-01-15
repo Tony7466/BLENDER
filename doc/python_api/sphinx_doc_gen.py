@@ -85,7 +85,7 @@ USE_SHARED_RNA_ENUM_ITEMS_STATIC = True
 if USE_SHARED_RNA_ENUM_ITEMS_STATIC:
     from _bpy import rna_enum_items_static
     rna_enum_dict = rna_enum_items_static()
-    for key in ("DummyRNA_DEFAULT_items", "DummyRNA_NULL_items"):
+    for key in ("rna_enum_dummy_NULL_items", "rna_enum_dummy_DEFAULT_items"):
         del rna_enum_dict[key]
     del key, rna_enum_items_static
 
@@ -986,9 +986,21 @@ def pymodule2sphinx(basepath, module_name, module, title, module_all_extra):
         # `type_name` is only used for examples and messages:
         # `<class 'bpy.app.handlers'>` -> `bpy.app.handlers`.
         type_name = str(type(module)).strip("<>").split(" ", 1)[-1][1:-1]
+
+        # The type typically contains the module in the case of PyStruct's (defined by Blender).
+        # Assign a temporary module name: `module_name_split`.
+        if module_name == type_name:
+            assert "." in module_name
+            module_name_split, type_name = module_name.rpartition(".")[0::2]
+        elif type_name.startswith(module_name + "."):
+            type_name = type_name.removeprefix(module_name + ".")
+        else:
+            module_name_split = module_name
+
         if type(descr) == types.GetSetDescriptorType:
-            py_descr2sphinx("", fw, descr, module_name, type_name, key)
+            py_descr2sphinx("", fw, descr, module_name_split, type_name, key)
             attribute_set.add(key)
+        del module_name_split
     descr_sorted = []
     for key, descr in sorted(type(module).__dict__.items()):
         if key.startswith("__"):
@@ -1162,7 +1174,7 @@ context_type_map = {
     "annotation_data": ("GreasePencil", False),
     "annotation_data_owner": ("ID", False),
     "armature": ("Armature", False),
-    "asset_library_ref": ("AssetLibraryReference", False),
+    "asset_library_reference": ("AssetLibraryReference", False),
     "bone": ("Bone", False),
     "brush": ("Brush", False),
     "camera": ("Camera", False),
@@ -1205,14 +1217,14 @@ context_type_map = {
     "particle_settings": ("ParticleSettings", False),
     "particle_system": ("ParticleSystem", False),
     "particle_system_editable": ("ParticleSystem", False),
-    "property": ("(:class:`bpy.types.ID`, :class:`string`, :class:`int`)", False),
+    "property": ("(:class:`bpy.types.AnyType`, :class:`string`, :class:`int`)", False),
     "pointcloud": ("PointCloud", False),
     "pose_bone": ("PoseBone", False),
     "pose_object": ("Object", False),
     "scene": ("Scene", False),
     "sculpt_object": ("Object", False),
     "selectable_objects": ("Object", True),
-    "selected_asset_files": ("FileSelectEntry", True),
+    "selected_assets": ("AssetRepresentation", True),
     "selected_bones": ("EditBone", True),
     "selected_editable_actions": ("Action", True),
     "selected_editable_bones": ("EditBone", True),
@@ -1235,6 +1247,7 @@ context_type_map = {
     "soft_body": ("SoftBodyModifier", False),
     "speaker": ("Speaker", False),
     "texture": ("Texture", False),
+    "texture_node": ("Node", False),
     "texture_slot": ("TextureSlot", False),
     "texture_user": ("ID", False),
     "texture_user_property": ("Property", False),
@@ -2255,18 +2268,13 @@ def write_rst_enum_items_and_index(basepath):
         fw(".. toctree::\n")
         fw("\n")
         for key, enum_items in rna_enum_dict.items():
-            valid_prefix = key.startswith("rna_enum_") or key.startswith("rna_node_")
-            if not valid_prefix:
-                raise Exception(
-                    "Found RNA enum identifier that doesn't use the 'rna_enum_' or 'rna_node_' prefix, found %r!" %
-                    key)
+            if not key.startswith("rna_enum_"):
+                raise Exception("Found RNA enum identifier that doesn't use the 'rna_enum_' prefix, found %r!" % key)
             key_no_prefix = key.removeprefix("rna_enum_")
-            key_no_prefix = key.removeprefix("rna_node_")
             fw("   %s\n" % key_no_prefix)
 
         for key, enum_items in rna_enum_dict.items():
             key_no_prefix = key.removeprefix("rna_enum_")
-            key_no_prefix = key.removeprefix("rna_node_")
             write_rst_enum_items(basepath_bpy_types_rna_enum, key, key_no_prefix, enum_items)
         fw("\n")
 

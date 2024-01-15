@@ -61,12 +61,10 @@
  *     };
  */
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
 
-#include "BLI_math_base.h"
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
@@ -256,10 +254,8 @@ template<typename T> struct PointerHashes {
   }
 };
 
-template<typename T> struct DefaultHash<std::unique_ptr<T>> : public PointerHashes<T> {
-};
-template<typename T> struct DefaultHash<std::shared_ptr<T>> : public PointerHashes<T> {
-};
+template<typename T> struct DefaultHash<std::unique_ptr<T>> : public PointerHashes<T> {};
+template<typename T> struct DefaultHash<std::shared_ptr<T>> : public PointerHashes<T> {};
 
 template<typename T> struct DefaultHash<std::reference_wrapper<T>> {
   uint64_t operator()(const std::reference_wrapper<T> &value) const

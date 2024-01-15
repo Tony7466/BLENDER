@@ -56,6 +56,12 @@ void main()
   float eigenvalue_difference = first_eigenvalue - second_eigenvalue;
   float anisotropy = eigenvalue_sum > 0.0 ? eigenvalue_difference / eigenvalue_sum : 0.0;
 
+#if defined(VARIABLE_SIZE)
+  float radius = max(0.0, texture_load(size_tx, texel).x);
+#elif defined(CONSTANT_SIZE)
+  float radius = max(0.0, size);
+#endif
+
   /* Compute the width and height of an ellipse that is more width-elongated for high anisotropy
    * and more circular for low anisotropy, controlled using the eccentricity factor. Since the
    * anisotropy is in the [0, 1] range, the width factor tends to 1 as the eccentricity tends to
@@ -175,7 +181,7 @@ void main()
       vec2 rotated_disk_point = M_SQRT1_2 *
                                 vec2(disk_point.x - disk_point.y, disk_point.x + disk_point.y);
 
-      /* Finally, we compute every other odd-index 4 weights starting from the 45 degreed rotated
+      /* Finally, we compute every other odd-index 4 weights starting from the 45 degrees rotated
        * disk point. */
       vec2 rotated_polynomial = sector_center_overlap_parameter -
                                 cross_sector_overlap_parameter * square(rotated_disk_point);

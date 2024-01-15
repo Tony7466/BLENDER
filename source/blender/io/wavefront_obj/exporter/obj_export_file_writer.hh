@@ -8,13 +8,11 @@
 
 #pragma once
 
-#include "DNA_meshdata_types.h"
-
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_vector.hh"
 
-#include "IO_wavefront_obj.h"
+#include "IO_wavefront_obj.hh"
 #include "obj_export_io.hh"
 #include "obj_export_mtl.hh"
 
@@ -101,7 +99,7 @@ class OBJWriter : NonMovable, NonCopyable {
   void write_poly_elements(FormatHandler &fh,
                            const IndexOffsets &offsets,
                            const OBJMesh &obj_mesh_data,
-                           std::function<const char *(int)> matname_fn);
+                           FunctionRef<const char *(int)> matname_fn);
   /**
    * Write loose edges of a mesh as "l v1 v2".
    */

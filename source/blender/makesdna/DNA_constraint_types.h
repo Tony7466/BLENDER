@@ -13,10 +13,6 @@
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Action;
 struct Ipo;
 struct Text;
@@ -670,13 +666,13 @@ typedef enum eBConstraint_Types {
 /* bConstraint->flag */
 /* flags 0x2 (1 << 1) and 0x8 (1 << 3) were used in past */
 /* flag 0x20 (1 << 5) was used to indicate that a constraint was evaluated
- *                  using a 'local' hack for posebones only. */
+ *                    using a 'local' hack for pose-bones only. */
 typedef enum eBConstraint_Flags {
 #ifdef DNA_DEPRECATED_ALLOW
   /* Expansion for old box constraint layouts. Just for versioning. */
   CONSTRAINT_EXPAND_DEPRECATED = (1 << 0),
 #endif
-  /* pre-check for illegal object name or bone name */
+  /* Constraint is disabled because it is considered invalid. `is_valid` in RNA. */
   CONSTRAINT_DISABLE = (1 << 2),
   /* to indicate which Ipo should be shown, maybe for 3d access later too */
   CONSTRAINT_ACTIVE = (1 << 4),
@@ -684,7 +680,7 @@ typedef enum eBConstraint_Flags {
   CONSTRAINT_SPACEONCE = (1 << 6),
   /* influence ipo is on constraint itself, not in action channel */
   CONSTRAINT_OWN_IPO = (1 << 7),
-  /* indicates that constraint is temporarily disabled (only used in GE) */
+  /* Constraint is disabled by the user or the animation system (eye icon in the interface). */
   CONSTRAINT_OFF = (1 << 9),
   /* use bbone curve shape when calculating headtail values (also used by dependency graph!) */
   CONSTRAINT_BBONE_SHAPE = (1 << 10),
@@ -1172,7 +1168,3 @@ typedef enum eStretchTo_Flags {
   STRETCHTOCON_USE_BULGE_MIN = (1 << 0),
   STRETCHTOCON_USE_BULGE_MAX = (1 << 1),
 } eStretchTo_Flags;
-
-#ifdef __cplusplus
-}
-#endif

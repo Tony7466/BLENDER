@@ -964,7 +964,8 @@ void PathTraceWorkGPU::copy_to_display_naive(PathTraceDisplay *display,
    * change of the resolution divider. However, if the display becomes smaller, shrink the
    * allocated memory as well. */
   if (display_rgba_half_.data_width != final_width ||
-      display_rgba_half_.data_height != final_height) {
+      display_rgba_half_.data_height != final_height)
+  {
     display_rgba_half_.alloc(final_width, final_height);
     /* TODO(sergey): There should be a way to make sure device-side memory is allocated without
      * transferring zeroes to the device. */
@@ -1025,6 +1026,10 @@ void PathTraceWorkGPU::get_render_tile_film_pixels(const PassAccessor::Destinati
   const KernelFilm &kfilm = device_scene_->data.film;
 
   const PassAccessor::PassAccessInfo pass_access_info = get_display_pass_access_info(pass_mode);
+  if (pass_access_info.type == PASS_NONE) {
+    return;
+  }
+
   const PassAccessorGPU pass_accessor(queue_.get(), pass_access_info, kfilm.exposure, num_samples);
 
   pass_accessor.get_render_tile_pixels(buffers_.get(), effective_buffer_params_, destination);
@@ -1051,6 +1056,7 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
   queue_->zero_to_device(num_active_pixels);
 
   const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
+  const int reset_int = reset; /* No bool kernel arguments. */
 
   DeviceKernelArguments args(&buffers_->buffer.device_pointer,
                              &effective_buffer_params_.full_x,
@@ -1058,7 +1064,7 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
                              &effective_buffer_params_.width,
                              &effective_buffer_params_.height,
                              &threshold,
-                             &reset,
+                             &reset_int,
                              &effective_buffer_params_.offset,
                              &effective_buffer_params_.stride,
                              &num_active_pixels.device_pointer);

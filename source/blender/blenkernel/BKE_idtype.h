@@ -65,7 +65,7 @@ bool BKE_idtype_cache_key_cmp(const void *key_a_v, const void *key_b_v);
 
 typedef void (*IDTypeInitDataFunction)(struct ID *id);
 
-/** \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more). */
+/** \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more). */
 typedef void (*IDTypeCopyDataFunction)(struct Main *bmain,
                                        struct ID *id_dst,
                                        const struct ID *id_src,
@@ -73,7 +73,7 @@ typedef void (*IDTypeCopyDataFunction)(struct Main *bmain,
 
 typedef void (*IDTypeFreeDataFunction)(struct ID *id);
 
-/** \param flags: See BKE_lib_id.h's LIB_ID_MAKELOCAL_... flags. */
+/** \param flags: See BKE_lib_id.hh's LIB_ID_MAKELOCAL_... flags. */
 typedef void (*IDTypeMakeLocalFunction)(struct Main *bmain, struct ID *id, int flags);
 
 typedef void (*IDTypeForeachIDFunction)(struct ID *id, struct LibraryForeachIDData *data);
@@ -155,8 +155,8 @@ typedef struct IDTypeInfo {
   IDTypeInitDataFunction init_data;
 
   /**
-   * Copy the given data-block's data from source to destination. May be NULL if mere memcopy of
-   * the ID struct itself is enough.
+   * Copy the given data-block's data from source to destination.
+   * May be NULL if mere memory-copy of the ID struct itself is enough.
    */
   IDTypeCopyDataFunction copy_data;
 
@@ -208,7 +208,7 @@ typedef struct IDTypeInfo {
    * Used to do some validation and/or complex processing on the ID after it has been fully read
    * and its ID pointers have been updated to valid values (lib linking process).
    *
-   * Note that this is still called _before_ the `do_versions_after_linking` versionning code.
+   * Note that this is still called _before_ the `do_versions_after_linking` versioning code.
    */
   IDTypeBlendReadAfterLiblinkFunction blend_read_after_liblink;
 

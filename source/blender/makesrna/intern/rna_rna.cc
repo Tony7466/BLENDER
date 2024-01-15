@@ -26,13 +26,13 @@
 
 /* Reuse for dynamic types. */
 
-const EnumPropertyItem DummyRNA_NULL_items[] = {
+const EnumPropertyItem rna_enum_dummy_NULL_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
 /* Reuse for dynamic types with default value. */
 
-const EnumPropertyItem DummyRNA_DEFAULT_items[] = {
+const EnumPropertyItem rna_enum_dummy_DEFAULT_items[] = {
     {0, "DEFAULT", 0, "Default", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -305,7 +305,8 @@ static int rna_idproperty_known(CollectionPropertyIterator *iter, void *data)
     for (prop = static_cast<PropertyRNA *>(ptype->cont.properties.first); prop; prop = prop->next)
     {
       if ((prop->flag_internal & PROP_INTERN_BUILTIN) == 0 &&
-          STREQ(prop->identifier, idprop->name)) {
+          STREQ(prop->identifier, idprop->name))
+      {
         return 1;
       }
     }
@@ -670,7 +671,7 @@ static bool rna_Property_readonly_get(PointerRNA *ptr)
   /* don't use this because it will call functions that check the internal
    * data for introspection we only need to know if it can be edited so the
    * flag is better for this */
-  /*  return RNA_property_editable(ptr, prop); */
+  // return RNA_property_editable(ptr, prop);
   return (prop->flag & PROP_EDITABLE) == 0;
 }
 
@@ -993,7 +994,7 @@ static const EnumPropertyItem *rna_EnumProperty_default_itemf(bContext *C,
 
   /* incompatible default attributes */
   if ((prop_parent->flag & PROP_ENUM_FLAG) != (prop->flag & PROP_ENUM_FLAG)) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   if ((eprop->item_fn == nullptr) || (eprop->item_fn == rna_EnumProperty_default_itemf) ||
@@ -1214,7 +1215,7 @@ static int rna_BlenderRNA_structs_lookup_int(PointerRNA *ptr, int index, Pointer
   StructRNA *srna = static_cast<StructRNA *>(
       index < brna->structs_len ? BLI_findlink(&brna->structs, index) : nullptr);
   if (srna != nullptr) {
-    RNA_pointer_create(nullptr, &RNA_Struct, srna, r_ptr);
+    *r_ptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
     return true;
   }
   else {
@@ -1228,7 +1229,7 @@ static int rna_BlenderRNA_structs_lookup_string(PointerRNA *ptr,
   BlenderRNA *brna = static_cast<BlenderRNA *>(ptr->data);
   StructRNA *srna = static_cast<StructRNA *>(BLI_ghash_lookup(brna->structs_map, (void *)key));
   if (srna != nullptr) {
-    RNA_pointer_create(nullptr, &RNA_Struct, srna, r_ptr);
+    *r_ptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
     return true;
   }
 
@@ -1545,11 +1546,13 @@ static void rna_property_override_diff_propptr(Main *bmain,
                         id_a->name);
             }
             else if (id_a->override_library != nullptr &&
-                     id_a->override_library->reference == id_b) {
+                     id_a->override_library->reference == id_b)
+            {
               opop->flag |= LIBOVERRIDE_OP_FLAG_IDPOINTER_MATCH_REFERENCE;
             }
             else if (id_b->override_library != nullptr &&
-                     id_b->override_library->reference == id_a) {
+                     id_b->override_library->reference == id_a)
+            {
               opop->flag |= LIBOVERRIDE_OP_FLAG_IDPOINTER_MATCH_REFERENCE;
             }
             else {
@@ -1573,7 +1576,8 @@ static void rna_property_override_diff_propptr(Main *bmain,
        * Note that we do not need the RNA path for insertion operations. */
       if (rna_path) {
         if ((rna_itemname_a && !rna_itemname_a->empty()) &&
-            (rna_itemname_b && !rna_itemname_b->empty())) {
+            (rna_itemname_b && !rna_itemname_b->empty()))
+        {
           BLI_assert(*rna_itemname_a == *rna_itemname_b);
 
           char esc_item_name[RNA_PATH_BUFFSIZE];
@@ -3161,7 +3165,7 @@ static void rna_def_property(BlenderRNA *brna)
   prop = RNA_def_property(srna, "is_enum_flag", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_Property_is_enum_flag_get", nullptr);
-  RNA_def_property_ui_text(prop, "Enum Flag", "True when multiple enums ");
+  RNA_def_property_ui_text(prop, "Enum Flag", "True when multiple enums");
 
   prop = RNA_def_property(srna, "is_library_editable", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

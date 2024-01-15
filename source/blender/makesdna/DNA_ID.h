@@ -54,12 +54,25 @@ typedef struct IDPropertyUIData {
   char _pad[4];
 } IDPropertyUIData;
 
+/* DNA version of #EnumPropertyItem. */
+typedef struct IDPropertyUIDataEnumItem {
+  /* Unique identifier, used for string lookup. */
+  char *identifier;
+  /* UI name of the item. */
+  char *name;
+  /* Optional description. */
+  char *description;
+  /* Unique integer value, should never change. */
+  int value;
+  /* Optional icon. */
+  int icon;
+} IDPropertyUIDataEnumItem;
+
 /* IDP_UI_DATA_TYPE_INT */
 typedef struct IDPropertyUIDataInt {
   IDPropertyUIData base;
   int *default_array; /* Only for array properties. */
   int default_array_len;
-  char _pad[4];
 
   int min;
   int max;
@@ -67,6 +80,9 @@ typedef struct IDPropertyUIDataInt {
   int soft_max;
   int step;
   int default_value;
+
+  int enum_items_num;
+  IDPropertyUIDataEnumItem *enum_items;
 } IDPropertyUIDataInt;
 
 /** For #IDP_UI_DATA_TYPE_BOOLEAN Use `int8_t` because DNA does not support `bool`. */
@@ -604,6 +620,10 @@ enum {
   PRV_TAG_DEFFERED_DELETE = (1 << 2),
 };
 
+/**
+ * This type allows shallow copies. Use #BKE_previewimg_free() to release contained resources.
+ * Don't call this for shallow copies (or the original instance will have dangling pointers).
+ */
 typedef struct PreviewImage {
   /* All values of 2 are really NUM_ICON_SIZES */
   unsigned int w[2];
@@ -620,12 +640,17 @@ typedef struct PreviewImage {
   /** Runtime data. */
   short tag;
   char _pad[2];
-} PreviewImage;
 
-#define PRV_DEFERRED_DATA(prv) \
-  (CHECK_TYPE_INLINE(prv, PreviewImage *), \
-   BLI_assert((prv)->tag & PRV_TAG_DEFFERED), \
-   (void *)((prv) + 1))
+#ifdef __cplusplus
+  PreviewImage();
+  /* Shallow copy! Contained data is not copied. */
+  PreviewImage(const PreviewImage &) = default;
+  /* Don't free contained data to allow shallow copies. */
+  ~PreviewImage() = default;
+  /* Shallow copy! Contained data is not copied. */
+  PreviewImage &operator=(const PreviewImage &) = default;
+#endif
+} PreviewImage;
 
 #define ID_FAKE_USERS(id) ((((const ID *)id)->flag & LIB_FAKEUSER) ? 1 : 0)
 #define ID_REAL_USERS(id) (((const ID *)id)->us - ID_FAKE_USERS(id))
@@ -669,9 +694,6 @@ typedef struct PreviewImage {
 #define ID_IS_OVERRIDE_LIBRARY_HIERARCHY_ROOT(_id) \
   (!ID_IS_OVERRIDE_LIBRARY_REAL(_id) || \
    ((ID *)(_id))->override_library->hierarchy_root == ((ID *)(_id)))
-
-#define ID_IS_OVERRIDE_LIBRARY_TEMPLATE(_id) \
-  (((ID *)(_id))->override_library != NULL && ((ID *)(_id))->override_library->reference == NULL)
 
 #define ID_IS_ASSET(_id) (((const ID *)(_id))->asset_data != NULL)
 
@@ -924,7 +946,7 @@ enum {
   LIB_TAG_TEMP_MAIN = 1 << 20,
   /** General ID management info, for freeing or copying behavior e.g. */
   /**
-   * ID is not listed/stored in Main database.
+   * ID is not listed/stored in any #Main database.
    *
    * RESET_NEVER
    */
@@ -1030,7 +1052,7 @@ typedef enum IDRecalcFlag {
   ID_RECALC_ANIMATION = (1 << 2),
 
   /* ** Particle system changed. ** */
-  /* Only do pathcache etc. */
+  /* Only do path-cache etc. */
   ID_RECALC_PSYS_REDO = (1 << 3),
   /* Reset everything including point-cache. */
   ID_RECALC_PSYS_RESET = (1 << 4),
