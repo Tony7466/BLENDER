@@ -1654,6 +1654,7 @@ struct wmOpPopUp {
   int width;
   int height;
   int free_op;
+  std::string text = IFACE_("OK");
 };
 
 /* Only invoked by OK button in popups created with wm_block_dialog_create() */
@@ -1665,7 +1666,7 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
      * In this case, wm_operator_ui_popup_cancel won't run. */
     wmOpPopUp *data = static_cast<wmOpPopUp *>(arg1);
     op = data->op;
-    MEM_freeN(data);
+    MEM_delete(data);
   }
 
   uiBlock *block = static_cast<uiBlock *>(arg2);
@@ -1711,8 +1712,9 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
     uiLayout *col = uiLayoutColumn(layout, false);
     uiBlock *col_block = uiLayoutGetBlock(col);
     /* Create OK button, the callback of which will execute op */
+    const char *ok_text = data->text.c_str();
     uiBut *but = uiDefBut(
-        col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, -30, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+        col_block, UI_BTYPE_BUT, 0, ok_text, 0, -30, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
     UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
     UI_but_func_set(but, dialog_exec_cb, data, col_block);
   }
@@ -1763,7 +1765,7 @@ static void wm_operator_ui_popup_cancel(bContext *C, void *user_data)
     }
   }
 
-  MEM_freeN(data);
+  MEM_delete(data);
 }
 
 static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
@@ -1775,13 +1777,12 @@ static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
     WM_operator_call_ex(C, op, true);
   }
 
-  MEM_freeN(data);
+  MEM_delete(data);
 }
 
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(
-      MEM_callocN(sizeof(wmOpPopUp), "WM_operator_ui_popup"));
+  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
   data->width = width * UI_SCALE_FAC;
   /* Actual used height depends on the content. */
@@ -1849,17 +1850,18 @@ int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent * /*event
   return wm_operator_props_popup_ex(C, op, false, true);
 }
 
-int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width)
+int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width, const char *text)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(
-      MEM_callocN(sizeof(wmOpPopUp), "WM_operator_props_dialog_popup"));
+  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
 
   data->op = op;
   data->width = width * UI_SCALE_FAC;
   /* Actual height depends on the content. */
   data->height = 0;
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
-
+  if (text) {
+    data->text = text;
+  }
   /* op is not executed until popup OK but is clicked */
   UI_popup_block_ex(
       C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);

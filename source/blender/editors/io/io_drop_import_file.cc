@@ -8,6 +8,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_file_handler.hh"
+#include "BKE_idprop.h"
 #include "BKE_screen.hh"
 
 #include "ED_fileselect.hh"
@@ -20,6 +21,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
+#include "RNA_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -131,13 +133,14 @@ struct ImportGroup {
   int active_file_handler = 0;
   std::string label;
   blender::Vector<blender::bke::FileHandlerType *> file_handlers;
-  wmOperator *op;
+  wmOperator *op = nullptr;
 };
 
 struct DropImportData {
   blender::Vector<ImportGroup> import_groups;
   blender::Vector<std::string> paths;
   int count = 0;
+  int active_group = 0;
   ~DropImportData()
   {
     for (auto &import_setting : import_groups) {
@@ -149,18 +152,40 @@ struct DropImportData {
   }
 };
 
-static DropImportData *active_drop_import_data = nullptr;
-
 static void wm_drop_import_file_cancel(bContext * /*C*/, wmOperator *op)
 {
   DropImportData *drop_import_data = static_cast<DropImportData *>(op->customdata);
   MEM_delete(drop_import_data);
   op->customdata = nullptr;
-  active_drop_import_data = nullptr;
 }
 
-static int wm_drop_import_file_exec(bContext * /*C*/, wmOperator *op)
+static int wm_drop_import_file_exec(bContext *C, wmOperator *op)
 {
+  DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
+  for (auto &import_group : drop_import_data.import_groups) {
+    blender::Vector<std::string> paths;
+    for (auto &path : drop_import_data.paths) {
+      const char *extension = BLI_path_extension(path.c_str());
+      if (!extension) {
+        continue;
+      }
+      if (!import_group.extensions.contains(extension)) {
+        continue;
+      }
+      paths.append(path);
+    }
+    while (!paths.is_empty()) {
+      const bool all = file_handler_import_operator_paths_set(*import_group.op->ptr, paths);
+      if (all) {
+        paths.clear();
+      }
+      else {
+        paths.remove(0);
+      }
+      WM_operator_name_call_ptr(
+          C, import_group.op->type, WM_OP_EXEC_DEFAULT, import_group.op->ptr, nullptr);
+    }
+  }
   wm_drop_import_file_cancel(nullptr, op);
   return OPERATOR_FINISHED;
 }
@@ -190,41 +215,9 @@ static void drop_import_file_draw_import_operator(const bContext *C,
   }
 }
 
-static void drop_import_file_exec_import(bContext &C, wmOperator *op)
-{
-  DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
-  for (auto &import_group : drop_import_data.import_groups) {
-    blender::Vector<std::string> paths;
-    for (auto &path : drop_import_data.paths) {
-      const char *extension = BLI_path_extension(path.c_str());
-      if (!extension) {
-        continue;
-      }
-      if (!import_group.extensions.contains(extension)) {
-        continue;
-      }
-      paths.append(path);
-    }
-    while (!paths.is_empty()) {
-      const bool all = file_handler_import_operator_paths_set(*import_group.op->ptr, paths);
-      if (all) {
-        paths.clear();
-      }
-      else {
-        paths.remove(0);
-      }
-      WM_operator_name_call_ptr(
-          &C, import_group.op->type, WM_OP_EXEC_DEFAULT, import_group.op->ptr, nullptr);
-    }
-  }
-  UI_popup_handlers_remove_all(&C, &CTX_wm_window(&C)->modalhandlers);
-}
-
 static void wm_drop_import_file_draw(bContext *C, wmOperator *op)
 {
-  uiItemL(op->layout, op->type->name, ICON_NONE);
   uiLayout *row = uiLayoutRow(op->layout, false);
-
   DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
 
   uiLayout *col = uiLayoutColumn(row, false);
@@ -250,24 +243,36 @@ static void wm_drop_import_file_draw(bContext *C, wmOperator *op)
         TIP_("{} files {}/{}"), group.extensions[idx], group.count[idx], drop_import_data.count);
   }
   uiItemL(uiLayoutBox(box), extension_count.c_str(), ICON_INFO);
+}
 
-  uiBlock *block = uiLayoutGetBlock(uiLayoutRow(op->layout, true));
-  uiBut *but = uiDefBut(block,
-                        UI_BTYPE_BUT,
-                        0,
-                        fmt::format(TIP_("Import {} files"), drop_import_data.count).c_str(),
-                        50,
-                        50,
-                        50,
-                        UI_UNIT_Y,
-                        nullptr,
-                        0,
-                        0,
-                        0,
-                        0,
-                        "");
-  UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
-  UI_but_func_set(but, [op](bContext &C) -> void { drop_import_file_exec_import(C, op); });
+static void wm_drop_import_file_fh_items_set(wmOperator *op)
+{
+  DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
+  PropertyRNA *enum_items_prop = RNA_struct_find_collection_property_check(
+      *op->ptr, "file_handlers", &RNA_OperatorEnumPropertyItem);
+  RNA_property_collection_clear(op->ptr, enum_items_prop);
+  for (const auto *fh :
+       drop_import_data.import_groups[drop_import_data.active_group].file_handlers)
+  {
+    PointerRNA enum_item_ptr{};
+    RNA_property_collection_add(op->ptr, enum_items_prop, &enum_item_ptr);
+    RNA_string_set(&enum_item_ptr, "identifier", fh->idname);
+    RNA_string_set(&enum_item_ptr, "name", fh->label);
+  }
+}
+
+static void wm_drop_import_file_import_groups_items_set(wmOperator *op)
+{
+  DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
+  PropertyRNA *enum_items_prop = RNA_struct_find_collection_property_check(
+      *op->ptr, "import_groups", &RNA_OperatorEnumPropertyItem);
+  RNA_property_collection_clear(op->ptr, enum_items_prop);
+  for (auto &group : drop_import_data.import_groups) {
+    PointerRNA enum_item_ptr{};
+    RNA_property_collection_add(op->ptr, enum_items_prop, &enum_item_ptr);
+    RNA_string_set(&enum_item_ptr, "identifier", group.extensions[0].c_str());
+    RNA_string_set(&enum_item_ptr, "name", group.label.c_str());
+  }
 }
 
 static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
@@ -282,7 +287,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
   }
 
   DropImportData *drop_import_data = MEM_new<DropImportData>(__func__);
-  op->customdata = active_drop_import_data = drop_import_data;
+  op->customdata = drop_import_data;
   drop_import_data->paths = paths;
 
   for (const std::string &path : paths) {
@@ -349,80 +354,86 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
       group.label += extension;
     }
   }
-  return WM_operator_ui_popup(C, op, 400);
+  /* Load runtime enums. */
+  wm_drop_import_file_import_groups_items_set(op);
+  wm_drop_import_file_fh_items_set(op);
+
+  return WM_operator_props_dialog_popup(
+      C, op, 400, fmt::format(TIP_("Import {} files"), drop_import_data->count).c_str());
 }
 
-const EnumPropertyItem *RNA_file_hadler_for_drop_itemf(bContext * /*C*/,
-                                                       PointerRNA *ptr,
-                                                       PropertyRNA * /*prop*/,
-                                                       bool *r_free)
+static const EnumPropertyItem *enum_prop_itemf(PointerRNA *ptr, const char *name)
 {
-  int group = RNA_enum_get(ptr, "import_group");
+  PropertyRNA *enum_items_prop = RNA_struct_find_collection_property_check(
+      *ptr, name, &RNA_OperatorEnumPropertyItem);
+  int enum_items_len = RNA_property_collection_length(ptr, enum_items_prop);
 
-  int totitem = 0;
-  int i = 0;
   EnumPropertyItem *item = nullptr;
-  for (auto fh : active_drop_import_data->import_groups[group].file_handlers) {
+  int totitem = 0;
+
+  for (int i = 0; i < enum_items_len; i++) {
+    PointerRNA enum_item_ptr;
+    RNA_property_collection_lookup_int(ptr, enum_items_prop, i, &enum_item_ptr);
+    IDProperty *enum_item_prop = RNA_struct_idprops(&enum_item_ptr, false);
+    IDProperty *identifier_prop = IDP_GetPropertyFromGroup(enum_item_prop, "identifier");
+    IDProperty *name_prop = IDP_GetPropertyFromGroup(enum_item_prop, "name");
+
     EnumPropertyItem item_tmp = {0};
-    item_tmp.identifier = fh->idname;
-    item_tmp.name = fh->label;
-    item_tmp.value = i++;
+    item_tmp.identifier = IDP_String(identifier_prop);
+    item_tmp.name = IDP_String(name_prop);
+    item_tmp.value = i;
     RNA_enum_item_add(&item, &totitem, &item_tmp);
   }
   RNA_enum_item_end(&item, &totitem);
+  return item;
+}
+
+static const EnumPropertyItem *RNA_file_hadler_itemf(bContext * /*C*/,
+                                                     PointerRNA *ptr,
+                                                     PropertyRNA * /*prop*/,
+                                                     bool *r_free)
+{
+  const EnumPropertyItem *item = enum_prop_itemf(ptr, "file_handlers");
   *r_free = true;
   return item;
 }
 
-const EnumPropertyItem *RNA_import_group_itemf(bContext *C,
-                                               PointerRNA * /*ptr*/,
-                                               PropertyRNA * /*prop*/,
-                                               bool *r_free)
+static const EnumPropertyItem *RNA_import_group_itemf(bContext * /*C*/,
+                                                      PointerRNA *ptr,
+                                                      PropertyRNA * /*prop*/,
+                                                      bool *r_free)
 {
-  auto fhs = drop_import_file_poll_file_handlers(
-      C, active_drop_import_data->paths.as_span(), false);
-
-  int totitem = 0;
-  int i = 0;
-  EnumPropertyItem *item = nullptr;
-  for (auto &import_group : active_drop_import_data->import_groups) {
-    EnumPropertyItem item_tmp = {0};
-    item_tmp.identifier = import_group.extensions[0].c_str();
-    item_tmp.name = import_group.label.c_str();
-    item_tmp.value = i++;
-    RNA_enum_item_add(&item, &totitem, &item_tmp);
-  }
-  RNA_enum_item_end(&item, &totitem);
+  const EnumPropertyItem *item = enum_prop_itemf(ptr, "import_groups");
   *r_free = true;
   return item;
 }
 
-static void drop_import_file_handler_update(bContext *C, PointerRNA *ptr, PropertyRNA * /*prop*/)
+static bool wm_drop_import_file_check(bContext *C, wmOperator *op)
 {
-  const int group = RNA_enum_get(ptr, "import_group");
-  DropImportData &drop_import_data = *active_drop_import_data;
-  ImportGroup &import_group = drop_import_data.import_groups[group];
-
-  const int active_file_handler = RNA_enum_get(ptr, "file_handler");
-  /* Remove previously selected operator in the import group. */
-  import_group.active_file_handler = active_file_handler;
-  WM_operator_free(import_group.op);
-  /* Set selected file handler operator in the import group. */
-  import_group.op = wm_operator_create(
-      CTX_wm_manager(C),
-      WM_operatortype_find(import_group.file_handlers[active_file_handler]->import_operator,
-                           false),
-      nullptr,
-      CTX_wm_reports(C));
-  WM_operator_last_properties_init(import_group.op);
-}
-
-static void drop_import_group_update(bContext * /*C*/, PointerRNA *ptr, PropertyRNA * /*prop*/)
-{
-  const int group = RNA_enum_get(ptr, "import_group");
-  DropImportData &drop_import_data = *active_drop_import_data;
-  ImportGroup &import_group = drop_import_data.import_groups[group];
-  RNA_enum_set(ptr, "file_handler", import_group.active_file_handler);
+  const int group = RNA_enum_get(op->ptr, "import_group");
+  DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
+  if (drop_import_data.active_group != group) {
+    drop_import_data.active_group = group;
+    RNA_enum_set(
+        op->ptr, "file_handler", drop_import_data.import_groups[group].active_file_handler);
+    wm_drop_import_file_fh_items_set(op);
+    return true;
+  }
+  const int active_file_handler = RNA_enum_get(op->ptr, "file_handler");
+  if (active_file_handler != drop_import_data.import_groups[group].active_file_handler) {
+    ImportGroup &import_group = drop_import_data.import_groups[group];
+    drop_import_data.import_groups[group].active_file_handler = active_file_handler;
+    WM_operator_free(import_group.op);
+    /* Set selected file handler operator in the import group. */
+    import_group.op = wm_operator_create(
+        CTX_wm_manager(C),
+        WM_operatortype_find(import_group.file_handlers[active_file_handler]->import_operator,
+                             false),
+        nullptr,
+        CTX_wm_reports(C));
+    WM_operator_last_properties_init(import_group.op);
+  }
+  return false;
 }
 
 void WM_OT_drop_import_file(wmOperatorType *ot)
@@ -435,6 +446,7 @@ void WM_OT_drop_import_file(wmOperatorType *ot)
   ot->ui = wm_drop_import_file_draw;
   ot->cancel = wm_drop_import_file_cancel;
   ot->invoke = wm_drop_import_file_invoke;
+  ot->check = wm_drop_import_file_check;
 
   PropertyRNA *prop;
 
@@ -445,18 +457,24 @@ void WM_OT_drop_import_file(wmOperatorType *ot)
   prop = RNA_def_collection_runtime(ot->srna, "files", &RNA_OperatorFileListElement, "Files", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
+  prop = RNA_def_collection_runtime(
+      ot->srna, "file_handlers", &RNA_OperatorEnumPropertyItem, "File Handlers", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_collection_runtime(
+      ot->srna, "import_groups", &RNA_OperatorEnumPropertyItem, "Import groups", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
   prop = RNA_def_enum(ot->srna, "file_handler", rna_enum_dummy_NULL_items, 0, "File Handler", "");
-  RNA_def_enum_funcs(prop, RNA_file_hadler_for_drop_itemf);
-  RNA_def_property_update_runtime_with_context_and_property(prop, drop_import_file_handler_update);
+  RNA_def_enum_funcs(prop, RNA_file_hadler_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(ot->srna, "import_group", rna_enum_dummy_NULL_items, 0, "Import Group", "");
   RNA_def_enum_funcs(prop, RNA_import_group_itemf);
-  RNA_def_property_update_runtime_with_context_and_property(prop, drop_import_group_update);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
-void drop_import_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void drop_import_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   const auto paths = WM_drag_get_paths(drag);
 
@@ -465,9 +483,10 @@ void drop_import_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
   RNA_string_set(drop->ptr, "directory", dir);
 
   RNA_collection_clear(drop->ptr, "files");
-  for (const int64_t idx : paths.index_range()) {
+  for (const auto &path : paths) {
     char file[FILE_MAX];
-    BLI_path_split_file_part(paths[idx].c_str(), file, sizeof(file));
+    BLI_path_split_file_part(path.c_str(), file, sizeof(file));
+
     PointerRNA itemptr{};
     RNA_collection_add(drop->ptr, "files", &itemptr);
     RNA_string_set(&itemptr, "name", file);
