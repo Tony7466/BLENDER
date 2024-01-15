@@ -602,10 +602,8 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "NOD_common.h"
 #  include "NOD_composite.hh"
 #  include "NOD_geometry.hh"
-#  include "NOD_node_declaration.hh"
 #  include "NOD_shader.h"
 #  include "NOD_socket.hh"
-#  include "NOD_socket_declarations.hh"
 #  include "NOD_socket_items.hh"
 #  include "NOD_texture.h"
 #  include "NOD_zone_socket_items.hh"
@@ -2517,43 +2515,15 @@ static void rna_NodeInternal_update(ID *id, bNode *node, Main *bmain)
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
-static void rna_NodeInternal_draw_panel_buttons(ID *id, bNode *node, bContext *C, uiLayout *layout)
-{
-  using blender::nodes::ItemDeclarationPtr;
-  using blender::nodes::NodeDeclaration;
-  using blender::nodes::PanelDeclaration;
-
-  if (!node->declaration()) {
-    return;
-  }
-
-  PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
-  for (const ItemDeclarationPtr &item_decl : node->declaration()->items) {
-    if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
-            item_decl.get()))
-    {
-      if (panel_decl->draw_buttons) {
-        panel_decl->draw_buttons(layout, C, &ptr);
-      }
-    }
-  }
-}
-
-static void rna_NodeInternal_draw_buttons(
-    ID *id, bNode *node, bContext *C, uiLayout *layout, bool draw_panel_buttons)
+static void rna_NodeInternal_draw_buttons(ID *id, bNode *node, bContext *C, uiLayout *layout)
 {
   if (node->typeinfo->draw_buttons) {
     PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
     node->typeinfo->draw_buttons(layout, C, &ptr);
   }
-
-  if (draw_panel_buttons) {
-    rna_NodeInternal_draw_panel_buttons(id, node, C, layout);
-  }
 }
 
-static void rna_NodeInternal_draw_buttons_ext(
-    ID *id, bNode *node, bContext *C, uiLayout *layout, bool draw_panel_buttons)
+static void rna_NodeInternal_draw_buttons_ext(ID *id, bNode *node, bContext *C, uiLayout *layout)
 {
   if (node->typeinfo->draw_buttons_ex) {
     PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
@@ -2562,10 +2532,6 @@ static void rna_NodeInternal_draw_buttons_ext(
   else if (node->typeinfo->draw_buttons) {
     PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
     node->typeinfo->draw_buttons(layout, C, &ptr);
-  }
-
-  if (draw_panel_buttons) {
-    rna_NodeInternal_draw_panel_buttons(id, node, C, layout);
   }
 }
 
@@ -9640,10 +9606,6 @@ static void rna_def_internal_node(BlenderRNA *brna)
   RNA_def_property_struct_type(parm, "UILayout");
   RNA_def_property_ui_text(parm, "Layout", "Layout in the UI");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_property(func, "draw_panel_buttons", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(parm, false);
-  RNA_def_property_ui_text(
-      parm, "Draw Panel Buttons", "Draw buttons from panels as well as top-level buttons");
 
   /* draw buttons extended */
   func = RNA_def_function(srna, "draw_buttons_ext", "rna_NodeInternal_draw_buttons_ext");
@@ -9655,10 +9617,6 @@ static void rna_def_internal_node(BlenderRNA *brna)
   RNA_def_property_struct_type(parm, "UILayout");
   RNA_def_property_ui_text(parm, "Layout", "Layout in the UI");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_property(func, "draw_panel_buttons", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(parm, false);
-  RNA_def_property_ui_text(
-      parm, "Draw Panel Buttons", "Draw buttons from panels as well as top-level buttons");
 }
 
 static void rna_def_node_sockets_api(BlenderRNA *brna, PropertyRNA *cprop, int in_out)
