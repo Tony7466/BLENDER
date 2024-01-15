@@ -75,6 +75,7 @@ void VKStateManager::texture_unbind(Texture *tex)
 void VKStateManager::texture_unbind_all()
 {
   textures_.unbind_all();
+  input_attachments_.unbind_all();
 }
 
 void VKStateManager::input_attachment_bind(Texture *tex, int unit)

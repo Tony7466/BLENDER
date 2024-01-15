@@ -1116,10 +1116,6 @@ void VKFrameBuffer::submit(VKCommandBuffers &command_buffers)
 {
   if (is_subpass_continue()) {
     command_buffers.next_subpass();
-    if (subpass_current_ == 1) {
-      VKContext::get()->state_manager_get().image_unbind_all();
-      VKContext::get()->state_manager_get().input_attachment_unbind_all();
-    }
     subpass_current_++;
   }
   else {
