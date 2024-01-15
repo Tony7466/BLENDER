@@ -7204,11 +7204,8 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *
   UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
 
   if (!BLI_exists(path)) {
-    UI_tooltip_text_field_add(tip,
-                              BLI_strdup(N_("File Not Found")),
-                              nullptr,
-                              UI_TIP_STYLE_NORMAL,
-                              UI_TIP_LC_ALERT);
+    UI_tooltip_text_field_add(
+        tip, BLI_strdup(N_("File Not Found")), nullptr, UI_TIP_STYLE_NORMAL, UI_TIP_LC_ALERT);
     return;
   }
 
