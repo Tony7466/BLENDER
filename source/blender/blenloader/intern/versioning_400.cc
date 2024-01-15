@@ -1477,8 +1477,10 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
   }
 }
 
-/* Original node tree interface conversion in did not convert socket idnames with subtype suffixes
- * to correct socket base types (see #versioning_convert_node_tree_socket_lists_to_interface). */
+/**
+ * Original node tree interface conversion in did not convert socket idnames with subtype suffixes
+ * to correct socket base types (see #versioning_convert_node_tree_socket_lists_to_interface).
+ */
 static void versioning_fix_socket_subtype_idnames(bNodeTree *ntree)
 {
   bNodeTreeInterface &tree_interface = ntree->tree_interface;
