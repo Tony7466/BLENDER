@@ -1801,15 +1801,8 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   Layer *layer_dst = nullptr;
   int layer_index = RNA_int_get(op->ptr, "layer");
-  /*const bool use_autolock = bool(grease_pencil.flag & GP_DATA_AUTOLOCK_LAYERS);*/
-  /*const bool is_multiedit = bool(GREASE_PENCIL_MULTIEDIT_SESSIONS_ON(grease_pencil));*/
 
   printf("Layer index: %d \n", layer_index);
-
-  /* If autolock enabled, disabled now. */
-  /*if (use_autolock) {
-    grease_pencil.flag &= ~GP_DATA_AUTOLOCK_LAYERS;
-  }*/
 
   if (layer_index > -1) {
     /* get layer by index */
@@ -1830,10 +1823,6 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   }
 
   if (layer_dst == nullptr) {
-    ///* back autolock status */
-    // if (use_autolock) {
-    //   gpd->flag |= GP_DATA_AUTOLOCK_LAYERS;
-    // }
     BKE_reportf(op->reports, RPT_ERROR, "There is no layer number %d", layer_index);
     return OPERATOR_CANCELLED;
   }
@@ -1843,6 +1832,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   for (const MutableDrawingInfo &info : drawings_src) {
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
+    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves_src, memory);
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
     if (selected_points.is_empty()) {
       continue;
@@ -1861,16 +1851,23 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     }
 
     /* TODO: For existing Layers Copy the strokes to new CurvesGeometry. */
+    Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
+    int p_src = drawing_dst.geometry.point_num;
+    int c_src = drawing_dst.geometry.curve_num;
+    int p_dst = selected_points.size();
+    int c_dst = selected_curves.size();
+    int points_num = p_src + p_dst;
+    int curves_num = c_src + c_dst;
+    drawing_dst.tag_topology_changed();
 
     info.drawing.tag_topology_changed();
 
     changed = true;
   };
 
-  /* back autolock status */
-  /*if (use_autolock) {
-    gpd->flag |= GP_DATA_AUTOLOCK_LAYERS;
-  }*/
+  if (changed == true) {
+    /* curves_src.resize(points_num, curves_num);*/
+  }
 
   /* updates */
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
