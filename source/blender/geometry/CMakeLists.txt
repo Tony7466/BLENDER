@@ -38,6 +38,7 @@ set(SRC
   intern/reverse_uv_sampler.cc
   intern/set_curve_type.cc
   intern/subdivide_curves.cc
+  intern/stretch_curves.cc
   intern/trim_curves.cc
   intern/uv_pack.cc
   intern/uv_parametrizer.cc
@@ -65,6 +66,7 @@ set(SRC
   GEO_reverse_uv_sampler.hh
   GEO_set_curve_type.hh
   GEO_subdivide_curves.hh
+  GEO_stretch_curves.hh
   GEO_trim_curves.hh
   GEO_uv_pack.hh
   GEO_uv_parametrizer.hh

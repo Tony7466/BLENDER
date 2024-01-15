@@ -47,6 +47,9 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
+#include "GEO_stretch_curves.hh"
+
+using namespace blender;
 
 static void init_data(ModifierData *md)
 {
@@ -82,6 +85,32 @@ static void modify_geometry_set(ModifierData *md,
 {
     GreasePencil *gp=geometry_set->get_grease_pencil_for_write();
     if (!gp){ return; }
+
+    Scene* scene = DEG_get_evaluated_scene(ctx->depsgraph);
+    
+    const Array<ed::greasepencil::MutableDrawingInfo> drawings = ed::greasepencil::retrieve_editable_drawings(*scene, *gp);
+    threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
+        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+        if (curves.points_num() == 0) {
+            return;
+        }
+
+        const int cnum = curves.curves_num();
+        const VArray<bool> all_true=VArray<bool>::ForSingle(true,cnum);
+        IndexMaskMemory memory;
+        IndexMask selection(cnum); selection.from_bools(all_true,memory);
+
+        curves = blender::geometry::stretch_curves(curves,selection,
+            std::move(VArray<float>::ForSingle(1.0,cnum)),std::move(VArray<float>::ForSingle(1.0,cnum)),
+            std::move(VArray<float>::ForSingle(1.0,cnum)),std::move(VArray<float>::ForSingle(1.0,cnum)),
+            std::move(VArray<bool>::ForSingle(true,cnum)),std::move(VArray<int>::ForSingle(10,cnum)),
+            std::move(VArray<float>::ForSingle(1.0,cnum)),std::move(VArray<float>::ForSingle(1.0,cnum)),
+            std::move(VArray<bool>::ForSingle(false,cnum)),{});
+
+        curves.tag_topology_changed();
+        DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
+    });
+
 
 }
 

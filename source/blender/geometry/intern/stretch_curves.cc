@@ -15,7 +15,7 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_geometry_set.hh"
 
-#include "GEO_trim_curves.hh"
+#include "GEO_stretch_curves.hh"
 
 namespace blender::geometry {
 
@@ -51,13 +51,13 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
     }
     const int do_start = (start_lengths[curve]>0)?1:0;
     const int do_end = (end_lengths[curve]>0)?1:0;
-    dst_point_counts[curve]+=extra_point_count_per_side * do_start;
-    dst_point_counts[curve]+=extra_point_count_per_side * do_end;
+    dst_point_counts[curve]+=extra_point_count_per_side[curve] * do_start;
+    dst_point_counts[curve]+=extra_point_count_per_side[curve] * do_end;
     do_starts[curve]=do_start;
     do_ends[curve]=do_end;
   }
-  offset_indices::accumulate_counts_to_offsets(dst_point_counts.as_mutable_span());
-  int target_point_count = dst_point_counts.last();
+  OffsetIndices<int> dst_point_offsets = offset_indices::accumulate_counts_to_offsets(dst_point_counts.as_mutable_span());
+  int target_point_count = dst_point_offsets.total_size();
 
   /* Make dest to source map for points. */
   Array<int> dst_to_src_point(target_point_count);
@@ -67,13 +67,13 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
     MutableSpan<int> new_points = dst_to_src_point.as_mutable_span().slice(
       dst_point_counts[curve], dst_point_counts[curve+1]-dst_point_counts[curve]);
     if(do_starts[curve]){
-      MutableSpan<int> start_points = new_points.slice(0,extra_point_count_per_side);
+      MutableSpan<int> start_points = new_points.slice(0,extra_point_count_per_side[curve]);
       start_points.fill(points_by_curve[curve].first());
-      local_front = extra_point_count_per_side;
+      local_front = extra_point_count_per_side[curve];
     }
     if(do_ends[curve]){
       MutableSpan<int> end_points = new_points.slice(
-        new_points.size()-extra_point_count_per_side,extra_point_count_per_side);
+        new_points.size()-extra_point_count_per_side[curve],extra_point_count_per_side[curve]);
       end_points.fill(points_by_curve[curve].last());
     }
     MutableSpan<int> original_points = new_points.slice(local_front, point_count);
@@ -106,13 +106,14 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
 
   dst_curves.update_curve_types();
   dst_curves.remove_attributes_based_on_types();
+  dst_curves.tag_topology_changed();
 
 
   // TODO:
   /*
     Actually modify point positions to get the stroke stretch effect.
   */
-  return src_curves;
+  return dst_curves;
 }
 
 }  // namespace blender::geometry
