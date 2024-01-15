@@ -2,3 +2,4 @@ Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
 Referenced by issue #102257, Regression: Crash when making an Object as Effector set to Guide and trying to scrub the timeline.
 Referenced by issue #106425, Regression: Guiding in manta is broken
 Referenced by pull request #117067, Fix #106425: Mantaflow guiding with domains is broken
+Referenced by commit 4da32e933443c1f7b02c2eb064b77c060c33658c, Fix #106425: Mantaflow guiding with domains is broken
