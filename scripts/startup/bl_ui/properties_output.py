@@ -626,7 +626,7 @@ def translation_update(_):
     """
     RENDER_PT_format._frame_rate_args_prev = None
 
-bpy.app.handlers.translation_update_post.append(translation_update)
+bpy.app.handlers.translation_change_post.append(translation_update)
 
 
 if __name__ == "__main__":  # only for live edit.
