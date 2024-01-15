@@ -27,6 +27,11 @@ namespace blender::bke {
 
 CurveComponent::CurveComponent() : GeometryComponent(Type::Curve) {}
 
+CurveComponent::CurveComponent(Curves *curve, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::Curve), curves_(curve), ownership_(ownership)
+{
+}
+
 CurveComponent::~CurveComponent()
 {
   this->clear();
@@ -402,7 +407,8 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     int index;
     bDeformGroup *group;
     if (!BKE_defgroup_listbase_name_find(
-            &curves->vertex_group_names, name.c_str(), &index, &group)) {
+            &curves->vertex_group_names, name.c_str(), &index, &group))
+    {
       return false;
     }
     BLI_remlink(&curves->vertex_group_names, group);
