@@ -208,20 +208,23 @@ GHOST_IWindow *GHOST_System::getWindowUnderCursor(int32_t x, int32_t y)
    * a custom version of this function that properly considers z-order. */
 
   std::vector<GHOST_IWindow *> windows = m_windowManager->getWindows();
-  std::vector<GHOST_IWindow *>::reverse_iterator iwindow;
+  std::vector<GHOST_IWindow *>::reverse_iterator iwindow_iter;
 
   /* Search through the windows in reverse order because in most cases
    * the window that is on top was created after those that are below it. */
 
-  for (iwindow = windows.rbegin(); iwindow != windows.rend(); ++iwindow) {
-    if ((*iwindow)->getState() == GHOST_kWindowStateMinimized) {
+  for (iwindow_iter = windows.rbegin(); iwindow_iter != windows.rend(); ++iwindow_iter) {
+
+    GHOST_IWindow *win = *iwindow_iter;
+
+    if (win->getState() == GHOST_kWindowStateMinimized) {
       continue;
     }
 
     GHOST_Rect bounds;
-    (*iwindow)->getClientBounds(bounds);
+    win->getClientBounds(bounds);
     if (bounds.isInside(x, y)) {
-      return (*iwindow);
+      return win;
     }
   }
 
