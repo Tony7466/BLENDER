@@ -168,9 +168,11 @@ void FrameBuffer::load_store_config_array(const GPULoadStore *load_store_actions
     BLI_assert(depth_action.load_action == GPU_LOADACTION_DONT_CARE &&
                depth_action.store_action == GPU_STOREACTION_DONT_CARE);
   }
+
   if (this->attachments_[GPU_FB_DEPTH_STENCIL_ATTACHMENT].tex) {
     this->attachment_set_loadstore_op(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_action);
   }
+
   if (this->attachments_[GPU_FB_DEPTH_ATTACHMENT].tex) {
     this->attachment_set_loadstore_op(GPU_FB_DEPTH_ATTACHMENT, depth_action);
   }
