@@ -76,7 +76,7 @@ ENUM_OPERATORS(eGPUSamplerFormat, GPU_SAMPLER_TYPE_UINT)
 
 /* Maximum number of FBOs a texture can be attached to. */
 #define GPU_TEX_MAX_FBO_ATTACHED 32
-#define GPU_TEX_MAX_SUBPASS 3
+#define GPU_TEX_MAX_SUBPASS 8
 
 /**
  * Add a flag to set the Vulkan subpass. Assume that each subpass has eight color attachments , and

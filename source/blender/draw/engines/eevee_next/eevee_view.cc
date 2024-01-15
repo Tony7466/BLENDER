@@ -72,7 +72,7 @@ void ShadingView::sync()
   main_view_.sync(viewmat, winmat);
 }
 
-void ShadingView::render()
+void ShadingView::render(int closure_count)
 {
   if (!is_enabled_) {
     return;
@@ -101,13 +101,16 @@ void ShadingView::render()
                inst_.pipelines.deferred.normal_layer_count());
   GPU_texture_subpass_write_bits(rbufs.combined_tx, 0, 0);
   GPU_texture_subpass_write_bits(gbuf.header_tx, 0, 1);
-  GPU_texture_subpass_read_bits(gbuf.header_tx, 0b110);
   GPU_texture_subpass_write_bits(gbuf.normal_tx.layer_view(0), 0, 2);
   GPU_texture_subpass_write_bits(gbuf.closure_tx.layer_view(0), 0, 3);
   GPU_texture_subpass_write_bits(gbuf.closure_tx.layer_view(1), 0, 4);
   GPU_texture_subpass_write_bits(rbufs.depth_tx, 0, 0);
-  GPU_texture_subpass_write_bits(rbufs.depth_tx, 1, 0);
-  GPU_texture_subpass_write_bits(rbufs.depth_tx, 2, 0);
+  int closure_read_bits = 0;
+  for (int i = 1; i <= closure_count; i++) {
+    GPU_texture_subpass_write_bits(rbufs.depth_tx, i, 0);
+    closure_read_bits |= (1 << i);
+  }
+  GPU_texture_subpass_read_bits(gbuf.header_tx, closure_read_bits);
   gbuffer_fb_.ensure(GPU_ATTACHMENT_TEXTURE(rbufs.depth_tx),
                      GPU_ATTACHMENT_TEXTURE(rbufs.combined_tx),
                      GPU_ATTACHMENT_TEXTURE(gbuf.header_tx),

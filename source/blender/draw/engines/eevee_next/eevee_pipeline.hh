@@ -317,6 +317,11 @@ class DeferredPipeline {
     return max_ii(opaque_layer_.closure_layer_count(), refraction_layer_.closure_layer_count());
   }
 
+  int closure_count_get() const
+  {
+    return opaque_layer_.closure_count_;
+  };
+
   /* Return the maximum amount of gbuffer layer needed. */
   int normal_layer_count() const
   {
@@ -677,6 +682,9 @@ class UtilityTexture : public Texture {
  * \{ */
 
 class PipelineModule {
+ private:
+  int closure_count_ = 0;
+
  public:
   BackgroundPipeline background;
   WorldPipeline world;
@@ -768,8 +776,11 @@ class PipelineModule {
       case MAT_PIPE_PREPASS_FORWARD_VELOCITY:
         return forward.prepass_opaque_add(blender_mat, gpumat, true);
 
-      case MAT_PIPE_DEFERRED:
-        return deferred.material_add(blender_mat, gpumat);
+      case MAT_PIPE_DEFERRED: {	        
+        PassMain::Sub *res = deferred.material_add(blender_mat, gpumat);
+        closure_count_ = deferred.closure_count_get();
+        return res;
+      }
       case MAT_PIPE_FORWARD:
         return forward.material_opaque_add(blender_mat, gpumat);
       case MAT_PIPE_SHADOW:
@@ -789,6 +800,12 @@ class PipelineModule {
     }
     return nullptr;
   }
+  
+  int closure_count_get() const
+  {
+    return closure_count_;
+  };
+  
 };
 
 /** \} */

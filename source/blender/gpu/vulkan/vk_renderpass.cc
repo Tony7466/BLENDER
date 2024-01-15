@@ -684,14 +684,16 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
       }
     }
     VKSubpassDependency subpass_dep;
-    dependencies.append(subpass_dep.depth_to_depth(1, 2));
-    dependencies.append(subpass_dep.write_to_read(1, 2));
-    dependencies.append(subpass_dep.write_to_read2(1, 2));
+    for (int i = 1; i < vk_create_info_[info_id_].subpassCount - 1; i++) {
+        dependencies.append(subpass_dep.depth_to_depth(i, i + 1));
+        dependencies.append(subpass_dep.write_to_read(i, i + 1));
+        dependencies.append(subpass_dep.write_to_read2(i, i + 1));
+    }
   }
   vk_create_info_[info_id_].dependencyCount = dependencies.size();
   vk_create_info_[info_id_].pDependencies = dependencies.data();
   vk_create_info_[info_id_].pSubpasses = subpasses;
-
+  dirty_ = true;
   create();
   for (int view_order = 0; view_order < N; view_order++) {
     int type = attachments_.type_get(view_order, info_id_);
