@@ -689,6 +689,7 @@ static void print_help(bArgs *ba, bool all)
   PRINT("\n");
   PRINT("GPU Options:\n");
   BLI_args_print_arg_doc(ba, "--gpu-backend");
+  BLI_args_print_arg_doc(ba, "--profile-gpu");
 
   PRINT("\n");
   PRINT("Misc Options:\n");
@@ -2160,6 +2161,23 @@ static int arg_handle_addons_set(int argc, const char **argv, void *data)
   return 0;
 }
 
+static const char arg_handle_profile_gpu_set_doc[] =
+    "<profile level> (optional)\n"
+    "\tEnable GPU debug-group performance profiling. Higher levels provide more detail.";
+static int arg_handle_profile_gpu_set(int argc, const char **argv, void * /*data*/)
+{
+  G.profile_gpu_level = INT_MAX;
+  if (argc > 1) {
+    const char *err_msg = nullptr;
+    if (!parse_int(argv[1], nullptr, &G.profile_gpu_level, &err_msg)) {
+      fprintf(stderr, "\nError: %s '%s %s'.\n", err_msg, "--profile-gpu", argv[1]);
+    }
+    return 1;
+  }
+
+  return 0;
+}
+
 /**
  * Implementation for #arg_handle_load_last_file, also used by `--open-last`.
  * \return true on success.
@@ -2317,6 +2335,7 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
   /* GPU backend selection should be part of #ARG_PASS_ENVIRONMENT for correct GPU context
    * selection for animation player. */
   BLI_args_add(ba, nullptr, "--gpu-backend", CB_ALL(arg_handle_gpu_backend_set), nullptr);
+  BLI_args_add(ba, nullptr, "--profile-gpu", CB(arg_handle_profile_gpu_set), nullptr);
 
   /* Pass: Background Mode & Settings
    *

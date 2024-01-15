@@ -162,6 +162,8 @@ typedef struct Global {
   bool opengl_deprecation_usage_detected;
   const char *opengl_deprecation_usage_filename;
   int opengl_deprecation_usage_lineno;
+
+  int profile_gpu_level;
 } Global;
 
 /* **************** GLOBAL ********************* */
