@@ -250,6 +250,33 @@ inline BooleanMix booleans_mix_calc(const VArray<bool> &varray)
 }
 
 /**
+ * Finds all the index ranges for consecutive values in \a span.
+ */
+template<typename T> inline Vector<IndexRange> to_ranges(const Span<T> span)
+{
+  if (span.is_empty()) {
+    return Vector<IndexRange>();
+  }
+  Vector<IndexRange> ranges;
+  int64_t length = 1;
+  int64_t last = 1;
+  for (const int64_t i : span.index_range().drop_front(1)) {
+    if (span[i - 1] == span[last] && span[i] != span[last]) {
+      ranges.append(IndexRange(i - length, length));
+      length = 1;
+      last = i;
+    }
+    else if (span[i] == span[last]) {
+      length++;
+    }
+  }
+  if (length > 0) {
+    ranges.append(IndexRange(span.size() - length, length));
+  }
+  return ranges;
+}
+
+/**
  * Finds all the index ranges for which consecutive values in \a span equal \a value.
  */
 template<typename T> inline Vector<IndexRange> find_all_ranges(const Span<T> span, const T &value)

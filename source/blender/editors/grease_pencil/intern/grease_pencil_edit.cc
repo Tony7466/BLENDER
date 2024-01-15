@@ -593,33 +593,6 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 /** \name Split Stroke Operator
  * \{ */
 
-/**
- * Finds all the index ranges for consecutive values in \a span.
- */
-template<typename T> inline Vector<IndexRange> to_ranges(const Span<T> span)
-{
-  if (span.is_empty()) {
-    return Vector<IndexRange>();
-  }
-  Vector<IndexRange> ranges;
-  int64_t length = 1;
-  int64_t last = 1;
-  for (const int64_t i : span.index_range().drop_front(1)) {
-    if (span[i - 1] == span[last] && span[i] != span[last]) {
-      ranges.append(IndexRange(i - length, length));
-      length = 1;
-      last = i;
-    }
-    else if (span[i] == span[last]) {
-      length++;
-    }
-  }
-  if (length > 0) {
-    ranges.append(IndexRange(span.size() - length, length));
-  }
-  return ranges;
-}
-
 static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -645,7 +618,7 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     const bool curve_cyclic = src_cyclic[curve_i];
 
     /* Note, these ranges start at zero and needed to be shifted by `points.first()` */
-    const Vector<IndexRange> ranges = to_ranges(curve_points);
+    const Vector<IndexRange> ranges = array_utils::to_ranges(curve_points);
 
     const bool is_last_and_first_same = curve_cyclic &&
                                         curve_points.first() == curve_points.last();
