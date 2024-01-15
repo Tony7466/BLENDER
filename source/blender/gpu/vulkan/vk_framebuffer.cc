@@ -610,40 +610,29 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
   int atta_layer = (leave) ? attachment.layer : new_attachment.layer;
   int atta_mip = (leave) ? attachment.mip : new_attachment.mip;
   if (config) {
-    bool reassign = false;
     if ((renderpass_->attachments_.idx_[renderpass_->info_id_][type] != VK_ATTACHMENT_UNUSED) &&
         (renderpass_->attachments_.idx_[renderpass_->info_id_][type] != VK_ATTACHMENT_EMPTY))
     {
       renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount--;
-      reassign = true;
     };
     /* Set the current information on the `render_pass_info_id_` side and compare it with the
      * information cached in the reverse id. */
     if (type >= GPU_FB_COLOR_ATTACHMENT0) {
       int type_index = static_cast<int>(type) - static_cast<int>(GPU_FB_COLOR_ATTACHMENT0);
-      if (vk_framebuffer_create_info_.attachmentCount > 0) {
-        /* If the frame buffer information is not the default value, a color attachment change is
-         * forced. */
-        view_set = true;
-      }
       /* Specify the order of reference as an index, starting with the description of each subpass.
        */
       attachment_reference = renderpass_->attachments_.reference_get(type_index,
                                                                      renderpass_->info_id_);
-      if (!reassign) {
-        renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
-            renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
-      }
+
+      renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
+        renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
+
       attachment_reference->aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       attachment_reference->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
       /* Whether to increment the number of attachments actually used. */
       if (tex) {
         dirty_subpass_ = reinterpret_cast<Texture *>(tex)->subpass_bits_get().disable != 0;
-        if (!reassign) {
-          attachment_reference->attachment =
-              renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
-        }
         renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
       }
       else {
@@ -761,6 +750,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       }
     }
   }
+  renderpass_->dirty_ |= dirty_flag;
   if (view_set) {
     vk_framebuffer_create_info_.attachmentCount =
         renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount;
@@ -770,11 +760,11 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
          renderpass_->subpass_[renderpass_->info_id_counter()].colorAttachmentCount))
     {
       /* The number of attachments is changed. */
-      dirty_flag = true;
+      renderpass_->dirty_ = true;
       renderpass_->dependency_static_set(
           renderpass_->subpass_[renderpass_->info_id_].pDepthStencilAttachment != nullptr);
     }
-    if (!dirty_flag) {
+    if (!renderpass_->dirty_) {
       /* No regeneration is required. */
       renderpass_->info_id_ = renderpass_->info_id_counter();
     }
@@ -791,7 +781,7 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       }
     }
   }
-  renderpass_->dirty_ |= dirty_flag;
+
 }
 
 /** \} */
