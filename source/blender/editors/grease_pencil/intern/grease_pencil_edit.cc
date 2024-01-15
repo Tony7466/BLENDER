@@ -1799,8 +1799,6 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  /*const Layer *layer_dst = nullptr;*/
-  /*Layer layer_dst;*/
   Layer *layer_dst = nullptr;
   int layer_index = RNA_int_get(op->ptr, "layer");
   /*const bool use_autolock = bool(grease_pencil.flag & GP_DATA_AUTOLOCK_LAYERS);*/
@@ -1815,9 +1813,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 
   if (layer_index > -1) {
     /* get layer by index */
-    /*layer_dst = grease_pencil.layers()[layer_index];*/
     layer_dst = grease_pencil.layers_for_write()[layer_index];
-    printf("Get Layer name: %s \n", layer_dst->base.name);
   }
   else {
     /* Create a new layer. */
@@ -1831,7 +1827,6 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       STRNCPY(name, "Layer");
     }
     layer_dst = &grease_pencil.add_layer(name);
-    printf("New Layer name: %s \n", layer_dst->base.name);
   }
 
   if (layer_dst == nullptr) {
@@ -1848,13 +1843,15 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   for (const MutableDrawingInfo &info : drawings_src) {
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
-    const IndexMask selected_points = ed::curves::retrieve_selected_curves(curves_src, memory);
+    const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
     if (selected_points.is_empty()) {
       continue;
     }
 
-    /* Insert Keyframe at current frame/layer. */
-    grease_pencil.insert_blank_frame(*layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+    if (grease_pencil.get_drawing_at(*layer_dst, info.frame_number) == nullptr) {
+      /* Insert Keyframe at current frame/layer. */
+      grease_pencil.insert_blank_frame(*layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
 
     /* Copy strokes to new CurvesGeometry. */
     Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
