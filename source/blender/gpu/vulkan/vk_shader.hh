@@ -31,12 +31,12 @@ class VKShader : public Shader {
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   std::unique_ptr<VKPipeline> pipeline_;
-  Vector<uint32_t> specialization_values_;
+  bool vk_specialtization_dirty_ = false;
  public:
   VKShader(const char *name);
   virtual ~VKShader();
 
-  void init(const shader::ShaderCreateInfo & /*info*/) override {}
+  void init(const shader::ShaderCreateInfo & info) override;
 
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
   void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
