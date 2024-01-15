@@ -261,7 +261,7 @@ static IndexMask get_filtered_stroke_mask(const Object *ob,
     return full_mask;
   }
 
-  const int material_filter_index = BKE_grease_pencil_object_material_index_get(
+  const int material_filter_index = BKE_object_material_index_get(
       const_cast<Object *>(ob), const_cast<Material *>(material_filter));
   const Vector<int> material_pass_by_index = get_grease_pencil_material_passes(ob);
 

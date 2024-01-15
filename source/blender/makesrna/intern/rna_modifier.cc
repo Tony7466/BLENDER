@@ -679,7 +679,7 @@ const EnumPropertyItem rna_enum_subdivision_boundary_smooth_items[] = {
 #  include "BKE_cachefile.h"
 #  include "BKE_context.hh"
 #  include "BKE_deform.h"
-#  include "BKE_grease_pencil.hh"
+#  include "BKE_material.h"
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_modifier.hh"
 #  include "BKE_object.hh"
@@ -1718,7 +1718,7 @@ bool rna_GreasePencilModifier_material_poll(PointerRNA *ptr, PointerRNA value)
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   Material *ma = reinterpret_cast<Material *>(value.owner_id);
 
-  return BKE_grease_pencil_object_material_index_get(ob, ma) != -1;
+  return BKE_object_material_index_get(ob, ma) != -1;
 }
 
 /* Write material to a generic target pointer without the final modifier struct. */
@@ -1730,7 +1730,7 @@ static void rna_GreasePencilModifier_material_set(PointerRNA *ptr,
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   Material *ma = reinterpret_cast<Material *>(value.owner_id);
 
-  if (ma == nullptr || BKE_grease_pencil_object_material_index_get(ob, ma) != -1) {
+  if (ma == nullptr || BKE_object_material_index_get(ob, ma) != -1) {
     id_lib_extern(reinterpret_cast<ID *>(ob));
     *ma_target = ma;
   }
