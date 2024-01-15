@@ -93,7 +93,7 @@ typedef enum ModifierType {
   eModifierType_MeshToVolume = 58,
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
-  eModifierType_Hello = 61,
+  eModifierType_GreasePencilLength = 61,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2486,14 +2486,37 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
-
-typedef struct HelloModifierData {
+typedef struct GreasePencilLengthModifierData {
   ModifierData modifier;
-
-  struct Object *object;
-
-  float threshold;
-  float adaptivity;
+  /** Material for filtering. */
+  struct Material *material;
+  /** Layer name. */
+  char layername[64];
+  /** Custom index for passes. */
+  int pass_index;
+  /** Flags. */
+  int flag;
+  /** Custom index for passes. */
+  int layer_pass;
+  /** Length. */
+  float start_fac, end_fac;
+  /** Random length factors. */
+  float rand_start_fac, rand_end_fac, rand_offset;
+  /** Overshoot trajectory factor. */
+  float overshoot_fac;
+  /** (first element is the index) random values. */
+  int seed;
+  /** How many frames before recalculate randoms. */
+  int step;
+  /** Modifier mode. */
+  int mode;
+  char _pad[4];
+  /* Curvature parameters. */
+  float point_density;
+  float segment_influence;
+  float max_angle;
 
   void *_pad1;
-} HelloModifierData;
+} GreasePencilLengthModifierData;
+
+/* Enum definitions for length modifier stays in the old DNA for the moment. */
