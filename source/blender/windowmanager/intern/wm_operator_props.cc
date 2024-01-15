@@ -96,7 +96,7 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
     prop = RNA_def_string_file_path(
         ot->srna, "filepath", nullptr, FILE_MAX, "File Path", "Path to file");
     if (flag & WM_FILESEL_SKIP_SAVE_PROPS) {
-      RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+      RNA_def_property_flag(prop, PROP_HIDDEN);
     }
   }
 
@@ -104,7 +104,7 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
     prop = RNA_def_string_dir_path(
         ot->srna, "directory", nullptr, FILE_MAX, "Directory", "Directory of the file");
     if (flag & WM_FILESEL_SKIP_SAVE_PROPS) {
-      RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+      RNA_def_property_flag(prop, PROP_HIDDEN);
     }
   }
 
@@ -112,7 +112,7 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
     prop = RNA_def_string_file_name(
         ot->srna, "filename", nullptr, FILE_MAX, "File Name", "Name of the file");
     if (flag & WM_FILESEL_SKIP_SAVE_PROPS) {
-      RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+      RNA_def_property_flag(prop, PROP_HIDDEN);
     }
   }
 
