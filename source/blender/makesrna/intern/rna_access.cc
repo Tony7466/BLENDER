@@ -761,6 +761,10 @@ bool RNA_struct_is_a(const StructRNA *type, const StructRNA *srna)
 
 PropertyRNA *RNA_struct_find_property(PointerRNA *ptr, const char *identifier)
 {
+  if (!ptr) {
+    return nullptr;
+  }
+
   if (identifier[0] == '[' && identifier[1] == '"') {
     /* id prop lookup, not so common */
     PropertyRNA *r_prop = nullptr;
@@ -5377,6 +5381,10 @@ void RNA_float_set_array(PointerRNA *ptr, const char *name, const float *values)
 
 int RNA_enum_get(PointerRNA *ptr, const char *name)
 {
+  if (!ptr) {
+    return 0;
+  }
+
   PropertyRNA *prop = RNA_struct_find_property(ptr, name);
 
   if (prop) {

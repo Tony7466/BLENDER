@@ -577,7 +577,7 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
 std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
 {
   std::string name;
-  if (ot->get_name && properties) {
+  if (ot->get_name) {
     name = ot->get_name(ot, properties);
   }
 

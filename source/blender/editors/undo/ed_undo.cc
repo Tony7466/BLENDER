@@ -590,6 +590,18 @@ static bool ed_undo_poll(bContext *C)
   return (undo_stack->step_active != nullptr) && (undo_stack->step_active->prev != nullptr);
 }
 
+static std::string ed_undo_get_name(wmOperatorType *ot, PointerRNA * /*ptr*/)
+{
+  UndoStack *undo_stack = ED_undo_stack_get();
+  if ((undo_stack && undo_stack->step_active != NULL) && (undo_stack->step_active->prev != NULL)) {
+    return CTX_IFACE_(ot->translation_context, "Undo") + std::string(" ") +
+           std::string(CTX_IFACE_(ot->translation_context, undo_stack->step_active->name));
+  }
+  else {
+    return "";
+  }
+}
+
 void ED_OT_undo(wmOperatorType *ot)
 {
   /* identifiers */
@@ -600,6 +612,7 @@ void ED_OT_undo(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = ed_undo_exec;
   ot->poll = ed_undo_poll;
+  ot->get_name = ed_undo_get_name;
 }
 
 void ED_OT_undo_push(wmOperatorType *ot)
@@ -633,6 +646,18 @@ static bool ed_redo_poll(bContext *C)
   return (undo_stack->step_active != nullptr) && (undo_stack->step_active->next != nullptr);
 }
 
+static std::string ed_redo_get_name(wmOperatorType *ot, PointerRNA * /*ptr*/)
+{
+  UndoStack *undo_stack = ED_undo_stack_get();
+  if ((undo_stack && undo_stack->step_active != NULL) && (undo_stack->step_active->next != NULL)) {
+    return CTX_IFACE_(ot->translation_context, "Redo") + std::string(" ") +
+           std::string(CTX_IFACE_(ot->translation_context, undo_stack->step_active->next->name));
+  }
+  else {
+    return "";
+  }
+}
+
 void ED_OT_redo(wmOperatorType *ot)
 {
   /* identifiers */
@@ -643,6 +668,7 @@ void ED_OT_redo(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = ed_redo_exec;
   ot->poll = ed_redo_poll;
+  ot->get_name = ed_redo_get_name;
 }
 
 void ED_OT_undo_redo(wmOperatorType *ot)

@@ -263,7 +263,7 @@ static void undo_history_draw_menu(const bContext *C, Menu *menu)
 
     uiItemIntO(column,
                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, us->name),
-               is_active ? ICON_LAYER_ACTIVE : ICON_NONE,
+               ICON_NONE,
                "ED_OT_undo_history",
                "item",
                undo_step);
