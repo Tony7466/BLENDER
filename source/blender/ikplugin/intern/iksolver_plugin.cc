@@ -56,7 +56,7 @@ static void find_ik_constraints(ListBase *constraints,
       }
       if (con->flag & CONSTRAINT_OFF) {
         /* Skip constraints that have been muted by the user. Zero-influence
-         * constraints are still kept. */
+         * constraints are still kept. See position_skipped_bones(). */
         continue;
       }
       ik_constraints.append(con);
@@ -165,8 +165,7 @@ static void initialize_posetree(Object * /*ob*/, bPoseChannel *pchan_tip)
           break;
         }
         for (; a < size && t < tree->totchannel && tree->pchan[t] == chanlist[segcount - a - 1];
-             a++, t++)
-        {
+             a++, t++) {
           /* pass */
         }
       }
@@ -596,6 +595,52 @@ static void free_posetree(PoseTree *tree)
   MEM_freeN(tree);
 }
 
+/**
+ * Call BKE_pose_where_is_bone() for the bones whose IK constraint was muted.
+ *
+ * This is necessary because #find_ik_constraints can skip certain constraints. The bones in those
+ * chains still need to get a call to BKE_pose_where_is_bone() as otherwise their matrix is
+ * inconsistent with their local properties, and they can even get detached from their parents.
+ */
+static void position_skipped_bones(Depsgraph *depsgraph,
+                                   Scene *scene,
+                                   Object *ob,
+                                   const float ctime)
+{
+  LISTBASE_FOREACH_MUTABLE (bPoseChannel *, pchan, &ob->pose->chanbase) {
+    /* Skip bones for which iksolver_initialize_tree() did not call initialize_posetree(). */
+    if ((pchan->constflag & PCHAN_HAS_IK) == 0) {
+      continue;
+    }
+
+    /* Skip bones that have already been handled by the IK solver. */
+    if (pchan->flag & POSE_DONE) {
+      continue;
+    }
+
+    /* This bone has an IK constraint, but was not handled by the IK solver. This means it still
+     * needs a call to BKE_pose_where_is_bone() to properly update it for its local loc/rot/scale
+     * properties. This has to happen parent-to-child though, and the IK tip is the childiest of
+     * them all. */
+    blender::Stack<bPoseChannel *> stack;
+    while (pchan && (pchan->flag & POSE_DONE) == 0) {
+      stack.push(pchan);
+      pchan = pchan->parent;
+    }
+
+    while (!stack.is_empty()) {
+      bPoseChannel *pchan = stack.pop();
+      if (pchan->flag & POSE_DONE) {
+        /* It could be that this bone is the common ancestor of two muted IK chains. */
+        continue;
+      }
+
+      BKE_pose_where_is_bone(depsgraph, scene, ob, pchan, ctime, true);
+      pchan->flag |= POSE_DONE;
+    }
+  }
+}
+
 /* ------------------------------
  * Plugin API for legacy iksolver */
 
@@ -669,39 +714,7 @@ void iksolver_execute_tree(
     free_posetree(tree);
   }
 
-  {
-    LISTBASE_FOREACH_MUTABLE (bPoseChannel *, pchan, &ob->pose->chanbase) {
-      /* Skip bones for which iksolver_initialize_tree() did not call initialize_posetree(). */
-      if ((pchan->constflag & PCHAN_HAS_IK) == 0) {
-        continue;
-      }
-
-      /* Skip bones that have been handled by the IK solver. */
-      if (pchan->flag & POSE_DONE) {
-        continue;
-      }
-
-      /* This bone has an IK constraint, but was not handled by the IK solver. This means it still
-       * needs a call to BKE_pose_where_is_bone() to properly update it for its local loc/rot/scale
-       * properties. This has to happen parent-to-child though, and the IK tip is the childiest of
-       * them all. */
-      blender::Stack<bPoseChannel *> stack;
-      while (pchan && (pchan->flag & POSE_DONE) == 0) {
-        stack.push(pchan);
-        pchan = pchan->parent;
-      }
-      while (!stack.is_empty()) {
-        bPoseChannel *pchan = stack.pop();
-
-        if (pchan->flag & POSE_DONE) {
-          continue;
-        }
-
-        BKE_pose_where_is_bone(depsgraph, scene, ob, pchan, ctime, true);
-        pchan->flag |= POSE_DONE;
-      }
-    }
-  }
+  position_skipped_bones(depsgraph, scene, ob, ctime);
 }
 
 void iksolver_release_tree(Scene * /*scene*/, Object *ob, float /*ctime*/)
