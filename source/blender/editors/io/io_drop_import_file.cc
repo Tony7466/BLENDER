@@ -117,17 +117,17 @@ static bool file_handler_import_operator_paths_set(PointerRNA &ptr,
     const char *message =
         "Expected operator properties filepath or files and directory not found. Refer to "
         "FileHandler documentation for details.";
-    CLOG_WARN(&LOG, message);
+    CLOG_WARN(&LOG, "%s", message);
   }
   return directory_prop && files_prop;
 }
 
 /**
- * Set of file handlers that supports handling a set of extensions.
- * Only the #active_file_handler would be used to handle the import of files whose extension is
- * listed in the import group.
+ * Set of extensions that are supported by set of file handlers joined in a tab.
+ * Only the #active_file_handler would be used to import of files whose extension is
+ * listed in the import tab.
  */
-struct ImportGroup {
+struct ImportTab {
   blender::Vector<std::string> extensions;
   blender::Vector<int> count;
   int active_file_handler = 0;
@@ -137,56 +137,63 @@ struct ImportGroup {
 };
 
 struct DropImportData {
-  blender::Vector<ImportGroup> import_groups;
+  /** List of import tabs, each tab will execute the #active_file_handler in the tab. */
+  blender::Vector<ImportTab> tabs;
+  /** List of all file paths given to #WM_OT_drop_import_file. */
   blender::Vector<std::string> paths;
+  /** Count of files that can be handler by a file handler. */
   int count = 0;
-  int active_group = 0;
+  int active_tab = 0;
   ~DropImportData()
   {
-    for (auto &import_setting : import_groups) {
-      if (!import_setting.op) {
+    for (auto &tab : tabs) {
+      if (!tab.op) {
         continue;
       }
-      WM_operator_free(import_setting.op);
+      WM_operator_free(tab.op);
     }
   }
 };
 
-static void wm_drop_import_file_cancel(bContext * /*C*/, wmOperator *op)
+static void wm_drop_import_file_cleanup(wmOperator *op)
 {
   DropImportData *drop_import_data = static_cast<DropImportData *>(op->customdata);
   MEM_delete(drop_import_data);
   op->customdata = nullptr;
 }
 
+static void wm_drop_import_file_cancel(bContext * /*C*/, wmOperator *op)
+{
+  wm_drop_import_file_cleanup(op);
+}
+
 static int wm_drop_import_file_exec(bContext *C, wmOperator *op)
 {
   DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
-  for (auto &import_group : drop_import_data.import_groups) {
+  for (auto &tab : drop_import_data.tabs) {
     blender::Vector<std::string> paths;
     for (auto &path : drop_import_data.paths) {
       const char *extension = BLI_path_extension(path.c_str());
       if (!extension) {
         continue;
       }
-      if (!import_group.extensions.contains(extension)) {
+      if (!tab.extensions.contains(extension)) {
         continue;
       }
       paths.append(path);
     }
     while (!paths.is_empty()) {
-      const bool all = file_handler_import_operator_paths_set(*import_group.op->ptr, paths);
+      const bool all = file_handler_import_operator_paths_set(*tab.op->ptr, paths);
       if (all) {
         paths.clear();
       }
       else {
         paths.remove(0);
       }
-      WM_operator_name_call_ptr(
-          C, import_group.op->type, WM_OP_EXEC_DEFAULT, import_group.op->ptr, nullptr);
+      WM_operator_name_call_ptr(C, tab.op->type, WM_OP_EXEC_DEFAULT, tab.op->ptr, nullptr);
     }
   }
-  wm_drop_import_file_cancel(nullptr, op);
+  wm_drop_import_file_cleanup(op);
   return OPERATOR_FINISHED;
 }
 
@@ -223,24 +230,24 @@ static void wm_drop_import_file_draw(bContext *C, wmOperator *op)
   uiLayout *col = uiLayoutColumn(row, false);
 
   /* Tab enum. */
-  uiItemR(uiLayoutRow(col, false), op->ptr, "import_group", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+  uiItemR(uiLayoutRow(col, false), op->ptr, "tab", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiLayout *box = uiLayoutBox(col);
 
-  auto &group = drop_import_data.import_groups[RNA_enum_get(op->ptr, "import_group")];
+  auto &tab = drop_import_data.tabs[RNA_enum_get(op->ptr, "tab")];
 
-  if (group.file_handlers.size() > 1) {
+  if (tab.file_handlers.size() > 1) {
     uiItemR(box, op->ptr, "file_handler", eUI_Item_Flag(0), "", ICON_NONE);
   }
 
-  drop_import_file_draw_import_operator(C, box, group.op);
+  drop_import_file_draw_import_operator(C, box, tab.op);
 
   std::string extension_count;
-  for (int64_t idx = 0; idx < group.extensions.size(); idx++) {
+  for (int64_t idx = 0; idx < tab.extensions.size(); idx++) {
     if (!extension_count.empty()) {
       extension_count += " ";
     }
     extension_count += fmt::format(
-        TIP_("{} files {}/{}"), group.extensions[idx], group.count[idx], drop_import_data.count);
+        TIP_("{} files {}/{}"), tab.extensions[idx], tab.count[idx], drop_import_data.count);
   }
   uiItemL(uiLayoutBox(box), extension_count.c_str(), ICON_INFO);
 }
@@ -252,9 +259,7 @@ static void wm_drop_import_file_fh_items_set(wmOperator *op)
       *op->ptr, "file_handlers", &RNA_EnumPropertyItem);
   RNA_property_collection_clear(op->ptr, enum_items_prop);
   int i = 0;
-  for (const auto *fh :
-       drop_import_data.import_groups[drop_import_data.active_group].file_handlers)
-  {
+  for (const auto *fh : drop_import_data.tabs[drop_import_data.active_tab].file_handlers) {
     PointerRNA enum_item_ptr{};
     RNA_property_collection_add(op->ptr, enum_items_prop, &enum_item_ptr);
     EnumPropertyItem *item = static_cast<EnumPropertyItem *>(enum_item_ptr.data);
@@ -265,20 +270,20 @@ static void wm_drop_import_file_fh_items_set(wmOperator *op)
   }
 }
 
-static void wm_drop_import_file_import_groups_items_set(wmOperator *op)
+static void wm_drop_import_file_tabs_items_set(wmOperator *op)
 {
   DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
   PropertyRNA *enum_items_prop = RNA_struct_find_collection_property_check(
-      *op->ptr, "import_groups", &RNA_EnumPropertyItem);
+      *op->ptr, "tabs", &RNA_EnumPropertyItem);
   RNA_property_collection_clear(op->ptr, enum_items_prop);
   int i = 0;
-  for (auto &group : drop_import_data.import_groups) {
+  for (auto &tab : drop_import_data.tabs) {
     PointerRNA enum_item_ptr{};
     RNA_property_collection_add(op->ptr, enum_items_prop, &enum_item_ptr);
     EnumPropertyItem *item = static_cast<EnumPropertyItem *>(enum_item_ptr.data);
     *item = {};
-    item->identifier = group.extensions[0].c_str();
-    item->name = group.label.c_str();
+    item->identifier = tab.extensions[0].c_str();
+    item->name = tab.label.c_str();
     item->value = i++;
   }
 }
@@ -303,67 +308,66 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
     if (!extension) {
       continue;
     }
-    /* Skip already listed extensions.*/
+    /* Skip already listed extensions. */
     auto itr = std::find_if(
-        drop_import_data->import_groups.begin(),
-        drop_import_data->import_groups.end(),
-        [extension](ImportGroup &group) { return group.extensions.contains(extension); });
-    if (itr != drop_import_data->import_groups.end()) {
+        drop_import_data->tabs.begin(), drop_import_data->tabs.end(), [extension](ImportTab &tab) {
+          return tab.extensions.contains(extension);
+        });
+    if (itr != drop_import_data->tabs.end()) {
       int64_t index = itr->extensions.first_index_of(extension);
       itr->count[index]++;
       continue;
     }
-    ImportGroup group{};
-    group.extensions.append(extension);
-    group.count.append(1);
+    ImportTab tab{};
+    tab.extensions.append(extension);
+    tab.count.append(1);
     /* Check file handlers that support current extension. */
     for (blender::bke::FileHandlerType *fh : file_handlers) {
       if (fh->file_extensions.contains(extension)) {
-        group.file_handlers.append_non_duplicates(fh);
+        tab.file_handlers.append_non_duplicates(fh);
       }
     }
-    if (group.file_handlers.is_empty()) {
+    if (tab.file_handlers.is_empty()) {
       CLOG_WARN(&LOG, "%s skipped.", path.c_str());
       continue;
     }
     bool merged = false;
-    /** Merge extensions with same file handlers. */
-    for (auto &&test_group : drop_import_data->import_groups) {
-      if (test_group.file_handlers == group.file_handlers) {
-        test_group.extensions.extend(group.extensions);
-        test_group.count.extend(group.count);
+    /** Merge tabs with same file handlers. */
+    for (auto &test_tab : drop_import_data->tabs) {
+      if (test_tab.file_handlers == tab.file_handlers) {
+        test_tab.extensions.extend(tab.extensions);
+        test_tab.count.extend(tab.count);
         merged = true;
       }
     }
     if (!merged) {
-      drop_import_data->import_groups.append(std::move(group));
+      drop_import_data->tabs.append(std::move(tab));
     }
   }
-  for (auto &group : drop_import_data->import_groups) {
-    drop_import_data->count += std::accumulate(group.count.begin(), group.count.end(), 0);
+  for (auto &tab : drop_import_data->tabs) {
+    drop_import_data->count += std::accumulate(tab.count.begin(), tab.count.end(), 0);
 
     /* Initialize selected file handler operator. */
-    group.op = wm_operator_create(
-        CTX_wm_manager(C),
-        WM_operatortype_find(group.file_handlers[0]->import_operator, false),
-        nullptr,
-        CTX_wm_reports(C));
-    WM_operator_last_properties_init(group.op);
+    tab.op = wm_operator_create(CTX_wm_manager(C),
+                                WM_operatortype_find(tab.file_handlers[0]->import_operator, false),
+                                nullptr,
+                                CTX_wm_reports(C));
+    WM_operator_last_properties_init(tab.op);
 
-    /** If a import group can be handled only by one file hander the tab will display its label. */
-    if (group.file_handlers.size() == 1) {
-      group.label = group.file_handlers[0]->label;
+    /** If a import tab can be handled only by one file hander the tab will display its label. */
+    if (tab.file_handlers.size() == 1) {
+      tab.label = tab.file_handlers[0]->label;
       continue;
     }
-    for (std::string &extension : group.extensions) {
-      if (!group.label.empty()) {
-        group.label += " ";
+    for (std::string &extension : tab.extensions) {
+      if (!tab.label.empty()) {
+        tab.label += " ";
       }
-      group.label += extension;
+      tab.label += extension;
     }
   }
   /* Load runtime enums. */
-  wm_drop_import_file_import_groups_items_set(op);
+  wm_drop_import_file_tabs_items_set(op);
   wm_drop_import_file_fh_items_set(op);
 
   return WM_operator_props_dialog_popup(
@@ -399,40 +403,38 @@ static const EnumPropertyItem *RNA_file_hadler_itemf(bContext * /*C*/,
   return item;
 }
 
-static const EnumPropertyItem *RNA_import_group_itemf(bContext * /*C*/,
-                                                      PointerRNA *ptr,
-                                                      PropertyRNA * /*prop*/,
-                                                      bool *r_free)
+static const EnumPropertyItem *RNA_import_tabs_itemf(bContext * /*C*/,
+                                                     PointerRNA *ptr,
+                                                     PropertyRNA * /*prop*/,
+                                                     bool *r_free)
 {
-  const EnumPropertyItem *item = enum_prop_itemf(ptr, "import_groups");
+  const EnumPropertyItem *item = enum_prop_itemf(ptr, "tabs");
   *r_free = true;
   return item;
 }
 
 static bool wm_drop_import_file_check(bContext *C, wmOperator *op)
 {
-  const int group = RNA_enum_get(op->ptr, "import_group");
+  const int active_tab = RNA_enum_get(op->ptr, "tab");
   DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
-  if (drop_import_data.active_group != group) {
-    drop_import_data.active_group = group;
-    RNA_enum_set(
-        op->ptr, "file_handler", drop_import_data.import_groups[group].active_file_handler);
+  if (drop_import_data.active_tab != active_tab) {
+    drop_import_data.active_tab = active_tab;
+    RNA_enum_set(op->ptr, "file_handler", drop_import_data.tabs[active_tab].active_file_handler);
     wm_drop_import_file_fh_items_set(op);
     return true;
   }
   const int active_file_handler = RNA_enum_get(op->ptr, "file_handler");
-  if (active_file_handler != drop_import_data.import_groups[group].active_file_handler) {
-    ImportGroup &import_group = drop_import_data.import_groups[group];
-    drop_import_data.import_groups[group].active_file_handler = active_file_handler;
-    WM_operator_free(import_group.op);
-    /* Set selected file handler operator in the import group. */
-    import_group.op = wm_operator_create(
+  if (active_file_handler != drop_import_data.tabs[active_tab].active_file_handler) {
+    ImportTab &tab = drop_import_data.tabs[active_tab];
+    tab.active_file_handler = active_file_handler;
+    WM_operator_free(tab.op);
+    /* Set selected file handler operator in the import tab. */
+    tab.op = wm_operator_create(
         CTX_wm_manager(C),
-        WM_operatortype_find(import_group.file_handlers[active_file_handler]->import_operator,
-                             false),
+        WM_operatortype_find(tab.file_handlers[active_file_handler]->import_operator, false),
         nullptr,
         CTX_wm_reports(C));
-    WM_operator_last_properties_init(import_group.op);
+    WM_operator_last_properties_init(tab.op);
   }
   return false;
 }
@@ -462,16 +464,15 @@ void WM_OT_drop_import_file(wmOperatorType *ot)
       ot->srna, "file_handlers", &RNA_EnumPropertyItem, "File Handlers", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-  prop = RNA_def_collection_runtime(
-      ot->srna, "import_groups", &RNA_EnumPropertyItem, "Import groups", "");
+  prop = RNA_def_collection_runtime(ot->srna, "tabs", &RNA_EnumPropertyItem, "Import tabs", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(ot->srna, "file_handler", rna_enum_dummy_NULL_items, 0, "File Handler", "");
   RNA_def_enum_funcs(prop, RNA_file_hadler_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-  prop = RNA_def_enum(ot->srna, "import_group", rna_enum_dummy_NULL_items, 0, "Import Group", "");
-  RNA_def_enum_funcs(prop, RNA_import_group_itemf);
+  prop = RNA_def_enum(ot->srna, "tab", rna_enum_dummy_NULL_items, 0, "Import tab", "");
+  RNA_def_enum_funcs(prop, RNA_import_tabs_itemf);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
