@@ -1033,11 +1033,12 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
       case Type::BOOL:
         ss << "const bool " << sc.name << "=" << (sc.default_value.u ? "true" : "false") << ";\n";
         break;
-      case Type::FLOAT:
+      case Type::FLOAT: {
         /* Use uint representation to allow exact same bit pattern even if NaN. */
-        /* we can assign only the value of "const".  */
-        ss << "const float " << sc.name << "= " << std::to_string(sc.default_value.f) << ";\n";
+        float f = *reinterpret_cast<float *>(const_cast<uint32_t *>(&sc.default_value.u));
+        ss << "const float " << sc.name << "=" << std::to_string(f) << ";\n";
         break;
+      }
       default:
         BLI_assert_unreachable();
         break;
