@@ -1,0 +1,1 @@
+Referenced by issue #71244, Renaming an ID through RNA does not consistently increment OTHER or CURRENT ID in case of name collision
