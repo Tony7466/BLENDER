@@ -249,15 +249,19 @@ static void wm_drop_import_file_fh_items_set(wmOperator *op)
 {
   DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
   PropertyRNA *enum_items_prop = RNA_struct_find_collection_property_check(
-      *op->ptr, "file_handlers", &RNA_OperatorEnumPropertyItem);
+      *op->ptr, "file_handlers", &RNA_EnumPropertyItem);
   RNA_property_collection_clear(op->ptr, enum_items_prop);
+  int i = 0;
   for (const auto *fh :
        drop_import_data.import_groups[drop_import_data.active_group].file_handlers)
   {
     PointerRNA enum_item_ptr{};
     RNA_property_collection_add(op->ptr, enum_items_prop, &enum_item_ptr);
-    RNA_string_set(&enum_item_ptr, "identifier", fh->idname);
-    RNA_string_set(&enum_item_ptr, "name", fh->label);
+    EnumPropertyItem *item = static_cast<EnumPropertyItem *>(enum_item_ptr.data);
+    *item = {};
+    item->identifier = fh->idname;
+    item->name = fh->label;
+    item->value = i++;
   }
 }
 
@@ -265,13 +269,17 @@ static void wm_drop_import_file_import_groups_items_set(wmOperator *op)
 {
   DropImportData &drop_import_data = *static_cast<DropImportData *>(op->customdata);
   PropertyRNA *enum_items_prop = RNA_struct_find_collection_property_check(
-      *op->ptr, "import_groups", &RNA_OperatorEnumPropertyItem);
+      *op->ptr, "import_groups", &RNA_EnumPropertyItem);
   RNA_property_collection_clear(op->ptr, enum_items_prop);
+  int i = 0;
   for (auto &group : drop_import_data.import_groups) {
     PointerRNA enum_item_ptr{};
     RNA_property_collection_add(op->ptr, enum_items_prop, &enum_item_ptr);
-    RNA_string_set(&enum_item_ptr, "identifier", group.extensions[0].c_str());
-    RNA_string_set(&enum_item_ptr, "name", group.label.c_str());
+    EnumPropertyItem *item = static_cast<EnumPropertyItem *>(enum_item_ptr.data);
+    *item = {};
+    item->identifier = group.extensions[0].c_str();
+    item->name = group.label.c_str();
+    item->value = i++;
   }
 }
 
@@ -365,7 +373,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
 static const EnumPropertyItem *enum_prop_itemf(PointerRNA *ptr, const char *name)
 {
   PropertyRNA *enum_items_prop = RNA_struct_find_collection_property_check(
-      *ptr, name, &RNA_OperatorEnumPropertyItem);
+      *ptr, name, &RNA_EnumPropertyItem);
   int enum_items_len = RNA_property_collection_length(ptr, enum_items_prop);
 
   EnumPropertyItem *item = nullptr;
@@ -374,15 +382,8 @@ static const EnumPropertyItem *enum_prop_itemf(PointerRNA *ptr, const char *name
   for (int i = 0; i < enum_items_len; i++) {
     PointerRNA enum_item_ptr;
     RNA_property_collection_lookup_int(ptr, enum_items_prop, i, &enum_item_ptr);
-    IDProperty *enum_item_prop = RNA_struct_idprops(&enum_item_ptr, false);
-    IDProperty *identifier_prop = IDP_GetPropertyFromGroup(enum_item_prop, "identifier");
-    IDProperty *name_prop = IDP_GetPropertyFromGroup(enum_item_prop, "name");
-
-    EnumPropertyItem item_tmp = {0};
-    item_tmp.identifier = IDP_String(identifier_prop);
-    item_tmp.name = IDP_String(name_prop);
-    item_tmp.value = i;
-    RNA_enum_item_add(&item, &totitem, &item_tmp);
+    EnumPropertyItem *item_ptr = static_cast<EnumPropertyItem *>(enum_item_ptr.data);
+    RNA_enum_item_add(&item, &totitem, item_ptr);
   }
   RNA_enum_item_end(&item, &totitem);
   return item;
@@ -458,11 +459,11 @@ void WM_OT_drop_import_file(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_collection_runtime(
-      ot->srna, "file_handlers", &RNA_OperatorEnumPropertyItem, "File Handlers", "");
+      ot->srna, "file_handlers", &RNA_EnumPropertyItem, "File Handlers", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_collection_runtime(
-      ot->srna, "import_groups", &RNA_OperatorEnumPropertyItem, "Import groups", "");
+      ot->srna, "import_groups", &RNA_EnumPropertyItem, "Import groups", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(ot->srna, "file_handler", rna_enum_dummy_NULL_items, 0, "File Handler", "");

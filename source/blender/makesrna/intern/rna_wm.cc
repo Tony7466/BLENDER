@@ -2104,39 +2104,6 @@ static void rna_def_operator_filelist_element(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name", "Name of a file or directory within a file list");
 }
 
-static void rna_def_operator_enum_property_item_element(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "OperatorEnumPropertyItem", "PropertyGroup");
-  RNA_def_struct_ui_text(
-      srna,
-      "Enum Item Definition",
-      "Possible runtime values for the property, that may change on operator check calls.");
-
-  prop = RNA_def_property(srna, "value", PROP_INT, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_IDPROPERTY);
-  RNA_def_property_ui_text(prop, "Value", "Value of the item");
-
-  prop = RNA_def_property(srna, "identifier", PROP_STRING, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_IDPROPERTY);
-  RNA_def_property_ui_text(prop, "Identifier", "Unique name used in the code and scripting");
-
-  prop = RNA_def_property(srna, "icon", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_icon_items);
-  RNA_def_property_flag(prop, PROP_IDPROPERTY);
-  RNA_def_property_ui_text(prop, "Icon", "Icon of the item");
-
-  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_IDPROPERTY);
-  RNA_def_property_ui_text(prop, "Name", "Human readable name");
-
-  prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_IDPROPERTY);
-  RNA_def_property_ui_text(prop, "Description", "Description of the item's purpose");
-}
-
 static void rna_def_event(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -2936,7 +2903,6 @@ void RNA_def_wm(BlenderRNA *brna)
   rna_def_operator_options_runtime(brna);
   rna_def_operator_utils(brna);
   rna_def_operator_filelist_element(brna);
-  rna_def_operator_enum_property_item_element(brna);
   rna_def_macro_operator(brna);
   rna_def_operator_type_macro(brna);
   rna_def_event(brna);
