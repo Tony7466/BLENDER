@@ -437,8 +437,8 @@ void GLBackend::debug_capture_title(const char *title)
 #ifdef WITH_RENDERDOC
   return renderdoc_.set_capture_title(title);
 #else
-  UNUSED_VARS(vk_instance);
-  return false;
+  UNUSED_VARS(title);
+  return ;
 #endif
 };
 

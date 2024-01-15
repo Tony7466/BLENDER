@@ -644,10 +644,7 @@ void VKCommandBuffers::viewport_set(const int viewport[GPU_MAX_VIEWPORTS][4], in
 void VKCommandBuffers::scissor_set(const int scissor[4], int size)
 {
   VKCommandBuffer &command_buffer = command_buffer_get(Type::Graphics);
-  VkRect2D rect = {scissor[0],
-                   scissor[1],
-                   static_cast<uint32_t>(scissor[2]),
-                   static_cast<uint32_t>(scissor[3])};
+
   Array<VkRect2D, 16> scissors(size);
   for (VkRect2D &rect : scissors) {
     rect = {scissor[0],

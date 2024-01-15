@@ -75,7 +75,7 @@ class ShadingView {
 
   void sync();
 
-  void render();
+  void render(int closure_count);
 
  private:
   void render_transparent_pass(RenderBuffers &rbufs);

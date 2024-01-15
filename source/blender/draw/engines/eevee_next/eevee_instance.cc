@@ -384,7 +384,7 @@ void Instance::render_sample()
   capture_view.render_world();
   capture_view.render_probes();
 
-  main_view.render();
+  main_view.render(pipelines.closure_count_get());
 
   lookdev_view.render();
 

@@ -633,7 +633,8 @@ void VKFrameBuffer::attachment_set(GPUAttachmentType type,
       /* Whether to increment the number of attachments actually used. */
       if (tex) {
         dirty_subpass_ = reinterpret_cast<Texture *>(tex)->subpass_bits_get().disable != 0;
-        renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
+        attachment_reference->attachment =
+            renderpass_->vk_create_info_[renderpass_->info_id_].attachmentCount++;
       }
       else {
         attachment_reference->attachment = VK_ATTACHMENT_UNUSED;

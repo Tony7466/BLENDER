@@ -1044,9 +1044,9 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     create_info.ppEnabledExtensionNames = extensions_enabled.data();
 
     /* VkValidationFeaturesEXT */
+#ifdef VK_ENABLE_DEBUG_PRINTF
     VkValidationFeaturesEXT validationFeatures = {};
     validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-#ifdef VK_ENABLE_DEBUG_PRINTF
     VkValidationFeatureEnableEXT enabledValidationFeatures[1] = {
         VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
     if (m_debug) {
@@ -1061,6 +1061,8 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     }
 
 #elif defined(VK_ENABLE_DEBUG_SYNC)
+    VkValidationFeaturesEXT validationFeatures = {};
+    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
     VkValidationFeatureEnableEXT enabledValidationFeatures[] = {
         VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
     if (m_debug) {
