@@ -1156,19 +1156,10 @@ static bool compositor_needs_render(Scene *sce, const bool this_scene)
   return false;
 }
 
-/** Returns true if the scene has a composite output. */
-static bool compositor_has_output(Scene *scene)
+/** Returns true if the node tree has a composite output node. */
+static bool node_tree_has_composite_output(bNodeTree *node_tree)
 {
-  bNodeTree *node_tree = scene->nodetree;
   if (node_tree == nullptr) {
-    return false;
-  }
-
-  if (scene->use_nodes == false) {
-    return false;
-  }
-
-  if (!(scene->r.scemode & R_DOCOMP)) {
     return false;
   }
 
@@ -1241,12 +1232,6 @@ static void do_render_compositor(Render *re)
   bNodeTree *ntree = re->pipeline_scene_eval->nodetree;
   bool update_newframe = false;
 
-  /* The compositor does not have an output, skip writing the render result. See R_SKIP_WRITE for
-   * more information. */
-  if (!compositor_has_output(re->pipeline_scene_eval)) {
-    re->flag |= R_SKIP_WRITE;
-  }
-
   if (compositor_needs_render(re->pipeline_scene_eval, true)) {
     /* render the frames
      * it could be optimized to render only the needed view
@@ -1270,6 +1255,12 @@ static void do_render_compositor(Render *re)
 
     /* Scene render process already updates animsys. */
     update_newframe = true;
+
+    /* The compositor does not have an output, skip writing the render result. See R_SKIP_WRITE for
+     * more information. */
+    if (!node_tree_has_composite_output(re->pipeline_scene_eval->nodetree)) {
+      re->flag |= R_SKIP_WRITE;
+    }
   }
 
   /* swap render result */
@@ -1650,7 +1641,7 @@ static int check_valid_camera(Scene *scene, Object *camera_override, ReportList 
   return true;
 }
 
-static bool node_tree_has_compositor_output(const bNodeTree *ntree)
+static bool node_tree_has_any_compositor_output(const bNodeTree *ntree)
 {
   for (const bNode *node : ntree->all_nodes()) {
     if (ELEM(node->type, CMP_NODE_COMPOSITE, CMP_NODE_OUTPUT_FILE)) {
@@ -1658,7 +1649,7 @@ static bool node_tree_has_compositor_output(const bNodeTree *ntree)
     }
     if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
       if (node->id) {
-        if (node_tree_has_compositor_output((const bNodeTree *)node->id)) {
+        if (node_tree_has_any_compositor_output((const bNodeTree *)node->id)) {
           return true;
         }
       }
@@ -1670,7 +1661,7 @@ static bool node_tree_has_compositor_output(const bNodeTree *ntree)
 
 static int check_compositor_output(Scene *scene)
 {
-  return node_tree_has_compositor_output(scene->nodetree);
+  return node_tree_has_any_compositor_output(scene->nodetree);
 }
 
 /* Identify if the compositor can run on the GPU. Currently, this only checks if the compositor is
