@@ -178,7 +178,13 @@ bool transformModeUseSnap(const TransInfo *t)
   if (t->mode == TFM_RESIZE) {
     return (ts->snap_transform_mode_flag & SCE_SNAP_TRANSFORM_MODE_SCALE) != 0;
   }
-  if (ELEM(t->mode, TFM_VERT_SLIDE, TFM_EDGE_SLIDE, TFM_SEQ_SLIDE, TFM_TIME_TRANSLATE)) {
+  if (ELEM(t->mode,
+           TFM_VERT_SLIDE,
+           TFM_EDGE_SLIDE,
+           TFM_SEQ_SLIDE,
+           TFM_TIME_TRANSLATE,
+           TFM_TIME_EXTEND))
+  {
     return true;
   }
 
@@ -274,7 +280,7 @@ void drawSnapping(TransInfo *t)
         rv3d, source_loc, target_loc, t->tsnap.source_type, t->tsnap.target_type, col, activeCol);
 
     /* Draw normal if needed. */
-    if (usingSnappingNormal(t) && validSnappingNormal(t) && target_loc) {
+    if (target_loc && usingSnappingNormal(t) && validSnappingNormal(t)) {
       uint pos = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 

@@ -119,19 +119,19 @@ struct wmWindowManager;
 #include "RNA_types.hh"
 
 /* exported types for WM */
-#include "gizmo/WM_gizmo_types.h"
+#include "gizmo/WM_gizmo_types.hh"
 #include "wm_cursors.hh"
 #include "wm_event_types.hh"
 
 /* Include external gizmo API's */
-#include "gizmo/WM_gizmo_api.h"
+#include "gizmo/WM_gizmo_api.hh"
 
 namespace blender::asset_system {
 class AssetRepresentation;
 }
 using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
 
-typedef void (*wmGenericUserDataFreeFn)(void *data);
+using wmGenericUserDataFreeFn = void (*)(void *data);
 
 struct wmGenericUserData {
   void *data;
@@ -919,30 +919,30 @@ struct wmTimer {
   bool sleep;
 };
 
-typedef enum wmWarningSize {
+enum wmConfirmSize {
   WM_WARNING_SIZE_SMALL = 0,
   WM_WARNING_SIZE_LARGE,
-} wmWarningSize;
+};
 
-typedef enum wmWarningPosition {
+enum wmConfirmPosition {
   WM_WARNING_POSITION_MOUSE = 0,
   WM_WARNING_POSITION_CENTER,
-} wmWarningPosition;
+};
 
-typedef struct wmWarningDetails {
+struct wmConfirmDetails {
   char title[1024];
   char message[1024];
   char message2[1024];
   char confirm_button[256];
   char cancel_button[256];
   int icon;
-  wmWarningSize size;
-  wmWarningPosition position;
+  wmConfirmSize size;
+  wmConfirmPosition position;
   bool confirm_default;
   bool cancel_default;
   bool mouse_move_quit;
   bool red_alert;
-} wmWarningDetails;
+};
 
 /**
  * Communication/status data owned by the wmJob, and passed to the worker code when calling
@@ -1074,7 +1074,7 @@ struct wmOperatorType {
   /**
    * If using WM_operator_confirm the following can override all parts of the dialog.
    */
-  void (*warning)(struct bContext *C, struct wmOperator *, wmWarningDetails *warning);
+  void (*confirm)(bContext *C, wmOperator *, wmConfirmDetails *details);
 
   /** RNA for properties */
   StructRNA *srna;
@@ -1346,8 +1346,12 @@ struct wmDropBox {
   /**
    * If poll succeeds, operator is called.
    * Not saved in file, so can be pointer.
+   * This may be null when the operator has been unregistered,
+   * where `opname` can be used to re-initialize it.
    */
   wmOperatorType *ot;
+  /** #wmOperatorType::idname, needed for re-registration. */
+  char opname[64];
 
   /** Operator properties, assigned to ptr->data and can be written to a file. */
   IDProperty *properties;
