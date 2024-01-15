@@ -865,6 +865,9 @@ void RNA_api_wm(StructRNA *srna)
       "Operator dialog (non-autoexec popup) invoke "
       "(show operator properties and only execute it on click on OK button)");
   rna_generic_op_invoke(func, WM_GEN_INVOKE_SIZE | WM_GEN_INVOKE_RETURN);
+  parm = RNA_def_property(func, "text", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      parm, "Text", "Optional text to show instead to the default \"OK\" confirmation text.");
 
   /* invoke enum */
   func = RNA_def_function(srna, "invoke_search_popup", "rna_Operator_enum_search_invoke");
