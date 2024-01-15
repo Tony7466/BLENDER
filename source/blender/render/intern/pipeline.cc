@@ -1156,6 +1156,32 @@ static bool compositor_needs_render(Scene *sce, const bool this_scene)
   return false;
 }
 
+/** Returns true if the scene has a composite output. */
+static bool compositor_has_output(Scene *scene)
+{
+  bNodeTree *node_tree = scene->nodetree;
+  if (node_tree == nullptr) {
+    return false;
+  }
+
+  if (scene->use_nodes == false) {
+    return false;
+  }
+
+  if (!(scene->r.scemode & R_DOCOMP)) {
+    return false;
+  }
+
+  for (const bNode *node : node_tree->all_nodes()) {
+    if (node->type == CMP_NODE_COMPOSITE && node->flag & NODE_DO_OUTPUT &&
+        !(node->flag & NODE_MUTED))
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Render all scenes within a compositor node tree. */
 static void do_render_compositor_scenes(Render *re)
 {
@@ -1214,6 +1240,12 @@ static void do_render_compositor(Render *re)
 {
   bNodeTree *ntree = re->pipeline_scene_eval->nodetree;
   bool update_newframe = false;
+
+  /* The compositor does not have an output, skip writing the render result. See R_SKIP_WRITE for
+   * more information. */
+  if (!compositor_has_output(re->pipeline_scene_eval)) {
+    re->flag |= R_SKIP_WRITE;
+  }
 
   if (compositor_needs_render(re->pipeline_scene_eval, true)) {
     /* render the frames
@@ -1765,6 +1797,12 @@ static bool render_init_from_main(Render *re,
   int winx, winy;
   rcti disprect;
 
+  /* Reset the runtime flags before rendering, but only if this init is not an inter-animation
+   * init, since some flags needs to be kept across the entire animation. */
+  if (!anim) {
+    re->flag = 0;
+  }
+
   /* r.xsch and r.ysch has the actual view window size
    * r.border is the clipping rect */
 
@@ -1914,7 +1952,8 @@ void RE_RenderFrame(Render *re,
 
     do_render_full_pipeline(re);
 
-    if (write_still && !G.is_break) {
+    const bool should_write = write_still && !(re->flag & R_SKIP_WRITE);
+    if (should_write && !G.is_break) {
       if (BKE_imtype_is_movie(rd.im_format.imtype)) {
         /* operator checks this but in case its called from elsewhere */
         printf("Error: can't write single images with a movie format!\n");
@@ -1937,7 +1976,7 @@ void RE_RenderFrame(Render *re,
 
     /* keep after file save */
     render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_POST);
-    if (write_still) {
+    if (should_write) {
       render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_WRITE);
     }
   }
@@ -2424,8 +2463,9 @@ void RE_RenderAnim(Render *re,
     do_render_full_pipeline(re);
     totrendered++;
 
+    const bool should_write = !(re->flag & R_SKIP_WRITE);
     if (re->test_break_cb(re->tbh) == 0) {
-      if (!G.is_break) {
+      if (!G.is_break && should_write) {
         if (!do_write_image_or_movie(re, bmain, scene, mh, totvideos, nullptr)) {
           G.is_break = true;
         }
@@ -2470,7 +2510,9 @@ void RE_RenderAnim(Render *re,
     if (G.is_break == false) {
       /* keep after file save */
       render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_POST);
-      render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_WRITE);
+      if (should_write) {
+        render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_WRITE);
+      }
     }
   }
 
@@ -2485,8 +2527,6 @@ void RE_RenderAnim(Render *re,
 
   scene->r.cfra = cfra_old;
   scene->r.subframe = subframe_old;
-
-  re->flag &= ~R_ANIMATION;
 
   render_callback_exec_id(re,
                           re->main,
