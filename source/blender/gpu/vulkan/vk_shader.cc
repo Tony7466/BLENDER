@@ -983,6 +983,9 @@ void VKShader::bind()
 {
   /* Intentionally empty. Binding of the pipeline are done just before drawing/dispatching.
    * See #VKPipeline.update_and_bind */
+  if (!vk_specialtization_dirty_) {
+    vk_specialtization_dirty_ = constants.is_dirty;
+  }
 }
 
 void VKShader::unbind() {}
@@ -1416,13 +1419,12 @@ VkSpecializationInfo VKShader::build_specialzation()
   }
   static Vector<VkSpecializationMapEntry> entries;
   entries.resize(constants.values.size());
-  specialization_values_.clear();
   for (int i = 0; i < constants.values.size(); i++) {
     entries[i].constantID = i;
     entries[i].offset = sizeof(uint32_t) * i;
     entries[i].size = sizeof(uint32_t);
-    specialization_values_.append(constants.values[i].u);
   };
+  vk_specialtization_dirty_ = false;
   return {/* uint32_t mapEntryCount */ static_cast<uint32_t>(entries.size()),
           /* const VkSpecializationMapEntry *pMapEntries */ entries.data(),
           /* size_t dataSize */ constants.values.size() * sizeof(uint32_t),
@@ -1432,32 +1434,17 @@ VkSpecializationInfo VKShader::build_specialzation()
 const VkSpecializationInfo VKShader::specialzation_ensure()
 {
   VkSpecializationInfo null = {};
-  if (constants.values.size() > 0) {
-    bool update = false;
-    if (specialization_values_.size() != constants.values.size()) {
-      update = true;
+  if (vk_specialtization_dirty_) {
+    auto info = build_specialzation();
+    if (is_graphics_shader()) {
+      return info;
     }
     else {
-      for (int i = 0; i < constants.values.size(); i++) {
-        if (specialization_values_[i] != constants.values[i].u) {
-          update = true;
-          break;
-        }
-      }
-    }
-    if (update) {
-      auto info = build_specialzation();
-      if (is_graphics_shader()) {
-        return info;
-      }
-      else {
-        pipeline_.reset(VKPipeline::create_compute_pipeline(
-            compute_module_,
-            vk_pipeline_layout_,
-            reinterpret_cast<VKShaderInterface *>(interface)->push_constants_layout_get(),
-            &info));
-        return null;
-      }
+      pipeline_.reset(VKPipeline::create_compute_pipeline(
+          compute_module_,
+          vk_pipeline_layout_,
+          reinterpret_cast<VKShaderInterface *>(interface)->push_constants_layout_get(),
+          &info));
     }
     BLI_assert(pipeline_->is_valid() == true);
   }
