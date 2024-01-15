@@ -10,10 +10,12 @@
  */
 
 #include "BLI_filereader.h"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 
+namespace blender {
+class ImplicitSharingInfo;
+}
 struct GHash;
 struct Main;
 struct Scene;

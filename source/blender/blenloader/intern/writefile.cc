@@ -91,6 +91,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
+#include "BLI_implicit_sharing.hh"
 #include "BLI_link_utils.h"
 #include "BLI_linklist.h"
 #include "BLI_math_base.h"
@@ -1827,7 +1828,7 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
 
 void BLO_write_shared(BlendWriter *writer,
                       const void *data,
-                      const ImplicitSharingInfoHandle *sharing_info,
+                      const blender::ImplicitSharingInfo *sharing_info,
                       const blender::FunctionRef<void()> write_fn)
 {
   if (data == nullptr) {

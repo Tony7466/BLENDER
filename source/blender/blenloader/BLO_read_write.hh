@@ -34,13 +34,11 @@
 #include "DNA_windowmanager_types.h" /* for eReportType */
 
 #include "BLI_function_ref.hh"
-#include "BLI_implicit_sharing.hh"
 
-typedef struct BlendDataReader BlendDataReader;
-typedef struct BlendExpander BlendExpander;
-typedef struct BlendLibReader BlendLibReader;
-typedef struct BlendWriter BlendWriter;
-
+namespace blender {
+class ImplicitSharingInfo;
+}
+struct BlendDataReader;
 struct BlendFileReadReport;
 struct BlendLibReader;
 struct BlendWriter;

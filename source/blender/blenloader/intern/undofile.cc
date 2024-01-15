@@ -26,6 +26,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
+#include "BLI_implicit_sharing.hh"
 
 #include "BLO_readfile.h"
 #include "BLO_undofile.hh"
