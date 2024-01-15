@@ -5121,14 +5121,8 @@ void CustomData_blend_write(BlendWriter *writer,
         case CD_GRID_PAINT_MASK:
           write_grid_paint_mask(writer, count, static_cast<const GridPaintMask *>(layer.data));
           break;
-        case CD_FACEMAP:
-          BLO_write_raw(writer, sizeof(int) * count, static_cast<const int *>(layer.data));
-          break;
         case CD_PROP_BOOL:
           BLO_write_raw(writer, sizeof(bool) * count, static_cast<const bool *>(layer.data));
-          break;
-        case CD_CREASE:
-          BLO_write_raw(writer, sizeof(float) * count, static_cast<const float *>(layer.data));
           break;
         default: {
           const char *structname;
