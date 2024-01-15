@@ -1802,10 +1802,6 @@ static void pchan_draw_ik_lines(const ArmatureDrawContext *ctx,
   const ePchan_ConstFlag constflag = ePchan_ConstFlag(pchan->constflag);
 
   LISTBASE_FOREACH (bConstraint *, con, &pchan->constraints) {
-    if (con->enforce == 0.0f) {
-      continue;
-    }
-
     switch (con->type) {
       case CONSTRAINT_TYPE_KINEMATIC: {
         bKinematicConstraint *data = (bKinematicConstraint *)con->data;
@@ -1813,6 +1809,13 @@ static void pchan_draw_ik_lines(const ArmatureDrawContext *ctx,
 
         /* if only_temp, only draw if it is a temporary ik-chain */
         if (only_temp && !(data->flag & CONSTRAINT_IK_TEMP)) {
+          continue;
+        }
+
+        if (con->flag & CONSTRAINT_OFF) {
+          /* IK constraints that are OFF are not part of the IK solver. Constraints that are ON are
+           * always part of the IK solver, even at 0% influence, because the IK solver may be
+           * interpolating the target position, rather than the resulting matrix. */
           continue;
         }
 
@@ -1847,6 +1850,9 @@ static void pchan_draw_ik_lines(const ArmatureDrawContext *ctx,
 
         /* don't draw if only_temp, as Spline IK chains cannot be temporary */
         if (only_temp) {
+          continue;
+        }
+        if (con->enforce == 0.0f) {
           continue;
         }
 
