@@ -86,7 +86,7 @@
 
 /* Alignment directive */
 #ifdef _WIN64
-#  define BLN_ALIGN_STRUCT __declspec(align(64))
+#  define BLI_ALIGN_STRUCT __declspec(align(64))
 #else
-#  define BLN_ALIGN_STRUCT
+#  define BLI_ALIGN_STRUCT
 #endif

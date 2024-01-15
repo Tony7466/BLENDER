@@ -41,7 +41,7 @@ message("PATCH_DIR = ${PATCH_DIR}")
 message("BUILD_DIR = ${BUILD_DIR}")
 
 if(WIN32)
-  if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "ARM64")
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES ARM64)
     set(BLENDER_PLATFORM_ARM ON)
   endif()
   set(PATCH_CMD ${DOWNLOAD_DIR}/msys2/msys64/usr/bin/patch.exe)

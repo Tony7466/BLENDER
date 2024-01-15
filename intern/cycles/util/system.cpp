@@ -105,12 +105,10 @@ string system_cpu_brand_string()
                  RRF_RT_REG_SZ,
                  nullptr,
                  &vendorIdentifier,
-                 &vendorIdentifierLength) != ERROR_SUCCESS)
+                 &vendorIdentifierLength) == ERROR_SUCCESS)
   {
-    return NULL;
+    return vendorIdentifier;
   }
-
-  return vendorIdentifier;
 #else
   /* Get from /proc/cpuinfo on Unix systems. */
   FILE *cpuinfo = fopen("/proc/cpuinfo", "r");

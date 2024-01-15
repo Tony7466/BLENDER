@@ -1217,11 +1217,7 @@ typedef enum KernelBVHLayout {
 } KernelBVHLayout;
 
 /* Specialized struct that can become constants in dynamic compilation. */
-#if defined(_M_ARM64)
-#  define KERNEL_STRUCT_BEGIN(name, parent) __declspec(align(16)) struct name {
-#else
-#  define KERNEL_STRUCT_BEGIN(name, parent) struct name {
-#endif
+#define KERNEL_STRUCT_BEGIN(name, parent) ccl_align(16) struct name {
 #define KERNEL_STRUCT_END(name) \
   } \
   ; \
@@ -1263,11 +1259,7 @@ typedef struct KernelLightLinkSet {
   uint light_tree_root;
 } KernelLightLinkSet;
 
-#if defined(_M_ARM64)
-typedef __declspec(align(16)) struct KernelData {
-#else
-typedef struct KernelData {
-#endif
+typedef ccl_align(16) struct KernelData {
   /* Features and limits. */
   uint kernel_features;
   uint max_closures;

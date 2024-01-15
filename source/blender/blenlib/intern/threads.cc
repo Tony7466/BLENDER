@@ -412,6 +412,8 @@ void BLI_spin_lock(SpinLock *spin)
   BLI_mutex_lock(spin);
 #elif defined(_MSC_VER)
 #  if defined(_M_ARM64)
+  // InterlockedExchangeAcquire takes a long arg on MSVC ARM64
+  static_assert(sizeof(long) == sizeof(SpinLock));
   while (InterlockedExchangeAcquire((volatile long *)spin, 1)) {
 #  else
   while (InterlockedExchangeAcquire(spin, 1)) {
