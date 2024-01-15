@@ -6,3 +6,4 @@ Referenced by issue #101231, Regression: Console flooded with warnings when flui
 Referenced by issue #84369, Fluid: Missing cache invalidation when properties on non-domain objects change.
 Referenced by issue #106425, Regression: Guiding in manta is broken
 Referenced by pull request #117067, Fix #106425: Mantaflow guiding with domains is broken
+Referenced by commit 4da32e933443c1f7b02c2eb064b77c060c33658c, Fix #106425: Mantaflow guiding with domains is broken
