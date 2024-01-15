@@ -1413,7 +1413,7 @@ static blender::StringRef legacy_socket_idname_to_socket_type(blender::StringRef
     }
   }
   /* Unchanged socket idname. */
-  return idname.data();
+  return idname;
 }
 
 static bNodeTreeInterfaceItem *legacy_socket_move_to_interface(bNodeSocket &legacy_socket,
