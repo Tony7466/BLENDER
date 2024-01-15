@@ -56,7 +56,7 @@ void BLO_memfile_merge(MemFile *first, MemFile *second)
   blender::Map<const char *, MemFileChunk *> buffer_to_second_memchunk;
 
   /* First, detect all memchunks in second memfile that are not owned by it. */
-  LISTBASE_FOREACH (MemFileChunk *, sc, &first->chunks) {
+  LISTBASE_FOREACH (MemFileChunk *, sc, &second->chunks) {
     if (sc->is_identical) {
       buffer_to_second_memchunk.add(sc->buf, sc);
     }
