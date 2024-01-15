@@ -13,9 +13,11 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
+#include "BLI_stack.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
+#include "BKE_action.h"
 #include "BKE_armature.hh"
 #include "BKE_constraint.h"
 
@@ -50,6 +52,11 @@ static void find_ik_constraints(ListBase *constraints,
         continue;
       }
       if (con->flag & CONSTRAINT_DISABLE) {
+        continue;
+      }
+      if (con->flag & CONSTRAINT_OFF) {
+        /* Skip constraints that have been muted by the user. Zero-influence
+         * constraints are still kept. */
         continue;
       }
       ik_constraints.append(con);
@@ -660,6 +667,40 @@ void iksolver_execute_tree(
     /* 7. and free */
     BLI_remlink(&pchan_root->iktree, tree);
     free_posetree(tree);
+  }
+
+  {
+    LISTBASE_FOREACH_MUTABLE (bPoseChannel *, pchan, &ob->pose->chanbase) {
+      /* Skip bones for which iksolver_initialize_tree() did not call initialize_posetree(). */
+      if ((pchan->constflag & PCHAN_HAS_IK) == 0) {
+        continue;
+      }
+
+      /* Skip bones that have been handled by the IK solver. */
+      if (pchan->flag & POSE_DONE) {
+        continue;
+      }
+
+      /* This bone has an IK constraint, but was not handled by the IK solver. This means it still
+       * needs a call to BKE_pose_where_is_bone() to properly update it for its local loc/rot/scale
+       * properties. This has to happen parent-to-child though, and the IK tip is the childiest of
+       * them all. */
+      blender::Stack<bPoseChannel *> stack;
+      while (pchan && (pchan->flag & POSE_DONE) == 0) {
+        stack.push(pchan);
+        pchan = pchan->parent;
+      }
+      while (!stack.is_empty()) {
+        bPoseChannel *pchan = stack.pop();
+
+        if (pchan->flag & POSE_DONE) {
+          continue;
+        }
+
+        BKE_pose_where_is_bone(depsgraph, scene, ob, pchan, ctime, true);
+        pchan->flag |= POSE_DONE;
+      }
+    }
   }
 }
 
