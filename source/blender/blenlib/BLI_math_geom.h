@@ -250,9 +250,8 @@ struct DistRayAABB_Precalc {
   float ray_direction[3];
   float ray_inv_dir[3];
 };
-void dist_squared_ray_to_aabb_v3_precalc(struct DistRayAABB_Precalc *neasrest_precalc,
-                                         const float ray_origin[3],
-                                         const float ray_direction[3]);
+struct DistRayAABB_Precalc dist_squared_ray_to_aabb_v3_precalc(const float ray_origin[3],
+                                                               const float ray_direction[3]);
 /**
  * Returns the distance from a ray to a bound-box (projected on ray)
  */
@@ -580,7 +579,7 @@ bool isect_ray_plane_v3(const float ray_origin[3],
 /**
  * Check if a point is behind all planes.
  */
-bool isect_point_planes_v3(float (*planes)[4], int totplane, const float p[3]);
+bool isect_point_planes_v3(const float (*planes)[4], int totplane, const float p[3]);
 /**
  * Check if a point is in front all planes.
  * Same as isect_point_planes_v3 but with planes facing the opposite direction.

@@ -8,7 +8,7 @@ from rna_prop_ui import PropertyPanel
 
 from bpy.app.translations import (
     pgettext_iface as iface_,
-    pgettext_tip as tip_,
+    pgettext_tip as rpt_,
 )
 
 
@@ -426,9 +426,7 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
 
             col = layout.column(heading="Preserve")
             col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
-            col.prop(mesh, "use_remesh_preserve_paint_mask", text="Paint Mask")
-            col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text="Face Sets")
-            col.prop(mesh, "use_remesh_preserve_vertex_colors", text="Color Attributes")
+            col.prop(mesh, "use_remesh_preserve_attributes", text="Attributes")
 
             col.operator("object.voxel_remesh", text="Voxel Remesh")
         else:
@@ -496,6 +494,10 @@ class MESH_UL_attributes(UIList):
         # Filtering internal attributes
         for idx, item in enumerate(attributes):
             flags[idx] = 0 if item.is_internal else flags[idx]
+
+        # Reorder by name.
+        if self.use_filter_sort_alpha:
+            indices = bpy.types.UI_UL_list.sort_items_by_name(attributes, "name")
 
         return flags, indices
 
@@ -579,7 +581,7 @@ def draw_attribute_warnings(context, layout):
     if not colliding_names:
         return
 
-    layout.label(text=tip_("Name collisions: ") + ", ".join(set(colliding_names)),
+    layout.label(text=rpt_("Name collisions: ") + ", ".join(set(colliding_names)),
                  icon='ERROR', translate=False)
 
 
@@ -610,6 +612,10 @@ class ColorAttributesListBase():
                 item.is_internal
             )
             flags[idx] = 0 if skip else flags[idx]
+
+        # Reorder by name.
+        if self.use_filter_sort_alpha:
+            indices = bpy.types.UI_UL_list.sort_items_by_name(attributes, "name")
 
         return flags, indices
 
