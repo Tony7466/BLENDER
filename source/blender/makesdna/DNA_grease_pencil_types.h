@@ -586,6 +586,16 @@ typedef struct GreasePencil {
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
 
+  blender::VArray<blender::float3> layer_translations() const;
+  blender::MutableSpan<blender::float3> layer_translations_for_write();
+
+  /* Represented as XYZ euler rotations. */
+  blender::VArray<blender::float3> layer_rotations() const;
+  blender::MutableSpan<blender::float3> layer_rotations_for_write();
+
+  blender::VArray<blender::float3> layer_scales() const;
+  blender::MutableSpan<blender::float3> layer_scales_for_write();
+
   /* For debugging purposes. */
   void print_layer_tree();
 #endif

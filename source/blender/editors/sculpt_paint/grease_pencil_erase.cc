@@ -66,7 +66,8 @@ struct EraseOperationExecutor {
   EraseOperationExecutor(const bContext &C)
   {
     Object *object = CTX_data_active_object(&C);
-    transforms_ = bke::greasepencil::DrawingTransforms(*object);
+    const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+    transforms_ = bke::greasepencil::DrawingTransforms(*object, *grease_pencil.get_active_layer());
   }
 
   /**

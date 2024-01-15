@@ -13,6 +13,16 @@ class DataButtonsPanel:
     @classmethod
     def poll(cls, context):
         return hasattr(context, "grease_pencil") and context.grease_pencil
+    
+class LayerDataButtonsPanel:
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+
+    @classmethod
+    def poll(cls, context):
+        grease_pencil = context.grease_pencil
+        return grease_pencil and grease_pencil.layers.active
 
 
 class DATA_PT_context_grease_pencil(DataButtonsPanel, Panel):
@@ -69,11 +79,33 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
             col = layout.row(align=True)
             col.prop(layer, "opacity", text="Opacity", slider=True)
 
+class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, Panel):
+    bl_label = "Transform"
+    bl_parent_id = "DATA_PT_grease_pencil_layers"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        grease_pencil = context.grease_pencil
+        layer = grease_pencil.layers.active
+        layout.active = not layer.lock
+
+        row = layout.row(align=True)
+        row.prop(layer, "translation")
+
+        row = layout.row(align=True)
+        row.prop(layer, "rotation")
+
+        row = layout.row(align=True)
+        row.prop(layer, "scale")
 
 classes = (
     DATA_PT_context_grease_pencil,
     DATA_PT_grease_pencil_layers,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
+    DATA_PT_grease_pencil_layer_transform,
 )
 
 if __name__ == "__main__":  # only for live edit.
