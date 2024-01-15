@@ -778,7 +778,7 @@ class MTLContext : public Context {
     return static_cast<MTLContext *>(Context::get());
   }
 
-  void debug_group_begin(const char *name, int index) override;
+  void debug_group_begin(const char *name, int index, int profile_level) override;
   void debug_group_end() override;
   bool debug_capture_begin() override;
   void debug_capture_end() override;

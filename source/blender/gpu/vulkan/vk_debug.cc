@@ -18,7 +18,7 @@
 static CLG_LogRef LOG = {"gpu.debug.vulkan"};
 
 namespace blender::gpu {
-void VKContext::debug_group_begin(const char *name, int)
+void VKContext::debug_group_begin(const char *name, int, int)
 {
   const VKDevice &device = VKBackend::get().device_get();
   debug::push_marker(device, name);

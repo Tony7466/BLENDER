@@ -30,7 +30,7 @@ class DummyContext : public Context {
 
   void memory_statistics_get(int * /*r_total_mem*/, int * /*r_free_mem*/) override {}
 
-  void debug_group_begin(const char *, int) override {}
+  void debug_group_begin(const char *, int, int) override {}
   void debug_group_end() override {}
   bool debug_capture_begin() override
   {

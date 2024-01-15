@@ -19,20 +19,20 @@
 using namespace blender;
 using namespace blender::gpu;
 
-void GPU_debug_group_begin(const char *name)
+void GPU_debug_group_begin(const char *name, int profile_level)
 {
-  if (!(G.debug & G_DEBUG_GPU)) {
+  if (!(G.debug & G_DEBUG_GPU) && G.profile_gpu_level < 0) {
     return;
   }
   Context *ctx = Context::get();
   DebugStack &stack = ctx->debug_stack;
   stack.append(StringRef(name));
-  ctx->debug_group_begin(name, stack.size());
+  ctx->debug_group_begin(name, stack.size(), profile_level);
 }
 
 void GPU_debug_group_end()
 {
-  if (!(G.debug & G_DEBUG_GPU)) {
+  if (!(G.debug & G_DEBUG_GPU) && G.profile_gpu_level < 0) {
     return;
   }
   Context *ctx = Context::get();

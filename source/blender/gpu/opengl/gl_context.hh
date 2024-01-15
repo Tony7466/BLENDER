@@ -12,6 +12,7 @@
 
 #include "GPU_framebuffer.h"
 
+#include "BKE_global.h"
 #include "BLI_set.hh"
 #include "BLI_vector.hh"
 
@@ -105,6 +106,12 @@ class GLContext : public Context {
     bool finished;
     int64_t cpu_start;
     float cpu_time;
+    int level;
+
+    bool is_required()
+    {
+      return level <= G.profile_gpu_level;
+    };
   };
   struct FrameQueries {
     Vector<TimeQuery> queries;
@@ -150,7 +157,7 @@ class GLContext : public Context {
   void vao_cache_register(GLVaoCache *cache);
   void vao_cache_unregister(GLVaoCache *cache);
 
-  void debug_group_begin(const char *name, int index) override;
+  void debug_group_begin(const char *name, int index, int profile_level) override;
   void debug_group_end() override;
   bool debug_capture_begin() override;
   void debug_capture_end() override;

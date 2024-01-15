@@ -52,7 +52,7 @@ extern "C" {
 
 #define GPU_DEBUG_SHADER_COMPILATION_GROUP "Shader Compilation"
 
-void GPU_debug_group_begin(const char *name);
+void GPU_debug_group_begin(const char *name, int profile_level = 0);
 void GPU_debug_group_end(void);
 /**
  * Return a formatted string showing the current group hierarchy in this format:

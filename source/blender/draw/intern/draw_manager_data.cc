@@ -2391,7 +2391,7 @@ DRWPass *DRW_pass_create(const char *name, DRWState state)
 {
   DRWPass *pass = static_cast<DRWPass *>(BLI_memblock_alloc(DST.vmempool->passes));
   pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
-  if (G.debug & G_DEBUG_GPU) {
+  if (G.debug & G_DEBUG_GPU || G.profile_gpu_level >= 0) {
     STRNCPY(pass->name, name);
   }
 
