@@ -386,6 +386,98 @@ class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
         return {'FINISHED'}
 
 
+class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
+    '''Move the active item to the specified direction'''
+    bl_idname = "node.interface_item_move"
+    bl_label = "Move Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        description="Specifies which direction the active item is moved towards",
+        items=(
+            ('UP', "Move Up", ""),
+            ('DOWN', "Move Down", "")
+        ),
+    )
+
+    @classmethod
+    def poll(cls, context):
+        if not super().poll(context):
+            return False
+
+        snode = context.space_data
+        tree = snode.edit_tree
+        interface = tree.interface
+        return interface.active is not None
+
+    @staticmethod
+    def fetch_all_parents(interface):
+        # The root panel that sockets are parented to by default is not directly accessible
+        # Hence we retrieve it by creating a new socket and getting its parent
+        new_socket = interface.new_socket(name="DUMMY_SOCKET")
+        yield new_socket.parent
+        interface.remove(new_socket)
+
+        # Retrieve all other panels
+        for item in interface.items_tree:
+            if item.item_type == 'PANEL':
+                yield item
+
+    @staticmethod
+    def get_prev_parent(parents, current_parent):
+        prev_parent = parents[0]
+
+        for parent in parents:
+            if parent == current_parent:
+                break
+
+            prev_parent = parent
+        
+        return prev_parent
+
+    @staticmethod
+    def get_next_parent(parents, current_parent):
+        iter_parents = iter(parents)
+        for parent in iter_parents:
+            if parent == current_parent:
+                break
+
+        try:
+            next_parent = next(iter_parents)
+        except StopIteration:
+            next_parent = parent
+        
+        return next_parent
+
+    def execute(self, context):
+        interface = context.space_data.edit_tree.interface
+        active_item = interface.active
+
+        offset = -1 if self.direction == 'UP' else 2
+
+        old_position = active_item.position
+        interface.move(active_item, active_item.position + offset)
+
+        if active_item.position == old_position and active_item.item_type == 'SOCKET':
+            parents = tuple(self.fetch_all_parents(interface))
+
+            if self.direction == 'UP':
+                new_parent = self.get_prev_parent(parents, active_item.parent)
+                new_position = len(new_parent.interface_items)
+            else:
+                new_parent = self.get_next_parent(parents, active_item.parent)
+                new_position = 0
+
+            if new_parent != active_item.parent:
+                interface.move_to_parent(active_item, new_parent, new_position)
+            else:
+                return {'CANCELLED'}
+
+        interface.active_index = active_item.index
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
@@ -396,5 +488,7 @@ classes = (
     NODE_OT_interface_item_new,
     NODE_OT_interface_item_duplicate,
     NODE_OT_interface_item_remove,
+    NODE_OT_interface_item_move,
+    
     NODE_OT_tree_path_parent,
 )

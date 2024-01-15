@@ -928,7 +928,10 @@ class NODE_PT_node_tree_interface(Panel):
         ops_col.operator("node.interface_item_remove", icon='REMOVE', text="")
         ops_col.separator()
         ops_col.menu("NODE_MT_node_tree_interface_context_menu", icon='DOWNARROW_HLT', text="")
-
+        ops_col.separator()
+        
+        ops_col.operator("node.interface_item_move", icon='TRIA_UP', text="").direction = "UP"
+        ops_col.operator("node.interface_item_move", icon='TRIA_DOWN', text="").direction = "DOWN"
         ops_col.separator()
 
         active_item = tree.interface.active
