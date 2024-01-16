@@ -75,7 +75,7 @@ static bool handle_range(const int curve_index,
 }
 
 /**
- * Calculates number of points in resulting curve denoted by #curve_index and sets it's
+ * Calculates number of points in resulting curve denoted by #curve_index and sets its
  * #curve_offsets value.
  */
 static void calc_curve_offset(const int curve_index,
@@ -145,7 +145,7 @@ static void finish_curve_or_full_copy(int &curve_index,
                  is_first_selected);
   }
   else {
-    /* Copy full curve if previous selected point vas not on this curve. */
+    /* Copy full curve if previous selected point was not on this curve. */
     const int first = offsets[curve_index];
     curve_interval_ranges[curve_index] = IndexRange(interval_offset, 1);
     is_first_selected[curve_index] = false;
