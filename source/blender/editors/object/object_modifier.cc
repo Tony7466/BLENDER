@@ -73,6 +73,8 @@
 #include "BKE_softbody.h"
 #include "BKE_volume.hh"
 
+#include "BLT_translation.h"
+
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
@@ -1794,6 +1796,16 @@ static int modifier_apply_exec(bContext *C, wmOperator *op)
   return modifier_apply_exec_ex(C, op, MODIFIER_APPLY_DATA, false);
 }
 
+static void modifier_apply_confirm(bContext * /*C*/,
+                                   wmOperator * /*op*/,
+                                   wmConfirmDetails *confirm)
+{
+  STRNCPY(confirm->message, IFACE_("Make object data single-user and apply modifier"));
+  STRNCPY(confirm->confirm_button, IFACE_("Apply"));
+  confirm->position = WM_WARNING_POSITION_MOUSE;
+  confirm->size = WM_WARNING_SIZE_SMALL;
+}
+
 static int modifier_apply_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   int retval;
@@ -1807,8 +1819,7 @@ static int modifier_apply_invoke(bContext *C, wmOperator *op, const wmEvent *eve
         RNA_property_boolean_set(op->ptr, prop, true);
       }
       if (RNA_property_boolean_get(op->ptr, prop)) {
-        return WM_operator_confirm_message(
-            C, op, "Make object data single-user and apply modifier");
+        return WM_operator_confirm(C, op, nullptr);
       }
     }
     return modifier_apply_exec(C, op);
@@ -1825,6 +1836,7 @@ void OBJECT_OT_modifier_apply(wmOperatorType *ot)
   ot->invoke = modifier_apply_invoke;
   ot->exec = modifier_apply_exec;
   ot->poll = modifier_apply_poll;
+  ot->confirm = modifier_apply_confirm;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
