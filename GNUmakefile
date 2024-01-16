@@ -210,14 +210,17 @@ endif
 
 # Find the newest Python version bundled in `LIBDIR`.
 PY_LIB_VERSION:=3.15
-ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 	PY_LIB_VERSION:=3.14
-	ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+	ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 		PY_LIB_VERSION:=3.13
-		ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+		ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 			PY_LIB_VERSION:=3.12
-			ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+			ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 				PY_LIB_VERSION:=3.11
+				ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
+					PY_LIB_VERSION:=3.10
+				endif
 			endif
 		endif
 	endif
@@ -227,7 +230,7 @@ endif
 ifndef PYTHON
 	# If not overriden, first try using Python from LIBDIR.
 	PYTHON:=$(LIBDIR)/python/bin/python$(PY_LIB_VERSION)
-	ifeq (, $(PYTHON))
+	ifeq (, $(wildcard $(PYTHON)))
 		# If not available, use system python3 or python command.
 		PYTHON:=python3
 		ifeq (, $(shell command -v $(PYTHON)))
