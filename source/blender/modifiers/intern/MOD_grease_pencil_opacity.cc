@@ -173,8 +173,10 @@ static void modify_hardness(const GreasePencilOpacityModifierData &omd,
                             const IndexMask &curves_mask)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_or_add_for_write_span<float>(
-      "hardness", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_for_write_span<float>("hardness");
+  if (!hardnesses) {
+    return;
+  }
 
   for (const int64_t i : curves_mask.index_range()) {
     const int64_t curve_i = curves_mask[i];
