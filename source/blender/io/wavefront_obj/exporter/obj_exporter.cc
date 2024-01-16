@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -11,14 +13,15 @@
 #include "BKE_scene.h"
 
 #include "BLI_path_util.h"
+#include "BLI_string.h"
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_scene_types.h"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
 #include "obj_export_mesh.hh"
 #include "obj_export_nurbs.hh"
@@ -157,9 +160,6 @@ static void write_mesh_objects(Vector<std::unique_ptr<OBJMesh>> exportable_as_me
     if (mtl_writer) {
       mtlindices.append(mtl_writer->add_materials(obj));
     }
-    if (export_params.export_normals) {
-      obj.ensure_mesh_normals();
-    }
   }
 
   /* Parallel over meshes: store normal coords & indices, uv coords and indices. */
@@ -197,7 +197,7 @@ static void write_mesh_objects(Vector<std::unique_ptr<OBJMesh>> exportable_as_me
       obj_writer.write_object_name(fh, obj);
       obj_writer.write_vertex_coords(fh, obj, export_params.export_colors);
 
-      if (obj.tot_polygons() > 0) {
+      if (obj.tot_faces() > 0) {
         if (export_params.export_smooth_groups) {
           obj.calc_smooth_groups(export_params.smooth_groups_bitflags);
         }
@@ -213,7 +213,7 @@ static void write_mesh_objects(Vector<std::unique_ptr<OBJMesh>> exportable_as_me
         /* This function takes a 0-indexed slot index for the obj_mesh object and
          * returns the material name that we are using in the .obj file for it. */
         const auto *obj_mtlindices = mtlindices.is_empty() ? nullptr : &mtlindices[i];
-        std::function<const char *(int)> matname_fn = [&](int s) -> const char * {
+        auto matname_fn = [&](int s) -> const char * {
           if (!obj_mtlindices || s < 0 || s >= obj_mtlindices->size()) {
             return nullptr;
           }
@@ -289,7 +289,7 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
       BLI_path_split_dir_part(export_params.filepath, dest_dir, PATH_MAX);
     }
     else {
-      BLI_strncpy(dest_dir, export_params.file_base_for_tests, PATH_MAX);
+      STRNCPY(dest_dir, export_params.file_base_for_tests);
     }
     BLI_path_slash_native(dest_dir);
     BLI_path_normalize(dest_dir);
@@ -305,8 +305,7 @@ bool append_frame_to_filename(const char *filepath, const int frame, char *r_fil
 {
   BLI_strncpy(r_filepath_with_frames, filepath, FILE_MAX);
   BLI_path_extension_strip(r_filepath_with_frames);
-  const int digits = frame == 0 ? 1 : integer_digits_i(abs(frame));
-  BLI_path_frame(r_filepath_with_frames, FILE_MAX, frame, digits);
+  BLI_path_frame(r_filepath_with_frames, FILE_MAX, frame, 4);
   return BLI_path_extension_replace(r_filepath_with_frames, FILE_MAX, ".obj");
 }
 

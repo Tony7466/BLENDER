@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -34,9 +36,14 @@
 #include "BKE_appdir.h"
 #include "DNA_scene_types.h"
 #include "FRS_freestyle.h"
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 #include "bpy_rna.h" /* pyrna_struct_CreatePyObject() */
+
+#include "../generic/py_capi_utils.h" /* #PyC_UnicodeFromBytes */
+
+#include "BKE_colorband.hh"  /* BKE_colorband_evaluate() */
+#include "BKE_colortools.hh" /* BKE_curvemapping_evaluateF() */
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,8 +68,7 @@ static PyObject *Freestyle_getCurrentScene(PyObject * /*self*/)
     PyErr_SetString(PyExc_TypeError, "current scene not available");
     return nullptr;
   }
-  PointerRNA ptr_scene;
-  RNA_pointer_create(&scene->id, &RNA_Scene, scene, &ptr_scene);
+  PointerRNA ptr_scene = RNA_pointer_create(&scene->id, &RNA_Scene, scene);
   return pyrna_struct_CreatePyObject(&ptr_scene);
 }
 
@@ -185,8 +191,6 @@ static PyObject *Freestyle_blendRamp(PyObject * /*self*/, PyObject *args)
   return Vector_CreatePyObject(a, 3, nullptr);
 }
 
-#include "BKE_colorband.h" /* BKE_colorband_evaluate() */
-
 static char Freestyle_evaluateColorRamp___doc__[] =
     ".. function:: evaluateColorRamp(ramp, in)\n"
     "\n"
@@ -220,7 +224,6 @@ static PyObject *Freestyle_evaluateColorRamp(PyObject * /*self*/, PyObject *args
   return Vector_CreatePyObject(out, 4, nullptr);
 }
 
-#include "BKE_colortools.h" /* BKE_curvemapping_evaluateF() */
 #include "DNA_color_types.h"
 
 static char Freestyle_evaluateCurveMappingF___doc__[] =
@@ -513,7 +516,7 @@ static PyMethodDef module_functions[] = {
 /*-----------------------Freestyle module definition---------------------------*/
 
 static PyModuleDef module_definition = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "_freestyle",
     /*m_doc*/ module_docstring,
     /*m_size*/ -1,
@@ -525,7 +528,7 @@ static PyModuleDef module_definition = {
 };
 
 //-------------------MODULE INITIALIZATION--------------------------------
-PyObject *Freestyle_Init(void)
+PyObject *Freestyle_Init()
 {
   PyObject *module;
 
@@ -542,7 +545,7 @@ PyObject *Freestyle_Init(void)
     char modpath[FILE_MAX];
     BLI_path_join(modpath, sizeof(modpath), path, "modules");
     PyObject *sys_path = PySys_GetObject("path"); /* borrow */
-    PyObject *py_modpath = PyUnicode_FromString(modpath);
+    PyObject *py_modpath = PyC_UnicodeFromBytes(modpath);
     PyList_Append(sys_path, py_modpath);
     Py_DECREF(py_modpath);
 #if 0

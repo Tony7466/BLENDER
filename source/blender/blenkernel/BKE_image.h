@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -50,7 +51,10 @@ void BKE_image_free_gputextures(struct Image *ima);
  */
 void BKE_image_free_data(struct Image *image);
 
-typedef void(StampCallback)(void *data, const char *propname, char *propvalue, int len);
+typedef void(StampCallback)(void *data,
+                            const char *propname,
+                            char *propvalue,
+                            int propvalue_maxncpy);
 
 void BKE_render_result_stamp_info(struct Scene *scene,
                                   struct Object *camera,
@@ -345,11 +349,12 @@ bool BKE_image_has_opengl_texture(struct Image *ima);
 
 /**
  * Get tile index for tiled images.
+ * \return The string length.
  */
-void BKE_image_get_tile_label(struct Image *ima,
-                              struct ImageTile *tile,
-                              char *label,
-                              int len_label);
+int BKE_image_get_tile_label(const struct Image *ima,
+                             const struct ImageTile *tile,
+                             char *label,
+                             int label_maxncpy);
 
 /**
  * Checks whether the given filepath refers to a UDIM tiled texture.
@@ -433,7 +438,7 @@ void BKE_image_get_size(struct Image *image, struct ImageUser *iuser, int *r_wid
 void BKE_image_get_size_fl(struct Image *image, struct ImageUser *iuser, float r_size[2]);
 void BKE_image_get_aspect(struct Image *image, float *r_aspx, float *r_aspy);
 
-/* image_gen.c */
+/* `image_gen.cc` */
 
 void BKE_image_buf_fill_color(
     unsigned char *rect, float *rect_float, int width, int height, const float color[4]);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -21,6 +23,7 @@
 #  endif
 #else
 #  include <atomic>
+#  include <functional>
 #  include <mutex>
 
 #  include "BLI_map.hh"
@@ -35,7 +38,7 @@ namespace enumerable_thread_specific_utils {
 inline std::atomic<int> next_id = 0;
 inline thread_local int thread_id = next_id.fetch_add(1, std::memory_order_relaxed);
 }  // namespace enumerable_thread_specific_utils
-#endif
+#endif /* !WITH_TBB */
 
 /**
  * This is mainly a wrapper for `tbb::enumerable_thread_specific`. The wrapper is needed because we

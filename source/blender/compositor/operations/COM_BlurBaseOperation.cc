@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BlurBaseOperation.h"
 #include "COM_ConstantOperation.h"
@@ -15,6 +16,7 @@ BlurBaseOperation::BlurBaseOperation(DataType data_type)
   this->add_input_socket(DataType::Value);
   this->add_output_socket(data_type);
   flags_.complex = true;
+  flags_.can_be_constant = true;
   input_program_ = nullptr;
   memset(&data_, 0, sizeof(NodeBlurData));
   size_ = 1.0f;
@@ -84,7 +86,7 @@ float *BlurBaseOperation::make_gausstab(float rad, int size)
   return gausstab;
 }
 
-#ifdef BLI_HAVE_SSE2
+#if BLI_HAVE_SSE2
 __m128 *BlurBaseOperation::convert_gausstab_sse(const float *gausstab, int size)
 {
   int n = 2 * size + 1;

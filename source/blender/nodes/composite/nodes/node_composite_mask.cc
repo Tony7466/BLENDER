@@ -1,16 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
  */
 
-#include "BLT_translation.h"
+#include "BLI_string_utf8.h"
 
 #include "DNA_mask_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "COM_cached_mask.hh"
 #include "COM_node_operation.hh"
@@ -26,7 +27,7 @@ NODE_STORAGE_FUNCS(NodeMask)
 
 static void cmp_node_mask_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>(N_("Mask"));
+  b.add_output<decl::Float>("Mask");
 }
 
 static void node_composit_init_mask(bNodeTree * /*ntree*/, bNode *node)
@@ -42,14 +43,9 @@ static void node_composit_init_mask(bNodeTree * /*ntree*/, bNode *node)
 static void node_mask_label(const bNodeTree * /*ntree*/,
                             const bNode *node,
                             char *label,
-                            int maxlen)
+                            int label_maxncpy)
 {
-  if (node->id != nullptr) {
-    BLI_strncpy(label, node->id->name + 2, maxlen);
-  }
-  else {
-    BLI_strncpy(label, IFACE_("Mask"), maxlen);
-  }
+  BLI_strncpy_utf8(label, node->id ? node->id->name + 2 : IFACE_("Mask"), label_maxncpy);
 }
 
 static void node_composit_buts_mask(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -101,12 +97,12 @@ class MaskOperation : public NodeOperation {
         context(),
         get_mask(),
         domain.size,
+        get_aspect_ratio(),
         get_use_feather(),
         get_motion_blur_samples(),
         get_motion_blur_shutter());
 
-    output_mask.allocate_texture(domain);
-    GPU_texture_copy(output_mask.texture(), cached_mask.texture());
+    output_mask.wrap_external(cached_mask.texture());
   }
 
   Domain compute_domain() override
@@ -130,6 +126,15 @@ class MaskOperation : public NodeOperation {
   int2 get_size()
   {
     return int2(node_storage(bnode()).size_x, node_storage(bnode()).size_y);
+  }
+
+  float get_aspect_ratio()
+  {
+    if (get_flags() & (CMP_NODE_MASK_FLAG_SIZE_FIXED | CMP_NODE_MASK_FLAG_SIZE_FIXED_SCENE)) {
+      return 1.0f;
+    }
+
+    return context().get_render_data().yasp / context().get_render_data().xasp;
   }
 
   bool get_use_feather()

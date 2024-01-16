@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "gpu_shader_create_info.hh"
 
@@ -146,4 +148,23 @@ GPU_SHADER_CREATE_INFO(compositor_minimum_float_in_range)
     .define("INITIALIZE(v)", "((v.x <= upper_bound) && (v.x >= lower_bound)) ? v.x : upper_bound")
     .define("LOAD(value)", "value.x")
     .define("REDUCE(lhs, rhs)", "((rhs < lhs) && (rhs >= lower_bound)) ? rhs : lhs")
+    .do_static_compilation(true);
+
+/* --------------------------------------------------------------------
+ * Velocity Reductions.
+ */
+
+GPU_SHADER_CREATE_INFO(compositor_max_velocity)
+    .local_group_size(32, 32)
+    .push_constant(Type::BOOL, "is_initial_reduction")
+    .sampler(0, ImageType::FLOAT_2D, "input_tx")
+    .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
+    .define("TYPE", "vec4")
+    .define("IDENTITY", "vec4(0.0)")
+    .define("INITIALIZE(value)", "value")
+    .define("LOAD(value)", "value")
+    .define("REDUCE(lhs, rhs)",
+            "vec4(dot(lhs.xy, lhs.xy) > dot(rhs.xy, rhs.xy) ? lhs.xy : rhs.xy,"
+            "     dot(lhs.zw, lhs.zw) > dot(rhs.zw, rhs.zw) ? lhs.zw : rhs.zw)")
+    .compute_source("compositor_parallel_reduction.glsl")
     .do_static_compilation(true);

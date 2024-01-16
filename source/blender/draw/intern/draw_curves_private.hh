@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -7,7 +8,6 @@
 
 #pragma once
 
-#include "BKE_attribute.h"
 #include "GPU_shader.h"
 
 #include "draw_attributes.hh"
@@ -16,6 +16,8 @@ struct Curves;
 struct GPUVertBuf;
 struct GPUBatch;
 struct GPUMaterial;
+
+namespace blender::draw {
 
 #define MAX_THICKRES 2    /* see eHairType */
 #define MAX_HAIR_SUBDIV 4 /* see hair_subdiv rna */
@@ -91,3 +93,5 @@ bool curves_ensure_procedural_data(Curves *curves,
                                    int thickness_res);
 
 void drw_curves_get_attribute_sampler_name(const char *layer_name, char r_sampler_name[32]);
+
+}  // namespace blender::draw

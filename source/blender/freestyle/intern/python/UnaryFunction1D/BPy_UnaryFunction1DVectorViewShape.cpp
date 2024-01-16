@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -86,7 +88,8 @@ static int UnaryFunction1DVectorViewShape___init__(BPy_UnaryFunction1DVectorView
   PyObject *obj = nullptr;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj)) {
+          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj))
+  {
     return -1;
   }
 
@@ -185,7 +188,7 @@ static PyGetSetDef BPy_UnaryFunction1DVectorViewShape_getseters[] = {
 /*-----------------------BPy_UnaryFunction1DVectorViewShape type definition ---------------------*/
 
 PyTypeObject UnaryFunction1DVectorViewShape_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "UnaryFunction1DVectorViewShape",
     /*tp_basicsize*/ sizeof(BPy_UnaryFunction1DVectorViewShape),
     /*tp_itemsize*/ 0,

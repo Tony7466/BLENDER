@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2007-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GHOST_NDOFManager.hh"
 #include "GHOST_Debug.hh"
@@ -418,7 +420,7 @@ void GHOST_NDOFManager::sendButtonEvent(NDOF_ButtonT button,
   GHOST_ASSERT(button > NDOF_BUTTON_NONE && button < NDOF_BUTTON_NUM,
                "rogue button trying to escape NDOF manager");
 
-  GHOST_EventNDOFButton *event = new GHOST_EventNDOFButton(time, window);
+  const GHOST_EventNDOFButton *event = new GHOST_EventNDOFButton(time, window);
   GHOST_TEventNDOFButtonData *data = (GHOST_TEventNDOFButtonData *)event->getData();
 
   data->action = press ? GHOST_kPress : GHOST_kRelease;
@@ -433,7 +435,7 @@ void GHOST_NDOFManager::sendKeyEvent(GHOST_TKey key,
                                      GHOST_IWindow *window)
 {
   GHOST_TEventType type = press ? GHOST_kEventKeyDown : GHOST_kEventKeyUp;
-  GHOST_EventKey *event = new GHOST_EventKey(time, type, window, key, false);
+  const GHOST_EventKey *event = new GHOST_EventKey(time, type, window, key, false);
 
   system_.pushEvent(event);
 }
@@ -525,14 +527,14 @@ void GHOST_NDOFManager::setDeadZone(float dz)
   CLOG_INFO(LOG, 2, "dead zone set to %.2f%s", dz, (dz > 0.5f) ? " (unexpectedly high)" : "");
 }
 
-static bool atHomePosition(GHOST_TEventNDOFMotionData *ndof)
+static bool atHomePosition(const GHOST_TEventNDOFMotionData *ndof)
 {
 #define HOME(foo) (ndof->foo == 0.0f)
   return HOME(tx) && HOME(ty) && HOME(tz) && HOME(rx) && HOME(ry) && HOME(rz);
 #undef HOME
 }
 
-static bool nearHomePosition(GHOST_TEventNDOFMotionData *ndof, float threshold)
+static bool nearHomePosition(const GHOST_TEventNDOFMotionData *ndof, float threshold)
 {
   if (threshold == 0.0f) {
     return atHomePosition(ndof);
@@ -559,7 +561,7 @@ bool GHOST_NDOFManager::sendMotionEvent()
     return false;
   }
 
-  GHOST_EventNDOFMotion *event = new GHOST_EventNDOFMotion(motion_time_, window);
+  const GHOST_EventNDOFMotion *event = new GHOST_EventNDOFMotion(motion_time_, window);
   GHOST_TEventNDOFMotionData *data = (GHOST_TEventNDOFMotionData *)event->getData();
 
   /* Scale axis values here to normalize them to around +/- 1

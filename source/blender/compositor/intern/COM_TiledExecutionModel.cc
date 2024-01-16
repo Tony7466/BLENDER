@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_TiledExecutionModel.h"
 #include "COM_Debug.h"
@@ -22,7 +23,7 @@ TiledExecutionModel::TiledExecutionModel(CompositorContext &context,
 {
   const bNodeTree *node_tree = context.get_bnodetree();
   node_tree->runtime->stats_draw(node_tree->runtime->sdh,
-                                 TIP_("Compositing | Determining resolution"));
+                                 RPT_("Compositing | Determining resolution"));
 
   uint resolution[2];
   for (ExecutionGroup *group : groups_) {
@@ -102,7 +103,7 @@ void TiledExecutionModel::execute(ExecutionSystem &exec_system)
   const bNodeTree *editingtree = this->context_.get_bnodetree();
 
   editingtree->runtime->stats_draw(editingtree->runtime->sdh,
-                                   TIP_("Compositing | Initializing execution"));
+                                   RPT_("Compositing | Initializing execution"));
 
   update_read_buffer_offset(operations_);
 
@@ -121,7 +122,7 @@ void TiledExecutionModel::execute(ExecutionSystem &exec_system)
   WorkScheduler::stop();
 
   editingtree->runtime->stats_draw(editingtree->runtime->sdh,
-                                   TIP_("Compositing | De-initializing execution"));
+                                   RPT_("Compositing | De-initializing execution"));
 
   for (NodeOperation *operation : operations_) {
     operation->deinit_execution();
@@ -137,7 +138,8 @@ void TiledExecutionModel::execute_groups(eCompositorPriority priority,
 {
   for (ExecutionGroup *execution_group : groups_) {
     if (execution_group->get_flags().is_output &&
-        execution_group->get_render_priority() == priority) {
+        execution_group->get_render_priority() == priority)
+    {
       execution_group->execute(&exec_system);
     }
   }

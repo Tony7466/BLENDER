@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -31,6 +33,8 @@
     .alpha_threshold = 0.5f, \
  \
     .blend_shadow = MA_BS_SOLID, \
+ \
+    .blend_flag = MA_BL_TRANSPARENT_SHADOW,\
     \
     .lineart.mat_occlusion = 1, \
   }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -164,7 +166,8 @@ static int UnaryFunction1DDouble___init__(BPy_UnaryFunction1DDouble *self,
   PyObject *obj = nullptr;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj)) {
+          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj))
+  {
     return -1;
   }
 
@@ -252,7 +255,7 @@ static PyGetSetDef BPy_UnaryFunction1DDouble_getseters[] = {
 /*-----------------------BPy_UnaryFunction1DDouble type definition ------------------------------*/
 
 PyTypeObject UnaryFunction1DDouble_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "UnaryFunction1DDouble",
     /*tp_basicsize*/ sizeof(BPy_UnaryFunction1DDouble),
     /*tp_itemsize*/ 0,

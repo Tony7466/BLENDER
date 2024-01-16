@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -26,11 +28,16 @@ class Context;
 class CachedMaskKey {
  public:
   int2 size;
+  float aspect_ratio;
   bool use_feather;
   int motion_blur_samples;
   float motion_blur_shutter;
 
-  CachedMaskKey(int2 size, bool use_feather, int motion_blur_samples, float motion_blur_shutter);
+  CachedMaskKey(int2 size,
+                float aspect_ratio,
+                bool use_feather,
+                int motion_blur_samples,
+                float motion_blur_shutter);
 
   uint64_t hash() const;
 };
@@ -41,15 +48,17 @@ bool operator==(const CachedMaskKey &a, const CachedMaskKey &b);
  * Cached Mask.
  *
  * A cached resource that computes and caches a GPU texture containing the result of evaluating the
- * given mask ID on a space that spans the given size, parametrized by the given parameters. */
+ * given mask ID on a space that spans the given size, parameterized by the given parameters. */
 class CachedMask : public CachedResource {
  private:
   GPUTexture *texture_ = nullptr;
 
  public:
-  CachedMask(Mask *mask,
+  CachedMask(Context &context,
+             Mask *mask,
              int2 size,
              int frame,
+             float aspect_ratio,
              bool use_feather,
              int motion_blur_samples,
              float motion_blur_shutter);
@@ -78,6 +87,7 @@ class CachedMaskContainer : CachedResourceContainer {
   CachedMask &get(Context &context,
                   Mask *mask,
                   int2 size,
+                  float aspect_ratio,
                   bool use_feather,
                   int motion_blur_samples,
                   float motion_blur_shutter);

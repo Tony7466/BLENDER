@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -47,7 +49,8 @@ static int GetYF1D___init__(BPy_GetYF1D *self, PyObject *args, PyObject *kwds)
   PyObject *obj = nullptr;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj)) {
+          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj))
+  {
     return -1;
   }
   IntegrationType t = (obj) ? IntegrationType_from_BPy_IntegrationType(obj) : MEAN;
@@ -57,7 +60,7 @@ static int GetYF1D___init__(BPy_GetYF1D *self, PyObject *args, PyObject *kwds)
 /*-----------------------BPy_GetYF1D type definition ------------------------------*/
 
 PyTypeObject GetYF1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GetYF1D",
     /*tp_basicsize*/ sizeof(BPy_GetYF1D),
     /*tp_itemsize*/ 0,

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstdlib>
 
@@ -813,7 +814,8 @@ static void do_allEdgeDetection(uint t,
       }
       else {
         if (!limask[pix_nextCol] || !limask[pix_prevCol] || !limask[pix_nextRow] ||
-            !limask[pix_prevRow]) {
+            !limask[pix_prevRow])
+        {
           in_isz++;    /* Increment the inner boundary pixel count. */
           lres[a] = 4; /* Flag pixel as part of inner edge. */
         }
@@ -1292,6 +1294,7 @@ DoubleEdgeMaskOperation::DoubleEdgeMaskOperation()
   adjacent_only_ = false;
   keep_inside_ = false;
   flags_.complex = true;
+  flags_.can_be_constant = true;
   is_output_rendered_ = false;
 }
 

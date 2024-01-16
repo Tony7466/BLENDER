@@ -1,16 +1,14 @@
+# SPDX-FileCopyrightText: 2024 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 set(INC
   .
   ../blenkernel
-  ../blenlib
   ../blenloader
   ../gpu
-  ../makesdna
   ../makesrna
   ../sequencer
-  ../../../intern/guardedalloc
   ../../../intern/memutil
 )
 
@@ -33,6 +31,7 @@ set(SRC
   intern/format_hdr.cc
   intern/format_png.cc
   intern/format_psd.cc
+  intern/format_svg.cc
   intern/format_targa.cc
   intern/format_tiff.cc
   intern/imageprocess.cc
@@ -76,17 +75,28 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
   bf_blenloader
+  PRIVATE bf::dna
   bf_imbuf_openimageio
-  bf_intern_guardedalloc
+  PRIVATE bf::intern::guardedalloc
   bf_intern_memutil
   bf_intern_opencolorio
+  PRIVATE bf::extern::nanosvg
 
   ${JPEG_LIBRARIES}
 )
 
 if(WITH_IMAGE_OPENEXR)
+  # Keep until APPLE/ARM libraries are updated.
+  if(APPLE)
+    if(CMAKE_OSX_ARCHITECTURES MATCHES arm64)
+      list(APPEND INC_SYS
+        ${IMATH_INCLUDE_DIRS}
+      )
+    endif()
+  endif()
+
   list(APPEND LIB
     bf_imbuf_openexr
   )
@@ -187,3 +197,10 @@ set_source_files_properties(
 )
 
 blender_add_lib(bf_imbuf "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_SRC
+    intern/transform_test.cc
+  )
+  blender_add_test_suite_lib(imbuf "${TEST_SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+endif()

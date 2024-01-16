@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2019-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -14,7 +16,7 @@ from bpy.props import (
 )
 from bpy.app.translations import (
     pgettext_iface as iface_,
-    pgettext_tip as tip_,
+    pgettext_tip as rpt_,
 )
 
 
@@ -78,29 +80,30 @@ class PREFERENCES_OT_copy_prev(Operator):
 
     @classmethod
     def previous_version(cls):
-        # Find config folder from previous version.
         import os
-        version = bpy.app.version
-        version_new = ((version[0] * 100) + version[1])
-        version_old = ((version[0] * 100) + version[1]) - 1
+        # Find config folder from previous version.
+        #
+        # Always allow to load startup data from any release from current major release cycle, and the previous one.
 
-        # Ensure we only try to copy files from a point release.
-        # The check below ensures the second numbers match.
-        while (version_new % 100) // 10 == (version_old % 100) // 10:
-            version_split = version_old // 100, version_old % 100
-            if os.path.isdir(cls._old_version_path(version_split)):
-                return version_split
-            version_old = version_old - 1
+        # NOTE: This value may need to be updated when the release cycle system is modified.
+        # Here could be `6` in theory (Blender 3.6 LTS), just give it a bit of extra room, such that it does not have to
+        # be updated if there ever exist a 3.7 release e.g.
+        MAX_MINOR_VERSION_FOR_PREVIOUS_MAJOR_LOOKUP = 10
 
-        # Support loading 2.8x..2.9x startup (any older isn't so useful to load).
-        # NOTE: remove this block for Blender 4.0 and later.
-        if version_old == 299:
-            version_old = 294
-            while version_old >= 280:
-                version_split = version_old // 100, version_old % 100
-                if os.path.isdir(cls._old_version_path(version_split)):
-                    return version_split
-                version_old = version_old - 1
+        version_new = bpy.app.version[:2]
+        version_old = [version_new[0], version_new[1] - 1]
+
+        while True:
+            while version_old[1] >= 0:
+                if os.path.isdir(cls._old_version_path(version_old)):
+                    return tuple(version_old)
+                version_old[1] -= 1
+            if version_new[0] == version_old[0]:
+                # Retry with older major version.
+                version_old[0] -= 1
+                version_old[1] = MAX_MINOR_VERSION_FOR_PREVIOUS_MAJOR_LOOKUP
+            else:
+                break
 
         return None
 
@@ -142,7 +145,7 @@ class PREFERENCES_OT_copy_prev(Operator):
         import shutil
         shutil.copytree(self._old_path(), self._new_path(), dirs_exist_ok=True, symlinks=True)
 
-        # reload preferences and recent-files.txt
+        # Reload preferences and `recent-files.txt`.
         bpy.ops.wm.read_userpref()
         bpy.ops.wm.read_history()
 
@@ -173,7 +176,7 @@ class PREFERENCES_OT_keyconfig_test(Operator):
 
 
 class PREFERENCES_OT_keyconfig_import(Operator):
-    """Import key configuration from a python script"""
+    """Import key configuration from a Python script"""
     bl_idname = "preferences.keyconfig_import"
     bl_label = "Import Key Configuration..."
 
@@ -192,7 +195,7 @@ class PREFERENCES_OT_keyconfig_import(Operator):
         options={'HIDDEN'},
     )
     filter_python: BoolProperty(
-        name="Filter python",
+        name="Filter Python",
         default=True,
         options={'HIDDEN'},
     )
@@ -225,8 +228,8 @@ class PREFERENCES_OT_keyconfig_import(Operator):
                 shutil.copy(self.filepath, path)
             else:
                 shutil.move(self.filepath, path)
-        except Exception as ex:
-            self.report({'ERROR'}, tip_("Installing keymap failed: %s") % ex)
+        except BaseException as ex:
+            self.report({'ERROR'}, rpt_("Installing keymap failed: %s") % ex)
             return {'CANCELLED'}
 
         # sneaky way to check we're actually running the code.
@@ -244,7 +247,7 @@ class PREFERENCES_OT_keyconfig_import(Operator):
 
 
 class PREFERENCES_OT_keyconfig_export(Operator):
-    """Export key configuration to a python script"""
+    """Export key configuration to a Python script"""
     bl_idname = "preferences.keyconfig_export"
     bl_label = "Export Key Configuration..."
 
@@ -268,7 +271,7 @@ class PREFERENCES_OT_keyconfig_export(Operator):
         options={'HIDDEN'},
     )
     filter_python: BoolProperty(
-        name="Filter python",
+        name="Filter Python",
         default=True,
         options={'HIDDEN'},
     )
@@ -452,7 +455,7 @@ class PREFERENCES_OT_addon_enable(Operator):
             if info_ver > bpy.app.version:
                 self.report(
                     {'WARNING'},
-                    tip_("This script was written Blender "
+                    rpt_("This script was written Blender "
                          "version %d.%d.%d and might not "
                          "function (correctly), "
                          "though it is enabled")
@@ -540,7 +543,7 @@ class PREFERENCES_OT_theme_install(Operator):
 
         if not self.overwrite:
             if os.path.exists(path_dest):
-                self.report({'WARNING'}, tip_("File already installed to %r\n") % path_dest)
+                self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
                 return {'CANCELLED'}
 
         try:
@@ -549,8 +552,7 @@ class PREFERENCES_OT_theme_install(Operator):
                 filepath=path_dest,
                 menu_idname="USERPREF_MT_interface_theme_presets",
             )
-
-        except:
+        except BaseException:
             traceback.print_exc()
             return {'CANCELLED'}
 
@@ -610,7 +612,7 @@ class PREFERENCES_OT_addon_install(Operator):
         options={'HIDDEN'},
     )
     filter_python: BoolProperty(
-        name="Filter python",
+        name="Filter Python",
         default=True,
         options={'HIDDEN'},
     )
@@ -645,7 +647,7 @@ class PREFERENCES_OT_addon_install(Operator):
         if not os.path.isdir(path_addons):
             try:
                 os.makedirs(path_addons, exist_ok=True)
-            except:
+            except BaseException:
                 traceback.print_exc()
 
         # Check if we are installing from a target path,
@@ -655,7 +657,7 @@ class PREFERENCES_OT_addon_install(Operator):
         pyfile_dir = os.path.dirname(pyfile)
         for addon_path in addon_utils.paths():
             if os.path.samefile(pyfile_dir, addon_path):
-                self.report({'ERROR'}, tip_("Source file is in the add-on search path: %r") % addon_path)
+                self.report({'ERROR'}, rpt_("Source file is in the add-on search path: %r") % addon_path)
                 return {'CANCELLED'}
         del addon_path
         del pyfile_dir
@@ -667,7 +669,7 @@ class PREFERENCES_OT_addon_install(Operator):
         if zipfile.is_zipfile(pyfile):
             try:
                 file_to_extract = zipfile.ZipFile(pyfile, 'r')
-            except:
+            except BaseException:
                 traceback.print_exc()
                 return {'CANCELLED'}
 
@@ -679,12 +681,12 @@ class PREFERENCES_OT_addon_install(Operator):
                 for f in file_to_extract_root:
                     path_dest = os.path.join(path_addons, os.path.basename(f))
                     if os.path.exists(path_dest):
-                        self.report({'WARNING'}, tip_("File already installed to %r\n") % path_dest)
+                        self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
                         return {'CANCELLED'}
 
             try:  # extract the file to "addons"
                 file_to_extract.extractall(path_addons)
-            except:
+            except BaseException:
                 traceback.print_exc()
                 return {'CANCELLED'}
 
@@ -694,13 +696,13 @@ class PREFERENCES_OT_addon_install(Operator):
             if self.overwrite:
                 _module_filesystem_remove(path_addons, os.path.basename(pyfile))
             elif os.path.exists(path_dest):
-                self.report({'WARNING'}, tip_("File already installed to %r\n") % path_dest)
+                self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
                 return {'CANCELLED'}
 
             # if not compressed file just copy into the addon path
             try:
                 shutil.copyfile(pyfile, path_dest)
-            except:
+            except BaseException:
                 traceback.print_exc()
                 return {'CANCELLED'}
 
@@ -729,7 +731,7 @@ class PREFERENCES_OT_addon_install(Operator):
 
         # print message
         msg = (
-            tip_("Modules Installed (%s) from %r into %r") %
+            rpt_("Modules Installed (%s) from %r into %r") %
             (", ".join(sorted(addons_new)), pyfile, path_addons)
         )
         print(msg)
@@ -774,7 +776,7 @@ class PREFERENCES_OT_addon_remove(Operator):
 
         path, isdir = PREFERENCES_OT_addon_remove.path_from_addon(self.module)
         if path is None:
-            self.report({'WARNING'}, tip_("Add-on path %r could not be found") % path)
+            self.report({'WARNING'}, rpt_("Add-on path %r could not be found") % path)
             return {'CANCELLED'}
 
         # in case its enabled
@@ -903,7 +905,7 @@ class PREFERENCES_OT_app_template_install(Operator):
         if not os.path.isdir(path_app_templates):
             try:
                 os.makedirs(path_app_templates, exist_ok=True)
-            except:
+            except BaseException:
                 traceback.print_exc()
 
         app_templates_old = set(os.listdir(path_app_templates))
@@ -912,7 +914,7 @@ class PREFERENCES_OT_app_template_install(Operator):
         if zipfile.is_zipfile(filepath):
             try:
                 file_to_extract = zipfile.ZipFile(filepath, 'r')
-            except:
+            except BaseException:
                 traceback.print_exc()
                 return {'CANCELLED'}
 
@@ -924,18 +926,18 @@ class PREFERENCES_OT_app_template_install(Operator):
                 for f in file_to_extract_root:
                     path_dest = os.path.join(path_app_templates, os.path.basename(f))
                     if os.path.exists(path_dest):
-                        self.report({'WARNING'}, tip_("File already installed to %r\n") % path_dest)
+                        self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
                         return {'CANCELLED'}
 
             try:  # extract the file to "bl_app_templates_user"
                 file_to_extract.extractall(path_app_templates)
-            except:
+            except BaseException:
                 traceback.print_exc()
                 return {'CANCELLED'}
 
         else:
-            # Only support installing zipfiles
-            self.report({'WARNING'}, tip_("Expected a zip-file %r\n") % filepath)
+            # Only support installing zip-files.
+            self.report({'WARNING'}, rpt_("Expected a zip-file %r\n") % filepath)
             return {'CANCELLED'}
 
         app_templates_new = set(os.listdir(path_app_templates)) - app_templates_old
@@ -945,7 +947,7 @@ class PREFERENCES_OT_app_template_install(Operator):
 
         # print message
         msg = (
-            tip_("Template Installed (%s) from %r into %r") %
+            rpt_("Template Installed (%s) from %r into %r") %
             (", ".join(sorted(app_templates_new)), filepath, path_app_templates)
         )
         print(msg)
@@ -1009,7 +1011,7 @@ class PREFERENCES_OT_studiolight_install(Operator):
 
         # print message
         msg = (
-            tip_("StudioLight Installed %r into %r") %
+            rpt_("StudioLight Installed %r into %r") %
             (", ".join(e.name for e in self.files), path_studiolights)
         )
         print(msg)
@@ -1067,7 +1069,7 @@ class PREFERENCES_OT_studiolight_new(Operator):
 
         # print message
         msg = (
-            tip_("StudioLight Installed %r into %r") %
+            rpt_("StudioLight Installed %r into %r") %
             (self.filename, str(path_studiolights))
         )
         print(msg)
@@ -1097,13 +1099,9 @@ class PREFERENCES_OT_studiolight_uninstall(Operator):
         prefs = context.preferences
         for studio_light in prefs.studio_lights:
             if studio_light.index == self.index:
-                for filepath in (
-                        studio_light.path,
-                        studio_light.path_irr_cache,
-                        studio_light.path_sh_cache,
-                ):
-                    if filepath and os.path.exists(filepath):
-                        os.unlink(filepath)
+                filepath = studio_light.path
+                if filepath and os.path.exists(filepath):
+                    os.unlink(filepath)
                 prefs.studio_lights.remove(studio_light)
                 return {'FINISHED'}
         return {'CANCELLED'}

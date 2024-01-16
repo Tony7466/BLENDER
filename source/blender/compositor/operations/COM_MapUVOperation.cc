@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MapUVOperation.h"
 
@@ -12,6 +13,7 @@ MapUVOperation::MapUVOperation()
   this->add_output_socket(DataType::Color);
   alpha_ = 0.0f;
   flags_.complex = true;
+  flags_.can_be_constant = true;
   set_canvas_input_index(UV_INPUT_INDEX);
 
   inputUVProgram_ = nullptr;

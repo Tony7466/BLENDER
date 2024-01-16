@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MaskNode.h"
 #include "COM_MaskOperation.h"
@@ -62,7 +63,6 @@ void MaskNode::convert_to_operations(NodeConverter &converter,
   scale_operation->set_is_aspect(false);
   scale_operation->set_is_crop(false);
   scale_operation->set_offset(0.0f, 0.0f);
-  scale_operation->set_scale_canvas_max_size({float(data->size_x), float(data->size_y)});
 
   converter.add_operation(scale_operation);
   converter.add_link(operation->get_output_socket(0), scale_operation->get_input_socket(0));

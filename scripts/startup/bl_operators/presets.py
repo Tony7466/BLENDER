@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -11,7 +13,7 @@ from bpy.props import (
     StringProperty,
 )
 from bpy.app.translations import (
-    pgettext_tip as tip_,
+    pgettext_rpt as rpt_,
     pgettext_data as data_,
 )
 
@@ -138,7 +140,7 @@ class AddPresetBase:
                             # to simple lists to repr()
                             try:
                                 value = value[:]
-                            except:
+                            except BaseException:
                                 pass
 
                             file_preset.write("%s = %r\n" % (rna_path_step, value))
@@ -188,8 +190,8 @@ class AddPresetBase:
                     self.remove(context, filepath)
                 else:
                     os.remove(filepath)
-            except Exception as e:
-                self.report({'ERROR'}, tip_("Unable to remove preset: %r") % e)
+            except BaseException as ex:
+                self.report({'ERROR'}, rpt_("Unable to remove preset: %r") % ex)
                 import traceback
                 traceback.print_exc()
                 return {'CANCELLED'}
@@ -239,7 +241,7 @@ class ExecutePreset(Operator):
         ext = splitext(filepath)[1].lower()
 
         if ext not in {".py", ".xml"}:
-            self.report({'ERROR'}, tip_("Unknown file type: %r") % ext)
+            self.report({'ERROR'}, rpt_("Unknown file type: %r") % ext)
             return {'CANCELLED'}
 
         if hasattr(preset_class, "reset_cb"):
@@ -248,7 +250,7 @@ class ExecutePreset(Operator):
         if ext == ".py":
             try:
                 bpy.utils.execfile(filepath)
-            except Exception as ex:
+            except BaseException as ex:
                 self.report({'ERROR'}, "Failed to execute the preset: " + repr(ex))
 
         elif ext == ".xml":
@@ -413,6 +415,24 @@ class AddPresetHairDynamics(AddPresetBase, Operator):
     ]
 
 
+class AddPresetTextEditor(AddPresetBase, Operator):
+    """Add or remove a Text Editor Preset"""
+    bl_idname = "text_editor.preset_add"
+    bl_label = "Add Text Editor Preset"
+    preset_menu = "USERPREF_PT_text_editor_presets"
+
+    preset_defines = [
+        "filepaths = bpy.context.preferences.filepaths"
+    ]
+
+    preset_values = [
+        "filepaths.text_editor",
+        "filepaths.text_editor_args"
+    ]
+
+    preset_subdir = "text_editor"
+
+
 class AddPresetTrackingCamera(AddPresetBase, Operator):
     """Add or remove a Tracking Camera Intrinsics Preset"""
     bl_idname = "clip.camera_preset_add"
@@ -493,6 +513,33 @@ class AddPresetTrackingSettings(AddPresetBase, Operator):
     ]
 
     preset_subdir = "tracking_settings"
+
+
+class AddPresetEEVEERaytracing(AddPresetBase, Operator):
+    """Add or remove an EEVEE ray-tracing preset"""
+    bl_idname = "render.eevee_raytracing_preset_add"
+    bl_label = "Add Raytracing Preset"
+    preset_menu = "RENDER_PT_eevee_next_raytracing_presets"
+
+    preset_defines = [
+        "eevee = bpy.context.scene.eevee",
+        "options = eevee.ray_tracing_options"
+    ]
+
+    preset_values = [
+        "eevee.ray_tracing_method",
+        "options.resolution_scale",
+        "options.sample_clamp",
+        "options.screen_trace_max_roughness",
+        "options.screen_trace_quality",
+        "options.screen_trace_thickness",
+        "options.use_denoise",
+        "options.denoise_spatial",
+        "options.denoise_temporal",
+        "options.denoise_bilateral",
+    ]
+
+    preset_subdir = "eevee/raytracing"
 
 
 class AddPresetNodeColor(AddPresetBase, Operator):
@@ -692,11 +739,13 @@ classes = (
     AddPresetOperator,
     AddPresetRender,
     AddPresetCameraSafeAreas,
+    AddPresetTextEditor,
     AddPresetTrackingCamera,
     AddPresetTrackingSettings,
     AddPresetTrackingTrackColor,
     AddPresetGpencilBrush,
     AddPresetGpencilMaterial,
+    AddPresetEEVEERaytracing,
     ExecutePreset,
     WM_MT_operator_presets,
 )

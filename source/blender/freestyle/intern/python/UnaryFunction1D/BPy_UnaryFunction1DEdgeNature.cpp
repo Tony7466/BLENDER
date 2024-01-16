@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -69,7 +71,8 @@ static int UnaryFunction1DEdgeNature___init__(BPy_UnaryFunction1DEdgeNature *sel
   PyObject *obj = nullptr;
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj)) {
+          args, kwds, "|O!", (char **)kwlist, &IntegrationType_Type, &obj))
+  {
     return -1;
   }
 
@@ -159,7 +162,7 @@ static PyGetSetDef BPy_UnaryFunction1DEdgeNature_getseters[] = {
 /*-----------------------BPy_UnaryFunction1DEdgeNature type definition --------------------------*/
 
 PyTypeObject UnaryFunction1DEdgeNature_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "UnaryFunction1DEdgeNature",
     /*tp_basicsize*/ sizeof(BPy_UnaryFunction1DEdgeNature),
     /*tp_itemsize*/ 0,

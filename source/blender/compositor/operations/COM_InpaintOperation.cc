@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "MEM_guardedalloc.h"
 
@@ -21,6 +22,7 @@ InpaintSimpleOperation::InpaintSimpleOperation()
   cached_buffer_ = nullptr;
   cached_buffer_ready_ = false;
   flags_.is_fullframe_operation = true;
+  flags_.can_be_constant = true;
 }
 void InpaintSimpleOperation::init_execution()
 {
@@ -178,7 +180,7 @@ void InpaintSimpleOperation::pix_step(int x, int y)
             weight = 1.0f;
           }
           else {
-            weight = M_SQRT1_2; /* 1.0f / sqrt(2) */
+            weight = M_SQRT1_2; /* `1.0f / sqrt(2)`. */
           }
 
           madd_v3_v3fl(pix, this->get_pixel(x_ofs, y_ofs), weight);
@@ -281,15 +283,14 @@ void InpaintSimpleOperation::update_memory_buffer(MemoryBuffer *output,
 {
   /* TODO(manzanilla): once tiled implementation is removed, run multi-threaded where possible. */
   MemoryBuffer *input = inputs[0];
+
+  if (input->is_a_single_elem()) {
+    copy_v4_v4(output->get_elem(0, 0), input->get_elem(0, 0));
+    return;
+  }
+
   if (!cached_buffer_ready_) {
-    if (input->is_a_single_elem()) {
-      MemoryBuffer *tmp = input->inflate();
-      cached_buffer_ = tmp->release_ownership_buffer();
-      delete tmp;
-    }
-    else {
-      cached_buffer_ = (float *)MEM_dupallocN(input->get_buffer());
-    }
+    cached_buffer_ = (float *)MEM_dupallocN(input->get_buffer());
 
     this->calc_manhattan_distance();
 

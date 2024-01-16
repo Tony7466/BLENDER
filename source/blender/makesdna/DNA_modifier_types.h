@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -6,21 +8,19 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
+
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
 
 #ifdef __cplusplus
-namespace blender::bke::sim {
-class ModifierSimulationCache;
+namespace blender {
+struct NodesModifierRuntime;
 }
-using ModifierSimulationCacheHandle = blender::bke::sim::ModifierSimulationCache;
+using NodesModifierRuntimeHandle = blender::NodesModifierRuntime;
 #else
-typedef struct ModifierSimulationCacheHandle ModifierSimulationCacheHandle;
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+typedef struct NodesModifierRuntimeHandle NodesModifierRuntimeHandle;
 #endif
 
 /* WARNING ALERT! TYPEDEF VALUES ARE WRITTEN IN FILES! SO DO NOT CHANGE!
@@ -93,6 +93,7 @@ typedef enum ModifierType {
   eModifierType_MeshToVolume = 58,
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
+  eModifierType_GreasePencilOpacity = 61,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -109,6 +110,7 @@ typedef enum ModifierMode {
   eModifierMode_ApplyOnSpline = (1 << 6),
   eModifierMode_DisableTemporary = (1u << 31),
 } ModifierMode;
+ENUM_OPERATORS(ModifierMode, eModifierMode_DisableTemporary);
 
 typedef struct ModifierData {
   struct ModifierData *next, *prev;
@@ -119,6 +121,14 @@ typedef struct ModifierData {
   short flag;
   /** An "expand" bit for each of the modifier's (sub)panels (#uiPanelDataExpansion). */
   short ui_expand_flag;
+  /**
+   * Bits that can be used for open-states of layout panels in the modifier. This can replace
+   * `ui_expand_flag` once all modifiers use layout panels. Currently, trying to reuse the same
+   * flags is problematic, because the bits in `ui_expand_flag` are mapped to panels automatically
+   * and easily conflict with the explicit mapping of bits to panels here.
+   */
+  uint16_t layout_panel_open_flag;
+  char _pad[6];
   /** MAX_NAME. */
   char name[64];
 
@@ -141,6 +151,11 @@ typedef enum {
    * Only one modifier on an object should have this flag set.
    */
   eModifierFlag_Active = (1 << 2),
+  /**
+   * Only set on modifiers in evaluated objects. The flag indicates that the user modified inputs
+   * to the modifier which might invalidate simulation caches.
+   */
+  eModifierFlag_UserModified = (1 << 3),
 } ModifierFlag;
 
 /**
@@ -873,7 +888,7 @@ typedef struct CollisionModifierData {
   /** (xnew - x) at the actual inter-frame step. */
   float (*current_v)[3];
 
-  struct MVertTri *tri;
+  int (*vert_tris)[3];
 
   unsigned int mvert_num;
   unsigned int tri_num;
@@ -1166,8 +1181,9 @@ typedef struct ShrinkwrapModifierData {
   /** Axis to project over. */
   char projAxis;
 
-  /** If using projection over vertex normal this controls the level of subsurface that must be
-   * done before getting the vertex coordinates and normal
+  /**
+   * If using projection over vertex normal this controls the level of subsurface that must be
+   * done before getting the vertex coordinates and normal.
    */
   char subsurfLevels;
 
@@ -2114,10 +2130,10 @@ typedef struct DataTransferModifierData {
 
   struct Object *ob_source;
 
-  /** See DT_TYPE_ enum in ED_object.h. */
+  /** See DT_TYPE_ enum in ED_object.hh. */
   int data_types;
 
-  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.h */
+  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.hh */
   int vmap_mode;
   int emap_mode;
   int lmap_mode;
@@ -2129,12 +2145,12 @@ typedef struct DataTransferModifierData {
 
   char _pad1[4];
 
-  /** DT_MULTILAYER_INDEX_MAX; See DT_FROMLAYERS_ enum in ED_object.h. */
+  /** DT_MULTILAYER_INDEX_MAX; See DT_FROMLAYERS_ enum in ED_object.hh. */
   int layers_select_src[5];
-  /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.h. */
+  /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.hh. */
   int layers_select_dst[5];
 
-  /** See CDT_MIX_ enum in BKE_customdata.h. */
+  /** See CDT_MIX_ enum in BKE_customdata.hh. */
   int mix_mode;
   float mix_factor;
   /** #MAX_VGROUP_NAME. */
@@ -2224,6 +2240,9 @@ enum {
    * the mesh topology changes, but this heuristic sometimes fails. In these cases, users can
    * disable interpolation with this flag. */
   MOD_MESHSEQ_INTERPOLATE_VERTICES = (1 << 4),
+
+  /* Read animated custom attributes from point cache files. */
+  MOD_MESHSEQ_READ_ATTRIBUTES = (1 << 5),
 };
 
 typedef struct SDefBind {
@@ -2275,8 +2294,8 @@ enum {
 
 /** Surface Deform vertex bind modes. */
 enum {
-  MOD_SDEF_MODE_LOOPTRI = 0,
-  MOD_SDEF_MODE_NGON = 1,
+  MOD_SDEF_MODE_CORNER_TRIS = 0,
+  MOD_SDEF_MODE_NGONS = 1,
   MOD_SDEF_MODE_CENTROID = 2,
 };
 
@@ -2315,19 +2334,77 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
+typedef struct NodesModifierBake {
+  /** An id that references a nested node in the node tree. Also see #bNestedNodeRef. */
+  int id;
+  /** #NodesModifierBakeFlag. */
+  uint32_t flag;
+  /** #NodesModifierBakeMode. */
+  uint8_t bake_mode;
+  char _pad[7];
+  /**
+   * Directory where the baked data should be stored. This is only used when
+   * `NODES_MODIFIER_BAKE_CUSTOM_PATH` is set.
+   */
+  char *directory;
+  /**
+   * Frame range for the simulation and baking that is used if
+   * `NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE` is set.
+   */
+  int frame_start;
+  int frame_end;
+} NodesModifierBake;
+
+typedef struct NodesModifierPanel {
+  /** ID of the corresponding panel from #bNodeTreeInterfacePanel::identifier. */
+  int id;
+  /** #NodesModifierPanelFlag. */
+  uint32_t flag;
+} NodesModifierPanel;
+
+typedef enum NodesModifierPanelFlag {
+  NODES_MODIFIER_PANEL_OPEN = 1 << 0,
+} NodesModifierPanelFlag;
+
+typedef enum NodesModifierBakeFlag {
+  NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
+  NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
+} NodesModifierBakeFlag;
+
+typedef enum NodesModifierBakeMode {
+  NODES_MODIFIER_BAKE_MODE_ANIMATION = 0,
+  NODES_MODIFIER_BAKE_MODE_STILL = 1,
+} NodesModifierBakeMode;
+
 typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
   struct NodesModifierSettings settings;
-
   /**
-   * Contains logged information from the last evaluation.
-   * This can be used to help the user to debug a node tree.
+   * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
-  void *runtime_eval_log;
+  char *bake_directory;
+  /** NodesModifierFlag. */
+  int8_t flag;
 
-  ModifierSimulationCacheHandle *simulation_cache;
+  char _pad[3];
+  int bakes_num;
+  NodesModifierBake *bakes;
+  char _pad2[4];
+  int panels_num;
+  NodesModifierPanel *panels;
+
+  NodesModifierRuntimeHandle *runtime;
+
+#ifdef __cplusplus
+  NodesModifierBake *find_bake(int id);
+  const NodesModifierBake *find_bake(int id) const;
+#endif
 } NodesModifierData;
+
+typedef enum NodesModifierFlag {
+  NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR = (1 << 0),
+} NodesModifierFlag;
 
 typedef struct MeshToVolumeModifierData {
   ModifierData modifier;
@@ -2409,6 +2486,64 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
-#ifdef __cplusplus
-}
-#endif
+/**
+ * Common influence data for grease pencil modifiers.
+ * Not all parts may be used by all modifier types.
+ */
+typedef struct GreasePencilModifierInfluenceData {
+  /** GreasePencilModifierInfluenceFlag */
+  int flag;
+  char _pad1[4];
+  /** Filter by layer name. */
+  char layer_name[64];
+  /** Filter by stroke material. */
+  struct Material *material;
+  /** Filter by layer pass. */
+  int layer_pass;
+  /** Filter by material pass. */
+  int material_pass;
+  /** #MAX_VGROUP_NAME. */
+  char vertex_group_name[64];
+  struct CurveMapping *custom_curve;
+  void *_pad2;
+} GreasePencilModifierInfluenceData;
+
+typedef enum GreasePencilModifierInfluenceFlag {
+  GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER = (1 << 0),
+  GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER = (1 << 1),
+  GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER = (1 << 2),
+  GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER = (1 << 3),
+  GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER = (1 << 4),
+  GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER = (1 << 5),
+  GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP = (1 << 6),
+  GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE = (1 << 7),
+} GreasePencilModifierInfluenceFlag;
+
+typedef struct GreasePencilOpacityModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** GreasePencilOpacityModifierFlag */
+  int flag;
+  /** GreasePencilModifierColorMode */
+  char color_mode;
+  char _pad1[3];
+  float color_factor;
+  float hardness_factor;
+  void *_pad2;
+} GreasePencilOpacityModifierData;
+
+/** Which attributes are affected by color modifiers. */
+typedef enum GreasePencilModifierColorMode {
+  MOD_GREASE_PENCIL_COLOR_STROKE = 0,
+  MOD_GREASE_PENCIL_COLOR_FILL = 1,
+  MOD_GREASE_PENCIL_COLOR_BOTH = 2,
+  MOD_GREASE_PENCIL_COLOR_HARDNESS = 3,
+} GreasePencilModifierColorMode;
+
+typedef enum GreasePencilOpacityModifierFlag {
+  MOD_GREASE_PENCIL_OPACITY_OPEN_INFLUENCE_PANEL = (1 << 0),
+  /* Use vertex group as opacity factors instead of influence. */
+  MOD_GREASE_PENCIL_OPACITY_USE_WEIGHT_AS_FACTOR = (1 << 1),
+  /* Set the opacity for every point in a stroke, otherwise multiply existing opacity. */
+  MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY = (1 << 2),
+} GreasePencilOpacityModifierFlag;

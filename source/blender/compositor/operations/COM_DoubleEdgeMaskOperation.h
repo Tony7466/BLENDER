@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -47,7 +48,7 @@ class DoubleEdgeMaskOperation : public NodeOperation {
                                             ReadBufferOperation *read_operation,
                                             rcti *output) override;
 
-  void set_adjecent_only(bool adjacent_only)
+  void set_adjacent_only(bool adjacent_only)
   {
     adjacent_only_ = adjacent_only;
   }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_fileops.hh"
 #include "BLI_serialize.hh"
@@ -37,6 +39,14 @@ const BooleanValue *Value::as_boolean_value() const
     return nullptr;
   }
   return static_cast<const BooleanValue *>(this);
+}
+
+const EnumValue *Value::as_enum_value() const
+{
+  if (type_ != eValueType::Enum) {
+    return nullptr;
+  }
+  return static_cast<const EnumValue *>(this);
 }
 
 const ArrayValue *Value::as_array_value() const
@@ -119,6 +129,12 @@ static void convert_to_json(nlohmann::ordered_json &j, const Value &value)
 
     case eValueType::Double: {
       j = value.as_double_value()->value();
+      break;
+    }
+
+    case eValueType::Enum: {
+      j = value.as_enum_value()->value();
+      break;
     }
   }
 }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_DoubleEdgeMaskNode.h"
 #include "COM_DoubleEdgeMaskOperation.h"
@@ -18,7 +19,7 @@ void DoubleEdgeMaskNode::convert_to_operations(NodeConverter &converter,
   const bNode *bnode = this->get_bnode();
 
   operation = new DoubleEdgeMaskOperation();
-  operation->set_adjecent_only(bnode->custom1);
+  operation->set_adjacent_only(bnode->custom1);
   operation->set_keep_inside(bnode->custom2);
   converter.add_operation(operation);
 

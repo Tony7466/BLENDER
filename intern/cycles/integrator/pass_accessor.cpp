@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/pass_accessor.h"
 
@@ -195,7 +196,8 @@ bool PassAccessor::get_render_tile_pixels(const RenderBuffers *render_buffers,
 
         /* Use alpha for colors passes. */
         if (type == PASS_DIFFUSE_COLOR || type == PASS_GLOSSY_COLOR ||
-            type == PASS_TRANSMISSION_COLOR) {
+            type == PASS_TRANSMISSION_COLOR)
+        {
           num_written_components = destination.num_components;
         }
       }
@@ -205,7 +207,8 @@ bool PassAccessor::get_render_tile_pixels(const RenderBuffers *render_buffers,
           get_pass_float3(render_buffers, buffer_params, destination);
         }
         else if (type == PASS_COMBINED || type == PASS_SHADOW_CATCHER ||
-                 type == PASS_SHADOW_CATCHER_MATTE) {
+                 type == PASS_SHADOW_CATCHER_MATTE)
+        {
           /* Passes with transparency as 4th component. */
           get_pass_combined(render_buffers, buffer_params, destination);
         }

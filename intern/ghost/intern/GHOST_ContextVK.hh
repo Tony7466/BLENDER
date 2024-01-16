@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
  */
 
 #pragma once
+
+#ifndef WITH_VULKAN_BACKEND
+#  error "ContextVK requires WITH_VULKAN_BACKEND"
+#endif
 
 #include "GHOST_Context.hh"
 
@@ -13,7 +19,12 @@
 #elif defined(__APPLE__)
 #  include "GHOST_SystemCocoa.hh"
 #else
-#  include "GHOST_SystemX11.hh"
+#  ifdef WITH_GHOST_X11
+#    include "GHOST_SystemX11.hh"
+#  else
+#    define Display void
+#    define Window void *
+#  endif
 #  ifdef WITH_GHOST_WAYLAND
 #    include "GHOST_SystemWayland.hh"
 #  else
@@ -23,12 +34,6 @@
 #endif
 
 #include <vector>
-
-#ifdef __APPLE__
-#  include <MoltenVK/vk_mvk_moltenvk.h>
-#else
-#  include <vulkan/vulkan.h>
-#endif
 
 #ifndef GHOST_OPENGL_VK_CONTEXT_FLAGS
 /* leave as convenience define for the future */
@@ -40,11 +45,17 @@
 #endif
 
 typedef enum {
+#ifdef WITH_GHOST_X11
   GHOST_kVulkanPlatformX11 = 0,
+#endif
 #ifdef WITH_GHOST_WAYLAND
-  GHOST_kVulkanPlatformWayland,
+  GHOST_kVulkanPlatformWayland = 1,
 #endif
 } GHOST_TVulkanPlatformType;
+
+struct GHOST_ContextVK_WindowInfo {
+  int size[2];
+};
 
 class GHOST_ContextVK : public GHOST_Context {
  public:
@@ -65,10 +76,11 @@ class GHOST_ContextVK : public GHOST_Context {
                   /* Wayland */
                   wl_surface *wayland_surface,
                   wl_display *wayland_display,
+                  const GHOST_ContextVK_WindowInfo *wayland_window_info,
 #endif
                   int contextMajorVersion,
                   int contextMinorVersion,
-                  int m_debug);
+                  int debug);
 
   /**
    * Destructor.
@@ -79,32 +91,32 @@ class GHOST_ContextVK : public GHOST_Context {
    * Swaps front and back buffers of a window.
    * \return  A boolean success indicator.
    */
-  GHOST_TSuccess swapBuffers();
+  GHOST_TSuccess swapBuffers() override;
 
   /**
    * Activates the drawing context of this window.
    * \return  A boolean success indicator.
    */
-  GHOST_TSuccess activateDrawingContext();
+  GHOST_TSuccess activateDrawingContext() override;
 
   /**
    * Release the drawing context of the calling thread.
    * \return  A boolean success indicator.
    */
-  GHOST_TSuccess releaseDrawingContext();
+  GHOST_TSuccess releaseDrawingContext() override;
 
   /**
    * Call immediately after new to initialize.  If this fails then immediately delete the object.
    * \return Indication as to whether initialization has succeeded.
    */
-  GHOST_TSuccess initializeDrawingContext();
+  GHOST_TSuccess initializeDrawingContext() override;
 
   /**
    * Removes references to native handles from this context and then returns
    * \return GHOST_kSuccess if it is OK for the parent to release the handles and
    * GHOST_kFailure if releasing the handles will interfere with sharing
    */
-  GHOST_TSuccess releaseNativeHandles();
+  GHOST_TSuccess releaseNativeHandles() override;
 
   /**
    * Gets the Vulkan context related resource handles.
@@ -114,23 +126,20 @@ class GHOST_ContextVK : public GHOST_Context {
                                   void *r_physical_device,
                                   void *r_device,
                                   uint32_t *r_graphic_queue_family,
-                                  void *r_queue);
-  GHOST_TSuccess getVulkanCommandBuffer(void *r_command_buffer);
+                                  void *r_queue) override;
 
-  /**
-   * Gets the Vulkan framebuffer related resource handles associated with the Vulkan context.
-   * Needs to be called after each swap events as the framebuffer will change.
-   * \return  A boolean success indicator.
-   */
-  GHOST_TSuccess getVulkanBackbuffer(
-      void *image, void *framebuffer, void *render_pass, void *extent, uint32_t *fb_id);
+  GHOST_TSuccess getVulkanSwapChainFormat(GHOST_VulkanSwapChainData *r_swap_chain_data) override;
+
+  GHOST_TSuccess setVulkanSwapBuffersCallbacks(
+      std::function<void(const GHOST_VulkanSwapChainData *)> swap_buffers_pre_callback,
+      std::function<void(void)> swap_buffers_post_callback) override;
 
   /**
    * Sets the swap interval for `swapBuffers`.
    * \param interval: The swap interval to use.
    * \return A boolean success indicator.
    */
-  GHOST_TSuccess setSwapInterval(int /* interval */)
+  GHOST_TSuccess setSwapInterval(int /*interval*/) override
   {
     return GHOST_kFailure;
   }
@@ -140,7 +149,7 @@ class GHOST_ContextVK : public GHOST_Context {
    * \param intervalOut: Variable to store the swap interval if it can be read.
    * \return Whether the swap interval can be read.
    */
-  GHOST_TSuccess getSwapInterval(int &)
+  GHOST_TSuccess getSwapInterval(int & /*intervalOut*/) override
   {
     return GHOST_kFailure;
   };
@@ -158,19 +167,15 @@ class GHOST_ContextVK : public GHOST_Context {
   /* Wayland */
   wl_surface *m_wayland_surface;
   wl_display *m_wayland_display;
+  const GHOST_ContextVK_WindowInfo *m_wayland_window_info;
 #endif
 
   const int m_context_major_version;
   const int m_context_minor_version;
   const int m_debug;
 
-  VkInstance m_instance;
-  VkPhysicalDevice m_physical_device;
-  VkDevice m_device;
   VkCommandPool m_command_pool;
-
-  uint32_t m_queue_family_graphic;
-  uint32_t m_queue_family_present;
+  VkCommandBuffer m_command_buffer;
 
   VkQueue m_graphic_queue;
   VkQueue m_present_queue;
@@ -179,24 +184,21 @@ class GHOST_ContextVK : public GHOST_Context {
   VkSurfaceKHR m_surface;
   VkSwapchainKHR m_swapchain;
   std::vector<VkImage> m_swapchain_images;
-  std::vector<VkImageView> m_swapchain_image_views;
-  std::vector<VkFramebuffer> m_swapchain_framebuffers;
-  std::vector<VkCommandBuffer> m_command_buffers;
-  VkRenderPass m_render_pass;
+
   VkExtent2D m_render_extent;
-  std::vector<VkSemaphore> m_image_available_semaphores;
-  std::vector<VkSemaphore> m_render_finished_semaphores;
-  std::vector<VkFence> m_in_flight_fences;
-  std::vector<VkFence> m_in_flight_images;
+  VkExtent2D m_render_extent_min;
+  VkSurfaceFormatKHR m_surface_format;
+  VkFence m_fence;
+
   /** frame modulo swapchain_len. Used as index for sync objects. */
   int m_currentFrame = 0;
   /** Image index in the swapchain. Used as index for render objects. */
   uint32_t m_currentImage = 0;
-  /** Used to unique framebuffer ids to return when swapchain is recreated. */
-  uint32_t m_swapchain_id = 0;
+
+  std::function<void(const GHOST_VulkanSwapChainData *)> swap_buffers_pre_callback_;
+  std::function<void(void)> swap_buffers_post_callback_;
 
   const char *getPlatformSpecificSurfaceExtension() const;
-  GHOST_TSuccess pickPhysicalDevice(std::vector<const char *> required_exts);
   GHOST_TSuccess createSwapchain();
   GHOST_TSuccess destroySwapchain();
   GHOST_TSuccess createCommandPools();

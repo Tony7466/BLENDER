@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -17,7 +19,7 @@ class MTLStorageBuf;
 
 /**
  * Implementation of Uniform Buffers using Metal.
- **/
+ */
 class MTLUniformBuf : public UniformBuf {
   friend class MTLStorageBuf; /* For bind as SSBO resource access. */
 
@@ -47,7 +49,7 @@ class MTLUniformBuf : public UniformBuf {
   void clear_to_zero() override;
 
   id<MTLBuffer> get_metal_buffer();
-  int get_size();
+  size_t get_size();
   const char *get_name()
   {
     return name_;

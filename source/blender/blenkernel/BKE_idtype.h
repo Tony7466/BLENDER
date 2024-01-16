@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -17,7 +18,6 @@ extern "C" {
 
 struct BPathForeachPathData;
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct ID;
@@ -65,7 +65,7 @@ bool BKE_idtype_cache_key_cmp(const void *key_a_v, const void *key_b_v);
 
 typedef void (*IDTypeInitDataFunction)(struct ID *id);
 
-/** \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more). */
+/** \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more). */
 typedef void (*IDTypeCopyDataFunction)(struct Main *bmain,
                                        struct ID *id_dst,
                                        const struct ID *id_src,
@@ -73,7 +73,7 @@ typedef void (*IDTypeCopyDataFunction)(struct Main *bmain,
 
 typedef void (*IDTypeFreeDataFunction)(struct ID *id);
 
-/** \param flags: See BKE_lib_id.h's LIB_ID_MAKELOCAL_... flags. */
+/** \param flags: See BKE_lib_id.hh's LIB_ID_MAKELOCAL_... flags. */
 typedef void (*IDTypeMakeLocalFunction)(struct Main *bmain, struct ID *id, int flags);
 
 typedef void (*IDTypeForeachIDFunction)(struct ID *id, struct LibraryForeachIDData *data);
@@ -100,8 +100,7 @@ typedef void (*IDTypeBlendWriteFunction)(struct BlendWriter *writer,
                                          struct ID *id,
                                          const void *id_address);
 typedef void (*IDTypeBlendReadDataFunction)(struct BlendDataReader *reader, struct ID *id);
-typedef void (*IDTypeBlendReadLibFunction)(struct BlendLibReader *reader, struct ID *id);
-typedef void (*IDTypeBlendReadExpandFunction)(struct BlendExpander *expander, struct ID *id);
+typedef void (*IDTypeBlendReadAfterLiblinkFunction)(struct BlendLibReader *reader, struct ID *id);
 
 typedef void (*IDTypeBlendReadUndoPreserve)(struct BlendLibReader *reader,
                                             struct ID *id_new,
@@ -156,8 +155,8 @@ typedef struct IDTypeInfo {
   IDTypeInitDataFunction init_data;
 
   /**
-   * Copy the given data-block's data from source to destination. May be NULL if mere memcopy of
-   * the ID struct itself is enough.
+   * Copy the given data-block's data from source to destination.
+   * May be NULL if mere memory-copy of the ID struct itself is enough.
    */
   IDTypeCopyDataFunction copy_data;
 
@@ -206,19 +205,21 @@ typedef struct IDTypeInfo {
   IDTypeBlendReadDataFunction blend_read_data;
 
   /**
-   * Update pointers to other id data blocks.
+   * Used to do some validation and/or complex processing on the ID after it has been fully read
+   * and its ID pointers have been updated to valid values (lib linking process).
+   *
+   * Note that this is still called _before_ the `do_versions_after_linking` versioning code.
    */
-  IDTypeBlendReadLibFunction blend_read_lib;
-
-  /**
-   * Specify which other id data blocks should be loaded when the current one is loaded.
-   */
-  IDTypeBlendReadExpandFunction blend_read_expand;
+  IDTypeBlendReadAfterLiblinkFunction blend_read_after_liblink;
 
   /**
    * Allow an ID type to preserve some of its data across (memfile) undo steps.
    *
    * \note Called from #setup_app_data when undoing or redoing a memfile step.
+   *
+   * \note In case the whole ID should be fully preserved across undo steps, it is better to flag
+   * its type with `IDTYPE_FLAGS_NO_MEMFILE_UNDO`, since that flag allows more aggressive
+   * optimizations in readfile code for memfile undo.
    */
   IDTypeBlendReadUndoPreserve blend_read_undo_preserve;
 
@@ -272,7 +273,7 @@ extern IDTypeInfo IDType_ID_LP;
 extern IDTypeInfo IDType_ID_CV;
 extern IDTypeInfo IDType_ID_PT;
 extern IDTypeInfo IDType_ID_VO;
-extern IDTypeInfo IDType_ID_SIM;
+extern IDTypeInfo IDType_ID_GP;
 
 /** Empty shell mostly, but needed for read code. */
 extern IDTypeInfo IDType_ID_LINK_PLACEHOLDER;

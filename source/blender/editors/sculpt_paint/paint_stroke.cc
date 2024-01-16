@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -11,7 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -22,30 +23,30 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "BKE_brush.h"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_brush.hh"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_image.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_state.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "IMB_imbuf_types.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-//#define DEBUG_TIME
+// #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
 #  include "PIL_time_utildefines.h"
@@ -107,7 +108,7 @@ struct PaintStroke {
   float last_tablet_event_pressure;
 
   float zoom_2d;
-  int pen_flip;
+  bool pen_flip;
 
   /* Tilt, as read from the event. */
   float x_tilt;
@@ -211,6 +212,7 @@ static void paint_draw_line_cursor(bContext *C, int x, int y, void *customdata)
 
 static bool paint_tool_require_location(Brush *brush, ePaintMode mode)
 {
+  using namespace blender::ed::sculpt_paint;
   switch (mode) {
     case PAINT_MODE_SCULPT:
       if (ELEM(brush->sculpt_tool,
@@ -224,7 +226,7 @@ static bool paint_tool_require_location(Brush *brush, ePaintMode mode)
       {
         return false;
       }
-      else if (SCULPT_is_cloth_deform_brush(brush)) {
+      else if (cloth::is_cloth_deform_brush(brush)) {
         return false;
       }
       else {
@@ -324,9 +326,9 @@ static bool paint_brush_update(bContext *C,
     if (brush->mtex.tex && brush->mtex.tex->type == TEX_IMAGE && brush->mtex.tex->ima) {
       ImBuf *tex_ibuf = BKE_image_pool_acquire_ibuf(
           brush->mtex.tex->ima, &brush->mtex.tex->iuser, nullptr);
-      if (tex_ibuf && tex_ibuf->rect_float == nullptr) {
+      if (tex_ibuf && tex_ibuf->float_buffer.data == nullptr) {
         ups->do_linear_conversion = true;
-        ups->colorspace = tex_ibuf->rect_colorspace;
+        ups->colorspace = tex_ibuf->byte_buffer.colorspace;
       }
       BKE_image_pool_release_ibuf(brush->mtex.tex->ima, tex_ibuf, nullptr);
     }
@@ -357,7 +359,8 @@ static bool paint_brush_update(bContext *C,
     if (ELEM(brush->mtex.brush_map_mode,
              MTEX_MAP_MODE_VIEW,
              MTEX_MAP_MODE_AREA,
-             MTEX_MAP_MODE_RANDOM)) {
+             MTEX_MAP_MODE_RANDOM))
+    {
       do_random = true;
     }
 
@@ -397,7 +400,7 @@ static bool paint_brush_update(bContext *C,
 
     ups->anchored_size = ups->pixel_radius = sqrtf(dx * dx + dy * dy);
 
-    ups->brush_rotation = ups->brush_rotation_sec = atan2f(dx, dy) + float(M_PI);
+    ups->brush_rotation = ups->brush_rotation_sec = atan2f(dy, dx) + float(0.5f * M_PI);
 
     if (brush->flag & BRUSH_EDGE_TO_EDGE) {
       halfway[0] = dx * 0.5f + stroke->initial_mouse[0];
@@ -443,7 +446,7 @@ static bool paint_brush_update(bContext *C,
     }
     /* curve strokes do their own rake calculation */
     else if (!(brush->flag & BRUSH_CURVE)) {
-      if (!paint_calculate_rake_rotation(ups, brush, mouse_init, mode)) {
+      if (!paint_calculate_rake_rotation(ups, brush, mouse_init, mode, stroke->rake_started)) {
         /* Not enough motion to define an angle. */
         if (!stroke->rake_started) {
           is_dry_run = true;
@@ -537,8 +540,8 @@ static void paint_brush_stroke_add_step(
    * windows for some tablets, then we just skip first touch. */
   if (tablet && (pressure >= 0.99f) &&
       ((pop->s.brush->flag & BRUSH_SPACING_PRESSURE) ||
-       BKE_brush_use_alpha_pressure(pop->s.brush) ||
-       BKE_brush_use_size_pressure(pop->s.brush))) {
+       BKE_brush_use_alpha_pressure(pop->s.brush) || BKE_brush_use_size_pressure(pop->s.brush)))
+  {
     return;
   }
 
@@ -550,8 +553,8 @@ static void paint_brush_stroke_add_step(
    * which is the sensitivity of the most sensitive pen tablet available */
   if (tablet && (pressure < 0.0002f) &&
       ((pop->s.brush->flag & BRUSH_SPACING_PRESSURE) ||
-       BKE_brush_use_alpha_pressure(pop->s.brush) ||
-       BKE_brush_use_size_pressure(pop->s.brush))) {
+       BKE_brush_use_alpha_pressure(pop->s.brush) || BKE_brush_use_size_pressure(pop->s.brush)))
+  {
     return;
   }
 #endif
@@ -677,6 +680,7 @@ static float paint_space_stroke_spacing(bContext *C,
                                         float size_pressure,
                                         float spacing_pressure)
 {
+  using namespace blender::ed::sculpt_paint;
   Paint *paint = BKE_paint_get_active_from_context(C);
   ePaintMode mode = BKE_paintmode_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
@@ -707,7 +711,7 @@ static float paint_space_stroke_spacing(bContext *C,
     spacing = spacing * (1.5f - spacing_pressure);
   }
 
-  if (SCULPT_is_cloth_deform_brush(brush)) {
+  if (cloth::is_cloth_deform_brush(brush)) {
     /* The spacing in tools that use the cloth solver should not be affected by the brush radius to
      * avoid affecting the simulation update rate when changing the radius of the brush.
      * With a value of 100 and the brush default of 10 for spacing, a simulation step runs every 2
@@ -915,7 +919,7 @@ PaintStroke *paint_stroke_new(bContext *C,
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   float zoomx, zoomy;
 
-  ED_view3d_viewcontext_init(C, &stroke->vc, depsgraph);
+  stroke->vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   stroke->get_location = get_location;
   stroke->test_start = test_start;
@@ -983,7 +987,7 @@ void paint_stroke_free(bContext *C, wmOperator * /*op*/, PaintStroke *stroke)
   ups->stroke_active = false;
 
   if (stroke->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
+    WM_event_timer_remove(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
   }
 
   if (stroke->rng) {
@@ -1032,11 +1036,12 @@ static bool curves_sculpt_brush_uses_spacing(const eBrushCurvesSculptTool tool)
 
 bool paint_space_stroke_enabled(Brush *br, ePaintMode mode)
 {
+  using namespace blender::ed::sculpt_paint;
   if ((br->flag & BRUSH_SPACE) == 0) {
     return false;
   }
 
-  if (br->sculpt_tool == SCULPT_TOOL_CLOTH || SCULPT_is_cloth_deform_brush(br)) {
+  if (br->sculpt_tool == SCULPT_TOOL_CLOTH || cloth::is_cloth_deform_brush(br)) {
     /* The Cloth Brush is a special case for stroke spacing. Even if it has grab modes which do
      * not support dynamic size, stroke spacing needs to be enabled so it is possible to control
      * whether the simulation runs constantly or only when the brush moves when using the cloth
@@ -1047,6 +1052,11 @@ bool paint_space_stroke_enabled(Brush *br, ePaintMode mode)
   if (mode == PAINT_MODE_SCULPT_CURVES &&
       !curves_sculpt_brush_uses_spacing(eBrushCurvesSculptTool(br->curves_sculpt_tool)))
   {
+    return false;
+  }
+
+  if (mode == PAINT_MODE_GPENCIL) {
+    /* No spacing needed for now. */
     return false;
   }
 
@@ -1363,7 +1373,7 @@ static bool paint_stroke_curve_end(bContext *C, wmOperator *op, PaintStroke *str
 
       for (j = 0; j < PAINT_CURVE_NUM_SEGMENTS; j++) {
         if (do_rake) {
-          float rotation = atan2f(tangents[2 * j], tangents[2 * j + 1]);
+          float rotation = atan2f(tangents[2 * j + 1], tangents[2 * j]) + float(0.5f * M_PI);
           paint_update_brush_rake_rotation(ups, br, rotation);
         }
 
@@ -1509,11 +1519,10 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
       mul_m4_v3(stroke->vc.obact->object_to_world, stroke->last_world_space_position);
     }
     stroke->stroke_started = stroke->test_start(C, op, sample_average.mouse);
-    BLI_assert((stroke->stroke_started & ~1) == 0); /* 0/1 */
 
     if (stroke->stroke_started) {
       if (br->flag & BRUSH_AIRBRUSH) {
-        stroke->timer = WM_event_add_timer(
+        stroke->timer = WM_event_timer_add(
             CTX_wm_manager(C), CTX_wm_window(C), TIMER, stroke->brush->rate);
       }
 
@@ -1570,7 +1579,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
       {
         copy_v2_v2(stroke->ups->last_rake, stroke->last_mouse_position);
       }
-      paint_calculate_rake_rotation(stroke->ups, br, mouse, mode);
+      paint_calculate_rake_rotation(stroke->ups, br, mouse, mode, true);
     }
   }
   else if (first_modal ||
@@ -1606,20 +1615,21 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
     redraw = true;
   }
 
-  /* do updates for redraw. if event is in between mouse-move there are more
-   * coming, so postpone potentially slow redraw updates until all are done */
+  /* Don't update the paint cursor in #INBETWEEN_MOUSEMOVE events. */
   if (event->type != INBETWEEN_MOUSEMOVE) {
     wmWindow *window = CTX_wm_window(C);
     ARegion *region = CTX_wm_region(C);
 
-    /* At the very least, invalidate the cursor */
     if (region && (p->flags & PAINT_SHOW_BRUSH)) {
       WM_paint_cursor_tag_redraw(window, region);
     }
+  }
 
-    if (redraw && stroke->redraw) {
-      stroke->redraw(C, stroke, false);
-    }
+  /* Draw for all events (even in between) otherwise updating the brush
+   * display is noticeably delayed.
+   */
+  if (redraw && stroke->redraw) {
+    stroke->redraw(C, stroke, false);
   }
 
   return OPERATOR_RUNNING_MODAL;

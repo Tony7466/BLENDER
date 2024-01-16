@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -33,7 +34,7 @@ UniformBuf::UniformBuf(size_t size, const char *name)
 
   size_in_bytes_ = size;
 
-  BLI_strncpy(name_, name, sizeof(name_));
+  STRNCPY(name_, name);
 }
 
 UniformBuf::~UniformBuf()
@@ -100,7 +101,7 @@ static void buffer_from_list_inputs_sort(ListBase *inputs)
     return;
   }
 
-  /* Creates a lookup table for the different types; */
+  /* Creates a lookup table for the different types. */
   LinkData *inputs_lookup[MAX_UBO_GPU_TYPE + 1] = {nullptr};
   eGPUType cur_type = static_cast<eGPUType>(MAX_UBO_GPU_TYPE + 1);
 

@@ -1,9 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "IO_types.h"
+#include "IO_types.hh"
 #include "usd.h"
-#include "usd_common.h"
 #include "usd_hierarchy_iterator.h"
 #include "usd_reader_geom.h"
 #include "usd_reader_prim.h"
@@ -13,14 +13,15 @@
 #include "BKE_blender_version.h"
 #include "BKE_cachefile.h"
 #include "BKE_cdderivedmesh.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_library.h"
-#include "BKE_main.h"
-#include "BKE_node.h"
-#include "BKE_object.h"
+#include "BKE_lib_id.hh"
+#include "BKE_library.hh"
+#include "BKE_main.hh"
+#include "BKE_node.hh"
+#include "BKE_object.hh"
+#include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_world.h"
 
@@ -32,9 +33,11 @@
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "BLT_translation.h"
+
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_cachefile_types.h"
 #include "DNA_collection_types.h"
@@ -44,8 +47,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/metrics.h>
@@ -80,7 +83,7 @@ static bool gather_objects_paths(const pxr::UsdPrim &object, ListBase *object_pa
   void *usd_path_void = MEM_callocN(sizeof(CacheObjectPath), "CacheObjectPath");
   CacheObjectPath *usd_path = static_cast<CacheObjectPath *>(usd_path_void);
 
-  BLI_strncpy(usd_path->path, object.GetPrimPath().GetString().c_str(), sizeof(usd_path->path));
+  STRNCPY(usd_path->path, object.GetPrimPath().GetString().c_str());
   BLI_addtail(object_paths, usd_path);
 
   return true;
@@ -109,6 +112,52 @@ static void convert_to_z_up(pxr::UsdStageRefPtr stage, ImportSettings *r_setting
   copy_m4_m3(r_settings->conversion_mat, rmat);
 }
 
+/**
+ * Find the lowest level of Blender generated roots
+ * so that round tripping an export can be more invisible
+ */
+static void find_prefix_to_skip(pxr::UsdStageRefPtr stage, ImportSettings *r_settings)
+{
+  if (!stage) {
+    return;
+  }
+
+  pxr::TfToken generated_key("Blender:generated");
+  pxr::SdfPath path("/");
+  auto prim = stage->GetPseudoRoot();
+  while (true) {
+
+    uint32_t child_count = 0;
+    for (auto child : prim.GetChildren()) {
+      if (child_count == 0) {
+        prim = child.GetPrim();
+      }
+      ++child_count;
+    }
+
+    if (child_count != 1) {
+      /* Our blender write out only supports a single root chain,
+       * so whenever we encounter more than one child, we should
+       * early exit */
+      break;
+    }
+
+    /* We only care about prims that have the key and the value doesn't matter */
+    if (!prim.HasCustomDataKey(generated_key)) {
+      break;
+    }
+    path = path.AppendChild(prim.GetName());
+  }
+
+  /* Treat the root as empty */
+  auto path_string = path.GetString();
+  if (path == pxr::SdfPath("/")) {
+    path = pxr::SdfPath();
+  }
+
+  r_settings->skip_prefix = path;
+}
+
 enum {
   USD_NO_ERROR = 0,
   USD_ARCHIVE_FAIL,
@@ -134,6 +183,8 @@ struct ImportJobData {
   bool was_canceled;
   bool import_ok;
   timeit::TimePoint start_time;
+
+  CacheFile *cache_file;
 };
 
 static void report_job_duration(const ImportJobData *data)
@@ -144,24 +195,27 @@ static void report_job_duration(const ImportJobData *data)
   std::cout << '\n';
 }
 
-static void import_startjob(void *customdata, bool *stop, bool *do_update, float *progress)
+static void import_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
   ImportJobData *data = static_cast<ImportJobData *>(customdata);
 
-  data->stop = stop;
-  data->do_update = do_update;
-  data->progress = progress;
+  data->stop = &worker_status->stop;
+  data->do_update = &worker_status->do_update;
+  data->progress = &worker_status->progress;
   data->was_canceled = false;
   data->archive = nullptr;
   data->start_time = timeit::Clock::now();
+  data->cache_file = nullptr;
+
+  data->params.worker_status = worker_status;
 
   WM_set_locked_interface(data->wm, true);
   G.is_break = false;
 
   if (data->params.create_collection) {
-    char display_name[1024];
+    char display_name[MAX_ID_NAME - 2];
     BLI_path_to_display_name(
-        display_name, strlen(data->filepath), BLI_path_basename(data->filepath));
+        display_name, sizeof(display_name), BLI_path_basename(data->filepath));
     Collection *import_collection = BKE_collection_add(
         data->bmain, data->scene->master_collection, display_name);
     id_fake_user_set(&import_collection->id);
@@ -169,27 +223,33 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
     DEG_id_tag_update(&import_collection->id, ID_RECALC_COPY_ON_WRITE);
     DEG_relations_tag_update(data->bmain);
 
-    WM_main_add_notifier(NC_SCENE | ND_LAYER, nullptr);
-
+    BKE_view_layer_synced_ensure(data->scene, data->view_layer);
     data->view_layer->active_collection = BKE_layer_collection_first_from_scene_collection(
         data->view_layer, import_collection);
   }
 
   BLI_path_abs(data->filepath, BKE_main_blendfile_path_from_global());
 
-  CacheFile *cache_file = static_cast<CacheFile *>(
-      BKE_cachefile_add(data->bmain, BLI_path_basename(data->filepath)));
+  /* Callback function to lazily create a cache file when converting
+   * time varying data. */
+  auto get_cache_file = [data]() {
+    if (!data->cache_file) {
+      data->cache_file = static_cast<CacheFile *>(
+          BKE_cachefile_add(data->bmain, BLI_path_basename(data->filepath)));
 
-  /* Decrement the ID ref-count because it is going to be incremented for each
-   * modifier and constraint that it will be attached to, so since currently
-   * it is not used by anyone, its use count will off by one. */
-  id_us_min(&cache_file->id);
+      /* Decrement the ID ref-count because it is going to be incremented for each
+       * modifier and constraint that it will be attached to, so since currently
+       * it is not used by anyone, its use count will off by one. */
+      id_us_min(&data->cache_file->id);
 
-  cache_file->is_sequence = data->params.is_sequence;
-  cache_file->scale = data->params.scale;
-  STRNCPY(cache_file->filepath, data->filepath);
+      data->cache_file->is_sequence = data->params.is_sequence;
+      data->cache_file->scale = data->params.scale;
+      STRNCPY(data->cache_file->filepath, data->filepath);
+    }
+    return data->cache_file;
+  };
 
-  data->settings.cache_file = cache_file;
+  data->settings.get_cache_file = get_cache_file;
 
   *data->do_update = true;
   *data->progress = 0.05f;
@@ -205,9 +265,8 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
   std::string prim_path_mask(data->params.prim_path_mask);
   pxr::UsdStagePopulationMask pop_mask;
   if (!prim_path_mask.empty()) {
-    const std::vector<std::string> mask_tokens = pxr::TfStringTokenize(prim_path_mask, ",;");
-    for (const std::string &tok : mask_tokens) {
-      pxr::SdfPath prim_path(tok);
+    for (const std::string &mask_token : pxr::TfStringTokenize(prim_path_mask, ",;")) {
+      pxr::SdfPath prim_path(mask_token);
       if (!prim_path.IsEmpty()) {
         pop_mask.Add(prim_path);
       }
@@ -219,13 +278,17 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
                                   pxr::UsdStage::OpenMasked(data->filepath, pop_mask);
 
   if (!stage) {
-    WM_reportf(RPT_ERROR, "USD Import: unable to open stage to read %s", data->filepath);
+    BKE_reportf(worker_status->reports,
+                RPT_ERROR,
+                "USD Import: unable to open stage to read %s",
+                data->filepath);
     data->import_ok = false;
     data->error_code = USD_ARCHIVE_FAIL;
     return;
   }
 
   convert_to_z_up(stage, &data->settings);
+  find_prefix_to_skip(stage, &data->settings);
   data->settings.stage_meters_per_unit = UsdGeomGetStageMetersPerUnit(stage);
 
   /* Set up the stage for animated data. */
@@ -301,10 +364,14 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
     }
   }
 
+  if (data->params.import_skeletons) {
+    archive->process_armature_modifiers();
+  }
+
   data->import_ok = !data->was_canceled;
 
-  *progress = 1.0f;
-  *do_update = true;
+  worker_status->progress = 1.0f;
+  worker_status->do_update = true;
 }
 
 static void import_endjob(void *customdata)
@@ -337,9 +404,16 @@ static void import_endjob(void *customdata)
 
     lc = BKE_layer_collection_get_active(view_layer);
 
+    /* Create prototype collections for instancing. */
+    data->archive->create_proto_collections(data->bmain, lc->collection);
+
     /* Add all objects to the collection. */
     for (USDPrimReader *reader : data->archive->readers()) {
       if (!reader) {
+        continue;
+      }
+      if (reader->prim().IsInPrototype()) {
+        /* Skip prototype prims, as these are added to prototype collections. */
         continue;
       }
       Object *ob = reader->object();
@@ -386,13 +460,15 @@ static void import_endjob(void *customdata)
       data->import_ok = !data->was_canceled;
       break;
     case USD_ARCHIVE_FAIL:
-      WM_report(RPT_ERROR, "Could not open USD archive for reading, see console for detail");
+      BKE_report(data->params.worker_status->reports,
+                 RPT_ERROR,
+                 "Could not open USD archive for reading, see console for detail");
       break;
   }
 
   MEM_SAFE_FREE(data->params.prim_path_mask);
 
-  WM_main_add_notifier(NC_SCENE | ND_FRAME, data->scene);
+  WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
   report_job_duration(data);
 }
 
@@ -408,15 +484,11 @@ static void import_freejob(void *user_data)
 
 using namespace blender::io::usd;
 
-void USD_ensure_plugin_path_registered()
-{
-  blender::io::usd::ensure_usd_plugin_path_registered();
-}
-
-bool USD_import(struct bContext *C,
+bool USD_import(bContext *C,
                 const char *filepath,
                 const USDImportParams *params,
-                bool as_background_job)
+                bool as_background_job,
+                ReportList *reports)
 {
   /* Using new here since `MEM_*` functions do not call constructor to properly initialize data. */
   ImportJobData *job = new ImportJobData();
@@ -425,7 +497,7 @@ bool USD_import(struct bContext *C,
   job->view_layer = CTX_data_view_layer(C);
   job->wm = CTX_wm_manager(C);
   job->import_ok = false;
-  BLI_strncpy(job->filepath, filepath, 1024);
+  STRNCPY(job->filepath, filepath);
 
   job->settings.scale = params->scale;
   job->settings.sequence_offset = params->offset;
@@ -458,11 +530,11 @@ bool USD_import(struct bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* Fake a job context, so that we don't need NULL pointer checks while importing. */
-    bool stop = false, do_update = false;
-    float progress = 0.0f;
+    wmJobWorkerStatus worker_status = {};
+    /* Use the operator's reports in non-background case. */
+    worker_status.reports = reports;
 
-    import_startjob(job, &stop, &do_update, &progress);
+    import_startjob(job, &worker_status);
     import_endjob(job);
     import_ok = job->import_ok;
 
@@ -477,14 +549,14 @@ bool USD_import(struct bContext *C,
  * Object parameter, similar to the logic in get_abc_reader() in the
  * Alembic importer code. */
 static USDPrimReader *get_usd_reader(CacheReader *reader,
-                                     const Object * /* ob */,
+                                     const Object * /*ob*/,
                                      const char **err_str)
 {
   USDPrimReader *usd_reader = reinterpret_cast<USDPrimReader *>(reader);
   pxr::UsdPrim iobject = usd_reader->prim();
 
   if (!iobject.IsValid()) {
-    *err_str = "Invalid object: verify object path";
+    *err_str = RPT_("Invalid object: verify object path");
     return nullptr;
   }
 
@@ -499,11 +571,11 @@ USDMeshReadParams create_mesh_read_params(const double motion_sample_time, const
   return params;
 }
 
-struct Mesh *USD_read_mesh(struct CacheReader *reader,
-                           struct Object *ob,
-                           struct Mesh *existing_mesh,
-                           const USDMeshReadParams params,
-                           const char **err_str)
+Mesh *USD_read_mesh(CacheReader *reader,
+                    Object *ob,
+                    Mesh *existing_mesh,
+                    const USDMeshReadParams params,
+                    const char **err_str)
 {
   USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, err_str));
 
@@ -550,10 +622,14 @@ CacheReader *CacheReader_open_usd_object(CacheArchiveHandle *handle,
     return reader;
   }
 
-  pxr::UsdPrim prim = archive->stage()->GetPrimAtPath(pxr::SdfPath(object_path));
-
   if (reader) {
     USD_CacheReader_free(reader);
+  }
+
+  pxr::UsdPrim prim = archive->stage()->GetPrimAtPath(pxr::SdfPath(object_path));
+
+  if (!prim) {
+    return nullptr;
   }
 
   /* TODO(makowalski): The handle does not have the proper import params or settings. */
@@ -579,7 +655,7 @@ void USD_CacheReader_free(CacheReader *reader)
   }
 }
 
-CacheArchiveHandle *USD_create_handle(struct Main * /*bmain*/,
+CacheArchiveHandle *USD_create_handle(Main * /*bmain*/,
                                       const char *filepath,
                                       ListBase *object_paths)
 {
@@ -593,7 +669,7 @@ CacheArchiveHandle *USD_create_handle(struct Main * /*bmain*/,
 
   blender::io::usd::ImportSettings settings{};
   convert_to_z_up(stage, &settings);
-
+  find_prefix_to_skip(stage, &settings);
   USDStageReader *stage_reader = new USDStageReader(stage, params, settings);
 
   if (object_paths) {
@@ -609,10 +685,7 @@ void USD_free_handle(CacheArchiveHandle *handle)
   delete stage_reader;
 }
 
-void USD_get_transform(struct CacheReader *reader,
-                       float r_mat_world[4][4],
-                       float time,
-                       float scale)
+void USD_get_transform(CacheReader *reader, float r_mat_world[4][4], float time, float scale)
 {
   if (!reader) {
     return;

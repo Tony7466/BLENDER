@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2014 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -29,7 +30,7 @@
     (k) *= MM2A_M; \
     (k) ^= (k) >> 24; \
     (k) *= MM2A_M; \
-    (h) = ((h)*MM2A_M) ^ (k); \
+    (h) = ((h) * MM2A_M) ^ (k); \
   } \
   (void)0
 

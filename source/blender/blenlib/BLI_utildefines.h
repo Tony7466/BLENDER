@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Use a define instead of `#pragma once` because of `BLI_memory_utils.h` */
 #ifndef __BLI_UTILDEFINES_H__
@@ -21,6 +22,9 @@
 #include "BLI_compiler_typecheck.h"
 
 #ifdef __cplusplus
+#  include <type_traits>
+#  include <utility>
+
 extern "C" {
 #endif
 
@@ -100,13 +104,6 @@ extern "C" {
 #  define MAX4(a, b, c, d) (MAX2(MAX2((a), (b)), MAX2((c), (d))))
 #endif
 
-/* min/max that return a value of our choice */
-#define MAX3_PAIR(cmp_a, cmp_b, cmp_c, ret_a, ret_b, ret_c) \
-  ((cmp_a > cmp_b) ? ((cmp_a > cmp_c) ? ret_a : ret_c) : ((cmp_b > cmp_c) ? ret_b : ret_c))
-
-#define MIN3_PAIR(cmp_a, cmp_b, cmp_c, ret_a, ret_b, ret_c) \
-  ((cmp_a < cmp_b) ? ((cmp_a < cmp_c) ? ret_a : ret_c) : ((cmp_b < cmp_c) ? ret_b : ret_c))
-
 #define INIT_MINMAX(min, max) \
   { \
     (min)[0] = (min)[1] = (min)[2] = 1.0e30f; \
@@ -117,70 +114,6 @@ extern "C" {
   { \
     (min)[0] = (min)[1] = 1.0e30f; \
     (max)[0] = (max)[1] = -1.0e30f; \
-  } \
-  (void)0
-#define DO_MIN(vec, min) \
-  { \
-    if ((min)[0] > (vec)[0]) { \
-      (min)[0] = (vec)[0]; \
-    } \
-    if ((min)[1] > (vec)[1]) { \
-      (min)[1] = (vec)[1]; \
-    } \
-    if ((min)[2] > (vec)[2]) { \
-      (min)[2] = (vec)[2]; \
-    } \
-  } \
-  (void)0
-#define DO_MAX(vec, max) \
-  { \
-    if ((max)[0] < (vec)[0]) { \
-      (max)[0] = (vec)[0]; \
-    } \
-    if ((max)[1] < (vec)[1]) { \
-      (max)[1] = (vec)[1]; \
-    } \
-    if ((max)[2] < (vec)[2]) { \
-      (max)[2] = (vec)[2]; \
-    } \
-  } \
-  (void)0
-#define DO_MINMAX(vec, min, max) \
-  { \
-    if ((min)[0] > (vec)[0]) { \
-      (min)[0] = (vec)[0]; \
-    } \
-    if ((min)[1] > (vec)[1]) { \
-      (min)[1] = (vec)[1]; \
-    } \
-    if ((min)[2] > (vec)[2]) { \
-      (min)[2] = (vec)[2]; \
-    } \
-    if ((max)[0] < (vec)[0]) { \
-      (max)[0] = (vec)[0]; \
-    } \
-    if ((max)[1] < (vec)[1]) { \
-      (max)[1] = (vec)[1]; \
-    } \
-    if ((max)[2] < (vec)[2]) { \
-      (max)[2] = (vec)[2]; \
-    } \
-  } \
-  (void)0
-#define DO_MINMAX2(vec, min, max) \
-  { \
-    if ((min)[0] > (vec)[0]) { \
-      (min)[0] = (vec)[0]; \
-    } \
-    if ((min)[1] > (vec)[1]) { \
-      (min)[1] = (vec)[1]; \
-    } \
-    if ((max)[0] < (vec)[0]) { \
-      (max)[0] = (vec)[0]; \
-    } \
-    if ((max)[1] < (vec)[1]) { \
-      (max)[1] = (vec)[1]; \
-    } \
   } \
   (void)0
 
@@ -320,6 +253,32 @@ extern "C" {
  * i.e: `DECIMAL_DIGITS_BOUND(uchar)` is equal to 3.
  */
 #define DECIMAL_DIGITS_BOUND(t) (241 * sizeof(t) / 100 + 1)
+
+#ifdef __cplusplus
+inline constexpr int64_t is_power_of_2(const int64_t x)
+{
+  BLI_assert(x >= 0);
+  return (x & (x - 1)) == 0;
+}
+
+inline constexpr int64_t log2_floor(const int64_t x)
+{
+  BLI_assert(x >= 0);
+  return x <= 1 ? 0 : 1 + log2_floor(x >> 1);
+}
+
+inline constexpr int64_t log2_ceil(const int64_t x)
+{
+  BLI_assert(x >= 0);
+  return (is_power_of_2(int(x))) ? log2_floor(x) : log2_floor(x) + 1;
+}
+
+inline constexpr int64_t power_of_2_max(const int64_t x)
+{
+  BLI_assert(x >= 0);
+  return 1ll << log2_ceil(x);
+}
+#endif
 
 /** \} */
 
@@ -493,12 +452,15 @@ extern "C" {
   ((void)0)
 
 /* assuming a static array */
-#if defined(__GNUC__) && !defined(__cplusplus) && !defined(__clang__) && !defined(__INTEL_COMPILER)
-#  define ARRAY_SIZE(arr) \
-    ((sizeof(struct { int isnt_array : ((const void *)&(arr) == &(arr)[0]); }) * 0) + \
-     (sizeof(arr) / sizeof(*(arr))))
-#else
-#  define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*(arr)))
+#ifndef __cplusplus
+#  if defined(__GNUC__) && !defined(__cplusplus) && !defined(__clang__) && \
+      !defined(__INTEL_COMPILER)
+#    define ARRAY_SIZE(arr) \
+      ((sizeof(struct { int isnt_array : ((const void *)&(arr) == &(arr)[0]); }) * 0) + \
+       (sizeof(arr) / sizeof(*(arr))))
+#  else
+#    define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*(arr)))
+#  endif
 #endif
 
 /* ARRAY_SET_ITEMS#(v, ...): set indices of array 'v' */
@@ -820,16 +782,6 @@ extern bool BLI_memory_is_zero(const void *arr, size_t arr_size);
 #  define ENUM_OPERATORS(_type, _max)
 #endif
 
-/**
- * Utility so function declarations in C headers can use C++ default arguments. The default is then
- * available when included in a C++ file, otherwise the argument has to be set explicitly.
- */
-#ifdef __cplusplus
-#  define CPP_ARG_DEFAULT(default_value) = default_value
-#else
-#  define CPP_ARG_DEFAULT(default_value)
-#endif
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -867,6 +819,44 @@ extern bool BLI_memory_is_zero(const void *arr, size_t arr_size);
 
 #ifdef __cplusplus
 }
+
+namespace blender::blenlib_internal {
+
+/* A replacement for std::is_bounded_array_v until we go C++20. */
+template<class T> struct IsBoundedArray : std::false_type {};
+template<class T, std::size_t N> struct IsBoundedArray<T[N]> : std::true_type {};
+
+}  // namespace blender::blenlib_internal
+
+/**
+ * Size of a bounded array provided as an arg.
+ *
+ * The arg must be a bounded array, such as int[7] or MyType[11].
+ * Returns the number of elements in the array, known at the compile time.
+ */
+template<class T, size_t N> constexpr size_t ARRAY_SIZE(const T (&arg)[N]) noexcept
+{
+  (void)arg;
+  return N;
+}
+
+/**
+ * Number of elements in a type which defines a bounded array.
+ *
+ * For example,
+ *   struct MyType {
+ *     int array[12];
+ *   };
+ *
+ *   `BOUNDED_ARRAY_TYPE_SIZE<decltype(MyType::array)>` returns 12.
+ */
+template<class T>
+constexpr std::enable_if_t<blender::blenlib_internal::IsBoundedArray<T>::value, size_t>
+BOUNDED_ARRAY_TYPE_SIZE() noexcept
+{
+  return sizeof(std::declval<T>()) / sizeof(std::declval<T>()[0]);
+}
+
 #endif
 
 #endif /* __BLI_UTILDEFINES_H__ */

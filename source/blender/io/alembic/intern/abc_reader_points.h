@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Kévin Dietrich. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Kévin Dietrich. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -35,6 +36,7 @@ class AbcPointsReader final : public AbcObjectReader {
 
 void read_points_sample(const Alembic::AbcGeom::IPointsSchema &schema,
                         const Alembic::AbcGeom::ISampleSelector &selector,
-                        CDStreamConfig &config);
+                        CDStreamConfig &config,
+                        ImportSettings *settings);
 
 }  // namespace blender::io::alembic

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <algorithm>
 
@@ -62,11 +63,11 @@ void IESFile::pack(float *data)
 
 class IESTextParser {
  public:
-  vector<char> text;
+  string text;
   char *data;
   bool error;
 
-  IESTextParser(const string &str) : text(str.begin(), str.end()), error(false)
+  IESTextParser(const string &str) : text(str), error(false)
   {
     std::replace(text.begin(), text.end(), ',', ' ');
     data = strstr(&text[0], "\nTILT=");

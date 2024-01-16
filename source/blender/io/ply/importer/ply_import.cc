@@ -1,24 +1,29 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
  */
 
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
+#include "BLI_string.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ply_data.hh"
 #include "ply_import.hh"
@@ -55,8 +60,9 @@ static Span<char> parse_word(Span<char> &str)
 
 static void skip_space(Span<char> &str)
 {
-  while (!str.is_empty() && str[0] <= ' ')
+  while (!str.is_empty() && str[0] <= ' ') {
     str = str.drop_front(1);
+  }
 }
 
 static PlyDataTypes type_from_string(Span<char> word)
@@ -141,7 +147,8 @@ const char *read_header(PlyReadBuffer &file, PlyHeader &r_header)
       break;
     }
     else if (line.is_empty() || (line.first() >= '0' && line.first() <= '9') ||
-             line.first() == '-') {
+             line.first() == '-')
+    {
       /* A value was found before we broke out of the loop. No end_header. */
       return "No end_header.";
     }
@@ -170,7 +177,7 @@ void importer_main(Main *bmain,
 {
   /* File base name used for both mesh and object. */
   char ob_name[FILE_MAX];
-  BLI_strncpy(ob_name, BLI_path_basename(import_params.filepath), FILE_MAX);
+  STRNCPY(ob_name, BLI_path_basename(import_params.filepath));
   BLI_path_extension_strip(ob_name);
 
   /* Parse header. */

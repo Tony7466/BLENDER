@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -216,15 +218,26 @@ struct MSLUniform {
   }
 };
 
+struct MSLConstant {
+  shader::Type type;
+  std::string name;
+
+  MSLConstant(shader::Type const_type, std::string const_name) : type(const_type), name(const_name)
+  {
+  }
+};
+
 struct MSLBufferBlock {
   std::string type_name;
   std::string name;
   ShaderStage stage;
   bool is_array;
-  /* Resource index in buffer*/
+  /* Resource index in buffer. */
   uint slot;
   uint location;
   shader::Qualifier qualifiers;
+  /* Flag for use with texture atomic fallback. */
+  bool is_texture_buffer = false;
 
   bool operator==(const MSLBufferBlock &right) const
   {
@@ -247,10 +260,13 @@ struct MSLTextureResource {
   MSLTextureSamplerAccess access;
   /* Whether resource is a texture sampler or an image. */
   bool is_texture_sampler;
-  /* Index in shader bind table [[texture(N)]].*/
+  /* Index in shader bind table `[[texture(N)]]`. */
   uint slot;
   /* Explicit bind index provided by ShaderCreateInfo. */
   uint location;
+
+  /* Atomic fallback buffer information. */
+  int atomic_fallback_buffer_ssbo_id = -1;
 
   eGPUTextureType get_texture_binding_type() const;
   eGPUSamplerFormat get_sampler_format() const;
@@ -359,16 +375,23 @@ struct MSLFragmentOutputAttribute {
   int layout_index;
   shader::Type type;
   std::string name;
+  /* Raster order group can be specified to synchronize pixel read and write operations between
+   * subsequent draws. If a subsequent draw requires reading data from a GBuffer, raster order
+   * groups should be used to ensure all writes occur before reading. */
+  int raster_order_group;
 
   bool operator==(const MSLFragmentOutputAttribute &right) const
   {
     return (layout_location == right.layout_location && type == right.type && name == right.name &&
-            layout_index == right.layout_index);
+            layout_index == right.layout_index && raster_order_group == right.raster_order_group);
   }
 };
 
+/* Fragment tile inputs match fragment output attribute layout. */
+using MSLFragmentTileInputAttribute = MSLFragmentOutputAttribute;
+
 struct MSLSharedMemoryBlock {
-  /* e.g. shared vec4 color_cache[cache_size][cache_size]; */
+  /* e.g. `shared vec4 color_cache[cache_size][cache_size];`. */
   std::string type_name;
   std::string varname;
   bool is_array;
@@ -387,6 +410,10 @@ class MSLGeneratorInterface {
   blender::Vector<MSLTextureResource> texture_samplers;
   blender::Vector<MSLVertexInputAttribute> vertex_input_attributes;
   blender::Vector<MSLVertexOutputAttribute> vertex_output_varyings;
+  /* Specialization Constants. */
+  blender::Vector<MSLConstant> constants;
+  /* Fragment tile inputs. */
+  blender::Vector<MSLFragmentTileInputAttribute> fragment_tile_inputs;
   /* Should match vertex outputs, but defined separately as
    * some shader permutations will not utilize all inputs/outputs.
    * Final shader uses the intersection between the two sets. */
@@ -418,7 +445,9 @@ class MSLGeneratorInterface {
   bool uses_gl_PrimitiveID;
   /* Sets the output render target array index when using multilayered rendering. */
   bool uses_gl_FragDepth;
-  bool uses_mtl_array_index_;
+  bool uses_gl_FragStencilRefARB;
+  bool uses_gpu_layer;
+  bool uses_gpu_viewport_index;
   bool uses_transform_feedback;
   bool uses_barycentrics;
   /* Compute shader global variables. */
@@ -489,13 +518,14 @@ class MSLGeneratorInterface {
   std::string generate_msl_vertex_in_struct();
   std::string generate_msl_vertex_out_struct(ShaderStage shader_stage);
   std::string generate_msl_vertex_transform_feedback_out_struct(ShaderStage shader_stage);
-  std::string generate_msl_fragment_out_struct();
+  std::string generate_msl_fragment_struct(bool is_input);
   std::string generate_msl_vertex_inputs_string();
   std::string generate_msl_fragment_inputs_string();
   std::string generate_msl_compute_inputs_string();
   std::string generate_msl_vertex_entry_stub();
   std::string generate_msl_fragment_entry_stub();
   std::string generate_msl_compute_entry_stub();
+  std::string generate_msl_fragment_tile_input_population();
   std::string generate_msl_global_uniform_population(ShaderStage stage);
   std::string generate_ubo_block_macro_chain(MSLBufferBlock block);
   std::string generate_msl_uniform_block_population(ShaderStage stage);
@@ -564,8 +594,8 @@ inline bool is_builtin_type(std::string type)
   /* Add Types as needed. */
   /* TODO(Metal): Consider replacing this with a switch and `constexpr` hash and switch.
    * Though most efficient and maintainable approach to be determined.
-   * NOTE: Some duplicate types exit for Metal and GLSL representations, as generated typenames
-   * from createinfo may use GLSL signature. */
+   * NOTE: Some duplicate types exit for Metal and GLSL representations, as generated type-names
+   * from #shader::ShaderCreateInfo may use GLSL signature. */
   static std::map<std::string, eMTLDataType> glsl_builtin_types = {
       {"float", MTL_DATATYPE_FLOAT},
       {"vec2", MTL_DATATYPE_FLOAT2},
@@ -792,6 +822,22 @@ inline const char *to_string(const shader::Type &type)
       return "char3";
     case shader::Type::CHAR4:
       return "char4";
+    case shader::Type::USHORT:
+      return "ushort";
+    case shader::Type::USHORT2:
+      return "ushort2";
+    case shader::Type::USHORT3:
+      return "ushort3";
+    case shader::Type::USHORT4:
+      return "ushort4";
+    case shader::Type::SHORT:
+      return "short";
+    case shader::Type::SHORT2:
+      return "short2";
+    case shader::Type::SHORT3:
+      return "short3";
+    case shader::Type::SHORT4:
+      return "short4";
     default:
       BLI_assert(false);
       return "unkown";

@@ -1,32 +1,33 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_dynstr.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "GPU_batch.h"
 #include "GPU_index_buffer.h"
 #include "GPU_vertex_buffer.h"
 
-#include "draw_shader.h"
+#include "draw_shader.hh"
 
 extern "C" char datatoc_common_hair_lib_glsl[];
 extern "C" char datatoc_common_hair_refine_vert_glsl[];
 
 static struct {
-  struct GPUShader *hair_refine_sh[PART_REFINE_MAX_SHADER];
-  struct GPUShader *debug_print_display_sh;
-  struct GPUShader *debug_draw_display_sh;
-  struct GPUShader *draw_visibility_compute_sh;
-  struct GPUShader *draw_view_finalize_sh;
-  struct GPUShader *draw_resource_finalize_sh;
-  struct GPUShader *draw_command_generate_sh;
+  GPUShader *hair_refine_sh[PART_REFINE_MAX_SHADER];
+  GPUShader *debug_print_display_sh;
+  GPUShader *debug_draw_display_sh;
+  GPUShader *draw_visibility_compute_sh;
+  GPUShader *draw_view_finalize_sh;
+  GPUShader *draw_resource_finalize_sh;
+  GPUShader *draw_command_generate_sh;
 } e_data = {{nullptr}};
 
 /* -------------------------------------------------------------------- */
@@ -73,7 +74,8 @@ GPUShader *DRW_shader_hair_refine_get(ParticleRefineShader refinement,
   return e_data.hair_refine_sh[refinement];
 }
 
-GPUShader *DRW_shader_curves_refine_get(CurvesEvalShader type, eParticleRefineShaderType sh_type)
+GPUShader *DRW_shader_curves_refine_get(blender::draw::CurvesEvalShader type,
+                                        eParticleRefineShaderType sh_type)
 {
   /* TODO: Implement curves evaluation types (Bezier and Catmull Rom). */
   if (e_data.hair_refine_sh[type] == nullptr) {

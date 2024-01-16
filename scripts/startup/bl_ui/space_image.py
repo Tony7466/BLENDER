@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import (
@@ -426,6 +428,7 @@ class IMAGE_MT_uvs(Menu):
 
         layout.operator("uv.pin").clear = False
         layout.operator("uv.pin", text="Unpin").clear = True
+        layout.operator("uv.pin", text="Invert Pins").invert = True
 
         layout.separator()
 
@@ -435,7 +438,9 @@ class IMAGE_MT_uvs(Menu):
 
         layout.separator()
 
+        layout.operator_context = 'INVOKE_DEFAULT'
         layout.operator("uv.pack_islands")
+        layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("uv.average_islands_scale")
 
         layout.separator()
@@ -504,7 +509,7 @@ class IMAGE_MT_uvs_select_mode(Menu):
 
 
 class IMAGE_MT_uvs_context_menu(Menu):
-    bl_label = "UV Context Menu"
+    bl_label = "UV"
 
     def draw(self, context):
         layout = self.layout
@@ -749,7 +754,10 @@ class IMAGE_HT_header(Header):
 
             # Snap.
             snap_uv_element = tool_settings.snap_uv_element
-            act_snap_uv_element = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[snap_uv_element]
+            try:
+                act_snap_icon = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[snap_uv_element].icon
+            except KeyError:
+                act_snap_icon = 'NONE'
 
             row = layout.row(align=True)
             row.prop(tool_settings, "use_snap_uv", text="")
@@ -757,7 +765,7 @@ class IMAGE_HT_header(Header):
             sub = row.row(align=True)
             sub.popover(
                 panel="IMAGE_PT_snapping",
-                icon=act_snap_uv_element.icon,
+                icon=act_snap_icon,
                 text="",
             )
 
@@ -900,7 +908,7 @@ class IMAGE_MT_editor_menus(Menu):
 
 
 class IMAGE_MT_mask_context_menu(Menu):
-    bl_label = "Mask Context Menu"
+    bl_label = "Mask"
 
     @classmethod
     def poll(cls, context):
@@ -1001,6 +1009,7 @@ class IMAGE_PT_proportional_edit(Panel):
         col.separator()
 
         col.prop(tool_settings, "proportional_edit_falloff", expand=True)
+        col.prop(tool_settings, "proportional_size")
 
 
 class IMAGE_PT_image_properties(Panel):
@@ -1218,7 +1227,7 @@ class IMAGE_PT_tools_brush_display(Panel, BrushButtonsPanel, DisplayPanel):
     bl_context = ".paint_common_2d"
     bl_parent_id = "IMAGE_PT_paint_settings"
     bl_category = "Tool"
-    bl_label = "Brush Tip"
+    bl_label = "Cursor"
     bl_options = {'DEFAULT_CLOSED'}
     bl_ui_units_x = 15
 
@@ -1329,7 +1338,7 @@ class IMAGE_PT_uv_sculpt_brush_settings(Panel, ImagePaintPanel, UVSculptPanel):
 
 
 class IMAGE_PT_uv_sculpt_curve(Panel, FalloffPanel, ImagePaintPanel, UVSculptPanel):
-    bl_context = ".uv_sculpt"  # dot on purpose (access from topbar)
+    bl_context = ".uv_sculpt"  # Dot on purpose (access from top-bar).
     bl_parent_id = "IMAGE_PT_uv_sculpt_brush_settings"
     bl_category = "Tool"
     bl_label = "Falloff"
@@ -1337,7 +1346,7 @@ class IMAGE_PT_uv_sculpt_curve(Panel, FalloffPanel, ImagePaintPanel, UVSculptPan
 
 
 class IMAGE_PT_uv_sculpt_options(Panel, ImagePaintPanel, UVSculptPanel):
-    bl_context = ".uv_sculpt"  # dot on purpose (access from topbar)
+    bl_context = ".uv_sculpt"  # Dot on purpose (access from top-bar).
     bl_category = "Tool"
     bl_label = "Options"
 
@@ -1522,7 +1531,7 @@ class IMAGE_PT_overlay_guides(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Guides"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1563,7 +1572,7 @@ class IMAGE_PT_overlay_uv_edit(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "UV Editing"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1591,7 +1600,7 @@ class IMAGE_PT_overlay_uv_edit_geometry(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Geometry"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1623,7 +1632,7 @@ class IMAGE_PT_overlay_texture_paint(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Geometry"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1645,7 +1654,7 @@ class IMAGE_PT_overlay_image(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Image"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     def draw(self, context):
         layout = self.layout

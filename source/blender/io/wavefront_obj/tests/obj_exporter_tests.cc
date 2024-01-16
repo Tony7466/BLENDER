@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <gtest/gtest.h>
 #include <ios>
@@ -11,16 +13,17 @@
 
 #include "BKE_appdir.h"
 #include "BKE_blender_version.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_index_range.hh"
+#include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
 #include "BLO_readfile.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "obj_export_file_writer.hh"
 #include "obj_export_mesh.hh"
@@ -94,8 +97,8 @@ TEST_F(obj_exporter_test, filter_objects_selected)
 TEST(obj_exporter_utils, append_negative_frame_to_filename)
 {
   const char path_original[FILE_MAX] = SEP_STR "my_file.obj";
-  const char path_truth[FILE_MAX] = SEP_STR "my_file-123.obj";
-  const int frame = -123;
+  const char path_truth[FILE_MAX] = SEP_STR "my_file-0012.obj";
+  const int frame = -12;
   char path_with_frame[FILE_MAX] = {0};
   const bool ok = append_frame_to_filename(path_original, frame, path_with_frame);
   EXPECT_TRUE(ok);
@@ -105,8 +108,19 @@ TEST(obj_exporter_utils, append_negative_frame_to_filename)
 TEST(obj_exporter_utils, append_positive_frame_to_filename)
 {
   const char path_original[FILE_MAX] = SEP_STR "my_file.obj";
-  const char path_truth[FILE_MAX] = SEP_STR "my_file123.obj";
-  const int frame = 123;
+  const char path_truth[FILE_MAX] = SEP_STR "my_file0012.obj";
+  const int frame = 12;
+  char path_with_frame[FILE_MAX] = {0};
+  const bool ok = append_frame_to_filename(path_original, frame, path_with_frame);
+  EXPECT_TRUE(ok);
+  EXPECT_STREQ(path_with_frame, path_truth);
+}
+
+TEST(obj_exporter_utils, append_large_positive_frame_to_filename)
+{
+  const char path_original[FILE_MAX] = SEP_STR "my_file.obj";
+  const char path_truth[FILE_MAX] = SEP_STR "my_file1234567.obj";
+  const int frame = 1234567;
   char path_with_frame[FILE_MAX] = {0};
   const bool ok = append_frame_to_filename(path_original, frame, path_with_frame);
   EXPECT_TRUE(ok);
@@ -276,7 +290,7 @@ class obj_exporter_regression_test : public obj_exporter_test {
     BKE_tempdir_init(nullptr);
     std::string tempdir = std::string(BKE_tempdir_base());
     std::string out_file_path = tempdir + BLI_path_basename(golden_obj.c_str());
-    strncpy(params.filepath, out_file_path.c_str(), FILE_MAX - 1);
+    STRNCPY(params.filepath, out_file_path.c_str());
     params.blen_filepath = bfile->main->filepath;
     std::string golden_file_path = blender::tests::flags_test_asset_dir() + SEP_STR + golden_obj;
     BLI_path_split_dir_part(

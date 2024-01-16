@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 #include "IO_abstract_hierarchy_iterator.h"
@@ -13,9 +14,12 @@
 
 #include <vector>
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
+
+#include "WM_types.hh"
 
 #include "DNA_material_types.h"
+#include "DNA_windowmanager_types.h"
 
 struct Material;
 
@@ -50,11 +54,19 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
 
   const pxr::SdfPath &usd_path() const;
 
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return usd_export_context_.export_params.worker_status->reports;
+  }
+
  protected:
   virtual void do_write(HierarchyContext &context) = 0;
   std::string get_export_file_path() const;
   pxr::UsdTimeCode get_export_time_code() const;
 
+  /* Returns the parent path of exported materials. */
+  pxr::SdfPath get_material_library_path() const;
   pxr::UsdShadeMaterial ensure_usd_material(const HierarchyContext &context, Material *material);
 
   void write_visibility(const HierarchyContext &context,

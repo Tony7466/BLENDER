@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <optional>
 
@@ -61,7 +62,7 @@ class IDPropertySerializer {
    * \brief create dictionary containing the given id_property.
    */
   virtual std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty *id_property) const = 0;
+      const IDProperty *id_property) const = 0;
 
   /**
    * \brief convert the entry to an id property.
@@ -85,7 +86,7 @@ class IDPropertySerializer {
    *
    * Only fill the dictionary with common attributes (name, type).
    */
-  std::shared_ptr<DictionaryValue> create_dictionary(const struct IDProperty *id_property) const
+  std::shared_ptr<DictionaryValue> create_dictionary(const IDProperty *id_property) const
   {
     std::shared_ptr<DictionaryValue> result = std::make_shared<DictionaryValue>();
     DictionaryValue::Items &attributes = result->elements();
@@ -137,6 +138,11 @@ struct DictionaryEntryParser {
   std::optional<double> get_double_value() const
   {
     return get_double(IDP_KEY_VALUE);
+  }
+
+  std::optional<int> get_enum_value() const
+  {
+    return get_enum(IDP_KEY_VALUE);
   }
 
   const ArrayValue *get_array_value() const
@@ -191,6 +197,21 @@ struct DictionaryEntryParser {
   }
 
   std::optional<int32_t> get_int(StringRef key) const
+  {
+    const DictionaryValue::LookupValue *value_ptr = lookup.lookup_ptr(key);
+    if (value_ptr == nullptr) {
+      return std::nullopt;
+    }
+    const DictionaryValue::LookupValue &value = *value_ptr;
+
+    if (value->type() != eValueType::Int) {
+      return std::nullopt;
+    }
+
+    return value->as_int_value()->value();
+  }
+
+  std::optional<int32_t> get_enum(StringRef key) const
   {
     const DictionaryValue::LookupValue *value_ptr = lookup.lookup_ptr(key);
     if (value_ptr == nullptr) {
@@ -276,7 +297,7 @@ class IDPStringSerializer : public IDPropertySerializer {
   }
 
   std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty *id_property) const override
+      const IDProperty *id_property) const override
   {
     std::shared_ptr<DictionaryValue> result = create_dictionary(id_property);
     DictionaryValue::Items &attributes = result->elements();
@@ -316,7 +337,7 @@ class IDPIntSerializer : public IDPropertySerializer {
   }
 
   std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty *id_property) const override
+      const IDProperty *id_property) const override
   {
     std::shared_ptr<DictionaryValue> result = create_dictionary(id_property);
     DictionaryValue::Items &attributes = result->elements();
@@ -356,7 +377,7 @@ class IDPFloatSerializer : public IDPropertySerializer {
   }
 
   std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty *id_property) const override
+      const IDProperty *id_property) const override
   {
     std::shared_ptr<DictionaryValue> result = create_dictionary(id_property);
     DictionaryValue::Items &attributes = result->elements();
@@ -396,7 +417,7 @@ class IDPDoubleSerializer : public IDPropertySerializer {
   }
 
   std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty *id_property) const override
+      const IDProperty *id_property) const override
   {
     std::shared_ptr<DictionaryValue> result = create_dictionary(id_property);
     DictionaryValue::Items &attributes = result->elements();
@@ -436,7 +457,7 @@ class IDPArraySerializer : public IDPropertySerializer {
   }
 
   std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty *id_property) const override
+      const IDProperty *id_property) const override
   {
     std::shared_ptr<DictionaryValue> result = create_dictionary(id_property);
     DictionaryValue::Items &attributes = result->elements();
@@ -601,7 +622,7 @@ class IDPGroupSerializer : public IDPropertySerializer {
   }
 
   std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty *id_property) const override
+      const IDProperty *id_property) const override
   {
     std::shared_ptr<DictionaryValue> result = create_dictionary(id_property);
     DictionaryValue::Items &attributes = result->elements();
@@ -663,7 +684,7 @@ class IDPUnknownSerializer : public IDPropertySerializer {
   }
 
   std::shared_ptr<DictionaryValue> idprop_to_dictionary(
-      const struct IDProperty * /*id_property*/) const override
+      const IDProperty * /*id_property*/) const override
   {
     BLI_assert_unreachable();
     return nullptr;
@@ -747,12 +768,12 @@ static const IDPropertySerializer &serializer_for(StringRef idprop_typename)
 /* -------------------------------------------------------------------- */
 /** \name IDProperty to Value
  * \{ */
-std::unique_ptr<ArrayValue> convert_to_serialize_values(const struct IDProperty *properties)
+std::unique_ptr<ArrayValue> convert_to_serialize_values(const IDProperty *properties)
 {
   BLI_assert(properties != nullptr);
   std::unique_ptr<ArrayValue> result = std::make_unique<ArrayValue>();
   ArrayValue::Items &elements = result->elements();
-  const struct IDProperty *current_property = properties;
+  const IDProperty *current_property = properties;
   while (current_property != nullptr) {
     const IDPropertySerializer &serializer = serializer_for(
         static_cast<eIDPropertyType>(current_property->type));

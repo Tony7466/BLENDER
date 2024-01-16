@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/multi/device.h"
 
@@ -122,6 +123,11 @@ class MultiDevice : public Device {
       return BVH_LAYOUT_MULTI_HIPRT;
     }
 
+    /* With multiple oneAPI devices, every device needs its own acceleration structure */
+    if (bvh_layout_mask == BVH_LAYOUT_EMBREEGPU) {
+      return BVH_LAYOUT_MULTI_EMBREEGPU;
+    }
+
     /* When devices do not share a common BVH layout, fall back to creating one for each */
     const BVHLayoutMask BVH_LAYOUT_OPTIX_EMBREE = (BVH_LAYOUT_OPTIX | BVH_LAYOUT_EMBREE);
     if ((bvh_layout_mask_all & BVH_LAYOUT_OPTIX_EMBREE) == BVH_LAYOUT_OPTIX_EMBREE) {
@@ -131,6 +137,15 @@ class MultiDevice : public Device {
     if ((bvh_layout_mask_all & BVH_LAYOUT_METAL_EMBREE) == BVH_LAYOUT_METAL_EMBREE) {
       return BVH_LAYOUT_MULTI_METAL_EMBREE;
     }
+    const BVHLayoutMask BVH_LAYOUT_EMBREEGPU_EMBREE = (BVH_LAYOUT_EMBREEGPU | BVH_LAYOUT_EMBREE);
+    if ((bvh_layout_mask_all & BVH_LAYOUT_EMBREEGPU_EMBREE) == BVH_LAYOUT_EMBREEGPU_EMBREE) {
+      return BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE;
+    }
+
+    const BVHLayoutMask BVH_LAYOUT_HIPRT_EMBREE = (BVH_LAYOUT_HIPRT | BVH_LAYOUT_EMBREE);
+    if ((bvh_layout_mask_all & BVH_LAYOUT_HIPRT_EMBREE) == BVH_LAYOUT_HIPRT_EMBREE) {
+      return BVH_LAYOUT_MULTI_HIPRT_EMBREE;
+    }
 
     return bvh_layout_mask;
   }
@@ -138,8 +153,9 @@ class MultiDevice : public Device {
   bool load_kernels(const uint kernel_features) override
   {
     foreach (SubDevice &sub, devices)
-      if (!sub.device->load_kernels(kernel_features))
+      if (!sub.device->load_kernels(kernel_features)) {
         return false;
+      }
 
     return true;
   }
@@ -147,8 +163,9 @@ class MultiDevice : public Device {
   bool load_osl_kernels() override
   {
     foreach (SubDevice &sub, devices)
-      if (!sub.device->load_osl_kernels())
+      if (!sub.device->load_osl_kernels()) {
         return false;
+      }
 
     return true;
   }
@@ -164,9 +181,11 @@ class MultiDevice : public Device {
     assert(bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT ||
+           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE ||
-           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE);
+           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE ||
+           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE);
 
     BVHMulti *const bvh_multi = static_cast<BVHMulti *>(bvh);
     bvh_multi->sub_bvhs.resize(devices.size());
@@ -187,22 +206,34 @@ class MultiDevice : public Device {
 
       if (!bvh_multi->sub_bvhs[i]) {
         BVHParams params = bvh->params;
-        if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
+        if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX) {
           params.bvh_layout = BVH_LAYOUT_OPTIX;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
+        }
+        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL) {
           params.bvh_layout = BVH_LAYOUT_METAL;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT)
+        }
+        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT) {
           params.bvh_layout = BVH_LAYOUT_HIPRT;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
+        }
+        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU) {
+          params.bvh_layout = BVH_LAYOUT_EMBREEGPU;
+        }
+        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE) {
           params.bvh_layout = sub.device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
                                                                       BVH_LAYOUT_EMBREE;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
+        }
+        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE) {
           params.bvh_layout = sub.device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
                                                                       BVH_LAYOUT_EMBREE;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
-          params.bvh_layout = sub.device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT :
-                                                                      BVH_LAYOUT_EMBREE;
-
+        }
+        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE) {
+          params.bvh_layout = sub.device->info.type == DEVICE_HIP ? BVH_LAYOUT_HIPRT :
+                                                                    BVH_LAYOUT_EMBREE;
+        }
+        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE) {
+          params.bvh_layout = sub.device->info.type == DEVICE_ONEAPI ? BVH_LAYOUT_EMBREEGPU :
+                                                                       BVH_LAYOUT_EMBREE;
+        }
         /* Skip building a bottom level acceleration structure for non-instanced geometry on Embree
          * (since they are put into the top level directly, see bvh_embree.cpp) */
         if (!params.top_level && params.bvh_layout == BVH_LAYOUT_EMBREE &&
@@ -419,8 +450,9 @@ class MultiDevice : public Device {
     int i = 0;
 
     foreach (SubDevice &sub, devices) {
-      if (sub.device == sub_device)
+      if (sub.device == sub_device) {
         return i;
+      }
       i++;
     }
 

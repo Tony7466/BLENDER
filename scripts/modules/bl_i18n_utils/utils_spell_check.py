@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import enchant
@@ -14,7 +16,9 @@ class SpellChecker:
     # These must be all lower case for comparisons
     uimsgs = {
         # OK words
+        "accessor", "accessors",
         "adaptively", "adaptivity",
+        "al",  # et al.
         "aren",  # aren't
         "betweens",  # yuck! in-betweens!
         "boolean", "booleans",
@@ -28,8 +32,11 @@ class SpellChecker:
         "duplications",
         "effector",
         "equi",  # equi-angular, etc.
+        "eszett",  # German Eszett
+        "et",  # et al.
         "fader",
         "globbing",
+        "guillemet",
         "gridded",
         "haptics",
         "hasn",  # hasn't
@@ -44,9 +51,11 @@ class SpellChecker:
         "kyrgyz",
         "latin",
         "merchantability",
+        "mille",  # Per Mille
         "mplayer",
         "ons",  # add-ons
         "pong",  # ping pong
+        "procedurals",  # Used as noun
         "resumable",
         "runtimes",
         "scalable",
@@ -84,7 +93,7 @@ class SpellChecker:
         "autoscale",
         "autosmooth",
         "autosplit",
-        "backend",
+        "backend", "backends",
         "backface", "backfacing",
         "backimage",
         "backscattered",
@@ -187,12 +196,14 @@ class SpellChecker:
         "raytree",
         "readonly",
         "realtime",
+        "recompute", "recomputation",
         "reinject", "reinjected",
         "rekey",
         "relink",
         "remesh",
         "reprojection", "reproject", "reprojecting",
         "resample",
+        "rescale",
         "resize",
         "restpose",
         "resync", "resynced",
@@ -226,6 +237,7 @@ class SpellChecker:
         "subsize",
         "substep", "substeps",
         "substring",
+        "supercompress", "supercompression",
         "targetless",
         "textbox", "textboxes",
         "tilemode",
@@ -235,6 +247,7 @@ class SpellChecker:
         "tradeoff",
         "un",
         "unadjust", "unadjusted",
+        "unassign",
         "unassociate", "unassociated",
         "unbake",
         "uncheck",
@@ -243,6 +256,7 @@ class SpellChecker:
         "unculled",
         "undeformed",
         "undistort", "undistorted", "undistortion",
+        "uneditable",
         "ungroup", "ungrouped",
         "unhandled",
         "unhide",
@@ -257,7 +271,7 @@ class SpellChecker:
         "unprotect",
         "unreacted",
         "unreferenced",
-        "unregister",
+        "unregister", "unregistration",
         "unselect", "unselected", "unselectable",
         "unsets",
         "unshadowed",
@@ -301,6 +315,7 @@ class SpellChecker:
         "shaper",
         "smoothen", "smoothening",
         "spherize", "spherized",
+        "statting",  # Running `stat` command, yuck!
         "stitchable",
         "symmetrize",
         "trackability",
@@ -318,6 +333,7 @@ class SpellChecker:
         "anim",
         "aov",
         "app",
+        "args",  # Arguments
         "bbox", "bboxes",
         "bksp",  # Backspace
         "bool",
@@ -350,6 +366,7 @@ class SpellChecker:
         "luma",
         "mbs",  # mouse button 'select'.
         "mem",
+        "mul",  # Multiplicative etc.
         "multicam",
         "num",
         "ok",
@@ -408,6 +425,7 @@ class SpellChecker:
         "equiangular",
         "equisolid",
         "euler", "eulers",
+        "eumelanin",
         "fribidi",
         "gettext",
         "hashable",
@@ -423,6 +441,7 @@ class SpellChecker:
         "laplacian",
         "metadata",
         "microwatt", "microwatts",
+        "microflake",
         "milliwatt", "milliwatts",
         "msgfmt",
         "nand", "xnor",
@@ -435,7 +454,9 @@ class SpellChecker:
         "opengl",
         "openmp",
         "parametrization",
+        "pheomelanin",
         "photoreceptor",
+        "picometer", "picometers",
         "poly",
         "polyline", "polylines",
         "probabilistically",
@@ -446,6 +467,7 @@ class SpellChecker:
         "quaternion", "quaternions",
         "quintic",
         "samplerate",
+        "sandboxed",
         "sawtooth",
         "scrollback",
         "scrollbar",
@@ -457,6 +479,8 @@ class SpellChecker:
         "thumbstick",
         "tooltip", "tooltips",
         "touchpad", "trackpad",
+        "trilinear",
+        "triquadratic",
         "tuple",
         "unicode",
         "viewport", "viewports",
@@ -474,6 +498,7 @@ class SpellChecker:
         "bindpose",
         "binormal",
         "blackpoint", "whitepoint",
+        "blendshape", "blendshapes",  # USD slang :(
         "blinn",
         "bokeh",
         "catadioptric",
@@ -483,6 +508,7 @@ class SpellChecker:
         "clearcoat",
         "codec", "codecs",
         "collada",
+        "colorspace",
         "compositing",
         "crossfade",
         "cubemap", "cubemaps",
@@ -494,6 +520,7 @@ class SpellChecker:
         "eigenvectors",
         "emissive",
         "equirectangular",
+        "fader",
         "filmlike",
         "fisheye",
         "framerate",
@@ -501,6 +528,7 @@ class SpellChecker:
         "grayscale",
         "icosahedron",
         "icosphere",
+        "illuminant",  # CIE illuminant D65
         "inpaint",
         "kerning",
         "lightmap",
@@ -520,9 +548,11 @@ class SpellChecker:
         "photorealistic",
         "pinlight",
         "posterize",
+        "primvar", "primvars",  # USD slang :(
         "qi",
         "radiosity",
         "raycast", "raycasting",
+        "raymarching",
         "raytrace", "raytracing", "raytraced",
         "refractions",
         "remesher", "remeshing", "remesh",
@@ -536,19 +566,23 @@ class SpellChecker:
         "spillmap",
         "sobel",
         "stereoscopy",
+        "subpixel",
+        "surfel", "surfels",  # Surface Element
         "texel",
         "timecode",
         "tonemap",
         "toon",
         "transmissive",
         "uvproject",
+        "uvtile",  # Form UDIM
         "vividlight",
         "volumetrics",
         "voronoi",
         "voxel", "voxels",
         "vsync",
         "vulkan",
-        "wireframe",
+        "wireframe", "wireframes",
+        "xforms",  # USD slang :(
         "zmask",
         "ztransp",
 
@@ -557,6 +591,7 @@ class SpellChecker:
         "azone",  # action zone
         "backwire",
         "bbone",
+        "bdata",
         "bendy",  # bones
         "bmesh",
         "breakdowner",
@@ -584,9 +619,10 @@ class SpellChecker:
         "freestyle",
         "enum", "enums",
         "gizmogroup",
-        "gon", "gons",  # N-Gon(s)
+        "gon", "gons",  # N-GON(s)
         "gpencil",
         "idcol",
+        "ipos",
         "keyframe", "keyframes", "keyframing", "keyframed",
         "lookdev",
         "luminocity",
@@ -594,7 +630,7 @@ class SpellChecker:
         "metaball", "metaballs", "mball",
         "metaelement", "metaelements",
         "metastrip", "metastrips",
-        "movieclip",
+        "movieclip", "movieclips",
         "mpoly",
         "mtex",
         "nabla",
@@ -602,6 +638,7 @@ class SpellChecker:
         "outliner",
         "overscan",
         "paintmap", "paintmaps",
+        "pointclouds",
         "polygroup", "polygroups",
         "poselib",
         "pushpull",
@@ -612,6 +649,7 @@ class SpellChecker:
         "shrinkfatten",
         "shrinkwrap",
         "softbody",
+        "srna",
         "stucci",
         "subdiv",
         "subtype",
@@ -619,6 +657,7 @@ class SpellChecker:
         "tessface", "tessfaces",
         "texface",
         "timeline", "timelines",
+        "tmpact",  # sigh...
         "tosphere",
         "uilist",
         "userpref",
@@ -637,23 +676,28 @@ class SpellChecker:
         "ptcache",
         "dpaint",
 
-        # Algorithm/library names
+        # Algorithm/library/tools names
         "ashikhmin",  # Ashikhmin-Shirley
         "arsloe",  # Texel-Marsen-Arsloe
         "beckmann",
         "blackman",  # Blackman-Harris
         "blosc",
         "burley",  # Christensen-Burley
+        "butterworth",
         "catmull",
         "catrom",
+        "chiang",
         "chebychev",
         "conrady",  # Brown-Conrady
         "courant",
         "cryptomatte", "crypto",
+        "devlin",
         "embree",
         "gmp",
+        "gltfpack",
         "hosek",
         "kutta",
+        "kuwahara",
         "lennard",
         "marsen",  # Texel-Marsen-Arsloe
         "mikktspace",
@@ -672,6 +716,7 @@ class SpellChecker:
         "preetham",
         "prewitt",
         "ramer",  # Ramer-Douglas-Peucker
+        "reinhard",
         "runge",
         "sobol",
         "verlet",
@@ -692,13 +737,16 @@ class SpellChecker:
         "avx",
         "bsdf", "bsdfs",
         "bssrdf",
+        "bt",  # BT.1886 2.4 Exponent EOTF
         "bw",
         "ccd",
+        "cie",  # CIE XYZ color space
         "cmd",
         "cmos",
         "cpus",
         "ctrl",
         "cw", "ccw",
+        "dci",  # DCI-P3 D65
         "dev",
         "dls",
         "djv",
@@ -706,6 +754,7 @@ class SpellChecker:
         "dvar",
         "dx",
         "eo",
+        "eotf",  # BT.1886 2.4 Exponent EOTF
         "ewa",
         "fh",
         "fk",
@@ -722,10 +771,11 @@ class SpellChecker:
         "hc",
         "hdc",
         "hdr", "hdri", "hdris",
-        "hh", "mm", "ss", "ff",  # hh:mm:ss:ff timecode
+        "hh", "mm", "ss", "ff",  # `hh:mm:ss:ff` time-code.
         "hpg",  # Intel Xe-HPG architecture
         "hsv", "hsva", "hsl",
         "id",
+        "iec",  # sRGB IEC 61966-2-1
         "ies",
         "ior",
         "itu",
@@ -749,7 +799,9 @@ class SpellChecker:
         "rdna",
         "rdp",
         "rgb", "rgba",
+        "ris",
         "rhs",
+        "rpp",  # EEVEE ray-tracing?
         "rv",
         "sdf",
         "sdl",
@@ -768,6 +820,7 @@ class SpellChecker:
         "vmm",
         "vr",
         "wxyz",
+        "xform",
         "xr",
         "ycc", "ycca",
         "yrgb",
@@ -778,7 +831,7 @@ class SpellChecker:
         "bpy",
         "bvh",
         "dbvt",
-        "dop",  # BLI K-Dop BVH
+        "dop",  # BLI K-DOP BVH
         "ik",
         "nla",
         "py",
@@ -838,6 +891,7 @@ class SpellChecker:
         "tiff",
         "theora",
         "usdz",
+        "vdb",
         "vorbis",
         "vp9",
         "wav",

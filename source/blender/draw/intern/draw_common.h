@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -9,11 +10,6 @@
 
 #include "draw_common_shader_shared.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct CurvesUniformBufPool;
 struct DRWShadingGroup;
 struct FluidModifierData;
 struct GPUMaterial;
@@ -24,6 +20,9 @@ struct RegionView3D;
 struct ViewLayer;
 struct Scene;
 struct DRWData;
+namespace blender::draw {
+struct CurvesUniformBufPool;
+}
 
 /* Keep in sync with globalsBlock in shaders */
 BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
@@ -74,6 +73,8 @@ void DRW_hair_free(void);
 
 /* draw_curves.cc */
 
+namespace blender::draw {
+
 /**
  * \note Only valid after #DRW_curves_update().
  */
@@ -84,7 +85,7 @@ struct DRWShadingGroup *DRW_shgroup_curves_create_sub(struct Object *object,
                                                       struct GPUMaterial *gpu_material);
 
 void DRW_curves_init(struct DRWData *drw_data);
-void DRW_curves_ubos_pool_free(struct CurvesUniformBufPool *pool);
+void DRW_curves_ubos_pool_free(CurvesUniformBufPool *pool);
 void DRW_curves_update(void);
 void DRW_curves_free(void);
 
@@ -95,6 +96,8 @@ struct DRWShadingGroup *DRW_shgroup_pointcloud_create_sub(struct Object *object,
                                                           struct GPUMaterial *gpu_material);
 void DRW_pointcloud_init(void);
 void DRW_pointcloud_free(void);
+
+}  // namespace blender::draw
 
 /* draw_volume.cc */
 
@@ -112,7 +115,7 @@ void DRW_volume_init(struct DRWData *drw_data);
 void DRW_volume_ubos_pool_free(void *pool);
 void DRW_volume_free(void);
 
-/* draw_fluid.c */
+/* `draw_fluid.cc` */
 
 /* Fluid simulation. */
 void DRW_smoke_ensure(struct FluidModifierData *fmd, int highres);
@@ -126,7 +129,7 @@ void DRW_smoke_free(struct FluidModifierData *fmd);
 void DRW_smoke_init(struct DRWData *drw_data);
 void DRW_smoke_exit(struct DRWData *drw_data);
 
-/* draw_common.c */
+/* `draw_common.cc` */
 
 struct DRW_Global {
   /** If needed, contains all global/Theme colors
@@ -143,7 +146,3 @@ struct DRW_Global {
   struct GPUUniformBuf *clipping_ubo;
 };
 extern struct DRW_Global G_draw;
-
-#ifdef __cplusplus
-}
-#endif

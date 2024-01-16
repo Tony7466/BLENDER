@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -8,7 +9,7 @@
  */
 
 #ifndef GPU_STANDALONE
-#  include "UI_resources.h"
+#  include "UI_resources.hh"
 #endif
 
 #include "GPU_immediate.h"
@@ -737,4 +738,4 @@ void immThemeColorShadeAlpha(int colorid, int coloffset, int alphaoffset)
   immUniformColor4ub(col[0], col[1], col[2], col[3]);
 }
 
-#endif /* GPU_STANDALONE */
+#endif /* !GPU_STANDALONE */

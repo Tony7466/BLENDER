@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "BLI_ressource_strings.h"
 #include "testing/testing.h"
@@ -22,10 +24,10 @@
 #endif
 
 /* Resizing the hash has a huge cost over global filling operation! */
-//#define GHASH_RESERVE
+// #define GHASH_RESERVE
 
 /* Run the longest tests! */
-//#define GHASH_RUN_BIG
+// #define GHASH_RUN_BIG
 
 /* Size of 'small case' ghash (number of entries). */
 #define TESTCASE_SIZE_SMALL 17

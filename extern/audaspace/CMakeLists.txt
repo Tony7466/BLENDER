@@ -14,7 +14,7 @@
 # limitations under the License.
 ################################################################################
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 include(CMakeDependentOption)
 
 if(POLICY CMP0054)
@@ -108,7 +108,9 @@ set(SRC
 	src/respec/ConverterFunctions.cpp
 	src/respec/ConverterReader.cpp
 	src/respec/JOSResample.cpp
-	src/respec/JOSResampleReaderCoeff.cpp
+	src/respec/JOSResampleReaderCoeffHigh.cpp
+	src/respec/JOSResampleReaderCoeffLow.cpp
+	src/respec/JOSResampleReaderCoeffMedium.cpp
 	src/respec/JOSResampleReader.cpp
 	src/respec/LinearResample.cpp
 	src/respec/LinearResampleReader.cpp

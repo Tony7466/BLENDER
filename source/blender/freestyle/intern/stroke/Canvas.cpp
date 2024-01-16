@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -119,7 +121,8 @@ void Canvas::Clear()
 {
   if (!_Layers.empty()) {
     for (deque<StrokeLayer *>::iterator sl = _Layers.begin(), slend = _Layers.end(); sl != slend;
-         ++sl) {
+         ++sl)
+    {
       if (*sl) {
         delete (*sl);
       }
@@ -149,7 +152,8 @@ void Canvas::Erase()
 {
   if (!_Layers.empty()) {
     for (deque<StrokeLayer *>::iterator sl = _Layers.begin(), slend = _Layers.end(); sl != slend;
-         ++sl) {
+         ++sl)
+    {
       if (*sl) {
         (*sl)->clear();
       }
@@ -360,8 +364,8 @@ void Canvas::loadMap(const char *iFileName, const char *iMapName, uint iNbLevels
     int w = newMap->width();
     int h = newMap->height();
     QImage *tmp = new QImage(w, h, 8);
-    for (unsigned int y = 0; y < h; ++y) {
-      for (unsigned int x = 0; x < w; ++x) {
+    for (uint y = 0; y < h; ++y) {
+      for (uint x = 0; x < w; ++x) {
         int c = qGray(newMap->pixel(x, y));
         tmp->setPixel(x, y, c);
       }
@@ -376,11 +380,11 @@ void Canvas::loadMap(const char *iFileName, const char *iMapName, uint iNbLevels
   int h = qimg->y;
   int rowbytes = w * 4;
   GrayImage tmp(w, h);
-  char *pix;
+  uchar *pix;
 
   for (y = 0; y < h; ++y) {
     for (x = 0; x < w; ++x) {
-      pix = (char *)qimg->rect + y * rowbytes + x * 4;
+      pix = qimg->byte_buffer.data + y * rowbytes + x * 4;
       float c = (pix[0] * 11 + pix[1] * 16 + pix[2] * 5) / 32;
       tmp.setPixel(x, y, c);
     }
@@ -389,7 +393,7 @@ void Canvas::loadMap(const char *iFileName, const char *iMapName, uint iNbLevels
 #if 0
   GrayImage blur(w, h);
   GaussianFilter gf(4.0f);
-  //int bound = gf.getBound();
+  // int bound = gf.getBound();
   for (y = 0; y < h; ++y) {
     for (x = 0; x < w; ++x) {
       int c = gf.getSmoothedPixel<GrayImage>(&tmp, x, y);
@@ -417,7 +421,7 @@ void Canvas::loadMap(const char *iFileName, const char *iMapName, uint iNbLevels
       for (x = 0; x < ow; ++x) {
         int c = pyramid->pixel(x, y, i);  // 255 * pyramid->pixel(x, y, i);
         // soc qtmp.setPixel(x, y, qRgb(c, c, c));
-        pix = (char *)qtmp->rect + y * rowbytes + x * 4;
+        pix = qtmp->byte_buffer.data + y * rowbytes + x * 4;
         pix[0] = pix[1] = pix[2] = c;
       }
     }
@@ -433,7 +437,7 @@ void Canvas::loadMap(const char *iFileName, const char *iMapName, uint iNbLevels
   QImage *qtmp = new QImage(w, h, 32);
   for (y = 0; y < h; ++y) {
     for (x = 0; x < w; ++x) {
-      int c = (int)blur.pixel(x, y);
+      int c = int(blur.pixel(x, y));
       qtmp->setPixel(x, y, qRgb(c, c, c));
     }
   }

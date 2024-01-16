@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -20,25 +22,27 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_nla.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
-#include "UI_interface.h"
+#include "ANIM_keyframing.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
+
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "interface_intern.hh"
 
@@ -171,7 +175,7 @@ void ui_but_anim_decorate_update_from_flag(uiButDecorator *but)
   but->flag = (but->flag & ~flag_copy) | (flag & flag_copy);
 }
 
-bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen)
+bool ui_but_anim_expression_get(uiBut *but, char *str, size_t str_maxncpy)
 {
   FCurve *fcu;
   ChannelDriver *driver;
@@ -184,7 +188,7 @@ bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen)
 
     if (driver && driver->type == DRIVER_TYPE_PYTHON) {
       if (str) {
-        BLI_strncpy(str, driver->expression, maxlen);
+        BLI_strncpy(str, driver->expression, str_maxncpy);
       }
       return true;
     }
@@ -207,7 +211,7 @@ bool ui_but_anim_expression_set(uiBut *but, const char *str)
     if (driver && (driver->type == DRIVER_TYPE_PYTHON)) {
       bContext *C = static_cast<bContext *>(but->block->evil_C);
 
-      BLI_strncpy_utf8(driver->expression, str, sizeof(driver->expression));
+      STRNCPY_UTF8(driver->expression, str);
 
       /* tag driver as needing to be recompiled */
       BKE_driver_invalidate_expression(driver, true, false);
@@ -281,7 +285,7 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
 
       /* set the expression */
       /* TODO: need some way of identifying variables used */
-      BLI_strncpy_utf8(driver->expression, str, sizeof(driver->expression));
+      STRNCPY_UTF8(driver->expression, str);
 
       /* updates */
       BKE_driver_invalidate_expression(driver, true, false);
@@ -298,7 +302,8 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
 
 void ui_but_anim_autokey(bContext *C, uiBut *but, Scene *scene, float cfra)
 {
-  ED_autokeyframe_property(C, scene, &but->rnapoin, but->rnaprop, but->rnaindex, cfra, true);
+  blender::animrig::autokeyframe_property(
+      C, scene, &but->rnapoin, but->rnaprop, but->rnaindex, cfra, true);
 }
 
 void ui_but_anim_copy_driver(bContext *C)

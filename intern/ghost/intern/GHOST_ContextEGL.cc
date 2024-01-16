@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -146,7 +147,7 @@ static bool egl_chk(bool result,
 }
 
 #ifndef NDEBUG
-#  define EGL_CHK(x) egl_chk((x), __FILE__, __LINE__, #  x)
+#  define EGL_CHK(x) egl_chk((x), __FILE__, __LINE__, #x)
 #else
 #  define EGL_CHK(x) egl_chk(x)
 #endif
@@ -201,6 +202,7 @@ GHOST_ContextEGL::GHOST_ContextEGL(const GHOST_System *const system,
       m_context(EGL_NO_CONTEXT),
       m_surface(EGL_NO_SURFACE),
       m_display(EGL_NO_DISPLAY),
+      m_config(EGL_NO_CONFIG_KHR),
       m_swap_interval(1),
       m_sharedContext(
           choose_api(api, s_gl_sharedContext, s_gles_sharedContext, s_vg_sharedContext)),
@@ -350,7 +352,8 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
 
     const char *egl_extension_st = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
     assert(egl_extension_st != nullptr);
-    assert(strstr(egl_extension_st, "EGL_MESA_platform_surfaceless") != nullptr);
+    assert(egl_extension_st == nullptr ||
+           strstr(egl_extension_st, "EGL_MESA_platform_surfaceless") != nullptr);
     if (egl_extension_st == nullptr ||
         strstr(egl_extension_st, "EGL_MESA_platform_surfaceless") == nullptr)
     {
@@ -434,11 +437,6 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
   attrib_list.push_back(EGL_BLUE_SIZE);
   attrib_list.push_back(8);
 
-#ifdef GHOST_OPENGL_ALPHA
-  attrib_list.push_back(EGL_ALPHA_SIZE);
-  attrib_list.push_back(8);
-#endif
-
   if (m_nativeWindow == 0) {
     /* Off-screen surface. */
     attrib_list.push_back(EGL_SURFACE_TYPE);
@@ -477,7 +475,8 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
   attrib_list.clear();
 
   if (epoxy_egl_version(m_display) >= 15 ||
-      epoxy_has_egl_extension(m_display, "KHR_create_context")) {
+      epoxy_has_egl_extension(m_display, "KHR_create_context"))
+  {
     if (m_api == EGL_OPENGL_API || m_api == EGL_OPENGL_ES_API) {
       if (m_contextMajorVersion != 0) {
         attrib_list.push_back(EGL_CONTEXT_MAJOR_VERSION_KHR);

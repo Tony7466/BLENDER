@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/path_trace_work_gpu.h"
 #include "integrator/path_trace_display.h"
@@ -385,11 +386,17 @@ void PathTraceWorkGPU::enqueue_reset()
 
   queue_->enqueue(DEVICE_KERNEL_INTEGRATOR_RESET, max_num_paths_, args);
   queue_->zero_to_device(integrator_queue_counter_);
-  queue_->zero_to_device(integrator_shader_sort_counter_);
-  if (device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) {
+  if (integrator_shader_sort_counter_.size() != 0) {
+    queue_->zero_to_device(integrator_shader_sort_counter_);
+  }
+  if (device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE &&
+      integrator_shader_raytrace_sort_counter_.size() != 0)
+  {
     queue_->zero_to_device(integrator_shader_raytrace_sort_counter_);
   }
-  if (device_scene_->data.kernel_features & KERNEL_FEATURE_MNEE) {
+  if (device_scene_->data.kernel_features & KERNEL_FEATURE_MNEE &&
+      integrator_shader_mnee_sort_counter_.size() != 0)
+  {
     queue_->zero_to_device(integrator_shader_mnee_sort_counter_);
   }
 
@@ -502,7 +509,8 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
 
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW:
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE:
-    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK: {
+    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
+    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT: {
       /* Ray intersection kernels with integrator state. */
       DeviceKernelArguments args(&d_path_index, &work_size);
 
@@ -515,7 +523,8 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE:
-    case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME: {
+    case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME:
+    case DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT: {
       /* Shading kernels with integrator state and render buffer. */
       DeviceKernelArguments args(&d_path_index, &buffers_->buffer.device_pointer, &work_size);
 
@@ -955,7 +964,8 @@ void PathTraceWorkGPU::copy_to_display_naive(PathTraceDisplay *display,
    * change of the resolution divider. However, if the display becomes smaller, shrink the
    * allocated memory as well. */
   if (display_rgba_half_.data_width != final_width ||
-      display_rgba_half_.data_height != final_height) {
+      display_rgba_half_.data_height != final_height)
+  {
     display_rgba_half_.alloc(final_width, final_height);
     /* TODO(sergey): There should be a way to make sure device-side memory is allocated without
      * transferring zeroes to the device. */
@@ -1016,6 +1026,10 @@ void PathTraceWorkGPU::get_render_tile_film_pixels(const PassAccessor::Destinati
   const KernelFilm &kfilm = device_scene_->data.film;
 
   const PassAccessor::PassAccessInfo pass_access_info = get_display_pass_access_info(pass_mode);
+  if (pass_access_info.type == PASS_NONE) {
+    return;
+  }
+
   const PassAccessorGPU pass_accessor(queue_.get(), pass_access_info, kfilm.exposure, num_samples);
 
   pass_accessor.get_render_tile_pixels(buffers_.get(), effective_buffer_params_, destination);
@@ -1042,6 +1056,7 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
   queue_->zero_to_device(num_active_pixels);
 
   const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
+  const int reset_int = reset; /* No bool kernel arguments. */
 
   DeviceKernelArguments args(&buffers_->buffer.device_pointer,
                              &effective_buffer_params_.full_x,
@@ -1049,7 +1064,7 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
                              &effective_buffer_params_.width,
                              &effective_buffer_params_.height,
                              &threshold,
-                             &reset,
+                             &reset_int,
                              &effective_buffer_params_.offset,
                              &effective_buffer_params_.stride,
                              &num_active_pixels.device_pointer);
@@ -1171,7 +1186,8 @@ bool PathTraceWorkGPU::kernel_creates_shadow_paths(DeviceKernel kernel)
   return (kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE ||
           kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
           kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE ||
-          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME);
+          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME ||
+          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT);
 }
 
 bool PathTraceWorkGPU::kernel_creates_ao_paths(DeviceKernel kernel)
