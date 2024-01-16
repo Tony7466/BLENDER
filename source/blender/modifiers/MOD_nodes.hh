@@ -4,9 +4,6 @@
 
 #pragma once
 
-#include "BKE_bake_data_block_id.hh"
-#include "BLI_vector_set.hh"
-
 struct NodesModifierData;
 struct Object;
 

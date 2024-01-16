@@ -31,8 +31,8 @@ struct BakeDataBlockMap {
    * Tries to retrieve the data block for the given key. If it's not explicitly mapped, it might be
    * added to the mapping. If it's still not found, null is returned.
    */
-  virtual ID *lookup_or_try_add(const BakeDataBlockID &key,
-                                std::optional<ID_Type> type = std::nullopt) = 0;
+  virtual ID *lookup_or_remember_missing(const BakeDataBlockID &key,
+                                         std::optional<ID_Type> type = std::nullopt) = 0;
 
   /**
    * Tries to add the data block to the map. This may not succeed in all cases, e.g. if the

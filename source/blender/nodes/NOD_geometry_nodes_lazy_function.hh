@@ -209,7 +209,11 @@ struct GeoNodesCallData {
    * Data from execution as operator in 3D viewport.
    */
   GeoNodesOperatorData *operator_data = nullptr;
-
+  /**
+   * Maps weak name-based data-block references to actual data blocks that should be used during
+   * evaluation. This is used to restore data block references (e.g. materials) after loading baked
+   * data.
+   */
   bke::bake::BakeDataBlockMap *bake_data_block_map = nullptr;
 
   /**

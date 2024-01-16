@@ -43,9 +43,8 @@ class GeometryBakeItem : public BakeItem {
   GeometryBakeItem(GeometrySet geometry);
 
   /**
-   * Removes parts of the geometry that can't be stored in the simulation state:
-   * - Anonymous attributes can't be stored because it is not known which of them will or will not
-   * be used in the future.
+   * Removes parts of the geometry that can't be baked/cached (anonymous attributes) and replaces
+   * data-block pointers with #BakeDataBlockID.
    */
   static void prepare_geometry_for_bake(GeometrySet &geometry, BakeDataBlockMap *data_block_map);
 

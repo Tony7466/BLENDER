@@ -1439,7 +1439,8 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
   Map<bake::BakeDataBlockID, ID *> new_mappings;
   VectorSet<bake::BakeDataBlockID> missing;
 
-  ID *lookup_or_try_add(const bake::BakeDataBlockID &key, std::optional<ID_Type> type) override
+  ID *lookup_or_remember_missing(const bake::BakeDataBlockID &key,
+                                 std::optional<ID_Type> type) override
   {
     if (ID *id = this->lookup_in_map(this->old_mappings, key, type)) {
       return id;

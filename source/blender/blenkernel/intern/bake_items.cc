@@ -100,7 +100,7 @@ static void restore_materials(Material ***materials,
     const std::optional<BakeDataBlockID> &data_block_id = (*materials_list)[i];
     if (data_block_id) {
       (*materials)[i] = reinterpret_cast<Material *>(
-          data_block_map->lookup_or_try_add(*data_block_id, ID_MA));
+          data_block_map->lookup_or_remember_missing(*data_block_id, ID_MA));
     }
   }
 }

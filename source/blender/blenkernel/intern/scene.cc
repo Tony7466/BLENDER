@@ -119,8 +119,6 @@
 
 #include "DRW_engine.hh"
 
-#include "MOD_nodes.hh"
-
 #include "bmesh.hh"
 
 CurveMapping *BKE_sculpt_default_cavity_curve()

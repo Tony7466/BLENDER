@@ -30,6 +30,19 @@ void activate(const Depsgraph &depsgraph)
   map.map.lookup_or_add_default(&depsgraph).clear();
 }
 
+void add(const Depsgraph &depsgraph, std::function<void()> fn)
+{
+  if (!DEG_is_active(&depsgraph)) {
+    return;
+  }
+  WritebacksMap &map = get_writebacks_map();
+  std::lock_guard lock{map.mutex};
+  if (!map.map.contains(&depsgraph)) {
+    return;
+  }
+  map.map.lookup(&depsgraph).append(std::move(fn));
+}
+
 void run(const Depsgraph &depsgraph)
 {
   WritebacksMap &map = get_writebacks_map();
@@ -44,19 +57,6 @@ void run(const Depsgraph &depsgraph)
   for (std::function<void()> &fn : writebacks) {
     fn();
   }
-}
-
-void add(const Depsgraph &depsgraph, std::function<void()> fn)
-{
-  if (!DEG_is_active(&depsgraph)) {
-    return;
-  }
-  WritebacksMap &map = get_writebacks_map();
-  std::lock_guard lock{map.mutex};
-  if (!map.map.contains(&depsgraph)) {
-    return;
-  }
-  map.map.lookup(&depsgraph).append(std::move(fn));
 }
 
 }  // namespace blender::bke::scene::sync_writeback
