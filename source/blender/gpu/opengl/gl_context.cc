@@ -142,8 +142,6 @@ void GLContext::activate()
   bound_ubo_slots = 0;
 
   immActivate();
-
-  process_frame_timings();
 }
 
 void GLContext::deactivate()
@@ -159,7 +157,7 @@ void GLContext::begin_frame()
 
 void GLContext::end_frame()
 {
-  /* No-op. */
+  process_frame_timings();
 }
 
 /** \} */

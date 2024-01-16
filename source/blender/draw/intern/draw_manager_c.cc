@@ -3261,6 +3261,7 @@ void DRW_gpu_context_enable_ex(bool /*restore*/)
     GPU_render_begin();
     WM_system_gpu_context_activate(DST.system_gpu_context);
     GPU_context_active_set(DST.blender_gpu_context);
+    GPU_context_begin_frame(DST.blender_gpu_context);
   }
 }
 
@@ -3274,6 +3275,7 @@ void DRW_gpu_context_disable_ex(bool restore)
       GPU_flush();
     }
 #endif
+    GPU_context_end_frame(DST.blender_gpu_context);
 
     if (BLI_thread_is_main() && restore) {
       wm_window_reset_drawable();
