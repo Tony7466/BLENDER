@@ -503,7 +503,7 @@ static bNodeSocket *make_socket(bNodeTree *ntree,
 }
 
 /* Include the subtype suffix for old socket idnames. */
-static StringRef get_socket_subtype_idname(StringRef idname, const void *socket_data)
+static StringRef get_legacy_socket_subtype_idname(StringRef idname, const void *socket_data)
 {
   if (idname == "NodeSocketFloat") {
     const bNodeSocketValueFloat &float_data = *static_cast<const bNodeSocketValueFloat *>(
@@ -572,7 +572,7 @@ static void construct_interface_as_legacy_sockets(bNodeTree *ntree)
     bNodeSocket *iosock = make_socket(
         ntree,
         in_out,
-        get_socket_subtype_idname(socket.socket_type, socket.socket_data),
+        get_legacy_socket_subtype_idname(socket.socket_type, socket.socket_data),
         socket.name ? socket.name : "",
         socket.identifier);
     if (!iosock) {
