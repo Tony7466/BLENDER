@@ -2315,7 +2315,7 @@ static void wm_block_orphans_purge_button(uiBlock *block, OrphansPurgeData *purg
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
 
-static std::string orphan_desc(bContext *C, bool local, bool linked, bool recursive)
+static std::string orphan_desc(const bContext *C, const bool local, bool linked, bool recursive)
 {
   Main *bmain = CTX_data_main(C);
   int num_tagged[INDEX_ID_MAX] = {0};
@@ -2346,7 +2346,7 @@ static std::string orphan_desc(bContext *C, bool local, bool linked, bool recurs
 
 static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, void *arg)
 {
-  OrphansPurgeData *purge_data = (OrphansPurgeData *)arg;
+  OrphansPurgeData *purge_data = static_cast<OrphansPurgeData *>(arg);
   wmOperator *op = purge_data->op;
   uiBlock *block = UI_block_begin(C, region, "orphans_remove_popup", UI_EMBOSS);
   UI_block_flag_enable(
@@ -2446,7 +2446,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
 
 static int outliner_orphans_cleanup_exec(bContext *C, wmOperator *op)
 {
-  OrphansPurgeData *purge_data = MEM_new<OrphansPurgeData>("orphans_purge_data");
+  OrphansPurgeData *purge_data = MEM_new<OrphansPurgeData>(__func__);
   purge_data->op = op;
   UI_popup_block_invoke(C, wm_block_create_orphans_cleanup, purge_data, MEM_freeN);
   return OPERATOR_FINISHED;
