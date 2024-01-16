@@ -32,14 +32,23 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
                                    const VArray<float> &segment_influence,
                                    const VArray<float> &max_angle,
                                    const VArray<bool> &invert_curvature,
+                                   const GeometryNodeCurveSampleMode sample_mode,
                                    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
+  if(src_curves.points_num() < 2){
+    return src_curves;
+  }
+
   const int src_curves_num = src_curves.curves_num();
   Array<int> start_points(src_curves_num);
   Array<int> end_points(src_curves_num);
+  Array<float> use_start_lengths(src_curves_num);
+  Array<float> use_end_lengths(src_curves_num);
 
   const OffsetIndices<int> points_by_curve = src_curves.points_by_curve();
   Array<int> dst_point_counts(src_curves_num + 1);
+
+  src_curves.ensure_evaluated_lengths();
 
   /* Count how many points we need. */
   for (const int curve : src_curves.curves_range()) {
@@ -53,9 +62,18 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
     if (density < 1e-4f) {
       density = 0.1;
     }
-    const int count_start = (start_lengths[curve] > 0) ? (ceil(start_lengths[curve] * density)) :
+
+    use_start_lengths[curve] = start_lengths[curve];
+    use_end_lengths[curve] = end_lengths[curve];
+    if(sample_mode == GEO_NODE_CURVE_SAMPLE_FACTOR){
+      float total_length = src_curves.evaluated_length_total_for_curve(curve, false);
+      use_start_lengths[curve]*=total_length;
+      use_end_lengths[curve]*=total_length;
+    }
+
+    const int count_start = (use_start_lengths[curve] > 0) ? (ceil(use_start_lengths[curve] * density)) :
                                                          0;
-    const int count_end = (end_lengths[curve] > 0) ? (ceil(end_lengths[curve] * density)) : 0;
+    const int count_end = (use_end_lengths[curve] > 0) ? (ceil(use_end_lengths[curve] * density)) : 0;
     dst_point_counts[curve] += count_start;
     dst_point_counts[curve] += count_end;
     start_points[curve] = count_start;
@@ -140,7 +158,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
           result = positions[new_points[curve][1]] - positions[new_points[curve][0]];
         }
         madd_v3_v3fl(
-            positions[new_points[curve][0]], result, -start_lengths[curve] / len_v3(result));
+            positions[new_points[curve][0]], result, -use_start_lengths[curve] / len_v3(result));
       }
 
       if (end_points[curve]) {
@@ -155,7 +173,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
                    positions[new_points[curve][new_size - 1]];
         }
         positions[new_points[curve][new_size - 1]] += result *
-                                                      (-end_lengths[curve] / len_v3(result));
+                                                      (-use_end_lengths[curve] / len_v3(result));
       }
     }
     else { /* Now take care of stretching with curvature. */
@@ -239,7 +257,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
         if (invert_curvature[curve]) {
           curvature = -curvature;
         }
-        const float dist = k == 0 ? start_lengths[curve] : end_lengths[curve];
+        const float dist = k == 0 ? use_start_lengths[curve] : use_end_lengths[curve];
         const int extra_point_count = k == 0 ? start_points[curve] : end_points[curve];
         const float angle_step = curvature * dist / extra_point_count;
         float step_length = dist / extra_point_count;
@@ -274,10 +292,8 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
     }
   }
 
-  // TODO:
-  /*
-    Actually modify point positions to get the stroke stretch effect.
-  */
+  dst_curves.tag_positions_changed();
+
   return dst_curves;
 }
 
