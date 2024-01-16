@@ -133,7 +133,8 @@ class MainView {
     }
   }
 
-  void render(int closure_count){
+  void render(int closure_count)
+  {
     for (auto i : IndexRange(6)) {
       shading_views_[i].render(closure_count);
     }

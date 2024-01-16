@@ -776,7 +776,7 @@ class PipelineModule {
       case MAT_PIPE_PREPASS_FORWARD_VELOCITY:
         return forward.prepass_opaque_add(blender_mat, gpumat, true);
 
-      case MAT_PIPE_DEFERRED: {	        
+      case MAT_PIPE_DEFERRED: {
         PassMain::Sub *res = deferred.material_add(blender_mat, gpumat);
         closure_count_ = deferred.closure_count_get();
         return res;
@@ -800,12 +800,11 @@ class PipelineModule {
     }
     return nullptr;
   }
-  
+
   int closure_count_get() const
   {
     return closure_count_;
   };
-  
 };
 
 /** \} */

@@ -685,9 +685,9 @@ void VKRenderPass::ensure_subpass_multiple(VKFrameBuffer &frame_buffer)
     }
     VKSubpassDependency subpass_dep;
     for (int i = 1; i < vk_create_info_[info_id_].subpassCount - 1; i++) {
-        dependencies.append(subpass_dep.depth_to_depth(i, i + 1));
-        dependencies.append(subpass_dep.write_to_read(i, i + 1));
-        dependencies.append(subpass_dep.write_to_read2(i, i + 1));
+      dependencies.append(subpass_dep.depth_to_depth(i, i + 1));
+      dependencies.append(subpass_dep.write_to_read(i, i + 1));
+      dependencies.append(subpass_dep.write_to_read2(i, i + 1));
     }
   }
   vk_create_info_[info_id_].dependencyCount = dependencies.size();

@@ -357,7 +357,7 @@ void VKFrameBuffer::config(const GPUAttachment *config, int config_len)
  * \{ */
 
 void VKFrameBuffer::subpass_transition_impl(const GPUAttachmentState /*depth_attachment_state*/,
-                                       Span<GPUAttachmentState> color_attachment_states)
+                                            Span<GPUAttachmentState> color_attachment_states)
 {
   for (int i : color_attachment_states.index_range()) {
     GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
@@ -567,8 +567,8 @@ void VKFrameBuffer::cache_init()
 };
 
 void VKFrameBuffer::config_attachment_set(GPUAttachmentType type,
-                                   const GPUAttachment &new_attachment,
-                                   bool config)
+                                          const GPUAttachment &new_attachment,
+                                          bool config)
 
 {
   /* Render passes do not require instances, so they should be generated ahead of schedule and be
@@ -625,7 +625,7 @@ void VKFrameBuffer::config_attachment_set(GPUAttachmentType type,
                                                                      renderpass_->info_id_);
 
       renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount = max_ii(
-        renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
+          renderpass_->subpass_[renderpass_->info_id_].colorAttachmentCount, type_index + 1);
 
       attachment_reference->aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       attachment_reference->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -782,7 +782,6 @@ void VKFrameBuffer::config_attachment_set(GPUAttachmentType type,
       }
     }
   }
-
 }
 
 /** \} */

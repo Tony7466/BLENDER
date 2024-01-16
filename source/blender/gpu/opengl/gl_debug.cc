@@ -438,7 +438,7 @@ void GLBackend::debug_capture_title(const char *title)
   return renderdoc_.set_capture_title(title);
 #else
   UNUSED_VARS(title);
-  return ;
+  return;
 #endif
 };
 
