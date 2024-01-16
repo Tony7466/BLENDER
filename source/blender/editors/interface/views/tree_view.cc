@@ -135,14 +135,15 @@ AbstractTreeViewItem *AbstractTreeView::find_last_visible_descendant(
 
 void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
                                                       const TreeViewOrItem &parent,
-                                                      const uint pos) const
+                                                      const uint pos,
+                                                      const float aspect) const
 {
   for (const auto &item : parent.children_) {
     if (!item->is_collapsible() || item->is_collapsed()) {
       continue;
     }
 
-    draw_hierarchy_lines_recursive(region, *item, pos);
+    draw_hierarchy_lines_recursive(region, *item, pos, aspect);
 
     const AbstractTreeViewItem *first_descendant = item->children_.first().get();
     const AbstractTreeViewItem *last_descendant = find_last_visible_descendant(*item);
@@ -161,39 +162,31 @@ void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
     rcti last_child_rect;
     ui_but_to_pixelrect(&last_child_rect, &region, block, &last_child_but);
 
-    /* Small vertical padding. */
-    const short line_padding = UI_UNIT_Y / 4.0f;
-    const float x = first_child_rect.xmin + first_descendant->indent_width() -
-                    UI_ICON_SIZE * 0.5f + 2 * UI_SCALE_FAC;
-    immBegin(GPU_PRIM_LINES, 2);
-    immVertex2f(pos, x, first_child_rect.ymax - line_padding);
-    immVertex2f(pos, x, last_child_rect.ymin + line_padding);
+    const float x = first_child_rect.xmin +
+                    ((first_descendant->indent_width() - (6.5f * UI_SCALE_FAC)) / aspect);
+    const int first_child_top = first_child_rect.ymax + (4.0f * UI_SCALE_FAC / aspect);
+    const int last_child_bottom = last_child_rect.ymin + (2.0f * UI_SCALE_FAC / aspect);
+
+    immBegin(GPU_PRIM_LINE_STRIP, 3);
+    immVertex2f(pos, x, first_child_top);
+    immVertex2f(pos, x, last_child_bottom);
+    immVertex2f(pos, x + (UI_UNIT_X * 0.2f / aspect), last_child_bottom);
     immEnd();
   }
 }
 
 void AbstractTreeView::draw_hierarchy_lines(const ARegion &region) const
 {
+  const float aspect = BLI_rctf_size_y(&region.v2d.cur) / (BLI_rcti_size_y(&region.v2d.mask) + 1);
+
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uchar col[4];
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformThemeColorAlpha(TH_TEXT, 0.3f);
 
-  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
-
-  float viewport_size[4];
-  GPU_viewport_size_get_f(viewport_size);
-  immUniform2f("viewport_size", viewport_size[2] / UI_SCALE_FAC, viewport_size[3] / UI_SCALE_FAC);
-  immUniform1i("colors_len", 0); /* "simple"  mode */
-  immUniform1f("dash_width", 8.0f);
-  /* >= is 1.0 for un-dashed lines. */
-  immUniform1f("udash_factor", 1.0f);
-  UI_GetThemeColorBlend3ubv(TH_BACK, TH_TEXT, 0.4f, col);
-  col[3] = 255;
-  immUniformColor4ubv(col);
-
-  GPU_line_width(1.0f);
+  GPU_line_width(1.0f / aspect);
   GPU_blend(GPU_BLEND_ALPHA);
-  draw_hierarchy_lines_recursive(region, *this, pos);
+  draw_hierarchy_lines_recursive(region, *this, pos, aspect);
   GPU_blend(GPU_BLEND_NONE);
 
   immUnbindProgram();
@@ -327,10 +320,31 @@ void AbstractTreeViewItem::add_indent(uiLayout &row) const
 
   uiDefBut(block, UI_BTYPE_SEPR, 0, "", 0, 0, indent_width(), 0, nullptr, 0.0, 0.0, 0, 0, "");
 
+  if (!is_collapsible()) {
+    uiDefBut(block,
+             UI_BTYPE_SEPR,
+             0,
+             "",
+             0,
+             0,
+             ((parent_) ? 0.7f : 0.25f) * UI_UNIT_X,
+             0,
+             nullptr,
+             0.0,
+             0.0,
+             0,
+             0,
+             "");
+  }
+
   /* Indent items without collapsing icon some more within their parent. Makes it clear that they
    * are actually nested and not just a row at the same level without a chevron. */
+
+
+
   if (!is_collapsible() && parent_) {
-    uiDefBut(block, UI_BTYPE_SEPR, 0, "", 0, 0, 0.2f * UI_UNIT_X, 0, nullptr, 0.0, 0.0, 0, 0, "");
+  }
+  else if (!is_collapsible() && !parent_) {
   }
 
   /* Restore. */
