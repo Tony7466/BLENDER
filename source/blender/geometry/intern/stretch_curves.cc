@@ -67,14 +67,14 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
     int local_front = 0;
     MutableSpan<int> new_points = dst_to_src_point.as_mutable_span().slice(dst_point_offsets[curve]);
     if(start_points[curve]){
-      MutableSpan<int> start_points = new_points.slice(0,start_points[curve]);
-      start_points.fill(points_by_curve[curve].first());
+      MutableSpan<int> starts = new_points.slice(0,start_points[curve]);
+      starts.fill(points_by_curve[curve].first());
       local_front = start_points[curve];
     }
     if(end_points[curve]){
-      MutableSpan<int> end_points = new_points.slice(
+      MutableSpan<int> ends = new_points.slice(
         new_points.size()-end_points[curve],end_points[curve]);
-      end_points.fill(points_by_curve[curve].last());
+      ends.fill(points_by_curve[curve].last());
     }
     MutableSpan<int> original_points = new_points.slice(local_front, point_count);
     for(const int point_i : original_points.index_range()){
@@ -100,8 +100,12 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
 
   MutableSpan<float3> positions = dst_curves.positions_for_write();
 
-  const OffsetIndices<int> new_points = src_curves.points_by_curve();
+  const OffsetIndices<int> new_points = dst_curves.points_by_curve();
   for(const int curve : dst_curves.curves_range()){
+    if(!start_points[curve] && !end_points[curve]){
+      /* Curves should not be touched if they didn't generate extra points before. */
+      continue;
+    }
     int new_size=new_points[curve].size();
     float used_percent_length = overshoot_fac[curve];
     CLAMP(used_percent_length, 1e-4f, 1.0f);
@@ -121,7 +125,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
         // I think It should always be endpoint to overshoot point?
         int index1 = floor(overshoot_point_param);
         int index2 = ceil(overshoot_point_param);
-        interp_v3_v3v3(result, positions[new_points[curve][index1]],
+        result = math::interpolate(positions[new_points[curve][index1]],
                        positions[new_points[curve][index2]],
                       fmodf(overshoot_point_param, 1.0f));
         result -= positions[new_points[curve].first()];
@@ -134,23 +138,22 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
       if (end_points[curve]) {
         int index1 = new_size - 1 - floor(overshoot_point_param);
         int index2 = new_size - 1 - ceil(overshoot_point_param);
-        interp_v3_v3v3(result,positions[new_points[curve][index1]],
+        result = math::interpolate(positions[new_points[curve][index1]],
                        positions[new_points[curve][index2]],
                       fmodf(overshoot_point_param, 1.0f));
         result -= positions[new_points[curve].last()];
         if (UNLIKELY(is_zero_v3(result))) {
           result = positions[new_points[curve][new_size - 2]] - positions[new_points[curve][new_size - 1]];
         }
-        madd_v3_v3fl(positions[new_points[curve][new_size - 1]], result, -end_lengths[curve] / len_v3(result));
+        positions[new_points[curve][new_size - 1]] += result * (-end_lengths[curve] / len_v3(result));
       }
 
     }else{ /* Now take care of stretching with curvature. */
 
       /* Curvature calculation. */
 
-      /* First allocate the new stroke size. */
       const int first_old_index = start_points[curve] ? start_points[curve] : 0;
-      const int last_old_index = new_points[curve].last() + (end_points[curve] ? end_points[curve] : 0);
+      const int last_old_index = points_by_curve[curve].size() - 1 + first_old_index;
       const int orig_totpoints = points_by_curve[curve].size();
 
       /* The fractional amount of points to query when calculating the average curvature of the
@@ -170,9 +173,9 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
                                     last_old_index;  // first_old_index, last_old_index
         const int dir_i = 1 - k * 2;                  // 1, -1
 
-        sub_v3_v3v3(vec1, positions[new_points[curve][start_i + dir_i]], positions[new_points[curve][start_i]]);
-        zero_v3(total_angle);
-        float segment_length = normalize_v3(vec1);
+        vec1 = positions[new_points[curve][start_i + dir_i]] - positions[new_points[curve][start_i]];
+        total_angle = float3({0,0,0});
+        float segment_length = normalize_v3(vec1); /* Not using `math::normalize_and_get_length` for simplicity. */
         float overshoot_length = 0.0f;
 
         /* Accumulate rotation angle and length. */
@@ -182,8 +185,8 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
           float fac = fmin(overshoot_parameter - j, 1.0f);
 
           /* Read segments. */
-          copy_v3_v3(vec2, vec1);
-          sub_v3_v3v3(vec1, positions[new_points[curve][i + dir_i * 2]], positions[new_points[curve][i + dir_i]]);
+          vec2 = vec1;
+          vec1 = positions[new_points[curve][i + dir_i * 2]] - positions[new_points[curve][i + dir_i]];
           const float len = normalize_v3(vec1);
           float angle = angle_normalized_v3v3(vec1, vec2) * fac;
 
@@ -201,9 +204,9 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
 
           angle *= powf(added_len, segment_influence);
 
-          cross_v3_v3v3(no, vec1, vec2);
+          no = math::cross(vec1,vec2);
           normalize_v3_length(no, angle);
-          add_v3_v3(total_angle, no);
+          total_angle += no;
         }
 
         if (UNLIKELY(overshoot_length == 0.0f)) {
@@ -211,7 +214,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
           continue;
         }
 
-        sub_v3_v3v3(vec1, positions[new_points[curve][start_i]], positions[new_points[curve][start_i + dir_i]]);
+        vec1 = positions[new_points[curve][start_i]] - positions[new_points[curve][start_i + dir_i]];
         /* In general curvature = 1/radius. For the case without the
         * weights introduced by #segment_influence, the calculation is:
         * `curvature = delta angle/delta arclength = len_v3(total_angle) / overshoot_length` */
@@ -230,7 +233,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
           step_length *= sin(angle_step * 0.5f) / (angle_step * 0.5f);
         }
         else {
-          zero_v3(total_angle);
+          total_angle=float3({0,0,0});
         }
         const float prev_length = normalize_v3_length(vec1, step_length);
 
@@ -250,7 +253,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
         /* Now iteratively accumulate the segments with a rotating added direction. */
         for (int i = start_i - dir_i, j = 0; j < extra_point_count; i -= dir_i, j++) {
           mul_v3_m3v3(vec1, rot, vec1);
-          add_v3_v3v3(positions[new_points[curve][i]], vec1, positions[new_points[curve][i + dir_i]]);
+          positions[new_points[curve][i]] = vec1 + positions[new_points[curve][i + dir_i]];
         }
       }
     }
