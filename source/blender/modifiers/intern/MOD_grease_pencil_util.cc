@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 by Bastien Montagne. All rights reserved.
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
