@@ -102,9 +102,9 @@ void draw_layer_filter_settings(const bContext * /*C*/, uiLayout *layout, Pointe
 
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
+  uiLayoutSetPropDecorate(row, false);
   uiItemPointerR(row, ptr, "layer_filter", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
   sub = uiLayoutRow(row, true);
-  uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, ptr, "invert_layer_filter", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
   row = uiLayoutRowWithHeading(col, true, "Layer Pass Filter");
@@ -115,7 +115,6 @@ void draw_layer_filter_settings(const bContext * /*C*/, uiLayout *layout, Pointe
   uiLayoutSetActive(subsub, use_layer_pass);
   uiItemR(subsub, ptr, "layer_pass_filter", UI_ITEM_NONE, "", ICON_NONE);
   uiItemR(subsub, ptr, "invert_layer_pass_filter", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
-  uiLayoutSetPropDecorate(sub, true);
 }
 
 void draw_material_filter_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
@@ -129,10 +128,10 @@ void draw_material_filter_settings(const bContext * /*C*/, uiLayout *layout, Poi
 
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
+  uiLayoutSetPropDecorate(row, false);
   uiItemPointerR(
       row, ptr, "material_filter", &obj_data_ptr, "materials", nullptr, ICON_SHADING_TEXTURE);
   sub = uiLayoutRow(row, true);
-  uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, ptr, "invert_material_filter", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
   row = uiLayoutRowWithHeading(col, true, "Material Pass Filter");
@@ -143,7 +142,6 @@ void draw_material_filter_settings(const bContext * /*C*/, uiLayout *layout, Poi
   uiLayoutSetActive(subsub, use_material_pass);
   uiItemR(subsub, ptr, "material_pass_filter", UI_ITEM_NONE, "", ICON_NONE);
   uiItemR(subsub, ptr, "invert_material_pass_filter", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
-  uiLayoutSetPropDecorate(sub, true);
 }
 
 void draw_vertex_group_settings(const bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
