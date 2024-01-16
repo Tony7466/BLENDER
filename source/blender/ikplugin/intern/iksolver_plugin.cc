@@ -607,6 +607,7 @@ static void position_skipped_bones(Depsgraph *depsgraph,
                                    Object *ob,
                                    const float ctime)
 {
+  bool shown = false;
   LISTBASE_FOREACH_MUTABLE (bPoseChannel *, pchan, &ob->pose->chanbase) {
     /* Skip bones for which iksolver_initialize_tree() did not call initialize_posetree(). */
     if ((pchan->constflag & PCHAN_HAS_IK) == 0) {
@@ -629,13 +630,20 @@ static void position_skipped_bones(Depsgraph *depsgraph,
       pchan = pchan->parent;
     }
 
+    if (!shown) {
+      printf("\033[92mposition_skipped_bones(%s):\033[0m\n", ob->id.name + 2);
+      shown = true;
+    }
+
     while (!stack.is_empty()) {
       bPoseChannel *pchan = stack.pop();
       if (pchan->flag & POSE_DONE) {
         /* It could be that this bone is the common ancestor of two muted IK chains. */
         continue;
       }
-
+      printf("  - %s (%s)\n",
+             pchan->name,
+             pchan->constflag & PCHAN_INFLUENCED_BY_IK ? "PCHAN_INFLUENCED_BY_IK" : "-");
       BKE_pose_where_is_bone(depsgraph, scene, ob, pchan, ctime, true);
       pchan->flag |= POSE_DONE;
     }
