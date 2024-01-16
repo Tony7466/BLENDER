@@ -5104,7 +5104,8 @@ void CustomData_blend_write(BlendWriter *writer,
       writer, CustomDataLayer, data->totlayer, data->layers, layers_to_write.data());
 
   for (const CustomDataLayer &layer : layers_to_write) {
-    BLO_write_shared(writer, layer.data, layer.sharing_info, [&]() {
+    const size_t size_in_bytes = CustomData_sizeof(eCustomDataType(layer.type)) * count;
+    BLO_write_shared(writer, layer.data, size_in_bytes, layer.sharing_info, [&]() {
       switch (layer.type) {
         case CD_MDEFORMVERT:
           BKE_defvert_blend_write(writer, count, static_cast<const MDeformVert *>(layer.data));

@@ -1570,9 +1570,11 @@ void CurvesGeometry::blend_write(BlendWriter &writer,
 
   if (this->curve_offsets) {
     BLO_write_shared(
-        &writer, this->curve_offsets, this->runtime->curve_offsets_sharing_info, [&]() {
-          BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
-        });
+        &writer,
+        this->curve_offsets,
+        sizeof(int) * this->curve_num,
+        this->runtime->curve_offsets_sharing_info,
+        [&]() { BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets); });
   }
 
   BKE_defbase_blend_write(&writer, &this->vertex_group_names);

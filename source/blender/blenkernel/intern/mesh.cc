@@ -315,9 +315,11 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
   if (mesh->face_offset_indices) {
     BLO_write_shared(
-        writer, mesh->face_offset_indices, mesh_runtime->face_offsets_sharing_info, [&]() {
-          BLO_write_int32_array(writer, mesh->faces_num + 1, mesh->face_offset_indices);
-        });
+        writer,
+        mesh->face_offset_indices,
+        sizeof(int) * mesh->faces_num,
+        mesh_runtime->face_offsets_sharing_info,
+        [&]() { BLO_write_int32_array(writer, mesh->faces_num + 1, mesh->face_offset_indices); });
   }
 }
 

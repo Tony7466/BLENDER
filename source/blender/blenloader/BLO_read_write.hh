@@ -194,6 +194,7 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr);
  */
 void BLO_write_shared(BlendWriter *writer,
                       const void *data,
+                      size_t size_in_bytes,
                       const blender::ImplicitSharingInfo *sharing_info,
                       blender::FunctionRef<void()> write_fn);
 

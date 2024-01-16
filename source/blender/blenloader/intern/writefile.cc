@@ -1827,6 +1827,7 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
 
 void BLO_write_shared(BlendWriter *writer,
                       const void *data,
+                      const size_t size_in_bytes,
                       const blender::ImplicitSharingInfo *sharing_info,
                       const blender::FunctionRef<void()> write_fn)
 {
@@ -1834,8 +1835,8 @@ void BLO_write_shared(BlendWriter *writer,
     return;
   }
   if (BLO_write_is_undo(writer)) {
+    MemFile &memfile = *writer->wd->mem.written_memfile;
     if (sharing_info != nullptr) {
-      MemFile &memfile = *writer->wd->mem.written_memfile;
       if (memfile.shared_storage == nullptr) {
         memfile.shared_storage = MEM_new<MemFileSharedStorage>(__func__);
       }
@@ -1844,7 +1845,10 @@ void BLO_write_shared(BlendWriter *writer,
         sharing_info->add_user();
         return;
       }
+      /* This size is an estimate, but good enough to count data with many users less. */
+      memfile.size += size_in_bytes / sharing_info->strong_users();
     }
+    memfile.size += size_in_bytes;
   }
   write_fn();
 }
