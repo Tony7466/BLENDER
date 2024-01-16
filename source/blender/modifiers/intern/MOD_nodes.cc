@@ -1880,13 +1880,18 @@ static void draw_property_for_output_socket(const bContext &C,
   const std::string rna_path_attribute_name = "[\"" + StringRef(socket_id_esc) +
                                               nodes::input_attribute_name_suffix() + "\"]";
 
-  uiLayout *split = uiLayoutSplit(layout, 0.4f, false);
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiLayoutSetPropDecorate(row, false);
+
+  uiLayout *split = uiLayoutSplit(row, 0.4f, false);
   uiLayout *name_row = uiLayoutRow(split, false);
   uiLayoutSetAlignment(name_row, UI_LAYOUT_ALIGN_RIGHT);
   uiItemL(name_row, socket.name ? socket.name : "", ICON_NONE);
 
-  uiLayout *row = uiLayoutRow(split, true);
-  add_attribute_search_button(C, row, nmd, md_ptr, rna_path_attribute_name, socket, true);
+  uiLayout *prop_row = uiLayoutRow(split, true);
+  add_attribute_search_button(C, prop_row, nmd, md_ptr, rna_path_attribute_name, socket, true);
+  uiItemL(prop_row, "", ICON_BLANK1);
+  uiItemL(row, "", ICON_BLANK1);
 }
 
 static NodesModifierPanel *find_panel_by_id(NodesModifierData &nmd, const int id)
@@ -1946,15 +1951,16 @@ static void draw_interface_panel_content(const bContext *C,
   }
 }
 
-static void draw_internal_dependencies_panel(uiLayout *layout,
-                                             PointerRNA *ptr,
-                                             const NodesModifierData &nmd)
+static void draw_bake_panel(uiLayout *layout, PointerRNA *modifier_ptr)
 {
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetPropDecorate(col, false);
-  uiItemR(col, ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake"), ICON_NONE);
+  uiItemR(col, modifier_ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake Path"), ICON_NONE);
+}
 
+static void draw_named_attributes_panel(uiLayout *layout, NodesModifierData &nmd)
+{
   geo_log::GeoTreeLog *tree_log = get_root_tree_log(nmd);
   if (tree_log == nullptr) {
     return;
@@ -2019,6 +2025,23 @@ static void draw_internal_dependencies_panel(uiLayout *layout,
   }
 }
 
+static void draw_manage_panel(const bContext *C,
+                              uiLayout *layout,
+                              PointerRNA *modifier_ptr,
+                              NodesModifierData &nmd)
+{
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_("Bake"), modifier_ptr, "open_bake_panel"))
+  {
+    draw_bake_panel(panel_layout, modifier_ptr);
+  }
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_("Named Attributes"), modifier_ptr, "open_named_attributes_panel"))
+  {
+    draw_named_attributes_panel(panel_layout, nmd);
+  }
+}
+
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -2060,13 +2083,13 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
   }
 
-  modifier_panel_end(layout, ptr);
-
   if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, IFACE_("Internal Dependencies"), ptr, "open_internal_dependencies_panel"))
+          C, layout, IFACE_("Manage"), ptr, "open_manage_panel"))
   {
-    draw_internal_dependencies_panel(panel_layout, ptr, *nmd);
+    draw_manage_panel(C, panel_layout, ptr, *nmd);
   }
+
+  modifier_panel_end(layout, ptr);
 }
 
 static void panel_register(ARegionType *region_type)
