@@ -1,2 +1,3 @@
 Referenced by issue #101211, VSE Image Strip transform jitters under extreme scaling, unlike the smooth transform strip and compositor transform node.
 Referenced by pull request #117160, ImBuf: no need to use double precision inside IMB_transform
+Referenced by commit f16dbd0360e5c3298cadc8226dc65a523ad63fe4, ImBuf: no need to use double precision inside IMB_transform
