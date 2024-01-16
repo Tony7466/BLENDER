@@ -84,9 +84,11 @@ class VKFrameBuffer : public FrameBuffer {
 
   void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore /*ls*/) override;
   void config(const GPUAttachment *config, int config_len) override;
-  void subpass_transition(const GPUAttachmentState depth_attachment_state,
-                          Span<GPUAttachmentState> color_attachment_states) override;
+ protected:
+  void subpass_transition_impl(const GPUAttachmentState depth_attachment_state,
+                               Span<GPUAttachmentState> color_attachment_states) override;
 
+ public:
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,
             const int area[4],
@@ -101,9 +103,9 @@ class VKFrameBuffer : public FrameBuffer {
                int dst_offset_x,
                int dst_offset_y) override;
 
-  void attachment_set(GPUAttachmentType type,
+  void config_attachment_set(GPUAttachmentType type,
                       const GPUAttachment &new_attachment,
-                      bool config = true) override;
+                      bool config = true);
   void renderpass_clear_values_set(VkRenderPassBeginInfo &info);
   void cache_init();
   bool is_imageless() const
