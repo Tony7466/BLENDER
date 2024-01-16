@@ -1484,6 +1484,31 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
   }
 };
 
+static void add_missing_data_block_mappings(
+    NodesModifierData &nmd,
+    const VectorSet<bake::BakeDataBlockID> &missing,
+    FunctionRef<ID *(const bake::BakeDataBlockID &)> get_data_block)
+{
+  const int old_items_num = nmd.data_block_map_items_num;
+  const int new_items_num = old_items_num + missing.size();
+  nmd.data_block_map_items = reinterpret_cast<NodesModifierDataBlockMapItem *>(MEM_recallocN(
+      nmd.data_block_map_items, sizeof(NodesModifierDataBlockMapItem) * new_items_num));
+  for (const int i : missing.index_range()) {
+    NodesModifierDataBlockMapItem &item = nmd.data_block_map_items[old_items_num + i];
+    const blender::bke::bake::BakeDataBlockID &key = missing[i];
+
+    item.id_name = BLI_strdup(key.id_name.c_str());
+    if (!key.lib_name.empty()) {
+      item.lib_name = BLI_strdup(key.lib_name.c_str());
+    }
+    ID *id = get_data_block(key);
+    if (id) {
+      item.id = id;
+    }
+  }
+  nmd.data_block_map_items_num = new_items_num;
+}
+
 static void modifyGeometry(ModifierData *md,
                            const ModifierEvalContext *ctx,
                            bke::GeometrySet &geometry_set)
@@ -1586,29 +1611,31 @@ static void modifyGeometry(ModifierData *md,
   if (!data_block_map.missing.is_empty()) {
     Main *bmain = DEG_get_bmain(ctx->depsgraph);
     bke::scene::sync_writeback::add(
-        *ctx->depsgraph, [bmain, nmd_orig, missing = std::move(data_block_map.missing)]() {
-          const int old_items_num = nmd_orig->data_block_map_items_num;
-          const int new_items_num = old_items_num + missing.size();
-          nmd_orig->data_block_map_items = reinterpret_cast<NodesModifierDataBlockMapItem *>(
-              MEM_recallocN(nmd_orig->data_block_map_items,
-                            sizeof(NodesModifierDataBlockMapItem) * new_items_num));
-          for (const int i : missing.index_range()) {
-            NodesModifierDataBlockMapItem &item_orig =
-                nmd_orig->data_block_map_items[old_items_num + i];
-            const blender::bke::bake::BakeDataBlockID &data_block_id = missing[i];
-
-            item_orig.id_name = BLI_strdup(data_block_id.id_name.c_str());
-            if (!data_block_id.lib_name.empty()) {
-              item_orig.lib_name = BLI_strdup(data_block_id.lib_name.c_str());
-            }
-            ID *id_orig = BKE_libblock_find_name_and_library(
-                bmain, item_orig.id_name, item_orig.lib_name);
-            if (id_orig) {
-              item_orig.id = id_orig;
-              id_us_plus(id_orig);
-            }
-          }
-          nmd_orig->data_block_map_items_num = new_items_num;
+        *ctx->depsgraph,
+        [depsgraph = ctx->depsgraph,
+         bmain,
+         nmd_orig,
+         nmd_eval = nmd,
+         missing = std::move(data_block_map.missing)]() {
+          add_missing_data_block_mappings(
+              *nmd_orig, missing, [&](const bake::BakeDataBlockID &key) -> ID * {
+                if (ID *id_orig = BKE_libblock_find_name_and_library(
+                        bmain, key.id_name.c_str(), key.lib_name.c_str()))
+                {
+                  id_us_plus(id_orig);
+                  return id_orig;
+                }
+                return nullptr;
+              });
+          add_missing_data_block_mappings(
+              *nmd_eval, missing, [&](const bake::BakeDataBlockID &key) -> ID * {
+                if (ID *id_orig = BKE_libblock_find_name_and_library(
+                        bmain, key.id_name.c_str(), key.lib_name.c_str()))
+                {
+                  return DEG_get_evaluated_id(depsgraph, id_orig);
+                }
+                return nullptr;
+              });
         });
   }
 
