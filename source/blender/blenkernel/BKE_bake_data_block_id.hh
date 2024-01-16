@@ -12,6 +12,8 @@
 #include "BLI_struct_equality_utils.hh"
 #include "BLI_vector.hh"
 
+#include "DNA_ID_enums.h"
+
 struct ID;
 
 namespace blender::bke::bake {
@@ -22,6 +24,7 @@ namespace blender::bke::bake {
  * and between Blender sessions.
  */
 struct BakeDataBlockID {
+  ID_Type type;
   /**
    * Name of the data-block, without the type prefix.
    */
@@ -33,15 +36,14 @@ struct BakeDataBlockID {
    */
   std::string lib_name;
 
-  BakeDataBlockID() = default;
-  BakeDataBlockID(std::string id_name, std::string lib_name);
+  BakeDataBlockID(ID_Type type, std::string id_name, std::string lib_name);
   BakeDataBlockID(const ID &id);
 
   uint64_t hash() const;
 
   friend std::ostream &operator<<(std::ostream &stream, const BakeDataBlockID &id);
 
-  BLI_STRUCT_EQUALITY_OPERATORS_2(BakeDataBlockID, id_name, lib_name)
+  BLI_STRUCT_EQUALITY_OPERATORS_3(BakeDataBlockID, type, id_name, lib_name)
 };
 
 /**

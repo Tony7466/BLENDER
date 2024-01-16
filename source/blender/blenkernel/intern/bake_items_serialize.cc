@@ -386,7 +386,7 @@ template<typename T>
       return false;
     }
     std::string lib_name = io_material->lookup_str("lib_name").value_or("");
-    materials->append(BakeDataBlockID(std::move(*id_name), std::move(lib_name)));
+    materials->append(BakeDataBlockID(ID_MA, std::move(*id_name), std::move(lib_name)));
   }
   return true;
 }

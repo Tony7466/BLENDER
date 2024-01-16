@@ -12,13 +12,14 @@
 
 namespace blender::bke::bake {
 
-BakeDataBlockID::BakeDataBlockID(std::string id_name, std::string lib_name)
-    : id_name(std::move(id_name)), lib_name(std::move(lib_name))
+BakeDataBlockID::BakeDataBlockID(ID_Type type, std::string id_name, std::string lib_name)
+    : type(type), id_name(std::move(id_name)), lib_name(std::move(lib_name))
 {
 }
 
 BakeDataBlockID::BakeDataBlockID(const ID &id)
 {
+  this->type = GS(id.name);
   this->id_name = id.name + 2;
   if (id.lib) {
     this->lib_name = id.lib->id.name + 2;
@@ -32,7 +33,7 @@ std::ostream &operator<<(std::ostream &stream, const BakeDataBlockID &id)
 
 uint64_t BakeDataBlockID::hash() const
 {
-  return get_default_hash_2(this->id_name, this->lib_name);
+  return get_default_hash_3(this->type, this->id_name, this->lib_name);
 }
 
 }  // namespace blender::bke::bake

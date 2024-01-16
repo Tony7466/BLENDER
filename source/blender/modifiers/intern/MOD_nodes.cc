@@ -1439,10 +1439,9 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
   Map<bake::BakeDataBlockID, ID *> new_mappings;
   VectorSet<bake::BakeDataBlockID> missing;
 
-  ID *lookup_or_remember_missing(const bake::BakeDataBlockID &key,
-                                 std::optional<ID_Type> type) override
+  ID *lookup_or_remember_missing(const bake::BakeDataBlockID &key) override
   {
-    if (ID *id = this->lookup_in_map(this->old_mappings, key, type)) {
+    if (ID *id = this->old_mappings.lookup_default(key, nullptr)) {
       return id;
     }
     if (this->old_mappings.contains(key)) {
@@ -1450,7 +1449,7 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
       return nullptr;
     }
     std::lock_guard lock{mutex_};
-    if (ID *id = this->lookup_in_map(this->new_mappings, key, type)) {
+    if (ID *id = this->new_mappings.lookup_default(key, nullptr)) {
       return id;
     }
     this->missing.add(key);
@@ -1501,6 +1500,7 @@ static void add_missing_data_block_mappings(
     if (!key.lib_name.empty()) {
       item.lib_name = BLI_strdup(key.lib_name.c_str());
     }
+    item.id_type = int(key.type);
     ID *id = get_data_block(key);
     if (id) {
       item.id = id;
@@ -1579,8 +1579,10 @@ static void modifyGeometry(ModifierData *md,
   for (const NodesModifierDataBlockMapItem &item :
        Span(nmd->data_block_map_items, nmd->data_block_map_items_num))
   {
-    data_block_map.old_mappings.add(
-        bake::BakeDataBlockID(StringRef(item.id_name), StringRef(item.lib_name)), item.id);
+    data_block_map.old_mappings.add(bake::BakeDataBlockID(ID_Type(item.id_type),
+                                                          StringRef(item.id_name),
+                                                          StringRef(item.lib_name)),
+                                    item.id);
   }
   call_data.bake_data_block_map = &data_block_map;
 
