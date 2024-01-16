@@ -339,7 +339,10 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
 
   /* This assumes that keyframes are only added on original data & using the active depsgraph. If
    * it turns out to be necessary for some reason to insert keyframes on evaluated objects, we can
-   * revisit this and add an explicit `depsgraph` keyword argument to the function call. */
+   * revisit this and add an explicit `depsgraph` keyword argument to the function call.
+   *
+   * The depsgraph is only used for evaluating the NLA so this might not be needed in the future.
+   */
   bContext *C = BPY_context_get();
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
