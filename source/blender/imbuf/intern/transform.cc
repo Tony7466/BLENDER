@@ -10,7 +10,7 @@
 #include <type_traits>
 
 #include "BLI_math_color_blend.h"
-#include "BLI_math_interp.h"
+#include "BLI_math_interp.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
@@ -28,25 +28,25 @@ struct TransformUserData {
   /** \brief Destination image buffer to write to. */
   ImBuf *dst;
   /** \brief UV coordinates at the origin (0,0) in source image space. */
-  double2 start_uv;
+  float2 start_uv;
 
   /**
    * \brief delta UV coordinates along the source image buffer, when moving a single pixel in the X
    * axis of the dst image buffer.
    */
-  double2 add_x;
+  float2 add_x;
 
   /**
    * \brief delta UV coordinate along the source image buffer, when moving a single pixel in the Y
    * axes of the dst image buffer.
    */
-  double2 add_y;
+  float2 add_y;
 
   struct {
     /**
      * Contains per sub-sample a delta to be added to the uv of the source image buffer.
      */
-    Vector<double2, 9> delta_uvs;
+    Vector<float2, 9> delta_uvs;
   } subsampling;
 
   struct {
@@ -76,29 +76,29 @@ struct TransformUserData {
  private:
   void init_start_uv(const float4x4 &transform_matrix)
   {
-    start_uv = double2(transform_matrix.location().xy());
+    start_uv = transform_matrix.location().xy();
   }
 
   void init_add_x(const float4x4 &transform_matrix)
   {
-    add_x = double2(transform_matrix.x_axis());
+    add_x = transform_matrix.x_axis().xy();
   }
 
   void init_add_y(const float4x4 &transform_matrix)
   {
-    add_y = double2(transform_matrix.y_axis());
+    add_y = transform_matrix.y_axis().xy();
   }
 
   void init_subsampling(const int num_subsamples)
   {
-    double2 subsample_add_x = add_x / num_subsamples;
-    double2 subsample_add_y = add_y / num_subsamples;
-    double2 offset_x = -add_x * 0.5 + subsample_add_x * 0.5;
-    double2 offset_y = -add_y * 0.5 + subsample_add_y * 0.5;
+    float2 subsample_add_x = add_x / num_subsamples;
+    float2 subsample_add_y = add_y / num_subsamples;
+    float2 offset_x = -add_x * 0.5f + subsample_add_x * 0.5f;
+    float2 offset_y = -add_y * 0.5f + subsample_add_y * 0.5f;
 
     for (int y : IndexRange(0, num_subsamples)) {
       for (int x : IndexRange(0, num_subsamples)) {
-        double2 delta_uv = offset_x + offset_y;
+        float2 delta_uv = offset_x + offset_y;
         delta_uv += x * subsample_add_x;
         delta_uv += y * subsample_add_y;
         subsampling.delta_uvs.append(delta_uv);
@@ -150,7 +150,7 @@ struct CropSource {
    *
    * Uses user_data.src_crop to determine if the uv coordinate should be skipped.
    */
-  static bool should_discard(const TransformUserData &user_data, const double2 &uv)
+  static bool should_discard(const TransformUserData &user_data, const float2 &uv)
   {
     return uv.x < user_data.src_crop.xmin || uv.x >= user_data.src_crop.xmax ||
            uv.y < user_data.src_crop.ymin || uv.y >= user_data.src_crop.ymax;
@@ -166,7 +166,7 @@ struct NoDiscard {
    *
    * Will never discard any pixels.
    */
-  static bool should_discard(const TransformUserData & /*user_data*/, const double2 & /*uv*/)
+  static bool should_discard(const TransformUserData & /*user_data*/, const float2 & /*uv*/)
   {
     return false;
   }
@@ -301,18 +301,18 @@ class Sampler {
   static const int ChannelLen = NumChannels;
   using SampleType = Pixel<StorageType, NumChannels>;
 
-  void sample(const ImBuf *source, const double2 &uv, SampleType &r_sample)
+  void sample(const ImBuf *source, const float2 &uv, SampleType &r_sample)
   {
-    float u = float(uv.x);
-    float v = float(uv.y);
+    float u = uv.x;
+    float v = uv.y;
     if constexpr (UVWrapping) {
       u = wrap_uv(u, source->x);
       v = wrap_uv(v, source->y);
     }
     /* BLI_bilinear_interpolation functions use `floor(uv)` and `floor(uv)+1`
      * texels. For proper mapping between pixel and texel spaces, need to
-     * subtract 0.5. */
-    if constexpr (Filter == IMB_FILTER_BILINEAR) {
+     * subtract 0.5. Same for bicubic. */
+    if constexpr (Filter == IMB_FILTER_BILINEAR || Filter == IMB_FILTER_BICUBIC) {
       u -= 0.5f;
       v -= 0.5f;
     }
@@ -349,6 +349,16 @@ class Sampler {
     }
     else if constexpr (Filter == IMB_FILTER_NEAREST && std::is_same_v<StorageType, float>) {
       sample_nearest_float(source, u, v, r_sample);
+    }
+    else if constexpr (Filter == IMB_FILTER_BICUBIC && std::is_same_v<StorageType, float>) {
+      BLI_bicubic_interpolation_fl(
+          source->float_buffer.data, r_sample.data(), source->x, source->y, NumChannels, u, v);
+    }
+    else if constexpr (Filter == IMB_FILTER_BICUBIC && std::is_same_v<StorageType, uchar> &&
+                       NumChannels == 4)
+    {
+      BLI_bicubic_interpolation_char(
+          source->byte_buffer.data, r_sample.data(), source->x, source->y, u, v);
     }
     else {
       /* Unsupported sampler. */
@@ -509,21 +519,19 @@ class ScanlineProcessor {
   void process_one_sample_per_pixel(const TransformUserData *user_data, int scanline)
   {
     /* Note: sample at pixel center for proper filtering. */
-    double pixel_x = user_data->destination_region.x_range.first() + 0.5;
-    double pixel_y = scanline + 0.5;
-    double2 uv = user_data->start_uv + user_data->add_x * pixel_x + user_data->add_y * pixel_y;
+    float pixel_x = 0.5f;
+    float pixel_y = scanline + 0.5f;
+    float2 uv0 = user_data->start_uv + user_data->add_x * pixel_x + user_data->add_y * pixel_y;
 
     output.init_pixel_pointer(user_data->dst,
                               int2(user_data->destination_region.x_range.first(), scanline));
     for (int xi : user_data->destination_region.x_range) {
-      UNUSED_VARS(xi);
+      float2 uv = uv0 + xi * user_data->add_x;
       if (!discarder.should_discard(*user_data, uv)) {
         typename Sampler::SampleType sample;
         sampler.sample(user_data->src, uv, sample);
         channel_converter.convert_and_store(sample, output);
       }
-
-      uv += user_data->add_x;
       output.increase_pixel_pointer();
     }
   }
@@ -531,20 +539,20 @@ class ScanlineProcessor {
   void process_with_subsampling(const TransformUserData *user_data, int scanline)
   {
     /* Note: sample at pixel center for proper filtering. */
-    double pixel_x = user_data->destination_region.x_range.first() + 0.5;
-    double pixel_y = scanline + 0.5;
-    double2 uv = user_data->start_uv + user_data->add_x * pixel_x + user_data->add_y * pixel_y;
+    float pixel_x = 0.5f;
+    float pixel_y = scanline + 0.5f;
+    float2 uv0 = user_data->start_uv + user_data->add_x * pixel_x + user_data->add_y * pixel_y;
 
     output.init_pixel_pointer(user_data->dst,
                               int2(user_data->destination_region.x_range.first(), scanline));
     for (int xi : user_data->destination_region.x_range) {
-      UNUSED_VARS(xi);
+      float2 uv = uv0 + xi * user_data->add_x;
       typename Sampler::SampleType sample;
       sample.clear();
       int num_subsamples_added = 0;
 
-      for (const double2 &delta_uv : user_data->subsampling.delta_uvs) {
-        const double2 subsample_uv = uv + delta_uv;
+      for (const float2 &delta_uv : user_data->subsampling.delta_uvs) {
+        const float2 subsample_uv = uv + delta_uv;
         if (!discarder.should_discard(*user_data, subsample_uv)) {
           typename Sampler::SampleType sub_sample;
           sampler.sample(user_data->src, subsample_uv, sub_sample);
@@ -558,7 +566,6 @@ class ScanlineProcessor {
                                  user_data->subsampling.delta_uvs.size();
         channel_converter.mix_and_store(sample, output, mix_weight);
       }
-      uv += user_data->add_x;
       output.increase_pixel_pointer();
     }
   }
@@ -678,8 +685,11 @@ void IMB_transform(const ImBuf *src,
   if (filter == IMB_FILTER_NEAREST) {
     transform_threaded<IMB_FILTER_NEAREST>(&user_data, mode);
   }
-  else {
+  else if (filter == IMB_FILTER_BILINEAR) {
     transform_threaded<IMB_FILTER_BILINEAR>(&user_data, mode);
+  }
+  else if (filter == IMB_FILTER_BICUBIC) {
+    transform_threaded<IMB_FILTER_BICUBIC>(&user_data, mode);
   }
 }
 }
