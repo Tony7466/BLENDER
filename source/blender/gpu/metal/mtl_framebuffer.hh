@@ -153,15 +153,13 @@ class MTLFrameBuffer : public FrameBuffer {
                int dst_offset_x,
                int dst_offset_y) override;
 
-  void config(const GPUAttachment *config, int config_len) override{};
-
  protected:
   void subpass_transition_impl(const GPUAttachmentState /*depth_attachment_state*/,
                                Span<GPUAttachmentState> /*color_attachment_states*/) override{};
 
  public:
   void apply_state();
-
+  void config(const GPUAttachment *config, int config_len) override{};
   /* State. */
   /* Flag MTLFramebuffer configuration as having changed. */
   void mark_dirty();

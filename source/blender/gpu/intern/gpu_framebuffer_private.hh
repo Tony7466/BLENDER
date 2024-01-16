@@ -129,16 +129,15 @@ class FrameBuffer {
                        int dst_offset_x,
                        int dst_offset_y) = 0;
 
-  virtual void config(const GPUAttachment *config, int config_len) = 0;
-
  protected:
   virtual void subpass_transition_impl(const GPUAttachmentState depth_attachment_state,
                                        Span<GPUAttachmentState> color_attachment_states) = 0;
 
  public:
   void subpass_transition(const GPUAttachmentState depth_attachment_state,
-                          Span<GPUAttachmentState> color_attachment_states);
+                                        Span<GPUAttachmentState> color_attachment_states);
 
+  virtual void config(const GPUAttachment *config, int config_len) = 0;
   void load_store_config_array(const GPULoadStore *load_store_actions, uint actions_len);
 
   void attachment_set(GPUAttachmentType type, const GPUAttachment &new_attachment);
