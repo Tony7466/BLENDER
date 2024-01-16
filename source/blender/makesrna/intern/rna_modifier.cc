@@ -104,7 +104,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "GREASE_PENCIL_OPACITY",
      ICON_MOD_OPACITY,
      "Opacity",
-     "Opacity of the strokes"},
+     "Change the opacity of the strokes"},
 
     RNA_ENUM_ITEM_HEADING(N_("Generate"), nullptr),
     {eModifierType_Array,
