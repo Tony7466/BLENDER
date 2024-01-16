@@ -83,6 +83,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 blender::bke::GeometrySet *geometry_set)
 {
+    GreasePencilLengthModifierData* mmd=(GreasePencilLengthModifierData*) md;
     GreasePencil *gp=geometry_set->get_grease_pencil_for_write();
     if (!gp){ return; }
 
@@ -101,14 +102,16 @@ static void modify_geometry_set(ModifierData *md,
         IndexMask selection(cnum); selection.from_bools(all_true,memory);
 
         curves = blender::geometry::stretch_curves(curves,selection,
-            std::move(VArray<float>::ForSingle(1.0,cnum)),std::move(VArray<float>::ForSingle(1.0,cnum)),
-            std::move(VArray<float>::ForSingle(1.0,cnum)),std::move(VArray<float>::ForSingle(1.0,cnum)),
-            std::move(VArray<bool>::ForSingle(true,cnum)),std::move(VArray<int>::ForSingle(10,cnum)),
-            std::move(VArray<float>::ForSingle(1.0,cnum)),std::move(VArray<float>::ForSingle(1.0,cnum)),
-            std::move(VArray<bool>::ForSingle(false,cnum)),{});
+            std::move(VArray<float>::ForSingle(mmd->start_fac,cnum)),
+            std::move(VArray<float>::ForSingle(mmd->end_fac,cnum)),
+            std::move(VArray<float>::ForSingle(mmd->overshoot_fac,cnum)),
+            std::move(VArray<bool>::ForSingle(mmd->flag&GP_LENGTH_USE_CURVATURE,cnum)),
+            std::move(VArray<int>::ForSingle(mmd->start_fac/mmd->point_density,cnum)),
+            std::move(VArray<float>::ForSingle(mmd->segment_influence,cnum)),
+            std::move(VArray<float>::ForSingle(mmd->max_angle,cnum)),
+            std::move(VArray<bool>::ForSingle(mmd->flag&GP_LENGTH_INVERT_CURVATURE,cnum)),{});
 
-        curves.tag_topology_changed();
-        DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
+        info.drawing.tag_topology_changed();
     });
 
 
