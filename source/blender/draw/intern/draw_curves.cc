@@ -590,7 +590,7 @@ static CurvesEvalCache *curves_cache_get(Curves &curves,
   const int final_points_len = cache->final[subdiv].strands_res * strands_len;
 
   auto cache_update = [&](GPUVertBuf *output_buf, GPUVertBuf *input_buf) {
-    PassSimple::Sub &ob_ps = g_pass->sub("Object Pass");
+    PassSimple::Sub &ob_ps = g_pass->sub("Object Pass", GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 
     ob_ps.shader_set(
         DRW_shader_curves_refine_get(CURVES_EVAL_CATMULL_ROM, PART_REFINE_SHADER_COMPUTE));
@@ -605,7 +605,7 @@ static CurvesEvalCache *curves_cache_get(Curves &curves,
     int strands_start = 0;
     while (strands_start < strands_len) {
       int batch_strands_len = std::min(strands_len - strands_start, max_strands_per_call);
-      PassSimple::Sub &sub_ps = ob_ps.sub("Sub Pass");
+      PassSimple::Sub &sub_ps = ob_ps.sub("Sub Pass", GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
       sub_ps.push_constant("hairStrandOffset", strands_start);
       sub_ps.dispatch(int3(batch_strands_len, cache->final[subdiv].strands_res, 1));
       strands_start += batch_strands_len;

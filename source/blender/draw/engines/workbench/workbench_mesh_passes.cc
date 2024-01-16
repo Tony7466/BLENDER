@@ -78,7 +78,7 @@ PassMain::Sub &MeshPass::get_subpass(
     if (texture) {
       auto add_cb = [&] {
         PassMain::Sub *sub_pass = passes_[int(geometry_type)][int(eShaderType::TEXTURE)];
-        sub_pass = &sub_pass->sub(image->id.name);
+        sub_pass = &sub_pass->sub(image->id.name, GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
         if (tilemap) {
           sub_pass->bind_texture(WB_TILE_ARRAY_SLOT, texture, sampler_state);
           sub_pass->bind_texture(WB_TILE_DATA_SLOT, tilemap);

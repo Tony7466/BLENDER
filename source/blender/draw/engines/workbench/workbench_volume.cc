@@ -57,7 +57,7 @@ void VolumePass::object_sync_volume(Manager &manager,
 
   active_ = true;
 
-  PassMain::Sub &sub_ps = ps_.sub("Volume Object SubPass");
+  PassMain::Sub &sub_ps = ps_.sub("Volume Object SubPass", GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 
   const bool use_slice = (volume->display.axis_slice_method == AXIS_SLICE_SINGLE);
 
@@ -124,7 +124,7 @@ void VolumePass::object_sync_modifier(Manager &manager,
 
   active_ = true;
 
-  PassMain::Sub &sub_ps = ps_.sub("Volume Modifier SubPass");
+  PassMain::Sub &sub_ps = ps_.sub("Volume Modifier SubPass", GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 
   const bool use_slice = settings.axis_slice_method == AXIS_SLICE_SINGLE;
 

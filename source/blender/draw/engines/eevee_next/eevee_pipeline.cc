@@ -225,7 +225,7 @@ PassMain::Sub *ShadowPipeline::surface_material_add(::Material *material, GPUMat
   PassMain::Sub *pass = (material->blend_flag & MA_BL_CULL_BACKFACE_SHADOW) ?
                             surface_single_sided_ps_ :
                             surface_double_sided_ps_;
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 void ShadowPipeline::render(View &view)
@@ -343,7 +343,7 @@ PassMain::Sub *ForwardPipeline::prepass_opaque_add(::Material *blender_mat,
    * is no mix shader (could do better constant folding but that's expensive). */
 
   has_opaque_ = true;
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 PassMain::Sub *ForwardPipeline::material_opaque_add(::Material *blender_mat, GPUMaterial *gpumat)
@@ -354,7 +354,7 @@ PassMain::Sub *ForwardPipeline::material_opaque_add(::Material *blender_mat, GPU
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ? opaque_single_sided_ps_ :
                                                                           opaque_double_sided_ps_;
   has_opaque_ = true;
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 PassMain::Sub *ForwardPipeline::prepass_transparent_add(const Object *ob,
@@ -370,7 +370,8 @@ PassMain::Sub *ForwardPipeline::prepass_transparent_add(const Object *ob,
   }
   has_transparent_ = true;
   float sorting_value = math::dot(float3(ob->object_to_world[3]), camera_forward_);
-  PassMain::Sub *pass = &transparent_ps_.sub(GPU_material_get_name(gpumat), sorting_value);
+  PassMain::Sub *pass = &transparent_ps_.sub(
+      GPU_material_get_name(gpumat), sorting_value, GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
   pass->state_set(state);
   pass->material_set(*inst_.manager, gpumat);
   return pass;
@@ -386,7 +387,8 @@ PassMain::Sub *ForwardPipeline::material_transparent_add(const Object *ob,
   }
   has_transparent_ = true;
   float sorting_value = math::dot(float3(ob->object_to_world[3]), camera_forward_);
-  PassMain::Sub *pass = &transparent_ps_.sub(GPU_material_get_name(gpumat), sorting_value);
+  PassMain::Sub *pass = &transparent_ps_.sub(
+      GPU_material_get_name(gpumat), sorting_value, GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
   pass->state_set(state);
   pass->material_set(*inst_.manager, gpumat);
   return pass;
@@ -640,7 +642,7 @@ PassMain::Sub *DeferredLayer::prepass_add(::Material *blender_mat,
                             (has_motion ? prepass_double_sided_moving_ps_ :
                                           prepass_double_sided_static_ps_);
 
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial *gpumat)
@@ -658,7 +660,7 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
                             ((backface_culling) ? gbuffer_single_sided_ps_ :
                                                   gbuffer_double_sided_ps_);
 
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 void DeferredLayer::render(View &main_view,
@@ -977,7 +979,8 @@ PassMain::Sub *VolumeLayer::occupancy_add(const Object *ob,
   use_hit_list |= !use_fast_occupancy;
   is_empty = false;
 
-  PassMain::Sub *pass = &occupancy_ps_->sub(GPU_material_get_name(gpumat));
+  PassMain::Sub *pass = &occupancy_ps_->sub(GPU_material_get_name(gpumat),
+                                            GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
   pass->material_set(*inst_.manager, gpumat);
   pass->push_constant("use_fast_method", use_fast_occupancy);
   return pass;
@@ -989,7 +992,8 @@ PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
 {
   BLI_assert_msg(GPU_material_has_volume_output(gpumat) == true,
                  "Only volume material should be added here");
-  PassMain::Sub *pass = &material_ps_->sub(GPU_material_get_name(gpumat));
+  PassMain::Sub *pass = &material_ps_->sub(GPU_material_get_name(gpumat),
+                                           GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
   pass->material_set(*inst_.manager, gpumat);
   return pass;
 }
@@ -1212,7 +1216,7 @@ PassMain::Sub *DeferredProbeLayer::prepass_add(::Material *blender_mat, GPUMater
                             prepass_single_sided_static_ps_ :
                             prepass_double_sided_static_ps_;
 
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 PassMain::Sub *DeferredProbeLayer::material_add(::Material *blender_mat, GPUMaterial *gpumat)
@@ -1230,7 +1234,7 @@ PassMain::Sub *DeferredProbeLayer::material_add(::Material *blender_mat, GPUMate
                             ((backface_culling) ? gbuffer_single_sided_ps_ :
                                                   gbuffer_double_sided_ps_);
 
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 void DeferredProbeLayer::render(View &view,
@@ -1361,7 +1365,7 @@ PassMain::Sub *PlanarProbePipeline::prepass_add(::Material *blender_mat, GPUMate
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
                             prepass_single_sided_static_ps_ :
                             prepass_double_sided_static_ps_;
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 PassMain::Sub *PlanarProbePipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
@@ -1379,7 +1383,7 @@ PassMain::Sub *PlanarProbePipeline::material_add(::Material *blender_mat, GPUMat
                             ((backface_culling) ? gbuffer_single_sided_ps_ :
                                                   gbuffer_double_sided_ps_);
 
-  return &pass->sub(GPU_material_get_name(gpumat));
+  return &pass->sub(GPU_material_get_name(gpumat), GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
 }
 
 void PlanarProbePipeline::render(View &view,
@@ -1455,7 +1459,8 @@ void CapturePipeline::sync()
 
 PassMain::Sub *CapturePipeline::surface_material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
-  PassMain::Sub &sub_pass = surface_ps_.sub(GPU_material_get_name(gpumat));
+  PassMain::Sub &sub_pass = surface_ps_.sub(GPU_material_get_name(gpumat),
+                                            GPU_PROFILE_LEVEL_RESOURCE_SUBPASS);
   GPUPass *gpupass = GPU_material_get_pass(gpumat);
   sub_pass.shader_set(GPU_pass_shader_get(gpupass));
   sub_pass.push_constant("is_double_sided",
