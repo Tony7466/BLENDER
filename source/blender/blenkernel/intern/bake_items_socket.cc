@@ -3,14 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_bake_items_socket.hh"
-#include "BKE_curves.hh"
 #include "BKE_geometry_fields.hh"
-#include "BKE_mesh_types.hh"
 #include "BKE_node.hh"
 #include "BKE_node_socket_value.hh"
-#include "BKE_pointcloud.hh"
-
-#include "DNA_mesh_types.h"
 
 namespace blender::bke::bake {
 
@@ -205,52 +200,11 @@ static void rename_attributes(const Span<GeometrySet *> geometries,
   }
 }
 
-static void restore_materials(Material ***materials,
-                              short *materials_num,
-                              std::unique_ptr<BakeMaterialsList> materials_list,
-                              BakeDataBlockMap *data_block_map)
-{
-  if (!materials_list) {
-    return;
-  }
-  BLI_assert(*materials == nullptr);
-  *materials_num = materials_list->size();
-  *materials = MEM_cnew_array<Material *>(materials_list->size(), __func__);
-  if (!data_block_map) {
-    return;
-  }
-
-  for (const int i : materials_list->index_range()) {
-    const std::optional<BakeDataBlockID> &data_block_id = (*materials_list)[i];
-    if (data_block_id) {
-      (*materials)[i] = reinterpret_cast<Material *>(
-          data_block_map->lookup_or_try_add(*data_block_id, ID_MA));
-    }
-  }
-}
-
 static void restore_data_blocks(const Span<GeometrySet *> geometries,
                                 BakeDataBlockMap *data_block_map)
 {
   for (GeometrySet *main_geometry : geometries) {
-    main_geometry->modify_geometry_sets([&](GeometrySet &geometry) {
-      if (Mesh *mesh = geometry.get_mesh_for_write()) {
-        restore_materials(
-            &mesh->mat, &mesh->totcol, std::move(mesh->runtime->bake_materials), data_block_map);
-      }
-      if (Curves *curves = geometry.get_curves_for_write()) {
-        restore_materials(&curves->mat,
-                          &curves->totcol,
-                          std::move(curves->geometry.runtime->bake_materials),
-                          data_block_map);
-      }
-      if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
-        restore_materials(&pointcloud->mat,
-                          &pointcloud->totcol,
-                          std::move(pointcloud->runtime->bake_materials),
-                          data_block_map);
-      }
-    });
+    GeometryBakeItem::try_restore_data_blocks(*main_geometry, data_block_map);
   }
 }
 

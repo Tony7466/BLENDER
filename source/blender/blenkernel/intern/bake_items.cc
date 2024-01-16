@@ -81,6 +81,53 @@ void GeometryBakeItem::prepare_geometry_for_bake(GeometrySet &main_geometry,
   });
 }
 
+static void restore_materials(Material ***materials,
+                              short *materials_num,
+                              std::unique_ptr<BakeMaterialsList> materials_list,
+                              BakeDataBlockMap *data_block_map)
+{
+  if (!materials_list) {
+    return;
+  }
+  BLI_assert(*materials == nullptr);
+  *materials_num = materials_list->size();
+  *materials = MEM_cnew_array<Material *>(materials_list->size(), __func__);
+  if (!data_block_map) {
+    return;
+  }
+
+  for (const int i : materials_list->index_range()) {
+    const std::optional<BakeDataBlockID> &data_block_id = (*materials_list)[i];
+    if (data_block_id) {
+      (*materials)[i] = reinterpret_cast<Material *>(
+          data_block_map->lookup_or_try_add(*data_block_id, ID_MA));
+    }
+  }
+}
+
+void GeometryBakeItem::try_restore_data_blocks(GeometrySet &main_geometry,
+                                               BakeDataBlockMap *data_block_map)
+{
+  main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+    if (Mesh *mesh = geometry.get_mesh_for_write()) {
+      restore_materials(
+          &mesh->mat, &mesh->totcol, std::move(mesh->runtime->bake_materials), data_block_map);
+    }
+    if (Curves *curves = geometry.get_curves_for_write()) {
+      restore_materials(&curves->mat,
+                        &curves->totcol,
+                        std::move(curves->geometry.runtime->bake_materials),
+                        data_block_map);
+    }
+    if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
+      restore_materials(&pointcloud->mat,
+                        &pointcloud->totcol,
+                        std::move(pointcloud->runtime->bake_materials),
+                        data_block_map);
+    }
+  });
+}
+
 PrimitiveBakeItem::PrimitiveBakeItem(const CPPType &type, const void *value) : type_(type)
 {
   value_ = MEM_mallocN_aligned(type.size(), type.alignment(), __func__);

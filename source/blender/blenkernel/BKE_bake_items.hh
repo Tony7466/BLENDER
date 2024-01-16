@@ -48,6 +48,14 @@ class GeometryBakeItem : public BakeItem {
    * be used in the future.
    */
   static void prepare_geometry_for_bake(GeometrySet &geometry, BakeDataBlockMap *data_block_map);
+
+  /**
+   * The baked data does not have raw pointers to referenced data-blocks because those would become
+   * dangling quickly. Instead it has weak name-based references (#BakeDataBlockID). This function
+   * attempts to restore the actual data block pointers based on the weak references using the
+   * given mapping.
+   */
+  static void try_restore_data_blocks(GeometrySet &geometry, BakeDataBlockMap *data_block_map);
 };
 
 /**
