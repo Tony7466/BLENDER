@@ -36,6 +36,7 @@
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
@@ -2917,17 +2918,17 @@ void uiItemPointerR_prop(uiLayout *layout,
     return;
   }
 
+  StructRNA *struct_type;
+  if (type == PROP_POINTER) {
+    struct_type = RNA_property_pointer_type(ptr, prop);
+  }
+  else {
+    struct_type = RNA_property_pointer_type(searchptr, searchprop);
+  }
+
   /* get icon & name */
   if (icon == ICON_NONE) {
-    StructRNA *icontype;
-    if (type == PROP_POINTER) {
-      icontype = RNA_property_pointer_type(ptr, prop);
-    }
-    else {
-      icontype = RNA_property_pointer_type(searchptr, searchprop);
-    }
-
-    icon = RNA_struct_ui_icon(icontype);
+    icon = RNA_struct_ui_icon(struct_type);
   }
   if (!name) {
     name = RNA_property_ui_name(prop);
@@ -2947,6 +2948,18 @@ void uiItemPointerR_prop(uiLayout *layout,
   uiBut *but = ui_item_with_label(layout, block, name, icon, ptr, prop, 0, 0, 0, w, h, 0);
 
   but = ui_but_add_search(but, ptr, prop, searchptr, searchprop, results_are_suggestions);
+
+  /* Set a placeholder based on the struct type in case the property itself is not a pointer. */
+  const short idcode = RNA_type_to_ID_code(struct_type);
+  if (idcode != 0) {
+    const char *placeholder;
+    if (RNA_enum_name(rna_enum_id_type_items, idcode, &placeholder)) {
+      UI_but_placeholder_set(but, CTX_IFACE_(BLT_I18NCONTEXT_ID_ID, placeholder));
+    }
+  }
+  else if (struct_type && !STREQ(RNA_struct_identifier(struct_type), "UnknownType")) {
+    UI_but_placeholder_set(but, RNA_struct_ui_name(struct_type));
+  }
 }
 
 void uiItemPointerR(uiLayout *layout,
