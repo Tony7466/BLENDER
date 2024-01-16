@@ -1437,7 +1437,6 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
   std::mutex mutex_;
   Map<bake::BakeDataBlockID, ID *> old_mappings;
   Map<bake::BakeDataBlockID, ID *> new_mappings;
-  VectorSet<bake::BakeDataBlockID> missing;
 
   ID *lookup_or_remember_missing(const bake::BakeDataBlockID &key) override
   {
@@ -1449,11 +1448,7 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
       return nullptr;
     }
     std::lock_guard lock{mutex_};
-    if (ID *id = this->new_mappings.lookup_default(key, nullptr)) {
-      return id;
-    }
-    this->missing.add(key);
-    return nullptr;
+    return this->new_mappings.lookup_or_add(key, nullptr);
   }
 
   void try_add(ID &id) override
@@ -1463,8 +1458,7 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
       return;
     }
     std::lock_guard lock{mutex_};
-    this->missing.add(key);
-    this->new_mappings.add(std::move(key), &id);
+    this->new_mappings.add_overwrite(std::move(key), &id);
   }
 
  private:
@@ -1485,7 +1479,7 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
 
 static void add_missing_data_block_mappings(
     NodesModifierData &nmd,
-    const VectorSet<bake::BakeDataBlockID> &missing,
+    const Vector<bake::BakeDataBlockID> &missing,
     FunctionRef<ID *(const bake::BakeDataBlockID &)> get_data_block)
 {
   const int old_items_num = nmd.data_block_map_items_num;
@@ -1507,6 +1501,44 @@ static void add_missing_data_block_mappings(
     }
   }
   nmd.data_block_map_items_num = new_items_num;
+}
+
+static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
+                                           NodesModifierData &nmd_eval,
+                                           NodesModifierData &nmd_orig,
+                                           NodesModifierBakeDataBlockMap &data_block_map)
+{
+  Depsgraph *depsgraph = ctx.depsgraph;
+  Main *bmain = DEG_get_bmain(depsgraph);
+  bke::scene::sync_writeback::add(
+      *depsgraph,
+      [depsgraph = depsgraph,
+       bmain,
+       &nmd_orig,
+       &nmd_eval,
+       new_mappings = std::move(data_block_map.new_mappings)]() {
+        Vector<bake::BakeDataBlockID> sorted_new_mappings;
+        sorted_new_mappings.extend(new_mappings.keys().begin(), new_mappings.keys().end());
+        add_missing_data_block_mappings(
+            nmd_orig, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
+              ID *id_orig = nullptr;
+              if (ID *id_eval = new_mappings.lookup_default(key, nullptr)) {
+                id_orig = DEG_get_original_id(id_eval);
+              }
+              else {
+                id_orig = BKE_libblock_find_name_and_library(
+                    bmain, key.id_name.c_str(), key.lib_name.c_str());
+              }
+              if (id_orig) {
+                id_us_plus(id_orig);
+              }
+              return id_orig;
+            });
+        add_missing_data_block_mappings(
+            nmd_eval, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
+              return new_mappings.lookup_default(key, nullptr);
+            });
+      });
 }
 
 static void modifyGeometry(ModifierData *md,
@@ -1610,35 +1642,8 @@ static void modifyGeometry(ModifierData *md,
     nmd_orig->runtime->eval_log = std::move(eval_log);
   }
 
-  if (!data_block_map.missing.is_empty()) {
-    Main *bmain = DEG_get_bmain(ctx->depsgraph);
-    bke::scene::sync_writeback::add(
-        *ctx->depsgraph,
-        [depsgraph = ctx->depsgraph,
-         bmain,
-         nmd_orig,
-         nmd_eval = nmd,
-         missing = std::move(data_block_map.missing)]() {
-          add_missing_data_block_mappings(
-              *nmd_orig, missing, [&](const bake::BakeDataBlockID &key) -> ID * {
-                if (ID *id_orig = BKE_libblock_find_name_and_library(
-                        bmain, key.id_name.c_str(), key.lib_name.c_str()))
-                {
-                  id_us_plus(id_orig);
-                  return id_orig;
-                }
-                return nullptr;
-              });
-          add_missing_data_block_mappings(
-              *nmd_eval, missing, [&](const bake::BakeDataBlockID &key) -> ID * {
-                if (ID *id_orig = BKE_libblock_find_name_and_library(
-                        bmain, key.id_name.c_str(), key.lib_name.c_str()))
-                {
-                  return DEG_get_evaluated_id(depsgraph, id_orig);
-                }
-                return nullptr;
-              });
-        });
+  if (!data_block_map.new_mappings.is_empty()) {
+    add_data_block_items_writeback(*ctx, *nmd, *nmd_orig, data_block_map);
   }
 
   if (use_orig_index_verts || use_orig_index_edges || use_orig_index_faces) {
