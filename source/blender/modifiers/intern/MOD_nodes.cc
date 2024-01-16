@@ -1929,27 +1929,20 @@ static void draw_interface_panel_content(const bContext *C,
       }
     }
   }
-}
-
-static void draw_output_attributes_panel(const bContext *C,
-                                         uiLayout *layout,
-                                         const NodesModifierData &nmd,
-                                         PointerRNA *ptr)
-{
-  bool has_output_attribute = false;
-  if (nmd.node_group != nullptr && nmd.settings.properties != nullptr) {
-    for (const bNodeTreeInterfaceSocket *socket : nmd.node_group->interface_outputs()) {
-      const bNodeSocketType *typeinfo = socket->socket_typeinfo();
-      const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
-                                                  SOCK_CUSTOM;
-      if (nodes::socket_type_has_attribute_toggle(type)) {
-        has_output_attribute = true;
-        draw_property_for_output_socket(*C, layout, nmd, ptr, *socket);
-      }
+  for (const bNodeTreeInterfaceItem *item : interface_panel.items()) {
+    if (item->item_type != NODE_INTERFACE_SOCKET) {
+      continue;
     }
-  }
-  if (!has_output_attribute) {
-    uiItemL(layout, RPT_("No group output attributes connected"), ICON_INFO);
+    const auto &interface_socket = *reinterpret_cast<const bNodeTreeInterfaceSocket *>(item);
+    if (!(interface_socket.flag & NODE_INTERFACE_SOCKET_OUTPUT)) {
+      continue;
+    }
+    const bNodeSocketType *typeinfo = interface_socket.socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+    if (!nodes::socket_type_has_attribute_toggle(type)) {
+      continue;
+    }
+    draw_property_for_output_socket(*C, layout, nmd, modifier_ptr, interface_socket);
   }
 }
 
@@ -2069,11 +2062,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, IFACE_("Output Attributes"), ptr, "open_output_attributes_panel"))
-  {
-    draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
-  }
   if (uiLayout *panel_layout = uiLayoutPanel(
           C, layout, IFACE_("Internal Dependencies"), ptr, "open_internal_dependencies_panel"))
   {
