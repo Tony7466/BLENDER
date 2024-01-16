@@ -6,6 +6,13 @@
 
 /** \file
  * \ingroup bke
+ *
+ * This file provides an API that can be used to modify original (as opposed to evaluated)
+ * data-blocks after depsgraph evaluation. For some data (e.g. animated properties), this is done
+ * during depsgraph evaluation. However, this is not possible in all cases. For example, if the
+ * change to the original data adds a new relation between data-blocks, a user-count (#ID.us) has
+ * to be increased. However, this counter is not atomic and can therefor not be modified
+ * arbitrarily from different threads.
  */
 
 #include <functional>
@@ -14,8 +21,21 @@ struct Depsgraph;
 
 namespace blender::bke::scene::sync_writeback {
 
+/**
+ * Enable gathering of writeback tasks before depsgraph evaluation.
+ */
 void activate(const Depsgraph &depsgraph);
-void run(const Depsgraph &depsgraph);
+
+/**
+ * Add a writeback task during depsgraph evaluation. The given function is called after depsgraph
+ * evaluation is done. It is allowed to change the original data blocks.
+ */
 void add(const Depsgraph &depsgraph, std::function<void()> fn);
+
+/**
+ * Execute all gathered writeback tasks for the given depsgraph. This should be called after
+ * depsgraph evaluation finished.
+ */
+void run(const Depsgraph &depsgraph);
 
 }  // namespace blender::bke::scene::sync_writeback

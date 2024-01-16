@@ -19,6 +19,12 @@
 
 namespace blender::bke::bake {
 
+/**
+ * Maps #BakeDataBlockID to the corresponding data-block. This is used during depsgraph evaluation
+ * to remap weak data-block references stored in baked data to the actual data-blocks at run-time.
+ *
+ * Also it keeps track of missing data-blocks, so that they can be added later.
+ */
 struct BakeDataBlockMap {
  public:
   /**

@@ -262,7 +262,6 @@ void move_bake_items_to_socket_values(
         make_attribute_field,
     const Span<void *> r_socket_values)
 {
-  UNUSED_VARS(data_block_map);
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;
 
   Vector<GeometrySet *> geometries;
@@ -305,7 +304,6 @@ void copy_bake_items_to_socket_values(
         make_attribute_field,
     const Span<void *> r_socket_values)
 {
-  UNUSED_VARS(data_block_map);
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;
   Vector<GeometrySet *> geometries;
 
