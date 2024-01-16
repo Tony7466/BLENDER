@@ -47,7 +47,7 @@ using bke::greasepencil::Layer;
 
 static void init_data(ModifierData *md)
 {
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  GreasePencilOpacityModifierData *omd = reinterpret_cast<GreasePencilOpacityModifierData *>(md);
 
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(omd, modifier));
 
@@ -57,8 +57,10 @@ static void init_data(ModifierData *md)
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
-  const GreasePencilOpacityModifierData *omd = (const GreasePencilOpacityModifierData *)md;
-  GreasePencilOpacityModifierData *tomd = (GreasePencilOpacityModifierData *)target;
+  const GreasePencilOpacityModifierData *omd =
+      reinterpret_cast<const GreasePencilOpacityModifierData *>(md);
+  GreasePencilOpacityModifierData *tomd = reinterpret_cast<GreasePencilOpacityModifierData *>(
+      target);
 
   greasepencil::free_influence_data(&tomd->influence);
 
@@ -68,14 +70,13 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
 
 static void free_data(ModifierData *md)
 {
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
-
+  GreasePencilOpacityModifierData *omd = reinterpret_cast<GreasePencilOpacityModifierData *>(md);
   greasepencil::free_influence_data(&omd->influence);
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  GreasePencilOpacityModifierData *omd = reinterpret_cast<GreasePencilOpacityModifierData *>(md);
   greasepencil::foreach_influence_ID_link(&omd->influence, ob, walk, user_data);
 }
 
@@ -191,7 +192,7 @@ static void modify_curves(ModifierData *md,
                           const ModifierEvalContext *ctx,
                           bke::CurvesGeometry &curves)
 {
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  GreasePencilOpacityModifierData *omd = reinterpret_cast<GreasePencilOpacityModifierData *>(md);
 
   IndexMaskMemory mask_memory;
   IndexMask curves_mask = greasepencil::get_filtered_stroke_mask(
@@ -218,7 +219,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  GreasePencilOpacityModifierData *omd = reinterpret_cast<GreasePencilOpacityModifierData *>(md);
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   const int frame = scene->r.cfra;
 
@@ -290,7 +291,8 @@ static void panel_register(ARegionType *region_type)
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
-  const GreasePencilOpacityModifierData *omd = (const GreasePencilOpacityModifierData *)md;
+  const GreasePencilOpacityModifierData *omd =
+      reinterpret_cast<const GreasePencilOpacityModifierData *>(md);
 
   BLO_write_struct(writer, GreasePencilOpacityModifierData, omd);
   greasepencil::write_influence_data(writer, &omd->influence);
@@ -298,7 +300,7 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
-  GreasePencilOpacityModifierData *omd = (GreasePencilOpacityModifierData *)md;
+  GreasePencilOpacityModifierData *omd = reinterpret_cast<GreasePencilOpacityModifierData *>(md);
 
   greasepencil::read_influence_data(reader, &omd->influence);
 }
