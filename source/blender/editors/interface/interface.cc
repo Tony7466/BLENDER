@@ -4152,11 +4152,9 @@ static uiBut *ui_def_but(uiBlock *block,
   but->pos = -1; /* cursor invisible */
 
   if (ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER)) { /* add a space to name */
-    /* slen remains unchanged from previous assignment, ensure this stays true */
     if (slen > 0 && slen < UI_MAX_NAME_STR - 2) {
-      if (but->str[slen - 1] != ' ') {
-        but->str[slen] = ' ';
-        but->str[slen + 1] = 0;
+      if (but->str[but->str.size() - 1] != ' ') {
+        but->str += ' ';
       }
     }
   }
