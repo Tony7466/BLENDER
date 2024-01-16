@@ -358,6 +358,7 @@ void LightModule::end_sync()
       tile_size *= 2;
       tiles_extent = math::divide_ceil(render_extent, int2(tile_size));
       uint tile_count = tiles_extent.x * tiles_extent.y;
+      printf("%s(tile_size=%d,tile_count=%d)\n", __func__, tile_size, tile_count);
       if (tile_count > max_tile_count_threshold) {
         continue;
       }
@@ -375,6 +376,7 @@ void LightModule::end_sync()
     culling_data_buf_.local_lights_len = local_lights_len_;
     culling_data_buf_.sun_lights_len = sun_lights_len_;
   }
+  printf("%s(%d)\n", __func__, total_word_count_);
   culling_tile_buf_.resize(total_word_count_);
 
   culling_pass_sync();
