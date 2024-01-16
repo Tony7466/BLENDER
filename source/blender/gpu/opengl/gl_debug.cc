@@ -514,7 +514,7 @@ void GLContext::process_frame_timings()
              << "\n";
     }
 
-    std::cout << result.rdbuf();
+    std::cout << result.str();
     frame_timings.remove(frame_i--);
   }
 
