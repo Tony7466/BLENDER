@@ -4009,11 +4009,12 @@ static int invoke_last_exec(bContext *C, wmOperator * /*op*/)
           STREQ(lastop->idname, "TRANSFORM_OT_resize") ||
           STREQ(lastop->idname, "TRANSFORM_OT_rotate") ||
           STREQ(lastop->idname, "TRANSFORM_OT_trackball") ||
-          STREQ(lastop->idname, "TRANSFORM_OT_translate")) {
+          STREQ(lastop->idname, "TRANSFORM_OT_translate"))
+      {
         lastop = lastop->prev;
       }
       else {
-        //printf(lastop->idname, "\n");
+        // printf(lastop->idname, "\n");
         break;
       }
     }

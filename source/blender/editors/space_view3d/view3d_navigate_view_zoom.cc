@@ -476,8 +476,6 @@ static int viewzoom_invoke_impl(bContext *C,
 {
   int xy[2];
 
-
-
   PropertyRNA *prop;
   prop = RNA_struct_find_property(ptr, "mx");
   xy[0] = RNA_property_is_set(ptr, prop) ? RNA_property_int_get(ptr, prop) : event->xy[0];

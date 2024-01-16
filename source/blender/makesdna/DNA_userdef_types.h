@@ -1379,7 +1379,6 @@ typedef enum eUserpref_Eyedropper_Cursor_Types {
   USER_EYEDROPPER_CURSOR_DOT = 10,
 } eUserpref_Eyedropper_Cursor_Types;
 
-
 /** #UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {
   USER_APP_LOCK_CORNER_SPLIT = (1 << 0),

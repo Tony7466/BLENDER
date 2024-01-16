@@ -410,7 +410,7 @@ int WM_gesture_circle_modal(bContext *C, wmOperator *op, const wmEvent *event)
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   rcti *rect = static_cast<rcti *>(gesture->customdata);
   Object *obedit = CTX_data_edit_object(C);
-  ToolSettings *ts = static_cast<ToolSettings *> (win->scene->toolsettings);
+  ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
 
   if (event->type == MOUSEMOVE) {
 

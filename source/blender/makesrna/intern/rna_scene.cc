@@ -3107,7 +3107,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-    static const EnumPropertyItem viewport_facing_select_mode_items[] = {
+  static const EnumPropertyItem viewport_facing_select_mode_items[] = {
       {VIEWPORT_FACING_SELECT_BOTH,
        "BOTH",
        0,
@@ -3148,7 +3148,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
        0,
        "All Verts",
        "Select vertices regarless of their normal direction"},
-        {0, nullptr, 0, nullptr, nullptr},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem viewport_facing_select_edge_items[] = {
@@ -3213,7 +3213,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_struct_path_func(srna, "rna_ToolSettings_path");
   RNA_def_struct_ui_text(srna, "Tool Settings", "");
 
-    /* Viewport-Facing Select */
+  /* Viewport-Facing Select */
   prop = RNA_def_property(srna, "viewport_facing_select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "viewport_facing_select", 0);
   RNA_def_property_ui_text(
@@ -3996,13 +3996,14 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "shrink_shading_header", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "shrink_shading_header", 0);
   RNA_def_property_ui_text(
-      prop, "Shrink Header", "Combine the four Shading Header buttons into one button that also toggles X-Ray");
+      prop,
+      "Shrink Header",
+      "Combine the four Shading Header buttons into one button that also toggles X-Ray");
 
   /* X-Ray header button */
   prop = RNA_def_property(srna, "xray_button", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "xray_button", 0);
-  RNA_def_property_ui_text(
-      prop, "X-Ray", "Show button for X-Ray in viewport header");
+  RNA_def_property_ui_text(prop, "X-Ray", "Show button for X-Ray in viewport header");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
   /* Auto X-Ray */

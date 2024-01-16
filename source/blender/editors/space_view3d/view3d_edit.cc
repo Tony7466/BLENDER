@@ -1256,7 +1256,8 @@ static int toggle_auto_xray_exec(bContext *C, wmOperator *op)
   const bool mode_match = obedit ? ts->auto_xray_edit : ts->auto_xray_object;
 
   if (STREQ(tref->idname, "builtin.select_box") ||
-      STREQ(tref->idname_fallback, "builtin.select_box")) {
+      STREQ(tref->idname_fallback, "builtin.select_box"))
+  {
     if (mode_match && ts->auto_xray && ts->auto_xray_box) {
       ts->auto_xray ^= true;
     }
@@ -1280,7 +1281,8 @@ static int toggle_auto_xray_exec(bContext *C, wmOperator *op)
     }
   }
   else if (STREQ(tref->idname, "builtin.select_lasso") ||
-           STREQ(tref->idname_fallback, "builtin.select_lasso")) {
+           STREQ(tref->idname_fallback, "builtin.select_lasso"))
+  {
     if (mode_match && ts->auto_xray && ts->auto_xray_lasso) {
       ts->auto_xray ^= true;
     }
@@ -1304,7 +1306,8 @@ static int toggle_auto_xray_exec(bContext *C, wmOperator *op)
     }
   }
   else if (STREQ(tref->idname, "builtin.select_circle") ||
-           STREQ(tref->idname_fallback, "builtin.select_circle")) {
+           STREQ(tref->idname_fallback, "builtin.select_circle"))
+  {
     if (mode_match && ts->auto_xray && ts->auto_xray_circle) {
       ts->auto_xray ^= true;
     }
@@ -1360,7 +1363,8 @@ static int toggle_select_through_exec(bContext *C, wmOperator *op)
   const bool mode_match = obedit ? ts->select_through_edit : ts->select_through_object;
 
   if (STREQ(tref->idname, "builtin.select_box") ||
-      STREQ(tref->idname_fallback, "builtin.select_box")) {
+      STREQ(tref->idname_fallback, "builtin.select_box"))
+  {
     if (mode_match && ts->select_through && ts->select_through_box) {
       ts->select_through ^= true;
     }
@@ -1384,7 +1388,8 @@ static int toggle_select_through_exec(bContext *C, wmOperator *op)
     }
   }
   else if (STREQ(tref->idname, "builtin.select_lasso") ||
-           STREQ(tref->idname_fallback, "builtin.select_lasso")) {
+           STREQ(tref->idname_fallback, "builtin.select_lasso"))
+  {
     if (mode_match && ts->select_through && ts->select_through_lasso) {
       ts->select_through ^= true;
     }
@@ -1408,7 +1413,8 @@ static int toggle_select_through_exec(bContext *C, wmOperator *op)
     }
   }
   else if (STREQ(tref->idname, "builtin.select_circle") ||
-           STREQ(tref->idname_fallback, "builtin.select_circle")) {
+           STREQ(tref->idname_fallback, "builtin.select_circle"))
+  {
     if (mode_match && ts->select_through && ts->select_through_circle) {
       ts->select_through ^= true;
     }

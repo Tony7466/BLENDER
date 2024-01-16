@@ -547,11 +547,12 @@ void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
  * \{ */
 
 static void mesh_foreachScreenFaceCenter__mapFunc(void *user_data,
-                                            int index,
-                                            const float cent[3],
-                                            const float /*no*/[3])
+                                                  int index,
+                                                  const float cent[3],
+                                                  const float /*no*/[3])
 {
-  foreachScreenFaceCenter_userData *data = static_cast<foreachScreenFaceCenter_userData *>(user_data);
+  foreachScreenFaceCenter_userData *data = static_cast<foreachScreenFaceCenter_userData *>(
+      user_data);
   BMFace *efa = BM_face_at_index(data->vc.em->bm, index);
   if (UNLIKELY(BM_elem_flag_test(efa, BM_ELEM_HIDDEN))) {
     return;
@@ -647,7 +648,8 @@ void mesh_foreachScreenFaceVerts(ViewContext *vc,
     }
 
     if (ED_view3d_project_float_object(vc->region, bmvert->co, temp_screen_co, clip_flag) ==
-        V3D_PROJ_RET_OK) {
+        V3D_PROJ_RET_OK)
+    {
       screen_coords[i][0] = temp_screen_co[0];
       screen_coords[i][1] = temp_screen_co[1];
     }

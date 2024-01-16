@@ -240,7 +240,8 @@ static void findnearestvert__doClosest(void *user_data,
   dist_test = dist_test_bias = len_manhattan_v2v2(data->mval_fl, screen_co);
 
   if (!(U.flag & USER_ADJUSTABLE_CLICK_SELECT && U.flag & USER_SELECT_UNBIASED) &&
-      data->use_select_bias && BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
+      data->use_select_bias && BM_elem_flag_test(eve, BM_ELEM_SELECT))
+  {
     dist_test_bias += FIND_NEAR_SELECT_BIAS;
   }
 
@@ -451,7 +452,8 @@ static void find_nearest_edge__doClosest(void *user_data,
   dist_test = dist_test_bias = len_manhattan_v2v2(data->mval_fl, screen_co);
 
   if (!(U.flag & USER_ADJUSTABLE_CLICK_SELECT && U.flag & USER_SELECT_UNBIASED) &&
-      data->use_select_bias && BM_elem_flag_test(eed, BM_ELEM_SELECT)) {
+      data->use_select_bias && BM_elem_flag_test(eed, BM_ELEM_SELECT))
+  {
     dist_test_bias += FIND_NEAR_SELECT_BIAS;
   }
 
@@ -686,7 +688,8 @@ static void findnearestface__doClosest(void *user_data,
   dist_test = dist_test_bias = len_manhattan_v2v2(data->mval_fl, screen_co);
 
   if (!(U.flag & USER_ADJUSTABLE_CLICK_SELECT && U.flag & USER_SELECT_UNBIASED) &&
-      data->use_select_bias && BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
+      data->use_select_bias && BM_elem_flag_test(efa, BM_ELEM_SELECT))
+  {
     dist_test_bias += FIND_NEAR_SELECT_BIAS;
   }
 
@@ -730,7 +733,8 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
 
     {
       if (U.flag & USER_ADJUSTABLE_CLICK_SELECT ||
-          *dist_px_manhattan_p != 0.0f && (use_zbuf_single_px == false)) {
+          *dist_px_manhattan_p != 0.0f && (use_zbuf_single_px == false))
+      {
         dist_px_manhattan_test = (uint)ED_view3d_backbuf_sample_size_clamp(vc->region,
                                                                            *dist_px_manhattan_p);
       }

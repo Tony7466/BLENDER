@@ -69,7 +69,8 @@ bool BLI_lasso_is_edge_inside(const int mcoords[][2],
 
   /* enclosed faces only checks for both points inside selection area */
   if (BLI_lasso_is_point_inside(mcoords, mcoords_len, v1[0], v1[1], error_value) &&
-      BLI_lasso_is_point_inside(mcoords, mcoords_len, v2[0], v2[1], error_value)) {
+      BLI_lasso_is_point_inside(mcoords, mcoords_len, v2[0], v2[1], error_value))
+  {
     return true;
   }
 

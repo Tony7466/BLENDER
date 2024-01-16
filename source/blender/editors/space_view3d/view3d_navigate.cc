@@ -644,15 +644,14 @@ void view3d_operator_properties_common(wmOperatorType *ot, const enum eV3D_OpPro
   if (flag & V3D_OP_PROP_FRAME_SELECTED_DISTANCE) {
     PropertyRNA *prop;
     prop = RNA_def_int(ot->srna,
-                        "frame_selected_distance",
-                        0,
-                        0,
-                        1000,
-                        "Camera Offset",
-                        "Distance to put camera from selected",
-                        0,
-                        1000);
-
+                       "frame_selected_distance",
+                       0,
+                       0,
+                       1000,
+                       "Camera Offset",
+                       "Distance to put camera from selected",
+                       0,
+                       1000);
   }
 
   if (flag & V3D_OP_PROP_ZOOM_SPEED) {

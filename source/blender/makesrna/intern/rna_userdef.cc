@@ -5786,7 +5786,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Cursor Surface Project", "Use the surface depth for cursor placement");
 
-    prop = RNA_def_property(srna, "adjustable_click_select", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "adjustable_click_select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_ADJUSTABLE_CLICK_SELECT);
   RNA_def_property_ui_text(prop, "Enable", "Use additional options for single-click select");
 
@@ -6309,7 +6309,7 @@ static void rna_def_userdef_input(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-    static const EnumPropertyItem click_drag_direction_types[] = {
+  static const EnumPropertyItem click_drag_direction_types[] = {
       {USER_CLICK_DRAG_DIRECTION_EIGHT_WAY,
        "EIGHT_WAY",
        0,
