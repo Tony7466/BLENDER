@@ -15,7 +15,8 @@ struct FCurve;
 
 namespace blender::animrig {
 
-/** Adjust frame on which to add keyframe, to make it easier to add corrective drivers. */
+/** Evaluates the driver on the frame given in `anim_eval_context` and returns the value. Returns 0
+ * if the RNA path can't be resolved. */
 float remap_driver_frame(const AnimationEvalContext *anim_eval_context,
                          PointerRNA *ptr,
                          PropertyRNA *prop,

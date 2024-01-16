@@ -20,10 +20,10 @@ float remap_driver_frame(const AnimationEvalContext *anim_eval_context,
                          const FCurve *fcu)
 {
   PathResolvedRNA anim_rna;
-  if (RNA_path_resolved_create(ptr, prop, fcu->array_index, &anim_rna)) {
-    return evaluate_driver(&anim_rna, fcu->driver, fcu->driver, anim_eval_context);
+  if (!RNA_path_resolved_create(ptr, prop, fcu->array_index, &anim_rna)) {
+    return 0.0f;
   }
-  return 0.0f;
+  return evaluate_driver(&anim_rna, fcu->driver, fcu->driver, anim_eval_context);
 }
 
 }  // namespace blender::animrig

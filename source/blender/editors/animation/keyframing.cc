@@ -941,13 +941,14 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       if (fcu && driven) {
         const float driver_frame = blender::animrig::remap_driver_frame(
             &anim_eval_context, &ptr, prop, fcu);
-        BKE_animsys_eval_context_construct(CTX_data_depsgraph_pointer(C), driver_frame);
+        AnimationEvalContext remapped_context = BKE_animsys_eval_context_construct(
+            CTX_data_depsgraph_pointer(C), driver_frame);
         changed = blender::animrig::insert_keyframe_direct(
             op->reports,
             ptr,
             prop,
             fcu,
-            &anim_eval_context,
+            &remapped_context,
             eBezTriple_KeyframeType(ts->keyframe_type),
             nullptr,
             INSERTKEY_NOFLAGS);
