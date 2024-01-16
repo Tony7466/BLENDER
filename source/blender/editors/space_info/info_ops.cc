@@ -157,6 +157,13 @@ static int pack_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void pack_all_confirm(bContext * /* C */, wmOperator * /* op */, wmConfirmDetails *confirm)
+{
+  STRNCPY(confirm->message,
+          IFACE_("Some images are mofified. These changes will be lost. Continue?"));
+  STRNCPY(confirm->confirm_button, IFACE_("Pack"));
+}
+
 static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Main *bmain = CTX_data_main(C);
@@ -172,8 +179,7 @@ static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*
   }
 
   if (ima) {
-    return WM_operator_confirm_message(
-        C, op, "Some images are painted on. These changes will be lost. Continue?");
+    return WM_operator_confirm(C, op, nullptr);
   }
 
   return pack_all_exec(C, op);
@@ -189,6 +195,7 @@ void FILE_OT_pack_all(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = pack_all_exec;
   ot->invoke = pack_all_invoke;
+  ot->confirm = pack_all_confirm;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
