@@ -53,6 +53,11 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#ifdef RNA_RUNTIME
+#  include "ANIM_keyframing.hh"
+#  include "ANIM_rna.hh"
+#endif
+
 const EnumPropertyItem rna_enum_object_mode_items[] = {
     {OB_MODE_OBJECT, "OBJECT", ICON_OBJECT_DATAMODE, "Object Mode", ""},
     {OB_MODE_EDIT, "EDIT", ICON_EDITMODE_HLT, "Edit Mode", ""},
@@ -1321,6 +1326,100 @@ static int rna_Object_rotation_4d_editable(PointerRNA *ptr, int index)
   }
 
   return PROP_EDITABLE;
+}
+
+static int rna_Object_keyframe_transforms(ID *id,
+                                          Object *ob,
+                                          bContext *C,
+                                          ReportList *reports,
+                                          const bool do_location,
+                                          const bool do_rotation,
+                                          const bool do_scale,
+                                          const char *key_type)
+{
+  using namespace blender;
+
+  Main *bmain = CTX_data_main(C);
+
+  if (!BKE_id_is_editable(bmain, id)) {
+    BKE_reportf(reports, RPT_ERROR, "'%s' is not editable", id->name);
+    return 0;
+  }
+
+  if (!do_location && !do_rotation && !do_scale) {
+    return 0;
+  }
+
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_Object, ob);
+  Vector<std::string> rna_paths;
+  if (do_location) {
+    rna_paths.append("location");
+  }
+  if (do_rotation) {
+    rna_paths.append(animrig::get_rotation_mode_path(eRotationModes(ob->rotmode)));
+  }
+  if (do_scale) {
+    rna_paths.append("scale");
+  }
+  const Scene *scene = CTX_data_scene(C);
+  animrig::insert_key_rna(&ptr,
+                          rna_paths.as_span(),
+                          BKE_scene_frame_get(scene),
+                          INSERTKEY_NOFLAGS,
+                          BEZT_KEYTYPE_KEYFRAME,
+                          bmain,
+                          reports);
+
+  DEG_id_tag_update(id, ID_RECALC_ANIMATION);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
+  return 0;
+}
+
+static int rna_Object_keyframe_transforms_from_user_settings(ID *id,
+                                                             Object *ob,
+                                                             bContext *C,
+                                                             ReportList *reports,
+                                                             const bool do_location,
+                                                             const bool do_rotation,
+                                                             const bool do_scale)
+{
+  using namespace blender;
+
+  Main *bmain = CTX_data_main(C);
+
+  if (!BKE_id_is_editable(bmain, id)) {
+    BKE_reportf(reports, RPT_ERROR, "'%s' is not editable", id->name);
+    return 0;
+  }
+
+  if (!do_location && !do_rotation && !do_scale) {
+    return 0;
+  }
+
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_Object, ob);
+  Vector<std::string> rna_paths;
+  if (do_location) {
+    rna_paths.append("location");
+  }
+  if (do_rotation) {
+    rna_paths.append(animrig::get_rotation_mode_path(eRotationModes(ob->rotmode)));
+  }
+  if (do_scale) {
+    rna_paths.append("scale");
+  }
+
+  const Scene *scene = CTX_data_scene(C);
+  animrig::insert_key_rna(&ptr,
+                          rna_paths.as_span(),
+                          BKE_scene_frame_get(scene),
+                          INSERTKEY_NOFLAGS,
+                          BEZT_KEYTYPE_KEYFRAME,
+                          bmain,
+                          reports);
+
+  DEG_id_tag_update(id, ID_RECALC_ANIMATION);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
+  return 0;
 }
 
 static int rna_MaterialSlot_index(const PointerRNA *ptr)
@@ -3806,6 +3905,45 @@ static void rna_def_object(BlenderRNA *brna)
 
   /* anim */
   rna_def_animdata_common(srna);
+
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  func = RNA_def_function(srna, "keyframe_transforms", "rna_Object_keyframe_transforms");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
+
+  parm = RNA_def_boolean(
+      func, "key_location", true, "Key Location", "Insert keyframes to location channels if true");
+
+  parm = RNA_def_boolean(
+      func, "key_rotation", true, "Key Rotation", "Insert keyframes to rotation channels if true");
+
+  parm = RNA_def_boolean(
+      func, "key_scale", true, "Key Scale", "Insert keyframes to scale channels if true");
+
+  parm = RNA_def_string(func, "key_type", "BEZIER", 16, "Key Type", "Which key type to add");
+
+  parm = RNA_def_int(
+      func, "key_count", 0, 0, INT_MAX, "Key Count", "How many keys were inserted", 0, INT_MAX);
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna,
+                          "keyframe_transforms_from_user_settings",
+                          "rna_Object_keyframe_transforms_from_user_settings");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
+
+  parm = RNA_def_boolean(
+      func, "key_location", true, "Key Location", "Insert keyframes to location channels if true");
+
+  parm = RNA_def_boolean(
+      func, "key_rotation", true, "Key Rotation", "Insert keyframes to rotation channels if true");
+
+  parm = RNA_def_boolean(
+      func, "key_scale", true, "Key Scale", "Insert keyframes to scale channels if true");
+
+  parm = RNA_def_int(
+      func, "key_count", 0, 0, INT_MAX, "Key Count", "How many keys were inserted", 0, INT_MAX);
+  RNA_def_function_return(func, parm);
 
   rna_def_animviz_common(srna);
   rna_def_motionpath_common(srna);

@@ -1337,15 +1337,12 @@ static void rna_def_pose_channel(BlenderRNA *brna)
 
   parm = RNA_def_boolean(
       func, "key_location", true, "Key Location", "Insert keyframes to location channels if true");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   parm = RNA_def_boolean(
       func, "key_rotation", true, "Key Rotation", "Insert keyframes to rotation channels if true");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   parm = RNA_def_boolean(
       func, "key_scale", true, "Key Scale", "Insert keyframes to scale channels if true");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   parm = RNA_def_int(
       func, "key_count", 0, 0, INT_MAX, "Key Count", "How many keys were inserted", 0, INT_MAX);
