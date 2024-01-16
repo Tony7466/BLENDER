@@ -141,8 +141,9 @@ struct DropImportData {
   blender::Vector<ImportTab> tabs;
   /** List of all file paths given to #WM_OT_drop_import_file. */
   blender::Vector<std::string> paths;
-  /** Count of files that can be handler by a file handler. */
+  /** Count of files that can be handled by any file handler. */
   int count = 0;
+  std::string file_summary;
   int active_tab = 0;
   ~DropImportData()
   {
@@ -230,26 +231,20 @@ static void wm_drop_import_file_draw(bContext *C, wmOperator *op)
   uiLayout *col = uiLayoutColumn(row, false);
 
   /* Tab enum. */
-  uiItemR(uiLayoutRow(col, false), op->ptr, "tab", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiLayout *box = uiLayoutBox(col);
+  PropertyRNA *tab_prop = RNA_struct_find_property(op->ptr, "tab");
+  uiItemTabsEnumR_prop(uiLayoutRow(col, true), C, op->ptr, tab_prop, nullptr, nullptr, false);
+  uiItemS_ex(col, 0.25f);
 
   auto &tab = drop_import_data.tabs[RNA_enum_get(op->ptr, "tab")];
-
   if (tab.file_handlers.size() > 1) {
-    uiItemR(box, op->ptr, "file_handler", eUI_Item_Flag(0), "", ICON_NONE);
+    uiItemR(col, op->ptr, "file_handler", eUI_Item_Flag(0), "", ICON_NONE);
   }
 
-  drop_import_file_draw_import_operator(C, box, tab.op);
+  drop_import_file_draw_import_operator(C, col, tab.op);
 
-  std::string extension_count;
-  for (int64_t idx = 0; idx < tab.extensions.size(); idx++) {
-    if (!extension_count.empty()) {
-      extension_count += " ";
-    }
-    extension_count += fmt::format(
-        TIP_("{} files {}/{}"), tab.extensions[idx], tab.count[idx], drop_import_data.count);
-  }
-  uiItemL(uiLayoutBox(box), extension_count.c_str(), ICON_INFO);
+  uiItemS_ex(col, 0.25f);
+  uiItemL_ex(col, drop_import_data.file_summary.c_str(), ICON_NONE, true, false);
+  uiItemS_ex(col, 0.25f);
 }
 
 static void wm_drop_import_file_fh_items_set(wmOperator *op)
@@ -369,6 +364,16 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
   /* Load runtime enums. */
   wm_drop_import_file_tabs_items_set(op);
   wm_drop_import_file_fh_items_set(op);
+
+  for (const auto &tab : drop_import_data->tabs) {
+    for (const int64_t idx : tab.extensions.index_range()) {
+      if (!drop_import_data->file_summary.empty()) {
+        drop_import_data->file_summary += ", ";
+      }
+      drop_import_data->file_summary += fmt::format(
+          "{} {} files", tab.count[idx], tab.extensions[idx]);
+    }
+  }
 
   return WM_operator_props_dialog_popup(
       C, op, 400, fmt::format(TIP_("Import {} files"), drop_import_data->count).c_str());
