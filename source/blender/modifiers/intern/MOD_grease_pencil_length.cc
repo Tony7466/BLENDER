@@ -7,28 +7,28 @@
  */
 
 #include "BLI_hash.h"
-#include "BLI_utildefines.h"
-#include "BLI_task.h"
 #include "BLI_math_matrix.h"
-#include "BLI_math_vector_types.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_task.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
+#include "DNA_gpencil_modifier_types.h"
+#include "DNA_material_types.h"
+#include "DNA_node_types.h" /* For `GeometryNodeCurveSampleMode` */
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_material_types.h"
-#include "DNA_node_types.h" /* For `GeometryNodeCurveSampleMode` */
-#include "DNA_gpencil_modifier_types.h"
-#include "DNA_defaults.h"
 
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
-#include "BKE_grease_pencil.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.h"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
@@ -42,8 +42,8 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "RNA_prototypes.h"
 #include "RNA_access.hh"
+#include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -85,66 +85,74 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 blender::bke::GeometrySet *geometry_set)
 {
-    GreasePencilLengthModifierData* mmd=(GreasePencilLengthModifierData*) md;
-    GreasePencil *gp=geometry_set->get_grease_pencil_for_write();
-    if (!gp){ return; }
+  GreasePencilLengthModifierData *mmd = (GreasePencilLengthModifierData *)md;
+  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
+  if (!gp) {
+    return;
+  }
 
-    Scene* scene = DEG_get_evaluated_scene(ctx->depsgraph);
-    
-    const Array<ed::greasepencil::MutableDrawingInfo> drawings = ed::greasepencil::retrieve_editable_drawings(*scene, *gp);
-    threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
-        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        if (curves.points_num() == 0) {
-            return;
+  Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+
+  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      ed::greasepencil::retrieve_editable_drawings(*scene, *gp);
+  threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    if (curves.points_num() == 0) {
+      return;
+    }
+
+    const int cnum = curves.curves_num();
+    const VArray<bool> all_true = VArray<bool>::ForSingle(true, cnum);
+    IndexMaskMemory memory;
+    IndexMask selection(cnum);
+    selection.from_bools(all_true, memory);
+
+    curves = geometry::stretch_curves(
+        curves,
+        selection,
+        std::move(VArray<float>::ForSingle(mmd->start_fac, cnum)),
+        std::move(VArray<float>::ForSingle(mmd->end_fac, cnum)),
+        std::move(VArray<float>::ForSingle(mmd->overshoot_fac, cnum)),
+        std::move(VArray<bool>::ForSingle(mmd->flag & GP_LENGTH_USE_CURVATURE, cnum)),
+        std::move(VArray<int>::ForSingle(mmd->point_density, cnum)),
+        std::move(VArray<float>::ForSingle(mmd->segment_influence, cnum)),
+        std::move(VArray<float>::ForSingle(mmd->max_angle, cnum)),
+        std::move(VArray<bool>::ForSingle(mmd->flag & GP_LENGTH_INVERT_CURVATURE, cnum)),
+        mmd->mode & GP_LENGTH_ABSOLUTE ? GEO_NODE_CURVE_SAMPLE_LENGTH :
+                                         GEO_NODE_CURVE_SAMPLE_FACTOR,
+        {});
+
+    /* Always do the stretching first since it might depend on points which could be deleted by the
+     * shrink. */
+    if (mmd->start_fac < 0 || mmd->end_fac < 0) {
+      /* `trim_curves()` accepts the `end` valueas if it's sampling from the beginning of the
+       * curve, so we need to get the lengths of the curves and substract it from the back when the
+       * modifier is in Absolute mode. For convenience, we always call `trim_curves()` in LENGTH
+       * mode since the function itself will need length to be sampled anyway. */
+      Array<float> starts(curves.curves_num());
+      Array<float> ends(curves.curves_num());
+      curves.ensure_evaluated_lengths();
+      for (const int curve : curves.curves_range()) {
+        float length = curves.evaluated_length_total_for_curve(curve, false);
+        if (mmd->mode & GP_LENGTH_ABSOLUTE) {
+          starts[curve] = -MIN2(mmd->start_fac, 0);
+          ends[curve] = length - (-MIN2(mmd->end_fac, 0));
         }
-
-        const int cnum = curves.curves_num();
-        const VArray<bool> all_true=VArray<bool>::ForSingle(true,cnum);
-        IndexMaskMemory memory;
-        IndexMask selection(cnum); selection.from_bools(all_true,memory);
-
-        curves = geometry::stretch_curves(curves,selection,
-            std::move(VArray<float>::ForSingle(mmd->start_fac,cnum)),
-            std::move(VArray<float>::ForSingle(mmd->end_fac,cnum)),
-            std::move(VArray<float>::ForSingle(mmd->overshoot_fac,cnum)),
-            std::move(VArray<bool>::ForSingle(mmd->flag&GP_LENGTH_USE_CURVATURE,cnum)),
-            std::move(VArray<int>::ForSingle(mmd->point_density,cnum)),
-            std::move(VArray<float>::ForSingle(mmd->segment_influence,cnum)),
-            std::move(VArray<float>::ForSingle(mmd->max_angle,cnum)),
-            std::move(VArray<bool>::ForSingle(mmd->flag&GP_LENGTH_INVERT_CURVATURE,cnum)),
-            mmd->mode & GP_LENGTH_ABSOLUTE ? GEO_NODE_CURVE_SAMPLE_LENGTH : GEO_NODE_CURVE_SAMPLE_FACTOR,
-            {});
-
-        /* Always do the stretching first since it might depend on points which could be deleted by the
-         * shrink. */
-        if(mmd->start_fac < 0 || mmd->end_fac < 0){
-          /* `trim_curves()` accepts the `end` valueas if it's sampling from the beginning of the curve,
-           * so we need to get the lengths of the curves and substract it from the back when the modifier
-           * is in Absolute mode. For convenience, we always call `trim_curves()` in LENGTH mode since
-           * the function itself will need length to be sampled anyway. */
-          Array<float> starts(curves.curves_num());
-          Array<float> ends(curves.curves_num());
-          curves.ensure_evaluated_lengths();
-          for(const int curve : curves.curves_range()){
-            float length = curves.evaluated_length_total_for_curve(curve, false);
-            if(mmd->mode & GP_LENGTH_ABSOLUTE){
-              starts[curve] = -MIN2(mmd->start_fac,0);
-              ends[curve] = length - (- MIN2(mmd->end_fac,0));
-            }else{
-              starts[curve] = -MIN2(mmd->start_fac,0) * length;
-              ends[curve] = (1+MIN2(mmd->end_fac,0)) * length;
-            }
-          }
-          curves = geometry::trim_curves(curves, selection,
-            VArray<float>::ForSpan(starts.as_span()), VArray<float>::ForSpan(ends.as_span()),
-            GEO_NODE_CURVE_SAMPLE_LENGTH,
-            {});
+        else {
+          starts[curve] = -MIN2(mmd->start_fac, 0) * length;
+          ends[curve] = (1 + MIN2(mmd->end_fac, 0)) * length;
         }
+      }
+      curves = geometry::trim_curves(curves,
+                                     selection,
+                                     VArray<float>::ForSpan(starts.as_span()),
+                                     VArray<float>::ForSpan(ends.as_span()),
+                                     GEO_NODE_CURVE_SAMPLE_LENGTH,
+                                     {});
+    }
 
-        info.drawing.tag_topology_changed();
-    });
-
-
+    info.drawing.tag_topology_changed();
+  });
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
@@ -215,7 +223,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
 static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
-  //modifier_masking_panel_draw(panel, true, false);
+  // modifier_masking_panel_draw(panel, true, false);
 }
 
 static void curvature_header_draw(const bContext * /*C*/, Panel *panel)
