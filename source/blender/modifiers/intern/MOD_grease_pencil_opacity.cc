@@ -229,8 +229,8 @@ static void modify_geometry_set(ModifierData *md,
       *grease_pencil, omd->influence, mask_memory);
   Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       *grease_pencil, layer_mask, frame);
-  threading::parallel_for_each(drawings.index_range(), [&](int64_t i) {
-    modify_curves(md, ctx, drawings[i]->strokes_for_write());
+  threading::parallel_for_each(drawings, [&](Drawing *drawing) {
+    modify_curves(md, ctx, drawing->strokes_for_write());
   });
 }
 
@@ -304,7 +304,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 
 ModifierTypeInfo modifierType_GreasePencilOpacity = {
     /*idname*/ "GreasePencilOpacity",
-    /*name*/ N_("GreasePencilOpacity"),
+    /*name*/ N_("Opacity"),
     /*struct_name*/ "GreasePencilOpacityModifierData",
     /*struct_size*/ sizeof(GreasePencilOpacityModifierData),
     /*srna*/ &RNA_GreasePencilOpacityModifier,
