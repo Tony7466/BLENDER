@@ -376,7 +376,10 @@ static void rna_Action_show_errors_update(bContext *C, PointerRNA * /*ptr*/)
     PointerRNA ptr;
     PropertyRNA *prop;
     PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
-    if (!RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
+    if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
+      fcu->flag &= ~FCURVE_DISABLED;
+    }
+    else {
       fcu->flag |= FCURVE_DISABLED;
     }
   }
