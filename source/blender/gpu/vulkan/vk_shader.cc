@@ -685,6 +685,16 @@ VKShader::~VKShader()
   }
 }
 
+void VKShader::init(const shader::ShaderCreateInfo &info)
+{
+  VKShaderInterface *vk_interface = new VKShaderInterface();
+  vk_interface->init(info);
+  if (interface) {
+    delete interface;
+  }
+  interface = vk_interface;
+}
+
 void VKShader::build_shader_module(MutableSpan<const char *> sources,
                                    shaderc_shader_kind stage,
                                    VkShaderModule *r_shader_module)
@@ -740,8 +750,8 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     geometry_shader_from_glsl(sources);
   }
 
-  VKShaderInterface *vk_interface = new VKShaderInterface();
-  vk_interface->init(*info);
+  VKShaderInterface *vk_interface = reinterpret_cast<VKShaderInterface *>(interface);
+
 
   const VKDevice &device = VKBackend::get().device_get();
   if (!finalize_descriptor_set_layouts(device.device_get(), *vk_interface, *info)) {
@@ -774,10 +784,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     result = pipeline_.is_valid();
   }
 
-  if (result) {
-    interface = vk_interface;
-  }
-  else {
+  if (!result) {
     delete vk_interface;
   }
   return result;
@@ -1104,8 +1111,8 @@ void VKShader::uniform_int(int location, int comp_len, int array_size, const int
 
 std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) const
 {
-  VKShaderInterface interface;
-  interface.init(info);
+  BLI_assert(interface);
+  VKShaderInterface &vk_interface = *(reinterpret_cast<VKShaderInterface *>(interface));
   std::stringstream ss;
 
   /* TODO: Add support for specialization constants at compile time. */
@@ -1136,16 +1143,16 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
 
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
-    print_resource(ss, interface, res);
+    print_resource(ss, vk_interface, res);
   }
 
   ss << "\n/* Batch Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
-    print_resource(ss, interface, res);
+    print_resource(ss, vk_interface, res);
   }
 
   /* Push constants. */
-  const VKPushConstants::Layout &push_constants_layout = interface.push_constants_layout_get();
+  const VKPushConstants::Layout &push_constants_layout = vk_interface.push_constants_layout_get();
   const VKPushConstants::StorageType push_constants_storage =
       push_constants_layout.storage_type_get();
   if (push_constants_storage != VKPushConstants::StorageType::NONE) {
@@ -1279,14 +1286,16 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
   }
   ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
 
+  VKShaderInterface &vk_interface = *reinterpret_cast<VKShaderInterface *>(interface);
   ss << "\n/* Sub-pass Inputs. */\n";
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
+    auto location = vk_interface.descriptor_set_location(shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT, input.index);
     std::string image_name = "gpu_subpass_img_";
     image_name += std::to_string(input.index);
     /* Declare global for input. */
     ss << to_string(input.type) << " " << input.name << ";\n";
     ss << "layout(input_attachment_index = " << std::to_string(input.raster_order_group)
-       << ",binding = " << std::to_string(0) << " ) uniform "
+       << ",binding = " << std::to_string(location.value()) << " ) uniform "
        << print_subpass_qualifier(input.type) << " " << image_name << ";\n ";
     std::stringstream ss_pre;
     char swizzle[] = "xyzw";
