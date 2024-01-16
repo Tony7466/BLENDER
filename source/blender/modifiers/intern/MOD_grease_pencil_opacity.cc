@@ -99,11 +99,11 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
   for (const int64_t i : curves_mask.index_range()) {
     const int64_t curve_i = curves_mask[i];
 
-    const IndexRange points_range = points_by_curve[curve_i];
-    for (const int64_t point_i : points_range) {
-      const float curve_input = points_range.size() >= 2 ? (float(point_i - points_range.first()) /
-                                                            float(points_range.size() - 1)) :
-                                                           0.0f;
+    const IndexRange points = points_by_curve[curve_i];
+    for (const int64_t point_i : points) {
+      const float curve_input = points.size() >= 2 ?
+                                    (float(point_i - points.first()) / float(points.size() - 1)) :
+                                    0.0f;
       const float curve_factor = use_curve ? BKE_curvemapping_evaluateF(
                                                  omd.influence.custom_curve, 0, curve_input) :
                                              1.0f;
@@ -154,10 +154,8 @@ static void modify_fill_color(const GreasePencilOpacityModifierData &omd,
 
     if (use_vgroup_opacity) {
       /* Use the first stroke point as vertex weight. */
-      const IndexRange points_range = points_by_curve[curve_i];
-      const float stroke_weight = points_range.is_empty() ?
-                                      1.0f :
-                                      vgroup_weights.varray[points_range.first()];
+      const IndexRange points = points_by_curve[curve_i];
+      const float stroke_weight = points.is_empty() ? 1.0f : vgroup_weights.varray[points.first()];
       const float stroke_influence = invert_vertex_group ? 1.0f - stroke_weight : stroke_weight;
 
       fill_opacities.span[curve_i] = std::clamp(stroke_influence, 0.0f, 1.0f);
