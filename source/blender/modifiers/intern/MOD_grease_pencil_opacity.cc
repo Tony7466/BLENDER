@@ -114,10 +114,8 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
       }
       else if (use_weight_as_factor) {
         /* Use vertex group weights as opacity factors. */
-        const float vgroup_weight = vgroup_weights.varray[point_i];
-        const float point_factor = vgroup_weight;
         opacities.span[point_i] = std::clamp(
-            omd.color_factor * curve_factor * point_factor, 0.0f, 1.0f);
+            omd.color_factor * curve_factor * vgroup_weights.varray[point_i], 0.0f, 1.0f);
       }
       else {
         /* Use vertex group weights as influence factors. */
