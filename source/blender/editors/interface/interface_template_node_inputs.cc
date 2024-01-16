@@ -11,6 +11,7 @@
 #include "BKE_context.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_screen.hh"
 
 #include "BLT_translation.h"
 
@@ -62,11 +63,13 @@ static void draw_node_input(bContext *C,
   draw_node_input(C, layout, node_ptr, *socket);
 }
 
-static void draw_node_declaration_items(bContext *C,
-                                        uiLayout *layout,
-                                        PointerRNA *node_ptr,
-                                        ItemIterator &item_iter,
-                                        const ItemIterator item_end)
+/* Consume the item range, draw buttons if layout is not null. */
+static void handle_node_declaration_items(bContext *C,
+                                          Panel *root_panel,
+                                          uiLayout *layout,
+                                          PointerRNA *node_ptr,
+                                          ItemIterator &item_iter,
+                                          const ItemIterator item_end)
 {
   while (item_iter != item_end) {
     const ItemDeclaration *item_decl = item_iter->get();
@@ -74,21 +77,30 @@ static void draw_node_declaration_items(bContext *C,
 
     if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(item_decl))
     {
-      if (socket_decl->in_out == SOCK_IN) {
+      if (layout && socket_decl->in_out == SOCK_IN) {
         draw_node_input(C, layout, node_ptr, socket_decl->identifier);
       }
     }
     else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
                  item_decl))
     {
-      /* Draw panel buttons at the top of each panel section. */
-      if (panel_decl->draw_buttons) {
-        panel_decl->draw_buttons(layout, C, node_ptr);
-      }
-
       const ItemIterator panel_item_end = item_iter + panel_decl->num_child_decls;
       BLI_assert(panel_item_end <= item_end);
-      draw_node_declaration_items(C, layout, node_ptr, item_iter, panel_item_end);
+
+      /* Use a root panel property to toggle open/closed state. */
+      const std::string panel_idname = "NodePanel" + std::to_string(panel_decl->identifier);
+      LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(
+          root_panel, panel_idname.c_str(), panel_decl->default_collapsed);
+      PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
+      uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_(panel_decl->name.c_str()), &state_ptr, "is_open");
+      /* Draw panel buttons at the top of each panel section. */
+      if (panel_layout && panel_decl->draw_buttons) {
+        panel_decl->draw_buttons(panel_layout, C, node_ptr);
+      }
+
+      handle_node_declaration_items(
+          C, root_panel, panel_layout, node_ptr, item_iter, panel_item_end);
     }
   }
 }
@@ -115,7 +127,9 @@ void uiTemplateNodeInputs(uiLayout *layout, bContext *C, PointerRNA *ptr)
     /* Draw socket inputs and panel buttons in the order of declaration panels. */
     ItemIterator item_iter = node.declaration()->items.begin();
     const ItemIterator item_end = node.declaration()->items.end();
-    blender::ui::nodes::draw_node_declaration_items(C, layout, ptr, item_iter, item_end);
+    Panel *root_panel = uiLayoutGetRootPanel(layout);
+    blender::ui::nodes::handle_node_declaration_items(
+        C, root_panel, layout, ptr, item_iter, item_end);
   }
   else {
     /* Draw socket values using the flat inputs list. */
