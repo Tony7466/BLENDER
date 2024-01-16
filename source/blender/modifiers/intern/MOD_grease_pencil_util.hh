@@ -29,7 +29,7 @@ class Drawing;
 }
 }  // namespace blender::bke
 
-namespace blender::greasepencil {
+namespace blender::modifier::greasepencil {
 
 void init_influence_data(GreasePencilModifierInfluenceData *influence_data, bool has_custom_curve);
 void copy_influence_data(const GreasePencilModifierInfluenceData *influence_data_src,
@@ -63,4 +63,4 @@ Vector<bke::greasepencil::Drawing *> get_drawings_for_write(GreasePencil &grease
                                                             const IndexMask &layer_mask,
                                                             int frame);
 
-}  // namespace blender::greasepencil
+}  // namespace blender::modifier::greasepencil

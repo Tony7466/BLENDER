@@ -34,7 +34,7 @@
 
 #include "UI_interface.hh"
 
-namespace blender::greasepencil {
+namespace blender::modifier::greasepencil {
 
 using bke::greasepencil::Drawing;
 using bke::greasepencil::Layer;
@@ -332,4 +332,4 @@ Vector<bke::greasepencil::Drawing *> get_drawings_for_write(GreasePencil &grease
   return drawings;
 }
 
-}  // namespace blender::greasepencil
+}  // namespace blender::modifier::greasepencil
