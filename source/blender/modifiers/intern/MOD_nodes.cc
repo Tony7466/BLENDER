@@ -1519,6 +1519,10 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
        new_mappings = std::move(data_block_map.new_mappings)]() {
         Vector<bake::BakeDataBlockID> sorted_new_mappings;
         sorted_new_mappings.extend(new_mappings.keys().begin(), new_mappings.keys().end());
+        /**
+         * Add new data block mappings to the original modifier. This may do a name lookup in bmain
+         * to find the data block if there is not faster way to get it.
+         */
         add_missing_data_block_mappings(
             nmd_orig, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
               ID *id_orig = nullptr;
@@ -1534,6 +1538,12 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
               }
               return id_orig;
             });
+        /**
+         * Add new data block mappings to the evaluated modifier. In most cases this makes it so
+         * the evaluated modifier is in the same state as if it were copied from the updated
+         * original again. The exception is when a missing data block was found that is not in the
+         * depsgraph currently.
+         */
         add_missing_data_block_mappings(
             nmd_eval, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
               return new_mappings.lookup_default(key, nullptr);
