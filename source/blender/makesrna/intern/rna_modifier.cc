@@ -7581,7 +7581,7 @@ static void rna_def_modifier_grease_pencil_vertex_group(StructRNA *srna,
 
   prop = RNA_def_property(srna, "vertex_group_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "influence.vertex_group_name");
-  RNA_def_property_ui_text(prop, "Name", "Vertex group name for modulating the deform");
+  RNA_def_property_ui_text(prop, "Vertex Group", "Vertex group name for modulating the deform");
   RNA_def_property_string_funcs(prop, nullptr, nullptr, vertex_group_name_set_fn);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -7645,7 +7645,7 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, color_mode_items);
-  RNA_def_property_ui_text(prop, "Color Mode", "Attributes to modify");
+  RNA_def_property_ui_text(prop, "Mode", "Attributes to modify");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "color_factor", PROP_FLOAT, PROP_NONE);
