@@ -97,9 +97,7 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
   const bke::AttributeReader<float> vgroup_weights = attributes.lookup_or_default<float>(
       omd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
 
-  for (const int64_t i : curves_mask.index_range()) {
-    const int64_t curve_i = curves_mask[i];
-
+  curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
     for (const int64_t point_i : points) {
       const float curve_input = points.size() >= 2 ?
@@ -127,7 +125,7 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
             1.0f);
       }
     }
-  }
+  });
 
   opacities.finish();
 }
@@ -148,9 +146,7 @@ static void modify_fill_color(const GreasePencilOpacityModifierData &omd,
   bke::AttributeReader<float> vgroup_weights = attributes.lookup_or_default<float>(
       omd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
 
-  for (const int64_t i : curves_mask.index_range()) {
-    const int64_t curve_i = curves_mask[i];
-
+  curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     if (use_vgroup_opacity) {
       /* Use the first stroke point as vertex weight. */
       const IndexRange points = points_by_curve[curve_i];
@@ -162,7 +158,7 @@ static void modify_fill_color(const GreasePencilOpacityModifierData &omd,
     else {
       fill_opacities.span[curve_i] = std::clamp(omd.color_factor, 0.0f, 1.0f);
     }
-  }
+  });
 
   fill_opacities.finish();
 }
@@ -177,11 +173,10 @@ static void modify_hardness(const GreasePencilOpacityModifierData &omd,
     return;
   }
 
-  for (const int64_t i : curves_mask.index_range()) {
-    const int64_t curve_i = curves_mask[i];
+  curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     hardnesses.span[curve_i] = std::clamp(
         hardnesses.span[curve_i] * omd.hardness_factor, 0.0f, 1.0f);
-  }
+  });
 
   hardnesses.finish();
 }
@@ -231,9 +226,9 @@ static void modify_geometry_set(ModifierData *md,
       *grease_pencil, omd->influence, mask_memory);
   Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       *grease_pencil, layer_mask, frame);
-  for (Drawing *drawing : drawings) {
-    modify_curves(md, ctx, drawing->strokes_for_write());
-  }
+  threading::parallel_for_each(drawings.index_range(), [&](int64_t i) {
+    modify_curves(md, ctx, drawings[i]->strokes_for_write());
+  });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
