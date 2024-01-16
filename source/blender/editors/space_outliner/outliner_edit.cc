@@ -2347,7 +2347,6 @@ static std::string orphan_desc(const bContext *C, const bool local, bool linked,
 static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, void *arg)
 {
   OrphansPurgeData *purge_data = static_cast<OrphansPurgeData *>(arg);
-  wmOperator *op = purge_data->op;
   uiBlock *block = UI_block_begin(C, region, "orphans_remove_popup", UI_EMBOSS);
   UI_block_flag_enable(
       block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
