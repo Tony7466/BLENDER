@@ -29,6 +29,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_string.h"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
@@ -54,6 +55,8 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
+
+#include "BLT_translation.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -1155,6 +1158,14 @@ static int object_transform_apply_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void object_transform_apply_confirm(bContext * /*C*/,
+                                           wmOperator * /*op*/,
+                                           wmConfirmDetails *confirm)
+{
+  STRNCPY(confirm->message, IFACE_("Create new object-data users and apply transformation"));
+  STRNCPY(confirm->confirm_button, IFACE_("Apply"));
+}
+
 static int object_transform_apply_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Object *ob = ED_object_active_context(C);
@@ -1168,8 +1179,7 @@ static int object_transform_apply_invoke(bContext *C, wmOperator *op, const wmEv
       RNA_property_boolean_set(op->ptr, prop, true);
     }
     if (RNA_property_boolean_get(op->ptr, prop)) {
-      return WM_operator_confirm_message(
-          C, op, "Create new object-data users and apply transformation");
+      return WM_operator_confirm(C, op, nullptr);
     }
   }
   return object_transform_apply_exec(C, op);
@@ -1186,6 +1196,7 @@ void OBJECT_OT_transform_apply(wmOperatorType *ot)
   ot->exec = object_transform_apply_exec;
   ot->invoke = object_transform_apply_invoke;
   ot->poll = ED_operator_objectmode;
+  ot->confirm = object_transform_apply_confirm;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
