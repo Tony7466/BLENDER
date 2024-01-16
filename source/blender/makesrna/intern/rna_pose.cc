@@ -85,6 +85,8 @@ const EnumPropertyItem rna_enum_color_sets_items[] = {
 
 #  include "RNA_access.hh"
 
+#  include "ANIM_keyframing.hh"
+
 static void rna_Pose_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   // ob->pose->flag |= (POSE_LOCKED | POSE_DO_UNLOCK); /* XXX when to use this? */
@@ -658,6 +660,52 @@ static void rna_PoseChannel_custom_shape_transform_set(PointerRNA *ptr,
       ob, (Object *)value.owner_id, static_cast<bPoseChannel *>(value.data)));
 }
 
+static int rna_PoseChannel_keyframe_transforms(ID *id,
+                                               bPoseChannel *pchan,
+                                               Main *bmain,
+                                               ReportList *reports,
+                                               const bool do_location,
+                                               const bool do_rotation,
+                                               const bool do_scale)
+{
+  using namespace blender;
+  if (rna_path == nullptr) {
+    BKE_report(reports, RPT_ERROR, "No channel or rna-path specified to insert keyframes in");
+    return 0;
+  }
+
+  if (!BKE_id_is_editable(bmain, id)) {
+    BKE_reportf(reports, RPT_ERROR, "'%s' is not editable", pchan->name);
+    return 0;
+  }
+
+  if (!do_location && !do_rotation && !do_scale) {
+    return 0;
+  }
+
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_PoseBone, pchan);
+  Vector<std::string> rna_paths;
+  if (do_location) {
+    rna_paths.append("location");
+  }
+  if (do_rotation) {
+    rna_paths.append("rotation");
+  }
+  if (do_scale) {
+    rna_paths.append("scale");
+  }
+  animrig::insert_key_rna(&ptr,
+                          rna_paths.as_span(),
+                          frame,
+                          eInsertKeyFlags(0),
+                          eBezTriple_KeyframeType(0),
+                          bmain,
+                          reports);
+
+  DEG_id_tag_update(id, ID_RECALC_ANIMATION);
+  return 0;
+}
+
 #else
 
 void rna_def_actionbone_group_common(StructRNA *srna, int update_flag, const char *update_cb)
@@ -1210,6 +1258,32 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
   RNA_def_property_editable_func(prop, "rna_PoseChannel_proxy_editable");
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_update");
+
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  func = RNA_def_function(srna, "keyframe_transforms", "rna_PoseChannel_keyframe_transforms");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_MAIN);
+
+  parm = RNA_def_string(
+      func, "rna_path", nullptr, 0, "RNA path", "Define for which rna path to insert keyframes");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_boolean(
+      func, "key_location", true, "Key Location", "Insert keyframes to location channels if true");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_boolean(
+      func, "key_rotation", true, "Key Rotation", "Insert keyframes to rotation channels if true");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_boolean(
+      func, "key_scale", true, "Key Scale", "Insert keyframes to scale channels if true");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_int(
+      func, "key_count", 0, 0, INT_MAX, "Key Count", "How many keys were inserted", 0, INT_MAX);
+  RNA_def_function_return(func, parm);
 
   RNA_api_pose_channel(srna);
 }
