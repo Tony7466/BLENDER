@@ -391,7 +391,7 @@ void GLContext::debug_group_begin(const char *name, int index, int profile_level
     glGetInteger64v(GL_TIMESTAMP, &query.cpu_start);
     /* Use GL_TIMESTAMP instead of GL_ELAPSED_TIME to support nested debug groups */
     glGenQueries(2, query.handles);
-    glQueryCounter(query.handles[0], GL_TIMESTAMP);
+    glQueryCounter(query.start, GL_TIMESTAMP);
   }
 
   if (frame_timings.is_empty()) {
@@ -419,7 +419,7 @@ void GLContext::debug_group_end()
       continue;
     }
     if (!query.finished) {
-      glQueryCounter(query.handles[1], GL_TIMESTAMP);
+      glQueryCounter(query.end, GL_TIMESTAMP);
       query.finished = true;
       int64_t cpu_end;
       glGetInteger64v(GL_TIMESTAMP, &cpu_end);
@@ -453,8 +453,7 @@ void GLContext::process_frame_timings()
         }
         else {
           last_query = i;
-          glGetQueryObjectiv(
-              queries.last().handles[1], GL_QUERY_RESULT_AVAILABLE, &frame_is_ready);
+          glGetQueryObjectiv(queries.last().end, GL_QUERY_RESULT_AVAILABLE, &frame_is_ready);
         }
         break;
       }
@@ -482,8 +481,8 @@ void GLContext::process_frame_timings()
     result << " Total                          | ";
     GLuint64 begin_timestamp = 0;
     GLuint64 end_timestamp = 0;
-    glGetQueryObjectui64v(queries.first().handles[0], GL_QUERY_RESULT, &begin_timestamp);
-    glGetQueryObjectui64v(queries[last_query].handles[1], GL_QUERY_RESULT, &end_timestamp);
+    glGetQueryObjectui64v(queries.first().start, GL_QUERY_RESULT, &begin_timestamp);
+    glGetQueryObjectui64v(queries[last_query].end, GL_QUERY_RESULT, &end_timestamp);
 
     float gpu_total_time = (end_timestamp - begin_timestamp) / 1000000.0;
     result << std::to_string(gpu_total_time).substr(0, 4) << " | ";
@@ -499,8 +498,8 @@ void GLContext::process_frame_timings()
       }
       GLuint64 begin_timestamp = 0;
       GLuint64 end_timestamp = 0;
-      glGetQueryObjectui64v(query.handles[0], GL_QUERY_RESULT, &begin_timestamp);
-      glGetQueryObjectui64v(query.handles[1], GL_QUERY_RESULT, &end_timestamp);
+      glGetQueryObjectui64v(query.start, GL_QUERY_RESULT, &begin_timestamp);
+      glGetQueryObjectui64v(query.end, GL_QUERY_RESULT, &end_timestamp);
       glDeleteQueries(2, query.handles);
 
       result << std::string(query.stack_depth, '.');

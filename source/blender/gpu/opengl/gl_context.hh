@@ -101,7 +101,12 @@ class GLContext : public Context {
 
   struct TimeQuery {
     std::string name;
-    GLuint handles[2];
+    union {
+      GLuint handles[2];
+      struct {
+        GLuint start, end;
+      };
+    };
     int stack_depth;
     bool finished;
     int64_t cpu_start;
