@@ -277,9 +277,11 @@ static void extrude_curves(Curves &curves_id)
   new_curves.resize(new_offsets.last(), new_curves.curves_num());
 
   const bke::AttributeAccessor src_attributes = curves.attributes();
-  const bool true_ = true;
-  const GVArraySpan src_selection = *src_attributes.lookup_or_default(
-      ".selection", bke::AttrDomain::Point, CD_PROP_BOOL, &true_);
+  GVArray src_selection_array = *src_attributes.lookup(".selection", bke::AttrDomain::Point);
+  if (!src_selection_array) {
+    src_selection_array = VArray<bool>::ForSingle(true, curves.points_num());
+  }
+  const GVArraySpan src_selection = src_selection_array;
   const CPPType &src_selection_type = src_selection.type();
   bke::GSpanAttributeWriter dst_selection = ensure_selection_attribute(
       new_curves,
