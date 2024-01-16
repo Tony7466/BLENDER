@@ -36,6 +36,7 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
+#include "GEO_join_geometries.hh"
 #include "GEO_subdivide_curves.hh"
 
 #include "WM_api.hh"
@@ -1801,6 +1802,8 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   Layer *layer_dst = nullptr;
   int layer_index = RNA_int_get(op->ptr, "layer");
+  int points_num = 0;
+  int curves_num = 0;
 
   printf("Layer index: %d \n", layer_index);
 
@@ -1832,7 +1835,6 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   for (const MutableDrawingInfo &info : drawings_src) {
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
-    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves_src, memory);
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
     if (selected_points.is_empty()) {
       continue;
@@ -1848,26 +1850,33 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       curves_src.remove_points(selected_points, {});
 
       drawing_dst.tag_topology_changed();
+      info.drawing.tag_topology_changed();
     }
+    else {
+      /* For existing Layers append the strokes to new CurvesGeometry. */
+      Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
+      bke::CurvesGeometry &curves_dst = drawing_dst.strokes_for_write();
+      /* Resize target geometry to fit new strokes. */
+      int p_src = drawing_dst.geometry.point_num;
+      int c_src = drawing_dst.geometry.curve_num;
+      int p_dst = curves_src.points_num();
+      int c_dst = curves_src.curves_num();
+      points_num = points_num + p_src + p_dst;
+      curves_num = curves_num + c_src + c_dst;
+      curves_dst.resize(points_num, curves_num);
 
-    /* TODO: For existing Layers Copy the strokes to new CurvesGeometry. */
-    Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
-    int p_src = drawing_dst.geometry.point_num;
-    int c_src = drawing_dst.geometry.curve_num;
-    int p_dst = selected_points.size();
-    int c_dst = selected_curves.size();
-    int points_num = p_src + p_dst;
-    int curves_num = c_src + c_dst;
-    drawing_dst.tag_topology_changed();
+      /* TODO: Append geometry to target layer. */
+      // Vector<bke::GeometrySet> geometry_sets = {curves_src};
+      /*geometry::join_geometries(geometry_sets, {});*/
 
-    info.drawing.tag_topology_changed();
+      curves_src.remove_points(selected_points, {});
+
+      drawing_dst.tag_topology_changed();
+      info.drawing.tag_topology_changed();
+    }
 
     changed = true;
   };
-
-  if (changed == true) {
-    /* curves_src.resize(points_num, curves_num);*/
-  }
 
   /* updates */
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
