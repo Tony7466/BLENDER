@@ -623,7 +623,8 @@ static void position_skipped_bones(Depsgraph *depsgraph,
      * properties. This has to happen parent-to-child though, and the IK tip is the childiest of
      * them all. */
     blender::Stack<bPoseChannel *> stack;
-    while (pchan && (pchan->flag & POSE_DONE) == 0) {
+    while (pchan && (pchan->flag & POSE_DONE) == 0 && (pchan->constflag & PCHAN_INFLUENCED_BY_IK))
+    {
       stack.push(pchan);
       pchan = pchan->parent;
     }
