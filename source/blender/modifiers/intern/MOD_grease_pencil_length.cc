@@ -106,7 +106,7 @@ static void modify_geometry_set(ModifierData *md,
             std::move(VArray<float>::ForSingle(mmd->end_fac,cnum)),
             std::move(VArray<float>::ForSingle(mmd->overshoot_fac,cnum)),
             std::move(VArray<bool>::ForSingle(mmd->flag&GP_LENGTH_USE_CURVATURE,cnum)),
-            std::move(VArray<int>::ForSingle(mmd->start_fac/mmd->point_density,cnum)),
+            std::move(VArray<int>::ForSingle(mmd->point_density,cnum)),
             std::move(VArray<float>::ForSingle(mmd->segment_influence,cnum)),
             std::move(VArray<float>::ForSingle(mmd->max_angle,cnum)),
             std::move(VArray<bool>::ForSingle(mmd->flag&GP_LENGTH_INVERT_CURVATURE,cnum)),{});
