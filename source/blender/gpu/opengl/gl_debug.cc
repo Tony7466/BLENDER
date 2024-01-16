@@ -415,15 +415,14 @@ void GLContext::debug_group_end()
   Vector<TimeQuery> &queries = frame_timings.last().queries;
   for (int i = queries.size() - 1; i >= 0; i--) {
     TimeQuery &query = queries[i];
-    if (!query.is_required()) {
-      continue;
-    }
     if (!query.finished) {
-      glQueryCounter(query.end, GL_TIMESTAMP);
       query.finished = true;
-      int64_t cpu_end;
-      glGetInteger64v(GL_TIMESTAMP, &cpu_end);
-      query.cpu_time = (cpu_end - query.cpu_start) / 1000000.0;
+      if (query.is_required()) {
+        glQueryCounter(query.end, GL_TIMESTAMP);
+        int64_t cpu_end;
+        glGetInteger64v(GL_TIMESTAMP, &cpu_end);
+        query.cpu_time = (cpu_end - query.cpu_start) / 1000000.0;
+      }
       break;
     }
     if (i == 0) {
