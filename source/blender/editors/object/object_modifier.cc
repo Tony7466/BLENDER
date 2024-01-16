@@ -1800,7 +1800,9 @@ static void modifier_apply_confirm(bContext * /*C*/,
                                    wmOperator * /*op*/,
                                    wmConfirmDetails *confirm)
 {
-  STRNCPY(confirm->message, IFACE_("Make object data single-user and apply modifier"));
+  STRNCPY(confirm->title, IFACE_("Apply modifier"));
+  STRNCPY(confirm->message,
+          IFACE_("Make data single-user, apply modifier, and remove it from the list"));
   STRNCPY(confirm->confirm_button, IFACE_("Apply"));
   confirm->position = WM_WARNING_POSITION_MOUSE;
   confirm->size = WM_WARNING_SIZE_SMALL;
