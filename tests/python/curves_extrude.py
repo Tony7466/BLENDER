@@ -10,9 +10,10 @@ import sys
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from modules.mesh_test import RunTest
 
+
 class CurvesTest(ABC):
 
-    def __init__(self, test_object_name, exp_object_name, test_name = None):
+    def __init__(self, test_object_name, exp_object_name, test_name=None):
         self.test_object_name = test_object_name
         self.exp_object_name = exp_object_name
         self.test_object = bpy.data.objects[self.test_object_name]
@@ -87,18 +88,18 @@ class CurvesTest(ABC):
             self.print_failed_test_result(result)
             return False
 
-    @abstractmethod    
+    @abstractmethod
     def apply_operations(self, evaluated_test_object_name):
         pass
 
     @staticmethod
     def compare_curves(evaluated_curves, expected_curves):
         if len(evaluated_curves.attributes.items()) != len(expected_curves.attributes.items()):
-             print("Attribute count doesn't match")
+            print("Attribute count doesn't match")
 
         for a_idx, attribute in evaluated_curves.attributes.items():
             expected_attribute = expected_curves.attributes[a_idx]
-            
+
             if len(attribute.data.items()) != len(expected_attribute.data.items()):
                 print("Attribute data length doesn't match")
 
@@ -107,19 +108,23 @@ class CurvesTest(ABC):
                                'color' if attribute.data_type == 'FLOAT_COLOR' else 'value')
 
             for v_idx, attribute_value in attribute.data.items():
-                if getattr(attribute_value, value_attr_name) != getattr(expected_attribute.data[v_idx], value_attr_name):
+                if getattr(
+                        attribute_value,
+                        value_attr_name) != getattr(
+                        expected_attribute.data[v_idx],
+                        value_attr_name):
                     print("Attribute '{}' values do not match".format(attribute.name))
                     return False
 
         return True
 
     def compare_objects(self, evaluated_object, expected_object):
-         result_codes = {}
+        result_codes = {}
 
-         equal = self.compare_curves( evaluated_object.data, expected_object.data)
+        equal = self.compare_curves(evaluated_object.data, expected_object.data)
 
-         result_codes['Curves Comparison'] = (equal, evaluated_object.data)
-         return result_codes
+        result_codes['Curves Comparison'] = (equal, evaluated_object.data)
+        return result_codes
 
     def print_failed_test_result(self, result):
         """
@@ -132,6 +137,7 @@ class CurvesTest(ABC):
         Print results for passing test.
         """
         print("PASSED {} test successfully.".format(self.test_name))
+
 
 class CurvesOpTest(CurvesTest):
 
@@ -150,10 +156,11 @@ class CurvesOpTest(CurvesTest):
                 raise AttributeError("bpy.ops.curves has no attribute {}".format(operator_name))
             except TypeError as ex:
                 raise TypeError("Incorrect operator parameters {!r} raised {!r}".format([], ex))
-            
+
             if retval != {'FINISHED'}:
                 raise RuntimeError("Unexpected operator return value: {}".format(operator_name))
             bpy.ops.object.mode_set(mode='OBJECT')
+
 
 def main():
     tests = [
@@ -165,7 +172,7 @@ def main():
         CurvesOpTest("Extrude Middle Curve", "f_testMiddleCurve", "f_testMiddleCurveExpected", ['extrude']),
         CurvesOpTest("Extrude All Points", "g_testAllPoints", "g_testAllPointsExpected", ['extrude'])
     ]
-    
+
     curves_extrude_test = RunTest(tests)
 
     command = list(sys.argv)
