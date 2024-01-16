@@ -1045,7 +1045,11 @@ static void rna_def_keyblock(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "data", nullptr);
   RNA_def_property_struct_type(prop, "ShapeKeyPoint");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
-  RNA_def_property_ui_text(prop, "Points", "");
+  RNA_def_property_ui_text(prop,
+                           "Points",
+                           "Optimized access to shape keys point data, when using "
+                           "`foreach_get`/`foreach_set` accessors. "
+                           "(Warning: Does not support legacy Curve shape keys)");
   RNA_def_property_collection_funcs(prop,
                                     "rna_ShapeKey_points_begin",
                                     "rna_iterator_array_next",
