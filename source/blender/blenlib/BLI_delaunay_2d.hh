@@ -130,7 +130,7 @@ template<typename T> class CDT_input {
   Span<std::pair<int, int>> edge;
   OffsetIndices<int> face_offsets;
   Span<int> face_vert_indices;
-  Arith_t epsilon{0};
+  T epsilon{0};
   bool need_ids{true};
 };
 

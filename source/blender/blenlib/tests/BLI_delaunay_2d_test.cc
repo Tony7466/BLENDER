@@ -29,7 +29,7 @@
 namespace blender::meshintersect {
 
 template<typename T> struct InputStorage {
-  Array<vec2<T>> vert;
+  Array<VecBase<T, 2>> vert;
   Array<std::pair<int, int>> edge;
   Array<int> face_offsets;
   Vector<int> face_vert_indices;
