@@ -1164,7 +1164,8 @@ static void object_transform_apply_confirm(bContext * /*C*/,
 {
   STRNCPY(confirm->title, IFACE_("Apply Object Transformations"));
   STRNCPY(confirm->message,
-          IFACE_("Duplicate geometry data-blocks with multiple users and apply transformations"));
+          IFACE_("Warning: Multiple objects share the same data."));
+  STRNCPY(confirm->message2, IFACE_("Make single user and then apply transformations?"));
   STRNCPY(confirm->confirm_button, IFACE_("Apply"));
 }
 
