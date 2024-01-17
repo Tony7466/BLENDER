@@ -1139,8 +1139,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_draw_gpencil")
             elif obj and obj.mode == 'EDIT_GPENCIL':
                 layout.menu("VIEW3D_MT_edit_gpencil")
-                layout.menu("VIEW3D_MT_edit_gpencil_stroke")
-                layout.menu("VIEW3D_MT_edit_gpencil_point")
+                layout.menu("VIEW3D_MT_edit_gpencil_attributes")
             elif obj and obj.mode == 'WEIGHT_GPENCIL':
                 layout.menu("VIEW3D_MT_weight_gpencil")
             if obj and obj.mode == 'VERTEX_GPENCIL':
@@ -1155,9 +1154,6 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_mesh_faces")
                 layout.menu("VIEW3D_MT_edit_mesh_attributes")
                 layout.template_node_operator_asset_root_items()
-            elif mode_string in {'EDIT_CURVE', 'EDIT_SURFACE'}:
-                layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
-                layout.menu("VIEW3D_MT_edit_curve_segments")
             elif mode_string in {'EDIT_CURVES', 'EDIT_POINT_CLOUD'}:
                 layout.template_node_operator_asset_root_items()
             elif mode_string == 'EDIT_GREASE_PENCIL':
@@ -4251,12 +4247,14 @@ class VIEW3D_MT_edit_mesh(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        # Transform
         layout.menu("VIEW3D_MT_transform")
         layout.menu("VIEW3D_MT_mirror")
         layout.menu("VIEW3D_MT_snap")
 
         layout.separator()
 
+        # Create
         layout.operator("mesh.duplicate_move", text="Duplicate")
         layout.menu("VIEW3D_MT_edit_mesh_extrude")
         layout.menu("VIEW3D_MT_edit_mesh_bevel")
@@ -4264,17 +4262,21 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.separator()
 
+        # Merge & Seperate
         layout.menu("VIEW3D_MT_edit_mesh_merge")
         layout.menu("VIEW3D_MT_edit_mesh_cut_slide")
         layout.menu("VIEW3D_MT_edit_mesh_split")
+
         layout.operator_menu_enum("mesh.separate", "type")
 
+        # Subdivide, Generate & Convert
         layout.menu("VIEW3D_MT_edit_mesh_subdivide")
         layout.menu("VIEW3D_MT_edit_mesh_generate")
         layout.menu("VIEW3D_MT_edit_mesh_convert")
 
         layout.separator()
 
+        # Smooth & Symmetry
         layout.operator("mesh.symmetrize")
         layout.operator("mesh.symmetry_snap")
         layout.menu("VIEW3D_MT_edit_mesh_smooth")
@@ -4287,6 +4289,7 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.separator()
 
+        # Object Data
         layout.menu("VIEW3D_MT_edit_mesh_normals")
         layout.menu("VIEW3D_MT_edit_mesh_shading")
         layout.menu("VIEW3D_MT_edit_mesh_shape_keys")
@@ -4295,11 +4298,13 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.separator()
 
+        # Parenting
         layout.operator("object.vertex_parent_set")
         layout.menu("VIEW3D_MT_hook")
 
         layout.separator()
 
+        # Visibility
         layout.menu("VIEW3D_MT_edit_mesh_showhide")
         layout.menu("VIEW3D_MT_edit_mesh_clean")
 
@@ -5021,20 +5026,28 @@ class VIEW3D_MT_edit_greasepencil_delete(Menu):
 # draw_curve is used by VIEW3D_MT_edit_curve and VIEW3D_MT_edit_surface
 
 
-def draw_curve(self, _context):
+def draw_curve(self, context):
     layout = self.layout
 
+    edit_object = context.edit_object
+
+    # Transform
     layout.menu("VIEW3D_MT_transform")
     layout.menu("VIEW3D_MT_mirror")
     layout.menu("VIEW3D_MT_snap")
 
     layout.separator()
 
-    layout.operator("curve.spin")
+    # Create
     layout.operator("curve.duplicate_move")
+    layout.operator("curve.extrude_move")
+    layout.operator("curve.vertex_add")
+    layout.operator("curve.spin")
+    layout.operator("curve.make_segment")
 
     layout.separator()
 
+    # Merge & Seperate
     layout.operator("curve.split")
     layout.operator("curve.separate")
 
@@ -5045,7 +5058,47 @@ def draw_curve(self, _context):
 
     layout.separator()
 
+    # Subdivide
+    layout.operator("curve.subdivide")
+
+    layout.separator()
+
+    # Smooth
+    layout.operator("curve.smooth")
+    if edit_object.type == 'CURVE':
+        layout.operator("curve.normals_make_consistent")
+
+    layout.separator()
+
+    # Attributes
+    if edit_object.type == 'CURVE':
+        layout.operator("transform.tilt")
+        layout.operator("curve.tilt_clear")
+        layout.operator("curve.smooth_tilt")
+        layout.operator("curve.smooth_radius")
+        layout.operator("curve.smooth_weight")
+
+    layout.separator()
+
+    # Stroke Type
+    if edit_object.type == 'CURVE':
+        layout.operator_menu_enum("curve.handle_type_set", "type")
+    layout.operator("curve.switch_direction")
+
+    layout.separator()
+
+    # Parenting
+    layout.operator("object.vertex_parent_set")
+    layout.menu("VIEW3D_MT_hook")
+
+    layout.separator()
+
+    # Visibility
     layout.menu("VIEW3D_MT_edit_curve_showhide")
+
+    layout.separator()
+
+    # Remove
     layout.menu("VIEW3D_MT_edit_curve_clean")
     layout.menu("VIEW3D_MT_edit_curve_delete")
 
@@ -5054,60 +5107,6 @@ class VIEW3D_MT_edit_curve(Menu):
     bl_label = "Curve"
 
     draw = draw_curve
-
-
-class VIEW3D_MT_edit_curve_ctrlpoints(Menu):
-    bl_label = "Control Points"
-
-    def draw(self, context):
-        layout = self.layout
-
-        edit_object = context.edit_object
-
-        if edit_object.type in {'CURVE', 'SURFACE'}:
-            layout.operator("curve.extrude_move")
-            layout.operator("curve.vertex_add")
-
-            layout.separator()
-
-            layout.operator("curve.make_segment")
-
-            layout.separator()
-
-            if edit_object.type == 'CURVE':
-                layout.operator("transform.tilt")
-                layout.operator("curve.tilt_clear")
-
-                layout.separator()
-
-                layout.operator_menu_enum("curve.handle_type_set", "type")
-                layout.operator("curve.normals_make_consistent")
-
-                layout.separator()
-
-            layout.operator("curve.smooth")
-            if edit_object.type == 'CURVE':
-                layout.operator("curve.smooth_tilt")
-                layout.operator("curve.smooth_radius")
-                layout.operator("curve.smooth_weight")
-
-            layout.separator()
-
-        layout.menu("VIEW3D_MT_hook")
-
-        layout.separator()
-
-        layout.operator("object.vertex_parent_set")
-
-
-class VIEW3D_MT_edit_curve_segments(Menu):
-    bl_label = "Segments"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("curve.subdivide")
-        layout.operator("curve.switch_direction")
 
 
 class VIEW3D_MT_edit_curve_clean(Menu):
@@ -5591,57 +5590,36 @@ class VIEW3D_MT_assign_material(Menu):
 class VIEW3D_MT_edit_gpencil(Menu):
     bl_label = "Grease Pencil"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
+        # Transform
         layout.menu("VIEW3D_MT_edit_gpencil_transform")
         layout.menu("VIEW3D_MT_mirror")
         layout.menu("GPENCIL_MT_snap")
 
         layout.separator()
 
-        layout.menu("GPENCIL_MT_layer_active", text="Active Layer")
-
-        layout.separator()
-
-        layout.menu("VIEW3D_MT_gpencil_animation")
-        layout.operator("gpencil.interpolate_sequence", text="Interpolate Sequence")
-
-        layout.separator()
-
-        # Cut, Copy, Paste
+        # Create
         layout.operator("gpencil.duplicate_move", text="Duplicate")
-        layout.operator("gpencil.stroke_split", text="Split")
+        layout.operator("gpencil.extrude_move", text="Extrude")
         layout.operator("gpencil.copy", text="Copy", icon='COPYDOWN')
         layout.operator("gpencil.paste", text="Paste", icon='PASTEDOWN').type = 'ACTIVE'
         layout.operator("gpencil.paste", text="Paste by Layer").type = 'LAYER'
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_weight_gpencil")
-
-        layout.separator()
-
-        layout.menu("VIEW3D_MT_edit_gpencil_showhide")
+        # Merge & Seperate
+        layout.operator_menu_enum("gpencil.stroke_join", "type", text="Join",
+                                  text_ctxt=i18n_contexts.id_gpencil)
+        layout.operator("gpencil.stroke_merge", text="Merge")
+        layout.operator("gpencil.stroke_split", text="Split")
 
         layout.operator_menu_enum("gpencil.stroke_separate", "mode", text="Separate")
-        layout.menu("GPENCIL_MT_cleanup")
 
         layout.separator()
 
-        # Remove
-        layout.menu("VIEW3D_MT_edit_gpencil_delete")
-
-
-class VIEW3D_MT_edit_gpencil_stroke(Menu):
-    bl_label = "Stroke"
-
-    def draw(self, context):
-        layout = self.layout
-
-        tool_settings = context.tool_settings
-        settings = tool_settings.gpencil_sculpt
-
+        # Subdivide, Generate & Convert
         layout.operator("gpencil.stroke_subdivide", text="Subdivide").only_selected = False
         layout.menu("VIEW3D_MT_gpencil_simplify")
         layout.operator("gpencil.stroke_trim", text="Trim")
@@ -5649,11 +5627,12 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
 
         layout.separator()
 
-        layout.operator_menu_enum("gpencil.stroke_join", "type", text="Join",
-                                  text_ctxt=i18n_contexts.id_gpencil)
+        # Smooth & Symmetry
+        layout.operator("gpencil.stroke_smooth", text="Smooth").only_selected = True
 
         layout.separator()
 
+        layout.menu("GPENCIL_MT_layer_active", text="Active Layer")
         layout.menu("GPENCIL_MT_move_to_layer")
         layout.menu("VIEW3D_MT_assign_material")
         layout.operator("gpencil.set_active_material", text="Set as Active Material")
@@ -5661,7 +5640,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
 
         layout.separator()
 
-        # Convert
+        # Stroke Type
         props = layout.operator("gpencil.stroke_cyclical_set", text="Close")
         props.type = 'CLOSE'
         props.geometry = True
@@ -5671,36 +5650,44 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.operator("gpencil.stroke_start_set", text="Set Start Point")
 
         layout.separator()
+
+        layout.operator("gpencil.reset_transform_fill", text="Reset Fill Transform")
+
+        layout.separator()
+
+        # Animation
+        layout.menu("VIEW3D_MT_gpencil_animation")
+        layout.operator("gpencil.interpolate_sequence", text="Interpolate Sequence")
+
+        layout.separator()
+
+        # Visibility
+        layout.menu("VIEW3D_MT_edit_gpencil_showhide")
+
+        layout.separator()
+
+        # Remove
+        layout.menu("VIEW3D_MT_edit_gpencil_delete")
+        layout.menu("GPENCIL_MT_cleanup")
+
+
+class VIEW3D_MT_edit_gpencil_attributes(Menu):
+    bl_label = "Attributes"
+
+    def draw(self, context):
+        layout = self.layout
+
+        tool_settings = context.tool_settings
+        settings = tool_settings.gpencil_sculpt
+
+        layout.menu("VIEW3D_MT_gpencil_vertex_group")
+        layout.menu("VIEW3D_MT_weight_gpencil")
+
+        layout.separator()
+
         layout.operator("gpencil.stroke_normalize", text="Normalize Thickness").mode = 'THICKNESS'
         layout.operator("gpencil.stroke_normalize", text="Normalize Opacity").mode = 'OPACITY'
         layout.prop(settings, "use_scale_thickness", text="Scale Thickness")
-
-        layout.separator()
-        layout.operator("gpencil.reset_transform_fill", text="Reset Fill Transform")
-
-
-class VIEW3D_MT_edit_gpencil_point(Menu):
-    bl_label = "Point"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("gpencil.extrude_move", text="Extrude")
-
-        layout.separator()
-
-        layout.operator("gpencil.stroke_smooth", text="Smooth").only_selected = True
-
-        layout.separator()
-
-        layout.operator("gpencil.stroke_merge", text="Merge")
-
-        # TODO: add new RIP operator
-
-        layout.separator()
-
-        layout.menu("VIEW3D_MT_gpencil_vertex_group")
-
 
 class VIEW3D_MT_weight_gpencil(Menu):
     bl_label = "Weights"
@@ -8931,10 +8918,9 @@ classes = (
     VIEW3D_MT_draw_gpencil,
     VIEW3D_MT_assign_material,
     VIEW3D_MT_edit_gpencil,
-    VIEW3D_MT_edit_gpencil_stroke,
-    VIEW3D_MT_edit_gpencil_point,
     VIEW3D_MT_edit_gpencil_delete,
     VIEW3D_MT_edit_gpencil_showhide,
+    VIEW3D_MT_edit_gpencil_attributes,
     VIEW3D_MT_edit_greasepencil_showhide,
     VIEW3D_MT_weight_gpencil,
     VIEW3D_MT_gpencil_animation,
@@ -8949,8 +8935,6 @@ classes = (
     VIEW3D_MT_edit_greasepencil_point,
     VIEW3D_MT_edit_greasepencil_animation,
     VIEW3D_MT_edit_curve,
-    VIEW3D_MT_edit_curve_ctrlpoints,
-    VIEW3D_MT_edit_curve_segments,
     VIEW3D_MT_edit_curve_clean,
     VIEW3D_MT_edit_curve_context_menu,
     VIEW3D_MT_edit_curve_delete,
