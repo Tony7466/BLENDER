@@ -693,9 +693,8 @@ static void paint_brush_asset_update(Paint *p,
 
 bool BKE_paint_brush_asset_set(Paint *p, Brush *br, AssetWeakReference *weak_asset_reference)
 {
-  /* TODO: does this need to be ensure at some higher level? Assets should be tagged
-   * and filtered with the appropriate mode, but is that going to be a 100% guarantee
-   * or a more loose thing? */
+  /* Should not happen for users if brush assets are properly filtered by mode, but still protect
+   * against it in case of invalid API usage. */
   if (p->runtime.ob_mode != br->ob_mode) {
     BKE_asset_weak_reference_free(&weak_asset_reference);
     return false;

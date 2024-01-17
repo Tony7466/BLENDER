@@ -18,6 +18,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
+#include "BKE_report.h"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -1165,7 +1166,7 @@ static void SCULPT_CURVES_OT_min_distance_edit(wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 
-static int brush_asset_select_exec(bContext *C, wmOperator * /*op*/)
+static int brush_asset_select_exec(bContext *C, wmOperator *op)
 {
   blender::asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
   if (!asset) {
@@ -1176,8 +1177,15 @@ static int brush_asset_select_exec(bContext *C, wmOperator * /*op*/)
   Brush *brush = BKE_brush_asset_runtime_ensure(CTX_data_main(C), brush_asset_reference);
 
   ToolSettings *tool_settings = CTX_data_tool_settings(C);
+
   /* Either takes ownership of the brush_asset_reference, or frees it. */
-  BKE_paint_brush_asset_set(&tool_settings->curves_sculpt->paint, brush, brush_asset_reference);
+  if (!BKE_paint_brush_asset_set(
+          &tool_settings->curves_sculpt->paint, brush, brush_asset_reference))
+  {
+    /* Note brush datablock was still added, so was not a no-op. */
+    BKE_report(op->reports, RPT_WARNING, "Unable to select brush, wrong object mode");
+    return OPERATOR_FINISHED;
+  }
 
   WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
