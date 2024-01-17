@@ -310,6 +310,21 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, ptr, "noise_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
 
+  if (uiLayout *random_layout = uiLayoutPanel(C, layout, "Random", ptr, "open_random_panel")) {
+    uiItemR(random_layout, ptr, "use_random", UI_ITEM_NONE, IFACE_("Randomize"), ICON_NONE);
+
+    uiLayout *random_col = uiLayoutColumn(random_layout, false);
+
+    uiLayoutSetPropSep(random_col, true);
+    uiLayoutSetActive(random_col, RNA_boolean_get(ptr, "use_random"));
+
+    uiItemR(random_col, ptr, "random_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+    const int mode = RNA_enum_get(ptr, "random_mode");
+    if (mode != GP_NOISE_RANDOM_KEYFRAME) {
+      uiItemR(random_col, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
+    }
+  }
+
   if (uiLayout *influence_panel = uiLayoutPanel(
           C, layout, "Influence", ptr, "open_influence_panel"))
   {
@@ -322,39 +337,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, ptr);
 }
 
-static void random_header_draw(const bContext * /*C*/, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-
-  uiItemR(layout, ptr, "use_random", UI_ITEM_NONE, IFACE_("Randomize"), ICON_NONE);
-}
-
-static void random_panel_draw(const bContext * /*C*/, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  uiLayoutSetActive(layout, RNA_boolean_get(ptr, "use_random"));
-
-  uiItemR(layout, ptr, "random_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-  const int mode = RNA_enum_get(ptr, "random_mode");
-  if (mode != GP_NOISE_RANDOM_KEYFRAME) {
-    uiItemR(layout, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
-}
-
 static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_GreasePencilNoise, panel_draw);
-  modifier_subpanel_register(
-      region_type, "randomize", "", random_header_draw, random_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_GreasePencilNoise = {
