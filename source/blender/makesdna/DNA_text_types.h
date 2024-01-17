@@ -12,7 +12,14 @@
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
-
+#ifdef __cplusplus
+namespace blender::ed::text {
+struct StringMatchContainer;
+}  // namespace blender::ed::text
+using StringMatchContainer = blender::ed::text::StringMatchContainer;
+#else
+typedef struct StringMatchContainer StringMatchContainer;
+#endif
 typedef struct TextLine {
   struct TextLine *next, *prev;
 
@@ -67,4 +74,28 @@ enum {
 
   /** Use space instead of tabs. */
   TXT_TABSTOSPACES = 1 << 10,
+};
+
+struct StringMatch {
+  /** Line where a match was found. */
+  TextLine *text_line;
+  /** Index of the line in the Text. */
+  int line_index;
+  /** Start and end position in #tex_line where the `SpaceText.findstr` string was found. */
+  int start, end;
+  int flags;
+};
+
+/** #StringMatch.flags */
+enum {
+  /** Set if a match is selected for replace. */
+  TXT_SM_SELECTED = 1 << 0,
+};
+
+struct TextSearch {
+  /** Text data-block. */
+  Text *text;
+  StringMatchContainer *matches;
+  int active_string_match;
+  char _pad0[4];
 };

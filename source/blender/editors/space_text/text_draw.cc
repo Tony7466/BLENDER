@@ -1165,103 +1165,141 @@ static void draw_suggestion_list(const SpaceText *st, const TextDrawContext *tdc
 /** \name Draw Cursor
  * \{ */
 
-static void draw_text_decoration(SpaceText *st, ARegion *region)
+static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *region)
 {
   Text *text = st->text;
-  int vcurl, vcurc, vsell, vselc;
-  bool hidden = false;
-  int x, y, w, i;
-  int offl, offc;
+
+  const int x = TXT_BODY_LEFT(st);
+
   const int lheight = TXT_LINE_HEIGHT(st);
 
-  /* Convert to view space character coordinates to determine if cursor is hidden */
-  space_text_wrap_offset(st, region, text->sell, text->selc, &offl, &offc);
-  vsell = txt_get_span(static_cast<TextLine *>(text->lines.first), text->sell) - st->top + offl;
-  vselc = space_text_get_char_pos(st, text->sell->line, text->selc) - st->left + offc;
-
-  if (vselc < 0) {
-    vselc = 0;
-    hidden = true;
-  }
-
-  if (text->curl == text->sell && text->curc == text->selc && !st->line_hlight && hidden) {
-    /* Nothing to draw here */
-    return;
-  }
-
-  uint pos = GPU_vertformat_attr_add(
+  const uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  /* Draw the selection */
-  if (text->curl != text->sell || text->curc != text->selc) {
-    /* Convert all to view space character coordinates */
-    space_text_wrap_offset(st, region, text->curl, text->curc, &offl, &offc);
-    vcurl = txt_get_span(static_cast<TextLine *>(text->lines.first), text->curl) - st->top + offl;
-    vcurc = space_text_get_char_pos(st, text->curl->line, text->curc) - st->left + offc;
+  const int char_width_px = st->runtime->cwidth_px;
+  const float pixel_size = U.pixelsize;
 
-    if (vcurc < 0) {
-      vcurc = 0;
-    }
+  auto highlight_text = [&](const int from_line, int from_char, const int to_line, int to_char) {
+    from_char = std::max(from_char, 0);
+    to_char = std::max(to_char, 0);
+    BLI_assert(from_line < to_line || (from_line == to_line && from_char <= to_char));
 
-    immUniformThemeColor(TH_SHADE2);
-
-    x = TXT_BODY_LEFT(st);
-    y = region->winy;
+    int y = region->winy;
     if (st->flags & ST_SCROLL_SELECT) {
       y += st->runtime->scroll_ofs_px[1];
     }
 
-    if (vcurl == vsell) {
-      y -= vcurl * lheight;
+    if (from_line == to_line) {
+      y -= from_line * lheight;
+      const int left = x + from_char * char_width_px;
+      const int right = x + to_char * char_width_px;
 
-      if (vcurc < vselc) {
-        immRecti(pos,
-                 x + vcurc * st->runtime->cwidth_px,
-                 y,
-                 x + vselc * st->runtime->cwidth_px,
-                 y - lheight);
-      }
-      else {
-        immRecti(pos,
-                 x + vselc * st->runtime->cwidth_px,
-                 y,
-                 x + vcurc * st->runtime->cwidth_px,
-                 y - lheight);
-      }
+      immRecti(pos, left, y, right, y - lheight);
     }
     else {
-      int froml, fromc, tol, toc;
 
-      if (vcurl < vsell) {
-        froml = vcurl;
-        tol = vsell;
-        fromc = vcurc;
-        toc = vselc;
-      }
-      else {
-        froml = vsell;
-        tol = vcurl;
-        fromc = vselc;
-        toc = vcurc;
-      }
-
-      y -= froml * lheight;
-
-      immRecti(
-          pos, x + fromc * st->runtime->cwidth_px - U.pixelsize, y, region->winx, y - lheight);
+      y -= from_line * lheight;
+      immRecti(pos, x + from_char * char_width_px - pixel_size, y, region->winx, y - lheight);
       y -= lheight;
 
-      for (i = froml + 1; i < tol; i++) {
-        immRecti(pos, x - U.pixelsize, y, region->winx, y - lheight);
+      for (int i = from_line + 1; i < to_line; i++) {
+        immRecti(pos, x - pixel_size, y, region->winx, y - lheight);
         y -= lheight;
       }
 
-      if (x + toc * st->runtime->cwidth_px > x) {
-        immRecti(pos, x - U.pixelsize, y, x + toc * st->runtime->cwidth_px, y - lheight);
+      if (x + to_char * char_width_px > x) {
+        immRecti(pos, x - pixel_size, y, x + to_char * char_width_px, y - lheight);
       }
       y -= lheight;
     }
+  };
+
+  TextLine *first_line = static_cast<TextLine *>(text->lines.first);
+
+  /** Get the view space line and character coordinates. */
+  auto get_coords = [&](TextLine *text_line, const int char_idx, int &ret_line, int &ret_char) {
+    int offset_line, offset_char;
+    space_text_wrap_offset(st, region, text_line, char_idx, &offset_line, &offset_char);
+    ret_line = txt_get_span(first_line, text_line) - st->top + offset_line;
+    ret_char = space_text_get_char_pos(st, text_line->line, char_idx) - st->left + offset_char;
+  };
+
+  /** Highlight selection. */
+  int select_line, select_char;
+  get_coords(text->sell, text->selc, select_line, select_char);
+
+  if (text->curl != text->sell || text->curc != text->selc) {
+    int cursor_line, cursor_char;
+    get_coords(text->curl, text->curc, cursor_line, cursor_char);
+
+    immUniformThemeColor(TH_SHADE2);
+    GPU_blend(GPU_BLEND_ALPHA);
+    if (select_line < cursor_line || (select_line == cursor_line && select_char < cursor_char)) {
+      highlight_text(select_line, select_char, cursor_line, cursor_char);
+    }
+    else {
+      highlight_text(cursor_line, cursor_char, select_line, select_char);
+    }
+    GPU_blend(GPU_BLEND_NONE);
+  }
+
+  /** Highlight text search. */
+  bool highlight_search = false;
+  {
+    ScrArea *area = CTX_wm_area(C);
+    ARegion *ui_region = BKE_area_find_region_type(area, RGN_TYPE_UI);
+
+    if (ui_region) {
+      if (!(ui_region->flag & RGN_FLAG_HIDDEN)) {
+        const char *active_category = UI_panel_category_active_get(ui_region, false);
+        if (!active_category || STREQ(active_category, "Text")) {
+          highlight_search = true;
+        }
+      }
+    }
+  }
+  const auto *text_search = blender::ed::text::text_search_get(st, st->text);
+  
+  if (highlight_search && text_search) {
+    const auto &matches = text_search->matches->data;
+    immUniformThemeColor(TH_SHADE1);
+    GPU_blend(GPU_BLEND_ALPHA);
+    auto match_itr = std::lower_bound(
+        matches.begin(), matches.end(), st->top, [](const StringMatch &sm, int top) {
+          return sm.line_index < top;
+        });
+    for (; match_itr < matches.end(); match_itr++) {
+      if ((st->top + st->runtime->viewlines) < match_itr->line_index) {
+        break;
+      }
+      int start_line, start_char;
+      get_coords(match_itr->text_line, match_itr->start, start_line, start_char);
+      /* Draw only one box for all contiguous occurrences. */
+      for (; match_itr < (matches.end() - 1); match_itr++) {
+        const StringMatch *next = match_itr + 1;
+        if (match_itr->text_line != next->text_line || match_itr->end != next->start) {
+          break;
+        }
+      }
+      int end_line, end_char;
+      get_coords(match_itr->text_line, match_itr->end, end_line, end_char);
+
+      highlight_text(start_line, start_char, end_line, end_char);
+    }
+
+    GPU_blend(GPU_BLEND_NONE);
+  }
+
+  bool hidden = false;
+  if (select_char < 0) {
+    select_char = 0;
+    hidden = true;
+  }
+
+  if (text->curl == text->sell && text->curc == text->selc && !st->line_hlight && hidden) {
+    /* Nothing more to draw here */
+    return;
   }
 
   if (st->line_hlight) {
@@ -1269,17 +1307,17 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
 
     if (st->wordwrap) {
       int visible_lines = space_text_get_visible_lines(st, region, text->sell->line);
-
+      int offl, offc;
       space_text_wrap_offset_in_line(st, region, text->sell, text->selc, &offl, &offc);
 
-      y1 = region->winy - (vsell - offl) * lheight;
+      y1 = region->winy - (select_line - offl) * lheight;
       if (st->flags & ST_SCROLL_SELECT) {
         y1 += st->runtime->scroll_ofs_px[1];
       }
       y2 = y1 - (lheight * visible_lines);
     }
     else {
-      y1 = region->winy - vsell * lheight;
+      y1 = region->winy - select_line * lheight;
       if (st->flags & ST_SCROLL_SELECT) {
         y1 += st->runtime->scroll_ofs_px[1];
       }
@@ -1287,10 +1325,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
     }
 
     if (!(y1 < 0 || y2 > region->winy)) { /* check we need to draw */
-      float highlight_color[4];
-      UI_GetThemeColor4fv(TH_TEXT, highlight_color);
-      highlight_color[3] = 0.1f;
-      immUniformColor4fv(highlight_color);
+      immUniformThemeColorAlpha(TH_TEXT, 0.1f);
       GPU_blend(GPU_BLEND_ALPHA);
       immRecti(pos, 0, y1, region->winx, y2);
       GPU_blend(GPU_BLEND_NONE);
@@ -1299,8 +1334,8 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
 
   if (!hidden) {
     /* Draw the cursor itself (we draw the sel. cursor as this is the leading edge) */
-    x = TXT_BODY_LEFT(st) + (vselc * st->runtime->cwidth_px);
-    y = region->winy - vsell * lheight;
+    const int x = TXT_BODY_LEFT(st) + (select_char * st->runtime->cwidth_px);
+    int y = region->winy - select_line * lheight;
     if (st->flags & ST_SCROLL_SELECT) {
       y += st->runtime->scroll_ofs_px[1];
     }
@@ -1311,16 +1346,16 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
       char ch = text->sell->line[text->selc];
 
       y += TXT_LINE_SPACING(st);
-      w = st->runtime->cwidth_px;
+      int w = char_width_px;
       if (ch == '\t') {
-        w *= st->tabnumber - (vselc + st->left) % st->tabnumber;
+        w *= st->tabnumber - (select_char + st->left) % st->tabnumber;
       }
 
       immRecti(
-          pos, x, y - lheight - U.pixelsize, x + w + U.pixelsize, y - lheight - (3 * U.pixelsize));
+          pos, x, y - lheight - pixel_size, x + w + pixel_size, y - lheight - (3 * pixel_size));
     }
     else {
-      immRecti(pos, x - U.pixelsize, y, x + U.pixelsize, y - lheight);
+      immRecti(pos, x - pixel_size, y, x + pixel_size, y - lheight);
     }
   }
 
@@ -1501,7 +1536,7 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
 /** \name Main Region Drawing
  * \{ */
 
-void draw_text_main(SpaceText *st, ARegion *region)
+void draw_text_main(const bContext *C, SpaceText *st, ARegion *region)
 {
   TextDrawContext tdc = {0};
   Text *text = st->text;
@@ -1598,7 +1633,7 @@ void draw_text_main(SpaceText *st, ARegion *region)
   winx = region->winx - TXT_SCROLL_WIDTH;
 
   /* draw cursor, margin, selection and highlight */
-  draw_text_decoration(st, region);
+  draw_text_decoration(C, st, region);
 
   /* draw the text */
   UI_FontThemeColor(tdc.font_id, TH_TEXT);

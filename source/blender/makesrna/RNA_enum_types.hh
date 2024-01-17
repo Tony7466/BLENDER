@@ -118,6 +118,10 @@ const EnumPropertyItem *RNA_mask_local_itemf(bContext *C,
                                              PointerRNA *ptr,
                                              PropertyRNA *prop,
                                              bool *r_free);
+const EnumPropertyItem *RNA_text_itemf(bContext *C,
+                                       PointerRNA *ptr,
+                                       PropertyRNA *prop,
+                                       bool *r_free);
 
 /* Non confirming, utility function. */
 const EnumPropertyItem *RNA_enum_node_tree_types_itemf_impl(bContext *C, bool *r_free);

@@ -772,6 +772,7 @@ const bTheme U_theme_default = {
       .back = RGBA(0x3d3d3dff),
       .sub_back = RGBA(0x0000001f),
     },
+    .shade1 = RGBA(0x733A13c0),
     .shade2 = RGBA(0x4d4d4de6),
     .hilite = RGBA(0x65a2ffff),
     .grid = RGBA(0x1d1d1dff),

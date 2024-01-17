@@ -14,6 +14,8 @@ struct Text;
 struct UndoStep;
 struct UndoType;
 struct bContext;
+struct TextSearch;
+struct StringMatch;
 
 /* `text_draw.cc` */
 
@@ -45,3 +47,29 @@ UndoStep *ED_text_undo_push_init(bContext *C);
 const char *ED_text_format_comment_line_prefix(Text *text);
 
 bool ED_text_is_syntax_highlight_supported(Text *text);
+
+namespace blender::ed::text {
+
+/* Get the index of the active Text data-block in the Space Text search list. */
+int active_text_search_get(const SpaceText *st);
+
+/* Updates the search result in a space text. */
+void texts_search_update(const bContext *C, const SpaceText *st);
+
+/**
+ * Any modification to Text data-blocks can invalidate the search result when a space text is
+ * inactive. To prevent a invalid searches, this removes runtime text search and tags to restore
+ * text search on space text reactivation.
+ */
+void texts_search_tag_restore(const SpaceText *st);
+
+/** Get the text search result in a Space Text. */
+TextSearch *text_search_get(const SpaceText *st, const Text *text);
+
+TextSearch *texts_search_begin_get(const SpaceText *st);
+const int texts_search_size_get(const SpaceText *st);
+
+StringMatch *string_matches_begin_get(const TextSearch *ts);
+const int string_matches_size_get(const TextSearch *ts);
+
+}  // namespace blender::ed::text

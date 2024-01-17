@@ -26,7 +26,7 @@ extern "C" {
 
 /* `text_draw.cc` */
 
-void draw_text_main(SpaceText *st, ARegion *region);
+void draw_text_main(const bContext *C, SpaceText *st, ARegion *region);
 
 void text_update_line_edited(TextLine *line);
 void text_update_edited(Text *text);
@@ -180,6 +180,7 @@ bool text_space_edit_poll(bContext *C);
 void TEXT_OT_autocomplete(wmOperatorType *ot);
 
 /* `space_text.cc` */
+void TEXT_OT_open_text_with_selection(wmOperatorType *ot);
 
 extern const char *text_context_dir[]; /* doc access */
 
@@ -188,6 +189,9 @@ extern const char *text_context_dir[]; /* doc access */
 #endif
 
 namespace blender::ed::text {
+struct StringMatchContainer {
+  blender::Vector<StringMatch> data;
+};
 struct SpaceText_Runtime {
 
   /** Actual line height, scaled by DPI. */
@@ -218,5 +222,12 @@ struct SpaceText_Runtime {
 
   /** Cache for faster drawing. */
   void *drawcache = nullptr;
+
+  /**
+   * Whenever a text space is initialized, the area type changes back to #SPACE_TEXT, or the area
+   * is reactivated after a exit call, the next draw must restore the `texts_search` result.
+   */
+  bool restore_texts_search = true;
+  blender::Vector<TextSearch> texts_search;
 };
 }  // namespace blender::ed::text

@@ -19,6 +19,7 @@
 #include "DNA_workspace_types.h"
 
 #include "ED_info.hh"
+#include "ED_text.hh"
 
 const EnumPropertyItem rna_enum_region_type_items[] = {
     {RGN_TYPE_WINDOW, "WINDOW", 0, "Window", ""},
@@ -270,7 +271,9 @@ static void rna_Area_ui_type_update(bContext *C, PointerRNA *ptr)
 {
   ScrArea *area = static_cast<ScrArea *>(ptr->data);
   SpaceType *st = BKE_spacetype_from_id(area->butspacetype);
-
+  if (SpaceText *st = CTX_wm_space_text(C); st) {
+    blender::ed::text::texts_search_tag_restore(st);
+  }
   rna_Area_type_update(C, ptr);
 
   if ((area->type == st) && (st->space_subtype_item_extend != nullptr)) {

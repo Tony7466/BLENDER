@@ -28,6 +28,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_report.h"
+#include "BKE_screen.hh"
 #include "BKE_text.h"
 
 #include "WM_api.hh"
@@ -41,6 +42,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_types.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -3754,8 +3757,14 @@ void TEXT_OT_insert(wmOperatorType *ot)
 
 /** \} */
 
+/** #TEXT_OT_find.direction. */
+enum eFindDirection {
+  FIND_PREV = -1,
+  FIND_NEXT = 1,
+};
+
 /* -------------------------------------------------------------------- */
-/** \name Find Operator
+/** \name Find and Replace Operator
  * \{ */
 
 /* mode */
@@ -3764,92 +3773,128 @@ enum {
   TEXT_REPLACE = 1,
 };
 
-static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
+static int text_find_and_replace(bContext *C, wmOperator * /*op*/, short /*mode*/)
 {
-  Main *bmain = CTX_data_main(C);
   SpaceText *st = CTX_wm_space_text(C);
   Text *text = st->text;
-  int flags;
-  int found = 0;
-  char *tmp;
 
   if (!st->findstr[0]) {
     return OPERATOR_CANCELLED;
   }
 
-  flags = st->flags;
-  if (flags & ST_FIND_ALL) {
-    flags &= ~ST_FIND_WRAP;
+  const int active_text_search = blender::ed::text::active_text_search_get(st);
+  const int idx = st->runtime->texts_search[active_text_search].active_string_match;
+
+  if (idx == -1) {
+    wmOperatorType *ot = WM_operatortype_find("TEXT_OT_find", false);
+    PointerRNA props;
+    WM_operator_properties_create_ptr(&props, ot);
+    RNA_enum_set(&props, "direction", FIND_NEXT);
+    auto result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &props, nullptr);
+    WM_operator_properties_free(&props);
+    return result;
   }
 
-  /* Replace current */
-  if (mode != TEXT_FIND && txt_has_sel(text)) {
-    tmp = txt_sel_to_buf(text, nullptr);
-
-    if (flags & ST_MATCH_CASE) {
-      found = STREQ(st->findstr, tmp);
-    }
-    else {
-      found = BLI_strcasecmp(st->findstr, tmp) == 0;
-    }
-
-    if (found) {
-      if (mode == TEXT_REPLACE) {
-        ED_text_undo_push_init(C);
-        txt_insert_buf(text, st->replacestr, strlen(st->replacestr));
-        if (text->curl && text->curl->format) {
-          MEM_freeN(text->curl->format);
-          text->curl->format = nullptr;
-        }
-        space_text_update_cursor_moved(C);
-        WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
-        space_text_drawcache_tag_update(st, true);
-      }
-    }
-    MEM_freeN(tmp);
-    tmp = nullptr;
+  ED_text_undo_push_init(C);
+  txt_insert_buf(text, st->replacestr, strlen(st->replacestr));
+  if (text->curl && text->curl->format) {
+    MEM_freeN(text->curl->format);
+    text->curl->format = nullptr;
   }
-
-  /* Find next */
-  if (txt_find_string(text, st->findstr, flags & ST_FIND_WRAP, flags & ST_MATCH_CASE)) {
-    space_text_update_cursor_moved(C);
-    WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
-  }
-  else if (flags & ST_FIND_ALL) {
-    if (text->id.next) {
-      text = st->text = static_cast<Text *>(text->id.next);
-    }
-    else {
-      text = st->text = static_cast<Text *>(bmain->texts.first);
-    }
-    txt_move_toline(text, 0, false);
-    space_text_update_cursor_moved(C);
-    WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
-  }
-  else {
-    if (!found) {
-      BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);
-    }
-  }
-
+  space_text_update_cursor_moved(C);
+  WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
+  space_text_drawcache_tag_update(st, true);
   return OPERATOR_FINISHED;
 }
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Find Operator
+ * \{ */
+
+static const EnumPropertyItem find_direction[] = {
+    {FIND_PREV, "PREV", 0, "Previous", ""},
+    {FIND_NEXT, "NEXT", 0, "Next", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
 
 static int text_find_exec(bContext *C, wmOperator *op)
 {
-  return text_find_and_replace(C, op, TEXT_FIND);
+  const eFindDirection direction = eFindDirection(RNA_enum_get(op->ptr, "direction"));
+
+  SpaceText *st = CTX_wm_space_text(C);
+  Text *text = CTX_data_edit_text(C);
+  using namespace blender;
+
+  auto text_search = ed::text::text_search_get(st, st->text);
+  if (text_search && text_search->matches->data.size() == 0) {
+    BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);
+    return OPERATOR_CANCELLED;
+  }
+  const auto &matches = text_search->matches->data;
+  int idx = text_search->active_string_match;
+  if (idx == -1) {
+    const int line_index = BLI_findindex(&text->lines, text->curl);
+    const int curc = text->curc;
+    auto match_itr = std::lower_bound(matches.begin(),
+                                      matches.end(),
+                                      nullptr,
+                                      [line_index, curc](const StringMatch &sm, void * /*dummy*/) {
+                                        return sm.line_index < line_index ||
+                                               (sm.line_index == line_index && sm.start < curc);
+                                      });
+    idx = match_itr - matches.begin();
+  }
+  else {
+    idx += direction;
+  }
+
+  if (idx < 0) {
+    idx = matches.size() - 1;
+  }
+  if (idx >= matches.size()) {
+    idx = 0;
+  }
+  text_search->active_string_match = idx;
+  const StringMatch &sm = matches[idx];
+  if (sm.line_index < st->top) {
+    txt_move_to(text, std::max(sm.line_index - (st->runtime->viewlines / 2), 0), 0, false);
+  }
+  else {
+    if (sm.line_index > st->top + st->runtime->viewlines) {
+      txt_move_to(text, sm.line_index + (st->runtime->viewlines / 2), 0, false);
+    }
+  }
+
+  ScrArea *area = CTX_wm_area(C);
+  if (area) {
+    ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+    if (region) {
+      ED_space_text_scroll_to_cursor(st, region, false);
+    }
+  }
+
+  txt_move_to(text, sm.line_index, sm.start, false);
+  txt_move_to(text, sm.line_index, sm.end, true);
+
+  WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
+  return OPERATOR_FINISHED;
 }
 
 void TEXT_OT_find(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Find Next";
+  ot->name = "Find";
   ot->idname = "TEXT_OT_find";
   ot->description = "Find specified text";
 
   /* api callbacks */
   ot->exec = text_find_exec;
   ot->poll = text_space_edit_poll;
+
+  PropertyRNA *prop = RNA_def_enum(
+      ot->srna, "direction", find_direction, FIND_NEXT, "Direction", "Direction to cycle through");
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 
 /** \} */
@@ -4318,6 +4363,101 @@ void TEXT_OT_to_3d_object(wmOperatorType *ot)
   /* properties */
   RNA_def_boolean(
       ot->srna, "split_lines", false, "Split Lines", "Create one object per line in the text");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Open text with Selection
+ * \{ */
+
+static int open_text_with_selection_exec(bContext *C, wmOperator *op)
+{
+  PropertyRNA *prop_text = RNA_struct_find_property(op->ptr, "text");
+
+  if (!RNA_property_is_set(op->ptr, prop_text)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const int start_line = RNA_int_get(op->ptr, "start_line");
+  const int end_line = RNA_int_get(op->ptr, "end_line");
+
+  const int start_sel = RNA_int_get(op->ptr, "start_sel");
+  const int end_sel = RNA_int_get(op->ptr, "end_sel");
+
+  const Main *bmain = CTX_data_main(C);
+  Text *text = static_cast<Text *>(BLI_findlink(&bmain->texts, RNA_enum_get(op->ptr, "text")));
+
+  if (!text) {
+    return OPERATOR_CANCELLED;
+  }
+
+  txt_move_to(text, start_line, start_sel, false);
+  txt_move_to(text, end_line, end_sel, true);
+
+  SpaceText *st = CTX_wm_space_text(C);
+  ARegion *region = CTX_wm_region(C);
+  st->text = text;
+  if (region) {
+    ED_space_text_scroll_to_cursor(st, region, true);
+  }
+  if (auto ts = blender::ed::text::text_search_get(st, text); ts) {
+    auto &matches = ts->matches->data;
+    auto match_itr = std::lower_bound(
+        matches.begin(),
+        matches.end(),
+        nullptr,
+        [start_line, start_sel](const StringMatch &sm, void * /*dummy*/) {
+          return sm.line_index < start_line ||
+                 (sm.line_index == start_line && sm.start < start_sel);
+        });
+    if (match_itr != matches.end()) {
+      if ((match_itr->line_index == start_line && match_itr->line_index == end_line) &&
+          match_itr->start == start_sel && match_itr->end == end_sel)
+      {
+        ts->active_string_match = match_itr - matches.begin();
+      }
+    }
+  }
+
+  WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
+
+  return OPERATOR_FINISHED;
+}
+
+void TEXT_OT_open_text_with_selection(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Open text with selection";
+  ot->idname = "TEXT_OT_open_text_with_selection";
+  ot->description = "Set Text as active with a selection";
+
+  /* api callbacks */
+  ot->exec = open_text_with_selection_exec;
+
+  /* flags */
+  ot->flag = 0;
+
+  prop = RNA_def_enum(ot->srna, "text", rna_enum_dummy_NULL_items, 0, "Text", "");
+  RNA_def_enum_funcs(prop, RNA_text_itemf);
+  RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
+  const char *strat_ui_description = "Line where the selection start";
+  prop = RNA_def_int(
+      ot->srna, "start_line", 0, 0, INT_MAX, "Start Line", strat_ui_description, 1, 10000);
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
+  prop = RNA_def_int(
+      ot->srna, "end_line", 0, 0, INT_MAX, "End Line", "Line where the selection ends", 1, 10000);
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
+  const char *star_sel_ui_description = "Byte where the selection starts in the Start Line";
+  prop = RNA_def_int(
+      ot->srna, "start_sel", 0, 0, INT_MAX, "Selection start", star_sel_ui_description, 1, 10000);
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
+  const char *end_sel_ui_description = "Byte where the selection ends in the End Line";
+  prop = RNA_def_int(
+      ot->srna, "end_sel", 0, 0, INT_MAX, "Selection end", end_sel_ui_description, 1, 10000);
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 
 /** \} */
