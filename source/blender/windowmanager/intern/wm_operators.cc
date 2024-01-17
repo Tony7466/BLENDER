@@ -53,7 +53,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_query.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -1542,7 +1542,7 @@ ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
                   "Cannot read %s '%s': %s",
                   BKE_idtype_idcode_to_name(idcode),
                   filepath,
-                  errno ? strerror(errno) : TIP_("unsupported format"));
+                  errno ? strerror(errno) : RPT_("unsupported format"));
       return nullptr;
     }
 
