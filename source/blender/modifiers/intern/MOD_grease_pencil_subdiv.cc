@@ -125,14 +125,14 @@ static void modify_geometry_set(ModifierData *md,
     return;
   }
 
-  GreasePencil &gp = *geometry_set->get_grease_pencil_for_write();
+  GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
   const int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      gp, mmd->influence, mask_memory);
+      grease_pencil, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(gp, layer_mask, current_frame);
+      modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
     deform_drawing(md, ctx->depsgraph, ctx->object, *drawing);
