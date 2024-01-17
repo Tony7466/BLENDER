@@ -130,11 +130,12 @@ static void modify_geometry_set(ModifierData *md,
   }
 
   IndexMaskMemory mask_memory;
-  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(*gp, mmd->influence, mask_memory);
-  const Vector<bke::greasepencil::Drawing*> drawings =
+  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
+      *gp, mmd->influence, mask_memory);
+  const Vector<bke::greasepencil::Drawing *> drawings =
       modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
 
-  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing* drawing) {
+  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
     deform_stroke(md, ctx->depsgraph, ctx->object, drawing);
   });
 }
