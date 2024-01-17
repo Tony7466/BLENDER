@@ -131,11 +131,12 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
   bool changed = false;
 
   IndexMaskMemory mask_memory;
-  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(*gp, mmd->influence, mask_memory);
-  const Vector<bke::greasepencil::Drawing*> drawings =
+  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
+      *gp, mmd->influence, mask_memory);
+  const Vector<bke::greasepencil::Drawing *> drawings =
       modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
 
-  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing* drawing) {
+  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
     bke::CurvesGeometry &curves = drawing->strokes_for_write();
     if (curves.points_num() == 0) {
       return;
@@ -226,7 +227,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(row, ptr, "use_edit_position", UI_ITEM_R_TOGGLE, IFACE_("Position"), ICON_NONE);
   uiItemR(row, ptr, "use_edit_strength", UI_ITEM_R_TOGGLE, IFACE_("Strength"), ICON_NONE);
   uiItemR(row, ptr, "use_edit_thickness", UI_ITEM_R_TOGGLE, IFACE_("Thickness"), ICON_NONE);
-  
+
   /* TODO: UV not implemented yet in GPv3. */
   // uiItemR(row, ptr, "use_edit_uv", UI_ITEM_R_TOGGLE, IFACE_("UV"), ICON_NONE);
 
