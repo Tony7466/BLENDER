@@ -1836,6 +1836,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
+    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves_src, memory);
     if (selected_points.is_empty()) {
       continue;
     }
@@ -1854,16 +1855,18 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     }
     else {
       /* For existing Layers append the strokes to new CurvesGeometry. */
+      Layer layer_src = *grease_pencil.layers()[info.layer_index];
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
       bke::CurvesGeometry &curves_dst = drawing_dst.strokes_for_write();
       /* Resize target geometry to fit new strokes. */
       int p_src = drawing_dst.geometry.point_num;
       int c_src = drawing_dst.geometry.curve_num;
-      int p_dst = curves_src.points_num();
-      int c_dst = curves_src.curves_num();
-      points_num = points_num + p_src + p_dst;
-      curves_num = curves_num + c_src + c_dst;
-      curves_dst.resize(points_num, curves_num);
+      int p_dst = selected_points.size();
+      int c_dst = selected_curves.size();
+
+      points_num += p_src + p_dst;
+      curves_num += c_src + c_dst;
+      curves_dst.resize(points_num, curves_num + 1);
 
       /* TODO: Append geometry to target layer. */
       // Vector<bke::GeometrySet> geometry_sets = {curves_src};
@@ -1878,9 +1881,11 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     changed = true;
   };
 
-  /* updates */
-  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  if (changed) {
+    /* updates */
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  }
 
   return OPERATOR_FINISHED;
 }
