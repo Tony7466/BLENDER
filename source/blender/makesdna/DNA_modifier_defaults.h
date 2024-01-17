@@ -801,15 +801,16 @@
     .mat_ofs = 0, \
   }
 
+#define _DNA_DEFAULT_GreasePencilOpacityModifierData \
+  { \
+    .color_mode = MOD_GREASE_PENCIL_COLOR_BOTH, \
+    .color_factor = 1.0f, \
+    .hardness_factor = 1.0f, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilSubdivModifierData \
   { \
-    .material = NULL, \
-    .layername = "", \
-    .pass_index = 0, \
-    .flag = 0, \
     .level = 1, \
-    .layer_pass = 0, \
-    .type = 0, \
   }
 
 /* clang-format off */
