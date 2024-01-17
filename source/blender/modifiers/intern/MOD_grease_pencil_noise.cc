@@ -176,15 +176,16 @@ static void deform_stroke(ModifierData *md,
 
   MutableSpan<float> radii;
   MutableSpan<float> opacities;
-  Array<float> noise_table_position = noise_table(noise_len, int(floor(mmd->noise_offset)), seed + 2);
+  Array<float> noise_table_position = noise_table(
+      noise_len, int(floor(mmd->noise_offset)), seed + 2);
   Array<float> noise_table_strength;
   Array<float> noise_table_thickness;
 
-  if(mmd->factor_thickness){
+  if (mmd->factor_thickness) {
     radii = drawing.radii_for_write();
     noise_table_thickness = noise_table(noise_len, int(floor(mmd->noise_offset)), seed);
   }
-  if(mmd->factor_strength){
+  if (mmd->factor_strength) {
     opacities = drawing.opacities_for_write();
     noise_table_strength = noise_table(noise_len, int(floor(mmd->noise_offset)), seed + 3);
   }
@@ -216,7 +217,7 @@ static void deform_stroke(ModifierData *md,
         float noise = table_sample(noise_table_thickness,
                                    point * noise_scale + fractf(mmd->noise_offset));
         radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd->factor_thickness,
-                                0.0f);
+                                  0.0f);
       }
 
       if (mmd->factor_strength > 0.0f) {
