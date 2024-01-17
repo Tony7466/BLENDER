@@ -51,7 +51,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-using namespace blender;
+namespace blender {
 
 static void init_data(ModifierData *md)
 {
@@ -98,23 +98,19 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 static void deform_stroke(ModifierData *md,
                           Depsgraph * /*depsgraph*/,
                           Object *ob,
-                          bke::greasepencil::Drawing *drawing)
+                          bke::greasepencil::Drawing &drawing)
 {
   GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
 
-  if (mmd->level < 1) {
-    return;
-  }
-
   IndexMaskMemory memory;
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
-      ob, drawing->strokes_for_write(), mmd->influence, memory);
+      ob, drawing.strokes_for_write(), mmd->influence, memory);
 
-  VArray<int> cuts = VArray<int>::ForSingle(mmd->level, drawing->strokes().points_num());
+  VArray<int> cuts = VArray<int>::ForSingle(mmd->level, drawing.strokes().points_num());
 
-  drawing->strokes_for_write() = geometry::subdivide_curves(
-      drawing->strokes(), strokes, std::move(cuts), {});
-  drawing->tag_topology_changed();
+  drawing.strokes_for_write() = geometry::subdivide_curves(
+      drawing.strokes(), strokes, std::move(cuts), {});
+  drawing.tag_topology_changed();
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -122,21 +118,22 @@ static void modify_geometry_set(ModifierData *md,
                                 bke::GeometrySet *geometry_set)
 {
   GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
-  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
-  const int frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
-  if (!gp) {
+  if (mmd->level < 1 || !geometry_set->has_grease_pencil()) {
     return;
   }
 
+  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
+  const int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
+
   IndexMaskMemory mask_memory;
-  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
+  const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       *gp, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
+      modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_stroke(md, ctx->depsgraph, ctx->object, drawing);
+    deform_stroke(md, ctx->depsgraph, ctx->object, *drawing);
   });
 }
 
@@ -173,9 +170,11 @@ static void panel_register(ARegionType *region_type)
   modifier_panel_register(region_type, eModifierType_GreasePencilSubdiv, panel_draw);
 }
 
+}  // namespace blender
+
 ModifierTypeInfo modifierType_GreasePencilSubdiv = {
-    /*idname*/ "Grese Pencil Subdiv Modifier",
-    /*name*/ N_("Subdiv Modifier"),
+    /*idname*/ "GreasePencilSubdivModifier",
+    /*name*/ N_("Subdivide"),
     /*struct_name*/ "GreasePencilSubdivModifierData",
     /*struct_size*/ sizeof(GreasePencilSubdivModifierData),
     /*srna*/ &RNA_GreasePencilSubdivModifier,
@@ -183,26 +182,26 @@ ModifierTypeInfo modifierType_GreasePencilSubdiv = {
     /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
     /*icon*/ ICON_MOD_SUBSURF,
 
-    /*copy_data*/ copy_data,
+    /*copy_data*/ blender::copy_data,
 
     /*deform_verts*/ nullptr,
     /*deform_matrices*/ nullptr,
     /*deform_verts_EM*/ nullptr,
     /*deform_matrices_EM*/ nullptr,
     /*modify_mesh*/ nullptr,
-    /*modify_geometry_set*/ modify_geometry_set,
+    /*modify_geometry_set*/ blender::modify_geometry_set,
 
-    /*init_data*/ init_data,
+    /*init_data*/ blender::init_data,
     /*required_data_mask*/ nullptr,
-    /*free_data*/ free_data,
+    /*free_data*/ blender::free_data,
     /*is_disabled*/ nullptr,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
-    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_ID_link*/ blender::foreach_ID_link,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
-    /*panel_register*/ panel_register,
-    /*blend_write*/ blend_write,
-    /*blend_read*/ blend_read,
+    /*panel_register*/ blender::panel_register,
+    /*blend_write*/ blender::blend_write,
+    /*blend_read*/ blender::blend_read,
 };

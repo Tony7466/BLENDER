@@ -2487,7 +2487,6 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
-/* enum is kept in legacy dna. */
 /**
  * Common influence data for grease pencil modifiers.
  * Not all parts may be used by all modifier types.
@@ -2555,7 +2554,7 @@ typedef struct GreasePencilSubdivModifierData {
   GreasePencilModifierInfluenceData influence;
   /** `GreasePencilSubdivModifierFlag`. */
   int flag;
-  /** Factor of subdivision. */
+  /** Number of subdivisions. */
   int level;
 
   char _pad[8];

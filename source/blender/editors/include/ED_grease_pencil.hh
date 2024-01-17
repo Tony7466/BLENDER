@@ -200,12 +200,12 @@ IndexMask retrieve_editable_and_selected_elements(Object &object,
                                                   bke::AttrDomain selection_domain,
                                                   IndexMaskMemory &memory);
 
-bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
-                                        const Span<float> radii,
-                                        const Span<float> opacities,
-                                        const Span<int> offsets,
-                                        const Span<int> materials,
-                                        const float4x4 &matrix);
+static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
+                                               const Span<float> radii,
+                                               const Span<float> opacities,
+                                               const Span<int> offsets,
+                                               const Span<int> materials,
+                                               const float4x4 &matrix);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
