@@ -6,24 +6,25 @@
  * \ingroup modifiers
  */
 
-#include "BLI_utildefines.h"
-#include "BLI_task.h"
-#include "BLI_math_matrix.h"
-#include "BLI_math_vector.hh"
-#include "BLI_math_matrix.hh"
-#include "BLI_string_ref.hh"
 #include "BLI_hash.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_vector.hh"
+#include "BLI_string_ref.hh"
+#include "BLI_task.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BLO_read_write.hh"
 
 #include "DNA_defaults.h"
-#include "DNA_material_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
+#include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_colortools.hh"
@@ -31,11 +32,11 @@
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
 #include "BKE_customdata.hh"
-#include "BKE_grease_pencil.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
@@ -52,8 +53,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_prototypes.h"
 #include "RNA_access.hh"
+#include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -153,12 +154,12 @@ static void deform_stroke(ModifierData *md,
   IndexMaskMemory memory;
   const IndexMask filtered_strokes = modifier::greasepencil::get_filtered_stroke_mask(
       ob, strokes, mmd->influence, memory);
-  
+
   if (filtered_strokes.is_empty()) {
     return;
   }
 
-  filtered_strokes.foreach_index([&](const int stroke_i){
+  filtered_strokes.foreach_index([&](const int stroke_i) {
     int point_count = curves[stroke_i].size();
     int seed = mmd->seed;
     int stroke_seed = stroke_i;
@@ -187,13 +188,15 @@ static void deform_stroke(ModifierData *md,
                                       noise_table(len, int(floor(mmd->noise_offset)), seed + 3) :
                                       nullptr;
     float *noise_table_thickness = (mmd->factor_thickness > 0.0f) ?
-                                      noise_table(len, int(floor(mmd->noise_offset)), seed) :
-                                      nullptr;
-    float *noise_table_uvs = (mmd->factor_uvs > 0.0f) ?
-                                noise_table(len, int(floor(mmd->noise_offset)), seed + 4) :
-                                nullptr;
+                                       noise_table(len, int(floor(mmd->noise_offset)), seed) :
+                                       nullptr;
 
-    for (const int local_point : curves[stroke_i].index_range()){
+    // TODO: UV not implemented yet in GPv3.
+    // float *noise_table_uvs = (mmd->factor_uvs > 0.0f) ?
+    //                            noise_table(len, int(floor(mmd->noise_offset)), seed + 4) :
+    //                            nullptr;
+
+    for (const int local_point : curves[stroke_i].index_range()) {
       int point = local_point + curves[stroke_i].start();
 
       float weight = 1.0f;
@@ -217,7 +220,7 @@ static void deform_stroke(ModifierData *md,
         }
         else {
           /* Last point reuse the penultimate normal (still stored in vec1)
-          * because the previous point is already modified. */
+           * because the previous point is already modified. */
         }
 
         /* Vector orthogonal to normal. */
@@ -225,52 +228,60 @@ static void deform_stroke(ModifierData *md,
         vec2 = math::normalize(vec2);
 
         float noise = table_sample(noise_table_position,
-                                  local_point * noise_scale + fractf(mmd->noise_offset));
+                                   local_point * noise_scale + fractf(mmd->noise_offset));
         positions[point] += vec2 * (noise * 2.0f - 1.0f) * weight * mmd->factor * 0.1f;
       }
 
       if (mmd->factor_thickness > 0.0f) {
         float noise = table_sample(noise_table_thickness,
-                                  local_point * noise_scale + fractf(mmd->noise_offset));
-        radiis[point] *= max_ff(1.0f + (noise * 2.0f - 1.0f) * weight * mmd->factor_thickness, 0.0f);
+                                   local_point * noise_scale + fractf(mmd->noise_offset));
+        radiis[point] *= max_ff(1.0f + (noise * 2.0f - 1.0f) * weight * mmd->factor_thickness,
+                                0.0f);
         CLAMP_MIN(radiis[point], GPENCIL_STRENGTH_MIN);
       }
 
       if (mmd->factor_strength > 0.0f) {
         float noise = table_sample(noise_table_strength,
-                                  local_point * noise_scale + fractf(mmd->noise_offset));
+                                   local_point * noise_scale + fractf(mmd->noise_offset));
         opacities[point] *= max_ff(1.0f - noise * weight * mmd->factor_strength, 0.0f);
         CLAMP(radiis[point], GPENCIL_STRENGTH_MIN, 1.0f);
       }
 
       // TODO: UV not implemented yet in GPv3.
-      //if (mmd->factor_uvs > 0.0f) {
-      //  float noise = table_sample(noise_table_uvs, point * noise_scale + fractf(mmd->noise_offset));
-      //  pt->uv_rot += (noise * 2.0f - 1.0f) * weight * mmd->factor_uvs * M_PI_2;
-      //  CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
+      // if (mmd->factor_uvs > 0.0f) {
+      //  float noise = table_sample(noise_table_uvs, point * noise_scale +
+      //  fractf(mmd->noise_offset)); pt->uv_rot += (noise * 2.0f - 1.0f) * weight *
+      //  mmd->factor_uvs * M_PI_2; CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
       //}
     }
 
     MEM_SAFE_FREE(noise_table_position);
     MEM_SAFE_FREE(noise_table_strength);
     MEM_SAFE_FREE(noise_table_thickness);
-    MEM_SAFE_FREE(noise_table_uvs);
-
+    // MEM_SAFE_FREE(noise_table_uvs);
   });
 }
-
 
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 blender::bke::GeometrySet *geometry_set)
 {
-    GreasePencil *gp=geometry_set->get_grease_pencil_for_write();
-    if (!gp){ return; }
-    
-  Array<ed::greasepencil::MutableDrawingInfo> drawings = ed::greasepencil::retrieve_editable_drawings(*DEG_get_evaluated_scene(ctx->depsgraph),*gp);
+  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
+  int frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
-  threading::parallel_for_each(drawings,[&](const ed::greasepencil::MutableDrawingInfo &info){
-    deform_stroke(md,ctx->depsgraph,ctx->object,&info.drawing);
+  if (!gp) {
+    return;
+  }
+
+  IndexMaskMemory mask_memory;
+  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
+      *gp, mmd->influence, mask_memory);
+  const Vector<bke::greasepencil::Drawing *> drawings =
+      modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
+
+  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
+    deform_stroke(md, ctx->depsgraph, ctx->object, drawing);
   });
 }
 
@@ -281,7 +292,7 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
 
-static void panel_draw(const bContext * C, Panel *panel)
+static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;

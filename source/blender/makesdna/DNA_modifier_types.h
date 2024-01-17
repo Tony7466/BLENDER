@@ -2575,4 +2575,3 @@ typedef struct GreasePencilNoiseModifierData {
 
   void *_pad1;
 } GreasePencilNoiseModifierData;
-

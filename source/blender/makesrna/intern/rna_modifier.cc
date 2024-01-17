@@ -12,12 +12,12 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_cachefile_types.h"
+#include "DNA_gpencil_modifier_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_gpencil_modifier_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -7620,7 +7620,7 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-    static const EnumPropertyItem color_mode_items[] = {
+  static const EnumPropertyItem color_mode_items[] = {
       {MOD_GREASE_PENCIL_COLOR_BOTH, "BOTH", 0, "Stroke & Fill", "Modify fill and stroke colors"},
       {MOD_GREASE_PENCIL_COLOR_STROKE, "STROKE", 0, "Stroke", "Modify stroke color only"},
       {MOD_GREASE_PENCIL_COLOR_FILL, "FILL", 0, "Fill", "Modify fill color only"},
