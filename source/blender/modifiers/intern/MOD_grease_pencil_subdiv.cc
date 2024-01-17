@@ -23,6 +23,7 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
@@ -120,16 +121,21 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
+  GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
   GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
+  const int frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
+
   if (!gp) {
     return;
   }
 
-  Array<ed::greasepencil::MutableDrawingInfo> drawings =
-      ed::greasepencil::retrieve_editable_drawings(*DEG_get_evaluated_scene(ctx->depsgraph), *gp);
+  IndexMaskMemory mask_memory;
+  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(*gp, mmd->influence, mask_memory);
+  const Vector<bke::greasepencil::Drawing*> drawings =
+      modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
 
-  threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &drawing) {
-    deform_stroke(md, ctx->depsgraph, ctx->object, &drawing.drawing);
+  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing* drawing) {
+    deform_stroke(md, ctx->depsgraph, ctx->object, drawing);
   });
 }
 
