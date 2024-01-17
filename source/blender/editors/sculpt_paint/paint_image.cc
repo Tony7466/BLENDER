@@ -630,10 +630,10 @@ static void sample_color_update_header(SampleColorData *data, bContext *C)
   ScrArea *area = CTX_wm_area(C);
 
   if (area) {
-    SNPRINTF(msg,
-             RPT_("Sample color for %s"),
-             !data->sample_palette ? RPT_("Brush. Use Left Click to sample for palette instead") :
-                                     RPT_("Palette. Use Left Click to sample more colors"));
+    STRNCPY(msg,
+            data->sample_palette ?
+                IFACE_("Sample color for palette. Use Left Click to sample more colors") :
+                IFACE_("Sample color for brush. Use Left Click to sample for palette instead"));
     ED_workspace_status_text(C, msg);
   }
 }
