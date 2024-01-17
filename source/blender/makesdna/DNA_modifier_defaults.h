@@ -801,13 +801,15 @@
     .mat_ofs = 0, \
   }
 
+#define _DNA_DEFAULT_GreasePencilOpacityModifierData \
+  { \
+    .color_mode = MOD_GREASE_PENCIL_COLOR_BOTH, \
+    .color_factor = 1.0f, \
+    .hardness_factor = 1.0f, \
+  }
 
 #define _DNA_DEFAULT_GreasePencilNoiseModifierData \
   { \
-    .material = NULL, \
-    .layername = "", \
-    .vgname = "", \
-    .pass_index = 0, \
     .flag = GP_NOISE_FULL_STROKE | GP_NOISE_USE_RANDOM, \
     .factor = 0.5f, \
     .factor_strength = 0.0f, \
@@ -816,9 +818,7 @@
     .noise_scale = 0.0f, \
     .noise_offset = 0.0f, \
     .step = 4, \
-    .layer_pass = 0, \
     .seed = 1, \
-    .curve_intensity = NULL, \
   }
 
 /* clang-format off */
