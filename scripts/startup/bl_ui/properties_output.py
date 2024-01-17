@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.app.handlers import persistent
 from bpy.types import Menu, Panel, UIList
 from bl_ui.utils import PresetPanel
 
@@ -616,18 +615,6 @@ classes = (
     RENDER_UL_renderviews,
     RENDER_PT_post_processing,
 )
-
-
-@persistent
-def translation_update(_):
-    """Update the Frame Rate custom value on language settings update.
-
-    Bypass the caching mechanism in the Format panel to make sure it is properly translated on language update.
-    """
-    RENDER_PT_format._frame_rate_args_prev = None
-
-bpy.app.handlers.translation_change_post.append(translation_update)
-
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class

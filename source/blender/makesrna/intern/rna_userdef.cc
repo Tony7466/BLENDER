@@ -324,7 +324,7 @@ static void rna_userdef_font_update(Main * /*bmain*/, Scene * /*scene*/, Pointer
   UI_reinit_font();
 }
 
-static void rna_userdef_language_update(Main *bmain, Scene *scene, PointerRNA * /*ptr*/)
+static void rna_userdef_language_update(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   BLT_lang_set(nullptr);
 
@@ -336,13 +336,13 @@ static void rna_userdef_language_update(Main *bmain, Scene *scene, PointerRNA * 
     U.transopts |= (USER_TR_IFACE | USER_TR_TOOLTIPS | USER_TR_REPORTS | USER_TR_NEWDATANAME);
   }
 
-  BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_TRANSLATION_CHANGE_POST);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_TRANSLATION_UPDATE_POST);
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_translation_update(Main *bmain, Scene *scene, PointerRNA * /*ptr*/)
+static void rna_userdef_translation_update(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
-  BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_TRANSLATION_CHANGE_POST);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_TRANSLATION_UPDATE_POST);
   WM_main_add_notifier(NC_WINDOW, nullptr);
   USERDEF_TAG_DIRTY;
 }
