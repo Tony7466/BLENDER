@@ -160,7 +160,7 @@ static int pack_all_exec(bContext *C, wmOperator *op)
 static void pack_all_confirm(bContext * /* C */, wmOperator * /* op */, wmConfirmDetails *confirm)
 {
   STRNCPY(confirm->message,
-          IFACE_("Some images are mofified. These changes will be lost. Continue?"));
+          IFACE_("Some images are modified. These changes will be lost. Continue?"));
   STRNCPY(confirm->confirm_button, IFACE_("Pack"));
 }
 
