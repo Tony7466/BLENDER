@@ -1266,10 +1266,15 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
 
     if (UI_but_online_manual_id(but, buf, sizeof(buf))) {
       PointerRNA ptr_props;
-      uiItemO(layout,
-              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Online Manual"),
-              ICON_URL,
-              "WM_OT_doc_view_manual_ui_context");
+      uiItemFullO(layout,
+                  "WM_OT_doc_view_manual",
+                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Online Manual"),
+                  ICON_NONE,
+                  nullptr,
+                  WM_OP_EXEC_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr_props);
+      RNA_string_set(&ptr_props, "doc_id", buf);
 
       if (U.flag & USER_DEVELOPER_UI) {
         uiItemFullO(layout,
