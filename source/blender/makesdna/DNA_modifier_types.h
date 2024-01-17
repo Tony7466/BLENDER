@@ -2487,7 +2487,6 @@ typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
 
-/* Enum in old dna file. */
 /**
  * Common influence data for grease pencil modifiers.
  * Not all parts may be used by all modifier types.
