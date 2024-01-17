@@ -8305,6 +8305,16 @@ static void def_cmp_trackpos(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_cmp_pixelate(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "pixel_size", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "custom1");
+  RNA_def_property_ui_text(prop, "Pixel Size", "Pixel size of the output image");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_cmp_translate(StructRNA *srna)
 {
   static const EnumPropertyItem translate_items[] = {

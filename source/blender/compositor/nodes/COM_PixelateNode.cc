@@ -16,6 +16,8 @@ PixelateNode::PixelateNode(bNode *editor_node) : Node(editor_node)
 void PixelateNode::convert_to_operations(NodeConverter &converter,
                                          const CompositorContext & /*context*/) const
 {
+  const bNode *editor_node = this->get_bnode();
+
   NodeInput *input_socket = this->get_input_socket(0);
   NodeOutput *output_socket = this->get_output_socket(0);
   DataType datatype = input_socket->get_data_type();
@@ -27,6 +29,8 @@ void PixelateNode::convert_to_operations(NodeConverter &converter,
 
   PixelateOperation *operation = new PixelateOperation(datatype);
   converter.add_operation(operation);
+
+  operation->set_pixel_size(editor_node->custom1);
 
   converter.map_input_socket(input_socket, operation->get_input_socket(0));
   converter.map_output_socket(output_socket, operation->get_output_socket(0));
