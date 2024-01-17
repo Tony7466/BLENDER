@@ -8,6 +8,7 @@
 
 #include <iostream>
 
+#include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
@@ -26,6 +27,7 @@
 #include "BLI_map.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_memarena.h"
 #include "BLI_memory_utils.hh"
@@ -35,6 +37,7 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_string_utils.hh"
+#include "BLI_task.hh"
 #include "BLI_vector_set.hh"
 #include "BLI_virtual_array.hh"
 
@@ -44,6 +47,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
+#include "DNA_action_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
@@ -645,6 +649,9 @@ Layer::Layer()
 
   this->opacity = 1.0f;
 
+  this->parent = nullptr;
+  this->parsubstr[0] = '\0';
+
   BLI_listbase_clear(&this->masks);
 
   this->runtime = MEM_new<LayerRuntime>(__func__);
@@ -665,6 +672,10 @@ Layer::Layer(const Layer &other) : Layer()
 
   this->blend_mode = other.blend_mode;
   this->opacity = other.opacity;
+
+  this->parent = other.parent;
+  BLI_strncpy(
+      this->parsubstr, other.parsubstr, sizeof(this->parsubstr) / sizeof(*this->parsubstr));
 
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
@@ -883,6 +894,16 @@ void Layer::tag_frames_map_keys_changed()
 {
   this->tag_frames_map_changed();
   this->runtime->sorted_keys_cache_.tag_dirty();
+}
+
+float4x4 Layer::parent_matrix() const
+{
+  return this->runtime->parent_matrix_;
+}
+
+void Layer::set_parent_matrix(const float4x4 &matrix)
+{
+  this->runtime->parent_matrix_ = matrix;
 }
 
 LayerGroup::LayerGroup()
@@ -1181,6 +1202,44 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
   return grease_pencil;
 }
 
+static void grease_pencil_update_layer_matrices(GreasePencil &grease_pencil)
+{
+  using namespace blender::bke::greasepencil;
+  for (Layer *layer : grease_pencil.layers_for_write()) {
+    if (layer->parent == nullptr) {
+      continue;
+    }
+    Object &parent = *layer->parent;
+    if (parent.type == OB_ARMATURE && layer->parsubstr[0] != '\0') {
+      if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer->parsubstr)) {
+        layer->set_parent_matrix(blender::float4x4_view(parent.object_to_world) *
+                                 blender::float4x4_view(channel->pose_mat));
+      }
+      else {
+        layer->set_parent_matrix(blender::float4x4_view(parent.object_to_world));
+      }
+    }
+    else {
+      layer->set_parent_matrix(blender::float4x4_view(parent.object_to_world));
+    }
+  }
+}
+
+static void grease_pencil_apply_layer_transforms(GreasePencil &grease_pencil)
+{
+  using namespace blender::bke::greasepencil;
+  for (const int layer_i : grease_pencil.layers().index_range()) {
+    const Layer &layer = *grease_pencil.layers()[layer_i];
+    if (layer.parent == nullptr) {
+      continue;
+    }
+    if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil, layer_i))
+    {
+      drawing->strokes_for_write().transform(layer.parent_matrix());
+    }
+  }
+}
+
 static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
                                              Scene *scene,
                                              Object *object,
@@ -1222,7 +1281,6 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
 
-  /* Evaluate modifiers. */
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
   /* Store the frame that this grease pencil is evaluated on. */
   grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
@@ -1236,12 +1294,16 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     edit_component.grease_pencil_edit_hints_ = std::make_unique<GreasePencilEditHints>(
         *static_cast<const GreasePencil *>(DEG_get_original_object(object)->data));
   }
+  grease_pencil_update_layer_matrices(*geometry_set.get_grease_pencil_for_write());
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
   if (!geometry_set.has_grease_pencil()) {
     GreasePencil *empty_grease_pencil = BKE_grease_pencil_new_nomain();
     empty_grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
     geometry_set.replace_grease_pencil(empty_grease_pencil);
+  }
+  else {
+    grease_pencil_apply_layer_transforms(*geometry_set.get_grease_pencil_for_write());
   }
 
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
@@ -1619,8 +1681,8 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
 
   /* Create the new frame structure, with the same duration.
    * If we want to make an instance of the source frame, the drawing index gets copied from the
-   * source frame. Otherwise, we set the drawing index to the size of the drawings array, since we
-   * are going to add a new drawing copied from the source drawing. */
+   * source frame. Otherwise, we set the drawing index to the size of the drawings array, since
+   * we are going to add a new drawing copied from the source drawing. */
   const int duration = src_frame.is_implicit_hold() ?
                            0 :
                            layer.get_frame_duration_at(src_frame_number);
@@ -1645,8 +1707,8 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
       }
       else {
         /* Create a copy of the drawing, and add it at the end of the drawings array.
-         * Note that the frame already points to this new drawing, as the drawing index was set to
-         * `int(this->drawings().size())`. */
+         * Note that the frame already points to this new drawing, as the drawing index was set
+         * to `int(this->drawings().size())`. */
         this->add_duplicate_drawings(1, src_drawing);
       }
       break;
@@ -1719,8 +1781,8 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
     return next_available_index;
   };
 
-  /* Move the drawings to be removed to the end of the array by swapping the pointers. Make sure to
-   * remap any frames pointing to the drawings being swapped. */
+  /* Move the drawings to be removed to the end of the array by swapping the pointers. Make sure
+   * to remap any frames pointing to the drawings being swapped. */
   for (const int64_t index_to_remove : sorted_indices_to_remove) {
     if (index_to_remove >= last_drawings_range.first()) {
       /* This drawing and all the next drawings are already in the range to be removed. */
@@ -2474,9 +2536,9 @@ static void read_layer_tree(GreasePencil &grease_pencil, BlendDataReader *reader
 {
   /* Read root group. */
   BLO_read_data_address(reader, &grease_pencil.root_group_ptr);
-  /* This shouldn't normally happen, but for files that were created before the root group became a
-   * pointer, this address will not exist. In this case, we clear the pointer to the active layer
-   * and create an empty root group to avoid crashes. */
+  /* This shouldn't normally happen, but for files that were created before the root group became
+   * a pointer, this address will not exist. In this case, we clear the pointer to the active
+   * layer and create an empty root group to avoid crashes. */
   if (grease_pencil.root_group_ptr == nullptr) {
     grease_pencil.root_group_ptr = MEM_new<blender::bke::greasepencil::LayerGroup>(__func__);
     grease_pencil.active_layer = nullptr;

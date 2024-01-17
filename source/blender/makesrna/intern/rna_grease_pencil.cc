@@ -25,6 +25,7 @@
 #  include "BLI_span.hh"
 
 #  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 static GreasePencil *rna_grease_pencil(const PointerRNA *ptr)
 {
@@ -34,7 +35,14 @@ static GreasePencil *rna_grease_pencil(const PointerRNA *ptr)
 static void rna_grease_pencil_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   DEG_id_tag_update(&rna_grease_pencil(ptr)->id, ID_RECALC_GEOMETRY);
-  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
+}
+
+static void rna_grease_pencil_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  DEG_id_tag_update(&rna_grease_pencil(ptr)->id, ID_RECALC_TRANSFORM);
+  DEG_relations_tag_update(bmain);
+  WM_main_add_notifier(NC_OBJECT | ND_PARENT, rna_grease_pencil(ptr));
 }
 
 static void rna_iterator_grease_pencil_layers_begin(CollectionPropertyIterator *iter,
@@ -223,6 +231,20 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Onion Skinning", "Display onion skins before and after the current frame");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Object");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(prop, "Parent", "Parent object");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_dependency_update");
+
+  prop = RNA_def_property(srna, "parent_bone", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "parsubstr");
+  RNA_def_property_string_maxlength(prop, 64);
+  RNA_def_property_ui_text(
+      prop, "Parent Bone", "Name of parent bone. Only used when the parent object is an armature");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_dependency_update");
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)

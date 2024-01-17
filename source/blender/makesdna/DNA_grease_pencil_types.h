@@ -292,6 +292,11 @@ typedef struct GreasePencilLayer {
    */
   ListBase masks;
   /**
+   * Layer parent object. Can be an armature in which case the `parsubstr` is the bone name.
+   */
+  struct Object *parent;
+  char parsubstr[64];
+  /**
    * Runtime struct pointer.
    */
   GreasePencilLayerRuntimeHandle *runtime;

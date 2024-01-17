@@ -333,6 +333,9 @@ class LayerRuntime {
 
   /* Runtime data used for frame transformations. */
   LayerTransformData trans_data_;
+
+  /* Parent matrix if this layer is parented to an object or bone. */
+  float4x4 parent_matrix_ = float4x4::identity();
 };
 
 /**
@@ -432,6 +435,12 @@ class Layer : public ::GreasePencilLayer {
    * added, removed or updated.
    */
   void tag_frames_map_keys_changed();
+
+  /**
+   * Return the parent matrix of this layer.
+   */
+  float4x4 parent_matrix() const;
+  void set_parent_matrix(const float4x4 &matrix);
 
  private:
   using SortedKeysIterator = const int *;
