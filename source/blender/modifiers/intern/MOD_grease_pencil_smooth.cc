@@ -190,20 +190,6 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
       radii.finish();
       changed = true;
     }
-    if (smooth_radius && info.drawing.radii().is_span()) {
-      bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-      ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                                               point_selection,
-                                               cyclic,
-                                               strokes,
-                                               iterations,
-                                               influence,
-                                               smooth_ends,
-                                               false,
-                                               radii.span);
-      radii.finish();
-      changed = true;
-    }
   });
 
   if (changed) {
@@ -234,7 +220,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(row, ptr, "use_edit_position", UI_ITEM_R_TOGGLE, IFACE_("Position"), ICON_NONE);
   uiItemR(row, ptr, "use_edit_strength", UI_ITEM_R_TOGGLE, IFACE_("Strength"), ICON_NONE);
   uiItemR(row, ptr, "use_edit_thickness", UI_ITEM_R_TOGGLE, IFACE_("Thickness"), ICON_NONE);
-  uiItemR(row, ptr, "use_edit_uv", UI_ITEM_R_TOGGLE, IFACE_("UV"), ICON_NONE);
+  
+  /* TODO: UV not implemented yet in GPv3. */
+  // uiItemR(row, ptr, "use_edit_uv", UI_ITEM_R_TOGGLE, IFACE_("UV"), ICON_NONE);
 
   uiLayoutSetPropSep(layout, true);
 
