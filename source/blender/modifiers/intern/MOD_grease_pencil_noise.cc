@@ -63,7 +63,7 @@ namespace blender {
 
 static void init_data(ModifierData *md)
 {
-  GreasePencilNoiseModifierData *gpmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencilNoiseModifierData *gpmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
 
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
@@ -73,15 +73,16 @@ static void init_data(ModifierData *md)
 
 static void free_data(ModifierData *md)
 {
-  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
 
   modifier::greasepencil::free_influence_data(&mmd->influence);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, int flag)
 {
-  GreasePencilNoiseModifierData *gmd = (GreasePencilNoiseModifierData *)md;
-  GreasePencilNoiseModifierData *tgmd = (GreasePencilNoiseModifierData *)target;
+  const GreasePencilNoiseModifierData *gmd =
+      reinterpret_cast<const GreasePencilNoiseModifierData *>(md);
+  GreasePencilNoiseModifierData *tgmd = reinterpret_cast<GreasePencilNoiseModifierData *>(target);
 
   BKE_modifier_copydata_generic(md, target, flag);
   modifier::greasepencil::copy_influence_data(&gmd->influence, &tgmd->influence, flag);
@@ -89,7 +90,8 @@ static void copy_data(const ModifierData *md, ModifierData *target, int flag)
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
-  const GreasePencilNoiseModifierData *mmd = (const GreasePencilNoiseModifierData *)md;
+  const GreasePencilNoiseModifierData *mmd =
+      reinterpret_cast<const GreasePencilNoiseModifierData *>(md);
 
   BLO_write_struct(writer, GreasePencilNoiseModifierData, mmd);
   modifier::greasepencil::write_influence_data(writer, &mmd->influence);
@@ -97,13 +99,13 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
-  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
 static bool depends_on_time(Scene * /*scene*/, ModifierData *md)
 {
-  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
   return (mmd->flag & GP_NOISE_USE_RANDOM) != 0;
 }
 
@@ -124,17 +126,17 @@ BLI_INLINE float table_sample(Array<float> &table, float x)
 /**
  * Apply noise effect based on stroke direction.
  */
-static void deform_stroke(ModifierData *md,
-                          Depsgraph *depsgraph,
-                          Object *ob,
-                          bke::greasepencil::Drawing &drawing)
+static void deform_drawing(ModifierData *md,
+                           Depsgraph *depsgraph,
+                           Object *ob,
+                           bke::greasepencil::Drawing &drawing)
 {
   bke::CurvesGeometry &strokes = drawing.strokes_for_write();
   if (strokes.points_num() == 0) {
     return;
   }
 
-  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
 
   IndexMaskMemory memory;
   const IndexMask filtered_strokes = modifier::greasepencil::get_filtered_stroke_mask(
@@ -235,28 +237,28 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 blender::bke::GeometrySet *geometry_set)
 {
-  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
-  GreasePencil &gp = *geometry_set->get_grease_pencil_for_write();
+  GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
   int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
   IndexMaskMemory mask_memory;
   IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      gp, mmd->influence, mask_memory);
+      grease_pencil, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(gp, layer_mask, current_frame);
+      modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_stroke(md, ctx->depsgraph, ctx->object, *drawing);
+    deform_drawing(md, ctx->depsgraph, ctx->object, *drawing);
   });
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
-  GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
+  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
