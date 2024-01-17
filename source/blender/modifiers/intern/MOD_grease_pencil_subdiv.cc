@@ -70,7 +70,7 @@ static void free_data(ModifierData *md)
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, int flag)
-{ 
+{
   const GreasePencilSubdivModifierData *gmd =
       reinterpret_cast<const GreasePencilSubdivModifierData *>(md);
   GreasePencilSubdivModifierData *tgmd = reinterpret_cast<GreasePencilSubdivModifierData *>(
@@ -101,15 +101,15 @@ static void deform_stroke(ModifierData *md,
 {
   GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
 
-  if(mmd->level<1){
+  if (mmd->level < 1) {
     return;
   }
-  
+
   IndexMaskMemory memory;
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
       ob, drawing->strokes_for_write(), mmd->influence, memory);
 
-  VArray<int> cuts = VArray<int>::ForSingle(mmd->level,drawing->strokes().points_num());
+  VArray<int> cuts = VArray<int>::ForSingle(mmd->level, drawing->strokes().points_num());
 
   drawing->strokes_for_write() = geometry::subdivide_curves(
       drawing->strokes(), strokes, std::move(cuts), {});
@@ -125,10 +125,11 @@ static void modify_geometry_set(ModifierData *md,
     return;
   }
 
-  Array<ed::greasepencil::MutableDrawingInfo> drawings=ed::greasepencil::retrieve_editable_drawings(*DEG_get_evaluated_scene(ctx->depsgraph),*gp);
+  Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      ed::greasepencil::retrieve_editable_drawings(*DEG_get_evaluated_scene(ctx->depsgraph), *gp);
 
-  threading::parallel_for_each(drawings,[&](const ed::greasepencil::MutableDrawingInfo &drawing){
-    deform_stroke(md,ctx->depsgraph,ctx->object,&drawing.drawing);
+  threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &drawing) {
+    deform_stroke(md, ctx->depsgraph, ctx->object, &drawing.drawing);
   });
 }
 
@@ -139,8 +140,7 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
 
-
-static void panel_draw(const bContext * C, Panel *panel)
+static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -164,8 +164,7 @@ static void panel_draw(const bContext * C, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(
-      region_type, eModifierType_GreasePencilSubdiv, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilSubdiv, panel_draw);
 }
 
 ModifierTypeInfo modifierType_GreasePencilSubdiv = {
