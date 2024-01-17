@@ -29,6 +29,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.h"
+#include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
 #include "UI_interface.hh"
@@ -38,7 +39,7 @@
 
 #include "ED_grease_pencil.hh"
 
-#include "MOD_gpencil_legacy_ui_common.h"
+#include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
@@ -59,9 +60,7 @@ static void init_data(ModifierData *md)
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
   MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GreasePencilSmoothModifierData), modifier);
-
-  gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
-  BKE_curvemapping_init(gpmd->curve_intensity);
+  modifier::greasepencil::init_influence_data(&gpmd->influence, true);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -71,30 +70,22 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   GreasePencilSmoothModifierData *tgmd = reinterpret_cast<GreasePencilSmoothModifierData *>(
       target);
 
-  if (tgmd->curve_intensity != nullptr) {
-    BKE_curvemapping_free(tgmd->curve_intensity);
-    tgmd->curve_intensity = nullptr;
-  }
-
   BKE_modifier_copydata_generic(md, target, flag);
-
-  tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
+  modifier::greasepencil::copy_influence_data(&gmd->influence, &tgmd->influence, flag);
 }
 
 static void free_data(ModifierData *md)
 {
-  GreasePencilSmoothModifierData *gpmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
 
-  if (gpmd->curve_intensity) {
-    BKE_curvemapping_free(gpmd->curve_intensity);
-  }
+  modifier::greasepencil::free_influence_data(&mmd->influence);
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
 
-  walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
+  modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -102,12 +93,13 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
   const GreasePencilSmoothModifierData *mmd = (const GreasePencilSmoothModifierData *)md;
 
   BLO_write_struct(writer, GreasePencilSmoothModifierData, mmd);
+  modifier::greasepencil::write_influence_data(writer, &mmd->influence);
 }
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   GreasePencilSmoothModifierData *mmd = (GreasePencilSmoothModifierData *)md;
-  UNUSED_VARS(reader, mmd);
+  modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
 static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, GreasePencil *gp)
@@ -115,17 +107,16 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
   GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
 
   const Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  Object *object = ob;
   GreasePencil &grease_pencil = *gp;
 
   const int iterations = mmd->step;
   const float influence = mmd->factor;
-  const bool keep_shape = (mmd->flag & GREASE_PENCIL_SMOOTH_KEEP_SHAPE);
-  const bool smooth_ends = (mmd->flag & GREASE_PENCIL_SMOOTH_SMOOTH_ENDS);
+  const bool keep_shape = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE);
+  const bool smooth_ends = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS);
 
-  const bool smooth_position = (mmd->flag & GREASE_PENCIL_SMOOTH_MOD_LOCATION);
-  const bool smooth_radius = (mmd->flag & GREASE_PENCIL_SMOOTH_MOD_THICKNESS);
-  const bool smooth_opacity = (mmd->flag & GREASE_PENCIL_SMOOTH_MOD_STRENGTH);
+  const bool smooth_position = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION);
+  const bool smooth_radius = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS);
+  const bool smooth_opacity = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH);
 
   if (iterations <= 0 || influence <= 0) {
     return;
@@ -134,10 +125,6 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
   if (!(smooth_position || smooth_radius || smooth_opacity)) {
     return;
   }
-
-  /* TODO:
-   * 1. Vertex weight scaling of smoothing influence.
-   * 2. Layer and material filter. */
 
   bool changed = false;
   const Array<ed::greasepencil::MutableDrawingInfo> drawings =
@@ -149,8 +136,9 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
     }
 
     IndexMaskMemory memory;
-    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+    const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
+      ob, curves, mmd->influence, memory);
+
     if (strokes.is_empty()) {
       return;
     }
@@ -235,7 +223,7 @@ static void modify_geometry_set(ModifierData *md,
   deform_stroke(md, ctx->depsgraph, ctx->object, gp);
 }
 
-static void panel_draw(const bContext * /*C*/, Panel *panel)
+static void panel_draw(const bContext * C, Panel *panel)
 {
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
@@ -258,26 +246,22 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiItemR(col, ptr, "use_keep_shape", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "use_smooth_ends", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  gpencil_modifier_panel_end(layout, ptr);
-}
 
-static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
-{
-  gpencil_modifier_masking_panel_draw(panel, true, true);
+  if (uiLayout *influence_panel = uiLayoutPanel(
+          C, layout, "Influence", ptr, "open_influence_panel"))
+  {
+    modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
+    modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
+    modifier::greasepencil::draw_vertex_group_settings(C, influence_panel, ptr);
+    modifier::greasepencil::draw_custom_curve_settings(C, influence_panel, ptr);
+  }
+
+  modifier_panel_end(layout, ptr);
 }
 
 static void panel_register(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(
-      region_type, eModifierType_GreasePencilSmooth, panel_draw);
-  PanelType *mask_panel_type = modifier_subpanel_register(
-      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
-  modifier_subpanel_register(region_type,
-                             "curve",
-                             "",
-                             gpencil_modifier_curve_header_draw,
-                             gpencil_modifier_curve_panel_draw,
-                             mask_panel_type);
+  modifier_panel_register(region_type, eModifierType_GreasePencilSmooth, panel_draw);
 }
 
 ModifierTypeInfo modifierType_GreasePencilSmooth = {

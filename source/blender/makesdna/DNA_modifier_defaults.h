@@ -810,15 +810,9 @@
 
 #define _DNA_DEFAULT_GreasePencilSmoothModifierData \
   { \
-    .material = NULL, \
-    .layername = "", \
-    .vgname = "", \
-    .pass_index = 0, \
-    .flag = GREASE_PENCIL_SMOOTH_MOD_LOCATION, \
+    .flag = MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION, \
     .factor = 1.0f, \
     .step = 1, \
-    .layer_pass = 0, \
-    .curve_intensity = NULL, \
   }
 
 /* clang-format off */

@@ -2551,40 +2551,24 @@ typedef enum GreasePencilOpacityModifierFlag {
 
 typedef struct GreasePencilSmoothModifierData {
   ModifierData modifier;
-  /** Material for filtering. */
-  struct Material *material;
-  /** Layer name. */
-  char layername[64];
-  /** Material name. */
-  char materialname[64] DNA_DEPRECATED;
-  /** Optional vertex-group name, #MAX_VGROUP_NAME. */
-  char vgname[64];
-  /** Custom index for passes. */
-  int pass_index;
-  /** Several flags. */
+  GreasePencilModifierInfluenceData influence;
+  /** `eGreasePencilSmooth_Flag. */
   int flag;
   /** Factor of smooth. */
   float factor;
   /** How many times apply smooth. */
   int step;
-  /** Custom index for passes. */
-  int layer_pass;
 
-  char _pad1[4];
-  struct CurveMapping *curve_intensity;
+  char _pad[4];
+  void *_pad1;
 } GreasePencilSmoothModifierData;
 
 typedef enum eGreasePencilSmooth_Flag {
-  GREASE_PENCIL_SMOOTH_MOD_LOCATION = (1 << 0),
-  GREASE_PENCIL_SMOOTH_MOD_STRENGTH = (1 << 1),
-  GREASE_PENCIL_SMOOTH_MOD_THICKNESS = (1 << 2),
-  GREASE_PENCIL_SMOOTH_INVERT_LAYER = (1 << 3),
-  GREASE_PENCIL_SMOOTH_INVERT_PASS = (1 << 4),
-  GREASE_PENCIL_SMOOTH_INVERT_VGROUP = (1 << 5),
-  GREASE_PENCIL_SMOOTH_MOD_UV = (1 << 6),
-  GREASE_PENCIL_SMOOTH_INVERT_LAYERPASS = (1 << 7),
-  GREASE_PENCIL_SMOOTH_INVERT_MATERIAL = (1 << 4),
-  GREASE_PENCIL_SMOOTH_CUSTOM_CURVE = (1 << 8),
-  GREASE_PENCIL_SMOOTH_KEEP_SHAPE = (1 << 9),
-  GREASE_PENCIL_SMOOTH_SMOOTH_ENDS = (1 << 10),
+  MOD_GREASE_PENCIL_SMOOTH_OPEN_INFLUENCE_PANEL = (1 << 0),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION = (1 << 1),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH = (1 << 2),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS = (1 << 3),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_UV = (1 << 4),
+  MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE = (1 << 5),
+  MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS = (1 << 6),
 } eGreasePencilSmooth_Flag;
