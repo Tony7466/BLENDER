@@ -7972,125 +7972,72 @@ class VIEW3D_PT_gpencil_curve_edit(Panel):
 
 
 class VIEW3D_MT_gpencil_edit_context_menu(Menu):
-    bl_label = ""
+    bl_label = "Grease Pencil"
 
     def draw(self, context):
         layout = self.layout
-        tool_settings = context.tool_settings
-
-        is_point_mode = tool_settings.gpencil_selectmode_edit == 'POINT'
-        is_stroke_mode = tool_settings.gpencil_selectmode_edit == 'STROKE'
-        is_segment_mode = tool_settings.gpencil_selectmode_edit == 'SEGMENT'
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        row = layout.row()
+        # Subdivision
+        layout.operator("gpencil.stroke_subdivide").only_selected = True
+        layout.menu("VIEW3D_MT_gpencil_simplify")
+        layout.operator("gpencil.stroke_trim")
 
-        if is_point_mode or is_segment_mode:
-            col = row.column(align=True)
+        layout.separator()
 
-            col.label(text="Point", icon='GP_SELECT_POINTS')
-            col.separator()
+        # Deform Operators
+        layout.operator("gpencil.stroke_smooth").only_selected = True
+        layout.operator("transform.bend")
+        layout.operator("transform.shear")
+        layout.operator("transform.tosphere")
+        layout.operator("transform.transform", text="Shrink/Fatten").mode = 'GPENCIL_SHRINKFATTEN'
+        layout.operator("gpencil.stroke_start_set")
 
-            # Additive Operators
-            col.operator("gpencil.stroke_subdivide", text="Subdivide").only_selected = True
+        layout.separator()
 
-            col.separator()
+        # Extrude
+        layout.operator("gpencil.extrude_move")
 
-            col.operator("gpencil.extrude_move", text="Extrude")
+        layout.separator()
 
-            col.separator()
+        layout.menu("VIEW3D_MT_mirror")
+        layout.menu("GPENCIL_MT_snap")
 
-            # Deform Operators
-            col.operator("gpencil.stroke_smooth", text="Smooth").only_selected = True
-            col.operator("transform.bend", text="Bend")
-            col.operator("transform.shear", text="Shear")
-            col.operator("transform.tosphere", text="To Sphere")
-            col.operator("transform.transform", text="Shrink/Fatten").mode = 'GPENCIL_SHRINKFATTEN'
-            col.operator("gpencil.stroke_start_set", text="Set Start Point")
+        layout.separator()
 
-            col.separator()
+        # Duplicate operators
+        layout.operator("gpencil.duplicate_move")
+        layout.operator("gpencil.copy", icon='COPYDOWN')
+        layout.operator("gpencil.paste", icon='PASTEDOWN').type = 'ACTIVE'
+        layout.operator("gpencil.paste", text="Paste by Layer").type = 'LAYER'
 
-            col.menu("VIEW3D_MT_mirror", text="Mirror")
-            col.menu("GPENCIL_MT_snap", text="Snap")
+        layout.separator()
 
-            col.separator()
+        # Layer and Materials operators
+        layout.menu("GPENCIL_MT_move_to_layer")
+        layout.menu("VIEW3D_MT_assign_material")
+        layout.operator("gpencil.set_active_material",)
+        layout.operator_menu_enum("gpencil.stroke_arrange", "direction",)
 
-            # Duplicate operators
-            col.operator("gpencil.duplicate_move", text="Duplicate")
-            col.operator("gpencil.copy", text="Copy", icon='COPYDOWN')
-            col.operator("gpencil.paste", text="Paste", icon='PASTEDOWN').type = 'ACTIVE'
-            col.operator("gpencil.paste", text="Paste by Layer").type = 'LAYER'
+        layout.separator()
 
-            col.separator()
-
-            # Removal Operators
-            col.operator("gpencil.stroke_merge", text="Merge")
-            col.operator("gpencil.stroke_merge_by_distance").use_unselected = False
-            col.operator("gpencil.stroke_split", text="Split")
-            col.operator("gpencil.stroke_separate", text="Separate").mode = 'POINT'
-
-            col.separator()
-
-            col.operator("gpencil.delete", text="Delete").type = 'POINTS'
-            col.operator("gpencil.dissolve", text="Dissolve").type = 'POINTS'
-            col.operator("gpencil.dissolve", text="Dissolve Between").type = 'BETWEEN'
-            col.operator("gpencil.dissolve", text="Dissolve Unselected").type = 'UNSELECT'
-
-        if is_stroke_mode:
-
-            col = row.column(align=True)
-            col.label(text="Stroke", icon='GP_SELECT_STROKES')
-            col.separator()
-
-            # Main Strokes Operators
-            col.operator("gpencil.stroke_subdivide", text="Subdivide").only_selected = False
-            col.menu("VIEW3D_MT_gpencil_simplify")
-            col.operator("gpencil.stroke_trim", text="Trim")
-
-            col.separator()
-
-            col.operator("gpencil.stroke_smooth", text="Smooth").only_selected = False
-            col.operator("transform.transform", text="Shrink/Fatten").mode = 'GPENCIL_SHRINKFATTEN'
-
-            col.separator()
-
-            # Layer and Materials operators
-            col.menu("GPENCIL_MT_move_to_layer")
-            col.menu("VIEW3D_MT_assign_material")
-            col.operator("gpencil.set_active_material", text="Set as Active Material")
-            col.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange")
-
-            col.separator()
-
-            col.menu("VIEW3D_MT_mirror", text="Mirror")
-            col.menu("VIEW3D_MT_snap", text="Snap")
-
-            col.separator()
-
-            # Duplicate operators
-            col.operator("gpencil.duplicate_move", text="Duplicate")
-            col.operator("gpencil.copy", text="Copy", icon='COPYDOWN')
-            col.operator("gpencil.paste", text="Paste", icon='PASTEDOWN').type = 'ACTIVE'
-            col.operator("gpencil.paste", text="Paste by Layer").type = 'LAYER'
-
-            col.separator()
-
-            # Removal Operators
-            col.operator("gpencil.stroke_merge_by_distance").use_unselected = True
-            col.operator_menu_enum("gpencil.stroke_join", "type", text="Join",
+        # Delete and Split
+        layout.operator("gpencil.stroke_merge")
+        layout.operator("gpencil.stroke_merge_by_distance").use_unselected = False
+        layout.operator_menu_enum("gpencil.stroke_join", "type", text="Join",
                                    text_ctxt=i18n_contexts.id_gpencil)
+        layout.operator("gpencil.stroke_split", text="Split")
+        layout.operator("gpencil.stroke_separate", text="Separate").mode = 'POINT'
 
-            col.operator("gpencil.stroke_split", text="Split")
-            col.operator("gpencil.stroke_separate", text="Separate").mode = 'STROKE'
+        layout.separator()
 
-            col.separator()
-
-            col.operator("gpencil.delete", text="Delete").type = 'STROKES'
-
-            col.separator()
-
-            col.operator("gpencil.reproject", text="Reproject")
+        layout.operator("gpencil.delete", text="Delete Selection").type = 'POINTS'
+        layout.operator("gpencil.delete", text="Delete Frame").type = 'FRAME'
+        layout.operator("gpencil.dissolve", text="Dissolve").type = 'POINTS'
+        layout.operator("gpencil.dissolve", text="Dissolve Between").type = 'BETWEEN'
+        layout.operator("gpencil.dissolve", text="Dissolve Unselected").type = 'UNSELECT'
+        layout.operator("gpencil.reproject", text="Reproject")
 
 
 class VIEW3D_MT_greasepencil_material_active(Menu):
