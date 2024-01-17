@@ -83,15 +83,15 @@ bool BKE_lib_override_library_is_user_edited(const ID *id);
 bool BKE_lib_override_library_is_system_defined(const Main *bmain, const ID *id);
 
 /**
- * Count the amount of liboverride IDs of given `id_type`, using a refererence linked ID from given
+ * Count the number of liboverride IDs of given `id_type`, using a refererence linked ID from given
  * `library`, that are user-edited.
  *
- * \param r_reports If not NULL, add one report for each relevant ID.
+ * \param r_reports: If not NULL, add one report for each relevant ID.
  */
-int BKE_lib_override_user_edited_from_library_count(struct Main *bmain,
+int BKE_lib_override_user_edited_from_library_count(Main *bmain,
                                                     const short id_type,
-                                                    struct Library *library,
-                                                    struct ReportList *r_reports);
+                                                    Library *library,
+                                                    ReportList *r_reports);
 
 /**
  * Check if given Override Property for given ID is animated (through a F-Curve in an Action, or

@@ -18,6 +18,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
+#include "BKE_report.h"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -1165,9 +1166,12 @@ static void SCULPT_CURVES_OT_min_distance_edit(wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 
-static int brush_asset_select_exec(bContext *C, wmOperator * /*op*/)
+static int brush_asset_select_exec(bContext *C, wmOperator *op)
 {
-  blender::asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
+  /* This operator currently covers both cases: the file/asset browser file list and the asset list
+   * used for the asset-view template. Once the asset list design is used by the Asset Browser,
+   * this can be simplified to just that case. */
+  asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
   if (!asset) {
     return OPERATOR_CANCELLED;
   }
@@ -1176,30 +1180,32 @@ static int brush_asset_select_exec(bContext *C, wmOperator * /*op*/)
   Brush *brush = BKE_brush_asset_runtime_ensure(CTX_data_main(C), brush_asset_reference);
 
   ToolSettings *tool_settings = CTX_data_tool_settings(C);
+
   /* Either takes ownership of the brush_asset_reference, or frees it. */
-  BKE_paint_brush_asset_set(&tool_settings->curves_sculpt->paint, brush, brush_asset_reference);
+  if (!BKE_paint_brush_asset_set(
+          &tool_settings->curves_sculpt->paint, brush, brush_asset_reference))
+  {
+    /* Note brush datablock was still added, so was not a no-op. */
+    BKE_report(op->reports, RPT_WARNING, "Unable to select brush, wrong object mode");
+    return OPERATOR_FINISHED;
+  }
+
+  WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
   return OPERATOR_FINISHED;
 }
 
-/**
- * This operator currently covers both cases, the File/Asset Browser file list and the asset list
- * used for the asset-view template. Once the asset list design is used by the Asset Browser, this
- * can be simplified to just that case.
- */
-static void SCULPT_CURVES_OT_brush_asset_select(struct wmOperatorType *ot)
+static void SCULPT_CURVES_OT_brush_asset_select(wmOperatorType *ot)
 {
-  /* identifiers */
   ot->name = "Select Brush Asset";
   ot->description = "Select a brush asset as currently sculpt/paint tool - TESTING PURPOSE ONLY";
   ot->idname = "SCULPT_CURVES_OT_brush_asset_select";
 
-  /* api callbacks */
   ot->exec = brush_asset_select_exec;
   ot->poll = CURVES_SCULPT_mode_poll;
 
   ot->prop = RNA_def_string(
-      ot->srna, "name", nullptr, MAX_NAME, "Brush Name", "name of the brush asset to select");
+      ot->srna, "name", nullptr, MAX_NAME, "Brush Name", "Name of the brush asset to select");
 }
 
 }  // namespace blender::ed::sculpt_paint
