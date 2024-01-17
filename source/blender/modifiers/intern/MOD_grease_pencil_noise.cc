@@ -225,13 +225,6 @@ static void deform_stroke(ModifierData *md,
                                    point * noise_scale + fractf(mmd->noise_offset));
         opacities[point] *= math::max(1.0f - noise * weight * mmd->factor_strength, 0.0f);
       }
-
-      // TODO: UV not implemented yet in GPv3.
-      // if (mmd->factor_uvs > 0.0f) {
-      //  float noise = table_sample(noise_table_uvs, point * noise_scale +
-      //  fractf(mmd->noise_offset)); pt->uv_rot += (noise * 2.0f - 1.0f) * weight *
-      //  mmd->factor_uvs * M_PI_2; CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
-      //}
     }
   });
 
@@ -243,18 +236,18 @@ static void modify_geometry_set(ModifierData *md,
                                 blender::bke::GeometrySet *geometry_set)
 {
   GreasePencilNoiseModifierData *mmd = (GreasePencilNoiseModifierData *)md;
-  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
-  int frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
-  if (!gp) {
+  if (!geometry_set->has_grease_pencil()) {
     return;
   }
+  GreasePencil &gp = *geometry_set->get_grease_pencil_for_write();
+  int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
   IndexMaskMemory mask_memory;
   IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      *gp, mmd->influence, mask_memory);
+      gp, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
+      modifier::greasepencil::get_drawings_for_write(gp, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
     deform_stroke(md, ctx->depsgraph, ctx->object, *drawing);
