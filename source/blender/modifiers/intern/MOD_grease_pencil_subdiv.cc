@@ -17,6 +17,8 @@
 
 #include "BLT_translation.h"
 
+#include "BLO_read_write.hh"
+
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
@@ -39,6 +41,7 @@
 
 #include "ED_grease_pencil.hh"
 
+#include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
@@ -56,53 +59,60 @@ static void init_data(ModifierData *md)
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
   MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GreasePencilSubdivModifierData), modifier);
+  modifier::greasepencil::init_influence_data(&gpmd->influence, true);
+}
+
+static void free_data(ModifierData *md)
+{
+  GreasePencilSubdivModifierData *mmd = reinterpret_cast<GreasePencilSubdivModifierData *>(md);
+
+  modifier::greasepencil::free_influence_data(&mmd->influence);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, int flag)
-{
+{ 
+  const GreasePencilSubdivModifierData *gmd =
+      reinterpret_cast<const GreasePencilSubdivModifierData *>(md);
+  GreasePencilSubdivModifierData *tgmd = reinterpret_cast<GreasePencilSubdivModifierData *>(
+      target);
+
   BKE_modifier_copydata_generic(md, target, flag);
+  modifier::greasepencil::copy_influence_data(&gmd->influence, &tgmd->influence, flag);
+}
+
+static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
+{
+  const GreasePencilSubdivModifierData *mmd = (const GreasePencilSubdivModifierData *)md;
+
+  BLO_write_struct(writer, GreasePencilSubdivModifierData, mmd);
+  modifier::greasepencil::write_influence_data(writer, &mmd->influence);
+}
+
+static void blend_read(BlendDataReader *reader, ModifierData *md)
+{
+  GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
+  modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
 static void deform_stroke(ModifierData *md,
                           Depsgraph * /*depsgraph*/,
                           Object *ob,
-                          GreasePencil *gpd,
                           bke::greasepencil::Drawing *drawing)
 {
   GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
 
-  // if (!is_stroke_affected_by_modifier(ob,
-  //                                     mmd->layername,
-  //                                     mmd->material,
-  //                                     mmd->pass_index,
-  //                                     mmd->layer_pass,
-  //                                     2,
-  //                                     gpl,
-  //                                     gps,
-  //                                     mmd->flag & GP_SUBDIV_INVERT_LAYER,
-  //                                     mmd->flag & GP_SUBDIV_INVERT_PASS,
-  //                                     mmd->flag & GP_SUBDIV_INVERT_LAYERPASS,
-  //                                     mmd->flag & GP_SUBDIV_INVERT_MATERIAL))
-  //{
-  //   return;
-  // }
-
-  // TODO: Catmull method?
-
-  /* For strokes with less than 3 points, only the Simple Subdivision makes sense. */
-  // short type = gps->totpoints < 3 ? short(GP_SUBDIV_SIMPLE) : mmd->type;
-
   if(mmd->level<1){
     return;
   }
+  
+  IndexMaskMemory memory;
+  const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
+      ob, drawing->strokes_for_write(), mmd->influence, memory);
 
-  index_mask::IndexMaskMemory memory;
-  index_mask::IndexMask selection = ed::greasepencil::retrieve_editable_strokes(
-      *ob, *drawing, memory);
   VArray<int> cuts = VArray<int>::ForSingle(mmd->level,drawing->strokes().points_num());
 
   drawing->strokes_for_write() = geometry::subdivide_curves(
-      drawing->strokes(), selection, cuts, {});
+      drawing->strokes(), strokes, std::move(cuts), {});
   drawing->tag_topology_changed();
 }
 
@@ -118,7 +128,7 @@ static void modify_geometry_set(ModifierData *md,
   Array<ed::greasepencil::MutableDrawingInfo> drawings=ed::greasepencil::retrieve_editable_drawings(*DEG_get_evaluated_scene(ctx->depsgraph),*gp);
 
   threading::parallel_for_each(drawings,[&](const ed::greasepencil::MutableDrawingInfo &drawing){
-    deform_stroke(md,ctx->depsgraph,ctx->object,gp,&drawing.drawing);
+    deform_stroke(md,ctx->depsgraph,ctx->object,&drawing.drawing);
   });
 }
 
@@ -126,11 +136,11 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 {
   GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
 
-  walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
+  modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
 
 
-static void panel_draw(const bContext * /*C*/, Panel *panel)
+static void panel_draw(const bContext * C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -138,26 +148,25 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemL(layout,"Subdiv type INOP",0);
-  //uiItemR(layout, ptr, "subdivision_type", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "level", UI_ITEM_NONE, IFACE_("Subdivisions"), ICON_NONE);
+
+  if (uiLayout *influence_panel = uiLayoutPanel(
+          C, layout, "Influence", ptr, "open_influence_panel"))
+  {
+    modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
+    modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
+    modifier::greasepencil::draw_vertex_group_settings(C, influence_panel, ptr);
+    modifier::greasepencil::draw_custom_curve_settings(C, influence_panel, ptr);
+  }
 
   modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-  uiItemL(layout,"Filter INOP",0);
-  //gpencil_modifier_masking_panel_draw(panel, true, false);
-}
-
 static void panel_register(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(
+  modifier_panel_register(
       region_type, eModifierType_GreasePencilSubdiv, panel_draw);
-  modifier_subpanel_register(
-      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);}
+}
 
 ModifierTypeInfo modifierType_GreasePencilSubdiv = {
     /*idname*/ "Grese Pencil Subdiv Modifier",
@@ -180,7 +189,7 @@ ModifierTypeInfo modifierType_GreasePencilSubdiv = {
 
     /*init_data*/ init_data,
     /*required_data_mask*/ nullptr,
-    /*free_data*/ nullptr,
+    /*free_data*/ free_data,
     /*is_disabled*/ nullptr,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
@@ -189,6 +198,6 @@ ModifierTypeInfo modifierType_GreasePencilSubdiv = {
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
     /*panel_register*/ panel_register,
-    /*blend_write*/ nullptr,
-    /*blend_read*/ nullptr,
+    /*blend_write*/ blend_write,
+    /*blend_read*/ blend_read,
 };
