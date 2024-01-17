@@ -92,15 +92,16 @@ static void handle_node_declaration_items(bContext *C,
       LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(
           root_panel, panel_idname.c_str(), panel_decl->default_collapsed);
       PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
-      uiLayout *panel_layout = uiLayoutPanel(
+
+      PanelLayout panel_layout = uiLayoutPanel(
           C, layout, IFACE_(panel_decl->name.c_str()), &state_ptr, "is_open");
       /* Draw panel buttons at the top of each panel section. */
-      if (panel_layout && panel_decl->draw_buttons) {
-        panel_decl->draw_buttons(panel_layout, C, node_ptr);
+      if (panel_layout.body && panel_decl->draw_buttons) {
+        panel_decl->draw_buttons(panel_layout.body, C, node_ptr);
       }
 
       handle_node_declaration_items(
-          C, root_panel, panel_layout, node_ptr, item_iter, panel_item_end);
+          C, root_panel, panel_layout.body, node_ptr, item_iter, panel_item_end);
     }
   }
 }

@@ -1914,10 +1914,11 @@ static void draw_interface_panel_content(const bContext *C,
       NodesModifierPanel *panel = find_panel_by_id(nmd, sub_interface_panel.identifier);
       PointerRNA panel_ptr = RNA_pointer_create(
           modifier_ptr->owner_id, &RNA_NodesModifierPanel, panel);
-      if (uiLayout *panel_layout = uiLayoutPanel(
-              C, layout, sub_interface_panel.name, &panel_ptr, "is_open"))
+      if (PanelLayout panel_layout = uiLayoutPanel(
+              C, layout, sub_interface_panel.name, &panel_ptr, "is_open");
+          panel_layout.body)
       {
-        draw_interface_panel_content(C, panel_layout, modifier_ptr, nmd, sub_interface_panel);
+        draw_interface_panel_content(C, panel_layout.body, modifier_ptr, nmd, sub_interface_panel);
       }
     }
     else {

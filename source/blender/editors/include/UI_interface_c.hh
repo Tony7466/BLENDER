@@ -2306,11 +2306,15 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align);
  * \return NULL if the panel is closed and should not be drawn, otherwise the layout where the
  * sub-panel should be inserted into.
  */
-uiLayout *uiLayoutPanel(const bContext *C,
-                        uiLayout *layout,
-                        const char *name,
-                        PointerRNA *open_prop_owner,
-                        const char *open_prop_name);
+struct PanelLayout {
+  uiLayout *header;
+  uiLayout *body;
+};
+PanelLayout uiLayoutPanel(const bContext *C,
+                          uiLayout *layout,
+                          const char *name,
+                          PointerRNA *open_prop_owner,
+                          const char *open_prop_name);
 
 bool uiLayoutEndsWithPanelHeader(const uiLayout &layout);
 
