@@ -17,9 +17,9 @@
 
 #include "text_format.hh"
 
-/*---------------------------------------------------------------------*/
-/* Define all keywords who can use
-*/
+/* -------------------------------------------------------------------- */
+/** \name Local Literal Definitions
+ * \{ */
 
 static const char *text_format_glsl_literals_builtinfunc_data[] = {
     /* clang-format off */
@@ -581,8 +581,8 @@ void ED_text_format_register_glsl()
   static TextFormatType tft = {nullptr};
   static const char *ext[] = {"glsl", nullptr};
 
-  tft.format_identifier = txtfmt_glsl_format_identifier();
-  tft.format_line = txtfmt_glsl_format_line();
+  tft.format_identifier = txtfmt_glsl_format_identifier;
+  tft.format_line = txtfmt_glsl_format_line;
   tft.ext = ext;
   tft.comment_line = "/**/";
 
