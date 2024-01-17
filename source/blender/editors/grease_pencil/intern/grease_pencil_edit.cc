@@ -42,6 +42,7 @@
 #include "WM_api.hh"
 
 #include "UI_resources.hh"
+using namespace blender::bke;
 
 namespace blender::ed::greasepencil {
 
@@ -1857,22 +1858,16 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       /* For existing Layers append the strokes to new CurvesGeometry. */
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
       bke::CurvesGeometry &curves_dst = drawing_dst.strokes_for_write();
-      /* Resize target geometry to fit new strokes. */
-      int p_src = selected_points.size();
-      int c_src = selected_curves.size();
-      int p_dst = drawing_dst.geometry.point_num;
-      int c_dst = drawing_dst.geometry.curve_num;
 
-      points_num += p_src + p_dst;
-      curves_num += c_src + c_dst;
-
-      /* got an Assert with this line. */
-      curves_dst.resize(points_num, curves_num);
-
-      /* TODO: Append geometry to target layer. */
-      /*maybe use join_geometries */
-      /* Vector<bke::GeometrySet> geometry_sets = {curves_src};*/
-      /*geometry::join_geometries(geometry_sets, {});*/
+      /* Append geometry to target layer. */
+      bke::CurvesGeometry selected_elems = curves_copy_point_selection(
+          curves_src, selected_points, {});
+      Curves *selected_curves = bke::curves_new_nomain(std::move(selected_elems));
+      Curves *layer_curves = bke::curves_new_nomain(std::move(drawing_dst.strokes_for_write()));
+      std::array<GeometrySet, 2> geometry_sets{GeometrySet::from_curves(selected_curves),
+                                               GeometrySet::from_curves(layer_curves)};
+      GeometrySet joined = geometry::join_geometries(geometry_sets, {});
+      drawing_dst.strokes_for_write() = std::move(joined.get_curves_for_write()->geometry.wrap());
 
       curves_src.remove_points(selected_points, {});
 
