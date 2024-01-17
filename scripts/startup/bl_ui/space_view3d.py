@@ -4640,6 +4640,9 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
 
         layout.operator("mesh.extrude_repeat")
         layout.operator("mesh.dupli_extrude_cursor").rotate_source = True
+
+        layout.separator()
+
         layout.operator("mesh.inset", text="Inset Faces")
         layout.operator("mesh.spin").angle = pi * 2
         layout.operator("mesh.screw")
