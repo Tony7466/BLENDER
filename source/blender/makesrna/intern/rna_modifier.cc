@@ -7721,11 +7721,6 @@ static void rna_def_modifier_grease_pencil_noise(BlenderRNA *brna)
 
   RNA_define_lib_overridable(true);
 
-  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "layername");
-  RNA_def_property_ui_text(prop, "Layer", "Layer name");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "factor");
   RNA_def_property_range(prop, 0.0, FLT_MAX);

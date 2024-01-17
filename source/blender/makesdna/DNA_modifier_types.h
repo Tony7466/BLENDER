@@ -2572,5 +2572,7 @@ typedef struct GreasePencilNoiseModifierData {
   int step;
   /** Random seed */
   int seed;
+
+  void *_pad1;
 } GreasePencilNoiseModifierData;
 
