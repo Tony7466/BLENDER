@@ -237,35 +237,8 @@ class TOPBAR_MT_file_cleanup(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.separator()
-
-        props = layout.operator("outliner.orphans_purge", text="Unused Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = True
-        props.do_recursive = False
-        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = True
-        props.do_recursive = True
-
-        layout.separator()
-        props = layout.operator("outliner.orphans_purge", text="Unused Linked Data-Blocks")
-        props.do_local_ids = False
-        props.do_linked_ids = True
-        props.do_recursive = False
-        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Linked Data-Blocks")
-        props.do_local_ids = False
-        props.do_linked_ids = True
-        props.do_recursive = True
-
-        layout.separator()
-        props = layout.operator("outliner.orphans_purge", text="Unused Local Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = False
-        props.do_recursive = False
-        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Local Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = False
-        props.do_recursive = True
+        layout.operator("outliner.orphans_cleanup")
+        layout.operator("outliner.orphans_manage")
 
 
 class TOPBAR_MT_file(Menu):
@@ -485,7 +458,7 @@ class TOPBAR_MT_file_import(Menu):
         if bpy.app.build_options.io_ply:
             self.layout.operator("wm.ply_import", text="Stanford PLY (.ply)")
         if bpy.app.build_options.io_stl:
-            self.layout.operator("wm.stl_import", text="STL (.stl) (experimental)")
+            self.layout.operator("wm.stl_import", text="STL (.stl)")
 
 
 class TOPBAR_MT_file_export(Menu):
@@ -515,7 +488,7 @@ class TOPBAR_MT_file_export(Menu):
         if bpy.app.build_options.io_ply:
             self.layout.operator("wm.ply_export", text="Stanford PLY (.ply)")
         if bpy.app.build_options.io_stl:
-            self.layout.operator("wm.stl_export", text="STL (.stl) (experimental)")
+            self.layout.operator("wm.stl_export", text="STL (.stl)")
 
 
 class TOPBAR_MT_file_external_data(Menu):

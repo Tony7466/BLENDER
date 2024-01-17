@@ -18,7 +18,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -471,7 +471,7 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
 
 static bool is_viewer_node(const bNode &node)
 {
-  return ELEM(node.type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER, GEO_NODE_VIEWER);
+  return ELEM(node.type, CMP_NODE_VIEWER, GEO_NODE_VIEWER);
 }
 
 static bool is_viewer_socket_in_viewer(const bNodeSocket &socket)

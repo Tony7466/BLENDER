@@ -5,6 +5,7 @@
 #pragma once
 
 #include <array>
+#include <limits>
 #include <optional>
 #include <variant>
 
@@ -340,7 +341,7 @@ class IndexMask : private IndexMaskData {
    */
   void to_bits(MutableBitSpan r_bits) const;
   /**
-   * Set the bools at indies in the mask to true and all others to false.
+   * Set the bools at indices in the mask to true and all others to false.
    */
   void to_bools(MutableSpan<bool> r_bools) const;
   /**

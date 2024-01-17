@@ -86,7 +86,7 @@ enum TreeTraversalAction {
   TRAVERSE_SKIP_CHILDS,
 };
 
-typedef TreeTraversalAction (*TreeTraversalFunc)(TreeElement *te, void *customdata);
+using TreeTraversalFunc = TreeTraversalAction (*)(TreeElement *te, void *customdata);
 
 struct TreeElement {
   TreeElement *next, *prev, *parent;
@@ -382,13 +382,13 @@ bool outliner_is_co_within_mode_column(SpaceOutliner *space_outliner, const floa
 void outliner_item_mode_toggle(bContext *C, TreeViewContext *tvc, TreeElement *te, bool do_extend);
 
 /* `outliner_edit.cc` */
-typedef void (*outliner_operation_fn)(bContext *C,
-                                      ReportList *,
-                                      Scene *scene,
-                                      TreeElement *,
-                                      TreeStoreElem *,
-                                      TreeStoreElem *,
-                                      void *);
+using outliner_operation_fn = void (*)(bContext *C,
+                                       ReportList *,
+                                       Scene *scene,
+                                       TreeElement *,
+                                       TreeStoreElem *,
+                                       TreeStoreElem *,
+                                       void *);
 
 /**
  * \param recurse_selected: Set to false for operations which are already
@@ -511,7 +511,9 @@ void OUTLINER_OT_keyingset_remove_selected(wmOperatorType *ot);
 void OUTLINER_OT_drivers_add_selected(wmOperatorType *ot);
 void OUTLINER_OT_drivers_delete_selected(wmOperatorType *ot);
 
+void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot);
 void OUTLINER_OT_orphans_purge(wmOperatorType *ot);
+void OUTLINER_OT_orphans_manage(wmOperatorType *ot);
 
 /* `outliner_query.cc` */
 
