@@ -2303,8 +2303,8 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align);
  * \param open_prop_owner: Data that contains the open-property.
  * \param open_prop_name: Name of the open-property in `open_prop_owner`.
  *
- * \return NULL if the panel is closed and should not be drawn, otherwise the layout where the
- * sub-panel should be inserted into.
+ * \return A #PanelLayout containing layouts for both the header row and the panel body. If the
+ * panel is closed and should not be drawn, the body layout will be NULL.
  */
 struct PanelLayout {
   uiLayout *header;
