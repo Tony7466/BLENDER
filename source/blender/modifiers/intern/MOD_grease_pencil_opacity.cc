@@ -37,8 +37,6 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include <iostream>
-
 namespace blender {
 
 using bke::greasepencil::Drawing;
@@ -307,7 +305,7 @@ ModifierTypeInfo modifierType_GreasePencilOpacity = {
     /*struct_name*/ "GreasePencilOpacityModifierData",
     /*struct_size*/ sizeof(GreasePencilOpacityModifierData),
     /*srna*/ &RNA_GreasePencilOpacityModifier,
-    /*type*/ ModifierTypeType::Nonconstructive,
+    /*type*/ ModifierTypeType::NonGeometrical,
     /*flags*/
     static_cast<ModifierTypeFlag>(
         eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |

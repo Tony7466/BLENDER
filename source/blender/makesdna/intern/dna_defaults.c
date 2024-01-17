@@ -323,6 +323,8 @@ SDNA_DEFAULT_DECL_STRUCT(DashGpencilModifierSegment);
 SDNA_DEFAULT_DECL_STRUCT(ShrinkwrapGpencilModifierData);
 SDNA_DEFAULT_DECL_STRUCT(EnvelopeGpencilModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilOpacityModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilColorModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilTintModifierData);
 
 #undef SDNA_DEFAULT_DECL_STRUCT
 
@@ -568,6 +570,8 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(ShrinkwrapGpencilModifierData),
     SDNA_DEFAULT_DECL(EnvelopeGpencilModifierData),
     SDNA_DEFAULT_DECL(GreasePencilOpacityModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilColorModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilTintModifierData),
 };
 #undef SDNA_DEFAULT_DECL
 #undef SDNA_DEFAULT_DECL_EX
