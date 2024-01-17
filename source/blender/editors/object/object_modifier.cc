@@ -1800,7 +1800,7 @@ static void modifier_apply_confirm(bContext * /*C*/,
                                    wmOperator * /*op*/,
                                    wmConfirmDetails *confirm)
 {
-  STRNCPY(confirm->title, IFACE_("Apply modifier"));
+  STRNCPY(confirm->title, IFACE_("Apply Modifier"));
   STRNCPY(confirm->message,
           IFACE_("Make data single-user, apply modifier, and remove it from the list"));
   STRNCPY(confirm->confirm_button, IFACE_("Apply"));
