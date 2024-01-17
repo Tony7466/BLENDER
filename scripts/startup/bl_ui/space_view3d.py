@@ -4336,9 +4336,21 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
         # Else something is selected
 
+        # The order mostly follows the this logic top to bottom:
+        # Selection contains = Singe Vert - Multiple Verts - Edges - Faces
+        # Exceptions for usability are similar operators that are grouped together and
+        # "Subdivision" at the top and "Delete and Split" at the bottom
+
+        # Subdivision
+        if selected_edges_len > 0:
+            layout.operator("mesh.subdivide")
+            layout.operator("mesh.unsubdivide")
+
+        layout.separator()
+
         # Extrude & Bevel
         layout.operator("view3d.edit_mesh_extrude_move_normal",
-                         text="Extrude along Normals").alt_navigation = True
+                         text="Extrude along Normals")
         layout.menu("VIEW3D_MT_edit_mesh_extrude")
         if selected_faces_len > 0:
             layout.operator("mesh.inset")
@@ -4381,7 +4393,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
         layout.separator()
 
         # Attributes
-        layout.menu("VIEW3D_MT_edit_mesh_attributes")
+        layout.menu("VIEW3D_MT_edit_mesh_attributes", text="Write Attributes")
 
         layout.separator()
 
@@ -4397,13 +4409,6 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
         # UV Mapping
         if selected_verts_len > 1:
             layout.menu("VIEW3D_MT_uv_map")
-
-        layout.separator()
-
-        # Subdivision
-        if selected_edges_len > 0:
-            layout.operator("mesh.subdivide")
-            layout.operator("mesh.unsubdivide")
 
         layout.separator()
 
