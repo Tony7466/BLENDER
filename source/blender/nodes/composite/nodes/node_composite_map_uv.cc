@@ -40,6 +40,12 @@ static void node_composit_buts_map_uv(uiLayout *layout, bContext * /*C*/, Pointe
   uiItemR(layout, ptr, "alpha", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
+
+static void node_composit_init_map_uv(bNodeTree * /*ntree*/, bNode *node)
+{
+    node->custom2 = CMP_NODE_MAP_UV_FILTERING_ANISOTROPIC;
+}
+
 using namespace blender::realtime_compositor;
 
 class MapUVOperation : public NodeOperation {
@@ -128,6 +134,7 @@ void register_node_type_cmp_mapuv()
   ntype.declare = file_ns::cmp_node_map_uv_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_map_uv;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
+  ntype.initfunc = file_ns::node_composit_init_map_uv;
 
   nodeRegisterType(&ntype);
 }
