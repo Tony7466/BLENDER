@@ -10,8 +10,6 @@ void main()
 
   vec2 uv_coordinates = texture_load(uv_tx, texel).xy;
 
-  /* Sample the input using the UV coordinates passing in the computed gradients in order to
-   * utilize the anisotropic filtering capabilities of the sampler. */
   vec4 sampled_color = texture(input_tx, uv_coordinates);
 
   /* The UV texture is assumed to contain an alpha channel as its third channel, since the UV
