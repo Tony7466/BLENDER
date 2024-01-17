@@ -1162,7 +1162,8 @@ static void object_transform_apply_confirm(bContext * /*C*/,
                                            wmOperator * /*op*/,
                                            wmConfirmDetails *confirm)
 {
-  STRNCPY(confirm->message, IFACE_("Create new object-data users and apply transformation"));
+  STRNCPY(confirm->title, IFACE_("Apply Object Transformations"));
+  STRNCPY(confirm->message, IFACE_("Duplicate geometry data-blocks and apply transformations"));
   STRNCPY(confirm->confirm_button, IFACE_("Apply"));
 }
 
