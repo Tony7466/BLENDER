@@ -1260,7 +1260,7 @@ static void draw_text_decoration(const bContext *C, SpaceText *st, ARegion *regi
     }
   }
   const auto *text_search = blender::ed::text::text_search_get(st, st->text);
-  
+
   if (highlight_search && text_search) {
     const auto &matches = text_search->matches->data;
     immUniformThemeColor(TH_SHADE1);
@@ -1718,6 +1718,9 @@ bool ED_text_activate_in_screen(bContext *C, Text *text)
   if (area) {
     SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
     ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+    if (st->text != text) {
+      WM_event_add_notifier(C, NC_TEXT | NA_SELECTED, text);
+    }
     st->text = text;
     if (region) {
       ED_space_text_scroll_to_cursor(st, region, true);
