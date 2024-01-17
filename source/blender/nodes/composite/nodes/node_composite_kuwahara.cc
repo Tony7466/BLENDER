@@ -58,7 +58,7 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
   const int variation = RNA_enum_get(ptr, "variation");
 
   if (variation == CMP_NODE_KUWAHARA_CLASSIC) {
-    uiItemR(col, ptr, "high_precision", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "use_high_precision", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
     uiItemR(col, ptr, "uniformity", UI_ITEM_NONE, nullptr, ICON_NONE);
