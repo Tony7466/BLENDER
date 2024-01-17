@@ -116,8 +116,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
 };
 
 static const Span<const char *> text_format_glsl_literals_builtinfunc(
-    text_format_glsl_literals_builtinfunc_data,
-    ARRAY_SIZE(text_format_glsl_literals_builtinfunc_data));
+    text_format_glsl_literals_builtinfunc_data, ARRAY_SIZE(text_format_glsl_literals_builtinfunc_data));
 
 static const char *text_format_glsl_literals_reserved_data[] = {
     /* Force single column, sorted list. */
@@ -323,8 +322,7 @@ static const char *text_format_glsl_literals_specialvar_data[] = {
     /* clang-format on */
 };
 static const Span<const char*> text_format_glsl_literals_specialvar(
-    *text_format_glsl_literals_specialvar_data,
-    ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
+    *text_format_glsl_literals_specialvar_data, ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
 
 static const char *text_format_glsl_literals_preprocessor[] = {
 
@@ -341,9 +339,12 @@ static const char *text_format_glsl_literals_preprocessor[] = {
 };
 static const Span<const char *>text_format_glsl_literals_preprocessor(
   text_format_glsl_literals_preprocessor, ARRAY_SIZE(text_format_glsl_literals_preprocessor));
-/*---------------------------------------------------------------------*/
-/* name local functions 
-*/
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Local Functions (for #TextFormatType::format_line)
+ * \{ */
 
 static int txtfmt_glsl_find_builtinfunc(const char *string)
 {
@@ -405,9 +406,12 @@ static char txtfmt_glsl_format_identifier(const char *str)
 
     return fmt;
 }
-/*-----------------------------------------------------------------*/
-/* name format line implementation
-*/
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Format Line Implementation (#TextFormatType::format_line)
+ * \{ */
 static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool do_next)
 {
   FlattenString fs;
@@ -572,8 +576,8 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
 
 /** \} */
 
-/*-----------------------------------------------------------------*/
-/** \name registration 
+/* -------------------------------------------------------------------- */
+/** \name Registration
  * \{ */
 
 void ED_text_format_register_glsl()
