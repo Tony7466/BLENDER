@@ -33,9 +33,6 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_gpencil_geom_legacy.h"
-#include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.hh"
@@ -46,7 +43,6 @@
 
 #include "ED_grease_pencil.hh"
 
-#include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
