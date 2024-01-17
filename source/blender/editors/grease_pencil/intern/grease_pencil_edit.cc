@@ -265,14 +265,14 @@ void gaussian_blur_1D(const GSpan src,
 }
 
 void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
-                                   const VArray<bool> &point_selection,
-                                   const VArray<bool> &cyclic,
-                                   const IndexMask &curves_to_smooth,
-                                   const int64_t iterations,
-                                   const float influence,
-                                   const bool smooth_ends,
-                                   const bool keep_shape,
-                                   GMutableSpan data)
+                            const VArray<bool> &point_selection,
+                            const VArray<bool> &cyclic,
+                            const IndexMask &curves_to_smooth,
+                            const int64_t iterations,
+                            const float influence,
+                            const bool smooth_ends,
+                            const bool keep_shape,
+                            GMutableSpan data)
 {
   curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
     Vector<std::byte> orig_data;

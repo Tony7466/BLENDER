@@ -137,7 +137,7 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
 
     IndexMaskMemory memory;
     const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
-      ob, curves, mmd->influence, memory);
+        ob, curves, mmd->influence, memory);
 
     if (strokes.is_empty()) {
       return;
@@ -223,7 +223,7 @@ static void modify_geometry_set(ModifierData *md,
   deform_stroke(md, ctx->depsgraph, ctx->object, gp);
 }
 
-static void panel_draw(const bContext * C, Panel *panel)
+static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
@@ -245,7 +245,6 @@ static void panel_draw(const bContext * C, Panel *panel)
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_edit_position"));
   uiItemR(col, ptr, "use_keep_shape", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "use_smooth_ends", UI_ITEM_NONE, nullptr, ICON_NONE);
-
 
   if (uiLayout *influence_panel = uiLayoutPanel(
           C, layout, "Influence", ptr, "open_influence_panel"))
