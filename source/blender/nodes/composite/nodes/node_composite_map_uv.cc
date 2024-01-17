@@ -36,8 +36,8 @@ static void cmp_node_map_uv_declare(NodeDeclarationBuilder &b)
 
 static void node_composit_buts_map_uv(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
+  uiItemR(layout, ptr, "filter_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   uiItemR(layout, ptr, "alpha", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "filter_type", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 using namespace blender::realtime_compositor;
@@ -64,8 +64,14 @@ class MapUVOperation : public NodeOperation {
     }
 
     const Result &input_image = get_input("Image");
-    GPU_texture_mipmap_mode(input_image.texture(), true, true);
-    GPU_texture_anisotropic_filter(input_image.texture(), true);
+    if (nearest_neighbour) {
+      GPU_texture_mipmap_mode(input_image.texture(), false, false);
+      GPU_texture_anisotropic_filter(input_image.texture(), false);
+    } else {
+      GPU_texture_mipmap_mode(input_image.texture(), true, true);
+      GPU_texture_anisotropic_filter(input_image.texture(), true);
+    }
+
     GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
     input_image.bind_as_texture(shader, "input_tx");
 
@@ -98,7 +104,6 @@ class MapUVOperation : public NodeOperation {
     return bnode().custom2 == CMP_NODE_MAP_UV_FILTERING_NEAREST;
   }
 
- private:
   char const *get_shader_name()
   {
     return get_nearest_neighbour() ? "compositor_map_uv_nearest_neighbour" :
