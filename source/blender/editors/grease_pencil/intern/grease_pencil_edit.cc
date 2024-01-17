@@ -1865,10 +1865,13 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 
       points_num += p_src + p_dst;
       curves_num += c_src + c_dst;
+
+      /* got an Assert with this line. */
       curves_dst.resize(points_num, curves_num);
 
       /* TODO: Append geometry to target layer. */
-      // Vector<bke::GeometrySet> geometry_sets = {curves_src};
+      /*maybe use join_geometries */
+      /* Vector<bke::GeometrySet> geometry_sets = {curves_src};*/
       /*geometry::join_geometries(geometry_sets, {});*/
 
       curves_src.remove_points(selected_points, {});
