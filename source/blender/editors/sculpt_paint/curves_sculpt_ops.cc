@@ -1179,6 +1179,8 @@ static int brush_asset_select_exec(bContext *C, wmOperator * /*op*/)
   /* Either takes ownership of the brush_asset_reference, or frees it. */
   BKE_paint_brush_asset_set(&tool_settings->curves_sculpt->paint, brush, brush_asset_reference);
 
+  WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
   return OPERATOR_FINISHED;
 }
 

@@ -691,10 +691,18 @@ static void paint_brush_asset_update(Paint *p,
   p->brush_asset_reference = brush_asset_reference;
 }
 
-void BKE_paint_brush_asset_set(Paint *p, Brush *br, AssetWeakReference *weak_asset_reference)
+bool BKE_paint_brush_asset_set(Paint *p, Brush *br, AssetWeakReference *weak_asset_reference)
 {
+  /* TODO: does this need to be ensure at some higher level? Assets should be tagged
+   * and filtered with the appropriate mode, but is that going to be a 100% guarantee
+   * or a more loose thing? */
+  if (p->runtime.ob_mode != br->ob_mode) {
+    return false;
+  }
+
   BKE_paint_brush_set(p, br);
   paint_brush_asset_update(p, br, weak_asset_reference);
+  return true;
 }
 
 void BKE_paint_brush_asset_restore(Main *bmain, Paint *p)
