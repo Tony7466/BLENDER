@@ -33,7 +33,7 @@
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_movieclip.h"
@@ -1598,11 +1598,14 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         /* float buffers in the sequencer are not linear */
         seq_imbuf_to_sequencer_space(context->scene, ibufs_arr[view_id], false);
       }
-      else if (rres.ibuf->byte_buffer.data) {
+      else if (rres.ibuf && rres.ibuf->byte_buffer.data) {
         ibufs_arr[view_id] = IMB_allocImBuf(rres.rectx, rres.recty, 32, IB_rect);
         memcpy(ibufs_arr[view_id]->byte_buffer.data,
                rres.ibuf->byte_buffer.data,
                4 * rres.rectx * rres.recty);
+      }
+      else {
+        ibufs_arr[view_id] = IMB_allocImBuf(rres.rectx, rres.recty, 32, IB_rect);
       }
 
       if (view_id != context->view_id) {
