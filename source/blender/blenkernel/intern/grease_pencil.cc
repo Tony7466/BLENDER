@@ -1204,7 +1204,6 @@ bool BKE_grease_pencil_has_layer_transform(const Object *object)
   return false;
 }
 
-
 static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
                                              Scene *scene,
                                              Object *object,
@@ -1246,6 +1245,7 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
 
+  /* Evaluate modifiers. */
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
   /* Store the frame that this grease pencil is evaluated on. */
   grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
@@ -1642,8 +1642,8 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
 
   /* Create the new frame structure, with the same duration.
    * If we want to make an instance of the source frame, the drawing index gets copied from the
-   * source frame. Otherwise, we set the drawing index to the size of the drawings array, since
-   * we are going to add a new drawing copied from the source drawing. */
+   * source frame. Otherwise, we set the drawing index to the size of the drawings array, since we
+   * are going to add a new drawing copied from the source drawing. */
   const int duration = src_frame.is_implicit_hold() ?
                            0 :
                            layer.get_frame_duration_at(src_frame_number);
@@ -1668,8 +1668,8 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
       }
       else {
         /* Create a copy of the drawing, and add it at the end of the drawings array.
-         * Note that the frame already points to this new drawing, as the drawing index was set
-         * to `int(this->drawings().size())`. */
+         * Note that the frame already points to this new drawing, as the drawing index was set to
+         * `int(this->drawings().size())`. */
         this->add_duplicate_drawings(1, src_drawing);
       }
       break;
@@ -1742,8 +1742,8 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
     return next_available_index;
   };
 
-  /* Move the drawings to be removed to the end of the array by swapping the pointers. Make sure
-   * to remap any frames pointing to the drawings being swapped. */
+  /* Move the drawings to be removed to the end of the array by swapping the pointers. Make sure to
+   * remap any frames pointing to the drawings being swapped. */
   for (const int64_t index_to_remove : sorted_indices_to_remove) {
     if (index_to_remove >= last_drawings_range.first()) {
       /* This drawing and all the next drawings are already in the range to be removed. */
@@ -2497,9 +2497,9 @@ static void read_layer_tree(GreasePencil &grease_pencil, BlendDataReader *reader
 {
   /* Read root group. */
   BLO_read_data_address(reader, &grease_pencil.root_group_ptr);
-  /* This shouldn't normally happen, but for files that were created before the root group became
-   * a pointer, this address will not exist. In this case, we clear the pointer to the active
-   * layer and create an empty root group to avoid crashes. */
+  /* This shouldn't normally happen, but for files that were created before the root group became a
+   * pointer, this address will not exist. In this case, we clear the pointer to the active layer
+   * and create an empty root group to avoid crashes. */
   if (grease_pencil.root_group_ptr == nullptr) {
     grease_pencil.root_group_ptr = MEM_new<blender::bke::greasepencil::LayerGroup>(__func__);
     grease_pencil.active_layer = nullptr;

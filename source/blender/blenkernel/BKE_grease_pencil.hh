@@ -432,6 +432,7 @@ class Layer : public ::GreasePencilLayer {
    * added, removed or updated.
    */
   void tag_frames_map_keys_changed();
+
  private:
   using SortedKeysIterator = const int *;
 
