@@ -2267,7 +2267,6 @@ static void wm_block_orphans_cancel_button(uiBlock *block)
       block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
   UI_but_func_set(but, wm_block_orphans_cancel, block, nullptr);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
-  UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 }
 
 struct OrphansPurgeData {
@@ -2313,6 +2312,7 @@ static void wm_block_orphans_purge_button(uiBlock *block, OrphansPurgeData *purg
       block, UI_BTYPE_BUT, 0, 0, IFACE_("Delete"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
   UI_but_func_set(but, wm_block_orphans_purge, block, purge_data);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+  UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 }
 
 static std::string orphan_desc(const bContext *C, const bool local, bool linked, bool recursive)
