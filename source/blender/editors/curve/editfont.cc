@@ -681,7 +681,8 @@ static void text_insert_unicode_confirm(bContext *C, void *arg_block, void *arg_
   }
 }
 
-static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, void *arg_string) {
+static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, void *arg_string)
+{
   char *edit_string = static_cast<char *>(arg_string);
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);

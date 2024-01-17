@@ -4102,7 +4102,6 @@ def km_font(params):
         ("font.text_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("font.text_cut", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
         ("font.text_paste", {"type": 'V', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
-        ("font.text_insert_unicode", {"type": 'T', "value": 'PRESS', "ctrl": True}, None),
         ("font.line_break", {"type": 'RET', "value": 'PRESS'}, None),
         ("font.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True}, None),
         ("font.text_insert", {"type": 'BACK_SPACE', "value": 'PRESS', "alt": True},

@@ -5999,7 +5999,6 @@ def km_edit_font(params):
         ("font.text_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("font.text_cut", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
         ("font.text_paste", {"type": 'V', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
-        ("font.text_insert_unicode", {"type": 'T', "value": 'PRESS', "ctrl": True}, None),
         ("font.line_break", {"type": 'RET', "value": 'PRESS', "repeat": True}, None),
         ("font.line_break", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "repeat": True}, None),
         ("font.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True, "repeat": True}, None),
