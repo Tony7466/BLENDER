@@ -697,6 +697,7 @@ bool BKE_paint_brush_asset_set(Paint *p, Brush *br, AssetWeakReference *weak_ass
    * and filtered with the appropriate mode, but is that going to be a 100% guarantee
    * or a more loose thing? */
   if (p->runtime.ob_mode != br->ob_mode) {
+    BKE_asset_weak_reference_free(&weak_asset_reference);
     return false;
   }
 
