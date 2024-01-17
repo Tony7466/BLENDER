@@ -2443,7 +2443,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
   return block;
 }
 
-static int outliner_orphans_cleanup_exec(bContext *C, wmOperator *op)
+static int outliner_orphans_cleanup_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   OrphansPurgeData *purge_data = MEM_new<OrphansPurgeData>(__func__);
   purge_data->op = op;
@@ -2459,13 +2459,15 @@ void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot)
   ot->description = "Remove unused data from this file";
 
   /* callbacks */
-  ot->exec = outliner_orphans_cleanup_exec;
+  ot->invoke = outliner_orphans_cleanup_invoke;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int outliner_orphans_manage_exec(bContext *C, wmOperator * /*op*/)
+static int outliner_orphans_manage_invoke(bContext *C,
+                                          wmOperator * /*op*/,
+                                          const wmEvent * /*event*/)
 {
   int width = 800;
   int height = 500;
@@ -2507,7 +2509,7 @@ void OUTLINER_OT_orphans_manage(wmOperatorType *ot)
   ot->description = "Open a window to manage unused data";
 
   /* callbacks */
-  ot->exec = outliner_orphans_manage_exec;
+  ot->invoke = outliner_orphans_manage_invoke;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER;
