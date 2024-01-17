@@ -1931,25 +1931,35 @@ static void draw_interface_panel_content(const bContext *C,
   }
 }
 
+static bool has_output_attribute(const NodesModifierData &nmd)
+{
+  if (!nmd.node_group) {
+    return false;
+  }
+  for (const bNodeTreeInterfaceSocket *interface_socket : nmd.node_group->interface_outputs()) {
+    const bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+    if (nodes::socket_type_has_attribute_toggle(type)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void draw_output_attributes_panel(const bContext *C,
                                          uiLayout *layout,
                                          const NodesModifierData &nmd,
                                          PointerRNA *ptr)
 {
-  bool has_output_attribute = false;
   if (nmd.node_group != nullptr && nmd.settings.properties != nullptr) {
     for (const bNodeTreeInterfaceSocket *socket : nmd.node_group->interface_outputs()) {
       const bNodeSocketType *typeinfo = socket->socket_typeinfo();
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
       if (nodes::socket_type_has_attribute_toggle(type)) {
-        has_output_attribute = true;
         draw_property_for_output_socket(*C, layout, nmd, ptr, *socket);
       }
     }
-  }
-  if (!has_output_attribute) {
-    uiItemL(layout, RPT_("No group output attributes connected"), ICON_INFO);
   }
 }
 
@@ -2087,10 +2097,12 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, IFACE_("Output Attributes"), ptr, "open_output_attributes_panel"))
-  {
-    draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
+  if (has_output_attribute(*nmd)) {
+    if (uiLayout *panel_layout = uiLayoutPanel(
+            C, layout, IFACE_("Output Attributes"), ptr, "open_output_attributes_panel"))
+    {
+      draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
+    }
   }
   if (uiLayout *panel_layout = uiLayoutPanel(
           C, layout, IFACE_("Manage"), ptr, "open_manage_panel"))
