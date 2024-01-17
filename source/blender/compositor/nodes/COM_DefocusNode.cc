@@ -55,6 +55,7 @@ void DefocusNode::convert_to_operations(NodeConverter &converter,
     radius_op->set_scene(get_scene(context));
     converter.add_operation(radius_op);
     converter.map_input_socket(get_input_socket(1), radius_op->get_input_socket(0));
+    converter.map_input_socket(get_input_socket(0), radius_op->get_input_socket(1));
 
     GaussianXBlurOperation *blur_x_operation = new GaussianXBlurOperation();
     converter.add_operation(blur_x_operation);
@@ -94,12 +95,7 @@ void DefocusNode::convert_to_operations(NodeConverter &converter,
   converter.add_operation(bokeh);
 
   VariableSizeBokehBlurOperation *operation = new VariableSizeBokehBlurOperation();
-  if (data->preview) {
-    operation->set_quality(eCompositorQuality::Low);
-  }
-  else {
-    operation->set_quality(context.get_quality());
-  }
+  operation->set_quality(eCompositorQuality::High);
   operation->set_max_blur(data->maxblur);
   operation->set_threshold(data->bthresh);
   converter.add_operation(operation);

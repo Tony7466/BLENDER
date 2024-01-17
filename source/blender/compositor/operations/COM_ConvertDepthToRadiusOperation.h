@@ -12,7 +12,8 @@ namespace blender::compositor {
 
 class ConvertDepthToRadiusOperation : public MultiThreadedOperation {
  private:
-  SocketReader *input_operation_;
+  SocketReader *depth_input_operation_;
+  SocketReader *image_input_operation_;
 
   const Scene *scene_;
   const NodeDefocus *data_;

@@ -18,13 +18,15 @@ namespace blender::compositor {
 ConvertDepthToRadiusOperation::ConvertDepthToRadiusOperation()
 {
   this->add_input_socket(DataType::Value);
+  this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Value);
   flags_.can_be_constant = true;
 }
 
 void ConvertDepthToRadiusOperation::init_execution()
 {
-  input_operation_ = this->get_input_socket_reader(0);
+  depth_input_operation_ = this->get_input_socket_reader(0);
+  image_input_operation_ = this->get_input_socket_reader(1);
 
   f_stop = get_f_stop();
   focal_length = get_focal_length();
@@ -55,7 +57,7 @@ void ConvertDepthToRadiusOperation::execute_pixel_sampled(float output[4],
                                                           PixelSampler sampler)
 {
   float input_value[4];
-  input_operation_->read_sampled(input_value, x, y, sampler);
+  depth_input_operation_->read_sampled(input_value, x, y, sampler);
   const float depth = input_value[0];
 
   /* Compute `Vu` in equation (7). */
@@ -75,7 +77,7 @@ void ConvertDepthToRadiusOperation::execute_pixel_sampled(float output[4],
 
 void ConvertDepthToRadiusOperation::deinit_execution()
 {
-  input_operation_ = nullptr;
+  depth_input_operation_ = nullptr;
 }
 
 /* Given a depth texture, compute the radius of the circle of confusion in pixels based on equation
@@ -164,7 +166,8 @@ float ConvertDepthToRadiusOperation::compute_focus_distance() const
  * an invalid camera. Note that the stored sensor size is in millimeter, so convert to meters. */
 float ConvertDepthToRadiusOperation::compute_pixels_per_meter() const
 {
-  const int2 size = int2(get_width(), get_height());
+  const int2 size = int2(image_input_operation_->get_width(),
+                         image_input_operation_->get_height());
   const Camera *camera = get_camera();
   const float default_value = size.x / (DEFAULT_SENSOR_WIDTH / 1000.0f);
   if (!camera) {
