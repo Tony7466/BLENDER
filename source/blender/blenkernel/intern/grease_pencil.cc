@@ -15,7 +15,7 @@
 #include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
@@ -1223,19 +1223,6 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
 /** \name Grease Pencil material functions
  * \{ */
 
-int BKE_grease_pencil_object_material_index_get(Object *ob, Material *ma)
-{
-  short *totcol = BKE_object_material_len_p(ob);
-  Material *read_ma = nullptr;
-  for (short i = 0; i < *totcol; i++) {
-    read_ma = BKE_object_material_get(ob, i + 1);
-    if (ma == read_ma) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name)
 {
   short *totcol = BKE_object_material_len_p(ob);
@@ -1311,7 +1298,7 @@ Material *BKE_grease_pencil_object_material_ensure_from_brush(Main *bmain,
     Material *ma = BKE_grease_pencil_brush_material_get(brush);
 
     /* check if the material is already on object material slots and add it if missing */
-    if (ma && BKE_grease_pencil_object_material_index_get(ob, ma) < 0) {
+    if (ma && BKE_object_material_index_get(ob, ma) < 0) {
       BKE_object_material_slot_add(bmain, ob);
       BKE_object_material_assign(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
     }
@@ -1921,6 +1908,16 @@ blender::Span<blender::bke::greasepencil::TreeNode *> GreasePencil::nodes_for_wr
   return this->root_group().nodes_for_write();
 }
 
+std::optional<int> GreasePencil::get_layer_index(
+    const blender::bke::greasepencil::Layer &layer) const
+{
+  const int index = this->layers().first_index_try(&layer);
+  if (index == -1) {
+    return {};
+  }
+  return index;
+}
+
 const blender::bke::greasepencil::Layer *GreasePencil::get_active_layer() const
 {
   if (this->active_layer == nullptr) {
@@ -2187,7 +2184,7 @@ blender::IndexMask GreasePencil::layer_selection_by_name(const blender::StringRe
   }
 
   if (node->is_layer()) {
-    const int64_t index = this->layers().first_index(&node->as_layer());
+    const int index = *this->get_layer_index(node->as_layer());
     return blender::IndexMask::from_indices(Span{index}, memory);
   }
   else if (node->is_group()) {
