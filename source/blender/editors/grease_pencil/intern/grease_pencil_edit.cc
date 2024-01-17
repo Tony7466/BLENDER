@@ -1803,10 +1803,6 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   Layer *layer_dst = nullptr;
   int layer_index = RNA_int_get(op->ptr, "layer");
-  int points_num = 0;
-  int curves_num = 0;
-
-  printf("Layer index: %d \n", layer_index);
 
   if (layer_index > -1) {
     /* get layer by index */
@@ -1837,7 +1833,6 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
-    const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves_src, memory);
     if (selected_points.is_empty()) {
       continue;
     }
@@ -1849,16 +1844,14 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
       drawing_dst.strokes_for_write() = bke::curves_copy_point_selection(
           curves_src, selected_points, {});
+
       curves_src.remove_points(selected_points, {});
 
       drawing_dst.tag_topology_changed();
-      info.drawing.tag_topology_changed();
     }
     else {
       /* For existing Layers append the strokes to new CurvesGeometry. */
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
-      bke::CurvesGeometry &curves_dst = drawing_dst.strokes_for_write();
-
       /* Append geometry to target layer. */
       bke::CurvesGeometry selected_elems = curves_copy_point_selection(
           curves_src, selected_points, {});
@@ -1872,9 +1865,9 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       curves_src.remove_points(selected_points, {});
 
       drawing_dst.tag_topology_changed();
-      info.drawing.tag_topology_changed();
     }
 
+    info.drawing.tag_topology_changed();
     changed = true;
   };
 
