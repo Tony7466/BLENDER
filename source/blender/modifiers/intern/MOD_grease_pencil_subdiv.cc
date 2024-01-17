@@ -55,7 +55,7 @@ namespace blender {
 
 static void init_data(ModifierData *md)
 {
-  GreasePencilSubdivModifierData *gpmd = (GreasePencilSubdivModifierData *)md;
+  GreasePencilSubdivModifierData *gpmd = reinterpret_cast<GreasePencilSubdivModifierData *>(md);
 
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
@@ -83,7 +83,8 @@ static void copy_data(const ModifierData *md, ModifierData *target, int flag)
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
-  const GreasePencilSubdivModifierData *mmd = (const GreasePencilSubdivModifierData *)md;
+  const GreasePencilSubdivModifierData *mmd =
+      reinterpret_cast<const GreasePencilSubdivModifierData *>(md);
 
   BLO_write_struct(writer, GreasePencilSubdivModifierData, mmd);
   modifier::greasepencil::write_influence_data(writer, &mmd->influence);
@@ -91,16 +92,17 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
-  GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
+  GreasePencilSubdivModifierData *mmd = reinterpret_cast<GreasePencilSubdivModifierData *>(md);
+
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void deform_stroke(ModifierData *md,
-                          Depsgraph * /*depsgraph*/,
-                          Object *ob,
-                          bke::greasepencil::Drawing &drawing)
+static void deform_drawing(ModifierData *md,
+                           Depsgraph * /*depsgraph*/,
+                           Object *ob,
+                           bke::greasepencil::Drawing &drawing)
 {
-  GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
+  GreasePencilSubdivModifierData *mmd = reinterpret_cast<GreasePencilSubdivModifierData *>(md);
 
   IndexMaskMemory memory;
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
@@ -117,7 +119,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
+  GreasePencilSubdivModifierData *mmd = reinterpret_cast<GreasePencilSubdivModifierData *>(md);
 
   if (mmd->level < 1 || !geometry_set->has_grease_pencil()) {
     return;
@@ -133,13 +135,13 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawings_for_write(gp, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_stroke(md, ctx->depsgraph, ctx->object, *drawing);
+    deform_drawing(md, ctx->depsgraph, ctx->object, *drawing);
   });
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
-  GreasePencilSubdivModifierData *mmd = (GreasePencilSubdivModifierData *)md;
+  GreasePencilSubdivModifierData *mmd = reinterpret_cast<GreasePencilSubdivModifierData *>(md);
 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
