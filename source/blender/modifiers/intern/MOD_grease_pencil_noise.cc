@@ -339,8 +339,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(
-      region_type, eModifierType_GreasePencilNoise, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilNoise, panel_draw);
 }
 
 ModifierTypeInfo modifierType_GreasePencilNoise = {
