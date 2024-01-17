@@ -25,11 +25,7 @@ class PixelateOperation : public MultiThreadedOperation {
   int pixel_size_;
 
  public:
-  /**
-   * \brief PixelateOperation
-   * \param data_type: the datatype to create this operator for (saves datatype conversions)
-   */
-  PixelateOperation(DataType data_type);
+  PixelateOperation();
 
   void set_pixel_size(const int pixel_size)
   {

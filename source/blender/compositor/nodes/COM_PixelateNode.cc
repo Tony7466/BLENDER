@@ -20,14 +20,8 @@ void PixelateNode::convert_to_operations(NodeConverter &converter,
 
   NodeInput *input_socket = this->get_input_socket(0);
   NodeOutput *output_socket = this->get_output_socket(0);
-  DataType datatype = input_socket->get_data_type();
 
-  if (input_socket->is_linked()) {
-    NodeOutput *link = input_socket->get_link();
-    datatype = link->get_data_type();
-  }
-
-  PixelateOperation *operation = new PixelateOperation(datatype);
+  PixelateOperation *operation = new PixelateOperation();
   converter.add_operation(operation);
 
   operation->set_pixel_size(editor_node->custom1);
