@@ -52,6 +52,7 @@
 #include "BKE_fluid.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.hh"
@@ -104,10 +105,15 @@ void BKE_modifier_init()
   virtualModifierCommonData.smd = *((ShapeKeyModifierData *)md);
   BKE_modifier_free(md);
 
+  md = BKE_modifier_new(eModifierType_GreasePencilTransform);
+  virtualModifierCommonData.tmd = *((GPTransformModifierData *)md);
+  BKE_modifier_free(md);
+
   virtualModifierCommonData.amd.modifier.mode |= eModifierMode_Virtual;
   virtualModifierCommonData.cmd.modifier.mode |= eModifierMode_Virtual;
   virtualModifierCommonData.lmd.modifier.mode |= eModifierMode_Virtual;
   virtualModifierCommonData.smd.modifier.mode |= eModifierMode_Virtual;
+  virtualModifierCommonData.tmd.modifier.mode |= eModifierMode_Virtual;
 }
 
 const ModifierTypeInfo *BKE_modifier_get_info(ModifierType type)
@@ -657,6 +663,12 @@ ModifierData *BKE_modifiers_get_virtual_modifierlist(const Object *ob,
 
     virtual_modifier_data->smd.modifier.next = md;
     md = &virtual_modifier_data->smd.modifier;
+  }
+
+  /* Grease Pencil layer parenting. */
+  if ((ob->type == OB_GREASE_PENCIL) && BKE_grease_pencil_has_layer_transform(ob)) {
+    virtual_modifier_data->tmd.modifier.next = md;
+    md = &virtual_modifier_data->tmd.modifier;
   }
 
   return md;

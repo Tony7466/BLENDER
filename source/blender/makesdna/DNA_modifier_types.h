@@ -94,6 +94,7 @@ typedef enum ModifierType {
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
   eModifierType_GreasePencilOpacity = 61,
+  eModifierType_GreasePencilTransform = 62,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2547,3 +2548,7 @@ typedef enum GreasePencilOpacityModifierFlag {
   /* Set the opacity for every point in a stroke, otherwise multiply existing opacity. */
   MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY = (1 << 2),
 } GreasePencilOpacityModifierFlag;
+
+typedef struct GPTransformModifierData {
+  ModifierData modifier;
+} GPTransformModifierData;

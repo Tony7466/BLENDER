@@ -896,16 +896,6 @@ void Layer::tag_frames_map_keys_changed()
   this->runtime->sorted_keys_cache_.tag_dirty();
 }
 
-float4x4 Layer::parent_matrix() const
-{
-  return this->runtime->parent_matrix_;
-}
-
-void Layer::set_parent_matrix(const float4x4 &matrix)
-{
-  this->runtime->parent_matrix_ = matrix;
-}
-
 LayerGroup::LayerGroup()
 {
   new (&this->base) TreeNode(GP_LAYER_TREE_GROUP);
@@ -1202,43 +1192,18 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
   return grease_pencil;
 }
 
-static void grease_pencil_update_layer_matrices(GreasePencil &grease_pencil)
+bool BKE_grease_pencil_has_layer_transform(const Object *object)
 {
   using namespace blender::bke::greasepencil;
-  for (Layer *layer : grease_pencil.layers_for_write()) {
-    if (layer->parent == nullptr) {
-      continue;
-    }
-    Object &parent = *layer->parent;
-    if (parent.type == OB_ARMATURE && layer->parsubstr[0] != '\0') {
-      if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer->parsubstr)) {
-        layer->set_parent_matrix(blender::float4x4_view(parent.object_to_world) *
-                                 blender::float4x4_view(channel->pose_mat));
-      }
-      else {
-        layer->set_parent_matrix(blender::float4x4_view(parent.object_to_world));
-      }
-    }
-    else {
-      layer->set_parent_matrix(blender::float4x4_view(parent.object_to_world));
+  const GreasePencil *grease_pencil = static_cast<const GreasePencil *>(object->data);
+  for (const Layer *layer : grease_pencil->layers()) {
+    if (layer->parent != nullptr) {
+      return true;
     }
   }
+  return false;
 }
 
-static void grease_pencil_apply_layer_transforms(GreasePencil &grease_pencil)
-{
-  using namespace blender::bke::greasepencil;
-  for (const int layer_i : grease_pencil.layers().index_range()) {
-    const Layer &layer = *grease_pencil.layers()[layer_i];
-    if (layer.parent == nullptr) {
-      continue;
-    }
-    if (Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil, layer_i))
-    {
-      drawing->strokes_for_write().transform(layer.parent_matrix());
-    }
-  }
-}
 
 static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
                                              Scene *scene,
@@ -1294,16 +1259,12 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     edit_component.grease_pencil_edit_hints_ = std::make_unique<GreasePencilEditHints>(
         *static_cast<const GreasePencil *>(DEG_get_original_object(object)->data));
   }
-  grease_pencil_update_layer_matrices(*geometry_set.get_grease_pencil_for_write());
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
   if (!geometry_set.has_grease_pencil()) {
     GreasePencil *empty_grease_pencil = BKE_grease_pencil_new_nomain();
     empty_grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
     geometry_set.replace_grease_pencil(empty_grease_pencil);
-  }
-  else {
-    grease_pencil_apply_layer_transforms(*geometry_set.get_grease_pencil_for_write());
   }
 
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
