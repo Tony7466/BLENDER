@@ -1855,18 +1855,17 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     }
     else {
       /* For existing Layers append the strokes to new CurvesGeometry. */
-      Layer layer_src = *grease_pencil.layers()[info.layer_index];
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
       bke::CurvesGeometry &curves_dst = drawing_dst.strokes_for_write();
       /* Resize target geometry to fit new strokes. */
-      int p_src = drawing_dst.geometry.point_num;
-      int c_src = drawing_dst.geometry.curve_num;
-      int p_dst = selected_points.size();
-      int c_dst = selected_curves.size();
+      int p_src = selected_points.size();
+      int c_src = selected_curves.size();
+      int p_dst = drawing_dst.geometry.point_num;
+      int c_dst = drawing_dst.geometry.curve_num;
 
       points_num += p_src + p_dst;
       curves_num += c_src + c_dst;
-      curves_dst.resize(points_num, curves_num + 1);
+      curves_dst.resize(points_num, curves_num);
 
       /* TODO: Append geometry to target layer. */
       // Vector<bke::GeometrySet> geometry_sets = {curves_src};
