@@ -19,6 +19,7 @@
 
 #include "DNA_defaults.h"
 #include "DNA_material_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "RNA_access.hh"
@@ -108,6 +109,7 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
 
   const Scene *scene = DEG_get_evaluated_scene(depsgraph);
   GreasePencil &grease_pencil = *gp;
+  const int frame = scene->r.cfra;
 
   const int iterations = mmd->step;
   const float influence = mmd->factor;
@@ -127,10 +129,14 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
   }
 
   bool changed = false;
-  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
-      blender::ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
-  threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+
+  IndexMaskMemory mask_memory;
+  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(*gp, mmd->influence, mask_memory);
+  const Vector<bke::greasepencil::Drawing*> drawings =
+      modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
+
+  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing* drawing) {
+    bke::CurvesGeometry &curves = drawing->strokes_for_write();
     if (curves.points_num() == 0) {
       return;
     }
@@ -162,7 +168,7 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
       positions.finish();
       changed = true;
     }
-    if (smooth_opacity && info.drawing.opacities().is_span()) {
+    if (smooth_opacity && drawing->opacities().is_span()) {
       bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
       ed::greasepencil::smooth_curve_attribute(points_by_curve,
                                                point_selection,
@@ -176,7 +182,7 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
       opacities.finish();
       changed = true;
     }
-    if (smooth_radius && info.drawing.radii().is_span()) {
+    if (smooth_radius && drawing->radii().is_span()) {
       bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
       ed::greasepencil::smooth_curve_attribute(points_by_curve,
                                                point_selection,
