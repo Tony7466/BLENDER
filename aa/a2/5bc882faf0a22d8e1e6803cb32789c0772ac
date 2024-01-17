@@ -1,3 +1,4 @@
 Referenced by issue #116924, Sculpt: Undo crash
 Referenced by issue #117161, Detectable geometry for the brush doesn't update after Undo
 Referenced by pull request #117192, Fix #117161: Detectable geometry for the brush doesn't update after Undo
+Referenced by commit 1e85feb5425b7c3b801f38dc725b783b2099ac91, Fix #117161: Detectable geometry for the brush doesn't update after Undo
