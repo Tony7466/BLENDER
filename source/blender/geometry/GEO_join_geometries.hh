@@ -12,7 +12,7 @@ namespace blender::geometry {
 bke::GeometrySet join_geometries(Span<bke::GeometrySet> geometries,
                                  const bke::AnonymousAttributePropagationInfo &propagation_info);
 
-void join_transform_instance_components(const Span<const bke::GeometryComponent *> src_components,
-                                        Span<blender::float4x4> src_base_transforms,
-                                        bke::GeometrySet &result);
+void join_attributes(const Span<const bke::GeometryComponent *> src_components,
+                            bke::GeometryComponent &result,
+                            const Span<StringRef> ignored_attributes);
 }

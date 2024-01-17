@@ -73,7 +73,7 @@ static void fill_new_attribute(const Span<const GeometryComponent *> src_compone
   }
 }
 
-static void join_attributes(const Span<const GeometryComponent *> src_components,
+void join_attributes(const Span<const GeometryComponent *> src_components,
                             GeometryComponent &result,
                             const Span<StringRef> ignored_attributes = {})
 {
@@ -185,57 +185,12 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   options.keep_original_ids = true;
   options.realize_instance_attributes = false;
   options.propagation_info = propagation_info;
+  options.depths = VArray<int>::ForSingle( 0, instances.get()->instances_num());
+  IndexMaskMemory memory;
+  options.selection = IndexMask::from_bools(VArray<bool>::ForSingle(true, instances.get()->instances_num()), memory);
   GeometrySet joined_components = realize_instances(
       GeometrySet::from_instances(instances.release()), options);
   result.add(joined_components.get_component_for_write(component_type));
-}
-
-
-void join_transform_instance_components(const Span<const GeometryComponent *> src_components,
-                                        Span<blender::float4x4> src_base_transforms,
-                                        GeometrySet &result)
-{
-  BLI_assert(src_components.size() == src_base_transforms.size());
-  if (src_components.is_empty()){
-    return;
-  }
-  VArray<blender::float4x4>::ForSpan(src_base_transforms);
-  std::unique_ptr<bke::Instances> dst_instances = std::make_unique<bke::Instances>(); 
-
-  int tot_instances = 0; 
-  for (const bke::GeometryComponent *src_component : src_components) {
-    const bke::InstancesComponent &src_instance_component = static_cast<const bke::InstancesComponent &>(*src_component);
-    tot_instances += src_instance_component.get()->instances_num();
-  }
-  for (const int i:src_components.index_range())
-  {
-    const bke::GeometryComponent *src_component = src_components[i];
-    const bke::InstancesComponent &src_instance_component = static_cast<const bke::InstancesComponent &>(*src_component);
-    const blender::float4x4 &base_transform = src_base_transforms[i];
-    const bke::Instances &src_instances = *src_instance_component.get();
-
-    const Span<bke::InstanceReference> src_references = src_instances.references();
-    Array<int> handle_map(src_references.size());
-    for (const int src_handle : src_references.index_range()) {
-      handle_map[src_handle] = dst_instances->add_reference(src_references[src_handle]);
-    }
-
-    const Span<float4x4> src_transforms = src_instances.transforms(); 
-    const Span<int> src_reference_handles = src_instances.reference_handles(); 
-    for (const int i : src_transforms.index_range())
-    {
-      const int src_handle = src_reference_handles[i];
-      const int dst_handle = handle_map[src_handle];
-      const float4x4 &transform = base_transform * src_transforms[i];
-      dst_instances->add_instance(dst_handle, transform);
-    }
-
-  }
-
-  result.replace_instances(dst_instances.release());
-  bke::InstancesComponent &dst_component = result.get_component_for_write<bke::InstancesComponent>();
-  join_attributes(src_components, dst_component, {"position"});
-
 }
 
 GeometrySet join_geometries(const Span<GeometrySet> geometries,

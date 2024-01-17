@@ -11,6 +11,7 @@
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.hh"
@@ -226,7 +227,14 @@ struct AllCurvesInfo {
   bool create_nurbs_weight_attribute = false;
   bool create_custom_normal_attribute = false;
 };
-
+struct AllInstancesInfo{
+  /** Instance components to merge for output geometry. */
+  Vector<const bke::GeometryComponent *> instances_components_to_merge;
+  /** Base transform for each instance component. */
+  Vector<float4x4> instances_components_transforms;
+  /** anothere take on attibutes*/
+  Vector<Map<AttributeIDRef, const void *>> map_attributes_ptr; 
+};
 /** Collects all tasks that need to be executed to realize all instances. */
 struct GatherTasks {
   Vector<RealizePointCloudTask> pointcloud_tasks;
@@ -251,6 +259,7 @@ struct GatherTasksInfo {
   const AllPointCloudsInfo &pointclouds;
   const AllMeshesInfo &meshes;
   const AllCurvesInfo &curves;
+  const OrderedAttributes &instances_attriubutes;
   bool create_id_attribute_on_any_component = false;
 
   /** Selection for top-level instances to realize. */
@@ -268,11 +277,7 @@ struct GatherTasksInfo {
   Vector<std::unique_ptr<GArray<>>> &r_temporary_arrays;
 
 
-  /** Instance components to merge for output geometry. */
-  Vector<const bke::GeometryComponent *> instances_components_to_merge;
-  /** Base transform for each instance component. */
-  Vector<float4x4> instances_components_transforms;
-
+  AllInstancesInfo instances;
 
   /** All gathered tasks. */
   GatherTasks r_tasks;
@@ -290,13 +295,16 @@ struct InstanceContext {
   AttributeFallbacksArray meshes;
   /** Ordered by #AllCurvesInfo.attributes. */
   AttributeFallbacksArray curves;
+  /** Ordered by #AllInstancesInfo.attributes. */
+  AttributeFallbacksArray instances;
   /** Id mixed from all parent instances. */
   uint32_t id = 0;
 
   InstanceContext(const GatherTasksInfo &gather_info)
       : pointclouds(gather_info.pointclouds.attributes.size()),
         meshes(gather_info.meshes.attributes.size()),
-        curves(gather_info.curves.attributes.size())
+        curves(gather_info.curves.attributes.size()),
+        instances(gather_info.instances_attriubutes.size())
   {
   }
 };
@@ -534,6 +542,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
       gather_info, instances, gather_info.meshes.attributes);
   Vector<std::pair<int, GSpan>> curve_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.curves.attributes);
+  Vector<std::pair<int, GSpan>> instance_attributes_to_override = prepare_attribute_fallbacks(
+      gather_info, instances, gather_info.instances_attriubutes);
 
 
   /* If at top level, get instance indices from selection field, else use all instances. */
@@ -557,6 +567,9 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
     }
     for (const std::pair<int, GSpan> &pair : curve_attributes_to_override) {
       instance_context.curves.array[pair.first] = pair.second[i];
+    }
+    for (const std::pair<int, GSpan> &pair : instance_attributes_to_override) {
+      instance_context.instances.array[pair.first] = pair.second[i];
     }
 
     uint32_t local_instance_id = 0;
@@ -655,8 +668,17 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       }
       case bke::GeometryComponent::Type::Instance: {
         if (current_depth == target_depth) {
-          gather_info.instances_components_to_merge.append(component);
-          gather_info.instances_components_transforms.append(base_transform);
+
+          Map<AttributeIDRef, const void *> tmp_pointer_attiubute;
+          for ( int attribute_index : gather_info.instances_attriubutes.index_range()){
+            AttributeIDRef id = gather_info.instances_attriubutes.ids[attribute_index];
+            const void * data_ptr = base_instance_context.instances.array[attribute_index];
+            tmp_pointer_attiubute.add(id, data_ptr);
+          }
+
+          gather_info.instances.map_attributes_ptr.append(tmp_pointer_attiubute);
+          gather_info.instances.instances_components_to_merge.append(component);
+          gather_info.instances.instances_components_transforms.append(base_transform);
           }
         else{
           const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
@@ -704,6 +726,31 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
 /* -------------------------------------------------------------------- */
 /** \name Point Cloud
  * \{ */
+
+static OrderedAttributes gather_generic_instance_attributes_to_propagate(
+    const bke::GeometrySet &in_geometry_set,
+    const RealizeInstancesOptions &options,
+    bool &r_create_id)
+{
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::Instance);
+
+  Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+  in_geometry_set.gather_attributes_for_propagation(src_component_types,
+                                                    bke::GeometryComponent::Type::Instance,
+                                                    true,
+                                                    options.propagation_info,
+                                                    attributes_to_propagate);
+  attributes_to_propagate.remove("position");
+  attributes_to_propagate.remove("radius");
+  r_create_id = attributes_to_propagate.pop_try("id").has_value();
+  OrderedAttributes ordered_attributes;
+  for (const auto item : attributes_to_propagate.items()) {
+    ordered_attributes.ids.add_new(item.key);
+    ordered_attributes.kinds.append(item.value);
+  }
+  return ordered_attributes;
+}
 
 static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
@@ -827,6 +874,100 @@ static void execute_realize_pointcloud_task(
         return point_slice;
       },
       dst_attribute_writers);
+}
+static void execute_instances_tasks(const Span<const bke::GeometryComponent *> src_components,
+                              Span<blender::float4x4> src_base_transforms,
+                              blender::Map<bke::AttributeIDRef, bke::AttributeKind> span_test_base_attributes,
+                              Vector<blender::Map<blender::bke::AttributeIDRef, const void *>> map_attributes,
+                              bke::GeometrySet &result) 
+{
+  BLI_assert(src_components.size() == src_base_transforms.size());
+  if (src_components.is_empty()){
+    return;
+  }
+
+  VArray<blender::float4x4>::ForSpan(src_base_transforms);
+  Array<int> offsets_data(src_components.size() + 1);
+  for (const int i : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[i]);
+    offsets_data[i] = src_component.get()->instances_num();
+  }
+  const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(offsets_data);
+
+  std::unique_ptr<bke::Instances> dst_instances = std::make_unique<bke::Instances>();
+  dst_instances->resize(offsets.total_size());
+
+  // creates attribute for each ID in the span_test_base_attributes.id;
+  Vector<bke::GSpanAttributeWriter> attribute_writers;
+  for (const auto item : span_test_base_attributes.items()) {
+    bke::AttrDomain domain = bke::AttrDomain::Instance;
+    bke::AttributeIDRef id = item.key;
+    eCustomDataType type =  item.value.data_type;
+    blender::bke::MutableAttributeAccessor atrr = dst_instances->attributes_for_write();
+    
+    attribute_writers.append(atrr.lookup_or_add_for_write_only_span(id, domain, type));
+  }
+  
+  MutableSpan<float4x4> all_transforms = dst_instances->transforms();
+  MutableSpan<int> all_handles = dst_instances->reference_handles();
+
+  for (const int i : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[i]);
+    const bke::Instances &src_instances = *src_component.get();
+    const blender::float4x4 src_base_transform = src_base_transforms[i];
+    const auto map_attibute = map_attributes[i];
+
+    const Span<bke::InstanceReference> src_references = src_instances.references();
+    Array<int> handle_map(src_references.size());
+    for (const int src_handle : src_references.index_range()) {
+      handle_map[src_handle] = dst_instances->add_reference(src_references[src_handle]);
+    }
+    const IndexRange dst_range = offsets[i];
+
+    for (const auto item : span_test_base_attributes.items()) {
+      bke::AttrDomain domain = bke::AttrDomain::Instance;
+      bke::AttributeIDRef id = item.key;
+      eCustomDataType type =  item.value.data_type;
+
+      const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(type);
+      BLI_assert(cpp_type != nullptr);
+
+      
+      bke::GSpanAttributeWriter write_attribute = dst_instances->attributes_for_write().lookup_or_add_for_write_only_span(id ,  domain, type);
+      GMutableSpan dst_span = write_attribute.span;
+      if (!write_attribute) { // do not override existing attributes
+        continue;
+      }
+      const void *a;          // Declare a pointer to an integer
+      int value = 5;   // Declare an integer variable and assign a value
+      a = &value; 
+      
+      if (map_attibute.lookup_ptr(id) !=nullptr && map_attibute.lookup(id) != nullptr){
+        a = map_attibute.lookup(id);
+      }
+      
+      GVArray read_attribute = dst_instances->attributes().lookup_or_default(id,domain, type).varray;
+
+      GVArray thre = GVArray::ForSingle(*cpp_type, dst_range.size() , a);
+      array_utils::copy(thre, dst_span.slice(dst_range));
+
+
+      write_attribute.finish();
+    }
+
+    const Span<int> src_handles = src_instances.reference_handles();
+    array_utils::gather(handle_map.as_span(), src_handles, all_handles.slice(dst_range));
+
+    array_utils::copy(src_instances.transforms(), all_transforms.slice(dst_range));
+
+    for (blender::float4x4& transfrom : all_transforms.slice(dst_range)){
+      transfrom *= src_base_transform;
+    }
+    
+  }
+  result.replace_instances(dst_instances.release());
+  auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
+  join_attributes(src_components, dst_component, {"position"});
 }
 
 static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &options,
@@ -1652,6 +1793,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   AllPointCloudsInfo all_pointclouds_info = preprocess_pointclouds(geometry_set, options);
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options);
+  bool a = true;
+  OrderedAttributes ordered_attributes = gather_generic_instance_attributes_to_propagate(geometry_set, options, a);
 
   Vector<std::unique_ptr<GArray<>>> temporary_arrays;
   const bool create_id_attribute = all_pointclouds_info.create_id_attribute ||
@@ -1660,25 +1803,40 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   GatherTasksInfo gather_info = {all_pointclouds_info,
                                  all_meshes_info,
                                  all_curves_info,
+                                 ordered_attributes,
                                  create_id_attribute,
                                  options.selection,
                                  options.depths,
                                  temporary_arrays};
-
+  
   bke::GeometrySet new_geometry_set;
   
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
 
   if (temp_geometry_set.has_instances()) {
-    gather_info.instances_components_to_merge.append(
+    gather_info.instances.instances_components_to_merge.append(
         &temp_geometry_set.get_component_for_write<bke::InstancesComponent>());
-    gather_info.instances_components_transforms.append(float4x4::identity());
+    gather_info.instances.instances_components_transforms.append(float4x4::identity());
+    AttributeIDRef blank_id = "";
+    const void *null_ptr;
+    Map<AttributeIDRef, const void *> tmp_pointer_attiubute;
+    tmp_pointer_attiubute.add(blank_id, null_ptr);
+    gather_info.instances.map_attributes_ptr.append(tmp_pointer_attiubute);
   }
+
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
 
-  join_transform_instance_components(gather_info.instances_components_to_merge, gather_info.instances_components_transforms, new_geometry_set);
+  Map<AttributeIDRef, AttributeKind> r_attributes;
+  for (int i : ordered_attributes.index_range()){
+    r_attributes.add(ordered_attributes.ids[i], ordered_attributes.kinds[i]);
+  };
 
+  execute_instances_tasks(gather_info.instances.instances_components_to_merge, 
+                           gather_info.instances.instances_components_transforms, 
+                           r_attributes,
+                           gather_info.instances.map_attributes_ptr,
+                           new_geometry_set);
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
