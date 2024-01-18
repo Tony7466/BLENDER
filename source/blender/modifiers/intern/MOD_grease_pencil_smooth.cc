@@ -109,7 +109,7 @@ static void deform_drawing(ModifierData &md,
   const bool smooth_radius = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS);
   const bool smooth_opacity = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH);
 
-  if (iterations <= 0 || influence <= 0) {
+  if (iterations <= 0 || influence <= 0.0f) {
     return;
   }
 
@@ -149,7 +149,7 @@ static void deform_drawing(ModifierData &md,
                                      keep_shape,
                                      positions.span);
     positions.finish();
-    changed = true;
+    drawing.tag_positions_changed();
   }
   if (smooth_opacity && drawing.opacities().is_span()) {
     bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
@@ -163,7 +163,7 @@ static void deform_drawing(ModifierData &md,
                                      false,
                                      opacities.span);
     opacities.finish();
-    changed = true;
+    drawing.tag_positions_changed();
   }
   if (smooth_radius && drawing.radii().is_span()) {
     bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
@@ -177,10 +177,6 @@ static void deform_drawing(ModifierData &md,
                                      false,
                                      radii.span);
     radii.finish();
-    changed = true;
-  }
-
-  if (changed) {
     drawing.tag_positions_changed();
   }
 }
@@ -194,16 +190,16 @@ static void modify_geometry_set(ModifierData *md,
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
-  GreasePencil *grease_pencil = geometry_set->get_grease_pencil_for_write();
+  GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
 
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   const int current_frame = scene->r.cfra;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      *grease_pencil, mmd->influence, mask_memory);
+      grease_pencil, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(*grease_pencil, layer_mask, current_frame);
+      modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
     deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
