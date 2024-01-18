@@ -122,7 +122,7 @@ enum ModifierTypeFlag {
   /** Accepts #GreasePencil data input. */
   eModifierTypeFlag_AcceptsGreasePencil = (1 << 12),
 };
-ENUM_OPERATORS(ModifierTypeFlag, eModifierTypeFlag_AcceptsBMesh)
+ENUM_OPERATORS(ModifierTypeFlag, eModifierTypeFlag_AcceptsGreasePencil)
 
 using IDWalkFunc = void (*)(void *user_data, Object *ob, ID **idpoin, int cb_flag);
 using TexWalkFunc = void (*)(void *user_data, Object *ob, ModifierData *md, const char *propname);
@@ -191,7 +191,7 @@ struct ModifierTypeInfo {
    * Copy instance data for this modifier type. Should copy all user
    * level settings to the target modifier.
    *
-   * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+   * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
    */
   void (*copy_data)(const ModifierData *md, ModifierData *target, int flag);
 
