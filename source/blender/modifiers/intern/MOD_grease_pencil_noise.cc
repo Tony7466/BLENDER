@@ -166,7 +166,7 @@ static void deform_drawing(ModifierData &md,
 
   auto get_weight = [&](const IndexRange points, const int point_i) {
     if (!use_curve) {
-        return 1.0f;
+      return 1.0f;
     }
     const float value = float(point_i - points.start()) / float(points.size() - 1);
     return BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
@@ -186,8 +186,8 @@ static void deform_drawing(ModifierData &md,
         /* Vector orthogonal to normal. */
         const float3 bi_normal = math::normalize(math::cross(tangents[point], normals[point]));
         const float noise = table_sample(noise_table_position,
-                                   point * noise_scale + fractf(mmd.noise_offset));
-        positions[point] += up_vector * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
+                                         point * noise_scale + fractf(mmd.noise_offset));
+        positions[point] += bi_normal * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
       }
     });
     drawing.tag_positions_changed();
@@ -199,12 +199,11 @@ static void deform_drawing(ModifierData &md,
         noise_len, int(floor(mmd.noise_offset)), seed);
 
     filtered_strokes.foreach_index([&](const int stroke_i) {
-      int point_count = points_by_curve[stroke_i].size();
       const IndexRange points = points_by_curve[stroke_i];
       for (const int point : points) {
         const float weight = get_weight(points, point);
         const float noise = table_sample(noise_table_thickness,
-                                   point * noise_scale + fractf(mmd.noise_offset));
+                                         point * noise_scale + fractf(mmd.noise_offset));
         radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd.factor_thickness,
                                   0.0f);
       }
@@ -221,7 +220,7 @@ static void deform_drawing(ModifierData &md,
       for (const int point : points) {
         const float weight = get_weight(points, point);
         const float noise = table_sample(noise_table_strength,
-                                   point * noise_scale + fractf(mmd.noise_offset));
+                                         point * noise_scale + fractf(mmd.noise_offset));
         opacities[point] *= math::max(1.0f - noise * weight * mmd.factor_strength, 0.0f);
       }
     });
@@ -248,7 +247,7 @@ static void modify_geometry_set(ModifierData *md,
   int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
   IndexMaskMemory mask_memory;
-  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
+  const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
       modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
@@ -324,9 +323,9 @@ ModifierTypeInfo modifierType_GreasePencilNoise = {
     /*struct_size*/ sizeof(GreasePencilNoiseModifierData),
     /*srna*/ &RNA_GreasePencilNoiseModifier,
     /*type*/ ModifierTypeType::OnlyDeform,
-    /*flags*/ (eModifierTypeFlag_AcceptsGreasePencil |
-                                  eModifierTypeFlag_SupportsEditmode |
-                                  eModifierTypeFlag_EnableInEditmode),
+    /*flags*/
+    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+     eModifierTypeFlag_EnableInEditmode),
     /*icon*/ ICON_GREASEPENCIL,
 
     /*copy_data*/ blender::copy_data,
