@@ -83,6 +83,7 @@ def rna_idprop_ui_create(
         step=None,
         precision=None,
         id_type='OBJECT',
+        items=None,
 ):
     """Create and initialize a custom property with limits, defaults and other settings."""
 
@@ -138,6 +139,7 @@ def rna_idprop_ui_create(
             step=step,
             description=description,
             default=default,
+            items=items,
         )
     else:
         raise TypeError("Unexpected value type")
