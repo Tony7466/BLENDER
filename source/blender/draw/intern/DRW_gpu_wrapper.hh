@@ -1283,20 +1283,21 @@ template<typename T, int64_t len> class SwapChain {
   std::array<T, len> chain_;
   int index = 0;
 
-  int next_index()
+  int index_at_offset(int offset)
   {
-    return (index + 1) % len;
-  }
-
-  int previous_index()
-  {
-    return index > 0 ? index - 1 : len - 1;
+    int result = (index + offset) % len;
+    if (result >= 0) {
+      return result;
+    }
+    else {
+      return len + result;
+    }
   }
 
  public:
   void swap()
   {
-    index = next_index();
+    index = index_at_offset(1);
   }
 
   constexpr int64_t size()
@@ -1304,34 +1305,54 @@ template<typename T, int64_t len> class SwapChain {
     return len;
   }
 
+  T &at_offset(int offset)
+  {
+    return chain_[index_at_offset(offset)];
+  }
+
   T &current()
   {
-    return chain_[index];
+    return at_offset(0);
   }
 
   T &previous()
   {
-    return chain_[previous_index()];
+    return at_offset(-1);
   }
 
   T &next()
   {
-    return chain_[next_index()];
+    return at_offset(1);
+  }
+
+  T &opposite()
+  {
+    return at_offset(len / 2);
+  }
+
+  const T &at_offset(int offset) const
+  {
+    return chain_[index_at_offset(offset)];
   }
 
   const T &current() const
   {
-    return chain_[index];
+    return at_offset(0);
   }
 
   const T &previous() const
   {
-    return chain_[previous_index()];
+    return at_offset(-1);
   }
 
   const T &next() const
   {
-    return chain_[next_index()];
+    return at_offset(1);
+  }
+
+  const T &opposite() const
+  {
+    return at_offset(len / 2);
   }
 };
 
