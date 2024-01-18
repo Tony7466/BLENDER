@@ -1281,8 +1281,7 @@ static void grease_pencil_apply_parent_transform_to_layer_transforms(
                                   layer_matrix;
     /* Write the result back to the layer transforms. */
     math::EulerXYZ rot_euler;
-    math::to_loc_rot_scale<true>(
-        final_matrix, translations[layer_i], rot_euler, scales[layer_i]);
+    math::to_loc_rot_scale<true>(final_matrix, translations[layer_i], rot_euler, scales[layer_i]);
     rotations[layer_i] = float3(rot_euler);
     /* Layer parent is no longer needed at this stage, clear the pointer. */
     layer.parent = nullptr;

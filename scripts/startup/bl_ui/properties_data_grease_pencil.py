@@ -13,7 +13,8 @@ class DataButtonsPanel:
     @classmethod
     def poll(cls, context):
         return hasattr(context, "grease_pencil") and context.grease_pencil
-    
+
+
 class LayerDataButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -25,7 +26,6 @@ class LayerDataButtonsPanel:
         return grease_pencil and grease_pencil.layers.active
 
 
-    
 class LayerDataButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -35,7 +35,6 @@ class LayerDataButtonsPanel:
     def poll(cls, context):
         grease_pencil = context.grease_pencil
         return grease_pencil and grease_pencil.layers.active
-
 
 
 class DATA_PT_context_grease_pencil(DataButtonsPanel, Panel):
@@ -91,7 +90,7 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
 
             row = layout.row(align=True)
             row.prop(layer, "opacity", text="Opacity", slider=True)
-                
+
 
 class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, Panel):
     bl_label = "Transform"
