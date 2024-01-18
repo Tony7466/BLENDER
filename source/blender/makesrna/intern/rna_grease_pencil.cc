@@ -44,9 +44,9 @@ static void rna_grease_pencil_update(Main * /*bmain*/, Scene * /*scene*/, Pointe
 
 static void rna_grease_pencil_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  DEG_id_tag_update(&rna_grease_pencil(ptr)->id, ID_RECALC_TRANSFORM);
+  DEG_id_tag_update(&rna_grease_pencil(ptr)->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
-  WM_main_add_notifier(NC_OBJECT | ND_PARENT, rna_grease_pencil(ptr));
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
 }
 
 static void rna_iterator_grease_pencil_layers_begin(CollectionPropertyIterator *iter,
