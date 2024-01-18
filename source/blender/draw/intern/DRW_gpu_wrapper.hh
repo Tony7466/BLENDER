@@ -1281,19 +1281,22 @@ template<typename T, int64_t len> class SwapChain {
  private:
   BLI_STATIC_ASSERT(len > 1, "A swap-chain needs more than 1 unit in length.");
   std::array<T, len> chain_;
+  int index = 0;
+
+  int next_index()
+  {
+    return (index + 1) % len;
+  }
+
+  int previous_index()
+  {
+    return index > 0 ? index - 1 : len - 1;
+  }
 
  public:
   void swap()
   {
-    for (auto i : IndexRange(len - 1)) {
-      auto i_next = (i + 1) % len;
-      if constexpr (std::is_trivial_v<T>) {
-        SWAP(T, chain_[i], chain_[i_next]);
-      }
-      else {
-        T::swap(chain_[i], chain_[i_next]);
-      }
-    }
+    index = next_index();
   }
 
   constexpr int64_t size()
@@ -1303,34 +1306,32 @@ template<typename T, int64_t len> class SwapChain {
 
   T &current()
   {
-    return chain_[0];
+    return chain_[index];
   }
 
   T &previous()
   {
-    /* Avoid modulo operation with negative numbers. */
-    return chain_[(0 + len - 1) % len];
+    return chain_[previous_index()];
   }
 
   T &next()
   {
-    return chain_[(0 + 1) % len];
+    return chain_[next_index()];
   }
 
   const T &current() const
   {
-    return chain_[0];
+    return chain_[index];
   }
 
   const T &previous() const
   {
-    /* Avoid modulo operation with negative numbers. */
-    return chain_[(0 + len - 1) % len];
+    return chain_[previous_index()];
   }
 
   const T &next() const
   {
-    return chain_[(0 + 1) % len];
+    return chain_[next_index()];
   }
 };
 
