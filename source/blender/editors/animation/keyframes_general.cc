@@ -702,6 +702,58 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
   }
 }
 
+static float s_curve(
+    const float x, const float slope, const float width, const float height, const float shift)
+{
+  /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve verticaly
+   * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
+   * (width and height) and move it (xshift and y yshift) to crop the part of the curve we need.
+   * Slope determins how curvy the shape is */
+  float y = height * pow((x - shift), slope) /
+            (pow((x - shift), slope) + pow((width - (x - shift)), slope));
+
+  /* The curve has some noise beyond our margins so we clamp the values */
+  if (x > shift + width) {
+    y = height;
+  }
+  else if (x < shift) {
+    y = 0.0f;
+  }
+  return y;
+}
+
+void ease_to_ease_fcurve_segment(
+    FCurve *fcu, FCurveSegment *segment, const float factor, const float slope, const float width)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* These ease values use the entire curve to get the "S" shape. The value 2.0 on the slope
+   * makes it a bit sharper. */
+  const float height = 1.0;
+  /* Using the factor on the xshift we are basicaly moving the curve horizontaly. */
+  const float shift = -factor;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+
+    const float x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    const float ease = s_curve(x, slope, width, height, shift);
+
+    /* The ease variable basicaly act as a mask to molde the shape of the curve. */
+    const float key_y_value = left_key->vec[1][1] + key_y_range * ease;
+    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
+  }
+}
+
 /* ---------------- */
 
 void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)

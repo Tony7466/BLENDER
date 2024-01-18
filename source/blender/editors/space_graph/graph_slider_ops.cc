@@ -2469,3 +2469,123 @@ void GRAPH_OT_scale_from_neighbor(wmOperatorType *ot)
                "Reference Key",
                "Which end of the segment to use as a reference to scale from");
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Ease Ease Operator
+ * \{ */
+
+static void ease_ease_graph_keys(bAnimContext *ac,
+                                 const float factor,
+                                 const float slope,
+                                 const float width)
+{
+  ListBase anim_data = {NULL, NULL};
+
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      ease_to_ease_fcurve_segment(fcu, segment, factor, slope, width);
+    }
+
+    ale->update |= ANIM_UPDATE_DEFAULT;
+    BLI_freelistN(&segments);
+  }
+
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static void ease_ease_draw_status_header(bContext *C, tGraphSliderOp *gso)
+{
+  common_draw_status_header(C, gso, "Ease to Ease");
+}
+
+static void ease_ease_modal_update(bContext *C, wmOperator *op)
+{
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
+
+  ease_ease_draw_status_header(C, gso);
+
+  /* Reset keyframes to the state at invoke. */
+  reset_bezts(gso);
+  const float factor = slider_factor_get_and_remember(op);
+  const float slope = RNA_float_get(op->ptr, "slope");
+  const float width = RNA_float_get(op->ptr, "width");
+
+  ease_ease_graph_keys(&gso->ac, factor, slope, width);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+}
+
+static int ease_ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const int invoke_result = graph_slider_invoke(C, op, event);
+
+  if (invoke_result == OPERATOR_CANCELLED) {
+    return invoke_result;
+  }
+
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
+  gso->modal_update = ease_ease_modal_update;
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  ease_ease_draw_status_header(C, gso);
+  ED_slider_allow_overshoot_set(gso->slider, false, false);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  ED_slider_factor_set(gso->slider, 0.0f);
+
+  return invoke_result;
+}
+
+static int ease_ease_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const float factor = RNA_float_get(op->ptr, "factor");
+  const float slope = RNA_float_get(op->ptr, "slope");
+  const float width = RNA_float_get(op->ptr, "width");
+
+  ease_ease_graph_keys(&ac, factor, slope, width);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_ease_to_ease(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Ease To Ease";
+  ot->idname = "GRAPH_OT_ease_to_ease";
+  ot->description = "Align keyframes on a ease-in or ease-out curve";
+
+  /* API callbacks. */
+  ot->invoke = ease_ease_invoke;
+  ot->modal = graph_slider_modal;
+  ot->exec = ease_ease_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_float_factor(ot->srna,
+                       "factor",
+                       0.0f,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Curve Bend",
+                       "Defines if the keys should be aligned on an ease-in or ease-out curve",
+                       -1.0f,
+                       1.0f);
+
+  RNA_def_float(ot->srna, "slope", 2.0f, 0.0f, FLT_MAX, "Slope", "Foo", 0.0f, 16.0f);
+  RNA_def_float(ot->srna, "width", 1.0f, -FLT_MAX, FLT_MAX, "Width", "Foo", -16.0f, 16.0f);
+}
+
+/** \} */
