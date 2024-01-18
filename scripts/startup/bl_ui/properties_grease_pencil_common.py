@@ -280,19 +280,20 @@ class GREASE_PENCIL_MT_move_to_layer(Menu):
     def draw(self, context):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
-        obd = context.active_object.data
+        grease_pencil = context.active_object.data        
         
+        # layout.operator("grease_pencil.move_to_layer", text=layer.name, icon=icon).new_layer_name = "Layer"
         nlop = layout.operator("grease_pencil.layer_add", text="New Layer", icon='ADD')
-        nlop.new_layer_name = "Layer"
+        nlop.new_layer_name = "Layer"        
         
-        if not obd.layers:
+        if not grease_pencil.layers:
             return
 
         layout.separator()
 
-        for i in range(len(obd.layers) - 1, -1, -1):
-            layer = obd.layers[i]
-            if layer == obd.layers.active:
+        for i in range(len(grease_pencil.layers) - 1, -1, -1):
+            layer = grease_pencil.layers[i]
+            if layer == grease_pencil.layers.active:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'

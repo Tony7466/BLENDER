@@ -40,10 +40,7 @@
 #include "GEO_smooth_curves.hh"
 #include "GEO_subdivide_curves.hh"
 
-#include "WM_api.hh"
-
 #include "UI_resources.hh"
-using namespace blender::bke;
 
 namespace blender::ed::greasepencil {
 
@@ -1611,6 +1608,7 @@ static void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
 
 static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender::bke;
   using namespace bke::greasepencil;
   const Scene *scene = CTX_data_scene(C);
   bool changed = false;
@@ -1621,21 +1619,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   const int layer_index = RNA_int_get(op->ptr, "layer");
 
   if (layer_index > -1) {
-    /* get layer by index */
     layer_dst = grease_pencil.layers_for_write()[layer_index];
-  }
-  else {
-    /* Create a new layer. */
-    PropertyRNA *prop;
-    char name[128];
-    prop = RNA_struct_find_property(op->ptr, "new_layer_name");
-    if (RNA_property_is_set(op->ptr, prop)) {
-      RNA_property_string_get(op->ptr, prop, name);
-    }
-    else {
-      STRNCPY(name, "Layer");
-    }
-    layer_dst = &grease_pencil.add_layer(name);
   }
 
   if (layer_dst == nullptr) {
@@ -1706,7 +1690,6 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
   ot->description = "Move selected strokes to another layer";
 
   /* callbacks. */
-  ot->invoke = WM_operator_props_popup_confirm;
   ot->exec = grease_pencil_move_to_layer_exec;
   ot->poll = ot->poll = editable_grease_pencil_poll;
 
