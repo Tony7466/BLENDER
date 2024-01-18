@@ -7,6 +7,7 @@
  */
 
 #include <cstring>
+#include <fmt/format.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -2138,7 +2139,20 @@ static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
   uiLayout *row = uiLayoutRow(layout, true);
   uiLayoutSetRedAlert(row, item.id == nullptr);
   const int icon = UI_icon_from_idcode(item.id_type);
-  uiItemL(row, item.id_name, icon);
+  if (!item.id) {
+    uiItemL(row, item.id_name, icon);
+  }
+  else if (bake::BakeDataBlockID(*item.id) == bake::BakeDataBlockID(ID_Type(item.id_type),
+                                                                    StringRef(item.id_name),
+                                                                    StringRef(item.lib_name)))
+  {
+    uiItemL(row, item.id_name, icon);
+  }
+  else {
+    const char *format_str = IFACE_("{} " UI_MENU_ARROW_SEP " {}");
+    std::string label = fmt::format(format_str, item.id_name, item.id->name + 2);
+    uiItemL(row, label.c_str(), icon);
+  }
 }
 
 static void draw_bake_data_blocks_panel(const bContext *C,
