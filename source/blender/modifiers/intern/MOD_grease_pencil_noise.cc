@@ -148,9 +148,6 @@ static void deform_drawing(ModifierData &md,
     return;
   }
 
-  Span<float3> normals = strokes.evaluated_normals();
-  Span<float3> tangents = strokes.evaluated_tangents();
-  MutableSpan<float3> positions = strokes.positions_for_write();
   OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
   int seed = mmd.seed + strokes.points_num();
@@ -169,61 +166,75 @@ static void deform_drawing(ModifierData &md,
   }
   int noise_len = ceilf(strokes.points_num() * noise_scale) + 2;
 
-  MutableSpan<float> radii;
-  MutableSpan<float> opacities;
-  Array<float> noise_table_position = noise_table(
-      noise_len, int(floor(mmd.noise_offset)), seed + 2);
-  Array<float> noise_table_strength;
-  Array<float> noise_table_thickness;
+  if (mmd.factor) {
+    Span<float3> normals = strokes.evaluated_normals();
+    Span<float3> tangents = strokes.evaluated_tangents();
+    MutableSpan<float3> positions = strokes.positions_for_write();
+    Array<float> noise_table_position = noise_table(
+        noise_len, int(floor(mmd.noise_offset)), seed + 2);
 
-  if (mmd.factor_thickness) {
-    radii = drawing.radii_for_write();
-    noise_table_thickness = noise_table(noise_len, int(floor(mmd.noise_offset)), seed);
-  }
-  if (mmd.factor_strength) {
-    opacities = drawing.opacities_for_write();
-    noise_table_strength = noise_table(noise_len, int(floor(mmd.noise_offset)), seed + 3);
-  }
-
-  // TODO: UV hasn't been implemented yet.
-
-  filtered_strokes.foreach_index([&](const int stroke_i) {
-    int point_count = points_by_curve[stroke_i].size();
-
-    for (const int local_point : points_by_curve[stroke_i].index_range()) {
-      int point = local_point + points_by_curve[stroke_i].start();
-
-      float weight = 1.0f;
-      if (use_curve) {
-        float value = float(local_point) / (point_count - 1);
-        weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
-      }
-
-      if (mmd.factor > 0.0f) {
+    filtered_strokes.foreach_index([&](const int stroke_i) {
+      int point_count = points_by_curve[stroke_i].size();
+      for (const int local_point : points_by_curve[stroke_i].index_range()) {
+        int point = local_point + points_by_curve[stroke_i].start();
+        float weight = 1.0f;
+        if (use_curve) {
+          float value = float(local_point) / (point_count - 1);
+          weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
+        }
         /* Vector orthogonal to normal. */
         up_vector = math::normalize(math::cross(tangents[point], normals[point]));
-
         float noise = table_sample(noise_table_position,
                                    point * noise_scale + fractf(mmd.noise_offset));
         positions[point] += up_vector * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
       }
+    });
+  }
 
-      if (mmd.factor_thickness > 0.0f) {
+  if (mmd.factor_thickness) {
+    MutableSpan<float> radii = drawing.radii_for_write();
+    Array<float> noise_table_thickness = noise_table(
+        noise_len, int(floor(mmd.noise_offset)), seed);
+
+    filtered_strokes.foreach_index([&](const int stroke_i) {
+      int point_count = points_by_curve[stroke_i].size();
+      for (const int local_point : points_by_curve[stroke_i].index_range()) {
+        int point = local_point + points_by_curve[stroke_i].start();
+        float weight = 1.0f;
+        if (use_curve) {
+          float value = float(local_point) / (point_count - 1);
+          weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
+        }
         float noise = table_sample(noise_table_thickness,
                                    point * noise_scale + fractf(mmd.noise_offset));
         radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd.factor_thickness,
                                   0.0f);
       }
+    });
+  }
 
-      if (mmd.factor_strength > 0.0f) {
+  if (mmd.factor_strength) {
+    MutableSpan<float> opacities = drawing.opacities_for_write();
+    Array<float> noise_table_strength = noise_table(
+        noise_len, int(floor(mmd.noise_offset)), seed + 3);
+
+    filtered_strokes.foreach_index([&](const int stroke_i) {
+      int point_count = points_by_curve[stroke_i].size();
+      for (const int local_point : points_by_curve[stroke_i].index_range()) {
+        int point = local_point + points_by_curve[stroke_i].start();
+        float weight = 1.0f;
+        if (use_curve) {
+          float value = float(local_point) / (point_count - 1);
+          weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
+        }
         float noise = table_sample(noise_table_strength,
                                    point * noise_scale + fractf(mmd.noise_offset));
         opacities[point] *= math::max(1.0f - noise * weight * mmd.factor_strength, 0.0f);
       }
-    }
-  });
+    });
+  }
 
-  drawing.tag_positions_changed();
+  // TODO: UV hasn't been implemented yet.
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -235,6 +246,11 @@ static void modify_geometry_set(ModifierData *md,
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
+
+  if (!mmd->factor && !mmd->factor_strength && !mmd->factor_thickness) {
+    return;
+  }
+
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
   int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
 
