@@ -649,7 +649,7 @@ void FONT_OT_text_paste_from_file(wmOperatorType *ot)
 /** \name Insert Unicode Character
  * \{ */
 
-static void text_insert_unicode_cancel(bContext *C, void *arg_block, void *arg2)
+static void text_insert_unicode_cancel(bContext *C, void *arg_block, void * /*arg2*/)
 {
   uiBlock *block = static_cast<uiBlock *>(arg_block);
   UI_popup_block_close(C, CTX_wm_window(C), block);
@@ -759,7 +759,7 @@ static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, voi
   return block;
 }
 
-static int text_insert_unicode_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int text_insert_unicode_invoke(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
   char *edit_string = static_cast<char *>(MEM_mallocN(24, __func__));
   edit_string[0] = 0;
