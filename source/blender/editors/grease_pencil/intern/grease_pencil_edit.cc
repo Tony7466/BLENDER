@@ -36,8 +36,8 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
-#include "GEO_smooth_curves.hh"
 #include "GEO_join_geometries.hh"
+#include "GEO_smooth_curves.hh"
 #include "GEO_subdivide_curves.hh"
 
 #include "WM_api.hh"
@@ -1612,13 +1612,13 @@ static void GREASE_PENCIL_OT_stroke_subdivide(wmOperatorType *ot)
 static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 {
   using namespace bke::greasepencil;
-  Scene *scene = CTX_data_scene(C);
+  const Scene *scene = CTX_data_scene(C);
   bool changed = false;
 
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   Layer *layer_dst = nullptr;
-  int layer_index = RNA_int_get(op->ptr, "layer");
+  const int layer_index = RNA_int_get(op->ptr, "layer");
 
   if (layer_index > -1) {
     /* get layer by index */
@@ -1648,20 +1648,20 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   for (const MutableDrawingInfo &info : drawings_src) {
     bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
-    const IndexMask selected_points = ed::curves::retrieve_selected_points(curves_src, memory);
-    if (selected_points.is_empty()) {
+    const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves_src, memory);
+    if (selected_strokes.is_empty()) {
       continue;
     }
 
-    if (grease_pencil.get_drawing_at(*layer_dst, info.frame_number) == nullptr) {
+    if (!layer_dst->has_drawing_at(info.frame_number)) {
       /* For new layers Insert Keyframe at current frame/layer. */
       grease_pencil.insert_blank_frame(*layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
       /* Copy strokes to new CurvesGeometry. */
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
-      drawing_dst.strokes_for_write() = bke::curves_copy_point_selection(
-          curves_src, selected_points, {});
+      drawing_dst.strokes_for_write() = bke::curves_copy_curve_selection(
+          curves_src, selected_strokes, {});
 
-      curves_src.remove_points(selected_points, {});
+      curves_src.remove_curves(selected_strokes, {});
 
       drawing_dst.tag_topology_changed();
     }
@@ -1669,8 +1669,8 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       /* For existing Layers append the strokes to new CurvesGeometry. */
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
       /* Append geometry to target layer. */
-      bke::CurvesGeometry selected_elems = curves_copy_point_selection(
-          curves_src, selected_points, {});
+      bke::CurvesGeometry selected_elems = curves_copy_curve_selection(
+          curves_src, selected_strokes, {});
       Curves *selected_curves = bke::curves_new_nomain(std::move(selected_elems));
       Curves *layer_curves = bke::curves_new_nomain(std::move(drawing_dst.strokes_for_write()));
       std::array<GeometrySet, 2> geometry_sets{GeometrySet::from_curves(selected_curves),
@@ -1678,7 +1678,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       GeometrySet joined = geometry::join_geometries(geometry_sets, {});
       drawing_dst.strokes_for_write() = std::move(joined.get_curves_for_write()->geometry.wrap());
 
-      curves_src.remove_points(selected_points, {});
+      curves_src.remove_curves(selected_strokes, {});
 
       drawing_dst.tag_topology_changed();
     }
