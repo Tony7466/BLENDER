@@ -8305,6 +8305,21 @@ static void def_cmp_trackpos(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_cmp_pixelate(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  /* The range of the pixel size is chosen so that it is positive and above zero, and also does not
+   * exceed the underlying int16_t type. The size limit matches the maximum size used by blur
+   * nodes. */
+  prop = RNA_def_property(srna, "pixel_size", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "custom1");
+  RNA_def_property_range(prop, 1, 2048);
+  RNA_def_property_int_default(prop, 1);
+  RNA_def_property_ui_text(prop, "Pixel Size", "Pixel size of the output image");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_cmp_translate(StructRNA *srna)
 {
   static const EnumPropertyItem translate_items[] = {
@@ -8580,6 +8595,14 @@ static void def_cmp_kuwahara(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "variation");
   RNA_def_property_enum_items(prop, variation_items);
   RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_high_precision", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "high_precision", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "High Precision",
+      "Uses a more precise but slower method. Use if the output contains undesirable noise");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "uniformity", PROP_INT, PROP_NONE);
