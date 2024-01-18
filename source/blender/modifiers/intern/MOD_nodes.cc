@@ -67,6 +67,7 @@
 
 #include "BLT_translation.h"
 
+#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -2113,12 +2114,74 @@ static void draw_output_attributes_panel(const bContext *C,
   }
 }
 
-static void draw_bake_panel(uiLayout *layout, PointerRNA *modifier_ptr)
+static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
+                                           const bContext * /*C*/,
+                                           uiLayout *layout,
+                                           PointerRNA * /*idataptr*/,
+                                           PointerRNA *itemptr,
+                                           int /*icon*/,
+                                           PointerRNA * /*active_dataptr*/,
+                                           const char * /*active_propname*/,
+                                           int /*index*/,
+                                           int /*flt_flag*/)
+{
+  auto &item = *static_cast<NodesModifierDataBlockMapItem *>(itemptr->data);
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiLayoutSetRedAlert(row, item.id == nullptr);
+  const int icon = UI_icon_from_idcode(item.id_type);
+  uiItemL(row, item.id_name, icon);
+}
+
+static void draw_bake_data_blocks_panel(const bContext *C,
+                                        uiLayout *layout,
+                                        PointerRNA *modifier_ptr,
+                                        NodesModifierData &nmd)
+{
+  static uiListType *data_block_list = []() {
+    uiListType *list = MEM_cnew<uiListType>(__func__);
+    STRNCPY(list->idname, "DATA_UL_nodes_modifier_data_blocks");
+    list->draw_item = draw_bake_data_block_list_item;
+    WM_uilisttype_add(list);
+    return list;
+  }();
+
+  PointerRNA data_blocks_ptr = RNA_pointer_create(
+      modifier_ptr->owner_id, &RNA_NodesModifierDataBlocks, &nmd);
+
+  {
+    uiLayout *row = uiLayoutRow(layout, false);
+    uiTemplateList(row,
+                   C,
+                   data_block_list->idname,
+                   "",
+                   modifier_ptr,
+                   "data_blocks",
+                   &data_blocks_ptr,
+                   "active_index" /* TODO */,
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+  }
+}
+
+static void draw_bake_panel(const bContext *C,
+                            uiLayout *layout,
+                            PointerRNA *modifier_ptr,
+                            NodesModifierData &nmd)
 {
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetPropDecorate(col, false);
   uiItemR(col, modifier_ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake Path"), ICON_NONE);
+
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, "Data-Blocks", modifier_ptr, "open_bake_data_blocks_panel"))
+  {
+    draw_bake_data_blocks_panel(C, panel_layout, modifier_ptr, nmd);
+  }
 }
 
 static void draw_named_attributes_panel(uiLayout *layout, NodesModifierData &nmd)
@@ -2195,7 +2258,7 @@ static void draw_manage_panel(const bContext *C,
   if (uiLayout *panel_layout = uiLayoutPanel(
           C, layout, IFACE_("Bake"), modifier_ptr, "open_bake_panel"))
   {
-    draw_bake_panel(panel_layout, modifier_ptr);
+    draw_bake_panel(C, panel_layout, modifier_ptr, nmd);
   }
   if (uiLayout *panel_layout = uiLayoutPanel(
           C, layout, IFACE_("Named Attributes"), modifier_ptr, "open_named_attributes_panel"))
