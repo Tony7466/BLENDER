@@ -1227,22 +1227,52 @@ static bool grease_pencil_is_any_layer_parented(const Object *object)
   return false;
 }
 
+template<typename T> static bool all_equals(const blender::VArray<T> &varray, const T &value)
+{
+  using namespace blender;
+  if (varray.is_empty()) {
+    return false;
+  }
+  if (std::optional<T> single = varray.get_if_single()) {
+    if (*single != value) {
+      return false;
+    }
+    return true;
+  }
+  /* Do a linear search. Could be optimized. */
+  for (const int index : varray.index_range()) {
+    if (varray[index] != value) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool grease_pencil_is_any_layer_transformed(const blender::bke::GeometrySet &geometry_set)
 {
   using namespace blender;
   BLI_assert(geometry_set.has_grease_pencil());
-  // const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+  const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
 
-  // VArray<float3> translation = grease_pencil.layer_translations();
-  // if (std::optional<float3> value = translation.get_if_single()) {
-  //   if (!math::is_zero(value)) {
-  //     return true;
-  //   }
-  // }
-  // else {
-  //   devirtualize_varray(translation)
-  // }
-  return true;
+  /* Check if there is any translations. */
+  const VArray<float3> translations = grease_pencil.layer_translations();
+  if (!all_equals(translations, float3(0.0f))) {
+    return true;
+  }
+
+  /* Check if there is any rotations. */
+  const VArray<float3> rotations = grease_pencil.layer_rotations();
+  if (!all_equals(rotations, float3(0.0f))) {
+    return true;
+  }
+
+  /* Check if there is any scales. */
+  const VArray<float3> scales = grease_pencil.layer_scales();
+  if (!all_equals(scales, float3(1.0f))) {
+    return true;
+  }
+
+  return false;
 }
 
 static void grease_pencil_apply_parent_transform_to_layer_transforms(
