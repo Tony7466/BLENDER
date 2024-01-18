@@ -314,7 +314,7 @@ bool GHOST_NDOFManager::setDevice(ushort vendor_id, ushort product_id)
         case 0xC631: /* SpaceMouse Pro Wireless (cabled). */
         case 0xC632: /* SpaceMouse Pro Wireless Receiver. */
         case 0xC638: /* SpaceMouse Pro Wireless BT (cabled), see #116393.
-                        Although the device is called Wireless BT, but is actually a wired connection. */
+                      * 3Dconnexion docs describe this as "Wireless BT", but it is cabled. */
         case 0xC652: /* Universal Receiver. */
         {
           device_type_ = NDOF_SpaceMouseProWireless;
