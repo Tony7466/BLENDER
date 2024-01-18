@@ -97,18 +97,18 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void deform_drawing(ModifierData *md,
+static void deform_drawing(ModifierData &md,
                            Depsgraph * /*depsgraph*/,
-                           Object *ob,
+                           Object &ob,
                            bke::greasepencil::Drawing &drawing)
 {
-  GreasePencilSubdivModifierData *mmd = reinterpret_cast<GreasePencilSubdivModifierData *>(md);
+  GreasePencilSubdivModifierData &mmd = reinterpret_cast<GreasePencilSubdivModifierData &>(md);
 
   IndexMaskMemory memory;
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
-      ob, drawing.strokes_for_write(), mmd->influence, memory);
+      &ob, drawing.strokes_for_write(), mmd.influence, memory);
 
-  VArray<int> cuts = VArray<int>::ForSingle(mmd->level, drawing.strokes().points_num());
+  VArray<int> cuts = VArray<int>::ForSingle(mmd.level, drawing.strokes().points_num());
 
   drawing.strokes_for_write() = geometry::subdivide_curves(
       drawing.strokes(), strokes, std::move(cuts), {});
@@ -135,7 +135,7 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(md, ctx->depsgraph, ctx->object, *drawing);
+    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
   });
 }
 
