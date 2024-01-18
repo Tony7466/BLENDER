@@ -159,8 +159,8 @@ ModifierTypeInfo modifierType_GreasePencilSubdiv = {
     /*srna*/ &RNA_GreasePencilSubdivModifier,
     /*type*/ ModifierTypeType::Constructive,
     /*flags*/
-    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
-     eModifierTypeFlag_EnableInEditmode),
+    eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+        eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_SUBSURF,
 
     /*copy_data*/ blender::copy_data,
