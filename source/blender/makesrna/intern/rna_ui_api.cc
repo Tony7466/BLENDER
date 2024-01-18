@@ -1063,6 +1063,25 @@ void RNA_api_ui_layout(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem rna_enum_separator_type_items[] = {
+      {UI_LAYOUT_SEPARATOR_AUTO,
+       "AUTO",
+       0,
+       "Auto",
+       "Best guess at what type of separator is needed."},
+      {UI_LAYOUT_SEPARATOR_SPACE,
+       "SPACE",
+       0,
+       "Empty space",
+       "Horizontal or Vertical empty space, depending on layout direction."},
+      {UI_LAYOUT_SEPARATOR_LINE,
+       "LINE",
+       0,
+       "Line",
+       "Horizontal or Vertical line, depending on layout direction."},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static float node_socket_color_default[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   /* simple layout specifiers */
@@ -1481,6 +1500,12 @@ void RNA_api_ui_layout(StructRNA *srna)
                 "Percentage of width to space (leave unset for default space)",
                 0.0f,
                 FLT_MAX);
+  RNA_def_enum(func,
+               "type",
+               rna_enum_separator_type_items,
+               UI_LAYOUT_SEPARATOR_AUTO,
+               "Type",
+               "The type of the separator");
 
   func = RNA_def_function(srna, "separator_spacer", "uiItemSpacer");
   RNA_def_function_ui_description(

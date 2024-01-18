@@ -1501,6 +1501,12 @@ enum eButProgressType {
   UI_BUT_PROGRESS_TYPE_RING = 1,
 };
 
+enum eLayoutSeparatorType {
+  UI_LAYOUT_SEPARATOR_AUTO = 0,
+  UI_LAYOUT_SEPARATOR_SPACE = 1,
+  UI_LAYOUT_SEPARATOR_LINE = 2,
+};
+
 /***************************** ID Utilities *******************************/
 
 int UI_icon_from_id(const ID *id);
@@ -2973,7 +2979,7 @@ void uiItemV(uiLayout *layout, const char *name, int icon, int argval);
 /** Separator item */
 void uiItemS(uiLayout *layout);
 /** Separator item */
-void uiItemS_ex(uiLayout *layout, float factor);
+void uiItemS_ex(uiLayout *layout, float factor, int type = UI_LAYOUT_SEPARATOR_AUTO);
 /** Flexible spacing. */
 void uiItemSpacer(uiLayout *layout);
 
