@@ -163,7 +163,6 @@ static void deform_drawing(ModifierData &md,
                                      false,
                                      opacities.span);
     opacities.finish();
-    drawing.tag_positions_changed();
   }
   if (smooth_radius && drawing.radii().is_span()) {
     bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
@@ -177,7 +176,6 @@ static void deform_drawing(ModifierData &md,
                                      false,
                                      radii.span);
     radii.finish();
-    drawing.tag_positions_changed();
   }
 }
 
@@ -256,7 +254,10 @@ ModifierTypeInfo modifierType_GreasePencilSmooth = {
     /*struct_size*/ sizeof(GreasePencilSmoothModifierData),
     /*srna*/ &RNA_GreasePencilSmoothModifier,
     /*type*/ ModifierTypeType::OnlyDeform,
-    /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
+    /*flags*/
+    static_cast<ModifierTypeFlag>(
+        eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+        eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping),
     /*icon*/ ICON_SMOOTHCURVE,
 
     /*copy_data*/ blender::copy_data,

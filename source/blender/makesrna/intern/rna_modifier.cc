@@ -7673,6 +7673,7 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+
   static const EnumPropertyItem color_mode_items[] = {
       {MOD_GREASE_PENCIL_COLOR_BOTH, "BOTH", 0, "Stroke & Fill", "Modify fill and stroke colors"},
       {MOD_GREASE_PENCIL_COLOR_STROKE, "STROKE", 0, "Stroke", "Modify stroke color only"},
@@ -7688,9 +7689,9 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
 
   rna_def_modifier_grease_pencil_layer_filter(srna);
   rna_def_modifier_grease_pencil_material_filter(
-      srna, "rna_GreasePencilSmoothModifier_material_filter_set");
+      srna, "rna_GreasePencilOpacityModifier_material_filter_set");
   rna_def_modifier_grease_pencil_vertex_group(
-      srna, "rna_GreasePencilSmoothModifier_vertex_group_name_set");
+      srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
 
   prop = RNA_def_property(srna, "open_influence_panel", PROP_BOOLEAN, PROP_NONE);
@@ -7754,9 +7755,9 @@ static void rna_def_modifier_greasepencilsmooth(BlenderRNA *brna)
 
   rna_def_modifier_grease_pencil_layer_filter(srna);
   rna_def_modifier_grease_pencil_material_filter(
-      srna, "rna_GreasePencilOpacityModifier_material_filter_set");
+      srna, "rna_GreasePencilSmoothModifier_material_filter_set");
   rna_def_modifier_grease_pencil_vertex_group(
-      srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
+      srna, "rna_GreasePencilSmoothModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
 
   rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
