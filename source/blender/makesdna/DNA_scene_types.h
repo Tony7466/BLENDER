@@ -1614,7 +1614,7 @@ typedef struct ToolSettings {
   /** Select Group Threshold. */
   float select_thresh;
 
-  /* Auto-Keying Mode. */
+  /* Keying Settings. */
   /** Defines in DNA_userdef_types.h. */
   short keying_flag;
   char autokey_mode;
