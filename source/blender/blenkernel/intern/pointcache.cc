@@ -3356,6 +3356,11 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       cache->flag |= PTCACHE_BAKED;
       /* write info file */
       if (cache->flag & PTCACHE_DISK_CACHE) {
+        ID *id = pid->owner_id;
+        Object *ob = (GS(id->name) == ID_OB) ? (Object *)id : nullptr;
+        ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
+        ParticleSystem *psys_eval = psys_eval_get(baker->depsgraph, ob, psys);
+        BKE_ptcache_id_from_particles(pid, ob, psys_eval);
         BKE_ptcache_write(pid, 0);
       }
     }
@@ -3386,6 +3391,11 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
         if (bake) {
           cache->flag |= PTCACHE_BAKED;
           if (cache->flag & PTCACHE_DISK_CACHE) {
+            ID *id = pid->owner_id;
+            Object *ob = (GS(id->name) == ID_OB) ? (Object *)id : nullptr;
+            ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
+            ParticleSystem *psys_eval = psys_eval_get(baker->depsgraph, ob, psys);
+            BKE_ptcache_id_from_particles(pid, ob, psys_eval);
             BKE_ptcache_write(pid, 0);
           }
         }
