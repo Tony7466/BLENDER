@@ -666,13 +666,14 @@ static void text_insert_unicode_confirm(bContext *C, void *arg_block, void *arg_
     return;
   }
 
-  Object *obedit = CTX_data_edit_object(C);
-
   uint val = strtoul(edit_string, NULL, 16);
   if (val > 31 && val < 0x10FFFF) {
-    char32_t utf32[2] = {val, 0};
-    font_paste_wchar(obedit, utf32, 1, nullptr);
-    text_update_edited(C, obedit, FO_EDIT);
+    Object *obedit = CTX_data_edit_object(C);
+    if (obedit) {
+      char32_t utf32[2] = {val, 0};
+      font_paste_wchar(obedit, utf32, 1, nullptr);
+      text_update_edited(C, obedit, FO_EDIT);
+    }
     UI_popup_block_close(C, CTX_wm_window(C), block);
   }
   else {
@@ -683,14 +684,12 @@ static void text_insert_unicode_confirm(bContext *C, void *arg_block, void *arg_
 
 static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, void *arg_string)
 {
+  uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   char *edit_string = static_cast<char *>(arg_string);
 
-  uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
-
   const uiStyle *style = UI_style_get_dpi();
-
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, 200 * UI_SCALE_FAC, UI_UNIT_Y, 0, style);
 
@@ -742,7 +741,7 @@ static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, voi
   if (!windows_layout) {
     uiLayoutColumn(split, false);
     confirm = uiDefIconTextBut(
-        block, UI_BTYPE_BUT, 0, 0, "Confirm", 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, nullptr);
+        block, UI_BTYPE_BUT, 0, 0, "Insert", 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, nullptr);
   }
 
   UI_block_func_set(block, nullptr, nullptr, nullptr);
