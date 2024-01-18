@@ -208,7 +208,6 @@ void SocketValueVariant::store_single(const eNodeSocketDatatype socket_type, con
       break;
     }
   }
-  UNUSED_VARS(socket_type, value);
 }
 
 bool SocketValueVariant::is_context_dependent_field() const
@@ -284,6 +283,32 @@ GMutablePointer SocketValueVariant::get_single_ptr()
 {
   const GPointer ptr = const_cast<const SocketValueVariant *>(this)->get_single_ptr();
   return GMutablePointer(ptr.type(), const_cast<void *>(ptr.get()));
+}
+
+void *SocketValueVariant::allocate_single(const eNodeSocketDatatype socket_type)
+{
+  kind_ = Kind::Single;
+  socket_type_ = socket_type;
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      return &value_.allocate<float>();
+    case SOCK_INT:
+      return &value_.allocate<int>();
+    case SOCK_VECTOR:
+      return &value_.allocate<float3>();
+    case SOCK_BOOLEAN:
+      return &value_.allocate<bool>();
+    case SOCK_ROTATION:
+      return &value_.allocate<math::Quaternion>();
+    case SOCK_RGBA:
+      return &value_.allocate<ColorGeometry4f>();
+    case SOCK_STRING:
+      return &value_.allocate<std::string>();
+    default: {
+      BLI_assert_unreachable();
+      return nullptr;
+    }
+  }
 }
 
 std::ostream &operator<<(std::ostream &stream, const SocketValueVariant &value_variant)

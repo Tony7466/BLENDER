@@ -137,6 +137,9 @@ class SocketValueVariant {
   GPointer get_single_ptr() const;
   GMutablePointer get_single_ptr();
 
+  const void *get_single_ptr_raw() const;
+  void *allocate_single(eNodeSocketDatatype socket_type);
+
   /**
    * Replace the stored value with the given single value.
    */
@@ -168,6 +171,12 @@ template<typename T> inline SocketValueVariant::SocketValueVariant(T &&value)
 template<typename T> inline void SocketValueVariant::set(T &&value)
 {
   this->store_impl<std::decay_t<T>>(std::forward<T>(value));
+}
+
+inline const void *SocketValueVariant::get_single_ptr_raw() const
+{
+  BLI_assert(kind_ == Kind::Single);
+  return value_.get();
 }
 
 }  // namespace blender::bke
