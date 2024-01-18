@@ -60,8 +60,6 @@ blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSetting
 
 namespace blender::ed::greasepencil {
 
-int new_layer_dialog(bContext *C, wmOperator *op);
-
 enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke };
 
 enum class DrawingPlacementPlane { View, Front, Side, Top, Cursor };

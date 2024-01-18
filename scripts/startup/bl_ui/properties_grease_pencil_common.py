@@ -281,11 +281,12 @@ class GREASE_PENCIL_MT_move_to_layer(Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
         obd = context.active_object.data
-
-        layout.operator("grease_pencil.move_to_layer", text="New Layer", icon='ADD').layer = -1        
+        
+        nlop = layout.operator("grease_pencil.layer_add", text="New Layer", icon='ADD')
+        nlop.new_layer_name = "Layer"
         
         if not obd.layers:
-            return       
+            return
 
         layout.separator()
 
