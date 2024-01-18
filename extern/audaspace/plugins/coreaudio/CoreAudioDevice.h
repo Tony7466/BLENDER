@@ -27,7 +27,7 @@
  */
 
 #include "CoreAudioSynchronizer.h"
-#include "devices/SoftwareDevice.h"
+#include "devices/OpenCloseDevice.h"
 
 #include <memory>
 #include <thread>
@@ -40,7 +40,7 @@ AUD_NAMESPACE_BEGIN
 /**
  * This device plays back through CoreAudio, the Apple audio API.
  */
-class AUD_PLUGIN_API CoreAudioDevice : public SoftwareDevice
+class AUD_PLUGIN_API CoreAudioDevice : public OpenCloseDevice
 {
 private:
 	/**
@@ -68,49 +68,15 @@ private:
 	 * \param buffer_list The list of buffers to be filled.
 	 */
 	AUD_LOCAL static OSStatus CoreAudio_mix(void* data, AudioUnitRenderActionFlags* flags, const AudioTimeStamp* time_stamp, UInt32 bus_number, UInt32 number_frames, AudioBufferList* buffer_list);
-
-    /**
-     * Whether the device is opened.
-     */
-    bool m_device_opened;
     
-    /**
-     * Acquires the  device.
-     */
-    void open();
+    AUD_LOCAL void start();
+    AUD_LOCAL void stop();
+    AUD_LOCAL void open();
+    AUD_LOCAL void close();
 
-    /**
-     * Releases the device.
-     */
-    void close();
-    
-
-    /**
-     * Thread used to release the device after time delay.
-     */
-    std::thread m_delayed_close_thread;
-
-    /**
-     * Whether thread released the device.
-     */
-    bool m_delayed_close_finished = false;
-
-    /**
-     * Time when playback has stopped.
-     */
-    time_t m_playback_stopped_time;
-
-    /**
-     * Releases the device after time delay.
-     */
-    void closeAfterDelay();
-    
 	// delete copy constructor and operator=
 	CoreAudioDevice(const CoreAudioDevice&) = delete;
 	CoreAudioDevice& operator=(const CoreAudioDevice&) = delete;
-
-protected:
-	virtual void playing(bool playing);
 
 public:
 	/**
