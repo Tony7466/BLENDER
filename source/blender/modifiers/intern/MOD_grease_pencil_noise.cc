@@ -135,8 +135,6 @@ static void deform_drawing(ModifierData &md,
   const IndexMask filtered_strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, strokes, mmd.influence, memory);
 
-  /* Noise value in range [-1..1] */
-  float3 up_vector;
   const bool use_curve = (mmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE) != 0;
   const int cfra = int(DEG_get_ctime(depsgraph));
   const bool is_keyframe = (mmd.noise_mode == GP_NOISE_RANDOM_KEYFRAME);
@@ -148,7 +146,7 @@ static void deform_drawing(ModifierData &md,
     return;
   }
 
-  OffsetIndices<int> points_by_curve = strokes.points_by_curve();
+  const OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
   int seed = mmd.seed + strokes.points_num();
   /* Make sure different modifiers get different seeds. */
@@ -166,7 +164,15 @@ static void deform_drawing(ModifierData &md,
   }
   int noise_len = ceilf(strokes.points_num() * noise_scale) + 2;
 
-  if (mmd.factor) {
+  auto get_weight = [&](const IndexRange points, const int point_i) {
+    if (!use_curve) {
+        return 1.0f;
+    }
+    const float value = float(point_i - points.start()) / float(points.size() - 1);
+    return BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
+  };
+
+  if (mmd.factor > 0.0f) {
     Span<float3> normals = strokes.evaluated_normals();
     Span<float3> tangents = strokes.evaluated_tangents();
     MutableSpan<float3> positions = strokes.positions_for_write();
@@ -174,38 +180,30 @@ static void deform_drawing(ModifierData &md,
         noise_len, int(floor(mmd.noise_offset)), seed + 2);
 
     filtered_strokes.foreach_index([&](const int stroke_i) {
-      int point_count = points_by_curve[stroke_i].size();
-      for (const int local_point : points_by_curve[stroke_i].index_range()) {
-        int point = local_point + points_by_curve[stroke_i].start();
-        float weight = 1.0f;
-        if (use_curve) {
-          float value = float(local_point) / (point_count - 1);
-          weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
-        }
+      const IndexRange points = points_by_curve[stroke_i];
+      for (const int point : points) {
+        float weight = get_weight(points, point);
         /* Vector orthogonal to normal. */
-        up_vector = math::normalize(math::cross(tangents[point], normals[point]));
-        float noise = table_sample(noise_table_position,
+        const float3 bi_normal = math::normalize(math::cross(tangents[point], normals[point]));
+        const float noise = table_sample(noise_table_position,
                                    point * noise_scale + fractf(mmd.noise_offset));
         positions[point] += up_vector * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
       }
     });
+    drawing.tag_positions_changed();
   }
 
-  if (mmd.factor_thickness) {
+  if (mmd.factor_thickness > 0.0f) {
     MutableSpan<float> radii = drawing.radii_for_write();
     Array<float> noise_table_thickness = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed);
 
     filtered_strokes.foreach_index([&](const int stroke_i) {
       int point_count = points_by_curve[stroke_i].size();
-      for (const int local_point : points_by_curve[stroke_i].index_range()) {
-        int point = local_point + points_by_curve[stroke_i].start();
-        float weight = 1.0f;
-        if (use_curve) {
-          float value = float(local_point) / (point_count - 1);
-          weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
-        }
-        float noise = table_sample(noise_table_thickness,
+      const IndexRange points = points_by_curve[stroke_i];
+      for (const int point : points) {
+        const float weight = get_weight(points, point);
+        const float noise = table_sample(noise_table_thickness,
                                    point * noise_scale + fractf(mmd.noise_offset));
         radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd.factor_thickness,
                                   0.0f);
@@ -213,21 +211,16 @@ static void deform_drawing(ModifierData &md,
     });
   }
 
-  if (mmd.factor_strength) {
+  if (mmd.factor_strength > 0.0f) {
     MutableSpan<float> opacities = drawing.opacities_for_write();
     Array<float> noise_table_strength = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed + 3);
 
     filtered_strokes.foreach_index([&](const int stroke_i) {
-      int point_count = points_by_curve[stroke_i].size();
-      for (const int local_point : points_by_curve[stroke_i].index_range()) {
-        int point = local_point + points_by_curve[stroke_i].start();
-        float weight = 1.0f;
-        if (use_curve) {
-          float value = float(local_point) / (point_count - 1);
-          weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
-        }
-        float noise = table_sample(noise_table_strength,
+      const IndexRange points = points_by_curve[stroke_i];
+      for (const int point : points) {
+        const float weight = get_weight(points, point);
+        const float noise = table_sample(noise_table_strength,
                                    point * noise_scale + fractf(mmd.noise_offset));
         opacities[point] *= math::max(1.0f - noise * weight * mmd.factor_strength, 0.0f);
       }
@@ -331,7 +324,9 @@ ModifierTypeInfo modifierType_GreasePencilNoise = {
     /*struct_size*/ sizeof(GreasePencilNoiseModifierData),
     /*srna*/ &RNA_GreasePencilNoiseModifier,
     /*type*/ ModifierTypeType::OnlyDeform,
-    /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
+    /*flags*/ (eModifierTypeFlag_AcceptsGreasePencil |
+                                  eModifierTypeFlag_SupportsEditmode |
+                                  eModifierTypeFlag_EnableInEditmode),
     /*icon*/ ICON_GREASEPENCIL,
 
     /*copy_data*/ blender::copy_data,
