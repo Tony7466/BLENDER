@@ -711,7 +711,7 @@ int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent *event);
 int WM_operator_props_dialog_popup(bContext *C,
                                    wmOperator *op,
                                    int width,
-                                   const char *confirmation_text = nullptr);
+                                   const char *confirm_text = nullptr);
 int WM_operator_redo_popup(bContext *C, wmOperator *op);
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);
 

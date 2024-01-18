@@ -1655,9 +1655,9 @@ struct wmOpPopUp {
   int height;
   int free_op;
   std::string text;
-  wmOpPopUp(const char *confirmation_text)
+  wmOpPopUp(const char *confirm_text)
   {
-    text = confirmation_text ? confirmation_text : IFACE_("OK");
+    text = confirm_text ? confirm_text : IFACE_("OK");
   }
 };
 
@@ -1857,9 +1857,9 @@ int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent * /*event
 int WM_operator_props_dialog_popup(bContext *C,
                                    wmOperator *op,
                                    int width,
-                                   const char *confirmation_text)
+                                   const char *confirm_text)
 {
-  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__, confirmation_text);
+  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__, confirm_text);
 
   data->op = op;
   data->width = width * UI_SCALE_FAC;

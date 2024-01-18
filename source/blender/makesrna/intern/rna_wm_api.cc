@@ -217,6 +217,16 @@ static int rna_Operator_props_popup(bContext *C, wmOperator *op, wmEvent *event)
 {
   return WM_operator_props_popup(C, op, event);
 }
+static int rna_Operator_props_dialog_popup(bContext *C,
+                                           wmOperator *op,
+                                           const int width,
+                                           const char *text,
+                                           const char *text_ctxt,
+                                           const bool translate)
+{
+  text = RNA_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
+  return WM_operator_props_dialog_popup(C, op, width, text);
+}
 
 static int keymap_item_modifier_flag_from_args(bool any, int shift, int ctrl, int alt, int oskey)
 {
@@ -859,7 +869,7 @@ void RNA_api_wm(StructRNA *srna)
   rna_generic_op_invoke(func, WM_GEN_INVOKE_EVENT | WM_GEN_INVOKE_RETURN);
 
   /* invoked dialog opens popup with OK button, does not auto-exec operator. */
-  func = RNA_def_function(srna, "invoke_props_dialog", "WM_operator_props_dialog_popup");
+  func = RNA_def_function(srna, "invoke_props_dialog", "rna_Operator_props_dialog_popup");
   RNA_def_function_ui_description(
       func,
       "Operator dialog (non-autoexec popup) invoke "
@@ -868,6 +878,15 @@ void RNA_api_wm(StructRNA *srna)
   parm = RNA_def_property(func, "text", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(
       parm, "Text", "Optional text to show instead to the default \"OK\" confirmation text.");
+  parm = RNA_def_string(func,
+                        "text_ctxt",
+                        nullptr,
+                        0,
+                        "",
+                        "Override automatic translation context of the given text");
+  RNA_def_property_clear_flag(parm, PROP_NEVER_NULL);
+  RNA_def_boolean(
+      func, "translate", true, "", "Translate the given text, when UI translation is enabled");
 
   /* invoke enum */
   func = RNA_def_function(srna, "invoke_search_popup", "rna_Operator_enum_search_invoke");
