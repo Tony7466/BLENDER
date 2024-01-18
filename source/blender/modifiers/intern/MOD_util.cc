@@ -271,6 +271,7 @@ void modifier_type_init(ModifierTypeInfo *types[])
   INIT_TYPE(VolumeToMesh);
   INIT_TYPE(Nodes);
   INIT_TYPE(GreasePencilOpacity);
+  INIT_TYPE(GreasePencilSubdiv);
   INIT_TYPE(GreasePencilSmooth);
 #undef INIT_TYPE
 }

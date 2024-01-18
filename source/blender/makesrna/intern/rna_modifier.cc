@@ -12,6 +12,7 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_cachefile_types.h"
+#include "DNA_gpencil_modifier_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
@@ -200,6 +201,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_WIREFRAME,
      "Wireframe",
      "Convert faces into thickened edges"},
+    {eModifierType_GreasePencilSubdiv,
+     "GREASEPENCIL_SUBDIV",
+     ICON_GREASEPENCIL,
+     "Subdivide strokes",
+     "Grease Pencil subdivide modifier"},
 
     RNA_ENUM_ITEM_HEADING(N_("Deform"), nullptr),
     {eModifierType_Armature,
@@ -1801,6 +1807,8 @@ static void rna_GreasePencilModifier_material_set(PointerRNA *ptr,
 
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilOpacity);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOpacity);
+RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilSubdiv);
+RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilSubdiv);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilSmooth);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilSmooth);
 
@@ -7743,11 +7751,43 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
-static void rna_def_modifier_greasepencilsmooth(BlenderRNA *brna)
+static void rna_def_modifier_grease_pencil_subdiv(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
+  srna = RNA_def_struct(brna, "GreasePencilSubdivModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Subdivision Modifier", "Subdivide Stroke modifier");
+  RNA_def_struct_sdna(srna, "GreasePencilSubdivModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_SUBSURF);
+
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilSubdivModifier_material_filter_set");
+  rna_def_modifier_grease_pencil_vertex_group(
+      srna, "rna_GreasePencilSubdivModifier_vertex_group_name_set");
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "level", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "level");
+  /* Since the new subdiv algorithm uses linear cut count, we set the limits as 2^n the old value
+   * to get the same range as before. */
+  RNA_def_property_range(prop, 0, 65536);
+  RNA_def_property_ui_range(prop, 0, 32, 1, 0);
+  RNA_def_property_ui_text(prop, "Level", "Number of subdivisions");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_grease_pencil_smooth(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+  
   srna = RNA_def_struct(brna, "GreasePencilSmoothModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Smooth Modifier", "Smooth effect modifier");
   RNA_def_struct_sdna(srna, "GreasePencilSmoothModifierData");
@@ -7763,7 +7803,7 @@ static void rna_def_modifier_greasepencilsmooth(BlenderRNA *brna)
   rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   RNA_define_lib_overridable(true);
-
+      
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "factor");
   RNA_def_property_range(prop, 0, 1);
@@ -7809,9 +7849,6 @@ static void rna_def_modifier_greasepencilsmooth(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_smooth_ends", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS);
   RNA_def_property_ui_text(prop, "Smooth Ends", "Smooth ends of strokes");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  RNA_define_lib_overridable(false);
 }
 
 void RNA_def_modifier(BlenderRNA *brna)
@@ -7975,7 +8012,8 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_volume_displace(brna);
   rna_def_modifier_volume_to_mesh(brna);
   rna_def_modifier_grease_pencil_opacity(brna);
-  rna_def_modifier_greasepencilsmooth(brna);
+  rna_def_modifier_grease_pencil_subdiv(brna);
+  rna_def_modifier_grease_pencil_smooth(brna);
 }
 
 #endif

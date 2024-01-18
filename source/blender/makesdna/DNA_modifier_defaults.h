@@ -808,6 +808,11 @@
     .hardness_factor = 1.0f, \
   }
 
+#define _DNA_DEFAULT_GreasePencilSubdivModifierData \
+  { \
+    .level = 1, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilSmoothModifierData \
   { \
     .flag = MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION, \
