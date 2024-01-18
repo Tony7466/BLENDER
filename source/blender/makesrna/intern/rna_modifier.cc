@@ -1801,6 +1801,8 @@ static void rna_GreasePencilModifier_material_set(PointerRNA *ptr,
 
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilOpacity);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOpacity);
+RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilSmooth);
+RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilSmooth);
 
 static void rna_GreasePencilOpacityModifier_opacity_factor_range(
     PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
@@ -7686,9 +7688,9 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
 
   rna_def_modifier_grease_pencil_layer_filter(srna);
   rna_def_modifier_grease_pencil_material_filter(
-      srna, "rna_GreasePencilOpacityModifier_material_filter_set");
+      srna, "rna_GreasePencilSmoothModifier_material_filter_set");
   rna_def_modifier_grease_pencil_vertex_group(
-      srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
+      srna, "rna_GreasePencilSmoothModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
 
   prop = RNA_def_property(srna, "open_influence_panel", PROP_BOOLEAN, PROP_NONE);
