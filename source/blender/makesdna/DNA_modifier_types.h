@@ -94,8 +94,9 @@ typedef enum ModifierType {
   eModifierType_VolumeDisplace = 59,
   eModifierType_VolumeToMesh = 60,
   eModifierType_GreasePencilOpacity = 61,
-  eModifierType_GreasePencilColor = 62,
-  eModifierType_GreasePencilTint = 63,
+  eModifierType_GreasePencilSubdiv = 62,
+  eModifierType_GreasePencilColor = 63,
+  eModifierType_GreasePencilTint = 64,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2548,6 +2549,22 @@ typedef enum GreasePencilOpacityModifierFlag {
   /* Set the opacity for every point in a stroke, otherwise multiply existing opacity. */
   MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY = (1 << 1),
 } GreasePencilOpacityModifierFlag;
+
+typedef struct GreasePencilSubdivModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** `GreasePencilSubdivModifierFlag`. */
+  int flag;
+  /** Number of subdivisions. */
+  int level;
+
+  char _pad[8];
+  void *_pad1;
+} GreasePencilSubdivModifierData;
+
+typedef enum GreasePencilSubdivModifierFlag {
+  MOD_GREASE_PENCIL_SUBDIV_OPEN_INFLUENCE_PANEL = (1 << 0),
+} GreasePencilSubdivModifierFlag;
 
 typedef struct GreasePencilColorModifierData {
   ModifierData modifier;

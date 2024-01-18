@@ -808,11 +808,17 @@
     .hardness_factor = 1.0f, \
   }
 
+#define _DNA_DEFAULT_GreasePencilSubdivModifierData \
+  { \
+    .level = 1, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilColorModifierData \
   { \
     .color_mode = MOD_GREASE_PENCIL_COLOR_BOTH, \
     .hsv = {0.5f, 1.0f, 1.0f}, \
   }
+
 
 #define _DNA_DEFAULT_GreasePencilTintModifierData \
   { \
