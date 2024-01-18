@@ -7845,7 +7845,6 @@ static void rna_def_modifier_grease_pencil_noise(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
-
 static void rna_def_modifier_grease_pencil_subdiv(BlenderRNA *brna)
 {
   StructRNA *srna;
