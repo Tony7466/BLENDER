@@ -6,10 +6,7 @@
  * \ingroup modifiers
  */
 
-#include "BLI_math_matrix.h"
-#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
-#include "BLI_string_ref.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
@@ -18,15 +15,12 @@
 #include "BLO_read_write.hh"
 
 #include "DNA_defaults.h"
-#include "DNA_material_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "RNA_access.hh"
 
-#include "BKE_colortools.hh"
 #include "BKE_curves.hh"
-#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.h"
@@ -36,9 +30,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "DEG_depsgraph_query.hh"
-
-#include "ED_grease_pencil.hh"
+#include "GEO_smooth_curves.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
@@ -47,12 +39,9 @@
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "MEM_guardedalloc.h"
-
-#include "ED_grease_pencil.hh"
-
-using namespace blender;
+namespace blender {
 
 static void init_data(ModifierData *md)
 {
@@ -91,7 +80,8 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
-  const GreasePencilSmoothModifierData *mmd = (const GreasePencilSmoothModifierData *)md;
+  const GreasePencilSmoothModifierData *mmd =
+      reinterpret_cast<const GreasePencilSmoothModifierData *>(md);
 
   BLO_write_struct(writer, GreasePencilSmoothModifierData, mmd);
   modifier::greasepencil::write_influence_data(writer, &mmd->influence);
@@ -99,26 +89,25 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
-  GreasePencilSmoothModifierData *mmd = (GreasePencilSmoothModifierData *)md;
+  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, GreasePencil *gp)
+static void deform_drawing(ModifierData &md,
+                           Depsgraph * /*depsgraph*/,
+                           Object &ob,
+                           bke::greasepencil::Drawing &drawing)
 {
-  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+  GreasePencilSmoothModifierData &mmd = reinterpret_cast<GreasePencilSmoothModifierData &>(md);
 
-  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  GreasePencil &grease_pencil = *gp;
-  const int frame = scene->r.cfra;
+  const int iterations = mmd.step;
+  const float influence = mmd.factor;
+  const bool keep_shape = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE);
+  const bool smooth_ends = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS);
 
-  const int iterations = mmd->step;
-  const float influence = mmd->factor;
-  const bool keep_shape = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE);
-  const bool smooth_ends = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS);
-
-  const bool smooth_position = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION);
-  const bool smooth_radius = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS);
-  const bool smooth_opacity = (mmd->flag & MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH);
+  const bool smooth_position = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION);
+  const bool smooth_radius = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS);
+  const bool smooth_opacity = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH);
 
   if (iterations <= 0 || influence <= 0) {
     return;
@@ -130,77 +119,69 @@ static void deform_stroke(ModifierData *md, Depsgraph *depsgraph, Object *ob, Gr
 
   bool changed = false;
 
-  IndexMaskMemory mask_memory;
-  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      *gp, mmd->influence, mask_memory);
-  const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(*gp, layer_mask, frame);
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  if (curves.points_num() == 0) {
+    return;
+  }
 
-  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    bke::CurvesGeometry &curves = drawing->strokes_for_write();
-    if (curves.points_num() == 0) {
-      return;
-    }
+  IndexMaskMemory memory;
+  const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
+      &ob, curves, mmd.influence, memory);
 
-    IndexMaskMemory memory;
-    const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
-        ob, curves, mmd->influence, memory);
+  if (strokes.is_empty()) {
+    return;
+  }
 
-    if (strokes.is_empty()) {
-      return;
-    }
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
+  const VArray<bool> point_selection = VArray<bool>::ForSingle(true, curves.points_num());
 
-    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-    const OffsetIndices points_by_curve = curves.points_by_curve();
-    const VArray<bool> cyclic = curves.cyclic();
-    const VArray<bool> point_selection = VArray<bool>::ForSingle(true, curves.points_num());
-
-    if (smooth_position) {
-      bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-      ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                                               point_selection,
-                                               cyclic,
-                                               strokes,
-                                               iterations,
-                                               influence,
-                                               smooth_ends,
-                                               keep_shape,
-                                               positions.span);
-      positions.finish();
-      changed = true;
-    }
-    if (smooth_opacity && drawing->opacities().is_span()) {
-      bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
-      ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                                               point_selection,
-                                               cyclic,
-                                               strokes,
-                                               iterations,
-                                               influence,
-                                               smooth_ends,
-                                               false,
-                                               opacities.span);
-      opacities.finish();
-      changed = true;
-    }
-    if (smooth_radius && drawing->radii().is_span()) {
-      bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-      ed::greasepencil::smooth_curve_attribute(points_by_curve,
-                                               point_selection,
-                                               cyclic,
-                                               strokes,
-                                               iterations,
-                                               influence,
-                                               smooth_ends,
-                                               false,
-                                               radii.span);
-      radii.finish();
-      changed = true;
-    }
-  });
+  if (smooth_position) {
+    bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
+    geometry::smooth_curve_attribute(strokes,
+                                     points_by_curve,
+                                     point_selection,
+                                     cyclic,
+                                     iterations,
+                                     influence,
+                                     smooth_ends,
+                                     keep_shape,
+                                     positions.span);
+    positions.finish();
+    changed = true;
+  }
+  if (smooth_opacity && drawing.opacities().is_span()) {
+    bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
+    geometry::smooth_curve_attribute(strokes,
+                                     points_by_curve,
+                                     point_selection,
+                                     cyclic,
+                                     iterations,
+                                     influence,
+                                     smooth_ends,
+                                     false,
+                                     opacities.span);
+    opacities.finish();
+    changed = true;
+  }
+  if (smooth_radius && drawing.radii().is_span()) {
+    bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
+    geometry::smooth_curve_attribute(strokes,
+                                     points_by_curve,
+                                     point_selection,
+                                     cyclic,
+                                     iterations,
+                                     influence,
+                                     smooth_ends,
+                                     false,
+                                     radii.span);
+    radii.finish();
+    changed = true;
+  }
 
   if (changed) {
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    drawing.tag_positions_changed();
   }
 }
 
@@ -208,12 +189,25 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
-  if (!gp) {
+  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+
+  if (!geometry_set->has_grease_pencil()) {
     return;
   }
+  GreasePencil *grease_pencil = geometry_set->get_grease_pencil_for_write();
 
-  deform_stroke(md, ctx->depsgraph, ctx->object, gp);
+  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+  const int current_frame = scene->r.cfra;
+
+  IndexMaskMemory mask_memory;
+  const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
+      *grease_pencil, mmd->influence, mask_memory);
+  const Vector<bke::greasepencil::Drawing *> drawings =
+      modifier::greasepencil::get_drawings_for_write(*grease_pencil, layer_mask, current_frame);
+
+  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
+    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
+  });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
@@ -257,9 +251,11 @@ static void panel_register(ARegionType *region_type)
   modifier_panel_register(region_type, eModifierType_GreasePencilSmooth, panel_draw);
 }
 
+}  // namespace blender
+
 ModifierTypeInfo modifierType_GreasePencilSmooth = {
-    /*idname*/ "Grease Pencil Smooth Modifier",
-    /*name*/ N_("Grease Pencil Smooth Modifier"),
+    /*idname*/ "GreasePencilSmoothModifier",
+    /*name*/ N_("Smooth"),
     /*struct_name*/ "GreasePencilSmoothModifierData",
     /*struct_size*/ sizeof(GreasePencilSmoothModifierData),
     /*srna*/ &RNA_GreasePencilSmoothModifier,
@@ -267,26 +263,26 @@ ModifierTypeInfo modifierType_GreasePencilSmooth = {
     /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
     /*icon*/ ICON_SMOOTHCURVE,
 
-    /*copy_data*/ copy_data,
+    /*copy_data*/ blender::copy_data,
 
     /*deform_verts*/ nullptr,
     /*deform_matrices*/ nullptr,
     /*deform_verts_EM*/ nullptr,
     /*deform_matrices_EM*/ nullptr,
     /*modify_mesh*/ nullptr,
-    /*modify_geometry_set*/ modify_geometry_set,
+    /*modify_geometry_set*/ blender::modify_geometry_set,
 
-    /*init_data*/ init_data,
+    /*init_data*/ blender::init_data,
     /*required_data_mask*/ nullptr,
-    /*free_data*/ free_data,
+    /*free_data*/ blender::free_data,
     /*is_disabled*/ nullptr,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
-    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_ID_link*/ blender::foreach_ID_link,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
-    /*panel_register*/ panel_register,
-    /*blend_write*/ blend_write,
-    /*blend_read*/ blend_read,
+    /*panel_register*/ blender::panel_register,
+    /*blend_write*/ blender::blend_write,
+    /*blend_read*/ blender::blend_read,
 };
