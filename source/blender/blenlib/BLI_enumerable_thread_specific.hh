@@ -23,7 +23,6 @@
 #  endif
 #else
 #  include <atomic>
-#  include <functional>
 #  include <mutex>
 
 #  include "BLI_map.hh"

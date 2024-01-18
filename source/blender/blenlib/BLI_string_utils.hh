@@ -18,7 +18,7 @@
 
 struct ListBase;
 
-using UniquenameCheckCallback = bool (*)(void *arg, const char *name);
+typedef bool (*UniquenameCheckCallback)(void *arg, const char *name);
 
 /* ------------------------------------------------------------------------- */
 /** \name String Replace

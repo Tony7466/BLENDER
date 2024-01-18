@@ -43,8 +43,6 @@
  *   probing might work best.
  */
 
-#include <limits>
-
 #include "BLI_sys_types.h"
 
 namespace blender {

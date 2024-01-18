@@ -58,6 +58,7 @@
 
 #include <algorithm>
 #include <array>
+#include <string>
 #include <vector>
 
 #include "BLI_index_range.hh"

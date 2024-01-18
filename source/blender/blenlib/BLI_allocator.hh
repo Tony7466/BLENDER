@@ -25,10 +25,12 @@
  * need. More complexity can be added when it seems necessary.
  */
 
-#include <cstdlib>
+#include <algorithm>
+#include <stdlib.h>
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 
 namespace blender {
@@ -65,7 +67,7 @@ class RawAllocator {
  public:
   void *allocate(size_t size, size_t alignment, const char * /*name*/)
   {
-    BLI_assert(is_power_of_2(int(alignment)));
+    BLI_assert(is_power_of_2_i(int(alignment)));
     void *ptr = malloc(size + alignment + sizeof(MemHead));
     void *used_ptr = reinterpret_cast<void *>(
         uintptr_t(POINTER_OFFSET(ptr, alignment + sizeof(MemHead))) & ~(uintptr_t(alignment) - 1));

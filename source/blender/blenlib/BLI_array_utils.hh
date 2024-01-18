@@ -83,19 +83,6 @@ inline void scatter(const Span<T> src,
   });
 }
 
-template<typename T>
-inline void scatter(const Span<T> src,
-                    const IndexMask &indices,
-                    MutableSpan<T> dst,
-                    const int64_t grain_size = 4096)
-{
-  BLI_assert(indices.size() == src.size());
-  BLI_assert(indices.min_array_size() <= dst.size());
-  indices.foreach_index_optimized<int64_t>(
-      GrainSize(grain_size),
-      [&](const int64_t index, const int64_t pos) { dst[index] = src[pos]; });
-}
-
 /**
  * Fill the destination span by gathering indexed values from the `src` array.
  */
@@ -293,7 +280,5 @@ bool indexed_data_equal(const Span<T> all_values, const Span<int> indices, const
   }
   return false;
 }
-
-bool indices_are_range(Span<int> indices, IndexRange range);
 
 }  // namespace blender::array_utils

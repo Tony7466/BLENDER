@@ -38,9 +38,10 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <iosfwd>
 
-#include "BLI_assert.h"
+#include "BLI_utildefines.h"
 
 namespace blender {
 
