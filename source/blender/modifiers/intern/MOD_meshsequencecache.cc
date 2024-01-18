@@ -27,7 +27,7 @@
 
 #include "BKE_cachefile.h"
 #include "BKE_context.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
@@ -51,7 +51,7 @@
 
 #if defined(WITH_USD) || defined(WITH_ALEMBIC)
 #  include "BKE_global.h"
-#  include "BKE_lib_id.h"
+#  include "BKE_lib_id.hh"
 #endif
 
 #ifdef WITH_ALEMBIC

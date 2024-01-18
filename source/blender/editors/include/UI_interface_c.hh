@@ -1413,20 +1413,30 @@ void UI_but_unit_type_set(uiBut *but, int unit_type);
 int UI_but_unit_type_get(const uiBut *but);
 
 enum uiStringInfoType {
-  BUT_GET_RNAPROP_IDENTIFIER = 1,
+  /**
+   * Ignore this item, use when accessing the data should be done conditionally.
+   */
+  BUT_GET_NOP = 0,
+
+  BUT_GET_RNAPROP_IDENTIFIER,
   BUT_GET_RNASTRUCT_IDENTIFIER,
   BUT_GET_RNAENUM_IDENTIFIER,
   BUT_GET_LABEL,
-  /** Query the result of #uiBut::tip_label_func(). Meant to allow overriding the label to be
-   * displayed in the tooltip. */
+  /**
+   * Query the result of #uiBut::tip_label_func().
+   * Meant to allow overriding the label to be displayed in the tool-tip.
+   */
   BUT_GET_TIP_LABEL,
   BUT_GET_RNA_LABEL,
   BUT_GET_RNAENUM_LABEL,
-  BUT_GET_RNA_LABEL_CONTEXT, /* Context specified in CTX_XXX_ macros are just unreachable! */
+  /** Context specified in `CTX_*_` macros are just unreachable! */
+  BUT_GET_RNA_LABEL_CONTEXT,
   BUT_GET_TIP,
   BUT_GET_RNA_TIP,
   BUT_GET_RNAENUM_TIP,
+  /** Buttons assigned to an operator (common case). */
   BUT_GET_OP_KEYMAP,
+  /** Use for properties that are bound to one of the context cycle, etc. keys. */
   BUT_GET_PROP_KEYMAP,
 };
 
@@ -2712,6 +2722,10 @@ void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
 #endif
 
 void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
+/**
+ * Draw all node buttons and socket default values with the same panel structure used by the node.
+ */
+void uiTemplateNodeInputs(uiLayout *layout, bContext *C, PointerRNA *ptr);
 
 /**
  * \return: A RNA pointer for the operator properties.
