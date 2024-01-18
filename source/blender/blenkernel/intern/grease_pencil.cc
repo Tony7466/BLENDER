@@ -1351,6 +1351,23 @@ static void grease_pencil_apply_layer_transforms(blender::bke::GeometrySet &geom
     /* Apply the transform to the drawing. */
     const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
         translations[layer_i], rotations[layer_i], scales[layer_i]);
+
+    /* When applying a scale to a drawing it usually makes visual sense to scale the radii of the
+     * strokes proportionally. This works fairly well, but can break down in some edge-cases like
+     * shears. */
+    const float scaling_factor = math::determinant(layer_matrix);
+    if (scaling_factor != 1.0f) {
+      MutableSpan<float> radii = drawing->radii_for_write();
+      threading::parallel_for(
+          drawing->strokes().points_range(), 1024, [&](const IndexRange range) {
+            for (const int point_i : range) {
+              radii[point_i] *= scaling_factor;
+            }
+          });
+      drawing->strokes_for_write().tag_radii_changed();
+    }
+
+    /* Transform the drawing. */
     drawing->strokes_for_write().transform(layer_matrix);
   }
 }
@@ -1386,6 +1403,9 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     geometry_set.replace_grease_pencil(empty_grease_pencil);
   }
   else if (grease_pencil_is_any_layer_transformed(geometry_set)) {
+    /* TODO: Ideally we wouldn't need to apply the transforms to the geometry. Instead the
+     * transforms should be passed to the renderer. This would also avoid realizing drawing
+     * instances. */
     grease_pencil_apply_layer_transforms(geometry_set);
   }
 
