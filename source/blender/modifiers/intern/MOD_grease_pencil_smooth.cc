@@ -255,9 +255,8 @@ ModifierTypeInfo modifierType_GreasePencilSmooth = {
     /*srna*/ &RNA_GreasePencilSmoothModifier,
     /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/
-    static_cast<ModifierTypeFlag>(
-        eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
-        eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping),
+    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+     eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping),
     /*icon*/ ICON_SMOOTHCURVE,
 
     /*copy_data*/ blender::copy_data,
