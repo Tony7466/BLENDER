@@ -141,10 +141,9 @@ void reevaluate_fcurve_errors(bAnimContext *ac)
 {
   /* Need to take off the flag before filtering, else the filter code would skip the FCurves, which
    * have not yet been validated. */
-  bool filtering_enabled = false;
-  if (ac->ads->filterflag & ADS_FILTER_ONLY_ERRORS) {
+  const bool filtering_enabled = ac->ads->filterflag & ADS_FILTER_ONLY_ERRORS;
+  if (filtering_enabled) {
     ac->ads->filterflag &= ~ADS_FILTER_ONLY_ERRORS;
-    filtering_enabled = true;
   }
   ListBase anim_data = {nullptr, nullptr};
   const eAnimFilter_Flags filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FCURVESONLY;
