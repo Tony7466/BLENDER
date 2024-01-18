@@ -808,6 +808,11 @@
     .hardness_factor = 1.0f, \
   }
 
+#define _DNA_DEFAULT_GreasePencilSubdivModifierData \
+  { \
+    .level = 1, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilNoiseModifierData \
   { \
     .flag = GP_NOISE_FULL_STROKE | GP_NOISE_USE_RANDOM, \
