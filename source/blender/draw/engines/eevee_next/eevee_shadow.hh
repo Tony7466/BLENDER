@@ -255,7 +255,7 @@ class ShadowModule {
   int usage_tag_fb_lod_ = 5;
 
   /* Statistics that are read back to CPU after a few frame (to avoid stall). */
-  SwapChain<ShadowStatisticsBuf, 5> statistics_buf_;
+  SwapChain<ShadowStatisticsBuf, 8> statistics_buf_;
 
   /** \} */
 

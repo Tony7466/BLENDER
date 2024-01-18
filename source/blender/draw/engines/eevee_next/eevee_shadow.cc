@@ -787,8 +787,8 @@ void ShadowModule::init()
     else {
       statistics_buf_.swap();
     }
-    statistics_buf_.current().read();
-    ShadowStatistics stats = statistics_buf_.current();
+    statistics_buf_.opposite().read();
+    ShadowStatistics stats = statistics_buf_.opposite();
 
     if (stats.page_used_count > shadow_page_len_ && enabled_) {
       std::stringstream ss;
