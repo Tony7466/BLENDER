@@ -7276,11 +7276,13 @@ static void rna_def_modifier_nodes_data_block(BlenderRNA *brna)
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Data-Block Name", "Name that is mapped to the referenced data-block");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "lib_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Library Name",
                            "Used when the data block is not local to the current .blend file but "

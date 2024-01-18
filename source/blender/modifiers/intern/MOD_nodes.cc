@@ -2165,6 +2165,27 @@ static void draw_bake_data_blocks_panel(const bContext *C,
                    0,
                    UI_TEMPLATE_LIST_FLAG_NONE);
   }
+
+  if (nmd.active_data_block_map_item < 0 ||
+      nmd.active_data_block_map_item >= nmd.data_block_map_items_num)
+  {
+    return;
+  }
+  NodesModifierDataBlockMapItem &active_item =
+      nmd.data_block_map_items[nmd.active_data_block_map_item];
+
+  PointerRNA active_item_ptr = RNA_pointer_create(
+      modifier_ptr->owner_id, &RNA_NodesModifierDataBlock, &active_item);
+
+  {
+    uiLayout *col = uiLayoutColumn(layout, true);
+    {
+      uiLayout *subcol = uiLayoutColumn(col, true);
+      uiItemR(subcol, &active_item_ptr, "id_name", UI_ITEM_NONE, "Name", ICON_NONE);
+      uiItemR(subcol, &active_item_ptr, "lib_name", UI_ITEM_NONE, "Library Name", ICON_NONE);
+    }
+    uiItemR(col, &active_item_ptr, "id", UI_ITEM_NONE, "Data-Block", ICON_NONE);
+  }
 }
 
 static void draw_bake_panel(const bContext *C,
