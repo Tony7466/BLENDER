@@ -27,7 +27,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
@@ -85,6 +85,22 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&omd->influence, ob, walk, user_data);
 }
 
+static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
+{
+  const GreasePencilLengthModifierData *mmd =
+      reinterpret_cast<const GreasePencilLengthModifierData *>(md);
+
+  BLO_write_struct(writer, GreasePencilLengthModifierData, mmd);
+  modifier::greasepencil::write_influence_data(writer, &mmd->influence);
+}
+
+static void blend_read(BlendDataReader *reader, ModifierData *md)
+{
+  GreasePencilLengthModifierData *mmd = reinterpret_cast<GreasePencilLengthModifierData *>(md);
+
+  modifier::greasepencil::read_influence_data(reader, &mmd->influence);
+}
+
 static Array<float> noise_table(int len, int offset, int seed)
 {
   Array<float> table(len);
@@ -133,7 +149,7 @@ static void deform_drawing(ModifierData &md,
 
   /* Always do the stretching first since it might depend on points which could be deleted by the
    * shrink. */
-  if (mmd.start_fac < 0 || mmd.end_fac < 0) {
+  if (mmd.start_fac < 0.0f || mmd.end_fac < 0.0f) {
     /* `trim_curves()` accepts the `end` valueas if it's sampling from the beginning of the
      * curve, so we need to get the lengths of the curves and substract it from the back when the
      * modifier is in Absolute mode. For convenience, we always call `trim_curves()` in LENGTH
@@ -144,12 +160,12 @@ static void deform_drawing(ModifierData &md,
     for (const int curve : curves.curves_range()) {
       float length = curves.evaluated_length_total_for_curve(curve, false);
       if (mmd.mode & GP_LENGTH_ABSOLUTE) {
-        starts[curve] = -MIN2(mmd.start_fac, 0);
-        ends[curve] = length - (-MIN2(mmd.end_fac, 0));
+        starts[curve] = -math::min(mmd.start_fac, 0);
+        ends[curve] = length - (-math::min(mmd.end_fac, 0));
       }
       else {
-        starts[curve] = -MIN2(mmd.start_fac, 0) * length;
-        ends[curve] = (1 + MIN2(mmd.end_fac, 0)) * length;
+        starts[curve] = -math::min(mmd.start_fac, 0) * length;
+        ends[curve] = (1 + math::min(mmd.end_fac, 0)) * length;
       }
     }
     curves = geometry::trim_curves(curves,
@@ -173,18 +189,18 @@ static void modify_geometry_set(ModifierData *md,
     return;
   }
 
-  GreasePencil *grease_pencil = geometry_set->get_grease_pencil_for_write();
-  Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-  int current_frame = scene->r.cfra;
+  GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
+  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+  const int current_frame = scene->r.cfra;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      *grease_pencil, mmd->influence, mask_memory);
+      grease_pencil, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(*grease_pencil, layer_mask, current_frame);
+      modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md,ctx->depsgraph,*ctx->object,*drawing);
+    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
   });
 }
 
@@ -278,7 +294,9 @@ ModifierTypeInfo modifierType_GreasePencilLength = {
     /*struct_size*/ sizeof(GreasePencilLengthModifierData),
     /*srna*/ &RNA_GreasePencilLengthModifier,
     /*type*/ ModifierTypeType::Nonconstructive,
-    /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
+    /*flags*/
+    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_EnableInEditmode |
+     eModifierTypeFlag_SupportsEditmode),
     /*icon*/ ICON_MOD_LENGTH,
 
     /*copy_data*/ blender::copy_data,
@@ -301,6 +319,6 @@ ModifierTypeInfo modifierType_GreasePencilLength = {
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
     /*panel_register*/ blender::panel_register,
-    /*blend_write*/ nullptr,
-    /*blend_read*/ nullptr,
+    /*blend_write*/ blender::blend_write,
+    /*blend_read*/ blender::blend_read,
 };
