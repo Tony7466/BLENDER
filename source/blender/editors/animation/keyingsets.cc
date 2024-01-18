@@ -741,13 +741,13 @@ KeyingSet *ANIM_get_keyingset_for_autokeying(const Scene *scene, const char *tra
    * - use the active KeyingSet if defined (and user wants to use it for all autokeying),
    *   or otherwise key transforms only
    */
-  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) &&
+  if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) &&
       (scene->active_keyingset))
   {
     return ANIM_scene_get_active_keyingset(scene);
   }
 
-  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
+  if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
     return ANIM_builtin_keyingset_get_named(ANIM_KS_AVAILABLE_ID);
   }
 

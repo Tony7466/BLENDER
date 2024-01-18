@@ -82,16 +82,16 @@ eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene)
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
   /* Visual keying. */
-  if (is_autokey_flag(scene, KEYING_FLAG_VISUALKEY)) {
+  if (is_keying_flag(scene, KEYING_FLAG_VISUALKEY)) {
     flag |= INSERTKEY_MATRIX;
   }
 
   /* Cycle-aware keyframe insertion - preserve cycle period and flow. */
-  if (is_autokey_flag(scene, KEYING_FLAG_CYCLEAWARE)) {
+  if (is_keying_flag(scene, KEYING_FLAG_CYCLEAWARE)) {
     flag |= INSERTKEY_CYCLE_AWARE;
   }
 
-  if (is_autokey_flag(scene, MANUALKEY_FLAG_INSERTNEEDED)) {
+  if (is_keying_flag(scene, MANUALKEY_FLAG_INSERTNEEDED)) {
     flag |= INSERTKEY_NEEDED;
   }
 

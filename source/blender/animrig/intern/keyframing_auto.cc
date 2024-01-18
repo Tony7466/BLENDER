@@ -38,12 +38,12 @@ static eInsertKeyFlags get_autokey_flags(Scene *scene)
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
   /* Visual keying. */
-  if (is_autokey_flag(scene, KEYING_FLAG_VISUALKEY)) {
+  if (is_keying_flag(scene, KEYING_FLAG_VISUALKEY)) {
     flag |= INSERTKEY_MATRIX;
   }
 
   /* Only needed. */
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
     flag |= INSERTKEY_NEEDED;
   }
 
@@ -53,7 +53,7 @@ static eInsertKeyFlags get_autokey_flags(Scene *scene)
   }
 
   /* Cycle-aware keyframe insertion - preserve cycle period and flow. */
-  if (is_autokey_flag(scene, KEYING_FLAG_CYCLEAWARE)) {
+  if (is_keying_flag(scene, KEYING_FLAG_CYCLEAWARE)) {
     flag |= INSERTKEY_CYCLE_AWARE;
   }
 
@@ -74,14 +74,6 @@ bool is_autokey_mode(const Scene *scene, const eAutokey_Mode mode)
     return scene->toolsettings->autokey_mode == mode;
   }
   return U.autokey_mode == mode;
-}
-
-bool is_autokey_flag(const Scene *scene, const eKeying_Flag flag)
-{
-  if (scene) {
-    return (scene->toolsettings->keying_flag & flag) || (U.keying_flag & flag);
-  }
-  return U.keying_flag & flag;
 }
 
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
@@ -130,7 +122,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
   blender::Vector<PointerRNA> sources;
   ANIM_relative_keyingset_add_source(sources, id);
 
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
     /* Only insert into active keyingset
      * NOTE: we assume here that the active Keying Set
      * does not need to have its iterator overridden.
@@ -140,7 +132,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
     return;
   }
 
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
     /* Only key on available channels. */
     AnimData *adt = ob->adt;
     ToolSettings *ts = scene->toolsettings;
@@ -253,7 +245,7 @@ void autokeyframe_pose_channel(bContext *C,
   ANIM_relative_keyingset_add_source(sources, id, &RNA_PoseBone, pose_channel);
 
   /* only insert into active keyingset? */
-  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
+  if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
     /* Run the active Keying Set on the current data-source. */
     ANIM_apply_keyingset(
         C, &sources, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
@@ -261,7 +253,7 @@ void autokeyframe_pose_channel(bContext *C,
   }
 
   /* only insert into available channels? */
-  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
+  if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
     if (!act) {
       return;
     }
