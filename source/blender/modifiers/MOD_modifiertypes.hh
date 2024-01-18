@@ -74,7 +74,6 @@ extern ModifierTypeInfo modifierType_MeshToVolume;
 extern ModifierTypeInfo modifierType_VolumeDisplace;
 extern ModifierTypeInfo modifierType_VolumeToMesh;
 extern ModifierTypeInfo modifierType_GreasePencilOpacity;
-extern ModifierTypeInfo modifierType_GreasePencilTransform;
 extern ModifierTypeInfo modifierType_GreasePencilSubdiv;
 
 /* MOD_util.cc */

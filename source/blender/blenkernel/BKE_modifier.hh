@@ -517,7 +517,6 @@ struct VirtualModifierData {
   CurveModifierData cmd;
   LatticeModifierData lmd;
   ShapeKeyModifierData smd;
-  GPTransformModifierData tmd;
 };
 
 /**

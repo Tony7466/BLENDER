@@ -45,7 +45,6 @@ set(SRC
   intern/MOD_explode.cc
   intern/MOD_fluid.cc
   intern/MOD_grease_pencil_opacity.cc
-  intern/MOD_grease_pencil_transform.cc
   intern/MOD_grease_pencil_subdiv.cc
   intern/MOD_grease_pencil_util.cc
   intern/MOD_hook.cc

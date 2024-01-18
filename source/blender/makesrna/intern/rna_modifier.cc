@@ -286,11 +286,6 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_VOLUME_DATA,
      "Volume Displace",
      "Deform volume based on noise or other vector fields"}, /* TODO: Use correct icon. */
-    {eModifierType_GreasePencilTransform,
-     "GREASE_PENCIL_TRANSFORM",
-     ICON_MOD_OFFSET,
-     "Transform",
-     "Transform the strokes"},
 
     RNA_ENUM_ITEM_HEADING(N_("Physics"), nullptr),
     {eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", ""},
@@ -7782,17 +7777,6 @@ static void rna_def_modifier_grease_pencil_subdiv(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
-static void rna_def_modifier_grease_pencil_transform(BlenderRNA *brna)
-{
-  StructRNA *srna;
-
-  srna = RNA_def_struct(brna, "GreasePencilTransformModifier", "Modifier");
-  RNA_def_struct_ui_text(
-      srna, "Grease Pencil Transform Modifier", "Transform Grease Pencil layer modifier");
-  RNA_def_struct_sdna(srna, "GPTransformModifierData");
-  RNA_def_struct_ui_icon(srna, ICON_MOD_OFFSET);
-}
-
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7954,7 +7938,6 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_volume_displace(brna);
   rna_def_modifier_volume_to_mesh(brna);
   rna_def_modifier_grease_pencil_opacity(brna);
-  rna_def_modifier_grease_pencil_transform(brna);
   rna_def_modifier_grease_pencil_subdiv(brna);
 }
 
