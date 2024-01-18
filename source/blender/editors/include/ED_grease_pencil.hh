@@ -81,7 +81,8 @@ class DrawingPlacement {
   DrawingPlacement(const Scene &scene,
                    const ARegion &region,
                    const View3D &view3d,
-                   const Object &object);
+                   const Object &object,
+                   const bke::greasepencil::Layer &layer);
   ~DrawingPlacement();
 
  public:

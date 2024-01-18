@@ -25,6 +25,7 @@
 
 #include "BLI_bounds.hh"
 #include "BLI_map.hh"
+#include "BLI_math_euler_types.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix_types.hh"
@@ -232,13 +233,45 @@ IDTypeInfo IDType_ID_GP = {
     /*lib_override_apply_post*/ nullptr,
 };
 
+template<typename T>
+static blender::MutableSpan<T> get_mutable_span_attribute(CustomData &custom_data,
+                                                          const blender::StringRefNull name,
+                                                          const eCustomDataType type,
+                                                          const int size,
+                                                          const T default_value = T())
+{
+  using namespace blender;
+  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name.c_str(), size);
+  if (data != nullptr) {
+    return {data, size};
+  }
+  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, size, name.c_str());
+  MutableSpan<T> span = {data, size};
+  if (size > 0 && span.first() != default_value) {
+    span.fill(default_value);
+  }
+  return span;
+}
+
 namespace blender::bke::greasepencil {
 
-DrawingTransforms::DrawingTransforms(const Object &grease_pencil_ob)
+DrawingTransforms::DrawingTransforms(const Object &grease_pencil_ob, const Layer &layer)
 {
-  /* TODO: For now layer space = object space. This needs to change once the layers have a
-   * transform. */
-  this->layer_space_to_world_space = float4x4_view(grease_pencil_ob.object_to_world);
+  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(grease_pencil_ob.data);
+  const std::optional<int> layer_index = grease_pencil.get_layer_index(layer);
+
+  const float4x4 layer_matrix = [&]() {
+    if (!layer_index) {
+      return float4x4::identity();
+    }
+    float3 translation = grease_pencil.layer_translations()[*layer_index];
+    math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[*layer_index]);
+    float3 scale = grease_pencil.layer_scales()[*layer_index];
+    return math::from_loc_rot_scale<float4x4>(translation, rot_euler, scale);
+  }();
+
+  this->layer_space_to_world_space = layer_matrix *
+                                     float4x4_view(grease_pencil_ob.object_to_world);
   this->world_space_to_layer_space = math::invert(this->layer_space_to_world_space);
 }
 
@@ -256,25 +289,15 @@ static CustomData &domain_custom_data(CurvesGeometry &curves, const AttrDomain d
   return domain == AttrDomain::Point ? curves.point_data : curves.curve_data;
 }
 template<typename T>
-static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
-                                            const AttrDomain domain,
-                                            const StringRefNull name,
-                                            const T default_value = T())
+static MutableSpan<T> get_mutable_curves_attribute(CurvesGeometry &curves,
+                                                   const AttrDomain domain,
+                                                   const StringRefNull name,
+                                                   const T default_value = T())
 {
   const int num = domain_num(curves, domain);
   const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
   CustomData &custom_data = domain_custom_data(curves, domain);
-
-  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name.c_str(), num);
-  if (data != nullptr) {
-    return {data, num};
-  }
-  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name.c_str());
-  MutableSpan<T> span = {data, num};
-  if (num > 0 && span.first() != default_value) {
-    span.fill(default_value);
-  }
-  return span;
+  return get_mutable_span_attribute<T>(custom_data, name, type, num, default_value);
 }
 
 Drawing::Drawing()
@@ -425,7 +448,7 @@ VArray<float> Drawing::radii() const
 
 MutableSpan<float> Drawing::radii_for_write()
 {
-  return get_mutable_attribute<float>(
+  return get_mutable_curves_attribute<float>(
       this->strokes_for_write(), AttrDomain::Point, ATTR_RADIUS, 0.01f);
 }
 
@@ -437,7 +460,7 @@ VArray<float> Drawing::opacities() const
 
 MutableSpan<float> Drawing::opacities_for_write()
 {
-  return get_mutable_attribute<float>(
+  return get_mutable_curves_attribute<float>(
       this->strokes_for_write(), AttrDomain::Point, ATTR_OPACITY, 1.0f);
 }
 
@@ -449,10 +472,10 @@ VArray<ColorGeometry4f> Drawing::vertex_colors() const
 
 MutableSpan<ColorGeometry4f> Drawing::vertex_colors_for_write()
 {
-  return get_mutable_attribute<ColorGeometry4f>(this->strokes_for_write(),
-                                                AttrDomain::Point,
-                                                ATTR_VERTEX_COLOR,
-                                                ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+  return get_mutable_curves_attribute<ColorGeometry4f>(this->strokes_for_write(),
+                                                       AttrDomain::Point,
+                                                       ATTR_VERTEX_COLOR,
+                                                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 void Drawing::tag_positions_changed()
@@ -2353,6 +2376,51 @@ void GreasePencil::print_layer_tree()
 {
   using namespace blender::bke::greasepencil;
   this->root_group().print_nodes("Layer Tree:");
+}
+
+template<typename T>
+static blender::MutableSpan<T> get_mutable_layer_attribute(GreasePencil &grease_pencil,
+                                                           const blender::StringRefNull name,
+                                                           const T default_value = T())
+{
+  using namespace blender;
+  const int num = grease_pencil.layers().size();
+  const eCustomDataType type = bke::cpp_type_to_custom_data_type(blender::CPPType::get<T>());
+  CustomData &custom_data = grease_pencil.layers_data;
+  return get_mutable_span_attribute<T>(custom_data, name, type, num, default_value);
+}
+
+blender::VArray<blender::float3> GreasePencil::layer_translations() const
+{
+  return *this->attributes().lookup_or_default<float3>(
+      "translation", blender::bke::AttrDomain::Layer, float3(0.0f));
+}
+
+blender::MutableSpan<blender::float3> GreasePencil::layer_translations_for_write()
+{
+  return get_mutable_layer_attribute(*this, "translation", float3(0.0f));
+}
+
+blender::VArray<blender::float3> GreasePencil::layer_rotations() const
+{
+  return *this->attributes().lookup_or_default<blender::float3>(
+      "rotation", blender::bke::AttrDomain::Layer, blender::float3(0.0f));
+}
+
+blender::MutableSpan<blender::float3> GreasePencil::layer_rotations_for_write()
+{
+  return get_mutable_layer_attribute(*this, "rotation", blender::float3(0.0f));
+}
+
+blender::VArray<blender::float3> GreasePencil::layer_scales() const
+{
+  return *this->attributes().lookup_or_default<float3>(
+      "scale", blender::bke::AttrDomain::Layer, float3(1.0f));
+}
+
+blender::MutableSpan<blender::float3> GreasePencil::layer_scales_for_write()
+{
+  return get_mutable_layer_attribute(*this, "scale", float3(1.0f));
 }
 
 /** \} */

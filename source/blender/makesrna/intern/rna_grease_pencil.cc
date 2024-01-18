@@ -20,9 +20,13 @@
 
 #ifdef RNA_RUNTIME
 
+#  include "BKE_attribute.hh"
 #  include "BKE_grease_pencil.hh"
 
+#  include "BLI_math_vector.h"
+#  include "BLI_math_vector_types.hh"
 #  include "BLI_span.hh"
+#  include "BLI_virtual_array.hh"
 
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
@@ -114,6 +118,78 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
 
   grease_pencil->rename_node(layer->wrap().as_node(), value);
+}
+
+static void rna_GreasePencilLayer_translation_get(PointerRNA *ptr, float *values)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (std::optional<int> layer_index = grease_pencil.get_layer_index(layer)) {
+    VArray<float3> layer_translations = grease_pencil.layer_translations();
+    copy_v3_v3(values, layer_translations[*layer_index]);
+  }
+}
+
+static void rna_GreasePencilLayer_translation_set(PointerRNA *ptr, const float *values)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (std::optional<int> layer_index = grease_pencil.get_layer_index(layer)) {
+    MutableSpan<float3> layer_translations = grease_pencil.layer_translations_for_write();
+    layer_translations[*layer_index] = float3(values);
+  }
+}
+
+static void rna_GreasePencilLayer_rotation_get(PointerRNA *ptr, float *values)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (std::optional<int> layer_index = grease_pencil.get_layer_index(layer)) {
+    VArray<float3> layer_rotations = grease_pencil.layer_rotations();
+    copy_v3_v3(values, layer_rotations[*layer_index]);
+  }
+}
+
+static void rna_GreasePencilLayer_rotation_set(PointerRNA *ptr, const float *values)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (std::optional<int> layer_index = grease_pencil.get_layer_index(layer)) {
+    MutableSpan<float3> layer_rotations = grease_pencil.layer_rotations_for_write();
+    layer_rotations[*layer_index] = float3(values);
+  }
+}
+
+static void rna_GreasePencilLayer_scale_get(PointerRNA *ptr, float *values)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (std::optional<int> layer_index = grease_pencil.get_layer_index(layer)) {
+    VArray<float3> layer_scales = grease_pencil.layer_scales();
+    copy_v3_v3(values, layer_scales[*layer_index]);
+  }
+}
+
+static void rna_GreasePencilLayer_scale_set(PointerRNA *ptr, const float *values)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (std::optional<int> layer_index = grease_pencil.get_layer_index(layer)) {
+    MutableSpan<float3> layer_scales = grease_pencil.layer_scales_for_write();
+    layer_scales[*layer_index] = float3(values);
+  }
 }
 
 static PointerRNA rna_GreasePencil_active_layer_get(PointerRNA *ptr)
@@ -245,6 +321,32 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Parent Bone", "Name of parent bone. Only used when the parent object is an armature");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_dependency_update");
+  
+  prop = RNA_def_property(srna, "translation", PROP_FLOAT, PROP_TRANSLATION);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(prop,
+                               "rna_GreasePencilLayer_translation_get",
+                               "rna_GreasePencilLayer_translation_set",
+                               nullptr);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_ui_text(prop, "Translation", "Translation of the layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_EULER);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(
+      prop, "rna_GreasePencilLayer_rotation_get", "rna_GreasePencilLayer_rotation_set", nullptr);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_ui_text(prop, "Rotation", "Euler rotation of the layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_XYZ);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(
+      prop, "rna_GreasePencilLayer_scale_get", "rna_GreasePencilLayer_scale_set", nullptr);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
+  RNA_def_property_ui_text(prop, "Scale", "Scale of the layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
