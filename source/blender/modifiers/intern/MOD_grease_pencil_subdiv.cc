@@ -174,8 +174,10 @@ ModifierTypeInfo modifierType_GreasePencilSubdiv = {
     /*struct_name*/ "GreasePencilSubdivModifierData",
     /*struct_size*/ sizeof(GreasePencilSubdivModifierData),
     /*srna*/ &RNA_GreasePencilSubdivModifier,
-    /*type*/ ModifierTypeType::Nonconstructive,
-    /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
+    /*type*/ ModifierTypeType::Constructive,
+    /*flags*/
+    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+     eModifierTypeFlag_EnableInEditmode),
     /*icon*/ ICON_MOD_SUBSURF,
 
     /*copy_data*/ blender::copy_data,
