@@ -8,6 +8,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.hh"
+
 #include "DNA_defaults.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
@@ -18,7 +20,9 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.h"
+#include "BKE_material.h"
 #include "BKE_modifier.hh"
+#include "BKE_screen.hh"
 
 #include "BLO_read_write.hh"
 
@@ -75,6 +79,7 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   auto *ttmd = reinterpret_cast<GreasePencilTintModifierData *>(target);
 
   modifier::greasepencil::free_influence_data(&ttmd->influence);
+  MEM_SAFE_FREE(ttmd->color_ramp);
 
   BKE_modifier_copydata_generic(md, target, flag);
   modifier::greasepencil::copy_influence_data(&tmd->influence, &ttmd->influence, flag);
@@ -99,7 +104,7 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   walk(user_data, ob, (ID **)&tmd->object, IDWALK_CB_NOP);
 }
 
-static bool is_disabled(ModifierData *md, bool /*use_render_params*/)
+static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
 {
   auto *tmd = reinterpret_cast<GreasePencilTintModifierData *>(md);
   if (tmd->tint_mode == MOD_GREASE_PENCIL_TINT_GRADIENT) {
@@ -108,9 +113,7 @@ static bool is_disabled(ModifierData *md, bool /*use_render_params*/)
   return false;
 }
 
-static void update_depsgraph(ModifierData *md,
-                             const ModifierUpdateDepsgraphContext *ctx,
-                             const int /*mode*/)
+static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   auto *tmd = reinterpret_cast<GreasePencilTintModifierData *>(md);
   if (tmd->object != nullptr) {
@@ -119,25 +122,6 @@ static void update_depsgraph(ModifierData *md,
   }
   DEG_add_object_relation(
       ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Tint Modifier");
-}
-
-static void apply_color_tint(ColorGeometry4f &color,
-                             const ColorGeometry4f &material_color,
-                             const float3 factor)
-{
-  float3 hsv;
-  /* When input alpha is zero, replace with material color. */
-  if (color.a == 0.0f && material_color.a > 0.0f) {
-    color.a = 1.0f;
-    rgb_to_hsv_v(material_color, hsv);
-  }
-  else {
-    rgb_to_hsv_v(color, hsv);
-  }
-  hsv[0] = fractf(hsv[0] + factor[0] + 0.5f);
-  hsv[1] = clamp_f(hsv[1] * factor[1], 0.0f, 1.0f);
-  hsv[2] = hsv[2] * factor[2];
-  hsv_to_rgb_v(hsv, color);
 }
 
 static void modify_stroke_color(const GreasePencilTintModifierData &tmd,
@@ -162,48 +146,51 @@ static void modify_stroke_color(const GreasePencilTintModifierData &tmd,
           .varray;
 
   curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
-    const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);
-    const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
-    const ColorGeometry4f material_color = (gp_style ? gp_style->fill_rgba :
-                                                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    // const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);
+    // const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
+    // const ColorGeometry4f material_color = (gp_style ? gp_style->fill_rgba :
+    //                                                    ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 
-    const IndexRange points = points_by_curve[curve_i];
-    for (const int64_t point_i : points) {
-      const float curve_input = points.size() >= 2 ?
-                                    (float(point_i - points.first()) / float(points.size() - 1)) :
-                                    0.0f;
-      const float curve_factor = use_curve ? BKE_curvemapping_evaluateF(
-                                                 tmd.influence.custom_curve, 0, curve_input) :
-                                             1.0f;
+    // const IndexRange points = points_by_curve[curve_i];
+    // for (const int64_t point_i : points) {
+    //   const float curve_input = points.size() >= 2 ?
+    //                                 (float(point_i - points.first()) / float(points.size() - 1))
+    //                                 : 0.0f;
+    //   const float curve_factor = use_curve ? BKE_curvemapping_evaluateF(
+    //                                              tmd.influence.custom_curve, 0, curve_input) :
+    //                                          1.0f;
 
-      if (use_uniform_opacity) {
-        opacities.span[point_i] = std::clamp(tmd.color_factor * curve_factor, 0.0f, 1.0f);
-      }
-      else if (use_weight_as_factor) {
-        /* Use vertex group weights as opacity factors. */
-        opacities.span[point_i] = std::clamp(
-            tmd.color_factor * curve_factor * vgroup_weights[point_i], 0.0f, 1.0f);
-      }
-      else {
-        /* Use vertex group weights as influence factors. */
-        const float vgroup_weight = vgroup_weights[point_i];
-        const float vgroup_influence = invert_vertex_group ? 1.0f - vgroup_weight : vgroup_weight;
-        opacities.span[point_i] = std::clamp(
-            opacities.span[point_i] + tmd.color_factor * curve_factor * vgroup_influence - 1.0f,
-            0.0f,
-            1.0f);
-      }
-    }
+    //   if (use_uniform_opacity) {
+    //     opacities.span[point_i] = std::clamp(tmd.color_factor * curve_factor, 0.0f, 1.0f);
+    //   }
+    //   else if (use_weight_as_factor) {
+    //     /* Use vertex group weights as opacity factors. */
+    //     opacities.span[point_i] = std::clamp(
+    //         tmd.color_factor * curve_factor * vgroup_weights[point_i], 0.0f, 1.0f);
+    //   }
+    //   else {
+    //     /* Use vertex group weights as influence factors. */
+    //     const float vgroup_weight = vgroup_weights[point_i];
+    //     const float vgroup_influence = invert_vertex_group ? 1.0f - vgroup_weight :
+    //     vgroup_weight; opacities.span[point_i] = std::clamp(
+    //         opacities.span[point_i] + tmd.color_factor * curve_factor * vgroup_influence - 1.0f,
+    //         0.0f,
+    //         1.0f);
+    //   }
+    // }
   });
 
   opacities.finish();
 }
 
-static void modify_fill_color(const GreasePencilTintModifierData &tmd,
+template<typename TintFn>
+static void modify_fill_color(Object *ob,
+                              const GreasePencilTintModifierData &tmd,
                               bke::CurvesGeometry &curves,
-                              const IndexMask &curves_mask)
+                              const IndexMask &curves_mask,
+                              TintFn tint_fn)
 {
-  const bool use_vgroup_opacity = (tmd.flag & MOD_GREASE_PENCIL_OPACITY_USE_WEIGHT_AS_FACTOR);
+  const bool use_weight_as_factor = (tmd.flag & MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR);
   const bool invert_vertex_group = (tmd.influence.flag &
                                     GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -213,6 +200,8 @@ static void modify_fill_color(const GreasePencilTintModifierData &tmd,
   bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
                                                                bke::AttrDomain::Curve);
+  VArray<int> stroke_materials =
+      attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
   VArray<float> vgroup_weights = attributes
                                      .lookup_or_default<float>(tmd.influence.vertex_group_name,
                                                                bke::AttrDomain::Point,
@@ -220,20 +209,94 @@ static void modify_fill_color(const GreasePencilTintModifierData &tmd,
                                      .varray;
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-    if (use_vgroup_opacity) {
+    const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);
+    const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
+    const ColorGeometry4f material_color = (gp_style ? gp_style->fill_rgba :
+                                                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+
+    ColorGeometry4f &color = fill_colors.span[curve_i];
+    /* When input alpha is zero, replace with material color. */
+    const ColorGeometry4f input_color = (color.a == 0.0f && material_color.a > 0.0f) ?
+                                            material_color :
+                                            color;
+
+    float factor;
+    if (use_weight_as_factor) {
       /* Use the first stroke point as vertex weight. */
       const IndexRange points = points_by_curve[curve_i];
       const float stroke_weight = points.is_empty() ? 1.0f : vgroup_weights[points.first()];
-      const float stroke_influence = invert_vertex_group ? 1.0f - stroke_weight : stroke_weight;
-
-      fill_opacities.span[curve_i] = std::clamp(stroke_influence, 0.0f, 1.0f);
+      factor = invert_vertex_group ? 1.0f - stroke_weight : stroke_weight;
     }
     else {
-      fill_opacities.span[curve_i] = std::clamp(tmd.color_factor, 0.0f, 1.0f);
+      factor = tmd.factor;
     }
+
+    color = tint_fn(curve_i, input_color, factor);
   });
 
-  fill_opacities.finish();
+  fill_colors.finish();
+}
+
+static void modify_fill_color(Object *ob,
+                              const GreasePencilTintModifierData &tmd,
+                              bke::CurvesGeometry &curves,
+                              const IndexMask &curves_mask)
+{
+  const GreasePencilTintModifierMode tint_mode = GreasePencilTintModifierMode(tmd.tint_mode);
+
+  switch (tint_mode) {
+    case MOD_GREASE_PENCIL_TINT_UNIFORM: {
+      modify_fill_color(
+          ob,
+          tmd,
+          curves,
+          curves_mask,
+          [&](const int64_t /*curve_i*/, const ColorGeometry4f &input_color, const float factor) {
+            /* Alpha is unchanged. */
+            const float3 input_rgb = {input_color.r, input_color.g, input_color.b};
+            const float3 rgb = math::interpolate(input_rgb, float3(tmd.color), factor);
+            return ColorGeometry4f(rgb[0], rgb[1], rgb[2], input_color.a);
+          });
+      break;
+    }
+    case MOD_GREASE_PENCIL_TINT_GRADIENT: {
+      if (tmd.object == nullptr) {
+        return;
+      }
+
+      const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+      const Span<float3> positions = curves.positions();
+      /* Transforms points to the gradient object space. */
+      const float4x4 matrix = float4x4_view(ob->world_to_object) *
+                              float4x4_view(tmd.object->object_to_world);
+
+      modify_fill_color(
+          ob,
+          tmd,
+          curves,
+          curves_mask,
+          [&](const int64_t curve_i, const ColorGeometry4f &input_color, const float factor) {
+            /* Use the first stroke point for gradient position. */
+            const IndexRange points = points_by_curve[curve_i];
+            const float3 pos = points.is_empty() ? float3(0.0f, 0.0f, 0.0f) :
+                                                   positions[points.first()];
+            const float3 gradient_pos = math::transform_point(matrix, pos);
+            const float gradient_factor = std::clamp(
+                math::safe_divide(math::length(gradient_pos), tmd.radius), 0.0f, 1.0f);
+
+            float4 gradient_color;
+            BKE_colorband_evaluate(tmd.color_ramp, gradient_factor, gradient_color);
+
+            const float3 input_rgb = {input_color.r, input_color.g, input_color.b};
+            /* GP2 compatibility: ignore vertex group factor and use the plain modifier setting for
+             * RGB mixing. */
+            const float3 rgb = math::interpolate(input_rgb, gradient_color.xyz(), tmd.factor);
+            /* GP2 compatibility: use vertex group factor for alpha. */
+            return ColorGeometry4f(rgb[0], rgb[1], rgb[2], factor);
+          });
+      break;
+    }
+  }
 }
 
 static void modify_opacity(const GreasePencilTintModifierData &tmd,
@@ -278,11 +341,11 @@ static void modify_curves(ModifierData *md, const ModifierEvalContext *ctx, Draw
       modify_stroke_color(*tmd, curves, curves_mask, drawing.vertex_colors_for_write());
       break;
     case MOD_GREASE_PENCIL_COLOR_FILL:
-      modify_fill_color(*tmd, curves, curves_mask);
+      modify_fill_color(ctx->object, *tmd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_BOTH:
       modify_stroke_color(*tmd, curves, curves_mask, drawing.vertex_colors_for_write());
-      modify_fill_color(*tmd, curves, curves_mask);
+      modify_fill_color(ctx->object, *tmd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_HARDNESS:
       BLI_assert_unreachable();
@@ -329,7 +392,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayout *row = uiLayoutRow(layout, true);
   uiLayoutSetActive(row, !use_weight_as_factor);
-  uiItemR(row, ptr, "factor", UI_ITEM_NONE, text, ICON_NONE);
+  uiItemR(row, ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(row, ptr, "use_weight_as_factor", UI_ITEM_NONE, "", ICON_MOD_VERTEX_WEIGHT);
 
   uiItemR(layout, ptr, "tint_mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
@@ -338,7 +401,7 @@ static void panel_draw(const bContext *C, Panel *panel)
       uiItemR(layout, ptr, "color", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     case MOD_GREASE_PENCIL_TINT_GRADIENT:
-      col = uiLayoutColumn(layout, false);
+      uiLayout *col = uiLayoutColumn(layout, false);
       uiLayoutSetPropSep(col, false);
       uiTemplateColorRamp(col, ptr, "color_ramp", true);
       uiItemS(layout);
@@ -347,8 +410,12 @@ static void panel_draw(const bContext *C, Panel *panel)
       break;
   }
 
+  LayoutPanelState *influence_panel_state = BKE_panel_layout_panel_state_ensure(
+      panel, "influence", true);
+  PointerRNA influence_state_ptr = RNA_pointer_create(
+      nullptr, &RNA_LayoutPanelState, influence_panel_state);
   if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", ptr, "open_influence_panel"))
+          C, layout, "Influence", &influence_state_ptr, "is_open"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
@@ -361,7 +428,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GreasePencilOpacity, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilTint, panel_draw);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -370,6 +437,9 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
   BLO_write_struct(writer, GreasePencilTintModifierData, tmd);
   modifier::greasepencil::write_influence_data(writer, &tmd->influence);
+  if (tmd->color_ramp) {
+    BLO_write_struct(writer, ColorBand, tmd->color_ramp);
+  }
 }
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
@@ -377,6 +447,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   auto *tmd = reinterpret_cast<GreasePencilTintModifierData *>(md);
 
   modifier::greasepencil::read_influence_data(reader, &tmd->influence);
+  BLO_read_data_address(reader, &tmd->color_ramp);
 }
 
 }  // namespace blender
@@ -388,10 +459,8 @@ ModifierTypeInfo modifierType_GreasePencilTint = {
     /*struct_size*/ sizeof(GreasePencilTintModifierData),
     /*srna*/ &RNA_GreasePencilTintModifier,
     /*type*/ ModifierTypeType::NonGeometrical,
-    /*flags*/
-    static_cast<ModifierTypeFlag>(
-        eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
-        eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping),
+    /*flags*/ eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+        eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping,
     /*icon*/ ICON_MOD_TINT,
 
     /*copy_data*/ blender::copy_data,

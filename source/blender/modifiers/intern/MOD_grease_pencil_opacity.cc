@@ -17,6 +17,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_modifier.hh"
+#include "BKE_screen.hh"
 
 #include "BLO_read_write.hh"
 
@@ -265,8 +266,12 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
   }
 
+  LayoutPanelState *influence_panel_state = BKE_panel_layout_panel_state_ensure(
+      panel, "influence", true);
+  PointerRNA influence_state_ptr = RNA_pointer_create(
+      nullptr, &RNA_LayoutPanelState, influence_panel_state);
   if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", ptr, "open_influence_panel"))
+          C, layout, "Influence", &influence_state_ptr, "is_open"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
@@ -306,10 +311,8 @@ ModifierTypeInfo modifierType_GreasePencilOpacity = {
     /*struct_size*/ sizeof(GreasePencilOpacityModifierData),
     /*srna*/ &RNA_GreasePencilOpacityModifier,
     /*type*/ ModifierTypeType::NonGeometrical,
-    /*flags*/
-    static_cast<ModifierTypeFlag>(
-        eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
-        eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping),
+    /*flags*/ eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+        eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping,
     /*icon*/ ICON_MOD_OPACITY,
 
     /*copy_data*/ blender::copy_data,
