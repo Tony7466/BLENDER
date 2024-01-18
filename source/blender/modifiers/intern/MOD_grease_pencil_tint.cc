@@ -183,12 +183,10 @@ static void modify_stroke_color(const GreasePencilTintModifierData &tmd,
   opacities.finish();
 }
 
-template<typename TintFn>
 static void modify_fill_color(Object *ob,
                               const GreasePencilTintModifierData &tmd,
                               bke::CurvesGeometry &curves,
-                              const IndexMask &curves_mask,
-                              TintFn tint_fn)
+                              const IndexMask &curves_mask)
 {
   const bool use_weight_as_factor = (tmd.flag & MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR);
   const bool invert_vertex_group = (tmd.influence.flag &
@@ -208,17 +206,17 @@ static void modify_fill_color(Object *ob,
                                                                1.0f)
                                      .varray;
 
-  curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
+  auto get_inputs = [&](const int64_t curve_i) {
     const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
     const ColorGeometry4f material_color = (gp_style ? gp_style->fill_rgba :
                                                        ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 
-    ColorGeometry4f &color = fill_colors.span[curve_i];
     /* When input alpha is zero, replace with material color. */
-    const ColorGeometry4f input_color = (color.a == 0.0f && material_color.a > 0.0f) ?
-                                            material_color :
-                                            color;
+    const ColorGeometry4f &input_color = fill_colors.span[curve_i];
+    ColorGeometry4f base_color = (input_color.a == 0.0f && material_color.a > 0.0f) ?
+                                     material_color :
+                                     input_color;
 
     float factor;
     if (use_weight_as_factor) {
@@ -231,32 +229,20 @@ static void modify_fill_color(Object *ob,
       factor = tmd.factor;
     }
 
-    color = tint_fn(curve_i, input_color, factor);
-  });
+    return std::make_tuple(base_color, factor);
+  };
 
-  fill_colors.finish();
-}
-
-static void modify_fill_color(Object *ob,
-                              const GreasePencilTintModifierData &tmd,
-                              bke::CurvesGeometry &curves,
-                              const IndexMask &curves_mask)
-{
   const GreasePencilTintModifierMode tint_mode = GreasePencilTintModifierMode(tmd.tint_mode);
-
   switch (tint_mode) {
     case MOD_GREASE_PENCIL_TINT_UNIFORM: {
-      modify_fill_color(
-          ob,
-          tmd,
-          curves,
-          curves_mask,
-          [&](const int64_t /*curve_i*/, const ColorGeometry4f &input_color, const float factor) {
-            /* Alpha is unchanged. */
-            const float3 input_rgb = {input_color.r, input_color.g, input_color.b};
-            const float3 rgb = math::interpolate(input_rgb, float3(tmd.color), factor);
-            return ColorGeometry4f(rgb[0], rgb[1], rgb[2], input_color.a);
-          });
+      curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
+        auto [input_color, factor] = get_inputs(curve_i);
+
+        /* Alpha is unchanged. */
+        const float3 input_rgb = {input_color.r, input_color.g, input_color.b};
+        const float3 rgb = math::interpolate(input_rgb, float3(tmd.color), factor);
+        return ColorGeometry4f(rgb[0], rgb[1], rgb[2], input_color.a);
+      });
       break;
     }
     case MOD_GREASE_PENCIL_TINT_GRADIENT: {
@@ -270,33 +256,32 @@ static void modify_fill_color(Object *ob,
       const float4x4 matrix = float4x4_view(ob->world_to_object) *
                               float4x4_view(tmd.object->object_to_world);
 
-      modify_fill_color(
-          ob,
-          tmd,
-          curves,
-          curves_mask,
-          [&](const int64_t curve_i, const ColorGeometry4f &input_color, const float factor) {
-            /* Use the first stroke point for gradient position. */
-            const IndexRange points = points_by_curve[curve_i];
-            const float3 pos = points.is_empty() ? float3(0.0f, 0.0f, 0.0f) :
-                                                   positions[points.first()];
-            const float3 gradient_pos = math::transform_point(matrix, pos);
-            const float gradient_factor = std::clamp(
-                math::safe_divide(math::length(gradient_pos), tmd.radius), 0.0f, 1.0f);
+      curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
+        auto [input_color, factor] = get_inputs(curve_i);
 
-            float4 gradient_color;
-            BKE_colorband_evaluate(tmd.color_ramp, gradient_factor, gradient_color);
+        /* Use the first stroke point for gradient position. */
+        const IndexRange points = points_by_curve[curve_i];
+        const float3 pos = points.is_empty() ? float3(0.0f, 0.0f, 0.0f) :
+                                               positions[points.first()];
+        const float3 gradient_pos = math::transform_point(matrix, pos);
+        const float gradient_factor = std::clamp(
+            math::safe_divide(math::length(gradient_pos), tmd.radius), 0.0f, 1.0f);
 
-            const float3 input_rgb = {input_color.r, input_color.g, input_color.b};
-            /* GP2 compatibility: ignore vertex group factor and use the plain modifier setting for
-             * RGB mixing. */
-            const float3 rgb = math::interpolate(input_rgb, gradient_color.xyz(), tmd.factor);
-            /* GP2 compatibility: use vertex group factor for alpha. */
-            return ColorGeometry4f(rgb[0], rgb[1], rgb[2], factor);
-          });
+        float4 gradient_color;
+        BKE_colorband_evaluate(tmd.color_ramp, gradient_factor, gradient_color);
+
+        const float3 input_rgb = {input_color.r, input_color.g, input_color.b};
+        /* GP2 compatibility: ignore vertex group factor and use the plain modifier setting for
+         * RGB mixing. */
+        const float3 rgb = math::interpolate(input_rgb, gradient_color.xyz(), tmd.factor);
+        /* GP2 compatibility: use vertex group factor for alpha. */
+        return ColorGeometry4f(rgb[0], rgb[1], rgb[2], factor);
+      });
       break;
     }
   }
+
+  fill_colors.finish();
 }
 
 static void modify_opacity(const GreasePencilTintModifierData &tmd,
