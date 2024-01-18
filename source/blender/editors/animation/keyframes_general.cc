@@ -740,6 +740,8 @@ void ease_to_ease_fcurve_segment(FCurve *fcu,
     /* Mapping the x-location of the key within the segment to a -1/1 range. */
     const float x = ((fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range) * 2 - 1;
     const float y = s_curve(x, width, shift);
+    /* Normalizing the y value to the min and max to ensure that the keys at the end are not
+     * detached from the rest of the animation. */
     const float blend = (y - y_min) * (1 / (y_max - y_min));
 
     const float key_y_value = left_key->vec[1][1] + key_y_range * blend;

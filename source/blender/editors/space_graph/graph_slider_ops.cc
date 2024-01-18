@@ -2579,7 +2579,7 @@ void GRAPH_OT_ease_to_ease(wmOperatorType *ot)
                        -1.0f,
                        1.0f);
 
-  RNA_def_float(ot->srna, "width", 1.0f, 0.0f, FLT_MAX, "Width", "Foo", 0.0f, 16.0f);
+  RNA_def_float(ot->srna, "width", 2.0f, 0.001f, FLT_MAX, "Width", "Foo", 0.01f, 16.0f);
 }
 
 /** \} */
