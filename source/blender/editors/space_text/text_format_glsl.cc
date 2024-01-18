@@ -322,7 +322,7 @@ static const char *text_format_glsl_literals_specialvar_data[] = {
     /* clang-format on */
 };
 static const Span<const char*> text_format_glsl_literals_specialvar(
-    text_format_glsl_literals_specialvar_data, ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
+    text_format_glsl_literals_specialvar_data, ARRAY_SIZE(text_format_glsl_literals_specialvar_data));
 
 static const char *text_format_glsl_literals_preprocessor[] = {
 
