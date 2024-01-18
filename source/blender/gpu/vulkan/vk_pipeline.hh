@@ -56,14 +56,11 @@ class VKPipeline : NonCopyable {
     other.vk_pipelines_.clear();
     return *this;
   }
-  
-  static VKPipeline* create_compute_pipeline(
-      VkShaderModule compute_module,
-                                            VkPipelineLayout &pipeline_layouts,
-                                            const VKPushConstants::Layout &push_constants_layout,
-                                            const VkSpecializationInfo *specialization_info);
+  static void ensure_compute_pipeline(VKShader &shader, std::unique_ptr<VKPipeline> &pipeline);
+  static void create_compute_pipeline(VKShader &shader, std::unique_ptr<VKPipeline> &pipeline);
 
-  static VKPipeline* create_graphics_pipeline(const VKPushConstants::Layout &push_constants_layout);
+  static void create_graphics_pipeline(std::unique_ptr<VKPipeline> &pipeline,
+                                       const VKPushConstants::Layout &push_constants_layout);
 
   VKPushConstants &push_constants_get()
   {

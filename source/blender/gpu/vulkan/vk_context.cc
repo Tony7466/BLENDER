@@ -192,10 +192,12 @@ void VKContext::bind_compute_pipeline()
 {
   VKShader *shader = unwrap(this->shader);
   BLI_assert(shader);
-  shader->specialzation_ensure();
-  VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.bind(*this, VK_PIPELINE_BIND_POINT_COMPUTE);
-  pipeline.update_push_constants(*this);
+  Vector<VkSpecializationMapEntry> specialization_map_entries;
+  shader->specialization_ensure(specialization_map_entries);
+  auto &pipeline = shader->pipeline_get();
+  VKPipeline::ensure_compute_pipeline(*shader, pipeline);
+  pipeline->bind(*this, VK_PIPELINE_BIND_POINT_COMPUTE);
+  pipeline->update_push_constants(*this);
   if (shader->has_descriptor_set()) {
     descriptor_set_.bind(*this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_COMPUTE);
   }
@@ -220,9 +222,9 @@ void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
 
   shader->update_graphics_pipeline(*this, prim_type, vertex_attribute_object);
 
-  VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.bind(*this, VK_PIPELINE_BIND_POINT_GRAPHICS);
-  pipeline.update_push_constants(*this);
+  auto &pipeline = shader->pipeline_get();
+  pipeline->bind(*this, VK_PIPELINE_BIND_POINT_GRAPHICS);
+  pipeline->update_push_constants(*this);
   if (shader->has_descriptor_set()) {
     descriptor_set_.bind(*this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
   }

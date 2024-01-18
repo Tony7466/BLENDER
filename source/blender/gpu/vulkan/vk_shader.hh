@@ -31,12 +31,12 @@ class VKShader : public Shader {
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   std::unique_ptr<VKPipeline> pipeline_;
-  bool vk_specialtization_dirty_ = false;
+
  public:
   VKShader(const char *name);
   virtual ~VKShader();
 
-  void init(const shader::ShaderCreateInfo & info) override;
+  void init(const shader::ShaderCreateInfo &info) override;
 
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
   void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
@@ -76,7 +76,7 @@ class VKShader : public Shader {
   /* DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
 
-  VKPipeline &pipeline_get();
+  std::unique_ptr<VKPipeline> &pipeline_get();
   VkPipelineLayout vk_pipeline_layout_get() const
   {
     return vk_pipeline_layout_;
@@ -98,6 +98,13 @@ class VKShader : public Shader {
     return compute_module_ != VK_NULL_HANDLE;
   }
 
+  const VkShaderModule compute_module_get() const
+  {
+    return compute_module_;
+  }
+
+  const VKPushConstants::Layout &push_constants_layout_get() const;
+
   /**
    * Some shaders don't have a descriptor set and should not bind any descriptor set to the
    * pipeline. This function can be used to determine if a descriptor set can be bound when this
@@ -112,10 +119,8 @@ class VKShader : public Shader {
   {
     return vk_descriptor_set_layout_;
   }
-  
-  VkSpecializationInfo build_specialzation();
-
-  const VkSpecializationInfo specialzation_ensure() ;
+  const VkSpecializationInfo specialization_ensure(
+      Vector<VkSpecializationMapEntry> &specialization_map_entries);
 
  private:
   Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
@@ -134,6 +139,8 @@ class VKShader : public Shader {
    */
   std::string workaround_geometry_shader_source_create(const shader::ShaderCreateInfo &info);
   bool do_geometry_shader_injection(const shader::ShaderCreateInfo *info);
+  VkSpecializationInfo build_specialization(
+      Vector<VkSpecializationMapEntry> &specialization_map_entries);
 };
 
 static inline VKShader &unwrap(Shader &shader)

@@ -24,8 +24,8 @@ void VKStateManager::apply_state()
   VKContext &context = *VKContext::get();
   if (context.shader) {
     VKShader &shader = unwrap(*context.shader);
-    VKPipeline &pipeline = shader.pipeline_get();
-    pipeline.state_manager_get().set_state(state, mutable_state);
+    auto &pipeline = shader.pipeline_get();
+    pipeline->state_manager_get().set_state(state, mutable_state);
   }
 }
 
@@ -45,8 +45,8 @@ void VKStateManager::force_state()
   VKContext &context = *VKContext::get();
   BLI_assert(context.shader);
   VKShader &shader = unwrap(*context.shader);
-  VKPipeline &pipeline = shader.pipeline_get();
-  pipeline.state_manager_get().force_state(state, mutable_state);
+  auto &pipeline = shader.pipeline_get();
+  pipeline->state_manager_get().force_state(state, mutable_state);
 }
 
 void VKStateManager::issue_barrier(eGPUBarrier /*barrier_bits*/)

@@ -38,14 +38,20 @@ VKPipeline::~VKPipeline()
   }
 }
 
-VKPipeline* VKPipeline::create_compute_pipeline(
-    VkShaderModule compute_module,
-    VkPipelineLayout &pipeline_layout,
-    const VKPushConstants::Layout &push_constants_layout,
-    const VkSpecializationInfo *specialization_info)
+void VKPipeline::ensure_compute_pipeline(VKShader &shader, std::unique_ptr<VKPipeline> &pipeline)
+{
+  if (shader.constants.is_dirty) {
+    create_compute_pipeline(shader, pipeline);
+  }
+};
+
+void VKPipeline::create_compute_pipeline(VKShader &shader, std::unique_ptr<VKPipeline> &pipeline)
 {
   VK_ALLOCATION_CALLBACKS
   const VKDevice &device = VKBackend::get().device_get();
+
+  Vector<VkSpecializationMapEntry> specialization_map_entries;
+  const auto specialization_info = shader.specialization_ensure(specialization_map_entries);
   VkComputePipelineCreateInfo pipeline_info = {};
   pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
   pipeline_info.flags = 0;
@@ -53,9 +59,9 @@ VKPipeline* VKPipeline::create_compute_pipeline(
   pipeline_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   pipeline_info.stage.flags = 0;
   pipeline_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-  pipeline_info.stage.module = compute_module;
-  pipeline_info.layout = pipeline_layout;
-  pipeline_info.stage.pSpecializationInfo = specialization_info;
+  pipeline_info.stage.module = shader.compute_module_get();
+  pipeline_info.layout = shader.vk_pipeline_layout_get();
+  pipeline_info.stage.pSpecializationInfo = &specialization_info;
   pipeline_info.stage.pName = "main";
 
   VkPipeline vk_pipeline;
@@ -66,18 +72,19 @@ VKPipeline* VKPipeline::create_compute_pipeline(
                                vk_allocation_callbacks,
                                &vk_pipeline) != VK_SUCCESS)
   {
-    return nullptr;
+    pipeline.reset(nullptr);
+    return;
   }
 
-  VKPushConstants push_constants(&push_constants_layout);
-  return new VKPipeline(vk_pipeline, std::move(push_constants));
+  VKPushConstants push_constants(&shader.push_constants_layout_get());
+  pipeline.reset(new VKPipeline(vk_pipeline, std::move(push_constants)));
 }
 
-VKPipeline* VKPipeline::create_graphics_pipeline(
-    const VKPushConstants::Layout &push_constants_layout)
+void VKPipeline::create_graphics_pipeline(std::unique_ptr<VKPipeline> &pipeline,
+                                          const VKPushConstants::Layout &push_constants_layout)
 {
   VKPushConstants push_constants(&push_constants_layout);
-  return new VKPipeline(std::move(push_constants));
+  pipeline.reset(new VKPipeline(std::move(push_constants)));
 }
 
 VkPipeline VKPipeline::vk_handle() const
@@ -107,7 +114,8 @@ void VKPipeline::finalize(VKContext &context,
   vertex_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   vertex_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
   vertex_stage_info.module = vertex_module;
-  auto specialization_info = shader->specialzation_ensure();
+  Vector<VkSpecializationMapEntry> specialization_map_entries;
+  const auto specialization_info = shader->specialization_ensure(specialization_map_entries);
   vertex_stage_info.pSpecializationInfo = &specialization_info;
   vertex_stage_info.pName = "main";
   pipeline_stages.append(vertex_stage_info);

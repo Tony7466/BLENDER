@@ -681,7 +681,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert((fragment_module_ != VK_NULL_HANDLE && info->tf_type_ == GPU_SHADER_TFB_NONE) ||
                (fragment_module_ == VK_NULL_HANDLE && info->tf_type_ != GPU_SHADER_TFB_NONE));
     BLI_assert(compute_module_ == VK_NULL_HANDLE);
-    pipeline_.reset(VKPipeline::create_graphics_pipeline(vk_interface->push_constants_layout_get()));
+    VKPipeline::create_graphics_pipeline(pipeline_, vk_interface->push_constants_layout_get());
     result = true;
   }
   else {
@@ -689,12 +689,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert(geometry_module_ == VK_NULL_HANDLE);
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
-    auto specialization_info = build_specialzation();
-    pipeline_.reset(
-        VKPipeline::create_compute_pipeline(compute_module_,
-                                                    vk_pipeline_layout_,
-                                                    vk_interface->push_constants_layout_get(),
-                                                    &specialization_info));
+    VKPipeline::create_compute_pipeline(*this, pipeline_);
     result = pipeline_->is_valid();
   }
 
@@ -979,35 +974,32 @@ void VKShader::update_graphics_pipeline(VKContext &context,
                                         const VKVertexAttributeObject &vertex_attribute_object)
 {
   BLI_assert(is_graphics_shader());
-  pipeline_get().finalize(context,
-                          vertex_module_,
-                          geometry_module_,
-                          fragment_module_,
-                          vk_pipeline_layout_,
-                          prim_type,
-                          vertex_attribute_object);
+  pipeline_get()->finalize(context,
+                           vertex_module_,
+                           geometry_module_,
+                           fragment_module_,
+                           vk_pipeline_layout_,
+                           prim_type,
+                           vertex_attribute_object);
 }
 
 void VKShader::bind()
 {
   /* Intentionally empty. Binding of the pipeline are done just before drawing/dispatching.
    * See #VKPipeline.update_and_bind */
-  if (!vk_specialtization_dirty_) {
-    vk_specialtization_dirty_ = constants.is_dirty;
-  }
 }
 
 void VKShader::unbind() {}
 
 void VKShader::uniform_float(int location, int comp_len, int array_size, const float *data)
 {
-  VKPushConstants &push_constants = pipeline_get().push_constants_get();
+  VKPushConstants &push_constants = pipeline_get()->push_constants_get();
   push_constants.push_constant_set(location, comp_len, array_size, data);
 }
 
 void VKShader::uniform_int(int location, int comp_len, int array_size, const int *data)
 {
-  VKPushConstants &push_constants = pipeline_get().push_constants_get();
+  VKPushConstants &push_constants = pipeline_get()->push_constants_get();
   push_constants.push_constant_set(location, comp_len, array_size, data);
 }
 
@@ -1015,7 +1007,7 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
 {
   BLI_assert(interface);
 
-  VKShaderInterface &vk_interface = *(reinterpret_cast<VKShaderInterface*>(interface));
+  VKShaderInterface &vk_interface = *(reinterpret_cast<VKShaderInterface *>(interface));
 
   std::stringstream ss;
 
@@ -1034,7 +1026,10 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
         ss << "const bool " << sc.name << "=" << (sc.default_value.u ? "true" : "false") << ";\n";
         break;
       case Type::FLOAT: {
-        /* Use uint representation to allow exact same bit pattern even if NaN. */
+        /**
+         *  Use uint representation to allow exact same bit pattern even if NaN. uintBitsToFloat
+         *  isn't supported during global const initialization.
+         */
         float f = *reinterpret_cast<float *>(const_cast<uint32_t *>(&sc.default_value.u));
         ss << "const float " << sc.name << "=" << std::to_string(f) << ";\n";
         break;
@@ -1410,9 +1405,9 @@ int VKShader::program_handle_get() const
   return -1;
 }
 
-VKPipeline &VKShader::pipeline_get()
+std::unique_ptr<VKPipeline> &VKShader::pipeline_get()
 {
-  return *pipeline_;
+  return pipeline_;
 }
 
 const VKShaderInterface &VKShader::interface_get() const
@@ -1423,43 +1418,39 @@ const VKShaderInterface &VKShader::interface_get() const
   return *static_cast<const VKShaderInterface *>(interface);
 }
 
-VkSpecializationInfo VKShader::build_specialzation()
+VkSpecializationInfo VKShader::build_specialization(
+    Vector<VkSpecializationMapEntry> &specialization_map_entries)
 {
-  if (constants.values.size() <= 0) {
-    VkSpecializationInfo null = {};
-    return null;
-  }
-  static Vector<VkSpecializationMapEntry> entries;
-  entries.resize(constants.values.size());
+  specialization_map_entries.resize(constants.values.size());
   for (int i = 0; i < constants.values.size(); i++) {
-    entries[i].constantID = i;
-    entries[i].offset = sizeof(uint32_t) * i;
-    entries[i].size = sizeof(uint32_t);
+    specialization_map_entries[i].constantID = i;
+    specialization_map_entries[i].offset = sizeof(uint32_t) * i;
+    specialization_map_entries[i].size = sizeof(uint32_t);
   };
-  vk_specialtization_dirty_ = false;
-  return {/* uint32_t mapEntryCount */ static_cast<uint32_t>(entries.size()),
-          /* const VkSpecializationMapEntry *pMapEntries */ entries.data(),
+
+  return {/* uint32_t mapEntryCount */ static_cast<uint32_t>(specialization_map_entries.size()),
+          /* const VkSpecializationMapEntry *pMapEntries */ specialization_map_entries.data(),
           /* size_t dataSize */ constants.values.size() * sizeof(uint32_t),
           /* const void *pData */ constants.values.data()};
 };
 
-const VkSpecializationInfo VKShader::specialzation_ensure()
+const VkSpecializationInfo VKShader::specialization_ensure(
+    Vector<VkSpecializationMapEntry> &specialization_map_entries)
 {
-  VkSpecializationInfo null = {};
-  if (vk_specialtization_dirty_) {
-    auto info = build_specialzation();
-    if (is_graphics_shader()) {
-      return info;
-    }
-    else {
-      pipeline_.reset(VKPipeline::create_compute_pipeline(
-          compute_module_,
-          vk_pipeline_layout_,
-          reinterpret_cast<VKShaderInterface *>(interface)->push_constants_layout_get(),
-          &info));
-    }
-    BLI_assert(pipeline_->is_valid() == true);
+  if (!constants.is_dirty) {
+    return {};
+  };
+  constants.is_dirty = false;
+  if (constants.values.size() <= 0) {
+    VkSpecializationInfo null = {};
+    return null;
   }
-  return null;
+  return build_specialization(specialization_map_entries);
 };
+
+const VKPushConstants::Layout &VKShader::push_constants_layout_get() const
+{
+  VKShaderInterface *vk_interface = reinterpret_cast<VKShaderInterface *>(interface);
+  return vk_interface->push_constants_layout_get();
+}
 }  // namespace blender::gpu
