@@ -40,10 +40,9 @@ static void node_composit_buts_map_uv(uiLayout *layout, bContext * /*C*/, Pointe
   uiItemR(layout, ptr, "alpha", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
-
 static void node_composit_init_map_uv(bNodeTree * /*ntree*/, bNode *node)
 {
-    node->custom2 = CMP_NODE_MAP_UV_FILTERING_ANISOTROPIC;
+  node->custom2 = CMP_NODE_MAP_UV_FILTERING_ANISOTROPIC;
 }
 
 using namespace blender::realtime_compositor;
@@ -73,7 +72,8 @@ class MapUVOperation : public NodeOperation {
     if (nearest_neighbour) {
       GPU_texture_mipmap_mode(input_image.texture(), false, false);
       GPU_texture_anisotropic_filter(input_image.texture(), false);
-    } else {
+    }
+    else {
       GPU_texture_mipmap_mode(input_image.texture(), true, true);
       GPU_texture_anisotropic_filter(input_image.texture(), true);
     }

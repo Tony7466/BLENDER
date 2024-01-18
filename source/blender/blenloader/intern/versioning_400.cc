@@ -2632,7 +2632,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-
   if (MAIN_VERSION_FILE_ATLEAST(bmain, 400, 20) && !MAIN_VERSION_FILE_ATLEAST(bmain, 401, 11)) {
     /* Convert old socket lists into new interface items. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
@@ -2653,7 +2652,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
     FOREACH_NODETREE_END;
   }
-
 
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
