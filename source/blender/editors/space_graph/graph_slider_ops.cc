@@ -2474,10 +2474,7 @@ void GRAPH_OT_scale_from_neighbor(wmOperatorType *ot)
 /** \name Ease Ease Operator
  * \{ */
 
-static void ease_ease_graph_keys(bAnimContext *ac,
-                                 const float factor,
-                                 const float slope,
-                                 const float width)
+static void ease_ease_graph_keys(bAnimContext *ac, const float factor, const float width)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -2488,7 +2485,7 @@ static void ease_ease_graph_keys(bAnimContext *ac,
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      ease_to_ease_fcurve_segment(fcu, segment, factor, slope, width);
+      ease_to_ease_fcurve_segment(fcu, segment, factor, width);
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -2513,10 +2510,9 @@ static void ease_ease_modal_update(bContext *C, wmOperator *op)
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  const float slope = RNA_float_get(op->ptr, "slope");
   const float width = RNA_float_get(op->ptr, "width");
 
-  ease_ease_graph_keys(&gso->ac, factor, slope, width);
+  ease_ease_graph_keys(&gso->ac, factor, width);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
@@ -2548,10 +2544,9 @@ static int ease_ease_exec(bContext *C, wmOperator *op)
   }
 
   const float factor = RNA_float_get(op->ptr, "factor");
-  const float slope = RNA_float_get(op->ptr, "slope");
   const float width = RNA_float_get(op->ptr, "width");
 
-  ease_ease_graph_keys(&ac, factor, slope, width);
+  ease_ease_graph_keys(&ac, factor, width);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 
@@ -2584,8 +2579,7 @@ void GRAPH_OT_ease_to_ease(wmOperatorType *ot)
                        -1.0f,
                        1.0f);
 
-  RNA_def_float(ot->srna, "slope", 2.0f, 0.0f, FLT_MAX, "Slope", "Foo", 0.0f, 16.0f);
-  RNA_def_float(ot->srna, "width", 1.0f, -FLT_MAX, FLT_MAX, "Width", "Foo", -16.0f, 16.0f);
+  RNA_def_float(ot->srna, "width", 1.0f, 0.0f, FLT_MAX, "Width", "Foo", 0.0f, 16.0f);
 }
 
 /** \} */
