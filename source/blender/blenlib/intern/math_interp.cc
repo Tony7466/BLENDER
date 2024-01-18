@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "BLI_math_base.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_interp.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -35,20 +36,46 @@ static blender::float4 cubic_bspline_coefficients(float f)
 #    include <smmintrin.h> /* _mm_floor_ps */
 #  endif
 
+/* Functions below are hard to express before SSE4. If compiling to that
+ * or NEON via sse2neon, just use the simple forms. On SSE2, do it the
+ * hard way. */
+
 BLI_INLINE __m128 floor_simd(__m128 v)
 {
 #  if defined(__SSE4_1__) || defined(__ARM_NEON) && defined(WITH_SSE2NEON)
-  /* If we're on SSE4 or ARM NEON, just use the simple floor() way. */
   __m128 v_floor = _mm_floor_ps(v);
 #  else
-  /* The hard way: truncate, for negative inputs this will round towards zero.
-   * Then compare with input, and subtract 1 for the inputs that were
-   * negative. */
+  /* Truncate, for negative inputs this will round towards zero. Then
+   * compare with input, and subtract 1 for the inputs that were negative. */
   __m128 v_trunc = _mm_cvtepi32_ps(_mm_cvttps_epi32(v));
   __m128 v_neg = _mm_cmplt_ps(v, v_trunc);
   __m128 v_floor = _mm_sub_ps(v_trunc, _mm_and_ps(v_neg, _mm_set1_ps(1.0f)));
 #  endif
   return v_floor;
+}
+
+BLI_INLINE __m128i min_i_simd(__m128i a, __m128i b)
+{
+#  if defined(__SSE4_1__) || defined(__ARM_NEON) && defined(WITH_SSE2NEON)
+  return _mm_min_epi32(a, b);
+#  else
+  __m128i cmp = _mm_cmplt_epi32(a, b);
+  a = _mm_and_si128(cmp, a);
+  b = _mm_andnot_si128(cmp, b);
+  return _mm_or_si128(a, b);
+#  endif
+}
+
+BLI_INLINE __m128i max_i_simd(__m128i a, __m128i b)
+{
+#  if defined(__SSE4_1__) || defined(__ARM_NEON) && defined(WITH_SSE2NEON)
+  return _mm_max_epi32(a, b);
+#  else
+  __m128i cmp = _mm_cmplt_epi32(b, a);
+  a = _mm_and_si128(cmp, a);
+  b = _mm_andnot_si128(cmp, b);
+  return _mm_or_si128(a, b);
+#  endif
 }
 
 BLI_INLINE void bicubic_interpolation_uchar_simd(
@@ -238,9 +265,6 @@ BLI_INLINE void bilinear_interpolation_fl(const float *float_buffer,
   y1 = (int)vf;
   y2 = y1 + 1;
 
-  const float *row1, *row2, *row3, *row4;
-  const float empty[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-
   /* pixel value must be already wrapped, however values at boundaries may flip */
   if (wrap_x) {
     if (x1 < 0) {
@@ -268,34 +292,15 @@ BLI_INLINE void bilinear_interpolation_fl(const float *float_buffer,
     return;
   }
 
-  /* sample including outside of edges of image */
-  if (x1 < 0 || y1 < 0) {
-    row1 = empty;
-  }
-  else {
-    row1 = float_buffer + width * y1 * components + components * x1;
-  }
-
-  if (x1 < 0 || y2 > height - 1) {
-    row2 = empty;
-  }
-  else {
-    row2 = float_buffer + width * y2 * components + components * x1;
-  }
-
-  if (x2 > width - 1 || y1 < 0) {
-    row3 = empty;
-  }
-  else {
-    row3 = float_buffer + width * y1 * components + components * x2;
-  }
-
-  if (x2 > width - 1 || y2 > height - 1) {
-    row4 = empty;
-  }
-  else {
-    row4 = float_buffer + width * y2 * components + components * x2;
-  }
+  /* Make sure sample locations are within image. */
+  x1 = blender::math::clamp(x1, 0, width - 1);
+  x2 = blender::math::clamp(x2, 0, width - 1);
+  y1 = blender::math::clamp(y1, 0, height - 1);
+  y2 = blender::math::clamp(y2, 0, height - 1);
+  const float *row1 = float_buffer + width * y1 * components + components * x1;
+  const float *row2 = float_buffer + width * y2 * components + components * x1;
+  const float *row3 = float_buffer + width * y1 * components + components * x2;
+  const float *row4 = float_buffer + width * y2 * components + components * x2;
 
   a = u - uf;
   b = v - vf;
@@ -339,35 +344,31 @@ void BLI_bilinear_interpolation_char(
     const uchar *buffer, uchar *output, int width, int height, float u, float v)
 {
 #if BLI_HAVE_SSE2
-  /* Bilinear interpolation needs to read and blend four image pixels, while
-   * also handling conditions of sample coordinate being outside of the
-   * image, in which case black (all zeroes) should be used as the sample
-   * contribution.
-   *
-   * Code below does all that without any branches, by making outside the
-   * image sample locations still read the first pixel of the image, but
-   * later making sure that the result is set to zero for that sample. */
-
   __m128 uvuv = _mm_set_ps(v, u, v, u);
   __m128 uvuv_floor = floor_simd(uvuv);
 
   /* x1, y1, x2, y2 */
   __m128i xy12 = _mm_add_epi32(_mm_cvttps_epi32(uvuv_floor), _mm_set_epi32(1, 1, 0, 0));
-  /* Check whether any of the coordinates are outside of the image. */
+
+  /* Clamp coordinates within image size. */
   __m128i size_minus_1 = _mm_sub_epi32(_mm_set_epi32(height, width, height, width),
                                        _mm_set1_epi32(1));
-  __m128i too_lo_xy12 = _mm_cmplt_epi32(xy12, _mm_setzero_si128());
-  __m128i too_hi_xy12 = _mm_cmplt_epi32(size_minus_1, xy12);
-  __m128i invalid_xy12 = _mm_or_si128(too_lo_xy12, too_hi_xy12);
+  __m128i xy12_clamped = max_i_simd(xy12, _mm_setzero_si128());
+  xy12_clamped = min_i_simd(xy12_clamped, size_minus_1);
 
-  /* Samples 1,2,3,4 are in this order: x1y1, x1y2, x2y1, x2y2 */
-  __m128i x1234 = _mm_shuffle_epi32(xy12, _MM_SHUFFLE(2, 2, 0, 0));
-  __m128i y1234 = _mm_shuffle_epi32(xy12, _MM_SHUFFLE(3, 1, 3, 1));
-  __m128i invalid_1234 = _mm_or_si128(_mm_shuffle_epi32(invalid_xy12, _MM_SHUFFLE(2, 2, 0, 0)),
-                                      _mm_shuffle_epi32(invalid_xy12, _MM_SHUFFLE(3, 1, 3, 1)));
-  /* Set x & y to zero for invalid samples. */
-  x1234 = _mm_andnot_si128(invalid_1234, x1234);
-  y1234 = _mm_andnot_si128(invalid_1234, y1234);
+  /* Check which samples are outside the image. If all of them outside, return
+   * transparent black. */
+  __m128i valid_xy12 = _mm_cmpeq_epi32(xy12, xy12_clamped);
+  __m128i valid_pairs = _mm_and_si128(valid_xy12,
+                                      _mm_shuffle_epi32(valid_xy12, _MM_SHUFFLE(0, 3, 2, 1)));
+  if (_mm_movemask_ps(_mm_castsi128_ps(valid_pairs)) == 0) {
+    memset(output, 0, 4);
+    return;
+  }
+
+  /* Samples 1,2,3,4 are in this order: x1y1, x1y2, x2y1, x2y2. */
+  __m128i x1234 = _mm_shuffle_epi32(xy12_clamped, _MM_SHUFFLE(2, 2, 0, 0));
+  __m128i y1234 = _mm_shuffle_epi32(xy12_clamped, _MM_SHUFFLE(3, 1, 3, 1));
 
   /* Read the four sample values. Do address calculations in C, since SSE
    * before 4.1 makes it very cumbersome to do full integer multiplies. */
@@ -380,8 +381,6 @@ void BLI_bilinear_interpolation_char(
   int sample3 = ((const int *)buffer)[ycoord[2] * (int64_t)width + xcoord[2]];
   int sample4 = ((const int *)buffer)[ycoord[3] * (int64_t)width + xcoord[3]];
   __m128i samples1234 = _mm_set_epi32(sample4, sample3, sample2, sample1);
-  /* Set samples to black for the ones that were actually invalid. */
-  samples1234 = _mm_andnot_si128(invalid_1234, samples1234);
 
   /* Expand samples from packed 8-bit RGBA to full floats:
    * spread to 16 bit values. */
@@ -430,9 +429,6 @@ void BLI_bilinear_interpolation_char(
   y1 = (int)vf;
   y2 = y1 + 1;
 
-  const uchar *row1, *row2, *row3, *row4;
-  uchar empty[4] = {0, 0, 0, 0};
-
   /* completely outside of the image? */
   if (x2 < 0 || x1 >= width) {
     copy_vn_uchar(output, 4, 0);
@@ -444,34 +440,15 @@ void BLI_bilinear_interpolation_char(
     return;
   }
 
-  /* sample including outside of edges of image */
-  if (x1 < 0 || y1 < 0) {
-    row1 = empty;
-  }
-  else {
-    row1 = buffer + width * y1 * 4 + 4 * x1;
-  }
-
-  if (x1 < 0 || y2 > height - 1) {
-    row2 = empty;
-  }
-  else {
-    row2 = buffer + width * y2 * 4 + 4 * x1;
-  }
-
-  if (x2 > width - 1 || y1 < 0) {
-    row3 = empty;
-  }
-  else {
-    row3 = buffer + width * y1 * 4 + 4 * x2;
-  }
-
-  if (x2 > width - 1 || y2 > height - 1) {
-    row4 = empty;
-  }
-  else {
-    row4 = buffer + width * y2 * 4 + 4 * x2;
-  }
+  /* Make sure sample locations are within image. */
+  x1 = blender::math::clamp(x1, 0, width - 1);
+  x2 = blender::math::clamp(x2, 0, width - 1);
+  y1 = blender::math::clamp(y1, 0, height - 1);
+  y2 = blender::math::clamp(y2, 0, height - 1);
+  const uchar *row1 = buffer + (width * y1 + x1) * 4;
+  const uchar *row2 = buffer + (width * y2 + x1) * 4;
+  const uchar *row3 = buffer + (width * y1 + x2) * 4;
+  const uchar *row4 = buffer + (width * y2 + x2) * 4;
 
   a = u - uf;
   b = v - vf;

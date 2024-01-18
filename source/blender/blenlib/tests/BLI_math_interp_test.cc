@@ -64,13 +64,13 @@ TEST(math_interp, BilinearCharSamples)
 TEST(math_interp, BilinearCharPartiallyOutsideImage)
 {
   unsigned char res[4];
-  unsigned char exp1[4] = {1, 1, 2, 2};
+  unsigned char exp1[4] = {1, 2, 3, 4};
   BLI_bilinear_interpolation_char(image_char[0][0], res, image_width, image_height, -0.5f, 2.0f);
   EXPECT_EQ_ARRAY(exp1, res, 4);
-  unsigned char exp2[4] = {9, 11, 15, 22};
+  unsigned char exp2[4] = {87, 113, 147, 221};
   BLI_bilinear_interpolation_char(image_char[0][0], res, image_width, image_height, 1.25f, 2.9f);
   EXPECT_EQ_ARRAY(exp2, res, 4);
-  unsigned char exp3[4] = {173, 115, 65, 14};
+  unsigned char exp3[4] = {240, 160, 90, 20};
   BLI_bilinear_interpolation_char(image_char[0][0], res, image_width, image_height, 2.2f, -0.1f);
   EXPECT_EQ_ARRAY(exp3, res, 4);
 }
