@@ -1215,7 +1215,7 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
   return grease_pencil;
 }
 
-bool BKE_grease_pencil_has_layer_transform(const Object *object)
+static bool grease_pencil_is_any_layer_parented(const Object *object)
 {
   using namespace blender::bke::greasepencil;
   const GreasePencil *grease_pencil = static_cast<const GreasePencil *>(object->data);
@@ -1225,6 +1225,68 @@ bool BKE_grease_pencil_has_layer_transform(const Object *object)
     }
   }
   return false;
+}
+
+static bool grease_pencil_is_any_layer_transformed(const blender::bke::GeometrySet &geometry_set)
+{
+  using namespace blender;
+  BLI_assert(geometry_set.has_grease_pencil());
+  // const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+
+  // VArray<float3> translation = grease_pencil.layer_translations();
+  // if (std::optional<float3> value = translation.get_if_single()) {
+  //   if (!math::is_zero(value)) {
+  //     return true;
+  //   }
+  // }
+  // else {
+  //   devirtualize_varray(translation)
+  // }
+  return true;
+}
+
+static void grease_pencil_apply_parent_transform_to_layer_transforms(
+    const Object &object, blender::bke::GeometrySet &geometry_set)
+{
+  using namespace blender;
+  using namespace blender::bke::greasepencil;
+  BLI_assert(geometry_set.has_grease_pencil());
+  GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
+
+  MutableSpan<float3> translations = grease_pencil.layer_translations_for_write();
+  MutableSpan<float3> rotations = grease_pencil.layer_rotations_for_write();
+  MutableSpan<float3> scales = grease_pencil.layer_scales_for_write();
+
+  for (const int layer_i : grease_pencil.layers().index_range()) {
+    Layer &layer = *grease_pencil.layers_for_write()[layer_i];
+    if (layer.parent == nullptr) {
+      continue;
+    }
+    Object &parent = *layer.parent;
+    /* Get the parent matrix for this layer. */
+    const float4x4 parent_matrix = [&]() {
+      if (parent.type == OB_ARMATURE && layer.parsubstr[0] != '\0') {
+        if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer.parsubstr)) {
+          return float4x4_view(parent.object_to_world) * float4x4_view(channel->pose_mat);
+        }
+      }
+      return float4x4(float4x4_view(parent.object_to_world));
+    }();
+
+    /* Calculate the current layer transform (layer space -> object space). */
+    const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
+        translations[layer_i], rotations[layer_i], scales[layer_i]);
+    /* Calculate the transform that takes the layer into the parent space. */
+    const float4x4 final_matrix = float4x4_view(object.world_to_object) * parent_matrix *
+                                  layer_matrix;
+    /* Write the result back to the layer transforms. */
+    math::EulerXYZ rot_euler;
+    math::to_loc_rot_scale<true>(
+        final_matrix, translations[layer_i], rot_euler, scales[layer_i]);
+    rotations[layer_i] = float3(rot_euler);
+    /* Layer parent is no longer needed at this stage, clear the pointer. */
+    layer.parent = nullptr;
+  }
 }
 
 static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
@@ -1262,6 +1324,38 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
   }
 }
 
+static void grease_pencil_apply_layer_transforms(blender::bke::GeometrySet &geometry_set)
+{
+  using namespace blender;
+  using namespace blender::bke::greasepencil;
+  BLI_assert(geometry_set.has_grease_pencil());
+  GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
+  const int eval_frame = grease_pencil.runtime->eval_frame;
+
+  VArray<float3> translations = grease_pencil.layer_translations();
+  VArray<float3> rotations = grease_pencil.layer_rotations();
+  VArray<float3> scales = grease_pencil.layer_scales();
+
+  for (const int layer_i : grease_pencil.layers().index_range()) {
+    const Layer &layer = *grease_pencil.layers()[layer_i];
+    if (!layer.is_visible()) {
+      continue;
+    }
+    Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, eval_frame);
+    if (drawing == nullptr) {
+      continue;
+    }
+    if (drawing->is_instanced()) {
+      /* TODO: Make a mutable copy of the drawing. */
+    }
+
+    /* Apply the transform to the drawing. */
+    const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
+        translations[layer_i], rotations[layer_i], scales[layer_i]);
+    drawing->strokes_for_write().transform(layer_matrix);
+  }
+}
+
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
 {
   using namespace blender::bke;
@@ -1282,12 +1376,18 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     edit_component.grease_pencil_edit_hints_ = std::make_unique<GreasePencilEditHints>(
         *static_cast<const GreasePencil *>(DEG_get_original_object(object)->data));
   }
+  if (grease_pencil_is_any_layer_parented(object)) {
+    grease_pencil_apply_parent_transform_to_layer_transforms(*object, geometry_set);
+  }
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
   if (!geometry_set.has_grease_pencil()) {
     GreasePencil *empty_grease_pencil = BKE_grease_pencil_new_nomain();
     empty_grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
     geometry_set.replace_grease_pencil(empty_grease_pencil);
+  }
+  else if (grease_pencil_is_any_layer_transformed(geometry_set)) {
+    grease_pencil_apply_layer_transforms(geometry_set);
   }
 
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
