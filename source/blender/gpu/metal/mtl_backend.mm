@@ -487,7 +487,19 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
   /* Minimum per-vertex stride is 4 bytes in Metal.
    * A bound vertex buffer must contribute at least 4 bytes per vertex. */
   GCaps.minimum_per_vertex_stride = 4;
+
+  /* Maximum number of additional shader compilation threads. */
+  GCaps.max_shader_compiler_threads = 1;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-method-access"
+  if (@available(macOS 13.3, *)) {
+    /* NOTE: Keep one thread available for main thread PSOs. */
+    GCaps.max_shader_compiler_threads = max_ii(1,
+                                               [device maximumConcurrentCompilationTaskCount] - 1);
+  }
 }
+#pragma clang diagnostic pop
 
 /** \} */
 

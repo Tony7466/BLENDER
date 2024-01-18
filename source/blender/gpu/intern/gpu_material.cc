@@ -28,6 +28,7 @@
 
 #include "NOD_shader.h"
 
+#include "GPU_capabilities.h"
 #include "GPU_material.h"
 #include "GPU_shader.h"
 #include "GPU_texture.h"
@@ -979,7 +980,11 @@ void GPU_material_compile(GPUMaterial *mat)
             /* Skip warming if cached pass is identical to the default material. */
             if (mat->default_mat->pass != mat->pass && parent_sh != sh) {
               GPU_shader_set_parent(sh, parent_sh);
-              GPU_shader_warm_cache(sh, 1);
+              /* If we have additional compilation threads available, prefer to take longer
+               * compiling additional PSO permutations up-front, as this will not block
+               * compilation of other materials. */
+              int PSO_warm_limit = (GPU_max_shader_compiler_threads() > 4) ? 2 : 1;
+              GPU_shader_warm_cache(sh, PSO_warm_limit);
             }
           }
         }

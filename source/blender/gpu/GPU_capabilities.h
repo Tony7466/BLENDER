@@ -69,6 +69,8 @@ bool GPU_stereo_quadbuffer_support(void);
 int GPU_minimum_per_vertex_stride(void);
 bool GPU_transform_feedback_support(void);
 
+int GPU_max_shader_compiler_threads(void);
+
 #ifdef __cplusplus
 }
 #endif

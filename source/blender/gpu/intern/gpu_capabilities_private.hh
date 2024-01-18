@@ -64,6 +64,9 @@ struct GPUCapabilities {
   /* Metal related workarounds. */
   /* Minimum per-vertex stride in bytes (For a vertex buffer). */
   int minimum_per_vertex_stride = 1;
+
+  /* Shader compiler maximum parallel threads. */
+  int max_shader_compiler_threads = 1;
 };
 
 extern GPUCapabilities GCaps;

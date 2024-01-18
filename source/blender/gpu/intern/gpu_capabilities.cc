@@ -217,6 +217,11 @@ size_t GPU_max_storage_buffer_size()
   return GCaps.max_storage_buffer_size;
 }
 
+int GPU_max_shader_compiler_threads()
+{
+  return GCaps.max_shader_compiler_threads;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
