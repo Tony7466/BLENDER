@@ -1746,6 +1746,12 @@ static PointerRNA rna_NodesModifierBake_node_get(PointerRNA *ptr)
   return RNA_pointer_create(const_cast<ID *>(&tree->id), &RNA_Node, const_cast<bNode *>(node));
 }
 
+static StructRNA *rna_NodesModifier_data_block_item_typef(PointerRNA *ptr)
+{
+  NodesModifierDataBlockMapItem *item = static_cast<NodesModifierDataBlockMapItem *>(ptr->data);
+  return ID_code_to_RNA_type(item->id_type);
+}
+
 bool rna_GreasePencilModifier_material_poll(PointerRNA *ptr, PointerRNA value)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
@@ -7259,6 +7265,53 @@ static void rna_def_modifier_nodes_bakes(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Bakes", "Bake data for every bake node");
 }
 
+static void rna_def_modifier_nodes_data_block(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "NodesModifierDataBlock", nullptr);
+  RNA_def_struct_sdna(srna, "NodesModifierDataBlockMapItem");
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Data-Block Name", "Name that is mapped to the referenced data-block");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "lib_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Library Name",
+                           "Used when the data block is not local to the current .blend file but "
+                           "is linked from some library");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ID");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, nullptr, "rna_NodesModifier_data_block_item_typef", nullptr);
+  RNA_def_property_ui_text(prop, "Data-Block", "");
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  prop = RNA_def_property(srna, "id_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_id_type_items);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_nodes_data_blocks(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "NodesModifierDataBlocks", nullptr);
+  RNA_def_struct_sdna(srna, "NodesModifierData");
+  RNA_def_struct_ui_text(
+      srna, "Data-Blocks", "Collection of data-blocks that can be referenced by baked data");
+}
+
 static void rna_def_modifier_nodes_panel(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7290,6 +7343,9 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
 
   rna_def_modifier_nodes_bake(brna);
   rna_def_modifier_nodes_bakes(brna);
+
+  rna_def_modifier_nodes_data_block(brna);
+  rna_def_modifier_nodes_data_blocks(brna);
 
   rna_def_modifier_nodes_panel(brna);
   rna_def_modifier_nodes_panels(brna);
