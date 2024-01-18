@@ -255,23 +255,18 @@ static blender::MutableSpan<T> get_mutable_span_attribute(CustomData &custom_dat
 
 namespace blender::bke::greasepencil {
 
-DrawingTransforms::DrawingTransforms(const Object &grease_pencil_ob, const Layer &layer)
+DrawingTransforms::DrawingTransforms(const Object &eval_object, const int layer_index)
 {
-  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(grease_pencil_ob.data);
-  const std::optional<int> layer_index = grease_pencil.get_layer_index(layer);
-
+  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(eval_object.data);
+  
   const float4x4 layer_matrix = [&]() {
-    if (!layer_index) {
-      return float4x4::identity();
-    }
-    float3 translation = grease_pencil.layer_translations()[*layer_index];
-    math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[*layer_index]);
-    float3 scale = grease_pencil.layer_scales()[*layer_index];
+    float3 translation = grease_pencil.layer_translations()[layer_index];
+    math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[layer_index]);
+    float3 scale = grease_pencil.layer_scales()[layer_index];
     return math::from_loc_rot_scale<float4x4>(translation, rot_euler, scale);
   }();
 
-  this->layer_space_to_world_space = layer_matrix *
-                                     float4x4_view(grease_pencil_ob.object_to_world);
+  this->layer_space_to_world_space = layer_matrix * float4x4_view(eval_object.object_to_world);
   this->world_space_to_layer_space = math::invert(this->layer_space_to_world_space);
 }
 

@@ -39,7 +39,7 @@ struct DrawingTransforms {
   float4x4 layer_space_to_world_space;
 
   DrawingTransforms() = default;
-  DrawingTransforms(const Object &grease_pencil_ob, const Layer &layer);
+  DrawingTransforms(const Object &eval_object, int layer_index);
 };
 
 class DrawingRuntime {
