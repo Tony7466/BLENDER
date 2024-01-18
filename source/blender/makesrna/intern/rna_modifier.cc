@@ -7757,7 +7757,16 @@ static void rna_def_modifier_greasepencil_length(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "GreasePencilLengthModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_LENGTH);
 
-  rna_def_modifier_panel_open_prop(srna,"open_influence_panel", 0);
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilOpacityModifier_material_filter_set");
+  rna_def_modifier_grease_pencil_vertex_group(
+      srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
+
+  rna_def_modifier_panel_open_prop(srna,"open_random_panel", 0);
+  rna_def_modifier_panel_open_prop(srna,"open_offset_panel", 1);
+  rna_def_modifier_panel_open_prop(srna,"open_curvature_panel", 2);
+  rna_def_modifier_panel_open_prop(srna,"open_influence_panel", 3);
 
   RNA_define_lib_overridable(true);
 

@@ -813,8 +813,6 @@
     .start_fac = 0.1f,\
     .end_fac = 0.1f,\
     .overshoot_fac = 0.1f,\
-    .pass_index = 0,\
-    .material = NULL,\
     .flag = GP_LENGTH_USE_CURVATURE,\
     .point_density = 30.0f,\
     .segment_influence = 0.0f,\

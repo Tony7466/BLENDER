@@ -2551,16 +2551,9 @@ typedef enum GreasePencilOpacityModifierFlag {
 
 typedef struct GreasePencilLengthModifierData {
   ModifierData modifier;
-  /** Material for filtering. */
-  struct Material *material;
-  /** Layer name. */
-  char layername[64];
-  /** Custom index for passes. */
-  int pass_index;
+  GreasePencilModifierInfluenceData influence;
   /** Flags. */
   int flag;
-  /** Custom index for passes. */
-  int layer_pass;
   /** Length. */
   float start_fac, end_fac;
   /** Random length factors. */
