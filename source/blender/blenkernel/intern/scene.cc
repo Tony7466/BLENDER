@@ -2619,7 +2619,9 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
   const bool backup = false;
   DEG_ids_clear_recalc(depsgraph, backup);
 
-  blender::bke::scene::sync_writeback::run(*depsgraph);
+  if (blender::bke::scene::sync_writeback::run(*depsgraph)) {
+    scene_graph_update_tagged(depsgraph, bmain, only_if_tagged);
+  }
 }
 
 void BKE_scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain)
@@ -2703,7 +2705,9 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
     DEG_ids_clear_recalc(depsgraph, backup);
   }
 
-  blender::bke::scene::sync_writeback::run(*depsgraph);
+  if (blender::bke::scene::sync_writeback::run(*depsgraph)) {
+    BKE_scene_graph_update_for_newframe_ex(depsgraph, clear_recalc);
+  }
 }
 
 void BKE_scene_graph_update_for_newframe(Depsgraph *depsgraph)

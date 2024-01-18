@@ -43,20 +43,21 @@ void add(const Depsgraph &depsgraph, std::function<void()> fn)
   map.map.lookup(&depsgraph).append(std::move(fn));
 }
 
-void run(const Depsgraph &depsgraph)
+bool run(const Depsgraph &depsgraph)
 {
   WritebacksMap &map = get_writebacks_map();
   Vector<std::function<void()>> writebacks;
   {
     std::lock_guard lock{map.mutex};
     if (!map.map.contains(&depsgraph)) {
-      return;
+      return false;
     }
     writebacks = map.map.pop(&depsgraph);
   }
   for (std::function<void()> &fn : writebacks) {
     fn();
   }
+  return !writebacks.is_empty();
 }
 
 }  // namespace blender::bke::scene::sync_writeback

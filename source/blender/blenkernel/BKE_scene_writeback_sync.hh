@@ -35,7 +35,9 @@ void add(const Depsgraph &depsgraph, std::function<void()> fn);
 /**
  * Execute all gathered writeback tasks for the given depsgraph. This should be called after
  * depsgraph evaluation finished.
+ *
+ * \return True if any original data was modified and the depsgraph might have to be updated.
  */
-void run(const Depsgraph &depsgraph);
+bool run(const Depsgraph &depsgraph);
 
 }  // namespace blender::bke::scene::sync_writeback

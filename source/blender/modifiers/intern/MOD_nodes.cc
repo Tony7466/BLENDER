@@ -1514,12 +1514,14 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
   bke::scene::sync_writeback::add(
       *depsgraph,
       [depsgraph = depsgraph,
+       object_eval = ctx.object,
        bmain,
        &nmd_orig,
        &nmd_eval,
        new_mappings = std::move(data_block_map.new_mappings)]() {
         Vector<bake::BakeDataBlockID> sorted_new_mappings;
         sorted_new_mappings.extend(new_mappings.keys().begin(), new_mappings.keys().end());
+        bool needs_reevaluation = false;
         /**
          * Add new data block mappings to the original modifier. This may do a name lookup in bmain
          * to find the data block if there is not faster way to get it.
@@ -1531,6 +1533,7 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
                 id_orig = DEG_get_original_id(id_eval);
               }
               else {
+                needs_reevaluation = true;
                 id_orig = BKE_libblock_find_name_and_library(
                     bmain, key.id_name.c_str(), key.lib_name.c_str());
               }
@@ -1549,6 +1552,12 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
             nmd_eval, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
               return new_mappings.lookup_default(key, nullptr);
             });
+
+        if (needs_reevaluation) {
+          Object *object_orig = DEG_get_original_object(object_eval);
+          DEG_id_tag_update(&object_orig->id, ID_RECALC_GEOMETRY);
+          DEG_relations_tag_update(bmain);
+        }
       });
 }
 
