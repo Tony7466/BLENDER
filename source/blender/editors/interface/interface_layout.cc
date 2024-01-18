@@ -4973,11 +4973,10 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-PanelLayout uiLayoutPanel(const bContext *C,
-                          uiLayout *layout,
-                          const char *name,
-                          PointerRNA *open_prop_owner,
-                          const char *open_prop_name)
+PanelLayout uiLayoutPanelWithHeader(const bContext *C,
+                                    uiLayout *layout,
+                                    PointerRNA *open_prop_owner,
+                                    const char *open_prop_name)
 {
   const ARegion *region = CTX_wm_region(C);
 
@@ -4998,22 +4997,23 @@ PanelLayout uiLayoutPanel(const bContext *C,
     uiLayout *row = uiLayoutRow(litem, true);
     uiBlock *block = uiLayoutGetBlock(row);
     const int icon = is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW;
-    const int width = ui_text_icon_width(layout, name, icon, false);
+    const int width = ui_text_icon_width(layout, "", icon, false);
     uiDefIconTextBut(block,
                      UI_BTYPE_LABEL,
                      0,
                      icon,
-                     name,
+                     "",
                      0,
                      0,
                      width,
-                     UI_UNIT_Y * 1.2f,
+                     UI_UNIT_Y,
                      nullptr,
-                     0.0,
-                     0.0,
-                     0.0,
-                     0.0,
+                     0.0f,
+                     0.0f,
+                     0.0f,
+                     0.0f,
                      "");
+
     panel_layout.header = row;
   }
 
@@ -5030,6 +5030,18 @@ PanelLayout uiLayoutPanel(const bContext *C,
   panel_layout.body = litem;
 
   return panel_layout;
+}
+
+uiLayout *uiLayoutPanel(const bContext *C,
+                        uiLayout *layout,
+                        const char *name,
+                        PointerRNA *open_prop_owner,
+                        const char *open_prop_name)
+{
+  PanelLayout panel = uiLayoutPanelWithHeader(C, layout, open_prop_owner, open_prop_name);
+  uiItemL(panel.header, name, ICON_NONE);
+
+  return panel.body;
 }
 
 bool uiLayoutEndsWithPanelHeader(const uiLayout &layout)

@@ -1914,10 +1914,10 @@ static void draw_interface_panel_content(const bContext *C,
       NodesModifierPanel *panel = find_panel_by_id(nmd, sub_interface_panel.identifier);
       PointerRNA panel_ptr = RNA_pointer_create(
           modifier_ptr->owner_id, &RNA_NodesModifierPanel, panel);
-      PanelLayout panel_layout = uiLayoutPanel(
-          C, layout, sub_interface_panel.name, &panel_ptr, "is_open");
-      if (panel_layout.body) {
-        draw_interface_panel_content(C, panel_layout.body, modifier_ptr, nmd, sub_interface_panel);
+      if (uiLayout *panel_layout = uiLayoutPanel(
+              C, layout, sub_interface_panel.name, &panel_ptr, "is_open"))
+      {
+        draw_interface_panel_content(C, panel_layout, modifier_ptr, nmd, sub_interface_panel);
       }
     }
     else {
@@ -2042,15 +2042,15 @@ static void draw_manage_panel(const bContext *C,
                               PointerRNA *modifier_ptr,
                               NodesModifierData &nmd)
 {
-  PanelLayout bake_panel = uiLayoutPanel(
-      C, layout, IFACE_("Bake"), modifier_ptr, "open_bake_panel");
-  if (bake_panel.body) {
-    draw_bake_panel(bake_panel.body, modifier_ptr);
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_("Bake"), modifier_ptr, "open_bake_panel"))
+  {
+    draw_bake_panel(panel_layout, modifier_ptr);
   }
-  PanelLayout attribute_panel = uiLayoutPanel(
-      C, layout, IFACE_("Named Attributes"), modifier_ptr, "open_named_attributes_panel");
-  if (attribute_panel.body) {
-    draw_named_attributes_panel(attribute_panel.body, nmd);
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_("Named Attributes"), modifier_ptr, "open_named_attributes_panel"))
+  {
+    draw_named_attributes_panel(panel_layout, nmd);
   }
 }
 
@@ -2098,15 +2098,16 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, ptr);
 
   if (has_output_attribute(*nmd)) {
-    PanelLayout panel_layout = uiLayoutPanel(
-        C, layout, IFACE_("Output Attributes"), ptr, "open_output_attributes_panel");
-    if (panel_layout.body) {
-      draw_output_attributes_panel(C, panel_layout.body, *nmd, ptr);
+    if (uiLayout *panel_layout = uiLayoutPanel(
+            C, layout, IFACE_("Output Attributes"), ptr, "open_output_attributes_panel"))
+    {
+      draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
     }
   }
-  PanelLayout panel_layout = uiLayoutPanel(C, layout, IFACE_("Manage"), ptr, "open_manage_panel");
-  if (panel_layout.body) {
-    draw_manage_panel(C, panel_layout.body, ptr, *nmd);
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_("Manage"), ptr, "open_manage_panel"))
+  {
+    draw_manage_panel(C, panel_layout, ptr, *nmd);
   }
 }
 
