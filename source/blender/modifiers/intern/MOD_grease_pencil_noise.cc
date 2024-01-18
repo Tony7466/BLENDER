@@ -7,7 +7,6 @@
  */
 
 #include "BLI_hash.h"
-#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_string_ref.hh"
@@ -122,9 +121,9 @@ BLI_INLINE float table_sample(Array<float> &table, float x)
 /**
  * Apply noise effect based on stroke direction.
  */
-static void deform_drawing(ModifierData *md,
+static void deform_drawing(ModifierData &md,
                            Depsgraph *depsgraph,
-                           Object *ob,
+                           Object &ob,
                            bke::greasepencil::Drawing &drawing)
 {
   bke::CurvesGeometry &strokes = drawing.strokes_for_write();
@@ -132,20 +131,20 @@ static void deform_drawing(ModifierData *md,
     return;
   }
 
-  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
+  GreasePencilNoiseModifierData &mmd = reinterpret_cast<GreasePencilNoiseModifierData &>(md);
 
   IndexMaskMemory memory;
   const IndexMask filtered_strokes = modifier::greasepencil::get_filtered_stroke_mask(
-      ob, strokes, mmd->influence, memory);
+      &ob, strokes, mmd.influence, memory);
 
   /* Noise value in range [-1..1] */
   float3 up_vector;
-  const bool use_curve = (mmd->influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE) != 0;
+  const bool use_curve = (mmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE) != 0;
   const int cfra = int(DEG_get_ctime(depsgraph));
-  const bool is_keyframe = (mmd->noise_mode == GP_NOISE_RANDOM_KEYFRAME);
+  const bool is_keyframe = (mmd.noise_mode == GP_NOISE_RANDOM_KEYFRAME);
 
   /* Sanitize as it can create out of bound reads. */
-  float noise_scale = math::clamp(mmd->noise_scale, 0.0f, 1.0f);
+  float noise_scale = math::clamp(mmd.noise_scale, 0.0f, 1.0f);
 
   if (filtered_strokes.is_empty()) {
     return;
@@ -156,13 +155,13 @@ static void deform_drawing(ModifierData *md,
   MutableSpan<float3> positions = strokes.positions_for_write();
   OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
-  int seed = mmd->seed + strokes.points_num();
+  int seed = mmd.seed + strokes.points_num();
   /* Make sure different modifiers get different seeds. */
-  seed += BLI_hash_string(ob->id.name + 2);
-  seed += BLI_hash_string(md->name);
-  if (mmd->flag & GP_NOISE_USE_RANDOM) {
+  seed += BLI_hash_string(ob.id.name + 2);
+  seed += BLI_hash_string(md.name);
+  if (mmd.flag & GP_NOISE_USE_RANDOM) {
     if (!is_keyframe) {
-      seed += cfra / mmd->step;
+      seed += cfra / mmd.step;
     }
     else {
       /* If change every keyframe, use the last keyframe. */
@@ -175,17 +174,17 @@ static void deform_drawing(ModifierData *md,
   MutableSpan<float> radii;
   MutableSpan<float> opacities;
   Array<float> noise_table_position = noise_table(
-      noise_len, int(floor(mmd->noise_offset)), seed + 2);
+      noise_len, int(floor(mmd.noise_offset)), seed + 2);
   Array<float> noise_table_strength;
   Array<float> noise_table_thickness;
 
-  if (mmd->factor_thickness) {
+  if (mmd.factor_thickness) {
     radii = drawing.radii_for_write();
-    noise_table_thickness = noise_table(noise_len, int(floor(mmd->noise_offset)), seed);
+    noise_table_thickness = noise_table(noise_len, int(floor(mmd.noise_offset)), seed);
   }
-  if (mmd->factor_strength) {
+  if (mmd.factor_strength) {
     opacities = drawing.opacities_for_write();
-    noise_table_strength = noise_table(noise_len, int(floor(mmd->noise_offset)), seed + 3);
+    noise_table_strength = noise_table(noise_len, int(floor(mmd.noise_offset)), seed + 3);
   }
 
   // TODO: UV hasn't been implemented yet.
@@ -199,29 +198,29 @@ static void deform_drawing(ModifierData *md,
       float weight = 1.0f;
       if (use_curve) {
         float value = float(local_point) / (point_count - 1);
-        weight *= BKE_curvemapping_evaluateF(mmd->influence.custom_curve, 0, value);
+        weight *= BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
       }
 
-      if (mmd->factor > 0.0f) {
+      if (mmd.factor > 0.0f) {
         /* Vector orthogonal to normal. */
         up_vector = math::normalize(math::cross(tangents[point], normals[point]));
 
         float noise = table_sample(noise_table_position,
-                                   point * noise_scale + fractf(mmd->noise_offset));
-        positions[point] += up_vector * (noise * 2.0f - 1.0f) * weight * mmd->factor * 0.1f;
+                                   point * noise_scale + fractf(mmd.noise_offset));
+        positions[point] += up_vector * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
       }
 
-      if (mmd->factor_thickness > 0.0f) {
+      if (mmd.factor_thickness > 0.0f) {
         float noise = table_sample(noise_table_thickness,
-                                   point * noise_scale + fractf(mmd->noise_offset));
-        radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd->factor_thickness,
+                                   point * noise_scale + fractf(mmd.noise_offset));
+        radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd.factor_thickness,
                                   0.0f);
       }
 
-      if (mmd->factor_strength > 0.0f) {
+      if (mmd.factor_strength > 0.0f) {
         float noise = table_sample(noise_table_strength,
-                                   point * noise_scale + fractf(mmd->noise_offset));
-        opacities[point] *= math::max(1.0f - noise * weight * mmd->factor_strength, 0.0f);
+                                   point * noise_scale + fractf(mmd.noise_offset));
+        opacities[point] *= math::max(1.0f - noise * weight * mmd.factor_strength, 0.0f);
       }
     }
   });
@@ -248,7 +247,7 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(md, ctx->depsgraph, ctx->object, *drawing);
+    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
   });
 }
 
