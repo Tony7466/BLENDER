@@ -26,17 +26,6 @@ class LayerDataButtonsPanel:
         return grease_pencil and grease_pencil.layers.active
 
 
-class LayerDataButtonsPanel:
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "data"
-
-    @classmethod
-    def poll(cls, context):
-        grease_pencil = context.grease_pencil
-        return grease_pencil and grease_pencil.layers.active
-
-
 class DATA_PT_context_grease_pencil(DataButtonsPanel, Panel):
     bl_label = ""
     bl_options = {'HIDE_HEADER'}
