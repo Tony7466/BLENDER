@@ -1434,9 +1434,10 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
 };
 
 class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
- public:
   /** Protects access to everything except `old_mappings` which is read-only during evaluation. */
   std::mutex mutex_;
+
+ public:
   Map<bake::BakeDataBlockID, ID *> old_mappings;
   Map<bake::BakeDataBlockID, ID *> new_mappings;
 
