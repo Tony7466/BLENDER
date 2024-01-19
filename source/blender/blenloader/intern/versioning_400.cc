@@ -2641,6 +2641,32 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 12)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == CMP_NODE_PIXELATE) {
+            node->custom1 = 1;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 13)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+          if (node->type == CMP_NODE_MAP_UV) {
+            node->custom2 = CMP_NODE_MAP_UV_FILTERING_ANISOTROPIC;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 14)) {
     if (!DNA_struct_member_exists(fd->filesdna, "UnifiedPaintSettings", "int", "input_samples")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         ToolSettings *ts = scene->toolsettings;
