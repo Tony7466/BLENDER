@@ -4995,6 +4995,8 @@ PanelLayout uiLayoutPanelWithHeader(const bContext *C,
     STRNCPY(header_litem->open_prop_name, open_prop_name);
 
     uiLayout *row = uiLayoutRow(litem, true);
+    uiLayoutSetUnitsY(row, 1.2f);
+
     uiBlock *block = uiLayoutGetBlock(row);
     const int icon = is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW;
     const int width = ui_text_icon_width(layout, "", icon, false);
