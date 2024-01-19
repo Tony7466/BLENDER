@@ -704,10 +704,6 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 static float s_curve(const float x, const float width, const float shift)
 {
-  /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve verticaly
-   * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
-   * (width and height) and move it (xshift and y yshift) to crop the part of the curve we need.
-   * Slope determins how curvy the shape is */
   const float x_shift = (x - shift) * width;
   const float y = x_shift / sqrt(1 + pow2f(x_shift));
   /* Normalize result to 0-1. */
