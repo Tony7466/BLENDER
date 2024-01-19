@@ -376,10 +376,16 @@ static void gather_face_islands(const Mesh &mesh,
 
   /* If result indices is for gathered array, map than back into global indices. */
   if (face_mask.size() != mesh.faces_num) {
-    parallel_transform<int>(r_item_indices, 4096, [&](const int pos) { return face_mask[pos]; });
+    Array<int> face_mask_map(face_mask.size());
+    face_mask.to_indices<int>(face_mask_map);
+    array_utils::gather<int>(
+        face_mask_map.as_span(), r_item_indices.as_span(), r_item_indices.as_mutable_span());
   }
   if (vert_mask.size() != mesh.verts_num) {
-    parallel_transform<int>(r_vert_indices, 4096, [&](const int pos) { return vert_mask[pos]; });
+    Array<int> vert_mask_map(vert_mask.size());
+    vert_mask.to_indices<int>(vert_mask_map);
+    array_utils::gather<int>(
+        vert_mask_map.as_span(), r_vert_indices.as_span(), r_vert_indices.as_mutable_span());
   }
 }
 
@@ -437,10 +443,16 @@ static void gather_edge_islands(const Mesh &mesh,
 
   /* If result indices is for gathered array, map than back into global indices. */
   if (edge_mask.size() != mesh.edges_num) {
-    parallel_transform<int>(r_item_indices, 4096, [&](const int pos) { return edge_mask[pos]; });
+    Array<int> edge_mask_map(edge_mask.size());
+    edge_mask.to_indices<int>(edge_mask_map);
+    array_utils::gather<int>(
+        edge_mask_map.as_span(), r_item_indices.as_span(), r_item_indices.as_mutable_span());
   }
   if (vert_mask.size() != mesh.verts_num) {
-    parallel_transform<int>(r_vert_indices, 4096, [&](const int pos) { return vert_mask[pos]; });
+    Array<int> vert_mask_map(vert_mask.size());
+    vert_mask.to_indices<int>(vert_mask_map);
+    array_utils::gather<int>(
+        vert_mask_map.as_span(), r_vert_indices.as_span(), r_vert_indices.as_mutable_span());
   }
 }
 
