@@ -2681,7 +2681,7 @@ void OBJECT_OT_make_override_library(wmOperatorType *ot)
                      INT_MIN,
                      INT_MAX,
                      "Override Collection",
-                     "Session UUID of the directly linked collection containing the selected "
+                     "Session UID of the directly linked collection containing the selected "
                      "object, to make an override from",
                      INT_MIN,
                      INT_MAX);
@@ -3046,8 +3046,8 @@ static int drop_geometry_nodes_invoke(bContext *C, wmOperator *op, const wmEvent
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
-  const uint32_t uuid = RNA_int_get(op->ptr, "session_uid");
-  bNodeTree *node_tree = (bNodeTree *)BKE_libblock_find_session_uid(bmain, ID_NT, uuid);
+  const uint32_t uid = RNA_int_get(op->ptr, "session_uid");
+  bNodeTree *node_tree = (bNodeTree *)BKE_libblock_find_session_uid(bmain, ID_NT, uid);
   if (!node_tree) {
     return OPERATOR_CANCELLED;
   }
@@ -3096,8 +3096,8 @@ void OBJECT_OT_drop_geometry_nodes(wmOperatorType *ot)
                                   0,
                                   INT32_MIN,
                                   INT32_MAX,
-                                  "Session UUID",
-                                  "Session UUID of the geometry node group being dropped",
+                                  "Session UID",
+                                  "Session UID of the geometry node group being dropped",
                                   INT32_MIN,
                                   INT32_MAX);
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_SKIP_SAVE));

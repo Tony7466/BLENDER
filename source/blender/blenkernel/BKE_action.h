@@ -316,7 +316,7 @@ struct bPoseChannel *BKE_pose_channel_ensure(struct bPose *pose, const char *nam
 struct bPoseChannel *BKE_pose_channel_get_mirrored(const struct bPose *pose,
                                                    const char *name) ATTR_WARN_UNUSED_RESULT;
 
-void BKE_pose_check_uuids_unique_and_report(const struct bPose *pose);
+void BKE_pose_check_uids_unique_and_report(const struct bPose *pose);
 
 #ifndef NDEBUG
 bool BKE_pose_channels_is_valid(const struct bPose *pose) ATTR_WARN_UNUSED_RESULT;

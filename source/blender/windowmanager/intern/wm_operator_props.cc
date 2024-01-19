@@ -286,8 +286,8 @@ void WM_operator_properties_id_lookup(wmOperatorType *ot, const bool add_name_pr
                      0,
                      INT32_MIN,
                      INT32_MAX,
-                     "Session UUID",
-                     "Session UUID of the data-block to use by the operator",
+                     "Session UID",
+                     "Session UID of the data-block to use by the operator",
                      INT32_MIN,
                      INT32_MAX);
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN));

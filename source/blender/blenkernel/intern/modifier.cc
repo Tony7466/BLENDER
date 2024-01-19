@@ -370,13 +370,13 @@ void BKE_modifier_copydata_ex(const ModifierData *md, ModifierData *target, cons
   }
 
   if (flag & LIB_ID_CREATE_NO_MAIN) {
-    /* Make sure UUID is the same between the source and the target.
-     * This is needed in the cases when UUID is to be preserved and when there is no copy_data
+    /* Make sure UID is the same between the source and the target.
+     * This is needed in the cases when UID is to be preserved and when there is no copy_data
      * callback, or the copy_data does not do full byte copy of the modifier data. */
     target->session_uid = md->session_uid;
   }
   else {
-    /* In the case copy_data made full byte copy force UUID to be re-generated. */
+    /* In the case copy_data made full byte copy force UID to be re-generated. */
     BKE_modifier_session_uid_generate(target);
   }
 }
@@ -997,27 +997,27 @@ ModifierData *BKE_modifier_get_evaluated(Depsgraph *depsgraph, Object *object, M
   return BKE_modifiers_findby_session_uid(object_eval, &md->session_uid);
 }
 
-void BKE_modifier_check_uuids_unique_and_report(const Object *object)
+void BKE_modifier_check_uids_unique_and_report(const Object *object)
 {
-  GSet *used_uuids = BLI_gset_new(
-      BLI_session_uid_ghash_hash, BLI_session_uid_ghash_compare, "modifier used uuids");
+  GSet *used_uids = BLI_gset_new(
+      BLI_session_uid_ghash_hash, BLI_session_uid_ghash_compare, "modifier used uids");
 
   LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
     const SessionUID *session_uid = &md->session_uid;
     if (!BLI_session_uid_is_generated(session_uid)) {
-      printf("Modifier %s -> %s does not have UUID generated.\n", object->id.name + 2, md->name);
+      printf("Modifier %s -> %s does not have UID generated.\n", object->id.name + 2, md->name);
       continue;
     }
 
-    if (BLI_gset_lookup(used_uuids, session_uid) != nullptr) {
-      printf("Modifier %s -> %s has duplicate UUID generated.\n", object->id.name + 2, md->name);
+    if (BLI_gset_lookup(used_uids, session_uid) != nullptr) {
+      printf("Modifier %s -> %s has duplicate UID generated.\n", object->id.name + 2, md->name);
       continue;
     }
 
-    BLI_gset_insert(used_uuids, (void *)session_uid);
+    BLI_gset_insert(used_uids, (void *)session_uid);
   }
 
-  BLI_gset_free(used_uuids, nullptr);
+  BLI_gset_free(used_uids, nullptr);
 }
 
 void BKE_modifier_blend_write(BlendWriter *writer, const ID *id_owner, ListBase *modbase)

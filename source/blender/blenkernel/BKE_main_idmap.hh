@@ -25,7 +25,7 @@ struct Main;
 
 enum {
   MAIN_IDMAP_TYPE_NAME = 1 << 0,
-  MAIN_IDMAP_TYPE_UUID = 1 << 1,
+  MAIN_IDMAP_TYPE_UID = 1 << 1,
 };
 
 /**

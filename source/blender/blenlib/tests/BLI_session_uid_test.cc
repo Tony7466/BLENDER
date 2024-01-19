@@ -9,14 +9,14 @@
 TEST(SessionUID, GenerateBasic)
 {
   {
-    const SessionUID uuid = BLI_session_uid_generate();
-    EXPECT_TRUE(BLI_session_uid_is_generated(&uuid));
+    const SessionUID uid = BLI_session_uid_generate();
+    EXPECT_TRUE(BLI_session_uid_is_generated(&uid));
   }
 
   {
-    const SessionUID uuid1 = BLI_session_uid_generate();
-    const SessionUID uuid2 = BLI_session_uid_generate();
+    const SessionUID uid1 = BLI_session_uid_generate();
+    const SessionUID uid2 = BLI_session_uid_generate();
 
-    EXPECT_FALSE(BLI_session_uid_is_equal(&uuid1, &uuid2));
+    EXPECT_FALSE(BLI_session_uid_is_equal(&uid1, &uid2));
   }
 }

@@ -1033,9 +1033,9 @@ void BKE_pose_channel_runtime_reset(bPoseChannel_Runtime *runtime)
 
 void BKE_pose_channel_runtime_reset_on_copy(bPoseChannel_Runtime *runtime)
 {
-  const SessionUID uuid = runtime->session_uid;
+  const SessionUID uid = runtime->session_uid;
   memset(runtime, 0, sizeof(*runtime));
-  runtime->session_uid = uuid;
+  runtime->session_uid = uid;
 }
 
 void BKE_pose_channel_runtime_free(bPoseChannel_Runtime *runtime)
@@ -1778,31 +1778,31 @@ void what_does_obaction(Object *ob,
   }
 }
 
-void BKE_pose_check_uuids_unique_and_report(const bPose *pose)
+void BKE_pose_check_uids_unique_and_report(const bPose *pose)
 {
   if (pose == nullptr) {
     return;
   }
 
-  GSet *used_uuids = BLI_gset_new(
-      BLI_session_uid_ghash_hash, BLI_session_uid_ghash_compare, "sequencer used uuids");
+  GSet *used_uids = BLI_gset_new(
+      BLI_session_uid_ghash_hash, BLI_session_uid_ghash_compare, "sequencer used uids");
 
   LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
     const SessionUID *session_uid = &pchan->runtime.session_uid;
     if (!BLI_session_uid_is_generated(session_uid)) {
-      printf("Pose channel %s does not have UUID generated.\n", pchan->name);
+      printf("Pose channel %s does not have UID generated.\n", pchan->name);
       continue;
     }
 
-    if (BLI_gset_lookup(used_uuids, session_uid) != nullptr) {
-      printf("Pose channel %s has duplicate UUID generated.\n", pchan->name);
+    if (BLI_gset_lookup(used_uids, session_uid) != nullptr) {
+      printf("Pose channel %s has duplicate UID generated.\n", pchan->name);
       continue;
     }
 
-    BLI_gset_insert(used_uuids, (void *)session_uid);
+    BLI_gset_insert(used_uids, (void *)session_uid);
   }
 
-  BLI_gset_free(used_uuids, nullptr);
+  BLI_gset_free(used_uids, nullptr);
 }
 
 void BKE_pose_blend_write(BlendWriter *writer, bPose *pose, bArmature *arm)

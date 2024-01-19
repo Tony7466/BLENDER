@@ -81,14 +81,14 @@ void BKE_libblock_runtime_reset_remapping_status(ID *id) ATTR_NONNULL(1);
 #define MAIN_ID_SESSION_UID_UNSET 0
 
 /**
- * Generate a session-wise UUID for the given \a id.
+ * Generate a session-wise UID for the given \a id.
  *
  * \note "session-wise" here means while editing a given .blend file. Once a new .blend file is
- * loaded or created, undo history is cleared/reset, and so is the UUID counter.
+ * loaded or created, undo history is cleared/reset, and so is the UID counter.
  */
 void BKE_lib_libblock_session_uid_ensure(ID *id);
 /**
- * Re-generate a new session-wise UUID for the given \a id.
+ * Re-generate a new session-wise UID for the given \a id.
  *
  * \warning This has a few very specific use-cases, no other usage is expected currently:
  *   - To handle UI-related data-blocks that are kept across new file reading, when we do keep

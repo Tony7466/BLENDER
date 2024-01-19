@@ -206,7 +206,7 @@ void BKE_lib_id_clear_library_data(Main *bmain, ID *id, const int flags)
   }
 
   /* Conceptually, an ID made local is not the same as the linked one anymore. Reflect that by
-   * regenerating its session UUID. */
+   * regenerating its session UID. */
   if ((id->tag & LIB_TAG_TEMP_MAIN) == 0) {
     BKE_lib_libblock_session_uid_renew(id);
   }
@@ -1270,7 +1270,7 @@ void *BKE_libblock_alloc(Main *bmain, short type, const char *name, const int fl
 
     /* We also need to ensure a valid `session_uid` for some non-main data (like embedded IDs).
      * IDs not allocated however should not need those (this would e.g. avoid generating session
-     * uuids for depsgraph CoW IDs, if it was using this function). */
+     * uids for depsgraph CoW IDs, if it was using this function). */
     if ((flag & LIB_ID_CREATE_NO_ALLOCATE) == 0) {
       BKE_lib_libblock_session_uid_ensure(id);
     }
@@ -1301,7 +1301,7 @@ void BKE_libblock_runtime_reset_remapping_status(ID *id)
   id->runtime.remap.skipped_indirect = 0;
 }
 
-/* ********** ID session-wise UUID management. ********** */
+/* ********** ID session-wise UID management. ********** */
 static uint global_session_uid = 0;
 
 void BKE_lib_libblock_session_uid_ensure(ID *id)

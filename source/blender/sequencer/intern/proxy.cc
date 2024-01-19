@@ -68,7 +68,7 @@ struct SeqIndexBuildContext {
   Depsgraph *depsgraph;
   Scene *scene;
   Sequence *seq, *orig_seq;
-  SessionUID orig_seq_uuid;
+  SessionUID orig_seq_uid;
 };
 
 int SEQ_rendersize_to_proxysize(int render_size)
@@ -478,7 +478,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
     context->depsgraph = depsgraph;
     context->scene = scene;
     context->orig_seq = seq;
-    context->orig_seq_uuid = seq->runtime.session_uid;
+    context->orig_seq_uid = seq->runtime.session_uid;
     context->seq = nseq;
 
     context->view_id = i; /* only for images */

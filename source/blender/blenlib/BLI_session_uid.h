@@ -7,7 +7,7 @@
 /** \file
  * \ingroup bli
  *
- * Functions for generating and handling "Session UUIDs".
+ * Functions for generating and handling "Session UIDs".
  *
  * Note that these are not true universally-unique identifiers, but only unique during the current
  * Blender session.

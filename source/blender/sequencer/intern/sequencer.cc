@@ -789,7 +789,7 @@ static bool seq_read_data_cb(Sequence *seq, void *user_data)
   BLI_listbase_clear(&seq->anims);
   seq->flag &= ~SEQ_FLAG_SKIP_THUMBNAILS;
 
-  /* Do as early as possible, so that other parts of reading can rely on valid session UUID. */
+  /* Do as early as possible, so that other parts of reading can rely on valid session UID. */
   SEQ_relations_session_uid_generate(seq);
 
   BLO_read_data_address(reader, &seq->seq1);

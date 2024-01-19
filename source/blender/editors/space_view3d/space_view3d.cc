@@ -715,9 +715,9 @@ static bool view3d_geometry_nodes_drop_poll(bContext *C, wmDrag *drag, const wmE
       return false;
     }
     if (wmDropBox *drop_box = drag->drop_state.active_dropbox) {
-      const uint32_t uuid = RNA_int_get(drop_box->ptr, "session_uid");
+      const uint32_t uid = RNA_int_get(drop_box->ptr, "session_uid");
       const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(
-          BKE_libblock_find_session_uid(CTX_data_main(C), ID_NT, uuid));
+          BKE_libblock_find_session_uid(CTX_data_main(C), ID_NT, uid));
       if (node_tree) {
         return node_tree->type == NTREE_GEOMETRY;
       }

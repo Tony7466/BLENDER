@@ -1056,7 +1056,7 @@ struct OutlinerLibOverrideData {
    * solving broken overrides while not losing *all* of your overrides. */
   bool do_resync_hierarchy_enforce;
 
-  /** A set of the selected tree elements' ID 'uuid'. Used to clear 'system override' flags on
+  /** A set of the selected tree elements' ID 'uid'. Used to clear 'system override' flags on
    * their newly-created liboverrides in post-process step of override hierarchy creation. */
   Set<uint> selected_id_uid;
 
