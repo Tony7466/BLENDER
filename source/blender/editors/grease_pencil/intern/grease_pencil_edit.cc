@@ -1627,6 +1627,11 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  if (layer_dst->is_locked()) {
+    BKE_reportf(op->reports, RPT_ERROR, "The target layer is locked");
+    return OPERATOR_CANCELLED;
+  }
+
   /* Iterate through all the drawings at current scene frame. */
   const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings(*scene, grease_pencil);
   for (const MutableDrawingInfo &info : drawings_src) {
