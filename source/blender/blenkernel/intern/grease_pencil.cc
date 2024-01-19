@@ -1354,9 +1354,9 @@ static void grease_pencil_apply_layer_transforms(blender::bke::GeometrySet &geom
   GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
   const int eval_frame = grease_pencil.runtime->eval_frame;
 
-  VArray<float3> translations = grease_pencil.layer_translations();
-  VArray<float3> rotations = grease_pencil.layer_rotations();
-  VArray<float3> scales = grease_pencil.layer_scales();
+  MutableSpan<float3> translations = grease_pencil.layer_translations_for_write();
+  MutableSpan<float3> rotations = grease_pencil.layer_rotations_for_write();
+  MutableSpan<float3> scales = grease_pencil.layer_scales_for_write();
 
   for (const int layer_i : grease_pencil.layers().index_range()) {
     const Layer &layer = *grease_pencil.layers()[layer_i];
@@ -1375,6 +1375,11 @@ static void grease_pencil_apply_layer_transforms(blender::bke::GeometrySet &geom
     const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
         translations[layer_i], rotations[layer_i], scales[layer_i]);
     drawing->strokes_for_write().transform(layer_matrix);
+
+    /* Reset the transform, since it was applied to the drawing. */
+    translations[layer_i] = float3(0.0f);
+    rotations[layer_i] = float3(0.0f);
+    scales[layer_i] = float3(1.0f);
   }
 }
 
