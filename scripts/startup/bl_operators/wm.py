@@ -3525,7 +3525,6 @@ class WM_OT_drop_blend_file(Operator):
         col.operator("wm.append", text="Append...", icon='APPEND_BLEND').filepath = self.filepath
 
 
-
 classes = (
     WM_OT_context_collection_boolean_set,
     WM_OT_context_cycle_array,
@@ -3571,20 +3570,5 @@ classes = (
     WM_MT_splash_quick_setup,
     WM_MT_splash,
     WM_MT_splash_about,
-    WM_MT_region_toggle_pie,
-
-    WM_FH_alembic,
-    WM_FH_collada,
-    WM_FH_gpencil,
-    WM_FH_obj,
-    WM_FH_ply,
-    WM_FH_stl,
-    WM_FH_import_mesh_stl,
-    WM_FH_usd,
-
-    CURVE_FH_text_import,
-    CURVE_FH_text_import1,
-    CurveTextImport,
-    CurveTextImport1,
-
+    WM_MT_region_toggle_pie
 )
