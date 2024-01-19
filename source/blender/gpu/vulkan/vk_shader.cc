@@ -601,11 +601,9 @@ VKShader::~VKShader()
 
 void VKShader::init(const shader::ShaderCreateInfo &info)
 {
+  BLI_assert(interface == nullptr);
   VKShaderInterface *vk_interface = new VKShaderInterface();
   vk_interface->init(info);
-  if (interface) {
-    delete interface;
-  }
   interface = vk_interface;
 }
 
@@ -693,11 +691,9 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     result = pipeline_->is_valid();
   }
 
-  if (result) {
-    interface = vk_interface;
-  }
-  else {
+  if (!result) {
     delete interface;
+    interface = nullptr;
   }
   return result;
 }
