@@ -1286,12 +1286,10 @@ template<typename T, int64_t len> class SwapChain {
   int index_at_offset(int offset)
   {
     int result = (index + offset) % len;
-    if (result >= 0) {
-      return result;
+    if (result < 0) {
+      result = len + result;
     }
-    else {
-      return len + result;
-    }
+    return result;
   }
 
  public:
