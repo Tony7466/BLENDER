@@ -88,6 +88,8 @@ class WORKSPACE_PT_addons(WorkSpaceButtonsPanel, Panel):
 def addon_category_name(addon):
     import addon_utils
     module = WORKSPACE_PT_addons.addon_map.get(addon.module)
+    if not module:
+        return addon.module
     info = addon_utils.module_bl_info(module)
     return (iface_("%s: %s") % (iface_(info["category"]), iface_(info["name"])))
 
