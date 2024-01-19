@@ -98,7 +98,7 @@ static void apply_color_factor(ColorGeometry4f &color,
   hsv_to_rgb_v(hsv, color);
 }
 
-static void modify_stroke_color(Object *ob,
+static void modify_stroke_color(Object &ob,
                                 const GreasePencilColorModifierData &cmd,
                                 bke::CurvesGeometry &curves,
                                 const IndexMask &curves_mask,
@@ -112,7 +112,7 @@ static void modify_stroke_color(Object *ob,
       "material_index", bke::AttrDomain::Curve, 0);
 
   curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
-    const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);
+    const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i]);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
     const ColorGeometry4f material_color = (gp_style ? gp_style->fill_rgba :
                                                        ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
@@ -134,7 +134,7 @@ static void modify_stroke_color(Object *ob,
   });
 }
 
-static void modify_fill_color(Object *ob,
+static void modify_fill_color(Object &ob,
                               const GreasePencilColorModifierData &cmd,
                               bke::CurvesGeometry &curves,
                               const IndexMask &curves_mask)
@@ -148,7 +148,7 @@ static void modify_fill_color(Object *ob,
       "material_index", bke::AttrDomain::Curve, 0);
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-    const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);
+    const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i]);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
     const ColorGeometry4f material_color = (gp_style ? gp_style->fill_rgba :
                                                        ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
@@ -159,27 +159,27 @@ static void modify_fill_color(Object *ob,
   fill_colors.finish();
 }
 
-static void modify_drawing(ModifierData *md, const ModifierEvalContext *ctx, Drawing &drawing)
+static void modify_drawing(ModifierData &md, const ModifierEvalContext &ctx, Drawing &drawing)
 {
-  auto *cmd = reinterpret_cast<GreasePencilColorModifierData *>(md);
+  auto &cmd = reinterpret_cast<GreasePencilColorModifierData &>(md);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   IndexMaskMemory mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
-      ctx->object, curves, cmd->influence, mask_memory);
+      ctx.object, curves, cmd.influence, mask_memory);
 
-  switch (cmd->color_mode) {
+  switch (cmd.color_mode) {
     case MOD_GREASE_PENCIL_COLOR_STROKE:
       modify_stroke_color(
-          ctx->object, *cmd, curves, curves_mask, drawing.vertex_colors_for_write());
+          *ctx.object, cmd, curves, curves_mask, drawing.vertex_colors_for_write());
       break;
     case MOD_GREASE_PENCIL_COLOR_FILL:
-      modify_fill_color(ctx->object, *cmd, curves, curves_mask);
+      modify_fill_color(*ctx.object, cmd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_BOTH:
       modify_stroke_color(
-          ctx->object, *cmd, curves, curves_mask, drawing.vertex_colors_for_write());
-      modify_fill_color(ctx->object, *cmd, curves, curves_mask);
+          *ctx.object, cmd, curves, curves_mask, drawing.vertex_colors_for_write());
+      modify_fill_color(*ctx.object, cmd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_HARDNESS:
       BLI_assert_unreachable();
@@ -206,7 +206,7 @@ static void modify_geometry_set(ModifierData *md,
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       grease_pencil, layer_mask, frame);
   threading::parallel_for_each(drawings,
-                               [&](Drawing *drawing) { modify_drawing(md, ctx, *drawing); });
+                               [&](Drawing *drawing) { modify_drawing(*md, *ctx, *drawing); });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
