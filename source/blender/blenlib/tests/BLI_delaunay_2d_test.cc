@@ -7,7 +7,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_rand.h"
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 #include <fstream>
 #include <iostream>

@@ -8,6 +8,7 @@
 
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
+#include "BLI_time.h"
 
 #include "BKE_context.hh"
 #include "BKE_screen.hh"
@@ -19,8 +20,6 @@
 #include "RNA_access.hh"
 
 #include "ED_screen.hh"
-
-#include "PIL_time.h"
 
 #include "view3d_intern.h"
 #include "view3d_navigate.hh" /* own include */

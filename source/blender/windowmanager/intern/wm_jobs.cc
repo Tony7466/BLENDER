@@ -16,6 +16,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
@@ -28,8 +29,6 @@
 #include "WM_types.hh"
 #include "wm.hh"
 #include "wm_event_types.hh"
-
-#include "PIL_time.h"
 
 /*
  * Add new job

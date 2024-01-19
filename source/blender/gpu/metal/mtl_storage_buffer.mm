@@ -7,6 +7,7 @@
  */
 
 #include "BLI_string.h"
+#include "BLI_time.h"
 
 #include "GPU_state.h"
 #include "gpu_backend.hh"
@@ -19,8 +20,6 @@
 #include "mtl_storage_buffer.hh"
 #include "mtl_uniform_buffer.hh"
 #include "mtl_vertex_buffer.hh"
-
-#include "PIL_time.h"
 
 namespace blender::gpu {
 

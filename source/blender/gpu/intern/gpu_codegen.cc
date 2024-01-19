@@ -20,9 +20,8 @@
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
-
-#include "PIL_time.h"
 
 #include "BKE_cryptomatte.hh"
 #include "BKE_material.h"

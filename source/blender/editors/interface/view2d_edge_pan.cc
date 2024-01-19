@@ -9,12 +9,11 @@
 #include "BKE_context.hh"
 
 #include "BLI_rect.h"
+#include "BLI_time.h"
 
 #include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
-
-#include "PIL_time.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

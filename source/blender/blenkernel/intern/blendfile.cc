@@ -24,9 +24,8 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
-
-#include "PIL_time.h"
 
 #include "IMB_colormanagement.h"
 

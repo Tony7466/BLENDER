@@ -19,6 +19,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -37,8 +38,6 @@
 #include "GPU_viewport.h"
 
 #include "MEM_guardedalloc.h"
-
-#include "PIL_time.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

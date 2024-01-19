@@ -10,8 +10,8 @@
 
 #include "DNA_scene_types.h"
 
+#include "BLI_time.h"
 #include "BLI_timecode.h"
-#include "PIL_time.h"
 
 #include "BKE_lib_id.hh"
 

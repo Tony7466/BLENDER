@@ -13,10 +13,9 @@
 
 #include "BLI_rand.hh"
 #include "BLI_string.h"
+#include "BLI_time.h"
 
 #include "BLT_translation.h"
-
-#include "PIL_time.h"
 
 namespace blender::compositor {
 

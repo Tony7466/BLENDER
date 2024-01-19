@@ -53,10 +53,9 @@
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_task.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
-
-#include "PIL_time.h"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -70,7 +69,7 @@
 // #define DEBUG_OVERRIDE_TIMEIT
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
-#  include "PIL_time_utildefines.h"
+#  include "BLI_time_utildefines.h"
 #endif
 
 static CLG_LogRef LOG = {"bke.liboverride"};

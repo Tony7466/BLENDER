@@ -7,8 +7,7 @@
 #include "COM_ConstantOperation.h"
 
 #include "BLI_rand.h"
-
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 namespace blender::compositor {
 

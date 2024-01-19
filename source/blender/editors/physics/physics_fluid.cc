@@ -19,6 +19,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_path_util.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -35,7 +36,6 @@
 
 #include "ED_object.hh"
 #include "ED_screen.hh"
-#include "PIL_time.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

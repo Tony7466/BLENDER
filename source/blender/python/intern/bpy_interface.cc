@@ -87,7 +87,7 @@ static bool py_use_system_env = false;
 // #define TIME_PY_RUN /* Simple python tests. prints on exit. */
 
 #ifdef TIME_PY_RUN
-#  include "PIL_time.h"
+#  include "BLI_time.h"
 static int bpy_timer_count = 0;
 /** Time since python starts. */
 static double bpy_timer;

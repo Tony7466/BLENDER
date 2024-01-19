@@ -8,13 +8,12 @@
 
 #include <cfloat>
 
-#include "PIL_time.h"
-
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_immediate.h"

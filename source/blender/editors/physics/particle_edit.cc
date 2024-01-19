@@ -26,6 +26,7 @@
 #include "BLI_rand.h"
 #include "BLI_rect.h"
 #include "BLI_task.h"
+#include "BLI_time_utildefines.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_bvhutils.hh"
@@ -69,8 +70,6 @@
 #include "RNA_define.hh"
 
 #include "DEG_depsgraph_query.hh"
-
-#include "PIL_time_utildefines.h"
 
 #include "physics_intern.h"
 

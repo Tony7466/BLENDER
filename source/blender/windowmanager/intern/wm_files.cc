@@ -40,11 +40,10 @@
 #include "BLI_math_time.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 #include BLI_SYSTEM_PID_H
-
-#include "PIL_time.h"
 
 #include "BLO_readfile.h"
 #include "BLT_translation.h"

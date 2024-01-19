@@ -4,7 +4,7 @@
 
 #include "pipeline.h"
 
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 #include "BKE_global.h"
 

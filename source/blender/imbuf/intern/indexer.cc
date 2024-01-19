@@ -19,12 +19,11 @@
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #ifdef _WIN32
 #  include "BLI_winstuff.h"
 #endif
-
-#include "PIL_time.h"
 
 #include "IMB_anim.h"
 #include "IMB_imbuf.h"

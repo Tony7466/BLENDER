@@ -10,8 +10,7 @@
 
 #include "BLI_hash.h"
 #include "BLI_task.h"
-
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"

@@ -35,6 +35,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_timecode.h"
 #include "BLI_vector.hh"
 
@@ -77,7 +78,6 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
-#include "PIL_time.h"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"

@@ -16,6 +16,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_base.h"
 #include "BLI_math_vector.h"
+#include "BLI_time.h" /* USER_ZOOM_CONTINUE */
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
@@ -30,8 +31,6 @@
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
-
-#include "PIL_time.h" /* USER_ZOOM_CONTINUE */
 
 #include "view2d_intern.hh"
 

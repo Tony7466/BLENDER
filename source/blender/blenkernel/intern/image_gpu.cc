@@ -13,6 +13,7 @@
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 
 #include "DNA_image_types.h"
 #include "DNA_userdef_types.h"
@@ -29,8 +30,6 @@
 #include "GPU_capabilities.h"
 #include "GPU_state.h"
 #include "GPU_texture.h"
-
-#include "PIL_time.h"
 
 using namespace blender::bke::image::partial_update;
 

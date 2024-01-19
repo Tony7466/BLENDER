@@ -10,11 +10,12 @@
 #include "BKE_paint.hh"
 
 #include "BLI_math_color.h"
+#include "BLI_time.h"
+
 #include "DRW_render.hh"
 
 #include "ED_view3d.hh"
 
-#include "PIL_time.h"
 #include "UI_resources.hh"
 
 #include "overlay_private.hh"

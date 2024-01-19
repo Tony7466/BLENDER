@@ -10,7 +10,7 @@
 
 #include <cstdio>
 
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 void BKE_subdiv_stats_init(SubdivStats *stats)
 {

@@ -16,8 +16,8 @@
 #include "DNA_view3d_types.h"
 
 #include "BLI_math_matrix.h"
+#include "BLI_time.h"
 #include "BLI_timecode.h"
-#include "PIL_time.h"
 
 #include "BKE_camera.h"
 #include "BKE_context.hh"

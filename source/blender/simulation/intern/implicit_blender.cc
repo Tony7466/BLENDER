@@ -39,7 +39,7 @@
 // #define DEBUG_TIME
 
 #  ifdef DEBUG_TIME
-#    include "PIL_time.h"
+#    include "BLI_time.h"
 #  endif
 
 static float I[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};

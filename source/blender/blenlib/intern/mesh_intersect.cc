@@ -35,10 +35,9 @@
 #  include "BLI_task.h"
 #  include "BLI_task.hh"
 #  include "BLI_threads.h"
+#  include "BLI_time.h"
 #  include "BLI_vector.hh"
 #  include "BLI_vector_set.hh"
-
-#  include "PIL_time.h"
 
 #  include "BLI_mesh_intersect.hh"
 

@@ -53,7 +53,7 @@ struct CurvesUniformBufPool;
 #define USE_PROFILE
 
 #ifdef USE_PROFILE
-#  include "PIL_time.h"
+#  include "BLI_time.h"
 
 #  define PROFILE_TIMER_FALLOFF 0.04
 

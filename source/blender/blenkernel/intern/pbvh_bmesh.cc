@@ -16,6 +16,7 @@
 #include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.hh"
@@ -26,8 +27,6 @@
 
 #include "bmesh.hh"
 #include "pbvh_intern.hh"
-
-#include "PIL_time.h"
 
 #include "CLG_log.h"
 

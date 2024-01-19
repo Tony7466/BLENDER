@@ -6,7 +6,7 @@
  * \ingroup bli
  */
 
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 #ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN

@@ -28,6 +28,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -56,8 +57,6 @@
 #include "RNA_enum_types.hh"
 
 #include "UI_view2d.hh"
-
-#include "PIL_time.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"

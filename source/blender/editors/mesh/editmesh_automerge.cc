@@ -21,7 +21,7 @@
 
 // #define DEBUG_TIME
 #ifdef DEBUG_TIME
-#  include "PIL_time.h"
+#  include "BLI_time.h"
 #endif
 
 /* use bmesh operator flags for a few operators */

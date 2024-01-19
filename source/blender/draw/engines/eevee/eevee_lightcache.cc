@@ -14,6 +14,7 @@
 
 #include "BLI_endian_switch.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
@@ -22,8 +23,6 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_lightprobe_types.h"
-
-#include "PIL_time.h"
 
 #include "eevee_lightcache.h"
 #include "eevee_private.h"

@@ -47,6 +47,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_collection.h"
@@ -65,8 +66,6 @@
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
-
-#include "PIL_time.h"
 
 static CLG_LogRef LOG = {"bke.softbody"};
 

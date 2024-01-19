@@ -24,9 +24,8 @@
 #include "BLI_linklist.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
+#include "BLI_time.h"
 #include "BLI_virtual_array.hh"
-
-#include "PIL_time.h"
 
 #include "DRW_engine.hh"
 #include "DRW_render.hh"

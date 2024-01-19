@@ -18,11 +18,10 @@
 #include "DNA_lightprobe_types.h"
 
 #include "BLI_threads.h"
+#include "BLI_time.h"
 
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
-
-#include "PIL_time.h"
 
 #include "GPU_capabilities.h"
 #include "GPU_context.h"

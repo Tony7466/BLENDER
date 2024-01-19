@@ -22,6 +22,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_rect.h"
+#include "BLI_time.h" /* Smooth-view. */
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
@@ -37,8 +38,6 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_transform_snap_object_context.hh"
-
-#include "PIL_time.h" /* Smooth-view. */
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"

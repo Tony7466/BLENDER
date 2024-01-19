@@ -12,6 +12,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.hh"
+#include "BLI_time.h"
 
 #include "BLT_translation.h"
 
@@ -40,8 +41,6 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-
-#include "PIL_time.h"
 
 #include "CLG_log.h"
 

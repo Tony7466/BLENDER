@@ -20,6 +20,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_main.hh"
@@ -34,8 +35,6 @@
 #include "GPU_uniform_buffer.h"
 
 #include "DRW_engine.hh"
-
-#include "PIL_time.h"
 
 #include "gpu_codegen.h"
 #include "gpu_node_graph.h"

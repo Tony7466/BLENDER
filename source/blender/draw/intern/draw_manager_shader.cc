@@ -10,12 +10,11 @@
 #include "DNA_object_types.h"
 #include "DNA_world_types.h"
 
-#include "PIL_time.h"
-
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 
 #include "BKE_context.hh"
 #include "BKE_global.h"

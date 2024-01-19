@@ -15,9 +15,8 @@
 #include "DNA_workspace_types.h"
 
 #include "BLI_kdopbvh.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
-
-#include "PIL_time.h"
 
 #include "BLT_translation.h"
 

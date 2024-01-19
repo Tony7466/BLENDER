@@ -36,6 +36,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
+#include "BLI_time.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
@@ -100,8 +101,6 @@
 #include "UI_string_search.hh"
 #include "UI_view2d.hh"
 #include "interface_intern.hh"
-
-#include "PIL_time.h"
 
 /* we may want to make this optional, disable for now. */
 // #define USE_OP_RESET_BUT

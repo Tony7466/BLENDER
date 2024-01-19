@@ -11,6 +11,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_vector.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
@@ -21,8 +22,6 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
-
-#include "PIL_time.h"
 
 static double g_tooltip_time_closed;
 double WM_tooltip_time_closed()

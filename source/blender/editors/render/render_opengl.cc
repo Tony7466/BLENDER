@@ -79,7 +79,7 @@
 // #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
-#  include "PIL_time.h"
+#  include "BLI_time.h"
 #endif
 
 /* TODO(sergey): Find better approximation of the scheduled frames.

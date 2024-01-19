@@ -10,12 +10,11 @@
 
 #include "intern/eval/deg_eval.h"
 
-#include "PIL_time.h"
-
 #include "BLI_compiler_attrs.h"
 #include "BLI_function_ref.hh"
 #include "BLI_gsqueue.h"
 #include "BLI_task.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_global.h"

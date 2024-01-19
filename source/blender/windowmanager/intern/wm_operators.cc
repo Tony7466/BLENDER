@@ -35,14 +35,13 @@
 
 #include "BLT_translation.h"
 
-#include "PIL_time.h"
-
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.hh"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"

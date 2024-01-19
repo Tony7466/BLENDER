@@ -44,6 +44,7 @@
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
 #include "BLT_translation.h"
@@ -94,8 +95,6 @@
 #include "DEG_depsgraph_build.hh"
 
 #include "BLO_read_write.hh"
-
-#include "PIL_time.h"
 
 #define NODE_DEFAULT_MAX_WIDTH 700
 

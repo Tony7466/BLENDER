@@ -56,6 +56,7 @@
 #include "BLI_system.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_timecode.h" /* For stamp time-code format. */
 #include "BLI_utildefines.h"
 
@@ -80,8 +81,6 @@
 #include "BKE_workspace.h"
 
 #include "BLF_api.h"
-
-#include "PIL_time.h"
 
 #include "RE_pipeline.h"
 

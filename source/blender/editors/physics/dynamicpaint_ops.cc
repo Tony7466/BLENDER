@@ -14,6 +14,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -45,8 +46,6 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-
-#include "PIL_time.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

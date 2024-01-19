@@ -28,6 +28,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_system.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -70,8 +71,6 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
-
-#include "PIL_time.h"
 
 #include "BLF_api.h"
 #include "GPU_batch.h"

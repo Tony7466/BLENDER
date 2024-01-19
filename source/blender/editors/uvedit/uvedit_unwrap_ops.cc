@@ -29,6 +29,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_uvproject.h"
 #include "BLI_vector.hh"
@@ -54,8 +55,6 @@
 
 #include "GEO_uv_pack.hh"
 #include "GEO_uv_parametrizer.hh"
-
-#include "PIL_time.h"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
