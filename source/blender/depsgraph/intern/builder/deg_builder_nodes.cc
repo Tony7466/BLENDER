@@ -16,6 +16,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -71,8 +72,8 @@
 #include "BKE_key.h"
 #include "BKE_lattice.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_light.h"
 #include "BKE_mask.h"
 #include "BKE_material.h"
@@ -832,15 +833,21 @@ void DepsgraphNodeBuilder::build_object(int base_index,
     build_texture(object->pd->tex);
   }
 
-  /* Object dupligroup. */
+  /* Object instancing. */
   if (object->instance_collection != nullptr) {
     build_object_instance_collection(object, is_visible);
-    OperationNode *op_node = add_operation_node(
-        &object->id, NodeType::DUPLI, OperationCode::DUPLI);
-    op_node->flag |= OperationFlag::DEPSOP_FLAG_PINNED;
+
+    OperationNode *instancer_node = add_operation_node(
+        &object->id, NodeType::INSTANCING, OperationCode::INSTANCER);
+    instancer_node->flag |= OperationFlag::DEPSOP_FLAG_PINNED;
   }
+  OperationNode *instance_node = add_operation_node(
+      &object->id, NodeType::INSTANCING, OperationCode::INSTANCE);
+  instance_node->flag |= OperationFlag::DEPSOP_FLAG_PINNED;
 
   build_object_light_linking(object);
+
+  build_object_shading(object);
 
   /* Synchronization back to original object. */
   add_operation_node(&object->id,
@@ -1166,6 +1173,20 @@ void DepsgraphNodeBuilder::build_light_linking_collection(Collection *collection
   {
     add_operation_node(&collection->id, NodeType::PARAMETERS, OperationCode::LIGHT_LINKING_UPDATE);
   }
+}
+
+void DepsgraphNodeBuilder::build_object_shading(Object *object)
+{
+  Object *object_cow = get_cow_datablock(object);
+  add_operation_node(
+      &object->id,
+      NodeType::SHADING,
+      OperationCode::SHADING,
+      [object_cow](::Depsgraph *depsgraph) { BKE_object_eval_shading(depsgraph, object_cow); });
+
+  OperationNode *done_node = add_operation_node(
+      &object->id, NodeType::SHADING, OperationCode::SHADING_DONE);
+  done_node->set_as_exit();
 }
 
 void DepsgraphNodeBuilder::build_animdata(ID *id)
@@ -1780,6 +1801,9 @@ void DepsgraphNodeBuilder::build_object_data_geometry_datablock(ID *obdata)
                      [obdata_cow](::Depsgraph *depsgraph) {
                        BKE_object_data_select_update(depsgraph, obdata_cow);
                      });
+  /* Shading (No-Op).
+   * Needed to allow the Material shading updates reach the Object. */
+  add_operation_node(obdata, NodeType::SHADING, OperationCode::SHADING);
 }
 
 void DepsgraphNodeBuilder::build_armature(bArmature *armature)
@@ -1799,7 +1823,7 @@ void DepsgraphNodeBuilder::build_armature(bArmature *armature)
   add_operation_node(
       &armature->id, NodeType::ARMATURE, OperationCode::ARMATURE_EVAL, [](::Depsgraph *) {});
   build_armature_bones(&armature->bonebase);
-  build_armature_bone_collections(&armature->collections);
+  build_armature_bone_collections(armature->collections_span());
 }
 
 void DepsgraphNodeBuilder::build_armature_bones(ListBase *bones)
@@ -1810,9 +1834,10 @@ void DepsgraphNodeBuilder::build_armature_bones(ListBase *bones)
   }
 }
 
-void DepsgraphNodeBuilder::build_armature_bone_collections(ListBase *collections)
+void DepsgraphNodeBuilder::build_armature_bone_collections(
+    blender::Span<BoneCollection *> collections)
 {
-  LISTBASE_FOREACH (BoneCollection *, bcoll, collections) {
+  for (BoneCollection *bcoll : collections) {
     build_idproperties(bcoll->prop);
   }
 }

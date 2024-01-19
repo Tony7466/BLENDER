@@ -15,6 +15,7 @@
 #include "BLI_listbase.h"
 
 #include "BKE_action.h"
+#include "BKE_mesh_types.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 
@@ -36,7 +37,7 @@ void ObjectRuntimeBackup::init_from_object(Object *object)
   }
   BKE_object_runtime_reset(object);
   /* Keep bounding-box (for now at least). */
-  object->runtime->bb = runtime.bb;
+  object->runtime->bounds_eval = runtime.bounds_eval;
   /* Object update will override actual object->data to an evaluated version.
    * Need to make sure we don't have data set to evaluated one before free
    * anything. */
@@ -82,10 +83,10 @@ void ObjectRuntimeBackup::restore_to_object(Object *object)
 {
   ID *data_orig = object->runtime->data_orig;
   ID *data_eval = runtime.data_eval;
-  BoundBox *bb = object->runtime->bb;
+  std::optional<Bounds<float3>> bounds = object->runtime->bounds_eval;
   *object->runtime = runtime;
   object->runtime->data_orig = data_orig;
-  object->runtime->bb = bb;
+  object->runtime->bounds_eval = bounds;
   if (ELEM(object->type, OB_MESH, OB_LATTICE, OB_CURVES_LEGACY, OB_FONT) && data_eval != nullptr) {
     if (object->id.recalc & ID_RECALC_GEOMETRY) {
       /* If geometry is tagged for update it means, that part of
@@ -161,6 +162,15 @@ void ObjectRuntimeBackup::restore_modifier_runtime_data(Object *object)
     const ModifierTypeInfo *modifier_type_info = BKE_modifier_get_info(backup.type);
     BLI_assert(modifier_type_info != nullptr);
     modifier_type_info->free_runtime_data(backup.runtime);
+
+    if (backup.type == eModifierType_Subsurf) {
+      if (object->type == OB_MESH) {
+        Mesh *mesh = (Mesh *)object->data;
+        if (mesh->runtime->subsurf_runtime_data == backup.runtime) {
+          mesh->runtime->subsurf_runtime_data = nullptr;
+        }
+      }
+    }
   }
 }
 
