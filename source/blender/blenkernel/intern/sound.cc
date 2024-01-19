@@ -1377,18 +1377,23 @@ void BKE_sound_read_waveform(Main *bmain,
   UNUSED_VARS(sound, stop, bmain);
 }
 void BKE_sound_init_main(Main * /*bmain*/) {}
-void BKE_sound_set_cfra(int /*cfra*/) {}
 void BKE_sound_update_sequencer(Main * /*main*/, bSound * /*sound*/) {}
 void BKE_sound_update_scene(Depsgraph * /*depsgraph*/, Scene * /*scene*/) {}
 void BKE_sound_update_scene_sound(void * /*handle*/, bSound * /*sound*/) {}
 void BKE_sound_update_scene_listener(Scene * /*scene*/) {}
 void BKE_sound_update_fps(Main * /*bmain*/, Scene * /*scene*/) {}
 void BKE_sound_set_scene_sound_volume_at_frame(void * /*handle*/,
+                                               int /* frame */,
                                                float /*volume*/,
                                                char /*animated*/)
 {
 }
-void BKE_sound_set_scene_sound_pan_at_frame(void * /*handle*/, float /*pan*/, char /*animated*/) {}
+void BKE_sound_set_scene_sound_pan_at_frame(void * /*handle*/,
+                                            int /* frame */,
+                                            float /*pan*/,
+                                            char /*animated*/)
+{
+}
 void BKE_sound_set_scene_volume(Scene * /*scene*/, float /*volume*/) {}
 void BKE_sound_set_scene_sound_pitch_at_frame(void * /*handle*/,
                                               int /*frame*/,
