@@ -8,10 +8,9 @@
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
+#include "BLI_time.h"
 #include "BLI_timeit.hh"
 #include "BLI_vector_set.hh"
-
-#include "PIL_time.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_modifier_types.h"
@@ -1189,7 +1188,7 @@ class NodeTreeMainUpdater {
     }
 
     /* Used to generate new unique IDs if necessary. */
-    RandomNumberGenerator rng(PIL_check_seconds_timer_i() & UINT_MAX);
+    RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
 
     Map<int32_t, bNestedNodePath> new_path_by_id;
     for (const bNestedNodePath &path : nested_node_paths) {
