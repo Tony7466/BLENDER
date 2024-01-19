@@ -1616,19 +1616,21 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   Layer *layer_dst = nullptr;
-  const int layer_index = RNA_int_get(op->ptr, "layer");
 
-  if (layer_index > -1) {
-    layer_dst = grease_pencil.layers_for_write()[layer_index];
-  }
+  int target_layer_name_length;
+  char *target_layer_name = RNA_string_get_alloc(
+      op->ptr, "target_layer_name", nullptr, 0, &target_layer_name_length);
+
+  TreeNode *target_node = grease_pencil.find_node_by_name(target_layer_name);
+  layer_dst = &target_node->as_layer();
 
   if (layer_dst == nullptr) {
-    BKE_reportf(op->reports, RPT_ERROR, "There is no layer number %d", layer_index);
+    BKE_reportf(op->reports, RPT_ERROR, "There is no layer '%s'", target_layer_name);
     return OPERATOR_CANCELLED;
   }
 
   if (layer_dst->is_locked()) {
-    BKE_reportf(op->reports, RPT_ERROR, "The target layer is locked");
+    BKE_reportf(op->reports, RPT_ERROR, "'%s' Layer is locked", target_layer_name);
     return OPERATOR_CANCELLED;
   }
 
@@ -1698,9 +1700,8 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
   /* flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  /* Grease Pencil layer to use. */
-  PropertyRNA *prop = RNA_def_int(
-      ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
+  PropertyRNA *prop = RNA_def_string(
+      ot->srna, "target_layer_name", "Layer", INT16_MAX, "Name", "Target Grease Pencil Layer");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

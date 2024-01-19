@@ -295,7 +295,7 @@ class GREASE_PENCIL_MT_move_to_layer(Menu):
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
-            layout.operator("grease_pencil.move_to_layer", text=layer.name, icon=icon).layer = i
+            layout.operator("grease_pencil.move_to_layer", text=layer.name, icon=icon).target_layer_name = layer.name
 
 
 class GREASE_PENCIL_MT_layer_active(Menu):
