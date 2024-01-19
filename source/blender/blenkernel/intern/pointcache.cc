@@ -3360,7 +3360,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       /* write info file */
       if (cache->flag & PTCACHE_DISK_CACHE) {
         ID *id = pid->owner_id;
-        Object *ob = (GS(id->name) == ID_OB) ? (Object *)id : nullptr;
+        Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
         Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
         ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
         ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
@@ -3396,7 +3396,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
           cache->flag |= PTCACHE_BAKED;
           if (cache->flag & PTCACHE_DISK_CACHE) {
             ID *id = pid->owner_id;
-            Object *ob = (GS(id->name) == ID_OB) ? (Object *)id : nullptr;
+            Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
             Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
             ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
             ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
