@@ -2667,16 +2667,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 14)) {
-    if (!DNA_struct_member_exists(
-            fd->filesdna, "Sculpt", "int", "automasking_boundary_edges_propagation_steps"))
-    {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        Sculpt *sculpt = scene->toolsettings->sculpt;
-        if (sculpt != nullptr) {
-          Sculpt default_sculpt = *(DNA_struct_default_get(Sculpt));
-          sculpt->automasking_boundary_edges_propagation_steps =
-              default_sculpt.automasking_boundary_edges_propagation_steps;
-        }
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Sculpt *sculpt = scene->toolsettings->sculpt;
+      if (sculpt != nullptr) {
+        Sculpt default_sculpt = *DNA_struct_default_get(Sculpt);
+        sculpt->automasking_boundary_edges_propagation_steps =
+            default_sculpt.automasking_boundary_edges_propagation_steps;
       }
     }
   }

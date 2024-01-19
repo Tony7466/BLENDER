@@ -315,9 +315,7 @@ typedef struct Brush {
 
   int deform_target;
 
-  /* Automasking mode flags
-   * See rna_brush.cc#rna_enum_brush_automasking_flag_items
-   */
+  /* automasking */
   int automasking_flags;
   int automasking_boundary_edges_propagation_steps;
 

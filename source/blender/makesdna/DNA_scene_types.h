@@ -1087,9 +1087,6 @@ typedef struct Sculpt {
   /** Transform tool. */
   int transform_mode;
 
-  /* Automasking mode flags
-   * See rna_brush.cc#rna_enum_brush_automasking_flag_items
-   */
   int automasking_flags;
 
   // /* Control tablet input. */
