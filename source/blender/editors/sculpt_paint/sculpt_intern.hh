@@ -1286,7 +1286,17 @@ float factor_get(Cache *automasking,
  * brushes and filter. */
 Cache *active_cache_get(SculptSession *ss);
 
-/* Brush can be null. */
+/**
+ * Creates and initializes an automasking cache.
+ *
+ * For automasking modes that cannot be calculated in real time,
+ * data is also stored at the vertex level prior to the stroke starting.
+ *
+ * \param sd: the sculpt tool
+ * \param brush: the brush being used (optional)
+ * \param ob: the object being operated on
+ * \return the automask cache
+ */
 Cache *cache_init(Sculpt *sd, Brush *brush, Object *ob);
 void cache_free(Cache *automasking);
 
