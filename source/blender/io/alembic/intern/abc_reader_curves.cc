@@ -300,14 +300,14 @@ bool AbcCurveReader::accepts_object_type(
     const char **err_str) const
 {
   if (!Alembic::AbcGeom::ICurves::matches(alembic_header)) {
-    *err_str = TIP_(
+    *err_str = RPT_(
         "Object type mismatch, Alembic object path pointed to Curves when importing, but not "
         "anymore.");
     return false;
   }
 
   if (ob->type != OB_CURVES) {
-    *err_str = TIP_("Object type mismatch, Alembic object path points to Curves.");
+    *err_str = RPT_("Object type mismatch, Alembic object path points to Curves.");
     return false;
   }
 

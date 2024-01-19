@@ -50,8 +50,8 @@
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -137,6 +137,7 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   mesh_dst->runtime->bounds_cache = mesh_src->runtime->bounds_cache;
   mesh_dst->runtime->vert_normals_cache = mesh_src->runtime->vert_normals_cache;
   mesh_dst->runtime->face_normals_cache = mesh_src->runtime->face_normals_cache;
+  mesh_dst->runtime->corner_normals_cache = mesh_src->runtime->corner_normals_cache;
   mesh_dst->runtime->loose_verts_cache = mesh_src->runtime->loose_verts_cache;
   mesh_dst->runtime->verts_no_face_cache = mesh_src->runtime->verts_no_face_cache;
   mesh_dst->runtime->loose_edges_cache = mesh_src->runtime->loose_edges_cache;
@@ -644,6 +645,25 @@ MutableSpan<MDeformVert> Mesh::deform_verts_for_write()
 
 namespace blender::bke {
 
+void mesh_ensure_default_color_attribute_on_add(Mesh &mesh,
+                                                const AttributeIDRef &id,
+                                                AttrDomain domain,
+                                                eCustomDataType data_type)
+{
+  if (id.is_anonymous()) {
+    return;
+  }
+  if (!(CD_TYPE_AS_MASK(data_type) & CD_MASK_COLOR_ALL) ||
+      !(ATTR_DOMAIN_AS_MASK(domain) & ATTR_DOMAIN_MASK_COLOR))
+  {
+    return;
+  }
+  if (mesh.default_color_attribute) {
+    return;
+  }
+  mesh.default_color_attribute = BLI_strdupn(id.name().data(), id.name().size());
+}
+
 static void mesh_ensure_cdlayers_primary(Mesh &mesh)
 {
   MutableAttributeAccessor attributes = mesh.attributes_for_write();
@@ -1128,33 +1148,33 @@ void BKE_mesh_material_remap(Mesh *mesh, const uint *remap, uint remap_len)
 
 namespace blender::bke {
 
-void mesh_smooth_set(Mesh &mesh, const bool use_smooth)
+void mesh_smooth_set(Mesh &mesh, const bool use_smooth, const bool keep_sharp_edges)
 {
   MutableAttributeAccessor attributes = mesh.attributes_for_write();
-  if (use_smooth) {
+  if (!keep_sharp_edges) {
     attributes.remove("sharp_edge");
-    attributes.remove("sharp_face");
   }
-  else {
-    attributes.remove("sharp_edge");
-    SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_only_span<bool>(
-        "sharp_face", AttrDomain::Face);
-    sharp_faces.span.fill(true);
-    sharp_faces.finish();
+  attributes.remove("sharp_face");
+  if (!use_smooth) {
+    attributes.add<bool>("sharp_face",
+                         AttrDomain::Face,
+                         AttributeInitVArray(VArray<bool>::ForSingle(true, mesh.faces_num)));
   }
 }
 
-void mesh_sharp_edges_set_from_angle(Mesh &mesh, const float angle)
+void mesh_sharp_edges_set_from_angle(Mesh &mesh, const float angle, const bool keep_sharp_edges)
 {
   MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (angle >= M_PI) {
-    attributes.remove("sharp_edge");
-    attributes.remove("sharp_face");
+    mesh_smooth_set(mesh, true, keep_sharp_edges);
     return;
   }
   if (angle == 0.0f) {
-    mesh_smooth_set(mesh, false);
+    mesh_smooth_set(mesh, false, keep_sharp_edges);
     return;
+  }
+  if (!keep_sharp_edges) {
+    attributes.remove("sharp_edge");
   }
   SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", AttrDomain::Edge);

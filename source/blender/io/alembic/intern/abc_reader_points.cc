@@ -21,10 +21,9 @@
 
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
 #include "BLI_math_vector.h"
 
@@ -51,14 +50,14 @@ bool AbcPointsReader::accepts_object_type(
     const char **err_str) const
 {
   if (!Alembic::AbcGeom::IPoints::matches(alembic_header)) {
-    *err_str = TIP_(
+    *err_str = RPT_(
         "Object type mismatch, Alembic object path pointed to Points when importing, but not any "
         "more");
     return false;
   }
 
   if (ob->type != OB_POINTCLOUD) {
-    *err_str = TIP_("Object type mismatch, Alembic object path points to Points.");
+    *err_str = RPT_("Object type mismatch, Alembic object path points to Points.");
     return false;
   }
 
@@ -135,7 +134,7 @@ void AbcPointsReader::read_geometry(bke::GeometrySet &geometry_set,
     sample = m_schema.getValue(sample_sel);
   }
   catch (Alembic::Util::Exception &ex) {
-    *err_str = TIP_("Error reading points sample; more detail on the console");
+    *err_str = RPT_("Error reading points sample; more detail on the console");
     printf("Alembic: error reading points sample for '%s/%s' at time %f: %s\n",
            m_iobject.getFullName().c_str(),
            m_schema.getName().c_str(),
