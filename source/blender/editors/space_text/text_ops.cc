@@ -3519,7 +3519,7 @@ static int text_line_number_invoke(bContext *C, wmOperator * /*op*/, const wmEve
     return OPERATOR_PASS_THROUGH;
   }
 
-  time = PIL_check_seconds_timer();
+  time = BLI_check_seconds_timer();
   if (last_jump < time - 1) {
     jump_to = 0;
   }

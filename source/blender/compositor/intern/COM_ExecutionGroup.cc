@@ -304,7 +304,7 @@ void ExecutionGroup::execute(ExecutionSystem *graph)
   } /** \note Early break out. */
   uint chunk_index;
 
-  execution_start_time_ = PIL_check_seconds_timer();
+  execution_start_time_ = BLI_check_seconds_timer();
 
   chunks_finished_ = 0;
   bTree_ = bTree;

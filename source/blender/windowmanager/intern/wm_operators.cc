@@ -3659,7 +3659,7 @@ static int redraw_timer_exec(bContext *C, wmOperator *op)
 
   WM_cursor_wait(true);
 
-  double time_start = PIL_check_seconds_timer();
+  double time_start = BLI_check_seconds_timer();
 
   wm_window_make_drawable(wm, win);
 
@@ -3669,14 +3669,14 @@ static int redraw_timer_exec(bContext *C, wmOperator *op)
     iter_steps += 1;
 
     if (time_limit != 0.0) {
-      if ((PIL_check_seconds_timer() - time_start) > time_limit) {
+      if ((BLI_check_seconds_timer() - time_start) > time_limit) {
         break;
       }
       a = 0;
     }
   }
 
-  double time_delta = (PIL_check_seconds_timer() - time_start) * 1000;
+  double time_delta = (BLI_check_seconds_timer() - time_start) * 1000;
 
   RNA_enum_description(redraw_timer_type_items, type, &infostr);
 

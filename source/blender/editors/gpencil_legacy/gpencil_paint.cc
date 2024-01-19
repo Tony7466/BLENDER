@@ -2165,7 +2165,7 @@ static tGPsdata *gpencil_session_initpaint(bContext *C, wmOperator *op)
   }
 
   /* Random generator, only init once. */
-  uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
+  uint rng_seed = uint(BLI_check_seconds_timer_i() & UINT_MAX);
   rng_seed ^= POINTER_AS_UINT(p);
   p->rng = BLI_rng_new(rng_seed);
 
@@ -2966,7 +2966,7 @@ static void gpencil_draw_apply_event(bContext *C,
     }
   }
 
-  p->curtime = PIL_check_seconds_timer();
+  p->curtime = BLI_check_seconds_timer();
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;

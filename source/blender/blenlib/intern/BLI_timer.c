@@ -12,7 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#define GET_TIME() PIL_check_seconds_timer()
+#define GET_TIME() BLI_check_seconds_timer()
 
 typedef struct TimedFunction {
   struct TimedFunction *next, *prev;

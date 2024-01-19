@@ -115,7 +115,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   undo::push_begin(ob, op);
   undo::push_node(ob, nullptr, undo::Type::Position);
 
-  const double start_time = PIL_check_seconds_timer();
+  const double start_time = BLI_check_seconds_timer();
 
   while (bke::pbvh::bmesh_update_topology(
       ss->pbvh, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false))
@@ -125,7 +125,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
     }
   }
 
-  CLOG_INFO(&LOG, 2, "Detail flood fill took %f seconds.", PIL_check_seconds_timer() - start_time);
+  CLOG_INFO(&LOG, 2, "Detail flood fill took %f seconds.", BLI_check_seconds_timer() - start_time);
 
   undo::push_end(ob);
 

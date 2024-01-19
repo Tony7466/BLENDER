@@ -242,13 +242,13 @@ AbcObjectReader *create_reader(const Alembic::AbcGeom::IObject &object, ImportSe
 /* ********************** */
 
 ScopeTimer::ScopeTimer(const char *message)
-    : m_message(message), m_start(PIL_check_seconds_timer())
+    : m_message(message), m_start(BLI_check_seconds_timer())
 {
 }
 
 ScopeTimer::~ScopeTimer()
 {
-  fprintf(stderr, "%s: %fs\n", m_message, PIL_check_seconds_timer() - m_start);
+  fprintf(stderr, "%s: %fs\n", m_message, BLI_check_seconds_timer() - m_start);
 }
 
 /* ********************** */

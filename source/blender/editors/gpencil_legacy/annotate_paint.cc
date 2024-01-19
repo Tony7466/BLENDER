@@ -2151,7 +2151,7 @@ static void annotation_draw_apply_event(
     }
   }
 
-  p->curtime = PIL_check_seconds_timer();
+  p->curtime = BLI_check_seconds_timer();
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;

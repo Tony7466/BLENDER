@@ -1328,7 +1328,7 @@ void calculatePropRatio(TransInfo *t)
             case PROP_RANDOM:
               if (t->rng == nullptr) {
                 /* Lazy initialization. */
-                uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
+                uint rng_seed = uint(BLI_check_seconds_timer_i() & UINT_MAX);
                 t->rng = BLI_rng_new(rng_seed);
               }
               td->factor = BLI_rng_get_float(t->rng) * dist;

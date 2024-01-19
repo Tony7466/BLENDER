@@ -539,7 +539,7 @@ static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *eve
   if (U.viewzoom == USER_ZOOM_CONTINUE) {
     /* needs a timer to continue redrawing */
     vpd->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
-    vpd->timer_lastdraw = PIL_check_seconds_timer();
+    vpd->timer_lastdraw = BLI_check_seconds_timer();
   }
 
   vpd->sima = sima;
@@ -649,7 +649,7 @@ static void image_zoom_apply(ViewZoomData *vpd,
   }
 
   if (viewzoom == USER_ZOOM_CONTINUE) {
-    double time = PIL_check_seconds_timer();
+    double time = BLI_check_seconds_timer();
     float time_step = float(time - vpd->timer_lastdraw);
     float zfac;
     zfac = 1.0f + ((delta / 20.0f) * time_step);

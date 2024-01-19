@@ -1151,7 +1151,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
 
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_check_seconds_timer();
   }
 
   bool is_persp = true;
@@ -1283,7 +1283,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
   }
 
   if (G.debug_value == 4000) {
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_check_seconds_timer() - t_start;
     printf("Line art shadow stage 1 time: %f\n", t_elapsed);
   }
 
@@ -1367,7 +1367,7 @@ void lineart_main_make_enclosed_shapes(LineartData *ld, LineartData *shadow_ld)
 {
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_check_seconds_timer();
   }
 
   if (shadow_ld || ld->conf.shadow_use_silhouette) {
@@ -1378,7 +1378,7 @@ void lineart_main_make_enclosed_shapes(LineartData *ld, LineartData *shadow_ld)
   }
 
   if (G.debug_value == 4000) {
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_check_seconds_timer() - t_start;
     printf("Line art shadow stage 2 cast and silhouette time: %f\n", t_elapsed);
   }
 
@@ -1427,7 +1427,7 @@ void lineart_main_make_enclosed_shapes(LineartData *ld, LineartData *shadow_ld)
   lineart_shadow_register_enclosed_shapes(ld, shadow_ld);
 
   if (G.debug_value == 4000) {
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_check_seconds_timer() - t_start;
     printf("Line art shadow stage 2 total time: %f\n", t_elapsed);
   }
 }

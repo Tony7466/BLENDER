@@ -218,15 +218,15 @@ static void track_markers_startjob(void *tmv, wmJobWorkerStatus *worker_status)
        * exec_time for "Fastest" tracking
        */
 
-      double start_time = PIL_check_seconds_timer(), exec_time;
+      double start_time = BLI_check_seconds_timer(), exec_time;
 
       if (!BKE_autotrack_context_step(tmj->context)) {
         break;
       }
 
-      exec_time = PIL_check_seconds_timer() - start_time;
+      exec_time = BLI_check_seconds_timer() - start_time;
       if (tmj->delay > float(exec_time)) {
-        PIL_sleep_ms(tmj->delay - float(exec_time));
+        BLI_sleep_ms(tmj->delay - float(exec_time));
       }
     }
     else if (!BKE_autotrack_context_step(tmj->context)) {

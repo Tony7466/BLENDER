@@ -941,7 +941,7 @@ static void setup_app_data(bContext *C,
   BLI_assert(BKE_main_namemap_validate(bmain));
 
   if (mode != LOAD_UNDO && !USER_EXPERIMENTAL_TEST(&U, no_override_auto_resync)) {
-    reports->duration.lib_overrides_resync = PIL_check_seconds_timer();
+    reports->duration.lib_overrides_resync = BLI_check_seconds_timer();
 
     BKE_lib_override_library_main_resync(
         bmain,
@@ -949,7 +949,7 @@ static void setup_app_data(bContext *C,
         bfd->cur_view_layer ? bfd->cur_view_layer : BKE_view_layer_default_view(curscene),
         reports);
 
-    reports->duration.lib_overrides_resync = PIL_check_seconds_timer() -
+    reports->duration.lib_overrides_resync = BLI_check_seconds_timer() -
                                              reports->duration.lib_overrides_resync;
 
     /* We need to rebuild some of the deleted override rules (for UI feedback purpose). */

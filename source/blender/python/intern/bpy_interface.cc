@@ -126,10 +126,10 @@ void bpy_context_set(bContext *C, PyGILState_STATE *gilstate)
 #ifdef TIME_PY_RUN
     if (bpy_timer_count == 0) {
       /* Record time from the beginning. */
-      bpy_timer = PIL_check_seconds_timer();
+      bpy_timer = BLI_check_seconds_timer();
       bpy_timer_run = bpy_timer_run_tot = 0.0;
     }
-    bpy_timer_run = PIL_check_seconds_timer();
+    bpy_timer_run = BLI_check_seconds_timer();
 
     bpy_timer_count++;
 #endif
@@ -155,7 +155,7 @@ void bpy_context_clear(bContext * /*C*/, const PyGILState_STATE *gilstate)
 #endif
 
 #ifdef TIME_PY_RUN
-    bpy_timer_run_tot += PIL_check_seconds_timer() - bpy_timer_run;
+    bpy_timer_run_tot += BLI_check_seconds_timer() - bpy_timer_run;
     bpy_timer_count++;
 #endif
   }
@@ -590,7 +590,7 @@ void BPY_python_end(const bool do_python_exit)
 
 #ifdef TIME_PY_RUN
   /* Measure time since Python started. */
-  bpy_timer = PIL_check_seconds_timer() - bpy_timer;
+  bpy_timer = BLI_check_seconds_timer() - bpy_timer;
 
   printf("*bpy stats* - ");
   printf("tot exec: %d,  ", bpy_timer_count);
