@@ -21,9 +21,12 @@ AUD_NAMESPACE_BEGIN
 
 void OpenCloseDevice::closeAfterDelay(){
     for (;;){
-        std::this_thread::sleep_for(std::chrono::microseconds(5));
-        if (m_playing || m_playback_stopped_time == 0) time(&m_playback_stopped_time);
-        if (time(NULL) < m_playback_stopped_time + 5) continue;
+        std::this_thread::sleep_for(m_device_close_delay / 10);
+        if (m_playing || m_playback_stopped_time.time_since_epoch().count() == 0)
+            m_playback_stopped_time = std::chrono::steady_clock::now();
+        if (std::chrono::steady_clock::now() < m_playback_stopped_time + m_device_close_delay)
+            continue;
+        
         break;
     }
     close();
@@ -43,7 +46,7 @@ void OpenCloseDevice::playing(bool playing)
         }
         else{
             stop();
-            time(&m_playback_stopped_time);
+            m_playback_stopped_time = std::chrono::steady_clock::now();
             if (m_delayed_close_thread.joinable() && m_delayed_close_finished){
                     m_delayed_close_thread.join();
                     m_delayed_close_finished = false;
@@ -53,12 +56,5 @@ void OpenCloseDevice::playing(bool playing)
                 m_delayed_close_thread = std::thread(&OpenCloseDevice::closeAfterDelay, this);
         }
     }
-}
-
-OpenCloseDevice::OpenCloseDevice(){
-    m_device_opened = false;
-    m_delayed_close_finished = false;
-    m_playback_stopped_time = 0;
-    m_playing = false;
 }
 AUD_NAMESPACE_END

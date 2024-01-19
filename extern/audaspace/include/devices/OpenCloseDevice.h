@@ -48,7 +48,12 @@ private:
      * Thread used to release the device after time delay.
      */
     std::thread m_delayed_close_thread;
-
+    
+    /**
+     * How long to wait until closing the device..
+     */
+    std::chrono::milliseconds m_device_close_delay;
+    
     /**
      * Whether thread released the device.
      */
@@ -57,7 +62,7 @@ private:
     /**
      * Time when playback has stopped.
      */
-    time_t m_playback_stopped_time;
+    std::chrono::time_point<std::chrono::steady_clock> m_playback_stopped_time;
     
     /**
      * Releases the device after time delay.
@@ -96,7 +101,9 @@ protected:
      * Empty default constructor. To setup the device call the function create()
      * and to uninitialize call destroy().
      */
-    OpenCloseDevice();
+    OpenCloseDevice(): m_device_opened(false), m_delayed_close_finished(false), m_playing(false),  m_device_close_delay(std::chrono::milliseconds(10000))
+    {
+    }
 };
 
 AUD_NAMESPACE_END
