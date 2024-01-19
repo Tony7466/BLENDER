@@ -702,7 +702,7 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
   }
 }
 
-static float s_curve(const float x, const float width, const float shift)
+static float ease_to_ease_function(const float x, const float width, const float shift)
 {
   const float x_shift = (x - shift) * width;
   const float y = x_shift / sqrt(1 + pow2f(x_shift));
@@ -729,13 +729,13 @@ void ease_to_ease_fcurve_segment(FCurve *fcu,
 
   /* Using the factor on the xshift we are basicaly moving the curve horizontaly. */
   const float shift = -factor;
-  const float y_min = s_curve(-1, width, shift);
-  const float y_max = s_curve(1, width, shift);
+  const float y_min = ease_to_ease_function(-1, width, shift);
+  const float y_max = ease_to_ease_function(1, width, shift);
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* Mapping the x-location of the key within the segment to a -1/1 range. */
     const float x = ((fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range) * 2 - 1;
-    const float y = s_curve(x, width, shift);
+    const float y = ease_to_ease_function(x, width, shift);
     /* Normalizing the y value to the min and max to ensure that the keys at the end are not
      * detached from the rest of the animation. */
     const float blend = (y - y_min) * (1 / (y_max - y_min));
