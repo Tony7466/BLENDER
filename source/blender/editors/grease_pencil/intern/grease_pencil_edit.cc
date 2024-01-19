@@ -1685,7 +1685,6 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
 
   /* identifiers. */
   ot->name = "Move to Layer";
@@ -1700,12 +1699,9 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Grease Pencil layer to use. */
-  prop = RNA_def_int(ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
+  PropertyRNA *prop = RNA_def_int(
+      ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  RNA_def_string(
-      ot->srna, "new_layer_name", nullptr, MAX_NAME, "Name", "Name of the newly added layer");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  ot->prop = prop;
 }
 
 /** \} */
