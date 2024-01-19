@@ -168,13 +168,7 @@ void DepthOfField::sync()
   stabilize_pass_sync();
   downsample_pass_sync();
   reduce_pass_sync();
-  tiles_flatten_pass_sync();
-  tiles_dilate_pass_sync();
-  gather_pass_sync();
-  filter_pass_sync();
   scatter_pass_sync();
-  hole_fill_pass_sync();
-  resolve_pass_sync();
 }
 
 void DepthOfField::jitter_apply(float4x4 &winmat, float4x4 &viewmat)
@@ -615,6 +609,7 @@ void DepthOfField::render(View &view,
       tiles_fg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F, usage_readwrite);
       tiles_bg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F, usage_readwrite);
 
+      tiles_flatten_pass_sync();
       drw.submit(tiles_flatten_ps_, view);
 
       /* Used by tile_flatten and stabilize_ps pass. */
@@ -644,6 +639,7 @@ void DepthOfField::render(View &view,
           tiles_fg_tx_.swap();
           tiles_bg_tx_.swap();
 
+          tiles_dilate_pass_sync();
           drw.submit((pass == 0) ? tiles_dilate_minmax_ps_ : tiles_dilate_minabs_ps_, view);
         }
       }
@@ -683,6 +679,7 @@ void DepthOfField::render(View &view,
     weight_tx.current().acquire(half_res, GPU_R16F, usage_readwrite);
     occlusion_tx_.acquire(half_res, GPU_RG16F);
 
+    gather_pass_sync();
     drw.submit(gather_ps, view);
 
     {
@@ -693,6 +690,7 @@ void DepthOfField::render(View &view,
       color_tx.current().acquire(half_res, GPU_RGBA16F, usage_readwrite);
       weight_tx.current().acquire(half_res, GPU_R16F, usage_readwrite);
 
+      filter_pass_sync();
       drw.submit(filter_ps, view);
 
       color_tx.previous().release();
@@ -720,6 +718,7 @@ void DepthOfField::render(View &view,
     hole_fill_color_tx_.acquire(half_res, GPU_RGBA16F, usage_readwrite);
     hole_fill_weight_tx_.acquire(half_res, GPU_R16F, usage_readwrite);
 
+    hole_fill_pass_sync();
     drw.submit(hole_fill_ps_, view);
 
     /* NOTE: We do not filter the hole-fill pass as effect is likely to not be noticeable. */
@@ -731,6 +730,7 @@ void DepthOfField::render(View &view,
 
     resolve_stable_color_tx_ = dof_buffer.stabilize_history_tx_;
 
+    resolve_pass_sync();
     drw.submit(resolve_ps_, view);
 
     color_bg_tx_.current().release();
