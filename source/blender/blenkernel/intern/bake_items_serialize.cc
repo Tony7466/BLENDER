@@ -334,10 +334,10 @@ static std::shared_ptr<DictionaryValue> write_blob_shared_simple_gspan(
     const int size,
     const ImplicitSharingInfo **r_sharing_info)
 {
+  const char *func = __func__;
   const std::optional<ImplicitSharingInfoAndData> sharing_info_and_data = blob_sharing.read_shared(
       io_data, [&]() -> std::optional<ImplicitSharingInfoAndData> {
-        void *data_mem = MEM_mallocN_aligned(
-            size * cpp_type.size(), cpp_type.alignment(), __func__);
+        void *data_mem = MEM_mallocN_aligned(size * cpp_type.size(), cpp_type.alignment(), func);
         if (!read_blob_simple_gspan(blob_reader, io_data, {cpp_type, data_mem, size})) {
           MEM_freeN(data_mem);
           return std::nullopt;
@@ -404,7 +404,7 @@ template<typename T>
     const std::optional<StringRefNull> name = io_attribute->lookup_str("name");
     const std::optional<StringRefNull> domain_str = io_attribute->lookup_str("domain");
     const std::optional<StringRefNull> type_str = io_attribute->lookup_str("type");
-    auto io_data = io_attribute->lookup_dict("data");
+    const auto *io_data = io_attribute->lookup_dict("data");
     if (!name || !domain_str || !type_str || !io_data) {
       return false;
     }
@@ -511,7 +511,7 @@ static Curves *try_load_curves(const DictionaryValue &io_geometry,
   };
 
   if (curves.curves_num() > 0) {
-    const auto io_curve_offsets = io_curves->lookup_dict("curve_offsets");
+    const auto *io_curve_offsets = io_curves->lookup_dict("curve_offsets");
     if (!io_curve_offsets) {
       return cancel();
     }
@@ -572,7 +572,7 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
   };
 
   if (mesh->faces_num > 0) {
-    const auto io_poly_offsets = io_mesh->lookup_dict("poly_offsets");
+    const auto *io_poly_offsets = io_mesh->lookup_dict("poly_offsets");
     if (!io_poly_offsets) {
       return cancel();
     }
@@ -638,7 +638,7 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
     instances->add_reference(std::move(reference_geometry));
   }
 
-  const auto io_transforms = io_instances->lookup_dict("transforms");
+  const auto *io_transforms = io_instances->lookup_dict("transforms");
   if (!io_transforms) {
     return {};
   }
@@ -646,7 +646,7 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
     return {};
   }
 
-  const auto io_handles = io_instances->lookup_dict("handles");
+  const auto *io_handles = io_instances->lookup_dict("handles");
   if (!io_handles) {
     return {};
   }
@@ -1078,9 +1078,7 @@ static std::unique_ptr<BakeItem> deserialize_bake_item(const DictionaryValue &io
       const io::serialize::StringValue &io_string = *io_data->get()->as_string_value();
       return std::make_unique<StringBakeItem>(io_string.value());
     }
-    else if (const io::serialize::DictionaryValue *io_string =
-                 io_data->get()->as_dictionary_value())
-    {
+    if (const io::serialize::DictionaryValue *io_string = io_data->get()->as_dictionary_value()) {
       const std::optional<int64_t> size = io_string->lookup_int("size");
       if (!size) {
         return {};
