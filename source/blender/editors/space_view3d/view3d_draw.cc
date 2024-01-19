@@ -795,11 +795,11 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
   /* camera name - draw in highlighted text color */
   if (ca && ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) && (ca->flag & CAM_SHOWNAME)) {
     UI_FontThemeColor(BLF_default(), TH_TEXT_HI);
-    BLF_draw_default(x1i,
-                     y1i - (0.7f * U.widget_unit),
-                     0.0f,
-                     v3d->camera->id.name + 2,
-                     sizeof(v3d->camera->id.name) - 2);
+    BLF_draw_default_shadow(x1i,
+                            y1i - (0.7f * U.widget_unit),
+                            0.0f,
+                            v3d->camera->id.name + 2,
+                            sizeof(v3d->camera->id.name) - 2);
   }
 }
 
@@ -1268,10 +1268,6 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
   /* increase size for unicode languages (Chinese in utf-8...) */
   char tmpstr[96 + 6];
 
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-  BLF_shadow_offset(font_id, 1, -1);
-
   if (RV3D_VIEW_IS_AXIS(rv3d->view) && (rv3d->view_axis_roll != RV3D_VIEW_AXIS_ROLL_0)) {
     const char *axis_roll;
     switch (rv3d->view_axis_roll) {
@@ -1306,9 +1302,7 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
 
   *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
 
-  BLF_draw_default(xoffset, *yoffset, 0.0f, name, sizeof(tmpstr));
-
-  BLF_disable(font_id, BLF_SHADOW);
+  BLF_draw_default_shadow(xoffset, *yoffset, 0.0f, name, sizeof(tmpstr));
 }
 
 /**
@@ -1451,14 +1445,8 @@ static void draw_selected_name(
   BLI_assert(BLI_string_len_array(info_array, i) < sizeof(info));
   BLI_string_join_array(info, sizeof(info), info_array, i);
 
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-  BLF_shadow_offset(font_id, 1, -1);
-
   *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
-  BLF_draw_default(xoffset, *yoffset, 0.0f, info, sizeof(info));
-
-  BLF_disable(font_id, BLF_SHADOW);
+  BLF_draw_default_shadow(xoffset, *yoffset, 0.0f, info, sizeof(info));
 }
 
 static void draw_grid_unit_name(
@@ -1478,11 +1466,7 @@ static void draw_grid_unit_name(
       }
 
       *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
-      BLF_enable(font_id, BLF_SHADOW);
-      BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-      BLF_shadow_offset(font_id, 1, -1);
-      BLF_draw_default(xoffset, *yoffset, 0.0f, numstr[0] ? numstr : grid_unit, sizeof(numstr));
-      BLF_disable(font_id, BLF_SHADOW);
+      BLF_draw_default_shadow(xoffset, *yoffset, 0.0f, numstr[0] ? numstr : grid_unit, sizeof(numstr));
     }
   }
 }
@@ -2612,15 +2596,9 @@ void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset)
     SNPRINTF(printable, IFACE_("fps: %i"), int(state.fps_average + 0.5f));
   }
 
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-  BLF_shadow_offset(font_id, 1, -1);
-
   *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
 
-  BLF_draw_default(xoffset, *yoffset, 0.0f, printable, sizeof(printable));
-
-  BLF_disable(font_id, BLF_SHADOW);
+  BLF_draw_default_shadow(xoffset, *yoffset, 0.0f, printable, sizeof(printable));
 }
 
 /** \} */

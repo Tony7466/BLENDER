@@ -335,6 +335,10 @@ int BLF_default(void);
  */
 void BLF_draw_default(float x, float y, float z, const char *str, size_t str_len) ATTR_NONNULL();
 /**
+ * As above but with a very contrasting dark shadow.
+ */
+void BLF_draw_default_shadow(float x, float y, float z, const char *str, size_t str_len) ATTR_NONNULL();
+/**
  * Set size and DPI, and return default font ID.
  */
 int BLF_set_default(void);
