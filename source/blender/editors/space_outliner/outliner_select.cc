@@ -1698,6 +1698,9 @@ static void do_outliner_range_select(bContext *C,
   /* Select active if under cursor */
   if (active == cursor) {
     outliner_item_select(C, space_outliner, cursor, OL_ITEM_SELECT);
+    if (recurse) {
+      do_outliner_select_recursive(&cursor->subtree, true, in_collection);
+    }
     return;
   }
 
