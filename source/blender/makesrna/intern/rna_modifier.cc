@@ -7787,7 +7787,7 @@ static void rna_def_modifier_grease_pencil_smooth(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  
+
   srna = RNA_def_struct(brna, "GreasePencilSmoothModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Smooth Modifier", "Smooth effect modifier");
   RNA_def_struct_sdna(srna, "GreasePencilSmoothModifierData");
@@ -7803,7 +7803,7 @@ static void rna_def_modifier_grease_pencil_smooth(BlenderRNA *brna)
   rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   RNA_define_lib_overridable(true);
-      
+
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "factor");
   RNA_def_property_range(prop, 0, 1);

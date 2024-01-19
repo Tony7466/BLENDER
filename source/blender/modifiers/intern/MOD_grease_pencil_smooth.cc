@@ -6,16 +6,14 @@
  * \ingroup modifiers
  */
 
-#include "BLI_math_vector_types.hh"
-#include "BLI_task.h"
-#include "BLI_utildefines.h"
+#include "BLI_index_mask.hh"
 
 #include "BLT_translation.h"
 
 #include "BLO_read_write.hh"
 
 #include "DNA_defaults.h"
-#include "DNA_scene_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 
 #include "RNA_access.hh"
@@ -25,7 +23,6 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_modifier.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -37,9 +34,6 @@
 #include "MOD_ui_common.hh"
 
 #include "RNA_prototypes.h"
-
-#include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
 
 namespace blender {
 
@@ -93,10 +87,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void deform_drawing(ModifierData &md,
-                           Depsgraph * /*depsgraph*/,
-                           Object &ob,
-                           bke::greasepencil::Drawing &drawing)
+static void deform_drawing(ModifierData &md, Object &ob, bke::greasepencil::Drawing &drawing)
 {
   GreasePencilSmoothModifierData &mmd = reinterpret_cast<GreasePencilSmoothModifierData &>(md);
 
@@ -116,8 +107,6 @@ static void deform_drawing(ModifierData &md,
   if (!(smooth_position || smooth_radius || smooth_opacity)) {
     return;
   }
-
-  bool changed = false;
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   if (curves.points_num() == 0) {
@@ -189,9 +178,7 @@ static void modify_geometry_set(ModifierData *md,
     return;
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
-
-  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-  const int current_frame = scene->r.cfra;
+  const int current_frame = grease_pencil.runtime->eval_frame;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
@@ -200,7 +187,7 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
+    deform_drawing(*md, *ctx->object, *drawing);
   });
 }
 
@@ -255,8 +242,8 @@ ModifierTypeInfo modifierType_GreasePencilSmooth = {
     /*srna*/ &RNA_GreasePencilSmoothModifier,
     /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/
-    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
-     eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping),
+    eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+        eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping,
     /*icon*/ ICON_SMOOTHCURVE,
 
     /*copy_data*/ blender::copy_data,
