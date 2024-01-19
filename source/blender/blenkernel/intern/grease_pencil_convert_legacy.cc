@@ -19,6 +19,7 @@
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
+#include "DNA_meshdata_types.h"
 
 namespace blender::bke::greasepencil::convert {
 
@@ -66,6 +67,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", AttrDomain::Point);
   SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
       ".selection", AttrDomain::Point);
+  MutableSpan<MDeformVert> dverts = curves.wrap().deform_verts_for_write();
 
   /* Curve Attributes. */
   SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
@@ -126,6 +128,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     MutableSpan<ColorGeometry4f> stroke_vertex_colors = vertex_colors.span.slice(
         stroke_points_range);
     MutableSpan<bool> stroke_selections = selection.span.slice(stroke_points_range);
+    MutableSpan<MDeformVert> stroke_dverts = dverts.slice(stroke_points_range);
 
     /* Do first point. */
     const bGPDspoint &first_pt = stroke_points.first();
@@ -143,6 +146,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     stroke_rotations.first() = first_pt.uv_rot;
     stroke_vertex_colors.first() = ColorGeometry4f(first_pt.vert_color);
     stroke_selections.first() = (first_pt.flag & GP_SPOINT_SELECT) != 0;
+    stroke_dverts.first() = gps->dvert[0];
+    stroke_dverts.first().dw = static_cast<MDeformWeight *>(MEM_dupallocN(gps->dvert[0].dw));
 
     /* Do the rest of the points. */
     for (const int i : stroke_points.index_range().drop_back(1)) {
@@ -156,6 +161,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       stroke_rotations[point_i] = pt.uv_rot;
       stroke_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
       stroke_selections[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
+      stroke_dverts[point_i] = gps->dvert[point_i];
+      stroke_dverts[point_i].dw = static_cast<MDeformWeight *>(
+          MEM_dupallocN(gps->dvert[point_i].dw));
     }
   }
 
