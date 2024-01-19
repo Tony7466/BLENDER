@@ -102,7 +102,7 @@ static void modify_stroke_color(Object *ob,
                                 const GreasePencilColorModifierData &cmd,
                                 bke::CurvesGeometry &curves,
                                 const IndexMask &curves_mask,
-                                const MutableSpan<ColorGeometry4f> point_colors)
+                                const MutableSpan<ColorGeometry4f> vertex_colors)
 {
   const bool use_curve = (cmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -129,7 +129,7 @@ static void modify_stroke_color(Object *ob,
         factor *= curve_factor;
       }
 
-      apply_color_factor(point_colors[point_i], material_color, factor);
+      apply_color_factor(vertex_colors[point_i], material_color, factor);
     }
   });
 }

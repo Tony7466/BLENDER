@@ -164,7 +164,7 @@ static void modify_stroke_color(Object *ob,
                                 const GreasePencilTintModifierData &tmd,
                                 bke::CurvesGeometry &curves,
                                 const IndexMask &curves_mask,
-                                const MutableSpan<ColorGeometry4f> point_colors)
+                                const MutableSpan<ColorGeometry4f> vertex_colors)
 {
   const bool use_weight_as_factor = (tmd.flag & MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR);
   const bool invert_vertex_group = (tmd.influence.flag &
@@ -202,9 +202,9 @@ static void modify_stroke_color(Object *ob,
 
         const IndexRange points = points_by_curve[curve_i];
         for (const int64_t point_i : points) {
-          point_colors[point_i] = apply_uniform_tint(
+          vertex_colors[point_i] = apply_uniform_tint(
               tmd,
-              get_base_color(point_colors[point_i], material_color),
+              get_base_color(vertex_colors[point_i], material_color),
               get_point_factor(point_i));
         }
       });
@@ -226,11 +226,11 @@ static void modify_stroke_color(Object *ob,
 
         const IndexRange points = points_by_curve[curve_i];
         for (const int64_t point_i : points) {
-          point_colors[point_i] = apply_gradient_tint(
+          vertex_colors[point_i] = apply_gradient_tint(
               tmd,
               matrix,
               positions[point_i],
-              get_base_color(point_colors[point_i], material_color),
+              get_base_color(vertex_colors[point_i], material_color),
               get_point_factor(point_i));
         }
       });
