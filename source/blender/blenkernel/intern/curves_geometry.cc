@@ -122,7 +122,7 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
   dst.runtime->evaluated_normal_cache = src.runtime->evaluated_normal_cache;
 
   if (src.runtime->bake_materials) {
-    dst.runtime->bake_materials = std::make_unique<blender::bke::bake::BakeMaterialsList>(
+    dst.runtime->bake_materials = std::make_unique<bake::BakeMaterialsList>(
         *src.runtime->bake_materials);
   }
 }
