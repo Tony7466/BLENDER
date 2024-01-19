@@ -80,4 +80,9 @@ class VKShaderInterface : public ShaderInterface {
       const shader::ShaderCreateInfo::Resource::BindType bind_type);
 };
 
+BLI_INLINE VKShaderInterface *unwrap(ShaderInterface *interface)
+{
+  return static_cast<VKShaderInterface *>(interface);
+}
+
 }  // namespace blender::gpu

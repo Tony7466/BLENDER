@@ -662,7 +662,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     geometry_shader_from_glsl(sources);
   }
 
-  VKShaderInterface *vk_interface = reinterpret_cast<VKShaderInterface *>(interface);
+  VKShaderInterface *vk_interface = unwrap(interface);
 
   const VKDevice &device = VKBackend::get().device_get();
   if (!finalize_descriptor_set_layouts(device.device_get(), *vk_interface, *info)) {
@@ -1003,7 +1003,7 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
 {
   BLI_assert(interface);
 
-  VKShaderInterface &vk_interface = *(reinterpret_cast<VKShaderInterface *>(interface));
+  VKShaderInterface &vk_interface = *unwrap(interface);
 
   std::stringstream ss;
 
@@ -1446,7 +1446,7 @@ const VkSpecializationInfo VKShader::specialization_ensure(
 
 const VKPushConstants::Layout &VKShader::push_constants_layout_get() const
 {
-  VKShaderInterface *vk_interface = reinterpret_cast<VKShaderInterface *>(interface);
+  VKShaderInterface *vk_interface = unwrap(interface);
   return vk_interface->push_constants_layout_get();
 }
 }  // namespace blender::gpu
