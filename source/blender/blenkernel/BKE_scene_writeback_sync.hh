@@ -11,8 +11,8 @@
  * data-blocks after depsgraph evaluation. For some data (e.g. animated properties), this is done
  * during depsgraph evaluation. However, this is not possible in all cases. For example, if the
  * change to the original data adds a new relation between data-blocks, a user-count (#ID.us) has
- * to be increased. However, this counter is not atomic and can therefor not be modified
- * arbitrarily from different threads.
+ * to be increased. This counter is not atomic and can therefore not be modified arbitrarily from
+ * different threads.
  */
 
 #include <functional>
