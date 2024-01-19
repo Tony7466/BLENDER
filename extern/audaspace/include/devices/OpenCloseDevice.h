@@ -22,9 +22,9 @@
  * The OpenCloseDevice class.
  */
 
-#include "devices/SoftwareDevice.h"
-
 #include <thread>
+
+#include "devices/SoftwareDevice.h"
 
 AUD_NAMESPACE_BEGIN
 
@@ -34,76 +34,73 @@ AUD_NAMESPACE_BEGIN
 class AUD_PLUGIN_API OpenCloseDevice : public SoftwareDevice
 {
 private:
-    /**
-     * Whether the device is opened.
-     */
-    bool m_device_opened;
-    
-    /**
-     * Whether there is currently playback.
-     */
-    bool m_playing;
-    
-    /**
-     * Thread used to release the device after time delay.
-     */
-    std::thread m_delayed_close_thread;
-    
-    /**
-     * How long to wait until closing the device..
-     */
-    std::chrono::milliseconds m_device_close_delay;
-    
-    /**
-     * Whether thread released the device.
-     */
-    bool m_delayed_close_finished;
+	/**
+	 * Whether the device is opened.
+	 */
+	bool m_device_opened;
 
-    /**
-     * Time when playback has stopped.
-     */
-    std::chrono::time_point<std::chrono::steady_clock> m_playback_stopped_time;
-    
-    /**
-     * Releases the device after time delay.
-     */
-    void closeAfterDelay();
-    
-    /**
-     * Starts the playback.
-     */
-    AUD_LOCAL virtual void start()=0;
+	/**
+	 * Whether there is currently playback.
+	 */
+	bool m_playing;
 
-    /**
-     * Stops the playbsck.
-     */
-    AUD_LOCAL virtual void stop()=0;
-    
-    /**
-     * Acquires the  device.
-     */
-    AUD_LOCAL virtual void open()=0;
+	/**
+	 * Thread used to release the device after time delay.
+	 */
+	std::thread m_delayed_close_thread;
 
-    /**
-     * Releases the device.
-     */
-    AUD_LOCAL virtual void close()=0;
-    
-    
-    // delete copy constructor and operator=
-    OpenCloseDevice(const OpenCloseDevice&) = delete;
-    OpenCloseDevice& operator=(const OpenCloseDevice&) = delete;
+	/**
+	 * How long to wait until closing the device..
+	 */
+	std::chrono::milliseconds m_device_close_delay;
+
+	/**
+	 * Whether thread released the device.
+	 */
+	bool m_delayed_close_finished;
+
+	/**
+	 * Time when playback has stopped.
+	 */
+	std::chrono::time_point<std::chrono::steady_clock> m_playback_stopped_time;
+
+	/**
+	 * Releases the device after time delay.
+	 */
+	void closeAfterDelay();
+
+	/**
+	 * Starts the playback.
+	 */
+	AUD_LOCAL virtual void start() = 0;
+
+	/**
+	 * Stops the playbsck.
+	 */
+	AUD_LOCAL virtual void stop() = 0;
+
+	/**
+	 * Acquires the  device.
+	 */
+	AUD_LOCAL virtual void open() = 0;
+
+	/**
+	 * Releases the device.
+	 */
+	AUD_LOCAL virtual void close() = 0;
+
+	// delete copy constructor and operator=
+	OpenCloseDevice(const OpenCloseDevice&) = delete;
+	OpenCloseDevice& operator=(const OpenCloseDevice&) = delete;
 
 protected:
-    virtual void playing(bool playing);
-    
-    /**
-     * Empty default constructor. To setup the device call the function create()
-     * and to uninitialize call destroy().
-     */
-    OpenCloseDevice(): m_device_opened(false), m_delayed_close_finished(false), m_playing(false),  m_device_close_delay(std::chrono::milliseconds(10000))
-    {
-    }
+	virtual void playing(bool playing);
+
+	/**
+	 * Empty default constructor. To setup the device call the function create()
+	 * and to uninitialize call destroy().
+	 */
+	OpenCloseDevice() : m_device_opened(false), m_delayed_close_finished(false), m_playing(false), m_device_close_delay(std::chrono::milliseconds(10000)) {}
 };
 
 AUD_NAMESPACE_END

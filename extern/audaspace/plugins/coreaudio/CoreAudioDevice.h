@@ -26,14 +26,15 @@
  * The CoreAudioDevice class.
  */
 
-#include "CoreAudioSynchronizer.h"
-#include "devices/OpenCloseDevice.h"
-
+#include <ctime>
 #include <memory>
 #include <thread>
-#include <ctime>
 
 #include <AudioUnit/AudioUnit.h>
+
+#include "CoreAudioSynchronizer.h"
+
+#include "devices/OpenCloseDevice.h"
 
 AUD_NAMESPACE_BEGIN
 
@@ -68,11 +69,11 @@ private:
 	 * \param buffer_list The list of buffers to be filled.
 	 */
 	AUD_LOCAL static OSStatus CoreAudio_mix(void* data, AudioUnitRenderActionFlags* flags, const AudioTimeStamp* time_stamp, UInt32 bus_number, UInt32 number_frames, AudioBufferList* buffer_list);
-    
-    AUD_LOCAL void start();
-    AUD_LOCAL void stop();
-    AUD_LOCAL void open();
-    AUD_LOCAL void close();
+
+	AUD_LOCAL void start();
+	AUD_LOCAL void stop();
+	AUD_LOCAL void open();
+	AUD_LOCAL void close();
 
 	// delete copy constructor and operator=
 	CoreAudioDevice(const CoreAudioDevice&) = delete;
