@@ -102,6 +102,22 @@ static float sculpt_calc_radius(ViewContext *vc,
   }
 }
 
+bool ED_sculpt_report_if_shape_key_is_locked(const Object *ob, ReportList *reports)
+{
+  SculptSession *ss = ob->sculpt;
+
+  BLI_assert(ss);
+
+  if (ss->shapekey_active && (ss->shapekey_active->flag & KEYBLOCK_LOCKED_SHAPE) != 0) {
+    if (reports) {
+      BKE_reportf(reports, RPT_ERROR, "The active shape key of %s is locked", ob->id.name + 2);
+    }
+    return true;
+  }
+
+  return false;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Sculpt PBVH Abstraction API
  *
@@ -1636,24 +1652,13 @@ const float *SCULPT_brush_frontface_normal_from_falloff_shape(SculptSession *ss,
   return ss->cache->view_normal;
 }
 
-static float frontface(const Brush *br,
-                       const float3 &sculpt_normal,
-                       const float3 &no,
-                       const float3 &fno)
+static float frontface(const Brush &brush, const float3 &view_normal, const float3 &normal)
 {
   using namespace blender;
-  if (!(br->flag & BRUSH_FRONTFACE)) {
+  if (!(brush.flag & BRUSH_FRONTFACE)) {
     return 1.0f;
   }
-
-  float dot;
-  if (no) {
-    dot = math::dot(no, sculpt_normal);
-  }
-  else {
-    dot = math::dot(fno, sculpt_normal);
-  }
-  return dot > 0.0f ? dot : 0.0f;
+  return std::max(math::dot(normal, view_normal), 0.0f);
 }
 
 #if 0
@@ -2400,7 +2405,7 @@ float SCULPT_brush_strength_factor(
 
   /* Falloff curve. */
   avg *= BKE_brush_curve_strength(brush, final_len, cache->radius);
-  avg *= frontface(brush, cache->view_normal, vno, fno);
+  avg *= frontface(*brush, cache->view_normal, vno ? vno : fno);
 
   /* Paint mask. */
   avg *= 1.0f - mask;
@@ -2435,7 +2440,7 @@ void SCULPT_brush_strength_color(
 
   /* Falloff curve. */
   const float falloff = BKE_brush_curve_strength(brush, final_len, cache->radius) *
-                        frontface(brush, cache->view_normal, vno, fno);
+                        frontface(*brush, cache->view_normal, vno ? vno : fno);
 
   /* Paint mask. */
   const float paint_mask = 1.0f - mask;
@@ -5658,6 +5663,11 @@ static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent
   if (SCULPT_tool_is_mask(brush->sculpt_tool)) {
     MultiresModifierData *mmd = BKE_sculpt_multires_active(ss->scene, ob);
     BKE_sculpt_mask_layers_ensure(CTX_data_depsgraph_pointer(C), CTX_data_main(C), ob, mmd);
+  }
+  if (!SCULPT_tool_is_attribute_only(brush->sculpt_tool) &&
+      ED_sculpt_report_if_shape_key_is_locked(ob, op->reports))
+  {
+    return OPERATOR_CANCELLED;
   }
 
   stroke = paint_stroke_new(C,
