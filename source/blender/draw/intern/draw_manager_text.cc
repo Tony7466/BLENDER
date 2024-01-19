@@ -139,7 +139,7 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
 
   const uiStyle *style = UI_style_get();
 
-  BLF_size(font_id, style->widget.points * UI_SCALE_FAC);
+  BLF_size(font_id, style->widgetlabel.points * UI_SCALE_FAC);
 
   BLI_memiter_iter_init(dt->cache_strings, &it);
   while ((vos = static_cast<ViewCachedString *>(BLI_memiter_iter_step(&it)))) {
@@ -152,25 +152,30 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
       /* Use the string and the font_id to calculate the width of the string, then
        * offset x to align text to vertex. */
       if (vos->align_center) {
-        short offset = BLF_width(
-            font_id,
-            (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
-            vos->str_len);
+        float width, height;
+        BLF_width_and_height(font_id,
+                             (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) :
+                                                                       vos->str,
+                             vos->str_len,
+                             &width,
+                             &height);
+        vos->xoffs -= short(width / 2.0f);
+        vos->yoffs -= short(height / 2.0f);
+      }
 
-        vos->xoffs += -offset / 2;
+      if (vos->shadow) {
+        BLF_enable(font_id, BLF_SHADOW);
+        BLF_shadow(font_id, 5, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
+        BLF_shadow_offset(font_id, 0, -1);
       }
 
       BLF_position(
           font_id, float(vos->sco[0] + vos->xoffs), float(vos->sco[1] + vos->yoffs), 2.0f);
 
-      if (vos->shadow) {
-        BLF_enable(font_id, BLF_SHADOW);
-        BLF_shadow(font_id, 5, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
-        BLF_shadow_offset(font_id, 1, -1);
-      }
       BLF_draw(font_id,
                (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
                vos->str_len);
+
       if (vos->shadow) {
         BLF_disable(font_id, BLF_SHADOW);
       }
