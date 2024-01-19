@@ -967,6 +967,12 @@ static int rna_lang_enum_properties_get_no_international(PointerRNA * /*ptr*/)
 static void rna_Addon_module_set(PointerRNA *ptr, const char *value)
 {
   bAddon *addon = (bAddon *)ptr->data;
+
+  /* The module may be empty (for newly created data), skip the preferences search.
+   * Note that changing existing add-ons module isn't a common operation.
+   * Support this to allow for an extension repositories module to change at run-time. */
+  bAddonPrefType *apt = addon->module[0] ? BKE_addon_pref_type_find(addon->module, true) : nullptr;
+
   size_t module_len = STRNCPY_UTF8_RLEN(addon->module, value);
 
   /* Reserve half of `bAddon::module` for a package component.
@@ -990,6 +996,11 @@ static void rna_Addon_module_set(PointerRNA *ptr, const char *value)
       submodule_beg[submodule_len_limit] = '\0';
       BLI_str_utf8_invalid_strip(submodule_beg, submodule_len_limit);
     }
+  }
+
+  if (apt) {
+    /* Keep the associated preferences. */
+    STRNCPY(apt->idname, addon->module);
   }
 }
 
@@ -5411,13 +5422,13 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "(default setting used for new Scenes)");
 
   prop = RNA_def_property(srna, "use_keyframe_insert_available", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_INSERTAVAILABLE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", AUTOKEY_FLAG_INSERTAVAILABLE);
   RNA_def_property_ui_text(prop,
                            "Auto Keyframe Insert Available",
                            "Automatic keyframe insertion in available F-Curves");
 
   prop = RNA_def_property(srna, "use_auto_keying_warning", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_NOWARNING);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "keying_flag", AUTOKEY_FLAG_NOWARNING);
   RNA_def_property_ui_text(
       prop,
       "Show Auto Keying Warning",
@@ -5432,18 +5443,23 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Default Key Channels",
                            "Which channels to insert keys at when no keying set is active");
 
+  prop = RNA_def_property(srna, "use_auto_keyframe_insert_needed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", AUTOKEY_FLAG_INSERTNEEDED);
+  RNA_def_property_ui_text(
+      prop, "Autokey Insert Needed", "Auto-Keyframe insertion only when keyframe needed");
+
   prop = RNA_def_property(srna, "use_keyframe_insert_needed", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_INSERTNEEDED);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", MANUALKEY_FLAG_INSERTNEEDED);
   RNA_def_property_ui_text(
       prop, "Keyframe Insert Needed", "Keyframe insertion only when keyframe needed");
 
   prop = RNA_def_property(srna, "use_visual_keying", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_VISUALKEY);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", KEYING_FLAG_VISUALKEY);
   RNA_def_property_ui_text(
       prop, "Visual Keying", "Use Visual keying automatically for constrained objects");
 
   prop = RNA_def_property(srna, "use_insertkey_xyz_to_rgb", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_XYZ2RGB);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", KEYING_FLAG_XYZ2RGB);
   RNA_def_property_ui_text(
       prop,
       "New F-Curve Colors - XYZ to RGB",
