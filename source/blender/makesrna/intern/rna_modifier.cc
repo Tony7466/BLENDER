@@ -7719,7 +7719,6 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
-
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
