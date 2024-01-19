@@ -55,8 +55,9 @@
 #include "BKE_anim_visualization.h"
 #include "BKE_armature.hh"
 #include "BKE_colortools.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h" /* for G */
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
@@ -1882,7 +1883,8 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
         }
         LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
           if (nodeCountSocketLinks(ntree, sock) == 0 &&
-              !((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0)) {
+              !((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0))
+          {
             bNodeSocket *gsock = do_versions_node_group_add_socket_2_56_2(
                 ntree, sock->name, sock->type, SOCK_OUT);
 

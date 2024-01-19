@@ -19,6 +19,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_key.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_report.h"
@@ -235,8 +236,7 @@ int ED_mesh_uv_add(
     name = DATA_("UVMap");
   }
 
-  char unique_name[MAX_CUSTOMDATA_LAYER_NAME];
-  BKE_id_attribute_calc_unique_name(&mesh->id, name, unique_name);
+  const std::string unique_name = BKE_id_attribute_calc_unique_name(mesh->id, name);
   bool is_init = false;
 
   if (mesh->edit_mesh) {
@@ -248,7 +248,7 @@ int ED_mesh_uv_add(
       return -1;
     }
 
-    BM_data_layer_add_named(em->bm, &em->bm->ldata, CD_PROP_FLOAT2, unique_name);
+    BM_data_layer_add_named(em->bm, &em->bm->ldata, CD_PROP_FLOAT2, unique_name.c_str());
     BM_uv_map_ensure_select_and_pin_attrs(em->bm);
     /* copy data from active UV */
     if (layernum_dst && do_init) {
@@ -274,14 +274,17 @@ int ED_mesh_uv_add(
           CD_PROP_FLOAT2,
           MEM_dupallocN(CustomData_get_layer(&mesh->corner_data, CD_PROP_FLOAT2)),
           mesh->corners_num,
-          unique_name,
+          unique_name.c_str(),
           nullptr);
 
       is_init = true;
     }
     else {
-      CustomData_add_layer_named(
-          &mesh->corner_data, CD_PROP_FLOAT2, CD_SET_DEFAULT, mesh->corners_num, unique_name);
+      CustomData_add_layer_named(&mesh->corner_data,
+                                 CD_PROP_FLOAT2,
+                                 CD_SET_DEFAULT,
+                                 mesh->corners_num,
+                                 unique_name.c_str());
     }
 
     if (active_set || layernum_dst == 0) {
@@ -438,8 +441,7 @@ bool ED_mesh_color_ensure(Mesh *mesh, const char *name)
     return true;
   }
 
-  char unique_name[MAX_CUSTOMDATA_LAYER_NAME];
-  BKE_id_attribute_calc_unique_name(&mesh->id, name, unique_name);
+  const std::string unique_name = BKE_id_attribute_calc_unique_name(mesh->id, name);
   if (!mesh->attributes_for_write().add(unique_name,
                                         bke::AttrDomain::Corner,
                                         CD_PROP_BYTE_COLOR,
@@ -448,8 +450,8 @@ bool ED_mesh_color_ensure(Mesh *mesh, const char *name)
     return false;
   }
 
-  BKE_id_attributes_active_color_set(&mesh->id, unique_name);
-  BKE_id_attributes_default_color_set(&mesh->id, unique_name);
+  BKE_id_attributes_active_color_set(&mesh->id, unique_name.c_str());
+  BKE_id_attributes_default_color_set(&mesh->id, unique_name.c_str());
   BKE_mesh_tessface_clear(mesh);
   DEG_id_tag_update(&mesh->id, 0);
 
@@ -1108,6 +1110,13 @@ void ED_mesh_report_mirror_ex(wmOperator *op, int totmirr, int totfail, char sel
 void ED_mesh_report_mirror(wmOperator *op, int totmirr, int totfail)
 {
   ED_mesh_report_mirror_ex(op, totmirr, totfail, SCE_SELECT_VERTEX);
+}
+
+KeyBlock *ED_mesh_get_edit_shape_key(const Mesh *me)
+{
+  BLI_assert(me->edit_mesh && me->edit_mesh->bm);
+
+  return BKE_keyblock_find_by_index(me->key, me->edit_mesh->bm->shapenr - 1);
 }
 
 Mesh *ED_mesh_context(bContext *C)

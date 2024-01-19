@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup imbuf
  */
 
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_colormanagement_intern.hh"
 
 #include <cmath>
 #include <cstring>
@@ -16,14 +16,15 @@
 #include "DNA_image_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
-#include "IMB_filetype.h"
-#include "IMB_filter.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
-#include "IMB_moviecache.h"
+#include "IMB_filetype.hh"
+#include "IMB_filter.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
+#include "IMB_moviecache.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -1572,7 +1573,8 @@ static void display_buffer_apply_get_linear_buffer(DisplayBufferThread *handle,
 
     /* first convert byte buffer to float, keep in image space */
     for (i = 0, fp = linear_buffer, cp = byte_buffer; i != i_last;
-         i++, fp += channels, cp += channels) {
+         i++, fp += channels, cp += channels)
+    {
       if (channels == 3) {
         rgb_uchar_to_float(fp, cp);
       }

@@ -7,11 +7,13 @@
  * \ingroup bke
  */
 #include "BLI_compiler_attrs.h"
+#include "BLI_function_ref.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_span.hh"
 
 #include "DNA_modifier_types.h" /* Needed for all enum type definitions. */
 
-#include "BKE_customdata.hh"
+#include "DNA_customdata_types.h"
 
 namespace blender::bke {
 struct GeometrySet;
@@ -32,6 +34,7 @@ struct ModifierData;
 struct Object;
 struct Scene;
 struct StructRNA;
+struct IDCacheKey;
 
 enum class ModifierTypeType {
   /* Should not be used, only for None modifier type */
@@ -67,6 +70,22 @@ enum class ModifierTypeType {
 enum ModifierTypeFlag {
   eModifierTypeFlag_AcceptsMesh = (1 << 0),
   eModifierTypeFlag_AcceptsCVs = (1 << 1),
+  /**
+   * Modifiers that enable this flag can have the modifiers "On Cage" option toggled,
+   * see: #eModifierMode_OnCage, where the output of the modifier can be selected directly.
+   * In some cases the cage geometry use read to tool code as well (loop-cut & knife are examples).
+   *
+   * When set, geometry from the resulting mesh can be mapped back to the original indices
+   * via #CD_ORIGINDEX.
+   *
+   * While many modifiers using this flag preserve the order of geometry arrays,
+   * this isn't always the case, this flag doesn't imply #ModifierTypeType::OnlyDeform.
+   * Geometry from the original mesh may be removed from the resulting mesh or new geometry
+   * may be added (where the #CD_ORIGINDEX value will be #ORIGINDEX_NONE).
+   *
+   * Modifiers that create entirely new geometry from the input should not enable this flag
+   * because none of the geometry will be selectable when "On Cage" is enabled.
+   */
   eModifierTypeFlag_SupportsMapping = (1 << 2),
   eModifierTypeFlag_SupportsEditmode = (1 << 3),
 
@@ -105,7 +124,7 @@ enum ModifierTypeFlag {
   /** Accepts #GreasePencil data input. */
   eModifierTypeFlag_AcceptsGreasePencil = (1 << 12),
 };
-ENUM_OPERATORS(ModifierTypeFlag, eModifierTypeFlag_AcceptsBMesh)
+ENUM_OPERATORS(ModifierTypeFlag, eModifierTypeFlag_AcceptsGreasePencil)
 
 using IDWalkFunc = void (*)(void *user_data, Object *ob, ID **idpoin, int cb_flag);
 using TexWalkFunc = void (*)(void *user_data, Object *ob, ModifierData *md, const char *propname);
@@ -174,7 +193,7 @@ struct ModifierTypeInfo {
    * Copy instance data for this modifier type. Should copy all user
    * level settings to the target modifier.
    *
-   * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+   * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
    */
   void (*copy_data)(const ModifierData *md, ModifierData *target, int flag);
 
@@ -364,6 +383,14 @@ struct ModifierTypeInfo {
    * not been written (e.g. runtime data) can be reset.
    */
   void (*blend_read)(BlendDataReader *reader, ModifierData *md);
+
+  /**
+   * Iterate over all cache pointers of given modifier. Also see #IDTypeInfo::foreach_cache.
+   */
+  void (*foreach_cache)(
+      Object *object,
+      ModifierData *md,
+      blender::FunctionRef<void(const IDCacheKey &cache_key, void **cache_p, uint flags)> fn);
 };
 
 /* Used to set a modifier's panel type. */

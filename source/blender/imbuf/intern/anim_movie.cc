@@ -51,15 +51,15 @@
 #  include "AVI_avi.h"
 #endif
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_colormanagement_intern.hh"
 
-#include "IMB_anim.h"
-#include "IMB_indexer.h"
-#include "IMB_metadata.h"
+#include "IMB_anim.hh"
+#include "IMB_indexer.hh"
+#include "IMB_metadata.hh"
 
 #ifdef WITH_FFMPEG
 #  include "BKE_global.h" /* ENDIAN_ORDER */
@@ -1549,6 +1549,30 @@ ImBuf *IMB_anim_previewframe(anim *anim)
     IMB_freeImBuf(ibuf);
     position = anim->duration_in_frames / 2;
     ibuf = IMB_anim_absolute(anim, position, IMB_TC_NONE, IMB_PROXY_NONE);
+
+    char value[128];
+    IMB_metadata_ensure(&ibuf->metadata);
+    SNPRINTF(value, "%i", anim->x);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Width", value);
+    SNPRINTF(value, "%i", anim->y);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Height", value);
+    SNPRINTF(value, "%i", anim->duration_in_frames);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Frames", value);
+
+#ifdef WITH_FFMPEG
+    if (anim->pFormatCtx && anim->curtype == ANIM_FFMPEG) {
+      AVStream *v_st = anim->pFormatCtx->streams[anim->videoStream];
+      AVRational frame_rate = av_guess_frame_rate(anim->pFormatCtx, v_st, nullptr);
+      if (frame_rate.num != 0) {
+        double duration = anim->duration_in_frames / av_q2d(frame_rate);
+        SNPRINTF(value, "%g", av_q2d(frame_rate));
+        IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::FPS", value);
+        SNPRINTF(value, "%g", duration);
+        IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Duration", value);
+        IMB_metadata_set_field(ibuf->metadata, "Thumb::Video::Codec", anim->pCodec->long_name);
+      }
+    }
+#endif
   }
   return ibuf;
 }

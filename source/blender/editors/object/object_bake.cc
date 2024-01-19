@@ -19,6 +19,7 @@
 #include "DNA_world_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.hh"
@@ -26,6 +27,7 @@
 #include "BKE_blender.h"
 #include "BKE_cdderivedmesh.h"
 #include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_material.h"
@@ -41,10 +43,8 @@
 #include "RE_pipeline.h"
 #include "RE_texture.h"
 
-#include "PIL_time.h"
-
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

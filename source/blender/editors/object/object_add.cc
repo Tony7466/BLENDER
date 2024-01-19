@@ -54,6 +54,7 @@
 #include "BKE_curve.hh"
 #include "BKE_curve_to_mesh.hh"
 #include "BKE_curves.h"
+#include "BKE_customdata.hh"
 #include "BKE_displist.h"
 #include "BKE_duplilist.h"
 #include "BKE_effect.h"
@@ -67,9 +68,9 @@
 #include "BKE_key.h"
 #include "BKE_lattice.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_light.h"
 #include "BKE_lightprobe.h"
@@ -83,7 +84,7 @@
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_particle.h"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_speaker.h"
@@ -4227,7 +4228,7 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
        *
        * The caller is responsible for ensuring the selection state gives useful results.
        * Link/append does this using #FILE_AUTOSELECT. */
-      ED_view3d_snap_selected_to_location(C, cursor, V3D_AROUND_ACTIVE);
+      ED_view3d_snap_selected_to_location(C, op, cursor, V3D_AROUND_ACTIVE);
     }
   }
 

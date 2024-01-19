@@ -31,8 +31,6 @@ struct CustomDataTransferLayerMap;
 struct ID;
 struct MeshPairRemap;
 
-using eCustomDataMask = uint64_t;
-
 /* These names are used as prefixes for UV layer names to find the associated boolean
  * layers. They should never be longer than 2 chars, as #MAX_CUSTOMDATA_LAYER_NAME
  * has 4 extra bytes above what can be used for the base layer name, and these
@@ -397,7 +395,7 @@ BMCustomDataCopyMap CustomData_bmesh_copy_map_calc(const CustomData &src,
 void CustomData_bmesh_copy_block(CustomData &dst_data,
                                  const BMCustomDataCopyMap &map,
                                  const void *src_block,
-                                 void **dest_block);
+                                 void **dst_block);
 
 /**
  * Copies data of a single layer of a given type.
@@ -801,7 +799,5 @@ void CustomData_debug_info_from_layers(const CustomData *data, const char *inden
 #endif /* !NDEBUG */
 
 namespace blender::bke {
-const CPPType *custom_data_type_to_cpp_type(eCustomDataType type);
-eCustomDataType cpp_type_to_custom_data_type(const CPPType &type);
 std::optional<VolumeGridType> custom_data_type_to_volume_grid_type(eCustomDataType type);
 }  // namespace blender::bke

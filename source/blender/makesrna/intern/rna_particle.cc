@@ -141,6 +141,7 @@ static const EnumPropertyItem part_fluid_type_items[] = {
 #  include "BKE_boids.h"
 #  include "BKE_cloth.hh"
 #  include "BKE_context.hh"
+#  include "BKE_customdata.hh"
 #  include "BKE_deform.h"
 #  include "BKE_effect.h"
 #  include "BKE_material.h"
@@ -1206,7 +1207,7 @@ static size_t rna_ParticleTarget_name_get_impl(PointerRNA *ptr,
     }
   }
 
-  return BLI_strncpy_rlen(value, TIP_("Invalid target!"), value_maxncpy);
+  return BLI_strncpy_rlen(value, RPT_("Invalid target!"), value_maxncpy);
 }
 
 static void rna_ParticleTarget_name_get(PointerRNA *ptr, char *value)

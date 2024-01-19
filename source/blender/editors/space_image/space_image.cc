@@ -22,8 +22,8 @@
 #include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_screen.hh"
 
@@ -33,7 +33,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_image.hh"
 #include "ED_mask.hh"
@@ -54,7 +54,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "image_intern.hh"
 
@@ -1012,7 +1012,8 @@ static void image_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemappe
   SpaceImage *simg = (SpaceImage *)slink;
 
   if (!BKE_id_remapper_has_mapping_for(mappings,
-                                       FILTER_ID_IM | FILTER_ID_GD_LEGACY | FILTER_ID_MSK)) {
+                                       FILTER_ID_IM | FILTER_ID_GD_LEGACY | FILTER_ID_MSK))
+  {
     return;
   }
 

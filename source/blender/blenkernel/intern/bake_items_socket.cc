@@ -11,15 +11,6 @@
 
 namespace blender::bke::bake {
 
-static const CPPType &get_socket_cpp_type(const eNodeSocketDatatype socket_type)
-{
-  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
-  BLI_assert(typeinfo);
-  BLI_assert(typeinfo->geometry_nodes_cpp_type);
-  return *typeinfo->geometry_nodes_cpp_type;
-}
-
 Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<void *> socket_values,
                                                                   const BakeSocketConfig &config)
 {
@@ -193,11 +184,20 @@ static void rename_attributes(const Span<GeometrySet *> geometries,
       GeometryComponent &component = geometry->get_component_for_write(type);
       MutableAttributeAccessor attributes = *component.attributes_for_write();
       for (const MapItem<std::string, AnonymousAttributeIDPtr> &attribute_item :
-           attribute_map.items()) {
+           attribute_map.items())
+      {
         attributes.rename(attribute_item.key, *attribute_item.value);
       }
     }
   }
+}
+
+static void default_initialize_socket_value(const eNodeSocketDatatype socket_type, void *r_value)
+{
+  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
+  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  typeinfo->geometry_nodes_cpp_type->copy_construct(typeinfo->geometry_nodes_default_cpp_value,
+                                                    r_value);
 }
 
 void move_bake_items_to_socket_values(
@@ -213,11 +213,10 @@ void move_bake_items_to_socket_values(
 
   for (const int i : bake_items.index_range()) {
     const eNodeSocketDatatype socket_type = config.types[i];
-    const CPPType &type = get_socket_cpp_type(socket_type);
     BakeItem *bake_item = bake_items[i];
     void *r_socket_value = r_socket_values[i];
     if (bake_item == nullptr) {
-      type.value_initialize(r_socket_value);
+      default_initialize_socket_value(socket_type, r_socket_value);
       continue;
     }
     if (!copy_bake_item_to_socket_value(
@@ -227,7 +226,7 @@ void move_bake_items_to_socket_values(
             attribute_map,
             r_socket_value))
     {
-      type.value_initialize(r_socket_value);
+      default_initialize_socket_value(socket_type, r_socket_value);
       continue;
     }
     if (socket_type == SOCK_GEOMETRY) {
@@ -252,11 +251,10 @@ void copy_bake_items_to_socket_values(
 
   for (const int i : bake_items.index_range()) {
     const eNodeSocketDatatype socket_type = config.types[i];
-    const CPPType &type = get_socket_cpp_type(socket_type);
     const BakeItem *bake_item = bake_items[i];
     void *r_socket_value = r_socket_values[i];
     if (bake_item == nullptr) {
-      type.value_initialize(r_socket_value);
+      default_initialize_socket_value(socket_type, r_socket_value);
       continue;
     }
     if (!copy_bake_item_to_socket_value(
@@ -266,7 +264,7 @@ void copy_bake_items_to_socket_values(
             attribute_map,
             r_socket_value))
     {
-      type.value_initialize(r_socket_value);
+      default_initialize_socket_value(socket_type, r_socket_value);
       continue;
     }
     if (socket_type == SOCK_GEOMETRY) {
