@@ -28,8 +28,6 @@
 #endif
 #include "MEM_guardedalloc.h"
 
-#include "PIL_time.h"
-
 #include "CLG_log.h"
 
 #include "BLI_fileops.h"
@@ -39,6 +37,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "IMB_colormanagement.h"
@@ -64,7 +63,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "wm_window_private.h"
+#include "wm_window_private.hh"
 
 #include "WM_api.hh" /* Only for #WM_main_playanim. */
 
@@ -154,19 +153,19 @@ static bool buffer_from_filepath(const char *filepath,
 enum eWS_Qual {
   WS_QUAL_LSHIFT = (1 << 0),
   WS_QUAL_RSHIFT = (1 << 1),
-  WS_QUAL_SHIFT = (WS_QUAL_LSHIFT | WS_QUAL_RSHIFT),
+#define WS_QUAL_SHIFT (WS_QUAL_LSHIFT | WS_QUAL_RSHIFT)
   WS_QUAL_LALT = (1 << 2),
   WS_QUAL_RALT = (1 << 3),
-  WS_QUAL_ALT = (WS_QUAL_LALT | WS_QUAL_RALT),
+#define WS_QUAL_ALT (WS_QUAL_LALT | WS_QUAL_RALT)
   WS_QUAL_LCTRL = (1 << 4),
   WS_QUAL_RCTRL = (1 << 5),
-  WS_QUAL_CTRL = (WS_QUAL_LCTRL | WS_QUAL_RCTRL),
+#define WS_QUAL_CTRL (WS_QUAL_LCTRL | WS_QUAL_RCTRL)
   WS_QUAL_LMOUSE = (1 << 16),
   WS_QUAL_MMOUSE = (1 << 17),
   WS_QUAL_RMOUSE = (1 << 18),
-  WS_QUAL_MOUSE = (WS_QUAL_LMOUSE | WS_QUAL_MMOUSE | WS_QUAL_RMOUSE),
+#define WS_QUAL_MOUSE (WS_QUAL_LMOUSE | WS_QUAL_MMOUSE | WS_QUAL_RMOUSE)
 };
-ENUM_OPERATORS(eWS_Qual, WS_QUAL_MOUSE)
+ENUM_OPERATORS(eWS_Qual, WS_QUAL_RMOUSE)
 
 struct GhostData {
   GHOST_SystemHandle system;
@@ -351,7 +350,7 @@ struct PlayAnimPict {
 /**
  * Various globals relating to playback.
  * \note Avoid adding members here where possible,
- * prefer #PlayState or one of it's members where possible.
+ * prefer #PlayState or one of its members where possible.
  */
 static struct {
   bool from_disk;
@@ -487,7 +486,7 @@ static int pupdate_time()
 {
   static double time_last;
 
-  double time = PIL_check_seconds_timer();
+  double time = BLI_check_seconds_timer();
 
   g_playanim.total_time += (time - time_last);
   time_last = time;
@@ -653,7 +652,7 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
  * \param draw_flip: X/Y flipping (ignored when null).
  * \param frame_indicator_factor: Display a vertical frame-indicator (ignored when -1).
  */
-static void playanim_toscreen_ex(GhostData *data,
+static void playanim_toscreen_ex(GhostData *ghost_data,
                                  const PlayDisplayContext *display_ctx,
                                  const PlayAnimPict *picture,
                                  ImBuf *ibuf,
@@ -664,11 +663,11 @@ static void playanim_toscreen_ex(GhostData *data,
                                  const bool draw_flip[2],
                                  const float frame_indicator_factor)
 {
-  GHOST_ActivateWindowDrawingContext(data->window);
+  GHOST_ActivateWindowDrawingContext(ghost_data->window);
   GPU_render_begin();
 
   GPUContext *restore_context = GPU_context_active_get();
-  GPU_context_active_set(data->gpu_context);
+  GPU_context_active_set(ghost_data->gpu_context);
 
   GPU_clear_color(0.1f, 0.1f, 0.1f, 0.0f);
 
@@ -723,7 +722,7 @@ static void playanim_toscreen_ex(GhostData *data,
                picture->error_message ? picture->error_message : "<unknown error>");
     }
 
-    playanim_window_get_size(data->window, &sizex, &sizey);
+    playanim_window_get_size(ghost_data->window, &sizex, &sizey);
     fsizex_inv = 1.0f / sizex;
     fsizey_inv = 1.0f / sizey;
 
@@ -776,7 +775,7 @@ static void playanim_toscreen_ex(GhostData *data,
     GPU_flush();
   }
 
-  GHOST_SwapWindowBuffers(data->window);
+  GHOST_SwapWindowBuffers(ghost_data->window);
   GPU_context_active_set(restore_context);
   GPU_render_end();
 }
@@ -920,7 +919,8 @@ static void build_pict_list_from_image_sequence(ListBase *picsbase,
     void *mem = nullptr;
     size_t size = -1;
     if (!buffer_from_filepath(
-            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message)) {
+            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message))
+    {
       has_error = true;
       size = 0;
     }
@@ -1065,7 +1065,7 @@ static void playanim_change_frame(PlayState *ps)
   int sizex, sizey;
   playanim_window_get_size(ps->ghost_data.window, &sizex, &sizey);
   const int i_last = static_cast<PlayAnimPict *>(ps->picsbase.last)->frame;
-  /* Without this the frame-indicator location isn't closest to the cursor.  */
+  /* Without this the frame-indicator location isn't closest to the cursor. */
   const int correct_rounding = (sizex / i_last) / 2;
   const int i = clamp_i((i_last * (ps->frame_cursor_x + correct_rounding)) / sizex, 0, i_last);
 
@@ -1143,11 +1143,11 @@ static void playanim_audio_stop(PlayState * /*ps*/)
 #endif
 }
 
-static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
+static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr ps_void_ptr)
 {
-  PlayState *ps = static_cast<PlayState *>(ps_void);
-  const GHOST_TEventType type = GHOST_GetEventType(evt);
-  GHOST_TEventDataPtr data = GHOST_GetEventData(evt);
+  PlayState *ps = static_cast<PlayState *>(ps_void_ptr);
+  const GHOST_TEventType type = GHOST_GetEventType(ghost_event);
+  GHOST_TEventDataPtr data = GHOST_GetEventData(ghost_event);
   /* Convert ghost event into value keyboard or mouse. */
   const int val = ELEM(type, GHOST_kEventKeyDown, GHOST_kEventButtonDown);
   GHOST_SystemHandle ghost_system = ps->ghost_data.system;
@@ -1712,6 +1712,11 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
   ps.font_id = -1;
 
+  IMB_init();
+#ifdef WITH_FFMPEG
+  IMB_ffmpeg_init();
+#endif
+
   STRNCPY(ps.display_ctx.display_settings.display_device,
           IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DEFAULT_BYTE));
   IMB_colormanagement_init_default_view_settings(&ps.display_ctx.view_settings,
@@ -1918,7 +1923,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
       short frs_sec = 25;
       float frs_sec_base = 1.0;
 
-      IMB_anim_get_fps(anim_movie, &frs_sec, &frs_sec_base, true);
+      IMB_anim_get_fps(anim_movie, true, &frs_sec, &frs_sec_base);
 
       g_playanim.fps_movie = double(frs_sec) / double(frs_sec_base);
       /* Enforce same fps for movie as sound. */
@@ -2017,7 +2022,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 #endif
 
         while (pupdate_time()) {
-          PIL_sleep_ms(1);
+          BLI_sleep_ms(1);
         }
         g_playanim.total_time -= g_playanim.swap_time;
         playanim_toscreen(&ps, ps.picture, ibuf);
@@ -2048,7 +2053,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
       }
       playanim_change_frame(&ps);
       if (!has_event) {
-        PIL_sleep_ms(1);
+        BLI_sleep_ms(1);
       }
       if (ps.wait) {
         continue;
@@ -2145,7 +2150,8 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
   BLF_exit();
 
   /* NOTE: Must happen before GPU Context destruction as GPU resources are released via
-   * Colour Management module. */
+   * Color Management module.
+   * NOTE: there is no #IMB_ffmpeg_exit. */
   IMB_exit();
 
   if (ps.ghost_data.gpu_context) {
