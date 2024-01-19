@@ -18,8 +18,8 @@
 #include "BKE_node.hh"
 #include "BKE_scene.h"
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
@@ -465,7 +465,9 @@ class RealtimeCompositor {
  public:
   RealtimeCompositor(Render &render, const ContextInputData &input_data) : render_(render)
   {
-    BLI_assert(!BLI_thread_is_main());
+    /* Ensure that in foreground mode we are using different contexts for main and render threads,
+     * to avoid them blocking each other. */
+    BLI_assert(!BLI_thread_is_main() || G.background);
 
     /* Create resources with GPU context enabled. */
     DRW_render_context_enable(&render_);
@@ -499,7 +501,9 @@ class RealtimeCompositor {
   /* Evaluate the compositor and output to the scene render result. */
   void execute(const ContextInputData &input_data)
   {
-    BLI_assert(!BLI_thread_is_main());
+    /* Ensure that in foreground mode we are using different contexts for main and render threads,
+     * to avoid them blocking each other. */
+    BLI_assert(!BLI_thread_is_main() || G.background);
 
     DRW_render_context_enable(&render_);
     context_->update_input_data(input_data);

@@ -16,10 +16,9 @@
 #include "BLI_math_rotation.h"
 #include "BLI_sort.hh"
 #include "BLI_task.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
-
-#include "PIL_time.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_camera.h"
@@ -32,7 +31,7 @@
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
@@ -316,7 +315,8 @@ void lineart_edge_cut(LineartData *ld,
      * flags. See LineartEdgeSegment::shadow_mask_bits for details. */
     if (shadow_bits == LRT_SHADOW_MASK_ENCLOSED_SHAPE) {
       if (seg->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED ||
-          e->flags & LRT_EDGE_FLAG_LIGHT_CONTOUR) {
+          e->flags & LRT_EDGE_FLAG_LIGHT_CONTOUR)
+      {
         seg->shadow_mask_bits |= LRT_SHADOW_MASK_INHIBITED;
       }
       else if (seg->shadow_mask_bits & LRT_SHADOW_MASK_SHADED) {
@@ -1691,7 +1691,8 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
 
   if (real_edges[i % 3] >= 0) {
     if (ld->conf.use_crease && ld->conf.sharp_as_crease &&
-        e_feat_data->sharp_edges[real_edges[i % 3]]) {
+        e_feat_data->sharp_edges[real_edges[i % 3]])
+    {
       edge_flag_result |= LRT_EDGE_FLAG_CREASE;
     }
 
@@ -2570,7 +2571,7 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
 
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_check_seconds_timer();
   }
 
   int thread_count = ld->thread_count;
@@ -2680,7 +2681,7 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
   }
 
   if (G.debug_value == 4000) {
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_check_seconds_timer() - t_start;
     printf("Line art loading time: %lf\n", t_elapsed);
     printf("Discarded %d object from bound box check\n", bound_box_discard_count);
   }
@@ -2878,7 +2879,8 @@ static bool lineart_triangle_edge_image_space_occlusion(const LineartTriangle *t
   dot_f = dot_v3v3_db(dir_cam, tri->gn);
 
   if ((e->flags & LRT_EDGE_FLAG_PROJECTED_SHADOW) &&
-      (e->target_reference == tri->target_reference)) {
+      (e->target_reference == tri->target_reference))
+  {
     if (((dot_f > 0) && (e->flags & LRT_EDGE_FLAG_SHADOW_FACING_LIGHT)) ||
         ((dot_f < 0) && !(e->flags & LRT_EDGE_FLAG_SHADOW_FACING_LIGHT)))
     {
@@ -4277,19 +4279,23 @@ static void lineart_bounding_area_link_edge(LineartData *ld,
   }
   else {
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[0])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[0]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[0], e);
     }
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[1])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[1]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[1], e);
     }
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[2])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[2]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[2], e);
     }
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[3])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[3]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[3], e);
     }
   }
@@ -4562,7 +4568,8 @@ static void lineart_add_triangles_worker(TaskPool *__restrict /*pool*/, LineartI
   // int _dir_control = 0; /* UNUSED */
   while (lineart_schedule_new_triangle_task(th)) {
     for (LineartElementLinkNode *eln = th->pending_from; eln != th->pending_to->next;
-         eln = eln->next) {
+         eln = eln->next)
+    {
       int index_start = eln == th->pending_from ? th->index_from : 0;
       int index_end = eln == th->pending_to ? th->index_to : eln->element_count;
       LineartTriangle *tri = static_cast<LineartTriangle *>(
@@ -4708,7 +4715,7 @@ void lineart_main_add_triangles(LineartData *ld)
 {
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_check_seconds_timer();
   }
 
   /* Initialize per-thread data for thread task scheduling information and storing intersection
@@ -4731,7 +4738,7 @@ void lineart_main_add_triangles(LineartData *ld)
   lineart_destroy_isec_thread(&d);
 
   if (G.debug_value == 4000) {
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_check_seconds_timer() - t_start;
     printf("Line art intersection time: %f\n", t_elapsed);
   }
 }
@@ -4998,7 +5005,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
 
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_check_seconds_timer();
   }
 
   bool use_render_camera_override = false;
@@ -5172,7 +5179,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   if (G.debug_value == 4000) {
     lineart_count_and_print_render_buffer_memory(ld);
 
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_check_seconds_timer() - t_start;
     printf("Line art total time: %lf\n", t_elapsed);
   }
 

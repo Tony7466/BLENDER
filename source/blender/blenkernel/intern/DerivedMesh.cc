@@ -41,7 +41,7 @@
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
@@ -79,7 +79,7 @@ using blender::bke::GeometrySet;
 using blender::bke::MeshComponent;
 
 /* very slow! enable for testing only! */
-//#define USE_MODIFIER_VALIDATE
+// #define USE_MODIFIER_VALIDATE
 
 #ifdef USE_MODIFIER_VALIDATE
 #  define ASSERT_IS_VALID_MESH(mesh) \
@@ -357,9 +357,9 @@ static float (*get_orco_coords(Object *ob, BMEditMesh *em, int layer, int *free)
     if (!em) {
       ClothModifierData *clmd = (ClothModifierData *)BKE_modifiers_findby_type(
           ob, eModifierType_Cloth);
-      if (clmd) {
-        KeyBlock *kb = BKE_keyblock_from_key(BKE_key_from_object(ob),
-                                             clmd->sim_parms->shapekey_rest);
+      if (clmd && clmd->sim_parms->shapekey_rest) {
+        KeyBlock *kb = BKE_keyblock_find_by_index(BKE_key_from_object(ob),
+                                                  clmd->sim_parms->shapekey_rest);
 
         if (kb && kb->data) {
           return (float(*)[3])kb->data;
@@ -674,7 +674,8 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
     }
 
     if ((mti->flags & eModifierTypeFlag_RequiresOriginalData) &&
-        have_non_onlydeform_modifiers_applied) {
+        have_non_onlydeform_modifiers_applied)
+    {
       BKE_modifier_set_error(ob, md, "Modifier requires original data, bad stack position");
       continue;
     }
@@ -761,7 +762,8 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
          * These are created when either requested by evaluation, or if
          * following modifiers requested them. */
         if (need_mapping ||
-            ((nextmask.vmask | nextmask.emask | nextmask.pmask) & CD_MASK_ORIGINDEX)) {
+            ((nextmask.vmask | nextmask.emask | nextmask.pmask) & CD_MASK_ORIGINDEX))
+        {
           /* calc */
           CustomData_add_layer(
               &mesh_final->vert_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh_final->verts_num);

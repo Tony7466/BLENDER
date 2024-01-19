@@ -24,7 +24,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
@@ -142,6 +142,12 @@ static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEven
 
   const int current_frame = scene->r.cfra;
   bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
+
+  if (!active_layer.is_editable()) {
+    BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
+    return OPERATOR_CANCELLED;
+  }
+
   /* If there is no drawing at the current frame and auto-key is off, then */
   if (!active_layer.has_drawing_at(current_frame) && !blender::animrig::is_autokey_on(scene)) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
@@ -150,15 +156,15 @@ static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEven
 
   /* If auto-key is on and the drawing at the current frame starts before the current frame a new
    * keyframe needs to be inserted. */
-  if (blender::animrig::is_autokey_on(scene) &&
-      active_layer.frame_key_at(current_frame) < current_frame)
+  if (blender::animrig::is_autokey_on(scene) && active_layer.frame_key_at(current_frame) &&
+      *active_layer.frame_key_at(current_frame) < current_frame)
   {
     const ToolSettings *ts = CTX_data_tool_settings(C);
     if ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
        * current frame. */
       grease_pencil.insert_duplicate_frame(
-          active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
+          active_layer, *active_layer.frame_key_at(current_frame), current_frame, false);
     }
     else {
       /* Otherwise we just insert a blank keyframe at the current frame. */
