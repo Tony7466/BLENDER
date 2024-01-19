@@ -120,11 +120,11 @@ static void modify_stroke_color(Object *ob,
                                                        ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 
     const IndexRange points = points_by_curve[curve_i];
-    for (const int64_t point_i : points) {
+    for (const int64_t i : points.index_range()) {
+      const int64_t point_i = points[i];
       float3 factor = cmd.hsv;
       if (use_curve) {
-        const float curve_input = points.size() >= 2 ? (float(point_i - points.first()) /
-                                                        float(points.size() - 1)) :
+        const float curve_input = points.size() >= 2 ? (float(i) / float(points.size() - 1)) :
                                                        0.0f;
         const float curve_factor = BKE_curvemapping_evaluateF(
             cmd.influence.custom_curve, 0, curve_input);
