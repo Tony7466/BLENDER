@@ -708,10 +708,7 @@ int WM_operator_props_popup_confirm(bContext *C, wmOperator *op, const wmEvent *
  */
 int WM_operator_props_popup_call(bContext *C, wmOperator *op, const wmEvent *event);
 int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent *event);
-int WM_operator_props_dialog_popup(bContext *C,
-                                   wmOperator *op,
-                                   int width,
-                                   const char *text = nullptr);
+int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width);
 int WM_operator_redo_popup(bContext *C, wmOperator *op);
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);
 
@@ -1357,11 +1354,6 @@ wmDrag *WM_drag_data_create(
  */
 void WM_event_start_prepared_drag(bContext *C, wmDrag *drag);
 void WM_event_drag_image(wmDrag *, const ImBuf *, float scale);
-/**
- * Updates the `drag` event to include all selected files in the space file where the event
- * started.
- */
-void WM_event_drag_space_file_paths(const bContext *, wmDrag *drag);
 void WM_drag_free(wmDrag *drag);
 void WM_drag_data_free(eWM_DragDataType dragtype, void *poin);
 void WM_drag_free_list(ListBase *lb);
