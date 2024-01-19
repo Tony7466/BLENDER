@@ -1638,9 +1638,8 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
     }
 
     if (!layer_dst->has_drawing_at(info.frame_number)) {
-      /* For new layers Insert Keyframe at current frame/layer. */
+      /* Move geometry to a new drawing in target layer. */
       grease_pencil.insert_blank_frame(*layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
-      /* Copy strokes to new CurvesGeometry. */
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
       drawing_dst.strokes_for_write() = bke::curves_copy_curve_selection(
           curves_src, selected_strokes, {});
@@ -1650,9 +1649,8 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
       drawing_dst.tag_topology_changed();
     }
     else {
-      /* For existing Layers append the strokes to new CurvesGeometry. */
+      /* Append geometry to drawing in target layer. */
       Drawing &drawing_dst = *grease_pencil.get_editable_drawing_at(*layer_dst, info.frame_number);
-      /* Append geometry to target layer. */
       bke::CurvesGeometry selected_elems = curves_copy_curve_selection(
           curves_src, selected_strokes, {});
       Curves *selected_curves = bke::curves_new_nomain(std::move(selected_elems));
