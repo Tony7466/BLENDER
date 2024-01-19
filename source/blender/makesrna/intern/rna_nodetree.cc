@@ -6930,10 +6930,23 @@ static void def_cmp_map_uv(StructRNA *srna)
 {
   PropertyRNA *prop;
 
+  static const EnumPropertyItem filter_type_items[] = {
+      {CMP_NODE_MAP_UV_FILTERING_NEAREST, "NEAREST", 0, "Nearest", ""},
+      {CMP_NODE_MAP_UV_FILTERING_ANISOTROPIC, "ANISOTROPIC", 0, "Anisotropic", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   prop = RNA_def_property(srna, "alpha", PROP_INT, PROP_FACTOR);
   RNA_def_property_int_sdna(prop, nullptr, "custom1");
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_text(prop, "Alpha", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "filter_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
+  RNA_def_property_enum_items(prop, filter_type_items);
+  RNA_def_property_ui_text(prop, "Filter Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_NODETREE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -8302,6 +8315,21 @@ static void def_cmp_trackpos(StructRNA *srna)
   prop = RNA_def_property(srna, "track_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "track_name");
   RNA_def_property_ui_text(prop, "Track", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_cmp_pixelate(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  /* The range of the pixel size is chosen so that it is positive and above zero, and also does not
+   * exceed the underlying int16_t type. The size limit matches the maximum size used by blur
+   * nodes. */
+  prop = RNA_def_property(srna, "pixel_size", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "custom1");
+  RNA_def_property_range(prop, 1, 2048);
+  RNA_def_property_int_default(prop, 1);
+  RNA_def_property_ui_text(prop, "Pixel Size", "Pixel size of the output image");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
