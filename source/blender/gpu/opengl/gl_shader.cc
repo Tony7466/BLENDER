@@ -1553,6 +1553,7 @@ GLuint GLShader::program_get()
     /* Early exit for shaders that doesn't use specialization constants. The active shader should
      * already be setup. */
     BLI_assert(program_active_ && program_active_->program_id);
+    constants.is_dirty = false;
     return program_active_->program_id;
   }
 
