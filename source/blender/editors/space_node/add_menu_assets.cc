@@ -13,7 +13,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_asset.h"
+#include "BKE_asset.hh"
 #include "BKE_idprop.h"
 #include "BKE_screen.hh"
 
@@ -87,6 +87,7 @@ static Set<StringRef> get_builtin_menus(const int tree_type)
               "Curve/Operations",
               "Curve/Primitives",
               "Curve/Topology",
+              "Instances",
               "Mesh",
               "Mesh/Read",
               "Mesh/Sample",
