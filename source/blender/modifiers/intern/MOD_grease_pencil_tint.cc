@@ -386,16 +386,16 @@ static void modify_geometry_set(ModifierData *md,
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   const int frame = scene->r.cfra;
 
-  GreasePencil *grease_pencil = geometry_set->get_grease_pencil_for_write();
-  if (grease_pencil == nullptr) {
+  if (!geometry_set->has_grease_pencil()) {
     return;
   }
+  GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      *grease_pencil, tmd->influence, mask_memory);
+      grease_pencil, tmd->influence, mask_memory);
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
-      *grease_pencil, layer_mask, frame);
+      grease_pencil, layer_mask, frame);
   threading::parallel_for_each(drawings,
                                [&](Drawing *drawing) { modify_curves(md, ctx, *drawing); });
 }
