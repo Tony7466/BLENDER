@@ -1667,7 +1667,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 
     info.drawing.tag_topology_changed();
     changed = true;
-  };
+  }
 
   if (changed) {
     /* updates */
@@ -1689,7 +1689,7 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
 
   /* callbacks. */
   ot->exec = grease_pencil_move_to_layer_exec;
-  ot->poll = ot->poll = editable_grease_pencil_poll;
+  ot->poll = editable_grease_pencil_poll;
 
   /* flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
