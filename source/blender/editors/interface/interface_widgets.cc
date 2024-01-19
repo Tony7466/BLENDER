@@ -1342,7 +1342,7 @@ static void widget_draw_icon(
     if (but->drawflag & UI_BUT_ICON_LEFT) {
       /* special case - icon_only pie buttons */
       if (ui_block_is_pie_menu(but->block) && !ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_POPOVER) &&
-          but->str && but->str[0] == '\0')
+          but->str.empty())
       {
         xs = rect->xmin + 2.0f * ofs;
       }
@@ -3468,10 +3468,12 @@ static void widget_numbut_draw(uiWidgetColors *wcol,
 
     /* outline */
     wtb.draw_inner = false;
+    wtb.draw_emboss = roundboxalign & (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
     widgetbase_draw(&wtb, wcol);
   }
   else {
     /* inner and outline */
+    wtb.draw_emboss = roundboxalign & (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
     widgetbase_draw(&wtb, wcol);
   }
 
@@ -4388,6 +4390,7 @@ static void widget_box(uiBut *but,
   const float rad = widget_radius_from_zoom(zoom, wcol);
   round_box_edges(&wtb, roundboxalign, rect, rad);
 
+  wtb.draw_emboss = roundboxalign & (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
   widgetbase_draw(&wtb, wcol);
 
   copy_v3_v3_uchar(wcol->inner, old_col);
@@ -4442,6 +4445,7 @@ static void widget_roundbut_exec(uiWidgetColors *wcol,
   /* half rounded */
   round_box_edges(&wtb, roundboxalign, rect, rad);
 
+  wtb.draw_emboss = roundboxalign & (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
   widgetbase_draw(&wtb, wcol);
 }
 
@@ -4956,7 +4960,8 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
 
           /* We could use a flag for this, but for now just check size,
            * add up/down arrows if there is room. */
-          if ((!but->str[0] && but->icon && (BLI_rcti_size_x(rect) < BLI_rcti_size_y(rect) + 2)) ||
+          if ((but->str.empty() && but->icon &&
+               (BLI_rcti_size_x(rect) < BLI_rcti_size_y(rect) + 2)) ||
               /* disable for brushes also */
               (but->flag & UI_BUT_ICON_PREVIEW))
           {

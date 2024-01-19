@@ -23,9 +23,8 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
-
-#include "PIL_time.h"
 
 #include "BLO_readfile.h"
 
@@ -53,7 +52,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_light.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
