@@ -106,7 +106,7 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
 {
   auto *tmd = reinterpret_cast<GreasePencilTintModifierData *>(md);
   if (tmd->tint_mode == MOD_GREASE_PENCIL_TINT_GRADIENT) {
-    return tmd->object != nullptr;
+    return tmd->object == nullptr;
   }
   return false;
 }
