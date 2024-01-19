@@ -149,8 +149,7 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
         col_pack_prev = vos->col.pack;
       }
 
-      /* Use the string and the font_id to calculate the width of the string, then
-       * offset x to align text to vertex. */
+      /* Measure the size of the string, then offset to align to the vertex. */
       if (vos->align_center) {
         float width, height;
         BLF_width_and_height(font_id,
@@ -171,7 +170,6 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
 
       BLF_position(
           font_id, float(vos->sco[0] + vos->xoffs), float(vos->sco[1] + vos->yoffs), 2.0f);
-
       BLF_draw(font_id,
                (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
                vos->str_len);
