@@ -111,7 +111,7 @@ static Array<float> noise_table(int len, int offset, int seed)
   return table;
 }
 
-BLI_INLINE float table_sample(Array<float> &table, float x)
+float table_sample(Array<float> &table, float x)
 {
   return math::interpolate(table[int(ceilf(x))], table[int(floor(x))], fractf(x));
 }
@@ -244,7 +244,7 @@ static void modify_geometry_set(ModifierData *md,
   }
 
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
-  int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
+  const int current_frame = grease_pencil.runtime->eval_frame;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
