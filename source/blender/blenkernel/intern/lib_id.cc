@@ -1489,9 +1489,7 @@ ID *BKE_libblock_find_session_uuid(Main *bmain, const short type, const uint32_t
   return nullptr;
 }
 
-struct ID *BKE_libblock_find_name_and_library(struct Main *bmain,
-                                              const char *name,
-                                              const char *lib_name)
+ID *BKE_libblock_find_name_and_library(Main *bmain, const char *name, const char *lib_name)
 {
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
