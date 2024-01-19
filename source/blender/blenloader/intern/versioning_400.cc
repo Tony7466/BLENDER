@@ -2666,7 +2666,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 13)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 14)) {
     if (!DNA_struct_member_exists(
             fd->filesdna, "Sculpt", "int", "automasking_boundary_edges_propagation_steps"))
     {
