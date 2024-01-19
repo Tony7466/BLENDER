@@ -171,7 +171,7 @@ static void modify_stroke_color(Object *ob,
                                     GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::AttributeAccessor attributes = curves.attributes();
   VArray<int> stroke_materials =
       attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
   const VArray<float> vgroup_weights =
