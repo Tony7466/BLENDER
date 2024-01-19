@@ -40,9 +40,7 @@ struct PointCloudRuntime {
    */
   mutable SharedCache<Bounds<float3>> bounds_cache;
 
-  /**
-   * Stores weak references to material data blocks.
-   */
+  /** Stores weak references to material data blocks. */
   std::unique_ptr<bake::BakeMaterialsList> bake_materials;
 
   MEM_CXX_CLASS_ALLOC_FUNCS("PointCloudRuntime");

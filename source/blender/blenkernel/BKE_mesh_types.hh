@@ -210,9 +210,7 @@ struct MeshRuntime {
    */
   BitVector<> subsurf_optimal_display_edges;
 
-  /**
-   * Stores weak references to material data blocks.
-   */
+  /** Stores weak references to material data blocks. */
   std::unique_ptr<bake::BakeMaterialsList> bake_materials;
 
   MeshRuntime();

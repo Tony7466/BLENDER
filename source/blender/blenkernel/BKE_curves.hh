@@ -115,9 +115,7 @@ class CurvesGeometryRuntime {
   /** Normal direction vectors for each evaluated point. */
   mutable SharedCache<Vector<float3>> evaluated_normal_cache;
 
-  /**
-   * Stores weak references to material data blocks.
-   */
+  /** Stores weak references to material data blocks. */
   std::unique_ptr<bake::BakeMaterialsList> bake_materials;
 };
 
