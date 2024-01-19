@@ -192,13 +192,12 @@ static void modify_geometry_set(ModifierData *md,
                                 bke::GeometrySet *geometry_set)
 {
   auto *cmd = reinterpret_cast<GreasePencilColorModifierData *>(md);
-  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-  const int frame = scene->r.cfra;
 
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
+  const int frame = grease_pencil.runtime->eval_frame;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
