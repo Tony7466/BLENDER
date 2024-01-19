@@ -908,16 +908,19 @@ void blo_do_versions_userdef(UserDef *userdef)
                                     USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
   }
 
+  if (!USER_VERSION_ATLEAST(401, 13)) {
+    if (userdef->keying_flag & AUTOKEY_FLAG_INSERTNEEDED) {
+      userdef->keying_flag |= MANUALKEY_FLAG_INSERTNEEDED;
+    }
+    userdef->keying_flag |= AUTOKEY_FLAG_INSERTNEEDED;
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  if (userdef->keying_flag & AUTOKEY_FLAG_INSERTNEEDED) {
-    userdef->keying_flag |= MANUALKEY_FLAG_INSERTNEEDED;
-  }
-  userdef->keying_flag |= AUTOKEY_FLAG_INSERTNEEDED;
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
     do_versions_theme(userdef, btheme);
