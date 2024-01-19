@@ -1481,7 +1481,7 @@ class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
 
 static void add_missing_data_block_mappings(
     NodesModifierData &nmd,
-    const Vector<bake::BakeDataBlockID> &missing,
+    const Span<bake::BakeDataBlockID> missing,
     FunctionRef<ID *(const bake::BakeDataBlockID &)> get_data_block)
 {
   const int old_items_num = nmd.data_block_map_items_num;
