@@ -258,13 +258,11 @@ namespace blender::bke::greasepencil {
 DrawingTransforms::DrawingTransforms(const Object &eval_object, const int layer_index)
 {
   const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(eval_object.data);
-  
-  const float4x4 layer_matrix = [&]() {
-    float3 translation = grease_pencil.layer_translations()[layer_index];
-    math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[layer_index]);
-    float3 scale = grease_pencil.layer_scales()[layer_index];
-    return math::from_loc_rot_scale<float4x4>(translation, rot_euler, scale);
-  }();
+
+  const float3 translation = grease_pencil.layer_translations()[layer_index];
+  const math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[layer_index]);
+  const float3 scale = grease_pencil.layer_scales()[layer_index];
+  const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4>(translation, rot_euler, scale);
 
   this->layer_space_to_world_space = layer_matrix * float4x4_view(eval_object.object_to_world);
   this->world_space_to_layer_space = math::invert(this->layer_space_to_world_space);
