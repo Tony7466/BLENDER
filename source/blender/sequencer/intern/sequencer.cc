@@ -156,7 +156,7 @@ Sequence *SEQ_sequence_alloc(ListBase *lb, int timeline_frame, int machine, int 
     SEQ_channels_ensure(&seq->channels);
   }
 
-  SEQ_relations_session_uuid_generate(seq);
+  SEQ_relations_session_uid_generate(seq);
 
   return seq;
 }
@@ -489,7 +489,7 @@ static Sequence *seq_dupli(const Scene *scene_src,
   Sequence *seqn = static_cast<Sequence *>(MEM_dupallocN(seq));
 
   if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
-    SEQ_relations_session_uuid_generate(seqn);
+    SEQ_relations_session_uid_generate(seqn);
   }
 
   seq->tmp = seqn;
@@ -790,7 +790,7 @@ static bool seq_read_data_cb(Sequence *seq, void *user_data)
   seq->flag &= ~SEQ_FLAG_SKIP_THUMBNAILS;
 
   /* Do as early as possible, so that other parts of reading can rely on valid session UUID. */
-  SEQ_relations_session_uuid_generate(seq);
+  SEQ_relations_session_uid_generate(seq);
 
   BLO_read_data_address(reader, &seq->seq1);
   BLO_read_data_address(reader, &seq->seq2);

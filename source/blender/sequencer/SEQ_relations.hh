@@ -51,7 +51,7 @@ void SEQ_relations_check_uuids_unique_and_report(const Scene *scene);
 /**
  * Generate new UUID for the given sequence.
  */
-void SEQ_relations_session_uuid_generate(Sequence *sequence);
+void SEQ_relations_session_uid_generate(Sequence *sequence);
 
 void SEQ_cache_cleanup(Scene *scene);
 void SEQ_cache_iterate(

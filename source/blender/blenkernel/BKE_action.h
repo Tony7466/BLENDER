@@ -260,7 +260,7 @@ void BKE_pose_copy_data(struct bPose **dst, const struct bPose *src, bool copy_c
  * \note use when copying bones in edit-mode (on returned value from #BKE_pose_channel_ensure)
  */
 void BKE_pose_channel_copy_data(struct bPoseChannel *pchan, const struct bPoseChannel *pchan_from);
-void BKE_pose_channel_session_uuid_generate(struct bPoseChannel *pchan);
+void BKE_pose_channel_session_uid_generate(struct bPoseChannel *pchan);
 /**
  * Return a pointer to the pose channel of the given name
  * from this pose.

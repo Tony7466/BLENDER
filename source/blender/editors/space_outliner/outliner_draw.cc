@@ -1965,7 +1965,7 @@ static bool outliner_but_identity_cmp_context_id_fn(const uiBut *a, const uiBut 
   const ID *id_b = (const ID *)idptr_b->data;
 
   /* Using session UUID to compare is safer than using the pointer. */
-  return id_a->session_uuid == id_b->session_uuid;
+  return id_a->session_uid == id_b->session_uid;
 }
 
 static void outliner_draw_overrides_restrictbuts(Main *bmain,

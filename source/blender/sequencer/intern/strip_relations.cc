@@ -14,7 +14,7 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
-#include "BLI_session_uuid.h"
+#include "BLI_session_uid.h"
 
 #include "BKE_main.hh"
 #include "BKE_report.h"
@@ -408,26 +408,26 @@ void SEQ_relations_sequence_free_anim(Sequence *seq)
   BLI_listbase_clear(&seq->anims);
 }
 
-void SEQ_relations_session_uuid_generate(Sequence *sequence)
+void SEQ_relations_session_uid_generate(Sequence *sequence)
 {
-  sequence->runtime.session_uuid = BLI_session_uuid_generate();
+  sequence->runtime.session_uid = BLI_session_uid_generate();
 }
 
 static bool get_uuids_cb(Sequence *seq, void *user_data)
 {
   GSet *used_uuids = (GSet *)user_data;
-  const SessionUUID *session_uuid = &seq->runtime.session_uuid;
-  if (!BLI_session_uuid_is_generated(session_uuid)) {
+  const SessionUID *session_uid = &seq->runtime.session_uid;
+  if (!BLI_session_uid_is_generated(session_uid)) {
     printf("Sequence %s does not have UUID generated.\n", seq->name);
     return true;
   }
 
-  if (BLI_gset_lookup(used_uuids, session_uuid) != nullptr) {
+  if (BLI_gset_lookup(used_uuids, session_uid) != nullptr) {
     printf("Sequence %s has duplicate UUID generated.\n", seq->name);
     return true;
   }
 
-  BLI_gset_insert(used_uuids, (void *)session_uuid);
+  BLI_gset_insert(used_uuids, (void *)session_uid);
   return true;
 }
 
@@ -438,7 +438,7 @@ void SEQ_relations_check_uuids_unique_and_report(const Scene *scene)
   }
 
   GSet *used_uuids = BLI_gset_new(
-      BLI_session_uuid_ghash_hash, BLI_session_uuid_ghash_compare, "sequencer used uuids");
+      BLI_session_uid_ghash_hash, BLI_session_uid_ghash_compare, "sequencer used uuids");
 
   SEQ_for_each_callback(&scene->ed->seqbase, get_uuids_cb, used_uuids);
 

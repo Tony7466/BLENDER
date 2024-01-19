@@ -98,10 +98,10 @@ IDNameLib_Map *BKE_main_idmap_create(Main *bmain,
     ID *id;
     id_map->uuid_map = BLI_ghash_int_new(__func__);
     FOREACH_MAIN_ID_BEGIN (bmain, id) {
-      BLI_assert(id->session_uuid != MAIN_ID_SESSION_UUID_UNSET);
+      BLI_assert(id->session_uid != MAIN_ID_SESSION_UID_UNSET);
       void **id_ptr_v;
       const bool existing_key = BLI_ghash_ensure_p(
-          id_map->uuid_map, POINTER_FROM_UINT(id->session_uuid), &id_ptr_v);
+          id_map->uuid_map, POINTER_FROM_UINT(id->session_uid), &id_ptr_v);
       BLI_assert(existing_key == false);
       UNUSED_VARS_NDEBUG(existing_key);
 
@@ -146,10 +146,10 @@ void BKE_main_idmap_insert_id(IDNameLib_Map *id_map, ID *id)
 
   if (id_map->idmap_types & MAIN_IDMAP_TYPE_UUID) {
     BLI_assert(id_map->uuid_map != nullptr);
-    BLI_assert(id->session_uuid != MAIN_ID_SESSION_UUID_UNSET);
+    BLI_assert(id->session_uid != MAIN_ID_SESSION_UID_UNSET);
     void **id_ptr_v;
     const bool existing_key = BLI_ghash_ensure_p(
-        id_map->uuid_map, POINTER_FROM_UINT(id->session_uuid), &id_ptr_v);
+        id_map->uuid_map, POINTER_FROM_UINT(id->session_uid), &id_ptr_v);
     BLI_assert(existing_key == false);
     UNUSED_VARS_NDEBUG(existing_key);
 
@@ -176,9 +176,9 @@ void BKE_main_idmap_remove_id(IDNameLib_Map *id_map, ID *id)
 
   if (id_map->idmap_types & MAIN_IDMAP_TYPE_UUID) {
     BLI_assert(id_map->uuid_map != nullptr);
-    BLI_assert(id->session_uuid != MAIN_ID_SESSION_UUID_UNSET);
+    BLI_assert(id->session_uid != MAIN_ID_SESSION_UID_UNSET);
 
-    BLI_ghash_remove(id_map->uuid_map, POINTER_FROM_UINT(id->session_uuid), nullptr, nullptr);
+    BLI_ghash_remove(id_map->uuid_map, POINTER_FROM_UINT(id->session_uid), nullptr, nullptr);
   }
 }
 
@@ -251,10 +251,10 @@ ID *BKE_main_idmap_lookup_id(IDNameLib_Map *id_map, const ID *id)
   return nullptr;
 }
 
-ID *BKE_main_idmap_lookup_uuid(IDNameLib_Map *id_map, const uint session_uuid)
+ID *BKE_main_idmap_lookup_uid(IDNameLib_Map *id_map, const uint session_uid)
 {
   if (id_map->idmap_types & MAIN_IDMAP_TYPE_UUID) {
-    return static_cast<ID *>(BLI_ghash_lookup(id_map->uuid_map, POINTER_FROM_UINT(session_uuid)));
+    return static_cast<ID *>(BLI_ghash_lookup(id_map->uuid_map, POINTER_FROM_UINT(session_uid)));
   }
   return nullptr;
 }

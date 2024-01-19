@@ -57,5 +57,5 @@ ID *BKE_main_idmap_lookup_name(IDNameLib_Map *id_map,
 ID *BKE_main_idmap_lookup_id(IDNameLib_Map *id_map, const ID *id) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1, 2);
 
-ID *BKE_main_idmap_lookup_uuid(IDNameLib_Map *id_map, uint session_uuid) ATTR_WARN_UNUSED_RESULT
+ID *BKE_main_idmap_lookup_uid(IDNameLib_Map *id_map, uint session_uid) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1);
