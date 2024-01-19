@@ -384,8 +384,6 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
     IDP_ClearProperty(idprop);
   }
 
-  /* Ensure sculpt-mode global automasking_boundary_edges_propagation_steps is defaulted
-   * correctly.*/
   if (ts->sculpt) {
     ts->sculpt->automasking_boundary_edges_propagation_steps = 1;
   }

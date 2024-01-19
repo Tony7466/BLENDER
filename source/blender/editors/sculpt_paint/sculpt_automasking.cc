@@ -204,8 +204,6 @@ static bool needs_factors_cache(const Sculpt *sd, const Brush *brush)
     return true;
   }
 
-  /* TODO: I'm unsure why the BRUSH_AUTOMASKING_VIEW_NORMAL cares at all about the propagation
-   * steps being non 1, should this only check for brush being non-nullptr? */
   if (automasking_flags & BRUSH_AUTOMASKING_VIEW_NORMAL) {
     return brush && brush->automasking_boundary_edges_propagation_steps != 1;
   }
@@ -807,6 +805,7 @@ bool tool_can_reuse_automask(int sculpt_tool)
 std::unique_ptr<Cache> cache_init(Sculpt *sd, Brush *brush, Object *ob)
 {
   SculptSession *ss = ob->sculpt;
+  const int totvert = SCULPT_vertex_count_get(ss);
 
   if (!is_enabled(sd, ss, brush)) {
     return nullptr;
@@ -899,10 +898,19 @@ std::unique_ptr<Cache> cache_init(Sculpt *sd, Brush *brush, Object *ob)
       SCULPT_ATTRIBUTE_NAME(automasking_factor),
       &params);
 
-  /* Topology builds up the mask from zero which other modes can subtract from.
-   * If it isn't enabled, initialize to 1. */
-  float initial_value = !(mode & BRUSH_AUTOMASKING_TOPOLOGY) ? 1.0f : 0.0f;
-  const int totvert = SCULPT_vertex_count_get(ss);
+  float initial_value;
+
+  /* Topology, boundary and boundary face sets build up the mask
+   * from zero which other modes can subtract from.  If none of them are
+   * enabled initialize to 1.
+   */
+  if (!(mode & BRUSH_AUTOMASKING_TOPOLOGY)) {
+    initial_value = 1.0f;
+  }
+  else {
+    initial_value = 0.0f;
+  }
+
   for (int i : IndexRange(totvert)) {
     PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
 
