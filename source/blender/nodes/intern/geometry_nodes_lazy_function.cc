@@ -598,7 +598,7 @@ class LazyFunctionForMutedNode : public LazyFunction {
       fn_input.usage = lf::ValueUsage::Unused;
     }
 
-    input_by_output_index_.reinitialize(outputs_.size());
+    input_by_output_index_.reinitialize(node.output_sockets().size());
     input_by_output_index_.fill(nullptr);
     for (const bNodeLink &internal_link : node.internal_links()) {
       const int input_i = r_lf_index_by_bsocket[internal_link.fromsock->index_in_tree()];
@@ -2132,8 +2132,7 @@ struct GeometryNodesLazyFunctionBuilder {
    */
   void build_zone_functions()
   {
-    zone_build_infos_ = scope_.linear_allocator().construct_array<ZoneBuildInfo>(
-        tree_zones_->zones.size());
+    zone_build_infos_ = scope_.construct<Array<ZoneBuildInfo>>(tree_zones_->zones.size());
 
     const Array<int> zone_build_order = this->compute_zone_build_order();
 

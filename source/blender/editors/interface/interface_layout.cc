@@ -1336,7 +1336,7 @@ static void ui_item_menu_hold(bContext *C, ARegion *butregion, uiBut *but)
     UI_menutype_draw(C, mt, layout);
   }
   else {
-    uiItemL(layout, TIP_("Menu Missing:"), ICON_NONE);
+    uiItemL(layout, RPT_("Menu Missing:"), ICON_NONE);
     uiItemL(layout, menu_id, ICON_NONE);
   }
   UI_popup_menu_end(C, pup);
@@ -2536,7 +2536,7 @@ void uiItemFullR(uiLayout *layout,
 
   /* ensure text isn't added to icon_only buttons */
   if (but && icon_only) {
-    BLI_assert(but->str[0] == '\0');
+    BLI_assert(but->str.empty());
   }
 }
 
@@ -2863,7 +2863,7 @@ uiBut *ui_but_add_search(uiBut *but,
     if (RNA_property_type(prop) == PROP_ENUM) {
       /* XXX, this will have a menu string,
        * but in this case we just want the text */
-      but->str[0] = 0;
+      but->str.clear();
     }
 
     UI_but_func_search_set_results_are_suggestions(but, results_are_suggestions);
@@ -3602,7 +3602,7 @@ static int menu_item_enum_opname_menu_active(bContext *C, uiBut *but, MenuItemLe
   WM_operator_properties_sanitize(&ptr, false);
   PropertyRNA *prop = RNA_struct_find_property(&ptr, lvl->propname);
   RNA_property_enum_items_gettexted(C, &ptr, prop, &item_array, &totitem, &free);
-  int active = RNA_enum_from_name(item_array, but->str);
+  int active = RNA_enum_from_name(item_array, but->str.c_str());
   if (free) {
     MEM_freeN((void *)item_array);
   }
@@ -5307,6 +5307,11 @@ void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep)
   SET_FLAG_FROM_TEST(layout->item.flag, is_sep, UI_ITEM_PROP_DECORATE);
 }
 
+Panel *uiLayoutGetRootPanel(uiLayout *layout)
+{
+  return layout->root->block->panel;
+}
+
 bool uiLayoutGetActive(uiLayout *layout)
 {
   return layout->active;
@@ -5400,7 +5405,7 @@ static bool block_search_panel_label_matches(const uiBlock *block, const char *s
 static bool button_matches_search_filter(uiBut *but, const char *search_filter)
 {
   /* Do the shorter checks first for better performance in case there is a match. */
-  if (BLI_strcasestr(but->str, search_filter)) {
+  if (BLI_strcasestr(but->str.c_str(), search_filter)) {
     return true;
   }
 
@@ -5426,29 +5431,30 @@ static bool button_matches_search_filter(uiBut *but, const char *search_filter)
     if (but->type == UI_BTYPE_MENU) {
       PointerRNA *ptr = &but->rnapoin;
       PropertyRNA *enum_prop = but->rnaprop;
-
       int items_len;
       const EnumPropertyItem *items_array = nullptr;
       bool free;
       RNA_property_enum_items_gettexted(nullptr, ptr, enum_prop, &items_array, &items_len, &free);
-      BLI_SCOPED_DEFER([&] {
-        if (free) {
-          MEM_freeN((EnumPropertyItem *)items_array);
-        }
-      });
-
       if (items_array == nullptr) {
         return false;
       }
 
+      bool found = false;
       for (int i = 0; i < items_len; i++) {
         /* Check for nullptr name field which enums use for separators. */
         if (items_array[i].name == nullptr) {
           continue;
         }
         if (BLI_strcasestr(items_array[i].name, search_filter)) {
-          return true;
+          found = true;
+          break;
         }
+      }
+      if (free) {
+        MEM_freeN((EnumPropertyItem *)items_array);
+      }
+      if (found) {
+        return true;
       }
     }
   }
@@ -5885,7 +5891,7 @@ void ui_layout_add_but(uiLayout *layout, uiBut *but)
   ui_item_size((uiItem *)bitem, &w, &h);
   /* XXX uiBut hasn't scaled yet
    * we can flag the button as not expandable, depending on its size */
-  if (w <= 2 * UI_UNIT_X && (!but->str || but->str[0] == '\0')) {
+  if (w <= 2 * UI_UNIT_X && but->str.empty()) {
     bitem->item.flag |= UI_ITEM_FIXED_SIZE;
   }
 
@@ -6108,7 +6114,7 @@ wmOperatorType *UI_but_operatortype_get_from_enum_menu(uiBut *but, PropertyRNA *
   return nullptr;
 }
 
-MenuType *UI_but_menutype_get(uiBut *but)
+MenuType *UI_but_menutype_get(const uiBut *but)
 {
   if (but->menu_create_func == ui_item_menutype_func) {
     return (MenuType *)but->poin;
@@ -6116,7 +6122,7 @@ MenuType *UI_but_menutype_get(uiBut *but)
   return nullptr;
 }
 
-PanelType *UI_but_paneltype_get(uiBut *but)
+PanelType *UI_but_paneltype_get(const uiBut *but)
 {
   if (but->menu_create_func == ui_item_paneltype_func) {
     return (PanelType *)but->poin;
@@ -6160,7 +6166,7 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
     if (subitem->type == ITEM_BUTTON) {
       uiButtonItem *bitem = (uiButtonItem *)subitem;
       if (!(bitem->but->flag & UI_HIDDEN) &&
-          STREQ(bitem->but->str, CTX_IFACE_(pt->translation_context, pt->label)))
+          STREQ(bitem->but->str.c_str(), CTX_IFACE_(pt->translation_context, pt->label)))
       {
         return true;
       }

@@ -14,6 +14,7 @@
 
 #include "BLI_endian_switch.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
@@ -22,8 +23,6 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_lightprobe_types.h"
-
-#include "PIL_time.h"
 
 #include "eevee_lightcache.h"
 #include "eevee_private.h"
@@ -225,31 +224,31 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
   if (lcache != nullptr) {
     if (!eevee_lightcache_version_check(lcache)) {
       BLI_strncpy(eevee->light_cache_info,
-                  TIP_("Incompatible Light cache version, please bake again"),
+                  N_("Incompatible Light cache version, please bake again"),
                   sizeof(eevee->light_cache_info));
       return;
     }
 
     if (lcache->cube_tx.tex_size[2] > GPU_max_texture_layers()) {
       STRNCPY(eevee->light_cache_info,
-              TIP_("Error: Light cache is too big for the GPU to be loaded"));
+              N_("Error: Light cache is too big for the GPU to be loaded"));
       return;
     }
 
     if (lcache->flag & LIGHTCACHE_INVALID) {
       STRNCPY(eevee->light_cache_info,
-              TIP_("Error: Light cache dimensions not supported by the GPU"));
+              N_("Error: Light cache dimensions not supported by the GPU"));
       return;
     }
 
     if (lcache->flag & LIGHTCACHE_BAKING) {
-      STRNCPY(eevee->light_cache_info, TIP_("Baking light cache"));
+      STRNCPY(eevee->light_cache_info, N_("Baking light cache"));
       return;
     }
 
     if (!eevee_lightcache_can_be_saved(lcache)) {
       STRNCPY(eevee->light_cache_info,
-              TIP_("Error: LightCache is too large and will not be saved to disk"));
+              N_("Error: LightCache is too large and will not be saved to disk"));
       return;
     }
 
@@ -258,14 +257,16 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
 
     int irr_samples = eevee_lightcache_irradiance_sample_count(lcache);
 
+    /* This message needs to be translated here instead of the UI code, otherwise it would already
+     * be formatted and translation would not work. */
     SNPRINTF(eevee->light_cache_info,
-             TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
+             RPT_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
              lcache->cube_len - 1,
              irr_samples,
              formatted_mem);
   }
   else {
-    STRNCPY(eevee->light_cache_info, TIP_("No light cache in this scene"));
+    STRNCPY(eevee->light_cache_info, N_("No light cache in this scene"));
   }
 }
 
@@ -1452,7 +1453,7 @@ void EEVEE_lightbake_job(void *custom_data, wmJobWorkerStatus *worker_status)
    * because this step is locking at this moment. */
   /* TODO: remove this. */
   if (lbake->delay) {
-    PIL_sleep_ms(lbake->delay);
+    BLI_sleep_ms(lbake->delay);
   }
 
   /* Render world irradiance and reflection first */
