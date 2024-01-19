@@ -21,6 +21,18 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+/**
+ * Computes the principal components of a 3D vector set.
+ *
+ * Typically this is used to find the orientation of a point cloud where positions have maximum
+ * variance along the first axis. The components output contains the variance of the input vectors
+ * when rotated by the rotation output.
+ *
+ * Uses the Eigen SVD implementation for 3x3 matrices.
+ *
+ * https://en.wikipedia.org/wiki/Principal_component_analysis
+ */
+
 namespace blender::nodes::node_geo_principal_components_cc {
 
 using math::Quaternion;
@@ -116,6 +128,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     float3 sum = std::accumulate(data.begin(), data.end(), float3(0.0f, 0.0f, 0.0f));
     mean = sum / data.size();
 
+#if 0 /* Simple linear implementation. */
     float3 covar_diag = {0.0f, 0.0f, 0.0f};
     float3 covar_offdiag = {0.0f, 0.0f, 0.0f};
     for (const float3 &v : data) {
@@ -127,10 +140,51 @@ static void node_geo_exec(GeoNodeExecParams params)
       covar_diag /= data.size() - 1;
       covar_offdiag /= data.size() - 1;
     }
-
     const float3x3 covar_matrix(float3(covar_diag.x, covar_offdiag.x, covar_offdiag.z),
                                 float3(covar_offdiag.x, covar_diag.y, covar_offdiag.y),
                                 float3(covar_offdiag.z, covar_offdiag.y, covar_diag.z));
+#else /* Parallel-reduce implementation. */
+    struct CovarianceValues {
+      float3 diag = {0.0f, 0.0f, 0.0f};
+      float3 offdiag = {0.0f, 0.0f, 0.0f};
+
+      CovarianceValues &operator=(const CovarianceValues &other)
+      {
+        diag = other.diag;
+        offdiag = other.offdiag;
+        return *this;
+      }
+
+      CovarianceValues operator+(const CovarianceValues &other) const
+      {
+        return CovarianceValues{diag + other.diag, offdiag + other.offdiag};
+      }
+
+      float3x3 matrix() const
+      {
+        return float3x3(float3(diag.x, offdiag.x, offdiag.z),
+                        float3(offdiag.x, diag.y, offdiag.y),
+                        float3(offdiag.z, offdiag.y, diag.z));
+      }
+    };
+
+    const CovarianceValues covar_values = threading::parallel_reduce(
+        data.index_range(),
+        4096,
+        CovarianceValues(),
+        [data, mean](const IndexRange range, CovarianceValues values) {
+          for (const int64_t i : range) {
+            const float3 dv = data[i] - mean;
+            values = values + CovarianceValues{float3{dv.x * dv.x, dv.y * dv.y, dv.z * dv.z},
+                                               float3{dv.x * dv.y, dv.y * dv.z, dv.z * dv.x}};
+          }
+          return values;
+        },
+        [](const CovarianceValues &a, const CovarianceValues &b) { return a + b; });
+    const float3x3 covar_matrix = covar_values.matrix() *
+                                  (1.0f / std::max(float(data.size() - 1), 1.0f));
+#endif
+
     float3x3 U, V;
     float3 S;
     BLI_svd_m3(covar_matrix.ptr(), U.ptr(), S, V.ptr());
