@@ -172,7 +172,7 @@ static void modify_stroke_color(Object *ob,
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   bke::AttributeAccessor attributes = curves.attributes();
-  VArray<int> stroke_materials =
+  const VArray<int> stroke_materials =
       attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
   const VArray<float> vgroup_weights =
       attributes
@@ -254,13 +254,12 @@ static void modify_fill_color(Object *ob,
   bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
                                                                bke::AttrDomain::Curve);
-  VArray<int> stroke_materials =
+  const VArray<int> stroke_materials =
       attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
-  VArray<float> vgroup_weights = attributes
-                                     .lookup_or_default<float>(tmd.influence.vertex_group_name,
-                                                               bke::AttrDomain::Point,
-                                                               1.0f)
-                                     .varray;
+  const VArray<float> vgroup_weights =
+      attributes
+          .lookup_or_default<float>(tmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f)
+          .varray;
 
   /* Common input color and base factor calculation. */
   auto get_material_color = [&](const int64_t curve_i) {
@@ -354,7 +353,7 @@ static void modify_curves(ModifierData *md, const ModifierEvalContext *ctx, Draw
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   IndexMaskMemory mask_memory;
-  IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx->object, curves, tmd->influence, mask_memory);
 
   /* Factor > 1.0 also affects the opacity of the stroke. */
@@ -393,9 +392,9 @@ static void modify_geometry_set(ModifierData *md,
   }
 
   IndexMaskMemory mask_memory;
-  IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
+  const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       *grease_pencil, tmd->influence, mask_memory);
-  Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
+  const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       *grease_pencil, layer_mask, frame);
   threading::parallel_for_each(drawings,
                                [&](Drawing *drawing) { modify_curves(md, ctx, *drawing); });
