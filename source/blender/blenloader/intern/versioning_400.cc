@@ -2666,6 +2666,15 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 14)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      int identifier = 1;
+      LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+        md->identifier = identifier++;
+      }
+    }
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.

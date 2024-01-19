@@ -8034,6 +8034,13 @@ void RNA_def_modifier(BlenderRNA *brna)
       "Time in seconds that the modifier took to evaluate. This is only set on evaluated objects. "
       "If multiple modifiers run in parallel, execution time is not a reliable metric");
 
+  prop = RNA_def_property(srna, "identifier", PROP_INT, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Identifier",
+      "Uniquely identifies the modifier within the modifier stack that it is part of");
+
   /* types */
   rna_def_modifier_subsurf(brna);
   rna_def_modifier_lattice(brna);

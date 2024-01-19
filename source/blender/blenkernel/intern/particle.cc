@@ -3957,6 +3957,7 @@ static ModifierData *object_add_or_copy_particle_system(
   psmd->psys = psys;
   BLI_addtail(&ob->modifiers, md);
   BKE_object_modifier_set_active(ob, md);
+  BKE_modifiers_identifier_init(*ob, *md);
 
   psys->totpart = 0;
   psys->flag = PSYS_CURRENT;

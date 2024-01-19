@@ -36,6 +36,7 @@
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
+#include "BLI_rand.hh"
 #include "BLI_session_uuid.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -276,6 +277,16 @@ ModifierData *BKE_modifiers_findby_session_uuid(const Object *ob, const SessionU
   return nullptr;
 }
 
+ModifierData *BKE_modifiers_findby_identifier(const Object *ob, const int identifier)
+{
+  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+    if (md->identifier == identifier) {
+      return md;
+    }
+  }
+  return nullptr;
+}
+
 void BKE_modifiers_clear_errors(Object *ob)
 {
   LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
@@ -358,6 +369,7 @@ void BKE_modifier_copydata_ex(const ModifierData *md, ModifierData *target, cons
   target->mode = md->mode;
   target->flag = md->flag;
   target->ui_expand_flag = md->ui_expand_flag;
+  target->identifier = md->identifier;
 
   if (mti->copy_data) {
     mti->copy_data(md, target, flag);
@@ -1018,6 +1030,39 @@ void BKE_modifier_check_uuids_unique_and_report(const Object *object)
   }
 
   BLI_gset_free(used_uuids, nullptr);
+}
+
+void BKE_modifiers_identifier_init(const Object &object, ModifierData &md)
+{
+  blender::RandomNumberGenerator rng = blender::RandomNumberGenerator::from_random_seed();
+  while (true) {
+    const int new_id = rng.get_int32();
+    if (new_id <= 0) {
+      continue;
+    }
+    if (BKE_modifiers_findby_identifier(&object, new_id) != nullptr) {
+      continue;
+    }
+    md.identifier = new_id;
+    break;
+  }
+}
+
+bool BKE_modifiers_identifers_are_valid(const Object &object)
+{
+  blender::Set<int> identifiers;
+  int modifiers_num = 0;
+  LISTBASE_FOREACH (const ModifierData *, md, &object.modifiers) {
+    if (md->identifier <= 0) {
+      return false;
+    }
+    identifiers.add(md->identifier);
+    modifiers_num++;
+  }
+  if (identifiers.size() != modifiers_num) {
+    return false;
+  }
+  return true;
 }
 
 void BKE_modifier_blend_write(BlendWriter *writer, const ID *id_owner, ListBase *modbase)
