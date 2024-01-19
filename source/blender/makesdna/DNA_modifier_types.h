@@ -135,8 +135,8 @@ typedef struct ModifierData {
   /**
    * Uniquely identifies the modifier within the object. This identifier is stable across Blender
    * sessions. Modifiers on the original and corresponding evaluated object have matching
-   * identifiers. The identifier stays attached to the modifier if it is renamed or moved in the
-   * modifier stack.
+   * identifiers. The identifier stays the same if the modifier is renamed or moved in the modifier
+   * stack.
    *
    * A valid identifier is non-negative (>= 1). Modifiers that are currently not on an object may
    * have invalid identifiers. It has to be initialized with #BKE_modifiers_identifier_init when it
