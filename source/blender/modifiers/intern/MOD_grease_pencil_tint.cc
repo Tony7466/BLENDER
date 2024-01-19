@@ -248,6 +248,12 @@ static void modify_fill_color(Object *ob,
   const bool invert_vertex_group = (tmd.influence.flag &
                                     GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const GreasePencilTintModifierMode tint_mode = GreasePencilTintModifierMode(tmd.tint_mode);
+
+  /* Check early before getting attribute writers. */
+  if (tint_mode == MOD_GREASE_PENCIL_TINT_GRADIENT && tmd.object == nullptr) {
+    return;
+  }
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   /* Fill color per stroke. */
@@ -278,7 +284,6 @@ static void modify_fill_color(Object *ob,
     return tmd.factor;
   };
 
-  const GreasePencilTintModifierMode tint_mode = GreasePencilTintModifierMode(tmd.tint_mode);
   switch (tint_mode) {
     case MOD_GREASE_PENCIL_TINT_UNIFORM: {
       curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
@@ -291,10 +296,6 @@ static void modify_fill_color(Object *ob,
       break;
     }
     case MOD_GREASE_PENCIL_TINT_GRADIENT: {
-      if (tmd.object == nullptr) {
-        return;
-      }
-
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
       const Span<float3> positions = curves.positions();
       /* Transforms points to the gradient object space. */
