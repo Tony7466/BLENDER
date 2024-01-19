@@ -108,8 +108,8 @@ static void modify_stroke_color(Object *ob,
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   bke::AttributeAccessor attributes = curves.attributes();
-  const VArray<int> stroke_materials =
-      attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
+  const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Curve, 0);
 
   curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);
@@ -144,8 +144,8 @@ static void modify_fill_color(Object *ob,
   bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
                                                                bke::AttrDomain::Curve);
-  const VArray<int> stroke_materials =
-      attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
+  const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Curve, 0);
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     const Material *ma = BKE_object_material_get(ob, stroke_materials[curve_i]);

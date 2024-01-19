@@ -172,12 +172,10 @@ static void modify_stroke_color(Object *ob,
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   bke::AttributeAccessor attributes = curves.attributes();
-  const VArray<int> stroke_materials =
-      attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
-  const VArray<float> vgroup_weights =
-      attributes
-          .lookup_or_default<float>(tmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f)
-          .varray;
+  const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Curve, 0);
+  const VArray<float> vgroup_weights = *attributes.lookup_or_default<float>(
+      tmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
 
   /* Common input color and base factor calculation. */
   auto get_material_color = [&](const int64_t curve_i) {
@@ -260,12 +258,10 @@ static void modify_fill_color(Object *ob,
   bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
                                                                bke::AttrDomain::Curve);
-  const VArray<int> stroke_materials =
-      attributes.lookup_or_default<int>("material_index", bke::AttrDomain::Curve, 0).varray;
-  const VArray<float> vgroup_weights =
-      attributes
-          .lookup_or_default<float>(tmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f)
-          .varray;
+  const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Curve, 0);
+  const VArray<float> vgroup_weights = *attributes.lookup_or_default<float>(
+      tmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
 
   /* Common input color and base factor calculation. */
   auto get_material_color = [&](const int64_t curve_i) {
