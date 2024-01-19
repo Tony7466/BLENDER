@@ -284,14 +284,16 @@ HRESULT GHOST_DirectManipulationViewportEventHandler::OnContentUpdated(
 
   const float device_scale_factor = dpi / 96.0f;
 
-  const float scale = transform[0] * PINCH_SCALE_FACTOR;
+  const float scale = transform[0];
   const float x = transform[4] / device_scale_factor;
   const float y = transform[5] / device_scale_factor;
 
-  const float EPS = 3e-5;
+  const float PAN_EPS = 3e-5;
+  const float SCALE_EPS = PAN_EPS / PINCH_SCALE_FACTOR;
 
   /* Ignore repeating or incorrect input. */
-  if ((fabs(scale - last_scale) <= EPS && fabs(x - last_x) <= EPS && fabs(y - last_y) <= EPS) ||
+  if ((fabs(scale - last_scale) <= SCALE_EPS && fabs(x - last_x) <= PAN_EPS &&
+       fabs(y - last_y) <= PAN_EPS) ||
       scale == 0.0f)
   {
     GHOST_PRINT("Ignoring touchpad input\n");
@@ -307,7 +309,7 @@ HRESULT GHOST_DirectManipulationViewportEventHandler::OnContentUpdated(
   /* DM doesn't always immediately recognize pinch gestures,
    * so allow transition from pan to pinch. */
   if (gesture_state == GESTURE_PAN) {
-    if (fabs(scale - PINCH_SCALE_FACTOR) > EPS) {
+    if (fabs(scale - 1.0f) > SCALE_EPS) {
       gesture_state = GESTURE_PINCH;
     }
   }
@@ -322,7 +324,17 @@ HRESULT GHOST_DirectManipulationViewportEventHandler::OnContentUpdated(
    */
   switch (gesture_state) {
     case GESTURE_PINCH: {
-      int32_t dscale = roundf(scale - last_scale);
+      /* Map the scale value, so the resulting change value would be equal in both direction.
+       * This is required for consistent zoom speed when zooming out relative to the starting
+       * position.
+       *
+       * For example, zooming in from 1.0 to 2.0 results in 2.0 change value, and zooming out
+       * from 1.0 to 0.5 results in -2.0 change value.
+       */
+      float mapped_scale = scale >= 1.0f ? scale : (-1.0f / scale + 2.0f);
+      mapped_scale *= PINCH_SCALE_FACTOR;
+
+      int32_t dscale = roundf(mapped_scale - last_scale);
 
       last_scale += dscale;
 
