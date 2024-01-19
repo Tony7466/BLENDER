@@ -56,29 +56,31 @@ static void shortest_paths(const Mesh &mesh,
     }
   });
 
-  while (!queue.empty()) {
-    const float cost_i = queue.top().first;
-    const int vert_i = queue.top().second;
-    queue.pop();
-    if (visited[vert_i]) {
-      continue;
-    }
-    visited[vert_i] = true;
-    for (const int index : vert_to_edge.offsets[vert_i]) {
-      const int edge_i = vert_to_edge.data[index];
-      const int neighbor_vert_i = other_vertex[index];
-      if (visited[neighbor_vert_i]) {
+  devirtualize_varray(input_cost, [&](auto input_cost) {
+    while (!queue.empty()) {
+      const float cost_i = queue.top().first;
+      const int vert_i = queue.top().second;
+      queue.pop();
+      if (visited[vert_i]) {
         continue;
       }
-      const float edge_cost = std::max(0.0f, input_cost[edge_i]);
-      const float new_neighbor_cost = cost_i + edge_cost;
-      if (new_neighbor_cost < r_cost[neighbor_vert_i]) {
-        r_cost[neighbor_vert_i] = new_neighbor_cost;
-        r_next_index[neighbor_vert_i] = vert_i;
-        queue.emplace(new_neighbor_cost, neighbor_vert_i);
+      visited[vert_i] = true;
+      for (const int index : vert_to_edge.offsets[vert_i]) {
+        const int edge_i = vert_to_edge.data[index];
+        const int neighbor_vert_i = other_vertex[index];
+        if (visited[neighbor_vert_i]) {
+          continue;
+        }
+        const float edge_cost = std::max(0.0f, input_cost[edge_i]);
+        const float new_neighbor_cost = cost_i + edge_cost;
+        if (new_neighbor_cost < r_cost[neighbor_vert_i]) {
+          r_cost[neighbor_vert_i] = new_neighbor_cost;
+          r_next_index[neighbor_vert_i] = vert_i;
+          queue.emplace(new_neighbor_cost, neighbor_vert_i);
+        }
       }
     }
-  }
+  });
 }
 
 class ShortestEdgePathsNextVertFieldInput final : public bke::MeshFieldInput {
