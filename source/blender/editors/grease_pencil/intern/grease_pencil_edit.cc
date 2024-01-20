@@ -2083,7 +2083,6 @@ static int grease_pencil_separate_exec(bContext *C, wmOperator *op)
 
   const SeparateMode mode = SeparateMode(RNA_enum_get(op->ptr, "mode"));
   bool changed = false;
-  bool has_selection = false;
 
   WM_cursor_wait(true);
 
@@ -2092,7 +2091,7 @@ static int grease_pencil_separate_exec(bContext *C, wmOperator *op)
       /* Cancel if nothing selected. */
       const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
                                                                             grease_pencil_src);
-      has_selection = std::any_of(
+      const bool has_selection = std::any_of(
           drawings.begin(), drawings.end(), [&](const MutableDrawingInfo &info) {
             return ed::curves::has_anything_selected(info.drawing.strokes());
           });
