@@ -2860,7 +2860,7 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
 
   int degrees = RNA_int_get(op->ptr, "degrees");
 
-  /* Shift to -359 to 359. Modulo operator is machine-dependent for negative operands */
+  /* Fold to -359 to 359. Note Mod operator is machine-dependent for negative operands. */
   degrees = degrees - (degrees / 360) * 360;
   if (degrees == 270) {
     degrees = -90;
@@ -2890,15 +2890,12 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
       for (int x = 0; x < size_x; x++) {
         const float *source_pixel = &orig_float_pixels[(y * size_x + x) * 4];
         if (degrees == 90) {
-          /* 90 degree clockwise rotation. */
           copy_v4_v4(&float_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
         }
         else if (degrees == -90) {
-          /* 90 degree counter-clockwise rotation. */
           copy_v4_v4(&float_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
         }
         else if (degrees == 180) {
-          /* 180 degree counter-clockwise rotation. */
           copy_v4_v4(&float_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
                      source_pixel);
         }
@@ -2920,15 +2917,12 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
       for (int x = 0; x < size_x; x++) {
         const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
         if (degrees == 90) {
-          /* 90 degree clockwise rotation. */
           copy_v4_v4_uchar(&char_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
         }
         else if (degrees == -90) {
-          /* 90 degree counter-clockwise rotation. */
           copy_v4_v4_uchar(&char_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
         }
         else if (degrees == 180) {
-          /* 180 degree counter-clockwise rotation. */
           copy_v4_v4_uchar(&char_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
                            source_pixel);
         }
