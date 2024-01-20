@@ -84,7 +84,6 @@ set(SRC
   nodes/node_geo_flip_faces.cc
   nodes/node_geo_geometry_to_instance.cc
   nodes/node_geo_get_named_grid.cc
-  nodes/node_geo_grid_capture.cc
   nodes/node_geo_grid_filter.cc
   nodes/node_geo_grid_level_set_filter.cc
   nodes/node_geo_grid_poisson_solver.cc
@@ -180,6 +179,7 @@ set(SRC
   nodes/node_geo_set_curve_normal.cc
   nodes/node_geo_set_curve_radius.cc
   nodes/node_geo_set_curve_tilt.cc
+  nodes/node_geo_set_grid_value.cc
   nodes/node_geo_set_id.cc
   nodes/node_geo_set_material.cc
   nodes/node_geo_set_material_index.cc

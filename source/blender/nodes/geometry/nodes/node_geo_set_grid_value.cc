@@ -14,7 +14,7 @@
 
 #include "RNA_enum_types.hh"
 
-namespace blender::nodes::node_geo_grid_capture_grid_cc {
+namespace blender::nodes::node_geo_set_grid_value_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -26,10 +26,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   eCustomDataType data_type = eCustomDataType(node->custom1);
   eCustomDataType topo_data_type = eCustomDataType(node->custom2);
 
+  b.add_input(topo_data_type, "Grid").hide_value();
   b.add_input(data_type, "Value").supports_field();
   b.add_input(data_type, "Background");
-
-  b.add_input(topo_data_type, "Topology Grid").hide_value();
 
   grids::declare_grid_type_output(b, data_type, "Grid");
 }
@@ -56,7 +55,7 @@ struct CaptureGridOp {
     const eCustomDataType data_type = eCustomDataType(params.node().custom1);
     const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
     BLI_assert(grid_type_supported(topo_data_type));
-    const auto topo_grid = this->params.extract_input<bke::GVolumeGrid>("Topology Grid");
+    const auto topo_grid = this->params.extract_input<bke::GVolumeGrid>("Grid");
     const fn::Field<T> value_field = this->params.extract_input<fn::Field<T>>("Value");
     const T background = this->params.extract_input<T>("Background");
 
@@ -105,7 +104,7 @@ static void node_register()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_GRID_CAPTURE, "Capture Grid", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_SET_GRID_VALUE, "Set Grid Value", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
@@ -116,4 +115,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_grid_capture_grid_cc
+}  // namespace blender::nodes::node_geo_set_grid_value_cc

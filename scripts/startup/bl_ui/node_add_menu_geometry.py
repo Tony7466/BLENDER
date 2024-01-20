@@ -672,8 +672,8 @@ class NODE_MT_geometry_node_GEO_VOLUME_WRITE(Menu):
 
     def draw(self, context):
         layout = self.layout
-        node_add_menu.add_node_type(layout, "GeometryNodeGridCapture")
         node_add_menu.add_node_type(layout, "GeometryNodeDeactivateVoxels")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetGridValue")
         node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedGrid")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Write")
 
