@@ -183,7 +183,6 @@ template<typename OpT> auto apply(const eCustomDataType data_type, OpT &op)
 }
 
 bke::GVolumeGrid try_capture_field_as_grid(const eCustomDataType data_type,
-                                           eCustomDataType topology_data_type,
                                            const bke::GVolumeGrid &topology_grid,
                                            fn::GField value_field,
                                            GPointer background);

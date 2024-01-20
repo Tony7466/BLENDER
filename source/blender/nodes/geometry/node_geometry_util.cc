@@ -13,6 +13,7 @@
 #include "BKE_node.hh"
 #include "BKE_pointcloud.hh"
 #include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
 
 #include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
@@ -260,28 +261,7 @@ template<typename GridType> class CaptureFieldContext : public FieldContext {
   }
 };
 
-template<typename OutputGridPtr> struct TopologyInitOp {
-  bke::GVolumeGrid topology_grid;
-  OutputGridPtr output_grid;
-
-  template<typename T> void operator()()
-  {
-    if (!this->topology_grid) {
-      /* TODO should use topology union of inputs in this case. */
-      return;
-    }
-    bke::VolumeGrid<T> typed_topology_grid = this->topology_grid.typed<T>();
-    bke::VolumeTreeAccessToken tree_token;
-    const bke::OpenvdbGridType<T> &vdb_grid = typed_topology_grid.grid(tree_token);
-
-    output_grid->setTransform(vdb_grid.transform().copy());
-    output_grid->insertMeta(vdb_grid);
-    output_grid->topologyUnion(vdb_grid);
-  }
-};
-
 struct CaptureGridOp {
-  const eCustomDataType topology_data_type;
   bke::GVolumeGrid topology_grid;
   fn::GField value_field;
   GPointer background;
@@ -296,31 +276,41 @@ struct CaptureGridOp {
         *this->background.get<T>());
 
     /* Evaluate value field and fill in the grid. */
-    const GridPtr output_grid = GridType::create(vdb_background);
-    TopologyInitOp<GridPtr> topology_op{topology_grid, output_grid};
-    grids::apply(this->topology_data_type, topology_op);
+    GridPtr output_grid = GridType::create(vdb_background);
+    BLI_assert(output_grid.unique());
+    bke::VolumeTreeAccessToken topology_tree_token;
+    topology_grid.get_for_write()
+        .grid_for_write(topology_tree_token)
+        .apply<SupportedVDBGridTypes>([&](auto &topo_grid) {
+          output_grid->setTransform(topo_grid.transform().copy());
+          output_grid->insertMeta(topo_grid);
+          output_grid->topologyUnion(topo_grid);
+        });
     /* All leaf nodes must be allocated for writing voxel values. */
     output_grid->tree().voxelizeActiveTiles();
+    BLI_assert(output_grid.unique());
 
     const int64_t voxels_num = get_voxel_count(*output_grid);
-    CaptureFieldContext<GridType> context(output_grid);
-    fn::FieldEvaluator evaluator(context, voxels_num);
-    Array<T> values(voxels_num);
-    evaluator.add_with_destination(this->value_field, values.as_mutable_span());
-    evaluator.evaluate();
-    store_voxel_values(*output_grid, values.as_span());
+    {
+      CaptureFieldContext<GridType> context(output_grid);
+      fn::FieldEvaluator evaluator(context, voxels_num);
+      Array<T> values(voxels_num);
+      evaluator.add_with_destination(this->value_field, values.as_mutable_span());
+      evaluator.evaluate();
+      store_voxel_values(*output_grid, values.as_span());
+    }
+    BLI_assert(output_grid.unique());
 
     return bke::GVolumeGrid(std::move(output_grid));
   }
 };
 
 bke::GVolumeGrid try_capture_field_as_grid(const eCustomDataType data_type,
-                                           const eCustomDataType topology_data_type,
                                            const bke::GVolumeGrid &topology_grid,
                                            const fn::GField value_field,
                                            const GPointer background)
 {
-  CaptureGridOp capture_op = {topology_data_type, topology_grid, value_field, background};
+  CaptureGridOp capture_op = {topology_grid, value_field, background};
   return grids::apply(data_type, capture_op);
 }
 

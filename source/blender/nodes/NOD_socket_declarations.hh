@@ -248,6 +248,22 @@ class Shader : public SocketDeclaration {
 
 class ShaderBuilder : public SocketDeclarationBuilder<Shader> {};
 
+class MaskGridBuilder;
+
+class MaskGrid : public SocketDeclaration {
+ public:
+  friend MaskGridBuilder;
+
+  using Builder = MaskGridBuilder;
+
+  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
+  bool matches(const bNodeSocket &socket) const override;
+  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
+  bool can_connect(const bNodeSocket &socket) const override;
+};
+
+class MaskGridBuilder : public SocketDeclarationBuilder<MaskGrid> {};
+
 class ExtendBuilder;
 
 class Extend : public SocketDeclaration {

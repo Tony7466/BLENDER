@@ -24,9 +24,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   }
 
   eCustomDataType data_type = eCustomDataType(node->custom1);
-  eCustomDataType topo_data_type = eCustomDataType(node->custom2);
 
-  b.add_input(topo_data_type, "Grid").hide_value();
+  b.add_input<decl::MaskGrid>("Grid");
   b.add_input(data_type, "Value").supports_field();
   b.add_input(data_type, "Background");
 
@@ -38,13 +37,11 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
-  uiItemR(layout, ptr, "topology_data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = CD_PROP_FLOAT;
-  node->custom2 = CD_PROP_FLOAT;
 }
 
 struct CaptureGridOp {
@@ -53,14 +50,12 @@ struct CaptureGridOp {
   template<typename T> bke::GVolumeGrid operator()()
   {
     const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-    const eCustomDataType topo_data_type = eCustomDataType(params.node().custom2);
-    BLI_assert(grid_type_supported(topo_data_type));
     const auto topo_grid = this->params.extract_input<bke::GVolumeGrid>("Grid");
     const fn::Field<T> value_field = this->params.extract_input<fn::Field<T>>("Value");
     const T background = this->params.extract_input<T>("Background");
 
     return grids::try_capture_field_as_grid(
-        data_type, topo_data_type, topo_grid, value_field, &background);
+        data_type, topo_grid, value_field, &background);
   }
 };
 
@@ -87,15 +82,6 @@ static void node_rna(StructRNA *srna)
                     "Type of grid data",
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
-                    CD_PROP_FLOAT,
-                    grid_custom_data_type_items_filter_fn);
-
-  RNA_def_node_enum(srna,
-                    "topology_data_type",
-                    "Topology Data Type",
-                    "Type of the topology grid",
-                    rna_enum_attribute_type_items,
-                    NOD_inline_enum_accessors(custom2),
                     CD_PROP_FLOAT,
                     grid_custom_data_type_items_filter_fn);
 }
