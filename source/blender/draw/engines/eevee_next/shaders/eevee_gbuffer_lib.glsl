@@ -448,12 +448,10 @@ void gbuffer_additional_info_pack(inout GBufferWriter gbuf, float thickness, uin
 {
   gbuf.N[gbuf.layer_normal] = vec2(gbuffer_thickness_pack(thickness),
                                    gbuffer_object_id_unorm16_pack(object_id));
-  gbuf.layer_normal++;
 }
 void gbuffer_additional_info_load(inout GBufferReader gbuf, samplerGBufferNormal normal_tx)
 {
   vec2 data_packed = fetchGBuffer(normal_tx, gbuf.texel, gbuf.layer_normal).rg;
-  gbuf.layer_normal++;
   gbuf.thickness = gbuffer_thickness_unpack(data_packed.x);
   gbuf.object_id = gbuffer_object_id_unorm16_unpack(data_packed.y);
 }
