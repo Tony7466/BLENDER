@@ -1909,7 +1909,7 @@ static bool grease_pencil_separate_selected(bContext &C,
                                                                       info.frame_number);
     drawing_dst.strokes_for_write() = bke::curves_copy_point_selection(
         curves_src, selected_points, {});
-    curves_src.remove_points(selected_points, {});
+    curves_src = remove_points_and_split(curves_src, selected_points);
 
     info.drawing.tag_topology_changed();
     drawing_dst.tag_topology_changed();
