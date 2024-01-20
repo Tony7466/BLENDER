@@ -11,7 +11,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_volume_grid.hh"
 
 #include "NOD_rna_define.hh"
@@ -333,7 +333,7 @@ bool geo_node_poll_default(const bNodeType * /*ntype*/,
                            const char **r_disabled_hint)
 {
   if (!STREQ(ntree->idname, "GeometryNodeTree")) {
-    *r_disabled_hint = TIP_("Not a geometry node tree");
+    *r_disabled_hint = RPT_("Not a geometry node tree");
     return false;
   }
   return true;

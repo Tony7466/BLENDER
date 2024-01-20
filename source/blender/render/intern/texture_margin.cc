@@ -18,8 +18,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -297,7 +297,7 @@ class TextureMarginMap {
 
   void build_tables()
   {
-    loop_to_face_map_ = blender::bke::mesh::build_loop_to_face_map(faces_);
+    loop_to_face_map_ = blender::bke::mesh::build_corner_to_face_map(faces_);
 
     loop_adjacency_map_.resize(corner_edges_.size(), -1);
 

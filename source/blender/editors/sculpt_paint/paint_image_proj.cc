@@ -35,8 +35,8 @@
 
 #include "BLT_translation.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
@@ -59,7 +59,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -103,7 +103,7 @@
 #include "RNA_enum_types.hh"
 #include "RNA_types.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 // #include "bmesh_tools.hh"
 
@@ -4226,16 +4226,14 @@ static bool project_paint_check_face_paintable(const ProjPaintState *ps,
     }
     return ps->select_poly_eval && ps->select_poly_eval[face_i];
   }
-  else {
-    int orig_index;
-    const int face_i = ps->corner_tri_faces_eval[tri_i];
-    if ((face_lookup->index_mp_to_orig != nullptr) &&
-        ((orig_index = (face_lookup->index_mp_to_orig[face_i])) != ORIGINDEX_NONE))
-    {
-      return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
-    }
-    return !(ps->hide_poly_eval && ps->hide_poly_eval[face_i]);
+  int orig_index;
+  const int face_i = ps->corner_tri_faces_eval[tri_i];
+  if ((face_lookup->index_mp_to_orig != nullptr) &&
+      ((orig_index = (face_lookup->index_mp_to_orig[face_i])) != ORIGINDEX_NONE))
+  {
+    return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
   }
+  return !(ps->hide_poly_eval && ps->hide_poly_eval[face_i]);
 }
 
 struct ProjPaintFaceCoSS {
@@ -6405,10 +6403,10 @@ void ED_paint_data_warning(
   BKE_reportf(reports,
               RPT_WARNING,
               "Missing%s%s%s%s detected!",
-              !has_uvs ? TIP_(" UVs,") : "",
-              !has_mat ? TIP_(" Materials,") : "",
-              !has_tex ? TIP_(" Textures (or linked),") : "",
-              !has_stencil ? TIP_(" Stencil,") : "");
+              !has_uvs ? RPT_(" UVs,") : "",
+              !has_mat ? RPT_(" Materials,") : "",
+              !has_tex ? RPT_(" Textures (or linked),") : "",
+              !has_stencil ? RPT_(" Stencil,") : "");
 }
 
 bool ED_paint_proj_mesh_data_check(Scene *scene,

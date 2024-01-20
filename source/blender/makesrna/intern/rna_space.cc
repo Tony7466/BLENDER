@@ -580,7 +580,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 
 #  include "GPU_material.h"
 
-#  include "IMB_imbuf_types.h"
+#  include "IMB_imbuf_types.hh"
 
 #  include "UI_interface.hh"
 #  include "UI_view2d.hh"
@@ -1938,7 +1938,7 @@ static void rna_SpaceTextEditor_text_set(PointerRNA *ptr,
   if (area) {
     ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
     if (region) {
-      ED_text_scroll_to_cursor(st, region, true);
+      ED_space_text_scroll_to_cursor(st, region, true);
     }
   }
 }
@@ -1955,6 +1955,12 @@ static void rna_SpaceTextEditor_updateEdited(Main * /*bmain*/, Scene * /*scene*/
   if (st->text) {
     WM_main_add_notifier(NC_TEXT | NA_EDITED, st->text);
   }
+}
+
+static int rna_SpaceTextEditor_visible_lines_get(PointerRNA *ptr)
+{
+  const SpaceText *st = static_cast<SpaceText *>(ptr->data);
+  return ED_space_text_visible_lines_get(st);
 }
 
 /* Space Properties */
@@ -6158,7 +6164,7 @@ static void rna_def_space_text(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "visible_lines", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_int_sdna(prop, nullptr, "runtime.viewlines");
+  RNA_def_property_int_funcs(prop, "rna_SpaceTextEditor_visible_lines_get", nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "Visible Lines", "Amount of lines that can be visible in current editor");
 
