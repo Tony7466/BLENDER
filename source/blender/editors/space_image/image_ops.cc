@@ -2842,10 +2842,10 @@ void IMAGE_OT_flip(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Rotate Operator
+/** \name Rotate Orthogonal Operator (90, 180, 270, -90, etc)
  * \{ */
 
-static int image_rotate_exec(bContext *C, wmOperator *op)
+static int image_rotate_orthogonal_exec(bContext *C, wmOperator *op)
 {
   Image *ima = image_from_context(C);
   ImageUser iuser = image_user_from_context_and_active_tile(C, ima);
@@ -2860,77 +2860,13 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
 
   int degrees = RNA_int_get(op->ptr, "degrees");
 
-  /* Fold to -359 to 359. Note Mod operator is machine-dependent for negative operands. */
-  degrees = degrees - (degrees / 360) * 360;
-  if (degrees == 270) {
-    degrees = -90;
-  }
-
-  if (!ELEM(degrees, -90, 90, 180)) {
-    BKE_image_release_ibuf(ima, ibuf, nullptr);
-    return OPERATOR_FINISHED;
-  }
-
   ED_image_undo_push_begin_with_image(op->type->name, ima, ibuf, &iuser);
 
   if (is_paint) {
     ED_imapaint_clear_partial_redraw();
   }
 
-  const int size_x = ibuf->x;
-  const int size_y = ibuf->y;
-
-  if (ibuf->float_buffer.data) {
-    float *float_pixels = ibuf->float_buffer.data;
-    float *orig_float_pixels = static_cast<float *>(MEM_dupallocN(float_pixels));
-    if (degrees != 180) {
-      SWAP(int, ibuf->x, ibuf->y);
-    }
-    for (int y = 0; y < size_y; y++) {
-      for (int x = 0; x < size_x; x++) {
-        const float *source_pixel = &orig_float_pixels[(y * size_x + x) * 4];
-        if (degrees == 90) {
-          copy_v4_v4(&float_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
-        }
-        else if (degrees == -90) {
-          copy_v4_v4(&float_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
-        }
-        else if (degrees == 180) {
-          copy_v4_v4(&float_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
-                     source_pixel);
-        }
-      }
-    }
-    MEM_freeN(orig_float_pixels);
-
-    if (ibuf->byte_buffer.data) {
-      IMB_rect_from_float(ibuf);
-    }
-  }
-  else if (ibuf->byte_buffer.data) {
-    uchar *char_pixels = ibuf->byte_buffer.data;
-    uchar *orig_char_pixels = static_cast<uchar *>(MEM_dupallocN(char_pixels));
-    if (degrees != 180) {
-      SWAP(int, ibuf->x, ibuf->y);
-    }
-    for (int y = 0; y < size_y; y++) {
-      for (int x = 0; x < size_x; x++) {
-        const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
-        if (degrees == 90) {
-          copy_v4_v4_uchar(&char_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
-        }
-        else if (degrees == -90) {
-          copy_v4_v4_uchar(&char_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
-        }
-        else if (degrees == 180) {
-          copy_v4_v4_uchar(&char_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
-                           source_pixel);
-        }
-      }
-    }
-    MEM_freeN(orig_char_pixels);
-  }
-  else {
+  if (!IMB_rotate_orthogonal(ibuf, degrees)) {
     BKE_image_release_ibuf(ima, ibuf, nullptr);
     return OPERATOR_CANCELLED;
   }
@@ -2953,15 +2889,15 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void IMAGE_OT_rotate(wmOperatorType *ot)
+void IMAGE_OT_rotate_orthogonal(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Rotate Image";
-  ot->idname = "IMAGE_OT_rotate";
+  ot->name = "Rotate Image Orthogonal";
+  ot->idname = "IMAGE_OT_rotate_orthogonal";
   ot->description = "Rotate the image";
 
   /* api callbacks */
-  ot->exec = image_rotate_exec;
+  ot->exec = image_rotate_orthogonal_exec;
   ot->poll = image_from_context_has_data_poll_active_tile;
 
   /* properties */
