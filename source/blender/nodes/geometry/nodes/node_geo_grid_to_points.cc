@@ -4,7 +4,7 @@
 
 #include "node_geometry_util.hh"
 
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
