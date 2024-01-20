@@ -2879,48 +2879,30 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
     ED_imapaint_clear_partial_redraw();
   }
 
-  const int source_w = ibuf->x;
-  const int source_h = ibuf->y;
-  const int target_w = (turns == 2) ? source_w : source_h;
-  const int target_h = (turns == 2) ? source_h : source_w;
+  const int size_x = ibuf->x;
+  const int size_y = ibuf->y;
 
   if (ibuf->float_buffer.data) {
-    float *orig_float_pixels = static_cast<float *>(MEM_dupallocN(ibuf->float_buffer.data));
-    const uint size[2] = {target_w, target_h};
-    IMB_rect_size_set(ibuf, size);
     float *float_pixels = ibuf->float_buffer.data;
-    if (turns == 1) {
-      /* 90 degree clockwise rotation */
-      for (int y = 0; y < source_h; y++) {
-        const float *source_row = &orig_float_pixels[y * source_w * 4];
-        float *target_col = &float_pixels[y * 4];
-        for (int x = 0; x < source_w; x++) {
-          const float *source_pixel = &source_row[(source_w - x - 1) * 4];
-          float *target_pixel = &target_col[x * 4 * target_w];
-          copy_v4_v4(target_pixel, source_pixel);
-        }
-      }
+    float *orig_float_pixels = static_cast<float *>(MEM_dupallocN(float_pixels));
+    if (turns != 2) {
+      SWAP(int, ibuf->x, ibuf->y);
     }
-    else if (turns == -1) {
-      /* 90 degree counter-clockwise rotation */
-      for (int y = 0; y < source_h; y++) {
-        const float *source_row = &orig_float_pixels[y * source_w * 4];
-        float *target_col = &float_pixels[(target_w - y - 1) * 4];
-        for (int x = 0; x < source_w; x++) {
-          const float *source_pixel = &source_row[x * 4];
-          float *target_pixel = &target_col[x * 4 * target_w];
-          copy_v4_v4(target_pixel, source_pixel);
+    for (int y = 0; y < size_y; y++) {
+      for (int x = 0; x < size_x; x++) {
+        const float *source_pixel = &orig_float_pixels[(y * size_x + x) * 4];
+        if (turns == 1) {
+          /* 90 degree clockwise rotation. */
+          copy_v4_v4(&float_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
         }
-      }
-    }
-    else if (turns == 2) {
-      /* 180 degree rotation. */
-      for (int y = 0; y < source_h; y++) {
-        for (int x = 0; x < source_w; x++) {
-          const float *source_pixel =
-              &orig_float_pixels[((y * source_w) + (source_w - x - 1)) * 4];
-          float *target_pixel = &float_pixels[(((target_h - y - 1) * source_w) + x) * 4];
-          copy_v4_v4(target_pixel, source_pixel);
+        else if (turns == -1) {
+          /* 90 degree counter-clockwise rotation. */
+          copy_v4_v4(&float_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
+        }
+        else if (turns == 2) {
+          /* 180 degree counter-clockwise rotation. */
+          copy_v4_v4(&float_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
+                     source_pixel);
         }
       }
     }
@@ -2931,41 +2913,26 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
     }
   }
   else if (ibuf->byte_buffer.data) {
-    uchar *orig_char_pixels = static_cast<uchar *>(MEM_dupallocN(ibuf->byte_buffer.data));
-    const uint size[2] = {target_w, target_h};
-    IMB_rect_size_set(ibuf, size);
     uchar *char_pixels = ibuf->byte_buffer.data;
-    if (turns == 1) {
-      /* 90 degree clockwise rotation */
-      for (int y = 0; y < source_h; y++) {
-        const uchar *source_row = &orig_char_pixels[y * source_w * 4];
-        uchar *target_col = &char_pixels[y * 4];
-        for (int x = 0; x < source_w; x++) {
-          const uchar *source_pixel = &source_row[(source_w - x - 1) * 4];
-          uchar *target_pixel = &target_col[x * 4 * target_w];
-          copy_v4_v4_uchar(target_pixel, source_pixel);
-        }
-      }
+    uchar *orig_char_pixels = static_cast<uchar *>(MEM_dupallocN(char_pixels));
+    if (turns != 2) {
+      SWAP(int, ibuf->x, ibuf->y);
     }
-    else if (turns == -1) {
-      /* 90 degree counter-clockwise rotation */
-      for (int y = 0; y < source_h; y++) {
-        const uchar *source_row = &orig_char_pixels[y * source_w * 4];
-        uchar *target_col = &char_pixels[(target_w - y - 1) * 4];
-        for (int x = 0; x < source_w; x++) {
-          const uchar *source_pixel = &source_row[x * 4];
-          uchar *target_pixel = &target_col[x * 4 * target_w];
-          copy_v4_v4_uchar(target_pixel, source_pixel);
+    for (int y = 0; y < size_y; y++) {
+      for (int x = 0; x < size_x; x++) {
+        const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
+        if (turns == 1) {
+          /* 90 degree clockwise rotation. */
+          copy_v4_v4_uchar(&char_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
         }
-      }
-    }
-    else if (turns == 2) {
-      /* 180 degree rotation. */
-      for (int y = 0; y < source_h; y++) {
-        for (int x = 0; x < source_w; x++) {
-          const uchar *source_pixel = &orig_char_pixels[((y * source_w) + (source_w - x - 1)) * 4];
-          uchar *target_pixel = &char_pixels[(((target_h - y - 1) * source_w) + x) * 4];
-          copy_v4_v4_uchar(target_pixel, source_pixel);
+        else if (turns == -1) {
+          /* 90 degree counter-clockwise rotation. */
+          copy_v4_v4_uchar(&char_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
+        }
+        else if (turns == 2) {
+          /* 180 degree counter-clockwise rotation. */
+          copy_v4_v4_uchar(&char_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
+                           source_pixel);
         }
       }
     }
