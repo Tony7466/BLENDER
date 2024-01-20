@@ -2858,17 +2858,15 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  int turns = RNA_int_get(op->ptr, "turns");
+  int degrees = RNA_int_get(op->ptr, "degrees");
 
-  if (turns > 0) {
-    /* Modulo operator is machine-dependent for negative operands */
-    turns = turns % 4;
-  }
-  if (turns == 3) {
-    turns = -1;
+  /* Shift to -359 to 359. Modulo operator is machine-dependent for negative operands */
+  degrees = degrees - (degrees / 360) * 360;
+  if (degrees == 270) {
+    degrees = -90;
   }
 
-  if (!ELEM(turns, -1, 1, 2)) {
+  if (!ELEM(degrees, -90, 90, 180)) {
     BKE_image_release_ibuf(ima, ibuf, nullptr);
     return OPERATOR_FINISHED;
   }
@@ -2885,21 +2883,21 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
   if (ibuf->float_buffer.data) {
     float *float_pixels = ibuf->float_buffer.data;
     float *orig_float_pixels = static_cast<float *>(MEM_dupallocN(float_pixels));
-    if (turns != 2) {
+    if (degrees != 180) {
       SWAP(int, ibuf->x, ibuf->y);
     }
     for (int y = 0; y < size_y; y++) {
       for (int x = 0; x < size_x; x++) {
         const float *source_pixel = &orig_float_pixels[(y * size_x + x) * 4];
-        if (turns == 1) {
+        if (degrees == 90) {
           /* 90 degree clockwise rotation. */
           copy_v4_v4(&float_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
         }
-        else if (turns == -1) {
+        else if (degrees == -90) {
           /* 90 degree counter-clockwise rotation. */
           copy_v4_v4(&float_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
         }
-        else if (turns == 2) {
+        else if (degrees == 180) {
           /* 180 degree counter-clockwise rotation. */
           copy_v4_v4(&float_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
                      source_pixel);
@@ -2915,21 +2913,21 @@ static int image_rotate_exec(bContext *C, wmOperator *op)
   else if (ibuf->byte_buffer.data) {
     uchar *char_pixels = ibuf->byte_buffer.data;
     uchar *orig_char_pixels = static_cast<uchar *>(MEM_dupallocN(char_pixels));
-    if (turns != 2) {
+    if (degrees != 180) {
       SWAP(int, ibuf->x, ibuf->y);
     }
     for (int y = 0; y < size_y; y++) {
       for (int x = 0; x < size_x; x++) {
         const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
-        if (turns == 1) {
+        if (degrees == 90) {
           /* 90 degree clockwise rotation. */
           copy_v4_v4_uchar(&char_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel);
         }
-        else if (turns == -1) {
+        else if (degrees == -90) {
           /* 90 degree counter-clockwise rotation. */
           copy_v4_v4_uchar(&char_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel);
         }
-        else if (turns == 2) {
+        else if (degrees == 180) {
           /* 180 degree counter-clockwise rotation. */
           copy_v4_v4_uchar(&char_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
                            source_pixel);
@@ -2974,8 +2972,15 @@ void IMAGE_OT_rotate(wmOperatorType *ot)
 
   /* properties */
   PropertyRNA *prop;
-  prop = RNA_def_int(
-      ot->srna, "turns", 1, -1, INT_MAX, "Turns", "Number of 90 degree clockwise turns", -1, 2);
+  prop = RNA_def_int(ot->srna,
+                     "degrees",
+                     90,
+                     INT_MIN,
+                     INT_MAX,
+                     "Degrees",
+                     "Amount of rotation in degrees (90, 180, 270, -90, etc)",
+                     -270,
+                     270);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   /* flags */
