@@ -2842,6 +2842,182 @@ void IMAGE_OT_flip(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Rotate Operator
+ * \{ */
+
+static int image_rotate_exec(bContext *C, wmOperator *op)
+{
+  Image *ima = image_from_context(C);
+  ImageUser iuser = image_user_from_context_and_active_tile(C, ima);
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, &iuser, nullptr);
+  SpaceImage *sima = CTX_wm_space_image(C);
+  const bool is_paint = ((sima != nullptr) && (sima->mode == SI_MODE_PAINT));
+
+  if (ibuf == nullptr) {
+    /* TODO: this should actually never happen, but does for render-results -> cleanup. */
+    return OPERATOR_CANCELLED;
+  }
+
+  int turns = RNA_int_get(op->ptr, "turns");
+
+  if (turns > 0) {
+    /* Modulo operator is machine-dependent for negative operands */
+    turns = turns % 4;
+  }
+  if (turns == 3) {
+    turns = -1;
+  }
+
+  if (!ELEM(turns, -1, 1, 2)) {
+    BKE_image_release_ibuf(ima, ibuf, nullptr);
+    return OPERATOR_FINISHED;
+  }
+
+  ED_image_undo_push_begin_with_image(op->type->name, ima, ibuf, &iuser);
+
+  if (is_paint) {
+    ED_imapaint_clear_partial_redraw();
+  }
+
+  const int source_w = ibuf->x;
+  const int source_h = ibuf->y;
+  const int target_w = (turns == 2) ? source_w : source_h;
+  const int target_h = (turns == 2) ? source_h : source_w;
+
+  if (ibuf->float_buffer.data) {
+    float *orig_float_pixels = static_cast<float *>(MEM_dupallocN(ibuf->float_buffer.data));
+    const uint size[2] = {target_w, target_h};
+    IMB_rect_size_set(ibuf, size);
+    float *float_pixels = ibuf->float_buffer.data;
+    if (turns == 1) {
+      /* 90 degree clockwise rotation */
+      for (int y = 0; y < source_h; y++) {
+        const float *source_row = &orig_float_pixels[y * source_w * 4];
+        float *target_col = &float_pixels[y * 4];
+        for (int x = 0; x < source_w; x++) {
+          const float *source_pixel = &source_row[(source_w - x - 1) * 4];
+          float *target_pixel = &target_col[x * 4 * target_w];
+          copy_v4_v4(target_pixel, source_pixel);
+        }
+      }
+    }
+    else if (turns == -1) {
+      /* 90 degree counter-clockwise rotation */
+      for (int y = 0; y < source_h; y++) {
+        const float *source_row = &orig_float_pixels[y * source_w * 4];
+        float *target_col = &float_pixels[(target_w - y - 1) * 4];
+        for (int x = 0; x < source_w; x++) {
+          const float *source_pixel = &source_row[x * 4];
+          float *target_pixel = &target_col[x * 4 * target_w];
+          copy_v4_v4(target_pixel, source_pixel);
+        }
+      }
+    }
+    else if (turns == 2) {
+      /* 180 degree rotation. */
+      for (int y = 0; y < source_h; y++) {
+        for (int x = 0; x < source_w; x++) {
+          const float *source_pixel =
+              &orig_float_pixels[((y * source_w) + (source_w - x - 1)) * 4];
+          float *target_pixel = &float_pixels[(((target_h - y - 1) * source_w) + x) * 4];
+          copy_v4_v4(target_pixel, source_pixel);
+        }
+      }
+    }
+    MEM_freeN(orig_float_pixels);
+
+    if (ibuf->byte_buffer.data) {
+      IMB_rect_from_float(ibuf);
+    }
+  }
+  else if (ibuf->byte_buffer.data) {
+    uchar *orig_char_pixels = static_cast<uchar *>(MEM_dupallocN(ibuf->byte_buffer.data));
+    const uint size[2] = {target_w, target_h};
+    IMB_rect_size_set(ibuf, size);
+    uchar *char_pixels = ibuf->byte_buffer.data;
+    if (turns == 1) {
+      /* 90 degree clockwise rotation */
+      for (int y = 0; y < source_h; y++) {
+        const uchar *source_row = &orig_char_pixels[y * source_w * 4];
+        uchar *target_col = &char_pixels[y * 4];
+        for (int x = 0; x < source_w; x++) {
+          const uchar *source_pixel = &source_row[(source_w - x - 1) * 4];
+          uchar *target_pixel = &target_col[x * 4 * target_w];
+          copy_v4_v4_uchar(target_pixel, source_pixel);
+        }
+      }
+    }
+    else if (turns == -1) {
+      /* 90 degree counter-clockwise rotation */
+      for (int y = 0; y < source_h; y++) {
+        const uchar *source_row = &orig_char_pixels[y * source_w * 4];
+        uchar *target_col = &char_pixels[(target_w - y - 1) * 4];
+        for (int x = 0; x < source_w; x++) {
+          const uchar *source_pixel = &source_row[x * 4];
+          uchar *target_pixel = &target_col[x * 4 * target_w];
+          copy_v4_v4_uchar(target_pixel, source_pixel);
+        }
+      }
+    }
+    else if (turns == 2) {
+      /* 180 degree rotation. */
+      for (int y = 0; y < source_h; y++) {
+        for (int x = 0; x < source_w; x++) {
+          const uchar *source_pixel = &orig_char_pixels[((y * source_w) + (source_w - x - 1)) * 4];
+          uchar *target_pixel = &char_pixels[(((target_h - y - 1) * source_w) + x) * 4];
+          copy_v4_v4_uchar(target_pixel, source_pixel);
+        }
+      }
+    }
+    MEM_freeN(orig_char_pixels);
+  }
+  else {
+    BKE_image_release_ibuf(ima, ibuf, nullptr);
+    return OPERATOR_CANCELLED;
+  }
+
+  ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
+  BKE_image_mark_dirty(ima, ibuf);
+
+  if (ibuf->mipmap[0]) {
+    ibuf->userflags |= IB_MIPMAP_INVALID;
+  }
+
+  ED_image_undo_push_end();
+
+  BKE_image_partial_update_mark_full_update(ima);
+
+  WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
+
+  BKE_image_release_ibuf(ima, ibuf, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+void IMAGE_OT_rotate(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Rotate Image";
+  ot->idname = "IMAGE_OT_rotate";
+  ot->description = "Rotate the image";
+
+  /* api callbacks */
+  ot->exec = image_rotate_exec;
+  ot->poll = image_from_context_has_data_poll_active_tile;
+
+  /* properties */
+  PropertyRNA *prop;
+  prop = RNA_def_int(
+      ot->srna, "turns", 1, -1, INT_MAX, "Turns", "Number of 90 degree clockwise turns", -1, 2);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Clipboard Copy Operator
  * \{ */
 
