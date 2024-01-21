@@ -413,7 +413,7 @@ static ImBuf *thumb_create_ex(const char *file_path,
       }
 
       if (img->x > tsize || img->y > tsize) {
-        float scale = std::min((float(tsize) / float(img->x)), (float(tsize) / float(img->y)));
+        float scale = std::min<float>(float(tsize) / float(img->x), float(tsize) / float(img->y));
         /* Scaling down must never assign zero width/height, see: #89868. */
         short ex = std::max<short>(short(1), short(img->x * scale));
         short ey = std::max<short>(short(1), short(img->y * scale));
