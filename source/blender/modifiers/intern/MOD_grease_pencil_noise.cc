@@ -111,7 +111,7 @@ static Array<float> noise_table(int len, int offset, int seed)
   return table;
 }
 
-float table_sample(Array<float> &table, float x)
+static float table_sample(Array<float> &table, float x)
 {
   return math::interpolate(table[int(ceilf(x))], table[int(floor(x))], fractf(x));
 }
@@ -121,6 +121,7 @@ float table_sample(Array<float> &table, float x)
  */
 static void deform_drawing(ModifierData &md,
                            Depsgraph *depsgraph,
+                           const int start_frame_number,
                            Object &ob,
                            bke::greasepencil::Drawing &drawing)
 {
@@ -158,8 +159,7 @@ static void deform_drawing(ModifierData &md,
     }
     else {
       /* If change every keyframe, use the last keyframe. */
-      /* TODO: not correct. */
-      seed += cfra;
+      seed += start_frame_number;
     }
   }
   int noise_len = ceilf(strokes.points_num() * noise_scale) + 2;
@@ -249,12 +249,14 @@ static void modify_geometry_set(ModifierData *md,
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, mmd->influence, mask_memory);
-  const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
+  const Vector<modifier::greasepencil::DrawingInfo> drawing_infos =
+      modifier::greasepencil::get_drawing_infos_for_write(
+          grease_pencil, layer_mask, current_frame);
 
-  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
-  });
+  threading::parallel_for_each(
+      drawing_infos, [&](const modifier::greasepencil::DrawingInfo &info) {
+        deform_drawing(*md, ctx->depsgraph, info.start_frame_number, *ctx->object, *info.drawing);
+      });
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
