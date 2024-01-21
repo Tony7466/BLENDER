@@ -261,7 +261,7 @@ PointCloud *reorder_points(const PointCloud &src_pointcloud,
   return dst_pointcloud;
 }
 
-bke::CurvesGeometry &reorder_curves_geometry(
+bke::CurvesGeometry reorder_curves_geometry(
     const bke::CurvesGeometry &src_curves,
     Span<int> old_by_new_map,
     const bke::AnonymousAttributePropagationInfo &propagation_info)

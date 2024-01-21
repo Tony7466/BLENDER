@@ -1718,7 +1718,6 @@ static int grease_pencil_stroke_reorder_exec(bContext *C, wmOperator *op)
 
     curves = geometry::reorder_curves_geometry(curves, indices, {});
     info.drawing.tag_topology_changed();
-
     changed.store(true, std::memory_order_relaxed);
   });
 
