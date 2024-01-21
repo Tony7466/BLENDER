@@ -1594,6 +1594,9 @@ class IMAGE_PT_overlay_uv_edit(Panel):
         subrow = row.row(align=True)
         subrow.active = uvedit.show_stretch
         subrow.prop(uvedit, "display_stretch_type", text="")
+        row = layout.row(align=True)
+        row.active = uvedit.show_stretch
+        row.prop(uvedit, "stretching_opacity")
 
 
 class IMAGE_PT_overlay_uv_edit_geometry(Panel):
