@@ -46,6 +46,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLO_readfile.h"
@@ -68,7 +69,7 @@
 #include "BKE_freestyle.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_layer.h"
@@ -109,10 +110,8 @@
 
 #include "engines/eevee/eevee_lightcache.h"
 
-#include "PIL_time.h"
-
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
 
 #include "DRW_engine.hh"
 
@@ -2355,7 +2354,7 @@ bool BKE_scene_validate_setscene(Main *bmain, Scene *sce)
   for (a = 0, sce_iter = sce; sce_iter->set; sce_iter = sce_iter->set, a++) {
     /* more iterations than scenes means we have a cycle */
     if (a > totscene) {
-      /* the tested scene gets zero'ed, that's typically current scene */
+      /* The tested scene gets zeroed, that's typically current scene. */
       sce->set = nullptr;
       return false;
     }
