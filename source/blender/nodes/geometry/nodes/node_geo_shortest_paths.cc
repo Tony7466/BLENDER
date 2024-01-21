@@ -5,17 +5,11 @@
 #include <queue>
 
 #include "BLI_array_utils.hh"
-#include "BLI_map.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_math_vector.hh"
-#include "BLI_math_base.hh"
-#include "BLI_set.hh"
-#include "BLI_task.hh"
 #include "BLI_kdtree.h"
+#include "BLI_math_base.hh"
+#include "BLI_math_vector.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
-
-#include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
 
 #include "node_geometry_util.hh"
 
@@ -24,8 +18,8 @@ namespace blender::nodes::node_geo_shortest_paths_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Vector>("Position").implicit_field(implicit_field_inputs::position);
-  b.add_input<decl::Bool>("End Vertex").default_value(false).hide_value().supports_field();
-  b.add_input<decl::Int>("Min Branches").default_value(1).min(1).supports_field();
+  b.add_input<decl::Bool>("End Selection").default_value(false).hide_value().supports_field();
+  b.add_input<decl::Int>("Branching Limit").default_value(1).min(1).supports_field();
 
   b.add_output<decl::Int>("Next Vertex Index").field_source().reference_pass_all();
 }
@@ -33,25 +27,28 @@ static void node_declare(NodeDeclarationBuilder &b)
 static KDTree_3d *build_kdtree(const Span<float3> positions, const IndexMask &mask)
 {
   KDTree_3d *tree = BLI_kdtree_3d_new(mask.size());
-  mask.foreach_index([&](const int index) { BLI_kdtree_3d_insert(tree, index, positions[index]); });
+  mask.foreach_index(
+      [&](const int index) { BLI_kdtree_3d_insert(tree, index, positions[index]); });
   BLI_kdtree_3d_balance(tree);
   return tree;
 }
 
-static int find_first_nearest(const KDTree_3d &tree, const Span<bool> visited, const Span<int> ignore, const Span<float> distances, const float length, const float3 &position)
+static int find_first_nearest(const KDTree_3d &tree,
+                              const Span<bool> visited,
+                              const Span<int> skip,
+                              const Span<float> distances,
+                              const float length,
+                              const float3 &position)
 {
   return BLI_kdtree_3d_find_nearest_cb_cpp(
-      &tree,
-      position,
-      nullptr,
-      [&](const int index, const float * /*co*/, const float dist_sq) {
+      &tree, position, nullptr, [&](const int index, const float * /*co*/, const float dist_sq) {
         if (visited[index]) {
           return 0;
         }
         if (math::sqrt(dist_sq) + length > distances[index]) {
           return 0;
         }
-        if (ignore.contains(index)) {
+        if (skip.contains(index)) {
           return 0;
         }
         return 1;
@@ -60,7 +57,12 @@ static int find_first_nearest(const KDTree_3d &tree, const Span<bool> visited, c
 
 using VertPriority = std::pair<float, int>;
 
-static void shortest_paths(const KDTree_3d &tree, const IndexMask end_selection, const Span<float3> positions, const VArray<int> &branches_cap, MutableSpan<int> r_next_index, MutableSpan<float> r_distance)
+static void shortest_paths(const KDTree_3d &tree,
+                           const IndexMask end_selection,
+                           const Span<float3> positions,
+                           const VArray<int> &branching_limit,
+                           MutableSpan<int> r_next_index,
+                           MutableSpan<float> r_distance)
 {
   Array<bool> visited(positions.size(), false);
 
@@ -82,8 +84,9 @@ static void shortest_paths(const KDTree_3d &tree, const IndexMask end_selection,
     visited[index] = true;
     const float3 &position = positions[index];
 
-    for ([[maybe_unused]] const int i : IndexRange(math::max(1, branches_cap[index]))) {
-      const int other_i = find_first_nearest(tree, visited, branches, r_distance, length, position);
+    for ([[maybe_unused]] const int i : IndexRange(math::max(1, branching_limit[index]))) {
+      const int other_i = find_first_nearest(
+          tree, visited, branches, r_distance, length, position);
       if (other_i == -1) {
         continue;
       }
@@ -101,11 +104,16 @@ class ShortestPathsNextVertFieldInput final : public bke::GeometryFieldInput {
  private:
   Field<float3> positions_;
   Field<bool> end_selection_;
-  Field<int> branches_field_;
+  Field<int> branching_limit_field_;
 
  public:
-  ShortestPathsNextVertFieldInput(Field<float3> positions, Field<bool> end_selection, Field<int> branches_field)
-      : bke::GeometryFieldInput(CPPType::get<int>(), "Shortest Paths Next Vertex Field"), positions_(std::move(positions)), end_selection_(std::move(end_selection)), branches_field_(std::move(branches_field))
+  ShortestPathsNextVertFieldInput(Field<float3> positions,
+                                  Field<bool> end_selection,
+                                  Field<int> branching_limit_field)
+      : bke::GeometryFieldInput(CPPType::get<int>(), "Shortest Paths Next Vertex Field"),
+        positions_(std::move(positions)),
+        end_selection_(std::move(end_selection)),
+        branching_limit_field_(std::move(branching_limit_field))
   {
     category_ = Category::Generated;
   }
@@ -117,11 +125,11 @@ class ShortestPathsNextVertFieldInput final : public bke::GeometryFieldInput {
     fn::FieldEvaluator evaluator(context, domain_size);
     evaluator.add(end_selection_);
     evaluator.add(positions_);
-    evaluator.add(branches_field_);
+    evaluator.add(branching_limit_field_);
     evaluator.evaluate();
     const IndexMask end_selection = evaluator.get_evaluated_as_mask(0);
     const VArraySpan<float3> positions = evaluator.get_evaluated<float3>(1);
-    const VArray<int> branches_cap = evaluator.get_evaluated<int>(2);
+    const VArray<int> branching_limit = evaluator.get_evaluated<int>(2);
 
     Array<int> next_index(domain_size, -1);
     Array<float> distance(domain_size, FLT_MAX);
@@ -132,7 +140,7 @@ class ShortestPathsNextVertFieldInput final : public bke::GeometryFieldInput {
     }
 
     KDTree_3d *tree = build_kdtree(positions, IndexRange(domain_size));
-    shortest_paths(*tree, end_selection, positions, branches_cap, next_index, distance);
+    shortest_paths(*tree, end_selection, positions, branching_limit, next_index, distance);
     BLI_kdtree_3d_free(tree);
 
     mask.foreach_index_optimized<int>(GrainSize(2048), [&](const int index) {
@@ -160,12 +168,14 @@ class ShortestPathsNextVertFieldInput final : public bke::GeometryFieldInput {
     if (const ShortestPathsNextVertFieldInput *other_field =
             dynamic_cast<const ShortestPathsNextVertFieldInput *>(&other))
     {
-      return other_field->positions_ == positions_ && other_field->end_selection_ == end_selection_;
+      return other_field->positions_ == positions_ &&
+             other_field->end_selection_ == end_selection_;
     }
     return false;
   }
 
-  std::optional<AttrDomain> preferred_domain(const GeometryComponent &/*component*/) const override
+  std::optional<AttrDomain> preferred_domain(
+      const GeometryComponent & /*component*/) const override
   {
     return AttrDomain::Point;
   }
@@ -174,10 +184,13 @@ class ShortestPathsNextVertFieldInput final : public bke::GeometryFieldInput {
 static void node_geo_exec(GeoNodeExecParams params)
 {
   Field<float3> position_field = params.extract_input<Field<float3>>("Position");
-  Field<bool> end_selection_field = params.extract_input<Field<bool>>("End Vertex");
-  Field<int> branches_field = params.extract_input<Field<int>>("Min Branches");
+  Field<bool> end_selection_field = params.extract_input<Field<bool>>("End Selection");
+  Field<int> branching_limit_field = params.extract_input<Field<int>>("Branching Limit");
 
-  Field<int> next_vert_field{std::make_shared<ShortestPathsNextVertFieldInput>(std::move(position_field), std::move(end_selection_field), std::move(branches_field))};
+  Field<int> next_vert_field{
+      std::make_shared<ShortestPathsNextVertFieldInput>(std::move(position_field),
+                                                        std::move(end_selection_field),
+                                                        std::move(branching_limit_field))};
 
   params.set_output("Next Vertex Index", std::move(next_vert_field));
 }
@@ -186,8 +199,7 @@ static void node_register()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(
-      &ntype, GEO_NODE_SHORTEST_PATH, "Shortest Paths", NODE_CLASS_CONVERTER);
+  geo_node_type_base(&ntype, GEO_NODE_SHORTEST_PATH, "Shortest Paths", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
