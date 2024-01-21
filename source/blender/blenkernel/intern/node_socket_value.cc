@@ -222,24 +222,6 @@ bool SocketValueVariant::is_context_dependent_field() const
   return field.node().depends_on_input();
 }
 
-void *SocketValueVariant::new_single_for_write(const eNodeSocketDatatype socket_type)
-{
-  const CPPType *cpp_type = socket_type_to_geo_nodes_base_cpp_type(socket_type);
-  BLI_assert(cpp_type != nullptr);
-  BUFFER_FOR_CPP_TYPE_VALUE(*cpp_type, buffer);
-  cpp_type->value_initialize(buffer);
-  this->store_single(socket_type, buffer);
-  return value_.get();
-}
-
-void *SocketValueVariant::new_single_for_write(const CPPType &cpp_type)
-{
-  const std::optional<eNodeSocketDatatype> socket_type = geo_nodes_base_cpp_type_to_socket_type(
-      cpp_type);
-  BLI_assert(socket_type);
-  return this->new_single_for_write(*socket_type);
-}
-
 void SocketValueVariant::convert_to_single()
 {
   switch (kind_) {
@@ -251,16 +233,15 @@ void SocketValueVariant::convert_to_single()
       /* Evaluates the field without inputs to try to get a single value. If the field depends on
        * context, the default value is used instead. */
       fn::GField field = std::move(value_.get<fn::GField>());
-      const CPPType &cpp_type = field.cpp_type();
-      void *buffer = this->new_single_for_write(cpp_type);
-      cpp_type.destruct(buffer);
+      void *buffer = this->allocate_single(socket_type_);
       fn::evaluate_constant_field(field, buffer);
       break;
     }
     case Kind::Grid: {
       /* Can't convert a grid to a single value, so just use the default value of the current
        * socket type. */
-      this->new_single_for_write(socket_type_);
+      const CPPType &cpp_type = *socket_type_to_geo_nodes_base_cpp_type(socket_type_);
+      this->store_single(socket_type_, cpp_type.default_value());
       break;
     }
     case Kind::None: {

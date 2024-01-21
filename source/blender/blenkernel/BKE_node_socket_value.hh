@@ -137,8 +137,12 @@ class SocketValueVariant {
   GPointer get_single_ptr() const;
   GMutablePointer get_single_ptr();
 
+  /**
+   * Similar to #get_single_ptr, but returns an untyped pointer. This can only be used if the
+   * caller knows for sure which type is contained. In that case, it can be a bit faster though,
+   * because the corresponding #CPPType does not have to be looked up based on the socket type.
+   */
   const void *get_single_ptr_raw() const;
-  void *allocate_single(eNodeSocketDatatype socket_type);
 
   /**
    * Replace the stored value with the given single value.
@@ -146,12 +150,10 @@ class SocketValueVariant {
   void store_single(eNodeSocketDatatype socket_type, const void *value);
 
   /**
-   * Replaces the stored value with a new value-initialized single value of the given type and
-   * returns a pointer to the value. The caller can then write a different value of the same type
-   * into its place.
+   * Replaces the stored value with a new uninitialized single value for the given socket type. The
+   * caller is responsible to construct the value in the returned memory before it is used.
    */
-  void *new_single_for_write(eNodeSocketDatatype socket_type);
-  void *new_single_for_write(const CPPType &cpp_type);
+  void *allocate_single(eNodeSocketDatatype socket_type);
 
   friend std::ostream &operator<<(std::ostream &stream, const SocketValueVariant &value_variant);
 
