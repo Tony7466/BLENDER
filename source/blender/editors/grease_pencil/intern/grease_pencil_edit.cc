@@ -35,6 +35,7 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
+#include "GEO_reorder.hh"
 #include "GEO_smooth_curves.hh"
 #include "GEO_subdivide_curves.hh"
 
@@ -1715,7 +1716,7 @@ static int grease_pencil_stroke_reorder_exec(bContext *C, wmOperator *op)
 
     const Array<int> indices = get_reordered_indices(curves.curves_range(), strokes, direction);
 
-    curves.reorder_curves(indices);
+    curves = geometry::reorder_curves_geometry(curves, indices, {});
     info.drawing.tag_topology_changed();
 
     changed.store(true, std::memory_order_relaxed);

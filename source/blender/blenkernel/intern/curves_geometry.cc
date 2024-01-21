@@ -1374,54 +1374,6 @@ void CurvesGeometry::reverse_curves(const IndexMask &curves_to_reverse)
   this->tag_topology_changed();
 }
 
-void CurvesGeometry::reorder_curves(const Span<int> dst_to_src_curve)
-{
-  const CurvesGeometry &curves = *this;
-  BLI_assert(dst_to_src_curve.size() == curves.curves_num());
-
-  const OffsetIndices points_by_curve = curves.points_by_curve();
-  CurvesGeometry dst_curves(curves.points_num(), curves.curves_num());
-
-  Array<int> dst_curve_counts(curves.curves_num());
-
-  threading::parallel_for(dst_to_src_curve.index_range(), 1024, [&](const IndexRange range) {
-    for (const int dst_curve : range) {
-      const int src_curve = dst_to_src_curve[dst_curve];
-      const IndexRange src_points = points_by_curve[src_curve];
-      dst_curve_counts[dst_curve] = src_points.size();
-    }
-  });
-
-  MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
-  array_utils::copy(dst_curve_counts.as_span(), new_curve_offsets.drop_back(1));
-  offset_indices::accumulate_counts_to_offsets(new_curve_offsets);
-
-  const AttributeAccessor src_attributes = curves.attributes();
-  MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
-
-  Array<int> dst_to_src_point(curves.points_num());
-
-  threading::parallel_for(dst_to_src_curve.index_range(), 1024, [&](const IndexRange range) {
-    for (const int dst_curve : range) {
-      const int src_curve = dst_to_src_curve[dst_curve];
-      const IndexRange src_points = points_by_curve[src_curve];
-      const int offset = new_curve_offsets[dst_curve];
-      for (const int i : src_points.index_range()) {
-        dst_to_src_point[offset + i] = src_points[i];
-      }
-    }
-  });
-
-  gather_attributes(src_attributes, AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
-  gather_attributes(src_attributes, AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
-
-  dst_curves.update_curve_types();
-  dst_curves.remove_attributes_based_on_types();
-
-  *this = dst_curves;
-  this->tag_topology_changed();
-}
-
 void CurvesGeometry::remove_attributes_based_on_types()
 {
   MutableAttributeAccessor attributes = this->attributes_for_write();
