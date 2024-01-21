@@ -238,6 +238,11 @@ struct GeometrySet {
 
   void attribute_foreach(Span<GeometryComponent::Type> component_types,
                          bool include_instances,
+                         const VArray<int> instance_depth,
+                         AttributeForeachCallback callback) const;
+
+  void attribute_foreach(Span<GeometryComponent::Type> component_types,
+                         bool include_instances,
                          AttributeForeachCallback callback) const;
 
   static void propagate_attributes_from_layer_to_instances(
@@ -245,9 +250,16 @@ struct GeometrySet {
       MutableAttributeAccessor dst_attributes,
       const AnonymousAttributePropagationInfo &propagation_info);
 
+  void gather_attributes_for_propagation(Span<GeometryComponent::Type> component_types, //old variation.
+                                         GeometryComponent::Type dst_component_type,
+                                         bool include_instances,
+                                         const AnonymousAttributePropagationInfo &propagation_info,
+                                         Map<AttributeIDRef, AttributeKind> &r_attributes) const;
+
   void gather_attributes_for_propagation(Span<GeometryComponent::Type> component_types,
                                          GeometryComponent::Type dst_component_type,
                                          bool include_instances,
+                                         const VArray<int> instance_depth,
                                          const AnonymousAttributePropagationInfo &propagation_info,
                                          Map<AttributeIDRef, AttributeKind> &r_attributes) const;
 

@@ -575,6 +575,42 @@ GreasePencil *GeometrySet::get_grease_pencil_for_write()
 
 void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> component_types,
                                     const bool include_instances,
+                                    const VArray<int> instance_depth,
+                                    const AttributeForeachCallback callback) const
+{
+  for (const GeometryComponent::Type component_type : component_types) {
+    if (!this->has(component_type)) {
+      continue;
+    }
+    const GeometryComponent &component = *this->get_component(component_type);
+    const std::optional<AttributeAccessor> attributes = component.attributes();
+    if (attributes.has_value()) {
+      attributes->for_all(
+          [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) {
+            callback(attribute_id, meta_data, component);
+            return true;
+          });
+    }
+  }
+  if (include_instances && this->has_instances()) {
+    const Instances &instances = *this->get_instances();
+    
+    // instances.foreach_referenced_geometry([&](const GeometrySet &instance_geometry_set) {
+    // });
+    BLI_assert(instances.instances_num() == instance_depth.size());
+    size_t index = 0;
+    instances.foreach_referenced_geometry([&](const GeometrySet &instance_geometry_set) {
+      if (instance_depth[index] > 0){
+        const VArray<int> intsnace_depth_tmp =  VArray<int>::ForSingle(instance_depth[index]-1, instances.instances_num());
+        instance_geometry_set.attribute_foreach(component_types, include_instances, intsnace_depth_tmp, callback);
+      }
+      index ++;
+    });
+  }
+}
+
+void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> component_types,
+                                    const bool include_instances,
                                     const AttributeForeachCallback callback) const
 {
   for (const GeometryComponent::Type component_type : component_types) {
@@ -639,6 +675,60 @@ void GeometrySet::gather_attributes_for_propagation(
   this->attribute_foreach(
       component_types,
       include_instances,
+      [&](const AttributeIDRef &attribute_id,
+          const AttributeMetaData &meta_data,
+          const GeometryComponent &component) {
+        if (component.attributes()->is_builtin(attribute_id)) {
+          if (!dummy_component->attributes()->is_builtin(attribute_id)) {
+            /* Don't propagate built-in attributes that are not built-in on the destination
+             * component. */
+            return;
+          }
+        }
+        if (meta_data.data_type == CD_PROP_STRING) {
+          /* Propagating string attributes is not supported yet. */
+          return;
+        }
+        if (attribute_id.is_anonymous() &&
+            !propagation_info.propagate(attribute_id.anonymous_id())) {
+          return;
+        }
+
+        AttrDomain domain = meta_data.domain;
+        if (dst_component_type != GeometryComponent::Type::Instance &&
+            domain == AttrDomain::Instance) {
+          domain = AttrDomain::Point;
+        }
+
+        auto add_info = [&](AttributeKind *attribute_kind) {
+          attribute_kind->domain = domain;
+          attribute_kind->data_type = meta_data.data_type;
+        };
+        auto modify_info = [&](AttributeKind *attribute_kind) {
+          attribute_kind->domain = bke::attribute_domain_highest_priority(
+              {attribute_kind->domain, domain});
+          attribute_kind->data_type = bke::attribute_data_type_highest_complexity(
+              {attribute_kind->data_type, meta_data.data_type});
+        };
+        r_attributes.add_or_modify(attribute_id, add_info, modify_info);
+      });
+}
+
+void GeometrySet::gather_attributes_for_propagation(
+    const Span<GeometryComponent::Type> component_types,
+    const GeometryComponent::Type dst_component_type,
+    bool include_instances,
+    const VArray<int> instance_depth,
+    const AnonymousAttributePropagationInfo &propagation_info,
+    Map<AttributeIDRef, AttributeKind> &r_attributes) const
+{
+  /* Only needed right now to check if an attribute is built-in on this component type.
+   * TODO: Get rid of the dummy component. */
+  const GeometryComponentPtr dummy_component = GeometryComponent::create(dst_component_type);
+  this->attribute_foreach(
+      component_types,
+      include_instances,
+      instance_depth,
       [&](const AttributeIDRef &attribute_id,
           const AttributeMetaData &meta_data,
           const GeometryComponent &component) {
