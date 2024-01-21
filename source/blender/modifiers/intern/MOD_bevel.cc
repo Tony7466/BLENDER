@@ -10,6 +10,7 @@
 
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
+#include "BLI_string.h"
 
 #include "BLT_translation.h"
 
@@ -90,6 +91,14 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   int vgroup = -1;
   const MDeformVert *dvert = nullptr;
   BevelModifierData *bmd = (BevelModifierData *)md;
+
+  if (bmd->vertex_weight_name == "") {
+    STRNCPY(bmd->vertex_weight_name, "bevel_weight_vert");
+  }
+  if (bmd->edge_weight_name == "") {
+    STRNCPY(bmd->edge_weight_name, "bevel_weight_edge");
+  }
+
   const float threshold = cosf(bmd->bevel_angle + 0.000000175f);
   const bool do_clamp = !(bmd->flags & MOD_BEVEL_OVERLAP_OK);
   const int offset_type = bmd->val_flags;
@@ -124,9 +133,9 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   }
 
   const int bweight_offset_vert = CustomData_get_offset_named(
-      &bm->vdata, CD_PROP_FLOAT, "bevel_weight_vert");
+      &bm->vdata, CD_PROP_FLOAT, bmd->vertex_weight_name);
   const int bweight_offset_edge = CustomData_get_offset_named(
-      &bm->edata, CD_PROP_FLOAT, "bevel_weight_edge");
+      &bm->edata, CD_PROP_FLOAT, bmd->edge_weight_name);
 
   if (bmd->affect_type == MOD_BEVEL_AFFECT_VERTICES) {
     BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
@@ -214,7 +223,9 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
                 miter_inner,
                 spread,
                 bmd->custom_profile,
-                bmd->vmesh_method);
+                bmd->vmesh_method,
+                bmd->edge_weight_name,
+                bmd->vertex_weight_name);
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
 
@@ -280,6 +291,20 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     sub = uiLayoutColumn(col, false);
     uiLayoutSetActive(sub, edge_bevel);
     uiItemR(col, ptr, "angle_limit", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else if (limit_method == MOD_BEVEL_WEIGHT) {
+    sub = uiLayoutColumn(col, false);
+    uiLayoutSetActive(sub, edge_bevel);
+
+    const char *weight_type = "edge_weight";
+    int domain_filter = 1;
+    if (!edge_bevel) {
+      weight_type = "vertex_weight";
+      domain_filter = 0;
+    }
+
+    PointerRNA object_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+    uiItemPointerR_att(col, ptr, weight_type, &object_data_ptr, "attributes", nullptr, ICON_NONE, domain_filter);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     modifier_vgroup_ui(col, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);

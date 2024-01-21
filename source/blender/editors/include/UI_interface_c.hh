@@ -2886,6 +2886,15 @@ void uiItemPointerR_prop(uiLayout *layout,
                          const char *name,
                          int icon,
                          bool results_are_suggestions);
+void uiItemPointerR_att_prop(uiLayout *layout,
+                         PointerRNA *ptr,
+                         PropertyRNA *prop,
+                         PointerRNA *searchptr,
+                         PropertyRNA *searchprop,
+                         const char *name,
+                         int icon,
+                         bool results_are_suggestions,
+                         int domain_filter);
 void uiItemPointerR(uiLayout *layout,
                     PointerRNA *ptr,
                     const char *propname,
@@ -2893,6 +2902,14 @@ void uiItemPointerR(uiLayout *layout,
                     const char *searchpropname,
                     const char *name,
                     int icon);
+void uiItemPointerR_att(uiLayout *layout,
+                    PointerRNA *ptr,
+                    const char *propname,
+                    PointerRNA *searchptr,
+                    const char *searchpropname,
+                    const char *name,
+                    int icon,
+                    int domain_filter);
 
 /**
  * Create a list of enum items.

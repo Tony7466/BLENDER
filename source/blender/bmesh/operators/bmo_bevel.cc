@@ -82,7 +82,9 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
                   miter_inner,
                   spread,
                   custom_profile,
-                  vmesh_method);
+                  vmesh_method,
+                  "bevel_weight_edge",
+                  "bevel_weight_vert");
 
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "faces.out", BM_FACE, BM_ELEM_TAG);
     BMO_slot_buffer_from_enabled_hflag(bm, op, op->slots_out, "edges.out", BM_EDGE, BM_ELEM_TAG);

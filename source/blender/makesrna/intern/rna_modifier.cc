@@ -952,6 +952,20 @@ static bool rna_HookModifier_object_override_apply(Main *bmain,
   return true;
 }
 
+static void rna_BevelModifier_edge_weight_name_set(PointerRNA *ptr, const char *value)
+{
+  BevelModifierData *bmd = static_cast<BevelModifierData *>(ptr->data);
+
+  STRNCPY(bmd->edge_weight_name, value);
+}
+
+static void rna_BevelModifier_vertex_weight_name_set(PointerRNA *ptr, const char *value)
+{
+  BevelModifierData *bmd = static_cast<BevelModifierData *>(ptr->data);
+
+  STRNCPY(bmd->vertex_weight_name, value);
+}
+
 static void rna_HookModifier_subtarget_set(PointerRNA *ptr, const char *value)
 {
   Object *owner = (Object *)ptr->owner_id;
@@ -4310,6 +4324,20 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "lim_flags");
   RNA_def_property_enum_items(prop, prop_limit_method_items);
   RNA_def_property_ui_text(prop, "Limit Method", "");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "edge_weight", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "edge_weight_name");
+  RNA_def_property_ui_text(prop, "Edge Attribute", "Edge weight attribute");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_BevelModifier_edge_weight_name_set");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "vertex_weight", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "vertex_weight_name");
+  RNA_def_property_ui_text(prop, "Vertex Attribute", "Vertex weight attribute");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_BevelModifier_vertex_weight_name_set");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "angle_limit", PROP_FLOAT, PROP_ANGLE);
