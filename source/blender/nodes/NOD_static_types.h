@@ -434,6 +434,7 @@ DefNode(GeometryNode, GEO_NODE_SET_MATERIAL, 0, "SET_MATERIAL", SetMaterial, "Se
 DefNode(GeometryNode, GEO_NODE_SET_POINT_RADIUS, 0, "SET_POINT_RADIUS", SetPointRadius, "Set Point Radius", "Set the display size of point cloud points")
 DefNode(GeometryNode, GEO_NODE_SET_POSITION, 0, "SET_POSITION", SetPosition, "Set Position", "Set the location of each point")
 DefNode(GeometryNode, GEO_NODE_SET_SHADE_SMOOTH, 0, "SET_SHADE_SMOOTH", SetShadeSmooth, "Set Shade Smooth", "Control the smoothness of mesh normals around each face by changing the \"shade smooth\" attribute")
+DefNode(GeometryNode, GEO_NODE_SHORTEST_PATH, 0, "SHORTEST_PATH", ShortestPath, "Shortest Path", "")
 DefNode(GeometryNode, GEO_NODE_SET_SPLINE_CYCLIC, 0, "SET_SPLINE_CYCLIC", SetSplineCyclic, "Set Spline Cyclic", "Control whether each spline loops back on itself by changing the \"cyclic\" attribute")
 DefNode(GeometryNode, GEO_NODE_SET_SPLINE_RESOLUTION, 0, "SET_SPLINE_RESOLUTION", SetSplineResolution, "Set Spline Resolution", "Control how many evaluated points should be generated on every curve segment")
 DefNode(GeometryNode, GEO_NODE_SIMULATION_INPUT, def_geo_simulation_input, "SIMULATION_INPUT", SimulationInput, "Simulation Input", "Input data for the simulation zone")
