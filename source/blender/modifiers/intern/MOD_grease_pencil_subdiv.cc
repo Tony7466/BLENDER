@@ -80,15 +80,34 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 static void subdivide_drawing(ModifierData &md, Object &ob, bke::greasepencil::Drawing &drawing)
 {
   GreasePencilSubdivModifierData &mmd = reinterpret_cast<GreasePencilSubdivModifierData &>(md);
+  const bool needs_catmull = mmd.type == MOD_GREASE_PENCIL_SUBDIV_CATMULL;
 
   IndexMaskMemory memory;
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, drawing.strokes_for_write(), mmd.influence, memory);
 
-  const VArray<int> cuts = VArray<int>::ForSingle(mmd.level, drawing.strokes().points_num());
+  bke::CurvesGeometry original_curves;
+  if (needs_catmull) {
+    /* Make a copy of the original so we can later use catmull curve type to get subdivide-smoothed
+     * positions. */
+    original_curves = bke::CurvesGeometry(drawing.strokes());
+  }
 
+  VArray<int> cuts = VArray<int>::ForSingle(mmd.level, drawing.strokes().points_num());
+
+  /* Simple subdiv first, then we can catmull smooth positions. */
   drawing.strokes_for_write() = geometry::subdivide_curves(
       drawing.strokes(), strokes, std::move(cuts), {});
+
+  if (needs_catmull) {
+    original_curves.fill_curve_types(CURVE_TYPE_CATMULL_ROM);
+    /* The resolution value of the catmull-rom subdiv equals to how many points per original
+     * segment, which means number of cuts + 1 */
+    original_curves.resolution_for_write().fill(mmd.level + 1);
+    drawing.strokes_for_write().positions_for_write().copy_from(
+        original_curves.evaluated_positions());
+  }
+
   drawing.tag_topology_changed();
 }
 
@@ -131,6 +150,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
+  uiItemR(layout, ptr, "subdivision_type", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "level", UI_ITEM_NONE, IFACE_("Subdivisions"), ICON_NONE);
 
   if (uiLayout *influence_panel = uiLayoutPanel(

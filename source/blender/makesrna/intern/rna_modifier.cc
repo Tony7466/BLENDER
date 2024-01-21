@@ -7766,6 +7766,12 @@ static void rna_def_modifier_grease_pencil_subdiv(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem gpencil_subdivision_type_items[] = {
+      {MOD_GREASE_PENCIL_SUBDIV_CATMULL, "CATMULL_CLARK", 0, "Catmull-Clark", ""},
+      {MOD_GREASE_PENCIL_SUBDIV_SIMPLE, "SIMPLE", 0, "Simple", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "GreasePencilSubdivModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Subdivision Modifier", "Subdivide Stroke modifier");
   RNA_def_struct_sdna(srna, "GreasePencilSubdivModifierData");
@@ -7789,6 +7795,13 @@ static void rna_def_modifier_grease_pencil_subdiv(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 65536);
   RNA_def_property_ui_range(prop, 0, 32, 1, 0);
   RNA_def_property_ui_text(prop, "Level", "Number of subdivisions");
+
+  prop = RNA_def_property(srna, "subdivision_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "type");
+  RNA_def_property_enum_items(prop, gpencil_subdivision_type_items);
+  RNA_def_property_ui_text(prop, "Subdivision Type", "Select type of subdivision algorithm");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
