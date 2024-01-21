@@ -272,19 +272,19 @@ void *SocketValueVariant::allocate_single(const eNodeSocketDatatype socket_type)
   socket_type_ = socket_type;
   switch (socket_type) {
     case SOCK_FLOAT:
-      return &value_.allocate<float>();
+      return value_.allocate<float>();
     case SOCK_INT:
-      return &value_.allocate<int>();
+      return value_.allocate<int>();
     case SOCK_VECTOR:
-      return &value_.allocate<float3>();
+      return value_.allocate<float3>();
     case SOCK_BOOLEAN:
-      return &value_.allocate<bool>();
+      return value_.allocate<bool>();
     case SOCK_ROTATION:
-      return &value_.allocate<math::Quaternion>();
+      return value_.allocate<math::Quaternion>();
     case SOCK_RGBA:
-      return &value_.allocate<ColorGeometry4f>();
+      return value_.allocate<ColorGeometry4f>();
     case SOCK_STRING:
-      return &value_.allocate<std::string>();
+      return value_.allocate<std::string>();
     default: {
       BLI_assert_unreachable();
       return nullptr;
