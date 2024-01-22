@@ -6,9 +6,13 @@
  * \ingroup DNA
  *
  * Contains functions that help dealing with arrays that are stored in DNA. Due to the constraints
- * of DNA, all structs are trivial from the languages point of view (`std::is_trivial_v`). However,
- * semantically, these types have non-trivial copy-constructors and destructors.
+ * of DNA, all structs are trivial from the language's point of view (`std::is_trivial_v`).
+ * However, semantically, these types may have non-trivial copy-constructors and destructors.
  */
+
+#include "MEM_guardedalloc.h"
+
+#include "BLI_index_range.hh"
 
 namespace blender::dna::array {
 
@@ -33,7 +37,7 @@ inline void remove_index(
   std::copy_n(old_items + index + 1, old_items_num - index - 1, new_items + index);
 
   destruct_item(&old_items[index]);
-  MEM_SAFE_FREE(old_items);
+  MEM_freeN(old_items);
 
   *items = new_items;
   *items_num = new_items_num;
@@ -53,7 +57,7 @@ template<typename T>
 inline void clear(T **items, int *items_num, int *active_index, void (*destruct_item)(T *))
 {
   static_assert(std::is_trivial_v<T>);
-  for (const int i : blender::IndexRange(*items_num)) {
+  for (const int i : IndexRange(*items_num)) {
     destruct_item(&(*items)[i]);
   }
   MEM_SAFE_FREE(*items);
