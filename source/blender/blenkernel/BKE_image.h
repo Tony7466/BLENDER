@@ -19,6 +19,7 @@ extern "C" {
 struct Depsgraph;
 struct ID;
 struct ImBuf;
+struct ImBuf_Anim;
 struct Image;
 struct ImageFormatData;
 struct ImagePool;
@@ -31,7 +32,6 @@ struct RenderResult;
 struct ReportList;
 struct Scene;
 struct StampData;
-struct anim;
 
 #define IMA_MAX_SPACE 64
 #define IMA_UDIM_MAX 2000
@@ -108,14 +108,14 @@ int BKE_imbuf_write_as(struct ImBuf *ibuf,
 /**
  * Used by sequencer too.
  */
-struct anim *openanim(const char *filepath,
-                      int flags,
-                      int streamindex,
-                      char colorspace[IMA_MAX_SPACE]);
-struct anim *openanim_noload(const char *filepath,
-                             int flags,
-                             int streamindex,
-                             char colorspace[IMA_MAX_SPACE]);
+struct ImBuf_Anim *openanim(const char *filepath,
+                            int flags,
+                            int streamindex,
+                            char colorspace[IMA_MAX_SPACE]);
+struct ImBuf_Anim *openanim_noload(const char *filepath,
+                                   int flags,
+                                   int streamindex,
+                                   char colorspace[IMA_MAX_SPACE]);
 
 void BKE_image_tag_time(struct Image *ima);
 
