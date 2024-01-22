@@ -193,7 +193,7 @@ endif()
 
 if(WIN32)
   add_definitions(-DNOMINMAX)
-endif(
+endif()
 
 # no need to compile object files for inline headers.
 set_source_files_properties(
