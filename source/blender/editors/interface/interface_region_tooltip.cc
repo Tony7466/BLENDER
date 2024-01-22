@@ -17,6 +17,7 @@
  * For now it's not a priority, so leave as-is.
  */
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdlib>
 #include <cstring>
@@ -45,8 +46,8 @@
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
