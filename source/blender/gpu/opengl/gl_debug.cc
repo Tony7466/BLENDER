@@ -17,6 +17,7 @@
 
 #include "GPU_debug.h"
 #include "GPU_platform.h"
+#include "gpu_profile_report.hh"
 
 #include "CLG_log.h"
 
@@ -25,9 +26,6 @@
 #include "gl_uniform_buffer.hh"
 
 #include "gl_debug.hh"
-
-#include <cstdio>
-#include <sstream>
 
 static CLG_LogRef LOG = {"gpu.debug"};
 
@@ -473,23 +471,19 @@ void GLContext::process_frame_timings()
       break;
     }
 
-    std::stringstream result;
-    result << "\n";
-    result << " Group                          | GPU  | CPU  | Latency\n";
-    result << "--------------------------------|------|------|--------\n";
-    result << " Total                          | ";
     GLuint64 begin_timestamp = 0;
     GLuint64 end_timestamp = 0;
     glGetQueryObjectui64v(queries.first().start, GL_QUERY_RESULT, &begin_timestamp);
     glGetQueryObjectui64v(queries[last_query].end, GL_QUERY_RESULT, &end_timestamp);
 
     float gpu_total_time = (end_timestamp - begin_timestamp) / 1000000.0;
-    result << std::to_string(gpu_total_time).substr(0, 4) << " | ";
 
     float cpu_total_time = (queries[last_query].cpu_start - queries.first().cpu_start) /
                                1000000.0 +
                            queries[last_query].cpu_time;
-    result << std::to_string(cpu_total_time).substr(0, 4) << " | \n";
+
+    ProfileReport report;
+    report.begin(gpu_total_time, cpu_total_time);
 
     for (TimeQuery &query : queries) {
       if (!query.is_required()) {
@@ -501,19 +495,13 @@ void GLContext::process_frame_timings()
       glGetQueryObjectui64v(query.end, GL_QUERY_RESULT, &end_timestamp);
       glDeleteQueries(2, query.handles);
 
-      result << std::string(query.stack_depth, '.');
-      result << " " << query.name
-             << std::string(max_ii(0, 30 - query.stack_depth - query.name.length()), ' ') << " | ";
-
       float gpu_time = (end_timestamp - begin_timestamp) / 1000000.0;
+      float latency = (begin_timestamp - query.cpu_start) / 1000000.0;
 
-      result << std::to_string(gpu_time).substr(0, 4) << " | ";
-      result << std::to_string(query.cpu_time).substr(0, 4) << " | ";
-      result << std::to_string((begin_timestamp - query.cpu_start) / 1000000.0).substr(0, 4)
-             << "\n";
+      report.add_group(query.name, query.stack_depth, gpu_time, query.cpu_time, latency);
     }
 
-    std::cout << result.str();
+    report.end();
     frame_timings.remove(frame_i--);
   }
 

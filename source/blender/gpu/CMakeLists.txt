@@ -128,6 +128,7 @@ set(SRC
   intern/gpu_node_graph.h
   intern/gpu_platform_private.hh
   intern/gpu_private.h
+  intern/gpu_profile_report.hh
   intern/gpu_query.hh
   intern/gpu_select_private.h
   intern/gpu_shader_create_info.hh
