@@ -766,7 +766,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
       wmd->width = wav->width;
 
       BLI_addtail(&ob->modifiers, wmd);
-      BKE_modifiers_identifier_init(*ob, wmd->modifier);
+      BKE_modifiers_persistent_uid_init(*ob, wmd->modifier);
 
       BLI_remlink(&ob->effect, paf);
       MEM_freeN(paf);
@@ -785,7 +785,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
       bmd->seed = 1;
 
       BLI_addtail(&ob->modifiers, bmd);
-      BKE_modifiers_identifier_init(*ob, bmd->modifier);
+      BKE_modifiers_persistent_uid_init(*ob, bmd->modifier);
 
       BLI_remlink(&ob->effect, paf);
       MEM_freeN(paf);
@@ -873,7 +873,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
     BLI_remlink(&ob->hooks, hook);
 
     BKE_modifier_unique_name(&ob->modifiers, (ModifierData *)hmd);
-    BKE_modifiers_identifier_init(*ob, hmd->modifier);
+    BKE_modifiers_persistent_uid_init(*ob, hmd->modifier);
 
     MEM_freeN(hook);
   }
@@ -1426,7 +1426,7 @@ bool BKE_object_copy_modifier(
 
     BLI_addtail(&ob_dst->modifiers, md_dst);
     BKE_modifier_unique_name(&ob_dst->modifiers, md_dst);
-    BKE_modifiers_identifier_init(*ob_dst, *md_dst);
+    BKE_modifiers_persistent_uid_init(*ob_dst, *md_dst);
   }
 
   BKE_object_modifier_set_active(ob_dst, md_dst);

@@ -1074,7 +1074,7 @@ void import_mesh_skel_bindings(Main *bmain,
   if (!BKE_modifiers_findby_type(mesh_obj, eModifierType_Armature)) {
     ModifierData *md = BKE_modifier_new(eModifierType_Armature);
     BLI_addtail(&mesh_obj->modifiers, md);
-    BKE_modifiers_identifier_init(*mesh_obj, *md);
+    BKE_modifiers_persistent_uid_init(*mesh_obj, *md);
   }
 
   /* Create a deform group per joint. */

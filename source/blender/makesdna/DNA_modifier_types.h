@@ -139,8 +139,8 @@ typedef struct ModifierData {
    * stack.
    *
    * A valid identifier is non-negative (>= 1). Modifiers that are currently not on an object may
-   * have invalid identifiers. It has to be initialized with #BKE_modifiers_identifier_init when it
-   * is added to an object.
+   * have invalid identifiers. It has to be initialized with #BKE_modifiers_persistent_uid_init
+   * when it is added to an object.
    */
   int persistent_uid;
   /** MAX_NAME. */

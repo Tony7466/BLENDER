@@ -480,7 +480,7 @@ void BKE_modifiers_clear_errors(Object *ob);
 /**
  * Updates `md.persistent_uid` so that it is a valid identifier (>=1) and is unique in the object.
  */
-void BKE_modifiers_identifier_init(const Object &object, ModifierData &md);
+void BKE_modifiers_persistent_uid_init(const Object &object, ModifierData &md);
 /**
  * Returns true when all the modifier identifiers are positive and unique. This should generally be
  * true and should only be used by asserts.
