@@ -1151,7 +1151,7 @@ void DRW_draw_region_engine_info(int xoffset, int *yoffset, int line_height)
         buf_step = BLI_strchr_or_end(buf, '\n');
         const int buf_len = buf_step - buf;
         *yoffset -= line_height;
-        BLF_draw_default_shadow(xoffset, *yoffset, 0.0f, buf, buf_len);
+        BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, buf, buf_len);
       } while (*buf_step ? ((void)buf_step++, true) : false);
     }
   }

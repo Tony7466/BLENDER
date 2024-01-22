@@ -60,7 +60,7 @@ void BLF_draw_default(float x, float y, float z, const char *str, const size_t s
   BLF_draw(global_font_default, str, str_len);
 }
 
-void BLF_draw_default_shadow(float x, float y, float z, const char *str, const size_t str_len)
+void BLF_draw_default_shadowed(float x, float y, float z, const char *str, const size_t str_len)
 {
   ASSERT_DEFAULT_SET;
   BLF_size(global_font_default, global_font_size * UI_SCALE_FAC);
