@@ -1351,6 +1351,9 @@ typedef struct UnifiedPaintSettings {
   float average_stroke_accum[3];
   int average_stroke_counter;
 
+  /* How much brush should be rotated in the view plane, 0 means x points right, y points up.
+   * The convention is that the brush's _negative_ Y axis points in the tangent direction (of the
+   * mouse curve, Bezier curve, etc.) */
   float brush_rotation;
   float brush_rotation_sec;
 
@@ -1611,9 +1614,9 @@ typedef struct ToolSettings {
   /** Select Group Threshold. */
   float select_thresh;
 
-  /* Auto-Keying Mode. */
+  /* Keying Settings. */
   /** Defines in DNA_userdef_types.h. */
-  short autokey_flag;
+  short keying_flag;
   char autokey_mode;
   /** Keyframe type (see DNA_curve_types.h). */
   char keyframe_type;

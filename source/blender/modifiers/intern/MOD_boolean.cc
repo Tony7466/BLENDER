@@ -30,8 +30,8 @@
 #include "BKE_collection.h"
 #include "BKE_context.hh"
 #include "BKE_global.h" /* only to check G.debug */
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_boolean_convert.hh"
@@ -546,7 +546,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
       BKE_mesh_wrapper_ensure_mdata(mesh_operand_ob);
       /* when one of objects is empty (has got no faces) we could speed up
        * calculation a bit returning one of objects' derived meshes (or empty one)
-       * Returning mesh is depended on modifiers operation (sergey) */
+       * Returning mesh is dependent on modifiers operation (sergey) */
       result = get_quick_mesh(object, mesh, operand_ob, mesh_operand_ob, bmd->operation);
 
       if (result == nullptr) {
@@ -702,4 +702,5 @@ ModifierTypeInfo modifierType_Boolean = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

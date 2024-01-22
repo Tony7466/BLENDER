@@ -10,8 +10,8 @@
 
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
@@ -27,7 +27,7 @@
 
 #include "NOD_shader.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "bmesh.hh"
 
@@ -202,9 +202,9 @@ extern "C" void ntreeFreeLocalTree(struct bNodeTree * /*ntree*/)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Stubs of DRW_engine.h
+/** \name Stubs of DRW_engine.hh
  * \{ */
-extern "C" void DRW_deferred_shader_remove(struct GPUMaterial * /*mat*/)
+extern void DRW_deferred_shader_remove(struct GPUMaterial * /*mat*/)
 {
   BLI_assert_unreachable();
 }
@@ -212,7 +212,7 @@ extern "C" void DRW_deferred_shader_remove(struct GPUMaterial * /*mat*/)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Stubs of IMB_imbuf.h
+/** \name Stubs of IMB_imbuf.hh
  * \{ */
 extern "C" struct ImBuf *IMB_ibImageFromMemory(const unsigned char * /*mem*/,
                                                size_t /*size*/,

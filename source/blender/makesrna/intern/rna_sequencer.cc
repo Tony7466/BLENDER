@@ -28,7 +28,7 @@
 #include "BKE_animsys.h"
 #include "BKE_sound.h"
 
-#include "IMB_metadata.h"
+#include "IMB_metadata.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -64,7 +64,7 @@ struct EffectInfo {
   int inputs;
 };
 
-/* These wrap strangely, disable formatting for fixed indentation and wrapping.  */
+/* These wrap strangely, disable formatting for fixed indentation and wrapping. */
 /* clang-format off */
 #define RNA_ENUM_SEQUENCER_VIDEO_MODIFIER_TYPE_ITEMS \
   {seqModifierType_BrightContrast, "BRIGHT_CONTRAST", ICON_NONE, "Brightness/Contrast", ""}, \
@@ -121,7 +121,7 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
 
-#  include "IMB_imbuf.h"
+#  include "IMB_imbuf.hh"
 
 #  include "SEQ_edit.hh"
 
@@ -1709,6 +1709,7 @@ static void rna_def_strip_crop(BlenderRNA *brna)
 static const EnumPropertyItem transform_filter_items[] = {
     {SEQ_TRANSFORM_FILTER_NEAREST, "NEAREST", 0, "Nearest", ""},
     {SEQ_TRANSFORM_FILTER_BILINEAR, "BILINEAR", 0, "Bilinear", ""},
+    {SEQ_TRANSFORM_FILTER_BICUBIC, "BICUBIC", 0, "Bicubic", ""},
     {SEQ_TRANSFORM_FILTER_NEAREST_3x3,
      "SUBSAMPLING_3x3",
      0,

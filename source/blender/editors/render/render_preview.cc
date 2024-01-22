@@ -23,9 +23,8 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
-
-#include "PIL_time.h"
 
 #include "BLO_readfile.h"
 
@@ -43,7 +42,7 @@
 #include "DNA_world_types.h"
 
 #include "BKE_animsys.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_armature.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
@@ -53,7 +52,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_light.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -72,9 +71,9 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_thumbs.hh"
 
 #include "BIF_glutil.hh"
 
@@ -427,7 +426,8 @@ static const char *preview_world_name(const Scene *sce,
    * this approximation.
    */
   if (id_type == ID_MA && pr_method == PR_ICON_RENDER &&
-      !render_engine_supports_ray_visibility(sce)) {
+      !render_engine_supports_ray_visibility(sce))
+  {
     return "WorldFloor";
   }
   return "World";
@@ -1451,7 +1451,8 @@ static void icon_preview_startjob(void *customdata, bool *stop, bool *do_update)
      * only get existing `ibuf`. */
     ibuf = BKE_image_acquire_ibuf(ima, &iuser, nullptr);
     if (ibuf == nullptr ||
-        (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr)) {
+        (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr))
+    {
       BKE_image_release_ibuf(ima, ibuf, nullptr);
       return;
     }

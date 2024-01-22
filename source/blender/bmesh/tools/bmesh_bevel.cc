@@ -40,7 +40,7 @@ using blender::Vector;
 
 // #define BEVEL_DEBUG_TIME
 #ifdef BEVEL_DEBUG_TIME
-#  include "PIL_time.h"
+#  include "BLI_time.h"
 #endif
 
 #define BEVEL_EPSILON_D 1e-6
@@ -58,7 +58,7 @@ using blender::Vector;
 #define BEVEL_MAX_AUTO_ADJUST_PCT 300.0f
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
-//#define DEBUG_CUSTOM_PROFILE_CUTOFF
+// #define DEBUG_CUSTOM_PROFILE_CUTOFF
 /* Happens far too often, uncomment for development. */
 // #define BEVEL_ASSERT_PROJECT
 
@@ -2299,7 +2299,8 @@ static void check_edge_data_seam_sharp_edges(BevVert *bv, int flag, bool neg)
 
   /* If no such edge found, return. */
   if ((!neg && !BEV_EXTEND_EDGE_DATA_CHECK(e, flag)) ||
-      (neg && BEV_EXTEND_EDGE_DATA_CHECK(e, flag))) {
+      (neg && BEV_EXTEND_EDGE_DATA_CHECK(e, flag)))
+  {
     return;
   }
 
@@ -6750,7 +6751,8 @@ static bool bev_rebuild_polygon(BMesh *bm, BevelParams *bp, BMFace *f)
           }
           /* Actually want "sharp" to be contiguous, so reverse the test. */
           if (!BM_elem_flag_test(ee[k], BM_ELEM_SMOOTH) &&
-              BM_elem_flag_test(bme_prev, BM_ELEM_SMOOTH)) {
+              BM_elem_flag_test(bme_prev, BM_ELEM_SMOOTH))
+          {
             BM_elem_flag_enable(bme_new, BM_ELEM_SMOOTH);
           }
         }
@@ -7762,7 +7764,7 @@ void BM_mesh_bevel(BMesh *bm,
   }
 
 #ifdef BEVEL_DEBUG_TIME
-  double start_time = PIL_check_seconds_timer();
+  double start_time = BLI_check_seconds_timer();
 #endif
 
   /* Disable the miters with the cutoff vertex mesh method, the combination isn't useful anyway. */
@@ -7930,7 +7932,7 @@ void BM_mesh_bevel(BMesh *bm,
   BLI_memarena_free(bp.mem_arena);
 
 #ifdef BEVEL_DEBUG_TIME
-  double end_time = PIL_check_seconds_timer();
+  double end_time = BLI_check_seconds_timer();
   printf("BMESH BEVEL TIME = %.3f\n", end_time - start_time);
 #endif
 }

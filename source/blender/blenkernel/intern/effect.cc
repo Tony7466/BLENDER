@@ -33,9 +33,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_noise.h"
 #include "BLI_rand.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
-
-#include "PIL_time.h"
 
 #include "BKE_anim_path.h" /* needed for where_on_path */
 #include "BKE_bvhutils.hh"
@@ -85,7 +84,7 @@ PartDeflect *BKE_partdeflect_new(int type)
   pd->pdef_sbift = 0.2f;
   pd->pdef_sboft = 0.02f;
   pd->pdef_cfrict = 5.0f;
-  pd->seed = (uint(ceil(PIL_check_seconds_timer())) + 1) % 128;
+  pd->seed = (uint(ceil(BLI_check_seconds_timer())) + 1) % 128;
   pd->f_strength = 1.0f;
   pd->f_damp = 1.0f;
 
@@ -695,7 +694,8 @@ bool get_effector_data(EffectorCache *eff,
   /* In case surface object is in Edit mode when loading the .blend,
    * surface modifier is never executed and bvhtree never built, see #48415. */
   if (eff->pd && eff->pd->shape == PFIELD_SHAPE_SURFACE && eff->surmd &&
-      eff->surmd->runtime.bvhtree) {
+      eff->surmd->runtime.bvhtree)
+  {
     /* closest point in the object surface is an effector */
     float vec[3];
 
@@ -848,7 +848,8 @@ static void get_effector_tot(
       efd->charge = eff->pd->f_strength;
     }
     else if (eff->pd->forcefield == PFIELD_HARMONIC &&
-             (eff->pd->flag & PFIELD_MULTIPLE_SPRINGS) == 0) {
+             (eff->pd->flag & PFIELD_MULTIPLE_SPRINGS) == 0)
+    {
       /* every particle is mapped to only one harmonic effector particle */
       *p = point->index % eff->psys->totpart;
       *tot = *p + 1;

@@ -326,22 +326,22 @@ set(SRC
   BKE_anim_visualization.h
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
-  BKE_appdir.h
+  BKE_appdir.hh
   BKE_armature.hh
   BKE_asset.hh
   BKE_attribute.h
   BKE_attribute.hh
   BKE_attribute_math.hh
-  BKE_autoexec.h
+  BKE_autoexec.hh
   BKE_bake_geometry_nodes_modifier.hh
   BKE_bake_items.hh
   BKE_bake_items_paths.hh
   BKE_bake_items_serialize.hh
   BKE_bake_items_socket.hh
   BKE_blender.h
-  BKE_blender_copybuffer.h
-  BKE_blender_undo.h
-  BKE_blender_user_menu.h
+  BKE_blender_copybuffer.hh
+  BKE_blender_undo.hh
+  BKE_blender_user_menu.hh
   BKE_blender_version.h
   BKE_blendfile.hh
   BKE_blendfile_link_append.hh
@@ -405,7 +405,7 @@ set(SRC
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
-  BKE_idtype.h
+  BKE_idtype.hh
   BKE_image.h
   BKE_image_format.h
   BKE_image_partial_update.hh
@@ -418,9 +418,9 @@ set(SRC
   BKE_keyconfig.h
   BKE_lattice.hh
   BKE_layer.h
-  BKE_lib_id.h
+  BKE_lib_id.hh
   BKE_lib_override.hh
-  BKE_lib_query.h
+  BKE_lib_query.hh
   BKE_lib_remap.hh
   BKE_library.hh
   BKE_light.h
@@ -475,7 +475,7 @@ set(SRC
   BKE_pbvh_api.hh
   BKE_pbvh_pixels.hh
   BKE_pointcache.h
-  BKE_pointcloud.h
+  BKE_pointcloud.hh
   BKE_pose_backup.h
   BKE_preferences.h
   BKE_preview_image.hh
@@ -504,7 +504,7 @@ set(SRC
   BKE_texture.h
   BKE_tracking.h
   BKE_type_conversions.hh
-  BKE_undo_system.h
+  BKE_undo_system.hh
   BKE_unit.hh
   BKE_vfont.hh
   BKE_vfontdata.hh
@@ -863,9 +863,9 @@ if(WITH_GTESTS)
   set(TEST_INC
     ../editors/include
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_blenkernel_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
-
-  # RNA_prototypes.h
-  add_dependencies(bf_blenkernel_tests bf_rna)
+  set(TEST_LIB
+    ${LIB}
+    bf_rna  # RNA_prototypes.h
+  )
+  blender_add_test_suite_lib(blenkernel "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
 endif()

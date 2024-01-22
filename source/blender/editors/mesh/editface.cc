@@ -17,8 +17,8 @@
 #include "BLI_task.hh"
 #include "BLI_vector_set.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -256,7 +256,8 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
         }
 
         for (const int inner_edge :
-             face_edges.slice(poly_loop_index, face_edges.size() - poly_loop_index)) {
+             face_edges.slice(poly_loop_index, face_edges.size() - poly_loop_index))
+        {
           if (outer_edge == inner_edge) {
             continue;
           }
