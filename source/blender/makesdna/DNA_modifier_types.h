@@ -142,7 +142,7 @@ typedef struct ModifierData {
    * have invalid identifiers. It has to be initialized with #BKE_modifiers_identifier_init when it
    * is added to an object.
    */
-  int identifier;
+  int persistent_uid;
   /** MAX_NAME. */
   char name[64];
 

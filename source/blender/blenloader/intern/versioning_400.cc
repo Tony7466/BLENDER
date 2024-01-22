@@ -2668,9 +2668,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 14)) {
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-      int identifier = 1;
+      int uid = 1;
       LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-        md->identifier = identifier++;
+        md->persistent_uid = uid++;
       }
     }
   }

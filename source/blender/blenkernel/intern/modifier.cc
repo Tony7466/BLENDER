@@ -277,10 +277,10 @@ ModifierData *BKE_modifiers_findby_session_uid(const Object *ob, const SessionUI
   return nullptr;
 }
 
-ModifierData *BKE_modifiers_findby_identifier(const Object *ob, const int identifier)
+ModifierData *BKE_modifiers_findby_persistent_uid(const Object *ob, const int persistent_uid)
 {
   LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-    if (md->identifier == identifier) {
+    if (md->persistent_uid == persistent_uid) {
       return md;
     }
   }
@@ -369,7 +369,7 @@ void BKE_modifier_copydata_ex(const ModifierData *md, ModifierData *target, cons
   target->mode = md->mode;
   target->flag = md->flag;
   target->ui_expand_flag = md->ui_expand_flag;
-  target->identifier = md->identifier;
+  target->persistent_uid = md->persistent_uid;
 
   if (mti->copy_data) {
     mti->copy_data(md, target, flag);
@@ -1037,30 +1037,30 @@ void BKE_modifiers_identifier_init(const Object &object, ModifierData &md)
   const uint64_t hash = blender::get_default_hash(blender::StringRef(md.name));
   blender::RandomNumberGenerator rng{uint32_t(hash)};
   while (true) {
-    const int new_id = rng.get_int32();
-    if (new_id <= 0) {
+    const int new_uid = rng.get_int32();
+    if (new_uid <= 0) {
       continue;
     }
-    if (BKE_modifiers_findby_identifier(&object, new_id) != nullptr) {
+    if (BKE_modifiers_findby_persistent_uid(&object, new_uid) != nullptr) {
       continue;
     }
-    md.identifier = new_id;
+    md.persistent_uid = new_uid;
     break;
   }
 }
 
 bool BKE_modifiers_identifers_are_valid(const Object &object)
 {
-  blender::Set<int> identifiers;
+  blender::Set<int> uids;
   int modifiers_num = 0;
   LISTBASE_FOREACH (const ModifierData *, md, &object.modifiers) {
-    if (md->identifier <= 0) {
+    if (md->persistent_uid <= 0) {
       return false;
     }
-    identifiers.add(md->identifier);
+    uids.add(md->persistent_uid);
     modifiers_num++;
   }
-  if (identifiers.size() != modifiers_num) {
+  if (uids.size() != modifiers_num) {
     return false;
   }
   return true;
