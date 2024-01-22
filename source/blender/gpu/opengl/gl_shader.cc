@@ -1518,10 +1518,11 @@ GLShader::GLProgram::~GLProgram()
 bool GLShader::program_link()
 {
   BLI_assert(program_active_ != nullptr);
-  BLI_assert(program_active_->program_id == 0);
-  program_active_->program_id = glCreateProgram();
+  if (program_active_->program_id == 0) {
+    program_active_->program_id = glCreateProgram();
+    debug::object_label(GL_PROGRAM, program_active_->program_id, name);
+  }
   GLuint program_id = program_active_->program_id;
-  debug::object_label(GL_PROGRAM, program_id, name);
 
   if (program_active_->vert_shader) {
     glAttachShader(program_id, program_active_->vert_shader);
@@ -1557,6 +1558,10 @@ void GLShader::init_program()
   }
 
   program_active_ = &program_cache_.lookup_or_add_default(constants.values);
+  if (!program_active_->program_id) {
+    program_active_->program_id = glCreateProgram();
+    debug::object_label(GL_PROGRAM, program_active_->program_id, name);
+  }
 }
 
 GLuint GLShader::program_get()
