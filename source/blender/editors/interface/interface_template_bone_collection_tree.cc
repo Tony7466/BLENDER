@@ -272,6 +272,12 @@ class BoneCollectionItem : public AbstractTreeViewItem {
     ED_undo_push(&const_cast<bContext &>(C), "Change Armature's Active Bone Collection");
   }
 
+  void on_click() override
+  {
+    /* Do not do anything, i.e. avoid the call to set_collapsed(false) of the
+     * default implementation. */
+  }
+
   bool supports_renaming() const override
   {
     return ANIM_armature_bonecoll_is_editable(&armature_, &bone_collection_);

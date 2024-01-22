@@ -244,6 +244,13 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
   void ensure_parents_uncollapsed();
 
+  /**
+   * Called when the user clicks on the row representing this tree item.
+   *
+   * By default this un-collapses the tree item. Can be overridden to change that behavior.
+   */
+  virtual void on_click();
+
  private:
   static void tree_row_click_fn(bContext *, void *, void *);
   static void collapse_chevron_click_fn(bContext *, void *but_arg1, void *);
