@@ -1262,7 +1262,6 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
   const char *name = view3d_get_name(v3d, rv3d);
   const char *name_array[3] = {name, nullptr, nullptr};
   int name_array_len = 1;
-  const int font_id = BLF_default();
 
   /* 6 is the maximum size of the axis roll text. */
   /* increase size for unicode languages (Chinese in utf-8...) */
