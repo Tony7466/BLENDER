@@ -22,7 +22,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supports_field()
       .description(("Which top-level instances to realize"));
   b.add_input<decl::Int>("Depth")
-      .default_value(0)
+      .default_value(99)
       .min(0)
       .supports_field()
       .description(
