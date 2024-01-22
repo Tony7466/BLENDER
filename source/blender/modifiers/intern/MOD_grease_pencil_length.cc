@@ -7,11 +7,8 @@
  */
 
 #include "BLI_hash.h"
-#include "BLI_math_vector_types.hh"
 #include "BLI_rand.h"
-#include "BLI_string_ref.hh"
 #include "BLI_task.h"
-#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -19,26 +16,17 @@
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_material_types.h"
 #include "DNA_node_types.h" /* For `GeometryNodeCurveSampleMode` */
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_screen_types.h"
 
-#include "BKE_context.hh"
 #include "BKE_curves.hh"
-#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.hh"
-#include "BKE_main.hh"
 #include "BKE_modifier.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-
-#include "ED_grease_pencil.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
@@ -343,8 +331,8 @@ ModifierTypeInfo modifierType_GreasePencilLength = {
     /*srna*/ &RNA_GreasePencilLengthModifier,
     /*type*/ ModifierTypeType::Nonconstructive,
     /*flags*/
-    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_EnableInEditmode |
-     eModifierTypeFlag_SupportsEditmode),
+    eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_EnableInEditmode |
+        eModifierTypeFlag_SupportsEditmode,
     /*icon*/ ICON_MOD_LENGTH,
 
     /*copy_data*/ blender::copy_data,
