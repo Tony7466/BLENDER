@@ -135,11 +135,8 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
   GPU_matrix_push();
   GPU_matrix_identity_set();
 
-  const int font_id = BLF_default();
-
-  const uiStyle *style = UI_style_get();
-
-  BLF_size(font_id, style->widgetlabel.points * UI_SCALE_FAC);
+  BLF_default_size(UI_style_get()->widgetlabel.points);
+  const int font_id = BLF_set_default();
 
   BLI_memiter_iter_init(dt->cache_strings, &it);
   while ((vos = static_cast<ViewCachedString *>(BLI_memiter_iter_step(&it)))) {
@@ -163,19 +160,20 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
       }
 
       if (vos->shadow) {
-        BLF_enable(font_id, BLF_SHADOW);
-        BLF_shadow(font_id, 5, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
-        BLF_shadow_offset(font_id, 0, -1);
+        BLF_draw_default_shadowed(
+            float(vos->sco[0] + vos->xoffs),
+            float(vos->sco[1] + vos->yoffs),
+            2.0f,
+            (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
+            vos->str_len);
       }
-
-      BLF_position(
-          font_id, float(vos->sco[0] + vos->xoffs), float(vos->sco[1] + vos->yoffs), 2.0f);
-      BLF_draw(font_id,
-               (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
-               vos->str_len);
-
-      if (vos->shadow) {
-        BLF_disable(font_id, BLF_SHADOW);
+      else {
+        BLF_draw_default(float(vos->sco[0] + vos->xoffs),
+                         float(vos->sco[1] + vos->yoffs),
+                         2.0f,
+                         (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) :
+                                                                   vos->str,
+                         vos->str_len);
       }
     }
   }
