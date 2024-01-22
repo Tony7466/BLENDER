@@ -1,2 +1,3 @@
 Referenced by issue #117272, Clicking color properties in the toolbar locks the UI and doesn't open the color picker
 Referenced by commit 821b077149f9c57ae6a0bc9d519b55ac3e553d96, Fix #117272: Color property with popover causes Blender freeze
+Referenced by commit 089c389b5c00ec2794299a18fd5b05dd7c4c54cc, Cleanup: Store UI button drawstr with std::string
