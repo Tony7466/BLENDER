@@ -3724,3 +3724,47 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* ------------------------------------------------------------------- */
+/** \name Remove Data Block from Geometry Nodes Modifier
+ * \{ */
+
+static int geometry_nodes_modifier_data_block_remove_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+
+  char modifier_name[MAX_NAME];
+  RNA_string_get(op->ptr, "modifier_name", modifier_name);
+  NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(
+      BKE_modifiers_findby_name(ob, modifier_name));
+  if (nmd == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  if (nmd->data_blocks_num == 0) {
+    return OPERATOR_CANCELLED;
+  }
+  const int index_to_remove = nmd->active_data_block;
+  if (index_to_remove < 0 || index_to_remove >= nmd->data_blocks_num) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* TODO: finish operator */
+
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_geometry_nodes_modifier_data_block_remove(wmOperatorType *ot)
+{
+  ot->name = "Remove Geometry Nodes Modifier Data Block";
+  ot->description = "Remove active data block mapping";
+  ot->idname = "OBJECT_OT_geometry_nodes_modifier_data_block_remove";
+
+  ot->exec = geometry_node_tree_copy_assign_exec;
+  ot->poll = ED_operator_object_active;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+
+  RNA_def_string(ot->srna, "modifier_name", nullptr, MAX_NAME, "Modifier Name", "");
+}
+
+/** \} */
