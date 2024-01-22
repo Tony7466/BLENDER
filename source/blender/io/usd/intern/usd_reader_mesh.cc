@@ -107,9 +107,8 @@ static void assign_materials(Main *bmain,
       pxr::UsdShadeMaterial usd_mat(prim);
 
       if (!usd_mat) {
-        CLOG_WARN(&LOG,
-                  "WARNING: Couldn't construct USD material from prim %s",
-                  item.key.GetAsString().c_str());
+        CLOG_WARN(
+            &LOG, "Couldn't construct USD material from prim %s", item.key.GetAsString().c_str());
         continue;
       }
 
