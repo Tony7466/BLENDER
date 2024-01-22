@@ -137,7 +137,7 @@ static void assign_materials(Main *bmain,
     }
     else {
       /* This shouldn't happen. */
-      CLOG_WARN(&LOG, "WARNING: Couldn't assign material %s", item.key.GetAsString().c_str());
+      CLOG_WARN(&LOG, "Couldn't assign material %s", item.key.GetAsString().c_str());
     }
   }
   if (ob->totcol > 0) {
