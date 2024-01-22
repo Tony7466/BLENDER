@@ -689,7 +689,9 @@ static void print_help(bArgs *ba, bool all)
   PRINT("\n");
   PRINT("GPU Options:\n");
   BLI_args_print_arg_doc(ba, "--gpu-backend");
+#  ifndef __APPLE__
   BLI_args_print_arg_doc(ba, "--profile-gpu");
+#  endif
 
   PRINT("\n");
   PRINT("Misc Options:\n");
@@ -2335,7 +2337,9 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
   /* GPU backend selection should be part of #ARG_PASS_ENVIRONMENT for correct GPU context
    * selection for animation player. */
   BLI_args_add(ba, nullptr, "--gpu-backend", CB_ALL(arg_handle_gpu_backend_set), nullptr);
+#  ifndef __APPLE__
   BLI_args_add(ba, nullptr, "--profile-gpu", CB(arg_handle_profile_gpu_set), nullptr);
+#  endif
 
   /* Pass: Background Mode & Settings
    *
