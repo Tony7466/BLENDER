@@ -35,7 +35,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
                                    const GeometryNodeCurveSampleMode sample_mode,
                                    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  if(src_curves.points_num() < 2){
+  if (src_curves.points_num() < 2) {
     return src_curves;
   }
 
@@ -65,15 +65,17 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
 
     use_start_lengths[curve] = start_lengths[curve];
     use_end_lengths[curve] = end_lengths[curve];
-    if(sample_mode == GEO_NODE_CURVE_SAMPLE_FACTOR){
+    if (sample_mode == GEO_NODE_CURVE_SAMPLE_FACTOR) {
       float total_length = src_curves.evaluated_length_total_for_curve(curve, false);
-      use_start_lengths[curve]*=total_length;
-      use_end_lengths[curve]*=total_length;
+      use_start_lengths[curve] *= total_length;
+      use_end_lengths[curve] *= total_length;
     }
 
-    const int count_start = (use_start_lengths[curve] > 0) ? (ceil(use_start_lengths[curve] * density)) :
+    const int count_start = (use_start_lengths[curve] > 0) ?
+                                (ceil(use_start_lengths[curve] * density)) :
+                                0;
+    const int count_end = (use_end_lengths[curve] > 0) ? (ceil(use_end_lengths[curve] * density)) :
                                                          0;
-    const int count_end = (use_end_lengths[curve] > 0) ? (ceil(use_end_lengths[curve] * density)) : 0;
     dst_point_counts[curve] += count_start;
     dst_point_counts[curve] += count_end;
     start_points[curve] = count_start;

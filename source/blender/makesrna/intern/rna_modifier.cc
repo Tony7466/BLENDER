@@ -18,7 +18,6 @@
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_gpencil_modifier_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -7596,7 +7595,6 @@ static void rna_def_modifier_volume_to_mesh(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
-
 static void rna_def_modifier_grease_pencil_layer_filter(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -7940,7 +7938,7 @@ static void rna_def_modifier_grease_pencil_tint(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
-static void rna_def_modifier_greasepencil_length(BlenderRNA *brna)
+static void rna_def_modifier_grease_pencil_length(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -7961,10 +7959,9 @@ static void rna_def_modifier_greasepencil_length(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilLengthModifier_vertex_group_name_set");
 
-  rna_def_modifier_panel_open_prop(srna,"open_random_panel", 0);
-  rna_def_modifier_panel_open_prop(srna,"open_offset_panel", 1);
-  rna_def_modifier_panel_open_prop(srna,"open_curvature_panel", 2);
-  rna_def_modifier_panel_open_prop(srna,"open_influence_panel", 3);
+  rna_def_modifier_panel_open_prop(srna, "open_random_panel", 0);
+  rna_def_modifier_panel_open_prop(srna, "open_curvature_panel", 1);
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 2);
 
   RNA_define_lib_overridable(true);
 
@@ -8251,7 +8248,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_subdiv(brna);
   rna_def_modifier_grease_pencil_color(brna);
   rna_def_modifier_grease_pencil_tint(brna);
-  rna_def_modifier_greasepencil_length(brna);
+  rna_def_modifier_grease_pencil_length(brna);
 }
 
 #endif

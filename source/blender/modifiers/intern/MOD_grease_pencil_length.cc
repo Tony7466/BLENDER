@@ -8,11 +8,14 @@
 
 #include "BLI_hash.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_rand.h"
 #include "BLI_string_ref.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
+
+#include "BLO_read_write.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -110,13 +113,13 @@ static Array<float> noise_table(int len, int offset, int seed)
   return table;
 }
 
-BLI_INLINE float table_sample(Array<float> &table, float x)
+static float table_sample(Array<float> &table, float x)
 {
   return math::interpolate(table[int(ceilf(x))], table[int(floor(x))], fractf(x));
 }
 
 static void deform_drawing(ModifierData &md,
-                           Depsgraph * /*depsgraph*/,
+                           Depsgraph *depsgraph,
                            Object &ob,
                            bke::greasepencil::Drawing &drawing)
 {
@@ -133,11 +136,69 @@ static void deform_drawing(ModifierData &md,
 
   const int cnum = curves.curves_num();
 
+  /* Variable for tagging shrinking when values are adjusted after random. */
+  bool needs_additional_shrinking = false;
+
+  VArray<float> use_starts = VArray<float>::ForSingle(mmd.start_fac, cnum);
+  VArray<float> use_ends = VArray<float>::ForSingle(mmd.end_fac, cnum);
+
+  /* Use random to modify start/end factors. Put the modified values outside the
+   * branch so it could be accessed in later stretching/shrinking stages. */
+  Array<float> modified_starts;
+  Array<float> modified_ends;
+
+  if (mmd.rand_start_fac != 0.0 || mmd.rand_end_fac != 0.0) {
+    modified_starts = Array<float>(curves.curves_num());
+    modified_ends = Array<float>(curves.curves_num());
+    modified_starts.fill(mmd.start_fac);
+    modified_ends.fill(mmd.end_fac);
+    use_starts = VArray<float>::ForSpan(modified_starts.as_mutable_span());
+    use_ends = VArray<float>::ForSpan(modified_ends.as_mutable_span());
+
+    int seed = mmd.seed;
+
+    /* Make sure different modifiers get different seeds. */
+    seed += BLI_hash_string(ob.id.name + 2);
+    seed += BLI_hash_string(md.name);
+
+    if (mmd.flag & GP_LENGTH_USE_RANDOM) {
+      seed += int(DEG_get_ctime(depsgraph)) / mmd.step;
+    }
+
+    float rand_offset = BLI_hash_int_01(seed);
+
+    Array<float> noise_table_length = noise_table(4 + cnum, int(floor(mmd.rand_offset)), seed + 2);
+
+    for (int i = 0; i < cnum; i++) {
+
+      /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
+      double r[2];
+      const uint primes[2] = {2, 3};
+      double offset[2] = {0.0f, 0.0f};
+      BLI_halton_2d(primes, offset, i, r);
+
+      float rand[2] = {0.0f, 0.0f};
+      for (int j = 0; j < 2; j++) {
+        float noise = table_sample(noise_table_length, i + j * 2 + fractf(mmd.rand_offset));
+
+        rand[j] = fmodf(r[j] + rand_offset, 1.0f);
+        rand[j] = fabs(fmodf(sin(rand[j] * 12.9898f + j * 78.233f) * 43758.5453f, 1.0f) + noise);
+      }
+
+      modified_starts[i] = modified_starts[i] + rand[0] * mmd.rand_start_fac;
+      modified_ends[i] = modified_ends[i] + rand[1] * mmd.rand_end_fac;
+
+      if (modified_starts[i] <= 0.0f || modified_ends[i] <= 0.0f) {
+        needs_additional_shrinking = true;
+      }
+    }
+  }
+
   curves = geometry::stretch_curves(
       curves,
       selection,
-      std::move(VArray<float>::ForSingle(mmd.start_fac, cnum)),
-      std::move(VArray<float>::ForSingle(mmd.end_fac, cnum)),
+      use_starts,
+      use_ends,
       std::move(VArray<float>::ForSingle(mmd.overshoot_fac, cnum)),
       std::move(VArray<bool>::ForSingle(mmd.flag & GP_LENGTH_USE_CURVATURE, cnum)),
       std::move(VArray<int>::ForSingle(mmd.point_density, cnum)),
@@ -149,7 +210,7 @@ static void deform_drawing(ModifierData &md,
 
   /* Always do the stretching first since it might depend on points which could be deleted by the
    * shrink. */
-  if (mmd.start_fac < 0.0f || mmd.end_fac < 0.0f) {
+  if (mmd.start_fac < 0.0f || mmd.end_fac < 0.0f || needs_additional_shrinking) {
     /* `trim_curves()` accepts the `end` valueas if it's sampling from the beginning of the
      * curve, so we need to get the lengths of the curves and substract it from the back when the
      * modifier is in Absolute mode. For convenience, we always call `trim_curves()` in LENGTH
@@ -160,12 +221,12 @@ static void deform_drawing(ModifierData &md,
     for (const int curve : curves.curves_range()) {
       float length = curves.evaluated_length_total_for_curve(curve, false);
       if (mmd.mode & GP_LENGTH_ABSOLUTE) {
-        starts[curve] = -math::min(mmd.start_fac, 0);
-        ends[curve] = length - (-math::min(mmd.end_fac, 0));
+        starts[curve] = -math::min(use_starts[curve], 0.0f);
+        ends[curve] = length - (-math::min(use_ends[curve], 0.0f));
       }
       else {
-        starts[curve] = -math::min(mmd.start_fac, 0) * length;
-        ends[curve] = (1 + math::min(mmd.end_fac, 0)) * length;
+        starts[curve] = -math::min(use_starts[curve], 0.0f) * length;
+        ends[curve] = (1 + math::min(use_ends[curve], 0.0f)) * length;
       }
     }
     curves = geometry::trim_curves(curves,
@@ -233,25 +294,18 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiLayoutSetPropSep(subcol, true);
     uiLayoutSetActive(subcol, RNA_boolean_get(ptr, "use_random"));
 
-    uiItemR(layout, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
+    uiItemR(subcol, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  if (uiLayout *offset_layout = uiLayoutPanel(C, layout, "Offsets", ptr, "open_offset_panel")) {
-    uiLayoutSetPropSep(offset_layout, true);
-    uiItemR(offset_layout,
+    uiItemR(subcol,
             ptr,
             "random_start_factor",
             UI_ITEM_NONE,
             IFACE_("Random Offset Start"),
             ICON_NONE);
-    uiItemR(offset_layout,
-            ptr,
-            "random_end_factor",
-            UI_ITEM_NONE,
-            IFACE_("Random Offset End"),
-            ICON_NONE);
-    uiItemR(offset_layout, ptr, "random_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(offset_layout, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(
+        subcol, ptr, "random_end_factor", UI_ITEM_NONE, IFACE_("Random Offset End"), ICON_NONE);
+    uiItemR(subcol, ptr, "random_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(subcol, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   if (uiLayout *curvature_layout = uiLayoutPanel(
