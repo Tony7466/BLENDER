@@ -54,10 +54,6 @@
 #include "DNA_collection_types.h"
 #include "DNA_material_types.h"
 
-#include "WM_api.hh"
-
-#include <iostream>
-
 static CLG_LogRef LOG = {"io.usd"};
 
 namespace blender::io::usd {
@@ -688,7 +684,7 @@ void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_co
       }
     }
 
-    instancer_reader->set_collection(bmain, instancer_protos_coll);
+    instancer_reader->set_collection(bmain, *instancer_protos_coll);
   }
 }
 
@@ -706,7 +702,7 @@ void USDStageReader::create_point_instancer_proto_readers(const UsdPathSet &prot
       continue;
     }
 
-    blender::Vector<USDPrimReader *> proto_readers;
+    Vector<USDPrimReader *> proto_readers;
 
     /* Note that point instancer prototypes may be defined as overs, so
      * we must call collect readers with argument defined_prims_only = false. */
