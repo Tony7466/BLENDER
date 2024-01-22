@@ -2343,7 +2343,7 @@ typedef struct NodesModifierSettings {
  *
  * At run-time, #BakeDataBlockID is used to pair up the data-block and library name.
  */
-typedef struct NodesModifierDataBlockMapItem {
+typedef struct NodesModifierDataBlock {
   /**
    * Name of the data-block. Can be empty in which case the name of the `id` below is used.
    * This only needs to be set manually when the name stored on disk does not exist in the .blend
@@ -2360,7 +2360,7 @@ typedef struct NodesModifierDataBlockMapItem {
   /** Type of ID that is referenced by this mapping. */
   int id_type;
   char _pad[4];
-} NodesModifierDataBlockMapItem;
+} NodesModifierDataBlock;
 
 typedef struct NodesModifierBake {
   /** An id that references a nested node in the node tree. Also see #bNestedNodeRef. */
@@ -2425,9 +2425,9 @@ typedef struct NodesModifierData {
    * are not automatically removed because they are not referenced anymore. Furthermore, it allows
    * the us to add all required IDs to the dependency graph before actually loading the baked data.
    */
-  int data_block_map_items_num;
-  int active_data_block_map_item;
-  NodesModifierDataBlockMapItem *data_block_map_items;
+  int data_blocks_num;
+  int active_data_block;
+  NodesModifierDataBlock *data_blocks;
   void *_pad3;
 
   char _pad2[4];

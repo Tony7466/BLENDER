@@ -9,6 +9,7 @@
 #include "BKE_bake_data_block_map.hh"
 
 #include "DNA_ID.h"
+#include "DNA_modifier_types.h"
 
 namespace blender::bke::bake {
 
@@ -24,6 +25,13 @@ BakeDataBlockID::BakeDataBlockID(const ID &id)
   if (id.lib) {
     this->lib_name = id.lib->id.name + 2;
   }
+}
+
+BakeDataBlockID::BakeDataBlockID(const NodesModifierDataBlock &data_block)
+    : BakeDataBlockID(ID_Type(data_block.id_type),
+                      StringRef(data_block.id_name),
+                      StringRef(data_block.lib_name))
+{
 }
 
 std::ostream &operator<<(std::ostream &stream, const BakeDataBlockID &id)

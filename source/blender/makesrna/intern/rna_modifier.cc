@@ -1762,10 +1762,10 @@ static PointerRNA rna_NodesModifierBake_node_get(PointerRNA *ptr)
   return RNA_pointer_create(const_cast<ID *>(&tree->id), &RNA_Node, const_cast<bNode *>(node));
 }
 
-static StructRNA *rna_NodesModifier_data_block_item_typef(PointerRNA *ptr)
+static StructRNA *rna_NodesModifier_data_block_typef(PointerRNA *ptr)
 {
-  NodesModifierDataBlockMapItem *item = static_cast<NodesModifierDataBlockMapItem *>(ptr->data);
-  return ID_code_to_RNA_type(item->id_type);
+  NodesModifierDataBlock *data_block = static_cast<NodesModifierDataBlock *>(ptr->data);
+  return ID_code_to_RNA_type(data_block->id_type);
 }
 
 bool rna_GreasePencilModifier_material_poll(PointerRNA *ptr, PointerRNA value)
@@ -7304,7 +7304,7 @@ static void rna_def_modifier_nodes_data_block(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "NodesModifierDataBlock", nullptr);
-  RNA_def_struct_sdna(srna, "NodesModifierDataBlockMapItem");
+  RNA_def_struct_sdna(srna, "NodesModifierDataBlock");
 
   RNA_define_lib_overridable(true);
 
@@ -7326,7 +7326,7 @@ static void rna_def_modifier_nodes_data_block(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "ID");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_pointer_funcs(
-      prop, nullptr, nullptr, "rna_NodesModifier_data_block_item_typef", nullptr);
+      prop, nullptr, nullptr, "rna_NodesModifier_data_block_typef", nullptr);
   RNA_def_property_ui_text(prop, "Data-Block", "");
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
@@ -7348,7 +7348,7 @@ static void rna_def_modifier_nodes_data_blocks(BlenderRNA *brna)
       srna, "Data-Blocks", "Collection of data-blocks that can be referenced by baked data");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "active_data_block_map_item");
+  RNA_def_property_int_sdna(prop, nullptr, "active_data_block");
 }
 
 static void rna_def_modifier_nodes_panel(BlenderRNA *brna)
@@ -7416,8 +7416,7 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data_blocks", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "NodesModifierDataBlock");
-  RNA_def_property_collection_sdna(
-      prop, nullptr, "data_block_map_items", "data_block_map_items_num");
+  RNA_def_property_collection_sdna(prop, nullptr, "data_blocks", "data_blocks_num");
   RNA_def_property_srna(prop, "NodesModifierDataBlocks");
 
   prop = RNA_def_property(srna, "panels", PROP_COLLECTION, PROP_NONE);

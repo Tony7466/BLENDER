@@ -15,6 +15,7 @@
 #include "DNA_ID_enums.h"
 
 struct ID;
+struct NodesModifierDataBlock;
 
 namespace blender::bke::bake {
 
@@ -38,6 +39,7 @@ struct BakeDataBlockID {
 
   BakeDataBlockID(ID_Type type, std::string id_name, std::string lib_name);
   BakeDataBlockID(const ID &id);
+  BakeDataBlockID(const NodesModifierDataBlock &data_block);
 
   uint64_t hash() const;
 
