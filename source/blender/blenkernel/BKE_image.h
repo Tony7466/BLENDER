@@ -19,7 +19,7 @@ extern "C" {
 struct Depsgraph;
 struct ID;
 struct ImBuf;
-struct ImBuf_Anim;
+struct ImBufAnim;
 struct Image;
 struct ImageFormatData;
 struct ImagePool;
@@ -108,14 +108,14 @@ int BKE_imbuf_write_as(struct ImBuf *ibuf,
 /**
  * Used by sequencer too.
  */
-struct ImBuf_Anim *openanim(const char *filepath,
-                            int flags,
-                            int streamindex,
-                            char colorspace[IMA_MAX_SPACE]);
-struct ImBuf_Anim *openanim_noload(const char *filepath,
-                                   int flags,
-                                   int streamindex,
-                                   char colorspace[IMA_MAX_SPACE]);
+struct ImBufAnim *openanim(const char *filepath,
+                           int flags,
+                           int streamindex,
+                           char colorspace[IMA_MAX_SPACE]);
+struct ImBufAnim *openanim_noload(const char *filepath,
+                                  int flags,
+                                  int streamindex,
+                                  char colorspace[IMA_MAX_SPACE]);
 
 void BKE_image_tag_time(struct Image *ima);
 

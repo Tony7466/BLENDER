@@ -52,7 +52,7 @@ struct ImBuf;
 struct rctf;
 struct rcti;
 
-struct ImBuf_Anim;
+struct ImBufAnim;
 
 struct ColorManagedDisplay;
 
@@ -270,19 +270,19 @@ enum eIMBInterpolationFilterMode {
 /**
  * Defaults to BL_proxy within the directory of the animation.
  */
-void IMB_anim_set_index_dir(ImBuf_Anim *anim, const char *dir);
-void IMB_anim_get_filename(ImBuf_Anim *anim, char *filename, int filename_maxncpy);
+void IMB_anim_set_index_dir(ImBufAnim *anim, const char *dir);
+void IMB_anim_get_filename(ImBufAnim *anim, char *filename, int filename_maxncpy);
 
-int IMB_anim_index_get_frame_index(ImBuf_Anim *anim, IMB_Timecode_Type tc, int position);
+int IMB_anim_index_get_frame_index(ImBufAnim *anim, IMB_Timecode_Type tc, int position);
 
-int IMB_anim_proxy_get_existing(ImBuf_Anim *anim);
+int IMB_anim_proxy_get_existing(ImBufAnim *anim);
 
 struct IndexBuildContext;
 
 /**
  * Prepare context for proxies/time-codes builder
  */
-IndexBuildContext *IMB_anim_index_rebuild_context(ImBuf_Anim *anim,
+IndexBuildContext *IMB_anim_index_rebuild_context(ImBufAnim *anim,
                                                   IMB_Timecode_Type tcs_in_use,
                                                   int proxy_sizes_in_use,
                                                   int quality,
@@ -306,37 +306,37 @@ void IMB_anim_index_rebuild_finish(IndexBuildContext *context, bool stop);
 /**
  * Return the length (in frames) of the given \a anim.
  */
-int IMB_anim_get_duration(ImBuf_Anim *anim, IMB_Timecode_Type tc);
+int IMB_anim_get_duration(ImBufAnim *anim, IMB_Timecode_Type tc);
 
 /**
  * Return the encoded start offset (in seconds) of the given \a anim.
  */
-double IMD_anim_get_offset(ImBuf_Anim *anim);
+double IMD_anim_get_offset(ImBufAnim *anim);
 
 /**
  * Return the fps contained in movie files (function rval is false,
  * and frs_sec and frs_sec_base untouched if none available!)
  */
-bool IMB_anim_get_fps(const ImBuf_Anim *anim,
+bool IMB_anim_get_fps(const ImBufAnim *anim,
                       bool no_av_base,
                       short *r_frs_sec,
                       float *r_frs_sec_base);
 
-ImBuf_Anim *IMB_open_anim(const char *filepath,
-                          int ib_flags,
-                          int streamindex,
-                          char colorspace[IM_MAX_SPACE]);
-void IMB_suffix_anim(ImBuf_Anim *anim, const char *suffix);
-void IMB_close_anim(ImBuf_Anim *anim);
-void IMB_close_anim_proxies(ImBuf_Anim *anim);
-bool IMB_anim_can_produce_frames(const ImBuf_Anim *anim);
+ImBufAnim *IMB_open_anim(const char *filepath,
+                         int ib_flags,
+                         int streamindex,
+                         char colorspace[IM_MAX_SPACE]);
+void IMB_suffix_anim(ImBufAnim *anim, const char *suffix);
+void IMB_close_anim(ImBufAnim *anim);
+void IMB_close_anim_proxies(ImBufAnim *anim);
+bool IMB_anim_can_produce_frames(const ImBufAnim *anim);
 
 int ismovie(const char *filepath);
-int IMB_anim_get_image_width(ImBuf_Anim *anim);
-int IMB_anim_get_image_height(ImBuf_Anim *anim);
-bool IMB_get_gop_decode_time(ImBuf_Anim *anim);
+int IMB_anim_get_image_width(ImBufAnim *anim);
+int IMB_anim_get_image_height(ImBufAnim *anim);
+bool IMB_get_gop_decode_time(ImBufAnim *anim);
 
-ImBuf *IMB_anim_absolute(ImBuf_Anim *anim,
+ImBuf *IMB_anim_absolute(ImBufAnim *anim,
                          int position,
                          IMB_Timecode_Type tc /* = 1 = IMB_TC_RECORD_RUN */,
                          IMB_Proxy_Size preview_size /* = 0 = IMB_PROXY_NONE */);
@@ -344,9 +344,9 @@ ImBuf *IMB_anim_absolute(ImBuf_Anim *anim,
 /**
  * fetches a define preview-frame, usually half way into the movie.
  */
-ImBuf *IMB_anim_previewframe(ImBuf_Anim *anim);
+ImBuf *IMB_anim_previewframe(ImBufAnim *anim);
 
-void IMB_free_anim(ImBuf_Anim *anim);
+void IMB_free_anim(ImBufAnim *anim);
 
 #define FILTER_MASK_NULL 0
 #define FILTER_MASK_MARGIN 1

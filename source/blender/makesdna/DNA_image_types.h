@@ -13,7 +13,7 @@
 #include "DNA_defs.h"
 
 struct GPUTexture;
-struct ImBuf_Anim;
+struct ImBufAnim;
 struct MovieCache;
 struct PackedFile;
 struct RenderResult;
@@ -47,7 +47,7 @@ typedef struct ImageUser {
 
 typedef struct ImageAnim {
   struct ImageAnim *next, *prev;
-  struct ImBuf_Anim *anim;
+  struct ImBufAnim *anim;
 } ImageAnim;
 
 typedef struct ImageView {

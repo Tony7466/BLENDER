@@ -56,7 +56,7 @@ extern "C" {
 #  define LITTLE_LONG ENDIAN_NOP
 #endif
 
-/** #ImBuf_Anim::curtype, runtime only. */
+/** #ImBufAnim::curtype, runtime only. */
 #define ANIM_NONE 0
 #define ANIM_SEQUENCE (1 << 0)
 #define ANIM_MOVIE (1 << 4)
@@ -67,9 +67,9 @@ extern "C" {
 
 struct IDProperty;
 struct _AviMovie;
-struct ImBuf_AnimIndex;
+struct ImBufAnimIndex;
 
-struct ImBuf_Anim {
+struct ImBufAnim {
   int ib_flags;
   int curtype;
   int cur_position; /* index  0 = 1e,  1 = 2e, enz. */
@@ -132,8 +132,8 @@ struct ImBuf_Anim {
   int proxies_tried;
   int indices_tried;
 
-  struct ImBuf_Anim *proxy_anim[IMB_PROXY_MAX_SLOT];
-  struct ImBuf_AnimIndex *curr_idx[IMB_TC_MAX_SLOT];
+  struct ImBufAnim *proxy_anim[IMB_PROXY_MAX_SLOT];
+  struct ImBufAnimIndex *curr_idx[IMB_TC_MAX_SLOT];
 
   char colorspace[64];
   char suffix[64]; /* MAX_NAME - multiview */
