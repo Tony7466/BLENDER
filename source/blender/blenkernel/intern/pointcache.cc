@@ -61,6 +61,8 @@
 
 #include "BLO_read_write.hh"
 
+#include "DEG_depsgraph_query.hh"
+
 #include "BIK_api.h"
 
 #ifdef WITH_BULLET
@@ -3348,6 +3350,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
   }
 
   /* clear baking flag */
+  PTCacheID pid_eval;
   if (pid && cache) {
     cache->flag &= ~(PTCACHE_BAKING | PTCACHE_REDO_NEEDED);
     cache->flag |= PTCACHE_SIMULATION_VALID;
@@ -3355,7 +3358,20 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       cache->flag |= PTCACHE_BAKED;
       /* write info file */
       if (cache->flag & PTCACHE_DISK_CACHE) {
-        BKE_ptcache_write(pid, 0);
+        if (pid->type == PTCACHE_TYPE_PARTICLES) {
+          /* Since writing this from outside the bake job, make sure the ParticleSystem and
+           * PTCacheID is in a fully evaluated state. */
+          ID *id = pid->owner_id;
+          Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
+          Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+          ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
+          ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
+          BKE_ptcache_id_from_particles(&pid_eval, ob_eval, psys_eval);
+          BKE_ptcache_write(&pid_eval, 0);
+        }
+        else {
+          BKE_ptcache_write(pid, 0);
+        }
       }
     }
   }
@@ -3385,7 +3401,20 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
         if (bake) {
           cache->flag |= PTCACHE_BAKED;
           if (cache->flag & PTCACHE_DISK_CACHE) {
-            BKE_ptcache_write(pid, 0);
+            if (pid->type == PTCACHE_TYPE_PARTICLES) {
+              /* Since writing this from outside the bake job, make sure the ParticleSystem and
+               * PTCacheID is in a fully evaluated state. */
+              ID *id = pid->owner_id;
+              Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
+              Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+              ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
+              ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
+              BKE_ptcache_id_from_particles(&pid_eval, ob_eval, psys_eval);
+              BKE_ptcache_write(&pid_eval, 0);
+            }
+            else {
+              BKE_ptcache_write(pid, 0);
+            }
           }
         }
       }
