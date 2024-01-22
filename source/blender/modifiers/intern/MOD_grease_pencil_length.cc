@@ -296,15 +296,9 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     uiItemR(subcol, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-    uiItemR(subcol,
-            ptr,
-            "random_start_factor",
-            UI_ITEM_NONE,
-            IFACE_("Random Offset Start"),
-            ICON_NONE);
-    uiItemR(
-        subcol, ptr, "random_end_factor", UI_ITEM_NONE, IFACE_("Random Offset End"), ICON_NONE);
-    uiItemR(subcol, ptr, "random_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(subcol, ptr, "random_start_factor", UI_ITEM_NONE, IFACE_("Offset Start"), ICON_NONE);
+    uiItemR(subcol, ptr, "random_end_factor", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
+    uiItemR(subcol, ptr, "random_offset", UI_ITEM_NONE, IFACE_("Noise Offset"), ICON_NONE);
     uiItemR(subcol, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
