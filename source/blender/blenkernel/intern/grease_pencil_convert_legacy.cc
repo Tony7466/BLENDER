@@ -8,6 +8,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
+#include "BKE_deform.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
@@ -23,7 +24,45 @@
 
 namespace blender::bke::greasepencil::convert {
 
+/**
+ * Find vertex groups that have assigned vertices in this drawing.
+ * Returns:
+ * - ListBase with used vertex group names (bDeformGroup)
+ * - Vector of indices in the new vertex group list for remapping
+ */
+static std::tuple<ListBase, Vector<int>> find_used_vertex_groups(
+    const bGPDframe &gpf, const ListBase &vertex_group_names)
+{
+  const int num_vertex_groups = BLI_listbase_count(&vertex_group_names);
+  Vector<int> is_group_used(num_vertex_groups, false);
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
+    Span<MDeformVert> dverts = {gps->dvert, gps->totpoints};
+    for (const MDeformVert &dvert : dverts) {
+      for (const MDeformWeight &weight : Span<MDeformWeight>{dvert.dw, dvert.totweight}) {
+        is_group_used[weight.def_nr] = true;
+      }
+    }
+  }
+  ListBase new_names;
+  BLI_listbase_clear(&new_names);
+  Vector<int> index_map(num_vertex_groups);
+  int new_group_i = 0;
+  int old_group_i;
+  LISTBASE_FOREACH_INDEX (const bDeformGroup *, def_group, &vertex_group_names, old_group_i) {
+    if (!is_group_used[old_group_i]) {
+      index_map[old_group_i] = -1;
+      continue;
+    }
+    index_map[old_group_i] = new_group_i++;
+
+    bDeformGroup *def_group_copy = static_cast<bDeformGroup *>(MEM_dupallocN(def_group));
+    BLI_addtail(&new_names, def_group_copy);
+  }
+  return std::make_tuple(std::move(new_names), std::move(index_map));
+}
+
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
+                                                   const ListBase &vertex_group_names,
                                                    GreasePencilDrawing &r_drawing)
 {
   /* Construct an empty CurvesGeometry in-place. */
@@ -93,6 +132,12 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", AttrDomain::Curve);
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", AttrDomain::Curve);
+
+  /* Find used vertex groups in this drawing. */
+  auto [stroke_vertex_group_names,
+        stroke_def_nr_map] = find_used_vertex_groups(gpf, vertex_group_names);
+  BLI_assert(BLI_listbase_is_empty(&curves.vertex_group_names));
+  curves.vertex_group_names = stroke_vertex_group_names;
 
   int stroke_i = 0;
   LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
@@ -164,6 +209,12 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       stroke_dverts[point_i] = gps->dvert[point_i];
       stroke_dverts[point_i].dw = static_cast<MDeformWeight *>(
           MEM_dupallocN(gps->dvert[point_i].dw));
+      const MutableSpan<MDeformWeight> vertex_weights = {stroke_dverts[point_i].dw,
+                                                         stroke_dverts[point_i].totweight};
+      for (MDeformWeight &weight : vertex_weights) {
+        /* Map def_nr to the reduced vertex group list. */
+        weight.def_nr = stroke_def_nr_map[weight.def_nr];
+      }
     }
   }
 
@@ -233,7 +284,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
           grease_pencil.drawing_array[i]);
 
       /* Convert the frame to a drawing. */
-      legacy_gpencil_frame_to_grease_pencil_drawing(*gpf, drawing);
+      legacy_gpencil_frame_to_grease_pencil_drawing(*gpf, gpd.vertex_group_names, drawing);
 
       /* Add the frame to the layer. */
       if (GreasePencilFrame *new_frame = new_layer.add_frame(gpf->framenum, i)) {
