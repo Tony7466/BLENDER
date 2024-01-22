@@ -33,7 +33,7 @@
 #include "BKE_bpath.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
@@ -203,8 +203,7 @@ static void volume_foreach_cache(ID *id,
   Volume *volume = (Volume *)id;
   IDCacheKey key = {
       /*id_session_uuid*/ id->session_uuid,
-      /* This is just some identifier and does not have to be an actual offset. */
-      /*offset_in_ID*/ 1,
+      /*identifier*/ 1,
   };
 
   function_callback(id, &key, (void **)&volume->runtime->grids, 0, user_data);
