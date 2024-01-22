@@ -187,7 +187,7 @@ static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_sha
   if (!deprecation_warning_issued) {
     PyErr_WarnEx(PyExc_DeprecationWarning,
                  "Calls to GPUBatch.program_set are deprecated."
-                 "Please set the shader directly when calling GPUBatch.draw",
+                 "Please set the shader via the 'program' parameter when calling GPUBatch.draw/draw_instanced/draw_range.",
                  1);
     deprecation_warning_issued = true;
   }
