@@ -62,7 +62,7 @@
 #include "BKE_screen.hh" /* BKE_ST_MAXNAME */
 #include "BKE_unit.hh"
 
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 
 #include "BLF_api.h"
 
@@ -71,7 +71,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_fileselect.hh"
 #include "ED_gpencil_legacy.hh"
@@ -1564,7 +1564,7 @@ ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
   }
 
   /* Lookup an already existing ID. */
-  id = WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_Type(idcode));
+  id = WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_Type(idcode));
 
   if (!id) {
     /* Print error with the name if the name is available. */
