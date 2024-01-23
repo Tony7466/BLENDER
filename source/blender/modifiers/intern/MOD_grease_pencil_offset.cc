@@ -18,6 +18,7 @@
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
@@ -229,7 +230,78 @@ static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
   radii.finish();
 }
 
-static void modify_drawing(ModifierData &md, const ModifierEvalContext &ctx, Drawing &drawing)
+/** Offset proportional to stroke index. */
+static void modify_stroke_by_material(Object &ob,
+                                      const GreasePencilOffsetModifierData &omd,
+                                      bke::CurvesGeometry &curves,
+                                      const IndexMask curves_mask)
+{
+  const short *totcolp = BKE_object_material_len_p(&ob);
+  const short totcol = totcolp ? *totcolp : 0;
+
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
+      "radius", bke::AttrDomain::Point);
+  const MutableSpan<float3> positions = curves.positions_for_write();
+  const VArray<float> vgroup_weights = *attributes.lookup_or_default<float>(
+      omd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
+  const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Curve, 0);
+
+  curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    const float factor = get_factor_from_index(omd, totcol, stroke_materials[curve_i]);
+    apply_stroke_transform(omd,
+                           positions,
+                           radii.span,
+                           vgroup_weights,
+                           points,
+                           float3(factor),
+                           float3(factor),
+                           float3(factor));
+  });
+
+  radii.finish();
+}
+
+/** Offset proportional to stroke index. */
+static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
+                                   const int layer_index,
+                                   const int layers_num,
+                                   bke::CurvesGeometry &curves,
+                                   const IndexMask curves_mask)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
+      "radius", bke::AttrDomain::Point);
+  const MutableSpan<float3> positions = curves.positions_for_write();
+  const VArray<float> vgroup_weights = *attributes.lookup_or_default<float>(
+      omd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
+
+  const float factor = get_factor_from_index(omd, layers_num, layer_index);
+
+  curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    apply_stroke_transform(omd,
+                           positions,
+                           radii.span,
+                           vgroup_weights,
+                           points,
+                           float3(factor),
+                           float3(factor),
+                           float3(factor));
+  });
+
+  radii.finish();
+}
+
+static void modify_drawing(ModifierData &md,
+                           const ModifierEvalContext &ctx,
+                           Drawing &drawing,
+                           const std::optional<int> layer_index = std::nullopt,
+                           const std::optional<int> layers_num = std::nullopt)
 {
   auto &omd = reinterpret_cast<GreasePencilOffsetModifierData &>(md);
 
@@ -243,8 +315,12 @@ static void modify_drawing(ModifierData &md, const ModifierEvalContext &ctx, Dra
       modify_stroke_random(*ctx.object, omd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_OFFSET_LAYER:
+      BLI_assert(layer_index);
+      BLI_assert(layers_num);
+      modify_stroke_by_layer(omd, *layer_index, *layers_num, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_OFFSET_MATERIAL:
+      modify_stroke_by_material(*ctx.object, omd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_OFFSET_STROKE:
       modify_stroke_by_index(omd, curves, curves_mask);
@@ -256,6 +332,8 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
+  using modifier::greasepencil::LayerDrawingInfo;
+
   auto *omd = reinterpret_cast<GreasePencilOffsetModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
@@ -267,10 +345,20 @@ static void modify_geometry_set(ModifierData *md,
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, omd->influence, mask_memory);
-  const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
-      grease_pencil, layer_mask, frame);
-  threading::parallel_for_each(drawings,
-                               [&](Drawing *drawing) { modify_drawing(*md, *ctx, *drawing); });
+
+  if (omd->offset_mode == MOD_GREASE_PENCIL_OFFSET_LAYER) {
+    const Vector<LayerDrawingInfo> drawings = modifier::greasepencil::get_drawing_infos_by_layer(
+        grease_pencil, layer_mask, frame);
+    threading::parallel_for_each(drawings, [&](const LayerDrawingInfo &info) {
+      modify_drawing(*md, *ctx, *info.drawing, info.layer_index, grease_pencil.layers().size());
+    });
+  }
+  else {
+    const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
+        grease_pencil, layer_mask, frame);
+    threading::parallel_for_each(drawings,
+                                 [&](Drawing *drawing) { modify_drawing(*md, *ctx, *drawing); });
+  }
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
