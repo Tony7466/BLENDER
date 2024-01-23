@@ -889,7 +889,6 @@ void BKE_modifier_path_init(char *path, int path_maxncpy, const char *name)
   BLI_path_join(path, path_maxncpy, blendfile_path[0] ? "//" : BKE_tempdir_session(), name);
 }
 
-
 GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object *ob)
 {
   GreasePencilLineartLimitInfo info = {0};
@@ -899,11 +898,12 @@ GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const
       GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
       if (is_first || (lmd->flags & LRT_GPENCIL_USE_CACHE)) {
         info.min_level = blender::math::min(int(info.min_level), int(lmd->level_start));
-        info.max_level = blender::math::max(int(info.max_level),
-                              int(lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
+        info.max_level = blender::math::max(
+            int(info.max_level),
+            int(lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
         info.edge_types |= lmd->edge_types;
-        blender::math::max_inplace(info.shadow_selection,lmd->shadow_selection);
-        blender::math::max_inplace(info.silhouette_selection,lmd->silhouette_selection);
+        blender::math::max_inplace(info.shadow_selection, lmd->shadow_selection);
+        blender::math::max_inplace(info.silhouette_selection, lmd->silhouette_selection);
         is_first = false;
       }
     }
@@ -912,8 +912,8 @@ GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const
 }
 
 void BKE_grease_pencil_set_lineart_modifier_limits(ModifierData *md,
-                                             const GreasePencilLineartLimitInfo *info,
-                                             const bool is_first_lineart)
+                                                   const GreasePencilLineartLimitInfo *info,
+                                                   const bool is_first_lineart)
 {
   BLI_assert(md->type == eModifierType_GreasePencilLineart);
   GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;

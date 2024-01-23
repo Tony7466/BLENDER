@@ -6,14 +6,16 @@
  * \ingroup modifiers
  */
 
-#include "BLI_utildefines.h"
-#include "BLI_task.h"
 #include "BLI_math_matrix.h"
-#include "BLI_math_vector_types.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_task.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
+
+#include "BLO_read_write.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_defaults.h"
@@ -28,16 +30,14 @@
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_grease_pencil.hh"
-#include "BKE_lib_query.hh"
-#include "BKE_modifier.hh"
-#include "BKE_screen.hh"
+#include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
+#include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
 #include "UI_interface.hh"
@@ -45,16 +45,19 @@
 
 #include "ED_grease_pencil.hh"
 
+#include "MOD_gpencil_legacy_lineart.h"
+#include "MOD_grease_pencil_util.hh"
+#include "MOD_lineart.h"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
-#include "MOD_lineart.h"
-#include "MOD_gpencil_legacy_lineart.h"
 
-#include "RNA_prototypes.h"
 #include "RNA_access.hh"
+#include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
+
+namespace blender {
 
 static void init_data(ModifierData *md)
 {
@@ -67,25 +70,22 @@ static void init_data(ModifierData *md)
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
-    BKE_modifier_copydata_generic(md,target,flag);
+  BKE_modifier_copydata_generic(md, target, flag);
 }
 
-static bool isModifierDisabled(ModifierData *md)
+static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
 {
   GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
 
-  if ((lmd->target_layer[0] == '\0') || (lmd->target_material == nullptr)) {
+  if ((lmd->influence.layer_name[0] == '\0') || (lmd->influence.material == nullptr)) {
     return true;
   }
-
   if (lmd->source_type == LRT_SOURCE_OBJECT && !lmd->source_object) {
     return true;
   }
-
   if (lmd->source_type == LRT_SOURCE_COLLECTION && !lmd->source_collection) {
     return true;
   }
-
   /* Preventing calculation in depsgraph when baking frames. */
   if (lmd->flags & LRT_GPENCIL_IS_BAKED) {
     return true;
@@ -125,8 +125,7 @@ static void add_this_collection(Collection *c,
   FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
 }
 
-static void update_depsgraph(ModifierData *md,
-                             const ModifierUpdateDepsgraphContext *ctx)
+static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
 
@@ -184,7 +183,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetEnabled(layout, !is_baked);
 
   if (!BKE_grease_pencil_is_first_lineart_in_stack(static_cast<const Object *>(ob_ptr.data),
-                                             static_cast<const ModifierData *>(ptr->data)))
+                                                   static_cast<const ModifierData *>(ptr->data)))
   {
     uiItemR(layout, ptr, "use_cache", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
@@ -202,23 +201,11 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   else {
     /* Source is Scene. */
   }
-  uiItemPointerR(layout, ptr, "target_layer", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
 
-  /* Material has to be used by grease pencil object already, it was possible to assign materials
-   * without this requirement in earlier versions of blender. */
-
-  /* TODO: use properties similar to new material filtering. */
-  bool material_valid = false;
-  PointerRNA material_ptr = RNA_pointer_get(ptr, "target_material");
-  if (!RNA_pointer_is_null(&material_ptr)) {
-    Material *current_material = static_cast<Material *>(material_ptr.data);
-    Object *ob = static_cast<Object *>(ob_ptr.data);
-    material_valid = BKE_grease_pencil_object_material_index_get_by_name(ob, current_material->id.name) != -1;
-  }
-  uiLayout *row = uiLayoutRow(layout, true);
-  uiLayoutSetRedAlert(row, !material_valid);
+  uiLayout *col = uiLayoutColumn(layout, false);
+  uiItemPointerR(col, ptr, "layer_filter", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
   uiItemPointerR(
-      row, ptr, "target_material", &obj_data_ptr, "materials", nullptr, ICON_SHADING_TEXTURE);
+      col, ptr, "material_filter", &obj_data_ptr, "materials", nullptr, ICON_GREASEPENCIL);
 
   uiLayout *col = uiLayoutColumn(layout, false);
   uiItemR(col, ptr, "thickness", UI_ITEM_R_SLIDER, IFACE_("Line Thickness"), ICON_NONE);
@@ -236,8 +223,7 @@ static void edge_types_panel_draw(const bContext * /*C*/, Panel *panel)
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data),
-      static_cast<const ModifierData *>(ptr->data));
+      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
   const bool has_light = RNA_pointer_get(ptr, "light_contour_object").data != nullptr;
 
   uiLayoutSetEnabled(layout, !is_baked);
@@ -325,8 +311,7 @@ static void options_light_reference_draw(const bContext * /*C*/, Panel *panel)
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool has_light = RNA_pointer_get(ptr, "light_contour_object").data != nullptr;
   const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data),
-      static_cast<const ModifierData *>(ptr->data));
+      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetEnabled(layout, !is_baked);
@@ -357,8 +342,7 @@ static void options_panel_draw(const bContext * /*C*/, Panel *panel)
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data),
-      static_cast<const ModifierData *>(ptr->data));
+      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetEnabled(layout, !is_baked);
@@ -516,8 +500,7 @@ static void face_mark_panel_draw_header(const bContext * /*C*/, Panel *panel)
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data),
-      static_cast<const ModifierData *>(ptr->data));
+      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
 
   if (!use_cache || is_first) {
     uiLayoutSetEnabled(layout, !is_baked);
@@ -533,14 +516,12 @@ static void face_mark_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayout *layout = panel->layout;
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
-  
 
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_mark = RNA_boolean_get(ptr, "use_face_mark");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data),
-      static_cast<const ModifierData *>(ptr->data));
+      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
 
   uiLayoutSetEnabled(layout, !is_baked);
 
@@ -568,8 +549,7 @@ static void chaining_panel_draw(const bContext * /*C*/, Panel *panel)
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data),
-      static_cast<const ModifierData *>(ptr->data));
+      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
   const bool is_geom = RNA_boolean_get(ptr, "use_geometry_space_chain");
 
   uiLayoutSetPropSep(layout, true);
@@ -610,8 +590,7 @@ static void vgroup_panel_draw(const bContext * /*C*/, Panel *panel)
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data),
-      static_cast<const ModifierData *>(ptr->data));
+      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetEnabled(layout, !is_baked);
@@ -704,21 +683,21 @@ static void panel_register(ARegionType *region_type)
   modifier_subpanel_register(
       region_type, "edge_types", "Edge Types", nullptr, edge_types_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
-                                     "light_reference",
-                                     "Light Reference",
-                                     nullptr,
-                                     options_light_reference_draw,
-                                     panel_type);
+                             "light_reference",
+                             "Light Reference",
+                             nullptr,
+                             options_light_reference_draw,
+                             panel_type);
   modifier_subpanel_register(
       region_type, "geometry", "Geometry Processing", nullptr, options_panel_draw, panel_type);
   PanelType *occlusion_panel = modifier_subpanel_register(
       region_type, "occlusion", "Occlusion", nullptr, occlusion_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
-                                     "material_mask",
-                                     "",
-                                     material_mask_panel_draw_header,
-                                     material_mask_panel_draw,
-                                     occlusion_panel);
+                             "material_mask",
+                             "",
+                             material_mask_panel_draw_header,
+                             material_mask_panel_draw,
+                             occlusion_panel);
   modifier_subpanel_register(
       region_type, "intersection", "Intersection", nullptr, intersection_panel_draw, panel_type);
   modifier_subpanel_register(
@@ -729,12 +708,13 @@ static void panel_register(ARegionType *region_type)
       region_type, "vgroup", "Vertex Weight Transfer", nullptr, vgroup_panel_draw, panel_type);
   modifier_subpanel_register(
       region_type, "composition", "Composition", nullptr, composition_panel_draw, panel_type);
-  modifier_subpanel_register(
-      region_type, "bake", "Bake", nullptr, bake_panel_draw, panel_type);
+  modifier_subpanel_register(region_type, "bake", "Bake", nullptr, bake_panel_draw, panel_type);
 }
 
-static void generate_strokes_actual(
-    ModifierData *md, Depsgraph *depsgraph, Object *ob, blender::bke::greasepencil::Drawing &drawing)
+static void generate_strokes_actual(ModifierData *md,
+                                    Depsgraph *depsgraph,
+                                    Object *ob,
+                                    bke::greasepencil::Drawing &drawing)
 {
   GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
 
@@ -767,122 +747,128 @@ static void generate_strokes_actual(
       lmd->calculation_flags);
 }
 
-static void generate_strokes(ModifierData *md, Depsgraph *depsgraph, Object *ob, GreasePencil* gpd)
+static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob, GreasePencil &gpd)
 {
-  GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
-  if(!gpd){
+  GreasePencilLineartModifierData &lmd = (GreasePencilLineartModifierData &)md;
+
+  /* This will check whether layer/materials are non-null. */
+  if (is_disabled(nullptr, &md, false)) {
     return;
   }
 
-  ///* Guard early, don't trigger calculation when no grease-pencil frame is present.
-  // * Probably should disable in the #isModifierDisabled() function
-  // * but we need additional argument for depsgraph and `gpd`. */
-  //bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
-  //if (gpl == nullptr) {
-  //  return;
-  //}
-  ///* Need to call this or we don't get active frame (user may haven't selected any one). */
-  //BKE_gpencil_frame_active_set(depsgraph, gpd);
-  //bGPDframe *gpf = gpl->actframe;
-  //if (gpf == nullptr) {
-  //  return;
-  //}
+  bke::greasepencil::TreeNode *node = gpd.find_node_by_name(lmd.influence.layer_name);
+  if (!node || !node->is_layer()) {
+    return;
+  }
+  bke::greasepencil::Layer &got_layer = node->as_layer();
 
-  /* Check all parameters required are filled. */
-  //if (isModifierDisabled(md)) {
-  //  return;
-  //}
-
-  LineartCache *local_lc = gpd->runtime->lineart_cache;
-  if (!gpd->runtime->lineart_cache) {
+  LineartCache *local_lc = gpd.runtime->lineart_cache;
+  if (!gpd.runtime->lineart_cache) {
     MOD_lineart_compute_feature_lines_v3(
-        depsgraph, lmd, &gpd->runtime->lineart_cache, !(ob->dtx & OB_DRAW_IN_FRONT));
-    MOD_lineart_destroy_render_data_v3(lmd);
+        depsgraph, lmd, &gpd.runtime->lineart_cache, !(ob.dtx & OB_DRAW_IN_FRONT));
+    MOD_lineart_destroy_render_data_v3(&lmd);
   }
   else {
-    if (!(lmd->flags & LRT_GPENCIL_USE_CACHE)) {
-      MOD_lineart_compute_feature_lines_v3(depsgraph, lmd, &local_lc, !(ob->dtx & OB_DRAW_IN_FRONT));
-      MOD_lineart_destroy_render_data_v3(lmd);
+    if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
+      MOD_lineart_compute_feature_lines_v3(
+          depsgraph, lmd, &local_lc, !(ob.dtx & OB_DRAW_IN_FRONT));
+      MOD_lineart_destroy_render_data_v3(&lmd);
     }
     MOD_lineart_chain_clear_picked_flag(local_lc);
-    lmd->cache = local_lc;
+    lmd.cache = local_lc;
   }
 
   /* New layer and new empty drawing for now. */
 
-  gpd->layers_for_write()={};
-  blender::bke::greasepencil::Layer &layer = gpd->add_layer("New Layer");
-  GreasePencilFrame *frame = layer.add_frame(0,0,0);
+  gpd.layers_for_write() = {};
+  GreasePencilFrame *frame = got_layer.add_frame(0, 0, 0);
 
-  gpd->drawings()={};
-  gpd->add_empty_drawings(1);
-  blender::bke::greasepencil::Drawing &drawing=*gpd->get_editable_drawing_at(layer,0);
+  gpd.drawings() = {};
+  gpd.add_empty_drawings(1);
+  bke::greasepencil::Drawing &drawing = *gpd.get_editable_drawing_at(got_layer, 0);
 
-  generate_strokes_actual(md, depsgraph, ob, drawing);
+  generate_strokes_actual(&md, depsgraph, &ob, drawing);
 
-  if (!(lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+  if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     /* Clear local cache. */
-    if (local_lc != gpd->runtime->lineart_cache) {
+    if (local_lc != gpd.runtime->lineart_cache) {
       MOD_lineart_clear_cache(&local_lc);
     }
     /* Restore the original cache pointer so the modifiers below still have access to the "global"
      * cache. */
-    lmd->cache = gpd->runtime->lineart_cache;
+    lmd.cache = gpd.runtime->lineart_cache;
   }
 }
 
 // unused yet
-static int generate_gpencil_strokes(GreasePencil &gp){
-    int vert_num=2;
+static int generate_gpencil_strokes(GreasePencil &gp)
+{
+  int vert_num = 2;
 
-    //const int material = ensure_material()
+  // const int material = ensure_material()
 
-    gp.layers_for_write()={};
-    blender::bke::greasepencil::Layer &layer = gp.add_layer("New Layer");
-    GreasePencilFrame *frame = layer.add_frame(0,0,0);
+  gp.layers_for_write() = {};
+  bke::greasepencil::Layer &layer = gp.add_layer("New Layer");
+  GreasePencilFrame *frame = layer.add_frame(0, 0, 0);
 
-    gp.drawings()={};
-    gp.add_empty_drawings(1);
-    blender::bke::greasepencil::Drawing &drawing=*gp.get_editable_drawing_at(layer,0);
-    
-    const blender::Array<blender::float3> positions={{0,0,0},{1,1,1}};
-    const blender::Array<float> radii={2.0,1.0};
-    const blender::Array<float> opacities={0.8,1.0};
-    const blender::Array<int> offsets={0,2};
-    const blender::Array<int> materials={0};
-    float matrix[4][4];
-    unit_m4(matrix);
-                                        
-    blender::bke::CurvesGeometry const &curves =
-        blender::ed::greasepencil::create_drawing_data(positions.as_span(),
-            radii.as_span(), opacities.as_span(), offsets.as_span(), materials.as_span(),
-            blender::float4x4(matrix));
+  gp.drawings() = {};
+  gp.add_empty_drawings(1);
+  bke::greasepencil::Drawing &drawing = *gp.get_editable_drawing_at(layer, 0);
 
-    drawing.strokes_for_write() = curves;
+  const Array<float3> positions = {{0, 0, 0}, {1, 1, 1}};
+  const Array<float> radii = {2.0, 1.0};
+  const Array<float> opacities = {0.8, 1.0};
+  const Array<int> offsets = {0, 2};
+  const Array<int> materials = {0};
+  float matrix[4][4];
+  unit_m4(matrix);
 
-    return 1;
+  bke::CurvesGeometry const &curves = ed::greasepencil::create_drawing_data(positions.as_span(),
+                                                                            radii.as_span(),
+                                                                            opacities.as_span(),
+                                                                            offsets.as_span(),
+                                                                            materials.as_span(),
+                                                                            float4x4(matrix));
+
+  drawing.strokes_for_write() = curves;
+
+  return 1;
 }
 
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
-                                blender::bke::GeometrySet *geometry_set)
+                                bke::GeometrySet *geometry_set)
 {
-    GreasePencil *gp=geometry_set->get_grease_pencil_for_write();
-    if (!gp){ return; }
+  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
+  if (!gp) {
+    return;
+  }
 
-    generate_strokes(md,ctx->depsgraph,ctx->object, gp);
-    DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
+  generate_strokes(*md, ctx->depsgraph, *ctx->object, *gp);
 
-    //if(generate_gpencil_strokes(*gp)){
-    //    DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
-    //}
-
-    //geometry_set->replace_grease_pencil(gp);
+  DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
 }
+
+static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
+{
+  const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
+
+  BLO_write_struct(writer, GreasePencilLineartModifierData, lmd);
+  modifier::greasepencil::write_influence_data(writer, &lmd->influence);
+}
+
+static void blend_read(BlendDataReader *reader, ModifierData *md)
+{
+  auto *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
+
+  modifier::greasepencil::read_influence_data(reader, &lmd->influence);
+}
+
+}  // namespace blender
 
 ModifierTypeInfo modifierType_GreasePencilLineart = {
     /*idname*/ "Lineart Modifier",
-    /*name*/ N_("Lineart Modifier"),
+    /*name*/ N_("Lineart"),
     /*struct_name*/ "GreasePencilLineartModifierData",
     /*struct_size*/ sizeof(GreasePencilLineartModifierData),
     /*srna*/ &RNA_GreasePencilLineartModifier,
@@ -890,26 +876,26 @@ ModifierTypeInfo modifierType_GreasePencilLineart = {
     /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
     /*icon*/ ICON_MOD_LINEART,
 
-    /*copy_data*/ copy_data,
+    /*copy_data*/ blender::copy_data,
 
     /*deform_verts*/ nullptr,
     /*deform_matrices*/ nullptr,
     /*deform_verts_EM*/ nullptr,
     /*deform_matrices_EM*/ nullptr,
     /*modify_mesh*/ nullptr,
-    /*modify_geometry_set*/ modify_geometry_set,
+    /*modify_geometry_set*/ blender::modify_geometry_set,
 
-    /*init_data*/ init_data,
+    /*init_data*/ blender::init_data,
     /*required_data_mask*/ nullptr,
     /*free_data*/ nullptr,
-    /*is_disabled*/ nullptr,
-    /*update_depsgraph*/ update_depsgraph,
+    /*is_disabled*/ blender::is_disabled,
+    /*update_depsgraph*/ blender::update_depsgraph,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
-    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_ID_link*/ blender::foreach_ID_link,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ nullptr,
-    /*panel_register*/ panel_register,
-    /*blend_write*/ nullptr,
-    /*blend_read*/ nullptr,
+    /*panel_register*/ blender::panel_register,
+    /*blend_write*/ blender::blend_write,
+    /*blend_read*/ blender::blend_read,
 };

@@ -14,8 +14,8 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_cachefile_types.h"
-#include "DNA_lineart_types.h"
 #include "DNA_gpencil_modifier_types.h"
+#include "DNA_lineart_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
@@ -8006,6 +8006,10 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "GreasePencilLineartModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_LINEART);
 
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilOpacityModifier_material_filter_set");
+
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "use_custom_camera", PROP_BOOLEAN, PROP_NONE);
@@ -8162,7 +8166,8 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_offset_towards_custom_camera", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flags", LINEART_GPENCIL_OFFSET_TOWARDS_CUSTOM_CAMERA);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flags", LINEART_GPENCIL_OFFSET_TOWARDS_CUSTOM_CAMERA);
   RNA_def_property_ui_text(prop,
                            "Offset Towards Custom Camera",
                            "Offset strokes towards selected camera instead of the active camera");
@@ -8282,18 +8287,6 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
   RNA_def_property_int_funcs(prop, nullptr, "rna_Lineart_end_level_set", nullptr);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  //prop = RNA_def_property(srna, "target_material", PROP_POINTER, PROP_NONE);
-  //RNA_def_property_flag(prop, PROP_EDITABLE);
-  //RNA_def_property_struct_type(prop, "Material");
-  //RNA_def_property_pointer_funcs(prop,
-  //                               nullptr,
-  //                               "rna_LineartGpencilModifier_material_set",
-  //                               nullptr,
-  //                               "rna_GpencilModifier_material_poll");
-  //RNA_def_property_ui_text(
-  //    prop, "Material", "Grease Pencil material assigned to the generated strokes");
-  //RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
   prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Layer", "Grease Pencil layer to which assign the generated strokes");
@@ -8306,11 +8299,12 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
       "Match the beginning of vertex group names from mesh objects, match all when left empty");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  //prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
-  //RNA_def_property_string_sdna(prop, nullptr, "vgname");
-  //RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_LineartGpencilModifier_vgname_set");
-  //RNA_def_property_ui_text(prop, "Vertex Group", "Vertex group name for selected strokes");
-  //RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  // prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
+  // RNA_def_property_string_sdna(prop, nullptr, "vgname");
+  // RNA_def_property_string_funcs(prop, nullptr, nullptr,
+  // "rna_LineartGpencilModifier_vgname_set"); RNA_def_property_ui_text(prop, "Vertex Group",
+  // "Vertex group name for selected strokes"); RNA_def_property_update(prop, 0,
+  // "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "is_baked", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flags", LINEART_GPENCIL_IS_BAKED);
@@ -8347,13 +8341,15 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_material_mask", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "mask_switches", LINEART_GPENCIL_MATERIAL_MASK_ENABLE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "mask_switches", LINEART_GPENCIL_MATERIAL_MASK_ENABLE);
   RNA_def_property_ui_text(
       prop, "Use Material Mask", "Use material masks to filter out occluded strokes");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_material_mask_match", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "mask_switches", LINEART_GPENCIL_MATERIAL_MASK_MATCH);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "mask_switches", LINEART_GPENCIL_MATERIAL_MASK_MATCH);
   RNA_def_property_ui_text(
       prop, "Match Masks", "Require matching all material masks instead of just one");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
@@ -8365,7 +8361,8 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_intersection_match", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "mask_switches", LINEART_GPENCIL_INTERSECTION_MATCH);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "mask_switches", LINEART_GPENCIL_INTERSECTION_MATCH);
   RNA_def_property_ui_text(
       prop, "Match Intersection", "Require matching all intersection masks instead of just one");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");

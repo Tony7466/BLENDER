@@ -1133,14 +1133,14 @@ static void lineart_shadow_register_enclosed_shapes(LineartData *ld, LineartData
 }
 
 bool lineart_main_try_generate_shadow_v3(Depsgraph *depsgraph,
-                                      Scene *scene,
-                                      LineartData *original_ld,
-                                      GreasePencilLineartModifierData *lmd,
-                                      LineartStaticMemPool *shadow_data_pool,
-                                      LineartElementLinkNode **r_veln,
-                                      LineartElementLinkNode **r_eeln,
-                                      ListBase *r_calculated_edges_eln_list,
-                                      LineartData **r_shadow_ld_if_reproject)
+                                         Scene *scene,
+                                         LineartData *original_ld,
+                                         GreasePencilLineartModifierData *lmd,
+                                         LineartStaticMemPool *shadow_data_pool,
+                                         LineartElementLinkNode **r_veln,
+                                         LineartElementLinkNode **r_eeln,
+                                         ListBase *r_calculated_edges_eln_list,
+                                         LineartData **r_shadow_ld_if_reproject)
 {
   if ((!original_ld->conf.use_shadow && !original_ld->conf.use_light_contour &&
        !original_ld->conf.shadow_selection) ||
@@ -1298,11 +1298,20 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
                                       LineartElementLinkNode **r_veln,
                                       LineartElementLinkNode **r_eeln,
                                       ListBase *r_calculated_edges_eln_list,
-                                      LineartData **r_shadow_ld_if_reproject){
-  bool ret=false;
+                                      LineartData **r_shadow_ld_if_reproject)
+{
+  bool ret = false;
   GreasePencilLineartModifierData lmd;
   MOD_lineart_wrap_modifier_v3(lmd_legacy, &lmd);
-  ret = lineart_main_try_generate_shadow_v3(depsgraph,scene,original_ld,&lmd,shadow_data_pool,r_veln,r_eeln,r_calculated_edges_eln_list,r_shadow_ld_if_reproject);
+  ret = lineart_main_try_generate_shadow_v3(depsgraph,
+                                            scene,
+                                            original_ld,
+                                            &lmd,
+                                            shadow_data_pool,
+                                            r_veln,
+                                            r_eeln,
+                                            r_calculated_edges_eln_list,
+                                            r_shadow_ld_if_reproject);
   MOD_lineart_unwrap_modifier_v3(lmd_legacy, &lmd);
   return ret;
 }

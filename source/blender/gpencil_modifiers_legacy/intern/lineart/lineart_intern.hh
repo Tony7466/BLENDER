@@ -167,14 +167,14 @@ bool lineart_main_try_generate_shadow(struct Depsgraph *depsgraph,
                                       struct ListBase *r_calculated_edges_eln_list,
                                       struct LineartData **r_shadow_ld_if_reproject);
 bool lineart_main_try_generate_shadow_v3(struct Depsgraph *depsgraph,
-                                      struct Scene *scene,
-                                      struct LineartData *original_ld,
-                                      struct GreasePencilLineartModifierData *lmd,
-                                      struct LineartStaticMemPool *shadow_data_pool,
-                                      struct LineartElementLinkNode **r_veln,
-                                      struct LineartElementLinkNode **r_eeln,
-                                      struct ListBase *r_calculated_edges_eln_list,
-                                      struct LineartData **r_shadow_ld_if_reproject);
+                                         struct Scene *scene,
+                                         struct LineartData *original_ld,
+                                         struct GreasePencilLineartModifierData *lmd,
+                                         struct LineartStaticMemPool *shadow_data_pool,
+                                         struct LineartElementLinkNode **r_veln,
+                                         struct LineartElementLinkNode **r_eeln,
+                                         struct ListBase *r_calculated_edges_eln_list,
+                                         struct LineartData **r_shadow_ld_if_reproject);
 /**
  * Does the 3rd stage reprojection, will not re-load objects because #shadow_ld is not deleted.
  * Only re-projects view camera edges and check visibility in light camera, then we can determine
