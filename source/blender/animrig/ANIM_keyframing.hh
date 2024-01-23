@@ -32,15 +32,6 @@ namespace blender::animrig {
 /** \name Key-Framing Management
  * \{ */
 
-enum KeyframingResult {
-  SUCCESS = 0,
-  CANNOT_CREATE_FCURVE = 1 << 0,
-  FCURVE_NOT_KEYFRAMEABLE = 1 << 1,
-  NO_KEY_NEEDED = 1 << 2,
-};
-
-ENUM_OPERATORS(KeyframingResult, NO_KEY_NEEDED);
-
 /* Set the FCurve flag based on the property type of `prop`. */
 void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
 
