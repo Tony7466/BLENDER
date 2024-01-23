@@ -111,7 +111,8 @@ static void deform_drawing(const ModifierData &md,
     return;
   }
 
-  const GreasePencilNoiseModifierData &mmd = reinterpret_cast<const GreasePencilNoiseModifierData &>(md);
+  const GreasePencilNoiseModifierData &mmd =
+      reinterpret_cast<const GreasePencilNoiseModifierData &>(md);
 
   IndexMaskMemory memory;
   const IndexMask filtered_strokes = modifier::greasepencil::get_filtered_stroke_mask(
@@ -135,7 +136,7 @@ static void deform_drawing(const ModifierData &md,
   seed += BLI_hash_string(md.name);
   if (mmd.flag & GP_NOISE_USE_RANDOM) {
     if (!is_keyframe) {
-      seed += (int)ctime / mmd.step;
+      seed += math::floor(int(ctime) / mmd.step);
     }
     else {
       /* If change every keyframe, use the last keyframe. */
@@ -159,7 +160,7 @@ static void deform_drawing(const ModifierData &md,
     const Array<float> noise_table_position = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed + 2);
 
-    filtered_strokes.foreach_index(GrainSize(512),[&](const int stroke_i) {
+    filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
       for (const int i : points.index_range()) {
         const int point = points[i];
@@ -179,7 +180,7 @@ static void deform_drawing(const ModifierData &md,
     const Array<float> noise_table_thickness = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed);
 
-    filtered_strokes.foreach_index(GrainSize(512),[&](const int stroke_i) {
+    filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
       for (const int i : points.index_range()) {
         const int point = points[i];
@@ -197,7 +198,7 @@ static void deform_drawing(const ModifierData &md,
     const Array<float> noise_table_strength = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed + 3);
 
-    filtered_strokes.foreach_index(GrainSize(512),[&](const int stroke_i) {
+    filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
       for (const int i : points.index_range()) {
         const int point = points[i];
@@ -236,10 +237,14 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawing_infos_for_write(
           grease_pencil, layer_mask, current_frame);
 
-  threading::parallel_for_each(
-      drawing_infos, [&](const modifier::greasepencil::DrawingInfo &info) {
-        deform_drawing(*md, *ctx->object, DEG_get_ctime(ctx->depsgraph), info.start_frame_number, *info.drawing);
-      });
+  threading::parallel_for_each(drawing_infos,
+                               [&](const modifier::greasepencil::DrawingInfo &info) {
+                                 deform_drawing(*md,
+                                                *ctx->object,
+                                                DEG_get_ctime(ctx->depsgraph),
+                                                info.start_frame_number,
+                                                *info.drawing);
+                               });
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
