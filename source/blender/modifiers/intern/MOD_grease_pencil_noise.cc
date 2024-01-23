@@ -135,7 +135,7 @@ static void deform_drawing(const ModifierData &md,
   seed += BLI_hash_string(md.name);
   if (mmd.flag & GP_NOISE_USE_RANDOM) {
     if (!is_keyframe) {
-      seed += math::floor(float(ctime) / float(mmd.step));
+      seed += (int)ctime / mmd.step;
     }
     else {
       /* If change every keyframe, use the last keyframe. */
