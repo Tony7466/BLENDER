@@ -142,11 +142,6 @@ void device_cuda_info(vector<DeviceInfo> &devices)
 
     info.has_nanovdb = true;
     info.denoisers = 0;
-#  if defined(WITH_OPENIMAGEDENOISE)
-    if (OIDNDenoiserGPU::is_device_supported(info)) {
-      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
-    }
-#  endif
 
     info.has_gpu_queue = true;
 
@@ -168,6 +163,12 @@ void device_cuda_info(vector<DeviceInfo> &devices)
                             (unsigned int)pci_location[0],
                             (unsigned int)pci_location[1],
                             (unsigned int)pci_location[2]);
+
+#  if defined(WITH_OPENIMAGEDENOISE)
+    if (OIDNDenoiserGPU::is_device_supported(info)) {
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
 
     /* If device has a kernel timeout and no compute preemption, we assume
      * it is connected to a display and will freeze the display while doing
