@@ -1143,34 +1143,10 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     uiBlock *block = uiLayoutGetBlock(layout);
     const int w = uiLayoutGetWidth(layout);
 
-    wmOperatorCallContext opcontext = WM_OP_INVOKE_DEFAULT;
-    ScrArea *area = CTX_wm_area(C);
-    LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-      ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;
-      LISTBASE_FOREACH (ARegion *, region, regionbase) {
-        if (region != NULL) {
-          switch (region->regiontype) {
-            case RGN_TYPE_WINDOW:
-              opcontext = WM_OP_INVOKE_REGION_WIN;
-              break;
-            case RGN_TYPE_CHANNELS:
-              opcontext = WM_OP_INVOKE_REGION_CHANNELS;
-              break;
-            case RGN_TYPE_PREVIEW:
-              opcontext = WM_OP_INVOKE_REGION_PREVIEW;
-              break;
-          }
-          if (opcontext != WM_OP_INVOKE_DEFAULT) {
-            break;
-          }
-        }
-      }
-    }
-
     /* We want to know if this op has a shortcut, be it hotkey or not. */
     wmKeyMap *km;
     wmKeyMapItem *kmi = WM_key_event_operator(
-        C, idname, opcontext, prop, EVT_TYPE_MASK_ALL, 0, &km);
+        C, idname, but->opcontext, prop, EVT_TYPE_MASK_ALL, 0, &km);
 
     /* We do have a shortcut, but only keyboard ones are editable that way... */
     if (kmi) {
