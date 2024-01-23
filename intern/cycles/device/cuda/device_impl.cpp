@@ -103,14 +103,18 @@ CUDADevice::CUDADevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
 
   int active = 0;
   unsigned int ctx_flags = 0;
-  cuDevicePrimaryCtxGetState(cuDevice, &ctx_flags, &active);
-  ctx_flags |= CU_CTX_LMEM_RESIZE_TO_MAX;
-  result = cuDevicePrimaryCtxSetFlags(cuDevice, ctx_flags);
+  cuda_assert(cuDevicePrimaryCtxGetState(cuDevice, &ctx_flags, &active));
 
-  if (result != CUDA_SUCCESS) {
-    set_error(string_printf("Failed to configure CUDA context (%s)", cuewErrorString(result)));
-    return;
+  /* Configure primary context only once. */
+  if (active == 0) {
+    ctx_flags |= CU_CTX_LMEM_RESIZE_TO_MAX;
+    result = cuDevicePrimaryCtxSetFlags(cuDevice, ctx_flags);
+    if (result != CUDA_SUCCESS && result != CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE) {
+      set_error(string_printf("Failed to configure CUDA context (%s)", cuewErrorString(result)));
+      return;
+    }
   }
+
   /* Create context. */
   result = cuDevicePrimaryCtxRetain(&cuContext, cuDevice);
 
