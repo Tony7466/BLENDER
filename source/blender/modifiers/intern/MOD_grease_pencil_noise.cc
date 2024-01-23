@@ -7,50 +7,31 @@
  */
 
 #include "BLI_hash.h"
-#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
-#include "BLI_task.h"
-#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BLO_read_write.hh"
 
 #include "DNA_defaults.h"
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_material_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_screen_types.h"
 
 #include "BKE_colortools.hh"
-#include "BKE_context.hh"
 #include "BKE_curves.hh"
-#include "BKE_curves_utils.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_lib_query.hh"
-#include "BKE_modifier.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-
-#include "ED_grease_pencil.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "MEM_guardedalloc.h"
-
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
+#include "DEG_depsgraph_query.hh" /* For DEG_get_ctime(). */
 
 namespace blender {
 
@@ -102,7 +83,7 @@ static bool depends_on_time(Scene * /*scene*/, ModifierData *md)
   return (mmd->flag & GP_NOISE_USE_RANDOM) != 0;
 }
 
-static Array<float> noise_table(int len, int offset, int seed)
+static Array<float> noise_table(const int len, const int offset, const int seed)
 {
   Array<float> table(len);
   for (int i = 0; i < len; i++) {
@@ -111,18 +92,18 @@ static Array<float> noise_table(int len, int offset, int seed)
   return table;
 }
 
-static float table_sample(Array<float> &table, float x)
+static float table_sample(const Array<float> &table, const float x)
 {
-  return math::interpolate(table[int(ceilf(x))], table[int(floor(x))], fractf(x));
+  return math::interpolate(table[int(math::ceil(x))], table[int(math::floor(x))], math::fract(x));
 }
 
 /**
  * Apply noise effect based on stroke direction.
  */
-static void deform_drawing(ModifierData &md,
-                           Depsgraph *depsgraph,
+static void deform_drawing(const ModifierData &md,
+                           const Object &ob,
+                           const float ctime,
                            const int start_frame_number,
-                           Object &ob,
                            bke::greasepencil::Drawing &drawing)
 {
   bke::CurvesGeometry &strokes = drawing.strokes_for_write();
@@ -130,18 +111,17 @@ static void deform_drawing(ModifierData &md,
     return;
   }
 
-  GreasePencilNoiseModifierData &mmd = reinterpret_cast<GreasePencilNoiseModifierData &>(md);
+  const GreasePencilNoiseModifierData &mmd = reinterpret_cast<const GreasePencilNoiseModifierData &>(md);
 
   IndexMaskMemory memory;
   const IndexMask filtered_strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, strokes, mmd.influence, memory);
 
   const bool use_curve = (mmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE) != 0;
-  const int cfra = int(DEG_get_ctime(depsgraph));
   const bool is_keyframe = (mmd.noise_mode == GP_NOISE_RANDOM_KEYFRAME);
 
   /* Sanitize as it can create out of bound reads. */
-  float noise_scale = math::clamp(mmd.noise_scale, 0.0f, 1.0f);
+  const float noise_scale = math::clamp(mmd.noise_scale, 0.0f, 1.0f);
 
   if (filtered_strokes.is_empty()) {
     return;
@@ -155,38 +135,39 @@ static void deform_drawing(ModifierData &md,
   seed += BLI_hash_string(md.name);
   if (mmd.flag & GP_NOISE_USE_RANDOM) {
     if (!is_keyframe) {
-      seed += cfra / mmd.step;
+      seed += math::floor(float(ctime) / float(mmd.step));
     }
     else {
       /* If change every keyframe, use the last keyframe. */
       seed += start_frame_number;
     }
   }
-  int noise_len = ceilf(strokes.points_num() * noise_scale) + 2;
+  const int noise_len = math::ceil(strokes.points_num() * noise_scale) + 2;
 
   auto get_weight = [&](const IndexRange points, const int point_i) {
     if (!use_curve) {
       return 1.0f;
     }
-    const float value = float(point_i - points.start()) / float(points.size() - 1);
+    const float value = float(point_i) / float(points.size() - 1);
     return BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
   };
 
   if (mmd.factor > 0.0f) {
-    Span<float3> normals = strokes.evaluated_normals();
-    Span<float3> tangents = strokes.evaluated_tangents();
+    const Span<float3> normals = strokes.evaluated_normals();
+    const Span<float3> tangents = strokes.evaluated_tangents();
     MutableSpan<float3> positions = strokes.positions_for_write();
-    Array<float> noise_table_position = noise_table(
+    const Array<float> noise_table_position = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed + 2);
 
-    filtered_strokes.foreach_index([&](const int stroke_i) {
+    filtered_strokes.foreach_index(GrainSize(512),[&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
-      for (const int point : points) {
-        float weight = get_weight(points, point);
+      for (const int i : points.index_range()) {
+        const int point = points[i];
+        float weight = get_weight(points, i);
         /* Vector orthogonal to normal. */
         const float3 bi_normal = math::normalize(math::cross(tangents[point], normals[point]));
         const float noise = table_sample(noise_table_position,
-                                         point * noise_scale + fractf(mmd.noise_offset));
+                                         point * noise_scale + math::fract(mmd.noise_offset));
         positions[point] += bi_normal * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
       }
     });
@@ -195,15 +176,16 @@ static void deform_drawing(ModifierData &md,
 
   if (mmd.factor_thickness > 0.0f) {
     MutableSpan<float> radii = drawing.radii_for_write();
-    Array<float> noise_table_thickness = noise_table(
+    const Array<float> noise_table_thickness = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed);
 
-    filtered_strokes.foreach_index([&](const int stroke_i) {
+    filtered_strokes.foreach_index(GrainSize(512),[&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
-      for (const int point : points) {
-        const float weight = get_weight(points, point);
+      for (const int i : points.index_range()) {
+        const int point = points[i];
+        const float weight = get_weight(points, i);
         const float noise = table_sample(noise_table_thickness,
-                                         point * noise_scale + fractf(mmd.noise_offset));
+                                         point * noise_scale + math::fract(mmd.noise_offset));
         radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd.factor_thickness,
                                   0.0f);
       }
@@ -212,15 +194,16 @@ static void deform_drawing(ModifierData &md,
 
   if (mmd.factor_strength > 0.0f) {
     MutableSpan<float> opacities = drawing.opacities_for_write();
-    Array<float> noise_table_strength = noise_table(
+    const Array<float> noise_table_strength = noise_table(
         noise_len, int(floor(mmd.noise_offset)), seed + 3);
 
-    filtered_strokes.foreach_index([&](const int stroke_i) {
+    filtered_strokes.foreach_index(GrainSize(512),[&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
-      for (const int point : points) {
-        const float weight = get_weight(points, point);
+      for (const int i : points.index_range()) {
+        const int point = points[i];
+        const float weight = get_weight(points, i);
         const float noise = table_sample(noise_table_strength,
-                                         point * noise_scale + fractf(mmd.noise_offset));
+                                         point * noise_scale + math::fract(mmd.noise_offset));
         opacities[point] *= math::max(1.0f - noise * weight * mmd.factor_strength, 0.0f);
       }
     });
@@ -231,7 +214,7 @@ static void deform_drawing(ModifierData &md,
 
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
-                                blender::bke::GeometrySet *geometry_set)
+                                bke::GeometrySet *geometry_set)
 {
   GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
 
@@ -255,7 +238,7 @@ static void modify_geometry_set(ModifierData *md,
 
   threading::parallel_for_each(
       drawing_infos, [&](const modifier::greasepencil::DrawingInfo &info) {
-        deform_drawing(*md, ctx->depsgraph, info.start_frame_number, *ctx->object, *info.drawing);
+        deform_drawing(*md, *ctx->object, DEG_get_ctime(ctx->depsgraph), info.start_frame_number, *info.drawing);
       });
 }
 
