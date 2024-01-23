@@ -259,7 +259,7 @@ template<typename T> inline Vector<IndexRange> to_ranges(const Span<T> span)
   }
   Vector<IndexRange> ranges;
   int64_t length = 1;
-  int64_t last = 1;
+  int64_t last = 0;
   for (const int64_t i : span.index_range().drop_front(1)) {
     if (span[i - 1] == span[last] && span[i] != span[last]) {
       ranges.append(IndexRange(i - length, length));
