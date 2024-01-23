@@ -85,6 +85,8 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
   point_instancer_prim.GetOrientationsAttr().Get(&orientations, sample_time);
   point_instancer_prim.GetProtoIndicesAttr().Get(&proto_indices, sample_time);
 
+  std::vector<bool> mask = point_instancer_prim.ComputeMaskAtTime(sample_time);
+
   PointCloud *point_cloud = BKE_pointcloud_new_nomain(positions.size());
 
   MutableSpan<float3> positions_span = point_cloud->positions_for_write();
@@ -140,6 +142,19 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
 
   proto_indices_attribute.span.save();
 
+  bke::SpanAttributeWriter<bool> mask_attribute =
+      attributes.lookup_or_add_for_write_only_span<bool>("mask", bke::AttrDomain::Point);
+
+  if (mask.size() < positions.size()) {
+    mask_attribute.span.fill(true);
+  }
+
+  for (const int i : IndexRange(std::min(mask.size(), positions.size()))) {
+    mask_attribute.span[i] = mask[i];
+  }
+
+  mask_attribute.span.save();
+
   BKE_pointcloud_nomain_to_pointcloud(point_cloud, base_point_cloud);
 
   ModifierData *md = BKE_modifier_new(eModifierType_Nodes);
@@ -165,30 +180,40 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
   bNodeSocket *socket = nodeFindSocket(instance_on_points_node, SOCK_IN, "Pick Instance");
   ((bNodeSocketValueBoolean *)socket->default_value)->value = true;
 
+  bNode *mask_attrib_node = add_input_named_attrib_node(ntree, "mask", CD_PROP_BOOL);
+  mask_attrib_node->locx = 100.0f;
+  mask_attrib_node->locy = -100.0f;
+
   bNode *collection_info_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_COLLECTION_INFO);
   collection_info_node->locx = 100.0f;
-  collection_info_node->locy = -100.0f;
+  collection_info_node->locy = -300.0f;
   socket = nodeFindSocket(collection_info_node, SOCK_IN, "Separate Children");
   ((bNodeSocketValueBoolean *)socket->default_value)->value = true;
 
   bNode *indices_attrib_node = add_input_named_attrib_node(ntree, "proto_index", CD_PROP_INT32);
   indices_attrib_node->locx = 100.0f;
-  indices_attrib_node->locy = -300.0f;
+  indices_attrib_node->locy = -500.0f;
 
   bNode *rotation_attrib_node = add_input_named_attrib_node(
       ntree, "orientation", CD_PROP_QUATERNION);
   rotation_attrib_node->locx = 100.0f;
-  rotation_attrib_node->locy = -500.0f;
+  rotation_attrib_node->locy = -700.0f;
 
   bNode *scale_attrib_node = add_input_named_attrib_node(ntree, "scale", CD_PROP_FLOAT3);
   scale_attrib_node->locx = 100.0f;
-  scale_attrib_node->locy = -700.0f;
+  scale_attrib_node->locy = -900.0f;
 
   nodeAddLink(ntree,
               group_input,
               static_cast<bNodeSocket *>(group_input->outputs.first),
               instance_on_points_node,
               nodeFindSocket(instance_on_points_node, SOCK_IN, "Points"));
+
+  nodeAddLink(ntree,
+              mask_attrib_node,
+              nodeFindSocket(mask_attrib_node, SOCK_OUT, "Attribute"),
+              instance_on_points_node,
+              nodeFindSocket(instance_on_points_node, SOCK_IN, "Selection"));
 
   nodeAddLink(ntree,
               indices_attrib_node,
