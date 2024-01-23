@@ -157,24 +157,18 @@ void BKE_sound_update_sequence_handle(void *handle, void *sound_handle);
 void BKE_sound_set_scene_volume(struct Scene *scene, float volume);
 
 void BKE_sound_set_scene_sound_volume_at_frame(void *handle,
-                                               const int frame,
+                                               int frame,
                                                float volume,
-                                               const char animated);
+                                               char animated);
 
-void BKE_sound_set_scene_sound_pitch_at_frame(void *handle,
-                                              const int frame,
-                                              float pitch,
-                                              const char animated);
+void BKE_sound_set_scene_sound_pitch_at_frame(void *handle, int frame, float pitch, char animated);
 
 void BKE_sound_set_scene_sound_pitch_constant_range(void *handle,
-                                                    const int frame_start,
-                                                    const int frame_end,
-                                                    const float pitch);
+                                                    int frame_start,
+                                                    int frame_end,
+                                                    float pitch);
 
-void BKE_sound_set_scene_sound_pan_at_frame(void *handle,
-                                            const int frame,
-                                            float pan,
-                                            const char animated);
+void BKE_sound_set_scene_sound_pan_at_frame(void *handle, int frame, float pan, char animated);
 
 void BKE_sound_update_sequencer(struct Main *main, struct bSound *sound);
 
