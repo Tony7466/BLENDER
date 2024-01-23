@@ -39,20 +39,20 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_collection.h"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -281,9 +281,9 @@ static void unlink_material_fn(bContext * /*C*/,
       break;
     }
     case ID_ME: {
-      Mesh *me = (Mesh *)tsep->id;
-      totcol = me->totcol;
-      matar = me->mat;
+      Mesh *mesh = (Mesh *)tsep->id;
+      totcol = mesh->totcol;
+      matar = mesh->mat;
       break;
     }
     case ID_CU_LEGACY: {
@@ -473,9 +473,18 @@ static void unlink_object_fn(bContext *C,
         DEG_relations_tag_update(bmain);
       }
       else if (GS(tsep->id->name) == ID_SCE) {
+        /* Following execution is expected to happen exclusively in the Outliner scene view. */
+#ifdef NDEBUG
+        BLI_assert(CTX_wm_space_outliner(C)->outlinevis == SO_SCENES);
+#endif
+
         Scene *scene = (Scene *)tsep->id;
-        Collection *parent = scene->master_collection;
-        BKE_collection_object_remove(bmain, parent, ob, true);
+        FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+          if (BKE_collection_has_object(collection, ob)) {
+            BKE_collection_object_remove(bmain, collection, ob, true);
+          }
+        }
+        FOREACH_SCENE_COLLECTION_END;
         DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
         DEG_relations_tag_update(bmain);
       }
@@ -521,7 +530,8 @@ static void outliner_do_libdata_operation(bContext *C,
     TreeStoreElem *tselem = TREESTORE(te);
     if (tselem->flag & TSE_SELECTED) {
       if (((tselem->type == TSE_SOME_ID) && (te->idcode != 0)) ||
-          tselem->type == TSE_LAYER_COLLECTION) {
+          tselem->type == TSE_LAYER_COLLECTION)
+      {
         TreeStoreElem *tsep = te->parent ? TREESTORE(te->parent) : nullptr;
         operation_fn(C, reports, scene, te, tsep, tselem, user_data);
       }
@@ -1046,7 +1056,7 @@ struct OutlinerLibOverrideData {
    * solving broken overrides while not losing *all* of your overrides. */
   bool do_resync_hierarchy_enforce;
 
-  /** A set of the selected tree elements' ID 'uuid'. Used to clear 'system override' flags on
+  /** A set of the selected tree elements' ID 'uid'. Used to clear 'system override' flags on
    * their newly-created liboverrides in post-process step of override hierarchy creation. */
   Set<uint> selected_id_uid;
 
@@ -1057,7 +1067,7 @@ struct OutlinerLibOverrideData {
    * override), or an actual already existing override. */
   Map<ID *, Vector<OutlinerLiboverrideDataIDRoot>> id_hierarchy_roots;
 
-  /** All 'session_uuid' of all hierarchy root IDs used or created by the operation. */
+  /** All 'session_uid' of all hierarchy root IDs used or created by the operation. */
   Set<uint> id_hierarchy_roots_uid;
 
   void id_root_add(ID *id_hierarchy_root_reference,
@@ -1115,10 +1125,10 @@ static void id_override_library_create_hierarchy_pre_process_fn(bContext *C,
 
   /* Only process a given ID once. Otherwise, all kind of weird things can happen if e.g. a
    * selected sub-collection is part of more than one override hierarchies. */
-  if (data->selected_id_uid.contains(id_root_reference->session_uuid)) {
+  if (data->selected_id_uid.contains(id_root_reference->session_uid)) {
     return;
   }
-  data->selected_id_uid.add(id_root_reference->session_uuid);
+  data->selected_id_uid.add(id_root_reference->session_uid);
 
   if (ID_IS_OVERRIDE_LIBRARY_REAL(id_root_reference) && !ID_IS_LINKED(id_root_reference)) {
     id_root_reference->override_library->flag &= ~LIBOVERRIDE_FLAG_SYSTEM_DEFINED;
@@ -1147,7 +1157,7 @@ static void id_override_library_create_hierarchy_pre_process_fn(bContext *C,
     Collection *root_collection = reinterpret_cast<Collection *>(id_root_reference);
     FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (root_collection, object_iter) {
       if (id_root_reference->lib == object_iter->id.lib && object_iter->type == OB_ARMATURE) {
-        data->selected_id_uid.add(object_iter->id.session_uuid);
+        data->selected_id_uid.add(object_iter->id.session_uid);
       }
     }
     FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
@@ -1347,7 +1357,7 @@ static void id_override_library_create_hierarchy(
           BLI_assert(id_hierarchy_root_override == id_hierarchy_root_reference);
         }
         data_idroot.id_hierarchy_root_override = id_hierarchy_root_override;
-        data.id_hierarchy_roots_uid.add(id_hierarchy_root_override->session_uuid);
+        data.id_hierarchy_roots_uid.add(id_hierarchy_root_override->session_uid);
       }
     }
     else if (ID_IS_OVERRIDABLE_LIBRARY(data_idroot.id_root_reference)) {
@@ -1413,12 +1423,12 @@ static void id_override_library_create_hierarchy_process(bContext *C,
     }
     if (id_iter->override_library->hierarchy_root != nullptr &&
         !data.id_hierarchy_roots_uid.contains(
-            id_iter->override_library->hierarchy_root->session_uuid))
+            id_iter->override_library->hierarchy_root->session_uid))
     {
       continue;
     }
-    if (data.selected_id_uid.contains(id_iter->override_library->reference->session_uuid) ||
-        data.selected_id_uid.contains(id_iter->session_uuid))
+    if (data.selected_id_uid.contains(id_iter->override_library->reference->session_uid) ||
+        data.selected_id_uid.contains(id_iter->session_uid))
     {
       id_iter->override_library->flag &= ~LIBOVERRIDE_FLAG_SYSTEM_DEFINED;
     }
@@ -2285,7 +2295,7 @@ static void constraint_fn(int event, TreeElement *te, TreeStoreElem * /*tselem*/
       lb = &ob->constraints;
     }
 
-    if (BKE_constraint_remove_ex(lb, ob, constraint, true)) {
+    if (BKE_constraint_remove_ex(lb, ob, constraint)) {
       /* there's no active constraint now, so make sure this is the case */
       BKE_constraints_active_set(&ob->constraints, nullptr);
 

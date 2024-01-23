@@ -23,7 +23,7 @@
 #include "DNA_mask_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_mask.h"
 
 #include "DEG_depsgraph.hh"
@@ -388,7 +388,7 @@ void BKE_mask_spline_feather_collapse_inner_loops(MaskSpline *spline,
   max_delta_x /= max[0] - min[0];
   max_delta_y /= max[1] - min[1];
 
-  max_delta = MAX2(max_delta_x, max_delta_y);
+  max_delta = std::max(max_delta_x, max_delta_y);
 
   buckets_per_side = min_ii(512, 0.9f / max_delta);
 

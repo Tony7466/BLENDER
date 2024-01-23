@@ -5,6 +5,7 @@
 #pragma once
 
 #include <array>
+#include <limits>
 #include <optional>
 #include <variant>
 
@@ -141,8 +142,8 @@ using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
  *   various sources. Those generally need additional memory which is provided with by an
  *   #IndexMaskMemory.
  *
- *   Some of the `IndexMask::from_*` functions are have an `IndexMask universe` input. When
- *   provided, the function will only consider the indices in the "universe". The term comes from
+ *   Some of the `IndexMask::from_*` functions have an `IndexMask universe` input. When provided,
+ *   the function will only consider the indices in the "universe". The term comes from
  *   mathematics: https://en.wikipedia.org/wiki/Universe_(mathematics).
  *
  * Iteration:
@@ -340,7 +341,7 @@ class IndexMask : private IndexMaskData {
    */
   void to_bits(MutableBitSpan r_bits) const;
   /**
-   * Set the bools at indies in the mask to true and all others to false.
+   * Set the bools at indices in the mask to true and all others to false.
    */
   void to_bools(MutableSpan<bool> r_bools) const;
   /**
@@ -423,7 +424,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
 /* -------------------------------------------------------------------- */
-/** \name Inline Utilities
+/** \name Utilities
  * \{ */
 
 inline const std::array<int16_t, max_segment_size> &get_static_indices_array()
@@ -438,6 +439,13 @@ inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &ma
 {
   mask.foreach_index_optimized<int64_t>([&](const int64_t i) { data[i] = value; });
 }
+
+/**
+ * Fill masked indices of \a r_mask with the index of that item in the mask such that
+ * `r_map[mask[i]] == i` for the whole mask. The size of `r_map` needs to be at least
+ * `mask.min_array_size()`.
+ */
+template<typename T> void build_reverse_map(const IndexMask &mask, MutableSpan<T> r_map);
 
 /* -------------------------------------------------------------------- */
 /** \name #RawMaskIterator Inline Methods
@@ -464,7 +472,7 @@ inline void init_empty_mask(IndexMaskData &data)
   data.indices_num_ = 0;
   data.segments_num_ = 0;
   data.cumulative_segment_sizes_ = cumulative_sizes_for_empty_mask;
-  /* Intentionally leave some pointer uninitialized which must not be accessed on empty masks
+  /* Intentionally leave some pointers uninitialized which must not be accessed on empty masks
    * anyway. */
 }
 
@@ -851,6 +859,9 @@ inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
           const int64_t global_index = int64_t(local_index) + offset;
           const bool condition = predicate(global_index);
           *r_current = local_index;
+          /* This expects the boolean to be either 0 or 1 which is generally the case but may not
+           * be if the values are uninitialized. */
+          BLI_assert(ELEM(int8_t(condition), 0, 1));
           /* Branchless conditional increment. */
           r_current += condition;
         }

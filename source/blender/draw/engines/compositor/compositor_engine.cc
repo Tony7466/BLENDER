@@ -22,11 +22,10 @@
 
 #include "ED_view3d.hh"
 
-#include "DRW_render.h"
-
-#include "IMB_colormanagement.h"
+#include "DRW_render.hh"
 
 #include "COM_context.hh"
+#include "COM_domain.hh"
 #include "COM_evaluator.hh"
 #include "COM_result.hh"
 #include "COM_texture_pool.hh"
@@ -154,18 +153,28 @@ class Context : public realtime_compositor::Context {
     return DRW_viewport_texture_list_get()->color;
   }
 
-  GPUTexture *get_viewer_output_texture(int2 /* size */) override
+  GPUTexture *get_viewer_output_texture(realtime_compositor::Domain /* domain */) override
   {
     return DRW_viewport_texture_list_get()->color;
   }
 
   GPUTexture *get_input_texture(const Scene *scene, int view_layer, const char *pass_name) override
   {
-    if ((DEG_get_original_id(const_cast<ID *>(&scene->id)) ==
-         DEG_get_original_id(&DRW_context_state_get()->scene->id)) &&
-        view_layer == 0 && STREQ(pass_name, RE_PASSNAME_COMBINED))
+    if (DEG_get_original_id(const_cast<ID *>(&scene->id)) !=
+        DEG_get_original_id(&DRW_context_state_get()->scene->id))
     {
+      return nullptr;
+    }
+
+    if (view_layer != 0) {
+      return nullptr;
+    }
+
+    if (STREQ(pass_name, RE_PASSNAME_COMBINED)) {
       return get_output_texture();
+    }
+    else if (STREQ(pass_name, RE_PASSNAME_Z)) {
+      return DRW_viewport_texture_list_get()->depth;
     }
     else {
       return nullptr;

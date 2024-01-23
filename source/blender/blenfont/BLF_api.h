@@ -71,6 +71,21 @@ void BLF_unload_all(void);
 
 char *BLF_display_name_from_file(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 
+char *BLF_display_name_from_id(int fontid);
+
+/**
+ * Get the metrics needed for the initial sizing of text objects.
+ */
+bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale);
+
+/**
+ * Convert a character's outlines into curves.
+ */
+float BLF_character_to_curves(int fontid,
+                              unsigned int unicode,
+                              struct ListBase *nurbsbase,
+                              const float scale);
+
 /**
  * Check if font supports a particular glyph.
  */
@@ -320,6 +335,11 @@ int BLF_default(void);
  */
 void BLF_draw_default(float x, float y, float z, const char *str, size_t str_len) ATTR_NONNULL();
 /**
+ * As above but with a very contrasting dark shadow.
+ */
+void BLF_draw_default_shadowed(float x, float y, float z, const char *str, size_t str_len)
+    ATTR_NONNULL();
+/**
  * Set size and DPI, and return default font ID.
  */
 int BLF_set_default(void);
@@ -330,7 +350,7 @@ int BLF_load_default(bool unique);
 int BLF_load_mono_default(bool unique);
 void BLF_load_font_stack(void);
 
-#ifdef DEBUG
+#ifndef NDEBUG
 void BLF_state_print(int fontid);
 #endif
 
@@ -360,7 +380,11 @@ enum {
   BLF_BAD_FONT = 1 << 16,
   /** This font is managed by the FreeType cache subsystem. */
   BLF_CACHED = 1 << 17,
-  /** At small sizes glyphs are rendered at multiple sub-pixel positions. */
+  /**
+   * At small sizes glyphs are rendered at multiple sub-pixel positions.
+   *
+   * \note Can be checked without checking #BLF_MONOSPACED which can be assumed to be disabled.
+   */
   BLF_RENDER_SUBPIXELAA = 1 << 18,
 };
 

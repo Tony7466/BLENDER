@@ -40,14 +40,14 @@
 
 #include "BKE_fcurve.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_movieclip.h"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -2124,7 +2124,7 @@ void BKE_tracking_camera_to_blender(
   float focal = tracking->camera.focal;
 
   camera->sensor_x = tracking->camera.sensor_width;
-  camera->sensor_fit = CAMERA_SENSOR_FIT_AUTO;
+  camera->sensor_fit = CAMERA_SENSOR_FIT_HOR;
   camera->lens = focal * camera->sensor_x / width;
 
   scene->r.xsch = width;
@@ -2527,7 +2527,7 @@ void BKE_tracking_max_distortion_delta_across_bound(MovieTracking *tracking,
 {
   float pos[2], warped_pos[2];
   const int coord_delta = 5;
-  void (*apply_distortion)(MovieTracking * tracking,
+  void (*apply_distortion)(MovieTracking *tracking,
                            int image_width,
                            int image_height,
                            const float pos[2],

@@ -7,11 +7,12 @@ from bpy.types import (
     Header,
     Menu,
     Panel,
+    UIList,
 )
 from bpy.app.translations import (
     contexts as i18n_contexts,
     pgettext_iface as iface_,
-    pgettext_tip as tip_,
+    pgettext_rpt as rpt_,
 )
 from bl_ui.utils import PresetPanel
 
@@ -109,7 +110,10 @@ class USERPREF_MT_save_load(Menu):
         if prefs.use_preferences_save:
             layout.operator("wm.save_userpref", text="Save Preferences")
         sub_revert = layout.column(align=True)
-        sub_revert.active = prefs.is_dirty
+        # NOTE: regarding `factory_startup`. To correctly show the active state of this menu item,
+        # the user preferences themselves would need to have a `factory_startup` state.
+        # Since showing an active menu item whenever factory-startup is used is not such a problem, leave this as-is.
+        sub_revert.active = prefs.is_dirty or bpy.app.factory_startup
         sub_revert.operator("wm.read_userpref", text="Revert to Saved Preferences")
 
         layout.operator_context = 'INVOKE_AREA'
@@ -260,6 +264,7 @@ class USERPREF_PT_interface_translation(InterfacePanel, CenterAlignMixIn, Panel)
         col.active = (bpy.app.translations.locale != "en_US")
         col.prop(view, "use_translate_tooltips", text="Tooltips")
         col.prop(view, "use_translate_interface", text="Interface")
+        col.prop(view, "use_translate_reports", text="Reports")
         col.prop(view, "use_translate_new_dataname", text="New Data")
 
 
@@ -576,14 +581,19 @@ class USERPREF_PT_animation_keyframes(AnimationPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         edit = prefs.edit
 
-        col = layout.column()
+        layout.prop(edit, "key_insert_channels", expand=True)
+
+        row = layout.row(align=True, heading="Only Insert Needed")
+        row.prop(edit, "use_keyframe_insert_needed", text="Manual", toggle=1)
+        row.prop(edit, "use_auto_keyframe_insert_needed", text="Auto", toggle=1)
+
+        col = layout.column(heading="Keyframing")
         col.prop(edit, "use_visual_keying")
-        col.prop(edit, "use_keyframe_insert_needed", text="Only Insert Needed")
 
         col = layout.column(heading="Auto-Keyframing")
+        col.prop(edit, "use_auto_keying", text="Enable in New Scenes")
         col.prop(edit, "use_auto_keying_warning", text="Show Warning")
         col.prop(edit, "use_keyframe_insert_available", text="Only Insert Available")
-        col.prop(edit, "use_auto_keying", text="Enable in New Scenes")
 
 
 class USERPREF_PT_animation_fcurves(AnimationPanel, CenterAlignMixIn, Panel):
@@ -643,9 +653,13 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
 
         if bpy.app.build_options.cycles:
             addon = prefs.addons.get("cycles")
-            if addon is not None:
+            if addon is None:
+                layout.label(text="Enable Cycles Render Engine add-on to use Cycles", icon='INFO')
+            else:
                 addon.preferences.draw_impl(col, context)
             del addon
+        else:
+            layout.label(text="Cycles is disabled in this build", icon='INFO')
 
 
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
@@ -1569,7 +1583,7 @@ class USERPREF_PT_file_paths_asset_libraries(FilePathsPanel, Panel):
         layout.prop(active_library, "use_relative_path")
 
 
-class USERPREF_UL_asset_libraries(bpy.types.UIList):
+class USERPREF_UL_asset_libraries(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         asset_library = item
 
@@ -1580,7 +1594,7 @@ class USERPREF_UL_asset_libraries(bpy.types.UIList):
             layout.prop(asset_library, "name", text="", emboss=False)
 
 
-class USERPREF_UL_extension_repos(bpy.types.UIList):
+class USERPREF_UL_extension_repos(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         repo = item
 
@@ -1589,6 +1603,7 @@ class USERPREF_UL_extension_repos(bpy.types.UIList):
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.prop(repo, "name", text="", emboss=False)
+        layout.prop(repo, "enabled", text="", emboss=False, icon='CHECKBOX_HLT' if repo.enabled else 'CHECKBOX_DEHLT')
 
 
 # -----------------------------------------------------------------------------
@@ -2008,12 +2023,13 @@ class USERPREF_PT_extensions(ExtensionsPanel, Panel):
         row = layout.row()
         row.label(text="The add-on to use extensions is disabled! See:")
         row.operator(
-            "wm.url_open", text="Extension Add-on Repo", icon='URL',
+            "wm.url_open", text="Extension Add-on Repository", icon='URL',
         ).url = "https://projects.blender.org/ideasman42/bl_ext"
 
 
 class USERPREF_PT_extensions_repos(ExtensionsPanel, Panel):
-    bl_label = "Extension Repositories"
+    bl_label = "Repositories"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -2060,6 +2076,18 @@ class USERPREF_PT_extensions_repos(ExtensionsPanel, Panel):
 # -----------------------------------------------------------------------------
 # Add-On Panels
 
+# Only a popover.
+class USERPREF_PT_addons_filter(Panel):
+    bl_label = "Add-ons Filter"
+
+    bl_space_type = 'TOPBAR'  # dummy.
+    bl_region_type = 'HEADER'
+    bl_ui_units_x = 12
+
+    def draw(self, context):
+        USERPREF_PT_addons._draw_addon_header_for_extensions_popover(self.layout, context)
+
+
 class AddOnPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
@@ -2103,6 +2131,46 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         for l in lines[1:]:
             box.label(text=l)
 
+    @staticmethod
+    def _draw_addon_header(layout, prefs, wm):
+        split = layout.split(factor=0.6)
+
+        row = split.row()
+        row.prop(wm, "addon_support", expand=True)
+
+        row = split.row(align=True)
+        row.operator("preferences.addon_install", icon='IMPORT', text="Install...")
+        row.operator("preferences.addon_refresh", icon='FILE_REFRESH', text="Refresh")
+
+        row = layout.row()
+        row.prop(prefs.view, "show_addons_enabled_only")
+        row.prop(wm, "addon_filter", text="")
+        row.prop(wm, "addon_search", text="", icon='VIEWZOOM')
+
+    @staticmethod
+    def _draw_addon_header_for_extensions(layout, prefs, wm):
+        row = layout.row()
+        row.prop(wm, "addon_search", text="", icon='VIEWZOOM')
+        row.popover("USERPREF_PT_addons_filter", text="", icon='FILTER')
+        # See `_draw_addon_header_for_extensions_popover` for most content.
+
+    @staticmethod
+    def _draw_addon_header_for_extensions_popover(layout, context):
+
+        wm = context.window_manager
+        prefs = context.preferences
+
+        row = layout.row()
+        row.prop(wm, "addon_support", expand=True)
+
+        row = layout.row()
+        row.prop(prefs.view, "show_addons_enabled_only")
+
+        # Not filter, we could expose elsewhere.
+        row = layout.row()
+        row.operator("preferences.addon_install", icon='IMPORT', text="Install...")
+        row.operator("preferences.addon_refresh", icon='FILE_REFRESH', text="Refresh")
+
     def draw(self, context):
         import os
         import addon_utils
@@ -2112,6 +2180,9 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         wm = context.window_manager
         prefs = context.preferences
         used_ext = {ext.module for ext in prefs.addons}
+
+        # Experimental UI changes proposed in: #117285.
+        use_extension_repos = prefs.experimental.use_extension_repos
 
         addon_user_dirs = tuple(
             p for p in (
@@ -2127,19 +2198,10 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
             for mod in addon_utils.modules(refresh=False)
         ]
 
-        split = layout.split(factor=0.6)
-
-        row = split.row()
-        row.prop(wm, "addon_support", expand=True)
-
-        row = split.row(align=True)
-        row.operator("preferences.addon_install", icon='IMPORT', text="Install...")
-        row.operator("preferences.addon_refresh", icon='FILE_REFRESH', text="Refresh")
-
-        row = layout.row()
-        row.prop(prefs.view, "show_addons_enabled_only")
-        row.prop(wm, "addon_filter", text="")
-        row.prop(wm, "addon_search", text="", icon='VIEWZOOM')
+        if use_extension_repos:
+            self._draw_addon_header_for_extensions(layout, prefs, wm)
+        else:
+            self._draw_addon_header(layout, prefs, wm)
 
         col = layout.column()
 
@@ -2168,6 +2230,9 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         filter = wm.addon_filter
         search = wm.addon_search.lower()
         support = wm.addon_support
+
+        if use_extension_repos:
+            filter = "All"
 
         # initialized on demand
         user_addon_paths = []
@@ -2211,32 +2276,37 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                     emboss=False,
                 ).module = module_name
 
-                row.operator(
-                    "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
-                    icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
-                    emboss=False,
-                ).module = module_name
+                if not use_extension_repos:
+                    row.operator(
+                        "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
+                        icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
+                        emboss=False,
+                    ).module = module_name
 
                 sub = row.row()
                 sub.active = is_enabled
-                sub.label(text=iface_("%s: %s") % (iface_(info["category"]), iface_(info["name"])))
+                if use_extension_repos:
+                    sub.label(text=iface_(info["name"]))
+                else:
+                    sub.label(text="%s: %s" % (iface_(info["category"]), iface_(info["name"])))
 
                 if info["warning"]:
                     sub.label(icon='ERROR')
 
                 # icon showing support level.
-                sub.label(icon=self._support_icon_mapping.get(info["support"], 'QUESTION'))
+                if not use_extension_repos:
+                    sub.label(icon=self._support_icon_mapping.get(info["support"], 'QUESTION'))
 
                 # Expanded UI (only if additional info is available)
                 if info["show_expanded"]:
                     if info["description"]:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Description:")
-                        split.label(text=tip_(info["description"]))
+                        split.label(text=iface_(info["description"]))
                     if info["location"]:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Location:")
-                        split.label(text=tip_(info["location"]))
+                        split.label(text=iface_(info["location"]))
                     if mod:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="File:")
@@ -2252,7 +2322,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                     if info["warning"]:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Warning:")
-                        split.label(text="  " + info["warning"], icon='ERROR')
+                        split.label(text="  " + iface_(info["warning"]), icon='ERROR')
 
                     user_addon = USERPREF_PT_addons.is_user_addon(mod, user_addon_paths)
                     if info["doc_url"] or info.get("tracker_url"):
@@ -2304,6 +2374,12 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                                     traceback.print_exc()
                                     box_prefs.label(text="Error (see console)", icon='ERROR')
                                 del addon_preferences_class.layout
+                if use_extension_repos:
+                    row.operator(
+                        "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
+                        icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
+                        emboss=False,
+                    ).module = module_name
 
         # Append missing scripts
         # First collect scripts that are used but have no script file.
@@ -2363,7 +2439,7 @@ class StudioLightPanelMixin:
             layout.label(text=self.get_error_message())
 
     def get_error_message(self):
-        return tip_("No custom %s configured") % self.bl_label
+        return rpt_("No custom %s configured") % self.bl_label
 
     def draw_studio_light(self, layout, studio_light):
         box = layout.box()
@@ -2391,7 +2467,7 @@ class USERPREF_PT_studiolight_matcaps(StudioLightPanel, StudioLightPanelMixin, P
         layout.separator()
 
     def get_error_message(self):
-        return tip_("No custom MatCaps configured")
+        return rpt_("No custom MatCaps configured")
 
 
 class USERPREF_PT_studiolight_world(StudioLightPanel, StudioLightPanelMixin, Panel):
@@ -2404,7 +2480,7 @@ class USERPREF_PT_studiolight_world(StudioLightPanel, StudioLightPanelMixin, Pan
         layout.separator()
 
     def get_error_message(self):
-        return tip_("No custom HDRIs configured")
+        return rpt_("No custom HDRIs configured")
 
 
 class USERPREF_PT_studiolight_lights(StudioLightPanel, StudioLightPanelMixin, Panel):
@@ -2419,7 +2495,7 @@ class USERPREF_PT_studiolight_lights(StudioLightPanel, StudioLightPanelMixin, Pa
         layout.separator()
 
     def get_error_message(self):
-        return tip_("No custom Studio Lights configured")
+        return rpt_("No custom Studio Lights configured")
 
 
 class USERPREF_PT_studiolight_light_editor(StudioLightPanel, Panel):
@@ -2540,7 +2616,6 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_tools_tilt"}, ("blender/blender/issues/82877", "#82877")),
                 ({"property": "use_extended_asset_browser"},
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
-                ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
                 ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
             ),
@@ -2706,6 +2781,7 @@ classes = (
 
     # Popovers.
     USERPREF_PT_ndof_settings,
+    USERPREF_PT_addons_filter,
 
     USERPREF_PT_experimental_new_features,
     USERPREF_PT_experimental_prototypes,

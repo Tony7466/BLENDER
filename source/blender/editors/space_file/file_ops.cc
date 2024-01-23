@@ -11,11 +11,11 @@
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
 
-#include "BKE_appdir.h"
-#include "BKE_blendfile.h"
-#include "BKE_context.h"
+#include "BKE_appdir.hh"
+#include "BKE_blendfile.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
@@ -792,7 +792,7 @@ static bool file_walk_select_selection_set(bContext *C,
 
   /* do the actual selection */
   if (fill) {
-    FileSelection sel = {MIN2(active, last_sel), MAX2(active, last_sel)};
+    FileSelection sel = {std::min(active, last_sel), std::max(active, last_sel)};
 
     /* fill selection between last and first selected file */
     filelist_entries_select_index_range_set(
