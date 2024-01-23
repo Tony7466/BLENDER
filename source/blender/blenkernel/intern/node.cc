@@ -4097,10 +4097,12 @@ static void node_replace_undefined_types(bNode *node)
 void ntreeUpdateAllNew(Main *main)
 {
   /* Replace unknown node types with "Undefined".
-   * This happens when loading files from newer Blender versions.
-   * Such nodes cannot be read reliably so replace the idname with an undefined type.
-   * This keeps links and socket names but discards storage and other type-specific data.
-   */
+   * This happens when loading files from newer Blender versions. Such nodes cannot be read
+   * reliably so replace the idname with an undefined type. This keeps links and socket names but
+   * discards storage and other type-specific data.
+   *
+   * Replacement has to happen after after-liblink-versioning, since some node types still get
+   * replaced in those late versioning steps. */
   FOREACH_NODETREE_BEGIN (main, ntree, owner_id) {
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       node_replace_undefined_types(node);
