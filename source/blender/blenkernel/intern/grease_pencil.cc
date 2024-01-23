@@ -24,6 +24,7 @@
 #include "BKE_object_types.hh"
 
 #include "BLI_bounds.hh"
+#include "BLI_hash.hh"
 #include "BLI_map.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -1555,6 +1556,128 @@ bool BKE_grease_pencil_material_index_used(GreasePencil *grease_pencil, int inde
     }
   }
   return false;
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
+/** \name Vertex groups in drawings
+ * \{ */
+
+void BKE_grease_pencil_defgroup_gather(GreasePencil &grease_pencil)
+{
+  struct DefGroupHash {
+    uint64_t operator()(const bDeformGroup *defgroup) const
+    {
+      return blender::get_default_hash(defgroup->name);
+    }
+  };
+
+  struct DefGroupEquality {
+    bool operator()(const bDeformGroup *a, const bDeformGroup *b) const
+    {
+      return STREQ(a->name, b->name);
+    }
+  };
+
+  using DefGroupVectorSet =
+      VectorSet<bDeformGroup *, blender::DefaultProbingStrategy, DefGroupHash, DefGroupEquality>;
+
+  /* Initialize set of existing vertex groups. */
+  DefGroupVectorSet unique_vertex_groups;
+
+  for (const GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    const blender::bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
+    LISTBASE_FOREACH (const bDeformGroup *, curdefgroup, &drawing.strokes().vertex_group_names) {
+      const bDeformGroup **defgroup_ptr = unique_vertex_groups.lookup_key_ptr(curdefgroup);
+      if (defgroup_ptr) {
+        /* Already have a vertex group entry.
+         * Sync properties other than the name. */
+        if (curdefgroup->flag & DG_LOCK_WEIGHT) {
+          (*defgroup_ptr)->flag |= DG_LOCK_WEIGHT;
+        }
+      }
+      else {
+        /* Vertex group not found in the data block yet, add to the list. */
+        bDeformGroup *defgroup_new = static_cast<bDeformGroup *>(MEM_dupallocN(curdefgroup));
+        unique_vertex_groups.add(defgroup_new);
+      }
+    }
+  }
+
+  /* Remove vertex groups that are not in any drawing. */
+  LISTBASE_FOREACH (const bDeformGroup *, defgroup, &grease_pencil.vertex_group_names) {
+    if (!unique_vertex_groups.contains(defgroup)) {
+      BLI_remlink(&grease_pencil.vertex_group_names, defgroup);
+      MEM_SAFE_FREE(defgroup);
+    }
+  }
+}
+
+struct DeformGroupUniqueNameData {
+  const GreasePencil &grease_pencil;
+  const bDeformGroup &defgroup;
+};
+
+static bool defgroup_find_name_dupe(const GreasePencil &grease_pencil,
+                                    const bDeformGroup &defgroup,
+                                    blender::StringRef name)
+{
+  for (const GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    const blender::bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
+    LISTBASE_FOREACH (const bDeformGroup *, curdefgroup, &drawing.strokes().vertex_group_names) {
+      if (curdefgroup != &defgroup) {
+        if (STREQ(curdefgroup->name, name.data())) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+static bool defgroup_unique_check(void *arg, const char *name)
+{
+  DeformGroupUniqueNameData &data = *static_cast<DeformGroupUniqueNameData *>(arg);
+  return defgroup_find_name_dupe(data.grease_pencil, data.defgroup, name);
+}
+
+void BKE_grease_pencil_defgroup_unique_name(GreasePencil &grease_pencil, bDeformGroup &defgroup)
+{
+  DeformGroupUniqueNameData data{grease_pencil, defgroup};
+  BLI_uniquename_cb(
+      defgroup_unique_check, &data, DATA_("Group"), '.', defgroup.name, sizeof(defgroup.name));
+}
+
+void BKE_grease_pencil_defgroup_new(GreasePencil &grease_pencil, blender::StringRef name)
+{
+  bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
+  STRNCPY(defgroup->name, name.data());
+  BKE_grease_pencil_defgroup_unique_name(grease_pencil, *defgroup);
+
+  BLI_addtail(&grease_pencil.vertex_group_names, defgroup);
+
+  for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    blender::bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    blender::bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+    bDeformGroup *drawing_defgroup = MEM_cnew<bDeformGroup>(__func__);
+    *drawing_defgroup = *defgroup;
+
+    BLI_addtail(&curves.vertex_group_names, drawing_defgroup);
+  }
 }
 
 /** \} */

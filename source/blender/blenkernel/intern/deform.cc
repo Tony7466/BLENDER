@@ -34,6 +34,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h" /* own include */
+#include "BKE_grease_pencil.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
@@ -49,14 +50,19 @@ bDeformGroup *BKE_object_defgroup_new(Object *ob, const char *name)
 
   BLI_assert(OB_TYPE_SUPPORT_VGROUP(ob->type));
 
-  defgroup = MEM_cnew<bDeformGroup>(__func__);
+  if (ob->type == OB_GREASE_PENCIL) {
+    BKE_grease_pencil_defgroup_new(*static_cast<GreasePencil *>(ob->data), name);
+  }
+  else {
+    defgroup = MEM_cnew<bDeformGroup>(__func__);
 
-  STRNCPY(defgroup->name, name);
+    STRNCPY(defgroup->name, name);
 
-  ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
+    ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
 
-  BLI_addtail(defbase, defgroup);
-  BKE_object_defgroup_unique_name(defgroup, ob);
+    BLI_addtail(defbase, defgroup);
+    BKE_object_defgroup_unique_name(defgroup, ob);
+  }
 
   BKE_object_batch_cache_dirty_tag(ob);
 
