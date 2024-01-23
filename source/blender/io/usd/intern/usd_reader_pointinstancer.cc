@@ -110,7 +110,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
     scales_attribute.span[i] = float3(scales[i][0], scales[i][1], scales[i][2]);
   }
 
-  scales_attribute.span.save();
+  scales_attribute.finish();
 
   bke::SpanAttributeWriter<math::Quaternion> orientations_attribute =
       attributes.lookup_or_add_for_write_only_span<math::Quaternion>("orientation",
@@ -127,7 +127,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
                                                       orientations[i].GetImaginary()[2]);
   }
 
-  orientations_attribute.span.save();
+  orientations_attribute.finish();
 
   bke::SpanAttributeWriter<int> proto_indices_attribute =
       attributes.lookup_or_add_for_write_only_span<int>("proto_index", bke::AttrDomain::Point);
@@ -140,7 +140,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
     proto_indices_attribute.span[i] = proto_indices[i];
   }
 
-  proto_indices_attribute.span.save();
+  proto_indices_attribute.finish();
 
   bke::SpanAttributeWriter<bool> mask_attribute =
       attributes.lookup_or_add_for_write_only_span<bool>("mask", bke::AttrDomain::Point);
@@ -153,7 +153,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
     mask_attribute.span[i] = mask[i];
   }
 
-  mask_attribute.span.save();
+  mask_attribute.finish();
 
   BKE_pointcloud_nomain_to_pointcloud(point_cloud, base_point_cloud);
 
@@ -298,10 +298,11 @@ void USDPointInstancerReader::set_collection(Main *bmain, Collection &coll)
 
   bNodeSocketValueCollection *socket_data = static_cast<bNodeSocketValueCollection *>(
       sock->default_value);
-  socket_data->value = &coll;
-  id_us_plus(&coll.id);
 
-  BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+  if (socket_data->value != &coll) {
+    socket_data->value = &coll;
+    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+  }
 }
 
 }  // namespace blender::io::usd
