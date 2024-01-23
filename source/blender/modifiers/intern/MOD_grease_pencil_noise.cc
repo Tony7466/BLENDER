@@ -31,8 +31,6 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_query.hh" /* For DEG_get_ctime(). */
-
 namespace blender {
 
 static void init_data(ModifierData *md)
@@ -102,7 +100,7 @@ static float table_sample(const Array<float> &table, const float x)
  */
 static void deform_drawing(const ModifierData &md,
                            const Object &ob,
-                           const float ctime,
+                           const int ctime,
                            const int start_frame_number,
                            bke::greasepencil::Drawing &drawing)
 {
@@ -136,7 +134,7 @@ static void deform_drawing(const ModifierData &md,
   seed += BLI_hash_string(md.name);
   if (mmd.flag & GP_NOISE_USE_RANDOM) {
     if (!is_keyframe) {
-      seed += math::floor(int(ctime) / mmd.step);
+      seed += math::floor(ctime / mmd.step);
     }
     else {
       /* If change every keyframe, use the last keyframe. */
@@ -237,14 +235,10 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawing_infos_for_write(
           grease_pencil, layer_mask, current_frame);
 
-  threading::parallel_for_each(drawing_infos,
-                               [&](const modifier::greasepencil::DrawingInfo &info) {
-                                 deform_drawing(*md,
-                                                *ctx->object,
-                                                DEG_get_ctime(ctx->depsgraph),
-                                                info.start_frame_number,
-                                                *info.drawing);
-                               });
+  threading::parallel_for_each(
+      drawing_infos, [&](const modifier::greasepencil::DrawingInfo &info) {
+        deform_drawing(*md, *ctx->object, current_frame, info.start_frame_number, *info.drawing);
+      });
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
