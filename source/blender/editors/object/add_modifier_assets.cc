@@ -17,8 +17,9 @@
 #include "BKE_asset.hh"
 #include "BKE_context.hh"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
@@ -261,7 +262,7 @@ static bNodeTree *get_asset_or_local_node_group(const bContext &C,
 {
   Main &bmain = *CTX_data_main(&C);
   if (bNodeTree *group = reinterpret_cast<bNodeTree *>(
-          WM_operator_properties_id_lookup_from_name_or_session_uuid(&bmain, &ptr, ID_NT)))
+          WM_operator_properties_id_lookup_from_name_or_session_uid(&bmain, &ptr, ID_NT)))
   {
     return group;
   }
@@ -314,6 +315,7 @@ static int modifier_add_asset_exec(bContext *C, wmOperator *op)
   nmd->flag |= NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;
 
   STRNCPY(nmd->modifier.name, DATA_(node_group->id.name + 2));
+  BKE_modifier_unique_name(&object->modifiers, &nmd->modifier);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, object);
 

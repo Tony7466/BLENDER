@@ -8,6 +8,7 @@
  * Operators for dealing with GP data-blocks and layers.
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -46,8 +47,8 @@
 #include "BKE_fcurve_driver.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
@@ -2729,7 +2730,7 @@ static int gpencil_vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
       }
 
       /* Normalize weights. */
-      float fac = MAX2(0, (1.0f - sum_lock) / sum_unlock);
+      float fac = std::max(0.0f, (1.0f - sum_lock) / sum_unlock);
 
       for (v = 0; v < defbase_tot; v++) {
         /* Get vertex group. */

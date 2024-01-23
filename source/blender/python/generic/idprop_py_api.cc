@@ -6,6 +6,8 @@
  * \ingroup pygen
  */
 
+#include <algorithm>
+
 #include <Python.h>
 
 #include "MEM_guardedalloc.h"
@@ -1418,7 +1420,8 @@ PyObject *BPy_Wrap_GetValues(ID *id, IDProperty *prop)
   int i;
 
   for (i = 0, loop = static_cast<IDProperty *>(prop->data.group.first); loop;
-       loop = loop->next, i++) {
+       loop = loop->next, i++)
+  {
     PyList_SET_ITEM(list, i, BPy_IDGroup_WrapData(id, loop, prop));
   }
 
@@ -1439,7 +1442,8 @@ PyObject *BPy_Wrap_GetItems(ID *id, IDProperty *prop)
   int i;
 
   for (i = 0, loop = static_cast<IDProperty *>(prop->data.group.first); loop;
-       loop = loop->next, i++) {
+       loop = loop->next, i++)
+  {
     PyObject *item = PyTuple_New(2);
     PyTuple_SET_ITEMS(
         item, PyUnicode_FromString(loop->name), BPy_IDGroup_WrapData(id, loop, prop));
@@ -1898,7 +1902,7 @@ static PyObject *BPy_IDArray_slice(BPy_IDArray *self, int begin, int end)
     end = prop->len + end + 1;
   }
   CLAMP(end, 0, prop->len);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   tuple = PyTuple_New(end - begin);
 
@@ -1947,7 +1951,7 @@ static int BPy_IDArray_ass_slice(BPy_IDArray *self, int begin, int end, PyObject
 
   CLAMP(begin, 0, prop->len);
   CLAMP(end, 0, prop->len);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   size = (end - begin);
   alloc_len = size * elem_size;

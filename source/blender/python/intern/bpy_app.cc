@@ -37,10 +37,10 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
 #include "DNA_ID.h"
 

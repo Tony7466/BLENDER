@@ -28,7 +28,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
-#include "BLI_session_uuid.h"
+#include "BLI_session_uid.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
@@ -44,10 +44,10 @@
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_preview_image.hh"
@@ -63,7 +63,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 #include "ANIM_bonecolor.hh"
 
 #include "CLG_log.h"
@@ -95,7 +95,7 @@ static CLG_LogRef LOG = {"bke.action"};
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
 static void action_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
 {
@@ -593,9 +593,9 @@ void action_groups_clear_tempflags(bAction *act)
 
 /* *************** Pose channels *************** */
 
-void BKE_pose_channel_session_uuid_generate(bPoseChannel *pchan)
+void BKE_pose_channel_session_uid_generate(bPoseChannel *pchan)
 {
-  pchan->runtime.session_uuid = BLI_session_uuid_generate();
+  pchan->runtime.session_uid = BLI_session_uid_generate();
 }
 
 bPoseChannel *BKE_pose_channel_find_name(const bPose *pose, const char *name)
@@ -629,7 +629,7 @@ bPoseChannel *BKE_pose_channel_ensure(bPose *pose, const char *name)
   /* If not, create it and add it */
   chan = static_cast<bPoseChannel *>(MEM_callocN(sizeof(bPoseChannel), "verifyPoseChannel"));
 
-  BKE_pose_channel_session_uuid_generate(chan);
+  BKE_pose_channel_session_uid_generate(chan);
 
   STRNCPY(chan->name, name);
 
@@ -680,7 +680,7 @@ bool BKE_pose_channels_is_valid(const bPose *pose)
 
 bool BKE_pose_is_bonecoll_visible(const bArmature *arm, const bPoseChannel *pchan)
 {
-  return pchan->bone && ANIM_bonecoll_is_visible(arm, pchan->bone);
+  return pchan->bone && ANIM_bone_in_visible_collection(arm, pchan->bone);
 }
 
 bPoseChannel *BKE_pose_channel_active(Object *ob, const bool check_bonecoll)
@@ -693,7 +693,7 @@ bPoseChannel *BKE_pose_channel_active(Object *ob, const bool check_bonecoll)
   /* find active */
   LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     if ((pchan->bone) && (pchan->bone == arm->act_bone)) {
-      if (!check_bonecoll || ANIM_bonecoll_is_visible(arm, pchan->bone)) {
+      if (!check_bonecoll || ANIM_bone_in_visible_collection(arm, pchan->bone)) {
         return pchan;
       }
     }
@@ -793,7 +793,7 @@ void BKE_pose_copy_data_ex(bPose **dst,
     }
 
     if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
-      BKE_pose_channel_session_uuid_generate(pchan);
+      BKE_pose_channel_session_uid_generate(pchan);
     }
 
     /* warning, O(n2) here, if done without the hash, but these are rarely used features. */
@@ -1033,9 +1033,9 @@ void BKE_pose_channel_runtime_reset(bPoseChannel_Runtime *runtime)
 
 void BKE_pose_channel_runtime_reset_on_copy(bPoseChannel_Runtime *runtime)
 {
-  const SessionUUID uuid = runtime->session_uuid;
+  const SessionUID uid = runtime->session_uid;
   memset(runtime, 0, sizeof(*runtime));
-  runtime->session_uuid = uuid;
+  runtime->session_uid = uid;
 }
 
 void BKE_pose_channel_runtime_free(bPoseChannel_Runtime *runtime)
@@ -1206,7 +1206,8 @@ void BKE_pose_update_constraint_flags(bPose *pose)
           {
             bPoseChannel *chain_bone = chain_tip;
             for (short index = 0; chain_bone && (data->rootbone == 0 || index < data->rootbone);
-                 index++) {
+                 index++)
+            {
               chain_bone->constflag |= PCHAN_INFLUENCED_BY_IK;
               chain_bone = chain_bone->parent;
             }
@@ -1777,31 +1778,31 @@ void what_does_obaction(Object *ob,
   }
 }
 
-void BKE_pose_check_uuids_unique_and_report(const bPose *pose)
+void BKE_pose_check_uids_unique_and_report(const bPose *pose)
 {
   if (pose == nullptr) {
     return;
   }
 
-  GSet *used_uuids = BLI_gset_new(
-      BLI_session_uuid_ghash_hash, BLI_session_uuid_ghash_compare, "sequencer used uuids");
+  GSet *used_uids = BLI_gset_new(
+      BLI_session_uid_ghash_hash, BLI_session_uid_ghash_compare, "sequencer used uids");
 
   LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
-    const SessionUUID *session_uuid = &pchan->runtime.session_uuid;
-    if (!BLI_session_uuid_is_generated(session_uuid)) {
-      printf("Pose channel %s does not have UUID generated.\n", pchan->name);
+    const SessionUID *session_uid = &pchan->runtime.session_uid;
+    if (!BLI_session_uid_is_generated(session_uid)) {
+      printf("Pose channel %s does not have UID generated.\n", pchan->name);
       continue;
     }
 
-    if (BLI_gset_lookup(used_uuids, session_uuid) != nullptr) {
-      printf("Pose channel %s has duplicate UUID generated.\n", pchan->name);
+    if (BLI_gset_lookup(used_uids, session_uid) != nullptr) {
+      printf("Pose channel %s has duplicate UID generated.\n", pchan->name);
       continue;
     }
 
-    BLI_gset_insert(used_uuids, (void *)session_uuid);
+    BLI_gset_insert(used_uids, (void *)session_uid);
   }
 
-  BLI_gset_free(used_uuids, nullptr);
+  BLI_gset_free(used_uids, nullptr);
 }
 
 void BKE_pose_blend_write(BlendWriter *writer, bPose *pose, bArmature *arm)
@@ -1867,7 +1868,7 @@ void BKE_pose_blend_read_data(BlendDataReader *reader, ID *id_owner, bPose *pose
 
   LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
     BKE_pose_channel_runtime_reset(&pchan->runtime);
-    BKE_pose_channel_session_uuid_generate(pchan);
+    BKE_pose_channel_session_uid_generate(pchan);
 
     pchan->bone = nullptr;
     BLO_read_data_address(reader, &pchan->parent);

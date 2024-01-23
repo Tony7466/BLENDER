@@ -28,7 +28,7 @@
 #include "BKE_animsys.h"
 #include "BKE_sound.h"
 
-#include "IMB_metadata.h"
+#include "IMB_metadata.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -64,7 +64,7 @@ struct EffectInfo {
   int inputs;
 };
 
-/* These wrap strangely, disable formatting for fixed indentation and wrapping.  */
+/* These wrap strangely, disable formatting for fixed indentation and wrapping. */
 /* clang-format off */
 #define RNA_ENUM_SEQUENCER_VIDEO_MODIFIER_TYPE_ITEMS \
   {seqModifierType_BrightContrast, "BRIGHT_CONTRAST", ICON_NONE, "Brightness/Contrast", ""}, \
@@ -111,6 +111,8 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <algorithm>
+
 #  include "BKE_global.h"
 #  include "BKE_idprop.h"
 #  include "BKE_movieclip.h"
@@ -121,7 +123,7 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
 
-#  include "IMB_imbuf.h"
+#  include "IMB_imbuf.hh"
 
 #  include "SEQ_edit.hh"
 
@@ -501,7 +503,7 @@ static void rna_Sequence_anim_startofs_final_set(PointerRNA *ptr, int value)
   Sequence *seq = (Sequence *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
 
-  seq->anim_startofs = MIN2(value, seq->len + seq->anim_startofs);
+  seq->anim_startofs = std::min(value, seq->len + seq->anim_startofs);
 
   SEQ_add_reload_new_file(G.main, scene, seq, false);
   do_sequence_frame_change_update(scene, seq);
@@ -512,7 +514,7 @@ static void rna_Sequence_anim_endofs_final_set(PointerRNA *ptr, int value)
   Sequence *seq = (Sequence *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
 
-  seq->anim_endofs = MIN2(value, seq->len + seq->anim_endofs);
+  seq->anim_endofs = std::min(value, seq->len + seq->anim_endofs);
 
   SEQ_add_reload_new_file(G.main, scene, seq, false);
   do_sequence_frame_change_update(scene, seq);
@@ -1517,13 +1519,10 @@ static void rna_Sequence_separate(ID *id, Sequence *seqm, Main *bmain)
 /* Find channel owner. If nullptr, owner is `Editing`, otherwise it's `Sequence`. */
 static Sequence *rna_SeqTimelineChannel_owner_get(Editing *ed, SeqTimelineChannel *channel)
 {
-  blender::VectorSet strips = SEQ_query_all_strips_recursive(&ed->seqbase);
+  blender::VectorSet strips = SEQ_query_all_meta_strips_recursive(&ed->seqbase);
 
   Sequence *channel_owner = nullptr;
   for (Sequence *seq : strips) {
-    if (seq->type != SEQ_TYPE_META) {
-      continue;
-    }
     if (BLI_findindex(&seq->channels, channel) != -1) {
       channel_owner = seq;
       break;
@@ -1664,7 +1663,6 @@ static void rna_def_retiming_key(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SeqRetimingKey");
 
   prop = RNA_def_property(srna, "timeline_frame", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "strip_frame_index");
   RNA_def_property_int_funcs(
       prop, "rna_Sequence_retiming_key_frame_get", "rna_Sequence_retiming_key_frame_set", nullptr);
   RNA_def_property_ui_text(prop, "Timeline Frame", "Position of retiming key in timeline");
@@ -1713,6 +1711,7 @@ static void rna_def_strip_crop(BlenderRNA *brna)
 static const EnumPropertyItem transform_filter_items[] = {
     {SEQ_TRANSFORM_FILTER_NEAREST, "NEAREST", 0, "Nearest", ""},
     {SEQ_TRANSFORM_FILTER_BILINEAR, "BILINEAR", 0, "Bilinear", ""},
+    {SEQ_TRANSFORM_FILTER_BICUBIC, "BICUBIC", 0, "Bicubic", ""},
     {SEQ_TRANSFORM_FILTER_NEAREST_3x3,
      "SUBSAMPLING_3x3",
      0,

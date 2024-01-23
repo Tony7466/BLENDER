@@ -54,6 +54,7 @@
 #include "BKE_curve.hh"
 #include "BKE_curve_to_mesh.hh"
 #include "BKE_curves.h"
+#include "BKE_customdata.hh"
 #include "BKE_displist.h"
 #include "BKE_duplilist.h"
 #include "BKE_effect.h"
@@ -67,13 +68,13 @@
 #include "BKE_key.h"
 #include "BKE_lattice.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_light.h"
 #include "BKE_lightprobe.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
@@ -83,11 +84,11 @@
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_particle.h"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_speaker.h"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 #include "BKE_volume.hh"
 
 #include "DEG_depsgraph.hh"
@@ -120,7 +121,7 @@
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "UI_resources.hh"
 
@@ -497,7 +498,7 @@ bool ED_object_add_generic_get_opts(bContext *C,
 
   if (r_local_view_bits) {
     View3D *v3d = CTX_wm_view3d(C);
-    *r_local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+    *r_local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
   }
 
   /* Location! */
@@ -1808,7 +1809,7 @@ static std::optional<CollectionAddInfo> collection_add_info_get_from_op(bContext
   PropertyRNA *prop_location = RNA_struct_find_property(op->ptr, "location");
 
   add_info.collection = reinterpret_cast<Collection *>(
-      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_GR));
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_GR));
 
   bool update_location_if_necessary = false;
   if (add_info.collection) {
@@ -2054,8 +2055,7 @@ static int object_data_instance_add_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop_location = RNA_struct_find_property(op->ptr, "location");
 
   const short id_type = RNA_property_enum_get(op->ptr, prop_type);
-  id = WM_operator_properties_id_lookup_from_name_or_session_uuid(
-      bmain, op->ptr, (ID_Type)id_type);
+  id = WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, (ID_Type)id_type);
   if (id == nullptr) {
     return OPERATOR_CANCELLED;
   }
@@ -2242,7 +2242,8 @@ static int object_curves_empty_hair_add_exec(bContext *C, wmOperator *op)
 
   /* Decide which UV map to use for attachment. */
   Mesh *surface_mesh = static_cast<Mesh *>(surface_ob->data);
-  const char *uv_name = CustomData_get_active_layer_name(&surface_mesh->loop_data, CD_PROP_FLOAT2);
+  const char *uv_name = CustomData_get_active_layer_name(&surface_mesh->corner_data,
+                                                         CD_PROP_FLOAT2);
   if (uv_name != nullptr) {
     curves_id->surface_uv_map = BLI_strdup(uv_name);
   }
@@ -3153,11 +3154,11 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = basen->object;
 
         /* Decrement original mesh's usage count. */
-        Mesh *me = static_cast<Mesh *>(newob->data);
-        id_us_min(&me->id);
+        Mesh *mesh = static_cast<Mesh *>(newob->data);
+        id_us_min(&mesh->id);
 
         /* Make a new copy of the mesh. */
-        newob->data = BKE_id_copy(bmain, &me->id);
+        newob->data = BKE_id_copy(bmain, &mesh->id);
       }
       else {
         newob = ob;
@@ -3176,7 +3177,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       /* Create a new grease pencil object and copy transformations. */
-      ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+      ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
       float loc[3], size[3], rot[3][3], eul[3];
       float matrix[4][4];
       mat4_to_loc_rot_size(loc, rot, size, ob->object_to_world);
@@ -3294,11 +3295,11 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = basen->object;
 
         /* Decrement original mesh's usage count. */
-        Mesh *me = static_cast<Mesh *>(newob->data);
-        id_us_min(&me->id);
+        Mesh *mesh = static_cast<Mesh *>(newob->data);
+        id_us_min(&mesh->id);
 
         /* Make a new copy of the mesh. */
-        newob->data = BKE_id_copy(bmain, &me->id);
+        newob->data = BKE_id_copy(bmain, &mesh->id);
       }
       else {
         newob = ob;
@@ -3319,11 +3320,11 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = basen->object;
 
         /* Decrement original mesh's usage count. */
-        Mesh *me = static_cast<Mesh *>(newob->data);
-        id_us_min(&me->id);
+        Mesh *mesh = static_cast<Mesh *>(newob->data);
+        id_us_min(&mesh->id);
 
         /* Make a new copy of the mesh. */
-        newob->data = BKE_id_copy(bmain, &me->id);
+        newob->data = BKE_id_copy(bmain, &mesh->id);
       }
       else {
         newob = ob;
@@ -3429,7 +3430,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_curve_cache(newob);
       }
       else if (target == OB_GPENCIL_LEGACY) {
-        ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+        ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
         Object *ob_gpencil = ED_gpencil_add_object(C, newob->loc, local_view_bits);
         copy_v3_v3(ob_gpencil->rot, newob->rot);
         copy_v3_v3(ob_gpencil->scale, newob->scale);
@@ -3472,7 +3473,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           /* Create a new grease pencil object and copy transformations.
            * Nurbs Surface are not supported.
            */
-          ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+          ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
           Object *ob_gpencil = ED_gpencil_add_object(C, ob->loc, local_view_bits);
           copy_v3_v3(ob_gpencil->rot, ob->rot);
           copy_v3_v3(ob_gpencil->scale, ob->scale);
@@ -4053,7 +4054,7 @@ static int object_add_named_exec(bContext *C, wmOperator *op)
   /* Find object, create fake base. */
 
   Object *ob = reinterpret_cast<Object *>(
-      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_OB));
 
   if (ob == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Object not found");
@@ -4167,7 +4168,7 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
   Object *ob = reinterpret_cast<Object *>(
-      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_OB));
 
   if (!ob) {
     BKE_view_layer_synced_ensure(scene, view_layer);
@@ -4226,7 +4227,7 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
        *
        * The caller is responsible for ensuring the selection state gives useful results.
        * Link/append does this using #FILE_AUTOSELECT. */
-      ED_view3d_snap_selected_to_location(C, cursor, V3D_AROUND_ACTIVE);
+      ED_view3d_snap_selected_to_location(C, op, cursor, V3D_AROUND_ACTIVE);
     }
   }
 
@@ -4255,10 +4256,10 @@ void OBJECT_OT_transform_to_mouse(wmOperatorType *ot)
       nullptr,
       MAX_ID_NAME - 2,
       "Name",
-      "Object name to place (uses the active object when this and 'session_uuid' are unset)");
+      "Object name to place (uses the active object when this and 'session_uid' are unset)");
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN));
   prop = RNA_def_int(ot->srna,
-                     "session_uuid",
+                     "session_uid",
                      0,
                      INT32_MIN,
                      INT32_MAX,
