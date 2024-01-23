@@ -19,7 +19,7 @@ StringRefNull essentials_directory_path()
   static std::string path = []() {
     const std::optional<std::string> datafiles_path = BKE_appdir_folder_id(BLENDER_DATAFILES,
                                                                            "assets");
-    return datafiles_path.value_or({});
+    return datafiles_path.value_or("");
   }();
   return path;
 }
