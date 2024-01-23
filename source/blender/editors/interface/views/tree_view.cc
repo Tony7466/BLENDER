@@ -195,7 +195,7 @@ void AbstractTreeView::draw_hierarchy_lines(const ARegion &region) const
   col[3] = 255;
   immUniformColor4ubv(col);
 
-  GPU_line_width(1.0f/ aspect);
+  GPU_line_width(1.0f / aspect);
   GPU_blend(GPU_BLEND_ALPHA);
   draw_hierarchy_lines_recursive(region, *this, pos, aspect);
   GPU_blend(GPU_BLEND_NONE);
