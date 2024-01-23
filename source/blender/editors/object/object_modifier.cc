@@ -3773,7 +3773,9 @@ static int geometry_nodes_modifier_data_block_remove_exec(bContext *C, wmOperato
 void OBJECT_OT_geometry_nodes_modifier_data_block_remove(wmOperatorType *ot)
 {
   ot->name = "Remove Geometry Nodes Modifier Data Block";
-  ot->description = "Remove active data block mapping";
+  ot->description =
+      "Remove active data block. Note that it might be added right back in case it's used by the "
+      "node tree";
   ot->idname = "OBJECT_OT_geometry_nodes_modifier_data_block_remove";
 
   ot->exec = geometry_nodes_modifier_data_block_remove_exec;
