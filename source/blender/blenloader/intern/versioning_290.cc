@@ -8,6 +8,8 @@
 /* allow readfile to use deprecated functionality */
 #define DNA_DEPRECATED_ALLOW
 
+#include <algorithm>
+
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -56,14 +58,14 @@
 #include "BKE_customdata.hh"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_multires.hh"
 #include "BKE_node.hh"
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 #include "MEM_guardedalloc.h"
 
 #include "RNA_access.hh"
@@ -227,8 +229,8 @@ static void seq_convert_transform_crop(const Scene *scene,
     old_image_center_y = image_size_y / 2 - c->bottom + t->yofs;
 
     /* Preserve original image size. */
-    t->scale_x = t->scale_y = MAX2(float(image_size_x) / float(scene->r.xsch),
-                                   float(image_size_y) / float(scene->r.ysch));
+    t->scale_x = t->scale_y = std::max(float(image_size_x) / float(scene->r.xsch),
+                                       float(image_size_y) / float(scene->r.ysch));
 
     /* Convert crop. */
     if ((seq->flag & use_crop_flag) != 0) {
@@ -311,8 +313,8 @@ static void seq_convert_transform_crop_2(const Scene *scene,
   }
 
   /* Calculate scale factor, so image fits in preview area with original aspect ratio. */
-  const float scale_to_fit_factor = MIN2(float(scene->r.xsch) / float(image_size_x),
-                                         float(scene->r.ysch) / float(image_size_y));
+  const float scale_to_fit_factor = std::min(float(scene->r.xsch) / float(image_size_x),
+                                             float(scene->r.ysch) / float(image_size_y));
   t->scale_x *= scale_to_fit_factor;
   t->scale_y *= scale_to_fit_factor;
   c->top /= scale_to_fit_factor;
@@ -680,18 +682,11 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #blo_do_versions_290 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
 
 static void panels_remove_x_closed_flag_recursive(Panel *panel)
@@ -1979,15 +1974,9 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }

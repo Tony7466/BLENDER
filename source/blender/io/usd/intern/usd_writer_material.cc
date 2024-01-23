@@ -15,7 +15,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_report.h"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_linklist.h"
@@ -280,8 +280,7 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
 void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &input_spec)
 {
   /* Set the scale and bias for normal map textures
-   * The USD spec requires them to be within the -1 to 1 space
-   * */
+   * The USD spec requires them to be within the -1 to 1 space. */
 
   /* Only run if this input_spec is for a normal. */
   if (input_spec.input_name != usdtokens::normal) {
