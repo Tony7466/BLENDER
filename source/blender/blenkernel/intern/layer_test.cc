@@ -5,7 +5,11 @@
 
 #include "MEM_guardedalloc.h"
 
+<<<<<<< HEAD
 #include "BKE_appdir.hh"
+=======
+#include "BKE_appdir.h"
+>>>>>>> f0c185485c7 (Cleanup: Move `BKE_idtype.h` to Cpp header `BKE_idtype.hh`)
 #include "BKE_idtype.hh"
 #include "BKE_layer.h"
 
