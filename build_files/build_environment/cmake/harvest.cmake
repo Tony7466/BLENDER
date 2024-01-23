@@ -151,7 +151,7 @@ else()
     harvest(level-zero/include/level_zero level-zero/include/level_zero "*.h")
     harvest(level-zero/lib level-zero/lib "*${SHAREDLIBEXT}*")
   endif()
-    harvest(llvm/bin llvm/bin "clang-format")
+  harvest(llvm/bin llvm/bin "clang-format")
   if(BUILD_CLANG_TOOLS)
     harvest(llvm/bin llvm/bin "clang-tidy")
     harvest(llvm/share/clang llvm/share "run-clang-tidy.py")
@@ -291,9 +291,9 @@ else()
     python/lib/python${PYTHON_SHORT_VERSION}/site-packages/MaterialX
     "*"
   )
-   # We do not need anything from the resources folder, but the MaterialX config
-   # file will complain if the folder does not exist, so just copy the readme.md
-   # files to ensure the folder will exist.
+  # We do not need anything from the resources folder, but the MaterialX config
+  # file will complain if the folder does not exist, so just copy the readme.md
+  # files to ensure the folder will exist.
   harvest(materialx/resources materialx/resources "README.md")
   harvest(potrace/include potrace/include "*.h")
   harvest(potrace/lib potrace/lib "*.a")
