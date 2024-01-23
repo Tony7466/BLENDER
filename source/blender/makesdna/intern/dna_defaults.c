@@ -68,7 +68,7 @@
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf_enums.h"
 
 #include "DNA_defaults.h"
 
@@ -292,6 +292,7 @@ SDNA_DEFAULT_DECL_STRUCT(WeightVGMixModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WeightVGProximityModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WeldModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WireframeModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilSubdivModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilLineartModifierData);
 
 /* DNA_gpencil_modifier_defaults.h */
@@ -323,6 +324,9 @@ SDNA_DEFAULT_DECL_STRUCT(DashGpencilModifierData);
 SDNA_DEFAULT_DECL_STRUCT(DashGpencilModifierSegment);
 SDNA_DEFAULT_DECL_STRUCT(ShrinkwrapGpencilModifierData);
 SDNA_DEFAULT_DECL_STRUCT(EnvelopeGpencilModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilOpacityModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilColorModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilTintModifierData);
 
 #undef SDNA_DEFAULT_DECL_STRUCT
 
@@ -537,6 +541,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(WeightVGProximityModifierData),
     SDNA_DEFAULT_DECL(WeldModifierData),
     SDNA_DEFAULT_DECL(WireframeModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilSubdivModifierData),
     SDNA_DEFAULT_DECL(GreasePencilLineartModifierData),
 
     /* DNA_gpencil_modifier_defaults.h */
@@ -568,6 +573,9 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(DashGpencilModifierSegment),
     SDNA_DEFAULT_DECL(ShrinkwrapGpencilModifierData),
     SDNA_DEFAULT_DECL(EnvelopeGpencilModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilOpacityModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilColorModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilTintModifierData),
 };
 #undef SDNA_DEFAULT_DECL
 #undef SDNA_DEFAULT_DECL_EX
