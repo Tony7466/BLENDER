@@ -6,7 +6,7 @@
  * \ingroup editorui
  *
  * API for simple creation of tree UIs supporting typically needed features.
- * https://wiki.blender.org/wiki/Source/Interface/Views/Tree_Views
+ * https://developer.blender.org/docs/features/interface/views/tree_views/
  */
 
 #pragma once
@@ -152,6 +152,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
                                       const TreeViewOrItem &parent,
                                       const uint pos,
                                       const float aspect) const;
+
   AbstractTreeViewItem *find_last_visible_descendant(const AbstractTreeViewItem &parent) const;
 };
 

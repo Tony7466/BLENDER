@@ -162,8 +162,9 @@ void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
     rcti last_child_rect;
     ui_but_to_pixelrect(&last_child_rect, &region, block, &last_child_but);
 
-    const float x = first_child_rect.xmin +
-                    ((first_descendant->indent_width() - (6.5f * UI_SCALE_FAC)) / aspect);
+    const float x = first_child_rect.xmin + ((first_descendant->indent_width() -
+                                              (0.5f * UI_ICON_SIZE) + U.pixelsize + UI_SCALE_FAC) /
+                                             aspect);
     const int first_child_top = first_child_rect.ymax + (4.0f * UI_SCALE_FAC / aspect);
     const int last_child_bottom = last_child_rect.ymin + (2.0f * UI_SCALE_FAC / aspect);
 
@@ -339,7 +340,6 @@ void AbstractTreeViewItem::add_indent(uiLayout &row) const
 
   /* Indent items without collapsing icon some more within their parent. Makes it clear that they
    * are actually nested and not just a row at the same level without a chevron. */
-
   if (!is_collapsible() && parent_) {
   }
   else if (!is_collapsible() && !parent_) {
