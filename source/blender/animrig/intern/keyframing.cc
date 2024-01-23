@@ -472,6 +472,25 @@ static KeyframingResult insert_keyframe_fcurve_value(Main *bmain,
   return result;
 }
 
+static void generate_keyframe_reports_from_result(ReportList *reports,
+                                                  const KeyframingResult result)
+{
+  std::string error = "Inserting keyframes failed due to the following reasons:";
+  if (result & KeyframingResult::CANNOT_CREATE_FCURVE) {
+    error.append(
+        "\n- Cannot create F-Curves. Can happen when only inserting to available F-Curves.");
+  }
+  if (result & KeyframingResult::FCURVE_NOT_KEYFRAMEABLE) {
+    error.append(
+        "\n- One or more F-Curves are not keyframeable. They might be locked or sampled.");
+  }
+  if (result & KeyframingResult::NO_KEY_NEEDED) {
+    error.append(
+        "\n- The setting 'Only Insert Needed' is enabled and no changes have been recorded.");
+  }
+  BKE_reportf(reports, RPT_ERROR, "%s", error.c_str());
+}
+
 int insert_keyframe(Main *bmain,
                     ReportList *reports,
                     ID *id,
@@ -591,6 +610,7 @@ int insert_keyframe(Main *bmain,
                                                                          values[array_index],
                                                                          keytype,
                                                                          flag);
+            keying_result |= result;
             if (result == KeyframingResult::SUCCESS) {
               key_count++;
             }
@@ -616,6 +636,7 @@ int insert_keyframe(Main *bmain,
                                                                      values[array_index],
                                                                      keytype,
                                                                      flag);
+        keying_result |= result;
         if (result == KeyframingResult::SUCCESS) {
           key_count++;
         }
@@ -638,6 +659,7 @@ int insert_keyframe(Main *bmain,
                                                                    values[array_index],
                                                                    keytype,
                                                                    flag);
+      keying_result |= result;
       if (result == KeyframingResult::SUCCESS) {
         key_count++;
       }
@@ -654,6 +676,10 @@ int insert_keyframe(Main *bmain,
     if (adt != nullptr && adt->action != nullptr && adt->action != act) {
       DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
     }
+  }
+
+  if (key_count == 0) {
+    generate_keyframe_reports_from_result(reports, keying_result);
   }
 
   return key_count;
