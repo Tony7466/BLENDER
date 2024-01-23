@@ -1855,7 +1855,9 @@ static void fix_geometry_nodes_object_info_scale(bNodeTree &ntree)
   using namespace blender;
   MultiValueMap<bNodeSocket *, bNodeLink *> out_links_per_socket;
   LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
-    out_links_per_socket.add(link->fromsock, link);
+    if (link->fromnode->type == GEO_NODE_OBJECT_INFO) {
+      out_links_per_socket.add(link->fromsock, link);
+    }
   }
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree.nodes) {
