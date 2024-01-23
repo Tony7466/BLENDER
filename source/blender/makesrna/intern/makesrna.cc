@@ -6,6 +6,7 @@
  * \ingroup RNA
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <cfloat>
 #include <cinttypes>
@@ -85,7 +86,7 @@ static const char *path_basename(const char *path)
     lfslash++;
   }
 
-  return MAX3(path, lfslash, lbslash);
+  return std::max({path, lfslash, lbslash});
 }
 
 /* forward declarations */
@@ -4858,7 +4859,7 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#include \"BLI_utildefines.h\"\n\n");
 
   fprintf(f, "#include \"BKE_context.hh\"\n");
-  fprintf(f, "#include \"BKE_lib_id.h\"\n");
+  fprintf(f, "#include \"BKE_lib_id.hh\"\n");
   fprintf(f, "#include \"BKE_main.hh\"\n");
   fprintf(f, "#include \"BKE_report.h\"\n");
 
