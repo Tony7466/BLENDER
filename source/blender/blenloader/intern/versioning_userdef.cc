@@ -415,7 +415,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(257, 0)) {
     /* Clear #AUTOKEY_FLAG_ONLYKEYINGSET flag from user-preferences,
      * so that it doesn't linger around from old configurations like a ghost. */
-    userdef->autokey_flag &= ~AUTOKEY_FLAG_ONLYKEYINGSET;
+    userdef->keying_flag &= ~AUTOKEY_FLAG_ONLYKEYINGSET;
   }
 
   if (!USER_VERSION_ATLEAST(260, 3)) {
@@ -494,8 +494,8 @@ void blo_do_versions_userdef(UserDef *userdef)
                        USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_FLAG_UNUSED_9 |
                        USER_DEVELOPER_UI);
     userdef->uiflag &= ~(USER_HEADER_BOTTOM);
-    userdef->transopts &= ~(USER_TR_UNUSED_2 | USER_TR_UNUSED_3 | USER_TR_UNUSED_4 |
-                            USER_TR_UNUSED_6 | USER_TR_UNUSED_7);
+    userdef->transopts &= ~(USER_TR_UNUSED_3 | USER_TR_UNUSED_4 | USER_TR_UNUSED_6 |
+                            USER_TR_UNUSED_7);
 
     userdef->uiflag |= USER_LOCK_CURSOR_ADJUST;
   }
@@ -906,6 +906,13 @@ void blo_do_versions_userdef(UserDef *userdef)
     userdef->key_insert_channels = (USER_ANIM_KEY_CHANNEL_LOCATION |
                                     USER_ANIM_KEY_CHANNEL_ROTATION | USER_ANIM_KEY_CHANNEL_SCALE |
                                     USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES);
+  }
+
+  if (!USER_VERSION_ATLEAST(401, 13)) {
+    if (userdef->keying_flag & AUTOKEY_FLAG_INSERTNEEDED) {
+      userdef->keying_flag |= MANUALKEY_FLAG_INSERTNEEDED;
+    }
+    userdef->keying_flag |= AUTOKEY_FLAG_INSERTNEEDED;
   }
 
   /**

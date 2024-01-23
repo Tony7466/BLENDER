@@ -6,6 +6,7 @@
  * \ingroup RNA
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <cfloat>
 #include <cinttypes>
@@ -85,7 +86,7 @@ static const char *path_basename(const char *path)
     lfslash++;
   }
 
-  return MAX3(path, lfslash, lbslash);
+  return std::max({path, lfslash, lbslash});
 }
 
 /* forward declarations */
@@ -1965,15 +1966,15 @@ static void rna_set_raw_property(PropertyDefRNA *dp, PropertyRNA *prop)
   }
 
   if (STREQ(dp->dnatype, "char")) {
-    prop->rawtype = PROP_RAW_CHAR;
+    prop->rawtype = prop->type == PROP_BOOLEAN ? PROP_RAW_BOOLEAN : PROP_RAW_CHAR;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "int8_t")) {
-    prop->rawtype = PROP_RAW_INT8;
+    prop->rawtype = prop->type == PROP_BOOLEAN ? PROP_RAW_BOOLEAN : PROP_RAW_INT8;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "uchar")) {
-    prop->rawtype = PROP_RAW_UINT8;
+    prop->rawtype = prop->type == PROP_BOOLEAN ? PROP_RAW_BOOLEAN : PROP_RAW_UINT8;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "short")) {
@@ -4858,7 +4859,7 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#include \"BLI_utildefines.h\"\n\n");
 
   fprintf(f, "#include \"BKE_context.hh\"\n");
-  fprintf(f, "#include \"BKE_lib_id.h\"\n");
+  fprintf(f, "#include \"BKE_lib_id.hh\"\n");
   fprintf(f, "#include \"BKE_main.hh\"\n");
   fprintf(f, "#include \"BKE_report.h\"\n");
 

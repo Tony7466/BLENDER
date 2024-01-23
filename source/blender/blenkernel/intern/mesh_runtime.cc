@@ -20,7 +20,7 @@
 #include "BKE_bvhutils.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh_cache.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
@@ -62,7 +62,7 @@ static void free_batch_cache(MeshRuntime &mesh_runtime)
   }
 }
 
-MeshRuntime::MeshRuntime() {}
+MeshRuntime::MeshRuntime() = default;
 
 MeshRuntime::~MeshRuntime()
 {
@@ -74,9 +74,9 @@ MeshRuntime::~MeshRuntime()
 static int reset_bits_and_count(MutableBitSpan bits, const Span<int> indices_to_reset)
 {
   int count = bits.size();
-  for (const int vert : indices_to_reset) {
-    if (bits[vert]) {
-      bits[vert].reset();
+  for (const int i : indices_to_reset) {
+    if (bits[i]) {
+      bits[i].reset();
       count--;
     }
   }
