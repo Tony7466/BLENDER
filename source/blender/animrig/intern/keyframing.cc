@@ -309,11 +309,11 @@ static float nla_time_remap(const AnimationEvalContext *anim_eval_context,
 }
 
 /* Insert the specified keyframe value into a single F-Curve. */
-static bool insert_keyframe_value(
+static KeyframingResult insert_keyframe_value(
     FCurve *fcu, float cfra, float curval, eBezTriple_KeyframeType keytype, eInsertKeyFlags flag)
 {
   if (!BKE_fcurve_is_keyframable(fcu)) {
-    return false;
+    return KeyframingResult::FCURVE_NOT_KEYFRAMEABLE;
   }
 
   /* Adjust coordinates for cycle aware insertion. */
@@ -329,17 +329,16 @@ static bool insert_keyframe_value(
 
   if (flag & INSERTKEY_NEEDED) {
     if (!new_key_needed(fcu, cfra, curval)) {
-      return false;
+      return KeyframingResult::NO_KEY_NEEDED;
     }
-
-    if (insert_vert_fcurve(fcu, {cfra, curval}, settings, flag) < 0) {
-      return false;
-    }
-
-    return true;
   }
 
-  return insert_vert_fcurve(fcu, {cfra, curval}, settings, flag) >= 0;
+  const int key_index = insert_vert_fcurve(fcu, {cfra, curval}, settings, flag);
+  if (key_index < 0) {
+    return KeyframingResult::FCURVE_NOT_KEYFRAMEABLE;
+  }
+
+  return KeyframingResult::SUCCESS;
 }
 
 bool insert_keyframe_direct(ReportList *reports,
@@ -411,9 +410,9 @@ bool insert_keyframe_direct(ReportList *reports,
   }
 
   const float cfra = anim_eval_context->eval_time;
-  const bool success = insert_keyframe_value(fcu, cfra, current_value, keytype, flag);
+  const KeyframingResult result = insert_keyframe_value(fcu, cfra, current_value, keytype, flag);
 
-  if (!success) {
+  if (result != KeyframingResult::SUCCESS) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Failed to insert keys on F-Curve with path '%s[%d]', ensure that it is not "
@@ -421,22 +420,21 @@ bool insert_keyframe_direct(ReportList *reports,
                 fcu->rna_path,
                 fcu->array_index);
   }
-  return success;
+  return result == KeyframingResult::SUCCESS;
 }
 
 /** Find or create the FCurve based on the given path, and insert the specified value into it. */
-static bool insert_keyframe_fcurve_value(Main *bmain,
-                                         ReportList *reports,
-                                         PointerRNA *ptr,
-                                         PropertyRNA *prop,
-                                         bAction *act,
-                                         const char group[],
-                                         const char rna_path[],
-                                         int array_index,
-                                         const float fcurve_frame,
-                                         float curval,
-                                         eBezTriple_KeyframeType keytype,
-                                         eInsertKeyFlags flag)
+static KeyframingResult insert_keyframe_fcurve_value(Main *bmain,
+                                                     PointerRNA *ptr,
+                                                     PropertyRNA *prop,
+                                                     bAction *act,
+                                                     const char group[],
+                                                     const char rna_path[],
+                                                     int array_index,
+                                                     const float fcurve_frame,
+                                                     float curval,
+                                                     eBezTriple_KeyframeType keytype,
+                                                     eInsertKeyFlags flag)
 {
   /* Make sure the F-Curve exists.
    * - if we're replacing keyframes only, DO NOT create new F-Curves if they do not exist yet
@@ -449,7 +447,7 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
 
   /* We may not have a F-Curve when we're replacing only. */
   if (!fcu) {
-    return false;
+    return KeyframingResult::CANNOT_CREATE_FCURVE;
   }
 
   const bool is_new_curve = (fcu->totvert == 0);
@@ -464,23 +462,14 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
   /* Update F-Curve flags to ensure proper behavior for property type. */
   update_autoflags_fcurve_direct(fcu, prop);
 
-  const bool success = insert_keyframe_value(fcu, fcurve_frame, curval, keytype, flag);
-
-  if (!success) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "Failed to insert keys on F-Curve with path '%s[%d]', ensure that it is not "
-                "locked or sampled, and try removing F-Modifiers",
-                fcu->rna_path,
-                fcu->array_index);
-  }
+  const KeyframingResult result = insert_keyframe_value(fcu, fcurve_frame, curval, keytype, flag);
 
   /* If the curve is new, make it cyclic if appropriate. */
   if (is_cyclic_action && is_new_curve) {
     make_new_fcurve_cyclic(fcu, {act->frame_start, act->frame_end});
   }
 
-  return success;
+  return result;
 }
 
 int insert_keyframe(Main *bmain,
@@ -550,6 +539,8 @@ int insert_keyframe(Main *bmain,
                                              &force_all,
                                              &successful_remaps);
 
+  KeyframingResult keying_result = KeyframingResult::SUCCESS;
+
   /* Key the entire array. */
   int key_count = 0;
   if (array_index == -1 || force_all) {
@@ -561,20 +552,19 @@ int insert_keyframe(Main *bmain,
         if (!BLI_BITMAP_TEST_BOOL(successful_remaps, array_index)) {
           continue;
         }
-
-        if (insert_keyframe_fcurve_value(bmain,
-                                         reports,
-                                         &ptr,
-                                         prop,
-                                         act,
-                                         group,
-                                         rna_path,
-                                         array_index,
-                                         nla_mapped_frame,
-                                         values[array_index],
-                                         keytype,
-                                         flag))
-        {
+        const KeyframingResult result = insert_keyframe_fcurve_value(bmain,
+                                                                     &ptr,
+                                                                     prop,
+                                                                     act,
+                                                                     group,
+                                                                     rna_path,
+                                                                     array_index,
+                                                                     nla_mapped_frame,
+                                                                     values[array_index],
+                                                                     keytype,
+                                                                     flag);
+        keying_result |= result;
+        if (result == KeyframingResult::SUCCESS) {
           key_count++;
           exclude = array_index;
           break;
@@ -590,18 +580,20 @@ int insert_keyframe(Main *bmain,
           }
 
           if (array_index != exclude) {
-            key_count += insert_keyframe_fcurve_value(bmain,
-                                                      reports,
-                                                      &ptr,
-                                                      prop,
-                                                      act,
-                                                      group,
-                                                      rna_path,
-                                                      array_index,
-                                                      nla_mapped_frame,
-                                                      values[array_index],
-                                                      keytype,
-                                                      flag);
+            const KeyframingResult result = insert_keyframe_fcurve_value(bmain,
+                                                                         &ptr,
+                                                                         prop,
+                                                                         act,
+                                                                         group,
+                                                                         rna_path,
+                                                                         array_index,
+                                                                         nla_mapped_frame,
+                                                                         values[array_index],
+                                                                         keytype,
+                                                                         flag);
+            if (result == KeyframingResult::SUCCESS) {
+              key_count++;
+            }
           }
         }
       }
@@ -613,18 +605,20 @@ int insert_keyframe(Main *bmain,
           continue;
         }
 
-        key_count += insert_keyframe_fcurve_value(bmain,
-                                                  reports,
-                                                  &ptr,
-                                                  prop,
-                                                  act,
-                                                  group,
-                                                  rna_path,
-                                                  array_index,
-                                                  nla_mapped_frame,
-                                                  values[array_index],
-                                                  keytype,
-                                                  flag);
+        const KeyframingResult result = insert_keyframe_fcurve_value(bmain,
+                                                                     &ptr,
+                                                                     prop,
+                                                                     act,
+                                                                     group,
+                                                                     rna_path,
+                                                                     array_index,
+                                                                     nla_mapped_frame,
+                                                                     values[array_index],
+                                                                     keytype,
+                                                                     flag);
+        if (result == KeyframingResult::SUCCESS) {
+          key_count++;
+        }
       }
     }
   }
@@ -633,18 +627,20 @@ int insert_keyframe(Main *bmain,
     if (array_index >= 0 && array_index < values.size() &&
         BLI_BITMAP_TEST_BOOL(successful_remaps, array_index))
     {
-      key_count += insert_keyframe_fcurve_value(bmain,
-                                                reports,
-                                                &ptr,
-                                                prop,
-                                                act,
-                                                group,
-                                                rna_path,
-                                                array_index,
-                                                nla_mapped_frame,
-                                                values[array_index],
-                                                keytype,
-                                                flag);
+      const KeyframingResult result = insert_keyframe_fcurve_value(bmain,
+                                                                   &ptr,
+                                                                   prop,
+                                                                   act,
+                                                                   group,
+                                                                   rna_path,
+                                                                   array_index,
+                                                                   nla_mapped_frame,
+                                                                   values[array_index],
+                                                                   keytype,
+                                                                   flag);
+      if (result == KeyframingResult::SUCCESS) {
+        key_count++;
+      }
     }
   }
 
@@ -881,9 +877,9 @@ int insert_key_action(Main *bmain,
   for (float value : values) {
     FCurve *fcurve = action_fcurve_ensure(
         bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
-    const bool inserted_key = insert_keyframe_value(
+    const KeyframingResult inserted_key = insert_keyframe_value(
         fcurve, frame, value, key_type, insert_key_flag);
-    if (inserted_key) {
+    if (inserted_key == KeyframingResult::SUCCESS) {
       inserted_keys++;
     }
     property_array_index++;
