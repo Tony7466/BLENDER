@@ -26,13 +26,14 @@
 #
 ##################################################################################################
 
-project("BlenderDependencies")
 cmake_minimum_required(VERSION 3.5)
+project("BlenderDependencies")
 if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW) # CMake 3.24+ Set the date/time for extracted files to time of extraction
 endif()
 include(ExternalProject)
 include(cmake/check_software.cmake)
+include(cmake/check_compilers.cmake)
 include(cmake/options.cmake)
 # `versions.cmake` needs to be included after `options.cmake`
 # due to the `BLENDER_PLATFORM_ARM` variable being needed.
