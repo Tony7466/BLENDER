@@ -23,7 +23,9 @@ void FileOutputNode::convert_to_operations(NodeConverter &converter,
     }
   }
 
-  if (!context.is_rendering()) {
+  /* Only File Outputs in the root node tree are considered. */
+  const bool is_in_root_node_tree = this->get_bnodetree() == context.get_bnodetree();
+  if (!context.is_rendering() || !is_in_root_node_tree) {
     return;
   }
 

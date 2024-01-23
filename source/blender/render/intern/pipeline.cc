@@ -1624,13 +1624,6 @@ static bool node_tree_has_compositor_output(const bNodeTree *ntree)
     if (ELEM(node->type, CMP_NODE_COMPOSITE, CMP_NODE_OUTPUT_FILE)) {
       return true;
     }
-    if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
-      if (node->id) {
-        if (node_tree_has_compositor_output((const bNodeTree *)node->id)) {
-          return true;
-        }
-      }
-    }
   }
 
   return false;

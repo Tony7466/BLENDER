@@ -15,9 +15,12 @@ CompositorNode::CompositorNode(bNode *editor_node) : Node(editor_node)
 void CompositorNode::convert_to_operations(NodeConverter &converter,
                                            const CompositorContext &context) const
 {
+
+  /* Only Composite nodes in the root node tree are considered. */
+  const bool is_in_root_node_tree = this->get_bnodetree() == context.get_bnodetree();
   const bNode *editor_node = this->get_bnode();
   bool is_active = ((editor_node->flag & NODE_DO_OUTPUT_RECALC) || context.is_rendering()) &&
-                   (editor_node->flag & NODE_DO_OUTPUT);
+                   (editor_node->flag & NODE_DO_OUTPUT) && is_in_root_node_tree;
   bool ignore_alpha = (editor_node->custom2 & CMP_NODE_OUTPUT_IGNORE_ALPHA) != 0;
 
   NodeInput *image_socket = this->get_input_socket(0);
