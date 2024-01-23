@@ -1695,7 +1695,9 @@ typedef struct SpaceConsole {
 
   /* space vars */
   int lheight;
-  char _pad[4];
+
+  char hide_cursor;
+  char _pad[3];
 
   /** ConsoleLine; output. */
   ListBase scrollback;

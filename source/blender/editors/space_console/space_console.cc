@@ -323,6 +323,24 @@ static void console_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceConsole, sl);
 }
 
+static void console_activate(bContext *C, struct ScrArea *area)
+{
+  SpaceConsole *sc = static_cast<SpaceConsole *>(area->spacedata.first);
+  sc->hide_cursor = false;
+
+  /* Redraw to show active caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
+static void console_deactivate(bContext *C, struct ScrArea *area)
+{
+  SpaceConsole *sc = static_cast<SpaceConsole *>(area->spacedata.first);
+  sc->hide_cursor = true;
+
+  /* Redraw to remove active caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
 void ED_spacetype_console()
 {
   SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype console"));
@@ -340,6 +358,8 @@ void ED_spacetype_console()
   st->dropboxes = console_dropboxes;
   st->blend_read_data = console_blend_read_data;
   st->blend_write = console_space_blend_write;
+  st->activate = console_activate;
+  st->deactivate = console_deactivate;
 
   /* regions: main window */
   art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype console region"));

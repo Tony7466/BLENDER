@@ -1298,7 +1298,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
     }
   }
 
-  if (!hidden) {
+  if (!hidden && !st->runtime->hide_cursor) {
     /* Draw the cursor itself (we draw the sel. cursor as this is the leading edge) */
     x = TXT_BODY_LEFT(st) + (vselc * st->runtime->cwidth_px);
     y = region->winy - vsell * lheight;

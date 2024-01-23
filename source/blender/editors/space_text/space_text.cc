@@ -403,6 +403,25 @@ static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceText, sl);
 }
 
+static void text_activate(bContext *C, struct ScrArea *area)
+{
+  SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
+  st->runtime->hide_cursor = false;
+
+  /* Redraw to show active text caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
+static void text_deactivate(bContext *C, struct ScrArea *area)
+{
+  SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
+  st->runtime->hide_cursor = true;
+
+  /* Redraw to remove active text caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
+
 /********************* registration ********************/
 
 void ED_spacetype_text()
@@ -427,6 +446,8 @@ void ED_spacetype_text()
   st->blend_read_data = text_space_blend_read_data;
   st->blend_read_after_liblink = nullptr;
   st->blend_write = text_space_blend_write;
+  st->activate = text_activate;
+  st->deactivate = text_deactivate;
 
   /* regions: main window */
   art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype text region"));

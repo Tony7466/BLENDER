@@ -489,7 +489,7 @@ static void outliner_foreach_id(SpaceLink *space_link, LibraryForeachIDData *dat
   }
 }
 
-static void outliner_deactivate(ScrArea *area)
+static void outliner_deactivate(bContext * /*C*/, ScrArea *area)
 {
   /* Remove hover highlights */
   SpaceOutliner *space_outliner = static_cast<SpaceOutliner *>(area->spacedata.first);

@@ -133,9 +133,13 @@ static void console_cursor_wrap_offset(
 
 static void console_textview_draw_cursor(TextViewContext *tvc, int cwidth, int columns)
 {
+  const SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
+  if (sc->hide_cursor) {
+    return;
+  }
+
   int pen[2];
   {
-    const SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
     const ConsoleLine *cl = (ConsoleLine *)sc->history.last;
     int offl = 0, offc = 0;
 
