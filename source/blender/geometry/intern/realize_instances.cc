@@ -228,12 +228,12 @@ struct AllCurvesInfo {
   bool create_custom_normal_attribute = false;
 };
 struct AllInstancesInfo{
+  /** store an array of void pointer to attributes for each component. */
+  Vector<AttributeFallbacksArray> attribute_fallback;
   /** Instance components to merge for output geometry. */
   Vector<const bke::GeometryComponent *> instances_components_to_merge;
   /** Base transform for each instance component. */
   Vector<float4x4> instances_components_transforms;
-  /** anothere take on attibutes*/
-  Vector<Map<AttributeIDRef, const void *>> map_attributes_ptr; 
 };
 /** Collects all tasks that need to be executed to realize all instances. */
 struct GatherTasks {
@@ -668,15 +668,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       }
       case bke::GeometryComponent::Type::Instance: {
         if (current_depth == target_depth) {
-
-          Map<AttributeIDRef, const void *> tmp_pointer_attiubute;
-          for ( int attribute_index : gather_info.instances_attriubutes.index_range()){
-            AttributeIDRef id = gather_info.instances_attriubutes.ids[attribute_index];
-            const void * data_ptr = base_instance_context.instances.array[attribute_index];
-            tmp_pointer_attiubute.add(id, data_ptr);
-          }
-
-          gather_info.instances.map_attributes_ptr.append(tmp_pointer_attiubute);
+          gather_info.instances.attribute_fallback.append(base_instance_context.instances);
           gather_info.instances.instances_components_to_merge.append(component);
           gather_info.instances.instances_components_transforms.append(base_transform);
           }
@@ -879,87 +871,75 @@ static void execute_realize_pointcloud_task(
 }
 static void execute_instances_tasks(const Span<const bke::GeometryComponent *> src_components,
                               Span<blender::float4x4> src_base_transforms,
-                              blender::Map<bke::AttributeIDRef, bke::AttributeKind> span_test_base_attributes,
-                              Vector<blender::Map<blender::bke::AttributeIDRef, const void *>> map_attributes,
+                              OrderedAttributes all_instances_attributes,
+                              Span<blender::geometry::AttributeFallbacksArray> attribute_fallback,
                               bke::GeometrySet &result) 
 {
-  BLI_assert(src_components.size() == src_base_transforms.size());
+  BLI_assert(src_components.size() == src_base_transforms.size() && src_components.size() == attribute_fallback.size());
   if (src_components.is_empty()){
     return;
   }
 
   VArray<blender::float4x4>::ForSpan(src_base_transforms);
   Array<int> offsets_data(src_components.size() + 1);
-  for (const int i : src_components.index_range()) {
-    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[i]);
-    offsets_data[i] = src_component.get()->instances_num();
+  for (const int component_index : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[component_index]);
+    offsets_data[component_index] = src_component.get()->instances_num();
   }
   const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(offsets_data);
 
   std::unique_ptr<bke::Instances> dst_instances = std::make_unique<bke::Instances>();
   dst_instances->resize(offsets.total_size());
 
-  // creates attribute for each ID in the span_test_base_attributes.id;
-  Vector<bke::GSpanAttributeWriter> attribute_writers;
-  for (const auto item : span_test_base_attributes.items()) {
+  /* Prepare generic output attributes. */
+  for (const int attribute_index : all_instances_attributes.index_range()) {
     bke::AttrDomain domain = bke::AttrDomain::Instance;
-    bke::AttributeIDRef id = item.key;
-    eCustomDataType type =  item.value.data_type;
-    blender::bke::MutableAttributeAccessor atrr = dst_instances->attributes_for_write();
-    
-    attribute_writers.append(atrr.lookup_or_add_for_write_only_span(id, domain, type));
+    bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
+    eCustomDataType type =  all_instances_attributes.kinds[attribute_index].data_type;
+    blender::bke::MutableAttributeAccessor attr = dst_instances->attributes_for_write();
+    attr.lookup_or_add_for_write_only_span(id, domain, type).finish();
   }
   
   MutableSpan<float4x4> all_transforms = dst_instances->transforms();
   MutableSpan<int> all_handles = dst_instances->reference_handles();
 
-  for (const int i : src_components.index_range()) {
-    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[i]);
+  for (const int component_index : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[component_index]);
     const bke::Instances &src_instances = *src_component.get();
-    const blender::float4x4 src_base_transform = src_base_transforms[i];
-    const auto map_attibute = map_attributes[i];
+    const blender::float4x4 src_base_transform = src_base_transforms[component_index];
+    const Array<const void *> attribute_fallback_array = attribute_fallback[component_index].array;
 
     const Span<bke::InstanceReference> src_references = src_instances.references();
     Array<int> handle_map(src_references.size());
     for (const int src_handle : src_references.index_range()) {
       handle_map[src_handle] = dst_instances->add_reference(src_references[src_handle]);
     }
-    const IndexRange dst_range = offsets[i];
-
-    for (const auto item : span_test_base_attributes.items()) {
-      bke::AttrDomain domain = bke::AttrDomain::Instance;
-      bke::AttributeIDRef id = item.key;
-      eCustomDataType type =  item.value.data_type;
+    const IndexRange dst_range = offsets[component_index];
+    for (const int attribute_index : all_instances_attributes.index_range()) {
+      bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
+      eCustomDataType type =  all_instances_attributes.kinds[attribute_index].data_type;
 
       const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(type);
       BLI_assert(cpp_type != nullptr);
-
-      
-      bke::GSpanAttributeWriter write_attribute = dst_instances->attributes_for_write().lookup_or_add_for_write_only_span(id ,  domain, type);
+      bke::GSpanAttributeWriter write_attribute = dst_instances->attributes_for_write().lookup_for_write_span(id);
       GMutableSpan dst_span = write_attribute.span;
       if (!write_attribute) { // do not override existing attributes
         continue;
       }
-      const void *a;          // Declare a pointer to an integer
-      int value = 5;   // Declare an integer variable and assign a value
-      a = &value; 
-      
-      if (map_attibute.lookup_ptr(id) !=nullptr && map_attibute.lookup(id) != nullptr){
-        a = map_attibute.lookup(id);
+
+      const void *attribute_ptr;          // Declare a pointer to an integer
+      if (attribute_fallback_array[attribute_index] != nullptr){
+        attribute_ptr = attribute_fallback_array[attribute_index];
       }
-      
-      GVArray read_attribute = dst_instances->attributes().lookup_or_default(id,domain, type).varray;
-
-      GVArray thre = GVArray::ForSingle(*cpp_type, dst_range.size() , a);
-      array_utils::copy(thre, dst_span.slice(dst_range));
-
-
+      else{
+        attribute_ptr = cpp_type->default_value();
+      }
+      GVArray src_span = GVArray::ForSingle(*cpp_type, dst_range.size() , attribute_ptr);
+      array_utils::copy(src_span, dst_span.slice(dst_range));
       write_attribute.finish();
     }
-
     const Span<int> src_handles = src_instances.reference_handles();
     array_utils::gather(handle_map.as_span(), src_handles, all_handles.slice(dst_range));
-
     array_utils::copy(src_instances.transforms(), all_transforms.slice(dst_range));
 
     for (blender::float4x4& transfrom : all_transforms.slice(dst_range)){
@@ -1055,7 +1035,6 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
     bool &r_create_id,
     bool &r_create_material_index)
 {
-  options.depths;
   Vector<bke::GeometryComponent::Type> src_component_types;
   src_component_types.append(bke::GeometryComponent::Type::Mesh);
   if (options.realize_instance_attributes) {
@@ -1799,7 +1778,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options);
   bool a = true;
-  OrderedAttributes ordered_attributes = gather_generic_instance_attributes_to_propagate(geometry_set, options, a);
+  OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(geometry_set, options, a);
 
   Vector<std::unique_ptr<GArray<>>> temporary_arrays;
   const bool create_id_attribute = all_pointclouds_info.create_id_attribute ||
@@ -1808,7 +1787,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   GatherTasksInfo gather_info = {all_pointclouds_info,
                                  all_meshes_info,
                                  all_curves_info,
-                                 ordered_attributes,
+                                 all_instance_attributes,
                                  create_id_attribute,
                                  options.selection,
                                  options.depths,
@@ -1823,24 +1802,16 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     gather_info.instances.instances_components_to_merge.append(
         &temp_geometry_set.get_component_for_write<bke::InstancesComponent>());
     gather_info.instances.instances_components_transforms.append(float4x4::identity());
-    AttributeIDRef blank_id = "";
-    const void *null_ptr;
-    Map<AttributeIDRef, const void *> tmp_pointer_attiubute;
-    tmp_pointer_attiubute.add(blank_id, null_ptr);
-    gather_info.instances.map_attributes_ptr.append(tmp_pointer_attiubute);
+    const void *null_ptr = nullptr;
+    gather_info.instances.attribute_fallback.append((null_ptr, gather_info.instances_attriubutes.size()));
   }
 
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
 
-  Map<AttributeIDRef, AttributeKind> r_attributes;
-  for (int i : ordered_attributes.index_range()){
-    r_attributes.add(ordered_attributes.ids[i], ordered_attributes.kinds[i]);
-  };
-
   execute_instances_tasks(gather_info.instances.instances_components_to_merge, 
                            gather_info.instances.instances_components_transforms, 
-                           r_attributes,
-                           gather_info.instances.map_attributes_ptr,
+                           all_instance_attributes,
+                           gather_info.instances.attribute_fallback,
                            new_geometry_set);
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
