@@ -6,10 +6,13 @@
  * \ingroup pymathutils
  */
 
+#include <algorithm>
+
 #include <Python.h>
 
 #include "mathutils.h"
 
+#include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
@@ -968,7 +971,7 @@ static PyObject *Quaternion_slice(QuaternionObject *self, int begin, int end)
     end = (QUAT_SIZE + 1) + end;
   }
   CLAMP(end, 0, QUAT_SIZE);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   tuple = PyTuple_New(end - begin);
   for (count = begin; count < end; count++) {
@@ -993,7 +996,7 @@ static int Quaternion_ass_slice(QuaternionObject *self, int begin, int end, PyOb
     end = (QUAT_SIZE + 1) + end;
   }
   CLAMP(end, 0, QUAT_SIZE);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   if ((size = mathutils_array_parse(
            quat, 0, QUAT_SIZE, seq, "mathutils.Quaternion[begin:end] = []")) == -1)
@@ -1448,7 +1451,7 @@ static PyObject *Quaternion_angle_get(QuaternionObject *self, void * /*closure*/
 
   normalize_qt_qt(tquat, self->quat);
 
-  angle = 2.0f * saacos(tquat[0]);
+  angle = 2.0f * safe_acosf(tquat[0]);
 
   quat__axis_angle_sanitize(nullptr, &angle);
 

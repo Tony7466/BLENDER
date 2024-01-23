@@ -43,9 +43,10 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLO_readfile.h"
@@ -55,68 +56,66 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_bpath.h"
 #include "BKE_cachefile.h"
 #include "BKE_collection.h"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_duplilist.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_linestyle.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pointcache.h"
 #include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 #include "BKE_workspace.h"
 #include "BKE_world.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_debug.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_debug.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_engine.h"
 
 #include "RNA_access.hh"
 
-#include "SEQ_edit.h"
-#include "SEQ_iterator.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_edit.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
 
 #include "BLO_read_write.hh"
 
 #include "engines/eevee/eevee_lightcache.h"
 
-#include "PIL_time.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
+#include "DRW_engine.hh"
 
-#include "DRW_engine.h"
-
-#include "bmesh.h"
+#include "bmesh.hh"
 
 CurveMapping *BKE_sculpt_default_cavity_curve()
 
@@ -278,7 +277,7 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
                    (ID *)scene_src->master_collection,
                    (ID **)&scene_dst->master_collection,
                    flag_private_id_data);
-    scene_dst->master_collection->runtime.owner_id = &scene_dst->id;
+    scene_dst->master_collection->owner_id = &scene_dst->id;
   }
 
   /* View Layers */
@@ -499,10 +498,14 @@ static void scene_foreach_toolsettings_id_pointer_process(
       ID *id_old = *id_old_p;
       /* Old data has not been remapped to new values of the pointers, if we want to keep the old
        * pointer here we need its new address. */
-      ID *id_old_new = id_old != nullptr ? BLO_read_get_new_id_address_from_session_uuid(
-                                               reader, id_old->session_uuid) :
+      ID *id_old_new = id_old != nullptr ? BLO_read_get_new_id_address_from_session_uid(
+                                               reader, id_old->session_uid) :
                                            nullptr;
-      if (!ELEM(id_old_new, id_old, nullptr)) {
+      /* The new address may be the same as the old one, in which case there is nothing to do. */
+      if (id_old_new == id_old) {
+        break;
+      }
+      if (id_old_new != nullptr) {
         BLI_assert(id_old == id_old_new->orig_id);
         *id_old_p = id_old_new;
         if (cb_flag & IDWALK_CB_USER) {
@@ -518,10 +521,10 @@ static void scene_foreach_toolsettings_id_pointer_process(
        * There is a nasty twist here though: a previous call to 'undo_preserve' on the Scene ID may
        * have modified it, even though the undo step detected it as unmodified. In such case, the
        * value of `*id_p` may end up also pointing to an invalid (no more in newly read Main) ID,
-       * se it also needs to be checked from its `session_uuid`. */
+       * so it also needs to be checked from its `session_uid`. */
       ID *id = *id_p;
       ID *id_new = id != nullptr ?
-                       BLO_read_get_new_id_address_from_session_uuid(reader, id->session_uuid) :
+                       BLO_read_get_new_id_address_from_session_uid(reader, id->session_uid) :
                        nullptr;
       if (id_new != id) {
         *id_p = id_new;
@@ -961,8 +964,8 @@ static void scene_foreach_cache(ID *id,
 {
   Scene *scene = (Scene *)id;
   IDCacheKey key{};
-  key.id_session_uuid = id->session_uuid;
-  key.offset_in_ID = offsetof(Scene, eevee.light_cache_data);
+  key.id_session_uid = id->session_uid;
+  key.identifier = offsetof(Scene, eevee.light_cache_data);
 
   function_callback(id,
                     &key,
@@ -991,7 +994,7 @@ static bool seq_foreach_path_callback(Sequence *seq, void *user_data)
 
       if (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_MULTIFILE) {
         /* only operate on one path */
-        len = MIN2(1u, len);
+        len = std::min(1u, len);
       }
 
       for (i = 0; i < len; i++, se++) {
@@ -1186,6 +1189,9 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   if (sce->master_collection) {
     BLO_write_init_id_buffer_from_id(
         temp_embedded_id_buffer, &sce->master_collection->id, BLO_write_is_undo(writer));
+    BKE_collection_blend_write_prepare_nolib(
+        writer,
+        reinterpret_cast<Collection *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
     BLO_write_struct_at_address(writer,
                                 Collection,
                                 sce->master_collection,
@@ -1540,7 +1546,7 @@ static void scene_blend_read_after_liblink(BlendLibReader *reader, ID *id)
     if (base_legacy->object == nullptr) {
       BLO_reportf_wrap(BLO_read_lib_reports(reader),
                        RPT_WARNING,
-                       TIP_("LIB: object lost from scene: '%s'"),
+                       RPT_("LIB: object lost from scene: '%s'"),
                        sce->id.name + 2);
       BLI_remlink(&sce->base, base_legacy);
       if (base_legacy == sce->basact) {
@@ -1628,7 +1634,6 @@ IDTypeInfo IDType_ID_SCE = get_type_info();
 const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
 const char *RE_engine_id_BLENDER_EEVEE_NEXT = "BLENDER_EEVEE_NEXT";
 const char *RE_engine_id_BLENDER_WORKBENCH = "BLENDER_WORKBENCH";
-const char *RE_engine_id_BLENDER_WORKBENCH_NEXT = "BLENDER_WORKBENCH_NEXT";
 const char *RE_engine_id_CYCLES = "CYCLES";
 
 void free_avicodecdata(AviCodecData *acd)
@@ -2349,7 +2354,7 @@ bool BKE_scene_validate_setscene(Main *bmain, Scene *sce)
   for (a = 0, sce_iter = sce; sce_iter->set; sce_iter = sce_iter->set, a++) {
     /* more iterations than scenes means we have a cycle */
     if (a > totscene) {
-      /* the tested scene gets zero'ed, that's typically current scene */
+      /* The tested scene gets zeroed, that's typically current scene. */
       sce->set = nullptr;
       return false;
     }
@@ -2821,8 +2826,7 @@ bool BKE_scene_uses_blender_eevee(const Scene *scene)
 
 bool BKE_scene_uses_blender_workbench(const Scene *scene)
 {
-  return STREQ(scene->r.engine, RE_engine_id_BLENDER_WORKBENCH) ||
-         STREQ(scene->r.engine, RE_engine_id_BLENDER_WORKBENCH_NEXT);
+  return STREQ(scene->r.engine, RE_engine_id_BLENDER_WORKBENCH);
 }
 
 bool BKE_scene_uses_cycles(const Scene *scene)
@@ -2844,8 +2848,7 @@ enum eCyclesFeatureSet {
 bool BKE_scene_uses_cycles_experimental_features(Scene *scene)
 {
   BLI_assert(BKE_scene_uses_cycles(scene));
-  PointerRNA scene_ptr;
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
+  PointerRNA scene_ptr = RNA_id_pointer_create(&scene->id);
   PointerRNA cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
 
   if (RNA_pointer_is_null(&cycles_ptr)) {

@@ -5,7 +5,7 @@
 /** \file
  * \ingroup draw_engine
  */
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BKE_camera.h"
 #include "BKE_studiolight.h"
@@ -17,7 +17,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_world_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_screen.hh"
 

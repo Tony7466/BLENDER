@@ -6,7 +6,7 @@
 # XXX: This script is meant to be used from inside Blender!
 #      You should not directly use this script, rather use update_msg.py!
 
-import datetime
+import time
 import os
 import re
 import sys
@@ -573,6 +573,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
         ("pgettext", ("_",)),
         ("pgettext_iface", ("iface_",)),
         ("pgettext_tip", ("tip_",)),
+        ("pgettext_rpt", ("rpt_",)),
         ("pgettext_data", ("data_",)),
     )
     pgettext_variants_args = {"msgid": (0, {"msgctxt": 1})}
@@ -588,6 +589,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
                   ),
         "message": (),
         "heading": (),
+        "placeholder": ((("text_ctxt",), _ctxt_to_ctxt),),
     }
 
     context_kw_set = {}
@@ -621,7 +623,8 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
         for arg_pos, (arg_kw, arg) in enumerate(func.parameters.items()):
             if (not arg.is_output) and (arg.type == 'STRING'):
                 for msgid, msgctxts in context_kw_set.items():
-                    if arg_kw in msgctxts:
+                    # The msgid can be missing if it is used in only some UILayout functions but not all
+                    if arg_kw in msgctxts and msgid in func_translate_args[func_id]:
                         func_translate_args[func_id][msgid][1][arg_kw] = arg_pos
     # The report() func of operators.
     for func_id, func in bpy.types.Operator.bl_rna.functions.items():
@@ -853,7 +856,7 @@ def dump_src_messages(msgs, reports, settings):
                 elif l[0] != '#':
                     forced.add(l.rstrip('\n'))
     for root, dirs, files in os.walk(settings.POTFILES_SOURCE_DIR):
-        if "/.svn" in root:
+        if "/.git" in root:
             continue
         for fname in files:
             if os.path.splitext(fname)[1] not in settings.PYGETTEXT_ALLOWED_EXTS:
@@ -939,6 +942,14 @@ def dump_asset_messages(msgs, reports, settings):
 
     # Parse the asset blend files
     asset_files = {}
+    # Store assets according to this structure:
+    # {"basename": [
+    #     {"name": "Name",
+    #      "description": "Description",
+    #      "sockets": [
+    #          ("Name", "Description"),
+    #      ]},
+    # ]}
 
     bfiles = glob.glob(assets_dir + "/**/*.blend", recursive=True)
     for bfile in bfiles:
@@ -951,17 +962,33 @@ def dump_asset_messages(msgs, reports, settings):
                 if asset.asset_data is None:  # Not an asset
                     continue
                 assets = asset_files.setdefault(basename, [])
-                assets.append((asset.name, asset.asset_data.description))
+                asset_data = {"name": asset.name,
+                              "description": asset.asset_data.description}
+                for interface in asset.interface.items_tree:
+                    if interface.name == "Geometry":  # Ignore common socket
+                        continue
+                    socket_data = asset_data.setdefault("sockets", [])
+                    socket_data.append((interface.name, interface.description))
+                assets.append(asset_data)
 
     for asset_file in sorted(asset_files):
-        for asset in sorted(asset_files[asset_file]):
-            name, description = asset
+        for asset in sorted(asset_files[asset_file], key=lambda a: a["name"]):
+            name, description = asset["name"], asset["description"]
             msgsrc = "Asset name from file " + asset_file
             process_msg(msgs, settings.DEFAULT_CONTEXT, name, msgsrc,
                         reports, None, settings)
             msgsrc = "Asset description from file " + asset_file
             process_msg(msgs, settings.DEFAULT_CONTEXT, description, msgsrc,
                         reports, None, settings)
+
+            if "sockets" in asset:
+                for socket_name, socket_description in asset["sockets"]:
+                    msgsrc = f"Socket name from node group {name}, file {asset_file}"
+                    process_msg(msgs, settings.DEFAULT_CONTEXT, socket_name, msgsrc,
+                                reports, None, settings)
+                    msgsrc = f"Socket description from node group {name}, file {asset_file}"
+                    process_msg(msgs, settings.DEFAULT_CONTEXT, socket_description, msgsrc,
+                                reports, None, settings)
 
 
 def dump_addon_bl_info(msgs, reports, module, settings):
@@ -984,10 +1011,9 @@ def dump_addon_bl_info(msgs, reports, module, settings):
 def dump_messages(do_messages, do_checks, settings):
     bl_ver = "Blender " + bpy.app.version_string
     bl_hash = bpy.app.build_hash
-    bl_date = datetime.datetime.strptime(bpy.app.build_date.decode() + "T" + bpy.app.build_time.decode(),
-                                         "%Y-%m-%dT%H:%M:%S")
-    pot = utils.I18nMessages.gen_empty_messages(settings.PARSER_TEMPLATE_ID, bl_ver, bl_hash, bl_date, bl_date.year,
-                                                settings=settings)
+    bl_time = time.strptime(f"{bpy.app.build_date.decode()} {bpy.app.build_time.decode()} UTC", "%Y-%m-%d %H:%M:%S %Z")
+    pot = utils.I18nMessages.gen_empty_messages(
+        settings.PARSER_TEMPLATE_ID, bl_ver, bl_hash, bl_time, settings=settings)
     msgs = pot.msgs
 
     # Enable all wanted addons.
@@ -1086,13 +1112,12 @@ def dump_addon_messages(module_name, do_checks, settings):
     addon_info = addon_utils.module_bl_info(addon)
     ver = addon_info["name"] + " " + ".".join(str(v) for v in addon_info["version"])
     rev = 0
-    date = datetime.datetime.now()
-    pot = utils.I18nMessages.gen_empty_messages(settings.PARSER_TEMPLATE_ID, ver, rev, date, date.year,
-                                                settings=settings)
+    curr_time = time.gmtime()
+    pot = utils.I18nMessages.gen_empty_messages(settings.PARSER_TEMPLATE_ID, ver, rev, curr_time, settings=settings)
     msgs = pot.msgs
 
-    minus_pot = utils.I18nMessages.gen_empty_messages(settings.PARSER_TEMPLATE_ID, ver, rev, date, date.year,
-                                                      settings=settings)
+    minus_pot = utils.I18nMessages.gen_empty_messages(
+        settings.PARSER_TEMPLATE_ID, ver, rev, curr_time, settings=settings)
     minus_msgs = minus_pot.msgs
 
     check_ctxt = _gen_check_ctxt(settings) if do_checks else None
@@ -1105,7 +1130,7 @@ def dump_addon_messages(module_name, do_checks, settings):
     dump_rna_messages(msgs, reports, settings)
     print("C")
 
-    # Now disable our addon, and rescan RNA.
+    # Now disable our addon, and re-scan RNA.
     utils.enable_addons(addons={module_name}, disable=True)
     print("D")
     reports["check_ctxt"] = minus_check_ctxt

@@ -13,10 +13,13 @@
 /* Future-proof, See https://docs.python.org/3/c-api/arg.html#strings-and-buffers */
 #define PY_SSIZE_T_CLEAN
 
+#include <algorithm>
+
 #include <Python.h>
 
 #include "RNA_types.hh"
 
+#include "BLI_array.hh"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
@@ -38,6 +41,8 @@
 #include "../generic/py_capi_rna.h"
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
+
+using blender::Array;
 
 /* Disabled duplicating strings because the array can still be freed and
  * the strings from it referenced, for now we can't support dynamically
@@ -462,6 +467,7 @@ static int bpy_prop_array_length_parse(PyObject *o, void *p)
     }
 
     PyObject **seq_items = PySequence_Fast_ITEMS(seq_fast);
+    array_len_info->len_total = 1;
     for (int i = 0; i < seq_len; i++) {
       int size;
       if ((size = PyLong_AsLong(seq_items[i])) == -1) {
@@ -483,6 +489,7 @@ static int bpy_prop_array_length_parse(PyObject *o, void *p)
 
       array_len_info->dims[i] = size;
       array_len_info->dims_len = seq_len;
+      array_len_info->len_total *= size;
     }
   }
   return 1;
@@ -2555,7 +2562,7 @@ static StructRNA *bpy_prop_deferred_data_or_srna(PyObject *self,
 
 /* Crash if this is ever used by accident! */
 #ifndef NDEBUG
-  *r_deferred_result = (PyObject *)(intptr_t)1;
+  *r_deferred_result = (PyObject *)intptr_t(1);
 #endif
 
   /* No error or deferred result, perform registration immediately. */
@@ -2749,8 +2756,7 @@ static int bpy_prop_arg_parse_tag_defines(PyObject *o, void *p)
 #if 0
 static int bpy_struct_id_used(StructRNA *srna, char *identifier)
 {
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, srna, nullptr, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, srna, nullptr);
   return (RNA_struct_find_property(&ptr, identifier) != nullptr);
 }
 #endif
@@ -2957,7 +2963,7 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
 
   const char *name = nullptr, *description = "";
   const char *translation_context = nullptr;
-  bool default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{false}};
+  Array<bool, RNA_STACK_ARRAY> default_value;
   BPyPropArrayLength array_len_info{};
   array_len_info.len_total = 3;
   PropertyRNA *prop;
@@ -3045,8 +3051,9 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
   }
 
   if (default_py != nullptr) {
-    if (bpy_prop_array_from_py_with_dims(default_value[0],
-                                         sizeof(*default_value[0]),
+    default_value.reinitialize(array_len_info.len_total);
+    if (bpy_prop_array_from_py_with_dims(default_value.data(),
+                                         sizeof(*default_value.data()),
                                          default_py,
                                          &array_len_info,
                                          &PyBool_Type,
@@ -3074,13 +3081,13 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
     if (default_py != nullptr) {
-      RNA_def_property_boolean_array_default(prop, default_value[0]);
+      RNA_def_property_boolean_array_default(prop, default_value.data());
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
     if (default_py != nullptr) {
-      RNA_def_property_boolean_array_default(prop, &default_value[0][0]);
+      RNA_def_property_boolean_array_default(prop, default_value.data());
     }
   }
 
@@ -3263,7 +3270,7 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
     RNA_def_property_translation_context(prop, translation_context);
   }
   RNA_def_property_range(prop, min, max);
-  RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, 3);
+  RNA_def_property_ui_range(prop, std::max(soft_min, min), std::min(soft_max, max), step, 3);
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -3328,7 +3335,7 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   const char *translation_context = nullptr;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
-  int default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {};
+  Array<int, RNA_STACK_ARRAY> default_value;
   BPyPropArrayLength array_len_info{};
   array_len_info.len_total = 3;
   PropertyRNA *prop;
@@ -3417,8 +3424,9 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   }
 
   if (default_py != nullptr) {
-    if (bpy_prop_array_from_py_with_dims(default_value[0],
-                                         sizeof(*default_value[0]),
+    default_value.reinitialize(array_len_info.len_total);
+    if (bpy_prop_array_from_py_with_dims(default_value.data(),
+                                         sizeof(*default_value.data()),
                                          default_py,
                                          &array_len_info,
                                          &PyLong_Type,
@@ -3446,13 +3454,13 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
     if (default_py != nullptr) {
-      RNA_def_property_int_array_default(prop, default_value[0]);
+      RNA_def_property_int_array_default(prop, default_value.data());
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
     if (default_py != nullptr) {
-      RNA_def_property_int_array_default(prop, &default_value[0][0]);
+      RNA_def_property_int_array_default(prop, default_value.data());
     }
   }
 
@@ -3461,7 +3469,7 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   if (translation_context) {
     RNA_def_property_translation_context(prop, translation_context);
   }
-  RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, 3);
+  RNA_def_property_ui_range(prop, std::max(soft_min, min), std::min(soft_max, max), step, 3);
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -3637,7 +3645,8 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
   if (translation_context) {
     RNA_def_property_translation_context(prop, translation_context);
   }
-  RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, precision);
+  RNA_def_property_ui_range(
+      prop, std::max(soft_min, min), std::min(soft_max, max), step, precision);
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -3705,7 +3714,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   const char *translation_context = nullptr;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
-  float default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{0.0f}};
+  Array<float, RNA_STACK_ARRAY> default_value;
   int precision = 2;
   BPyPropArrayLength array_len_info{};
   array_len_info.len_total = 3;
@@ -3805,8 +3814,9 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   }
 
   if (default_py != nullptr) {
-    if (bpy_prop_array_from_py_with_dims(default_value[0],
-                                         sizeof(*default_value[0]),
+    default_value.reinitialize(array_len_info.len_total);
+    if (bpy_prop_array_from_py_with_dims(default_value.data(),
+                                         sizeof(*default_value.data()),
                                          default_py,
                                          &array_len_info,
                                          &PyFloat_Type,
@@ -3815,7 +3825,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
       return nullptr;
     }
     if (bpy_prop_array_is_matrix_compatible_ex(subtype_enum.value, &array_len_info)) {
-      bpy_prop_array_matrix_swap_row_column_vn(&default_value[0][0], &array_len_info);
+      bpy_prop_array_matrix_swap_row_column_vn(default_value.data(), &array_len_info);
     }
   }
 
@@ -3837,13 +3847,13 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
     if (default_py != nullptr) {
-      RNA_def_property_float_array_default(prop, default_value[0]);
+      RNA_def_property_float_array_default(prop, default_value.data());
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
     if (default_py != nullptr) {
-      RNA_def_property_float_array_default(prop, &default_value[0][0]);
+      RNA_def_property_float_array_default(prop, default_value.data());
     }
   }
 
@@ -3852,7 +3862,8 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   if (translation_context) {
     RNA_def_property_translation_context(prop, translation_context);
   }
-  RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, precision);
+  RNA_def_property_ui_range(
+      prop, std::max(soft_min, min), std::min(soft_max, max), step, precision);
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);

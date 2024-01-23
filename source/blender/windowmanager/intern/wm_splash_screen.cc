@@ -14,6 +14,7 @@
  * - Links to web sites.
  */
 
+#include <algorithm>
 #include <cstring>
 
 #include "CLG_log.h"
@@ -27,17 +28,17 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
 #include "BLT_translation.h"
 
 #include "BLF_api.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_datafiles.h"
 #include "ED_screen.hh"
@@ -127,7 +128,7 @@ static void wm_block_splash_image_roundcorners_add(ImBuf *ibuf)
     }
   }
 }
-#endif /* WITH_HEADLESS */
+#endif /* !WITH_HEADLESS */
 
 static ImBuf *wm_block_splash_image(int width, int *r_height)
 {
@@ -181,7 +182,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
   UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-  const int text_points_max = MAX2(style->widget.points, style->widgetlabel.points);
+  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
   int splash_width = text_points_max * 45 * UI_SCALE_FAC;
   CLAMP_MAX(splash_width, CTX_wm_window(C)->sizex * 0.7f);
   int splash_height;
@@ -262,7 +263,7 @@ void WM_OT_splash(wmOperatorType *ot)
 static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
-  const int text_points_max = MAX2(style->widget.points, style->widgetlabel.points);
+  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
   const int dialog_width = text_points_max * 42 * UI_SCALE_FAC;
 
   uiBlock *block = UI_block_begin(C, region, "about", UI_EMBOSS);
@@ -304,7 +305,7 @@ static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg
     row = uiLayoutRow(layout, false);
     uiItemS_ex(row, 2.7f);
   }
-#endif /* WITH_HEADLESS */
+#endif /* !WITH_HEADLESS */
 
   uiLayout *col = uiLayoutColumn(layout, true);
 

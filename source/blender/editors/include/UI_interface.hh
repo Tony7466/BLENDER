@@ -124,7 +124,6 @@ struct DragInfo {
  * #wmDropBox is needed to request instances of it from a UI element and call its functions. For
  * example the drop box using "UI_OT_view_drop" implements dropping for views and view items via
  * this interface. To support other kinds of UI elements, similar drop boxes would be necessary.
- *
  */
 class DropTargetInterface {
  public:
@@ -180,10 +179,10 @@ bool drop_target_apply_drop(bContext &C,
  * Call #DropTargetInterface::drop_tooltip() and return the result as newly allocated C string
  * (unless the result is empty, returns null then). Needs freeing with MEM_freeN().
  */
-char *drop_target_tooltip(const ARegion &region,
-                          const DropTargetInterface &drop_target,
-                          const wmDrag &drag,
-                          const wmEvent &event);
+std::string drop_target_tooltip(const ARegion &region,
+                                const DropTargetInterface &drop_target,
+                                const wmDrag &drag,
+                                const wmEvent &event);
 
 std::unique_ptr<DropTargetInterface> view_drop_target(uiViewHandle *view_handle);
 std::unique_ptr<DropTargetInterface> view_item_drop_target(uiViewItemHandle *item_handle);

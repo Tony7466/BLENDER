@@ -22,7 +22,7 @@
 
 #include "BLI_math_base.h"
 #include "BLI_math_rotation.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "BLT_translation.h"
 
@@ -271,19 +271,21 @@ static const EnumPropertyItem modifier_noise_random_mode_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <algorithm>
+
 #  include "DNA_curve_types.h"
 #  include "DNA_fluid_types.h"
 #  include "DNA_material_types.h"
 #  include "DNA_particle_types.h"
 
 #  include "BKE_cachefile.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_gpencil_modifier_legacy.h"
-#  include "BKE_object.h"
+#  include "BKE_object.hh"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 static StructRNA *rna_GpencilModifier_refine(PointerRNA *ptr)
 {
@@ -488,7 +490,7 @@ static void rna_TimeModifier_start_frame_set(PointerRNA *ptr, int value)
   tmd->sfra = value;
 
   if (tmd->sfra >= tmd->efra) {
-    tmd->efra = MIN2(tmd->sfra, MAXFRAME);
+    tmd->efra = std::min(tmd->sfra, MAXFRAME);
   }
 }
 
@@ -499,7 +501,7 @@ static void rna_TimeModifier_end_frame_set(PointerRNA *ptr, int value)
   tmd->efra = value;
 
   if (tmd->sfra >= tmd->efra) {
-    tmd->sfra = MAX2(tmd->efra, MINFRAME);
+    tmd->sfra = std::max(tmd->efra, MINFRAME);
   }
 }
 
@@ -795,7 +797,7 @@ static void rna_Lineart_start_level_set(PointerRNA *ptr, int value)
 
   CLAMP(value, 0, 128);
   lmd->level_start = value;
-  lmd->level_end = MAX2(value, lmd->level_end);
+  lmd->level_end = std::max<short>(value, lmd->level_end);
 }
 
 static void rna_Lineart_end_level_set(PointerRNA *ptr, int value)
@@ -804,7 +806,7 @@ static void rna_Lineart_end_level_set(PointerRNA *ptr, int value)
 
   CLAMP(value, 0, 128);
   lmd->level_end = value;
-  lmd->level_start = MIN2(value, lmd->level_start);
+  lmd->level_start = std::min<short>(value, lmd->level_start);
 }
 
 static void rna_GpencilDash_segments_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -2136,7 +2138,7 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "hardness", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "hardeness");
+  RNA_def_property_float_sdna(prop, nullptr, "hardness");
   RNA_def_property_range(prop, 0.0, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0, FLT_MAX, 0.1, 2);
   RNA_def_property_ui_text(prop, "Hardness", "Factor of stroke hardness");

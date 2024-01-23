@@ -24,7 +24,6 @@
 
 #include "BKE_node_runtime.hh"
 
-#include "NOD_add_node_search.hh"
 #include "NOD_texture.h"
 
 #include "node_texture_util.hh"
@@ -35,7 +34,7 @@ bool tex_node_poll_default(const bNodeType * /*ntype*/,
                            const char **r_disabled_hint)
 {
   if (!STREQ(ntree->idname, "TextureNodeTree")) {
-    *r_disabled_hint = TIP_("Not a texture node tree");
+    *r_disabled_hint = RPT_("Not a texture node tree");
     return false;
   }
   return true;
@@ -47,7 +46,6 @@ void tex_node_type_base(bNodeType *ntype, int type, const char *name, short ncla
 
   ntype->poll = tex_node_poll_default;
   ntype->insert_link = node_insert_link_default;
-  ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
 }
 
 static void tex_call_delegate(TexDelegate *dg, float *out, TexParams *params, short thread)

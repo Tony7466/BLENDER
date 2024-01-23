@@ -42,9 +42,9 @@ BLI_STATIC_ASSERT(ARRAY_SIZE(rna_enum_collection_color_items) - 2 == COLLECTION_
 #  include "DNA_object_types.h"
 #  include "DNA_scene_types.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "BKE_collection.h"
 #  include "BKE_global.h"
@@ -327,7 +327,7 @@ static bool rna_Collection_children_override_apply(Main *bmain,
   collchild_dst->collection = subcoll_src;
   id_us_plus(&collchild_dst->collection->id);
 
-  BKE_collection_object_cache_free(coll_dst);
+  BKE_collection_object_cache_free(bmain, coll_dst, 0);
   BKE_main_collection_sync(bmain);
 
   RNA_property_update_main(bmain, nullptr, ptr_dst, prop_dst);
@@ -368,7 +368,7 @@ static void rna_Collection_hide_render_set(PointerRNA *ptr, bool value)
 static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->data;
-  BKE_collection_object_cache_free(collection);
+  BKE_collection_object_cache_free(bmain, collection, 0);
   BKE_main_collection_sync(bmain);
 
   DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
@@ -724,7 +724,6 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "lineart_intersection_priority", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_text(prop,
                            "Intersection Priority",
                            "The intersection line will be included into the object with the "

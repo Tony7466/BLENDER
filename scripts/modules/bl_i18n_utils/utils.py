@@ -9,7 +9,7 @@ import os
 import re
 import struct
 import tempfile
-# import time
+import time
 
 from bl_i18n_utils import (
     settings,
@@ -55,7 +55,7 @@ def get_best_similar(data):
     return key, tmp
 
 
-_locale_explode_re = re.compile(r"^([a-z]{2,})(?:_([A-Z]{2,}))?(?:@([a-z]{2,}))?$")
+_locale_explode_re = re.compile(r"^([a-z]{2,})(?:_([A-Za-z]{2,}))?(?:@([a-z]{2,}))?$")
 
 
 def locale_explode(locale):
@@ -133,9 +133,9 @@ def find_best_isocode_matches(uid, iso_codes):
 
 def get_po_files_from_dir(root_dir, langs=set()):
     """
-    Yield tuples (uid, po_path) of translations for each po file found in the given dir, which should be either
-    a dir containing po files using language uid's as names (e.g. fr.po, es_ES.po, etc.), or
-    a dir containing dirs which names are language uids, and containing po files of the same names.
+    Yield tuples (uid, po_path) of translations for each po file found in the given directory, which should be either
+    a directory containing po files using language uid's as names (e.g. fr.po, es_ES.po, etc.), or
+    a directory containing directories which names are language uids, and containing po files of the same names.
     """
     found_uids = set()
     for p in os.listdir(root_dir):
@@ -324,12 +324,12 @@ class I18nMessage:
     sources = property(_get_sources, _set_sources)
 
     def _get_is_tooltip(self):
-        # XXX For now, we assume that all messages > 30 chars are tooltips!
+        # XXX For now, we assume that all messages > 30 chars are tool-tips!
         return len(self.msgid) > 30
     is_tooltip = property(_get_is_tooltip)
 
     def copy(self):
-        # Deepcopy everything but the settings!
+        # Deep-copy everything but the settings!
         return self.__class__(msgctxt_lines=self.msgctxt_lines[:], msgid_lines=self.msgid_lines[:],
                               msgstr_lines=self.msgstr_lines[:], comment_lines=self.comment_lines[:],
                               is_commented=self.is_commented, is_fuzzy=self.is_fuzzy, settings=self.settings)
@@ -345,7 +345,7 @@ class I18nMessage:
             lns = text.splitlines()
             return [l + "\n" for l in lns[:-1]] + lns[-1:]
 
-        # We do not need the full power of textwrap... We just split first at escaped new lines, then into each line
+        # We do not need the full power of text-wrap... We just split first at escaped new lines, then into each line
         # if needed... No word splitting, nor fancy spaces handling!
         def _wrap(text, max_len, init_len):
             if len(text) + init_len < max_len:
@@ -478,13 +478,17 @@ class I18nMessages:
         return getattr(collections, "OrderedDict", dict)()
 
     @classmethod
-    def gen_empty_messages(cls, uid, blender_ver, blender_hash, time, year, default_copyright=True, settings=settings):
+    def gen_empty_messages(cls, uid, blender_ver, blender_hash, bl_time, default_copyright=True, settings=settings):
         """Generate an empty I18nMessages object (only header is present!)."""
         fmt = settings.PO_HEADER_MSGSTR
-        msgstr = fmt.format(blender_ver=str(blender_ver), blender_hash=blender_hash, time=str(time), uid=str(uid))
+        msgstr = fmt.format(
+            blender_ver=str(blender_ver),
+            blender_hash=blender_hash,
+            time=time.strftime("%Y-%m-%d %H:%M%z", bl_time),
+            uid=str(uid))
         comment = ""
         if default_copyright:
-            comment = settings.PO_HEADER_COMMENT_COPYRIGHT.format(year=str(year))
+            comment = settings.PO_HEADER_COMMENT_COPYRIGHT.format(year=str(time.gmtime().tm_year))
         comment = comment + settings.PO_HEADER_COMMENT
 
         msgs = cls(uid=uid, settings=settings)

@@ -24,16 +24,15 @@
 #include "DNA_object_types.h"
 
 #include "BKE_camera.h"
-#include "BKE_colortools.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_node.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_debug.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_debug.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_context.h"
 
@@ -43,13 +42,13 @@
 #  include "BPY_extern.h"
 #endif
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "RE_bake.h"
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "WM_api.hh"
 
@@ -64,11 +63,6 @@ ListBase R_engines = {nullptr, nullptr};
 void RE_engines_init()
 {
   DRW_engines_register();
-}
-
-void RE_engines_init_experimental()
-{
-  DRW_engines_register_experimental();
 }
 
 void RE_engines_exit()
@@ -655,7 +649,8 @@ static void engine_depsgraph_init(RenderEngine *engine, ViewLayer *view_layer)
   /* Reuse depsgraph from persistent data if possible. */
   if (engine->depsgraph) {
     if (DEG_get_bmain(engine->depsgraph) != bmain ||
-        DEG_get_input_scene(engine->depsgraph) != scene) {
+        DEG_get_input_scene(engine->depsgraph) != scene)
+    {
       /* If bmain or scene changes, we need a completely new graph. */
       engine_depsgraph_free(engine);
     }
@@ -1179,7 +1174,7 @@ bool RE_engine_draw_acquire(Render *re)
      *
      * In the former case there will nothing to be drawn, so can simply use RenderResult drawing
      * pipeline. In the latter case the engine has destroyed its display-only resources (textures,
-     * graphics interops, etc..) so need to use use the RenderResult drawing pipeline. */
+     * graphics interops, etc..) so need to use the #RenderResult drawing pipeline. */
     BLI_mutex_unlock(&re->engine_draw_mutex);
     return false;
   }

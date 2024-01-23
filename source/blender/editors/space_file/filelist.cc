@@ -38,9 +38,10 @@
 #include "BLI_linklist.h"
 #include "BLI_math_vector.h"
 #include "BLI_stack.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_uuid.h"
 
@@ -48,15 +49,15 @@
 #  include "BLI_winstuff.h"
 #endif
 
-#include "BKE_asset.h"
-#include "BKE_blendfile.h"
-#include "BKE_context.h"
+#include "BKE_asset.hh"
+#include "BKE_blendfile.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_main_idmap.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+#include "BKE_main_idmap.hh"
 #include "BKE_preferences.h"
 #include "BKE_preview_image.hh"
 
@@ -67,11 +68,9 @@
 #include "ED_fileselect.hh"
 #include "ED_screen.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
-
-#include "PIL_time.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_thumbs.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -183,7 +182,6 @@ struct FileListEntryPreview {
   char filepath[FILE_MAX_LIBEXTRA];
   uint flags;
   int index;
-  int attributes; /* from FileDirEntry. */
   int icon_id;
 };
 
@@ -1534,10 +1532,8 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
 
   IMB_thumb_path_lock(preview->filepath);
   /* Always generate biggest preview size for now, it's simpler and avoids having to re-generate
-   * in case user switch to a bigger preview size. Do not create preview when file is offline. */
-  ImBuf *imbuf = (preview->attributes & FILE_ATTR_OFFLINE) ?
-                     IMB_thumb_read(preview->filepath, THB_LARGE) :
-                     IMB_thumb_manage(preview->filepath, THB_LARGE, source);
+   * in case user switch to a bigger preview size. */
+  ImBuf *imbuf = IMB_thumb_manage(preview->filepath, THB_LARGE, source);
   IMB_thumb_path_unlock(preview->filepath);
   if (imbuf) {
     preview->icon_id = BKE_icon_imbuf_create(imbuf);
@@ -1643,7 +1639,8 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
    * some time in heavy files, because otherwise for each missing preview and for each preview
    * reload, we'd reopen the .blend to look for the preview. */
   if ((entry->typeflag & FILE_TYPE_BLENDERLIB) &&
-      (entry->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW)) {
+      (entry->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW))
+  {
     return;
   }
 
@@ -1667,7 +1664,6 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
   FileListEntryPreview *preview = MEM_new<FileListEntryPreview>(__func__);
   preview->index = index;
   preview->flags = entry->typeflag;
-  preview->attributes = entry->attributes;
   preview->icon_id = 0;
 
   if (preview_in_memory) {
@@ -3751,7 +3747,8 @@ static void filelist_readjob_recursive_dir_add_items(const bool do_lib,
       entry->free_name = true;
 
       if (filelist_readjob_should_recurse_into_entry(
-              max_recursion, is_lib, recursion_level, entry)) {
+              max_recursion, is_lib, recursion_level, entry))
+      {
         /* We have a directory we want to list, add it to todo list!
          * Using #BLI_path_join works but isn't needed as `root` has a trailing slash. */
         BLI_string_join(dir, sizeof(dir), root, entry->relpath);
@@ -4053,7 +4050,7 @@ static bool filelist_readjob_is_partial_read(const FileListReadJob *read_job)
  *       some current entries are kept and we just call the readjob to update the main files (see
  *       #FileListReadJob.only_main_data).
  */
-static void filelist_readjob_startjob(void *flrjv, bool *stop, bool *do_update, float *progress)
+static void filelist_readjob_startjob(void *flrjv, wmJobWorkerStatus *worker_status)
 {
   FileListReadJob *flrj = static_cast<FileListReadJob *>(flrjv);
 
@@ -4086,7 +4083,8 @@ static void filelist_readjob_startjob(void *flrjv, bool *stop, bool *do_update, 
 
   BLI_mutex_unlock(&flrj->lock);
 
-  flrj->tmp_filelist->read_job_fn(flrj, stop, do_update, progress);
+  flrj->tmp_filelist->read_job_fn(
+      flrj, &worker_status->stop, &worker_status->do_update, &worker_status->progress);
 }
 
 /**
@@ -4134,7 +4132,7 @@ static void filelist_readjob_update(void *flrjv)
 
   /* if no new_entries_num, this is NOP */
   BLI_movelisttolist(&fl_intern->entries, &new_entries);
-  flrj->filelist->filelist.entries_num = MAX2(entries_num, 0) + new_entries_num;
+  flrj->filelist->filelist.entries_num = std::max(entries_num, 0) + new_entries_num;
 }
 
 static void filelist_readjob_endjob(void *flrjv)
@@ -4201,12 +4199,9 @@ void filelist_readjob_start(FileList *filelist, const int space_notifier, const 
   const bool no_threads = (filelist->tags & FILELIST_TAGS_NO_THREADS) || flrj->only_main_data;
 
   if (no_threads) {
-    bool dummy_stop = false;
-    bool dummy_do_update = false;
-    float dummy_progress = 0.0f;
-
     /* Single threaded execution. Just directly call the callbacks. */
-    filelist_readjob_startjob(flrj, &dummy_stop, &dummy_do_update, &dummy_progress);
+    wmJobWorkerStatus worker_status = {};
+    filelist_readjob_startjob(flrj, &worker_status);
     filelist_readjob_endjob(flrj);
     filelist_readjob_free(flrj);
 

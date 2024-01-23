@@ -15,8 +15,8 @@
 #include "BKE_action.h"
 #include "BKE_constraint.h"
 #include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 
 #include "BLI_listbase.h"
@@ -476,7 +476,7 @@ void BCAnimationSampler::initialize_curves(BCAnimationCurveMap &curves, Object *
     if (ma) {
       action = bc_getSceneMaterialAction(ma);
       if (action) {
-        /* isMatAnim = true; */
+        // isMatAnim = true;
         FCurve *fcu = (FCurve *)action->curves.first;
         for (; fcu; fcu = fcu->next) {
           BCCurveKey key(object_type, fcu->rna_path, fcu->array_index, a);

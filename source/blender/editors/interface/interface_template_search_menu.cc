@@ -31,15 +31,14 @@
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "ED_screen.hh"
 
@@ -50,10 +49,11 @@
 #include "WM_types.hh"
 
 #include "UI_interface.hh"
+#include "UI_string_search.hh"
 #include "interface_intern.hh"
 
 /* For key-map item access. */
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Menu Search Template Implementation
@@ -163,14 +163,14 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
                                                        MenuSearch_Context *wm_context,
                                                        MenuSearch_Parent *menu_parent)
 {
+  using namespace blender;
   MenuSearch_Item *item = nullptr;
 
   /* Use override if the name is empty, this can happen with popovers. */
   std::string drawstr_override;
-  const char *drawstr_sep = (but->flag & UI_BUT_HAS_SEP_CHAR) ?
-                                strrchr(but->drawstr, UI_SEP_CHAR) :
-                                nullptr;
-  const bool drawstr_is_empty = (drawstr_sep == but->drawstr) || (but->drawstr[0] == '\0');
+  const size_t sep_index = (but->flag & UI_BUT_HAS_SEP_CHAR) ? but->drawstr.find(UI_SEP_CHAR) :
+                                                               std::string::npos;
+  const bool drawstr_is_empty = sep_index == 0 || but->drawstr.empty();
 
   if (but->optype != nullptr) {
     if (drawstr_is_empty) {
@@ -215,7 +215,7 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
       /* Note that these buttons are not prevented,
        * but aren't typically used in menus. */
       printf("Button '%s' in menu '%s' is a menu item with unsupported RNA type %d\n",
-             but->drawstr,
+             but->drawstr.c_str(),
              mt->idname,
              prop_type);
     }
@@ -236,12 +236,14 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
   if (item != nullptr) {
     /* Handle shared settings. */
     if (!drawstr_override.empty()) {
-      const char *drawstr_suffix = drawstr_sep ? drawstr_sep : "";
+      const StringRef drawstr_suffix = sep_index == std::string::npos ?
+                                           "" :
+                                           StringRef(but->drawstr).drop_prefix(sep_index);
       std::string drawstr = std::string("(") + drawstr_override + ")" + drawstr_suffix;
       item->drawstr = strdup_memarena(memarena, drawstr.c_str());
     }
     else {
-      item->drawstr = strdup_memarena(memarena, but->drawstr);
+      item->drawstr = strdup_memarena(memarena, but->drawstr.c_str());
     }
 
     item->icon = ui_but_icon(but);
@@ -290,15 +292,14 @@ static bool menu_items_to_ui_button(MenuSearch_Item *item, uiBut *but)
   }
 
   if (changed) {
-    STRNCPY(but->drawstr, item->drawstr);
-    char *drawstr_sep = (item->state & UI_BUT_HAS_SEP_CHAR) ? strrchr(but->drawstr, UI_SEP_CHAR) :
-                                                              nullptr;
-    if (drawstr_sep) {
-      *drawstr_sep = '\0';
+    but->drawstr = item->drawstr;
+    const size_t sep_index = but->drawstr.find(UI_SEP_CHAR);
+
+    if (sep_index != std::string::npos) {
+      but->drawstr.resize(sep_index);
     }
 
     but->icon = item->icon;
-    but->str = but->strdata;
   }
 
   return changed;
@@ -428,8 +429,12 @@ static void menu_items_from_all_operators(bContext *C, MenuSearch_Data *data)
  * - Look up predefined editor-menus.
  * - Look up key-map items which call menus.
  */
-static MenuSearch_Data *menu_items_from_ui_create(
-    bContext *C, wmWindow *win, ScrArea *area_init, ARegion *region_init, bool include_all_areas)
+static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
+                                                  wmWindow *win,
+                                                  ScrArea *area_init,
+                                                  ARegion *region_init,
+                                                  bool include_all_areas,
+                                                  const char *single_menu_idname)
 {
   MemArena *memarena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
   blender::Map<MenuType *, const char *> menu_display_name_map;
@@ -452,12 +457,17 @@ static MenuSearch_Data *menu_items_from_ui_create(
   {
     const char *idname_array[] = {
         /* While we could include this, it's just showing filenames to load. */
-        "TOPBAR_MT_file_open_recent",
+        (single_menu_idname && STREQ(single_menu_idname, "TOPBAR_MT_file_open_recent")) ?
+            nullptr :
+            "TOPBAR_MT_file_open_recent",
         /* Showing undo history is not helpful since users may accidentally undo
          * an action they intend to run. */
         "TOPBAR_MT_undo_history",
     };
     for (int i = 0; i < ARRAY_SIZE(idname_array); i++) {
+      if (!idname_array[i]) {
+        continue;
+      }
       MenuType *mt = WM_menutype_find(idname_array[i], false);
       if (mt != nullptr) {
         menu_tagged.add(mt);
@@ -465,8 +475,8 @@ static MenuSearch_Data *menu_items_from_ui_create(
     }
   }
 
-  {
-    /* Exclude context menus because:
+  if (!single_menu_idname) {
+    /* Exclude context menus (when not searching in a specific single menu) because:
      * - The menu items are available elsewhere (and will show up multiple times).
      * - Menu items depend on exact context, making search results unpredictable
      *   (exact number of items selected for example). See design doc #74158.
@@ -513,8 +523,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
       /* Anything besides #SPACE_EMPTY is fine,
        * as this value is only included in the enum when set. */
       area_dummy.spacetype = SPACE_TOPBAR;
-      PointerRNA ptr;
-      RNA_pointer_create(&screen->id, &RNA_Area, &area_dummy, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&screen->id, &RNA_Area, &area_dummy);
       prop_ui_type = RNA_struct_find_property(&ptr, "ui_type");
       RNA_property_enum_items(C,
                               &ptr,
@@ -533,8 +542,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
       if (region != nullptr) {
-        PointerRNA ptr;
-        RNA_pointer_create(&screen->id, &RNA_Area, area, &ptr);
+        PointerRNA ptr = RNA_pointer_create(&screen->id, &RNA_Area, area);
         const int space_type_ui = RNA_property_enum_get(&ptr, prop_ui_type);
 
         const int space_type_ui_index = RNA_enum_from_value(space_type_ui_items, space_type_ui);
@@ -593,11 +601,18 @@ static MenuSearch_Data *menu_items_from_ui_create(
       region = region_init;
     }
 
-    /* Populate menus from the editors,
-     * note that we could create a fake header, draw the header and extract the menus
-     * from the buttons, however this is quite involved and can be avoided as by convention
-     * each space-type has a single root-menu that headers use. */
-    {
+    if (single_menu_idname) {
+      if (MenuType *mt = WM_menutype_find(single_menu_idname, false)) {
+        if (menu_tagged.add(mt)) {
+          menu_stack.push({mt});
+        }
+      }
+    }
+    else {
+      /* Populate menus from the editors,
+       * note that we could create a fake header, draw the header and extract the menus
+       * from the buttons, however this is quite involved and can be avoided as by convention
+       * each space-type has a single root-menu that headers use. */
       const char *idname_array[2] = {nullptr};
       int idname_array_len = 0;
 
@@ -694,7 +709,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
           }
 
           if (but_test == nullptr) {
-            menu_display_name_map.add(mt, strdup_memarena(memarena, but->drawstr));
+            menu_display_name_map.add(mt, strdup_memarena(memarena, but->drawstr.c_str()));
           }
         }
         else if (menu_items_from_ui_create_item_from_button(
@@ -703,7 +718,8 @@ static MenuSearch_Data *menu_items_from_ui_create(
           /* pass */
         }
         else if ((mt_from_but = UI_but_menutype_get(but))) {
-          const bool uses_context = but->context && mt_from_but->context_dependent;
+          const bool uses_context = but->context &&
+                                    bool(mt_from_but->flag & MenuTypeFlag::ContextDependent);
           const bool tagged_first_time = menu_tagged.add(mt_from_but);
           const bool scan_submenu = tagged_first_time || uses_context;
 
@@ -716,14 +732,14 @@ static MenuSearch_Data *menu_items_from_ui_create(
              * we only want to do that for the last menu item, not the path that leads to it.
              */
             const char *drawstr_sep = but->flag & UI_BUT_HAS_SEP_CHAR ?
-                                          strrchr(but->drawstr, UI_SEP_CHAR) :
+                                          strrchr(but->drawstr.c_str(), UI_SEP_CHAR) :
                                           nullptr;
             bool drawstr_is_empty = false;
             if (drawstr_sep != nullptr) {
               BLI_assert(BLI_dynstr_get_len(dyn_str) == 0);
               /* Detect empty string, fallback to menu name. */
-              const char *drawstr = but->drawstr;
-              int drawstr_len = drawstr_sep - but->drawstr;
+              const char *drawstr = but->drawstr.c_str();
+              int drawstr_len = drawstr_sep - but->drawstr.c_str();
               if (UNLIKELY(drawstr_len == 0)) {
                 drawstr = CTX_IFACE_(mt_from_but->translation_context, mt_from_but->label);
                 drawstr_len = strlen(drawstr);
@@ -737,7 +753,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
               BLI_dynstr_clear(dyn_str);
             }
             else {
-              const char *drawstr = but->drawstr;
+              const char *drawstr = but->drawstr.c_str();
               if (UNLIKELY(drawstr[0] == '\0')) {
                 drawstr = CTX_IFACE_(mt_from_but->translation_context, mt_from_but->label);
                 if (drawstr[0] == '\0') {
@@ -778,7 +794,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
 
           MenuSearch_Parent *menu_parent = (MenuSearch_Parent *)BLI_memarena_calloc(
               memarena, sizeof(*menu_parent));
-          menu_parent->drawstr = strdup_memarena(memarena, but->drawstr);
+          menu_parent->drawstr = strdup_memarena(memarena, but->drawstr.c_str());
           menu_parent->parent = current_menu.self_as_parent;
 
           LISTBASE_FOREACH (uiBut *, sub_but, &sub_block->buttons) {
@@ -787,24 +803,27 @@ static MenuSearch_Data *menu_items_from_ui_create(
           }
 
           if (region) {
-            BLI_ghash_remove(region->runtime.block_name_map, sub_block->name, nullptr, nullptr);
+            BLI_ghash_remove(
+                region->runtime.block_name_map, sub_block->name.c_str(), nullptr, nullptr);
             BLI_remlink(&region->uiblocks, sub_block);
           }
           UI_block_free(nullptr, sub_block);
         }
       }
       if (region) {
-        BLI_ghash_remove(region->runtime.block_name_map, block->name, nullptr, nullptr);
+        BLI_ghash_remove(region->runtime.block_name_map, block->name.c_str(), nullptr, nullptr);
         BLI_remlink(&region->uiblocks, block);
       }
       UI_block_free(nullptr, block);
 
-      /* Add key-map items as a second pass,
-       * so all menus are accessed from the header & top-bar before key shortcuts are expanded. */
-      if (menu_stack.is_empty() && (has_keymap_menu_items == false)) {
-        has_keymap_menu_items = true;
-        menu_types_add_from_keymap_items(
-            C, win, area, region, menu_stack, menu_to_kmi, menu_tagged);
+      if (single_menu_idname == nullptr) {
+        /* Add key-map items as a second pass, so all menus are accessed from the header & top-bar
+         * before key shortcuts are expanded. */
+        if (menu_stack.is_empty() && (has_keymap_menu_items == false)) {
+          has_keymap_menu_items = true;
+          menu_types_add_from_keymap_items(
+              C, win, area, region, menu_stack, menu_to_kmi, menu_tagged);
+        }
       }
     }
   }
@@ -888,7 +907,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
    * - Many operators need options to be set to give useful results, see: #74157.
    * - User who really prefer to list all operators can use #WM_OT_search_operator.
    */
-  if (U.flag & USER_DEVELOPER_UI) {
+  if ((U.flag & USER_DEVELOPER_UI) && single_menu_idname == nullptr) {
     menu_items_from_all_operators(C, data);
   }
 
@@ -990,7 +1009,7 @@ static void menu_search_update_fn(const bContext * /*C*/,
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
 
-  blender::string_search::StringSearch<MenuSearch_Item> search;
+  blender::ui::string_search::StringSearch<MenuSearch_Item> search;
 
   LISTBASE_FOREACH (MenuSearch_Item *, item, &data->items) {
     search.add(item->drawwstr_full, item);
@@ -1113,15 +1132,17 @@ static ARegion *ui_search_menu_create_tooltip(
 /** \name Menu Search Template Public API
  * \{ */
 
-void UI_but_func_menu_search(uiBut *but)
+void UI_but_func_menu_search(uiBut *but, const char *single_menu_idname)
 {
   bContext *C = (bContext *)but->block->evil_C;
   wmWindow *win = CTX_wm_window(C);
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   /* When run from top-bar scan all areas in the current window. */
-  const bool include_all_areas = (area && (area->spacetype == SPACE_TOPBAR));
-  MenuSearch_Data *data = menu_items_from_ui_create(C, win, area, region, include_all_areas);
+  const bool include_all_areas = (area && (area->spacetype == SPACE_TOPBAR)) &&
+                                 !single_menu_idname;
+  MenuSearch_Data *data = menu_items_from_ui_create(
+      C, win, area, region, include_all_areas, single_menu_idname);
   UI_but_func_search_set(but,
                          /* Generic callback. */
                          ui_searchbox_create_menu,

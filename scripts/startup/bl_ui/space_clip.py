@@ -6,6 +6,7 @@ import bpy
 from bpy.types import Panel, Header, Menu, UIList
 from bpy.app.translations import (
     pgettext_iface as iface_,
+    pgettext_rpt as rpt_,
     contexts as i18n_contexts,
 )
 from bl_ui.utils import PresetPanel
@@ -45,7 +46,7 @@ class CLIP_PT_marker_display(Panel):
     bl_space_type = 'CLIP_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Marker Display"
-    bl_parent_id = 'CLIP_PT_display'
+    bl_parent_id = "CLIP_PT_display"
     bl_ui_units_x = 13
 
     def draw(self, context):
@@ -77,7 +78,7 @@ class CLIP_PT_clip_display(Panel):
     bl_space_type = 'CLIP_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Clip Display"
-    bl_parent_id = 'CLIP_PT_display'
+    bl_parent_id = "CLIP_PT_display"
     bl_ui_units_x = 13
 
     def draw(self, context):
@@ -170,7 +171,7 @@ class CLIP_HT_header(Header):
                 r = active_object.reconstruction
 
                 if r.is_valid and sc.view == 'CLIP':
-                    layout.label(text=iface_("Solve error: %.2f px") %
+                    layout.label(text=rpt_("Solve error: %.2f px") %
                                  (r.average_error),
                                  translate=False)
 
@@ -769,7 +770,7 @@ class CLIP_PT_track(CLIP_PT_tracking_panel, Panel):
         layout.prop(act_track, "weight_stab")
 
         if act_track.has_bundle:
-            label_text = iface_("Average Error: %.2f px") % (act_track.average_error)
+            label_text = rpt_("Average Error: %.2f px") % (act_track.average_error)
             layout.label(text=label_text, translate=False)
 
         layout.use_property_split = False
@@ -849,7 +850,7 @@ class CLIP_PT_track_settings_extras(CLIP_PT_tracking_panel, Panel):
     bl_region_type = 'UI'
     bl_category = "Track"
     bl_label = "Tracking Settings Extras"
-    bl_parent_id = 'CLIP_PT_track_settings'
+    bl_parent_id = "CLIP_PT_track_settings"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -915,7 +916,7 @@ class CLIP_PT_tracking_lens(Panel):
     bl_category = "Track"
     bl_label = "Lens"
     bl_translation_context = i18n_contexts.id_camera
-    bl_parent_id = 'CLIP_PT_tracking_camera'
+    bl_parent_id = "CLIP_PT_tracking_camera"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1326,41 +1327,38 @@ class CLIP_MT_view(Menu):
         sc = context.space_data
 
         if sc.view == 'CLIP':
-            layout.prop(sc, "show_region_ui")
             layout.prop(sc, "show_region_toolbar")
+            layout.prop(sc, "show_region_ui")
             layout.prop(sc, "show_region_hud")
-
             layout.separator()
 
             layout.operator("clip.view_selected")
             layout.operator("clip.view_all")
             layout.operator("clip.view_all", text="View Fit").fit_view = True
             layout.operator("clip.view_center_cursor")
-
+            layout.menu("CLIP_MT_view_zoom")
             layout.separator()
 
             layout.operator("clip.view_zoom_in")
             layout.operator("clip.view_zoom_out")
-
             layout.separator()
 
             layout.prop(sc, "show_metadata")
+            layout.separator()
+        else:
+            layout.operator_context = 'INVOKE_REGION_PREVIEW'
+            layout.operator("clip.graph_view_all")
+            if sc.view == 'GRAPH':
+                layout.operator("clip.graph_center_current_frame")
+
+            layout.operator("view2d.zoom_border", text="Zoom")
+            layout.operator_context = 'INVOKE_DEFAULT'
 
             layout.separator()
-
-            layout.menu("CLIP_MT_view_zoom")
-        else:
-            if sc.view == 'GRAPH':
-                layout.operator_context = 'INVOKE_REGION_PREVIEW'
-                layout.operator("clip.graph_center_current_frame")
-                layout.operator("clip.graph_view_all")
-                layout.operator_context = 'INVOKE_DEFAULT'
-
             layout.prop(sc, "show_seconds")
             layout.prop(sc, "show_locked_time")
 
         layout.separator()
-
         layout.menu("INFO_MT_area")
 
 
@@ -1900,7 +1898,7 @@ class CLIP_MT_view_pie(Menu):
     def poll(cls, context):
         space = context.space_data
 
-        # View operators are not yet implemented in Dopesheet mode.
+        # View operators are not yet implemented in Dope-sheet mode.
         return space.view != 'DOPESHEET'
 
     def draw(self, context):

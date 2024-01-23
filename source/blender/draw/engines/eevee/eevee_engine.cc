@@ -6,7 +6,7 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "draw_color_management.h" /* TODO: remove dependency. */
 
@@ -14,15 +14,15 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_world_types.h"
 
 #include "GPU_context.h"
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
 #include "eevee_private.h"
 
@@ -183,11 +183,11 @@ static void eevee_cache_finish(void *vedata)
   }
 
   if (g_data->queued_shaders_count > 0) {
-    SNPRINTF(ved->info, TIP_("Compiling Shaders (%d remaining)"), g_data->queued_shaders_count);
+    SNPRINTF(ved->info, RPT_("Compiling Shaders (%d remaining)"), g_data->queued_shaders_count);
   }
   else if (g_data->queued_optimise_shaders_count > 0) {
     SNPRINTF(ved->info,
-             TIP_("Optimizing Shaders (%d remaining)"),
+             RPT_("Optimizing Shaders (%d remaining)"),
              g_data->queued_optimise_shaders_count);
   }
 }
@@ -216,7 +216,7 @@ static void eevee_draw_scene(void *vedata)
   if (DRW_state_is_image_render()) {
     const DRWContextState *draw_ctx = DRW_context_state_get();
     const Scene *scene = draw_ctx->scene;
-    loop_len = MAX2(1, scene->eevee.taa_samples);
+    loop_len = std::max(1, scene->eevee.taa_samples);
   }
 
   if (stl->effects->bypass_drawing) {
@@ -649,7 +649,7 @@ static const DrawEngineDataSize eevee_data_size = DRW_VIEWPORT_DATA_SIZE(EEVEE_D
 DrawEngineType draw_engine_eevee_type = {
     /*next*/ nullptr,
     /*prev*/ nullptr,
-    /*idname*/ N_("Eevee"),
+    /*idname*/ N_("EEVEE"),
     /*vedata_size*/ &eevee_data_size,
     /*engine_init*/ &eevee_engine_init,
     /*engine_free*/ &eevee_engine_free,
@@ -668,7 +668,7 @@ RenderEngineType DRW_engine_viewport_eevee_type = {
     /*next*/ nullptr,
     /*prev*/ nullptr,
     /*idname*/ EEVEE_ENGINE,
-    /*name*/ N_("Eevee"),
+    /*name*/ N_("EEVEE"),
     /*flag*/ RE_INTERNAL | RE_USE_PREVIEW | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
     /*update*/ nullptr,
     /*render*/ &DRW_render_to_image,

@@ -12,14 +12,14 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_nla.h"
 #include "BKE_node.h"
 #include "BKE_report.h"
@@ -39,7 +39,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BLO_read_write.hh"
 
@@ -698,11 +698,11 @@ void BKE_animdata_transfer_by_basepath(Main *bmain, ID *srcID, ID *dstID, ListBa
  * and seeing if we can resolve it. */
 static bool check_rna_path_is_valid(ID *owner_id, const char *path)
 {
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop = nullptr;
 
   /* make initial RNA pointer to start resolving from */
-  RNA_id_pointer_create(owner_id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(owner_id);
 
   /* try to resolve */
   return RNA_path_resolve_property(&id_ptr, path, &ptr, &prop);

@@ -6,6 +6,8 @@
  * \ingroup pymathutils
  */
 
+#include <algorithm>
+
 #include <Python.h>
 
 #include "mathutils.h"
@@ -2060,7 +2062,9 @@ static PyObject *Matrix_transposed(MatrixObject *self)
 PyDoc_STRVAR(Matrix_normalize_doc,
              ".. method:: normalize()\n"
              "\n"
-             "   Normalize each of the matrix columns.\n");
+             "   Normalize each of the matrix columns.\n"
+             "\n"
+             "   .. note:: for 4x4 matrices, the 4th column (translation) is left untouched.\n");
 static PyObject *Matrix_normalize(MatrixObject *self)
 {
   if (BaseMath_ReadCallback_ForWrite(self) == -1) {
@@ -2096,7 +2100,9 @@ PyDoc_STRVAR(Matrix_normalized_doc,
              "   Return a column normalized matrix\n"
              "\n"
              "   :return: a column normalized matrix\n"
-             "   :rtype: :class:`Matrix`\n");
+             "   :rtype: :class:`Matrix`\n"
+             "\n"
+             "   .. note:: for 4x4 matrices, the 4th column (translation) is left untouched.\n");
 static PyObject *Matrix_normalized(MatrixObject *self)
 {
   return matrix__apply_to_copy(Matrix_normalize, self);
@@ -2504,7 +2510,7 @@ static PyObject *Matrix_slice(MatrixObject *self, int begin, int end)
 
   CLAMP(begin, 0, self->row_num);
   CLAMP(end, 0, self->row_num);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   tuple = PyTuple_New(end - begin);
   for (count = begin; count < end; count++) {
@@ -2528,7 +2534,7 @@ static int Matrix_ass_slice(MatrixObject *self, int begin, int end, PyObject *va
 
   CLAMP(begin, 0, self->row_num);
   CLAMP(end, 0, self->row_num);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   /* non list/tuple cases */
   if (!(value_fast = PySequence_Fast(value, "matrix[begin:end] = value"))) {
@@ -3694,7 +3700,7 @@ static PyObject *MatrixAccess_slice(MatrixAccessObject *self, Py_ssize_t begin, 
     end = (matrix_access_len + 1) + end;
   }
   CLAMP(end, 0, matrix_access_len);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   tuple = PyTuple_New(end - begin);
   for (count = begin; count < end; count++) {
@@ -3820,7 +3826,7 @@ PyTypeObject matrix_access_Type = {
     /*tp_as_async*/ nullptr,
     /*tp_repr*/ nullptr,
     /*tp_as_number*/ nullptr,
-    /*tp_as_sequence*/ nullptr /* &MatrixAccess_SeqMethods */ /* TODO */,
+    /*tp_as_sequence*/ nullptr /* &MatrixAccess_SeqMethods */ /* TODO. */,
     /*tp_as_mapping*/ &MatrixAccess_AsMapping,
     /*tp_hash*/ nullptr,
     /*tp_call*/ nullptr,
@@ -3832,7 +3838,7 @@ PyTypeObject matrix_access_Type = {
     /*tp_doc*/ nullptr,
     /*tp_traverse*/ (traverseproc)MatrixAccess_traverse,
     /*tp_clear*/ (inquiry)MatrixAccess_clear,
-    /*tp_richcompare*/ nullptr /* MatrixAccess_richcmpr */ /* TODO */,
+    /*tp_richcompare*/ nullptr /* MatrixAccess_richcmpr */ /* TODO. */,
     /*tp_weaklistoffset*/ 0,
     /*tp_iter*/ (getiterfunc)MatrixAccess_iter,
     /*tp_iternext*/ nullptr,

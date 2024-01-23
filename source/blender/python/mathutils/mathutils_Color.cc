@@ -6,6 +6,8 @@
  * \ingroup pymathutils
  */
 
+#include <algorithm>
+
 #include <Python.h>
 
 #include "mathutils.h"
@@ -16,7 +18,7 @@
 #include "../generic/python_utildefines.h"
 
 #ifndef MATH_STANDALONE
-#  include "IMB_colormanagement.h"
+#  include "IMB_colormanagement.hh"
 #endif
 
 #ifndef MATH_STANDALONE
@@ -209,7 +211,7 @@ static PyObject *Color_from_rec709_linear_to_scene_linear(ColorObject *self)
   return Color_CreatePyObject(col, Py_TYPE(self));
 }
 
-#endif /* MATH_STANDALONE */
+#endif /* !MATH_STANDALONE */
 
 /** \} */
 
@@ -431,7 +433,7 @@ static PyObject *Color_slice(ColorObject *self, int begin, int end)
     end = (COLOR_SIZE + 1) + end;
   }
   CLAMP(end, 0, COLOR_SIZE);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   tuple = PyTuple_New(end - begin);
   for (count = begin; count < end; count++) {
@@ -456,7 +458,7 @@ static int Color_ass_slice(ColorObject *self, int begin, int end, PyObject *seq)
     end = (COLOR_SIZE + 1) + end;
   }
   CLAMP(end, 0, COLOR_SIZE);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   if ((size = mathutils_array_parse(col, 0, COLOR_SIZE, seq, "mathutils.Color[begin:end] = []")) ==
       -1)
@@ -1115,7 +1117,7 @@ static PyMethodDef Color_methods[] = {
      (PyCFunction)Color_from_rec709_linear_to_scene_linear,
      METH_NOARGS,
      Color_from_rec709_linear_to_scene_linear_doc},
-#endif /* MATH_STANDALONE */
+#endif /* !MATH_STANDALONE */
 
     {nullptr, nullptr, 0, nullptr},
 };

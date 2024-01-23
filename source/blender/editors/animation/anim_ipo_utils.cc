@@ -46,21 +46,21 @@ int getname_anim_fcurve(char *name, ID *id, FCurve *fcu)
 
   if (ELEM(nullptr, id, fcu, fcu->rna_path)) {
     if (fcu == nullptr) {
-      BLI_strncpy(name, TIP_("<invalid>"), name_maxncpy);
+      BLI_strncpy(name, RPT_("<invalid>"), name_maxncpy);
     }
     else if (fcu->rna_path == nullptr) {
-      BLI_strncpy(name, TIP_("<no path>"), name_maxncpy);
+      BLI_strncpy(name, RPT_("<no path>"), name_maxncpy);
     }
     else { /* id == nullptr */
       BLI_snprintf(name, name_maxncpy, "%s[%d]", fcu->rna_path, fcu->array_index);
     }
   }
   else {
-    PointerRNA id_ptr, ptr;
+    PointerRNA ptr;
     PropertyRNA *prop;
 
     /* get RNA pointer, and resolve the path */
-    RNA_id_pointer_create(id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(id);
 
     /* try to resolve the path */
     if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {

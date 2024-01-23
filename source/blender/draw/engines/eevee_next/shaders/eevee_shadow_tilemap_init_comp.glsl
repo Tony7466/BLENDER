@@ -11,7 +11,6 @@
  */
 
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 shared int directional_range_changed;
@@ -35,7 +34,7 @@ void main()
 
   barrier();
 
-  if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
+  if (gl_LocalInvocationIndex == 0u) {
     /* Reset shift to not tag for update more than once per sync cycle. */
     tilemaps_buf[tilemap_index].grid_shift = ivec2(0);
 
@@ -43,7 +42,7 @@ void main()
 
     int clip_index = tilemap.clip_data_index;
     if (clip_index == -1) {
-      /* Noop. This is the case for unused tile-maps that are getting pushed to the free heap. */
+      /* NOP. This is the case for unused tile-maps that are getting pushed to the free heap. */
     }
     else if (tilemap.projection_type != SHADOW_PROJECTION_CUBEFACE) {
       ShadowTileMapClip clip_data = tilemaps_clip_buf[clip_index];

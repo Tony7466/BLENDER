@@ -11,19 +11,17 @@
 #include "BLI_timeit.hh"
 #include "BLI_vector_set.hh"
 
-#include "PIL_time.h"
-
 #include "DNA_anim_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 
 #include "BKE_anim_data.h"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 
 #include "MOD_nodes.hh"
 
@@ -32,7 +30,7 @@
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 using namespace blender::nodes;
 
@@ -46,13 +44,12 @@ enum eNodeTreeChangedFlag {
   NTREE_CHANGED_ANY = (1 << 1),
   NTREE_CHANGED_NODE_PROPERTY = (1 << 2),
   NTREE_CHANGED_NODE_OUTPUT = (1 << 3),
-  NTREE_CHANGED_INTERFACE = (1 << 4),
-  NTREE_CHANGED_LINK = (1 << 5),
-  NTREE_CHANGED_REMOVED_NODE = (1 << 6),
-  NTREE_CHANGED_REMOVED_SOCKET = (1 << 7),
-  NTREE_CHANGED_SOCKET_PROPERTY = (1 << 8),
-  NTREE_CHANGED_INTERNAL_LINK = (1 << 9),
-  NTREE_CHANGED_PARENT = (1 << 10),
+  NTREE_CHANGED_LINK = (1 << 4),
+  NTREE_CHANGED_REMOVED_NODE = (1 << 5),
+  NTREE_CHANGED_REMOVED_SOCKET = (1 << 6),
+  NTREE_CHANGED_SOCKET_PROPERTY = (1 << 7),
+  NTREE_CHANGED_INTERNAL_LINK = (1 << 8),
+  NTREE_CHANGED_PARENT = (1 << 9),
   NTREE_CHANGED_ALL = -1,
 };
 
@@ -161,6 +158,12 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
   }
 
   return -1;
+}
+
+/* Check both the tree's own tags and the interface tags. */
+static bool is_tree_changed(const bNodeTree &tree)
+{
+  return tree.runtime->changed_flag != NTREE_CHANGED_NOTHING || tree.tree_interface.is_changed();
 }
 
 using TreeNodePair = std::pair<bNodeTree *, bNode *>;
@@ -296,7 +299,7 @@ class NodeTreeMainUpdater {
   {
     Vector<bNodeTree *> changed_ntrees;
     FOREACH_NODETREE_BEGIN (bmain_, ntree, id) {
-      if (ntree->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
+      if (is_tree_changed(*ntree)) {
         changed_ntrees.append(ntree);
       }
     }
@@ -314,7 +317,7 @@ class NodeTreeMainUpdater {
 
     if (root_ntrees.size() == 1) {
       bNodeTree *ntree = root_ntrees[0];
-      if (ntree->runtime->changed_flag == NTREE_CHANGED_NOTHING) {
+      if (!is_tree_changed(*ntree)) {
         return;
       }
       const TreeUpdateResult result = this->update_tree(*ntree);
@@ -327,7 +330,7 @@ class NodeTreeMainUpdater {
     if (!is_single_tree_update) {
       Vector<bNodeTree *> ntrees_in_order = this->get_tree_update_order(root_ntrees);
       for (bNodeTree *ntree : ntrees_in_order) {
-        if (ntree->runtime->changed_flag == NTREE_CHANGED_NOTHING) {
+        if (!is_tree_changed(*ntree)) {
           continue;
         }
         if (!update_result_by_tree_.contains(ntree)) {
@@ -485,6 +488,7 @@ class NodeTreeMainUpdater {
       if (node_field_inferencing::update_field_inferencing(ntree)) {
         result.interface_changed = true;
       }
+      this->update_from_field_inference(ntree);
       if (anonymous_attribute_inferencing::update_anonymous_attribute_relations(ntree)) {
         result.interface_changed = true;
       }
@@ -503,13 +507,11 @@ class NodeTreeMainUpdater {
       ntreeTexCheckCyclics(&ntree);
     }
 
-    if (ntree.runtime->changed_flag & NTREE_CHANGED_INTERFACE ||
-        ntree.runtime->changed_flag & NTREE_CHANGED_ANY)
-    {
+    if (ntree.tree_interface.is_changed()) {
       result.interface_changed = true;
     }
 
-#ifdef DEBUG
+#ifndef NDEBUG
     /* Check the uniqueness of node identifiers. */
     Set<int32_t> node_identifiers;
     const Span<const bNode *> nodes = ntree.all_nodes();
@@ -557,11 +559,15 @@ class NodeTreeMainUpdater {
         if (ntype.group_update_func) {
           ntype.group_update_func(&ntree, node);
         }
+        if (ntype.declare) {
+          /* Should have been created when the node was registered. */
+          BLI_assert(ntype.static_declaration != nullptr);
+          if (ntype.static_declaration->is_context_dependent) {
+            nodes::update_node_declaration_and_sockets(ntree, *node);
+          }
+        }
         if (ntype.updatefunc) {
           ntype.updatefunc(&ntree, node);
-        }
-        if (ntype.declare_dynamic) {
-          nodes::update_node_declaration_and_sockets(ntree, *node);
         }
       }
     }
@@ -579,25 +585,15 @@ class NodeTreeMainUpdater {
       /* Currently we have no way to tell if a node needs to be updated when a link changed. */
       return true;
     }
-    if (ntree.runtime->changed_flag & NTREE_CHANGED_INTERFACE) {
+    if (ntree.tree_interface.is_changed()) {
       if (ELEM(node.type, NODE_GROUP_INPUT, NODE_GROUP_OUTPUT)) {
         return true;
       }
     }
     /* Check paired simulation zone nodes. */
-    if (node.type == GEO_NODE_SIMULATION_INPUT) {
-      const NodeGeometrySimulationInput *data = static_cast<const NodeGeometrySimulationInput *>(
-          node.storage);
-      if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
-        if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
-          return true;
-        }
-      }
-    }
-    if (node.type == GEO_NODE_REPEAT_INPUT) {
-      const NodeGeometryRepeatInput *data = static_cast<const NodeGeometryRepeatInput *>(
-          node.storage);
-      if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
+    if (all_zone_input_node_types().contains(node.type)) {
+      const bNodeZoneType &zone_type = *zone_type_by_node_type(node.type);
+      if (const bNode *output_node = zone_type.get_corresponding_output(ntree, node)) {
         if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
           return true;
         }
@@ -660,7 +656,12 @@ class NodeTreeMainUpdater {
     const bNodeSocket *selected_socket = nullptr;
     int selected_priority = -1;
     bool selected_is_linked = false;
-    for (const bNodeSocket *input_socket : output_socket->owner_node().input_sockets()) {
+    const bNode &node = output_socket->owner_node();
+    if (node.type == GEO_NODE_BAKE) {
+      /* Internal links should always map corresponding input and output sockets. */
+      return &node.input_by_identifier(output_socket->identifier);
+    }
+    for (const bNodeSocket *input_socket : node.input_sockets()) {
       if (!input_socket->is_available()) {
         continue;
       }
@@ -716,8 +717,7 @@ class NodeTreeMainUpdater {
   {
     /* Don't trigger preview removal when only those flags are set. */
     const uint32_t allowed_flags = NTREE_CHANGED_LINK | NTREE_CHANGED_SOCKET_PROPERTY |
-                                   NTREE_CHANGED_NODE_PROPERTY | NTREE_CHANGED_NODE_OUTPUT |
-                                   NTREE_CHANGED_INTERFACE;
+                                   NTREE_CHANGED_NODE_PROPERTY | NTREE_CHANGED_NODE_OUTPUT;
     if ((ntree.runtime->changed_flag & allowed_flags) == ntree.runtime->changed_flag) {
       return;
     }
@@ -778,6 +778,23 @@ class NodeTreeMainUpdater {
       /* Check if there is a simulation zone. */
       if (!ntree.nodes_by_type("GeometryNodeSimulationOutput").is_empty()) {
         ntree.runtime->runtime_flag |= NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE;
+      }
+    }
+  }
+
+  void update_from_field_inference(bNodeTree &ntree)
+  {
+    /* Automatically tag a bake item as attribute when the input is a field. The flag should not be
+     * removed automatically even when the field input is disconnected because the baked data may
+     * still contain attribute data instead of a single value. */
+    for (bNode *node : ntree.nodes_by_type("GeometryNodeBake")) {
+      NodeGeometryBake &storage = *static_cast<NodeGeometryBake *>(node->storage);
+      for (const int i : IndexRange(storage.items_num)) {
+        const bNodeSocket &socket = node->input_socket(i);
+        NodeGeometryBakeItem &item = storage.items[i];
+        if (socket.display_shape == SOCK_DISPLAY_SHAPE_DIAMOND) {
+          item.flag |= GEO_NODE_BAKE_ITEM_IS_ATTRIBUTE;
+        }
       }
     }
   }
@@ -1149,9 +1166,12 @@ class NodeTreeMainUpdater {
       }
     }
     if (ntree.type == NTREE_GEOMETRY) {
-      /* Create references for simulations in geometry nodes. */
-      for (const bNode *node : ntree.nodes_by_type("GeometryNodeSimulationOutput")) {
-        nested_node_paths.append({node->identifier, -1});
+      /* Create references for simulations and bake nodes in geometry nodes.
+       * Those are the nodes that we want to store settings for at a higher level. */
+      for (StringRefNull idname : {"GeometryNodeSimulationOutput", "GeometryNodeBake"}) {
+        for (const bNode *node : ntree.nodes_by_type(idname)) {
+          nested_node_paths.append({node->identifier, -1});
+        }
       }
     }
     /* Propagate references to nested nodes in group nodes. */
@@ -1167,7 +1187,7 @@ class NodeTreeMainUpdater {
     }
 
     /* Used to generate new unique IDs if necessary. */
-    RandomNumberGenerator rng(PIL_check_seconds_timer_i() & UINT_MAX);
+    RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
 
     Map<int32_t, bNestedNodePath> new_path_by_id;
     for (const bNestedNodePath &path : nested_node_paths) {
@@ -1243,6 +1263,8 @@ class NodeTreeMainUpdater {
         socket->runtime->changed_flag = NTREE_CHANGED_NOTHING;
       }
     }
+
+    ntree.tree_interface.reset_changed_flags();
   }
 };
 
@@ -1293,15 +1315,6 @@ void BKE_ntree_update_tag_node_removed(bNodeTree *ntree)
   add_tree_tag(ntree, NTREE_CHANGED_REMOVED_NODE);
 }
 
-void BKE_ntree_update_tag_node_reordered(bNodeTree *ntree)
-{
-  /* Don't add a tree update tag to avoid reevaluations for trivial operations like selection or
-   * parenting that typically influence the node order. This means the node order can be different
-   * for original and evaluated trees. A different solution might avoid sorting nodes based on UI
-   * states like selection, which would require not tying the node order to the drawing order. */
-  ntree->runtime->topology_cache_mutex.tag_dirty();
-}
-
 void BKE_ntree_update_tag_node_mute(bNodeTree *ntree, bNode *node)
 {
   add_node_tag(ntree, node, NTREE_CHANGED_NODE_PROPERTY);
@@ -1340,11 +1353,6 @@ void BKE_ntree_update_tag_active_output_changed(bNodeTree *ntree)
 void BKE_ntree_update_tag_missing_runtime_data(bNodeTree *ntree)
 {
   add_tree_tag(ntree, NTREE_CHANGED_ALL);
-}
-
-void BKE_ntree_update_tag_interface(bNodeTree *ntree)
-{
-  add_tree_tag(ntree, NTREE_CHANGED_INTERFACE);
 }
 
 void BKE_ntree_update_tag_parent_change(bNodeTree *ntree, bNode *node)

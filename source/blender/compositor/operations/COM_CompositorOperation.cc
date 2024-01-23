@@ -10,7 +10,7 @@
 #include "BKE_image.h"
 #include "BKE_scene.h"
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
 #include "RE_pipeline.h"
 
@@ -180,7 +180,7 @@ void CompositorOperation::execute_region(rcti *rect, uint /*tile_number*/)
 
 void CompositorOperation::set_scene_name(const char *scene_name)
 {
-  BLI_strncpy(scene_name_, scene_name, sizeof(scene_name_));
+  STRNCPY(scene_name_, scene_name);
 }
 
 void CompositorOperation::update_memory_buffer_partial(MemoryBuffer * /*output*/,

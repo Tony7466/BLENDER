@@ -20,17 +20,17 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_blender_undo.h"
+#include "BKE_blender_undo.hh"
 #include "BKE_callbacks.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
-#include "BKE_undo_system.h"
+#include "BKE_screen.hh"
+#include "BKE_undo_system.hh"
 #include "BKE_workspace.h"
 
 #include "BLO_blend_validate.hh"
@@ -44,7 +44,7 @@
 #include "ED_undo.hh"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -462,7 +462,8 @@ bool ED_undo_is_legacy_compatible_for_property(bContext *C, ID *id)
       }
       if (obact->mode & OB_MODE_EDIT) {
         if ((id == nullptr) || (obact->data == nullptr) ||
-            (GS(id->name) != GS(((ID *)obact->data)->name))) {
+            (GS(id->name) != GS(((ID *)obact->data)->name)))
+        {
           /* No undo push on id type mismatch in edit-mode. */
           CLOG_INFO(&LOG, 1, "skipping undo for edit-mode");
           return false;
@@ -826,14 +827,30 @@ void ED_undo_object_set_active_or_warn(
   }
 }
 
-void ED_undo_object_editmode_restore_helper(bContext *C,
+void ED_undo_object_editmode_validate_scene_from_windows(wmWindowManager *wm,
+                                                         const Scene *scene_ref,
+                                                         Scene **scene_p,
+                                                         ViewLayer **view_layer_p)
+{
+  if (*scene_p == scene_ref) {
+    return;
+  }
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    if (win->scene == scene_ref) {
+      *scene_p = win->scene;
+      *view_layer_p = WM_window_get_active_view_layer(win);
+      return;
+    }
+  }
+}
+
+void ED_undo_object_editmode_restore_helper(Scene *scene,
+                                            ViewLayer *view_layer,
                                             Object **object_array,
                                             uint object_array_len,
                                             uint object_array_stride)
 {
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Main *bmain = G_MAIN;
   uint bases_len = 0;
   /* Don't request unique data because we want to de-select objects when exiting edit-mode
    * for that to be done on all objects we can't skip ones that share data. */

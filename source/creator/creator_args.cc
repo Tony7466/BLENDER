@@ -32,15 +32,15 @@
 #  include "BLI_threads.h"
 #  include "BLI_utildefines.h"
 
-#  include "BKE_appdir.h"
+#  include "BKE_appdir.hh"
 #  include "BKE_blender_version.h"
-#  include "BKE_blendfile.h"
-#  include "BKE_context.h"
+#  include "BKE_blendfile.hh"
+#  include "BKE_context.hh"
 
 #  include "BKE_global.h"
 #  include "BKE_image_format.h"
-#  include "BKE_lib_id.h"
-#  include "BKE_main.h"
+#  include "BKE_lib_id.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 #  include "BKE_scene.h"
 #  include "BKE_sound.h"
@@ -48,7 +48,7 @@
 #  include "GPU_context.h"
 
 #  ifdef WITH_FFMPEG
-#    include "IMB_imbuf.h"
+#    include "IMB_imbuf.hh"
 #  endif
 
 #  ifdef WITH_PYTHON
@@ -71,9 +71,9 @@
 #    include "CCL_api.h"
 #  endif
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_debug.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_debug.hh"
 
 #  include "WM_types.hh"
 
@@ -250,7 +250,8 @@ static bool parse_int_range_relative_clamp(const char *str,
                                            const char **r_err_msg)
 {
   if (parse_int_range_relative(
-          str, str_end_range, str_end_test, pos, neg, r_value_range, r_err_msg)) {
+          str, str_end_range, str_end_test, pos, neg, r_value_range, r_err_msg))
+  {
     CLAMP(r_value_range[0], min, max);
     CLAMP(r_value_range[1], min, max);
     return true;
@@ -658,12 +659,11 @@ static void print_help(bArgs *ba, bool all)
   BLI_args_print_arg_doc(ba, "--debug-depsgraph-no-threads");
   BLI_args_print_arg_doc(ba, "--debug-depsgraph-time");
   BLI_args_print_arg_doc(ba, "--debug-depsgraph-pretty");
-  BLI_args_print_arg_doc(ba, "--debug-depsgraph-uuid");
+  BLI_args_print_arg_doc(ba, "--debug-depsgraph-uid");
   BLI_args_print_arg_doc(ba, "--debug-ghost");
   BLI_args_print_arg_doc(ba, "--debug-wintab");
   BLI_args_print_arg_doc(ba, "--debug-gpu");
   BLI_args_print_arg_doc(ba, "--debug-gpu-force-workarounds");
-  BLI_args_print_arg_doc(ba, "--debug-gpu-disable-ssbo");
   if (defs.with_renderdoc) {
     BLI_args_print_arg_doc(ba, "--debug-gpu-renderdoc");
   }
@@ -943,7 +943,7 @@ static const char arg_handle_log_show_backtrace_set_doc[] =
 static int arg_handle_log_show_backtrace_set(int /*argc*/, const char ** /*argv*/, void * /*data*/)
 {
   /* Ensure types don't become incompatible. */
-  void (*fn)(FILE * fp) = BLI_system_backtrace;
+  void (*fn)(FILE *fp) = BLI_system_backtrace;
   CLG_backtrace_fn_set((void (*)(void *))fn);
   return 0;
 }
@@ -1107,15 +1107,12 @@ static const char arg_handle_debug_mode_generic_set_doc_depsgraph_no_threads[] =
 static const char arg_handle_debug_mode_generic_set_doc_depsgraph_pretty[] =
     "\n\t"
     "Enable colors for dependency graph debug messages.";
-static const char arg_handle_debug_mode_generic_set_doc_depsgraph_uuid[] =
+static const char arg_handle_debug_mode_generic_set_doc_depsgraph_uid[] =
     "\n\t"
     "Verify validness of session-wide identifiers assigned to ID datablocks.";
 static const char arg_handle_debug_mode_generic_set_doc_gpu_force_workarounds[] =
     "\n\t"
     "Enable workarounds for typical GPU issues and disable all GPU extensions.";
-static const char arg_handle_debug_mode_generic_set_doc_gpu_disable_ssbo[] =
-    "\n\t"
-    "Disable usage of shader storage buffer objects.";
 
 static int arg_handle_debug_mode_generic_set(int /*argc*/, const char ** /*argv*/, void *data)
 {
@@ -1228,26 +1225,23 @@ static int arg_handle_debug_gpu_renderdoc_set(int /*argc*/,
 static const char arg_handle_gpu_backend_set_doc_all[] =
     "\n"
     "\tForce to use a specific GPU backend. Valid options: "
-    "'vulkan',  "
+    "'vulkan' (experimental),  "
     "'metal',  "
     "'opengl'.";
 static const char arg_handle_gpu_backend_set_doc[] =
     "\n"
     "\tForce to use a specific GPU backend. Valid options: "
-#  ifdef WITH_VULKAN_BACKEND
-    "'vulkan'"
-#    if defined(WITH_METAL_BACKEND) || defined(WITH_OPENGL_BACKEND)
-    ",  "
+#  ifdef WITH_OPENGL_BACKEND
+    "'opengl'"
+#    if defined(WITH_VULKAN_BACKEND)
+    " or "
 #    endif
+#  endif
+#  ifdef WITH_VULKAN_BACKEND
+    "'vulkan' (experimental)"
 #  endif
 #  ifdef WITH_METAL_BACKEND
     "'metal'"
-#    if defined(WITH_OPENGL_BACKEND)
-    ",  "
-#    endif
-#  endif
-#  ifdef WITH_OPENGL_BACKEND
-    "'opengl'"
 #  endif
     ".";
 static int arg_handle_gpu_backend_set(int argc, const char **argv, void * /*data*/)
@@ -1396,13 +1390,8 @@ static int arg_handle_playback_mode(int argc, const char **argv, void * /*data*/
 {
   /* Ignore the animation player if `-b` was given first. */
   if (G.background == 0) {
-#  ifdef WITH_FFMPEG
-    /* Setup FFmpeg with current debug flags. */
-    IMB_ffmpeg_init();
-#  endif
-
-    /* This function knows to skip this argument ('-a'). */
-    WM_main_playanim(argc, argv);
+    /* Skip this argument (`-a`). */
+    WM_main_playanim(argc - 1, argv + 1);
 
     exit(EXIT_SUCCESS);
   }
@@ -1646,10 +1635,10 @@ static const char arg_handle_image_type_set_doc[] =
     "<format>\n"
     "\tSet the render format.\n"
     "\tValid options are:\n"
-    "\t'TGA' 'RAWTGA' 'JPEG' 'IRIS' 'IRIZ' 'AVIRAW' 'AVIJPEG' 'PNG' 'BMP'.\n"
+    "\t'TGA' 'RAWTGA' 'JPEG' 'IRIS' 'AVIRAW' 'AVIJPEG' 'PNG' 'BMP' 'HDR' 'TIFF'.\n"
     "\n"
     "\tFormats that can be compiled into Blender, not available on all systems:\n"
-    "\t'HDR' 'TIFF' 'OPEN_EXR' 'OPEN_EXR_MULTILAYER' 'MPEG' 'CINEON' 'DPX' 'DDS' 'JP2' 'WEBP'.";
+    "\t'OPEN_EXR' 'OPEN_EXR_MULTILAYER' 'FFMPEG' 'CINEON' 'DPX' 'JP2' 'WEBP'.";
 static int arg_handle_image_type_set(int argc, const char **argv, void *data)
 {
   bContext *C = static_cast<bContext *>(data);
@@ -1822,7 +1811,7 @@ static int arg_handle_render_frame(int argc, const char **argv, void *data)
         }
       }
       RE_SetReports(re, nullptr);
-      BKE_reports_clear(&reports);
+      BKE_reports_free(&reports);
       MEM_freeN(frame_range_arr);
       return 1;
     }
@@ -1849,7 +1838,7 @@ static int arg_handle_render_animation(int /*argc*/, const char ** /*argv*/, voi
     RE_RenderAnim(
         re, bmain, scene, nullptr, nullptr, scene->r.sfra, scene->r.efra, scene->r.frame_step);
     RE_SetReports(re, nullptr);
-    BKE_reports_clear(&reports);
+    BKE_reports_free(&reports);
   }
   else {
     fprintf(stderr, "\nError: no blend loaded. cannot use '-a'.\n");
@@ -2187,7 +2176,7 @@ static bool handle_load_file(bContext *C, const char *filepath_arg, const bool l
   BKE_reports_init(&reports, RPT_PRINT);
   WM_file_autoexec_init(filepath);
   const bool success = WM_file_read(C, filepath, &reports);
-  BKE_reports_clear(&reports);
+  BKE_reports_free(&reports);
 
   if (success) {
     if (G.background) {
@@ -2472,19 +2461,14 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
                (void *)G_DEBUG_DEPSGRAPH_PRETTY);
   BLI_args_add(ba,
                nullptr,
-               "--debug-depsgraph-uuid",
-               CB_EX(arg_handle_debug_mode_generic_set, depsgraph_uuid),
-               (void *)G_DEBUG_DEPSGRAPH_UUID);
+               "--debug-depsgraph-uid",
+               CB_EX(arg_handle_debug_mode_generic_set, depsgraph_uid),
+               (void *)G_DEBUG_DEPSGRAPH_UID);
   BLI_args_add(ba,
                nullptr,
                "--debug-gpu-force-workarounds",
                CB_EX(arg_handle_debug_mode_generic_set, gpu_force_workarounds),
                (void *)G_DEBUG_GPU_FORCE_WORKAROUNDS);
-  BLI_args_add(ba,
-               nullptr,
-               "--debug-gpu-disable-ssbo",
-               CB_EX(arg_handle_debug_mode_generic_set, gpu_disable_ssbo),
-               (void *)G_DEBUG_GPU_FORCE_DISABLE_SSBO);
   BLI_args_add(ba, nullptr, "--debug-exit-on-error", CB(arg_handle_debug_exit_on_error), nullptr);
 
   BLI_args_add(ba, nullptr, "--verbose", CB(arg_handle_verbosity_set), nullptr);
@@ -2546,9 +2530,12 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
 #  ifdef WITH_PYTHON
   /* Use for Python to extract help text (Python can't call directly - bad-level call). */
   BPY_python_app_help_text_fn = main_args_help_as_string;
+#  else
+  /* Quiet unused function warning. */
+  (void)main_args_help_as_string;
 #  endif
 }
 
 /** \} */
 
-#endif /* WITH_PYTHON_MODULE */
+#endif /* !WITH_PYTHON_MODULE */

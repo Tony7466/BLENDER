@@ -75,7 +75,9 @@ typedef struct Light {
 
   float diff_fac, volume_fac;
   float spec_fac, att_dist;
-  float _pad0;
+  float shadow_softness_factor;
+  float shadow_trace_distance;
+  float _pad3;
 
   /* Preview */
   struct PreviewImage *preview;
@@ -113,7 +115,7 @@ enum {
 /** #Light::mode */
 enum {
   LA_SHADOW = 1 << 0,
-  // LA_HALO = 1 << 1, /* Deprecated. .*/
+  // LA_HALO = 1 << 1, /* Deprecated. */
   // LA_LAYER = 1 << 2, /* Deprecated. */
   // LA_QUAD = 1 << 3, /* Deprecated. */
   // LA_NEG = 1 << 4, /* Deprecated. */
@@ -129,7 +131,7 @@ enum {
   /**
    * YAFRAY: light shadow-buffer flag, soft-light.
    * Since it is used with LOCAL light, can't use LA_SHAD.
-   * */
+   */
   // LA_YF_SOFT = 1 << 14, /* Deprecated. */
   // LA_LAYER_SHADOW = 1 << 15, /* Deprecated. */
   // LA_SHAD_TEX = 1 << 16, /* Deprecated. */

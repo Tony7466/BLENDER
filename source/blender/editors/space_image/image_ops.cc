@@ -23,6 +23,7 @@
 #include "BLI_fileops.h"
 #include "BLI_ghash.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -33,29 +34,29 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_state.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_moviecache.h"
-#include "IMB_openexr.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_moviecache.hh"
+#include "IMB_openexr.hh"
 
 #include "RE_pipeline.h"
 
@@ -82,11 +83,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "PIL_time.h"
-
 #include "RE_engine.h"
 
-#include "image_intern.h"
+#include "image_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name View Navigation Utilities
@@ -322,7 +321,7 @@ static void image_view_all(SpaceImage *sima, ARegion *region, wmOperator *op)
 bool space_image_main_region_poll(bContext *C)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
-  /* XXX ARegion *region = CTX_wm_region(C); */
+  // ARegion *region = CTX_wm_region(C); /* XXX. */
 
   if (sima) {
     return true; /* XXX (region && region->type->regionid == RGN_TYPE_WINDOW); */
@@ -540,7 +539,7 @@ static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *eve
   if (U.viewzoom == USER_ZOOM_CONTINUE) {
     /* needs a timer to continue redrawing */
     vpd->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
-    vpd->timer_lastdraw = PIL_check_seconds_timer();
+    vpd->timer_lastdraw = BLI_check_seconds_timer();
   }
 
   vpd->sima = sima;
@@ -650,7 +649,7 @@ static void image_zoom_apply(ViewZoomData *vpd,
   }
 
   if (viewzoom == USER_ZOOM_CONTINUE) {
-    double time = PIL_check_seconds_timer();
+    double time = BLI_check_seconds_timer();
     float time_step = float(time - vpd->timer_lastdraw);
     float zfac;
     zfac = 1.0f + ((delta / 20.0f) * time_step);
@@ -1287,7 +1286,7 @@ static Image *image_open_single(Main *bmain,
                 RPT_ERROR,
                 "Cannot read '%s': %s",
                 range->filepath,
-                errno ? strerror(errno) : TIP_("unsupported image format"));
+                errno ? strerror(errno) : RPT_("unsupported image format"));
     return nullptr;
   }
 
@@ -1373,8 +1372,7 @@ static int image_open_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&ima->id);
 
-    PointerRNA imaptr;
-    RNA_id_pointer_create(&ima->id, &imaptr);
+    PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
     RNA_property_pointer_set(&iod->pprop.ptr, iod->pprop.prop, imaptr, nullptr);
     RNA_property_update(C, &iod->pprop.ptr, iod->pprop.prop);
   }
@@ -1506,7 +1504,6 @@ static void image_open_draw(bContext * /*C*/, wmOperator *op)
   uiLayout *layout = op->layout;
   ImageOpenData *iod = static_cast<ImageOpenData *>(op->customdata);
   ImageFormatData *imf = &iod->im_format;
-  PointerRNA imf_ptr;
 
   /* main draw call */
   uiDefAutoButsRNA(layout,
@@ -1518,7 +1515,7 @@ static void image_open_draw(bContext * /*C*/, wmOperator *op)
                    false);
 
   /* image template */
-  RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, imf, &imf_ptr);
+  PointerRNA imf_ptr = RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, imf);
 
   /* multiview template */
   if (RNA_boolean_get(op->ptr, "show_multiview")) {
@@ -1594,9 +1591,8 @@ static int image_file_browse_exec(bContext *C, wmOperator *op)
     BKE_image_ensure_tile_token(filepath, sizeof(filepath));
   }
 
-  PointerRNA imaptr;
   PropertyRNA *imaprop;
-  RNA_id_pointer_create(&ima->id, &imaptr);
+  PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
   imaprop = RNA_struct_find_property(&imaptr, "filepath");
 
   RNA_property_string_set(&imaptr, imaprop, filepath);
@@ -1706,7 +1702,7 @@ static int image_match_len_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  anim *anim = ((ImageAnim *)ima->anims.first)->anim;
+  ImBufAnim *anim = ((ImageAnim *)ima->anims.first)->anim;
   if (!anim) {
     return OPERATOR_CANCELLED;
   }
@@ -1857,7 +1853,7 @@ static bool save_image_op(
   WM_cursor_wait(false);
 
   /* Remember file path for next save. */
-  STRNCPY(G.ima, opts->filepath);
+  STRNCPY(G.filepath_last_image, opts->filepath);
 
   WM_main_add_notifier(NC_IMAGE | NA_EDITED, ima);
 
@@ -1996,7 +1992,6 @@ static void image_save_as_draw(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   ImageSaveData *isd = static_cast<ImageSaveData *>(op->customdata);
-  PointerRNA imf_ptr;
   const bool is_multiview = RNA_boolean_get(op->ptr, "show_multiview");
   const bool save_as_render = RNA_boolean_get(op->ptr, "save_as_render");
 
@@ -2015,7 +2010,7 @@ static void image_save_as_draw(bContext * /*C*/, wmOperator *op)
   uiItemS(layout);
 
   /* Image format settings. */
-  RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, &isd->opts.im_format, &imf_ptr);
+  PointerRNA imf_ptr = RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, &isd->opts.im_format);
   uiTemplateImageSettings(layout, &imf_ptr, save_as_render);
 
   if (!save_as_render) {
@@ -2309,9 +2304,9 @@ static bool image_should_be_saved_when_modified(Image *ima)
   return !ELEM(ima->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE);
 }
 
-static bool image_should_be_saved(Image *ima, bool *is_format_writable)
+static bool image_should_be_saved(Image *ima, bool *r_is_format_writable)
 {
-  if (BKE_image_is_dirty_writable(ima, is_format_writable) &&
+  if (BKE_image_is_dirty_writable(ima, r_is_format_writable) &&
       ELEM(ima->source, IMA_SRC_FILE, IMA_SRC_GENERATED, IMA_SRC_TILED))
   {
     return image_should_be_saved_when_modified(ima);
@@ -2340,7 +2335,7 @@ bool ED_image_should_save_modified(const Main *bmain)
   uint modified_images_count = ED_image_save_all_modified_info(bmain, &reports);
   bool should_save = modified_images_count || !BLI_listbase_is_empty(&reports.list);
 
-  BKE_reports_clear(&reports);
+  BKE_reports_free(&reports);
 
   return should_save;
 }
@@ -2601,8 +2596,7 @@ static int image_new_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&ima->id);
 
-    PointerRNA imaptr;
-    RNA_id_pointer_create(&ima->id, &imaptr);
+    PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
     RNA_property_pointer_set(&data->pprop.ptr, data->pprop.prop, imaptr, nullptr);
     RNA_property_update(C, &data->pprop.ptr, data->pprop.prop);
   }
@@ -2864,21 +2858,19 @@ static int image_clipboard_copy_exec(bContext *C, wmOperator *op)
   }
 
   ImageUser *iuser = image_user_from_context(C);
-  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_WAIT);
-
+  WM_cursor_wait(true);
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
-  if (ibuf == nullptr) {
-    BKE_image_release_ibuf(ima, ibuf, lock);
-    WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
-    return OPERATOR_CANCELLED;
+  bool changed = false;
+  if (ibuf) {
+    if (WM_clipboard_image_set(ibuf)) {
+      changed = true;
+    }
   }
-
-  WM_clipboard_image_set(ibuf);
   BKE_image_release_ibuf(ima, ibuf, lock);
-  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
+  WM_cursor_wait(false);
 
-  return OPERATOR_FINISHED;
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 static bool image_clipboard_copy_poll(bContext *C)
@@ -2914,29 +2906,26 @@ void IMAGE_OT_clipboard_copy(wmOperatorType *ot)
 
 static int image_clipboard_paste_exec(bContext *C, wmOperator *op)
 {
+  bool changed = false;
 
-  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_WAIT);
-
+  WM_cursor_wait(true);
   ImBuf *ibuf = WM_clipboard_image_get();
-  if (!ibuf) {
-    WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
-    return OPERATOR_CANCELLED;
+  if (ibuf) {
+    ED_undo_push_op(C, op);
+
+    Main *bmain = CTX_data_main(C);
+    SpaceImage *sima = CTX_wm_space_image(C);
+    Image *ima = BKE_image_add_from_imbuf(bmain, ibuf, "Clipboard");
+    IMB_freeImBuf(ibuf);
+
+    ED_space_image_set(bmain, sima, ima, false);
+    BKE_image_signal(bmain, ima, (sima) ? &sima->iuser : nullptr, IMA_SIGNAL_USER_NEW_IMAGE);
+    WM_event_add_notifier(C, NC_IMAGE | NA_ADDED, ima);
+    changed = true;
   }
+  WM_cursor_wait(false);
 
-  ED_undo_push_op(C, op);
-
-  Main *bmain = CTX_data_main(C);
-  SpaceImage *sima = CTX_wm_space_image(C);
-  Image *ima = BKE_image_add_from_imbuf(bmain, ibuf, "Clipboard");
-  IMB_freeImBuf(ibuf);
-
-  ED_space_image_set(bmain, sima, ima, false);
-  BKE_image_signal(bmain, ima, (sima) ? &sima->iuser : nullptr, IMA_SIGNAL_USER_NEW_IMAGE);
-  WM_event_add_notifier(C, NC_IMAGE | NA_ADDED, ima);
-
-  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
-
-  return OPERATOR_FINISHED;
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 static bool image_clipboard_paste_poll(bContext *C)
@@ -3339,7 +3328,10 @@ void IMAGE_OT_unpack(wmOperatorType *ot)
 /** \name Sample Image Operator
  * \{ */
 
-bool ED_space_image_get_position(SpaceImage *sima, ARegion *region, int mval[2], float fpos[2])
+bool ED_space_image_get_position(SpaceImage *sima,
+                                 ARegion *region,
+                                 const int mval[2],
+                                 float r_fpos[2])
 {
   void *lock;
   ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &lock, 0);
@@ -3349,7 +3341,7 @@ bool ED_space_image_get_position(SpaceImage *sima, ARegion *region, int mval[2],
     return false;
   }
 
-  UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &fpos[0], &fpos[1]);
+  UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &r_fpos[0], &r_fpos[1]);
 
   ED_space_image_release_buffer(sima, ibuf, lock);
   return true;

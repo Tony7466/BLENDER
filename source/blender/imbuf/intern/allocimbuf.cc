@@ -11,15 +11,15 @@
 
 #include <cstddef>
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_allocimbuf.h"
-#include "IMB_colormanagement_intern.h"
-#include "IMB_filetype.h"
-#include "IMB_metadata.h"
+#include "IMB_allocimbuf.hh"
+#include "IMB_colormanagement_intern.hh"
+#include "IMB_filetype.hh"
+#include "IMB_metadata.hh"
 
-#include "imbuf.h"
+#include "imbuf.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -546,7 +546,7 @@ bool IMB_initImBuf(ImBuf *ibuf, uint x, uint y, uchar planes, uint flags)
   /* float option, is set to other values when buffers get assigned. */
   ibuf->channels = 4;
   /* IMB_DPI_DEFAULT -> pixels-per-meter. */
-  ibuf->ppm[0] = ibuf->ppm[1] = IMB_DPI_DEFAULT / 0.0254f;
+  ibuf->ppm[0] = ibuf->ppm[1] = IMB_DPI_DEFAULT / 0.0254;
 
   if (flags & IB_rect) {
     if (imb_addrectImBuf(ibuf) == false) {

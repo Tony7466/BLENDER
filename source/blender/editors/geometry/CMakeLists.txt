@@ -8,7 +8,6 @@ set(INC
   ../../blenkernel
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../functions
   ../../makesrna
   ../../nodes
@@ -24,6 +23,7 @@ set(INC_SYS
 set(SRC
   geometry_attributes.cc
   geometry_ops.cc
+  geometry_randomization.cc
   node_group_operator.cc
 
   geometry_intern.hh
@@ -32,7 +32,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
-  bf_depsgraph
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_object
   PRIVATE bf::intern::guardedalloc

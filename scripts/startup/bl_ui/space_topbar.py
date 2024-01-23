@@ -159,7 +159,7 @@ class TOPBAR_PT_gpencil_layers(Panel):
                       icon='MOD_MASK' if gpl.use_mask_layer else 'LAYER_ACTIVE')
 
             srow = col.row(align=True)
-            srow.prop(gpl, "use_lights")
+            srow.prop(gpl, "use_lights", text="Lights")
 
         col = row.column()
 
@@ -485,7 +485,7 @@ class TOPBAR_MT_file_import(Menu):
         if bpy.app.build_options.io_ply:
             self.layout.operator("wm.ply_import", text="Stanford PLY (.ply)")
         if bpy.app.build_options.io_stl:
-            self.layout.operator("wm.stl_import", text="STL (.stl) (experimental)")
+            self.layout.operator("wm.stl_import", text="STL (.stl)")
 
 
 class TOPBAR_MT_file_export(Menu):
@@ -503,10 +503,10 @@ class TOPBAR_MT_file_export(Menu):
                 "wm.usd_export", text="Universal Scene Description (.usd*)")
 
         if bpy.app.build_options.io_gpencil:
-            # Pugixml lib dependency
+            # PUGIXML library dependency.
             if bpy.app.build_options.pugixml:
                 self.layout.operator("wm.gpencil_export_svg", text="Grease Pencil as SVG")
-            # Haru lib dependency
+            # HARU library dependency.
             if bpy.app.build_options.haru:
                 self.layout.operator("wm.gpencil_export_pdf", text="Grease Pencil as PDF")
 
@@ -514,6 +514,8 @@ class TOPBAR_MT_file_export(Menu):
             self.layout.operator("wm.obj_export", text="Wavefront (.obj)")
         if bpy.app.build_options.io_ply:
             self.layout.operator("wm.ply_export", text="Stanford PLY (.ply)")
+        if bpy.app.build_options.io_stl:
+            self.layout.operator("wm.stl_export", text="STL (.stl)")
 
 
 class TOPBAR_MT_file_external_data(Menu):
@@ -706,7 +708,7 @@ class TOPBAR_MT_help(Menu):
                 "wm.url_open",
                 text="Developer Documentation",
                 icon='URL',
-            ).url = "https://wiki.blender.org/wiki/Main_Page"
+            ).url = "https://developer.blender.org/docs/"
             layout.operator("wm.url_open", text="Developer Community").url = "https://devtalk.blender.org"
             layout.operator("wm.url_open_preset", text="Python API Reference").type = 'API'
             layout.operator("wm.operator_cheat_sheet", icon='TEXT')
@@ -718,7 +720,7 @@ class TOPBAR_MT_help(Menu):
 
 
 class TOPBAR_MT_file_context_menu(Menu):
-    bl_label = "File Context Menu"
+    bl_label = "File"
 
     def draw(self, _context):
         layout = self.layout
@@ -726,6 +728,7 @@ class TOPBAR_MT_file_context_menu(Menu):
         layout.operator_context = 'INVOKE_AREA'
         layout.menu("TOPBAR_MT_file_new", text="New", text_ctxt=i18n_contexts.id_windowmanager, icon='FILE_NEW')
         layout.operator("wm.open_mainfile", text="Open...", icon='FILE_FOLDER')
+        layout.menu("TOPBAR_MT_file_open_recent")
 
         layout.separator()
 

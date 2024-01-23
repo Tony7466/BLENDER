@@ -15,7 +15,6 @@
 #include "DNA_node_types.h"
 #include "DNA_screen_types.h"
 
-#include "BLI_array.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -23,12 +22,12 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -44,6 +43,8 @@
 #include "node_intern.hh"
 
 #include "ED_undo.hh"
+
+#include "WM_api.hh"
 
 using blender::nodes::NodeDeclaration;
 
@@ -258,7 +259,8 @@ static void node_socket_add_replace(const bContext *C,
         }
 
         if (STREQ(sock_prev->identifier, sock_from->identifier) &&
-            sock_prev->type == sock_from->type) {
+            sock_prev->type == sock_from->type)
+        {
           bNodeLink *link = sock_prev->link;
 
           if (link && link->fromnode) {
@@ -337,6 +339,7 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
         continue;
       }
 
+      ngroup->ensure_interface_cache();
       Span<bNodeTreeInterfaceSocket *> iosockets = (in_out == SOCK_IN ?
                                                         ngroup->interface_inputs() :
                                                         ngroup->interface_outputs());
@@ -362,7 +365,7 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
     using namespace blender::nodes;
 
     r_node_decl.emplace(NodeDeclaration());
-    blender::nodes::build_node_declaration(*arg->node_type, *r_node_decl);
+    blender::nodes::build_node_declaration(*arg->node_type, *r_node_decl, nullptr, nullptr);
     Span<SocketDeclaration *> socket_decls = (in_out == SOCK_IN) ? r_node_decl->inputs :
                                                                    r_node_decl->outputs;
     int index = 0;
@@ -710,7 +713,7 @@ static void ui_template_node_link_menu(bContext *C, uiLayout *layout, void *but_
 }  // namespace blender::ed::space_node
 
 void uiTemplateNodeLink(
-    uiLayout *layout, bContext * /*C*/, bNodeTree *ntree, bNode *node, bNodeSocket *input)
+    uiLayout *layout, bContext *C, bNodeTree *ntree, bNode *node, bNodeSocket *input)
 {
   using namespace blender::ed::space_node;
 
@@ -724,7 +727,8 @@ void uiTemplateNodeLink(
   arg->node = node;
   arg->sock = input;
 
-  node_socket_color_get(*input->typeinfo, socket_col);
+  PointerRNA node_ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
+  node_socket_color_get(*C, *ntree, node_ptr, *input, socket_col);
 
   UI_block_layout_set_current(block, layout);
 
@@ -757,15 +761,72 @@ namespace blender::ed::space_node {
 
 /**************************** Node Tree Layout *******************************/
 
-static void ui_node_draw_input(
-    uiLayout &layout, bContext &C, bNodeTree &ntree, bNode &node, bNodeSocket &input, int depth);
+static void ui_node_draw_input(uiLayout &layout,
+                               bContext &C,
+                               bNodeTree &ntree,
+                               bNode &node,
+                               bNodeSocket &input,
+                               int depth,
+                               const char *panel_label);
+
+static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, void *ntree_argv)
+{
+  Main *bmain = CTX_data_main(C);
+  bNodePanelState *panel_state = static_cast<bNodePanelState *>(panel_state_argv);
+  bNodeTree *ntree = static_cast<bNodeTree *>(ntree_argv);
+
+  panel_state->flag ^= NODE_PANEL_COLLAPSED;
+
+  ED_node_tree_propagate_change(C, bmain, ntree);
+
+  /* Make sure panel state updates from the Properties Editor, too. */
+  WM_event_add_notifier(C, NC_SPACE | ND_SPACE_NODE_VIEW, nullptr);
+}
+
+static void ui_node_draw_panel(uiLayout &layout,
+                               bContext &C,
+                               bNodeTree &ntree,
+                               const nodes::PanelDeclaration &panel_decl,
+                               bNodePanelState &panel_state,
+                               PointerRNA nodeptr)
+{
+  uiLayout *row = uiLayoutRow(&layout, true);
+  uiLayoutSetPropDecorate(row, false);
+
+  /* Panel header with collapse icon */
+  uiBlock *block = uiLayoutGetBlock(row);
+  UI_block_emboss_set(block, UI_EMBOSS_NONE);
+  uiBut *but = uiDefIconTextBut(block,
+                                UI_BTYPE_BUT,
+                                0,
+                                panel_state.is_collapsed() ? ICON_DISCLOSURE_TRI_RIGHT :
+                                                             ICON_DISCLOSURE_TRI_DOWN,
+                                IFACE_(panel_decl.name.c_str()),
+                                0,
+                                0,
+                                UI_UNIT_X * 4,
+                                UI_UNIT_Y,
+                                nullptr,
+                                0.0,
+                                0.0,
+                                0.0,
+                                0.0,
+                                "");
+  UI_but_drawflag_enable(but, UI_BUT_TEXT_LEFT | UI_BUT_NO_TOOLTIP);
+  UI_but_func_set(but, node_panel_toggle_button_cb, &panel_state, &ntree);
+  UI_block_emboss_set(block, UI_EMBOSS);
+
+  /* Panel buttons. */
+  if (!panel_state.is_collapsed() && panel_decl.draw_buttons) {
+    uiLayoutSetPropSep(&layout, true);
+    panel_decl.draw_buttons(&layout, &C, &nodeptr);
+  }
+}
 
 static void ui_node_draw_node(
     uiLayout &layout, bContext &C, bNodeTree &ntree, bNode &node, int depth)
 {
-  PointerRNA nodeptr;
-
-  RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
+  PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
 
   if (node.typeinfo->draw_buttons) {
     if (node.type != NODE_GROUP) {
@@ -774,15 +835,58 @@ static void ui_node_draw_node(
     }
   }
 
-  LISTBASE_FOREACH (bNodeSocket *, input, &node.inputs) {
-    ui_node_draw_input(layout, C, ntree, node, *input, depth + 1);
+  if (node.declaration() && node.declaration()->use_custom_socket_order) {
+    /* Node with panels. */
+    namespace nodes = blender::nodes;
+    using ItemDeclIterator = blender::Span<nodes::ItemDeclarationPtr>::iterator;
+    using SocketIterator = blender::Span<bNodeSocket *>::iterator;
+    using PanelStateIterator = blender::MutableSpan<bNodePanelState>::iterator;
+
+    ItemDeclIterator item_decl = node.declaration()->items.begin();
+    SocketIterator input = node.input_sockets().begin();
+    PanelStateIterator panel_state = node.panel_states().begin();
+    const ItemDeclIterator item_decl_end = node.declaration()->items.end();
+
+    bool panel_collapsed = false;
+    const char *panel_label = nullptr;
+
+    for (; item_decl != item_decl_end; ++item_decl) {
+      if (const nodes::SocketDeclaration *socket_decl =
+              dynamic_cast<const nodes::SocketDeclaration *>(item_decl->get()))
+      {
+        if (socket_decl->in_out == SOCK_IN) {
+          if (!panel_collapsed) {
+            ui_node_draw_input(layout, C, ntree, node, **input, depth + 1, panel_label);
+          }
+          ++input;
+        }
+      }
+      else if (const nodes::PanelDeclaration *panel_decl =
+                   dynamic_cast<const nodes::PanelDeclaration *>(item_decl->get()))
+      {
+        panel_collapsed = panel_state->is_collapsed();
+        panel_label = panel_decl->name.c_str();
+        ui_node_draw_panel(layout, C, ntree, *panel_decl, *panel_state, nodeptr);
+        ++panel_state;
+      }
+    }
+  }
+  else {
+    /* Node without panels. */
+    LISTBASE_FOREACH (bNodeSocket *, input, &node.inputs) {
+      ui_node_draw_input(layout, C, ntree, node, *input, depth + 1, nullptr);
+    }
   }
 }
 
-static void ui_node_draw_input(
-    uiLayout &layout, bContext &C, bNodeTree &ntree, bNode &node, bNodeSocket &input, int depth)
+static void ui_node_draw_input(uiLayout &layout,
+                               bContext &C,
+                               bNodeTree &ntree,
+                               bNode &node,
+                               bNodeSocket &input,
+                               int depth,
+                               const char *panel_label)
 {
-  PointerRNA inputptr, nodeptr;
   uiBlock *block = uiLayoutGetBlock(&layout);
   uiLayout *row = nullptr;
   bool dependency_loop;
@@ -801,8 +905,8 @@ static void ui_node_draw_input(
   }
 
   /* socket RNA pointer */
-  RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &input, &inputptr);
-  RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
+  PointerRNA inputptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &input);
+  PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
 
   row = uiLayoutRow(&layout, true);
   /* Decorations are added manually here. */
@@ -819,7 +923,8 @@ static void ui_node_draw_input(
       UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
       if (lnode &&
-          (lnode->inputs.first || (lnode->typeinfo->draw_buttons && lnode->type != NODE_GROUP))) {
+          (lnode->inputs.first || (lnode->typeinfo->draw_buttons && lnode->type != NODE_GROUP)))
+      {
         int icon = (input.flag & SOCK_COLLAPSED) ? ICON_DISCLOSURE_TRI_RIGHT :
                                                    ICON_DISCLOSURE_TRI_DOWN;
         uiItemR(sub, &inputptr, "show_expanded", UI_ITEM_R_ICON_ONLY, "", icon);
@@ -830,11 +935,11 @@ static void ui_node_draw_input(
 
     sub = uiLayoutRow(sub, true);
     uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);
-    uiItemL(sub, IFACE_(bke::nodeSocketLabel(&input)), ICON_NONE);
+    uiItemL(sub, node_socket_get_label(&input, panel_label), ICON_NONE);
   }
 
   if (dependency_loop) {
-    uiItemL(row, IFACE_("Dependency Loop"), ICON_ERROR);
+    uiItemL(row, RPT_("Dependency Loop"), ICON_ERROR);
     add_dummy_decorator = true;
   }
   else if (lnode) {
@@ -918,6 +1023,7 @@ void uiTemplateNodeView(
   if (!ntree) {
     return;
   }
+  ntree->ensure_topology_cache();
 
   /* clear for cycle check */
   LISTBASE_FOREACH (bNode *, tnode, &ntree->nodes) {
@@ -925,7 +1031,7 @@ void uiTemplateNodeView(
   }
 
   if (input) {
-    ui_node_draw_input(*layout, *C, *ntree, *node, *input, 0);
+    ui_node_draw_input(*layout, *C, *ntree, *node, *input, 0, nullptr);
   }
   else {
     ui_node_draw_node(*layout, *C, *ntree, *node, 0);

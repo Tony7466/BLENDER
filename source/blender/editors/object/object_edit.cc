@@ -30,7 +30,6 @@
 #include "DNA_lattice_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
@@ -38,28 +37,28 @@
 #include "DNA_vfont_types.h"
 #include "DNA_workspace_types.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_anim_visualization.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_collection.h"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_editlattice.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_effect.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
-#include "BKE_lattice.h"
+#include "BKE_lattice.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -68,8 +67,8 @@
 #include "BKE_softbody.h"
 #include "BKE_workspace.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_armature.hh"
@@ -101,7 +100,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "object_intern.h" /* own include */
@@ -416,7 +415,7 @@ static int object_hide_collection_exec(bContext *C, wmOperator *op)
       return OPERATOR_CANCELLED;
     }
     if (toggle) {
-      lc->local_collections_bits ^= v3d->local_collections_uuid;
+      lc->local_collections_bits ^= v3d->local_collections_uid;
       BKE_layer_collection_local_sync(scene, view_layer, v3d);
     }
     else {
@@ -536,17 +535,17 @@ void OBJECT_OT_hide_collection(wmOperatorType *ot)
 /** \name Toggle Edit-Mode Operator
  * \{ */
 
-static bool mesh_needs_keyindex(Main *bmain, const Mesh *me)
+static bool mesh_needs_keyindex(Main *bmain, const Mesh *mesh)
 {
-  if (me->key) {
+  if (mesh->key) {
     return false; /* will be added */
   }
 
   LISTBASE_FOREACH (const Object *, ob, &bmain->objects) {
-    if ((ob->parent) && (ob->parent->data == me) && ELEM(ob->partype, PARVERT1, PARVERT3)) {
+    if ((ob->parent) && (ob->parent->data == mesh) && ELEM(ob->partype, PARVERT1, PARVERT3)) {
       return true;
     }
-    if (ob->data == me) {
+    if (ob->data == mesh) {
       LISTBASE_FOREACH (const ModifierData *, md, &ob->modifiers) {
         if (md->type == eModifierType_Hook) {
           return true;
@@ -575,17 +574,17 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
   }
 
   if (obedit->type == OB_MESH) {
-    Mesh *me = static_cast<Mesh *>(obedit->data);
-    if (me->edit_mesh == nullptr) {
+    Mesh *mesh = static_cast<Mesh *>(obedit->data);
+    if (mesh->edit_mesh == nullptr) {
       return false;
     }
 
-    if (me->edit_mesh->bm->totvert > MESH_MAX_VERTS) {
+    if (mesh->edit_mesh->bm->totvert > MESH_MAX_VERTS) {
       /* This used to be warned int the UI, we could warn again although it's quite rare. */
       CLOG_WARN(&LOG,
                 "Too many vertices for mesh '%s' (%d)",
-                me->id.name + 2,
-                me->edit_mesh->bm->totvert);
+                mesh->id.name + 2,
+                mesh->edit_mesh->bm->totvert);
       return false;
     }
 
@@ -594,9 +593,9 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
     }
 
     if (free_data) {
-      EDBM_mesh_free_data(me->edit_mesh);
-      MEM_freeN(me->edit_mesh);
-      me->edit_mesh = nullptr;
+      EDBM_mesh_free_data(mesh->edit_mesh);
+      MEM_freeN(mesh->edit_mesh);
+      mesh->edit_mesh = nullptr;
     }
     /* will be recalculated as needed. */
     {
@@ -829,7 +828,7 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
 
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     if (LIKELY(em)) {
-      BKE_editmesh_looptri_and_normals_calc(em);
+      BKE_editmesh_looptris_and_normals_calc(em);
     }
 
     WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_MESH, nullptr);
@@ -841,6 +840,15 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
     /* To ensure all goes in rest-position and without striding. */
 
     arm->needs_flush_to_id = 0;
+
+    /* WORKAROUND / FIXME: this is a temporary workaround to ensure that
+     * full bone collection data gets restored when exiting edit mode
+     * via an undo step. The correct fix is to have a full edit-mode
+     * copy of bone collections so that edit-mode changes don't modify
+     * object-mode armature data until exiting edit mode. But that
+     * change is a bit of a project, and will be done later. This line
+     * should be removed when that is done. */
+    bmain->is_memfile_undo_written = false;
 
     /* XXX: should this be ID_RECALC_GEOMETRY? */
     DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
@@ -1126,9 +1134,11 @@ static int forcefield_toggle_exec(bContext *C, wmOperator * /*op*/)
 
   if (ob->pd == nullptr) {
     ob->pd = BKE_partdeflect_new(PFIELD_FORCE);
+    ob->empty_drawtype = OB_PLAINAXES;
   }
   else if (ob->pd->forcefield == 0) {
     ob->pd->forcefield = PFIELD_FORCE;
+    ob->empty_drawtype = OB_PLAINAXES;
   }
   else {
     ob->pd->forcefield = 0;
@@ -1555,7 +1565,9 @@ void OBJECT_OT_paths_clear(wmOperatorType *ot)
 
 static int shade_smooth_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   const bool use_smooth = STREQ(op->idname, "OBJECT_OT_shade_smooth");
+  const bool use_smooth_by_angle = STREQ(op->idname, "OBJECT_OT_shade_smooth_by_angle");
   bool changed_multi = false;
   bool has_linked_data = false;
 
@@ -1604,12 +1616,12 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
 
     bool changed = false;
     if (ob->type == OB_MESH) {
-      BKE_mesh_smooth_flag_set(static_cast<Mesh *>(ob->data), use_smooth);
-      if (use_smooth) {
-        const bool use_auto_smooth = RNA_boolean_get(op->ptr, "use_auto_smooth");
-        const float auto_smooth_angle = RNA_float_get(op->ptr, "auto_smooth_angle");
-        BKE_mesh_auto_smooth_flag_set(
-            static_cast<Mesh *>(ob->data), use_auto_smooth, auto_smooth_angle);
+      Mesh &mesh = *static_cast<Mesh *>(ob->data);
+      const bool keep_sharp_edges = RNA_boolean_get(op->ptr, "keep_sharp_edges");
+      bke::mesh_smooth_set(mesh, use_smooth || use_smooth_by_angle, keep_sharp_edges);
+      if (use_smooth_by_angle) {
+        const float angle = RNA_float_get(op->ptr, "angle");
+        bke::mesh_sharp_edges_set_from_angle(mesh, angle, keep_sharp_edges);
       }
       BKE_mesh_batch_cache_dirty_tag(static_cast<Mesh *>(ob->data), BKE_MESH_BATCH_DIRTY_ALL);
       changed = true;
@@ -1659,7 +1671,7 @@ void OBJECT_OT_shade_flat(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Shade Flat";
-  ot->description = "Render and display faces uniform, using Face Normals";
+  ot->description = "Render and display faces uniform, using face normals";
   ot->idname = "OBJECT_OT_shade_flat";
 
   /* api callbacks */
@@ -1668,13 +1680,19 @@ void OBJECT_OT_shade_flat(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(ot->srna,
+                  "keep_sharp_edges",
+                  true,
+                  "Keep Sharp Edges",
+                  "Don't remove sharp edges, which are redundant with faces shaded smooth");
 }
 
 void OBJECT_OT_shade_smooth(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Shade Smooth";
-  ot->description = "Render and display faces smooth, using interpolated Vertex Normals";
+  ot->description = "Render and display faces smooth, using interpolated vertex normals";
   ot->idname = "OBJECT_OT_shade_smooth";
 
   /* api callbacks */
@@ -1684,24 +1702,36 @@ void OBJECT_OT_shade_smooth(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  /* properties */
-  PropertyRNA *prop;
+  RNA_def_boolean(ot->srna,
+                  "keep_sharp_edges",
+                  true,
+                  "Keep Sharp Edges",
+                  "Don't remove sharp edges. Tagged edges will remain sharp");
+}
 
-  prop = RNA_def_boolean(
-      ot->srna,
-      "use_auto_smooth",
-      false,
-      "Auto Smooth",
-      "Enable automatic smooth based on smooth/sharp faces/edges and angle between faces");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+void OBJECT_OT_shade_smooth_by_angle(wmOperatorType *ot)
+{
+  ot->name = "Shade Smooth by Angle";
+  ot->description =
+      "Set the sharpness of mesh edges based on the angle between the neighboring faces";
+  ot->idname = "OBJECT_OT_shade_smooth_by_angle";
 
-  prop = RNA_def_property(ot->srna, "auto_smooth_angle", PROP_FLOAT, PROP_ANGLE);
+  ot->poll = shade_poll;
+  ot->exec = shade_smooth_exec;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  PropertyRNA *prop = RNA_def_property(ot->srna, "angle", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_range(prop, 0.0f, DEG2RADF(180.0f));
   RNA_def_property_float_default(prop, DEG2RADF(30.0f));
-  RNA_def_property_ui_text(prop,
-                           "Angle",
-                           "Maximum angle between face normals that will be considered as smooth "
-                           "(unused if custom split normals data are available)");
+  RNA_def_property_ui_text(
+      prop, "Angle", "Maximum angle between face normals that will be considered as smooth");
+
+  RNA_def_boolean(ot->srna,
+                  "keep_sharp_edges",
+                  true,
+                  "Keep Sharp Edges",
+                  "Only add sharp edges instead of clearing existing tags first");
 }
 
 /** \} */
@@ -1955,7 +1985,8 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
                               nullptr;
 
   if ((single_object != nullptr) && is_link &&
-      BKE_collection_has_object(collection, single_object)) {
+      BKE_collection_has_object(collection, single_object))
+  {
     BKE_reportf(op->reports,
                 RPT_ERROR,
                 "%s already in %s",

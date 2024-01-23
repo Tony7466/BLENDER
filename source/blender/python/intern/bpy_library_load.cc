@@ -22,11 +22,11 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_blendfile_link_append.h"
-#include "BKE_context.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_blendfile_link_append.hh"
+#include "BKE_context.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
 #include "DNA_space_types.h" /* FILE_LINK, FILE_RELPATH */
@@ -436,13 +436,11 @@ static bool bpy_lib_exit_lapp_context_items_cb(BlendfileLinkAppendContext *lapp_
 
   PyObject *py_item;
   if (liboverride_id != nullptr) {
-    PointerRNA newid_ptr;
-    RNA_id_pointer_create(liboverride_id, &newid_ptr);
+    PointerRNA newid_ptr = RNA_id_pointer_create(liboverride_id);
     py_item = pyrna_struct_CreatePyObject(&newid_ptr);
   }
   else if (new_id != nullptr) {
-    PointerRNA newid_ptr;
-    RNA_id_pointer_create(new_id, &newid_ptr);
+    PointerRNA newid_ptr = RNA_id_pointer_create(new_id);
     py_item = pyrna_struct_CreatePyObject(&newid_ptr);
   }
   else {
@@ -576,6 +574,8 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
 
   BKE_blendfile_link_append_context_free(lapp_context);
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
+
+  BKE_reports_free(&self->reports);
 
   Py_RETURN_NONE;
 }

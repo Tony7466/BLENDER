@@ -20,7 +20,7 @@
 #include "rna_internal.h"
 
 #include "BKE_fluid.h"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_pointcache.h"
 
 #include "BLT_translation.h"
@@ -39,12 +39,12 @@
 
 #  include "BLI_threads.h"
 
-#  include "BKE_colorband.h"
-#  include "BKE_context.h"
+#  include "BKE_colorband.hh"
+#  include "BKE_context.hh"
 #  include "BKE_particle.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "manta_fluid_API.h"
 
@@ -464,7 +464,8 @@ static void rna_Fluid_combined_export_update(Main *bmain, Scene *scene, PointerR
     }
   }
   else if (fmd->domain->sndparticle_combined_export ==
-           SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE) {
+           SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE)
+  {
     if (ob->type == OB_MESH && !rna_Fluid_parts_exists(ptr, PART_FLUID_SPRAYFOAMBUBBLE)) {
 
       rna_Fluid_parts_create(bmain,
@@ -1903,7 +1904,8 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_viscosity", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flags", FLUID_DOMAIN_USE_VISCOSITY);
-  RNA_def_property_ui_text(prop, "Use Viscosity", "Enable fluid viscosity settings");
+  RNA_def_property_ui_text(
+      prop, "Use Viscosity", "Simulate fluids with high viscosity using a special solver");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_datacache_reset");
 
   prop = RNA_def_property(srna, "viscosity_value", PROP_FLOAT, PROP_NONE);
@@ -2727,7 +2729,8 @@ static void rna_def_fluid_flow_settings(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "temperature");
   RNA_def_property_range(prop, -10, 10);
   RNA_def_property_ui_range(prop, -10, 10, 1, 1);
-  RNA_def_property_ui_text(prop, "Temp. Diff.", "Temperature difference to ambient temperature");
+  RNA_def_property_ui_text(
+      prop, "Temperature Difference", "Temperature difference to ambient temperature");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_flow_reset");
 
   prop = RNA_def_property(srna, "particle_system", PROP_POINTER, PROP_NONE);

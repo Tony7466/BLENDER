@@ -26,11 +26,11 @@
 #include "DNA_workspace_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_workspace.h"
 
@@ -39,7 +39,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h" /* own include */
+#include "WM_toolsystem.hh" /* own include */
 #include "WM_types.hh"
 
 static void toolsystem_reinit_with_toolref(bContext *C, WorkSpace * /*workspace*/, bToolRef *tref);
@@ -205,7 +205,6 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
                   BKE_brush_sculpt_reset(brush);
                 }
               }
-              BKE_paint_brush_set(paint, brush);
             }
             BKE_paint_brush_set(paint, brush);
           }
@@ -903,7 +902,7 @@ bool WM_toolsystem_ref_properties_get_ex(bToolRef *tref,
 {
   IDProperty *group = WM_toolsystem_ref_properties_get_idprops(tref);
   IDProperty *prop = group ? IDP_GetPropertyFromGroup(group, idname) : nullptr;
-  RNA_pointer_create(nullptr, type, prop, r_ptr);
+  *r_ptr = RNA_pointer_create(nullptr, type, prop);
   return (prop != nullptr);
 }
 
@@ -914,7 +913,7 @@ void WM_toolsystem_ref_properties_ensure_ex(bToolRef *tref,
 {
   IDProperty *group = WM_toolsystem_ref_properties_ensure_idprops(tref);
   IDProperty *prop = idprops_ensure_named_group(group, idname);
-  RNA_pointer_create(nullptr, type, prop, r_ptr);
+  *r_ptr = RNA_pointer_create(nullptr, type, prop);
 }
 
 void WM_toolsystem_ref_properties_init_for_keymap(bToolRef *tref,

@@ -79,9 +79,11 @@ struct TransDataExtension {
   /** Use instead of #TransData.smtx,
    * It is the same but without the #Bone.bone_mat, see #TD_PBONE_LOCAL_MTX_C. */
   float l_smtx[3][3];
-  /** The rotscale matrix of pose bone, to allow using snap-align in translation mode,
-   * when #TransData.mtx is the loc pose bone matrix (and hence can't be used to apply
-   * rotation in some cases, namely when a bone is in "No-Local" or "Hinge" mode)... */
+  /**
+   * The rotation & scale matrix of pose bone, to allow using snap-align in translation mode,
+   * when #TransData.mtx is the location pose bone matrix (and hence can't be used to apply
+   * rotation in some cases, namely when a bone is in "No-Local" or "Hinge" mode).
+   */
   float r_mtx[3][3];
   /** Inverse of previous one. */
   float r_smtx[3][3];
@@ -94,9 +96,11 @@ struct TransDataExtension {
 struct TransData2D {
   /** Location of data used to transform (x,y,0). */
   float loc[3];
-  /** Pointer to real 2d location of data. */
-  float *loc2d;
-
+  union {
+    /** Pointer to real 2d location of data. */
+    float *loc2d;
+    int *loc2d_i;
+  };
   /** Pointer to handle locations, if handles aren't being moved independently. */
   float *h1, *h2;
   float ih1[2], ih2[2];
@@ -166,7 +170,6 @@ enum {
    * need their keyframes tagged with this.
    */
   TD_INTVALUES = 1 << 11,
-#define TD_MIRROR_AXIS_SHIFT 12
   /** For edit-mode mirror. */
   TD_MIRROR_X = 1 << 12,
   TD_MIRROR_Y = 1 << 13,

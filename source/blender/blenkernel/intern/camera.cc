@@ -32,18 +32,18 @@
 #include "BKE_anim_data.h"
 #include "BKE_camera.h"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "BLT_translation.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -69,7 +69,7 @@ static void camera_init_data(ID *id)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
 static void camera_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
 {
@@ -154,10 +154,9 @@ static CameraCyclesCompatibilityData camera_write_cycles_compatibility_data_crea
 
   /* For forward compatibility, still write panoramic properties as ID properties for
    * previous blender versions. */
-  IDProperty *idprop_prev = IDP_GetProperties(id, false);
+  IDProperty *idprop_prev = IDP_GetProperties(id);
   /* Make a copy to avoid modifying the original. */
-  IDProperty *idprop_temp = idprop_prev ? IDP_CopyProperty(idprop_prev) :
-                                          IDP_GetProperties(id, true);
+  IDProperty *idprop_temp = idprop_prev ? IDP_CopyProperty(idprop_prev) : IDP_EnsureProperties(id);
 
   Camera *cam = (Camera *)id;
   IDProperty *cycles_cam = cycles_data_ensure(idprop_temp);
@@ -236,7 +235,7 @@ IDTypeInfo IDType_ID_CA = {
     /*main_listbase_index*/ INDEX_ID_CA,
     /*struct_size*/ sizeof(Camera),
     /*name*/ "Camera",
-    /*name_plural*/ "cameras",
+    /*name_plural*/ N_("cameras"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_CAMERA,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

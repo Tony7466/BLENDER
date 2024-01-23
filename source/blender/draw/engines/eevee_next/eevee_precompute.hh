@@ -92,7 +92,7 @@ class Precompute {
 
   /**
    * Write a the content of a texture as a C++ header file array.
-   * The content is to be copied to `eevee_lut.cc` and formated with `make format`.
+   * The content is to be copied to `eevee_lut.cc` and formatted with `make format`.
    */
   template<typename VecT>
   static void write_to_header(StringRefNull name,
@@ -105,7 +105,7 @@ class Precompute {
     std::ofstream file;
 
     file.open(std::string(name) + ".hh");
-    file << "const VecBase<float, " << VecT::type_length << "> " << name;
+    file << "const float " << name;
     if (n_w > 1) {
       file << "[" << n_w << "]";
     }
@@ -118,6 +118,7 @@ class Precompute {
     if (n_x > 1) {
       file << "[" << n_x << "]";
     }
+    file << "[" << VecT::type_length << "]";
     file << " = {\n";
     /* Print data formatted as C++ array. */
     for (auto w : IndexRange(n_w)) {

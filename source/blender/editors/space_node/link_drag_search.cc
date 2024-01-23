@@ -5,17 +5,18 @@
 #include "AS_asset_representation.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_string_search.hh"
 
 #include "DNA_space_types.h"
 
-#include "BKE_asset.h"
-#include "BKE_context.h"
+#include "BKE_asset.hh"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
-#include "BKE_screen.h"
+#include "BKE_node_tree_update.hh"
+#include "BKE_screen.hh"
+
+#include "UI_string_search.hh"
 
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
@@ -26,7 +27,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_asset.hh"
 #include "ED_node.hh"
@@ -93,7 +94,8 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
       params.socket.typeinfo->idname,
       NODE_INTERFACE_SOCKET_INPUT,
       nullptr);
-  BKE_ntree_update_tag_interface(&params.node_tree);
+  socket_iface->init_from_socket_instance(&params.socket);
+  params.node_tree.tree_interface.active_item_set(&socket_iface->item);
 
   bNode &group_input = params.add_node("NodeGroupInput");
 
@@ -141,7 +143,7 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, interface_socket.identifier);
+  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, interface_socket.identifier);
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
     nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
@@ -237,7 +239,6 @@ static void gather_search_link_ops_for_asset_library(const bContext &C,
   filter_settings.id_types = FILTER_ID_NT;
 
   ED_assetlist_storage_fetch(&library_ref, &C);
-  ED_assetlist_ensure_previews_job(&library_ref, &C);
   ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
     if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
       return true;
@@ -334,12 +335,12 @@ static void gather_socket_link_operations(const bContext &C,
           return true;
         }
       }
-      search_link_ops.append(
-          {std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket.name,
-           [interface_socket](nodes::LinkSearchOpParams &params) {
-             add_existing_group_input_fn(params, interface_socket);
-           },
-           weight});
+      search_link_ops.append({std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP +
+                                  (interface_socket.name ? interface_socket.name : ""),
+                              [interface_socket](nodes::LinkSearchOpParams &params) {
+                                add_existing_group_input_fn(params, interface_socket);
+                              },
+                              weight});
       weight--;
       return true;
     });
@@ -359,7 +360,8 @@ static void link_drag_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  string_search::StringSearch<SocketLinkOperation> search;
+  ui::string_search::StringSearch<SocketLinkOperation> search{
+      string_search::MainWordsHeuristic::All};
 
   for (SocketLinkOperation &op : storage.search_link_ops) {
     search.add(op.name, &op, op.weight);

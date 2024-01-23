@@ -15,7 +15,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 using Alembic::Abc::ISampleSelector;
 
@@ -45,14 +45,14 @@ bool AbcEmptyReader::accepts_object_type(
     const char **err_str) const
 {
   if (!Alembic::AbcGeom::IXform::matches(alembic_header)) {
-    *err_str = TIP_(
+    *err_str = RPT_(
         "Object type mismatch, Alembic object path pointed to XForm when importing, but not any "
         "more");
     return false;
   }
 
   if (ob->type != OB_EMPTY) {
-    *err_str = TIP_("Object type mismatch, Alembic object path points to XForm");
+    *err_str = RPT_("Object type mismatch, Alembic object path points to XForm");
     return false;
   }
 

@@ -15,22 +15,20 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_matrix.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "PIL_time.h"
-
 #include "BKE_callbacks.h"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
 #include "DNA_gpencil_legacy_types.h"
@@ -56,7 +54,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "gpencil_intern.h"
 
@@ -856,7 +854,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
   gps->totpoints = totelem;
   gps->thickness = gpl->thickness;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->flag = gpd->runtime.sbuffer_sflag;
@@ -1294,8 +1292,8 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   switch (curarea->spacetype) {
     /* supported views first */
     case SPACE_VIEW3D: {
-      /* View3D *v3d = curarea->spacedata.first; */
-      /* RegionView3D *rv3d = region->regiondata; */
+      // View3D *v3d = curarea->spacedata.first;
+      // RegionView3D *rv3d = region->regiondata;
 
       /* set current area
        * - must verify that region data is 3D-view (and not something else)
@@ -1312,7 +1310,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       break;
     }
     case SPACE_NODE: {
-      /* SpaceNode *snode = curarea->spacedata.first; */
+      // SpaceNode *snode = curarea->spacedata.first;
 
       /* set current area */
       p->area = curarea;
@@ -1338,7 +1336,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       break;
     }
     case SPACE_IMAGE: {
-      /* SpaceImage *sima = curarea->spacedata.first; */
+      // SpaceImage *sima = curarea->spacedata.first;
 
       /* set the current area */
       p->area = curarea;
@@ -1961,7 +1959,7 @@ static void annotation_draw_status_indicators(bContext *C, tGPsdata *p)
           /* Provide usage tips, since this is modal, and unintuitive without hints */
           ED_workspace_status_text(
               C,
-              TIP_("Annotation Create Poly: LMB click to place next stroke vertex | "
+              RPT_("Annotation Create Poly: LMB click to place next stroke vertex | "
                    "ESC/Enter to end  (or click outside this area)"));
           break;
         default:
@@ -1977,29 +1975,29 @@ static void annotation_draw_status_indicators(bContext *C, tGPsdata *p)
       switch (p->paintmode) {
         case GP_PAINTMODE_ERASER:
           ED_workspace_status_text(C,
-                                   TIP_("Annotation Eraser: Hold and drag LMB or RMB to erase | "
+                                   RPT_("Annotation Eraser: Hold and drag LMB or RMB to erase | "
                                         "ESC/Enter to end  (or click outside this area)"));
           break;
         case GP_PAINTMODE_DRAW_STRAIGHT:
           ED_workspace_status_text(C,
-                                   TIP_("Annotation Line Draw: Hold and drag LMB to draw | "
+                                   RPT_("Annotation Line Draw: Hold and drag LMB to draw | "
                                         "ESC/Enter to end  (or click outside this area)"));
           break;
         case GP_PAINTMODE_DRAW:
           ED_workspace_status_text(C,
-                                   TIP_("Annotation Freehand Draw: Hold and drag LMB to draw | "
+                                   RPT_("Annotation Freehand Draw: Hold and drag LMB to draw | "
                                         "E/ESC/Enter to end  (or click outside this area)"));
           break;
         case GP_PAINTMODE_DRAW_POLY:
           ED_workspace_status_text(
               C,
-              TIP_("Annotation Create Poly: LMB click to place next stroke vertex | "
+              RPT_("Annotation Create Poly: LMB click to place next stroke vertex | "
                    "ESC/Enter to end  (or click outside this area)"));
           break;
 
         default: /* unhandled future cases */
           ED_workspace_status_text(
-              C, TIP_("Annotation Session: ESC/Enter to end   (or click outside this area)"));
+              C, RPT_("Annotation Session: ESC/Enter to end   (or click outside this area)"));
           break;
       }
       break;
@@ -2153,7 +2151,7 @@ static void annotation_draw_apply_event(
     }
   }
 
-  p->curtime = PIL_check_seconds_timer();
+  p->curtime = BLI_check_seconds_timer();
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;

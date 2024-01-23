@@ -7,7 +7,7 @@
 #include "BLI_math_rotation.h"
 
 #include "BKE_light.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_light_types.h"
 #include "DNA_object_types.h"
@@ -22,7 +22,7 @@
 
 namespace blender::io::usd {
 
-void USDLightReader::create_object(Main *bmain, const double /* motionSampleTime */)
+void USDLightReader::create_object(Main *bmain, const double /*motionSampleTime*/)
 {
   Light *blight = static_cast<Light *>(BKE_light_add(bmain, name_.c_str()));
 
@@ -104,7 +104,8 @@ void USDLightReader::read_object_data(Main *bmain, const double motionSampleTime
       pxr::UsdAttribute treatAsPoint_attr = sphere_light.GetTreatAsPointAttr();
       bool treatAsPoint;
       if (treatAsPoint_attr && treatAsPoint_attr.Get(&treatAsPoint, motionSampleTime) &&
-          treatAsPoint) {
+          treatAsPoint)
+      {
         blight->radius = 0.0f;
       }
       else if (pxr::UsdAttribute radius_attr = sphere_light.GetRadiusAttr()) {

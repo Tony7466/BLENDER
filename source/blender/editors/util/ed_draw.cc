@@ -20,13 +20,13 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
 
 #include "BLF_api.h"
 
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -483,29 +483,29 @@ void ED_slider_status_string_get(const tSlider *slider,
 
   if (slider->allow_overshoot_lower || slider->allow_overshoot_upper) {
     if (slider->overshoot) {
-      STRNCPY(overshoot_str, TIP_("[E] - Disable overshoot"));
+      STRNCPY(overshoot_str, RPT_("[E] - Disable overshoot"));
     }
     else {
-      STRNCPY(overshoot_str, TIP_("[E] - Enable overshoot"));
+      STRNCPY(overshoot_str, RPT_("[E] - Enable overshoot"));
     }
   }
   else {
-    STRNCPY(overshoot_str, TIP_("Overshoot disabled"));
+    STRNCPY(overshoot_str, RPT_("Overshoot disabled"));
   }
 
   if (slider->precision) {
-    STRNCPY(precision_str, TIP_("[Shift] - Precision active"));
+    STRNCPY(precision_str, RPT_("[Shift] - Precision active"));
   }
   else {
-    STRNCPY(precision_str, TIP_("Shift - Hold for precision"));
+    STRNCPY(precision_str, RPT_("Shift - Hold for precision"));
   }
 
   if (slider->allow_increments) {
     if (slider->increments) {
-      STRNCPY(increments_str, TIP_(" | [Ctrl] - Increments active"));
+      STRNCPY(increments_str, RPT_(" | [Ctrl] - Increments active"));
     }
     else {
-      STRNCPY(increments_str, TIP_(" | Ctrl - Hold for 10% increments"));
+      STRNCPY(increments_str, RPT_(" | Ctrl - Hold for 10% increments"));
     }
   }
   else {
@@ -869,6 +869,7 @@ void ED_region_image_metadata_draw(
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    GPU_blend(GPU_BLEND_ALPHA);
     immUniformThemeColor(TH_METADATA_BG);
     immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
     immUnbindProgram();
@@ -880,6 +881,7 @@ void ED_region_image_metadata_draw(
     metadata_draw_imbuf(ibuf, &rect, blf_mono_font, true);
 
     BLF_disable(blf_mono_font, BLF_CLIPPING);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   /* *** lower box*** */
@@ -894,6 +896,7 @@ void ED_region_image_metadata_draw(
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    GPU_blend(GPU_BLEND_ALPHA);
     immUniformThemeColor(TH_METADATA_BG);
     immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
     immUnbindProgram();
@@ -905,6 +908,7 @@ void ED_region_image_metadata_draw(
     metadata_draw_imbuf(ibuf, &rect, blf_mono_font, false);
 
     BLF_disable(blf_mono_font, BLF_CLIPPING);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   GPU_matrix_pop();

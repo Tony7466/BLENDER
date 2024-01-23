@@ -20,7 +20,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "WM_types.hh"
 
@@ -32,7 +32,7 @@
 
 #include "ED_screen.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "interface_intern.hh"
 
@@ -199,7 +199,7 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
        * push, so disable it on RNA buttons in the color picker block */
       UI_but_flag_disable(bt, UI_BUT_UNDO);
     }
-    else if (STREQ(bt->str, "Hex:")) {
+    else if (bt->str == "Hex:") {
       float rgb_hex[3];
       uchar rgb_hex_uchar[3];
       char col[16];
@@ -544,7 +544,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  float(PICKER_TYPE_RGB),
                  0,
                  0,
-                 "");
+                 TIP_("Red, Green, Blue"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
@@ -562,7 +562,8 @@ static void ui_block_colorpicker(uiBlock *block,
                  PICKER_TYPE_HSV,
                  0,
                  0,
-                 "");
+                 (U.color_picker_type == USER_CP_CIRCLE_HSL) ? TIP_("Hue, Saturation, Lightness") :
+                                                               TIP_("Hue, Saturation, Value"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
@@ -580,7 +581,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  PICKER_TYPE_HEX,
                  0,
                  0,
-                 "");
+                 TIP_("Color as hexadecimal values"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
@@ -739,7 +740,7 @@ static void ui_block_colorpicker(uiBlock *block,
   }
   UI_but_flag_disable(bt, UI_BUT_UNDO);
 
-  bt->hardmax = hardmax; /* not common but rgb  may be over 1.0 */
+  bt->hardmax = hardmax; /* Not common but RGB may be over 1.0. */
   UI_but_func_set(bt, ui_colorpicker_hsv_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
 
@@ -804,7 +805,7 @@ static void ui_block_colorpicker(uiBlock *block,
   uiDefBut(block,
            UI_BTYPE_LABEL,
            0,
-           IFACE_("(Gamma Corrected)"),
+           IFACE_("(Gamma corrected)"),
            0,
            yco - UI_UNIT_Y,
            butwidth,

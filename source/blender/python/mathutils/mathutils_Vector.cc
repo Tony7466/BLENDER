@@ -6,10 +6,13 @@
  * \ingroup pymathutils
  */
 
+#include <algorithm>
+
 #include <Python.h>
 
 #include "mathutils.h"
 
+#include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
@@ -694,7 +697,7 @@ static PyObject *Vector_to_3d(VectorObject *self)
     return nullptr;
   }
 
-  memcpy(tvec, self->vec, sizeof(float) * MIN2(self->vec_num, 3));
+  memcpy(tvec, self->vec, sizeof(float) * std::min(self->vec_num, 3));
   return Vector_CreatePyObject(tvec, 3, Py_TYPE(self));
 }
 PyDoc_STRVAR(Vector_to_4d_doc,
@@ -712,7 +715,7 @@ static PyObject *Vector_to_4d(VectorObject *self)
     return nullptr;
   }
 
-  memcpy(tvec, self->vec, sizeof(float) * MIN2(self->vec_num, 4));
+  memcpy(tvec, self->vec, sizeof(float) * std::min(self->vec_num, 4));
   return Vector_CreatePyObject(tvec, 4, Py_TYPE(self));
 }
 
@@ -1082,7 +1085,7 @@ PyDoc_STRVAR(
     "   :rtype: float\n");
 static PyObject *Vector_angle(VectorObject *self, PyObject *args)
 {
-  const int vec_num = MIN2(self->vec_num, 3); /* 4D angle makes no sense */
+  const int vec_num = std::min(self->vec_num, 3); /* 4D angle makes no sense */
   float tvec[MAX_DIMENSIONS];
   PyObject *value;
   double dot = 0.0f, dot_self = 0.0f, dot_other = 0.0f;
@@ -1130,7 +1133,7 @@ static PyObject *Vector_angle(VectorObject *self, PyObject *args)
     return nullptr;
   }
 
-  return PyFloat_FromDouble(saacos(dot / (sqrt(dot_self) * sqrt(dot_other))));
+  return PyFloat_FromDouble(safe_acosf(dot / (sqrt(dot_self) * sqrt(dot_other))));
 }
 
 /** \} */
@@ -1781,7 +1784,7 @@ static PyObject *Vector_slice(VectorObject *self, int begin, int end)
     end = self->vec_num + end + 1;
   }
   CLAMP(end, 0, self->vec_num);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   tuple = PyTuple_New(end - begin);
   for (count = begin; count < end; count++) {
@@ -1803,7 +1806,7 @@ static int Vector_ass_slice(VectorObject *self, int begin, int end, PyObject *se
 
   CLAMP(begin, 0, self->vec_num);
   CLAMP(end, 0, self->vec_num);
-  begin = MIN2(begin, end);
+  begin = std::min(begin, end);
 
   vec_num = (end - begin);
   if (mathutils_array_parse_alloc(&vec, vec_num, seq, "vector[begin:end] = [...]") == -1) {

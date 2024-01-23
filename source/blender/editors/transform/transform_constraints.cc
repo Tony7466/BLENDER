@@ -27,7 +27,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "ED_view3d.hh"
 
@@ -114,8 +114,8 @@ void constraintNumInput(TransInfo *t, float vec[3])
     if (dims == 2) {
       int axis = mode & (CON_AXIS0 | CON_AXIS1 | CON_AXIS2);
       if (axis == (CON_AXIS0 | CON_AXIS1)) {
-        /* vec[0] = vec[0]; */ /* same */
-        /* vec[1] = vec[1]; */ /* same */
+        // vec[0] = vec[0]; /* Same. */
+        // vec[1] = vec[1]; /* Same. */
         vec[2] = nval;
       }
       else if (axis == (CON_AXIS1 | CON_AXIS2)) {
@@ -124,14 +124,14 @@ void constraintNumInput(TransInfo *t, float vec[3])
         vec[0] = nval;
       }
       else if (axis == (CON_AXIS0 | CON_AXIS2)) {
-        /* vec[0] = vec[0]; */ /* same */
+        // vec[0] = vec[0]; /* Same. */
         vec[2] = vec[1];
         vec[1] = nval;
       }
     }
     else if (dims == 1) {
       if (mode & CON_AXIS0) {
-        /* vec[0] = vec[0]; */ /* same */
+        // vec[0] = vec[0]; /* Same. */
         vec[1] = nval;
         vec[2] = nval;
       }
@@ -1081,11 +1081,11 @@ static void setNearestAxis2d(TransInfo *t)
   blender::float2 dvec = t->mval - t->mouse.imval;
   if (abs(dvec.x) < abs(dvec.y)) {
     t->con.mode |= CON_AXIS1;
-    STRNCPY(t->con.text, TIP_(" along Y axis"));
+    STRNCPY(t->con.text, RPT_(" along Y axis"));
   }
   else {
     t->con.mode |= CON_AXIS0;
-    STRNCPY(t->con.text, TIP_(" along X axis"));
+    STRNCPY(t->con.text, RPT_(" along X axis"));
   }
 }
 
@@ -1139,31 +1139,31 @@ static void setNearestAxis3d(TransInfo *t)
   if (len[0] <= len[1] && len[0] <= len[2]) {
     if (t->modifiers & MOD_CONSTRAINT_SELECT_PLANE) {
       t->con.mode |= (CON_AXIS1 | CON_AXIS2);
-      SNPRINTF(t->con.text, TIP_(" locking %s X axis"), t->spacename);
+      SNPRINTF(t->con.text, RPT_(" locking %s X axis"), t->spacename);
     }
     else {
       t->con.mode |= CON_AXIS0;
-      SNPRINTF(t->con.text, TIP_(" along %s X axis"), t->spacename);
+      SNPRINTF(t->con.text, RPT_(" along %s X axis"), t->spacename);
     }
   }
   else if (len[1] <= len[0] && len[1] <= len[2]) {
     if (t->modifiers & MOD_CONSTRAINT_SELECT_PLANE) {
       t->con.mode |= (CON_AXIS0 | CON_AXIS2);
-      SNPRINTF(t->con.text, TIP_(" locking %s Y axis"), t->spacename);
+      SNPRINTF(t->con.text, RPT_(" locking %s Y axis"), t->spacename);
     }
     else {
       t->con.mode |= CON_AXIS1;
-      SNPRINTF(t->con.text, TIP_(" along %s Y axis"), t->spacename);
+      SNPRINTF(t->con.text, RPT_(" along %s Y axis"), t->spacename);
     }
   }
   else if (len[2] <= len[1] && len[2] <= len[0]) {
     if (t->modifiers & MOD_CONSTRAINT_SELECT_PLANE) {
       t->con.mode |= (CON_AXIS0 | CON_AXIS1);
-      SNPRINTF(t->con.text, TIP_(" locking %s Z axis"), t->spacename);
+      SNPRINTF(t->con.text, RPT_(" locking %s Z axis"), t->spacename);
     }
     else {
       t->con.mode |= CON_AXIS2;
-      SNPRINTF(t->con.text, TIP_(" along %s Z axis"), t->spacename);
+      SNPRINTF(t->con.text, RPT_(" along %s Z axis"), t->spacename);
     }
   }
 }

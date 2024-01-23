@@ -22,23 +22,24 @@
 
 #include "BKE_action.h"
 #include "BKE_collection.h"
+#include "BKE_lib_id.hh"
 
 #include "RNA_prototypes.h"
 
 #include "intern/builder/deg_builder_cache.h"
 #include "intern/builder/deg_builder_remove_noop.h"
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_relation.h"
-#include "intern/depsgraph_tag.h"
-#include "intern/depsgraph_type.h"
+#include "intern/depsgraph.hh"
+#include "intern/depsgraph_relation.hh"
+#include "intern/depsgraph_tag.hh"
+#include "intern/depsgraph_type.hh"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_visibility.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 namespace blender::deg {
 
@@ -210,7 +211,8 @@ void deg_graph_build_finalize(Main *bmain, Depsgraph *graph)
        * removed from the graph based on their inclusion and visibility flags). */
       const ID_Type id_type = GS(id_node->id_cow->name);
       if (id_type == ID_GR) {
-        BKE_collection_object_cache_free(reinterpret_cast<Collection *>(id_node->id_cow));
+        BKE_collection_object_cache_free(
+            nullptr, reinterpret_cast<Collection *>(id_node->id_cow), LIB_ID_CREATE_NO_DEG_TAG);
       }
     }
     /* Restore recalc flags from original ID, which could possibly contain recalc flags set by

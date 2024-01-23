@@ -51,12 +51,6 @@ const EnumPropertyItem rna_enum_keying_flag_items[] = {
      0,
      "Visual Keying",
      "Insert keyframes based on 'visual transforms'"},
-    {INSERTKEY_XYZ2RGB,
-     "INSERTKEY_XYZ_TO_RGB",
-     0,
-     "XYZ=RGB Colors",
-     "Color for newly added transformation F-Curves (Location, Rotation, Scale) "
-     "and also Color is based on the transform axis"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -72,12 +66,6 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
      0,
      "Visual Keying",
      "Insert keyframes based on 'visual transforms'"},
-    {INSERTKEY_XYZ2RGB,
-     "INSERTKEY_XYZ_TO_RGB",
-     0,
-     "XYZ=RGB Colors",
-     "Color for newly added transformation F-Curves (Location, Rotation, Scale) "
-     "and also Color is based on the transform axis"},
     {INSERTKEY_REPLACE,
      "INSERTKEY_REPLACE",
      0,
@@ -99,6 +87,8 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <algorithm>
+
 #  include "BLI_math_base.h"
 
 #  include "BKE_anim_data.h"
@@ -106,8 +96,8 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 #  include "BKE_fcurve.h"
 #  include "BKE_nla.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "DNA_object_types.h"
 
@@ -197,13 +187,12 @@ static bool RKS_POLL_rna_internal(KeyingSetInfo *ksi, bContext *C)
 {
   extern FunctionRNA rna_KeyingSetInfo_poll_func;
 
-  PointerRNA ptr;
   ParameterList list;
   FunctionRNA *func;
   void *ret;
   int ok;
 
-  RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi);
   func = &rna_KeyingSetInfo_poll_func; /* RNA_struct_find_function(&ptr, "poll"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
@@ -229,11 +218,10 @@ static void RKS_ITER_rna_internal(KeyingSetInfo *ksi, bContext *C, KeyingSet *ks
 {
   extern FunctionRNA rna_KeyingSetInfo_iterator_func;
 
-  PointerRNA ptr;
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi);
   func = &rna_KeyingSetInfo_iterator_func; /* RNA_struct_find_function(&ptr, "poll"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
@@ -254,11 +242,10 @@ static void RKS_GEN_rna_internal(KeyingSetInfo *ksi, bContext *C, KeyingSet *ks,
 {
   extern FunctionRNA rna_KeyingSetInfo_generate_func;
 
-  PointerRNA ptr;
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, ksi->rna_ext.srna, ksi);
   func = &rna_KeyingSetInfo_generate_func; /* RNA_struct_find_generate(&ptr, "poll"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
@@ -315,13 +302,12 @@ static StructRNA *rna_KeyingSetInfo_register(Main *bmain,
   const char *error_prefix = "Registering keying set info class:";
   KeyingSetInfo dummy_ksi = {nullptr};
   KeyingSetInfo *ksi;
-  PointerRNA dummy_ksi_ptr = {nullptr};
   bool have_function[3];
 
   /* setup dummy type info to store static properties in */
   /* TODO: perhaps we want to get users to register
    * as if they're using 'KeyingSet' directly instead? */
-  RNA_pointer_create(nullptr, &RNA_KeyingSetInfo, &dummy_ksi, &dummy_ksi_ptr);
+  PointerRNA dummy_ksi_ptr = RNA_pointer_create(nullptr, &RNA_KeyingSetInfo, &dummy_ksi);
 
   /* validate the python class */
   if (validate(&dummy_ksi_ptr, data, have_function) != 0) {
@@ -341,6 +327,13 @@ static StructRNA *rna_KeyingSetInfo_register(Main *bmain,
   /* check if we have registered this info before, and remove it */
   ksi = ANIM_keyingset_info_find_name(dummy_ksi.idname);
   if (ksi) {
+    BKE_reportf(reports,
+                RPT_INFO,
+                "%s '%s', bl_idname '%s' has been registered before, unregistering previous",
+                error_prefix,
+                identifier,
+                dummy_ksi.idname);
+
     StructRNA *srna = ksi->rna_ext.srna;
     if (!(srna && rna_KeyingSetInfo_unregister(bmain, srna))) {
       BKE_reportf(reports,
@@ -468,7 +461,8 @@ static void rna_KeyingSet_name_set(PointerRNA *ptr, const char *value)
            * conflicts
            */
           for (agrp = static_cast<bActionGroup *>(adt->action->groups.first); agrp;
-               agrp = agrp->next) {
+               agrp = agrp->next)
+          {
             if (STREQ(ks->name, agrp->name)) {
               /* there should only be one of these in the action, so can stop... */
               STRNCPY(agrp->name, value);
@@ -511,7 +505,7 @@ static void rna_KeyingSet_active_ksPath_set(PointerRNA *ptr,
 static int rna_KeyingSet_active_ksPath_index_get(PointerRNA *ptr)
 {
   KeyingSet *ks = (KeyingSet *)ptr->data;
-  return MAX2(ks->active_path - 1, 0);
+  return std::max(ks->active_path - 1, 0);
 }
 
 static void rna_KeyingSet_active_ksPath_index_set(PointerRNA *ptr, int value)
@@ -881,17 +875,6 @@ static void rna_def_common_keying_flags(StructRNA *srna, short reg)
     RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
   }
 
-  prop = RNA_def_property(srna, "use_insertkey_override_xyz_to_rgb", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "keyingoverride", INSERTKEY_XYZ2RGB);
-  RNA_def_property_ui_text(
-      prop,
-      "Override F-Curve Colors - XYZ to RGB",
-      "Override default setting to set color for newly added transformation F-Curves "
-      "(Location, Rotation, Scale) to be based on the transform axis");
-  if (reg) {
-    RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-  }
-
   /* value to override defaults with */
   prop = RNA_def_property(srna, "use_insertkey_needed", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "keyingflag", INSERTKEY_NEEDED);
@@ -906,16 +889,6 @@ static void rna_def_common_keying_flags(StructRNA *srna, short reg)
   RNA_def_property_boolean_sdna(prop, nullptr, "keyingflag", INSERTKEY_MATRIX);
   RNA_def_property_ui_text(
       prop, "Insert Keyframes - Visual", "Insert keyframes based on 'visual transforms'");
-  if (reg) {
-    RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-  }
-
-  prop = RNA_def_property(srna, "use_insertkey_xyz_to_rgb", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "keyingflag", INSERTKEY_XYZ2RGB);
-  RNA_def_property_ui_text(prop,
-                           "F-Curve Colors - XYZ to RGB",
-                           "Color for newly added transformation F-Curves (Location, Rotation, "
-                           "Scale) is based on the transform axis");
   if (reg) {
     RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
   }
@@ -1296,7 +1269,7 @@ static void rna_api_animdata_drivers(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  /* PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   RNA_def_property_srna(cprop, "AnimDataDrivers");
   srna = RNA_def_struct(brna, "AnimDataDrivers", nullptr);

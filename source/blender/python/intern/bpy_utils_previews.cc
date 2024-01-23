@@ -28,9 +28,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_thumbs.hh"
 
 #include "BKE_preview_image.hh"
 
@@ -57,14 +57,13 @@ static PyObject *bpy_utils_previews_new(PyObject * /*self*/, PyObject *args)
 {
   char *name;
   PreviewImage *prv;
-  PointerRNA ptr;
 
   if (!PyArg_ParseTuple(args, "s:new", &name)) {
     return nullptr;
   }
 
   prv = BKE_previewimg_cached_ensure(name);
-  RNA_pointer_create(nullptr, &RNA_ImagePreview, prv, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_ImagePreview, prv);
 
   return pyrna_struct_CreatePyObject(&ptr);
 }
@@ -131,8 +130,7 @@ static PyObject *bpy_utils_previews_load(PyObject * /*self*/, PyObject *args)
 
   Py_XDECREF(filepath_data.value_coerce);
 
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, &RNA_ImagePreview, prv, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_ImagePreview, prv);
   return pyrna_struct_CreatePyObject(&ptr);
 }
 
