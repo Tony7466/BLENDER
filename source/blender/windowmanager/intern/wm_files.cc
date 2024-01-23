@@ -62,7 +62,11 @@
 #include "AS_asset_library.h"
 
 #include "BKE_addon.h"
+<<<<<<< HEAD
 #include "BKE_appdir.hh"
+=======
+#include "BKE_appdir.h"
+>>>>>>> 6a5246537f9 (Cleanup: Move `BKE_autoexec.h` to full Cpp header `BKE_autoexec.hh`.)
 #include "BKE_autoexec.hh"
 #include "BKE_blender.h"
 #include "BKE_blender_version.h"
