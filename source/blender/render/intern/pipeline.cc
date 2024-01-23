@@ -1157,17 +1157,23 @@ static bool compositor_needs_render(Scene *sce, const bool this_scene)
 }
 
 /** Returns true if the node tree has a composite output node. */
-static bool node_tree_has_composite_output(bNodeTree *node_tree)
+static bool node_tree_has_composite_output(const bNodeTree *node_tree)
 {
   if (node_tree == nullptr) {
     return false;
   }
 
   for (const bNode *node : node_tree->all_nodes()) {
-    if (node->type == CMP_NODE_COMPOSITE && node->flag & NODE_DO_OUTPUT &&
-        !(node->flag & NODE_MUTED))
-    {
+    if (node->flag & NODE_MUTED) {
+      continue;
+    }
+    if (node->type == CMP_NODE_COMPOSITE && node->flag & NODE_DO_OUTPUT) {
       return true;
+    }
+    if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id) {
+      if (node_tree_has_composite_output(reinterpret_cast<const bNodeTree *>(node->id))) {
+        return true;
+      }
     }
   }
   return false;
