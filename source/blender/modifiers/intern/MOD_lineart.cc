@@ -7,11 +7,6 @@
  */
 
 #include "BLI_math_matrix.h"
-#include "BLI_math_matrix_types.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_string_ref.hh"
-#include "BLI_task.h"
-#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -19,12 +14,8 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_material_types.h"
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_screen_types.h"
 
 #include "BKE_collection.h"
 #include "BKE_context.hh"
@@ -32,13 +23,10 @@
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
-#include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.hh"
-#include "BKE_main.hh"
+#include "BKE_material.h"
 #include "BKE_modifier.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -54,7 +42,6 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 namespace blender {
@@ -207,7 +194,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiItemPointerR(
       col, ptr, "material_filter", &obj_data_ptr, "materials", nullptr, ICON_GREASEPENCIL);
 
-  uiLayout *col = uiLayoutColumn(layout, false);
+  col = uiLayoutColumn(layout, false);
   uiItemR(col, ptr, "thickness", UI_ITEM_R_SLIDER, IFACE_("Line Thickness"), ICON_NONE);
   uiItemR(col, ptr, "opacity", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 
@@ -732,7 +719,7 @@ static void generate_strokes_actual(ModifierData *md,
                                               (void *)lmd->source_collection,
       lmd->level_start,
       lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
-      lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
+      lmd->target_material ? BKE_object_material_index_get(ob, lmd->target_material) : 0,
       lmd->edge_types,
       lmd->mask_switches,
       lmd->material_mask_bits,
@@ -781,7 +768,7 @@ static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob,
   /* New layer and new empty drawing for now. */
 
   gpd.layers_for_write() = {};
-  GreasePencilFrame *frame = got_layer.add_frame(0, 0, 0);
+  got_layer.add_frame(0, 0, 0);
 
   gpd.drawings() = {};
   gpd.add_empty_drawings(1);
@@ -798,41 +785,6 @@ static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob,
      * cache. */
     lmd.cache = gpd.runtime->lineart_cache;
   }
-}
-
-// unused yet
-static int generate_gpencil_strokes(GreasePencil &gp)
-{
-  int vert_num = 2;
-
-  // const int material = ensure_material()
-
-  gp.layers_for_write() = {};
-  bke::greasepencil::Layer &layer = gp.add_layer("New Layer");
-  GreasePencilFrame *frame = layer.add_frame(0, 0, 0);
-
-  gp.drawings() = {};
-  gp.add_empty_drawings(1);
-  bke::greasepencil::Drawing &drawing = *gp.get_editable_drawing_at(layer, 0);
-
-  const Array<float3> positions = {{0, 0, 0}, {1, 1, 1}};
-  const Array<float> radii = {2.0, 1.0};
-  const Array<float> opacities = {0.8, 1.0};
-  const Array<int> offsets = {0, 2};
-  const Array<int> materials = {0};
-  float matrix[4][4];
-  unit_m4(matrix);
-
-  bke::CurvesGeometry const &curves = ed::greasepencil::create_drawing_data(positions.as_span(),
-                                                                            radii.as_span(),
-                                                                            opacities.as_span(),
-                                                                            offsets.as_span(),
-                                                                            materials.as_span(),
-                                                                            float4x4(matrix));
-
-  drawing.strokes_for_write() = curves;
-
-  return 1;
 }
 
 static void modify_geometry_set(ModifierData *md,
