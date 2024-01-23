@@ -3475,7 +3475,7 @@ void OUTLINER_OT_constraint_operation(wmOperatorType *ot)
 static const EnumPropertyItem prop_modifier_op_types[] = {
     {OL_MODIFIER_OP_APPLY, "APPLY", ICON_CHECKMARK, "Apply", ""},
     {OL_MODIFIER_OP_DELETE, "DELETE", ICON_X, "Delete", ""},
-    {0, "", 0, "", ""},
+    RNA_ENUM_ITEM_SEPR,
     {OL_MODIFIER_OP_TOGVIS, "TOGVIS", ICON_RESTRICT_VIEW_OFF, "Toggle Viewport Use", ""},
     {OL_MODIFIER_OP_TOGREN, "TOGREN", ICON_RESTRICT_RENDER_OFF, "Toggle Render Use", ""},
     {0, nullptr, 0, nullptr, nullptr},
