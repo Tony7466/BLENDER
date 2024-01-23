@@ -2172,6 +2172,15 @@ static void draw_bake_data_blocks_panel(const bContext *C,
                    UILST_LAYOUT_DEFAULT,
                    0,
                    UI_TEMPLATE_LIST_FLAG_NONE);
+    {
+      uiLayout *ops_col = uiLayoutColumn(row, false);
+      uiItemStringO(ops_col,
+                    "",
+                    ICON_REMOVE,
+                    "OBJECT_OT_geometry_nodes_modifier_data_block_remove",
+                    "modifier_name",
+                    nmd.modifier.name);
+    }
   }
 
   if (nmd.active_data_block < 0 || nmd.active_data_block >= nmd.data_blocks_num) {

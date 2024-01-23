@@ -16,6 +16,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
+#include "DNA_array_utils.hh"
 #include "DNA_curve_types.h"
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_fluid_types.h"
@@ -3732,6 +3733,7 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 static int geometry_nodes_modifier_data_block_remove_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
+  Main *bmain = CTX_data_main(C);
 
   char modifier_name[MAX_NAME];
   RNA_string_get(op->ptr, "modifier_name", modifier_name);
@@ -3748,7 +3750,22 @@ static int geometry_nodes_modifier_data_block_remove_exec(bContext *C, wmOperato
     return OPERATOR_CANCELLED;
   }
 
-  /* TODO: finish operator */
+  blender::dna::array::remove_index<NodesModifierDataBlock>(
+      &nmd->data_blocks,
+      &nmd->data_blocks_num,
+      &nmd->active_data_block,
+      index_to_remove,
+      [](NodesModifierDataBlock *data_block) {
+        MEM_SAFE_FREE(data_block->id_name);
+        MEM_SAFE_FREE(data_block->lib_name);
+        if (data_block->id) {
+          id_us_min(data_block->id);
+        }
+      });
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
   return OPERATOR_FINISHED;
 }
@@ -3759,7 +3776,7 @@ void OBJECT_OT_geometry_nodes_modifier_data_block_remove(wmOperatorType *ot)
   ot->description = "Remove active data block mapping";
   ot->idname = "OBJECT_OT_geometry_nodes_modifier_data_block_remove";
 
-  ot->exec = geometry_node_tree_copy_assign_exec;
+  ot->exec = geometry_nodes_modifier_data_block_remove_exec;
   ot->poll = ED_operator_object_active;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
