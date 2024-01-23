@@ -823,7 +823,6 @@ void BKE_mesh_eval_delete(Mesh *mesh_eval)
 
 Mesh *BKE_mesh_copy_for_eval(const Mesh *source)
 {
-  BLI_assert(source != nullptr);
   return reinterpret_cast<Mesh *>(
       BKE_id_copy_ex(nullptr, &source->id, nullptr, LIB_ID_COPY_LOCALIZE));
 }

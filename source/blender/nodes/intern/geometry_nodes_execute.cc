@@ -315,10 +315,9 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_ROTATION:
       return property.type == IDP_ARRAY &&
              ELEM(property.subtype, IDP_INT, IDP_FLOAT, IDP_DOUBLE) && property.len == 3;
-    case SOCK_MATRIX: {
+    case SOCK_MATRIX:
       BLI_assert_unreachable();
       break;
-    }
     case SOCK_RGBA:
       return property.type == IDP_ARRAY &&
              ELEM(property.subtype, IDP_INT, IDP_FLOAT, IDP_DOUBLE) && property.len == 4;
@@ -420,10 +419,9 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       new (r_value) bke::SocketValueVariant(math::to_quaternion(euler_value));
       break;
     }
-    case SOCK_MATRIX: {
+    case SOCK_MATRIX:
       BLI_assert_unreachable();
       break;
-    }
     case SOCK_STRING: {
       std::string value = IDP_String(&property);
       new (r_value) bke::SocketValueVariant(std::move(value));

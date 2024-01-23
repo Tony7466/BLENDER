@@ -7,6 +7,7 @@
 #include "DNA_object_types.h"
 
 #include "NOD_rna_define.hh"
+#include "NOD_socket_search_link.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -19,6 +20,13 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Object>("Object").hide_label();
   b.add_output<decl::Matrix>("Transform");
+}
+
+static void search_link_ops(GatherLinkSearchOpParams &params)
+{
+  if (U.experimental.use_new_matrix_socket) {
+    nodes::search_link_ops_for_basic_node(params);
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -73,8 +81,9 @@ static void node_register()
 {
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_OBJECT_TRANSFORM, "Object Transform", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.gather_link_search_ops = search_link_ops;
+  ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 

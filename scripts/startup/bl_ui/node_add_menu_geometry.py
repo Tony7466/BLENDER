@@ -293,7 +293,8 @@ class NODE_MT_geometry_node_GEO_INPUT_SCENE(Menu):
         if context.preferences.experimental.use_grease_pencil_version3:
             node_add_menu.add_node_type(layout, "GeometryNodeInputNamedLayerSelection")
         node_add_menu.add_node_type(layout, "GeometryNodeObjectInfo")
-        node_add_menu.add_node_type(layout, "GeometryNodeObjectTransform")
+        if context.preferences.experimental.use_new_matrix_socket:
+            node_add_menu.add_node_type(layout, "GeometryNodeObjectTransform")
         node_add_menu.add_node_type(layout, "GeometryNodeInputSceneTime")
         node_add_menu.add_node_type(layout, "GeometryNodeSelfObject")
         node_add_menu.draw_assets_for_catalog(layout, "Input/Scene")
@@ -534,7 +535,7 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
     bl_idname = "NODE_MT_category_GEO_UTILITIES"
     bl_label = "Utilities"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         layout.menu("NODE_MT_geometry_node_GEO_COLOR")
         layout.menu("NODE_MT_category_GEO_TEXT")
@@ -542,7 +543,8 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_GEO_UTILITIES_FIELD")
         layout.menu("NODE_MT_category_GEO_UTILITIES_MATH")
-        layout.menu("NODE_MT_category_utilities_matrix")
+        if context.preferences.experimental.use_new_matrix_socket:
+            layout.menu("NODE_MT_category_utilities_matrix")
         layout.menu("NODE_MT_category_GEO_UTILITIES_ROTATION")
         layout.separator()
         node_add_menu.add_node_type(layout, "FunctionNodeRandomValue")

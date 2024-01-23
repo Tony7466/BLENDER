@@ -288,6 +288,8 @@ void *SocketValueVariant::allocate_single(const eNodeSocketDatatype socket_type)
       return value_.allocate<bool>();
     case SOCK_ROTATION:
       return value_.allocate<math::Quaternion>();
+    case SOCK_MATRIX:
+      return value_.allocate<float4x4>();
     case SOCK_RGBA:
       return value_.allocate<ColorGeometry4f>();
     case SOCK_STRING:
