@@ -528,7 +528,7 @@ static void viewRedrawPost(bContext *C, TransInfo *t)
   ED_area_status_text(t->area, nullptr);
 
   if (t->spacetype == SPACE_VIEW3D) {
-    /* if autokeying is enabled, send notifiers that keyframes were added */
+    /* If auto-keying is enabled, send notifiers that keyframes were added. */
     if (blender::animrig::is_autokey_on(t->scene)) {
       WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }
@@ -558,11 +558,8 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
     if (value == TFM_MODAL_EDIT_SNAP_SOURCE_OFF) {
       return true;
     }
-    else if (!ELEM(value,
-                   TFM_MODAL_CANCEL,
-                   TFM_MODAL_CONFIRM,
-                   TFM_MODAL_ADD_SNAP,
-                   TFM_MODAL_REMOVE_SNAP))
+    if (!ELEM(
+            value, TFM_MODAL_CANCEL, TFM_MODAL_CONFIRM, TFM_MODAL_ADD_SNAP, TFM_MODAL_REMOVE_SNAP))
     {
       return false;
     }
@@ -1507,8 +1504,10 @@ static void drawTransformView(const bContext * /*C*/, ARegion *region, void *arg
   }
 }
 
-/* just draw a little warning message in the top-right corner of the viewport
- * to warn that autokeying is enabled */
+/**
+ * Just draw a little warning message in the top-right corner of the viewport
+ * to warn that auto-keying is enabled.
+ */
 static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
 {
   const char *printable = IFACE_("Auto Keying On");
@@ -1592,7 +1591,7 @@ static void drawTransformPixel(const bContext * /*C*/, ARegion *region, void *ar
      *   for objects that will be auto-keyframed (no point otherwise),
      *   AND only for the active region (as showing all is too overwhelming)
      */
-    if ((U.autokey_flag & AUTOKEY_FLAG_NOWARNING) == 0) {
+    if ((U.keying_flag & AUTOKEY_FLAG_NOWARNING) == 0) {
       if (region == t->region) {
         if (t->options & (CTX_OBJECT | CTX_POSE_BONE)) {
           if (ob && blender::animrig::autokeyframe_cfra_can_key(scene, &ob->id)) {

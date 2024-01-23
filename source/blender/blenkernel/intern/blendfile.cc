@@ -24,14 +24,13 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "PIL_time.h"
-
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender.h"
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.hh"
@@ -39,13 +38,13 @@
 #include "BKE_colorband.hh"
 #include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_ipo.h"
 #include "BKE_keyconfig.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_main_idmap.hh"
@@ -374,8 +373,8 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
   }
 
   FOREACH_MAIN_LISTBASE_ID_BEGIN (new_lb, reused_id_iter) {
-    /* Necessary as all `session_uuid` are renewed on blendfile loading. */
-    BKE_lib_libblock_session_uuid_renew(reused_id_iter);
+    /* Necessary as all `session_uid` are renewed on blendfile loading. */
+    BKE_lib_libblock_session_uid_renew(reused_id_iter);
 
     /* Ensure that the reused ID is remapped to itself, since it is known to be in the `new_bmain`.
      */
@@ -942,7 +941,7 @@ static void setup_app_data(bContext *C,
   BLI_assert(BKE_main_namemap_validate(bmain));
 
   if (mode != LOAD_UNDO && !USER_EXPERIMENTAL_TEST(&U, no_override_auto_resync)) {
-    reports->duration.lib_overrides_resync = PIL_check_seconds_timer();
+    reports->duration.lib_overrides_resync = BLI_check_seconds_timer();
 
     BKE_lib_override_library_main_resync(
         bmain,
@@ -950,7 +949,7 @@ static void setup_app_data(bContext *C,
         bfd->cur_view_layer ? bfd->cur_view_layer : BKE_view_layer_default_view(curscene),
         reports);
 
-    reports->duration.lib_overrides_resync = PIL_check_seconds_timer() -
+    reports->duration.lib_overrides_resync = BLI_check_seconds_timer() -
                                              reports->duration.lib_overrides_resync;
 
     /* We need to rebuild some of the deleted override rules (for UI feedback purpose). */
