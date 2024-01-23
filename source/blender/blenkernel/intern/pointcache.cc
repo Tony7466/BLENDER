@@ -3350,7 +3350,6 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
   }
 
   /* clear baking flag */
-  PTCacheID pid_eval;
   if (pid && cache) {
     cache->flag &= ~(PTCACHE_BAKING | PTCACHE_REDO_NEEDED);
     cache->flag |= PTCACHE_SIMULATION_VALID;
@@ -3361,8 +3360,8 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
         if (pid->type == PTCACHE_TYPE_PARTICLES) {
           /* Since writing this from outside the bake job, make sure the ParticleSystem and
            * PTCacheID is in a fully evaluated state. */
-          ID *id = pid->owner_id;
-          Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
+          PTCacheID pid_eval;
+          Object *ob = reinterpret_cast<Object *>(pid->owner_id);
           Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
           ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
           ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
@@ -3404,8 +3403,8 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
             if (pid->type == PTCACHE_TYPE_PARTICLES) {
               /* Since writing this from outside the bake job, make sure the ParticleSystem and
                * PTCacheID is in a fully evaluated state. */
-              ID *id = pid->owner_id;
-              Object *ob = (GS(id->name) == ID_OB) ? reinterpret_cast<Object *>(id) : nullptr;
+              PTCacheID pid_eval;
+              Object *ob = reinterpret_cast<Object *>(pid->owner_id);
               Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
               ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
               ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
