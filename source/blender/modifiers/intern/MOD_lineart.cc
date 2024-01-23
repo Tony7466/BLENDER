@@ -31,12 +31,12 @@
 #include "BKE_global.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_query.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_main.hh"
 #include "BKE_screen.hh"
 
@@ -206,12 +206,14 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   /* Material has to be used by grease pencil object already, it was possible to assign materials
    * without this requirement in earlier versions of blender. */
+
+  /* TODO: use properties similar to new material filtering. */
   bool material_valid = false;
   PointerRNA material_ptr = RNA_pointer_get(ptr, "target_material");
   if (!RNA_pointer_is_null(&material_ptr)) {
     Material *current_material = static_cast<Material *>(material_ptr.data);
     Object *ob = static_cast<Object *>(ob_ptr.data);
-    material_valid = BKE_grease_pencil_object_material_index_get(ob, current_material) != -1;
+    material_valid = BKE_grease_pencil_object_material_index_get_by_name(ob, current_material->id.name) != -1;
   }
   uiLayout *row = uiLayoutRow(layout, true);
   uiLayoutSetRedAlert(row, !material_valid);
@@ -814,7 +816,7 @@ static void generate_strokes(ModifierData *md, Depsgraph *depsgraph, Object *ob,
 
   gpd->drawings()={};
   gpd->add_empty_drawings(1);
-  blender::bke::greasepencil::Drawing &drawing=*gpd->get_editable_drawing_at(&layer,0);
+  blender::bke::greasepencil::Drawing &drawing=*gpd->get_editable_drawing_at(layer,0);
 
   generate_strokes_actual(md, depsgraph, ob, drawing);
 
@@ -841,7 +843,7 @@ static int generate_gpencil_strokes(GreasePencil &gp){
 
     gp.drawings()={};
     gp.add_empty_drawings(1);
-    blender::bke::greasepencil::Drawing &drawing=*gp.get_editable_drawing_at(&layer,0);
+    blender::bke::greasepencil::Drawing &drawing=*gp.get_editable_drawing_at(layer,0);
     
     const blender::Array<blender::float3> positions={{0,0,0},{1,1,1}};
     const blender::Array<float> radii={2.0,1.0};

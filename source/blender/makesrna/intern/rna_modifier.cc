@@ -10,6 +10,8 @@
 #include <climits>
 #include <cstdlib>
 
+#include "BLI_math_base.hh"
+
 #include "DNA_armature_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_lineart_types.h"
@@ -1741,7 +1743,7 @@ static void rna_Lineart_start_level_set(PointerRNA *ptr, int value)
 
   CLAMP(value, 0, 128);
   lmd->level_start = value;
-  lmd->level_end = MAX2(value, lmd->level_end);
+  lmd->level_end = blender::math::max(value, int(lmd->level_end));
 }
 
 static void rna_Lineart_end_level_set(PointerRNA *ptr, int value)
@@ -1750,7 +1752,7 @@ static void rna_Lineart_end_level_set(PointerRNA *ptr, int value)
 
   CLAMP(value, 0, 128);
   lmd->level_end = value;
-  lmd->level_start = MIN2(value, lmd->level_start);
+  lmd->level_start = blender::math::min(value, int(lmd->level_start));
 }
 
 static const NodesModifierData *find_nodes_modifier_by_bake(const Object &object,
