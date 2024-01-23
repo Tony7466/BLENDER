@@ -1288,11 +1288,8 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
     std::string source = workaround_geometry_shader_source_create(*info);
     Vector<const char *> sources;
     sources.append("version");
+    sources.append("/* Specialization Constants. */\n");
     sources.append(source.c_str());
-    if (!constants.types.is_empty()) {
-      geometry_sources_ = sources;
-    }
-
     geometry_shader_from_glsl(sources);
   }
 
@@ -1540,6 +1537,7 @@ bool GLShader::program_link()
 
   GLint status;
   glGetProgramiv(program_id, GL_LINK_STATUS, &status);
+  # if 0
   if (!status) {
     char log[5000];
     glGetProgramInfoLog(program_id, sizeof(log), nullptr, log);
@@ -1547,6 +1545,7 @@ bool GLShader::program_link()
     GLLogParser parser;
     print_log(sources, log, "Linking", true, &parser);
   }
+  #endif
 
   return bool(status);
 }
