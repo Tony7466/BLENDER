@@ -15,6 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -440,7 +441,7 @@ bool BKE_id_supports_vertex_groups(const ID *id)
   if (id == nullptr) {
     return false;
   }
-  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD_LEGACY);
+  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD_LEGACY, ID_GP);
 }
 
 bool BKE_object_supports_vertex_groups(const Object *ob)
@@ -465,6 +466,10 @@ const ListBase *BKE_id_defgroup_list_get(const ID *id)
       const bGPdata *gpd = (const bGPdata *)id;
       return &gpd->vertex_group_names;
     }
+    case ID_GP: {
+      const GreasePencil *grease_pencil = (const GreasePencil *)id;
+      return &grease_pencil->vertex_group_names;
+    }
     default: {
       BLI_assert_unreachable();
     }
@@ -487,6 +492,10 @@ static const int *object_defgroup_active_index_get_p(const Object *ob)
     case OB_GPENCIL_LEGACY: {
       const bGPdata *gpd = (const bGPdata *)ob->data;
       return &gpd->vertex_group_active_index;
+    }
+    case OB_GREASE_PENCIL: {
+      const GreasePencil *grease_pencil = (const GreasePencil *)ob->data;
+      return &grease_pencil->vertex_group_active_index;
     }
   }
   return nullptr;

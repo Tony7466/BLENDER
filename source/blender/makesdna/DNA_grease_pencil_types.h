@@ -429,10 +429,17 @@ typedef struct GreasePencil {
   struct Material **material_array;
   short material_array_num;
   char _pad3[2];
+
   /**
    * Global flag on the data-block.
    */
   uint32_t flag;
+
+  /** Vertex groups combined from layers (bDeformGroup). */
+  ListBase vertex_group_names;
+  int vertex_group_active_index;
+  char _pad4[4];
+
   /**
    * Onion skinning settings.
    */
