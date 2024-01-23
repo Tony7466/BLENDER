@@ -164,9 +164,9 @@ void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
 
     /* Small vertical padding. */
     const short line_padding = UI_UNIT_Y / 4.0f / aspect;
-    const float x = first_child_rect.xmin +
-                    ((first_descendant->indent_width() - (6.0f * UI_SCALE_FAC)) / aspect);
-
+    const float x = first_child_rect.xmin + ((first_descendant->indent_width() -
+                                              (0.5f * UI_ICON_SIZE) + U.pixelsize + UI_SCALE_FAC) /
+                                             aspect);
     immBegin(GPU_PRIM_LINES, 2);
     immVertex2f(pos, x, first_child_rect.ymax - line_padding);
     immVertex2f(pos, x, last_child_rect.ymin + line_padding);
