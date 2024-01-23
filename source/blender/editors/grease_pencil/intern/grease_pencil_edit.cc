@@ -520,10 +520,6 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     return true;
   });
   array_utils::copy(cyclic.as_span(), curves.cyclic_for_write());
-
-  curves.remove_attributes_based_on_types();
-
-  return;
 }
 
 static int grease_pencil_stroke_split_exec(bContext *C, wmOperator * /*op*/)
@@ -533,14 +529,12 @@ static int grease_pencil_stroke_split_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const blender::bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
-
   std::atomic<bool> changed = false;
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
-    const IndexMask mask = ed::greasepencil::retrieve_editable_and_selected_elements(
-        *object, info.drawing, blender::bke::AttrDomain::Point, memory);
+    const IndexMask mask = ed::greasepencil::retrieve_editable_and_selected_points(
+        *object, info.drawing, memory);
     if (mask.is_empty()) {
       return;
     }
@@ -567,7 +561,7 @@ static void GREASE_PENCIL_OT_stroke_split(wmOperatorType* ot)
 
   /* callbacks */
   ot->exec = grease_pencil_stroke_split_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = editable_grease_pencil_point_selection_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
