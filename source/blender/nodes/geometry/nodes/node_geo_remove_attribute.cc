@@ -4,7 +4,10 @@
 
 #include "node_geometry_util.hh"
 
+#include "NOD_rna_define.hh"
+
 #include "NOD_socket_search_link.hh"
+#include "UI_interface.hh"
 
 #include <fmt/format.h>
 #include <regex>
@@ -25,15 +28,16 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   const std::string name = params.extract_input<std::string>("Name");
-  //const bool use_regex = params.extract_input<bool>("Regex");
-  //const bool keep_matching = params.extract_input<bool>("Regex");
 
   const NodeGeometryRemoveNamedAttribute &storage = node_storage(params.node());
-  const GeometryNodeRemoveNamedAttributeMode mode = (GeometryNodeRemoveNamedAttributeMode)storage.mode;
-  const bool use_regex = (mode != GEO_NODE_REMOVE_NAMED_ATTRIBUTE_EXACT);
+  const GeometryNodeRemoveNamedAttributeMode mode = (GeometryNodeRemoveNamedAttributeMode)
+                                                        storage.mode;
+  const bool use_regex = (mode == GEO_NODE_REMOVE_NAMED_ATTRIBUTE_REGEX) ||
+                         (mode == GEO_NODE_REMOVE_NAMED_ATTRIBUTE_INV_REGEX);
   const bool inv_regex = (mode == GEO_NODE_REMOVE_NAMED_ATTRIBUTE_INV_REGEX);
+  const bool all_trivial = (mode == GEO_NODE_REMOVE_NAMED_ATTRIBUTE_TRIVIAL);
 
-  if (name.empty()) {
+  if (name.empty() && !all_trivial) {
     params.set_output("Geometry", std::move(geometry_set));
     return;
   }
@@ -50,11 +54,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   std::set<std::string> kept_attrs;
 
   std::regex matcher;
-  if(use_regex) {
+  if (use_regex) {
     try {
       matcher = std::regex(name);
     }
-    catch(std::regex_error& e) {
+    catch (std::regex_error &e) {
       const std::string message = std::string(TIP_("Invalid regex: ")) + TIP_(e.what());
       params.error_message_add(NodeWarningType::Warning, message);
       params.set_output("Geometry", std::move(geometry_set));
@@ -77,8 +81,8 @@ static void node_geo_exec(GeoNodeExecParams params)
           /* Can't keep attrs as AttributeIDRef, because deleting any attribute would
            * invalidate all outstanding AttributeIDRef's from the same component */
           std::set<std::string> attrs;
-          for(auto key: read_only_component.attributes()->all_ids())
-            if(!key.is_anonymous())
+          for (auto key : read_only_component.attributes()->all_ids())
+            if (!key.is_anonymous())
               attrs.insert(key.name());
 
           bool exists_in_component = false;
@@ -109,6 +113,63 @@ static void node_geo_exec(GeoNodeExecParams params)
             }
           }
         }
+        else if (all_trivial) {
+          std::set<std::string> attrs;
+          for (auto key : read_only_component.attributes()->all_ids())
+            if (!key.is_anonymous())
+              attrs.insert(key.name());
+
+          GeometryComponent &component = geometry_set.get_component_for_write(type);
+          for (auto key : attrs) {
+            auto metadata = component.attributes()->lookup_meta_data(key);
+            if (!metadata) {
+              continue;
+            }
+            eCustomDataType type = metadata->data_type;
+            GVArray &array = *(component.attributes()->lookup(key));
+            if (array.is_empty()) {
+              continue;
+            }
+            if (type == CD_PROP_FLOAT) {
+              auto arr = array.typed<float>();
+              bool trivial = true;
+              for (auto i = 0; i < arr.size(); i++) {
+                if (arr[i] != 0.0f) {
+                  trivial = false;
+                  break;
+                }
+              }
+              if (!trivial)
+                continue;
+            }
+            else if (type == CD_PROP_FLOAT3) {
+              auto arr = array.typed<float3>();
+              bool trivial = true;
+              for (auto i = 0; i < arr.size(); i++) {
+                if (arr[i] != float3(0.0f, 0.0f, 0.0f)) {
+                  trivial = false;
+                  break;
+                }
+              }
+              if (!trivial)
+                continue;
+            }
+            else {
+              continue;
+            }
+            if (!component.attributes_for_write()->remove(key)) {
+              cannot_delete = true;
+              m.lock();
+              kept_attrs.emplace(key);
+              m.unlock();
+            }
+            else {
+              m.lock();
+              deleted_attrs.emplace(key);
+              m.unlock();
+            }
+          }
+        }
         else {
           if (read_only_component.attributes()->contains(name)) {
             attribute_exists = true;
@@ -126,7 +187,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
   });
 
-  if (use_regex) {
+  if (use_regex || all_trivial) {
     for (auto attr : deleted_attrs) {
       if (kept_attrs.find(attr) == kept_attrs.end())
         params.used_named_attribute(attr, NamedAttributeUsage::Remove);
@@ -169,6 +230,12 @@ static void node_rna(StructRNA *srna)
        0,
        "Inverse regex",
        "Remove all attributes not matching the regular expression"},
+      {GEO_NODE_REMOVE_NAMED_ATTRIBUTE_TRIVIAL,
+       "TRIVIAL",
+       0,
+       "Trivial",
+       "Remove all named float and vector attributes with null content ('name' parameter "
+       "ignored)"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -204,8 +271,10 @@ static void node_register()
   bke::node_type_size(&ntype, 170, 100, 700);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  node_type_storage(
-      &ntype, "NodeGeometryRemoveNamedAttribute", node_free_standard_storage, node_copy_standard_storage);
+  node_type_storage(&ntype,
+                    "NodeGeometryRemoveNamedAttribute",
+                    node_free_standard_storage,
+                    node_copy_standard_storage);
   ntype.initfunc = node_init;
 
   nodeRegisterType(&ntype);
