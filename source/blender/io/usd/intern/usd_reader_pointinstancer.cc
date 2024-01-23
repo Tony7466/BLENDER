@@ -178,7 +178,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
   bNode *instance_on_points_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_INSTANCE_ON_POINTS);
   instance_on_points_node->locx = 300.0f;
   bNodeSocket *socket = nodeFindSocket(instance_on_points_node, SOCK_IN, "Pick Instance");
-  ((bNodeSocketValueBoolean *)socket->default_value)->value = true;
+  socket->default_value_typed<bNodeSocketValueBoolean>()->value = true;
 
   bNode *mask_attrib_node = add_input_named_attrib_node(ntree, "mask", CD_PROP_BOOL);
   mask_attrib_node->locx = 100.0f;
@@ -188,7 +188,7 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
   collection_info_node->locx = 100.0f;
   collection_info_node->locy = -300.0f;
   socket = nodeFindSocket(collection_info_node, SOCK_IN, "Separate Children");
-  ((bNodeSocketValueBoolean *)socket->default_value)->value = true;
+  socket->default_value_typed<bNodeSocketValueBoolean>()->value = true;
 
   bNode *indices_attrib_node = add_input_named_attrib_node(ntree, "proto_index", CD_PROP_INT32);
   indices_attrib_node->locx = 100.0f;
