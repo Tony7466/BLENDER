@@ -230,7 +230,7 @@ static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
   radii.finish();
 }
 
-/** Offset proportional to stroke index. */
+/** Offset proportional to material index. */
 static void modify_stroke_by_material(Object &ob,
                                       const GreasePencilOffsetModifierData &omd,
                                       bke::CurvesGeometry &curves,
@@ -265,7 +265,7 @@ static void modify_stroke_by_material(Object &ob,
   radii.finish();
 }
 
-/** Offset proportional to stroke index. */
+/** Offset proportional to layer index. */
 static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
                                    const int layer_index,
                                    const int layers_num,
