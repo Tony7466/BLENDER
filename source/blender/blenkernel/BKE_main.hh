@@ -143,14 +143,12 @@ struct Main {
   bool has_forward_compatibility_issues;
 
   /**
-   * The currently opened .blend file was 'partial-written' (it does not contain some typical data
-   * required for a complete normal blendfile, like a current screen and current scene...).
+   * The currently opened .blend file was created as an asset library storage.
    *
-   * This is used to warn the user when they try to save it from Blender UI, since they are likely
-   * overwriting a file generated (and potentially managed) by some tool, e.g. some asset library
-   * file.
+   * This is used to warn the user when they try to save it from Blender UI, since this will likely
+   * break the automatic management from the asset library system.
    */
-  bool is_data_only;
+  bool is_asset_repository;
 
   /** Commit timestamp from `buildinfo`. */
   uint64_t build_commit_timestamp;

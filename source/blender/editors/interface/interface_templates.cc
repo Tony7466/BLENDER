@@ -6579,12 +6579,12 @@ static void ui_template_status_info_warnings_messages(Main *bmain,
     tooltip_message += fmt::format(RPT_("File saved by newer Blender\n({}), expect loss of data"),
                                    writer_ver_str);
   }
-  if (bmain->is_data_only) {
+  if (bmain->is_asset_repository) {
     if (!tooltip_message.empty()) {
       tooltip_message += "\n\n";
     }
     tooltip_message += RPT_(
-        "Not a regular Blender file, overwriting it\nmay break its handling by tools like the "
+        "This is an Asset Library Blender file, overwriting it\nmay break its handling by the "
         "Assets system");
   }
 

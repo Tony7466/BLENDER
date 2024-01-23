@@ -853,7 +853,9 @@ static void setup_app_data(bContext *C,
    * nullptr curscreen)... */
   else if (ELEM(nullptr, bfd->curscreen, bfd->curscene)) {
     BKE_report(reports->reports, RPT_WARNING, "Library file, loading empty scene");
-    bfd->main->is_data_only = true;
+    if (blender::StringRefNull(bfd->main->filepath).endswith(BLENDER_ASSET_FILE_SUFFIX)) {
+      bfd->main->is_asset_repository = true;
+    }
     mode = LOAD_UI_OFF;
   }
   else if (G.fileflags & G_FILE_NO_UI) {
