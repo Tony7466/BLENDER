@@ -339,10 +339,7 @@ void BKE_object_where_is_calc_mat4(Object *ob, float r_obmat[4][4]);
 
 /* Possibly belong in own module? */
 
-BoundBox *BKE_boundbox_alloc_unit();
 void BKE_boundbox_init_from_minmax(BoundBox *bb, const float min[3], const float max[3]);
-void BKE_boundbox_calc_center_aabb(const BoundBox *bb, float r_cent[3]);
-void BKE_boundbox_calc_size_aabb(const BoundBox *bb, float r_size[3]);
 void BKE_boundbox_minmax(const BoundBox *bb,
                          const float obmat[4][4],
                          float r_min[3],
@@ -688,7 +685,7 @@ Curve *BKE_object_to_curve(Object *object, Depsgraph *depsgraph, bool apply_modi
 
 void BKE_object_to_curve_clear(Object *object);
 
-void BKE_object_check_uuids_unique_and_report(const Object *object);
+void BKE_object_check_uids_unique_and_report(const Object *object);
 
 /**
  * Return the last subsurf modifier of an object, this does not check whether modifiers on top of

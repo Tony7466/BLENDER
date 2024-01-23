@@ -5,8 +5,8 @@
 /** \file
  * \ingroup wm
  */
-#include "wm_platform_support.h"
-#include "wm_window_private.h"
+#include "wm_platform_support.hh"
+#include "wm_window_private.hh"
 
 #include <cstring>
 
@@ -19,7 +19,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_global.h"
 
 #include "GPU_platform.h"

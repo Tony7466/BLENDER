@@ -10,6 +10,7 @@
  * collections/objects/object-data in current scene.
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
@@ -35,12 +36,12 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
@@ -50,7 +51,7 @@
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 
-#include "BKE_blendfile_link_append.h"
+#include "BKE_blendfile_link_append.hh"
 
 #include "BLO_readfile.h"
 #include "BLO_writefile.hh"
@@ -224,7 +225,8 @@ void BKE_blendfile_link_append_context_free(BlendfileLinkAppendContext *lapp_con
   }
 
   for (LinkNode *liblink = lapp_context->libraries.list; liblink != nullptr;
-       liblink = liblink->next) {
+       liblink = liblink->next)
+  {
     BlendfileLinkAppendContextLibrary *lib_context =
         static_cast<BlendfileLinkAppendContextLibrary *>(liblink->link);
     link_append_context_library_blohandle_release(lapp_context, lib_context);
@@ -465,7 +467,8 @@ static bool object_in_any_collection(Main *bmain, Object *ob)
 
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
     if (scene->master_collection != nullptr &&
-        BKE_collection_has_object(scene->master_collection, ob)) {
+        BKE_collection_has_object(scene->master_collection, ob))
+    {
       return true;
     }
   }
@@ -1654,7 +1657,7 @@ static void blendfile_library_relocate_remap(Main *bmain,
       old_id->name[dot_pos] = '~';
     }
     else {
-      len = MIN2(len, MAX_ID_NAME - 7);
+      len = std::min<size_t>(len, MAX_ID_NAME - 7);
       BLI_strncpy(&old_id->name[len], "~000", 7);
     }
 
@@ -1900,7 +1903,8 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
     if (ID_IS_LINKED(id) || !ID_IS_OVERRIDE_LIBRARY_REAL(id) ||
-        (id->tag & LIB_TAG_PRE_EXISTING) == 0) {
+        (id->tag & LIB_TAG_PRE_EXISTING) == 0)
+    {
       continue;
     }
     if ((id->override_library->reference->tag & LIB_TAG_MISSING) == 0) {

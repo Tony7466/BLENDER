@@ -30,6 +30,7 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_fcurve_driver.h"
+#include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_main.hh"
 #include "BKE_report.h"
@@ -222,7 +223,8 @@ static void joined_armature_fix_links(
 
   /* let's go through all objects in database */
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     /* do some object-type specific things */
     if (ob->type == OB_ARMATURE) {
       pose = ob->pose;
@@ -254,6 +256,50 @@ static void joined_armature_fix_links(
       DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_COPY_ON_WRITE);
     }
   }
+}
+
+static BoneCollection *join_armature_remap_collection(
+    const bArmature *src_arm,
+    const int src_index,
+    bArmature *dest_arm,
+    blender::Map<std::string, BoneCollection *> &bone_collection_by_name)
+{
+  using namespace blender::animrig;
+  const BoneCollection *bcoll = src_arm->collection_array[src_index];
+
+  /* Check if already remapped. */
+  BoneCollection *mapped = bone_collection_by_name.lookup_default(bcoll->name, nullptr);
+
+  if (mapped) {
+    return mapped;
+  }
+
+  /* Remap the parent collection if necessary. */
+  const int src_parent_index = armature_bonecoll_find_parent_index(src_arm, src_index);
+  int parent_index = -1;
+
+  if (src_parent_index >= 0) {
+    BoneCollection *mapped_parent = join_armature_remap_collection(
+        src_arm, src_parent_index, dest_arm, bone_collection_by_name);
+
+    if (mapped_parent) {
+      parent_index = armature_bonecoll_find_index(dest_arm, mapped_parent);
+    }
+  }
+
+  /* Create the new collection instance. */
+  BoneCollection *new_bcoll = ANIM_armature_bonecoll_new(dest_arm, bcoll->name, parent_index);
+
+  /* Copy collection visibility. */
+  new_bcoll->flags = bcoll->flags;
+
+  /* Copy custom properties. */
+  if (bcoll->prop) {
+    new_bcoll->prop = IDP_CopyProperty_ex(bcoll->prop, 0);
+  }
+
+  bone_collection_by_name.add(bcoll->name, new_bcoll);
+  return new_bcoll;
 }
 
 int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
@@ -329,21 +375,12 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
       /* Make a list of edit-bones in current armature */
       ED_armature_to_edit(curarm);
 
-      /* Move new bone collections, and store their remapping info.
-       * TODO: armatures can potentially have multiple users, so these should
-       * actually be copied, not moved.  However, the armature join code is
-       * already broken in that situation.  When that gets fixed, this should
-       * also get fixed.  Note that copying the collections should include
-       * copying their custom properties. (Nathan Vegdahl) */
-      for (BoneCollection *bcoll : curarm->collections_span()) {
-        BoneCollection *mapped = bone_collection_by_name.lookup_default(bcoll->name, nullptr);
-        if (!mapped) {
-          BoneCollection *new_bcoll = ANIM_armature_bonecoll_new(arm, bcoll->name);
-          bone_collection_by_name.add(bcoll->name, new_bcoll);
-          mapped = new_bcoll;
-        }
+      /* Copy new bone collections, and store their remapping info. */
+      for (int i = 0; i < curarm->collection_array_num; i++) {
+        BoneCollection *mapped = join_armature_remap_collection(
+            curarm, i, arm, bone_collection_by_name);
 
-        bone_collection_remap.add(bcoll, mapped);
+        bone_collection_remap.add(curarm->collection_array[i], mapped);
       }
 
       /* Get Pose of current armature */
@@ -464,6 +501,9 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
   ED_armature_from_edit(bmain, arm);
   ED_armature_edit_free(arm);
 
+  /* Make sure to recompute bone collection visibility. */
+  ANIM_armature_runtime_refresh(arm);
+
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
@@ -489,7 +529,8 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
 
   /* let's go through all objects in database */
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     /* do some object-type specific things */
     if (ob->type == OB_ARMATURE) {
       LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
