@@ -4083,10 +4083,7 @@ static bool can_read_node_type(const int type)
 
 static void node_replace_undefined_types(bNode *node)
 {
-  /* If the integer type is unknown then this is a node from a newer Blender version.
-   * These cannot be read reliably so replace the idname with an undefined type. This keeps links
-   * and socket names but discards storage and other type-specific data.
-   */
+  /* If the integer type is unknown then this node cannot be read. */
   if (!can_read_node_type(node->type)) {
     node->type = NODE_CUSTOM;
     /* This type name is arbitrary, it just has to be unique enough to not match a future node
@@ -4099,7 +4096,11 @@ static void node_replace_undefined_types(bNode *node)
 
 void ntreeUpdateAllNew(Main *main)
 {
-  /* Replace all nodes with unknown types after versioning. */
+  /* Replace unknown node types with "Undefined".
+   * This happens when loading files from newer Blender versions.
+   * Such nodes cannot be read reliably so replace the idname with an undefined type.
+   * This keeps links and socket names but discards storage and other type-specific data.
+   */
   FOREACH_NODETREE_BEGIN (main, ntree, owner_id) {
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       node_replace_undefined_types(node);
