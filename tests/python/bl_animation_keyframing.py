@@ -290,6 +290,7 @@ class AutoKeyframingTest(AbstractKeyframingTest, unittest.TestCase):
         bpy.context.scene.tool_settings.use_keyframe_insert_auto = True
         bpy.context.preferences.edit.use_keyframe_insert_available = False
         bpy.context.preferences.edit.use_keyframe_insert_needed = False
+        bpy.context.preferences.edit.use_auto_keyframe_insert_needed = False
 
     def tearDown(self):
         super().tearDown()
@@ -325,6 +326,7 @@ class InsertAvailableTest(AbstractKeyframingTest, unittest.TestCase):
         bpy.context.scene.tool_settings.use_keyframe_insert_auto = True
         bpy.context.preferences.edit.use_keyframe_insert_available = True
         bpy.context.preferences.edit.use_keyframe_insert_needed = False
+        bpy.context.preferences.edit.use_auto_keyframe_insert_needed = False
 
     def tearDown(self):
         super().tearDown()
@@ -419,12 +421,14 @@ class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
         super().setUp()
         bpy.context.scene.tool_settings.use_keyframe_insert_auto = True
         bpy.context.preferences.edit.use_keyframe_insert_needed = True
+        bpy.context.preferences.edit.use_auto_keyframe_insert_needed = True
         bpy.context.preferences.edit.use_keyframe_insert_available = False
 
     def tearDown(self):
         super().tearDown()
         bpy.context.scene.tool_settings.use_keyframe_insert_auto = False
         bpy.context.preferences.edit.use_keyframe_insert_needed = False
+        bpy.context.preferences.edit.use_auto_keyframe_insert_needed = False
 
     def test_insert_needed_object(self):
         keyed_object = _create_animation_object()

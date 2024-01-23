@@ -1565,7 +1565,7 @@ static NodesModifierData *get_modifier_data(Main &bmain,
     return nullptr;
   }
 
-  const Object *object = (Object *)BKE_libblock_find_session_uuid(
+  const Object *object = (Object *)BKE_libblock_find_session_uid(
       &bmain, ID_OB, data.object_session_uid);
   if (object == nullptr) {
     return nullptr;
@@ -1702,7 +1702,7 @@ static void add_attribute_search_button(const bContext &C,
   }
 
   AttributeSearchData *data = MEM_new<AttributeSearchData>(__func__);
-  data->object_session_uid = object->id.session_uuid;
+  data->object_session_uid = object->id.session_uid;
   STRNCPY(data->modifier_name, nmd.modifier.name);
   STRNCPY(data->socket_identifier, socket.identifier);
   data->is_output = is_output;
@@ -2294,4 +2294,5 @@ ModifierTypeInfo modifierType_Nodes = {
     /*panel_register*/ blender::panel_register,
     /*blend_write*/ blender::blend_write,
     /*blend_read*/ blender::blend_read,
+    /*foreach_cache*/ nullptr,
 };
