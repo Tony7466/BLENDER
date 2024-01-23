@@ -340,8 +340,6 @@ void AbstractTreeViewItem::add_indent(uiLayout &row) const
   /* Indent items without collapsing icon some more within their parent. Makes it clear that they
    * are actually nested and not just a row at the same level without a chevron. */
 
-
-
   if (!is_collapsible() && parent_) {
   }
   else if (!is_collapsible() && !parent_) {
