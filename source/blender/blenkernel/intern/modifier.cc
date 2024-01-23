@@ -1049,7 +1049,7 @@ void BKE_modifiers_persistent_uid_init(const Object &object, ModifierData &md)
   }
 }
 
-bool BKE_modifiers_identifers_are_valid(const Object &object)
+bool BKE_modifiers_persistent_uids_are_valid(const Object &object)
 {
   blender::Set<int> uids;
   int modifiers_num = 0;

@@ -249,7 +249,7 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
   BLI_listbase_clear(&ob_dst->greasepencil_modifiers);
   /* NOTE: Also takes care of soft-body and particle systems copying. */
   BKE_object_modifier_stack_copy(ob_dst, ob_src, true, flag_subdata);
-  BLI_assert(BKE_modifiers_identifers_are_valid(*ob_dst));
+  BLI_assert(BKE_modifiers_persistent_uids_are_valid(*ob_dst));
 
   BLI_listbase_clear((ListBase *)&ob_dst->drawdata);
   BLI_listbase_clear(&ob_dst->pc_ids);

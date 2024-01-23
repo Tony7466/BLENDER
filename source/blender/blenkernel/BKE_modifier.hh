@@ -485,7 +485,7 @@ void BKE_modifiers_persistent_uid_init(const Object &object, ModifierData &md);
  * Returns true when all the modifier identifiers are positive and unique. This should generally be
  * true and should only be used by asserts.
  */
-bool BKE_modifiers_identifers_are_valid(const Object &object);
+bool BKE_modifiers_persistent_uids_are_valid(const Object &object);
 
 /**
  * used for buttons, to find out if the 'draw deformed in edit-mode option is there.
