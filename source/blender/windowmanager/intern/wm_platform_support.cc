@@ -37,7 +37,7 @@ static bool wm_platform_support_check_approval(const char *platform_support_key,
     return false;
   }
   const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
-  if (!cfgdir) {
+  if (!cfgdir.has_value()) {
     return false;
   }
 

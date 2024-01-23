@@ -25,7 +25,7 @@ static int blf_load_font_default(const char *filename, const bool unique)
 {
   const std::optional<std::string> dir = BKE_appdir_folder_id(BLENDER_DATAFILES,
                                                               BLF_DATAFILES_FONTS_DIR);
-  if (!dir) {
+  if (!dir.has_value()) {
     fprintf(stderr,
             "%s: 'fonts' data path not found for '%s', will not be able to display text\n",
             __func__,
@@ -58,7 +58,7 @@ static void blf_load_datafiles_dir()
   const char *datafiles_fonts_dir = BLF_DATAFILES_FONTS_DIR SEP_STR;
   const std::optional<std::string> path = BKE_appdir_folder_id(BLENDER_DATAFILES,
                                                                datafiles_fonts_dir);
-  if (!path) {
+  if (!path.has_value()) {
     fprintf(stderr, "Font data directory \"%s\" could not be detected!\n", datafiles_fonts_dir);
     return;
   }

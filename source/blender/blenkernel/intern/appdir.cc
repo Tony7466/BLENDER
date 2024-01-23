@@ -760,9 +760,9 @@ std::optional<std::string> BKE_appdir_folder_id_create(const int folder_id, cons
 
   std::optional<std::string> path = BKE_appdir_folder_id(folder_id, subfolder);
 
-  if (!path) {
+  if (!path.has_value()) {
     path = BKE_appdir_folder_id_user_notest(folder_id, subfolder);
-    if (path) {
+    if (path.has_value()) {
       BLI_dir_create_recursive(path->c_str());
     }
   }
@@ -969,7 +969,7 @@ bool BKE_appdir_program_python_search(char *program_filepath,
   {
     const std::optional<std::string> python_bin_dir = BKE_appdir_folder_id(BLENDER_SYSTEM_PYTHON,
                                                                            "bin");
-    if (python_bin_dir) {
+    if (python_bin_dir.has_value()) {
 
       for (int i = 0; i < ARRAY_SIZE(python_names); i++) {
         BLI_path_join(

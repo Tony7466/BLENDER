@@ -24,7 +24,7 @@ Path::Path()
   // get the root directory
   // soc
   const std::optional<std::string> path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, nullptr);
-  setRootDir((path) ? *path : BKE_appdir_program_dir());
+  setRootDir(path.value_or(BKE_appdir_program_dir()));
 
   _pInstance = this;
 }

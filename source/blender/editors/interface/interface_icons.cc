@@ -953,7 +953,7 @@ static void init_internal_icons()
     std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
     char iconfilestr[FILE_MAX];
 
-    if (icondir) {
+    if (icondir.has_value()) {
       BLI_path_join(iconfilestr, sizeof(iconfilestr), icondir->c_str(), btheme->tui.iconfile);
 
       /* if the image is missing bbuf will just be nullptr */
@@ -1056,7 +1056,7 @@ static void init_iconfile_list(ListBase *list)
   BLI_listbase_clear(list);
   const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
 
-  if (!icondir) {
+  if (!icondir.has_value()) {
     return;
   }
 

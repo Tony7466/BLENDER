@@ -1281,7 +1281,7 @@ void wm_homefile_read_ex(bContext *C,
 
   const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
   if (!use_factory_settings) {
-    if (cfgdir) {
+    if (cfgdir.has_value()) {
       BLI_path_join(
           filepath_startup, sizeof(filepath_startup), cfgdir->c_str(), BLENDER_STARTUP_FILE);
       filepath_startup_is_factory = false;
@@ -1330,7 +1330,7 @@ void wm_homefile_read_ex(bContext *C,
 
     /* note that the path is being set even when 'use_factory_settings == true'
      * this is done so we can load a templates factory-settings */
-    if (!use_factory_settings && cfgdir) {
+    if (!use_factory_settings && cfgdir.has_value()) {
       BLI_path_join(
           app_template_config, sizeof(app_template_config), cfgdir->c_str(), app_template);
       BLI_path_join(
@@ -1538,7 +1538,7 @@ void wm_homefile_read_post(bContext *C, const wmFileReadPost_Params *params_file
 void wm_history_file_read()
 {
   const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
-  if (!cfgdir) {
+  if (!cfgdir.has_value()) {
     return;
   }
 
@@ -1606,7 +1606,7 @@ static void wm_history_file_write()
   /* will be nullptr in background mode */
   const std::optional<std::string> user_config_dir = BKE_appdir_folder_id_create(
       BLENDER_USER_CONFIG, nullptr);
-  if (!user_config_dir) {
+  if (!user_config_dir.has_value()) {
     return;
   }
 
@@ -2099,7 +2099,7 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   std::optional<std::string> savedir;
   if (!BLI_exists(tempdir_base)) {
     savedir = BKE_appdir_folder_id_create(BLENDER_USER_AUTOSAVE, nullptr);
-    if (savedir) {
+    if (savedir.has_value()) {
       tempdir_base = savedir->c_str();
     }
   }
@@ -2283,7 +2283,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
   const char *app_template = U.app_template[0] ? U.app_template : nullptr;
   const std::optional<std::string> cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG,
                                                                         app_template);
-  if (!cfgdir) {
+  if (!cfgdir.has_value()) {
     BKE_report(op->reports, RPT_ERROR, "Unable to create user config path");
     return OPERATOR_CANCELLED;
   }

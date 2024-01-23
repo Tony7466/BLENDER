@@ -1335,7 +1335,7 @@ static ImBuf *icon_preview_imbuf_from_brush(Brush *brush)
       const std::optional<std::string> brushicons_dir = BKE_appdir_folder_id(BLENDER_DATAFILES,
                                                                              "brushicons");
       /* Expected to be found, but don't crash if it's not. */
-      if (brushicons_dir) {
+      if (brushicons_dir.has_value()) {
         BLI_path_join(filepath, sizeof(filepath), brushicons_dir->c_str(), brush->icon_filepath);
 
         /* Use default color spaces. */

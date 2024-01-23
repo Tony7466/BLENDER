@@ -542,7 +542,7 @@ PyObject *Freestyle_Init()
   // update 'sys.path' for Freestyle Python API modules
   const std::optional<std::string> path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS,
                                                                "freestyle");
-  if (path) {
+  if (path.has_value()) {
     char modpath[FILE_MAX];
     BLI_path_join(modpath, sizeof(modpath), path->c_str(), "modules");
     PyObject *sys_path = PySys_GetObject("path"); /* borrow */

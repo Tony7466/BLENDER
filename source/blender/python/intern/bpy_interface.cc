@@ -436,7 +436,7 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
     {
       const std::optional<std::string> py_path_bundle = BKE_appdir_folder_id(BLENDER_SYSTEM_PYTHON,
                                                                              nullptr);
-      if (py_path_bundle) {
+      if (py_path_bundle.has_value()) {
 
 #  ifdef __APPLE__
         /* Mac-OS allows file/directory names to contain `:` character

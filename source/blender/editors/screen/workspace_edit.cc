@@ -409,7 +409,7 @@ static WorkspaceConfigFileData *workspace_config_file_read(const char *app_templ
                                                                  app_template);
   char startup_file_path[FILE_MAX] = {0};
 
-  if (cfgdir) {
+  if (cfgdir.has_value()) {
     BLI_path_join(
         startup_file_path, sizeof(startup_file_path), cfgdir->c_str(), BLENDER_STARTUP_FILE);
   }

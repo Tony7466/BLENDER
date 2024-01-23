@@ -218,7 +218,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
   char userpref[FILE_MAX];
   const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
 
-  if (cfgdir) {
+  if (cfgdir.has_value()) {
     BLI_path_join(userpref, sizeof(userpref), cfgdir->c_str(), BLENDER_USERPREF_FILE);
   }
 

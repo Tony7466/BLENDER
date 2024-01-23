@@ -54,7 +54,7 @@ static std::optional<std::string> get_recent_searches_file_path()
 {
   const std::optional<std::string> user_config_dir = BKE_appdir_folder_id_create(
       BLENDER_USER_CONFIG, nullptr);
-  if (!user_config_dir) {
+  if (!user_config_dir.has_value()) {
     return std::nullopt;
   }
   char filepath[FILE_MAX];

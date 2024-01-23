@@ -1029,7 +1029,7 @@ void ED_file_read_bookmarks()
 
   fsmenu_read_system(ED_fsmenu_get(), true);
 
-  if (cfgdir) {
+  if (cfgdir.has_value()) {
     char filepath[FILE_MAX];
     BLI_path_join(filepath, sizeof(filepath), cfgdir->c_str(), BLENDER_BOOKMARK_FILE);
     fsmenu_read_bookmarks(ED_fsmenu_get(), filepath);

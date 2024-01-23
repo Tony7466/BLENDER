@@ -376,7 +376,7 @@ static bool wm_init_splash_show_on_startup_check()
     /* A less common case, if there is no user preferences, show the splash screen
      * so the user has the opportunity to restore settings from a previous version. */
     const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
-    if (cfgdir) {
+    if (cfgdir.has_value()) {
       char userpref[FILE_MAX];
       BLI_path_join(userpref, sizeof(userpref), cfgdir->c_str(), BLENDER_USERPREF_FILE);
       if (!BLI_exists(userpref)) {

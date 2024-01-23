@@ -76,11 +76,11 @@ static PyObject *bpy_script_paths(PyObject * /*self*/)
   PyObject *item;
 
   std::optional<std::string> path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, nullptr);
-  item = PyC_UnicodeFromBytes(path ? path->c_str() : "");
+  item = PyC_UnicodeFromBytes(path.has_value() ? path->c_str() : "");
   BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 0, item);
   path = BKE_appdir_folder_id(BLENDER_USER_SCRIPTS, nullptr);
-  item = PyC_UnicodeFromBytes(path ? path->c_str() : "");
+  item = PyC_UnicodeFromBytes(path.has_value() ? path->c_str() : "");
   BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 1, item);
 
@@ -252,7 +252,7 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
                                                                            subdir_data.value);
   Py_XDECREF(subdir_data.value_coerce);
 
-  return PyC_UnicodeFromBytes(path ? path->c_str() : "");
+  return PyC_UnicodeFromBytes(path.has_value() ? path->c_str() : "");
 }
 
 PyDoc_STRVAR(bpy_system_resource_doc,
@@ -300,7 +300,7 @@ static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObje
   std::optional<std::string> path = BKE_appdir_folder_id(type.value_found, subdir_data.value);
   Py_XDECREF(subdir_data.value_coerce);
 
-  return PyC_UnicodeFromBytes(path ? path->c_str() : "");
+  return PyC_UnicodeFromBytes(path.has_value() ? path->c_str() : "");
 }
 
 PyDoc_STRVAR(
@@ -349,7 +349,7 @@ static PyObject *bpy_resource_path(PyObject * /*self*/, PyObject *args, PyObject
   const std::optional<std::string> path = BKE_appdir_resource_path_id_with_version(
       type.value_found, false, (major * 100) + minor);
 
-  return PyC_UnicodeFromBytes(path ? path->c_str() : "");
+  return PyC_UnicodeFromBytes(path.has_value() ? path->c_str() : "");
 }
 
 /* This is only exposed for tests, see: `tests/python/bl_pyapi_bpy_driver_secure_eval.py`. */
@@ -645,7 +645,7 @@ void BPy_init_modules(bContext *C)
   /* Needs to be first since this dir is needed for future modules */
   const std::optional<std::string> modpath = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS,
                                                                   "modules");
-  if (modpath) {
+  if (modpath.has_value()) {
     // printf("bpy: found module path '%s'.\n", modpath);
     PyObject *sys_path = PySys_GetObject("path"); /* borrow */
     PyObject *py_modpath = PyC_UnicodeFromBytes(modpath->c_str());

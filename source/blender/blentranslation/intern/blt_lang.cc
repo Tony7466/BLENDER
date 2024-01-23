@@ -73,7 +73,7 @@ static void fill_locales()
 
   free_locales();
 
-  if (languages_path) {
+  if (languages_path.has_value()) {
     BLI_path_join(languages, FILE_MAX, languages_path->c_str(), "languages");
     line = lines = BLI_file_read_as_lines(languages);
   }
@@ -214,7 +214,7 @@ void BLT_lang_init()
 #endif
 
 #ifdef WITH_INTERNATIONAL
-  if (messagepath) {
+  if (messagepath.has_value()) {
     bl_locale_init(messagepath->c_str(), TEXT_DOMAIN_NAME);
     fill_locales();
   }

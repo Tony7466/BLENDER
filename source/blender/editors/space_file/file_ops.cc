@@ -384,7 +384,7 @@ static bool fsmenu_write_file_and_refresh_or_report_error(FSMenu *fsmenu,
    * other actions which should not cause the operator to fail entirely. */
   const std::optional<std::string> cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG,
                                                                         nullptr);
-  if (!cfgdir) {
+  if (!cfgdir.has_value()) {
     BKE_report(reports, RPT_ERROR, "Unable to create configuration directory to write bookmarks");
     return false;
   }
