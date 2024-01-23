@@ -1,1 +1,2 @@
 Referenced by commit 0ce11021472729d674605ac6381cc790c8bafe70, Cleanup: replace incorrect use of UUID with UID in bmesh_region_match
+Referenced by commit 5574a2790f0f87bae658c1ddbe6e4a52e62aef7d, Cleanup: rename uuid to uid for local-view functionality
