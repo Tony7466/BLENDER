@@ -170,7 +170,7 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
       C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &affect_str);
 
   SNPRINTF(status_text,
-           TIP_("%s: Confirm, "
+           RPT_("%s: Confirm, "
                 "%s: Cancel, "
                 "%s: Width Type (%s), "
                 "%s: Width (%s), "
@@ -334,7 +334,7 @@ static bool edbm_bevel_calc(wmOperator *op)
       EDBM_redo_state_restore(&opdata->ob_store[ob_index].mesh_backup, em, false);
     }
 
-    const int material = CLAMPIS(material_init, -1, obedit->totcol - 1);
+    const int material = std::clamp(material_init, -1, obedit->totcol - 1);
 
     EDBM_op_init(em,
                  &bmop,

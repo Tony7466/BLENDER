@@ -203,7 +203,7 @@ static void do_draw_face_sets_brush_faces(Object *ob,
           ss, &test, brush->falloff_shape);
 
       auto_mask::NodeData automask_data = auto_mask::node_begin(
-          *ob, ss->cache->automasking, *node);
+          *ob, ss->cache->automasking.get(), *node);
 
       bool changed = false;
 
@@ -269,7 +269,7 @@ static void do_draw_face_sets_brush_grids(Object *ob,
           ss, &test, brush->falloff_shape);
 
       auto_mask::NodeData automask_data = auto_mask::node_begin(
-          *ob, ss->cache->automasking, *node);
+          *ob, ss->cache->automasking.get(), *node);
 
       bool changed = false;
 
@@ -414,7 +414,8 @@ static void do_relax_face_sets_brush_task(Object *ob,
   }
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     auto_mask::node_update(automask_data, vd);
@@ -438,9 +439,6 @@ static void do_relax_face_sets_brush_task(Object *ob,
                                                                 &automask_data);
 
     smooth::relax_vertex(ss, &vd, fade * bstrength, relax_face_sets, vd.co);
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -879,6 +877,10 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
   }
 
   undo::push_end(ob);
+
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_redraw(node);
+  }
 
   SCULPT_tag_update_overlays(C);
 
@@ -1388,7 +1390,6 @@ static void sculpt_face_set_edit_fair_face_set(Object *ob,
   for (int i = 0; i < totvert; i++) {
     if (fair_verts[i]) {
       interp_v3_v3v3(positions[i], orig_positions[i], positions[i], strength);
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, BKE_pbvh_index_to_vertex(ss->pbvh, i));
     }
   }
 }

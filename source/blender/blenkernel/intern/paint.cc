@@ -45,11 +45,11 @@
 #include "BKE_crazyspace.hh"
 #include "BKE_deform.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -1352,11 +1352,11 @@ bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
     }
 
     float dpos[2];
-    sub_v2_v2v2(dpos, ups->last_rake, mouse_pos);
+    sub_v2_v2v2(dpos, mouse_pos, ups->last_rake);
 
     /* Limit how often we update the angle to prevent jitter. */
     if (len_squared_v2(dpos) >= r * r) {
-      rotation = atan2f(dpos[0], dpos[1]);
+      rotation = atan2f(dpos[1], dpos[0]) + float(0.5f * M_PI);
 
       copy_v2_v2(ups->last_rake, mouse_pos);
 

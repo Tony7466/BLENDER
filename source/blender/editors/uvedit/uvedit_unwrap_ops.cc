@@ -29,6 +29,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_uvproject.h"
 #include "BLI_vector.hh"
@@ -40,7 +41,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_image.h"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -54,8 +55,6 @@
 
 #include "GEO_uv_pack.hh"
 #include "GEO_uv_parametrizer.hh"
-
-#include "PIL_time.h"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -806,7 +805,7 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
   ms->iterations = RNA_int_get(op->ptr, "iterations");
   ms->i = 0;
   ms->handle = construct_param_handle_multi(scene, objects, objects_len, &options);
-  ms->lasttime = PIL_check_seconds_timer();
+  ms->lasttime = BLI_check_seconds_timer();
 
   blender::geometry::uv_parametrizer_stretch_begin(ms->handle);
   if (ms->blend != 0.0f) {
@@ -832,18 +831,18 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
   ms->i++;
   RNA_int_set(op->ptr, "iterations", ms->i);
 
-  if (interactive && (PIL_check_seconds_timer() - ms->lasttime > 0.5)) {
+  if (interactive && (BLI_check_seconds_timer() - ms->lasttime > 0.5)) {
     char str[UI_MAX_DRAW_STR];
 
     blender::geometry::uv_parametrizer_flush(ms->handle);
 
     if (area) {
-      SNPRINTF(str, TIP_("Minimize Stretch. Blend %.2f"), ms->blend);
+      SNPRINTF(str, RPT_("Minimize Stretch. Blend %.2f"), ms->blend);
       ED_area_status_text(area, str);
-      ED_workspace_status_text(C, TIP_("Press + and -, or scroll wheel to set blending"));
+      ED_workspace_status_text(C, RPT_("Press + and -, or scroll wheel to set blending"));
     }
 
-    ms->lasttime = PIL_check_seconds_timer();
+    ms->lasttime = BLI_check_seconds_timer();
 
     for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
       Object *obedit = ms->objects_edit[ob_index];
@@ -971,11 +970,11 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
       break;
     case TIMER:
       if (ms->timer == event->customdata) {
-        double start = PIL_check_seconds_timer();
+        double start = BLI_check_seconds_timer();
 
         do {
           minimize_stretch_iteration(C, op, true);
-        } while (PIL_check_seconds_timer() - start < 0.01);
+        } while (BLI_check_seconds_timer() - start < 0.01);
       }
       break;
   }
@@ -1570,18 +1569,30 @@ static const EnumPropertyItem pack_margin_method_items[] = {
 };
 
 static const EnumPropertyItem pack_rotate_method_items[] = {
-    RNA_ENUM_ITEM_SEPR,
-    {ED_UVPACK_ROTATION_AXIS_ALIGNED,
-     "AXIS_ALIGNED",
-     0,
-     "Axis-aligned",
-     "Rotated to a minimal rectangle, either vertical or horizontal"},
+    {ED_UVPACK_ROTATION_ANY, "ANY", 0, "Any", "Any angle is allowed for rotation"},
     {ED_UVPACK_ROTATION_CARDINAL,
      "CARDINAL",
      0,
      "Cardinal",
      "Only 90 degree rotations are allowed"},
-    {ED_UVPACK_ROTATION_ANY, "ANY", 0, "Any", "Any angle is allowed for rotation"},
+    RNA_ENUM_ITEM_SEPR,
+
+#define PACK_ROTATE_METHOD_AXIS_ALIGNED_OFFSET 3
+    {ED_UVPACK_ROTATION_AXIS_ALIGNED,
+     "AXIS_ALIGNED",
+     0,
+     "Axis-aligned",
+     "Rotated to a minimal rectangle, either vertical or horizontal"},
+    {ED_UVPACK_ROTATION_AXIS_ALIGNED_X,
+     "AXIS_ALIGNED_X",
+     0,
+     "Axis-aligned (Horizontal)",
+     "Rotate islands to be aligned horizontally"},
+    {ED_UVPACK_ROTATION_AXIS_ALIGNED_Y,
+     "AXIS_ALIGNED_Y",
+     0,
+     "Axis-aligned (Vertical)",
+     "Rotate islands to be aligned vertically"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -2954,7 +2965,7 @@ static int smart_project_exec(bContext *C, wmOperator *op)
     const bool correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect");
 
     blender::geometry::UVPackIsland_Params params;
-    params.rotate_method = ED_UVPACK_ROTATION_ANY;
+    params.rotate_method = eUVPackIsland_RotationMethod(RNA_enum_get(op->ptr, "rotate_method"));
     params.only_selected_uvs = only_selected_uvs;
     params.only_selected_faces = true;
     params.correct_aspect = correct_aspect;
@@ -3010,6 +3021,14 @@ void UV_OT_smart_project(wmOperatorType *ot)
                pack_margin_method_items,
                ED_UVPACK_MARGIN_SCALED,
                "Margin Method",
+               "");
+  RNA_def_enum(ot->srna,
+               "rotate_method",
+               /* Only show aligned options as the rotation from a projection
+                * generated from a direction vector isn't meaningful. */
+               pack_rotate_method_items + PACK_ROTATE_METHOD_AXIS_ALIGNED_OFFSET,
+               ED_UVPACK_ROTATION_AXIS_ALIGNED_Y,
+               "Rotation Method",
                "");
   RNA_def_float(ot->srna,
                 "island_margin",
