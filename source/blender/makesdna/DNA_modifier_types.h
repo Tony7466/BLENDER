@@ -2612,19 +2612,15 @@ typedef enum GreasePencilTintModifierFlag {
 typedef struct GreasePencilLengthModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
-  /** Flags. */
   int flag;
-  /** Length. */
   float start_fac, end_fac;
-  /** Random length factors. */
   float rand_start_fac, rand_end_fac, rand_offset;
-  /** Overshoot trajectory factor. */
   float overshoot_fac;
   /** (first element is the index) random values. */
   int seed;
   /** How many frames before recalculate randoms. */
   int step;
-  /** Modifier mode. */
+  /** #eLengthGpencil_Type. */
   int mode;
   char _pad[4];
   /* Curvature parameters. */

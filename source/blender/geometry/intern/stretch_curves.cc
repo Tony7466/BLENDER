@@ -8,8 +8,11 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_length_parameterize.hh"
+#include "BLI_math_axis_angle.hh"
 #include "BLI_math_matrix.h"
+#include "BLI_math_quaternion.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_math_rotation.hh"
 #include "BLI_math_vector.hh"
 
 #include "BKE_attribute.hh"
@@ -134,7 +137,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
     }
     int new_size = new_points[curve].size();
     float used_percent_length = overshoot_fac[curve];
-    CLAMP(used_percent_length, 1e-4f, 1.0f);
+    used_percent_length = std::clamp(used_percent_length, 1e-4f, 1.0f);
     if (!isfinite(used_percent_length)) {
       /* #used_percent_length must always be finite, otherwise a segfault occurs.
        * Since this function should never segfault, set #used_percent_length to a safe fallback. */
@@ -156,7 +159,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
                                    positions[new_points[curve][index2]],
                                    fmodf(overshoot_point_param, 1.0f));
         result -= positions[new_points[curve].first()];
-        if (UNLIKELY(is_zero_v3(result))) {
+        if (UNLIKELY(math::is_zero(result))) {
           result = positions[new_points[curve][1]] - positions[new_points[curve][0]];
         }
         madd_v3_v3fl(
@@ -170,7 +173,7 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
                                    positions[new_points[curve][index2]],
                                    fmodf(overshoot_point_param, 1.0f));
         result -= positions[new_points[curve].last()];
-        if (UNLIKELY(is_zero_v3(result))) {
+        if (UNLIKELY(math::is_zero(result))) {
           result = positions[new_points[curve][new_size - 2]] -
                    positions[new_points[curve][new_size - 1]];
         }
@@ -190,28 +193,31 @@ bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
        * strokes. */
       const float overshoot_parameter = used_percent_length * (orig_totpoints - 2);
       int overshoot_pointcount = ceil(overshoot_parameter);
-      CLAMP(overshoot_pointcount, 1, orig_totpoints - 2);
+      overshoot_pointcount = std::clamp(overshoot_pointcount, 1, orig_totpoints - 2);
 
       /* Do for both sides without code duplication. */
-      float3 no, vec1, vec2, total_angle;
+      float3 vec1, total_angle;
       for (int k = 0; k < 2; k++) {
         if ((k == 0 && !start_points[curve]) || (k == 1 && !end_points[curve])) {
           continue;
         }
 
         const int start_i = k == 0 ? first_old_index :
-                                     last_old_index;  // first_old_index, last_old_index
-        const int dir_i = 1 - k * 2;                  // 1, -1
+                                     last_old_index; /* first_old_index, last_old_index */
+        const int dir_i = 1 - k * 2;                 /* 1, -1 */
 
         vec1 = positions[new_points[curve][start_i + dir_i]] -
                positions[new_points[curve][start_i]];
         total_angle = float3({0, 0, 0});
-        float segment_length = normalize_v3(
-            vec1); /* Not using `math::normalize_and_get_length` for simplicity. */
+
+        float segment_length;
+        math::normalize_and_get_length(vec1, segment_length);
+
         float overshoot_length = 0.0f;
 
         /* Accumulate rotation angle and length. */
         int j = 0;
+        float3 no, vec2;
         for (int i = start_i; j < overshoot_pointcount; i += dir_i, j++) {
           /* Don't fully add last segment to get continuity in overshoot_fac. */
           float fac = fmin(overshoot_parameter - j, 1.0f);

@@ -35,9 +35,6 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
-
 #include "GEO_stretch_curves.hh"
 #include "GEO_trim_curves.hh"
 
@@ -95,23 +92,23 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 static Array<float> noise_table(int len, int offset, int seed)
 {
   Array<float> table(len);
-  for (int i = 0; i < len; i++) {
+  for (const int i : table.index_range()) {
     table[i] = BLI_hash_int_01(BLI_hash_int_2d(seed, i + offset + 1));
   }
   return table;
 }
 
-static float table_sample(Array<float> &table, float x)
+static float table_sample(MutableSpan<float> table, float x)
 {
-  return math::interpolate(table[int(ceilf(x))], table[int(floor(x))], fractf(x));
+  return math::interpolate(table[int(math::ceil(x))], table[int(math::floor(x))], math::fract(x));
 }
 
-static void deform_drawing(ModifierData &md,
-                           Depsgraph *depsgraph,
-                           Object &ob,
-                           bke::greasepencil::Drawing &drawing)
+static void deform_drawing(const ModifierData &md,
+                           const Object &ob,
+                           bke::greasepencil::Drawing &drawing,
+                           const int current_time)
 {
-  GreasePencilLengthModifierData &mmd = reinterpret_cast<GreasePencilLengthModifierData &>(md);
+  const GreasePencilLengthModifierData &mmd = reinterpret_cast<const GreasePencilLengthModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   if (curves.points_num() == 0) {
@@ -122,13 +119,13 @@ static void deform_drawing(ModifierData &md,
   const IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
 
-  const int cnum = curves.curves_num();
+  const int curves_num = curves.curves_num();
 
   /* Variable for tagging shrinking when values are adjusted after random. */
   bool needs_additional_shrinking = false;
 
-  VArray<float> use_starts = VArray<float>::ForSingle(mmd.start_fac, cnum);
-  VArray<float> use_ends = VArray<float>::ForSingle(mmd.end_fac, cnum);
+  VArray<float> use_starts = VArray<float>::ForSingle(mmd.start_fac, curves_num);
+  VArray<float> use_ends = VArray<float>::ForSingle(mmd.end_fac, curves_num);
 
   /* Use random to modify start/end factors. Put the modified values outside the
    * branch so it could be accessed in later stretching/shrinking stages. */
@@ -150,14 +147,15 @@ static void deform_drawing(ModifierData &md,
     seed += BLI_hash_string(md.name);
 
     if (mmd.flag & GP_LENGTH_USE_RANDOM) {
-      seed += int(DEG_get_ctime(depsgraph)) / mmd.step;
+      seed += current_time / mmd.step;
     }
 
     float rand_offset = BLI_hash_int_01(seed);
 
-    Array<float> noise_table_length = noise_table(4 + cnum, int(floor(mmd.rand_offset)), seed + 2);
+    Array<float> noise_table_length = noise_table(
+        4 + curves_num, int(floor(mmd.rand_offset)), seed + 2);
 
-    for (int i = 0; i < cnum; i++) {
+    for (int i = 0; i < curves_num; i++) {
 
       /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
       double r[2];
@@ -187,12 +185,12 @@ static void deform_drawing(ModifierData &md,
       selection,
       use_starts,
       use_ends,
-      VArray<float>::ForSingle(mmd.overshoot_fac, cnum),
-      VArray<bool>::ForSingle(mmd.flag & GP_LENGTH_USE_CURVATURE, cnum),
-      VArray<int>::ForSingle(mmd.point_density, cnum),
-      VArray<float>::ForSingle(mmd.segment_influence, cnum),
-      VArray<float>::ForSingle(mmd.max_angle, cnum),
-      VArray<bool>::ForSingle(mmd.flag & GP_LENGTH_INVERT_CURVATURE, cnum),
+      VArray<float>::ForSingle(mmd.overshoot_fac, curves_num),
+      VArray<bool>::ForSingle(mmd.flag & GP_LENGTH_USE_CURVATURE, curves_num),
+      VArray<int>::ForSingle(mmd.point_density, curves_num),
+      VArray<float>::ForSingle(mmd.segment_influence, curves_num),
+      VArray<float>::ForSingle(mmd.max_angle, curves_num),
+      VArray<bool>::ForSingle(mmd.flag & GP_LENGTH_INVERT_CURVATURE, curves_num),
       mmd.mode & GP_LENGTH_ABSOLUTE ? GEO_NODE_CURVE_SAMPLE_LENGTH : GEO_NODE_CURVE_SAMPLE_FACTOR,
       {});
 
@@ -239,17 +237,16 @@ static void modify_geometry_set(ModifierData *md,
   }
 
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
-  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-  const int current_frame = scene->r.cfra;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, mmd->influence, mask_memory);
   const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
+      modifier::greasepencil::get_drawings_for_write(
+          grease_pencil, layer_mask, grease_pencil.runtime->eval_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
+    deform_drawing(*md, *ctx->object, *drawing, grease_pencil.runtime->eval_frame);
   });
 }
 
