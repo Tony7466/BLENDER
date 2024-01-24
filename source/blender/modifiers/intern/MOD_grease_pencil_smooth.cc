@@ -87,9 +87,11 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void deform_drawing(ModifierData &md, Object &ob, bke::greasepencil::Drawing &drawing)
+static void deform_drawing(const ModifierData &md,
+                           const Object &ob,
+                           bke::greasepencil::Drawing &drawing)
 {
-  GreasePencilSmoothModifierData &mmd = reinterpret_cast<GreasePencilSmoothModifierData &>(md);
+  auto &mmd = reinterpret_cast<const GreasePencilSmoothModifierData &>(md);
 
   const int iterations = mmd.step;
   const float influence = mmd.factor;
