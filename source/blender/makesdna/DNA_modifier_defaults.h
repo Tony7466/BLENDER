@@ -835,5 +835,10 @@
     .factor = 1.0f, \
     .step = 1, \
   }
+
+#define _DNA_DEFAULT_GreasePencilMirrorModifierData \
+  { \
+    .flag = MOD_GREASE_PENCIL_MIRROR_AXIS_X, \
+  }
   
 /* clang-format off */

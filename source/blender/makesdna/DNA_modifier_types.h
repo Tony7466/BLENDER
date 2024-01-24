@@ -98,6 +98,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilColor = 63,
   eModifierType_GreasePencilTint = 64,
   eModifierType_GreasePencilSmooth = 65,
+  eModifierType_GreasePencilMirror = 66,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2618,7 +2619,6 @@ typedef struct GreasePencilSmoothModifierData {
   float factor;
   /** How many times apply smooth. */
   int step;
-
   char _pad[4];
   void *_pad1;
 } GreasePencilSmoothModifierData;
@@ -2632,3 +2632,19 @@ typedef enum eGreasePencilSmooth_Flag {
   MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE = (1 << 5),
   MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS = (1 << 6),
 } eGreasePencilSmooth_Flag;
+
+typedef struct GreasePencilMirrorModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  struct Object *object;
+  /** Flags. */
+  int flag;
+  char _pad[4];
+} GreasePencilMirrorModifierData;
+
+typedef enum GreasePencilMirrorModifierFlag {
+  MOD_GREASE_PENCIL_MIRROR_CLIPPING = (1 << 0),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_X = (1 << 1),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_Y = (1 << 2),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_Z = (1 << 3),
+} GreasePencilMirrorModifierFlag;
