@@ -130,7 +130,7 @@ static void apply_stroke_transform(const GreasePencilOffsetModifierData &omd,
 static void modify_stroke_random(Object &ob,
                                  const GreasePencilOffsetModifierData &omd,
                                  bke::CurvesGeometry &curves,
-                                 const IndexMask curves_mask)
+                                 const IndexMask &curves_mask)
 {
   const bool use_uniform_scale = (omd.flag & MOD_GREASE_PENCIL_OFFSET_UNIFORM_RANDOM_SCALE);
 
@@ -202,7 +202,7 @@ static float get_factor_from_index(const GreasePencilOffsetModifierData &omd,
 /** Offset proportional to stroke index. */
 static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
                                    bke::CurvesGeometry &curves,
-                                   const IndexMask curves_mask)
+                                   const IndexMask &curves_mask)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -232,7 +232,7 @@ static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
 static void modify_stroke_by_material(Object &ob,
                                       const GreasePencilOffsetModifierData &omd,
                                       bke::CurvesGeometry &curves,
-                                      const IndexMask curves_mask)
+                                      const IndexMask &curves_mask)
 {
   const short *totcolp = BKE_object_material_len_p(&ob);
   const short totcol = totcolp ? *totcolp : 0;
@@ -268,7 +268,7 @@ static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
                                    const int layer_index,
                                    const int layers_num,
                                    bke::CurvesGeometry &curves,
-                                   const IndexMask curves_mask)
+                                   const IndexMask &curves_mask)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
