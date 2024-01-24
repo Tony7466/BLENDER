@@ -1682,6 +1682,18 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
   WM_operator_call_ex(C, op, true);
 }
 
+/* Only invoked by Cancel button in popups created with wm_block_dialog_create() */
+static void dialog_cancel_cb(bContext *C, void *arg1, void *arg2)
+{
+  wmOpPopUp *data = static_cast<wmOpPopUp *>(arg1);
+  WM_operator_free(data->op);
+  MEM_freeN(data);
+
+  uiBlock *block = static_cast<uiBlock *>(arg2);
+  //UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
+  UI_popup_block_close(C, CTX_wm_window(C), block);
+}
+
 /* Dialogs are popups that require user verification (click OK) before exec */
 static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_data)
 {
@@ -1706,15 +1718,47 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   /* clear so the OK button is left alone */
   UI_block_func_set(block, nullptr, nullptr, nullptr);
 
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
+
   /* new column so as not to interfere with custom layouts #26436. */
   {
     uiLayout *col = uiLayoutColumn(layout, false);
+
+    uiItemS_ex(col, 0.5f);
+
     uiBlock *col_block = uiLayoutGetBlock(col);
     /* Create OK button, the callback of which will execute op */
-    uiBut *but = uiDefBut(
-        col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, -30, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
-    UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
-    UI_but_func_set(but, dialog_exec_cb, data, col_block);
+
+    uiLayout *split = uiLayoutSplit(col, 0.0f, true);
+    uiLayoutSetScaleY(split, 1.2f);
+
+    uiBut *confirm;
+    uiBut *cancel;
+
+    if (windows_layout) {
+      confirm = uiDefBut(
+          col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+      uiLayoutColumn(split, false);
+    }
+
+	  cancel = uiDefBut(
+        col_block, UI_BTYPE_BUT, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+
+    if (!windows_layout) {
+      uiLayoutColumn(split, false);
+      confirm = uiDefBut(
+          col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+    }
+
+    UI_but_flag_enable(confirm, UI_BUT_ACTIVE_DEFAULT);
+    UI_but_func_set(confirm, dialog_exec_cb, data, col_block);
+
+    UI_but_func_set(cancel, dialog_cancel_cb, data, col_block);
+    
   }
 
   /* center around the mouse */

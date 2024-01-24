@@ -2725,7 +2725,8 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
   UI_block_lock_clear(block);
 
   if (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_TITLE) {
-    uiItemL(layout, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
+    uiItemL_ex(layout, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE, true, false);
+    uiItemS_ex(layout, 0.3f);
   }
 
   /* menu */
