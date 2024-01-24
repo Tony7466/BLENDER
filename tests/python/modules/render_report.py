@@ -419,7 +419,8 @@ class Report:
             tmp_filepath,
             "--ch", "R,G,B",
             "--sub",
-            "--abs", "--mulc", "16",
+            "--abs",
+            "--mulc", "16",
             "-o", diff_color_img,
         )
 
