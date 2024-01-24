@@ -650,6 +650,9 @@ static bool bake_setup_pass(Scene *scene, const string &bake_type, const int bak
   integrator->set_use_direct_light(use_direct_light);
   integrator->set_use_indirect_light(use_indirect_light);
 
+  const PassInfo pass_info = Pass::get_info(type);
+  integrator->set_use_denoise(pass_info.support_denoise);
+
   return true;
 }
 
@@ -707,6 +710,9 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
     bake_object->set_is_shadow_catcher(true);
   }
 
+  Integrator *integrator = scene->integrator;
+  const bool was_denoiser_enabled = integrator->get_use_denoise();
+
   if (bake_object && !session->progress.get_cancel()) {
     /* Get session and buffer parameters. */
     const SessionParams session_params = BlenderSync::get_session_params(
@@ -737,6 +743,8 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
   if (bake_object) {
     bake_object->set_is_shadow_catcher(was_shadow_catcher);
   }
+
+  integrator->set_use_denoise(was_denoiser_enabled);
 }
 
 void BlenderSession::synchronize(BL::Depsgraph &b_depsgraph_)
