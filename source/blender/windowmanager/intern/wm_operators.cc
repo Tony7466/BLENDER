@@ -1690,7 +1690,7 @@ static void dialog_cancel_cb(bContext *C, void *arg1, void *arg2)
   MEM_freeN(data);
 
   uiBlock *block = static_cast<uiBlock *>(arg2);
-  //UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
+  UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
   UI_popup_block_close(C, CTX_wm_window(C), block);
 }
 
@@ -1745,7 +1745,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
       uiLayoutColumn(split, false);
     }
 
-	  cancel = uiDefBut(
+    cancel = uiDefBut(
         col_block, UI_BTYPE_BUT, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
 
     if (!windows_layout) {
@@ -1756,9 +1756,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
 
     UI_but_flag_enable(confirm, UI_BUT_ACTIVE_DEFAULT);
     UI_but_func_set(confirm, dialog_exec_cb, data, col_block);
-
     UI_but_func_set(cancel, dialog_cancel_cb, data, col_block);
-    
   }
 
   /* center around the mouse */
