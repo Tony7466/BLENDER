@@ -47,7 +47,7 @@
 #include "ANIM_bone_collections.hh"
 #include "ANIM_bonecolor.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 using blender::Span;
 using blender::Vector;
