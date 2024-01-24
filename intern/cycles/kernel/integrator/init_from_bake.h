@@ -206,6 +206,10 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
     ray.time = 0.5f;
     ray.dP = differential_zero_compact();
     ray.dD = differential_zero_compact();
+#ifdef __SPECTRAL_RENDERING__
+    const float rand_wavelength = path_rng_1D(kg, rng_hash, sample, PRNG_WAVELENGTH);
+    ray.wavelengths = camera_wavelengths(kg, rand_wavelength);
+#endif
     integrator_state_write_ray(state, &ray);
 
     /* Setup next kernel to execute. */
@@ -299,6 +303,11 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
     dP.dy = dPdu * dudy + dPdv * dvdy;
     ray.dP = differential_make_compact(dP);
     ray.dD = differential_zero_compact();
+
+#ifdef __SPECTRAL_RENDERING__
+    const float rand_wavelength = path_rng_1D(kg, rng_hash, sample, PRNG_WAVELENGTH);
+    ray.wavelengths = camera_wavelengths(kg, rand_wavelength);
+#endif
 
     /* Write ray. */
     integrator_state_write_ray(state, &ray);
