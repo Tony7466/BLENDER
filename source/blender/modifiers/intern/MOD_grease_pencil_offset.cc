@@ -86,7 +86,7 @@ static void apply_stroke_transform(const GreasePencilOffsetModifierData &omd,
                                    const MutableSpan<float3> positions,
                                    const MutableSpan<float> radii,
                                    const VArray<float> &weights,
-                                   const IndexRange &range,
+                                   const IndexRange &points,
                                    const float3 &loc_factor,
                                    const float3 &rot_factor,
                                    const float3 &scale_factor)
@@ -98,7 +98,7 @@ static void apply_stroke_transform(const GreasePencilOffsetModifierData &omd,
                                    math::is_zero(float3(omd.stroke_rot)) &&
                                    math::is_zero(float3(omd.stroke_scale)));
 
-  for (const int64_t i : range) {
+  for (const int64_t i : points) {
     const float weight = weights[i];
     float3 &pos = positions[i];
     float &radius = radii[i];
