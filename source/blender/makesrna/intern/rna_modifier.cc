@@ -7790,11 +7790,9 @@ static void rna_def_modifier_grease_pencil_subdiv(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "level", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "level");
-  /* Since the new subdiv algorithm uses linear cut count, we set the limits as 2^n the old value
-   * to get the same range as before. */
-  RNA_def_property_range(prop, 0, 65536);
-  RNA_def_property_ui_range(prop, 0, 32, 1, 0);
-  RNA_def_property_ui_text(prop, "Level", "Number of subdivisions");
+  RNA_def_property_range(prop, 0, 16);
+  RNA_def_property_ui_range(prop, 0, 6, 1, 0);
+  RNA_def_property_ui_text(prop, "Level", "Level of subdivision");
 
   prop = RNA_def_property(srna, "subdivision_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "type");

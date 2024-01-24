@@ -2553,9 +2553,9 @@ typedef enum GreasePencilOpacityModifierFlag {
 typedef struct GreasePencilSubdivModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
-  /** `GreasePencilSubdivideType`. */
+  /** #GreasePencilSubdivideType. */
   int type;
-  /** Number of subdivisions. */
+  /** Level of subdivisions, will generate 2^level segments. */
   int level;
 
   char _pad[8];
