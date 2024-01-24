@@ -53,11 +53,24 @@ static void init_data(ModifierData *md)
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
   MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GreasePencilLineartModifierData), modifier);
+
+  modifier::greasepencil::init_influence_data(&gpmd->influence, false);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
+  const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
+  auto *tomd = reinterpret_cast<GreasePencilLineartModifierData *>(target);
+
   BKE_modifier_copydata_generic(md, target, flag);
+
+  modifier::greasepencil::copy_influence_data(&lmd->influence, &tomd->influence, flag);
+}
+
+static void free_data(ModifierData *md)
+{
+  auto *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
+  modifier::greasepencil::free_influence_data(&lmd->influence);
 }
 
 static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
@@ -121,7 +134,8 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   /* Always add whole master collection because line art will need the whole scene for
    * visibility computation. Line art exclusion is handled inside #add_this_collection. */
 
-  // TODO: eval mode
+  /* Do we need to distinguish DAG_EVAL_VIEWPORT or DAG_EVAL_RENDER here? */
+
   add_this_collection(ctx->scene->master_collection, ctx, DAG_EVAL_VIEWPORT);
 
   if (lmd->calculation_flags & LRT_USE_CUSTOM_CAMERA && lmd->source_camera) {
@@ -146,12 +160,13 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 {
   GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
 
-  walk(user_data, ob, (ID **)&lmd->target_material, IDWALK_CB_USER);
   walk(user_data, ob, (ID **)&lmd->source_collection, IDWALK_CB_NOP);
 
   walk(user_data, ob, (ID **)&lmd->source_object, IDWALK_CB_NOP);
   walk(user_data, ob, (ID **)&lmd->source_camera, IDWALK_CB_NOP);
   walk(user_data, ob, (ID **)&lmd->light_contour_object, IDWALK_CB_NOP);
+
+  modifier::greasepencil::foreach_influence_ID_link(&lmd->influence, ob, walk, user_data);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -698,40 +713,40 @@ static void panel_register(ARegionType *region_type)
   modifier_subpanel_register(region_type, "bake", "Bake", nullptr, bake_panel_draw, panel_type);
 }
 
-static void generate_strokes_actual(ModifierData *md,
+static void generate_strokes_actual(const ModifierData &md,
                                     Depsgraph *depsgraph,
-                                    Object *ob,
+                                    Object &ob,
                                     bke::greasepencil::Drawing &drawing)
 {
-  GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
+  auto &lmd = reinterpret_cast<const GreasePencilLineartModifierData &>(md);
 
   if (G.debug_value == 4000) {
     printf("LRT: Generating from modifier.\n");
   }
 
   MOD_lineart_gpencil_generate_v3(
-      lmd->cache,
+      lmd.cache,
       depsgraph,
-      ob,
+      &ob,
       drawing,
-      lmd->source_type,
-      lmd->source_type == LRT_SOURCE_OBJECT ? (void *)lmd->source_object :
-                                              (void *)lmd->source_collection,
-      lmd->level_start,
-      lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
-      lmd->target_material ? BKE_object_material_index_get(ob, lmd->target_material) : 0,
-      lmd->edge_types,
-      lmd->mask_switches,
-      lmd->material_mask_bits,
-      lmd->intersection_mask,
-      lmd->thickness,
-      lmd->opacity,
-      lmd->shadow_selection,
-      lmd->silhouette_selection,
-      lmd->source_vertex_group,
-      lmd->vgname,
-      lmd->flags,
-      lmd->calculation_flags);
+      lmd.source_type,
+      lmd.source_type == LRT_SOURCE_OBJECT ? (void *)lmd.source_object :
+                                             (void *)lmd.source_collection,
+      lmd.level_start,
+      lmd.use_multiple_levels ? lmd.level_end : lmd.level_start,
+      lmd.target_material ? BKE_object_material_index_get(&ob, lmd.target_material) : 0,
+      lmd.edge_types,
+      lmd.mask_switches,
+      lmd.material_mask_bits,
+      lmd.intersection_mask,
+      lmd.thickness,
+      lmd.opacity,
+      lmd.shadow_selection,
+      lmd.silhouette_selection,
+      lmd.source_vertex_group,
+      lmd.vgname,
+      lmd.flags,
+      lmd.calculation_flags);
 }
 
 static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob, GreasePencil &gpd)
@@ -747,7 +762,6 @@ static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob,
   if (!node || !node->is_layer()) {
     return;
   }
-  bke::greasepencil::Layer &got_layer = node->as_layer();
 
   LineartCache *local_lc = gpd.runtime->lineart_cache;
   if (!gpd.runtime->lineart_cache) {
@@ -765,16 +779,15 @@ static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob,
     lmd.cache = local_lc;
   }
 
-  /* New layer and new empty drawing for now. */
-
-  gpd.layers_for_write() = {};
+  /* Ensure we have a frame in the selected layer to put line art result in. */
+  bke::greasepencil::Layer &got_layer = node->as_layer();
   got_layer.add_frame(0, 0, 0);
 
   gpd.drawings() = {};
   gpd.add_empty_drawings(1);
   bke::greasepencil::Drawing &drawing = *gpd.get_editable_drawing_at(got_layer, 0);
 
-  generate_strokes_actual(&md, depsgraph, &ob, drawing);
+  generate_strokes_actual(md, depsgraph, ob, drawing);
 
   if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     /* Clear local cache. */
@@ -791,14 +804,14 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GreasePencil *gp = geometry_set->get_grease_pencil_for_write();
-  if (!gp) {
+  if (!geometry_set->has_grease_pencil()) {
     return;
   }
+  GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
 
-  generate_strokes(*md, ctx->depsgraph, *ctx->object, *gp);
+  generate_strokes(*md, ctx->depsgraph, *ctx->object, grease_pencil);
 
-  DEG_id_tag_update(&gp->id, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -839,7 +852,7 @@ ModifierTypeInfo modifierType_GreasePencilLineart = {
 
     /*init_data*/ blender::init_data,
     /*required_data_mask*/ nullptr,
-    /*free_data*/ nullptr,
+    /*free_data*/ blender::free_data,
     /*is_disabled*/ blender::is_disabled,
     /*update_depsgraph*/ blender::update_depsgraph,
     /*depends_on_time*/ nullptr,
