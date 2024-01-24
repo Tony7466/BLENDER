@@ -78,13 +78,13 @@ static void update_depsgraph(ModifierData * /*md*/, const ModifierUpdateDepsgrap
 }
 
 static void apply_stroke_transform(const GreasePencilOffsetModifierData &omd,
-                                   const MutableSpan<float3> positions,
-                                   const MutableSpan<float> radii,
                                    const VArray<float> &weights,
                                    const IndexRange &points,
                                    const float3 &loc_factor,
                                    const float3 &rot_factor,
-                                   const float3 &scale_factor)
+                                   const float3 &scale_factor,
+                                   const MutableSpan<float3> positions,
+                                   const MutableSpan<float> radii)
 {
   const bool has_global_offset = !(math::is_zero(float3(omd.loc)) &&
                                    math::is_zero(float3(omd.rot)) &&
@@ -178,7 +178,7 @@ static void modify_stroke_random(Object &ob,
                                                     get_random_vector(2, curve_i);
 
     apply_stroke_transform(
-        omd, positions, radii.span, vgroup_weights, points, loc_factor, rot_factor, scale_factor);
+        omd, vgroup_weights, points, loc_factor, rot_factor, scale_factor, positions, radii.span);
   });
 
   radii.finish();
@@ -211,13 +211,13 @@ static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
     const IndexRange points = points_by_curve[curve_i];
     const float factor = get_factor_from_index(omd, curves.curves_num(), curve_i);
     apply_stroke_transform(omd,
-                           positions,
-                           radii.span,
                            vgroup_weights,
                            points,
                            float3(factor),
                            float3(factor),
-                           float3(factor));
+                           float3(factor),
+                           positions,
+                           radii.span);
   });
 
   radii.finish();
@@ -246,13 +246,13 @@ static void modify_stroke_by_material(Object &ob,
     const IndexRange points = points_by_curve[curve_i];
     const float factor = get_factor_from_index(omd, totcol, stroke_materials[curve_i]);
     apply_stroke_transform(omd,
-                           positions,
-                           radii.span,
                            vgroup_weights,
                            points,
                            float3(factor),
                            float3(factor),
-                           float3(factor));
+                           float3(factor),
+                           positions,
+                           radii.span);
   });
 
   radii.finish();
@@ -278,13 +278,13 @@ static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
   curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
     apply_stroke_transform(omd,
-                           positions,
-                           radii.span,
                            vgroup_weights,
                            points,
                            float3(factor),
                            float3(factor),
-                           float3(factor));
+                           float3(factor),
+                           positions,
+                           radii.span);
   });
 
   radii.finish();
