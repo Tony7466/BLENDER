@@ -290,6 +290,10 @@ class MTLTexture : public Texture {
   {
     return name_;
   }
+  bool has_custom_swizzle()
+  {
+    return (memcmp(tex_swizzle_mask_, "rgba", sizeof(char) * 4) != 0);
+  }
 
   id<MTLBuffer> get_vertex_buffer() const
   {
