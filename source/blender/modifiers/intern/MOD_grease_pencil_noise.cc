@@ -152,7 +152,7 @@ static void deform_drawing(const ModifierData &md,
   };
 
   if (mmd.factor > 0.0f) {
-    const Span<float3> normals = strokes.evaluated_normals();
+    const Span<float3> curve_plane_normals = drawing.curve_plane_normals();
     const Span<float3> tangents = strokes.evaluated_tangents();
     MutableSpan<float3> positions = strokes.positions_for_write();
     const Array<float> noise_table_position = noise_table(
@@ -164,7 +164,8 @@ static void deform_drawing(const ModifierData &md,
         const int point = points[i];
         float weight = get_weight(points, i);
         /* Vector orthogonal to normal. */
-        const float3 bi_normal = math::normalize(math::cross(tangents[point], normals[point]));
+        const float3 bi_normal = math::normalize(
+            math::cross(tangents[point], curve_plane_normals[stroke_i]));
         const float noise = table_sample(noise_table_position,
                                          point * noise_scale + math::fract(mmd.noise_offset));
         positions[point] += bi_normal * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
