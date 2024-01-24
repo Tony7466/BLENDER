@@ -8,15 +8,14 @@
 
 #pragma once
 
-#include "BLI_string_ref.hh"
+#include "AS_asset_library.hh"
 
 namespace blender::asset_system {
 
-class EssentialsAssetLibrary : public AssetLibrary {
+class AllAssetLibrary : public AssetLibrary {
  public:
-  void load() override;
+  AllAssetLibrary();
+  void load(const Main &bmain) override;
 };
-
-StringRefNull essentials_directory_path();
 
 }  // namespace blender::asset_system

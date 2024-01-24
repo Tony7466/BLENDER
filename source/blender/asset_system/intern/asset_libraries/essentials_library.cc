@@ -10,9 +10,20 @@
 
 #include "BKE_appdir.h"
 
+#include "AS_asset_library.hh"
+#include "asset_library_service.hh"
+
 #include "AS_essentials_library.hh"
 
 namespace blender::asset_system {
+
+void EssentialsAssetLibrary::load(const Main & /*bmain*/) override
+{
+  /* Builtin asset libraries don't need a name, the #eAssetLibraryType is enough to identify them
+   * (and doesn't change, unlike the name). */
+  AssetLibraryService::get_asset_library_on_disk(
+      ASSET_LIBRARY_ESSENTIALS, "", essentials_directory_path());
+}
 
 StringRefNull essentials_directory_path()
 {

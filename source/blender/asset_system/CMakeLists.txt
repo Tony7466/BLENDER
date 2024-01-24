@@ -15,13 +15,16 @@ set(SRC
   intern/asset_catalog.cc
   intern/asset_catalog_path.cc
   intern/asset_catalog_tree.cc
-  intern/asset_essentials_library.cc
   intern/asset_identifier.cc
   intern/asset_library.cc
+  intern/asset_library_registry.cc
   intern/asset_library_service.cc
   intern/asset_representation.cc
   intern/asset_storage.cc
   intern/utils.cc
+  intern/asset_libraries/all_library.cc
+  intern/asset_libraries/essentials_library.cc
+  intern/asset_libraries/current_file_library.cc
 
   AS_asset_catalog.hh
   AS_asset_catalog_path.hh
@@ -33,6 +36,8 @@ set(SRC
   intern/asset_library_service.hh
   intern/asset_storage.hh
   intern/utils.hh
+  intern/asset_libraries/all_library.hh
+  intern/asset_libraries/current_file_library.hh
 
   AS_asset_library.h
 )

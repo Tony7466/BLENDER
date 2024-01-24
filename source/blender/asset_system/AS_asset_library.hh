@@ -23,12 +23,26 @@
 struct AssetLibrary;
 struct IDRemapper;
 struct Main;
+struct UserDef;
 
 namespace blender::asset_system {
 
 class AssetIdentifier;
 class AssetRepresentation;
 class AssetStorage;
+
+/**
+ * Make an asset library available to the asset system, by letting it take ownership.
+ */
+void register_library(eAssetLibraryType type, std::unique_ptr<AssetLibrary> library);
+/**
+ * Unregister all asset libraries of \a type, returning the unregistered libraries as owning
+ * pointers. The return value can be discarded to completely destruct the asset libraries.
+ */
+Vector<std::unique_ptr<AssetLibrary>> unregister_libraries_of_type(eAssetLibraryType type);
+
+void register_builtin_libraries();
+void register_userdef_libraries(const UserDef *userdef);
 
 /**
  * AssetLibrary provides access to an asset library's data.
@@ -76,6 +90,10 @@ class AssetLibrary {
 
   bCallbackFuncStore on_save_callback_store_{};
 
+  /* TODO temp, just to set up some settings. */
+  friend void register_builtin_libraries();
+  friend void register_userdef_libraries(const UserDef *userdef);
+
  public:
   /* Controlled by #ED_asset_catalogs_set_save_catalogs_when_file_is_saved,
    * for managing the "Save Catalog Changes" in the quit-confirmation dialog box. */
@@ -95,7 +113,7 @@ class AssetLibrary {
    * \param root_path: If this is an asset library on disk, the top-level directory path.
    */
   AssetLibrary(eAssetLibraryType library_type, StringRef name = "", StringRef root_path = "");
-  ~AssetLibrary();
+  virtual ~AssetLibrary();
 
   /**
    * Execute \a fn for every asset library that is loaded. The asset library is passed to the
@@ -106,6 +124,8 @@ class AssetLibrary {
    *                          iterating over it is redundant.
    */
   static void foreach_loaded(FunctionRef<void(AssetLibrary &)> fn, bool include_all_library);
+
+  virtual void load(const Main &bmain) = 0;
 
   void load_catalogs();
 
