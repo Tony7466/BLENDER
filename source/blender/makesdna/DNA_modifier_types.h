@@ -97,7 +97,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilSubdiv = 62,
   eModifierType_GreasePencilColor = 63,
   eModifierType_GreasePencilTint = 64,
-  eModifierType_GreasePencilSmooth = 63,
+  eModifierType_GreasePencilSmooth = 65,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
