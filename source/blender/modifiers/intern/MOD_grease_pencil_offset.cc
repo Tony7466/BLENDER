@@ -297,9 +297,7 @@ static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
 
 static void modify_drawing(ModifierData &md,
                            const ModifierEvalContext &ctx,
-                           bke::greasepencil::Drawing &drawing,
-                           const std::optional<int> layer_index = std::nullopt,
-                           const std::optional<int> layers_num = std::nullopt)
+                           bke::greasepencil::Drawing &drawing)
 {
   auto &omd = reinterpret_cast<GreasePencilOffsetModifierData &>(md);
 
@@ -312,16 +310,39 @@ static void modify_drawing(ModifierData &md,
     case MOD_GREASE_PENCIL_OFFSET_RANDOM:
       modify_stroke_random(*ctx.object, omd, curves, curves_mask);
       break;
-    case MOD_GREASE_PENCIL_OFFSET_LAYER:
-      BLI_assert(layer_index);
-      BLI_assert(layers_num);
-      modify_stroke_by_layer(omd, *layer_index, *layers_num, curves, curves_mask);
-      break;
     case MOD_GREASE_PENCIL_OFFSET_MATERIAL:
       modify_stroke_by_material(*ctx.object, omd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_OFFSET_STROKE:
       modify_stroke_by_index(omd, curves, curves_mask);
+      break;
+    case MOD_GREASE_PENCIL_OFFSET_LAYER:
+      BLI_assert_unreachable();
+      break;
+  }
+}
+
+static void modify_drawing_by_layer(ModifierData &md,
+                                    const ModifierEvalContext &ctx,
+                                    bke::greasepencil::Drawing &drawing,
+                                    int layer_index,
+                                    int layers_num)
+{
+  auto &omd = reinterpret_cast<GreasePencilOffsetModifierData &>(md);
+
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  IndexMaskMemory mask_memory;
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+      ctx.object, curves, omd.influence, mask_memory);
+
+  switch (omd.offset_mode) {
+    case MOD_GREASE_PENCIL_OFFSET_LAYER:
+      modify_stroke_by_layer(omd, layer_index, layers_num, curves, curves_mask);
+      break;
+    case MOD_GREASE_PENCIL_OFFSET_RANDOM:
+    case MOD_GREASE_PENCIL_OFFSET_MATERIAL:
+    case MOD_GREASE_PENCIL_OFFSET_STROKE:
+      BLI_assert_unreachable();
       break;
   }
 }
@@ -349,7 +370,8 @@ static void modify_geometry_set(ModifierData *md,
     const Vector<LayerDrawingInfo> drawings = modifier::greasepencil::get_drawing_infos_by_layer(
         grease_pencil, layer_mask, frame);
     threading::parallel_for_each(drawings, [&](const LayerDrawingInfo &info) {
-      modify_drawing(*md, *ctx, *info.drawing, info.layer_index, grease_pencil.layers().size());
+      modify_drawing_by_layer(
+          *md, *ctx, *info.drawing, info.layer_index, grease_pencil.layers().size());
     });
   }
   else {
