@@ -13,6 +13,7 @@
 #  OPENIMAGEIO_FOUND, If false, do not try to use OpenImageIO.
 #  OPENIMAGEIO_PUGIXML_FOUND, Indicates whether OIIO has biltin PuguXML parser.
 #  OPENIMAGEIO_IDIFF, full path to idiff application if found.
+#  OPENIMAGEIO_TOOL, full path to oiiotool application if found.
 #
 # also defined, but not for general use are
 #  OPENIMAGEIO_LIBRARY, where to find the OpenImageIO library.
@@ -54,6 +55,15 @@ set(_openimageio_LIBRARIES ${OPENIMAGEIO_LIBRARY})
 find_file(OPENIMAGEIO_IDIFF
   NAMES
     idiff
+  HINTS
+    ${_openimageio_SEARCH_DIRS}
+  PATH_SUFFIXES
+    bin
+)
+
+find_file(OPENIMAGEIO_TOOL
+  NAMES
+    oiiotool
   HINTS
     ${_openimageio_SEARCH_DIRS}
   PATH_SUFFIXES
@@ -116,6 +126,7 @@ mark_as_advanced(
   OPENIMAGEIO_LIBRARY
   OPENIMAGEIO_UTIL_LIBRARY
   OPENIMAGEIO_IDIFF
+  OPENIMAGEIO_TOOL
 )
 
 unset(_openimageio_SEARCH_DIRS)
