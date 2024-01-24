@@ -122,10 +122,10 @@ static void apply_stroke_transform(const GreasePencilOffsetModifierData &omd,
 }
 
 /** Randomized offset per stroke. */
-static void modify_stroke_random(Object &ob,
+static void modify_stroke_random(const Object &ob,
                                  const GreasePencilOffsetModifierData &omd,
-                                 bke::CurvesGeometry &curves,
-                                 const IndexMask &curves_mask)
+                                 const IndexMask &curves_mask,
+                                 bke::CurvesGeometry &curves)
 {
   const bool use_uniform_scale = (omd.flag & MOD_GREASE_PENCIL_OFFSET_UNIFORM_RANDOM_SCALE);
 
@@ -196,8 +196,8 @@ static float get_factor_from_index(const GreasePencilOffsetModifierData &omd,
 
 /** Offset proportional to stroke index. */
 static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
-                                   bke::CurvesGeometry &curves,
-                                   const IndexMask &curves_mask)
+                                   const IndexMask &curves_mask,
+                                   bke::CurvesGeometry &curves)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -226,8 +226,8 @@ static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
 /** Offset proportional to material index. */
 static void modify_stroke_by_material(Object &ob,
                                       const GreasePencilOffsetModifierData &omd,
-                                      bke::CurvesGeometry &curves,
-                                      const IndexMask &curves_mask)
+                                      const IndexMask &curves_mask,
+                                      bke::CurvesGeometry &curves)
 {
   const short *totcolp = BKE_object_material_len_p(&ob);
   const short totcol = totcolp ? *totcolp : 0;
@@ -262,8 +262,8 @@ static void modify_stroke_by_material(Object &ob,
 static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
                                    const int layer_index,
                                    const int layers_num,
-                                   bke::CurvesGeometry &curves,
-                                   const IndexMask &curves_mask)
+                                   const IndexMask &curves_mask,
+                                   bke::CurvesGeometry &curves)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -303,13 +303,13 @@ static void modify_drawing(ModifierData &md,
 
   switch (omd.offset_mode) {
     case MOD_GREASE_PENCIL_OFFSET_RANDOM:
-      modify_stroke_random(*ctx.object, omd, curves, curves_mask);
+      modify_stroke_random(*ctx.object, omd, curves_mask, curves);
       break;
     case MOD_GREASE_PENCIL_OFFSET_MATERIAL:
-      modify_stroke_by_material(*ctx.object, omd, curves, curves_mask);
+      modify_stroke_by_material(*ctx.object, omd, curves_mask, curves);
       break;
     case MOD_GREASE_PENCIL_OFFSET_STROKE:
-      modify_stroke_by_index(omd, curves, curves_mask);
+      modify_stroke_by_index(omd, curves_mask, curves);
       break;
     case MOD_GREASE_PENCIL_OFFSET_LAYER:
       BLI_assert_unreachable();
@@ -332,7 +332,7 @@ static void modify_drawing_by_layer(ModifierData &md,
 
   switch (omd.offset_mode) {
     case MOD_GREASE_PENCIL_OFFSET_LAYER:
-      modify_stroke_by_layer(omd, layer_index, layers_num, curves, curves_mask);
+      modify_stroke_by_layer(omd, layer_index, layers_num, curves_mask, curves);
       break;
     case MOD_GREASE_PENCIL_OFFSET_RANDOM:
     case MOD_GREASE_PENCIL_OFFSET_MATERIAL:
