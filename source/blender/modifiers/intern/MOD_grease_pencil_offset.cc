@@ -224,12 +224,12 @@ static void modify_stroke_by_index(const GreasePencilOffsetModifierData &omd,
 }
 
 /** Offset proportional to material index. */
-static void modify_stroke_by_material(Object &ob,
+static void modify_stroke_by_material(const Object &ob,
                                       const GreasePencilOffsetModifierData &omd,
                                       const IndexMask &curves_mask,
                                       bke::CurvesGeometry &curves)
 {
-  const short *totcolp = BKE_object_material_len_p(&ob);
+  const short *totcolp = BKE_object_material_len_p(const_cast<Object *>(&ob));
   const short totcol = totcolp ? *totcolp : 0;
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -290,11 +290,11 @@ static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
   radii.finish();
 }
 
-static void modify_drawing(ModifierData &md,
+static void modify_drawing(const ModifierData &md,
                            const ModifierEvalContext &ctx,
                            bke::greasepencil::Drawing &drawing)
 {
-  auto &omd = reinterpret_cast<GreasePencilOffsetModifierData &>(md);
+  const auto &omd = reinterpret_cast<const GreasePencilOffsetModifierData &>(md);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   IndexMaskMemory mask_memory;
@@ -317,13 +317,13 @@ static void modify_drawing(ModifierData &md,
   }
 }
 
-static void modify_drawing_by_layer(ModifierData &md,
+static void modify_drawing_by_layer(const ModifierData &md,
                                     const ModifierEvalContext &ctx,
                                     bke::greasepencil::Drawing &drawing,
                                     int layer_index,
                                     int layers_num)
 {
-  auto &omd = reinterpret_cast<GreasePencilOffsetModifierData &>(md);
+  const auto &omd = reinterpret_cast<const GreasePencilOffsetModifierData &>(md);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   IndexMaskMemory mask_memory;
