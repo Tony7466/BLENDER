@@ -785,13 +785,9 @@ void rna_uiLayoutPanelProp(uiLayout *layout,
                            ReportList *reports,
                            PointerRNA *data,
                            const char *property,
-                           const char *text,
-                           const char *text_ctxt,
-                           const bool translate,
                            uiLayout **r_layout_header,
                            uiLayout **r_layout_body)
 {
-  text = rna_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
   Panel *panel = uiLayoutGetRootPanel(layout);
   if (panel == nullptr) {
     BKE_reportf(reports, RPT_ERROR, "Layout panels can not be used in this context");
@@ -801,9 +797,6 @@ void rna_uiLayoutPanelProp(uiLayout *layout,
   }
 
   PanelLayout panel_layout = uiLayoutPanelWithHeader(C, layout, data, property);
-  if (text) {
-    uiItemL(panel_layout.header, text, ICON_NONE);
-  }
   *r_layout_header = panel_layout.header;
   *r_layout_body = panel_layout.body;
 }
@@ -812,14 +805,10 @@ void rna_uiLayoutPanel(uiLayout *layout,
                        bContext *C,
                        ReportList *reports,
                        const char *idname,
-                       const char *text,
-                       const char *text_ctxt,
-                       const bool translate,
                        const bool default_closed,
                        uiLayout **r_layout_header,
                        uiLayout **r_layout_body)
 {
-  text = RNA_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
   Panel *panel = uiLayoutGetRootPanel(layout);
   if (panel == nullptr) {
     BKE_reportf(reports, RPT_ERROR, "Layout panels can not be used in this context");
@@ -830,10 +819,6 @@ void rna_uiLayoutPanel(uiLayout *layout,
   LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(panel, idname, default_closed);
   PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
   PanelLayout panel_layout = uiLayoutPanelWithHeader(C, layout, &state_ptr, "is_open");
-  if (text) {
-    uiItemL(panel_layout.header, text, ICON_NONE);
-  }
-
   *r_layout_header = panel_layout.header;
   *r_layout_body = panel_layout.body;
 }
@@ -1113,7 +1098,6 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_string(func, "idname", nullptr, 0, "", "Identifier of the panel");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  api_ui_item_common_text(func);
   RNA_def_boolean(func,
                   "default_closed",
                   false,
@@ -1147,7 +1131,6 @@ void RNA_api_ui_layout(StructRNA *srna)
       "",
       "Identifier of the boolean property that determines whether the panel is open or closed");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  api_ui_item_common_text(func);
   parm = RNA_def_pointer(func, "layout_header", "UILayout", "", "Sub-layout to put items in");
   RNA_def_function_output(func, parm);
   parm = RNA_def_pointer(func,
