@@ -33,7 +33,7 @@
 #include "BPy_ViewMap.h"
 #include "BPy_ViewShape.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "DNA_scene_types.h"
 #include "FRS_freestyle.h"
 #include "RNA_access.hh"
@@ -41,6 +41,9 @@
 #include "bpy_rna.h" /* pyrna_struct_CreatePyObject() */
 
 #include "../generic/py_capi_utils.h" /* #PyC_UnicodeFromBytes */
+
+#include "BKE_colorband.hh"  /* BKE_colorband_evaluate() */
+#include "BKE_colortools.hh" /* BKE_curvemapping_evaluateF() */
 
 #ifdef __cplusplus
 extern "C" {
@@ -188,8 +191,6 @@ static PyObject *Freestyle_blendRamp(PyObject * /*self*/, PyObject *args)
   return Vector_CreatePyObject(a, 3, nullptr);
 }
 
-#include "BKE_colorband.h" /* BKE_colorband_evaluate() */
-
 static char Freestyle_evaluateColorRamp___doc__[] =
     ".. function:: evaluateColorRamp(ramp, in)\n"
     "\n"
@@ -223,7 +224,6 @@ static PyObject *Freestyle_evaluateColorRamp(PyObject * /*self*/, PyObject *args
   return Vector_CreatePyObject(out, 4, nullptr);
 }
 
-#include "BKE_colortools.h" /* BKE_curvemapping_evaluateF() */
 #include "DNA_color_types.h"
 
 static char Freestyle_evaluateCurveMappingF___doc__[] =
@@ -540,10 +540,11 @@ PyObject *Freestyle_Init()
   PyDict_SetItemString(PySys_GetObject("modules"), module_definition.m_name, module);
 
   // update 'sys.path' for Freestyle Python API modules
-  const char *const path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, "freestyle");
-  if (path) {
+  const std::optional<std::string> path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS,
+                                                               "freestyle");
+  if (path.has_value()) {
     char modpath[FILE_MAX];
-    BLI_path_join(modpath, sizeof(modpath), path, "modules");
+    BLI_path_join(modpath, sizeof(modpath), path->c_str(), "modules");
     PyObject *sys_path = PySys_GetObject("path"); /* borrow */
     PyObject *py_modpath = PyC_UnicodeFromBytes(modpath);
     PyList_Append(sys_path, py_modpath);

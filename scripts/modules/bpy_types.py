@@ -538,6 +538,22 @@ class EditBone(StructRNA, _GenericBone, metaclass=StructMetaPropGroup):
             self.align_roll(matrix @ z_vec)
 
 
+class BoneCollection(StructRNA, metaclass=StructMetaPropGroup):
+    __slots__ = ()
+
+    @property
+    def bones_recursive(self):
+        """A set of all bones assigned to this bone collection and its child collections."""
+        bones = set()
+        collections = [self]
+
+        while collections:
+            visit = collections.pop()
+            bones.update(visit.bones)
+            collections.extend(visit.children)
+        return bones
+
+
 def ord_ind(i1, i2):
     if i1 < i2:
         return i1, i2
@@ -1208,6 +1224,10 @@ class AssetShelf(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
 
+class FileHandler(StructRNA, metaclass=RNAMeta):
+    __slots__ = ()
+
+
 class NodeTree(bpy_types.ID, metaclass=RNAMetaPropGroup):
     __slots__ = ()
 
@@ -1285,6 +1305,19 @@ class GeometryNode(NodeInternal):
 
 class RenderEngine(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
+
+
+class UserExtensionRepo(StructRNA):
+    __slots__ = ()
+
+    @property
+    def directory_or_default(self):
+        """Return ``directory`` or a default path derived from the users scripts path."""
+        if directory := self.directory:
+            return directory
+        import os
+        import bpy
+        return os.path.join(bpy.utils.user_resource('SCRIPTS', path="extensions"), self.module)
 
 
 class HydraRenderEngine(RenderEngine):

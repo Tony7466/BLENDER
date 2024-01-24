@@ -88,6 +88,13 @@ bool ghost_wl_dynload_libraries_init();
 void ghost_wl_dynload_libraries_exit();
 #endif
 
+#if defined(WITH_GHOST_WAYLAND_LIBDECOR) && defined(WITH_VULKAN_BACKEND)
+/**
+ * Needed for temporary buffer creation.
+ */
+int memfd_create_sealed_for_vulkan_hack(const char *name);
+#endif
+
 struct GWL_Output {
 
   /** Wayland core types. */
@@ -238,9 +245,13 @@ class GHOST_SystemWayland : public GHOST_System {
 
   struct wl_shm *wl_shm_get() const;
 
-  void ime_begin(
-      GHOST_WindowWayland *win, int32_t x, int32_t y, int32_t w, int32_t h, bool completed) const;
-  void ime_end(GHOST_WindowWayland *win) const;
+  void ime_begin(const GHOST_WindowWayland *win,
+                 int32_t x,
+                 int32_t y,
+                 int32_t w,
+                 int32_t h,
+                 bool completed) const;
+  void ime_end(const GHOST_WindowWayland *win) const;
 
   static const char *xdg_app_id_get();
 

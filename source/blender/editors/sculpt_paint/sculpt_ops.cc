@@ -10,7 +10,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_ghash.h"
-#include "BLI_gsqueue.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.h"
@@ -21,14 +20,12 @@
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
 #include "DNA_listBase.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_context.hh"
@@ -46,11 +43,11 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "ED_image.hh"
@@ -77,6 +74,7 @@
 
 static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
 {
+  using namespace blender;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -92,11 +90,11 @@ static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
   params.permanent = true;
 
   ss->attrs.persistent_co = BKE_sculpt_attribute_ensure(
-      ob, ATTR_DOMAIN_POINT, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_co), &params);
+      ob, bke::AttrDomain::Point, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_co), &params);
   ss->attrs.persistent_no = BKE_sculpt_attribute_ensure(
-      ob, ATTR_DOMAIN_POINT, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_no), &params);
+      ob, bke::AttrDomain::Point, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_no), &params);
   ss->attrs.persistent_disp = BKE_sculpt_attribute_ensure(
-      ob, ATTR_DOMAIN_POINT, CD_PROP_FLOAT, SCULPT_ATTRIBUTE_NAME(persistent_disp), &params);
+      ob, bke::AttrDomain::Point, CD_PROP_FLOAT, SCULPT_ATTRIBUTE_NAME(persistent_disp), &params);
 
   const int totvert = SCULPT_vertex_count_get(ss);
 
@@ -344,7 +342,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
 {
   using namespace blender::ed::sculpt_paint;
   const int mode_flag = OB_MODE_SCULPT;
-  Mesh *me = BKE_mesh_from_object(ob);
+  Mesh *mesh = BKE_mesh_from_object(ob);
 
   /* Enter sculpt mode. */
   ob->mode |= mode_flag;
@@ -367,15 +365,15 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
 
   /* Check dynamic-topology flag; re-enter dynamic-topology mode when changing modes,
    * As long as no data was added that is not supported. */
-  if (me->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
+  if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
     MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
 
     const char *message_unsupported = nullptr;
-    if (me->totloop != me->faces_num * 3) {
-      message_unsupported = TIP_("non-triangle face");
+    if (mesh->corners_num != mesh->faces_num * 3) {
+      message_unsupported = RPT_("non-triangle face");
     }
     else if (mmd != nullptr) {
-      message_unsupported = TIP_("multi-res modifier");
+      message_unsupported = RPT_("multi-res modifier");
     }
     else {
       dyntopo::WarnFlag flag = dyntopo::check_attribute_warning(scene, ob);
@@ -383,16 +381,16 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
         /* pass */
       }
       else if (flag & dyntopo::VDATA) {
-        message_unsupported = TIP_("vertex data");
+        message_unsupported = RPT_("vertex data");
       }
       else if (flag & dyntopo::EDATA) {
-        message_unsupported = TIP_("edge data");
+        message_unsupported = RPT_("edge data");
       }
       else if (flag & dyntopo::LDATA) {
-        message_unsupported = TIP_("face data");
+        message_unsupported = RPT_("face data");
       }
       else if (flag & dyntopo::MODIFIER) {
-        message_unsupported = TIP_("constructive modifier");
+        message_unsupported = RPT_("constructive modifier");
       }
       else {
         BLI_assert(0);
@@ -416,7 +414,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
     else {
       BKE_reportf(
           reports, RPT_WARNING, "Dynamic Topology found: %s, disabled", message_unsupported);
-      me->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
+      mesh->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
     }
   }
 
@@ -440,7 +438,7 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
 {
   using namespace blender::ed::sculpt_paint;
   const int mode_flag = OB_MODE_SCULPT;
-  Mesh *me = BKE_mesh_from_object(ob);
+  Mesh *mesh = BKE_mesh_from_object(ob);
 
   multires_flush_sculpt_updates(ob);
 
@@ -456,14 +454,14 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
 
-  if (me->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
+  if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
     /* Dynamic topology must be disabled before exiting sculpt
      * mode to ensure the undo stack stays in a consistent
      * state. */
     dyntopo::disable_with_undo(bmain, depsgraph, scene, ob);
 
     /* Store so we know to re-enable when entering sculpt mode. */
-    me->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
+    mesh->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
   }
 
   /* Leave sculpt mode. */
@@ -522,9 +520,9 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
     BKE_paint_toolslots_brush_validate(bmain, &ts->sculpt->paint);
 
     if (ob->mode & mode_flag) {
-      Mesh *me = static_cast<Mesh *>(ob->data);
+      Mesh *mesh = static_cast<Mesh *>(ob->data);
       /* Dyntopo adds its own undo step. */
-      if ((me->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) == 0) {
+      if ((mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) == 0) {
         /* Without this the memfile undo step is used,
          * while it works it causes lag when undoing the first undo step, see #71564. */
         wmWindowManager *wm = CTX_wm_manager(C);
@@ -587,7 +585,7 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
   float brush_co[3];
   copy_v3_v3(brush_co, SCULPT_active_vertex_co_get(ss));
 
-  BLI_bitmap *visited_verts = BLI_BITMAP_NEW(SCULPT_vertex_count_get(ss), "visited_verts");
+  blender::BitVector<> visited_verts(SCULPT_vertex_count_get(ss));
 
   /* Assuming an average of 6 edges per vertex in a triangulated mesh. */
   const int max_preview_verts = SCULPT_vertex_count_get(ss) * 3 * 2;
@@ -596,14 +594,13 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
     ss->preview_vert_list = MEM_cnew_array<PBVHVertRef>(max_preview_verts, __func__);
   }
 
-  GSQueue *non_visited_verts = BLI_gsqueue_new(sizeof(PBVHVertRef));
-  PBVHVertRef active_v = SCULPT_active_vertex_get(ss);
-  BLI_gsqueue_push(non_visited_verts, &active_v);
+  std::queue<PBVHVertRef> non_visited_verts;
+  non_visited_verts.push(SCULPT_active_vertex_get(ss));
 
-  while (!BLI_gsqueue_is_empty(non_visited_verts)) {
-    PBVHVertRef from_v;
+  while (!non_visited_verts.empty()) {
+    PBVHVertRef from_v = non_visited_verts.front();
+    non_visited_verts.pop();
 
-    BLI_gsqueue_pop(non_visited_verts, &from_v);
     SculptVertexNeighborIter ni;
     SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, from_v, ni) {
       if (totpoints + (ni.size * 2) < max_preview_verts) {
@@ -613,22 +610,18 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
         totpoints++;
         ss->preview_vert_list[totpoints] = to_v;
         totpoints++;
-        if (BLI_BITMAP_TEST(visited_verts, to_v_i)) {
+        if (visited_verts[to_v_i]) {
           continue;
         }
-        BLI_BITMAP_ENABLE(visited_verts, to_v_i);
+        visited_verts[to_v_i].set();
         const float *co = SCULPT_vertex_co_for_grab_active_get(ss, to_v);
         if (len_squared_v3v3(brush_co, co) < radius * radius) {
-          BLI_gsqueue_push(non_visited_verts, &to_v);
+          non_visited_verts.push(to_v);
         }
       }
     }
     SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
   }
-
-  BLI_gsqueue_free(non_visited_verts);
-
-  MEM_freeN(visited_verts);
 
   ss->preview_vert_count = totpoints;
 }
@@ -831,7 +824,6 @@ static void sculpt_mask_by_color_contiguous(Object *object,
   copy_v3_v3(ffd.initial_color, color);
 
   flood_fill::execute(ss, &flood, sculpt_mask_by_color_contiguous_floodfill, &ffd);
-  flood_fill::free_fill(&flood);
 
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
   const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
@@ -956,7 +948,7 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
     sculpt_mask_by_color_full_mesh(ob, active_vertex, threshold, invert, preserve_mask);
   }
 
-  BKE_pbvh_update_mask(ss->pbvh);
+  bke::pbvh::update_mask(*ss->pbvh);
   undo::push_end(ob);
 
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_MASK);
@@ -1017,7 +1009,7 @@ enum CavityBakeSettingsSource {
 };
 
 static void sculpt_bake_cavity_exec_task(Object *ob,
-                                         blender::ed::sculpt_paint::auto_mask::Cache *automasking,
+                                         blender::ed::sculpt_paint::auto_mask::Cache &automasking,
                                          const CavityBakeMixMode mode,
                                          const float factor,
                                          const SculptMaskWriteInfo mask_write,
@@ -1029,12 +1021,12 @@ static void sculpt_bake_cavity_exec_task(Object *ob,
 
   undo::push_node(ob, node, undo::Type::Mask);
 
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, &automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     auto_mask::node_update(automask_data, vd);
 
-    float automask = auto_mask::factor_get(automasking, ss, vd.vertex, &automask_data);
+    float automask = auto_mask::factor_get(&automasking, ss, vd.vertex, &automask_data);
     float mask;
 
     switch (mode) {
@@ -1150,18 +1142,16 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
 
   SCULPT_stroke_id_next(ob);
 
-  auto_mask::Cache *automasking = auto_mask::cache_init(&sd2, &brush2, ob);
+  std::unique_ptr<auto_mask::Cache> automasking = auto_mask::cache_init(&sd2, &brush2, ob);
   const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      sculpt_bake_cavity_exec_task(ob, automasking, mode, factor, mask_write, nodes[i]);
+      sculpt_bake_cavity_exec_task(ob, *automasking, mode, factor, mask_write, nodes[i]);
     }
   });
 
-  auto_mask::cache_free(automasking);
-
-  BKE_pbvh_update_mask(ss->pbvh);
+  bke::pbvh::update_mask(*ss->pbvh);
   undo::push_end(ob);
 
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_MASK);

@@ -22,17 +22,18 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
@@ -84,7 +85,7 @@ static const bNodeTree *get_asset_or_local_node_group(const bContext &C,
 {
   Main &bmain = *CTX_data_main(&C);
   if (bNodeTree *group = reinterpret_cast<bNodeTree *>(
-          WM_operator_properties_id_lookup_from_name_or_session_uuid(&bmain, &ptr, ID_NT)))
+          WM_operator_properties_id_lookup_from_name_or_session_uid(&bmain, &ptr, ID_NT)))
   {
     return group;
   }
@@ -225,7 +226,7 @@ static void store_result_geometry(
 
       if (object.mode == OB_MODE_EDIT) {
         EDBM_mesh_make(&object, scene.toolsettings->selectmode, true);
-        BKE_editmesh_looptri_and_normals_calc(mesh.edit_mesh);
+        BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
       }
       else if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_end(&object);
@@ -249,8 +250,11 @@ static Depsgraph *build_depsgraph_from_indirect_ids(Main &bmain,
 {
   Set<ID *> ids_for_relations;
   bool needs_own_transform_relation = false;
-  nodes::find_node_tree_dependencies(
-      node_tree_orig, ids_for_relations, needs_own_transform_relation);
+  bool needs_scene_camera_relation = false;
+  nodes::find_node_tree_dependencies(node_tree_orig,
+                                     ids_for_relations,
+                                     needs_own_transform_relation,
+                                     needs_scene_camera_relation);
   IDP_foreach_property(
       &const_cast<IDProperty &>(properties),
       IDP_TYPE_FILTER_ID,
@@ -944,7 +948,8 @@ static bool unassigned_local_poll(const bContext &C)
       continue;
     }
     if (!group->geometry_node_asset_traits ||
-        (group->geometry_node_asset_traits->flag & flag) != flag) {
+        (group->geometry_node_asset_traits->flag & flag) != flag)
+    {
       continue;
     }
     return true;
@@ -988,7 +993,8 @@ static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
       continue;
     }
     if (!group->geometry_node_asset_traits ||
-        (group->geometry_node_asset_traits->flag & flag) != flag) {
+        (group->geometry_node_asset_traits->flag & flag) != flag)
+    {
       continue;
     }
 

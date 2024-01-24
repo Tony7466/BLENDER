@@ -129,6 +129,7 @@ set(SRC
   intern/fcurve.cc
   intern/fcurve_cache.cc
   intern/fcurve_driver.cc
+  intern/file_handler.cc
   intern/fluid.cc
   intern/fmodifier.cc
   intern/freestyle.cc
@@ -196,8 +197,8 @@ set(SRC
   intern/mesh.cc
   intern/mesh_boolean_convert.cc
   intern/mesh_calc_edges.cc
-  intern/mesh_convert.cc
   intern/mesh_compare.cc
+  intern/mesh_convert.cc
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
@@ -232,7 +233,7 @@ set(SRC
   intern/nla.cc
   intern/node.cc
   intern/node_runtime.cc
-  intern/node_socket_value_cpp_type.cc
+  intern/node_socket_value.cc
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
@@ -308,6 +309,8 @@ set(SRC
   intern/vfontdata_freetype.cc
   intern/viewer_path.cc
   intern/volume.cc
+  intern/volume_grid.cc
+  intern/volume_grid_file_cache.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
   intern/workspace.cc
@@ -323,25 +326,25 @@ set(SRC
   BKE_anim_visualization.h
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
-  BKE_appdir.h
+  BKE_appdir.hh
   BKE_armature.hh
   BKE_asset.hh
   BKE_attribute.h
   BKE_attribute.hh
   BKE_attribute_math.hh
-  BKE_autoexec.h
+  BKE_autoexec.hh
   BKE_bake_geometry_nodes_modifier.hh
   BKE_bake_items.hh
   BKE_bake_items_paths.hh
   BKE_bake_items_serialize.hh
   BKE_bake_items_socket.hh
   BKE_blender.h
-  BKE_blender_copybuffer.h
-  BKE_blender_undo.h
-  BKE_blender_user_menu.h
+  BKE_blender_copybuffer.hh
+  BKE_blender_undo.hh
+  BKE_blender_user_menu.hh
   BKE_blender_version.h
-  BKE_blendfile.h
-  BKE_blendfile_link_append.h
+  BKE_blendfile.hh
+  BKE_blendfile_link_append.hh
   BKE_boids.h
   BKE_bpath.h
   BKE_brush.hh
@@ -354,8 +357,8 @@ set(SRC
   BKE_cloth.hh
   BKE_collection.h
   BKE_collision.h
-  BKE_colorband.h
-  BKE_colortools.h
+  BKE_colorband.hh
+  BKE_colortools.hh
   BKE_compute_contexts.hh
   BKE_constraint.h
   BKE_context.hh
@@ -385,6 +388,7 @@ set(SRC
   BKE_effect.h
   BKE_fcurve.h
   BKE_fcurve_driver.h
+  BKE_file_handler.hh
   BKE_fluid.h
   BKE_freestyle.h
   BKE_geometry_fields.hh
@@ -401,7 +405,7 @@ set(SRC
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
-  BKE_idtype.h
+  BKE_idtype.hh
   BKE_image.h
   BKE_image_format.h
   BKE_image_partial_update.hh
@@ -414,9 +418,9 @@ set(SRC
   BKE_keyconfig.h
   BKE_lattice.hh
   BKE_layer.h
-  BKE_lib_id.h
+  BKE_lib_id.hh
   BKE_lib_override.hh
-  BKE_lib_query.h
+  BKE_lib_query.hh
   BKE_lib_remap.hh
   BKE_library.hh
   BKE_light.h
@@ -454,15 +458,14 @@ set(SRC
   BKE_node.hh
   BKE_node_runtime.hh
   BKE_node_socket_value.hh
-  BKE_node_socket_value_cpp_type.hh
   BKE_node_tree_anonymous_attributes.hh
   BKE_node_tree_dot_export.hh
   BKE_node_tree_interface.hh
   BKE_node_tree_update.hh
   BKE_node_tree_zones.hh
   BKE_object.hh
-  BKE_object_types.hh
   BKE_object_deform.h
+  BKE_object_types.hh
   BKE_ocean.h
   BKE_outliner_treehash.hh
   BKE_packedFile.h
@@ -472,7 +475,7 @@ set(SRC
   BKE_pbvh_api.hh
   BKE_pbvh_pixels.hh
   BKE_pointcache.h
-  BKE_pointcloud.h
+  BKE_pointcloud.hh
   BKE_pose_backup.h
   BKE_preferences.h
   BKE_preview_image.hh
@@ -501,12 +504,15 @@ set(SRC
   BKE_texture.h
   BKE_tracking.h
   BKE_type_conversions.hh
-  BKE_undo_system.h
+  BKE_undo_system.hh
   BKE_unit.hh
   BKE_vfont.hh
   BKE_vfontdata.hh
   BKE_viewer_path.hh
   BKE_volume.hh
+  BKE_volume_enums.hh
+  BKE_volume_grid.hh
+  BKE_volume_grid_file_cache.hh
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
@@ -839,6 +845,7 @@ if(WITH_GTESTS)
     intern/cryptomatte_test.cc
     intern/curves_geometry_test.cc
     intern/fcurve_test.cc
+    intern/file_handler_test.cc
     intern/grease_pencil_test.cc
     intern/idprop_serialize_test.cc
     intern/image_partial_update_test.cc
@@ -851,13 +858,14 @@ if(WITH_GTESTS)
     intern/main_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
+    intern/volume_test.cc
   )
   set(TEST_INC
     ../editors/include
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_blenkernel_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
-
-  # RNA_prototypes.h
-  add_dependencies(bf_blenkernel_tests bf_rna)
+  set(TEST_LIB
+    ${LIB}
+    bf_rna  # RNA_prototypes.h
+  )
+  blender_add_test_suite_lib(blenkernel "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
 endif()

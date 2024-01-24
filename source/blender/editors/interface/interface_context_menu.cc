@@ -108,6 +108,22 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
     }
   }
 
+  if (MenuType *mt = UI_but_menutype_get(but)) {
+    const IDPropertyTemplate val = {0};
+    IDProperty *prop = IDP_New(IDP_GROUP, &val, __func__);
+    IDP_AddToGroup(prop, IDP_NewString(mt->idname, "name"));
+    *r_prop = prop;
+    return "WM_OT_call_menu";
+  }
+
+  if (PanelType *pt = UI_but_paneltype_get(but)) {
+    const IDPropertyTemplate val = {0};
+    IDProperty *prop = IDP_New(IDP_GROUP, &val, __func__);
+    IDP_AddToGroup(prop, IDP_NewString(pt->idname, "name"));
+    *r_prop = prop;
+    return "WM_OT_call_panel";
+  }
+
   *r_prop = nullptr;
   return nullptr;
 }
@@ -359,8 +375,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
 {
   BLI_assert(ui_but_is_user_menu_compatible(C, but));
 
-  char drawstr[sizeof(but->drawstr)];
-  ui_but_drawstr_without_sep_char(but, drawstr, sizeof(drawstr));
+  std::string drawstr = ui_but_drawstr_without_sep_char(but);
 
   /* Used for USER_MENU_TYPE_MENU. */
   MenuType *mt = nullptr;
@@ -385,12 +400,12 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
                    idname);
           char *expr_result = nullptr;
           if (BPY_run_string_as_string(C, expr_imports, expr, nullptr, &expr_result)) {
-            STRNCPY(drawstr, expr_result);
+            drawstr = expr_result;
             MEM_freeN(expr_result);
           }
           else {
             BLI_assert(0);
-            STRNCPY(drawstr, idname);
+            drawstr = idname;
           }
         }
 #else
@@ -400,7 +415,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
     }
     ED_screen_user_menu_item_add_operator(
         &um->items,
-        drawstr,
+        drawstr.c_str(),
         but->optype,
         but->opptr ? static_cast<const IDProperty *>(but->opptr->data) : nullptr,
         "",
@@ -418,7 +433,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
     MEM_freeN(member_id_data_path);
   }
   else if ((mt = UI_but_menutype_get(but))) {
-    ED_screen_user_menu_item_add_menu(&um->items, drawstr, mt);
+    ED_screen_user_menu_item_add_menu(&um->items, drawstr.c_str(), mt);
   }
   else if ((ot = UI_but_operatortype_get_from_enum_menu(but, &prop))) {
     ED_screen_user_menu_item_add_operator(&um->items,
@@ -501,16 +516,8 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
   uiLayout *layout;
   const bContextStore *previous_ctx = CTX_store_get(C);
   {
-    uiStringInfo label = {BUT_GET_LABEL, nullptr};
-
-    /* highly unlikely getting the label ever fails */
-    UI_but_string_info_get(C, but, &label, nullptr);
-
-    pup = UI_popup_menu_begin(C, label.strinfo ? label.strinfo : "", ICON_NONE);
+    pup = UI_popup_menu_begin(C, UI_but_string_get_label(*but).c_str(), ICON_NONE);
     layout = UI_popup_menu_layout(pup);
-    if (label.strinfo) {
-      MEM_freeN(label.strinfo);
-    }
 
     set_layout_context_from_button(C, layout, but);
     uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
@@ -661,6 +668,16 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
         PointerRNA op_ptr;
         wmOperatorType *ot;
         ot = WM_operatortype_find("ANIM_OT_view_curve_in_graph_editor", false);
+        uiItemFullO_ptr(layout,
+                        ot,
+                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "View All in Graph Editor"),
+                        ICON_NONE,
+                        nullptr,
+                        WM_OP_INVOKE_DEFAULT,
+                        UI_ITEM_NONE,
+                        &op_ptr);
+        RNA_boolean_set(&op_ptr, "all", true);
+
         uiItemFullO_ptr(
             layout,
             ot,
@@ -671,16 +688,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
             UI_ITEM_NONE,
             &op_ptr);
         RNA_boolean_set(&op_ptr, "all", false);
-
-        uiItemFullO_ptr(layout,
-                        ot,
-                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "View All in Graph Editor"),
-                        ICON_NONE,
-                        nullptr,
-                        WM_OP_INVOKE_DEFAULT,
-                        UI_ITEM_NONE,
-                        &op_ptr);
-        RNA_boolean_set(&op_ptr, "all", true);
       }
       else {
         PointerRNA op_ptr;
@@ -978,7 +985,8 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                    true);
 
     if (ptr->owner_id && !is_whole_array &&
-        ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
+        ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM))
+    {
       uiItemO(layout,
               CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy as New Driver"),
               ICON_NONE,
