@@ -296,16 +296,14 @@ struct Bone *ED_armature_pick_bone(struct bContext *C,
                                    struct Base **r_base);
 
 struct EditBone *ED_armature_pick_ebone_from_selectbuffer(
-    struct Base **bases,
-    uint bases_len,
+    blender::Span<Base *> bases,
     const struct GPUSelectResult *hit_results,
     int hits,
     bool findunsel,
     bool do_nearest,
     struct Base **r_base);
 struct bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(
-    struct Base **bases,
-    uint bases_len,
+    blender::Span<Base *> bases,
     const struct GPUSelectResult *hit_results,
     int hits,
     bool findunsel,

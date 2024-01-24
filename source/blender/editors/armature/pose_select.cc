@@ -51,6 +51,7 @@
 
 #include "armature_intern.h"
 
+using blender::Span;
 using blender::Vector;
 
 /* utility macros for storing a temp int in the bone (selection flag) */
@@ -379,10 +380,10 @@ static bool ed_pose_is_any_selected(Object *ob, bool ignore_visibility)
   return false;
 }
 
-static bool ed_pose_is_any_selected_multi(Base **bases, uint bases_len, bool ignore_visibility)
+static bool ed_pose_is_any_selected_multi(const Span<Base *> bases, bool ignore_visibility)
 {
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Object *ob_iter = bases[base_index]->object;
+  for (Base *base : bases) {
+    Object *ob_iter = base->object;
     if (ed_pose_is_any_selected(ob_iter, ignore_visibility)) {
       return true;
     }
@@ -390,20 +391,18 @@ static bool ed_pose_is_any_selected_multi(Base **bases, uint bases_len, bool ign
   return false;
 }
 
-bool ED_pose_deselect_all_multi_ex(Base **bases,
-                                   uint bases_len,
+bool ED_pose_deselect_all_multi_ex(const Span<Base *> bases,
                                    int select_mode,
                                    const bool ignore_visibility)
 {
   if (select_mode == SEL_TOGGLE) {
-    select_mode = ed_pose_is_any_selected_multi(bases, bases_len, ignore_visibility) ?
-                      SEL_DESELECT :
-                      SEL_SELECT;
+    select_mode = ed_pose_is_any_selected_multi(bases, ignore_visibility) ? SEL_DESELECT :
+                                                                            SEL_SELECT;
   }
 
   bool changed_multi = false;
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Object *ob_iter = bases[base_index]->object;
+  for (Base *base : bases) {
+    Object *ob_iter = base->object;
     if (ED_pose_deselect_all(ob_iter, select_mode, ignore_visibility)) {
       ED_pose_bone_select_tag_update(ob_iter);
       changed_multi = true;
@@ -418,9 +417,7 @@ bool ED_pose_deselect_all_multi(bContext *C, int select_mode, const bool ignore_
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   Vector<Base *> bases = BKE_object_pose_base_array_get_unique(vc.scene, vc.view_layer, vc.v3d);
-  bool changed_multi = ED_pose_deselect_all_multi_ex(
-      bases.data(), bases.size(), select_mode, ignore_visibility);
-  return changed_multi;
+  return ED_pose_deselect_all_multi_ex(bases, select_mode, ignore_visibility);
 }
 
 /* ***************** Selections ********************** */

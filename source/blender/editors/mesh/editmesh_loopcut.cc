@@ -67,8 +67,7 @@ struct RingSelOpData {
 
   Depsgraph *depsgraph;
 
-  Base **bases;
-  uint bases_len;
+  Vector<Base *> bases;
 
   MeshCoordsCache *geom_cache;
 
@@ -101,8 +100,8 @@ static void edgering_select(RingSelOpData *lcd)
   }
 
   if (!lcd->extend) {
-    for (uint base_index = 0; base_index < lcd->bases_len; base_index++) {
-      Object *ob_iter = lcd->bases[base_index]->object;
+    for (Base *base : lcd->bases) {
+      Object *ob_iter = base->object;
       BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
       EDBM_flag_disable_all(em, BM_ELEM_SELECT);
       DEG_id_tag_update(static_cast<ID *>(ob_iter->data), ID_RECALC_SELECT);
@@ -257,7 +256,7 @@ static void ringsel_exit(bContext * /*C*/, wmOperator *op)
 
   EDBM_preselect_edgering_destroy(lcd->presel_edgering);
 
-  for (uint i = 0; i < lcd->bases_len; i++) {
+  for (const int i : lcd->bases.index_range()) {
     MeshCoordsCache *gcache = &lcd->geom_cache[i];
     if (gcache->is_alloc) {
       MEM_freeN((void *)gcache->coords);
@@ -265,25 +264,20 @@ static void ringsel_exit(bContext * /*C*/, wmOperator *op)
   }
   MEM_freeN(lcd->geom_cache);
 
-  MEM_freeN(lcd->bases);
-
   ED_region_tag_redraw(lcd->region);
 
-  /* free the custom data */
-  MEM_freeN(lcd);
+  MEM_delete(lcd);
   op->customdata = nullptr;
 }
 
 /* called when modal loop selection gets set up... */
 static int ringsel_init(bContext *C, wmOperator *op, bool do_cut)
 {
-  RingSelOpData *lcd;
   Scene *scene = CTX_data_scene(C);
 
   /* alloc new customdata */
-  lcd = static_cast<RingSelOpData *>(
-      op->customdata = MEM_callocN(sizeof(RingSelOpData), "ringsel Modal Op Data"));
-
+  RingSelOpData *lcd = MEM_new<RingSelOpData>(__func__);
+  op->customdata = lcd;
   lcd->vc = em_setup_viewcontext(C);
 
   lcd->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -356,8 +350,8 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
                                                false,
                                                false,
                                                nullptr,
-                                               lcd->bases,
-                                               lcd->bases_len,
+                                               lcd->bases.data(),
+                                               lcd->bases.size(),
                                                &base_index);
 
   if (eed_test) {
@@ -440,10 +434,9 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
 
   RingSelOpData *lcd = static_cast<RingSelOpData *>(op->customdata);
 
-  lcd->bases = bases.data();
-  lcd->bases_len = bases.size();
+  lcd->bases = std::move(bases);
   lcd->geom_cache = static_cast<MeshCoordsCache *>(
-      MEM_callocN(sizeof(*lcd->geom_cache) * bases.size(), __func__));
+      MEM_callocN(sizeof(*lcd->geom_cache) * lcd->bases.size(), __func__));
 
   if (is_interactive) {
     copy_v2_v2_int(lcd->vc.mval, event->mval);
@@ -451,7 +444,7 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
   }
   else {
 
-    Object *ob_iter = bases[exec_data.base_index]->object;
+    Object *ob_iter = lcd->bases[exec_data.base_index]->object;
     ED_view3d_viewcontext_init_object(&lcd->vc, ob_iter);
 
     BMEdge *e;

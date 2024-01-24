@@ -49,6 +49,7 @@
 
 #include "armature_intern.h"
 
+using blender::Span;
 using blender::Vector;
 
 /* utility macros for storing a temp int in the bone (selection flag) */
@@ -59,8 +60,7 @@ using blender::Vector;
 /** \name Select Buffer Queries for PoseMode & EditMode
  * \{ */
 
-Base *ED_armature_base_and_ebone_from_select_buffer(Base **bases,
-                                                    uint bases_len,
+Base *ED_armature_base_and_ebone_from_select_buffer(const Span<Base *> bases,
                                                     const uint select_id,
                                                     EditBone **r_ebone)
 {
@@ -68,9 +68,9 @@ Base *ED_armature_base_and_ebone_from_select_buffer(Base **bases,
   Base *base = nullptr;
   EditBone *ebone = nullptr;
   /* TODO(@ideasman42): optimize, eg: sort & binary search. */
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    if (bases[base_index]->object->runtime->select_id == hit_object) {
-      base = bases[base_index];
+  for (Base *base_iter : bases) {
+    if (base_iter->object->runtime->select_id == hit_object) {
+      base = base_iter;
       break;
     }
   }
@@ -83,8 +83,7 @@ Base *ED_armature_base_and_ebone_from_select_buffer(Base **bases,
   return base;
 }
 
-Object *ED_armature_object_and_ebone_from_select_buffer(Object **objects,
-                                                        uint objects_len,
+Object *ED_armature_object_and_ebone_from_select_buffer(const Span<Object *> objects,
                                                         const uint select_id,
                                                         EditBone **r_ebone)
 {
@@ -92,9 +91,9 @@ Object *ED_armature_object_and_ebone_from_select_buffer(Object **objects,
   Object *ob = nullptr;
   EditBone *ebone = nullptr;
   /* TODO(@ideasman42): optimize, eg: sort & binary search. */
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    if (objects[ob_index]->runtime->select_id == hit_object) {
-      ob = objects[ob_index];
+  for (Object *object_iter : objects) {
+    if (object_iter->runtime->select_id == hit_object) {
+      ob = object_iter;
       break;
     }
   }
@@ -107,8 +106,7 @@ Object *ED_armature_object_and_ebone_from_select_buffer(Object **objects,
   return ob;
 }
 
-Base *ED_armature_base_and_pchan_from_select_buffer(Base **bases,
-                                                    uint bases_len,
+Base *ED_armature_base_and_pchan_from_select_buffer(const Span<Base *> bases,
                                                     const uint select_id,
                                                     bPoseChannel **r_pchan)
 {
@@ -116,9 +114,9 @@ Base *ED_armature_base_and_pchan_from_select_buffer(Base **bases,
   Base *base = nullptr;
   bPoseChannel *pchan = nullptr;
   /* TODO(@ideasman42): optimize, eg: sort & binary search. */
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    if (bases[base_index]->object->runtime->select_id == hit_object) {
-      base = bases[base_index];
+  for (Base *base_iter : bases) {
+    if (base_iter->object->runtime->select_id == hit_object) {
+      base = base_iter;
       break;
     }
   }
@@ -133,13 +131,12 @@ Base *ED_armature_base_and_pchan_from_select_buffer(Base **bases,
   return base;
 }
 
-Base *ED_armature_base_and_bone_from_select_buffer(Base **bases,
-                                                   uint bases_len,
+Base *ED_armature_base_and_bone_from_select_buffer(const Span<Base *> bases,
                                                    const uint select_id,
                                                    Bone **r_bone)
 {
   bPoseChannel *pchan = nullptr;
-  Base *base = ED_armature_base_and_pchan_from_select_buffer(bases, bases_len, select_id, &pchan);
+  Base *base = ED_armature_base_and_pchan_from_select_buffer(bases, select_id, &pchan);
   *r_bone = pchan ? pchan->bone : nullptr;
   return base;
 }
@@ -157,14 +154,12 @@ Base *ED_armature_base_and_bone_from_select_buffer(Base **bases,
 
 /* See if there are any selected bones in this buffer */
 /* only bones from base are checked on */
-static void *ed_armature_pick_bone_from_selectbuffer_impl(
-    const bool is_editmode,
-    Base **bases,
-    uint bases_len,
-    const blender::Span<GPUSelectResult> hit_results,
-    bool findunsel,
-    bool do_nearest,
-    Base **r_base)
+static void *ed_armature_pick_bone_from_selectbuffer_impl(const bool is_editmode,
+                                                          const Span<Base *> bases,
+                                                          const Span<GPUSelectResult> hit_results,
+                                                          bool findunsel,
+                                                          bool do_nearest,
+                                                          Base **r_base)
 {
   bPoseChannel *pchan;
   EditBone *ebone;
@@ -183,7 +178,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(
       hit_id &= ~BONESEL_ANY;
       /* Determine what the current bone is */
       if (is_editmode == false) {
-        base = ED_armature_base_and_pchan_from_select_buffer(bases, bases_len, hit_id, &pchan);
+        base = ED_armature_base_and_pchan_from_select_buffer(bases, hit_id, &pchan);
         if (pchan != nullptr) {
           if (findunsel) {
             sel = (pchan->bone->flag & BONE_SELECTED);
@@ -200,7 +195,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(
         }
       }
       else {
-        base = ED_armature_base_and_ebone_from_select_buffer(bases, bases_len, hit_id, &ebone);
+        base = ED_armature_base_and_ebone_from_select_buffer(bases, hit_id, &ebone);
         if (findunsel) {
           sel = (ebone->flag & BONE_SELECTED);
         }
@@ -259,8 +254,7 @@ static void *ed_armature_pick_bone_from_selectbuffer_impl(
   return firstSel;
 }
 
-EditBone *ED_armature_pick_ebone_from_selectbuffer(Base **bases,
-                                                   uint bases_len,
+EditBone *ED_armature_pick_ebone_from_selectbuffer(const Span<Base *> bases,
                                                    const GPUSelectResult *hit_results,
                                                    const int hits,
                                                    bool findunsel,
@@ -269,11 +263,10 @@ EditBone *ED_armature_pick_ebone_from_selectbuffer(Base **bases,
 {
   const bool is_editmode = true;
   return static_cast<EditBone *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, {hit_results, hits}, findunsel, do_nearest, r_base));
+      is_editmode, bases, {hit_results, hits}, findunsel, do_nearest, r_base));
 }
 
-bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(Base **bases,
-                                                       uint bases_len,
+bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(const Span<Base *> bases,
                                                        const GPUSelectResult *hit_results,
                                                        const int hits,
                                                        bool findunsel,
@@ -282,11 +275,10 @@ bPoseChannel *ED_armature_pick_pchan_from_selectbuffer(Base **bases,
 {
   const bool is_editmode = false;
   return static_cast<bPoseChannel *>(ed_armature_pick_bone_from_selectbuffer_impl(
-      is_editmode, bases, bases_len, {hit_results, hits}, findunsel, do_nearest, r_base));
+      is_editmode, bases, {hit_results, hits}, findunsel, do_nearest, r_base));
 }
 
-Bone *ED_armature_pick_bone_from_selectbuffer(Base **bases,
-                                              uint bases_len,
+Bone *ED_armature_pick_bone_from_selectbuffer(const Span<Base *> bases,
                                               const GPUSelectResult *hit_results,
                                               const int hits,
                                               bool findunsel,
@@ -294,7 +286,7 @@ Bone *ED_armature_pick_bone_from_selectbuffer(Base **bases,
                                               Base **r_base)
 {
   bPoseChannel *pchan = ED_armature_pick_pchan_from_selectbuffer(
-      bases, bases_len, hit_results, hits, findunsel, do_nearest, r_base);
+      bases, hit_results, hits, findunsel, do_nearest, r_base);
   return pchan ? pchan->bone : nullptr;
 }
 
@@ -346,13 +338,7 @@ static void *ed_armature_pick_bone_impl(
     }
 
     void *bone = ed_armature_pick_bone_from_selectbuffer_impl(
-        is_editmode,
-        bases.data(),
-        bases.size(),
-        buffer.storage.as_span().take_front(hits),
-        findunsel,
-        true,
-        r_base);
+        is_editmode, bases, buffer.storage.as_span().take_front(hits), findunsel, true, r_base);
 
     return bone;
   }
@@ -732,7 +718,7 @@ cache_end:
     if (hits == 1) {
       result_bias.hitresult = buffer.storage[0].id;
       result_bias.base = ED_armature_base_and_ebone_from_select_buffer(
-          bases.data(), bases.size(), result_bias.hitresult, &result_bias.ebone);
+          bases, result_bias.hitresult, &result_bias.ebone);
     }
     else {
       int bias_max = INT_MIN;
@@ -773,8 +759,7 @@ cache_end:
 
         Base *base = nullptr;
         EditBone *ebone;
-        base = ED_armature_base_and_ebone_from_select_buffer(
-            bases.data(), bases.size(), hitresult, &ebone);
+        base = ED_armature_base_and_ebone_from_select_buffer(bases, hitresult, &ebone);
         /* If this fails, selection code is setting the selection ID's incorrectly. */
         BLI_assert(base && ebone);
 
@@ -915,21 +900,21 @@ bool ED_armature_edit_deselect_all_visible(Object *obedit)
   return changed;
 }
 
-bool ED_armature_edit_deselect_all_multi_ex(Base **bases, uint bases_len)
+bool ED_armature_edit_deselect_all_multi_ex(const Span<Base *> bases)
 {
   bool changed_multi = false;
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Object *obedit = bases[base_index]->object;
+  for (Base *base : bases) {
+    Object *obedit = base->object;
     changed_multi |= ED_armature_edit_deselect_all(obedit);
   }
   return changed_multi;
 }
 
-bool ED_armature_edit_deselect_all_visible_multi_ex(Base **bases, uint bases_len)
+bool ED_armature_edit_deselect_all_visible_multi_ex(const Span<Base *> bases)
 {
   bool changed_multi = false;
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Object *obedit = bases[base_index]->object;
+  for (Base *base : bases) {
+    Object *obedit = base->object;
     changed_multi |= ED_armature_edit_deselect_all_visible(obedit);
   }
   return changed_multi;
@@ -941,7 +926,7 @@ bool ED_armature_edit_deselect_all_visible_multi(bContext *C)
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d);
-  bool changed_multi = ED_armature_edit_deselect_all_multi_ex(bases.data(), bases.size());
+  bool changed_multi = ED_armature_edit_deselect_all_multi_ex(bases);
   return changed_multi;
 }
 
@@ -977,7 +962,7 @@ bool ED_armature_edit_select_pick_bone(
       /* Deselect everything. */
       Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
           scene, view_layer, v3d);
-      ED_armature_edit_deselect_all_multi_ex(bases.data(), bases.size());
+      ED_armature_edit_deselect_all_multi_ex(bases);
       changed = true;
     }
   }
