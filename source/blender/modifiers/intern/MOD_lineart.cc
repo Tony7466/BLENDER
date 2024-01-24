@@ -6,21 +6,16 @@
  * \ingroup modifiers
  */
 
-#include "BLI_math_matrix.h"
-
 #include "BLT_translation.h"
 
 #include "BLO_read_write.hh"
 
+#include "DNA_scene_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_collection.h"
-#include "BKE_context.hh"
-#include "BKE_curves.hh"
-#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
 #include "BKE_grease_pencil.hh"
@@ -31,9 +26,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "ED_grease_pencil.hh"
-
-#include "MOD_gpencil_legacy_lineart.h"
+#include "MOD_gpencil_legacy_lineart.h" /* Needed for line art cache functions. */
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_lineart.h"
 #include "MOD_modifiertypes.hh"
