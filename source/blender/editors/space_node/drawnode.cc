@@ -1200,7 +1200,7 @@ static const float std_node_socket_colors[][4] = {
     {0.62, 0.31, 0.64, 1.0}, /* SOCK_TEXTURE */
     {0.92, 0.46, 0.51, 1.0}, /* SOCK_MATERIAL */
     {0.65, 0.39, 0.78, 1.0}, /* SOCK_ROTATION */
-    {1.00, 1.00, 1.00, 1.0}, /* SOCK_MENU */
+    {0.40, 0.40, 0.40, 1.0}, /* SOCK_MENU */
 };
 
 /* Callback for colors that does not depend on the socket pointer argument to get the type. */
