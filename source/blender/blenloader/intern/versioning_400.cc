@@ -2670,6 +2670,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       int uid = 1;
       LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+        /* These identifiers are not necessarily stable for linked data. If the linked data has a
+         * new modifier inserted, the identifiers of other modifiers can change. */
         md->persistent_uid = uid++;
       }
     }
