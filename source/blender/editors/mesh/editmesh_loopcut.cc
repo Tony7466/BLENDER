@@ -350,8 +350,7 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
                                                false,
                                                false,
                                                nullptr,
-                                               lcd->bases.data(),
-                                               lcd->bases.size(),
+                                               lcd->bases,
                                                &base_index);
 
   if (eed_test) {

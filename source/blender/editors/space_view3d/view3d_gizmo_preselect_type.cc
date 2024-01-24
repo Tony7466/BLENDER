@@ -155,8 +155,7 @@ static int gizmo_preselect_elem_test_select(bContext *C, wmGizmo *gz, const int 
     BMFace *efa_test;
 
     if (EDBM_unified_findnearest_from_raycast(&vc,
-                                              gz_ele->bases.data(),
-                                              gz_ele->bases.size(),
+                                              gz_ele->bases,
                                               false,
                                               true,
                                               &base_index_vert,
@@ -374,15 +373,8 @@ static int gizmo_preselect_edgering_test_select(bContext *C, wmGizmo *gz, const 
   copy_v2_v2_int(vc.mval, mval);
 
   uint base_index;
-  BMEdge *eed_test = EDBM_edge_find_nearest_ex(&vc,
-                                               &best.dist,
-                                               nullptr,
-                                               false,
-                                               false,
-                                               nullptr,
-                                               gz_ring->bases.data(),
-                                               gz_ring->bases.size(),
-                                               &base_index);
+  BMEdge *eed_test = EDBM_edge_find_nearest_ex(
+      &vc, &best.dist, nullptr, false, false, nullptr, gz_ring->bases, &base_index);
 
   if (eed_test) {
     best.ob = gz_ring->bases[base_index]->object;

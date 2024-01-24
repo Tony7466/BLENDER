@@ -44,6 +44,7 @@
 
 #include "lattice_intern.h"
 
+using blender::Span;
 using blender::Vector;
 
 /* -------------------------------------------------------------------- */
@@ -62,12 +63,11 @@ static void bpoint_select_set(BPoint *bp, bool select)
   }
 }
 
-bool ED_lattice_deselect_all_multi_ex(Base **bases, const uint bases_len)
+static bool lattice_deselect_all_multi(const Span<Base *> bases)
 {
   bool changed_multi = false;
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Base *base_iter = bases[base_index];
-    Object *ob_iter = base_iter->object;
+  for (Base *base : bases) {
+    Object *ob_iter = base->object;
     changed_multi |= ED_lattice_flags_set(ob_iter, 0);
     DEG_id_tag_update(static_cast<ID *>(ob_iter->data), ID_RECALC_SELECT);
   }
@@ -80,8 +80,7 @@ bool ED_lattice_deselect_all_multi(bContext *C)
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d);
-  bool changed_multi = ED_lattice_deselect_all_multi_ex(bases.data(), bases.size());
-  return changed_multi;
+  return lattice_deselect_all_multi(bases);
 }
 
 /** \} */

@@ -276,7 +276,7 @@ bool ED_armature_pose_select_pick_with_buffer(const Scene *scene,
   /* Callers happen to already get the active base */
   Base *base_dummy = nullptr;
   nearBone = ED_armature_pick_bone_from_selectbuffer(
-      &base, 1, hit_results, hits, true, do_nearest, &base_dummy);
+      {base}, hit_results, hits, true, do_nearest, &base_dummy);
 
   return ED_armature_pose_select_pick_bone(scene, view_layer, v3d, ob, nearBone, params);
 }

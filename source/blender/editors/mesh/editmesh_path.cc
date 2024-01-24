@@ -728,7 +728,7 @@ static int edbm_shortest_path_pick_invoke(bContext *C, wmOperator *op, const wmE
     int base_index = -1;
     Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode(
         vc.scene, vc.view_layer, vc.v3d);
-    if (EDBM_unified_findnearest(&vc, bases.data(), bases.size(), &base_index, &eve, &eed, &efa)) {
+    if (EDBM_unified_findnearest(&vc, bases, &base_index, &eve, &eed, &efa)) {
       basact = bases[base_index];
       ED_view3d_viewcontext_init_object(&vc, basact->object);
       em = vc.em;

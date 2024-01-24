@@ -644,7 +644,7 @@ static void tree_element_ebone_activate(bContext *C,
 
       Vector<Base *> bases = BKE_view_layer_array_from_bases_in_mode_params(
           scene, view_layer, nullptr, &ob_params);
-      ED_armature_edit_deselect_all_multi_ex(bases.data(), bases.size());
+      ED_armature_edit_deselect_all_multi_ex(bases);
 
       tree_element_active_ebone__sel(C, arm, ebone, true);
     }

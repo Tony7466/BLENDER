@@ -69,6 +69,7 @@
 /* use bmesh operator flags for a few operators */
 #define BMO_ELE_TAG 1
 
+using blender::Span;
 using blender::Vector;
 
 /* -------------------------------------------------------------------- */
@@ -174,7 +175,9 @@ void EDBM_select_mirrored(BMEditMesh *em,
 /** \name Back-Buffer OpenGL Selection
  * \{ */
 
-static BMElem *edbm_select_id_bm_elem_get(Base **bases, const uint sel_id, uint *r_base_index)
+static BMElem *edbm_select_id_bm_elem_get(const Span<Base *> bases,
+                                          const uint sel_id,
+                                          uint *r_base_index)
 {
   uint elem_id;
   char elem_type = 0;
@@ -270,8 +273,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
                                   float *dist_px_manhattan_p,
                                   const bool use_select_bias,
                                   bool use_cycle,
-                                  Base **bases,
-                                  uint bases_len,
+                                  const Span<Base *> bases,
                                   uint *r_base_index)
 {
   uint base_index = 0;
@@ -284,7 +286,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
 
     /* No after-queue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, SCE_SELECT_VERTEX);
+      DRW_select_buffer_context_create(vc->depsgraph, bases, SCE_SELECT_VERTEX);
 
       index = DRW_select_buffer_find_nearest_to_point(
           vc->depsgraph, vc->region, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px_manhattan_test);
@@ -327,7 +329,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
   data.use_select_bias = use_select_bias;
   data.use_cycle = use_cycle;
 
-  for (; base_index < bases_len; base_index++) {
+  for (; base_index < bases.size(); base_index++) {
     Base *base_iter = bases[base_index];
     ED_view3d_viewcontext_init_object(vc, base_iter->object);
     if (use_cycle && prev_select.bm == vc->em->bm &&
@@ -373,7 +375,7 @@ BMVert *EDBM_vert_find_nearest(ViewContext *vc, float *dist_px_manhattan_p)
 {
   BKE_view_layer_synced_ensure(vc->scene, vc->view_layer);
   Base *base = BKE_view_layer_base_find(vc->view_layer, vc->obact);
-  return EDBM_vert_find_nearest_ex(vc, dist_px_manhattan_p, false, false, &base, 1, nullptr);
+  return EDBM_vert_find_nearest_ex(vc, dist_px_manhattan_p, false, false, {base}, nullptr);
 }
 
 /* find the distance to the edge we already have */
@@ -501,8 +503,7 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
                                   const bool use_select_bias,
                                   bool use_cycle,
                                   BMEdge **r_eed_zbuf,
-                                  Base **bases,
-                                  uint bases_len,
+                                  const Span<Base *> bases,
                                   uint *r_base_index)
 {
   uint base_index = 0;
@@ -515,7 +516,7 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
 
     /* No after-queue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, SCE_SELECT_EDGE);
+      DRW_select_buffer_context_create(vc->depsgraph, bases, SCE_SELECT_EDGE);
 
       index = DRW_select_buffer_find_nearest_to_point(
           vc->depsgraph, vc->region, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px_manhattan_test);
@@ -582,7 +583,7 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
   data.use_select_bias = use_select_bias;
   data.use_cycle = use_cycle;
 
-  for (; base_index < bases_len; base_index++) {
+  for (; base_index < bases.size(); base_index++) {
     Base *base_iter = bases[base_index];
     ED_view3d_viewcontext_init_object(vc, base_iter->object);
     if (use_cycle && prev_select.bm == vc->em->bm &&
@@ -634,7 +635,7 @@ BMEdge *EDBM_edge_find_nearest(ViewContext *vc, float *dist_px_manhattan_p)
   BKE_view_layer_synced_ensure(vc->scene, vc->view_layer);
   Base *base = BKE_view_layer_base_find(vc->view_layer, vc->obact);
   return EDBM_edge_find_nearest_ex(
-      vc, dist_px_manhattan_p, nullptr, false, false, nullptr, &base, 1, nullptr);
+      vc, dist_px_manhattan_p, nullptr, false, false, nullptr, {base}, nullptr);
 }
 
 /* find the distance to the face we already have */
@@ -717,8 +718,7 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
                                   const bool use_select_bias,
                                   bool use_cycle,
                                   BMFace **r_efa_zbuf,
-                                  Base **bases,
-                                  uint bases_len,
+                                  const Span<Base *> bases,
                                   uint *r_base_index)
 {
   uint base_index = 0;
@@ -735,7 +735,7 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
             ED_view3d_backbuf_sample_size_clamp(vc->region, *dist_px_manhattan_p));
       }
 
-      DRW_select_buffer_context_create(vc->depsgraph, bases, bases_len, SCE_SELECT_FACE);
+      DRW_select_buffer_context_create(vc->depsgraph, bases, SCE_SELECT_FACE);
 
       if (dist_px_manhattan_test == 0) {
         index = DRW_select_buffer_sample_point(vc->depsgraph, vc->region, vc->v3d, vc->mval);
@@ -805,7 +805,7 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
   data.use_select_bias = use_select_bias;
   data.use_cycle = use_cycle;
 
-  for (; base_index < bases_len; base_index++) {
+  for (; base_index < bases.size(); base_index++) {
     Base *base_iter = bases[base_index];
     ED_view3d_viewcontext_init_object(vc, base_iter->object);
     if (use_cycle && prev_select.bm == vc->em->bm &&
@@ -856,7 +856,7 @@ BMFace *EDBM_face_find_nearest(ViewContext *vc, float *dist_px_manhattan_p)
   BKE_view_layer_synced_ensure(vc->scene, vc->view_layer);
   Base *base = BKE_view_layer_base_find(vc->view_layer, vc->obact);
   return EDBM_face_find_nearest_ex(
-      vc, dist_px_manhattan_p, nullptr, false, false, false, nullptr, &base, 1, nullptr);
+      vc, dist_px_manhattan_p, nullptr, false, false, false, nullptr, {base}, nullptr);
 }
 
 #undef FIND_NEAR_SELECT_BIAS
@@ -868,8 +868,7 @@ BMFace *EDBM_face_find_nearest(ViewContext *vc, float *dist_px_manhattan_p)
  * return 1 if found one
  */
 static bool unified_findnearest(ViewContext *vc,
-                                Base **bases,
-                                const uint bases_len,
+                                const Span<Base *> bases,
                                 int *r_base_index,
                                 BMVert **r_eve,
                                 BMEdge **r_eed,
@@ -909,7 +908,7 @@ static bool unified_findnearest(ViewContext *vc,
     uint base_index = 0;
     BMFace *efa_zbuf = nullptr;
     BMFace *efa_test = EDBM_face_find_nearest_ex(
-        vc, &dist, dist_center_p, true, true, use_cycle, &efa_zbuf, bases, bases_len, &base_index);
+        vc, &dist, dist_center_p, true, true, use_cycle, &efa_zbuf, bases, &base_index);
 
     if (efa_test && dist_center_p) {
       dist = min_ff(dist_margin, dist_center);
@@ -931,7 +930,7 @@ static bool unified_findnearest(ViewContext *vc,
     uint base_index = 0;
     BMEdge *eed_zbuf = nullptr;
     BMEdge *eed_test = EDBM_edge_find_nearest_ex(
-        vc, &dist, dist_center_p, true, use_cycle, &eed_zbuf, bases, bases_len, &base_index);
+        vc, &dist, dist_center_p, true, use_cycle, &eed_zbuf, bases, &base_index);
 
     if (eed_test && dist_center_p) {
       dist = min_ff(dist_margin, dist_center);
@@ -948,8 +947,7 @@ static bool unified_findnearest(ViewContext *vc,
 
   if ((dist > 0.0f) && (em->selectmode & SCE_SELECT_VERTEX)) {
     uint base_index = 0;
-    BMVert *eve_test = EDBM_vert_find_nearest_ex(
-        vc, &dist, true, use_cycle, bases, bases_len, &base_index);
+    BMVert *eve_test = EDBM_vert_find_nearest_ex(vc, &dist, true, use_cycle, bases, &base_index);
 
     if (eve_test) {
       hit.v.base_index = base_index;
@@ -1003,14 +1001,13 @@ static bool unified_findnearest(ViewContext *vc,
 #undef FAKE_SELECT_MODE_END
 
 bool EDBM_unified_findnearest(ViewContext *vc,
-                              Base **bases,
-                              const uint bases_len,
+                              const Span<Base *> bases,
                               int *r_base_index,
                               BMVert **r_eve,
                               BMEdge **r_eed,
                               BMFace **r_efa)
 {
-  return unified_findnearest(vc, bases, bases_len, r_base_index, r_eve, r_eed, r_efa);
+  return unified_findnearest(vc, bases, r_base_index, r_eve, r_eed, r_efa);
 }
 
 /** \} */
@@ -1023,8 +1020,7 @@ bool EDBM_unified_findnearest(ViewContext *vc,
  * \{ */
 
 bool EDBM_unified_findnearest_from_raycast(ViewContext *vc,
-                                           Base **bases,
-                                           const uint bases_len,
+                                           const Span<Base *> bases,
                                            bool use_boundary_vertices,
                                            bool use_boundary_edges,
                                            int *r_base_index_vert,
@@ -1071,7 +1067,7 @@ bool EDBM_unified_findnearest_from_raycast(ViewContext *vc,
     const bool use_edge = (r_eed != nullptr);
     const bool use_face = (r_efa != nullptr);
 
-    for (uint base_index = 0; base_index < bases_len; base_index++) {
+    for (const int base_index : bases.index_range()) {
       Base *base_iter = bases[base_index];
       Object *obedit = base_iter->object;
 
@@ -1711,7 +1707,7 @@ static bool mouse_mesh_loop(
 
   {
     int base_index = -1;
-    if (EDBM_unified_findnearest(&vc, bases.data(), bases.size(), &base_index, &eve, &eed, &efa)) {
+    if (EDBM_unified_findnearest(&vc, bases, &base_index, &eve, &eed, &efa)) {
       basact = bases[base_index];
       ED_view3d_viewcontext_init_object(&vc, basact->object);
       em = vc.em;
@@ -2052,8 +2048,7 @@ bool EDBM_select_pick(bContext *C, const int mval[2], const SelectPick_Params *p
       vc.scene, vc.view_layer, vc.v3d);
 
   bool changed = false;
-  bool found = unified_findnearest(
-      &vc, bases.data(), bases.size(), &base_index_active, &eve, &eed, &efa);
+  bool found = unified_findnearest(&vc, bases, &base_index_active, &eve, &eed, &efa);
 
   if (params->sel_op == SEL_OP_SET) {
     BMElem *ele = efa ? (BMElem *)efa : (eed ? (BMElem *)eed : (BMElem *)eve);
@@ -2690,11 +2685,10 @@ void EDBM_select_swap(BMEditMesh *em) /* exported for UV */
   }
 }
 
-bool EDBM_mesh_deselect_all_multi_ex(Base **bases, const uint bases_len)
+bool EDBM_mesh_deselect_all_multi_ex(const Span<Base *> bases)
 {
   bool changed_multi = false;
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Base *base_iter = bases[base_index];
+  for (Base *base_iter : bases) {
     Object *ob_iter = base_iter->object;
     BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
 
@@ -2715,19 +2709,17 @@ bool EDBM_mesh_deselect_all_multi(bContext *C)
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d);
-  bool changed_multi = EDBM_mesh_deselect_all_multi_ex(bases.data(), bases.size());
+  bool changed_multi = EDBM_mesh_deselect_all_multi_ex(bases);
   return changed_multi;
 }
 
 bool EDBM_selectmode_disable_multi_ex(Scene *scene,
-                                      Base **bases,
-                                      const uint bases_len,
+                                      const Span<Base *> bases,
                                       const short selectmode_disable,
                                       const short selectmode_fallback)
 {
   bool changed_multi = false;
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Base *base_iter = bases[base_index];
+  for (Base *base_iter : bases) {
     Object *ob_iter = base_iter->object;
     BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
 
@@ -2748,7 +2740,7 @@ bool EDBM_selectmode_disable_multi(bContext *C,
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, nullptr);
   bool changed_multi = EDBM_selectmode_disable_multi_ex(
-      scene, bases.data(), bases.size(), selectmode_disable, selectmode_fallback);
+      scene, bases, selectmode_disable, selectmode_fallback);
   return changed_multi;
 }
 
@@ -3620,8 +3612,7 @@ static int edbm_select_linked_pick_invoke(bContext *C, wmOperator *op, const wmE
   /* return warning! */
   {
     int base_index = -1;
-    const bool ok = unified_findnearest(
-        &vc, bases.data(), bases.size(), &base_index, &eve, &eed, &efa);
+    const bool ok = unified_findnearest(&vc, bases, &base_index, &eve, &eed, &efa);
     if (!ok) {
       return OPERATOR_CANCELLED;
     }

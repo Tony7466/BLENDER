@@ -48,6 +48,7 @@
 
 #include "mball_intern.h"
 
+using blender::Span;
 using blender::Vector;
 
 /* -------------------------------------------------------------------- */
@@ -93,8 +94,7 @@ bool ED_mball_deselect_all_multi(bContext *C)
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d);
-  bool changed_multi = BKE_mball_deselect_all_multi_ex(bases.data(), bases.size());
-  return changed_multi;
+  return BKE_mball_deselect_all_multi_ex(bases);
 }
 
 /** \} */
@@ -152,19 +152,18 @@ static int mball_select_all_exec(bContext *C, wmOperator *op)
       scene, view_layer, CTX_wm_view3d(C));
 
   if (action == SEL_TOGGLE) {
-    action = BKE_mball_is_any_selected_multi(bases.data(), bases.size()) ? SEL_DESELECT :
-                                                                           SEL_SELECT;
+    action = BKE_mball_is_any_selected_multi(bases) ? SEL_DESELECT : SEL_SELECT;
   }
 
   switch (action) {
     case SEL_SELECT:
-      BKE_mball_select_all_multi_ex(bases.data(), bases.size());
+      BKE_mball_select_all_multi_ex(bases);
       break;
     case SEL_DESELECT:
-      BKE_mball_deselect_all_multi_ex(bases.data(), bases.size());
+      BKE_mball_deselect_all_multi_ex(bases);
       break;
     case SEL_INVERT:
-      BKE_mball_select_swap_multi_ex(bases.data(), bases.size());
+      BKE_mball_select_swap_multi_ex(bases);
       break;
   }
 
@@ -333,7 +332,7 @@ static int mball_select_similar_exec(bContext *C, wmOperator *op)
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C));
 
-  tot_mball_selected_all = BKE_mball_select_count_multi(bases.data(), bases.size());
+  tot_mball_selected_all = BKE_mball_select_count_multi(bases);
 
   short type_ref = 0;
   KDTree_1d *tree_1d = nullptr;
@@ -727,8 +726,7 @@ void MBALL_OT_reveal_metaelems(wmOperatorType *ot)
 /** \name Select Pick Utility
  * \{ */
 
-Base *ED_mball_base_and_elem_from_select_buffer(Base **bases,
-                                                uint bases_len,
+Base *ED_mball_base_and_elem_from_select_buffer(const Span<Base *> bases,
                                                 const uint select_id,
                                                 MetaElem **r_ml)
 {
@@ -736,9 +734,9 @@ Base *ED_mball_base_and_elem_from_select_buffer(Base **bases,
   Base *base = nullptr;
   MetaElem *ml = nullptr;
   /* TODO(@ideasman42): optimize, eg: sort & binary search. */
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    if (bases[base_index]->object->runtime->select_id == hit_object) {
-      base = bases[base_index];
+  for (Base *base_iter : bases) {
+    if (base_iter->object->runtime->select_id == hit_object) {
+      base = base_iter;
       break;
     }
   }
@@ -818,8 +816,7 @@ static bool ed_mball_findnearest_metaelem(bContext *C,
     }
 
     MetaElem *ml;
-    Base *base = ED_mball_base_and_elem_from_select_buffer(
-        bases.data(), bases.size(), select_id, &ml);
+    Base *base = ED_mball_base_and_elem_from_select_buffer(bases, select_id, &ml);
     if (ml == nullptr) {
       continue;
     }

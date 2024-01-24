@@ -208,14 +208,14 @@ static void editselect_buf_cache_init(ViewContext *vc, short select_mode)
     Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode(
         vc->scene, vc->view_layer, vc->v3d);
 
-    DRW_select_buffer_context_create(vc->depsgraph, bases.data(), bases.size(), select_mode);
+    DRW_select_buffer_context_create(vc->depsgraph, bases, select_mode);
   }
   else {
     /* Use for paint modes, currently only a single object at a time. */
     if (vc->obact) {
       BKE_view_layer_synced_ensure(vc->scene, vc->view_layer);
       Base *base = BKE_view_layer_base_find(vc->view_layer, vc->obact);
-      DRW_select_buffer_context_create(vc->depsgraph, &base, 1, select_mode);
+      DRW_select_buffer_context_create(vc->depsgraph, {base}, select_mode);
     }
   }
 }
@@ -3994,7 +3994,7 @@ static bool do_armature_box_select(ViewContext *vc, const rcti *rect, const eSel
       vc->scene, vc->view_layer, vc->v3d);
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
-    changed |= ED_armature_edit_deselect_all_visible_multi_ex(bases.data(), bases.size());
+    changed |= ED_armature_edit_deselect_all_visible_multi_ex(bases);
   }
 
   for (Base *base : bases) {
@@ -4014,8 +4014,7 @@ static bool do_armature_box_select(ViewContext *vc, const rcti *rect, const eSel
       }
 
       EditBone *ebone;
-      Base *base_edit = ED_armature_base_and_ebone_from_select_buffer(
-          bases.data(), bases.size(), select_id, &ebone);
+      Base *base_edit = ED_armature_base_and_ebone_from_select_buffer(bases, select_id, &ebone);
       ebone->temp.i |= select_id & BONESEL_ANY;
       base_edit->object->id.tag |= LIB_TAG_DOIT;
     }
@@ -4100,8 +4099,7 @@ static bool do_object_box_select(bContext *C,
        buf_iter++)
   {
     bPoseChannel *pchan_dummy;
-    Base *base = ED_armature_base_and_pchan_from_select_buffer(
-        bases.data(), bases.size(), buf_iter->id, &pchan_dummy);
+    Base *base = ED_armature_base_and_pchan_from_select_buffer(bases, buf_iter->id, &pchan_dummy);
     if (base != nullptr) {
       base->object->id.tag |= LIB_TAG_DOIT;
     }
@@ -4159,8 +4157,7 @@ static bool do_pose_box_select(bContext *C,
          buf_iter++)
     {
       Bone *bone;
-      Base *base = ED_armature_base_and_bone_from_select_buffer(
-          bases.data(), bases.size(), buf_iter->id, &bone);
+      Base *base = ED_armature_base_and_bone_from_select_buffer(bases, buf_iter->id, &bone);
 
       if (base == nullptr) {
         continue;

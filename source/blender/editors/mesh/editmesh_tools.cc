@@ -7604,8 +7604,7 @@ static int edbm_offset_edgeloop_exec(bContext *C, wmOperator *op)
      * We need to run this for all objects, even when nothing is selected.
      * This way we keep them in sync. */
     if (scene->toolsettings->selectmode == SCE_SELECT_FACE) {
-      EDBM_selectmode_disable_multi_ex(
-          scene, bases.data(), bases.size(), SCE_SELECT_FACE, SCE_SELECT_EDGE);
+      EDBM_selectmode_disable_multi_ex(scene, bases, SCE_SELECT_FACE, SCE_SELECT_EDGE);
     }
   }
 

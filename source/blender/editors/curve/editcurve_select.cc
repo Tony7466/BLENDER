@@ -41,6 +41,7 @@
 
 #include "DEG_depsgraph.hh"
 
+using blender::Span;
 using blender::Vector;
 
 /* -------------------------------------------------------------------- */
@@ -243,11 +244,11 @@ bool ED_curve_deselect_all(EditNurb *editnurb)
   return changed;
 }
 
-bool ED_curve_deselect_all_multi_ex(Base **bases, int bases_len)
+bool ED_curve_deselect_all_multi_ex(Span<Base *> bases)
 {
   bool changed_multi = false;
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Object *obedit = bases[base_index]->object;
+  for (Base *base : bases) {
+    Object *obedit = base->object;
     Curve *cu = static_cast<Curve *>(obedit->data);
     changed_multi |= ED_curve_deselect_all(cu->editnurb);
     DEG_id_tag_update(&cu->id, ID_RECALC_SELECT);
@@ -261,7 +262,7 @@ bool ED_curve_deselect_all_multi(bContext *C)
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d);
-  return ED_curve_deselect_all_multi_ex(bases.data(), bases.size());
+  return ED_curve_deselect_all_multi_ex(bases);
 }
 
 bool ED_curve_select_swap(EditNurb *editnurb, bool hide_handles)
