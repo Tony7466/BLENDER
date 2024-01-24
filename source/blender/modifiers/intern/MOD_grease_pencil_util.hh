@@ -71,7 +71,7 @@ struct LayerDrawingInfo {
 
 Vector<LayerDrawingInfo> get_drawing_infos_by_layer(GreasePencil &grease_pencil,
                                                     const IndexMask &layer_mask,
-                                                    const int frame);
+                                                    int frame);
 
 struct FrameDrawingInfo {
   bke::greasepencil::Drawing *drawing;
@@ -80,7 +80,7 @@ struct FrameDrawingInfo {
 };
 
 Vector<FrameDrawingInfo> get_drawing_infos_by_frame(GreasePencil &grease_pencil,
-                                                     const IndexMask &layer_mask,
-                                                     int frame);
+                                                    const IndexMask &layer_mask,
+                                                    int frame);
 
 }  // namespace blender::modifier::greasepencil
