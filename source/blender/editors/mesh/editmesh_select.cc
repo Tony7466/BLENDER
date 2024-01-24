@@ -2709,8 +2709,7 @@ bool EDBM_mesh_deselect_all_multi(bContext *C)
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, vc.v3d);
-  bool changed_multi = EDBM_mesh_deselect_all_multi_ex(bases);
-  return changed_multi;
+  return EDBM_mesh_deselect_all_multi_ex(bases);
 }
 
 bool EDBM_selectmode_disable_multi_ex(Scene *scene,
@@ -2739,9 +2738,7 @@ bool EDBM_selectmode_disable_multi(bContext *C,
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.scene, vc.view_layer, nullptr);
-  bool changed_multi = EDBM_selectmode_disable_multi_ex(
-      scene, bases, selectmode_disable, selectmode_fallback);
-  return changed_multi;
+  return EDBM_selectmode_disable_multi_ex(scene, bases, selectmode_disable, selectmode_fallback);
 }
 
 /** \} */
