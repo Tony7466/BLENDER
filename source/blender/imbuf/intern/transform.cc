@@ -16,8 +16,8 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 namespace blender::imbuf::transform {
 
@@ -166,7 +166,7 @@ static void sample_image(const ImBuf *source, float u, float v, T *r_sample)
   /* BLI_bilinear_interpolation functions use `floor(uv)` and `floor(uv)+1`
    * texels. For proper mapping between pixel and texel spaces, need to
    * subtract 0.5. Same for bicubic. */
-  if constexpr (Filter == IMB_FILTER_BILINEAR || Filter == IMB_FILTER_BICUBIC) {
+  if constexpr (ELEM(Filter, IMB_FILTER_BILINEAR, IMB_FILTER_BICUBIC)) {
     u -= 0.5f;
     v -= 0.5f;
   }
@@ -275,8 +275,8 @@ static void process_scanlines(const TransformContext &ctx, IndexRange y_range)
   float2 uv_start = ctx.start_uv + ctx.add_x * 0.5f + ctx.add_y * 0.5f;
 
   if (ctx.subsampling_deltas.size() > 1) {
-    /* Multiple samples per pixel: accumulate them premultiplied,
-     * divide by sample count and write out (un-premultiplying if writing out
+    /* Multiple samples per pixel: accumulate them pre-multiplied,
+     * divide by sample count and write out (un-pre-multiplying if writing out
      * to byte image). */
     const float inv_count = 1.0f / ctx.subsampling_deltas.size();
     for (int yi : y_range) {
@@ -368,8 +368,6 @@ static void transform_scanlines_filter(const TransformContext &ctx, IndexRange y
 
 }  // namespace blender::imbuf::transform
 
-extern "C" {
-
 using namespace blender::imbuf::transform;
 using namespace blender;
 
@@ -407,5 +405,4 @@ void IMB_transform(const ImBuf *src,
       transform_scanlines_filter<IMB_FILTER_BICUBIC>(ctx, y_range);
     }
   });
-}
 }

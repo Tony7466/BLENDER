@@ -76,7 +76,7 @@ Documentation Checking
    * check_wiki_file_structure:
      Check the WIKI documentation for the source-tree's file structure
      matches Blender's source-code.
-     See: https://wiki.blender.org/wiki/Source/File_Structure
+     See: https://developer.blender.org/docs/features/code_layout/
 
 Spell Checkers
    This runs the spell checker from the developer tools repositor.
@@ -236,6 +236,10 @@ ifndef PYTHON
 		ifeq (, $(shell command -v $(PYTHON)))
 			PYTHON:=python
 		endif
+	else
+		# Don't generate __pycache__ files in lib folder, they
+		# can interfere with updates.
+		PYTHON:=$(PYTHON) -B
 	endif
 endif
 
