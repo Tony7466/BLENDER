@@ -19,7 +19,7 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_global.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_unit.hh"
 
 #include "DNA_curveprofile_types.h"
@@ -334,7 +334,7 @@ static bool edbm_bevel_calc(wmOperator *op)
       EDBM_redo_state_restore(&opdata->ob_store[ob_index].mesh_backup, em, false);
     }
 
-    const int material = CLAMPIS(material_init, -1, obedit->totcol - 1);
+    const int material = std::clamp(material_init, -1, obedit->totcol - 1);
 
     EDBM_op_init(em,
                  &bmop,

@@ -40,7 +40,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_image.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -73,7 +73,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "uvedit_intern.h"
+#include "uvedit_intern.hh"
 
 using blender::geometry::ParamHandle;
 using blender::geometry::ParamKey;

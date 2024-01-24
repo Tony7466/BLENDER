@@ -41,7 +41,7 @@
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_lattice.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
@@ -1607,6 +1607,12 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
       break;
     case NC_GEOM:
       if (wmn->data == ND_VERTEX_GROUP) {
+        ED_region_tag_redraw(region);
+      }
+      break;
+    case NC_MATERIAL:
+      /* For the canvas picker. */
+      if (wmn->data == ND_SHADING_LINKS) {
         ED_region_tag_redraw(region);
       }
       break;
