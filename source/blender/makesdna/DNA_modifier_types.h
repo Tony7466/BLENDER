@@ -97,7 +97,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilSubdiv = 62,
   eModifierType_GreasePencilColor = 63,
   eModifierType_GreasePencilTint = 64,
-  eModifierType_GreasePencilLineart = 65,
+  eModifierType_GreasePencilSmooth = 65,
+  eModifierType_GreasePencilLineart = 66,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2608,6 +2609,30 @@ typedef enum GreasePencilTintModifierFlag {
   /* Use vertex group as factors instead of influence. */
   MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR = (1 << 0),
 } GreasePencilTintModifierFlag;
+
+typedef struct GreasePencilSmoothModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** `eGreasePencilSmooth_Flag. */
+  int flag;
+  /** Factor of smooth. */
+  float factor;
+  /** How many times apply smooth. */
+  int step;
+
+  char _pad[4];
+  void *_pad1;
+} GreasePencilSmoothModifierData;
+
+typedef enum eGreasePencilSmooth_Flag {
+  MOD_GREASE_PENCIL_SMOOTH_OPEN_INFLUENCE_PANEL = (1 << 0),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION = (1 << 1),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH = (1 << 2),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS = (1 << 3),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_UV = (1 << 4),
+  MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE = (1 << 5),
+  MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS = (1 << 6),
+} eGreasePencilSmooth_Flag;
 
 typedef enum eGreasePencilLineartSource {
   LINEART_SOURCE_COLLECTION = 0,

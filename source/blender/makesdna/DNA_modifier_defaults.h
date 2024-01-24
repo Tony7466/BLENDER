@@ -829,6 +829,13 @@
     .color = {1.0f, 1.0f, 1.0f}, \
   }
 
+#define _DNA_DEFAULT_GreasePencilSmoothModifierData \
+  { \
+    .flag = MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION, \
+    .factor = 1.0f, \
+    .step = 1, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilLineartModifierData \
   { \
     .edge_types = LRT_EDGE_FLAG_INIT_TYPE, \
@@ -848,5 +855,5 @@
     .shadow_camera_far = 200.0f, \
     .shadow_camera_size = 200.0f, \
   }
-  
+
 /* clang-format off */
