@@ -1566,25 +1566,35 @@ bool BKE_grease_pencil_material_index_used(GreasePencil *grease_pencil, int inde
 
 void BKE_grease_pencil_defgroup_gather(GreasePencil &grease_pencil)
 {
+  struct DefGroupItem {
+    bDeformGroup *defgroup;
+    /* Number of drawings using this vertex group. */
+    mutable int drawings_count;
+  };
+
   struct DefGroupHash {
-    uint64_t operator()(const bDeformGroup *defgroup) const
+    uint64_t operator()(const DefGroupItem &item) const
     {
-      return blender::get_default_hash(defgroup->name);
+      return blender::get_default_hash(blender::StringRef(item.defgroup->name));
     }
   };
 
   struct DefGroupEquality {
-    bool operator()(const bDeformGroup *a, const bDeformGroup *b) const
+    bool operator()(const DefGroupItem &a, const DefGroupItem &b) const
     {
-      return STREQ(a->name, b->name);
+      return STREQ(a.defgroup->name, b.defgroup->name);
     }
   };
 
   using DefGroupVectorSet =
-      VectorSet<bDeformGroup *, blender::DefaultProbingStrategy, DefGroupHash, DefGroupEquality>;
+      VectorSet<DefGroupItem, blender::DefaultProbingStrategy, DefGroupHash, DefGroupEquality>;
 
   /* Initialize set of existing vertex groups. */
   DefGroupVectorSet unique_vertex_groups;
+  LISTBASE_FOREACH (bDeformGroup *, defgroup, &grease_pencil.vertex_group_names) {
+    unique_vertex_groups.add_new({defgroup, 0});
+  }
+  BLI_listbase_clear(&grease_pencil.vertex_group_names);
 
   for (const GreasePencilDrawingBase *base : grease_pencil.drawings()) {
     if (base->type != GP_DRAWING) {
@@ -1593,28 +1603,32 @@ void BKE_grease_pencil_defgroup_gather(GreasePencil &grease_pencil)
     const blender::bke::greasepencil::Drawing &drawing =
         reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
     LISTBASE_FOREACH (const bDeformGroup *, curdefgroup, &drawing.strokes().vertex_group_names) {
-      const bDeformGroup **defgroup_ptr = unique_vertex_groups.lookup_key_ptr(curdefgroup);
-      if (defgroup_ptr) {
-        /* Already have a vertex group entry.
-         * Sync properties other than the name. */
+      const DefGroupItem key = {const_cast<bDeformGroup *>(curdefgroup), 0};
+      const DefGroupItem *item_ptr = unique_vertex_groups.lookup_key_ptr(key);
+      if (item_ptr) {
+        ++item_ptr->drawings_count;
+        /* Vertex group is locked if it's locked in any drawing. */
         if (curdefgroup->flag & DG_LOCK_WEIGHT) {
-          (*defgroup_ptr)->flag |= DG_LOCK_WEIGHT;
+          item_ptr->defgroup->flag |= DG_LOCK_WEIGHT;
         }
       }
       else {
         /* Vertex group not found in the data block yet, add to the list. */
         bDeformGroup *defgroup_new = static_cast<bDeformGroup *>(MEM_dupallocN(curdefgroup));
-        unique_vertex_groups.add(defgroup_new);
+        unique_vertex_groups.add({defgroup_new, 1});
       }
     }
   }
 
-  /* Remove vertex groups that are not in any drawing. */
-  LISTBASE_FOREACH (const bDeformGroup *, defgroup, &grease_pencil.vertex_group_names) {
-    if (!unique_vertex_groups.contains(defgroup)) {
-      BLI_remlink(&grease_pencil.vertex_group_names, defgroup);
-      MEM_SAFE_FREE(defgroup);
+  /* Move used groups back to the data block. */
+  for (const DefGroupItem &item : unique_vertex_groups) {
+    if (item.drawings_count == 0) {
+      /* Discard unused groups. */
+      MEM_SAFE_FREE(item.defgroup);
+      continue;
     }
+
+    BLI_addtail(&grease_pencil.vertex_group_names, item.defgroup);
   }
 }
 
@@ -1678,6 +1692,8 @@ void BKE_grease_pencil_defgroup_new(GreasePencil &grease_pencil, blender::String
 
     BLI_addtail(&curves.vertex_group_names, drawing_defgroup);
   }
+
+  BKE_grease_pencil_defgroup_gather(grease_pencil);
 }
 
 /** \} */
