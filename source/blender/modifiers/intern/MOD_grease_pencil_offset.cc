@@ -6,8 +6,6 @@
  * \ingroup modifiers
  */
 
-#include "MEM_guardedalloc.h"
-
 #include "BLI_hash.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_rand.h"
@@ -24,8 +22,6 @@
 
 #include "BLO_read_write.hh"
 
-#include "DEG_depsgraph_query.hh"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -34,7 +30,6 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_grease_pencil_util.hh"
