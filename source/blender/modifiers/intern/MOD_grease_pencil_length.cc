@@ -108,7 +108,8 @@ static void deform_drawing(const ModifierData &md,
                            bke::greasepencil::Drawing &drawing,
                            const int current_time)
 {
-  const GreasePencilLengthModifierData &mmd = reinterpret_cast<const GreasePencilLengthModifierData &>(md);
+  const GreasePencilLengthModifierData &mmd =
+      reinterpret_cast<const GreasePencilLengthModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   if (curves.points_num() == 0) {
@@ -153,7 +154,7 @@ static void deform_drawing(const ModifierData &md,
     float rand_offset = BLI_hash_int_01(seed);
 
     Array<float> noise_table_length = noise_table(
-        4 + curves_num, int(floor(mmd.rand_offset)), seed + 2);
+        4 + curves_num, int(math::floor(mmd.rand_offset)), seed + 2);
 
     for (int i = 0; i < curves_num; i++) {
 
@@ -165,10 +166,11 @@ static void deform_drawing(const ModifierData &md,
 
       float rand[2] = {0.0f, 0.0f};
       for (int j = 0; j < 2; j++) {
-        float noise = table_sample(noise_table_length, i + j * 2 + fractf(mmd.rand_offset));
+        float noise = table_sample(noise_table_length, i + j * 2 + math::fract(mmd.rand_offset));
 
-        rand[j] = fmodf(r[j] + rand_offset, 1.0f);
-        rand[j] = fabs(fmodf(sin(rand[j] * 12.9898f + j * 78.233f) * 43758.5453f, 1.0f) + noise);
+        rand[j] = math::mod(float(r[j] + rand_offset), 1.0f);
+        rand[j] = math::abs(math::mod(sin(rand[j] * 12.9898f + j * 78.233f) * 43758.5453f, 1.0f) +
+                            noise);
       }
 
       modified_starts[i] = modified_starts[i] + rand[0] * mmd.rand_start_fac;
