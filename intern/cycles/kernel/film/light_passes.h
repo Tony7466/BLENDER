@@ -136,7 +136,7 @@ ccl_device_forceinline void film_clamp_light(KernelGlobals kg, ccl_private Spect
 #ifdef __CLAMP_SAMPLE__
   float limit = (bounce > 0) ? kernel_data.integrator.sample_clamp_indirect :
                                kernel_data.integrator.sample_clamp_direct;
-  float sum = reduce_add(fabs(*L));
+  float sum = reduce_add(fabs(*L)) / SPECTRUM_CHANNELS * 3.0f;
   if (sum > limit) {
     *L *= limit / sum;
   }
