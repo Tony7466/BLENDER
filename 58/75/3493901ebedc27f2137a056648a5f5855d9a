@@ -1,1 +1,2 @@
 Referenced by issue #116140, No more smooth shading with Subdivision Modifier
+Referenced by commit 75f06bf92a3d02e6905b15bd043631d6e04942ef, Fix #117459: Sharp shading from only edges ignored in edit mode
