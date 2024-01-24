@@ -653,8 +653,8 @@ MDeformVert *ED_mesh_active_dvert_get_em(Object *ob, BMVert **r_eve);
 MDeformVert *ED_mesh_active_dvert_get_ob(Object *ob, int *r_index);
 MDeformVert *ED_mesh_active_dvert_get_only(Object *ob);
 
-void EDBM_mesh_stats_multi(Object **objects, uint objects_len, int totelem[3], int totelem_sel[3]);
-void EDBM_mesh_elem_index_ensure_multi(Object **objects, uint objects_len, char htype);
+void EDBM_mesh_stats_multi(blender::Span<Object *> objects, int totelem[3], int totelem_sel[3]);
+void EDBM_mesh_elem_index_ensure_multi(blender::Span<Object *> objects, char htype);
 
 #define ED_MESH_PICK_DEFAULT_VERT_DIST 25
 #define ED_MESH_PICK_DEFAULT_FACE_DIST 1

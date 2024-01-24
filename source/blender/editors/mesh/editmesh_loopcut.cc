@@ -44,6 +44,8 @@
 
 #include "mesh_intern.h" /* own include */
 
+using blender::Vector;
+
 #define SUBD_SMOOTH_MAX 4.0f
 #define SUBD_CUTS_MAX 500
 
@@ -391,13 +393,12 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  uint bases_len;
-  Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(
-      scene, view_layer, CTX_wm_view3d(C), &bases_len);
+  Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode(
+      scene, view_layer, CTX_wm_view3d(C));
 
   if (is_interactive) {
-    for (uint base_index = 0; base_index < bases_len; base_index++) {
-      Object *ob_iter = bases[base_index]->object;
+    for (Base *base : bases) {
+      Object *ob_iter = base->object;
       if (BKE_modifiers_is_deformed_by_lattice(ob_iter) ||
           BKE_modifiers_is_deformed_by_armature(ob_iter))
       {
@@ -415,7 +416,7 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
   /* for re-execution, check edge index is in range before we setup ringsel */
   bool ok = true;
   if (is_interactive == false) {
-    if (exec_data.base_index >= bases_len) {
+    if (exec_data.base_index >= bases.size()) {
       ok = false;
     }
     else {
@@ -428,7 +429,6 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   if (!ok || !ringsel_init(C, op, true)) {
-    MEM_freeN(bases);
     return OPERATOR_CANCELLED;
   }
 
@@ -440,10 +440,10 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
 
   RingSelOpData *lcd = static_cast<RingSelOpData *>(op->customdata);
 
-  lcd->bases = bases;
-  lcd->bases_len = bases_len;
+  lcd->bases = bases.data();
+  lcd->bases_len = bases.size();
   lcd->geom_cache = static_cast<MeshCoordsCache *>(
-      MEM_callocN(sizeof(*lcd->geom_cache) * bases_len, __func__));
+      MEM_callocN(sizeof(*lcd->geom_cache) * bases.size(), __func__));
 
   if (is_interactive) {
     copy_v2_v2_int(lcd->vc.mval, event->mval);

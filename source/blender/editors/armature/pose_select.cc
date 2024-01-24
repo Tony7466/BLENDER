@@ -51,6 +51,8 @@
 
 #include "armature_intern.h"
 
+using blender::Vector;
+
 /* utility macros for storing a temp int in the bone (selection flag) */
 #define PBONE_PREV_FLAG_GET(pchan) ((void)0, POINTER_AS_INT((pchan)->temp))
 #define PBONE_PREV_FLAG_SET(pchan, val) ((pchan)->temp = POINTER_FROM_INT(val))
@@ -414,13 +416,10 @@ bool ED_pose_deselect_all_multi(bContext *C, int select_mode, const bool ignore_
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
-  uint bases_len = 0;
 
-  Base **bases = BKE_object_pose_base_array_get_unique(
-      vc.scene, vc.view_layer, vc.v3d, &bases_len);
+  Vector<Base *> bases = BKE_object_pose_base_array_get_unique(vc.scene, vc.view_layer, vc.v3d);
   bool changed_multi = ED_pose_deselect_all_multi_ex(
-      bases, bases_len, select_mode, ignore_visibility);
-  MEM_freeN(bases);
+      bases.data(), bases.size(), select_mode, ignore_visibility);
   return changed_multi;
 }
 
@@ -1004,11 +1003,9 @@ static bool pose_select_same_keyingset(bContext *C, ReportList *reports, bool ex
     CTX_DATA_END;
   }
 
-  uint objects_len = 0;
-  Object **objects = BKE_object_pose_array_get_unique(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_object_pose_array_get_unique(scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+  for (const int ob_index : objects.index_range()) {
     Object *ob = BKE_object_pose_armature_get(objects[ob_index]);
     bArmature *arm = static_cast<bArmature *>((ob) ? ob->data : nullptr);
     bPose *pose = (ob) ? ob->pose : nullptr;
@@ -1047,7 +1044,6 @@ static bool pose_select_same_keyingset(bContext *C, ReportList *reports, bool ex
       changed_multi = true;
     }
   }
-  MEM_freeN(objects);
 
   return changed_multi;
 }
@@ -1146,12 +1142,8 @@ static int pose_select_mirror_exec(bContext *C, wmOperator *op)
   const bool active_only = RNA_boolean_get(op->ptr, "only_active");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
 
-  uint objects_len = 0;
-  Object **objects = BKE_object_pose_array_get_unique(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  Vector<Object *> objects = BKE_object_pose_array_get_unique(scene, view_layer, CTX_wm_view3d(C));
+  for (Object *ob : objects) {
     bArmature *arm = static_cast<bArmature *>(ob->data);
     bPoseChannel *pchan_mirror_act = nullptr;
 
@@ -1201,7 +1193,6 @@ static int pose_select_mirror_exec(bContext *C, wmOperator *op)
     /* Need to tag armature for cow updates, or else selection doesn't update. */
     DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
   }
-  MEM_freeN(objects);
 
   ED_outliner_select_sync_from_pose_bone_tag(C);
 
