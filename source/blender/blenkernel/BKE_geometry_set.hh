@@ -448,6 +448,7 @@ class MeshComponent : public GeometryComponent {
 
  public:
   MeshComponent();
+  MeshComponent(Mesh *mesh, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~MeshComponent();
   GeometryComponentPtr copy() const override;
 
@@ -502,6 +503,8 @@ class PointCloudComponent : public GeometryComponent {
 
  public:
   PointCloudComponent();
+  PointCloudComponent(PointCloud *pointcloud,
+                      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~PointCloudComponent();
   GeometryComponentPtr copy() const override;
 
@@ -562,6 +565,7 @@ class CurveComponent : public GeometryComponent {
 
  public:
   CurveComponent();
+  CurveComponent(Curves *curve, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~CurveComponent();
   GeometryComponentPtr copy() const override;
 
@@ -603,6 +607,8 @@ class InstancesComponent : public GeometryComponent {
 
  public:
   InstancesComponent();
+  InstancesComponent(Instances *instances,
+                     GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~InstancesComponent();
   GeometryComponentPtr copy() const override;
 

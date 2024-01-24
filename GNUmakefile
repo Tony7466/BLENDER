@@ -76,7 +76,7 @@ Documentation Checking
    * check_wiki_file_structure:
      Check the WIKI documentation for the source-tree's file structure
      matches Blender's source-code.
-     See: https://wiki.blender.org/wiki/Source/File_Structure
+     See: https://developer.blender.org/docs/features/code_layout/
 
 Spell Checkers
    This runs the spell checker from the developer tools repositor.
@@ -210,14 +210,17 @@ endif
 
 # Find the newest Python version bundled in `LIBDIR`.
 PY_LIB_VERSION:=3.15
-ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 	PY_LIB_VERSION:=3.14
-	ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+	ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 		PY_LIB_VERSION:=3.13
-		ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+		ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 			PY_LIB_VERSION:=3.12
-			ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+			ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 				PY_LIB_VERSION:=3.11
+				ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
+					PY_LIB_VERSION:=3.10
+				endif
 			endif
 		endif
 	endif
@@ -227,12 +230,16 @@ endif
 ifndef PYTHON
 	# If not overriden, first try using Python from LIBDIR.
 	PYTHON:=$(LIBDIR)/python/bin/python$(PY_LIB_VERSION)
-	ifeq (, $(PYTHON))
+	ifeq (, $(wildcard $(PYTHON)))
 		# If not available, use system python3 or python command.
 		PYTHON:=python3
 		ifeq (, $(shell command -v $(PYTHON)))
 			PYTHON:=python
 		endif
+	else
+		# Don't generate __pycache__ files in lib folder, they
+		# can interfere with updates.
+		PYTHON:=$(PYTHON) -B
 	endif
 endif
 
