@@ -12,7 +12,7 @@
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
-#include "DNA_session_uuid_types.h"
+#include "DNA_session_uid_types.h"
 
 #ifdef __cplusplus
 namespace blender {
@@ -97,7 +97,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilSubdiv = 62,
   eModifierType_GreasePencilColor = 63,
   eModifierType_GreasePencilTint = 64,
-  eModifierType_GreasePencilLength = 65,
+  eModifierType_GreasePencilSmooth = 65,
+  eModifierType_GreasePencilLength = 66,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -139,7 +140,7 @@ typedef struct ModifierData {
   char *error;
 
   /** Runtime field which contains unique identifier of the modifier. */
-  SessionUUID session_uuid;
+  SessionUID session_uid;
 
   /** Runtime field which contains runtime data which is specific to a modifier type. */
   void *runtime;
@@ -2609,6 +2610,31 @@ typedef enum GreasePencilTintModifierFlag {
   MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR = (1 << 0),
 } GreasePencilTintModifierFlag;
 
+/* Enum definitions for length modifier stays in the old DNA for the moment. */
+typedef struct GreasePencilSmoothModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** `eGreasePencilSmooth_Flag. */
+  int flag;
+  /** Factor of smooth. */
+  float factor;
+  /** How many times apply smooth. */
+  int step;
+
+  char _pad[4];
+  void *_pad1;
+} GreasePencilSmoothModifierData;
+
+typedef enum eGreasePencilSmooth_Flag {
+  MOD_GREASE_PENCIL_SMOOTH_OPEN_INFLUENCE_PANEL = (1 << 0),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION = (1 << 1),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH = (1 << 2),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS = (1 << 3),
+  MOD_GREASE_PENCIL_SMOOTH_MOD_UV = (1 << 4),
+  MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE = (1 << 5),
+  MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS = (1 << 6),
+} eGreasePencilSmooth_Flag;
+
 typedef struct GreasePencilLengthModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
@@ -2630,5 +2656,3 @@ typedef struct GreasePencilLengthModifierData {
 
   void *_pad1;
 } GreasePencilLengthModifierData;
-
-/* Enum definitions for length modifier stays in the old DNA for the moment. */
