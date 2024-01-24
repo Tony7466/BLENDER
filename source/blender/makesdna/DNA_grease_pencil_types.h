@@ -51,6 +51,7 @@ struct GreasePencil;
 struct BlendDataReader;
 struct BlendWriter;
 struct Object;
+struct bDeformGroup;
 
 typedef enum GreasePencilStrokeCapType {
   GP_STROKE_CAP_TYPE_ROUND = 0,
@@ -592,6 +593,35 @@ typedef struct GreasePencil {
 
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
+
+  /**
+   * Find a vertex group by name.
+   * \return Pointer to vertex group or null if not found.
+   */
+  bDeformGroup *find_vertex_group_by_name(blender::StringRef name);
+  /**
+   * Find a vertex group by name.
+   * \return Pointer to vertex group or null if not found.
+   */
+  const bDeformGroup *find_vertex_group_by_name(blender::StringRef name) const;
+  /**
+   * Add a new vertex group.
+   * \return New vertex group or existing group of the same name.
+   */
+  bDeformGroup &add_vertex_group(blender::StringRef name);
+  /**
+   * Remove a vertex group.
+   * \return True if the group was found.
+   */
+  bool remove_vertex_group(blender::StringRef name);
+  /**
+   * Sync vertex groups of the data block with vertex groups in its drawings.
+   * This should be run after operators that change vertex groups of drawings.
+   * Afterwards
+   * - Any vertex group in a drawing also exists on the data block.
+   * - Any drawing in the data block exists in at least one drawing.
+   */
+  void sync_vertex_groups_from_layers();
 
   /* For debugging purposes. */
   void print_layer_tree();

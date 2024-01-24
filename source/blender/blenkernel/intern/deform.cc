@@ -51,7 +51,7 @@ bDeformGroup *BKE_object_defgroup_new(Object *ob, const char *name)
   BLI_assert(OB_TYPE_SUPPORT_VGROUP(ob->type));
 
   if (ob->type == OB_GREASE_PENCIL) {
-    BKE_grease_pencil_defgroup_new(*static_cast<GreasePencil *>(ob->data), name);
+    static_cast<GreasePencil *>(ob->data)->add_vertex_group(name);
   }
   else {
     defgroup = MEM_cnew<bDeformGroup>(__func__);

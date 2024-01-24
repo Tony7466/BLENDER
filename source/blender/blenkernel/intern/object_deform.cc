@@ -22,6 +22,7 @@
 #include "DNA_cloth_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -365,6 +366,9 @@ void BKE_object_defgroup_remove(Object *ob, bDeformGroup *defgroup)
 {
   if (ob->type == OB_GPENCIL_LEGACY) {
     BKE_gpencil_vgroup_remove(ob, defgroup);
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    static_cast<GreasePencil *>(ob->data)->remove_vertex_group(defgroup->name);
   }
   else {
     if (BKE_object_is_in_editmode_vgroup(ob)) {
