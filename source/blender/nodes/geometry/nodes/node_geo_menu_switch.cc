@@ -29,7 +29,8 @@ namespace blender::nodes::node_geo_menu_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeMenuSwitch)
 
-static bool is_supported_socket_type(const eNodeSocketDatatype data_type) {
+static bool is_supported_socket_type(const eNodeSocketDatatype data_type)
+{
   return ELEM(data_type,
               SOCK_FLOAT,
               SOCK_INT,
@@ -425,8 +426,7 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(
   return std::make_unique<LazyFunctionForMenuSwitchNode>(node, lf_graph_info);
 }
 
-std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(
-    const bNode &node)
+std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(const bNode &node)
 {
   using namespace node_geo_menu_switch_cc;
   BLI_assert(node.type == GEO_NODE_MENU_SWITCH);
