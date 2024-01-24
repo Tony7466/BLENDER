@@ -829,6 +829,13 @@
     .color = {1.0f, 1.0f, 1.0f}, \
   }
 
+#define _DNA_DEFAULT_GreasePencilSmoothModifierData \
+  { \
+    .flag = MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION, \
+    .factor = 1.0f, \
+    .step = 1, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilNoiseModifierData \
   { \
     .flag = GP_NOISE_FULL_STROKE | GP_NOISE_USE_RANDOM, \
@@ -841,5 +848,5 @@
     .step = 4, \
     .seed = 1, \
   }
-
+  
 /* clang-format off */
