@@ -707,7 +707,6 @@ static void panel_register(ARegionType *region_type)
 }
 
 static void generate_strokes_actual(const ModifierData &md,
-                                    Depsgraph *depsgraph,
                                     Object &ob,
                                     bke::greasepencil::Drawing &drawing)
 {
@@ -719,7 +718,6 @@ static void generate_strokes_actual(const ModifierData &md,
 
   MOD_lineart_gpencil_generate_v3(
       lmd.cache,
-      depsgraph,
       &ob,
       drawing,
       lmd.source_type,
@@ -736,8 +734,6 @@ static void generate_strokes_actual(const ModifierData &md,
       lmd.opacity,
       lmd.shadow_selection,
       lmd.silhouette_selection,
-      lmd.source_vertex_group,
-      lmd.vgname,
       lmd.flags,
       lmd.calculation_flags);
 }
@@ -780,7 +776,7 @@ static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob,
   gpd.add_empty_drawings(1);
   bke::greasepencil::Drawing &drawing = *gpd.get_editable_drawing_at(got_layer, 0);
 
-  generate_strokes_actual(md, depsgraph, ob, drawing);
+  generate_strokes_actual(md, ob, drawing);
 
   if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     /* Clear local cache. */

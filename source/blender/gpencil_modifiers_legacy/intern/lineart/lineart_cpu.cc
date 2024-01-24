@@ -3554,19 +3554,21 @@ static void lineart_destroy_render_data(LineartData *ld)
 void MOD_lineart_wrap_modifier_v3(LineartGpencilModifierData *lmd_legacy,
                                   GreasePencilLineartModifierData *lmd)
 {
-  memcpy(((char *)&lmd) + sizeof(ModifierData) + sizeof(GreasePencilModifierInfluenceData),
-         lmd_legacy + sizeof(GpencilModifierData),
-         sizeof(GreasePencilLineartModifierData) - sizeof(ModifierData)) -
-      sizeof(GreasePencilModifierInfluenceData);
+  memcpy((reinterpret_cast<char *>(lmd)) + sizeof(ModifierData) +
+             sizeof(GreasePencilModifierInfluenceData),
+         (reinterpret_cast<char *>(lmd_legacy)) + sizeof(GpencilModifierData),
+         sizeof(GreasePencilLineartModifierData) - sizeof(ModifierData) -
+             sizeof(GreasePencilModifierInfluenceData));
 }
 
 void MOD_lineart_unwrap_modifier_v3(LineartGpencilModifierData *lmd_legacy,
                                     GreasePencilLineartModifierData *lmd)
 {
-  memcpy(((char *)&lmd_legacy) + sizeof(GpencilModifierData),
-         lmd + sizeof(ModifierData) + sizeof(GreasePencilModifierInfluenceData),
-         sizeof(GreasePencilLineartModifierData) - sizeof(ModifierData)) -
-      sizeof(GreasePencilModifierInfluenceData);
+  memcpy((reinterpret_cast<char *>(lmd_legacy)) + sizeof(GpencilModifierData),
+         (reinterpret_cast<char *>(lmd)) + sizeof(ModifierData) +
+             sizeof(GreasePencilModifierInfluenceData),
+         sizeof(GreasePencilLineartModifierData) - sizeof(ModifierData) -
+             sizeof(GreasePencilModifierInfluenceData));
 }
 
 void MOD_lineart_destroy_render_data_v3(GreasePencilLineartModifierData *lmd)
@@ -3749,20 +3751,6 @@ static LineartData *lineart_create_render_buffer_v3(Scene *scene,
 
   ld->thread_count = BKE_render_num_threads(&scene->r);
 
-  return ld;
-}
-
-static LineartData *lineart_create_render_buffer(Scene *scene,
-                                                 LineartGpencilModifierData *lmd_legacy,
-                                                 Object *camera,
-                                                 Object *active_camera,
-                                                 LineartCache *lc)
-{
-  LineartData *ld = 0;
-  GreasePencilLineartModifierData lmd;
-  MOD_lineart_wrap_modifier_v3(lmd_legacy, &lmd);
-  ld = lineart_create_render_buffer_v3(scene, &lmd, camera, active_camera, lc);
-  MOD_lineart_unwrap_modifier_v3(lmd_legacy, &lmd);
   return ld;
 }
 
@@ -5491,8 +5479,6 @@ typedef struct LineartChainWriteInfo {
 } LineartChainWriteInfo;
 
 static void lineart_gpencil_generate_v3(LineartCache *cache,
-                                        Depsgraph *depsgraph,
-                                        Object *gpencil_object,
                                         float (*gp_obmat_inverse)[4],
                                         blender::bke::greasepencil::Drawing &drawing,
                                         int level_start,
@@ -5508,10 +5494,8 @@ static void lineart_gpencil_generate_v3(LineartCache *cache,
                                         float opacity,
                                         uchar shaodow_selection,
                                         uchar silhouette_mode,
-                                        const char *source_vgname,
-                                        const char *vgname,
                                         int modifier_flags,
-                                        int modifier_calculation_flags)
+                                        int /*modifier_calculation_flags*/)
 {
   if (cache == nullptr) {
     if (G.debug_value == 4000) {
@@ -5519,9 +5503,6 @@ static void lineart_gpencil_generate_v3(LineartCache *cache,
     }
     return;
   }
-
-  int stroke_count = 0;
-  int color_idx = 0;
 
   Object *orig_ob = nullptr;
   if (source_object) {
@@ -5537,13 +5518,18 @@ static void lineart_gpencil_generate_v3(LineartCache *cache,
   /* (!orig_col && !orig_ob) means the whole scene is selected. */
 
   int enabled_types = cache->all_enabled_edge_types;
-  bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP;
-  bool match_output = modifier_calculation_flags & LRT_GPENCIL_MATCH_OUTPUT_VGROUP;
+
+  /* Vertex weight transferring not implemented into GPv3 yet. */
+  /* bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP; */
+  /* bool match_output = modifier_calculation_flags & LRT_GPENCIL_MATCH_OUTPUT_VGROUP; */
+
   bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
 
   blender::Vector<LineartChainWriteInfo> writer = {};
   writer.reserve(128);
   int total_point_count = 0;
+
+  int stroke_count = 0;
 
   LISTBASE_FOREACH (LineartEdgeChain *, ec, &cache->chains) {
 
@@ -5776,7 +5762,6 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
 }
 
 void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
-                                     Depsgraph *depsgraph,
                                      Object *ob,
                                      struct GreasePencilDrawing &drawing,
                                      int8_t source_type,
@@ -5792,8 +5777,6 @@ void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
                                      float opacity,
                                      uchar shadow_selection,
                                      uchar silhouette_mode,
-                                     const char *source_vgname,
-                                     const char *vgname,
                                      int modifier_flags,
                                      int modifier_calculation_flags)
 {
@@ -5821,8 +5804,6 @@ void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
   float gp_obmat_inverse[4][4];
   invert_m4_m4(gp_obmat_inverse, ob->object_to_world);
   lineart_gpencil_generate_v3(cache,
-                              depsgraph,
-                              ob,
                               gp_obmat_inverse,
                               reinterpret_cast<blender::bke::greasepencil::Drawing &>(drawing),
                               level_start,
@@ -5838,8 +5819,6 @@ void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
                               opacity,
                               shadow_selection,
                               silhouette_mode,
-                              source_vgname,
-                              vgname,
                               modifier_flags,
                               modifier_calculation_flags);
 }

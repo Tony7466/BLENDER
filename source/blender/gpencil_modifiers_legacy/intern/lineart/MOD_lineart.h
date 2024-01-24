@@ -950,7 +950,6 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   int modifier_flags,
                                   int modifier_calculation_flags);
 void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
-                                     Depsgraph *depsgraph,
                                      Object *ob,
                                      struct GreasePencilDrawing &drawing,
                                      int8_t source_type,
@@ -966,8 +965,6 @@ void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
                                      float opacity,
                                      uchar shadow_selection,
                                      uchar silhouette_mode,
-                                     const char *source_vgname,
-                                     const char *vgname,
                                      int modifier_flags,
                                      int modifier_calculation_flags);
 
