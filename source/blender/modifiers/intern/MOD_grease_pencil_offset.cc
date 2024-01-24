@@ -43,8 +43,6 @@
 
 namespace blender {
 
-using bke::greasepencil::Drawing;
-
 static void init_data(ModifierData *md)
 {
   auto *omd = reinterpret_cast<GreasePencilOffsetModifierData *>(md);
@@ -299,7 +297,7 @@ static void modify_stroke_by_layer(const GreasePencilOffsetModifierData &omd,
 
 static void modify_drawing(ModifierData &md,
                            const ModifierEvalContext &ctx,
-                           Drawing &drawing,
+                           bke::greasepencil::Drawing &drawing,
                            const std::optional<int> layer_index = std::nullopt,
                            const std::optional<int> layers_num = std::nullopt)
 {
@@ -332,6 +330,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
+  using bke::greasepencil::Drawing;
   using modifier::greasepencil::LayerDrawingInfo;
 
   auto *omd = reinterpret_cast<GreasePencilOffsetModifierData *>(md);
