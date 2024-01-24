@@ -3171,8 +3171,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Curves Sculpt", "");
 
   prop = RNA_def_property(srna, "use_auto_normalize", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE | PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "auto_normalize", 1);
   RNA_def_property_ui_text(prop,
                            "Weight Paint Auto-Normalize",
@@ -3181,8 +3180,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Scene_update_active_object_data");
 
   prop = RNA_def_property(srna, "use_lock_relative", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE | PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "wpaint_lock_relative", 1);
   RNA_def_property_ui_text(prop,
                            "Weight Paint Lock-Relative",
@@ -3191,8 +3189,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Scene_update_active_object_data");
 
   prop = RNA_def_property(srna, "use_multipaint", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE | PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "multipaint", 1);
   RNA_def_property_ui_text(prop,
                            "Weight Paint Multi-Paint",
@@ -3201,16 +3198,14 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Scene_update_active_object_data");
 
   prop = RNA_def_property(srna, "vertex_group_user", PROP_ENUM, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE | PROP_DEG_SYNC_ONLY);
   RNA_def_property_enum_sdna(prop, nullptr, "weightuser");
   RNA_def_property_enum_items(prop, draw_groupuser_items);
   RNA_def_property_ui_text(prop, "Mask Non-Group Vertices", "Display unweighted vertices");
   RNA_def_property_update(prop, 0, "rna_Scene_update_active_object_data");
 
   prop = RNA_def_property(srna, "vertex_group_subset", PROP_ENUM, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE | PROP_DEG_SYNC_ONLY);
   RNA_def_property_enum_sdna(prop, nullptr, "vgroupsubset");
   RNA_def_property_enum_items(prop, vertex_group_select_items);
   RNA_def_property_ui_text(prop, "Subset", "Filter Vertex groups for Display");
