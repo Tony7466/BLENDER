@@ -1703,7 +1703,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   UI_block_flag_disable(block, UI_BLOCK_LOOP);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_REGULAR);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   /* Intentionally don't use #UI_BLOCK_MOVEMOUSE_QUIT, some dialogs have many items
    * where quitting by accident is very annoying. */
@@ -1761,7 +1761,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
 
   /* center around the mouse */
   UI_block_bounds_set_popup(
-      block, 6 * UI_SCALE_FAC, blender::int2{data->width / -2, data->height / 2});
+      block, 10 * UI_SCALE_FAC, blender::int2{data->width / -2, data->height / 2});
 
   return block;
 }
