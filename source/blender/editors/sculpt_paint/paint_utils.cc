@@ -469,15 +469,10 @@ void paint_sample_color(
               float v = uv[1] * ibuf->y;
 
               if (ibuf->float_buffer.data) {
-                float4 rgba_f;
-
-                if (interp == SHD_INTERP_CLOSEST) {
-                  rgba_f = imbuf::interpolate_nearest_fl(ibuf, u, v);
-                }
-                else {
-                  rgba_f = imbuf::interpolate_bilinear_wrap_fl(ibuf, u, v);
-                  rgba_f = math::clamp(rgba_f, 0.0f, 1.0f);
-                }
+                float4 rgba_f = interp == SHD_INTERP_CLOSEST ?
+                                    imbuf::interpolate_nearest_wrap_fl(ibuf, u, v) :
+                                    imbuf::interpolate_bilinear_wrap_fl(ibuf, u, v);
+                rgba_f = math::clamp(rgba_f, 0.0f, 1.0f);
                 straight_to_premul_v4(rgba_f);
                 if (use_palette) {
                   linearrgb_to_srgb_v3_v3(color->rgb, rgba_f);
@@ -488,13 +483,9 @@ void paint_sample_color(
                 }
               }
               else {
-                uchar4 rgba;
-                if (interp == SHD_INTERP_CLOSEST) {
-                  rgba = imbuf::interpolate_nearest_byte(ibuf, u, v);
-                }
-                else {
-                  rgba = imbuf::interpolate_bilinear_wrap_byte(ibuf, u, v);
-                }
+                uchar4 rgba = interp == SHD_INTERP_CLOSEST ?
+                                  imbuf::interpolate_nearest_wrap_byte(ibuf, u, v) :
+                                  imbuf::interpolate_bilinear_wrap_byte(ibuf, u, v);
                 if (use_palette) {
                   rgb_uchar_to_float(color->rgb, rgba);
                 }

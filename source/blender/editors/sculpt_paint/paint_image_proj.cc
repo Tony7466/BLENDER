@@ -716,13 +716,6 @@ static int project_paint_PickFace(const ProjPaintState *ps, const float pt[2], f
   return best_tri_index;
 }
 
-/* Converts a uv coord into a pixel location for sampling. */
-static void uvco_to_pxco(const float uv[2], int ibuf_x, int ibuf_y, float *x, float *y)
-{
-  *x = uv[0] * ibuf_x - 0.5f;
-  *y = uv[1] * ibuf_y - 0.5f;
-}
-
 /* Set the top-most face color that the screen space coord 'pt' touches
  * (or return 0 if none touch) */
 static bool project_paint_PickColor(
@@ -734,7 +727,6 @@ static bool project_paint_PickColor(
   int tri_index;
   Image *ima;
   ImBuf *ibuf;
-  int xi, yi;
 
   tri_index = project_paint_PickFace(ps, pt, w);
 
@@ -761,53 +753,32 @@ static bool project_paint_PickColor(
     return false;
   }
 
+  float x = uv[0] * ibuf->x;
+  float y = uv[1] * ibuf->y;
   if (interp) {
-    float x, y;
-    uvco_to_pxco(uv, ibuf->x, ibuf->y, &x, &y);
+    x -= 0.5f;
+    y -= 0.5f;
+  }
 
-    if (ibuf->float_buffer.data) {
-      float4 col = imbuf::interpolate_bilinear_wrap_fl(ibuf, x, y);
-      col = math::clamp(col, 0.0f, 1.0f);
-      if (rgba_fp) {
-        memcpy(rgba_fp, &col, sizeof(col));
-      }
-      else {
-        premul_float_to_straight_uchar(rgba, col);
-      }
+  if (ibuf->float_buffer.data) {
+    float4 col = interp ? imbuf::interpolate_bilinear_wrap_fl(ibuf, x, y) :
+                          imbuf::interpolate_nearest_wrap_fl(ibuf, x, y);
+    col = math::clamp(col, 0.0f, 1.0f);
+    if (rgba_fp) {
+      memcpy(rgba_fp, &col, sizeof(col));
     }
     else {
-      uchar4 col = imbuf::interpolate_bilinear_wrap_byte(ibuf, x, y);
-      if (rgba) {
-        memcpy(rgba, &col, sizeof(col));
-      }
-      else {
-        straight_uchar_to_premul_float(rgba_fp, col);
-      }
+      premul_float_to_straight_uchar(rgba, col);
     }
   }
   else {
-    /* Wrap and scale to image size. */
-    xi = mod_i(int(uv[0] * ibuf->x), ibuf->x);
-    yi = mod_i(int(uv[1] * ibuf->y), ibuf->y);
-
+    uchar4 col = interp ? imbuf::interpolate_bilinear_wrap_byte(ibuf, x, y) :
+                          imbuf::interpolate_nearest_wrap_byte(ibuf, x, y);
     if (rgba) {
-      if (ibuf->float_buffer.data) {
-        const float *rgba_tmp_fp = ibuf->float_buffer.data + (xi + yi * ibuf->x * 4);
-        premul_float_to_straight_uchar(rgba, rgba_tmp_fp);
-      }
-      else {
-        *((uint *)rgba) = *(uint *)(((char *)ibuf->byte_buffer.data) + ((xi + yi * ibuf->x) * 4));
-      }
+      memcpy(rgba, &col, sizeof(col));
     }
-
-    if (rgba_fp) {
-      if (ibuf->float_buffer.data) {
-        copy_v4_v4(rgba_fp, (ibuf->float_buffer.data + ((xi + yi * ibuf->x) * 4)));
-      }
-      else {
-        uchar *tmp_ch = ibuf->byte_buffer.data + ((xi + yi * ibuf->x) * 4);
-        straight_uchar_to_premul_float(rgba_fp, tmp_ch);
-      }
+    else {
+      straight_uchar_to_premul_float(rgba_fp, col);
     }
   }
   BKE_image_release_ibuf(ima, ibuf, nullptr);
@@ -1644,11 +1615,12 @@ static void project_face_pixel(
     const float *tri_uv[3], ImBuf *ibuf_other, const float w[3], uchar rgba_ub[4], float rgba_f[4])
 {
   using namespace blender;
-  float uv_other[2], x, y;
+  float uv_other[2];
 
   interp_v2_v2v2v2(uv_other, UNPACK3(tri_uv), w);
 
-  uvco_to_pxco(uv_other, ibuf_other->x, ibuf_other->y, &x, &y);
+  float x = uv_other[0] * ibuf_other->x - 0.5f;
+  float y = uv_other[1] * ibuf_other->y - 0.5f;
 
   if (ibuf_other->float_buffer.data) {
     float4 col = imbuf::interpolate_bilinear_wrap_fl(ibuf_other, x, y);

@@ -18,6 +18,7 @@
  * Sampling completely outside the image returns transparent black.
  */
 
+#include "BLI_math_base.h"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::math {
@@ -84,6 +85,59 @@ inline void interpolate_nearest_fl(
 {
   float4 res;
   interpolate_nearest_fl(buffer, res, width, height, 4, u, v);
+  return res;
+}
+
+/**
+ * Wrapped nearest sampling. (u,v) is repeated to be inside the image size.
+ */
+
+inline void interpolate_nearest_wrap_byte(
+    const uchar *buffer, uchar *output, int width, int height, float u, float v)
+{
+  BLI_assert(buffer);
+  u = floored_fmod(u, float(width));
+  v = floored_fmod(v, float(height));
+  int x = int(u);
+  int y = int(v);
+  BLI_assert(x >= 0 && y >= 0 && x < width && y < height);
+
+  const uchar *data = buffer + (int64_t(width) * y + x) * 4;
+  output[0] = data[0];
+  output[1] = data[1];
+  output[2] = data[2];
+  output[3] = data[3];
+}
+
+[[nodiscard]] inline uchar4 interpolate_nearest_wrap_byte(
+    const uchar *buffer, int width, int height, float u, float v)
+{
+  uchar4 res;
+  interpolate_nearest_wrap_byte(buffer, res, width, height, u, v);
+  return res;
+}
+
+inline void interpolate_nearest_wrap_fl(
+    const float *buffer, float *output, int width, int height, int components, float u, float v)
+{
+  BLI_assert(buffer);
+  u = floored_fmod(u, float(width));
+  v = floored_fmod(v, float(height));
+  int x = int(u);
+  int y = int(v);
+  BLI_assert(x >= 0 && y >= 0 && x < width && y < height);
+
+  const float *data = buffer + (int64_t(width) * y + x) * components;
+  for (int i = 0; i < components; i++) {
+    output[i] = data[i];
+  }
+}
+
+[[nodiscard]] inline float4 interpolate_nearest_wrap_fl(
+    const float *buffer, int width, int height, float u, float v)
+{
+  float4 res;
+  interpolate_nearest_wrap_fl(buffer, res, width, height, 4, u, v);
   return res;
 }
 

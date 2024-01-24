@@ -289,17 +289,22 @@ MINLINE uint ceil_to_multiple_u(uint a, uint b);
 MINLINE uint64_t ceil_to_multiple_ul(uint64_t a, uint64_t b);
 
 /**
- * Modulo that handles negative numbers, works the same as Python's (floored modulo).
+ * Floored modulo that is useful for wrapping numbers over \a n,
+ * including when \a i is negative.
+ *
+ * This is the same as Python % or GLSL mod(): `mod_i(-5, 3) = 1`.
+ *
+ * \return an integer in the interval [0, n), same sign as n.
  */
 MINLINE int mod_i(int i, int n);
 
 /**
- * Modulo that returns a positive result, regardless of the sign of \a f.
+ * Floored modulo that is useful for wrapping numbers over \a n,
+ * including when \a f is negative.
  *
- * For example, floored_fmod(-0.1, 1.0) => 0.9.
- * This matches Python % and GLSL mod().
+ * This is the same as Python % or GLSL mod(): `floored_fmod(-0.2, 1.0) = 0.8`.
  *
- * \returns a float in the interval [0, n).
+ * \return a float in the interval [0, n), same sign as n.
  */
 MINLINE float floored_fmod(float f, float n);
 

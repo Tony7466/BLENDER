@@ -35,6 +35,15 @@ inline void interpolate_nearest_fl(const ImBuf *in, float output[4], float u, fl
   math::interpolate_nearest_fl(in->float_buffer.data, output, in->x, in->y, 4, u, v);
 }
 
+[[nodiscard]] inline uchar4 interpolate_nearest_wrap_byte(const ImBuf *in, float u, float v)
+{
+  return math::interpolate_nearest_wrap_byte(in->byte_buffer.data, in->x, in->y, u, v);
+}
+[[nodiscard]] inline float4 interpolate_nearest_wrap_fl(const ImBuf *in, float u, float v)
+{
+  return math::interpolate_nearest_wrap_fl(in->float_buffer.data, in->x, in->y, u, v);
+}
+
 [[nodiscard]] inline uchar4 interpolate_bilinear_byte(const ImBuf *in, float u, float v)
 {
   return math::interpolate_bilinear_byte(in->byte_buffer.data, in->x, in->y, u, v);
