@@ -298,7 +298,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Deform volume based on noise or other vector fields"}, /* TODO: Use correct icon. */
     {eModifierType_GreasePencilNoise,
      "GREASEPENCIL_NOISE",
-     ICON_GREASEPENCIL,
+     ICON_MOD_NOISE,
      "Noise",
      "Generate noise wobble in grease pencil strokes"},
 
