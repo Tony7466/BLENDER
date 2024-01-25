@@ -137,7 +137,7 @@ class OBJMesh : NonCopyable {
    */
   void store_uv_coords_and_indices();
   /* Get UV coordinates computed by store_uv_coords_and_indices. */
-  const Span<float2> get_uv_coords() const
+  const Vector<float2> &get_uv_coords() const
   {
     return uv_coords_;
   }

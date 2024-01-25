@@ -19,6 +19,7 @@
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_sort.hh"
 #include "BLI_vector_set.hh"
 
@@ -106,7 +107,7 @@ void OBJMesh::clear()
   uv_coords_.clear_and_shrink();
   loop_to_normal_index_ = {};
   normal_coords_ = {};
-  poly_order_.clear_and_shrink();
+  poly_order_ = {};
   if (poly_smooth_groups_) {
     MEM_freeN(poly_smooth_groups_);
     poly_smooth_groups_ = nullptr;
@@ -159,7 +160,7 @@ void OBJMesh::set_world_axes_transform(const Object &obj_eval,
   world_and_axes_transform_.location() = axes_transform * object_to_world.location();
   world_and_axes_transform_[3][3] = object_to_world[3][3];
 
-  mirrored_transform_ = math::is_negative(world_and_axes_normal_transform_);
+  mirrored_transform_ = math::is_negative(math::transpose(math::invert(transform)));
 }
 
 int OBJMesh::tot_vertices() const
