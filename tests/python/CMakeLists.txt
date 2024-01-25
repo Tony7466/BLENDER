@@ -109,7 +109,7 @@ endfunction()
 
 # Run Python render test.
 function(add_render_test testname testscript)
-  set(_args ${ARGN} -blender "${TEST_BLENDER_EXE}" -idiff "${OPENIMAGEIO_IDIFF}")
+  set(_args ${ARGN} -blender "${TEST_BLENDER_EXE}" -oiiotool "${OPENIMAGEIO_TOOL}")
   if(WITH_TESTS_BATCHED)
     list(APPEND _args --batch)
   endif()
@@ -261,6 +261,14 @@ add_blender_test(
   curve_to_mesh
   ${TEST_SRC_DIR}/modeling/curve_to_mesh.blend
   --python ${TEST_PYTHON_DIR}/curve_to_mesh.py
+  --
+  --run-all-tests
+)
+
+add_blender_test(
+  curves_extrude
+  ${TEST_SRC_DIR}/modeling/curves_extrude.blend
+  --python ${TEST_PYTHON_DIR}/curves_extrude.py
   --
   --run-all-tests
 )
@@ -576,8 +584,8 @@ endif()
 
 # SVG Import
 if(TRUE)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling SVG tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling SVG tests because OIIO oiiotool does not exist")
   else()
     set(_svg_render_tests complex path)
 
@@ -595,8 +603,8 @@ if(TRUE)
 endif()
 
 if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling render tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling render tests because OIIO oiiotool does not exist")
   elseif(NOT EXISTS "${TEST_SRC_DIR}/render/shader")
     message(WARNING "Disabling render tests because tests folder does not exist at ${TEST_SRC_DIR}")
   elseif(NOT WITH_COMPOSITOR_CPU)
@@ -743,8 +751,8 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
 endif()
 
 if(WITH_COMPOSITOR_CPU)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling Compositor CPU tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling Compositor CPU tests because OIIO oiiotool does not exist")
   else()
     set(compositor_tests
       color
@@ -775,8 +783,8 @@ endif()
 
 # NOTE: WITH_COMPOSITOR_CPU is needed for rendering.
 if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling realtime compositor tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling realtime compositor tests because OIIO oiiotool does not exist")
   else()
     set(compositor_tests
         color
@@ -816,6 +824,7 @@ set(geo_node_tests
   mesh
   mesh/extrude
   mesh/split_edges
+  mesh/triangulate
   points
   texture
   utilities
@@ -867,8 +876,8 @@ endif()
 
 
 if(WITH_GPU_DRAW_TESTS)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(STATUS "Disabling OpenGL draw tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(STATUS "Disabling OpenGL draw tests because OIIO oiiotool does not exist")
   elseif(NOT EXISTS "${TEST_SRC_DIR}/opengl")
     message(STATUS "Disabling OpenGL draw tests because tests folder does not exist at ${TEST_SRC_DIR}")
   else()
@@ -941,8 +950,8 @@ if(WITH_CODEC_FFMPEG)
   )
 endif()
 
-if(NOT OPENIMAGEIO_IDIFF)
-  message(STATUS "Disabling ImBuf image format tests because OIIO idiff does not exist")
+if(NOT OPENIMAGEIO_TOOL)
+  message(STATUS "Disabling ImBuf image format tests because OIIO oiiotool does not exist")
 else()
   set(OPTIONAL_FORMATS "")
   if(WITH_IMAGE_CINEON)
@@ -964,7 +973,7 @@ else()
     --
     -test_dir "${TEST_SRC_DIR}/imbuf_io"
     -output_dir "${TEST_OUT_DIR}/imbuf_io/save"
-    -idiff "${OPENIMAGEIO_IDIFF}"
+    -oiiotool "${OPENIMAGEIO_TOOL}"
     -optional_formats "${OPTIONAL_FORMATS}"
   )
 
@@ -974,7 +983,7 @@ else()
     --
     -test_dir "${TEST_SRC_DIR}/imbuf_io"
     -output_dir "${TEST_OUT_DIR}/imbuf_io/load"
-    -idiff "${OPENIMAGEIO_IDIFF}"
+    -oiiotool "${OPENIMAGEIO_TOOL}"
     -optional_formats "${OPTIONAL_FORMATS}"
   )
 endif()
@@ -982,8 +991,8 @@ endif()
 # ------------------------------------------------------------------------------
 # SEQUENCER RENDER TESTS
 
-if(NOT OPENIMAGEIO_IDIFF)
-  message(STATUS "Disabling sequencer render tests because OIIO idiff does not exist")
+if(NOT OPENIMAGEIO_TOOL)
+  message(STATUS "Disabling sequencer render tests because OIIO oiiotool does not exist")
 else()
   set(render_tests
     transform
