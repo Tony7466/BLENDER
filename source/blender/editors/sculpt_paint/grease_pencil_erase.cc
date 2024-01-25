@@ -878,7 +878,8 @@ struct EraseOperationExecutor {
       }
       for (auto &segment : this->segments) {
         if (segment.curve == curve && point >= segment.point_range[0] &&
-            point <= segment.point_range[1]) {
+            point <= segment.point_range[1])
+        {
           return true;
         }
       }
@@ -945,12 +946,13 @@ struct EraseOperationExecutor {
 
   /* When looking for intersections, we need a little padding, otherwise we could miss curves
    * that intersect for the eye, but not in hard numbers. */
-  static constexpr int intersection_padding = 1;
-  static constexpr int float_to_int_padding = 1;
+  static constexpr int INTERSECTION_PADDING = 1;
+  static constexpr int FLOAT_TO_INT_PADDING = 1;
+  static constexpr int RCTI_PADDING = INTERSECTION_PADDING + FLOAT_TO_INT_PADDING;
 
   /* When creating new intersection points, we don't want them too close to their neighbour,
    * because that clutters the geometry. This threshold defines what 'too close' is. */
-  static constexpr float distance_factor_threshold = 0.01f;
+  static constexpr float DISTANCE_FACTOR_THRESHOLD = 0.01f;
 
   /**
    * Get the intersection distance of two line segments a-b and c-d.
@@ -1016,9 +1018,7 @@ struct EraseOperationExecutor {
     BLI_rcti_init_minmax(&bbox_ab);
     BLI_rcti_do_minmax_v(&bbox_ab, int2(co_a));
     BLI_rcti_do_minmax_v(&bbox_ab, int2(co_b));
-    BLI_rcti_pad(&bbox_ab,
-                 intersection_padding + float_to_int_padding,
-                 intersection_padding + float_to_int_padding);
+    BLI_rcti_pad(&bbox_ab, RCTI_PADDING, RCTI_PADDING);
 
     /* Loop all curves, looking for intersecting segments. */
     threading::parallel_for(src.curves_range(), 512, [&](const IndexRange curves) {
@@ -1057,16 +1057,14 @@ struct EraseOperationExecutor {
           BLI_rcti_init_minmax(&bbox_cd);
           BLI_rcti_do_minmax_v(&bbox_cd, int2(co_c));
           BLI_rcti_do_minmax_v(&bbox_cd, int2(co_d));
-          BLI_rcti_pad(&bbox_cd,
-                       intersection_padding + float_to_int_padding,
-                       intersection_padding + float_to_int_padding);
+          BLI_rcti_pad(&bbox_cd, RCTI_PADDING, RCTI_PADDING);
           if (!BLI_rcti_isect(&bbox_ab, &bbox_cd, nullptr)) {
             continue;
           }
 
           /* Add some padding to the line segment c-d, otherwise we could just miss an
            * intersection. */
-          const float2 padding_cd = math::normalize(co_d - co_c) * intersection_padding;
+          const float2 padding_cd = math::normalize(co_d - co_c) * INTERSECTION_PADDING;
           const float2 padded_c = co_c - padding_cd;
           const float2 padded_d = co_d + padding_cd;
 
@@ -1121,7 +1119,8 @@ struct EraseOperationExecutor {
 
       /* Walk along curve points. */
       while ((direction == 1 && point_a < point_last) ||
-             (direction == -1 && point_a > point_first)) {
+             (direction == -1 && point_a > point_first))
+      {
 
         const int point_b = point_a + direction;
         const bool at_end_of_curve = (direction == -1 && point_b == point_first) ||
@@ -1145,8 +1144,8 @@ struct EraseOperationExecutor {
 
         /* Avoid orphant points at the end of a curve. */
         if (at_end_of_curve &&
-            ((direction == -1 && distance_max < distance_factor_threshold) ||
-             (direction == 1 && distance_min > (1.0f - distance_factor_threshold))))
+            ((direction == -1 && distance_max < DISTANCE_FACTOR_THRESHOLD) ||
+             (direction == 1 && distance_min > (1.0f - DISTANCE_FACTOR_THRESHOLD))))
         {
           intersected = false;
           break;
@@ -1303,7 +1302,7 @@ struct EraseOperationExecutor {
     for (const auto &cutter_segment : cutter_segments.segments) {
       /* Intersection at cutter segment start. */
       if (cutter_segment.is_intersected[0] &&
-          cutter_segment.intersection_factor[0] > distance_factor_threshold)
+          cutter_segment.intersection_factor[0] > DISTANCE_FACTOR_THRESHOLD)
       {
         const int src_point = cutter_segment.point_range[0] - 1;
         Vector<PointTransferData> &dst_points = src_to_dst_points[src_point];
@@ -1313,7 +1312,7 @@ struct EraseOperationExecutor {
       /* Intersection at cutter segment end. */
       if (cutter_segment.is_intersected[1]) {
         const int src_point = cutter_segment.point_range[1];
-        if (cutter_segment.intersection_factor[1] < (1.0f - distance_factor_threshold)) {
+        if (cutter_segment.intersection_factor[1] < (1.0f - DISTANCE_FACTOR_THRESHOLD)) {
           Vector<PointTransferData> &dst_points = src_to_dst_points[src_point];
           dst_points.append(
               {src_point, src_point + 1, cutter_segment.intersection_factor[1], false, true});
@@ -1375,31 +1374,30 @@ struct EraseOperationExecutor {
       }
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
        * current frame. */
-      bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer_for_write();
+      bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
       grease_pencil.insert_duplicate_frame(
-          active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
+          active_layer, *active_layer.frame_key_at(current_frame), current_frame, false);
     }
 
     /* Lambda function for executing the cutter on each drawing. */
-    const auto execute_cutter_on_drawing = [&](const int layer_index, Drawing &drawing) {
+    const auto execute_cutter_on_drawing = [&](const int layer_index,
+                                               const int frame_number,
+                                               Drawing &drawing) {
       const bke::CurvesGeometry &src = drawing.strokes();
 
       /* Get evaluated geometry. */
       bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-              ob_eval, *obact, layer_index);
+              ob_eval, *obact, layer_index, frame_number);
 
       /* Compute screen space positions. */
-      float4x4 projection;
-      ED_view3d_ob_project_mat_get(rv3d, obact, projection.ptr());
+      const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, obact);
 
       Array<float2> screen_space_positions(src.points_num());
       threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
         for (const int src_point : src_points) {
-          ED_view3d_project_float_v2_m4(region,
-                                        deformation.positions[src_point],
-                                        screen_space_positions[src_point],
-                                        projection.ptr());
+          screen_space_positions[src_point] = ED_view3d_project_float_v2_m4(
+              region, deformation.positions[src_point], projection);
         }
       });
 
@@ -1418,9 +1416,7 @@ struct EraseOperationExecutor {
           }
 
           /* Add some padding, otherwise we could just miss intersections. */
-          BLI_rcti_pad(bbox,
-                       intersection_padding + float_to_int_padding,
-                       intersection_padding + float_to_int_padding);
+          BLI_rcti_pad(bbox, RCTI_PADDING, RCTI_PADDING);
         }
       });
 
@@ -1438,18 +1434,22 @@ struct EraseOperationExecutor {
     };
 
     if (active_layer_only) {
-      /* Apply cutter on active layer. */
-      const Layer *active_layer = grease_pencil.get_active_layer();
-      Drawing *drawing = grease_pencil.get_editable_drawing_at(active_layer, scene->r.cfra);
-      if (drawing == nullptr) {
-        return OPERATOR_CANCELLED;
-      }
-
-      execute_cutter_on_drawing(active_layer->drawing_index_at(scene->r.cfra), *drawing);
+      /* Apply cutter on drawings of active layer. */
+      const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+          ed::greasepencil::retrieve_editable_drawings_of_active_layer(*scene, grease_pencil);
+      threading::parallel_for_each(
+          drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
+            execute_cutter_on_drawing(info.layer_index, info.frame_number, info.drawing);
+          });
     }
     else {
       /* Apply cutter on every editable drawing. */
-      grease_pencil.foreach_editable_drawing(current_frame, execute_cutter_on_drawing);
+      const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+          ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
+      threading::parallel_for_each(
+          drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
+            execute_cutter_on_drawing(info.layer_index, info.frame_number, info.drawing);
+          });
     }
 
     if (changed) {

@@ -251,6 +251,35 @@ Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene, const GreasePen
   return visible_drawings.as_span();
 }
 
+Array<MutableDrawingInfo> retrieve_editable_drawings_of_active_layer(const Scene &scene,
+                                                                     GreasePencil &grease_pencil)
+{
+  using namespace blender::bke::greasepencil;
+  const int current_frame = scene.r.cfra;
+  const ToolSettings *toolsettings = scene.toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+
+  Vector<MutableDrawingInfo> editable_drawings;
+  if (!grease_pencil.has_active_layer()) {
+    return editable_drawings.as_span();
+  }
+  const Layer &layer = *grease_pencil.get_active_layer();
+  const std::optional<int> layer_index = grease_pencil.get_layer_index(layer);
+  if (!layer.is_editable() || !layer_index.has_value()) {
+    return editable_drawings.as_span();
+  }
+  const Array<int> frame_numbers = get_frame_numbers_for_layer(
+      layer, current_frame, use_multi_frame_editing);
+  for (const int frame_number : frame_numbers) {
+    if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
+      editable_drawings.append({*drawing, layer_index.value(), frame_number});
+    }
+  }
+
+  return editable_drawings.as_span();
+}
+
 static VectorSet<int> get_editable_material_indices(Object &object)
 {
   BLI_assert(object.type == OB_GREASE_PENCIL);

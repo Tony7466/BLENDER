@@ -171,6 +171,8 @@ Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                      GreasePencil &grease_pencil);
 Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
                                              const GreasePencil &grease_pencil);
+Array<MutableDrawingInfo> retrieve_editable_drawings_of_active_layer(const Scene &scene,
+                                                                     GreasePencil &grease_pencil);
 
 IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
