@@ -90,8 +90,8 @@ static void unpack_libraries_confirm(bContext * /* C */,
                                      wmOperator * /* op */,
                                      wmConfirmDetails *confirm)
 {
-  STRNCPY(confirm->message, IFACE_("Creates directories, all new paths should work"));
-  STRNCPY(confirm->confirm_button, IFACE_("Unpack"));
+  confirm->message = IFACE_("Creates directories, all new paths should work");
+  confirm->confirm_text = IFACE_("Unpack");
   confirm->icon = ALERT_ICON_INFO;
 }
 
