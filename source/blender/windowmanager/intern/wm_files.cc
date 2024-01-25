@@ -40,11 +40,10 @@
 #include "BLI_math_time.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 #include BLI_SYSTEM_PID_H
-
-#include "PIL_time.h"
 
 #include "BLO_readfile.h"
 #include "BLT_translation.h"
@@ -54,6 +53,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -62,26 +62,26 @@
 #include "AS_asset_library.h"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
-#include "BKE_autoexec.h"
+#include "BKE_appdir.hh"
+#include "BKE_autoexec.hh"
 #include "BKE_blender.h"
 #include "BKE_blender_version.h"
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 #include "BKE_callbacks.h"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
-#include "BKE_main_namemap.h"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
+#include "BKE_main_namemap.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
-#include "BKE_undo_system.h"
+#include "BKE_undo_system.hh"
 #include "BKE_workspace.h"
 
 #include "BLO_undofile.hh" /* to save from an undo memfile */
@@ -90,9 +90,10 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
+#include "IMB_thumbs.hh"
 
 #include "ED_asset.hh"
 #include "ED_datafiles.h"
@@ -127,11 +128,11 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "wm.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_files.hh"
 #include "wm_window.hh"
 
@@ -1020,7 +1021,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
     BlendFileReadReport bf_reports{};
     bf_reports.reports = reports;
-    bf_reports.duration.whole = PIL_check_seconds_timer();
+    bf_reports.duration.whole = BLI_check_seconds_timer();
     BlendFileData *bfd = BKE_blendfile_read(filepath, &params, &bf_reports);
     if (bfd != nullptr) {
       wm_file_read_pre(use_data, use_userdef);
@@ -1067,7 +1068,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       read_file_post_params.is_alloc = false;
       wm_file_read_post(C, filepath, &read_file_post_params);
 
-      bf_reports.duration.whole = PIL_check_seconds_timer() - bf_reports.duration.whole;
+      bf_reports.duration.whole = BLI_check_seconds_timer() - bf_reports.duration.whole;
       file_read_reports_finalize(&bf_reports);
 
       success = true;
@@ -1083,7 +1084,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
                 RPT_ERROR,
                 "Cannot read file \"%s\": %s",
                 filepath,
-                errno ? strerror(errno) : TIP_("unable to open the file"));
+                errno ? strerror(errno) : RPT_("unable to open the file"));
   }
   else if (retval == BKE_READ_EXOTIC_FAIL_FORMAT) {
     BKE_reportf(reports, RPT_ERROR, "File format is not supported in file \"%s\"", filepath);
@@ -1278,13 +1279,15 @@ void wm_homefile_read_ex(bContext *C,
   app_template_system[0] = '\0';
   app_template_config[0] = '\0';
 
-  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
+  const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
   if (!use_factory_settings) {
-    if (cfgdir) {
-      BLI_path_join(filepath_startup, sizeof(filepath_startup), cfgdir, BLENDER_STARTUP_FILE);
+    if (cfgdir.has_value()) {
+      BLI_path_join(
+          filepath_startup, sizeof(filepath_startup), cfgdir->c_str(), BLENDER_STARTUP_FILE);
       filepath_startup_is_factory = false;
       if (use_userdef) {
-        BLI_path_join(filepath_userdef, sizeof(filepath_startup), cfgdir, BLENDER_USERPREF_FILE);
+        BLI_path_join(
+            filepath_userdef, sizeof(filepath_startup), cfgdir->c_str(), BLENDER_USERPREF_FILE);
       }
     }
     else {
@@ -1327,8 +1330,9 @@ void wm_homefile_read_ex(bContext *C,
 
     /* note that the path is being set even when 'use_factory_settings == true'
      * this is done so we can load a templates factory-settings */
-    if (!use_factory_settings) {
-      BLI_path_join(app_template_config, sizeof(app_template_config), cfgdir, app_template);
+    if (!use_factory_settings && cfgdir.has_value()) {
+      BLI_path_join(
+          app_template_config, sizeof(app_template_config), cfgdir->c_str(), app_template);
       BLI_path_join(
           filepath_startup, sizeof(filepath_startup), app_template_config, BLENDER_STARTUP_FILE);
       filepath_startup_is_factory = false;
@@ -1533,8 +1537,8 @@ void wm_homefile_read_post(bContext *C, const wmFileReadPost_Params *params_file
 
 void wm_history_file_read()
 {
-  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
-  if (!cfgdir) {
+  const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
+  if (!cfgdir.has_value()) {
     return;
   }
 
@@ -1542,7 +1546,7 @@ void wm_history_file_read()
   LinkNode *l;
   int num;
 
-  BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_HISTORY_FILE);
+  BLI_path_join(filepath, sizeof(filepath), cfgdir->c_str(), BLENDER_HISTORY_FILE);
 
   LinkNode *lines = BLI_file_read_as_lines(filepath);
 
@@ -1596,17 +1600,17 @@ static RecentFile *wm_file_history_find(const char *filepath)
  */
 static void wm_history_file_write()
 {
-  const char *user_config_dir;
   char filepath[FILE_MAX];
   FILE *fp;
 
   /* will be nullptr in background mode */
-  user_config_dir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
-  if (!user_config_dir) {
+  const std::optional<std::string> user_config_dir = BKE_appdir_folder_id_create(
+      BLENDER_USER_CONFIG, nullptr);
+  if (!user_config_dir.has_value()) {
     return;
   }
 
-  BLI_path_join(filepath, sizeof(filepath), user_config_dir, BLENDER_HISTORY_FILE);
+  BLI_path_join(filepath, sizeof(filepath), user_config_dir->c_str(), BLENDER_HISTORY_FILE);
 
   fp = BLI_fopen(filepath, "w");
   if (fp) {
@@ -1722,6 +1726,12 @@ static ImBuf *blend_file_thumb_from_screenshot(bContext *C, BlendThumbnail **r_t
     /* File-system thumbnail image can be 256x256. */
     IMB_scaleImBuf(ibuf, ex * 2, ey * 2);
 
+    /* Save metadata for quick access. */
+    char version_st[10] = {0};
+    SNPRINTF(version_st, "%d.%01d", BLENDER_VERSION / 100, BLENDER_VERSION % 100);
+    IMB_metadata_ensure(&ibuf->metadata);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Blender::Version", version_st);
+
     /* Thumbnail inside blend should be 128x128. */
     ImBuf *thumb_ibuf = IMB_dupImBuf(ibuf);
     IMB_scaleImBuf(thumb_ibuf, ex, ey);
@@ -1797,6 +1807,7 @@ static ImBuf *blend_file_thumb_from_camera(const bContext *C,
                                                  R_ALPHAPREMUL,
                                                  nullptr,
                                                  nullptr,
+                                                 nullptr,
                                                  err_out);
   }
   else {
@@ -1811,6 +1822,7 @@ static ImBuf *blend_file_thumb_from_camera(const bContext *C,
                                           R_ALPHAPREMUL,
                                           nullptr,
                                           true,
+                                          nullptr,
                                           nullptr,
                                           err_out);
   }
@@ -1829,6 +1841,13 @@ static ImBuf *blend_file_thumb_from_camera(const bContext *C,
     /* dirty oversampling */
     ImBuf *thumb_ibuf;
     thumb_ibuf = IMB_dupImBuf(ibuf);
+
+    /* Save metadata for quick access. */
+    char version_st[10] = {0};
+    SNPRINTF(version_st, "%d.%01d", BLENDER_VERSION / 100, BLENDER_VERSION % 100);
+    IMB_metadata_ensure(&ibuf->metadata);
+    IMB_metadata_set_field(ibuf->metadata, "Thumb::Blender::Version", version_st);
+
     /* BLEN_THUMB_SIZE is size of thumbnail inside blend file: 128x128. */
     IMB_scaleImBuf(thumb_ibuf, BLEN_THUMB_SIZE, BLEN_THUMB_SIZE);
     thumb = BKE_main_thumbnail_from_imbuf(nullptr, thumb_ibuf);
@@ -2077,10 +2096,11 @@ static void wm_autosave_location(char filepath[FILE_MAX])
    * If this is still the case on WIN32 - other features such as copy-paste will also fail.
    * We could support #BLENDER_USER_AUTOSAVE on all platforms or remove it entirely. */
 #ifdef WIN32
+  std::optional<std::string> savedir;
   if (!BLI_exists(tempdir_base)) {
-    const char *savedir = BKE_appdir_folder_id_create(BLENDER_USER_AUTOSAVE, nullptr);
-    if (savedir) {
-      tempdir_base = savedir;
+    savedir = BKE_appdir_folder_id_create(BLENDER_USER_AUTOSAVE, nullptr);
+    if (savedir.has_value()) {
+      tempdir_base = savedir->c_str();
     }
   }
 #endif
@@ -2261,8 +2281,9 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
   int fileflags;
 
   const char *app_template = U.app_template[0] ? U.app_template : nullptr;
-  const char *const cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, app_template);
-  if (cfgdir == nullptr) {
+  const std::optional<std::string> cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG,
+                                                                        app_template);
+  if (!cfgdir.has_value()) {
     BKE_report(op->reports, RPT_ERROR, "Unable to create user config path");
     return OPERATOR_CANCELLED;
   }
@@ -2280,7 +2301,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
   /* update keymaps in user preferences */
   WM_keyconfig_update(wm);
 
-  BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_STARTUP_FILE);
+  BLI_path_join(filepath, sizeof(filepath), cfgdir->c_str(), BLENDER_STARTUP_FILE);
 
   printf("Writing homefile: \"%s\" ", filepath);
 
@@ -2659,7 +2680,14 @@ static void read_homefile_props(wmOperatorType *ot)
   prop = RNA_def_string(ot->srna, "app_template", "Template", sizeof(U.app_template), "", "");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 
-  prop = RNA_def_boolean(ot->srna, "use_empty", false, "Empty", "");
+  prop = RNA_def_boolean(
+      ot->srna,
+      "use_empty",
+      false,
+      "Empty",
+      "After loading, remove everything except scenes, windows, and workspaces. This makes it "
+      "possible to load the startup file with its scene configuration and window layout intact, "
+      "but no objects, materials, animations, ...");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 
@@ -2693,7 +2721,12 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   /* So scripts can load factory-startup without resetting preferences
    * (which has other implications such as reloading all add-ons).
    * Match naming for `--factory-startup` command line argument. */
-  prop = RNA_def_boolean(ot->srna, "use_factory_startup", false, "Factory Startup", "");
+  prop = RNA_def_boolean(ot->srna,
+                         "use_factory_startup",
+                         false,
+                         "Factory Startup",
+                         "Load the default ('factory startup') blend file. This is independent of "
+                         "the normal start-up file that the user can save");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
   read_factory_reset_props(ot);
 
@@ -2856,6 +2889,9 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", filepath);
   BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
+  /* For file opening, also print in console for warnings, not only errors. */
+  BKE_report_print_level_set(op->reports, RPT_WARNING);
+
   /* re-use last loaded setting so we can reload a file without changing */
   wm_open_init_load_ui(op, false);
   wm_open_init_use_scripts(op, false);
@@ -2863,9 +2899,6 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(G.fileflags, !RNA_boolean_get(op->ptr, "load_ui"), G_FILE_NO_UI);
   SET_FLAG_FROM_TEST(G.f, RNA_boolean_get(op->ptr, "use_scripts"), G_FLAG_SCRIPT_AUTOEXEC);
   success = wm_file_read_opwrap(C, filepath, op->reports);
-
-  /* for file open also popup for warnings, not only errors */
-  BKE_report_print_level_set(op->reports, RPT_WARNING);
 
   if (success) {
     if (G.fileflags & G_FILE_NO_UI) {
@@ -3128,7 +3161,8 @@ static int wm_recover_last_session_invoke(bContext *C, wmOperator *op, const wmE
   wm_open_init_use_scripts(op, false);
 
   if (wm_operator_close_file_dialog_if_needed(
-          C, op, wm_recover_last_session_after_dialog_callback)) {
+          C, op, wm_recover_last_session_after_dialog_callback))
+  {
     return OPERATOR_INTERFACE;
   }
   return wm_recover_last_session_exec(C, op);
@@ -3275,6 +3309,11 @@ static int wm_save_as_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent
 
   save_set_compress(op);
   save_set_filepath(C, op);
+
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "relative_remap");
+  if (!RNA_property_is_set(op->ptr, prop)) {
+    RNA_property_boolean_set(op->ptr, prop, (U.flag & USER_RELPATHS));
+  }
 
   WM_event_add_fileselect(C, op);
 
@@ -3538,6 +3577,42 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Clear Recent Files List Operator
+ * \{ */
+
+static void wm_clear_recent_files_confirm(bContext * /*C*/,
+                                          wmOperator * /*op*/,
+                                          wmConfirmDetails *confirm)
+{
+  STRNCPY(confirm->message, IFACE_("Remove all items from the recent files list"));
+  STRNCPY(confirm->confirm_button, IFACE_("Remove All"));
+  confirm->position = WM_WARNING_POSITION_CENTER;
+  confirm->size = WM_WARNING_SIZE_LARGE;
+  confirm->cancel_default = true;
+}
+
+static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator * /*op*/)
+{
+  wm_history_files_free();
+  wm_history_file_write();
+
+  return OPERATOR_FINISHED;
+}
+
+void WM_OT_clear_recent_files(wmOperatorType *ot)
+{
+  ot->name = "Clear Recent Files List";
+  ot->idname = "WM_OT_clear_recent_files";
+  ot->description = "Clear the recent files list";
+
+  ot->invoke = WM_operator_confirm;
+  ot->exec = wm_clear_recent_files_exec;
+  ot->confirm = wm_clear_recent_files_confirm;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Auto Script Execution Warning Dialog
  * \{ */
 
@@ -3601,13 +3676,13 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
   /* Title and explanation text. */
   uiLayout *col = uiLayoutColumn(layout, true);
   uiItemL_ex(col,
-             TIP_("For security reasons, automatic execution of Python scripts "
+             RPT_("For security reasons, automatic execution of Python scripts "
                   "in this file was disabled:"),
              ICON_NONE,
              true,
              false);
   uiItemL_ex(col, G.autoexec_fail, ICON_NONE, false, true);
-  uiItemL(col, TIP_("This may lead to unexpected behavior"), ICON_NONE);
+  uiItemL(col, RPT_("This may lead to unexpected behavior"), ICON_NONE);
 
   uiItemS(layout);
 
@@ -3616,7 +3691,7 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
           &pref_ptr,
           "use_scripts_auto_execute",
           UI_ITEM_NONE,
-          TIP_("Permanently allow execution of scripts"),
+          RPT_("Permanently allow execution of scripts"),
           ICON_NONE);
 
   uiItemS_ex(layout, 3.0f);
@@ -3814,10 +3889,10 @@ static void file_forwardcompat_detailed_info_show(uiLayout *parent_layout, Main 
   char message_line1[256];
   char message_line2[256];
   SNPRINTF(message_line1,
-           TIP_("This file was saved by a newer version of Blender (%s)"),
+           RPT_("This file was saved by a newer version of Blender (%s)"),
            writer_ver_str);
   SNPRINTF(message_line2,
-           TIP_("Saving it with this Blender (%s) may cause loss of data"),
+           RPT_("Saving it with this Blender (%s) may cause loss of data"),
            current_ver_str);
   uiItemL(layout, message_line1, ICON_NONE);
   uiItemL(layout, message_line2, ICON_NONE);
@@ -3942,7 +4017,7 @@ static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
 
   /* Title. */
   uiItemL_ex(
-      layout, TIP_("Overwrite file with an older Blender version?"), ICON_NONE, true, false);
+      layout, RPT_("Overwrite file with an older Blender version?"), ICON_NONE, true, false);
 
   /* Filename. */
   const char *blendfile_path = BKE_main_blendfile_path(CTX_data_main(C));
@@ -4172,7 +4247,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
   const bool has_forwardcompat_issues = bmain->has_forward_compatibility_issues;
 
   /* Title. */
-  uiItemL_ex(layout, TIP_("Save changes before closing?"), ICON_NONE, true, false);
+  uiItemL_ex(layout, RPT_("Save changes before closing?"), ICON_NONE, true, false);
 
   /* Filename. */
   const char *blendfile_path = BKE_main_blendfile_path(CTX_data_main(C));

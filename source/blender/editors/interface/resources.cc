@@ -21,8 +21,8 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
-#include "BKE_main.h"
+#include "BKE_appdir.hh"
+#include "BKE_main.hh"
 #include "BKE_mesh_runtime.hh"
 
 #include "BLO_readfile.h" /* for UserDef version patching. */

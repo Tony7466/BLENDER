@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,8 +19,7 @@ struct SatParams {
   std::vector<std::vector<float>> values;
 };
 
-class SummedAreaTableTestP : public testing::TestWithParam<SatParams> {
-};
+class SummedAreaTableTestP : public testing::TestWithParam<SatParams> {};
 
 TEST_P(SummedAreaTableTestP, Values)
 {

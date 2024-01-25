@@ -24,9 +24,9 @@
 
 #include "WM_types.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -37,7 +37,7 @@
 #  include "DNA_screen_types.h"
 #  include "DNA_space_types.h"
 
-#  include "SEQ_relations.h"
+#  include "SEQ_relations.hh"
 
 static void rna_MovieClip_reload_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {

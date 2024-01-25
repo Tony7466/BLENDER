@@ -12,7 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_movieclip.h"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_tracking.h"
 
 #include "BLT_translation.h"
@@ -42,7 +42,7 @@
 
 #  include "DEG_depsgraph.hh"
 
-#  include "IMB_imbuf.h"
+#  include "IMB_imbuf.hh"
 
 #  include "WM_api.hh"
 
