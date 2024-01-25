@@ -183,6 +183,8 @@ static const EnumPropertyItem rna_enum_driver_target_context_property_items[] = 
 
 #ifdef RNA_RUNTIME
 
+#  include <algorithm>
+
 #  include "WM_api.hh"
 
 static StructRNA *rna_FModifierType_refine(PointerRNA *ptr)
@@ -1026,7 +1028,7 @@ static void rna_FModifierStepped_frame_start_set(PointerRNA *ptr, float value)
   float prop_clamp_min = -FLT_MAX, prop_clamp_max = FLT_MAX, prop_soft_min, prop_soft_max;
   rna_FModifierStepped_start_frame_range(
       ptr, &prop_clamp_min, &prop_clamp_max, &prop_soft_min, &prop_soft_max);
-  value = CLAMPIS(value, prop_clamp_min, prop_clamp_max);
+  value = std::clamp(value, prop_clamp_min, prop_clamp_max);
 
   /* Need to set both step-data's start/end and the start/end on the base-data,
    * or else Restrict-Range doesn't work due to RNA-property shadowing (#52009)
@@ -1043,7 +1045,7 @@ static void rna_FModifierStepped_frame_end_set(PointerRNA *ptr, float value)
   float prop_clamp_min = -FLT_MAX, prop_clamp_max = FLT_MAX, prop_soft_min, prop_soft_max;
   rna_FModifierStepped_end_frame_range(
       ptr, &prop_clamp_min, &prop_clamp_max, &prop_soft_min, &prop_soft_max);
-  value = CLAMPIS(value, prop_clamp_min, prop_clamp_max);
+  value = std::clamp(value, prop_clamp_min, prop_clamp_max);
 
   /* Need to set both step-data's start/end and the start/end on the base-data,
    * or else Restrict-Range doesn't work due to RNA-property shadowing (#52009)
@@ -1974,6 +1976,28 @@ static void rna_def_drivertarget(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Context Property", "Type of a context-dependent data-block to access property from");
   RNA_def_property_update(prop, 0, "rna_DriverTarget_update_data");
+
+  prop = RNA_def_property(srna, "use_fallback_value", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "options", DTAR_OPTION_USE_FALLBACK);
+  RNA_def_property_ui_text(prop,
+                           "Use Fallback",
+                           "Use the fallback value if the data path can't be resolved, instead of "
+                           "failing to evaluate the driver");
+  RNA_def_property_update(prop, 0, "rna_DriverTarget_update_data");
+
+  prop = RNA_def_property(srna, "fallback_value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "fallback_value");
+  RNA_def_property_ui_text(
+      prop, "Fallback", "The value to use if the data path can't be resolved");
+  RNA_def_property_update(prop, 0, "rna_DriverTarget_update_data");
+
+  prop = RNA_def_property(srna, "is_fallback_used", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", DTAR_FLAG_FALLBACK_USED);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Is Fallback Used",
+      "Indicates that the most recent variable evaluation used the fallback value");
 }
 
 static void rna_def_drivervar(BlenderRNA *brna)

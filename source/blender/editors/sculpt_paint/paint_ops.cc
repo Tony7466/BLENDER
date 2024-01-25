@@ -19,8 +19,7 @@
 
 #include "BLT_translation.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_interp.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
@@ -30,7 +29,7 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.h"
@@ -40,7 +39,7 @@
 #include "ED_screen.hh"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -391,7 +390,8 @@ static int palette_color_add_exec(bContext *C, wmOperator * /*op*/)
              PAINT_MODE_TEXTURE_3D,
              PAINT_MODE_TEXTURE_2D,
              PAINT_MODE_VERTEX,
-             PAINT_MODE_SCULPT)) {
+             PAINT_MODE_SCULPT))
+    {
       copy_v3_v3(color->rgb, BKE_brush_color_get(scene, brush));
       color->value = 0.0;
     }
@@ -1265,7 +1265,7 @@ static bool stencil_control_poll(bContext *C)
   Paint *paint;
   Brush *br;
 
-  if (!paint_supports_texture(mode)) {
+  if (!blender::ed::sculpt_paint::paint_supports_texture(mode)) {
     return false;
   }
 
@@ -1599,7 +1599,7 @@ void ED_keymap_paint(wmKeyConfig *keyconf)
 
   /* Curves Sculpt mode. */
   keymap = WM_keymap_ensure(keyconf, "Sculpt Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
-  keymap->poll = CURVES_SCULPT_mode_poll;
+  keymap->poll = curves_sculpt_poll;
 
   /* sculpt expand. */
   expand::modal_keymap(keyconf);

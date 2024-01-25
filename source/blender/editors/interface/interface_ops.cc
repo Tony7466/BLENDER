@@ -27,9 +27,9 @@
 #include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_idtype.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_material.h"
@@ -38,7 +38,7 @@
 #include "BKE_screen.hh"
 #include "BKE_text.h"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -685,16 +685,11 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
   BLI_assert(oprop != nullptr);
   BLI_assert(id != nullptr && id->override_library != nullptr);
 
-  const bool is_template = ID_IS_OVERRIDE_LIBRARY_TEMPLATE(id);
-
-  /* We need source (i.e. linked data) to restore values of deleted overrides...
-   * If this is an override template, we obviously do not need to restore anything. */
-  if (!is_template) {
-    PropertyRNA *src_prop;
-    PointerRNA id_refptr = RNA_id_pointer_create(id->override_library->reference);
-    if (!RNA_path_resolve_property(&id_refptr, oprop->rna_path, &src, &src_prop)) {
-      BLI_assert_msg(0, "Failed to create matching source (linked data) RNA pointer");
-    }
+  /* The source (i.e. linked data) is required to restore values of deleted overrides. */
+  PropertyRNA *src_prop;
+  PointerRNA id_refptr = RNA_id_pointer_create(id->override_library->reference);
+  if (!RNA_path_resolve_property(&id_refptr, oprop->rna_path, &src, &src_prop)) {
+    BLI_assert_msg(0, "Failed to create matching source (linked data) RNA pointer");
   }
 
   if (!all && index != -1) {
@@ -716,9 +711,7 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
       }
     }
     BKE_lib_override_library_property_operation_delete(oprop, opop);
-    if (!is_template) {
-      RNA_property_copy(bmain, &ptr, &src, prop, index);
-    }
+    RNA_property_copy(bmain, &ptr, &src, prop, index);
     if (BLI_listbase_is_empty(&oprop->operations)) {
       BKE_lib_override_library_property_delete(id->override_library, oprop);
     }
@@ -726,9 +719,7 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
   else {
     /* Just remove whole generic override operation of this property. */
     BKE_lib_override_library_property_delete(id->override_library, oprop);
-    if (!is_template) {
-      RNA_property_copy(bmain, &ptr, &src, prop, -1);
-    }
+    RNA_property_copy(bmain, &ptr, &src, prop, -1);
   }
 
   /* Outliner e.g. has to be aware of this change. */
@@ -1810,8 +1801,7 @@ static bool ui_editsource_uibut_match(uiBut *but_a, uiBut *but_b)
    * if this fails it only means edit-source fails - campbell */
   if (BLI_rctf_compare(&but_a->rect, &but_b->rect, FLT_EPSILON) && (but_a->type == but_b->type) &&
       (but_a->rnaprop == but_b->rnaprop) && (but_a->optype == but_b->optype) &&
-      (but_a->unit_type == but_b->unit_type) &&
-      STREQLEN(but_a->drawstr, but_b->drawstr, UI_MAX_DRAW_STR))
+      (but_a->unit_type == but_b->unit_type) && but_a->drawstr == but_b->drawstr)
   {
     return true;
   }
@@ -2019,17 +2009,6 @@ static int edittranslation_exec(bContext *C, wmOperator *op)
   const char *root = U.i18ndir;
   const char *uilng = BLT_lang_get();
 
-  uiStringInfo but_label = {BUT_GET_LABEL, nullptr};
-  uiStringInfo rna_label = {BUT_GET_RNA_LABEL, nullptr};
-  uiStringInfo enum_label = {BUT_GET_RNAENUM_LABEL, nullptr};
-  uiStringInfo but_tip = {BUT_GET_TIP, nullptr};
-  uiStringInfo rna_tip = {BUT_GET_RNA_TIP, nullptr};
-  uiStringInfo enum_tip = {BUT_GET_RNAENUM_TIP, nullptr};
-  uiStringInfo rna_struct = {BUT_GET_RNASTRUCT_IDENTIFIER, nullptr};
-  uiStringInfo rna_prop = {BUT_GET_RNAPROP_IDENTIFIER, nullptr};
-  uiStringInfo rna_enum = {BUT_GET_RNAENUM_IDENTIFIER, nullptr};
-  uiStringInfo rna_ctxt = {BUT_GET_RNA_LABEL_CONTEXT, nullptr};
-
   if (!BLI_is_dir(root)) {
     BKE_report(op->reports,
                RPT_ERROR,
@@ -2055,66 +2034,27 @@ static int edittranslation_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  UI_but_string_info_get(C,
-                         but,
-                         &but_label,
-                         &rna_label,
-                         &enum_label,
-                         &but_tip,
-                         &rna_tip,
-                         &enum_tip,
-                         &rna_struct,
-                         &rna_prop,
-                         &rna_enum,
-                         &rna_ctxt,
-                         nullptr);
-
   WM_operator_properties_create_ptr(&ptr, ot);
   RNA_string_set(&ptr, "lang", uilng);
   RNA_string_set(&ptr, "po_file", popath);
-  RNA_string_set(&ptr, "but_label", but_label.strinfo);
-  RNA_string_set(&ptr, "rna_label", rna_label.strinfo);
-  RNA_string_set(&ptr, "enum_label", enum_label.strinfo);
-  RNA_string_set(&ptr, "but_tip", but_tip.strinfo);
-  RNA_string_set(&ptr, "rna_tip", rna_tip.strinfo);
-  RNA_string_set(&ptr, "enum_tip", enum_tip.strinfo);
-  RNA_string_set(&ptr, "rna_struct", rna_struct.strinfo);
-  RNA_string_set(&ptr, "rna_prop", rna_prop.strinfo);
-  RNA_string_set(&ptr, "rna_enum", rna_enum.strinfo);
-  RNA_string_set(&ptr, "rna_ctxt", rna_ctxt.strinfo);
-  const int ret = WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &ptr, nullptr);
 
-  /* Clean up */
-  if (but_label.strinfo) {
-    MEM_freeN(but_label.strinfo);
-  }
-  if (rna_label.strinfo) {
-    MEM_freeN(rna_label.strinfo);
-  }
-  if (enum_label.strinfo) {
-    MEM_freeN(enum_label.strinfo);
-  }
-  if (but_tip.strinfo) {
-    MEM_freeN(but_tip.strinfo);
-  }
-  if (rna_tip.strinfo) {
-    MEM_freeN(rna_tip.strinfo);
-  }
-  if (enum_tip.strinfo) {
-    MEM_freeN(enum_tip.strinfo);
-  }
-  if (rna_struct.strinfo) {
-    MEM_freeN(rna_struct.strinfo);
-  }
-  if (rna_prop.strinfo) {
-    MEM_freeN(rna_prop.strinfo);
-  }
-  if (rna_enum.strinfo) {
-    MEM_freeN(rna_enum.strinfo);
-  }
-  if (rna_ctxt.strinfo) {
-    MEM_freeN(rna_ctxt.strinfo);
-  }
+  const EnumPropertyItem enum_item = UI_but_rna_enum_item_get(*C, *but).value_or(
+      EnumPropertyItem{});
+  RNA_string_set(&ptr, "enum_label", enum_item.name);
+  RNA_string_set(&ptr, "enum_tip", enum_item.description);
+  RNA_string_set(&ptr, "rna_enum", enum_item.identifier);
+
+  RNA_string_set(&ptr, "but_label", UI_but_string_get_label(*but).c_str());
+  RNA_string_set(&ptr, "rna_label", UI_but_string_get_rna_label(*but).c_str());
+
+  RNA_string_set(&ptr, "but_tip", UI_but_string_get_tooltip(*C, *but).c_str());
+  RNA_string_set(&ptr, "rna_tip", UI_but_string_get_rna_tooltip(*C, *but).c_str());
+
+  RNA_string_set(&ptr, "rna_struct", UI_but_string_get_rna_struct_identifier(*but).c_str());
+  RNA_string_set(&ptr, "rna_prop", UI_but_string_get_rna_property_identifier(*but).c_str());
+  RNA_string_set(&ptr, "rna_ctxt", UI_but_string_get_rna_label_context(*but).c_str());
+
+  const int ret = WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &ptr, nullptr);
 
   return ret;
 }
@@ -2631,7 +2571,7 @@ static int ui_drop_material_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
 
-  Material *ma = (Material *)WM_operator_properties_id_lookup_from_name_or_session_uuid(
+  Material *ma = (Material *)WM_operator_properties_id_lookup_from_name_or_session_uid(
       bmain, op->ptr, ID_MA);
   if (ma == nullptr) {
     return OPERATOR_CANCELLED;

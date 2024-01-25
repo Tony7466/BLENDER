@@ -43,7 +43,7 @@
 #include "GPU_state.h"
 #include "GPU_uniform_buffer.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -58,8 +58,8 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "NOD_composite.hh"
 #include "NOD_geometry.hh"

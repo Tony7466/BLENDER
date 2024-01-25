@@ -15,11 +15,11 @@
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 
 #include "DNA_ID.h"
 #include "DNA_image_types.h"
@@ -259,7 +259,7 @@ CachedImage::CachedImage(Context &context,
 
 CachedImage::~CachedImage()
 {
-  GPU_texture_free(texture_);
+  GPU_TEXTURE_FREE_SAFE(texture_);
 }
 
 GPUTexture *CachedImage::texture()
