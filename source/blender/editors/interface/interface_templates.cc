@@ -6584,8 +6584,9 @@ static void ui_template_status_info_warnings_messages(Main *bmain,
       tooltip_message += "\n\n";
     }
     tooltip_message += RPT_(
-        "This is an Asset Library Blender file, overwriting it\nmay break its handling by the "
-        "Assets system");
+        "This file is managed by the Blender asset system\n"
+        "By editing it as a regular blend file, it will no longer\n"
+        "be possible to update its assets through the asset browser");
   }
 
   regular_message = ED_info_statusbar_string_ex(bmain, scene, view_layer, statusbar_info_flag);
