@@ -68,7 +68,7 @@ def _paths_with_extension_repos():
         for repo in _preferences.filepaths.extension_repos:
             if not repo.enabled:
                 continue
-            dirpath = repo.directory
+            dirpath = repo.directory_or_default
             if not os.path.isdir(dirpath):
                 continue
             addon_paths.append((dirpath, "%s.%s" % (_ext_base_pkg_idname, repo.module)))
@@ -380,8 +380,8 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
                     print("Add-on not loaded: \"%s\", cause: %s" % (module_name, str(ex)))
 
                 # Issue with an add-on from an extension repository, report a useful message.
-                elif module_name.startswith(ex.name + ".") and module_name.startswith(_ext_base_pkg_idname + "."):
-                    repo_id = module_name[len(_ext_base_pkg_idname) + 1:].rpartition(".")[0]
+                elif module_name.startswith(ex.name + ".") and module_name.startswith(_ext_base_pkg_idname_with_dot):
+                    repo_id = module_name[len(_ext_base_pkg_idname_with_dot):].rpartition(".")[0]
                     repo = next(
                         (repo for repo in _preferences.filepaths.extension_repos if repo.module == repo_id),
                         None,
@@ -406,14 +406,6 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
 
             if default_set:
                 _addon_remove(module_name)
-            return None
-
-        # 1.1) Fail when add-on is too old.
-        # This is a temporary 2.8x migration check, so we can manage addons that are supported.
-
-        if mod.bl_info.get("blender", (0, 0, 0)) < (2, 80, 0):
-            if _bpy.app.debug:
-                print("Warning: Add-on '%s' was not upgraded for 2.80, ignoring" % module_name)
             return None
 
         # 2) Try register collected modules.
@@ -632,6 +624,7 @@ class _ext_global:
 
 # The name (in `sys.modules`) keep this short because it's stored as part of add-on modules name.
 _ext_base_pkg_idname = "bl_ext"
+_ext_base_pkg_idname_with_dot = _ext_base_pkg_idname + "."
 
 
 def _extension_preferences_idmap():
@@ -652,7 +645,7 @@ def _extension_dirpath_from_preferences():
         for repo in _preferences.filepaths.extension_repos:
             if not repo.enabled:
                 continue
-            repos_dict[repo.module] = repo.directory
+            repos_dict[repo.module] = repo.directory_or_default
     return repos_dict
 
 
@@ -692,12 +685,11 @@ def _initialize_extension_repos_post_addons_prepare(
     # All preferences info.
     # Map: `repo_id -> {submodule_id -> addon, ...}`.
     addon_userdef_info = {}
-    module_prefix = _ext_base_pkg_idname + "."
     for addon in _preferences.addons:
         module = addon.module
-        if not module.startswith(module_prefix):
+        if not module.startswith(_ext_base_pkg_idname_with_dot):
             continue
-        module_id, submodule_id = module[len(module_prefix):].partition(".")[0::2]
+        module_id, submodule_id = module[len(_ext_base_pkg_idname_with_dot):].partition(".")[0::2]
         try:
             addon_userdef_info[module_id][submodule_id] = addon
         except KeyError:
