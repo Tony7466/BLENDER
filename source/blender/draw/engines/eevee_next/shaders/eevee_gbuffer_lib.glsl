@@ -692,45 +692,71 @@ GBufferWriter gbuffer_pack(GBufferData data_in)
   gbuf.layer_data = 0;
   gbuf.layer_normal = 0;
 
-  bool has_refraction = data_in.refraction.weight > 1e-5;
-  bool has_reflection = data_in.reflection.weight > 1e-5;
-  bool has_diffuse = data_in.diffuse.weight > 1e-5;
-  bool has_translucent = data_in.translucent.weight > 1e-5;
-  bool has_sss = (data_in.diffuse.type == CLOSURE_BSSRDF_BURLEY_ID);
+#if GBUFFER_NORMAL_MAX > 1
+  gbuf.N[0] = vec2(0.0);
+#endif
+#if GBUFFER_NORMAL_MAX > 2
+  gbuf.N[1] = vec2(0.0);
+#endif
+#if GBUFFER_NORMAL_MAX > 3
+  gbuf.N[2] = vec2(0.0);
+#endif
 
   /* Check special configurations first. */
 
-  if (has_diffuse) {
-    if (has_sss) {
-      /* Subsurface need to be first to be outputted in first lighting texture. */
-      gbuffer_closure_subsurface_pack(gbuf, data_in.diffuse);
+  bool has_additional_data = false;
+  for (int i = 0; i < 4; i++) {
+    ClosureUndetermined cl;
+    /* TODO(fclem): Rename inside GBufferData. */
+    switch (i) {
+      case 0:
+        cl = data_in.diffuse;
+        break;
+      case 1:
+        cl = data_in.refraction;
+        break;
+      case 2:
+        cl = data_in.reflection;
+        break;
+      case 3:
+        cl = data_in.translucent;
+        break;
     }
-    else {
-      gbuffer_closure_diffuse_pack(gbuf, data_in.diffuse);
-    }
-  }
 
-  if (has_refraction) {
-    if (color_is_grayscale(data_in.refraction.color)) {
-      gbuffer_closure_refraction_colorless_pack(gbuf, data_in.refraction);
+    if (cl.weight <= 1e-5) {
+      continue;
     }
-    else {
-      gbuffer_closure_refraction_pack(gbuf, data_in.refraction);
-    }
-  }
 
-  if (has_reflection) {
-    if (color_is_grayscale(data_in.reflection.color)) {
-      gbuffer_closure_reflection_colorless_pack(gbuf, data_in.reflection);
+    switch (cl.type) {
+      case CLOSURE_BSSRDF_BURLEY_ID:
+        gbuffer_closure_subsurface_pack(gbuf, cl);
+        has_additional_data = true;
+        break;
+      case CLOSURE_BSDF_DIFFUSE_ID:
+        gbuffer_closure_diffuse_pack(gbuf, cl);
+        break;
+      case CLOSURE_BSDF_TRANSLUCENT_ID:
+        gbuffer_closure_translucent_pack(gbuf, cl);
+        has_additional_data = true;
+        break;
+      case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+        if (color_is_grayscale(cl.color)) {
+          gbuffer_closure_reflection_colorless_pack(gbuf, cl);
+        }
+        else {
+          gbuffer_closure_reflection_pack(gbuf, cl);
+        }
+        break;
+      case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+        if (color_is_grayscale(cl.color)) {
+          gbuffer_closure_refraction_colorless_pack(gbuf, cl);
+        }
+        else {
+          gbuffer_closure_refraction_pack(gbuf, cl);
+        }
+        has_additional_data = true;
+        break;
     }
-    else {
-      gbuffer_closure_reflection_pack(gbuf, data_in.reflection);
-    }
-  }
-
-  /* TODO(@fclem): Allow mixing of translucent and refraction. */
-  if (has_translucent && !has_refraction) {
-    gbuffer_closure_translucent_pack(gbuf, data_in.translucent);
   }
 
   if (gbuf.layer_normal == 0) {
@@ -739,7 +765,7 @@ GBufferWriter gbuffer_pack(GBufferData data_in)
     gbuffer_append_normal(gbuf, data_in.surface_N);
   }
 
-  if (has_sss || has_translucent || has_refraction) {
+  if (has_additional_data) {
     gbuffer_additional_info_pack(gbuf, data_in.thickness, data_in.object_id);
   }
 
