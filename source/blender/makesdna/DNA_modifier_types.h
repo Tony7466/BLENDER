@@ -2662,7 +2662,8 @@ typedef enum eGreasePencilLineartFlags {
   /* These two moved to #eLineartMainFlags to keep consistent with flag variable purpose. */
   /* LINEART_GPENCIL_INVERT_SOURCE_VGROUP = (1 << 0), */
   /* LINEART_GPENCIL_MATCH_OUTPUT_VGROUP = (1 << 1), */
-  LINEART_GPENCIL_BINARY_WEIGHTS = (1 << 2) /* Deprecated, this is removed for lack of use case. */,
+  LINEART_GPENCIL_BINARY_WEIGHTS = (1
+                                    << 2) /* Deprecated, this is removed for lack of use case. */,
   LINEART_GPENCIL_IS_BAKED = (1 << 3),
   LINEART_GPENCIL_USE_CACHE = (1 << 4),
   LINEART_GPENCIL_OFFSET_TOWARDS_CUSTOM_CAMERA = (1 << 5),

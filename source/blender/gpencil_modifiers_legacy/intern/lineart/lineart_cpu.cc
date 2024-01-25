@@ -5473,30 +5473,153 @@ static void lineart_gpencil_generate(LineartCache *cache,
   }
 }
 
+namespace blender {
+
+static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
+                                               const Span<float> radii,
+                                               const Span<float> opacities,
+                                               const Span<int> offsets,
+                                               const Span<int> materials,
+                                               const float4x4 &matrix)
+{
+  using namespace blender::bke;
+  CurvesGeometry curves(offsets.last(), offsets.size() - 1);
+  curves.offsets_for_write().copy_from(offsets);
+
+  curves.fill_curve_types(CURVE_TYPE_POLY);
+
+  MutableAttributeAccessor attributes = curves.attributes_for_write();
+  MutableSpan<float3> point_positions = curves.positions_for_write();
+  point_positions.copy_from(positions);
+
+  curves.transform(matrix);
+
+  SpanAttributeWriter<float> point_radii = attributes.lookup_or_add_for_write_only_span<float>(
+      "radius", AttrDomain::Point);
+  point_radii.span.copy_from(radii);
+
+  SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", AttrDomain::Point);
+  point_opacities.span.copy_from(opacities);
+
+  SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", AttrDomain::Curve);
+  stroke_cyclic.span.fill(false);
+
+  SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", AttrDomain::Curve);
+  stroke_materials.span.copy_from(materials);
+
+  point_radii.finish();
+  point_opacities.finish();
+
+  stroke_cyclic.finish();
+  stroke_materials.finish();
+
+  return curves;
+}
+
+}  // namespace blender
+
 typedef struct LineartChainWriteInfo {
   LineartEdgeChain *chain;
   int point_count;
 } LineartChainWriteInfo;
 
-static void lineart_gpencil_generate_v3(LineartCache *cache,
-                                        float (*gp_obmat_inverse)[4],
-                                        blender::bke::greasepencil::Drawing &drawing,
-                                        int level_start,
-                                        int level_end,
-                                        int material_nr,
-                                        Object *source_object,
-                                        Collection *source_collection,
-                                        int types,
-                                        uchar mask_switches,
-                                        uchar material_mask_bits,
-                                        uchar intersection_mask,
-                                        int16_t thickness,
-                                        float opacity,
-                                        uchar shaodow_selection,
-                                        uchar silhouette_mode,
-                                        int modifier_flags,
-                                        int /*modifier_calculation_flags*/)
+void MOD_lineart_gpencil_generate(LineartCache *cache,
+                                  Depsgraph *depsgraph,
+                                  Object *ob,
+                                  bGPDlayer *gpl,
+                                  bGPDframe *gpf,
+                                  int8_t source_type,
+                                  void *source_reference,
+                                  int level_start,
+                                  int level_end,
+                                  int mat_nr,
+                                  int16_t edge_types,
+                                  uchar mask_switches,
+                                  uchar material_mask_bits,
+                                  uchar intersection_mask,
+                                  int16_t thickness,
+                                  float opacity,
+                                  uchar shadow_selection,
+                                  uchar silhouette_mode,
+                                  const char *source_vgname,
+                                  const char *vgname,
+                                  int modifier_flags,
+                                  int modifier_calculation_flags)
 {
+
+  if (!gpl || !gpf || !ob) {
+    return;
+  }
+
+  Object *source_object = nullptr;
+  Collection *source_collection = nullptr;
+  int16_t use_types = edge_types;
+  if (source_type == LRT_SOURCE_OBJECT) {
+    if (!source_reference) {
+      return;
+    }
+    source_object = (Object *)source_reference;
+  }
+  else if (source_type == LRT_SOURCE_COLLECTION) {
+    if (!source_reference) {
+      return;
+    }
+    source_collection = (Collection *)source_reference;
+  }
+
+  float gp_obmat_inverse[4][4];
+  invert_m4_m4(gp_obmat_inverse, ob->object_to_world);
+  lineart_gpencil_generate(cache,
+                           depsgraph,
+                           ob,
+                           gp_obmat_inverse,
+                           gpl,
+                           gpf,
+                           level_start,
+                           level_end,
+                           mat_nr,
+                           source_object,
+                           source_collection,
+                           use_types,
+                           mask_switches,
+                           material_mask_bits,
+                           intersection_mask,
+                           thickness,
+                           opacity,
+                           shadow_selection,
+                           silhouette_mode,
+                           source_vgname,
+                           vgname,
+                           modifier_flags,
+                           modifier_calculation_flags);
+}
+
+void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
+                                     const Object &ob,
+                                     blender::bke::greasepencil::Drawing &drawing,
+                                     const int8_t source_type,
+                                     Object *source_object,
+                                     Collection *source_collection,
+                                     const int level_start,
+                                     const int level_end,
+                                     const int mat_nr,
+                                     const int16_t edge_types,
+                                     const uchar mask_switches,
+                                     const uchar material_mask_bits,
+                                     const uchar intersection_mask,
+                                     const float thickness,
+                                     const float opacity,
+                                     const uchar shadow_selection,
+                                     const uchar silhouette_mode,
+                                     const int modifier_flags)
+{
+  if (G.debug_value == 4000) {
+    printf("Line Art v3: Generating...\n");
+  }
+
   if (cache == nullptr) {
     if (G.debug_value == 4000) {
       printf("nullptr Lineart cache!\n");
@@ -5505,17 +5628,24 @@ static void lineart_gpencil_generate_v3(LineartCache *cache,
   }
 
   Object *orig_ob = nullptr;
-  if (source_object) {
-    orig_ob = source_object->id.orig_id ? (Object *)source_object->id.orig_id : source_object;
-  }
-
   Collection *orig_col = nullptr;
-  if (source_collection) {
+
+  if (source_type == LRT_SOURCE_OBJECT) {
+    if (!source_object) {
+      return;
+    }
+    orig_ob = source_object->id.orig_id ? (Object *)source_object->id.orig_id : source_object;
+    orig_col = nullptr;
+  }
+  else if (source_type == LRT_SOURCE_COLLECTION) {
+    if (!source_collection) {
+      return;
+    }
     orig_col = source_collection->id.orig_id ? (Collection *)source_collection->id.orig_id :
                                                source_collection;
+    orig_ob = nullptr;
   }
-
-  /* (!orig_col && !orig_ob) means the whole scene is selected. */
+  /* Otherwise the whole scene is selected. */
 
   int enabled_types = cache->all_enabled_edge_types;
 
@@ -5525,18 +5655,19 @@ static void lineart_gpencil_generate_v3(LineartCache *cache,
 
   bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
 
+  float gp_obmat_inverse[4][4];
+  invert_m4_m4(gp_obmat_inverse, ob.object_to_world);
+
   blender::Vector<LineartChainWriteInfo> writer = {};
   writer.reserve(128);
   int total_point_count = 0;
-
   int stroke_count = 0;
-
   LISTBASE_FOREACH (LineartEdgeChain *, ec, &cache->chains) {
 
     if (ec->picked) {
       continue;
     }
-    if (!(ec->type & (types & enabled_types))) {
+    if (!(ec->type & (edge_types & enabled_types))) {
       continue;
     }
     if (ec->level > level_end || ec->level < level_start) {
@@ -5581,20 +5712,20 @@ static void lineart_gpencil_generate_v3(LineartCache *cache,
         }
       }
     }
-    if (shaodow_selection) {
+    if (shadow_selection) {
       if (ec->shadow_mask_bits != LRT_SHADOW_MASK_UNDEFINED) {
         /* TODO(@Yiming): Give a behavior option for how to display undefined shadow info. */
-        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED &&
+        if (shadow_selection == LRT_SHADOW_FILTER_ILLUMINATED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED))
         {
           continue;
         }
-        if (shaodow_selection == LRT_SHADOW_FILTER_SHADED &&
+        if (shadow_selection == LRT_SHADOW_FILTER_SHADED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_SHADED))
         {
           continue;
         }
-        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
+        if (shadow_selection == LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
           uint32_t test_bits = ec->shadow_mask_bits & LRT_SHADOW_TEST_SHAPE_BITS;
           if ((test_bits != LRT_SHADOW_MASK_ILLUMINATED) &&
               (test_bits != (LRT_SHADOW_MASK_SHADED | LRT_SHADOW_MASK_ILLUMINATED_SHAPE)))
@@ -5670,155 +5801,22 @@ static void lineart_gpencil_generate_v3(LineartCache *cache,
       float *point = (float *)&positions[point_i];
       // mul_v3_m4v3(point, gp_obmat_inverse, eci->gpos);
       copy_v3_v3(point, eci->gpos);
-      radiis[point_i] = (float)thickness / 1000.0f;
+      radiis[point_i] = thickness;
       opacities[point_i] = opacity;
     }
     curves[chain_i] = up_to_point;
-    materials[chain_i] = max_ii(material_nr, 0);
+    materials[chain_i] = max_ii(mat_nr, 0);
     up_to_point += cwi.point_count;
     /* TODO: Vertex weight transfer not implemented for v3 yet. */
   }
   curves[writer.index_range().last() + 1] = up_to_point;
 
   blender::float4x4 mat(gp_obmat_inverse);
-  drawing.strokes_for_write() = blender::ed::greasepencil::create_drawing_data(
+  drawing.strokes_for_write() = blender::create_drawing_data(
       positions, radiis, opacities, curves, materials.as_span(), mat);
   drawing.tag_topology_changed();
 
   if (G.debug_value == 4000) {
     printf("LRT: Generated %d strokes.\n", stroke_count);
   }
-}
-
-void MOD_lineart_gpencil_generate(LineartCache *cache,
-                                  Depsgraph *depsgraph,
-                                  Object *ob,
-                                  bGPDlayer *gpl,
-                                  bGPDframe *gpf,
-                                  int8_t source_type,
-                                  void *source_reference,
-                                  int level_start,
-                                  int level_end,
-                                  int mat_nr,
-                                  int16_t edge_types,
-                                  uchar mask_switches,
-                                  uchar material_mask_bits,
-                                  uchar intersection_mask,
-                                  int16_t thickness,
-                                  float opacity,
-                                  uchar shadow_selection,
-                                  uchar silhouette_mode,
-                                  const char *source_vgname,
-                                  const char *vgname,
-                                  int modifier_flags,
-                                  int modifier_calculation_flags)
-{
-
-  if (!gpl || !gpf || !ob) {
-    return;
-  }
-
-  Object *source_object = nullptr;
-  Collection *source_collection = nullptr;
-  int16_t use_types = edge_types;
-  if (source_type == LRT_SOURCE_OBJECT) {
-    if (!source_reference) {
-      return;
-    }
-    source_object = (Object *)source_reference;
-  }
-  else if (source_type == LRT_SOURCE_COLLECTION) {
-    if (!source_reference) {
-      return;
-    }
-    source_collection = (Collection *)source_reference;
-  }
-
-  float gp_obmat_inverse[4][4];
-  invert_m4_m4(gp_obmat_inverse, ob->object_to_world);
-  lineart_gpencil_generate(cache,
-                           depsgraph,
-                           ob,
-                           gp_obmat_inverse,
-                           gpl,
-                           gpf,
-                           level_start,
-                           level_end,
-                           mat_nr,
-                           source_object,
-                           source_collection,
-                           use_types,
-                           mask_switches,
-                           material_mask_bits,
-                           intersection_mask,
-                           thickness,
-                           opacity,
-                           shadow_selection,
-                           silhouette_mode,
-                           source_vgname,
-                           vgname,
-                           modifier_flags,
-                           modifier_calculation_flags);
-}
-
-void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
-                                     Object *ob,
-                                     struct GreasePencilDrawing &drawing,
-                                     int8_t source_type,
-                                     void *source_reference,
-                                     int level_start,
-                                     int level_end,
-                                     int mat_nr,
-                                     int16_t edge_types,
-                                     uchar mask_switches,
-                                     uchar material_mask_bits,
-                                     uchar intersection_mask,
-                                     int16_t thickness,
-                                     float opacity,
-                                     uchar shadow_selection,
-                                     uchar silhouette_mode,
-                                     int modifier_flags,
-                                     int modifier_calculation_flags)
-{
-
-  if (!ob) {
-    return;
-  }
-
-  Object *source_object = nullptr;
-  Collection *source_collection = nullptr;
-  int16_t use_types = edge_types;
-  if (source_type == LRT_SOURCE_OBJECT) {
-    if (!source_reference) {
-      return;
-    }
-    source_object = (Object *)source_reference;
-  }
-  else if (source_type == LRT_SOURCE_COLLECTION) {
-    if (!source_reference) {
-      return;
-    }
-    source_collection = (Collection *)source_reference;
-  }
-
-  float gp_obmat_inverse[4][4];
-  invert_m4_m4(gp_obmat_inverse, ob->object_to_world);
-  lineart_gpencil_generate_v3(cache,
-                              gp_obmat_inverse,
-                              reinterpret_cast<blender::bke::greasepencil::Drawing &>(drawing),
-                              level_start,
-                              level_end,
-                              mat_nr,
-                              source_object,
-                              source_collection,
-                              use_types,
-                              mask_switches,
-                              material_mask_bits,
-                              intersection_mask,
-                              thickness,
-                              opacity,
-                              shadow_selection,
-                              silhouette_mode,
-                              modifier_flags,
-                              modifier_calculation_flags);
 }

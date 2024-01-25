@@ -10,10 +10,10 @@
 
 #include "BLO_read_write.hh"
 
-#include "DNA_scene_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_collection.h"
 #include "BKE_geometry_set.hh"
@@ -706,56 +706,22 @@ static void panel_register(ARegionType *region_type)
   modifier_subpanel_register(region_type, "bake", "Bake", nullptr, bake_panel_draw, panel_type);
 }
 
-static void generate_strokes_actual(const ModifierData &md,
-                                    Object &ob,
-                                    bke::greasepencil::Drawing &drawing)
+static void generate_strokes(ModifierData &md,
+                             Depsgraph *depsgraph,
+                             Object &ob,
+                             GreasePencil &grease_pencil)
 {
-  auto &lmd = reinterpret_cast<const GreasePencilLineartModifierData &>(md);
+  auto &lmd = reinterpret_cast<GreasePencilLineartModifierData &>(md);
 
-  if (G.debug_value == 4000) {
-    printf("LRT: Generating from modifier.\n");
-  }
-
-  MOD_lineart_gpencil_generate_v3(
-      lmd.cache,
-      &ob,
-      drawing,
-      lmd.source_type,
-      lmd.source_type == LRT_SOURCE_OBJECT ? (void *)lmd.source_object :
-                                             (void *)lmd.source_collection,
-      lmd.level_start,
-      lmd.use_multiple_levels ? lmd.level_end : lmd.level_start,
-      lmd.target_material ? BKE_object_material_index_get(&ob, lmd.target_material) : 0,
-      lmd.edge_types,
-      lmd.mask_switches,
-      lmd.material_mask_bits,
-      lmd.intersection_mask,
-      lmd.thickness,
-      lmd.opacity,
-      lmd.shadow_selection,
-      lmd.silhouette_selection,
-      lmd.flags,
-      lmd.calculation_flags);
-}
-
-static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob, GreasePencil &gpd)
-{
-  GreasePencilLineartModifierData &lmd = (GreasePencilLineartModifierData &)md;
-
-  /* This will check whether layer/materials are non-null. */
-  if (is_disabled(nullptr, &md, false)) {
-    return;
-  }
-
-  bke::greasepencil::TreeNode *node = gpd.find_node_by_name(lmd.influence.layer_name);
+  bke::greasepencil::TreeNode *node = grease_pencil.find_node_by_name(lmd.influence.layer_name);
   if (!node || !node->is_layer()) {
     return;
   }
 
-  LineartCache *local_lc = gpd.runtime->lineart_cache;
-  if (!gpd.runtime->lineart_cache) {
+  LineartCache *local_lc = grease_pencil.runtime->lineart_cache;
+  if (!grease_pencil.runtime->lineart_cache) {
     MOD_lineart_compute_feature_lines_v3(
-        depsgraph, lmd, &gpd.runtime->lineart_cache, !(ob.dtx & OB_DRAW_IN_FRONT));
+        depsgraph, lmd, &grease_pencil.runtime->lineart_cache, !(ob.dtx & OB_DRAW_IN_FRONT));
     MOD_lineart_destroy_render_data_v3(&lmd);
   }
   else {
@@ -768,24 +734,50 @@ static void generate_strokes(ModifierData &md, Depsgraph *depsgraph, Object &ob,
     lmd.cache = local_lc;
   }
 
+  const int current_frame = grease_pencil.runtime->eval_frame;
+
   /* Ensure we have a frame in the selected layer to put line art result in. */
-  bke::greasepencil::Layer &got_layer = node->as_layer();
-  got_layer.add_frame(0, 0, 0);
+  bke::greasepencil::Layer &layer = node->as_layer();
+  layer.add_frame(0, 0, 0);
 
-  gpd.drawings() = {};
-  gpd.add_empty_drawings(1);
-  bke::greasepencil::Drawing &drawing = *gpd.get_editable_drawing_at(got_layer, 0);
+  bke::greasepencil::Drawing &drawing = [&]() -> bke::greasepencil::Drawing & {
+    if (bke::greasepencil::Drawing *drawing = grease_pencil.get_editable_drawing_at(layer,
+                                                                                    current_frame))
+    {
+      return *drawing;
+    }
+    grease_pencil.insert_blank_frame(layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+    return *grease_pencil.get_editable_drawing_at(layer, current_frame);
+  }();
 
-  generate_strokes_actual(md, ob, drawing);
+  MOD_lineart_gpencil_generate_v3(
+      lmd.cache,
+      ob,
+      drawing,
+      lmd.source_type,
+      lmd.source_object,
+      lmd.source_collection,
+      lmd.level_start,
+      lmd.use_multiple_levels ? lmd.level_end : lmd.level_start,
+      lmd.target_material ? BKE_object_material_index_get(&ob, lmd.target_material) : 0,
+      lmd.edge_types,
+      lmd.mask_switches,
+      lmd.material_mask_bits,
+      lmd.intersection_mask,
+      (float)lmd.thickness / 1000,
+      lmd.opacity,
+      lmd.shadow_selection,
+      lmd.silhouette_selection,
+      lmd.flags);
 
   if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     /* Clear local cache. */
-    if (local_lc != gpd.runtime->lineart_cache) {
+    if (local_lc != grease_pencil.runtime->lineart_cache) {
       MOD_lineart_clear_cache(&local_lc);
     }
     /* Restore the original cache pointer so the modifiers below still have access to the "global"
      * cache. */
-    lmd.cache = gpd.runtime->lineart_cache;
+    lmd.cache = grease_pencil.runtime->lineart_cache;
   }
 }
 
@@ -826,7 +818,7 @@ ModifierTypeInfo modifierType_GreasePencilLineart = {
     /*struct_name*/ "GreasePencilLineartModifierData",
     /*struct_size*/ sizeof(GreasePencilLineartModifierData),
     /*srna*/ &RNA_GreasePencilLineartModifier,
-    /*type*/ ModifierTypeType::Nonconstructive,
+    /*type*/ ModifierTypeType::Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsGreasePencil,
     /*icon*/ ICON_MOD_LINEART,
 

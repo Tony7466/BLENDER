@@ -13,6 +13,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_threads.h"
 
+#include "BKE_grease_pencil.hh"
+
 #include <algorithm>
 #include <math.h>
 
@@ -949,24 +951,24 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   const char *vgname,
                                   int modifier_flags,
                                   int modifier_calculation_flags);
-void MOD_lineart_gpencil_generate_v3(LineartCache *cache,
-                                     Object *ob,
-                                     struct GreasePencilDrawing &drawing,
-                                     int8_t source_type,
-                                     void *source_reference,
-                                     int level_start,
-                                     int level_end,
-                                     int mat_nr,
-                                     int16_t edge_types,
-                                     uchar mask_switches,
-                                     uchar material_mask_bits,
-                                     uchar intersection_mask,
-                                     int16_t thickness,
-                                     float opacity,
-                                     uchar shadow_selection,
-                                     uchar silhouette_mode,
-                                     int modifier_flags,
-                                     int modifier_calculation_flags);
+void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
+                                     const Object &ob,
+                                     blender::bke::greasepencil::Drawing &drawing,
+                                     const int8_t source_type,
+                                     struct Object *source_object,
+                                     struct Collection *source_collection,
+                                     const int level_start,
+                                     const int level_end,
+                                     const int mat_nr,
+                                     const int16_t edge_types,
+                                     const uchar mask_switches,
+                                     const uchar material_mask_bits,
+                                     const uchar intersection_mask,
+                                     const float radius,
+                                     const float opacity,
+                                     const uchar shadow_selection,
+                                     const uchar silhouette_mode,
+                                     const int modifier_flags);
 
 /**
  * Length is in image space.
