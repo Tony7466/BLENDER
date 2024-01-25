@@ -949,7 +949,7 @@ class VIEW3D_HT_header(Header):
                 layout.popover(
                     panel="VIEW3D_PT_gpencil_sculpt_automasking",
                     text="",
-                    icon='MOD_MASK',
+                    icon_value=tool_settings.gpencil_sculpt.automasking_icon
                 )
 
         elif object_mode == 'SCULPT':
@@ -975,7 +975,7 @@ class VIEW3D_HT_header(Header):
             layout.popover(
                 panel="VIEW3D_PT_sculpt_automasking",
                 text="",
-                icon='MOD_MASK',
+                icon_value=tool_settings.sculpt.automasking_icon
             )
 
         elif object_mode == 'VERTEX_PAINT':
