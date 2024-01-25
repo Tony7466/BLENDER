@@ -7,6 +7,7 @@
  */
 
 #include "BLI_string.h"
+#include "BLI_time.h"
 
 #include "GPU_capabilities.h"
 #include "gpu_backend.hh"
@@ -77,6 +78,7 @@ void GLStorageBuf::update(const void *data)
   if (ssbo_id_ == 0) {
     this->init();
   }
+
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_id_);
   glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, size_in_bytes_, data);
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -195,6 +197,7 @@ void GLStorageBuf::async_flush_to_host()
                     GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT);
     persistent_ptr_ = glMapBufferRange(
         GL_SHADER_STORAGE_BUFFER, 0, size_in_bytes_, GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT);
+    BLI_assert(persistent_ptr_);
     debug::object_label(GL_SHADER_STORAGE_BUFFER, read_ssbo_id_, name_);
   }
 
@@ -219,16 +222,23 @@ void GLStorageBuf::async_flush_to_host()
 
 void GLStorageBuf::read(void *data)
 {
-  if (ssbo_id_ == 0) {
-    this->init();
-  }
-
-  if (!persistent_ptr_ || !read_fence_ ||
-      glClientWaitSync(read_fence_, GL_SYNC_FLUSH_COMMANDS_BIT, 0) != GL_ALREADY_SIGNALED)
-  {
+  if (data == nullptr) {
     return;
   }
 
+  if (!persistent_ptr_) {
+    this->async_flush_to_host();
+  }
+
+  if (read_fence_) {
+    while (glClientWaitSync(read_fence_, GL_SYNC_FLUSH_COMMANDS_BIT, 1000) == GL_TIMEOUT_EXPIRED) {
+      /* Repeat until the data is ready.*/
+    }
+    glDeleteSync(read_fence_);
+    read_fence_ = 0;
+  }
+
+  /* Read data. NOTE: Unless explicitly synchronized with GPU work, results may not be ready. */
   memmove(data, persistent_ptr_, size_in_bytes_);
 }
 
