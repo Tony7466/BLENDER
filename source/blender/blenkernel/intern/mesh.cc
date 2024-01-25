@@ -49,7 +49,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_key.h"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
@@ -869,7 +869,7 @@ Mesh *BKE_mesh_from_bmesh_for_eval_nomain(BMesh *bm,
                                           const Mesh *me_settings)
 {
   Mesh *mesh = static_cast<Mesh *>(BKE_id_new_nomain(ID_ME, nullptr));
-  BM_mesh_bm_to_me_for_eval(bm, mesh, cd_mask_extra);
+  BM_mesh_bm_to_me_for_eval(*bm, *mesh, cd_mask_extra);
   BKE_mesh_copy_parameters_for_eval(mesh, me_settings);
   return mesh;
 }
