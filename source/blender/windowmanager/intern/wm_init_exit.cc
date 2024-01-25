@@ -43,7 +43,7 @@
 #include "BKE_keyconfig.h"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
-#include "BKE_mball_tessellate.h"
+#include "BKE_mball_tessellate.hh"
 #include "BKE_node.hh"
 #include "BKE_preview_image.hh"
 #include "BKE_report.h"
@@ -53,7 +53,7 @@
 #include "BKE_vfont.hh"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_mask.h"     /* free mask clipboard */
 #include "BKE_material.h" /* BKE_material_copybuf_clear */
 #include "BKE_studiolight.h"
@@ -375,10 +375,10 @@ static bool wm_init_splash_show_on_startup_check()
   else {
     /* A less common case, if there is no user preferences, show the splash screen
      * so the user has the opportunity to restore settings from a previous version. */
-    const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
-    if (cfgdir) {
+    const std::optional<std::string> cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
+    if (cfgdir.has_value()) {
       char userpref[FILE_MAX];
-      BLI_path_join(userpref, sizeof(userpref), cfgdir, BLENDER_USERPREF_FILE);
+      BLI_path_join(userpref, sizeof(userpref), cfgdir->c_str(), BLENDER_USERPREF_FILE);
       if (!BLI_exists(userpref)) {
         use_splash = true;
       }
