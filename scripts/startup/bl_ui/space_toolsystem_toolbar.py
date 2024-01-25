@@ -1389,12 +1389,10 @@ class _defs_sculpt:
         brush = context.tool_settings.sculpt.brush
         if not brush:
             return ()
-        tool = brush.sculpt_tool
-        icon = "ops.sculpt_" + tool.lower()
         return [
             ToolDef.from_dict(
                 dict(
-                    idname="builtin.brush",
+                    idname="builtin_brush.Paint",
                     label=brush.name,
                     icon=icon,
                     data_block=tool
@@ -2442,17 +2440,10 @@ class _defs_curves_sculpt:
         brush = context.tool_settings.curves_sculpt.brush
         if not brush:
             return ()
-        tool = brush.curves_sculpt_tool
-        icon = "ops.curves.sculpt_" + tool.lower()
-        icon_map = {
-            # Use the generic icon for selection painting.
-            "ops.curves.sculpt_selection_paint": "ops.generic.select_paint",
-        }
-        icon = icon_map.get(icon, icon)
         return [
             ToolDef.from_dict(
                 dict(
-                    idname="builtin.brush",
+                    idname="builtin_brush.Paint",
                     label=brush.name,
                     icon=icon,
                     data_block=tool
