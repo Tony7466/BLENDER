@@ -18,7 +18,6 @@ set(INC
   ../../makesrna
   ../../windowmanager
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
-  ../../../../extern/fmtlib/include
 )
 
 set(INC_SYS
