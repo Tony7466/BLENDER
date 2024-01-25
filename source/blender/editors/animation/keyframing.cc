@@ -503,8 +503,7 @@ void ANIM_OT_keyframe_insert_menu(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Insert Keyframe Menu";
   ot->idname = "ANIM_OT_keyframe_insert_menu";
-  ot->description =
-      "Insert Keyframes for specified Keying Set, with menu of available Keying Sets if undefined";
+  ot->description = "Insert Keyframes by applying the specified keying set";
 
   /* callbacks */
   ot->invoke = insert_key_menu_invoke;
