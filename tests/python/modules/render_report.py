@@ -232,7 +232,7 @@ class Report:
         if failed:
             message = """<div class="alert alert-danger" role="alert">"""
             message += """<p>Run this command to regenerate reference (ground truth) images:</p>"""
-            message += """<p><tt>BLENDER_TEST_UPDATE=1 ctest -R %s</tt></p>""" % self.title.lower()
+            message += """<p><tt>BLENDER_TEST_UPDATE=1 ctest -R %s</tt></p>""" % self.title.lower().replace(" ", "_")
             message += """<p>This then happens for new and failing tests; reference images of """ \
                        """passing test cases will not be updated. Be sure to commit the new reference """ \
                        """images to the SVN repository afterwards.</p>"""
