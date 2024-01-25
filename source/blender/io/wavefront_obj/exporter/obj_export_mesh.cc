@@ -18,9 +18,12 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_sort.hh"
+#include "BLI_vector_set.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -48,7 +51,6 @@ OBJMesh::OBJMesh(Depsgraph *depsgraph, const OBJExportParams &export_params, Obj
   }
 
   if (export_mesh_) {
-    mesh_positions_ = export_mesh_->vert_positions();
     mesh_edges_ = export_mesh_->edges();
     mesh_faces_ = export_mesh_->faces();
     mesh_corner_verts_ = export_mesh_->corner_verts();
@@ -70,7 +72,8 @@ OBJMesh::OBJMesh(Depsgraph *depsgraph, const OBJExportParams &export_params, Obj
     this->materials[i] = BKE_object_material_get_eval(obj_eval, i + 1);
   }
 
-  set_world_axes_transform(*obj_eval, export_params.forward_axis, export_params.up_axis);
+  set_world_axes_transform(
+      *obj_eval, export_params.forward_axis, export_params.up_axis, export_params.global_scale);
 }
 
 /**
@@ -88,7 +91,6 @@ void OBJMesh::set_mesh(Mesh *mesh)
   }
   owned_export_mesh_ = mesh;
   export_mesh_ = owned_export_mesh_;
-  mesh_positions_ = mesh->vert_positions();
   mesh_edges_ = mesh->edges();
   mesh_faces_ = mesh->faces();
   mesh_corner_verts_ = mesh->corner_verts();
@@ -105,8 +107,8 @@ void OBJMesh::clear()
   export_mesh_ = nullptr;
   loop_to_uv_index_.clear_and_shrink();
   uv_coords_.clear_and_shrink();
-  loop_to_normal_index_.clear_and_shrink();
-  normal_coords_.clear_and_shrink();
+  loop_to_normal_index_ = {};
+  normal_coords_ = {};
   poly_order_.clear_and_shrink();
   if (poly_smooth_groups_) {
     MEM_freeN(poly_smooth_groups_);
@@ -146,23 +148,21 @@ void OBJMesh::triangulate_mesh_eval()
 
 void OBJMesh::set_world_axes_transform(const Object &obj_eval,
                                        const eIOAxis forward,
-                                       const eIOAxis up)
+                                       const eIOAxis up,
+                                       const float global_scale)
 {
   float axes_transform[3][3];
   unit_m3(axes_transform);
   /* +Y-forward and +Z-up are the default Blender axis settings. */
   mat3_from_axis_conversion(forward, up, IO_AXIS_Y, IO_AXIS_Z, axes_transform);
-  mul_m4_m3m4(world_and_axes_transform_, axes_transform, obj_eval.object_to_world);
+  mul_m4_m3m4(world_and_axes_transform_.ptr(), axes_transform, obj_eval.object_to_world);
   /* mul_m4_m3m4 does not transform last row of obmat, i.e. location data. */
   mul_v3_m3v3(world_and_axes_transform_[3], axes_transform, obj_eval.object_to_world[3]);
+  world_and_axes_transform_ = math::scale(world_and_axes_transform_, float3(global_scale));
+
   world_and_axes_transform_[3][3] = obj_eval.object_to_world[3][3];
 
-  /* Normals need inverse transpose of the regular matrix to handle non-uniform scale. */
-  float normal_matrix[3][3];
-  copy_m3_m4(normal_matrix, world_and_axes_transform_);
-  invert_m3_m3(world_and_axes_normal_transform_, normal_matrix);
-  transpose_m3(world_and_axes_normal_transform_);
-  mirrored_transform_ = is_negative_m3(world_and_axes_normal_transform_);
+  mirrored_transform_ = is_negative_m4(world_and_axes_transform_.ptr());
 }
 
 int OBJMesh::tot_vertices() const
@@ -188,11 +188,6 @@ int OBJMesh::tot_edges() const
 int16_t OBJMesh::tot_materials() const
 {
   return this->materials.size();
-}
-
-int OBJMesh::tot_normal_indices() const
-{
-  return tot_normal_indices_;
 }
 
 int OBJMesh::ith_smooth_group(const int face_index) const
@@ -258,14 +253,6 @@ const char *OBJMesh::get_object_mesh_name() const
   return export_mesh_->id.name + 2;
 }
 
-float3 OBJMesh::calc_vertex_coords(const int vert_index, const float global_scale) const
-{
-  float3 r_coords = mesh_positions_[vert_index];
-  mul_m4_v3(world_and_axes_transform_, r_coords);
-  mul_v3_fl(r_coords, global_scale);
-  return r_coords;
-}
-
 Span<int> OBJMesh::calc_poly_vertex_indices(const int face_index) const
 {
   return mesh_corner_verts_.slice(mesh_faces_[face_index]);
@@ -315,15 +302,6 @@ Span<int> OBJMesh::calc_poly_uv_indices(const int face_index) const
   return loop_to_uv_index_.as_span().slice(mesh_faces_[face_index]);
 }
 
-float3 OBJMesh::calc_poly_normal(const int face_index) const
-{
-  float3 r_poly_normal = bke::mesh::face_normal_calc(
-      mesh_positions_, mesh_corner_verts_.slice(mesh_faces_[face_index]));
-  mul_m3_v3(world_and_axes_normal_transform_, r_poly_normal);
-  normalize_v3(r_poly_normal);
-  return r_poly_normal;
-}
-
 /** Round \a f to \a round_digits decimal digits. */
 static float round_float_to_n_digits(const float f, int round_digits)
 {
@@ -348,70 +326,50 @@ void OBJMesh::store_normal_coords_and_indices()
    * Since normals are normalized, there will be no perceptible loss
    * of precision when rounding to 4 digits. */
   constexpr int round_digits = 4;
-  int cur_normal_index = 0;
-  Map<float3, int> normal_to_index;
+  VectorSet<float3> deduplicated_normals;
   /* We don't know how many unique normals there will be, but this is a guess. */
-  normal_to_index.reserve(export_mesh_->faces_num);
-  loop_to_normal_index_.resize(export_mesh_->corners_num);
-  loop_to_normal_index_.fill(-1);
+  deduplicated_normals.reserve(export_mesh_->faces_num);
+  loop_to_normal_index_.reinitialize(export_mesh_->corners_num);
 
-  Span<float3> corner_normals;
-  if (ELEM(export_mesh_->normals_domain(),
-           bke::MeshNormalDomain::Point,
-           bke::MeshNormalDomain::Corner))
-  {
-    corner_normals = export_mesh_->corner_normals();
-  }
+  /* Normals need inverse transpose of the regular matrix to handle non-uniform scale. */
+  const float3x3 transform = math::transpose(math::invert(float3x3(world_and_axes_transform_)));
+  auto transform_and_round_normal = [&](const float3 &normal) {
+    return round_float3_to_n_digits(math::normalize(transform * normal), round_digits);
+  };
 
-  for (int face_index = 0; face_index < export_mesh_->faces_num; ++face_index) {
-    const IndexRange face = mesh_faces_[face_index];
-    bool need_per_loop_normals = !corner_normals.is_empty() || !(sharp_faces_[face_index]);
-    if (need_per_loop_normals) {
-      for (const int corner : face) {
-        float3 loop_normal;
-        BLI_assert(corner < export_mesh_->corners_num);
-        copy_v3_v3(loop_normal, corner_normals[corner]);
-        mul_m3_v3(world_and_axes_normal_transform_, loop_normal);
-        normalize_v3(loop_normal);
-        float3 rounded_loop_normal = round_float3_to_n_digits(loop_normal, round_digits);
-        int loop_norm_index = normal_to_index.lookup_default(rounded_loop_normal, -1);
-        if (loop_norm_index == -1) {
-          loop_norm_index = cur_normal_index++;
-          normal_to_index.add(rounded_loop_normal, loop_norm_index);
-          normal_coords_.append(rounded_loop_normal);
-        }
-        loop_to_normal_index_[corner] = loop_norm_index;
+  switch (export_mesh_->normals_domain()) {
+    case bke::MeshNormalDomain::Face: {
+      const Span<float3> face_normals = export_mesh_->face_normals();
+      for (const int face : mesh_faces_.index_range()) {
+        const float3 normal = transform_and_round_normal(face_normals[face]);
+        const int index = deduplicated_normals.index_of_or_add(normal);
+        loop_to_normal_index_.as_mutable_span().slice(mesh_faces_[face]).fill(index);
       }
+      break;
     }
-    else {
-      float3 poly_normal = calc_poly_normal(face_index);
-      float3 rounded_poly_normal = round_float3_to_n_digits(poly_normal, round_digits);
-      int poly_norm_index = normal_to_index.lookup_default(rounded_poly_normal, -1);
-      if (poly_norm_index == -1) {
-        poly_norm_index = cur_normal_index++;
-        normal_to_index.add(rounded_poly_normal, poly_norm_index);
-        normal_coords_.append(rounded_poly_normal);
+    case bke::MeshNormalDomain::Point: {
+      const Span<float3> vert_normals = export_mesh_->vert_normals();
+      Array<int> vert_normal_indices(vert_normals.size());
+      for (const int vert : vert_normals.index_range()) {
+        const float3 normal = transform_and_round_normal(vert_normals[vert]);
+        vert_normal_indices[vert] = deduplicated_normals.index_of_or_add(normal);
       }
-      for (const int corner : face) {
-        BLI_assert(corner < export_mesh_->corners_num);
-        loop_to_normal_index_[corner] = poly_norm_index;
+      array_utils::gather(vert_normal_indices.as_span(),
+                          mesh_corner_verts_,
+                          loop_to_normal_index_.as_mutable_span());
+      break;
+    }
+    case bke::MeshNormalDomain::Corner: {
+      const Span<float3> corner_normals = export_mesh_->corner_normals();
+      for (const int corner : corner_normals.index_range()) {
+        const float3 normal = transform_and_round_normal(corner_normals[corner]);
+        loop_to_normal_index_[corner] = deduplicated_normals.index_of_or_add(normal);
       }
+      break;
     }
   }
-  tot_normal_indices_ = cur_normal_index;
-}
 
-Vector<int> OBJMesh::calc_poly_normal_indices(const int face_index) const
-{
-  if (loop_to_normal_index_.is_empty()) {
-    return {};
-  }
-  const IndexRange face = mesh_faces_[face_index];
-  Vector<int> r_poly_normal_indices(face.size());
-  for (const int i : IndexRange(face.size())) {
-    r_poly_normal_indices[i] = loop_to_normal_index_[face[i]];
-  }
-  return r_poly_normal_indices;
+  normal_coords_ = deduplicated_normals.as_span();
 }
 
 int OBJMesh::tot_deform_groups() const
