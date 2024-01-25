@@ -337,7 +337,7 @@ void OBJMesh::store_normal_coords_and_indices()
   loop_to_normal_index_.reinitialize(export_mesh_->corners_num);
 
   /* Normals need inverse transpose of the regular matrix to handle non-uniform scale. */
-  const float3x3 transform = math::transpose(math::invert(float3x3(world_and_axes_transform_)));
+  const float3x3 transform = world_and_axes_normal_transform_;
   auto transform_and_round_normal = [&](const float3 &normal) {
     return round_float3_to_n_digits(math::normalize(transform * normal), round_digits);
   };
