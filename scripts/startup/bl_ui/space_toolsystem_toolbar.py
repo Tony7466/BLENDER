@@ -1389,12 +1389,13 @@ class _defs_sculpt:
         brush = context.tool_settings.sculpt.brush
         if not brush:
             return ()
+        tool = brush.sculpt_tool
         return [
             ToolDef.from_dict(
                 dict(
-                    idname="builtin_brush.Paint",
+                    idname="builtin.brush",
                     label=brush.name,
-                    icon=icon,
+                    icon="builtin_brush.paint",
                     data_block=tool
                 )
             )
@@ -2440,12 +2441,13 @@ class _defs_curves_sculpt:
         brush = context.tool_settings.curves_sculpt.brush
         if not brush:
             return ()
+        tool = brush.curves_sculpt_tool
         return [
             ToolDef.from_dict(
                 dict(
-                    idname="builtin_brush.Paint",
+                    idname="builtin.brush",
                     label=brush.name,
-                    icon=icon,
+                    icon="builtin_brush.paint",
                     data_block=tool
                 )
             )
@@ -3086,7 +3088,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'SCULPT': [
             lambda context: (
-                _defs_curves_sculpt.generate_brush_tool(context)
+                _defs_sculpt.generate_brush_tool(context)
             ),
             None,
             (
