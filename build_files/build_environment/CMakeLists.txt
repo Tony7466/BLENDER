@@ -111,7 +111,12 @@ if(NOT BLENDER_PLATFORM_WINDOWS_ARM)
   include(cmake/openpgl.cmake)
 endif()
 # Embree needs to be included after dpcpp as it uses it for compiling with GPU support
-include(cmake/embree.cmake)
+if(BLENDER_PLATFORM_WINDOWS_ARM)
+  # WoA needs embree to be built with the VS Generator + LLVM, put it in it's own file to avoid clutter
+  include(cmake/embree_windows_arm.cmake)
+else()
+  include(cmake/embree.cmake)
+endif()
 include(cmake/fmt.cmake)
 include(cmake/robinmap.cmake)
 include(cmake/xml2.cmake)
