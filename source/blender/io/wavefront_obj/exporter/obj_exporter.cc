@@ -147,7 +147,7 @@ static void write_mesh_objects(const Span<std::unique_ptr<OBJMesh>> exportable_a
    * we have to have the output text buffer for each object,
    * and write them all into the file at the end. */
   size_t count = exportable_as_mesh.size();
-  std::vector<FormatHandler> buffers(count);
+  Array<FormatHandler> buffers(count);
 
   /* Serial: gather material indices, ensure normals & edges. */
   Vector<Vector<int>> mtlindices;

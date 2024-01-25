@@ -54,7 +54,7 @@ class OBJMesh : NonCopyable {
   /*
    * UV vertices.
    */
-  Array<float2> uv_coords_;
+  Vector<float2> uv_coords_;
 
   /** Index into #normal_coords_ for every face corner. */
   Array<int> loop_to_normal_index_;

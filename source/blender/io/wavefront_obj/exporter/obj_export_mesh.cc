@@ -14,9 +14,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
-#include "BLI_math_matrix.h"
-#include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 
 #include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
@@ -105,7 +102,7 @@ void OBJMesh::clear()
     owned_export_mesh_ = nullptr;
   }
   export_mesh_ = nullptr;
-  loop_to_uv_index_.clear_and_shrink();
+  loop_to_uv_index_ = {};
   uv_coords_.clear_and_shrink();
   loop_to_normal_index_ = {};
   normal_coords_ = {};
@@ -151,18 +148,18 @@ void OBJMesh::set_world_axes_transform(const Object &obj_eval,
                                        const eIOAxis up,
                                        const float global_scale)
 {
-  float axes_transform[3][3];
-  unit_m3(axes_transform);
+  float3x3 axes_transform;
   /* +Y-forward and +Z-up are the default Blender axis settings. */
-  mat3_from_axis_conversion(forward, up, IO_AXIS_Y, IO_AXIS_Z, axes_transform);
-  mul_m4_m3m4(world_and_axes_transform_.ptr(), axes_transform, obj_eval.object_to_world);
-  /* mul_m4_m3m4 does not transform last row of obmat, i.e. location data. */
-  mul_v3_m3v3(world_and_axes_transform_[3], axes_transform, obj_eval.object_to_world[3]);
-  world_and_axes_transform_ = math::scale(world_and_axes_transform_, float3(global_scale));
+  mat3_from_axis_conversion(forward, up, IO_AXIS_Y, IO_AXIS_Z, axes_transform.ptr());
 
-  world_and_axes_transform_[3][3] = obj_eval.object_to_world[3][3];
+  const float4x4 object_to_world(obj_eval.object_to_world);
+  const float3x3 transform = axes_transform * float3x3(object_to_world);
 
-  mirrored_transform_ = is_negative_m4(world_and_axes_transform_.ptr());
+  world_and_axes_transform_ = float4x4(transform);
+  world_and_axes_transform_.location() = axes_transform * object_to_world.location();
+  world_and_axes_transform_[3][3] = object_to_world[3][3];
+
+  mirrored_transform_ = math::is_negative(world_and_axes_normal_transform_);
 }
 
 int OBJMesh::tot_vertices() const
@@ -222,7 +219,7 @@ void OBJMesh::calc_poly_order()
   }
   const VArraySpan<int> material_indices_span(material_indices);
 
-  poly_order_.resize(material_indices_span.size());
+  poly_order_.reinitialize(material_indices_span.size());
   for (const int i : material_indices_span.index_range()) {
     poly_order_[i] = i;
   }
@@ -279,7 +276,7 @@ void OBJMesh::store_uv_coords_and_indices()
   uv_to_index.reserve(export_mesh_->verts_num);
   uv_coords_.reserve(export_mesh_->verts_num);
 
-  loop_to_uv_index_.resize(uv_map.size());
+  loop_to_uv_index_.reinitialize(uv_map.size());
 
   for (int index = 0; index < int(uv_map.size()); index++) {
     float2 uv = uv_map[index];
