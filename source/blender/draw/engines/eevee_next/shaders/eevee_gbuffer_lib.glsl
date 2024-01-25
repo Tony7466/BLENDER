@@ -396,19 +396,19 @@ void gbuffer_append_normal(inout GBufferWriter gbuf, vec3 normal)
   int layer_id = gbuf.layer_gbuf - 1;
   /* Try to reuse previous normals. */
 #if GBUFFER_NORMAL_MAX > 1
-  if (layer_id > 0 && all(equal(gbuf.N[0], packed_N))) {
+  if (gbuf.layer_normal > 0 && all(equal(gbuf.N[0], packed_N))) {
     gbuffer_header_normal_layer_id_set(gbuf.header, layer_id, 0u);
     return;
   }
 #endif
 #if GBUFFER_NORMAL_MAX > 2
-  if (layer_id > 1 && all(equal(gbuf.N[1], packed_N))) {
+  if (gbuf.layer_normal > 1 && all(equal(gbuf.N[1], packed_N))) {
     gbuffer_header_normal_layer_id_set(gbuf.header, layer_id, 1u);
     return;
   }
 #endif
 #if GBUFFER_NORMAL_MAX > 3
-  if (layer_id > 2 && all(equal(gbuf.N[2], packed_N))) {
+  if (gbuf.layer_normal > 2 && all(equal(gbuf.N[2], packed_N))) {
     gbuffer_header_normal_layer_id_set(gbuf.header, layer_id, 2u);
     return;
   }
@@ -691,16 +691,6 @@ GBufferWriter gbuffer_pack(GBufferData data_in)
   gbuf.layer_gbuf = 0;
   gbuf.layer_data = 0;
   gbuf.layer_normal = 0;
-
-#if GBUFFER_NORMAL_MAX > 1
-  gbuf.N[0] = vec2(0.0);
-#endif
-#if GBUFFER_NORMAL_MAX > 2
-  gbuf.N[1] = vec2(0.0);
-#endif
-#if GBUFFER_NORMAL_MAX > 3
-  gbuf.N[2] = vec2(0.0);
-#endif
 
   /* Check special configurations first. */
 
