@@ -929,12 +929,12 @@ enum wmConfirmPosition {
   WM_WARNING_POSITION_CENTER,
 };
 
-struct wmConfirmDetails {
-  char title[1024];
-  char message[1024];
-  char message2[1024];
-  char confirm_button[256];
-  char cancel_button[256];
+struct wmOpPopUp {
+  std::string title;
+  std::string message;
+  std::string message2;
+  std::string confirm_button;
+  std::string cancel_button;
   int icon;
   wmConfirmSize size;
   wmConfirmPosition position;
@@ -942,6 +942,11 @@ struct wmConfirmDetails {
   bool cancel_default;
   bool mouse_move_quit;
   bool red_alert;
+  int width;
+  int height;
+  bool include_properties;
+  wmOperator *op = nullptr;
+  bool free_op;
 };
 
 /**
@@ -1074,7 +1079,7 @@ struct wmOperatorType {
   /**
    * If using WM_operator_confirm the following can override all parts of the dialog.
    */
-  void (*confirm)(bContext *C, wmOperator *, wmConfirmDetails *details);
+  void (*confirm)(bContext *C, wmOperator *, wmOpPopUp *details);
 
   /** RNA for properties */
   StructRNA *srna;
