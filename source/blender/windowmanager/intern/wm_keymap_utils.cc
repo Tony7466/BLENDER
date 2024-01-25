@@ -77,6 +77,8 @@ wmKeyMapItem *WM_keymap_add_tool(wmKeyMap *keymap,
 
 wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
 {
+  eSpace_Type space_type = SPACE_EMPTY;
+  eRegion_Type region_type = RGN_TYPE_WINDOW;
   SpaceLink *sl = CTX_wm_space_data(C);
   const char *km_id = nullptr;
   if (sl->spacetype == SPACE_VIEW3D) {
@@ -177,6 +179,7 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
   else if (sl->spacetype == SPACE_SEQ) {
     const SpaceSeq *sseq = (SpaceSeq *)sl;
     const enum eSpaceSeq_Displays view = eSpaceSeq_Displays(sseq->view);
+    space_type = SPACE_SEQ;
     switch (view) {
       case SEQ_VIEW_SEQUENCE:
         km_id = "Sequencer";
@@ -193,7 +196,7 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
     return nullptr;
   }
 
-  wmKeyMap *km = WM_keymap_find_all_spaceid_or_empty(CTX_wm_manager(C), km_id, sl->spacetype, 0);
+  wmKeyMap *km = WM_keymap_find_all(CTX_wm_manager(C), km_id, space_type, region_type);
   BLI_assert(km);
   return km;
 }
