@@ -18,6 +18,7 @@
 #include "BLI_array_utils.hh"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_sort.hh"
@@ -160,7 +161,13 @@ void OBJMesh::set_world_axes_transform(const Object &obj_eval,
   world_and_axes_transform_.location() = axes_transform * object_to_world.location();
   world_and_axes_transform_[3][3] = object_to_world[3][3];
 
-  mirrored_transform_ = math::is_negative(math::transpose(math::invert(transform)));
+  world_and_axes_transform_ = math::from_scale<float4x4>(float3(global_scale)) *
+                              world_and_axes_transform_;
+
+  /* Normals need inverse transpose of the regular matrix to handle non-uniform scale. */
+  world_and_axes_normal_transform_ = math::transpose(math::invert(transform));
+
+  mirrored_transform_ = math::is_negative(world_and_axes_normal_transform_);
 }
 
 int OBJMesh::tot_vertices() const
