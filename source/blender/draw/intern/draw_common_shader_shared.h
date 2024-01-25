@@ -254,7 +254,6 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 #  define sizeVertexGpencil globalsBlock.size_vertex_gpencil
 #  define fresnelMixEdit globalsBlock.fresnel_mix_edit
 #  define sizeViewportLine globalsBlock.size_viewport_line
-#  define sizeGizmoLine globalsBlock.size_gizmo_line
 #endif
 
 /* See: 'draw_cache_impl.hh' for matching includes. */
