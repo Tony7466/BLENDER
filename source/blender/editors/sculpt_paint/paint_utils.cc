@@ -18,6 +18,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
@@ -28,7 +29,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_image.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
@@ -48,9 +49,8 @@
 #include "GPU_state.h"
 #include "GPU_texture.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "RE_texture.h"
 
