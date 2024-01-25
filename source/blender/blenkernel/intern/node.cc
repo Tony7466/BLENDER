@@ -1865,7 +1865,6 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
-      /* Note: Enum socket node tree is a weak reference and not user-counted. */
     case SOCK_MENU:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
@@ -1913,7 +1912,6 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
-      /* Note: Enum socket node tree is a weak reference and not user-counted. */
     case SOCK_MENU:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
