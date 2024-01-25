@@ -915,6 +915,10 @@ void blo_do_versions_userdef(UserDef *userdef)
     userdef->keying_flag |= AUTOKEY_FLAG_INSERTNEEDED;
   }
 
+  if (!USER_VERSION_ATLEAST(401, 15)) {
+    userdef->viewport_line_width = 1.0f;
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.

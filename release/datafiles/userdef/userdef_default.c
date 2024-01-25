@@ -69,6 +69,7 @@ const UserDef U_default = {
 
     .ui_scale = 1.0,
     .ui_line_width = 0,
+    .viewport_line_width = 1.0f,
 
     /** Default so DPI is detected automatically. */
     .dpi = 0,

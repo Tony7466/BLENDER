@@ -808,6 +808,9 @@ typedef struct UserDef {
   int ui_line_width;
   /** Runtime, full DPI divided by `pixelsize`. */
   int dpi;
+  /** Defines how thick wireframe lines are drawn in the viewport. */
+  float viewport_line_width;
+  char _pad16[4];
   /** Runtime multiplier to scale UI elements. Use macro UI_SCALE_FAC instead of this. */
   float scale_factor;
   /** Runtime, `1.0 / scale_factor` */
