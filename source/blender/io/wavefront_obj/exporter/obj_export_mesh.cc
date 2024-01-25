@@ -331,9 +331,9 @@ void OBJMesh::store_normal_coords_and_indices()
    * Since normals are normalized, there will be no perceptible loss
    * of precision when rounding to 4 digits. */
   constexpr int round_digits = 4;
-  VectorSet<float3> deduplicated_normals;
+  VectorSet<float3> unique_normals;
   /* We don't know how many unique normals there will be, but this is a guess. */
-  deduplicated_normals.reserve(export_mesh_->faces_num);
+  unique_normals.reserve(export_mesh_->faces_num);
   loop_to_normal_index_.reinitialize(export_mesh_->corners_num);
 
   /* Normals need inverse transpose of the regular matrix to handle non-uniform scale. */
@@ -347,7 +347,7 @@ void OBJMesh::store_normal_coords_and_indices()
       const Span<float3> face_normals = export_mesh_->face_normals();
       for (const int face : mesh_faces_.index_range()) {
         const float3 normal = transform_and_round_normal(face_normals[face]);
-        const int index = deduplicated_normals.index_of_or_add(normal);
+        const int index = unique_normals.index_of_or_add(normal);
         loop_to_normal_index_.as_mutable_span().slice(mesh_faces_[face]).fill(index);
       }
       break;
@@ -357,7 +357,7 @@ void OBJMesh::store_normal_coords_and_indices()
       Array<int> vert_normal_indices(vert_normals.size());
       for (const int vert : vert_normals.index_range()) {
         const float3 normal = transform_and_round_normal(vert_normals[vert]);
-        vert_normal_indices[vert] = deduplicated_normals.index_of_or_add(normal);
+        vert_normal_indices[vert] = unique_normals.index_of_or_add(normal);
       }
       array_utils::gather(vert_normal_indices.as_span(),
                           mesh_corner_verts_,
@@ -368,13 +368,13 @@ void OBJMesh::store_normal_coords_and_indices()
       const Span<float3> corner_normals = export_mesh_->corner_normals();
       for (const int corner : corner_normals.index_range()) {
         const float3 normal = transform_and_round_normal(corner_normals[corner]);
-        loop_to_normal_index_[corner] = deduplicated_normals.index_of_or_add(normal);
+        loop_to_normal_index_[corner] = unique_normals.index_of_or_add(normal);
       }
       break;
     }
   }
 
-  normal_coords_ = deduplicated_normals.as_span();
+  normal_coords_ = unique_normals.as_span();
 }
 
 int OBJMesh::tot_deform_groups() const

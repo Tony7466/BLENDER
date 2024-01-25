@@ -45,6 +45,7 @@ class OBJMesh : NonCopyable {
    * object's world transform matrix.
    */
   float4x4 world_and_axes_transform_;
+  float3x3 world_and_axes_normal_transform_;
   bool mirrored_transform_;
 
   /**
@@ -60,7 +61,6 @@ class OBJMesh : NonCopyable {
   Array<int> loop_to_normal_index_;
   /** De-duplicated normals, indexed by #loop_to_normal_index_. */
   Array<float3> normal_coords_;
-
   /**
    * Total smooth groups in an object.
    */
