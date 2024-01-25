@@ -8160,9 +8160,7 @@ def km_3d_view_tool_paint_gpencil_cutter(params):
 
 def km_3d_view_tool_paint_grease_pencil_cutter(params):
     return (
-        # TODO: put cutter tool in Paint toolbar, not Edit...
-        #"3D View Tool: Paint Grease Pencil, Cutter",
-        "3D View Tool: Edit Grease Pencil, Cutter",
+        "3D View Tool: Paint Grease Pencil, Cutter",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("grease_pencil.stroke_cutter", {"type": params.tool_mouse, "value": 'PRESS'}, None),

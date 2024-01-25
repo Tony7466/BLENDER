@@ -3087,9 +3087,6 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
             None,
             *_tools_annotate,
-            None,
-            # TODO: should be in 'PAINT_GREASE_PENCIL', but I can't get it to work
-            _defs_paint_grease_pencil.cutter,
         ],
         'PARTICLE': [
             *_tools_select,
@@ -3177,8 +3174,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_paint_grease_pencil.draw,
             _defs_paint_grease_pencil.erase,
-            # TODO
-            #_defs_paint_grease_pencil.cutter,
+            _defs_paint_grease_pencil.cutter,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
