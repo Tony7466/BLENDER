@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
 #include "BLI_sys_types.h"
 
 /* ******************* Registration Function ********************** */
@@ -215,3 +216,10 @@ bool ED_transform_snap_sequencer_to_closest_strip_calc(Scene *scene,
                                                        float *r_snap_frame);
 
 void ED_draw_sequencer_snap_point(ARegion *region, float snap_point);
+
+bool ED_transform_move_to_location(bContext *C,
+                                   const blender::float3 &target,
+                                   ReportList *reports,
+                                   bool use_offset,
+                                   const int pivot_point,
+                                   const bool use_toolsettings);

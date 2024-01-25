@@ -2234,3 +2234,87 @@ void transform_final_value_get(const TransInfo *t, float *value, const int value
 {
   memcpy(value, t->values_final, sizeof(float) * value_num);
 }
+
+bool ED_transform_move_to_location(bContext *C,
+                                   const float3 &target,
+                                   ReportList *reports,
+                                   bool use_offset,
+                                   const int pivot_point,
+                                   const bool use_toolsettings)
+{
+  TransInfo t = {};
+  t.context = C;
+  t.state = TRANS_RUNNING;
+  t.mode = TFM_DUMMY;
+  t.reports = reports;
+
+  initTransInfo(C, &t, nullptr, nullptr);
+
+  t.around = pivot_point;
+
+  /* Avoid calculating proportional editing. */
+  t.options = CTX_NO_PET;
+
+  /* Make TransData structs from selection */
+  create_trans_data(C, &t);
+
+  if (t.data_len_all == 0) {
+    return false;
+  }
+
+  if (!use_toolsettings) {
+    t.options &= ~(CTX_OBMODE_XFORM_OBDATA | CTX_OBMODE_XFORM_SKIP_CHILDREN);
+  }
+
+  calculateCenter(&t);
+
+  float3 global_dir = target - float3(t.center_global);
+
+  FOREACH_TRANS_DATA_CONTAINER (&t, tc) {
+    TransData *td = tc->data;
+    for (int i = 0; i < tc->data_len; i++, td++) {
+      if ((td->flag & TD_SKIP) || !td->loc) {
+        continue;
+      }
+
+      float3 tvec;
+      if (use_offset) {
+        tvec = global_dir;
+      }
+      else {
+        float3 g_loc = td->center;
+        if (tc->use_local_mat) {
+          mul_m4_v3(tc->mat, g_loc);
+        }
+        tvec = target - g_loc;
+      }
+
+      mul_m3_v3(td->smtx, tvec);
+
+      if (t.options & CTX_GPENCIL_STROKES) {
+        /* Grease pencil multi-frame falloff. */
+        bGPDstroke *gps = (bGPDstroke *)td->extra;
+        if (gps != nullptr) {
+          mul_v3_fl(tvec, gps->runtime.multi_frame_falloff);
+        }
+      }
+
+      if (use_toolsettings) {
+        protectedTransBits(td->protectflag, tvec);
+      }
+      add_v3_v3v3(td->loc, td->iloc, tvec);
+      constraintTransLim(&t, tc, td);
+    }
+  }
+
+  recalc_data(&t);
+
+  /* Aftertrans does insert keyframes, and clears base flags; doesn't read transdata */
+  special_aftertrans_update(C, &t);
+
+  postTrans(C, &t);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, nullptr);
+
+  return true;
+}
