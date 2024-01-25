@@ -203,8 +203,13 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
       if (socket.type == SOCK_MENU) {
         const bNodeSocketValueMenu &default_value =
             *socket.default_value_typed<bNodeSocketValueMenu>();
-        const int identifier = *value.get<int>();
-        log_menu_value(default_value.enum_items->items, identifier);
+        if (default_value.enum_items) {
+          const int identifier = *value.get<int>();
+          log_menu_value(default_value.enum_items->items, identifier);
+        }
+        else {
+          log_generic_value(*value.type(), value.get());
+        }
       }
       else {
         log_generic_value(*value.type(), value.get());
