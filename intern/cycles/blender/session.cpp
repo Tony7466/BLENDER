@@ -678,6 +678,9 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
   sync->sync_data(
       b_render, b_depsgraph, b_v3d, b_camera_override, width, height, &python_thread_state);
 
+  Integrator *integrator = scene->integrator;
+  const bool was_denoiser_enabled = integrator->get_use_denoise();
+
   /* Add render pass that we want to bake, and name it Combined so that it is
    * used as that on the Blender side. */
   if (!bake_setup_pass(scene, bake_type, bake_filter)) {
@@ -709,9 +712,6 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
   if (bake_object && bake_type == "SHADOW") {
     bake_object->set_is_shadow_catcher(true);
   }
-
-  Integrator *integrator = scene->integrator;
-  const bool was_denoiser_enabled = integrator->get_use_denoise();
 
   if (bake_object && !session->progress.get_cancel()) {
     /* Get session and buffer parameters. */
