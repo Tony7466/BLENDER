@@ -186,7 +186,7 @@ static bool is_constrained_by_radius(const Brush *br)
 }
 
 /* Fetch the propogation_steps value, preferring the brush level value over the global sculpt tool
- * * value. */
+ * value. */
 static int boundary_propagation_steps(const Sculpt *sd, const Brush *brush)
 {
   return brush && brush->automasking_flags &
