@@ -836,6 +836,17 @@
     .step = 1, \
   }
 
+#define _DNA_DEFAULT_GreasePencilOffsetModifierData \
+  { \
+    .flag = 0, \
+    .offset_mode = MOD_GREASE_PENCIL_OFFSET_RANDOM, \
+    .loc = {0.0f, 0.0f, 0.0f}, \
+    .rot = {0.0f, 0.0f, 0.0f}, \
+    .scale = {1.0f, 1.0f, 1.0f}, \
+    .stroke_step = 1, \
+    .stroke_start_offset = 0, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilLineartModifierData \
   { \
     .edge_types = LRT_EDGE_FLAG_INIT_TYPE, \
