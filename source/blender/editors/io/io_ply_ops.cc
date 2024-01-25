@@ -300,7 +300,7 @@ static void ui_ply_import_settings(uiLayout *layout, PointerRNA *ptr)
   uiItemR(col, ptr, "import_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_ply_import_draw(bContext */*C*/, wmOperator *op)
+static void wm_ply_import_draw(bContext * /*C*/, wmOperator *op)
 {
   ui_ply_import_settings(op->layout, op->ptr);
 }
@@ -324,7 +324,7 @@ void WM_OT_ply_import(wmOperatorType *ot)
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_FILES | WM_FILESEL_DIRECTORY |
-                                     WM_FILESEL_SHOW_PROPS | WM_FILESEL_SKIP_SAVE_PROPS,
+                                     WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 

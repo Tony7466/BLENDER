@@ -276,7 +276,7 @@ void WM_OT_stl_import(wmOperatorType *ot)
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_FILES | WM_FILESEL_DIRECTORY |
-                                     WM_FILESEL_SHOW_PROPS | WM_FILESEL_SKIP_SAVE_PROPS,
+                                     WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 

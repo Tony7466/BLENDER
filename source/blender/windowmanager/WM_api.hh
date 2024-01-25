@@ -880,9 +880,8 @@ enum eFileSel_Flag {
   WM_FILESEL_FILES = 1 << 4,
   /** Show the properties sidebar by default. */
   WM_FILESEL_SHOW_PROPS = 1 << 5,
-  WM_FILESEL_SKIP_SAVE_PROPS = 1 << 6,
 };
-ENUM_OPERATORS(eFileSel_Flag, WM_FILESEL_SKIP_SAVE_PROPS)
+ENUM_OPERATORS(eFileSel_Flag, WM_FILESEL_SHOW_PROPS)
 
 /** Action for #WM_operator_properties_filesel. */
 enum eFileSel_Action {

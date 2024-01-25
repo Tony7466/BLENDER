@@ -766,7 +766,7 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void uiCollada_importSettings(uiLayout *layout, PointerRNA *imfptr)
+static void wm_collada_import_settings(uiLayout *layout, PointerRNA *imfptr)
 {
   uiLayout *box, *col;
 
@@ -794,9 +794,9 @@ static void uiCollada_importSettings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(box, imfptr, "keep_bind_info", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_collada_import_draw(bContext */*C*/, wmOperator *op)
+static void wm_collada_import_draw(bContext * /*C*/, wmOperator *op)
 {
-  uiCollada_importSettings(op->layout, op->ptr);
+  wm_collada_import_settings(op->layout, op->ptr);
 }
 
 void WM_OT_collada_import(wmOperatorType *ot)
@@ -816,8 +816,7 @@ void WM_OT_collada_import(wmOperatorType *ot)
                                  FILE_TYPE_FOLDER | FILE_TYPE_COLLADA,
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
-                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS |
-                                     WM_FILESEL_SKIP_SAVE_PROPS,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
