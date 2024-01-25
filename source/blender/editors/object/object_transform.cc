@@ -1162,11 +1162,10 @@ static void object_transform_apply_confirm(bContext * /*C*/,
                                            wmOperator * /*op*/,
                                            wmConfirmDetails *confirm)
 {
-  STRNCPY(confirm->title, IFACE_("Apply Object Transformations"));
-  STRNCPY(confirm->message,
-          IFACE_("Warning: Multiple objects share the same data."));
-  STRNCPY(confirm->message2, IFACE_("Make single user and then apply transformations?"));
-  STRNCPY(confirm->confirm_button, IFACE_("Apply"));
+  confirm->title = IFACE_("Apply Object Transformations");
+  confirm->message = IFACE_("Warning: Multiple objects share the same data.");
+  confirm->message2 = IFACE_("Make single user and then apply transformations?");
+  confirm->confirm_text = IFACE_("Apply");
 }
 
 static int object_transform_apply_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
