@@ -885,7 +885,7 @@ void RNA_api_wm(StructRNA *srna)
   RNA_def_property_ui_text(
       parm,
       "Confirm Text",
-      "Optional text to show instead to the default \"OK\" confirmation button text.");
+      "Optional text to show instead to the default \"OK\" confirmation button text");
   api_ui_item_common_translation(func);
 
   /* invoke enum */
