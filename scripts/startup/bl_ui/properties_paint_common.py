@@ -157,7 +157,8 @@ class BrushSelectPanel(BrushPanel):
         col = row.column()
         col.menu("VIEW3D_MT_brush_context_menu", icon='DOWNARROW_HLT', text="")
 
-        panel = layout.panel("customize", text="Customize", default_closed=True)
+        header, panel = layout.panel("customize", default_closed=True)
+        header.label(text="Customize")
         if panel:
             panel.use_property_split = True
             panel.use_property_decorate = False
