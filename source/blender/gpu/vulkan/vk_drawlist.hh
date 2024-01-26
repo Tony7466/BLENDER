@@ -15,8 +15,6 @@
 namespace blender::gpu {
 class VKBatch;
 
-struct GLDrawCommandIndexed {};
-
 class VKDrawList : public DrawList {
  private:
   /**
