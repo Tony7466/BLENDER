@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BLI_span.hh"
+
 #include "COM_MultiThreadedOperation.h"
 
 namespace blender::compositor {
@@ -28,13 +30,13 @@ class DoubleEdgeMaskOperation : public NodeOperation {
 
   void compute_boundary(const float *inner_mask,
                         const float *outer_mask,
-                        Array<int2> &inner_boundary,
-                        Array<int2> &outer_boundary);
+                        MutableSpan<int2> inner_boundary,
+                        MutableSpan<int2> outer_boundary);
 
   void compute_gradient(const float *inner_mask_buffer,
                         const float *outer_mask_buffer,
-                        Array<int2> &flooded_inner_boundary,
-                        Array<int2> &flooded_outer_boundary,
+                        MutableSpan<int2> flooded_inner_boundary,
+                        MutableSpan<int2> flooded_outer_boundary,
                         float *output_mask);
 
   void compute_double_edge_mask(const float *inner_mask,

@@ -5,7 +5,7 @@
 #include <cstdlib>
 
 #include "BLI_math_vector.hh"
-#include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_task.hh"
 
 #include "COM_DoubleEdgeMaskOperation.h"
@@ -33,8 +33,8 @@ static float load_mask(const float *input, int2 texel, int2 size, float fallback
 
 void DoubleEdgeMaskOperation::compute_boundary(const float *inner_mask,
                                                const float *outer_mask,
-                                               Array<int2> &inner_boundary,
-                                               Array<int2> &outer_boundary)
+                                               MutableSpan<int2> inner_boundary,
+                                               MutableSpan<int2> outer_boundary)
 {
   const int2 size = int2(this->get_width(), this->get_height());
   threading::parallel_for(IndexRange(size.y), 1, [&](const IndexRange sub_y_range) {
@@ -87,8 +87,8 @@ void DoubleEdgeMaskOperation::compute_boundary(const float *inner_mask,
 
 void DoubleEdgeMaskOperation::compute_gradient(const float *inner_mask_buffer,
                                                const float *outer_mask_buffer,
-                                               Array<int2> &flooded_inner_boundary,
-                                               Array<int2> &flooded_outer_boundary,
+                                               MutableSpan<int2> flooded_inner_boundary,
+                                               MutableSpan<int2> flooded_outer_boundary,
                                                float *output_mask)
 {
   const int2 size = int2(this->get_width(), this->get_height());
@@ -128,8 +128,8 @@ void DoubleEdgeMaskOperation::compute_double_edge_mask(const float *inner_mask,
                                                        float *output_mask)
 {
   const int2 size = int2(this->get_width(), this->get_height());
-  Array<int2> inner_boundary = Array<int2>(size_t(size.x) * size.y);
-  Array<int2> outer_boundary = Array<int2>(size_t(size.x) * size.y);
+  Array<int2> inner_boundary(size_t(size.x) * size.y);
+  Array<int2> outer_boundary(size_t(size.x) * size.y);
   compute_boundary(inner_mask, outer_mask, inner_boundary, outer_boundary);
   Array<int2> flooded_inner_boundary = jump_flooding(inner_boundary, size);
   Array<int2> flooded_outer_boundary = jump_flooding(outer_boundary, size);

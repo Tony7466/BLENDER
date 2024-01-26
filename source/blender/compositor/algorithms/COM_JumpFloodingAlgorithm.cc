@@ -9,7 +9,7 @@
 #include "BLI_math_base.h"
 #include "BLI_math_base.hh"
 #include "BLI_math_vector.hh"
-#include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_task.hh"
 
 #include "COM_JumpFloodingAlgorithm.h"
@@ -29,7 +29,7 @@ int2 initialize_jump_flooding_value(int2 texel, bool is_seed)
   return encode_jump_flooding_value(texel, is_seed);
 }
 
-static int2 load_jump_flooding(Array<int2> &input, int2 texel, int2 size, int2 fallback)
+static int2 load_jump_flooding(Span<int2> input, int2 texel, int2 size, int2 fallback)
 {
   if (texel.x < 0 || texel.x >= size.x || texel.y < 0 || texel.y >= size.y) {
     return fallback;
@@ -37,7 +37,10 @@ static int2 load_jump_flooding(Array<int2> &input, int2 texel, int2 size, int2 f
   return input[size_t(texel.y) * size.x + texel.x];
 }
 
-static void jump_flooding_pass(Array<int2> &input, Array<int2> &output, int2 size, int step_size)
+static void jump_flooding_pass(Span<int2> input,
+                               MutableSpan<int2> output,
+                               int2 size,
+                               int step_size)
 {
   threading::parallel_for(IndexRange(size.y), 1, [&](const IndexRange sub_y_range) {
     for (const int64_t y : sub_y_range) {
@@ -79,13 +82,13 @@ static void jump_flooding_pass(Array<int2> &input, Array<int2> &output, int2 siz
   });
 }
 
-Array<int2> jump_flooding(Array<int2> &input, int2 size)
+Array<int2> jump_flooding(Span<int2> input, int2 size)
 {
-  Array<int2> initial_flooded_result = Array<int2>(size_t(size.x) * size.y);
+  Array<int2> initial_flooded_result(size_t(size.x) * size.y);
   jump_flooding_pass(input, initial_flooded_result, size, 1);
 
   Array<int2> *result_to_flood = &initial_flooded_result;
-  Array<int2> intermediate_result = Array<int2>(size_t(size.x) * size.y);
+  Array<int2> intermediate_result(size_t(size.x) * size.y);
   Array<int2> *result_after_flooding = &intermediate_result;
 
   const int max_size = math::max(size.x, size.y);
