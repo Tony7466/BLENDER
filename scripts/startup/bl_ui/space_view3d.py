@@ -496,13 +496,8 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def SCULPT_CURVES(context, layout, tool):
-        # if tool is None:
-        #     print("tool is None")
-        #     return False
-
-        # if not tool.has_datablock:
-        #     print("not tool.has_datablock")
-        #     return False
+        if (tool is None) or (not tool.has_datablock):
+            return False
 
         tool_settings = context.tool_settings
         paint = tool_settings.curves_sculpt
