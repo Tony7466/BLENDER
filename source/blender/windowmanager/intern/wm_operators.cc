@@ -1211,180 +1211,6 @@ static void wm_operator_block_confirm(bContext *C, void *arg_op, void *arg_block
   }
 }
 
-static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_op)
-{
-  wmOperator *op = static_cast<wmOperator *>(arg_op);
-
-  wmConfirmDetails confirm = {{0}};
-
-  confirm.title = WM_operatortype_description(C, op->type, op->ptr);
-  confirm.confirm_text = WM_operatortype_name(op->type, op->ptr);
-  confirm.icon = ALERT_ICON_WARNING;
-  confirm.size = WM_WARNING_SIZE_SMALL;
-  confirm.position = WM_WARNING_POSITION_MOUSE;
-  confirm.cancel_default = false;
-  confirm.mouse_move_quit = false;
-
-  /* uiBlock.flag */
-  int block_flags = UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT;
-
-  if (op->type->confirm) {
-    op->type->confirm(C, op, &confirm);
-  }
-  if (confirm.mouse_move_quit) {
-    block_flags |= UI_BLOCK_MOVEMOUSE_QUIT;
-  }
-  if (confirm.icon < ALERT_ICON_WARNING || confirm.icon >= ALERT_ICON_MAX) {
-    confirm.icon = ALERT_ICON_QUESTION;
-  }
-
-  uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
-  UI_block_flag_enable(block, block_flags);
-
-  const uiStyle *style = UI_style_get_dpi();
-  int text_width = std::max(
-      120 * UI_SCALE_FAC,
-      BLF_width(style->widget.uifont_id, confirm.title.c_str(), confirm.title.length()));
-  if (!confirm.message.empty()) {
-    text_width = std::max(text_width,
-                          int(BLF_width(style->widget.uifont_id,
-                                        confirm.message.c_str(),
-                                        confirm.message.length())));
-  }
-  if (!confirm.message2.empty()) {
-    text_width = std::max(text_width,
-                          int(BLF_width(style->widget.uifont_id,
-                                        confirm.message2.c_str(),
-                                        confirm.message2.length())));
-  }
-
-  const bool small = confirm.size == WM_WARNING_SIZE_SMALL;
-  const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
-  const short icon_size = (small ? (confirm.message.empty() ? 32 : 48) : 64) * UI_SCALE_FAC;
-  const int dialog_width = icon_size + text_width + (style->columnspace * 2.5);
-  const float split_factor = (float)icon_size / (float)(dialog_width - style->columnspace);
-
-  uiLayout *block_layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, UI_UNIT_Y, 0, style);
-
-  /* Split layout to put alert icon on left side. */
-  uiLayout *split_block = uiLayoutSplit(block_layout, split_factor, false);
-
-  /* Alert icon on the left. */
-  uiLayout *layout = uiLayoutRow(split_block, true);
-  /* Using 'align_left' with 'row' avoids stretching the icon along the width of column. */
-  uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_LEFT);
-  uiDefButAlert(block, confirm.icon, 0, 0, icon_size, icon_size);
-
-  /* The rest of the content on the right. */
-  layout = uiLayoutColumn(split_block, true);
-
-  if (!confirm.title.empty()) {
-    if (confirm.message.empty()) {
-      uiItemS(layout);
-    }
-    uiItemL_ex(layout, confirm.title.c_str(), ICON_NONE, true, false);
-  }
-
-  if (!confirm.message.empty()) {
-    uiItemL(layout, confirm.message.c_str(), ICON_NONE);
-  }
-
-  if (!confirm.message2.empty()) {
-    uiItemL(layout, confirm.message2.c_str(), ICON_NONE);
-  }
-
-  uiItemS_ex(layout, small ? 0.5f : 4.0f);
-
-  /* Buttons. */
-
-#ifdef _WIN32
-  const bool windows_layout = true;
-#else
-  const bool windows_layout = false;
-#endif
-
-  uiBut *confirm_but = nullptr;
-  uiBut *cancel_but = nullptr;
-  uiLayout *split = uiLayoutSplit(small ? block_layout : layout, 0.0f, true);
-  uiLayoutSetScaleY(split, small ? 1.1f : 1.2f);
-  uiLayoutColumn(split, false);
-
-  if (windows_layout) {
-    confirm_but = uiDefIconTextBut(block,
-                                   UI_BTYPE_BUT,
-                                   0,
-                                   0,
-                                   confirm.confirm_text.c_str(),
-                                   0,
-                                   0,
-                                   0,
-                                   UI_UNIT_Y,
-                                   nullptr,
-                                   0,
-                                   0,
-                                   0,
-                                   0,
-                                   nullptr);
-    uiLayoutColumn(split, false);
-  }
-
-  cancel_but = uiDefIconTextBut(block,
-                                UI_BTYPE_BUT,
-                                0,
-                                0,
-                                IFACE_("Cancel"),
-                                0,
-                                0,
-                                0,
-                                UI_UNIT_Y,
-                                nullptr,
-                                0,
-                                0,
-                                0,
-                                0,
-                                nullptr);
-
-  if (!windows_layout) {
-    uiLayoutColumn(split, false);
-    confirm_but = uiDefIconTextBut(block,
-                                   UI_BTYPE_BUT,
-                                   0,
-                                   0,
-                                   confirm.confirm_text.c_str(),
-                                   0,
-                                   0,
-                                   0,
-                                   UI_UNIT_Y,
-                                   nullptr,
-                                   0,
-                                   0,
-                                   0,
-                                   0,
-                                   nullptr);
-  }
-
-  UI_block_func_set(block, nullptr, nullptr, nullptr);
-  UI_but_func_set(confirm_but, wm_operator_block_confirm, op, block);
-  UI_but_func_set(cancel_but, wm_operator_block_cancel, op, block);
-  UI_but_drawflag_disable(confirm_but, UI_BUT_TEXT_LEFT);
-  UI_but_drawflag_disable(cancel_but, UI_BUT_TEXT_LEFT);
-  UI_but_flag_enable(confirm.cancel_default ? cancel_but : confirm_but, UI_BUT_ACTIVE_DEFAULT);
-
-  if (confirm.position == WM_WARNING_POSITION_MOUSE) {
-    int bounds_offset[2];
-    bounds_offset[0] = uiLayoutGetWidth(layout) * (windows_layout ? -0.33f : -0.66f);
-    bounds_offset[1] = UI_UNIT_Y * (confirm.message[0] ? 3.1 : 2.5);
-    UI_block_bounds_set_popup(block, padding, bounds_offset);
-  }
-  else if (confirm.position == WM_WARNING_POSITION_CENTER) {
-    UI_block_bounds_set_centered(block, padding);
-  }
-
-  return block;
-}
-
 int WM_operator_confirm_message_ex(bContext *C,
                                    wmOperator *op,
                                    const char *title,
@@ -1412,11 +1238,6 @@ int WM_operator_confirm_message_ex(bContext *C,
 
 int WM_operator_confirm_message(bContext *C, wmOperator *op, const char *message)
 {
-  if (op->type->confirm) {
-    UI_popup_block_invoke(C, wm_block_confirm_create, op, nullptr);
-    return OPERATOR_RUNNING_MODAL;
-  }
-
   return WM_operator_confirm_message_ex(
       C, op, IFACE_("OK?"), ICON_QUESTION, message, WM_OP_EXEC_REGION_WIN);
 }
@@ -1648,8 +1469,8 @@ struct wmOpPopUp {
   std::string message2;
   std::string confirm_text;
   int icon;
-  wmConfirmSize size;
-  wmConfirmPosition position;
+  wmPopupSize size;
+  wmPopupPosition position;
   bool cancel_default;
   bool mouse_move_quit;
   bool include_properties;
@@ -1707,23 +1528,84 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   if (data->mouse_move_quit) {
     UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
   }
+  if (data->icon >= ALERT_ICON_MAX) {
+    data->icon = ALERT_ICON_QUESTION;
+  }
 
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NUMSELECT);
 
-  uiLayout *layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, 0, 0, style);
+  int text_width = std::max(
+      120 * UI_SCALE_FAC,
+      BLF_width(style->widget.uifont_id, data->title.c_str(), data->title.length()));
+  if (!data->message.empty()) {
+    text_width = std::max(
+        text_width,
+        int(BLF_width(style->widget.uifont_id, data->message.c_str(), data->message.length())));
+  }
+  if (!data->message2.empty()) {
+    text_width = std::max(
+        text_width,
+        int(BLF_width(style->widget.uifont_id, data->message2.c_str(), data->message2.length())));
+  }
 
-  uiItemL_ex(layout, data->title.c_str(), ICON_NONE, true, false);
-  uiItemS_ex(layout, 0.3f);
+  const bool small = data->size == WM_POPUP_SIZE_SMALL;
+  const short icon_size = (small ? (data->message.empty() ? 32 : 48) : 64) * UI_SCALE_FAC;
+  int dialog_width = text_width + (style->columnspace * 2.5);
+  dialog_width += (data->icon > -1) ? icon_size : 0;
+
+  uiLayout *layout = UI_block_layout(block,
+                                     UI_LAYOUT_VERTICAL,
+                                     UI_LAYOUT_PANEL,
+                                     0,
+                                     0,
+                                     std::max(dialog_width, data->width),
+                                     0,
+                                     0,
+                                     style);
+
+  if (data->icon > -1) {
+    /* Split layout to put alert icon on left side. */
+    const float split_factor = (float)icon_size / (float)(dialog_width - style->columnspace);
+    uiLayout *split_block = uiLayoutSplit(layout, split_factor, false);
+
+    /* Alert icon on the left. */
+    uiLayout *left = uiLayoutRow(split_block, true);
+    /* Using 'align_left' with 'row' avoids stretching the icon along the width of column. */
+    uiLayoutSetAlignment(left, UI_LAYOUT_ALIGN_LEFT);
+    uiDefButAlert(block, data->icon, 0, 0, icon_size, icon_size);
+
+    /* The rest of the content on the right. */
+    layout = uiLayoutColumn(split_block, true);
+  }
+
+  if (!data->title.empty()) {
+    if (data->message.empty() && !small) {
+      uiItemS(layout);
+    }
+    uiItemL_ex(layout, data->title.c_str(), ICON_NONE, true, false);
+  }
+  if (!data->message.empty()) {
+    uiItemL(layout, data->message.c_str(), ICON_NONE);
+  }
+
+  if (!data->message2.empty()) {
+    uiItemL(layout, data->message2.c_str(), ICON_NONE);
+  }
 
   if (data->include_properties) {
     uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, 0);
   }
 
-  uiItemS_ex(layout, 0.6f);
+  uiItemS_ex(layout, small ? 1.0f : 2.0f);
 
   /* clear so the OK button is left alone */
   UI_block_func_set(block, nullptr, nullptr, nullptr);
+
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
 
   /* new column so as not to interfere with custom layouts #26436. */
   {
@@ -1733,13 +1615,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
     uiBut *cancel_but;
 
     col = uiLayoutSplit(col, 0.0f, true);
-    uiLayoutSetScaleY(col, 1.2f);
-
-#ifdef _WIN32
-    const bool windows_layout = true;
-#else
-    const bool windows_layout = false;
-#endif
+    uiLayoutSetScaleY(col, small ? 1.1f : 1.2f);
 
     if (windows_layout) {
       confirm_but = uiDefBut(col_block,
@@ -1797,14 +1673,16 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
     UI_but_flag_enable((data->cancel_default) ? cancel_but : confirm_but, UI_BUT_ACTIVE_DEFAULT);
   }
 
-  if (data->position == WM_WARNING_POSITION_MOUSE) {
+  const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
+
+  if (data->position == WM_POPUP_POSITION_MOUSE) {
     int bounds_offset[2];
-    bounds_offset[0] = uiLayoutGetWidth(layout) * -0.66f;
-    bounds_offset[1] = UI_UNIT_Y * 2;
-    UI_block_bounds_set_popup(block, 10 * UI_SCALE_FAC, bounds_offset);
+    bounds_offset[0] = uiLayoutGetWidth(layout) * (windows_layout ? -0.33f : -0.66f);
+    bounds_offset[1] = UI_UNIT_Y * (!data->message.empty() ? 3.1 : 2.5);
+    UI_block_bounds_set_popup(block, padding, bounds_offset);
   }
-  else if (data->position == WM_WARNING_POSITION_CENTER) {
-    UI_block_bounds_set_centered(block, 10 * UI_SCALE_FAC);
+  else if (data->position == WM_POPUP_POSITION_CENTER) {
+    UI_block_bounds_set_centered(block, padding);
   }
 
   return block;
@@ -1862,6 +1740,40 @@ static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
   }
 
   MEM_delete(data);
+}
+
+int WM_operator_confirm_ex(bContext *C,
+                           wmOperator *op,
+                           const char *title,
+                           const char *message,
+                           const char *message2,
+                           const char *confirm_text,
+                           int icon,
+                           wmPopupSize size,
+                           wmPopupPosition position,
+                           bool cancel_default,
+                           bool mouse_move_quit)
+{
+  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
+  data->op = op;
+  data->width = 400;
+  data->free_op = true;
+  data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
+  data->message = (message == nullptr) ? std::string() : message;
+  data->message2 = (message2 == nullptr) ? std::string() : message2;
+  data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
+                                                   confirm_text;
+  data->icon = icon;
+  data->cancel_default = cancel_default;
+  data->mouse_move_quit = mouse_move_quit;
+  data->include_properties = false;
+  data->size = size;
+  data->position = position;
+
+  UI_popup_block_ex(
+      C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);
+
+  return OPERATOR_RUNNING_MODAL;
 }
 
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width)
@@ -1945,7 +1857,9 @@ int WM_operator_props_dialog_popup(
   data->cancel_default = false;
   data->mouse_move_quit = false;
   data->include_properties = true;
-  data->position = WM_WARNING_POSITION_MOUSE;
+  data->position = WM_POPUP_POSITION_MOUSE;
+  data->size = WM_POPUP_SIZE_SMALL;
+  data->icon = -1;
 
   /* op is not executed until popup OK but is clicked */
   UI_popup_block_ex(
