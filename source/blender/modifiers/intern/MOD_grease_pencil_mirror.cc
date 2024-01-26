@@ -6,7 +6,9 @@
  * \ingroup modifiers
  */
 
+#include "BLI_array_utils.hh"
 #include "BLI_hash.h"
+#include "BLI_index_mask.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_rand.h"
 
@@ -83,33 +85,277 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   }
 }
 
+// static int count_selected_points(const bke::CurvesGeometry &curves, const IndexMask
+// &curves_mask)
+// {
+//   int dst_point_num = 0;
+//   curves_mask.foreach_index([&](const int64_t curve_i) {
+//     const IndexRange points = curves.points_by_curve()[curve_i];
+//     dst_point_num += int(points.size());
+//   });
+//   return dst_point_num;
+// }
+
+static IndexMask get_points_from_curves_mask(const bke::CurvesGeometry &curves,
+                                             const IndexMask &curves_mask,
+                                             IndexMaskMemory &memory)
+{
+  int64_t point_indices_num = 0;
+  curves_mask.foreach_index([&](const int64_t curve_i) {
+    const IndexRange points = curves.points_by_curve()[curve_i];
+    point_indices_num += points.size();
+  });
+  Array<int64_t> point_indices(point_indices_num);
+  curves_mask.foreach_index([&](const int64_t curve_i) {
+    const IndexRange points = curves.points_by_curve()[curve_i];
+    array_utils::fill_index_range(point_indices.as_mutable_span().slice(points));
+    point_indices_num += points.size();
+  });
+  return IndexMask::from_indices(point_indices.as_span(), memory);
+}
+
+static float4x4 get_mirror_matrix(const int /*mirror_flags*/)
+{
+  return float4x4::identity();
+}
+
+/* Index map into original curve arrays. */
+static Array<int> build_curves_map(const int curve_num,
+                                   const IndexMask &curves_mask,
+                                   const int num_mirrored_axes)
+{
+  /* Selected source points. */
+  const int selected_curve_num = curves_mask.size();
+
+  /* Number of copies on top of the base curves. */
+  const int mirror_copies = (1 << num_mirrored_axes) - 1;
+  const int dst_curve_num = curve_num + selected_curve_num * mirror_copies;
+
+  /* Source indices for curves. */
+  Array<int> dst_curve_indices(dst_curve_num);
+
+  /* Initial curves range, copy original curves without mask. */
+  IndexRange dst_curves_range = IndexRange(curve_num);
+  array_utils::fill_index_range(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
+
+  for ([[maybe_unused]] const int i : IndexRange(mirror_copies)) {
+    /* Range of curves and points for the current mirrored part. */
+    dst_curves_range = dst_curves_range.after(selected_curve_num);
+    /* Copy curves mask indices to the mirrored section. */
+    curves_mask.to_indices(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
+  }
+  return dst_curve_indices;
+}
+
 static void modify_drawing(const GreasePencilMirrorModifierData &omd,
                            const ModifierEvalContext &ctx,
                            bke::greasepencil::Drawing &drawing)
 {
-  const int mirror_stages = (omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X ? 1 : 0) +
-                            (omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y ? 1 : 0) +
-                            (omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z ? 1 : 0);
-  const int mirror_factor = (1 << mirror_stages);
-  const bke::CurvesGeometry &curves_old = drawing.strokes();
-
-  bke::CurvesGeometry curves_new(curves_old.point_num * mirror_factor,
-                                 curves_old.curve_num * mirror_factor);
-
-  IndexRange points = curves_old.points_range();
-  IndexRange curves = curves_old.curves_range();
-  for (const GreasePencilMirrorModifierFlag axis : {MOD_GREASE_PENCIL_MIRROR_AXIS_X,
-                                                    MOD_GREASE_PENCIL_MIRROR_AXIS_Y,
-                                                    MOD_GREASE_PENCIL_MIRROR_AXIS_Z})
-  {
-    if (!(omd.flag & axis)) {
-      continue;
-    }
-
-    points = IndexRange{points.one_after_last(), points.size() << 1};
-    curves = IndexRange{curves.one_after_last(), curves.size() << 1};
+  const int num_mirrored_axes = ((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X) ? 1 : 0) +
+                                ((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y) ? 1 : 0) +
+                                ((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z) ? 1 : 0);
+  if (num_mirrored_axes == 0) {
+    return;
   }
+
+  const bke::CurvesGeometry &src_curves = drawing.strokes();
+  /* Selected source curves. */
+  IndexMaskMemory curve_mask_memory, points_mask_memory;
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+      ctx.object, src_curves, omd.influence, curve_mask_memory);
+  const IndexMask points_mask = get_points_from_curves_mask(
+      src_curves, curves_mask, points_mask_memory);
+  /* Selected source points. */
+  const int selected_curve_num = curves_mask.size();
+  const int selected_point_num = points_mask.size();
+
+  /* Number of copies on top of the base curves. */
+  const int mirror_copies = (1 << num_mirrored_axes) - 1;
+  const int dst_curve_num = src_curves.curve_num + selected_curve_num * mirror_copies;
+  const int dst_point_num = src_curves.point_num + selected_point_num * mirror_copies;
+
+  Array<int> curves_index_map = build_curves_map(
+      src_curves.curve_num, curves_mask, num_mirrored_axes);
+
+  bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
+
+  /* Source indices for curves. */
+  // Array<int> dst_curve_indices(dst_curve_num);
+
+  /* Initial curves range, copy original curves without mask. */
+  // IndexRange dst_curves_range = src_curves.curves_range();
+  // IndexRange dst_points_range = src_curves.points_range();
+
+  threading::parallel_for(curves_index_map.index_range(), 512, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int src_curve_i = curves_index_map[i];
+    }
+  });
+
+  array_utils::fill_index_range(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
+  dst_curves.offsets_for_write()
+      .slice(dst_curves_range)
+      .copy_from(src_curves.offsets().drop_back(1));
+  // array_utils::copy(src_curves.positions().slice(dst_curves_range),
+  //                   dst_curves.positions_for_write().slice(dst_curves_range));
+
+#if 0
+
+  /* Add mirrored curve ranges, using the selection mask. */
+  Vector<float4x4> mirror_matrices;
+  mirror_matrices.reserve(mirror_copies);
+  for (const int mirror_x : IndexRange((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X) ? 2 : 1)) {
+    for (const int mirror_y : IndexRange((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y) ? 2 : 1)) {
+      for (const int mirror_z : IndexRange((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z) ? 2 : 1)) {
+        if (mirror_x == 0 && mirror_y == 0 && mirror_z == 0) {
+          /* Unmirrored original curve and vertices. */
+          continue;
+        }
+        /* Range of curves and points for the current mirrored part. */
+        dst_curves_range = dst_curves_range.after(selected_curve_num);
+        dst_points_range = dst_points_range.after(selected_point_num);
+
+        /* Copy curves mask indices to the mirrored section. */
+        curves_mask.to_indices(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
+        curves_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
+          dst_curves.offsets_for_write().slice(
+              dst_curves_range)[dst_i] = src_curves.offsets()[src_i];
+        });
+        // points_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i)
+        // {
+        //   dst_curves.positions_for_write().slice(
+        //       dst_points_range)[dst_i] = src_curves.positions()[src_i];
+        // });
+
+        // TODO
+        mirror_matrices.append(float4x4::identity());
+      }
+    }
+  }
+
+  // IndexMaskMemory curve_mask_new_memory;
+  // const IndexMask curve_mask_new = IndexMask::from_indices(dst_curve_indices.as_span(),
+  //                                                          curve_mask_new_memory);
+  // bke::AnonymousAttributePropagationInfo propagation_info;
+  // propagation_info.propagate_all = false;
+  // bke::gather_attributes(src_curves.attributes(),
+  //                        bke::AttrDomain::Curve,
+  //                        propagation_info,
+  //                        {},
+  //                        dst_curve_indices,
+  //                        dst_curves.attributes_for_write());
+  bke::gather_attributes_group_to_group(src_curves.attributes(),
+                                        bke::AttrDomain::Point,
+                                        propagation_info,
+                                        {"position"},
+                                        src_curves.points_by_curve(),
+                                        dst_curves.points_by_curve(),
+                                        curve_mask_new,
+                                        dst_curves.attributes_for_write());
+#endif
+
+  dst_curves.tag_positions_changed();
+  dst_curves.tag_topology_changed();
 }
+
+#if 0
+static void modify_drawing(const GreasePencilMirrorModifierData &omd,
+                           const ModifierEvalContext &ctx,
+                           bke::greasepencil::Drawing &drawing)
+{
+  const int num_mirrored_axes = ((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X) ? 1 : 0) +
+                                ((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y) ? 1 : 0) +
+                                ((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z) ? 1 : 0);
+  if (num_mirrored_axes == 0) {
+    return;
+  }
+
+  const bke::CurvesGeometry &src_curves = drawing.strokes();
+  /* Selected source curves. */
+  IndexMaskMemory curve_mask_memory, points_mask_memory;
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+      ctx.object, src_curves, omd.influence, curve_mask_memory);
+  const IndexMask points_mask = get_points_from_curves_mask(
+      src_curves, curves_mask, points_mask_memory);
+  /* Selected source points. */
+  const int selected_curve_num = curves_mask.size();
+  const int selected_point_num = points_mask.size();
+
+  /* Number of copies on top of the base curves. */
+  const int mirror_copies = (1 << num_mirrored_axes) - 1;
+  const int dst_curve_num = src_curves.curve_num + selected_curve_num * mirror_copies;
+  const int dst_point_num = src_curves.point_num + selected_point_num * mirror_copies;
+
+  bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
+  /* Source indices for curves. */
+  Array<int> dst_curve_indices(dst_curve_num);
+
+  /* Initial curves range, copy original curves without mask. */
+  IndexRange dst_curves_range = src_curves.curves_range();
+  IndexRange dst_points_range = src_curves.points_range();
+  array_utils::fill_index_range(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
+  dst_curves.offsets_for_write()
+      .slice(dst_curves_range)
+      .copy_from(src_curves.offsets().drop_back(1));
+  // array_utils::copy(src_curves.positions().slice(dst_curves_range),
+  //                   dst_curves.positions_for_write().slice(dst_curves_range));
+
+  /* Add mirrored curve ranges, using the selection mask. */
+  Vector<float4x4> mirror_matrices;
+  mirror_matrices.reserve(mirror_copies);
+  for (const int mirror_x : IndexRange((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X) ? 2 : 1)) {
+    for (const int mirror_y : IndexRange((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y) ? 2 : 1)) {
+      for (const int mirror_z : IndexRange((omd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z) ? 2 : 1)) {
+        if (mirror_x == 0 && mirror_y == 0 && mirror_z == 0) {
+          /* Unmirrored original curve and vertices. */
+          continue;
+        }
+        /* Range of curves and points for the current mirrored part. */
+        dst_curves_range = dst_curves_range.after(selected_curve_num);
+        dst_points_range = dst_points_range.after(selected_point_num);
+
+        /* Copy curves mask indices to the mirrored section. */
+        curves_mask.to_indices(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
+        curves_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
+          dst_curves.offsets_for_write().slice(
+              dst_curves_range)[dst_i] = src_curves.offsets()[src_i];
+        });
+        // points_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i)
+        // {
+        //   dst_curves.positions_for_write().slice(
+        //       dst_points_range)[dst_i] = src_curves.positions()[src_i];
+        // });
+
+        // TODO
+        mirror_matrices.append(float4x4::identity());
+      }
+    }
+  }
+
+  // IndexMaskMemory curve_mask_new_memory;
+  // const IndexMask curve_mask_new = IndexMask::from_indices(dst_curve_indices.as_span(),
+  //                                                          curve_mask_new_memory);
+  // bke::AnonymousAttributePropagationInfo propagation_info;
+  // propagation_info.propagate_all = false;
+  // bke::gather_attributes(src_curves.attributes(),
+  //                        bke::AttrDomain::Curve,
+  //                        propagation_info,
+  //                        {},
+  //                        dst_curve_indices,
+  //                        dst_curves.attributes_for_write());
+  // bke::gather_attributes_group_to_group(src_curves.attributes(),
+  //                                       bke::AttrDomain::Point,
+  //                                       propagation_info,
+  //                                       {"position"},
+  //                                       src_curves.points_by_curve(),
+  //                                       dst_curves.points_by_curve(),
+  //                                       curve_mask_new,
+  //                                       dst_curves.attributes_for_write());
+
+  dst_curves.tag_positions_changed();
+  dst_curves.tag_topology_changed();
+}
+#endif
 
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
