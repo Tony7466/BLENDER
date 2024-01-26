@@ -35,8 +35,8 @@ struct RuntimeNodeEnumItem {
  * Shared immutable list of enum items.
  * These are owned by a node and can be referenced by node sockets.
  */
-struct RuntimeNodeEnumItems : blender::ImplicitSharingMixin {
-  blender::Vector<RuntimeNodeEnumItem> items;
+struct RuntimeNodeEnumItems : ImplicitSharingMixin {
+  Vector<RuntimeNodeEnumItem> items;
 
   void delete_self() override
   {
