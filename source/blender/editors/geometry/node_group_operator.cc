@@ -506,7 +506,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
   bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
 
-  /* The property should be created in #MOD_nodes_update_properties with the correct type. */
+  /* The property should be created in #MOD_nodes_update_interface with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(op_properties, socket.identifier);
 
   /* IDProperties can be removed with python, so there could be a situation where
