@@ -1219,6 +1219,8 @@ static bool brush_asset_write_in_library(Main *bmain,
 
   BKE_blendfile_write_partial_tag_ID(&brush->id, true);
 
+  /* TODO: check overwriting existing file. */
+  /* TODO: ensure filepath contains only valid characters for file system. */
   const bool sucess = BKE_blendfile_write_partial(
       bmain, filepath.c_str(), write_flags, remap_mode, reports);
 
