@@ -1304,6 +1304,7 @@ static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent
 
   RNA_string_set(op->ptr, "brush_name", brush->id.name + 2);
 
+  /* TODO: add information about the asset library this will be saved to? */
   return WM_operator_props_dialog_popup(C, op, 400);
 }
 
@@ -1341,6 +1342,7 @@ static void BRUSH_OT_asset_save_as(wmOperatorType *ot)
                  "Name used to save the brush asset");
 }
 
+/* TODO: this looks expensive for a poll function? */
 static bool brush_asset_is_editable(const AssetWeakReference &brush_weak_ref)
 {
   /* Fairly simple checks, based on filepath only:
@@ -1367,34 +1369,6 @@ static bool brush_asset_is_editable(const AssetWeakReference &brush_weak_ref)
   return true;
 }
 
-static int brush_asset_save_exec(bContext *C, wmOperator *op)
-{
-  Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = nullptr;
-  const AssetWeakReference *brush_weak_ref =
-      BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
-  if (!brush_weak_ref || !brush || !brush_asset_is_editable(*brush_weak_ref)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  char path_buffer[FILE_MAX_LIBEXTRA];
-  char *filepath;
-  AS_asset_full_path_explode_from_weak_ref(
-      brush_weak_ref, path_buffer, &filepath, nullptr, nullptr);
-
-  BLI_assert(BKE_paint_brush_is_valid_asset(brush));
-
-  std::string final_full_asset_filepath;
-  brush_asset_write_in_library(CTX_data_main(C),
-                               brush,
-                               brush->id.name + 2,
-                               filepath,
-                               final_full_asset_filepath,
-                               op->reports);
-
-  return OPERATOR_FINISHED;
-}
-
 static bool brush_asset_library_editable_poll(bContext *C)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
@@ -1411,16 +1385,6 @@ static bool brush_asset_library_editable_poll(bContext *C)
   }
 
   return brush_asset_is_editable(*brush_weak_ref);
-}
-
-static void BRUSH_OT_asset_save(wmOperatorType *ot)
-{
-  ot->name = "Save Brush Asset";
-  ot->description = "Re-save the active brush asset in the default asset library";
-  ot->idname = "BRUSH_OT_asset_save";
-
-  ot->exec = brush_asset_save_exec;
-  ot->poll = brush_asset_library_editable_poll;
 }
 
 static int brush_asset_delete_exec(bContext *C, wmOperator * /*op*/)
@@ -1464,6 +1428,66 @@ static void BRUSH_OT_asset_delete(wmOperatorType *ot)
 
   ot->exec = brush_asset_delete_exec;
   ot->invoke = WM_operator_confirm;
+  ot->poll = brush_asset_library_editable_poll;
+}
+
+static int brush_asset_update_exec(bContext *C, wmOperator *op)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = nullptr;
+  const AssetWeakReference *brush_weak_ref =
+      BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
+
+  char path_buffer[FILE_MAX_LIBEXTRA];
+  char *filepath;
+  AS_asset_full_path_explode_from_weak_ref(
+      brush_weak_ref, path_buffer, &filepath, nullptr, nullptr);
+
+  BLI_assert(BKE_paint_brush_is_valid_asset(brush));
+
+  std::string final_full_asset_filepath;
+  brush_asset_write_in_library(CTX_data_main(C),
+                               brush,
+                               brush->id.name + 2,
+                               filepath,
+                               final_full_asset_filepath,
+                               op->reports);
+
+  return OPERATOR_FINISHED;
+}
+
+static void BRUSH_OT_asset_update(wmOperatorType *ot)
+{
+  ot->name = "Update Brush Asset";
+  ot->description = "Update the active brush asset in the asset library with current settings";
+  ot->idname = "BRUSH_OT_asset_update";
+
+  ot->exec = brush_asset_update_exec;
+  ot->poll = brush_asset_library_editable_poll;
+}
+
+static int brush_asset_revert_exec(bContext *C, wmOperator *op)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = nullptr;
+  const AssetWeakReference *brush_weak_ref =
+      BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
+
+  /* TODO */
+  UNUSED_VARS(brush_weak_ref);
+  BKE_report(op->reports, RPT_ERROR, "Not implemented yet");
+
+  return OPERATOR_FINISHED;
+}
+
+static void BRUSH_OT_asset_revert(wmOperatorType *ot)
+{
+  ot->name = "Revert Brush Asset";
+  ot->description =
+      "Revert the active brush settings to the default values from the asset library";
+  ot->idname = "BRUSH_OT_asset_revert";
+
+  ot->exec = brush_asset_revert_exec;
   ot->poll = brush_asset_library_editable_poll;
 }
 
@@ -1930,8 +1954,9 @@ void ED_operatortypes_paint()
   WM_operatortype_append(BRUSH_OT_stencil_reset_transform);
   WM_operatortype_append(BRUSH_OT_asset_select);
   WM_operatortype_append(BRUSH_OT_asset_save_as);
-  WM_operatortype_append(BRUSH_OT_asset_save);
   WM_operatortype_append(BRUSH_OT_asset_delete);
+  WM_operatortype_append(BRUSH_OT_asset_update);
+  WM_operatortype_append(BRUSH_OT_asset_revert);
 
   /* NOTE: particle uses a different system, can be added with existing operators in `wm.py`. */
   WM_operatortype_append(PAINT_OT_brush_select);
