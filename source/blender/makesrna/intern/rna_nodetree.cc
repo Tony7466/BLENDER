@@ -3965,8 +3965,7 @@ static void rna_NodeEnumItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   const NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
-  bNode *node = find_node_by_enum_item(ntree, item);
-  BLI_assert(node != nullptr);
+  BLI_assert(find_node_by_enum_item(ntree, item) != nullptr);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
