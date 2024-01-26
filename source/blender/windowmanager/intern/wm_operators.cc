@@ -1932,12 +1932,8 @@ int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent * /*event
   return wm_operator_props_popup_ex(C, op, false, true);
 }
 
-int WM_operator_props_dialog_popup(bContext *C,
-                                   wmOperator *op,
-                                   int width,
-                                   const char *title,
-                                   const char *confirm_text,
-                                   bool cancel_default)
+int WM_operator_props_dialog_popup(
+    bContext *C, wmOperator *op, int width, const char *title, const char *confirm_text)
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
@@ -1946,7 +1942,7 @@ int WM_operator_props_dialog_popup(bContext *C,
   data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
   data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
                                                    confirm_text;
-  data->cancel_default = cancel_default;
+  data->cancel_default = false;
   data->mouse_move_quit = false;
   data->include_properties = true;
   data->position = WM_WARNING_POSITION_MOUSE;

@@ -713,8 +713,7 @@ int WM_operator_props_dialog_popup(bContext *C,
                                    wmOperator *op,
                                    int width,
                                    const char *title = nullptr,
-                                   const char *confirm_text = nullptr,
-                                   bool cancel_default = false);
+                                   const char *confirm_text = nullptr);
 
 int WM_operator_redo_popup(bContext *C, wmOperator *op);
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);
