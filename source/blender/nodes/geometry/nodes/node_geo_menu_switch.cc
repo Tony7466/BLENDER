@@ -56,7 +56,7 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
   const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
   const bool supports_fields = socket_type_supports_fields(data_type);
 
-  auto &menu = b.add_input<decl::Menu>("Menu").default_value(false);
+  auto &menu = b.add_input<decl::Menu>("Menu");
   if (supports_fields) {
     menu.supports_field();
   }
