@@ -274,7 +274,7 @@ struct GWL_WindowFrame {
   /**
    * The frame size (in GHOST window coordinates).
    *
-   * These must be converted to WAYLADN relative coordinates when the window is scaled
+   * These must be converted to WAYLAND relative coordinates when the window is scaled
    * by Hi-DPI/fractional scaling.
    */
   int32_t size[2] = {0, 0};
@@ -641,11 +641,6 @@ static bool gwl_window_viewport_size_update(GWL_Window *win)
   if (win->wp.viewport == nullptr) {
     return false;
   }
-  wp_viewport_set_source(win->wp.viewport,
-                         wl_fixed_from_int(0),
-                         wl_fixed_from_int(0),
-                         wl_fixed_from_int(win->frame.size[0]),
-                         wl_fixed_from_int(win->frame.size[1]));
   wp_viewport_set_destination(
       win->wp.viewport,
       gwl_window_fractional_from_viewport_round(win->frame, win->frame.size[0]),
