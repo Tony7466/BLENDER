@@ -249,6 +249,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   int drawing_start_offset = 0;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const Layer *layer = layers[info.layer_index];
+    const float4x4 layer_space_to_object_space = layer->runtime->transform_;
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const bke::AttributeAccessor attributes = curves.attributes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -261,9 +262,16 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const VArray<float> selection_float = *attributes.lookup_or_default<float>(
         ".selection", bke::AttrDomain::Point, true);
 
-    edit_points.slice(drawing_start_offset, curves.points_num()).copy_from(curves.positions());
-    MutableSpan<float> selection_slice = edit_points_selection.slice(drawing_start_offset,
-                                                                     curves.points_num());
+    const IndexRange points(drawing_start_offset, curves.points_num());
+    const Span<float3> positions = curves.positions();
+    MutableSpan<float3> positions_slice = edit_points.slice(points);
+    threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange range) {
+      for (const int point_i : range) {
+        positions_slice[point_i + drawing_start_offset] = math::transform_point(
+            layer_space_to_object_space, positions[point_i]);
+      }
+    });
+    MutableSpan<float> selection_slice = edit_points_selection.slice(points);
     /* Do not show selection for locked layers. */
     if (layer->is_locked()) {
       selection_slice.fill(0.0f);
@@ -479,6 +487,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   /* Fill buffers with data. */
   for (const int drawing_i : drawings.index_range()) {
     const ed::greasepencil::DrawingInfo &info = drawings[drawing_i];
+    const float4x4 layer_space_to_object_space =
+        grease_pencil.layers()[info.layer_index]->runtime->transform_;
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const bke::AttributeAccessor attributes = curves.attributes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -524,7 +534,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
                               float length,
                               GreasePencilStrokeVert &s_vert,
                               GreasePencilColorVert &c_vert) {
-      copy_v3_v3(s_vert.pos, positions[point_i]);
+      copy_v3_v3(s_vert.pos,
+                 math::transform_point(layer_space_to_object_space, positions[point_i]));
       s_vert.radius = radii[point_i] * ((end_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
       s_vert.opacity = opacities[point_i] *
                        ((start_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);

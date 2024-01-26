@@ -334,6 +334,9 @@ class LayerRuntime {
   /* Runtime data used for frame transformations. */
   LayerTransformData trans_data_;
 
+  /* Runtime transform data. */
+  float4x4 transform_;
+
  public:
   /* Reset all runtime data. */
   void clear();

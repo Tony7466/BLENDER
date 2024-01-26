@@ -297,6 +297,12 @@ typedef struct GreasePencilLayer {
   struct Object *parent;
   char parsubstr[64];
   /**
+   * Layer transform UI settings. These should *not* be used to do any computation. They are
+   * autoamtically included in the "transform" matrix attribute of the layer.
+   */
+  float translation[3], rotation[3], scale[3];
+  char _pad2[4];
+  /**
    * Runtime struct pointer.
    */
   GreasePencilLayerRuntimeHandle *runtime;
@@ -590,16 +596,6 @@ typedef struct GreasePencil {
 
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
-
-  blender::VArray<blender::float3> layer_translations() const;
-  blender::MutableSpan<blender::float3> layer_translations_for_write();
-
-  /* Represented as XYZ euler rotations. */
-  blender::VArray<blender::float3> layer_rotations() const;
-  blender::MutableSpan<blender::float3> layer_rotations_for_write();
-
-  blender::VArray<blender::float3> layer_scales() const;
-  blender::MutableSpan<blender::float3> layer_scales_for_write();
 
   /* For debugging purposes. */
   void print_layer_tree();

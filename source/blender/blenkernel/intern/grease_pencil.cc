@@ -259,12 +259,16 @@ DrawingTransforms::DrawingTransforms(const Object &eval_object, const int layer_
 {
   const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(eval_object.data);
 
-  const float3 translation = grease_pencil.layer_translations()[layer_index];
-  const math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[layer_index]);
-  const float3 scale = grease_pencil.layer_scales()[layer_index];
-  const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4>(translation, rot_euler, scale);
+  const Layer &layer = *grease_pencil.layers()[layer_index];
 
-  this->layer_space_to_world_space = layer_matrix * float4x4_view(eval_object.object_to_world);
+  // const float3 translation = grease_pencil.layer_translations()[layer_index];
+  // const math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[layer_index]);
+  // const float3 scale = grease_pencil.layer_scales()[layer_index];
+  // const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4>(translation, rot_euler,
+  // scale);
+
+  this->layer_space_to_world_space = layer.runtime->transform_ *
+                                     float4x4_view(eval_object.object_to_world);
   this->world_space_to_layer_space = math::invert(this->layer_space_to_world_space);
 }
 
@@ -677,6 +681,10 @@ Layer::Layer()
   this->parent = nullptr;
   this->parsubstr[0] = '\0';
 
+  zero_v3(this->translation);
+  zero_v3(this->rotation);
+  copy_v3_fl(this->scale, 1.0f);
+
   BLI_listbase_clear(&this->masks);
 
   this->runtime = MEM_new<LayerRuntime>(__func__);
@@ -693,7 +701,7 @@ Layer::Layer(const Layer &other) : Layer()
 
   /* TODO: duplicate masks. */
 
-  /* Note: We do not duplicate the frame storage since it is only needed for writing. */
+  /* Note: We do not duplicate the frame storage since it is only needed for writing to file. */
 
   this->blend_mode = other.blend_mode;
   this->opacity = other.opacity;
@@ -702,8 +710,13 @@ Layer::Layer(const Layer &other) : Layer()
   BLI_strncpy(
       this->parsubstr, other.parsubstr, sizeof(this->parsubstr) / sizeof(*this->parsubstr));
 
+  copy_v3_v3(this->translation, other.translation);
+  copy_v3_v3(this->rotation, other.rotation);
+  copy_v3_v3(this->scale, other.scale);
+
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
+  this->runtime->transform_ = other.runtime->transform_;
   /* TODO: what about masks cache? */
 }
 
@@ -1291,106 +1304,34 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
   return grease_pencil;
 }
 
-static bool grease_pencil_is_any_layer_parented(const Object *object)
-{
-  using namespace blender::bke::greasepencil;
-  const GreasePencil *grease_pencil = static_cast<const GreasePencil *>(object->data);
-  for (const Layer *layer : grease_pencil->layers()) {
-    if (layer->parent != nullptr) {
-      return true;
-    }
-  }
-  return false;
-}
-
-template<typename T> static bool all_equals(const blender::VArray<T> &varray, const T &value)
-{
-  using namespace blender;
-  if (varray.is_empty()) {
-    return false;
-  }
-  if (std::optional<T> single = varray.get_if_single()) {
-    if (*single != value) {
-      return false;
-    }
-    return true;
-  }
-  /* Do a linear search. Could be optimized. */
-  for (const int index : varray.index_range()) {
-    if (varray[index] != value) {
-      return false;
-    }
-  }
-  return true;
-}
-
-static bool grease_pencil_is_any_layer_transformed(const blender::bke::GeometrySet &geometry_set)
-{
-  using namespace blender;
-  BLI_assert(geometry_set.has_grease_pencil());
-  const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
-
-  /* Check if there is any translations. */
-  const VArray<float3> translations = grease_pencil.layer_translations();
-  if (!all_equals(translations, float3(0.0f))) {
-    return true;
-  }
-
-  /* Check if there is any rotations. */
-  const VArray<float3> rotations = grease_pencil.layer_rotations();
-  if (!all_equals(rotations, float3(0.0f))) {
-    return true;
-  }
-
-  /* Check if there is any scales. */
-  const VArray<float3> scales = grease_pencil.layer_scales();
-  if (!all_equals(scales, float3(1.0f))) {
-    return true;
-  }
-
-  return false;
-}
-
-static void grease_pencil_apply_parent_transform_to_layer_transforms(
-    const Object &object, blender::bke::GeometrySet &geometry_set)
+static void grease_pencil_initialize_layer_transforms(const Object &object,
+                                                      bool &r_is_any_transformed)
 {
   using namespace blender;
   using namespace blender::bke::greasepencil;
-  BLI_assert(geometry_set.has_grease_pencil());
-  GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
-  MutableSpan<float3> translations = grease_pencil.layer_translations_for_write();
-  MutableSpan<float3> rotations = grease_pencil.layer_rotations_for_write();
-  MutableSpan<float3> scales = grease_pencil.layer_scales_for_write();
-
-  for (const int layer_i : grease_pencil.layers().index_range()) {
-    Layer &layer = *grease_pencil.layers_for_write()[layer_i];
-    if (layer.parent == nullptr) {
-      continue;
+  for (Layer *layer : grease_pencil.layers_for_write()) {
+    if (layer->parent == nullptr) {
+      layer->runtime->transform_ = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
+          float3(layer->translation), float3(layer->rotation), float3(layer->scale));
     }
-    Object &parent = *layer.parent;
-    /* Get the parent matrix for this layer. */
-    const float4x4 parent_matrix = [&]() {
-      if (parent.type == OB_ARMATURE && layer.parsubstr[0] != '\0') {
-        if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer.parsubstr)) {
-          return float4x4_view(parent.object_to_world) * float4x4_view(channel->pose_mat);
+    else {
+      Object &parent = *layer->parent;
+      /* Get the parent matrix for this layer. */
+      const float4x4 parent_matrix = [&]() {
+        if (parent.type == OB_ARMATURE && layer->parsubstr[0] != '\0') {
+          if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer->parsubstr)) {
+            return float4x4_view(parent.object_to_world) * float4x4_view(channel->pose_mat);
+          }
         }
-      }
-      return float4x4(float4x4_view(parent.object_to_world));
-    }();
-
-    /* Calculate the current layer transform (layer space -> object space). */
-    const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
-        translations[layer_i], rotations[layer_i], scales[layer_i]);
-    /* Calculate the transform that takes the layer into the parent space. */
-    const float4x4 final_matrix = float4x4_view(object.world_to_object) * parent_matrix *
-                                  layer_matrix;
-    /* Write the result back to the layer transforms. */
-    math::EulerXYZ rot_euler;
-    math::to_loc_rot_scale<true>(final_matrix, translations[layer_i], rot_euler, scales[layer_i]);
-    rotations[layer_i] = float3(rot_euler);
-    /* Layer parent is no longer needed at this stage, clear the pointer. */
-    layer.parent = nullptr;
+        return float4x4(float4x4_view(parent.object_to_world));
+      }();
+      layer->runtime->transform_ = float4x4_view(object.world_to_object) * parent_matrix;
+    }
+    if (!math::is_equal(layer->runtime->transform_, float4x4::identity())) {
+      r_is_any_transformed = true;
+    }
   }
 }
 
@@ -1429,43 +1370,6 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
   }
 }
 
-static void grease_pencil_apply_layer_transforms(blender::bke::GeometrySet &geometry_set)
-{
-  using namespace blender;
-  using namespace blender::bke::greasepencil;
-  BLI_assert(geometry_set.has_grease_pencil());
-  GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
-  const int eval_frame = grease_pencil.runtime->eval_frame;
-
-  MutableSpan<float3> translations = grease_pencil.layer_translations_for_write();
-  MutableSpan<float3> rotations = grease_pencil.layer_rotations_for_write();
-  MutableSpan<float3> scales = grease_pencil.layer_scales_for_write();
-
-  for (const int layer_i : grease_pencil.layers().index_range()) {
-    const Layer &layer = *grease_pencil.layers()[layer_i];
-    if (!layer.is_visible()) {
-      continue;
-    }
-    Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, eval_frame);
-    if (drawing == nullptr) {
-      continue;
-    }
-    if (drawing->is_instanced()) {
-      /* TODO: Make a mutable copy of the drawing. */
-    }
-
-    /* Apply the transform to the drawing. */
-    const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
-        translations[layer_i], rotations[layer_i], scales[layer_i]);
-    drawing->strokes_for_write().transform(layer_matrix);
-
-    /* Reset the transform, since it was applied to the drawing. */
-    translations[layer_i] = float3(0.0f);
-    rotations[layer_i] = float3(0.0f);
-    scales[layer_i] = float3(1.0f);
-  }
-}
-
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
 {
   using namespace blender::bke;
@@ -1476,6 +1380,10 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
   /* Store the frame that this grease pencil is evaluated on. */
   grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
+  /* Initialize layer transforms. */
+  bool is_any_layer_transformed = false;
+  grease_pencil_initialize_layer_transforms(*object, is_any_layer_transformed);
+
   GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil,
                                                              GeometryOwnershipType::ReadOnly);
   /* Only add the edit hint component in edit mode for now so users can properly select deformed
@@ -1485,9 +1393,9 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
         geometry_set.get_component_for_write<GeometryComponentEditData>();
     edit_component.grease_pencil_edit_hints_ = std::make_unique<GreasePencilEditHints>(
         *static_cast<const GreasePencil *>(DEG_get_original_object(object)->data));
-  }
-  if (grease_pencil_is_any_layer_parented(object)) {
-    grease_pencil_apply_parent_transform_to_layer_transforms(*object, geometry_set);
+    if (is_any_layer_transformed) {
+      GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
+    }
   }
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
@@ -1495,12 +1403,6 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     GreasePencil *empty_grease_pencil = BKE_grease_pencil_new_nomain();
     empty_grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
     geometry_set.replace_grease_pencil(empty_grease_pencil);
-  }
-  else if (grease_pencil_is_any_layer_transformed(geometry_set)) {
-    /* TODO: Ideally we wouldn't need to apply the transforms to the geometry. Instead the
-     * transforms should be passed to the renderer. This would also avoid realizing drawing
-     * instances. */
-    grease_pencil_apply_layer_transforms(geometry_set);
   }
 
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
@@ -2589,51 +2491,6 @@ void GreasePencil::print_layer_tree()
 {
   using namespace blender::bke::greasepencil;
   this->root_group().print_nodes("Layer Tree:");
-}
-
-template<typename T>
-static blender::MutableSpan<T> get_mutable_layer_attribute(GreasePencil &grease_pencil,
-                                                           const blender::StringRefNull name,
-                                                           const T default_value = T())
-{
-  using namespace blender;
-  const int num = grease_pencil.layers().size();
-  const eCustomDataType type = bke::cpp_type_to_custom_data_type(blender::CPPType::get<T>());
-  CustomData &custom_data = grease_pencil.layers_data;
-  return get_mutable_span_attribute<T>(custom_data, name, type, num, default_value);
-}
-
-blender::VArray<blender::float3> GreasePencil::layer_translations() const
-{
-  return *this->attributes().lookup_or_default<float3>(
-      "translation", blender::bke::AttrDomain::Layer, float3(0.0f));
-}
-
-blender::MutableSpan<blender::float3> GreasePencil::layer_translations_for_write()
-{
-  return get_mutable_layer_attribute(*this, "translation", float3(0.0f));
-}
-
-blender::VArray<blender::float3> GreasePencil::layer_rotations() const
-{
-  return *this->attributes().lookup_or_default<blender::float3>(
-      "rotation", blender::bke::AttrDomain::Layer, blender::float3(0.0f));
-}
-
-blender::MutableSpan<blender::float3> GreasePencil::layer_rotations_for_write()
-{
-  return get_mutable_layer_attribute(*this, "rotation", blender::float3(0.0f));
-}
-
-blender::VArray<blender::float3> GreasePencil::layer_scales() const
-{
-  return *this->attributes().lookup_or_default<float3>(
-      "scale", blender::bke::AttrDomain::Layer, float3(1.0f));
-}
-
-blender::MutableSpan<blender::float3> GreasePencil::layer_scales_for_write()
-{
-  return get_mutable_layer_attribute(*this, "scale", float3(1.0f));
 }
 
 /** \} */
