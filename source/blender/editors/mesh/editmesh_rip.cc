@@ -18,7 +18,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_report.h"
 
 #include "BLT_translation.h"
@@ -36,7 +36,7 @@
 #include "bmesh.hh"
 #include "bmesh_tools.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 using blender::float2;
 using blender::float3;

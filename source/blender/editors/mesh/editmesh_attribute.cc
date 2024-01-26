@@ -13,7 +13,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
 #include "BKE_type_conversions.hh"
@@ -44,7 +44,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "mesh_intern.h"
+#include "mesh_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Delete Operator

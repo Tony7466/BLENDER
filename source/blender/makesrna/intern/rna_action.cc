@@ -23,13 +23,14 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_path.hh"
 
 #include "rna_internal.h"
 
 #include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
+
+#  include <algorithm>
 
 #  include "BLI_math_base.h"
 
@@ -38,6 +39,7 @@
 #  include "DEG_depsgraph.hh"
 
 #  include "ANIM_action.hh"
+#  include "ANIM_animdata.hh"
 #  include "ED_anim_api.hh"
 
 #  include "WM_api.hh"
@@ -224,7 +226,7 @@ static void rna_Action_active_pose_marker_set(PointerRNA *ptr,
 static int rna_Action_active_pose_marker_index_get(PointerRNA *ptr)
 {
   bAction *act = (bAction *)ptr->data;
-  return MAX2(act->active_marker - 1, 0);
+  return std::max(act->active_marker - 1, 0);
 }
 
 static void rna_Action_active_pose_marker_index_set(PointerRNA *ptr, int value)
@@ -364,28 +366,7 @@ static void rna_Action_show_errors_update(bContext *C, PointerRNA * /*ptr*/)
     return;
   }
 
-  /* Need to take off the flag before filtering, else the filter code would skip the FCurves, which
-   * have not yet been validated. */
-  ac.ads->filterflag &= ~ADS_FILTER_ONLY_ERRORS;
-  ListBase anim_data = {nullptr, nullptr};
-  const eAnimFilter_Flags filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FCURVESONLY;
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
-
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-    PointerRNA ptr;
-    PropertyRNA *prop;
-    PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
-    if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
-      fcu->flag &= ~FCURVE_DISABLED;
-    }
-    else {
-      fcu->flag |= FCURVE_DISABLED;
-    }
-  }
-
-  ANIM_animdata_freelist(&anim_data);
-  ac.ads->filterflag |= ADS_FILTER_ONLY_ERRORS;
+  blender::animrig::reevaluate_fcurve_errors(&ac);
 }
 
 static char *rna_DopeSheet_path(const PointerRNA * /*ptr*/)

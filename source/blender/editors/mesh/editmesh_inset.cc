@@ -19,7 +19,7 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_global.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_unit.hh"
 
 #include "RNA_access.hh"
@@ -38,7 +38,7 @@
 #include "ED_util.hh"
 #include "ED_view3d.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 struct InsetObjectStore {
   /** Must have a valid edit-mesh. */

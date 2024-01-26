@@ -17,7 +17,7 @@
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
@@ -39,7 +39,7 @@
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 static LinkNode *knifeproject_poly_from_object(const bContext *C, Object *ob, LinkNode *polys)
 {

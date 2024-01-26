@@ -21,7 +21,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_deform.h"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_report.h"
 
@@ -38,7 +38,7 @@
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Select Similar (Vert/Edge/Face) Operator - common

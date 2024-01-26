@@ -38,7 +38,7 @@
 #include "BKE_deform.h"
 #include "BKE_editmesh.hh"
 #include "BKE_key.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -74,7 +74,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 #include "bmesh_tools.hh"
 
@@ -3820,7 +3820,7 @@ static int edbm_shape_propagate_to_all_exec(bContext *C, wmOperator *op)
 
   if (tot_selected_verts_objects == 0) {
     if (!tot_locked) {
-        BKE_report(op->reports, RPT_ERROR, "No selected vertex");
+      BKE_report(op->reports, RPT_ERROR, "No selected vertex");
     }
     return OPERATOR_CANCELLED;
   }

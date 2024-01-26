@@ -25,7 +25,7 @@
 #include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_global.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
@@ -55,13 +55,13 @@
 
 #include "UI_interface.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 #undef DEBUG_TIME
 
-#include "PIL_time.h"
+#include "BLI_time.h"
 #ifdef DEBUG_TIME
-#  include "PIL_time_utildefines.h"
+#  include "BLI_time_utildefines.h"
 #endif
 
 Object *ED_pose_object_from_context(bContext *C)

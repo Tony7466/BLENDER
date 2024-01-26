@@ -14,7 +14,6 @@
 #include "DNA_windowmanager_types.h"
 
 #ifdef WITH_FREESTYLE
-#  include "BKE_customdata.hh"
 #  include "DNA_meshdata_types.h"
 #endif
 
@@ -24,7 +23,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_report.h"
 
 #include "ED_mesh.hh"
@@ -45,7 +44,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Path Select Struct & Properties

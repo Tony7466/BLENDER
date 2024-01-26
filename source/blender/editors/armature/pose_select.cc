@@ -24,7 +24,7 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
@@ -49,7 +49,7 @@
 #include "ANIM_bone_collections.hh"
 #include "ANIM_bonecolor.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 /* utility macros for storing a temp int in the bone (selection flag) */
 #define PBONE_PREV_FLAG_GET(pchan) ((void)0, POINTER_AS_INT((pchan)->temp))

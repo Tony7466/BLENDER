@@ -31,7 +31,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_mesh.hh"
 #include "BKE_report.h"
 
@@ -52,7 +52,7 @@
 #include "UI_view2d.hh"
 
 #include "intern/bmesh_marking.hh"
-#include "uvedit_intern.h"
+#include "uvedit_intern.hh"
 
 #include "bmesh_tools.hh"
 

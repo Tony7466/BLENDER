@@ -21,7 +21,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_mesh_mapping.hh" /* UvElementMap */
 #include "BKE_report.h"
 
@@ -34,7 +34,7 @@
 #include "WM_api.hh"
 
 #include "uvedit_clipboard_graph_iso.hh"
-#include "uvedit_intern.h" /* linker, extern "C" */
+#include "uvedit_intern.hh" /* linker, extern "C" */
 
 void UV_clipboard_free();
 

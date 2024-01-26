@@ -46,7 +46,7 @@
 #include "BKE_nla.h"
 
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -80,7 +80,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 #include "BLF_api.h"
 

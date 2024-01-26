@@ -36,7 +36,7 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_bvh.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_unit.hh"
@@ -66,7 +66,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "mesh_intern.h" /* Own include. */
+#include "mesh_intern.hh" /* Own include. */
 
 using namespace blender;
 

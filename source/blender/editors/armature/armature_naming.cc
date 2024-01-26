@@ -34,7 +34,7 @@
 #include "BKE_context.hh"
 #include "BKE_deform.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 
@@ -51,7 +51,7 @@
 
 #include "ANIM_bone_collections.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Unique Bone Name Utility (Edit Mode)

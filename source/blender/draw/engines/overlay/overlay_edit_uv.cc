@@ -15,7 +15,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_image.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_mask.h"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
@@ -27,7 +27,7 @@
 
 #include "ED_image.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "GPU_batch.h"
 

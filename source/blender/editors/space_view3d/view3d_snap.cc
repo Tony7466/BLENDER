@@ -24,9 +24,9 @@
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
-#include "BKE_mball.h"
+#include "BKE_mball.hh"
 #include "BKE_object.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -1044,7 +1044,7 @@ bool ED_view3d_minmax_verts(Object *obedit, float r_min[3], float r_max[3])
     }
     return changed;
   }
-  else if (obedit->type == OB_CURVES) {
+  if (obedit->type == OB_CURVES) {
     const Object &ob_orig = *DEG_get_original_object(obedit);
     const Curves &curves_id = *static_cast<const Curves *>(ob_orig.data);
     const bke::CurvesGeometry &curves = curves_id.geometry.wrap();

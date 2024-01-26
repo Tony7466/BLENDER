@@ -20,7 +20,7 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_bvh.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_report.h"
 
 #include "RNA_access.hh"
@@ -36,7 +36,7 @@
 
 #include "intern/bmesh_private.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 #include "tools/bmesh_boolean.hh"
 #include "tools/bmesh_intersect.hh"

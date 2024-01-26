@@ -22,7 +22,7 @@
 #include "BKE_action.h"
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_report.h"
@@ -47,7 +47,7 @@
 #include "ANIM_bone_collections.hh"
 #include "ANIM_bonecolor.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 /* utility macros for storing a temp int in the bone (selection flag) */
 #define EBONE_PREV_FLAG_GET(ebone) ((void)0, (ebone)->temp.i)

@@ -44,8 +44,8 @@
 /* vertex box select */
 #include "BKE_global.h"
 #include "BKE_main.hh"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
@@ -55,8 +55,8 @@
 #include "BKE_curve.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_layer.h"
-#include "BKE_mball.h"
+#include "BKE_layer.hh"
+#include "BKE_mball.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
@@ -104,7 +104,7 @@
 
 #include "view3d_intern.h" /* own include */
 
-// #include "PIL_time_utildefines.h"
+// #include "BLI_time_utildefines.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Public Utilities
