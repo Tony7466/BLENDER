@@ -34,7 +34,7 @@
 #include "BKE_collection.h"
 #include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 

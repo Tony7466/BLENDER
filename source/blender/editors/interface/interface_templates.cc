@@ -2373,20 +2373,22 @@ static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *prope
   return op;
 }
 
-void draw_export_controls(uiLayout *layout, PointerRNA *properties, int index)
+void draw_export_controls(uiLayout *layout, const char *label, int index)
 {
-  uiLayout *box = uiLayoutBox(layout);
-  uiLayout *row = uiLayoutRow(box, true);
-  uiItemR(row, properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemS(row);
-  uiItemIntO(row, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
-  uiItemIntO(row, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
+  uiItemL(layout, label, ICON_NONE);
+  uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
+  uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
 }
 
-void draw_export_properties(bContext *C, uiLayout *layout, IOHandlerData *data)
+void draw_export_properties(bContext *C,
+                            uiLayout *layout,
+                            PointerRNA *properties,
+                            IOHandlerData *data)
 {
-  wmOperator *const op = data->runtime.op;
+  uiLayout *box = uiLayoutBox(layout);
+  uiItemR(box, properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
 
+  wmOperator *const op = data->runtime.op;
   op->layout = layout;
   op->type->ui(C, op);
   op->layout = nullptr;
@@ -2419,9 +2421,10 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       data->runtime.op = minimal_operator_create(ot, &properties);
     }
 
-    if (uiLayout *panel_layout = uiLayoutPanel(C, layout, fh->label, &io_handler_ptr, "is_open")) {
-      draw_export_controls(panel_layout, &properties, index);
-      draw_export_properties(C, panel_layout, data);
+    PanelLayout panel = uiLayoutPanelWithHeader(C, layout, &io_handler_ptr, "is_open");
+    draw_export_controls(panel.header, fh->label, index);
+    if (panel.body) {
+      draw_export_properties(C, panel.body, &properties, data);
     }
   }
 }
