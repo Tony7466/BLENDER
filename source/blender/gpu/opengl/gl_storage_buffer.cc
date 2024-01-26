@@ -226,19 +226,16 @@ void GLStorageBuf::read(void *data)
     return;
   }
 
-  if (!persistent_ptr_) {
+  if (!persistent_ptr_ || !read_fence_) {
     this->async_flush_to_host();
   }
 
-  if (read_fence_) {
-    while (glClientWaitSync(read_fence_, GL_SYNC_FLUSH_COMMANDS_BIT, 1000) == GL_TIMEOUT_EXPIRED) {
-      /* Repeat until the data is ready.*/
-    }
-    glDeleteSync(read_fence_);
-    read_fence_ = 0;
+  while (glClientWaitSync(read_fence_, GL_SYNC_FLUSH_COMMANDS_BIT, 1000) == GL_TIMEOUT_EXPIRED) {
+    /* Repeat until the data is ready.*/
   }
+  glDeleteSync(read_fence_);
+  read_fence_ = 0;
 
-  /* Read data. NOTE: Unless explicitly synchronized with GPU work, results may not be ready. */
   memmove(data, persistent_ptr_, size_in_bytes_);
 }
 
