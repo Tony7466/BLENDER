@@ -62,9 +62,10 @@ class VIEW3D_MT_brush_context_menu(Menu):
             layout.operator("brush.reset")
         elif context.tool_settings.curves_sculpt:
             layout.prop_menu_enum(brush, "curves_sculpt_tool")
-            layout.operator("sculpt_curves.brush_asset_save_as")
-            layout.operator("sculpt_curves.brush_asset_save")
-            layout.operator("sculpt_curves.brush_asset_delete")
+
+        layout.operator("brush.asset_save_as")
+        layout.operator("brush.asset_save")
+        layout.operator("brush.asset_delete")
 
 
 class VIEW3D_MT_brush_gpencil_context_menu(Menu):
