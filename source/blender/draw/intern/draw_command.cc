@@ -792,6 +792,8 @@ void DrawMultiBuf::bind(RecordingState &state,
     }
   }
 
+  GPU_storagebuf_sync_as_indirect_buffer(command_buf_);
+
   GPU_debug_group_end();
 }
 
