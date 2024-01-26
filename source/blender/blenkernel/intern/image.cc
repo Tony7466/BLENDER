@@ -783,7 +783,17 @@ bool BKE_image_scale(Image *image, int width, int height)
   ImBuf *ibuf;
   void *lock;
 
-  ibuf = BKE_image_acquire_ibuf(image, nullptr, &lock);
+  /* Use the ImBuf associated with the active tile. Otherwise use the first tile. */
+  ImageUser iuser{};
+  if (image->source == IMA_SRC_TILED) {
+    BKE_imageuser_default(&iuser);
+    const ImageTile *active = static_cast<ImageTile *>(
+        BLI_findlink(&image->tiles, image->active_tile_index));
+    iuser.tile = active ? active->tile_number :
+                          static_cast<ImageTile *>(image->tiles.first)->tile_number;
+  }
+
+  ibuf = BKE_image_acquire_ibuf(image, image->source == IMA_SRC_TILED ? &iuser : nullptr, &lock);
 
   if (ibuf) {
     IMB_scaleImBuf(ibuf, width, height);
