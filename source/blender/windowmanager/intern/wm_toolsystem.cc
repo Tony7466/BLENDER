@@ -713,6 +713,7 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
       switch (tkey->mode) {
         /* Use the names of the enums for each brush tool. */
         case CTX_MODE_SCULPT:
+          return "builtin.brush";
         case CTX_MODE_PAINT_VERTEX:
         case CTX_MODE_PAINT_WEIGHT:
         case CTX_MODE_PAINT_TEXTURE:
