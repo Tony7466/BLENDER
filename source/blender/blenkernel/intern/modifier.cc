@@ -1034,7 +1034,10 @@ void BKE_modifier_check_uids_unique_and_report(const Object *object)
 
 void BKE_modifiers_persistent_uid_init(const Object &object, ModifierData &md)
 {
-  const uint64_t hash = blender::get_default_hash(blender::StringRef(md.name));
+  uint64_t hash = blender::get_default_hash(blender::StringRef(md.name));
+  if (object.id.lib) {
+    hash = blender::get_default_hash_2(hash, blender::StringRef(object.id.lib->filepath_abs));
+  }
   blender::RandomNumberGenerator rng{uint32_t(hash)};
   while (true) {
     const int new_uid = rng.get_int32();
