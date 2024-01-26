@@ -6,6 +6,7 @@
  * \ingroup edinterface
  */
 
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
@@ -57,8 +58,8 @@
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_layer.h"
+#include "BKE_idtype.hh"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_linestyle.h"
@@ -85,10 +86,10 @@
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
+#include "IMB_thumbs.hh"
 
 #include "RE_engine.h"
 
@@ -147,7 +148,7 @@ static int template_search_textbut_width(PointerRNA *ptr, PropertyRNA *name_prop
   }
 
   /* Clamp to some min/max width. */
-  return CLAMPIS(
+  return std::clamp(
       estimated_width, TEMPLATE_SEARCH_TEXTBUT_MIN_WIDTH, TEMPLATE_SEARCH_TEXTBUT_MIN_WIDTH * 3);
 }
 
@@ -7238,7 +7239,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *
   if (BLI_stat(path, &status) != -1) {
     char date_st[FILELIST_DIRENTRY_DATE_LEN], time_st[FILELIST_DIRENTRY_TIME_LEN];
     bool is_today, is_yesterday;
-    std::string day_string = ("");
+    std::string day_string;
     BLI_filelist_entry_datetime_to_string(
         nullptr, int64_t(status.st_mtime), false, time_st, date_st, &is_today, &is_yesterday);
     if (is_today || is_yesterday) {
@@ -7272,7 +7273,7 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *
   }
 
   if (thumb) {
-    float scale = (72.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
+    float scale = (72.0f * UI_SCALE_FAC) / float(std::max(thumb->x, thumb->y));
     short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
     UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);

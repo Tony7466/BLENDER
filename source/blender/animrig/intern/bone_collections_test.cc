@@ -6,7 +6,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 
 #include "ANIM_bone_collections.hh"
@@ -1495,6 +1495,35 @@ TEST_F(ANIM_armature_bone_collections_testlist, child_number_set__siblings)
   /* Move child0 to the last spot. */
   EXPECT_EQ(3, armature_bonecoll_child_number_set(&arm, child0, 2));
   EXPECT_TRUE(expect_bcolls({"root", "child1", "child2", "child0", "child1_0"}));
+}
+
+TEST_F(ANIM_armature_bone_collections_testlist, bone_collection_solo)
+{
+  EXPECT_FALSE(arm.flag & ARM_BCOLL_SOLO_ACTIVE) << "By default no solo'ing should be active";
+
+  /* Enable solo. */
+  EXPECT_FALSE(child1->flags & BONE_COLLECTION_SOLO);
+  ANIM_armature_bonecoll_solo_set(&arm, child1, true);
+  EXPECT_TRUE(child1->flags & BONE_COLLECTION_SOLO);
+  EXPECT_TRUE(arm.flag & ARM_BCOLL_SOLO_ACTIVE);
+
+  /* Enable solo on another bone collection. */
+  EXPECT_FALSE(child1_0->flags & BONE_COLLECTION_SOLO);
+  ANIM_armature_bonecoll_solo_set(&arm, child1_0, true);
+  EXPECT_TRUE(child1_0->flags & BONE_COLLECTION_SOLO);
+  EXPECT_TRUE(arm.flag & ARM_BCOLL_SOLO_ACTIVE);
+
+  /* Disable the first solo flag. */
+  EXPECT_TRUE(child1->flags & BONE_COLLECTION_SOLO);
+  ANIM_armature_bonecoll_solo_set(&arm, child1, false);
+  EXPECT_FALSE(child1->flags & BONE_COLLECTION_SOLO);
+  EXPECT_TRUE(arm.flag & ARM_BCOLL_SOLO_ACTIVE);
+
+  /* Disable the second solo flag. This should also disable the ARM_BCOLL_SOLO_ACTIVE flag. */
+  EXPECT_TRUE(child1_0->flags & BONE_COLLECTION_SOLO);
+  ANIM_armature_bonecoll_solo_set(&arm, child1_0, false);
+  EXPECT_FALSE(child1_0->flags & BONE_COLLECTION_SOLO);
+  EXPECT_FALSE(arm.flag & ARM_BCOLL_SOLO_ACTIVE);
 }
 
 class ANIM_armature_bone_collections_liboverrides
