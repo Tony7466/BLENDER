@@ -79,7 +79,6 @@ template<> void socket_data_id_user_increment(bNodeSocketValueMaterial &data)
 {
   id_us_plus(reinterpret_cast<ID *>(data.value));
 }
-/* Note: bNodeSocketValueMenu does not do user counting on the node tree reference. */
 
 /** \} */
 
@@ -108,7 +107,6 @@ template<> void socket_data_id_user_decrement(bNodeSocketValueMaterial &data)
 {
   id_us_min(reinterpret_cast<ID *>(data.value));
 }
-/* Note: bNodeSocketValueMenu does not do user counting on the node tree reference. */
 
 /** \} */
 
