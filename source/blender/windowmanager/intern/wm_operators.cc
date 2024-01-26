@@ -1740,7 +1740,6 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   {
     uiLayout *col = uiLayoutColumn(layout, false);
     uiBlock *col_block = uiLayoutGetBlock(col);
-
     uiBut *confirm_but;
     uiBut *cancel_but;
 
