@@ -5445,17 +5445,16 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_auto_keyframe_insert_needed", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", AUTOKEY_FLAG_INSERTNEEDED);
-  RNA_def_property_ui_text(
-      prop,
-      "Autokey Insert Needed",
-      "Auto-Keying will only insert keyframes for properties that have been modified");
+  RNA_def_property_ui_text(prop,
+                           "Autokey Insert Needed",
+                           "Auto-Keying will skip inserting keys that don't affect the animation");
 
   prop = RNA_def_property(srna, "use_keyframe_insert_needed", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", MANUALKEY_FLAG_INSERTNEEDED);
-  RNA_def_property_ui_text(prop,
-                           "Keyframe Insert Needed",
-                           "When manually inserting keyframes, do it only for "
-                           "properties that were modified");
+  RNA_def_property_ui_text(
+      prop,
+      "Keyframe Insert Needed",
+      "When keying manually, skip inserting keys that don't affect the animation");
 
   prop = RNA_def_property(srna, "use_visual_keying", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", KEYING_FLAG_VISUALKEY);
