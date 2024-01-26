@@ -2509,7 +2509,7 @@ static void ease_ease_modal_update(bContext *C, wmOperator *op)
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  const float width = RNA_float_get(op->ptr, "width");
+  const float width = RNA_float_get(op->ptr, "sharpness");
 
   ease_ease_graph_keys(&gso->ac, factor, width);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -2543,7 +2543,7 @@ static int ease_ease_exec(bContext *C, wmOperator *op)
   }
 
   const float factor = RNA_float_get(op->ptr, "factor");
-  const float width = RNA_float_get(op->ptr, "width");
+  const float width = RNA_float_get(op->ptr, "sharpness");
 
   ease_ease_graph_keys(&ac, factor, width);
 
@@ -2578,7 +2578,15 @@ void GRAPH_OT_ease_to_ease(wmOperatorType *ot)
                        -1.0f,
                        1.0f);
 
-  RNA_def_float(ot->srna, "width", 2.0f, 0.001f, FLT_MAX, "Width", "Foo", 0.01f, 16.0f);
+  RNA_def_float(ot->srna,
+                "sharpness",
+                2.0f,
+                0.001f,
+                FLT_MAX,
+                "Sharpness",
+                "Higher values make the change more abrupt",
+                0.01f,
+                16.0f);
 }
 
 /** \} */
