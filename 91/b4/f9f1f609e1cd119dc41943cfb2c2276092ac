@@ -1,2 +1,3 @@
 Referenced by issue #117520, Data Transfer modifier not working with Vertex Groups in 4.1 Alpha
 Referenced by pull request #117538, Fix #117520: Data Transfer modifier not working with Vertex Groups
+Referenced by commit eead38ab97f44a4190fd5545f4f2204a6209d40f, Fix #117520: Data Transfer modifier not working with Vertex Groups
