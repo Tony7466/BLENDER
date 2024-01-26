@@ -1681,23 +1681,12 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
   WM_operator_call_ex(C, op, true);
 }
 
+static void wm_operator_ui_popup_cancel(bContext *C, void *user_data);
+
 /* Only invoked by Cancel button in popups created with wm_block_dialog_create() */
 static void dialog_cancel_cb(bContext *C, void *arg1, void *arg2)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(arg1);
-  wmOperator *op = data->op;
-
-  if (op) {
-    if (op->type->cancel) {
-      op->type->cancel(C, op);
-    }
-
-    if (data->free_op) {
-      WM_operator_free(op);
-    }
-  }
-
-  MEM_delete(data);
+  wm_operator_ui_popup_cancel(C, arg1);
   uiBlock *block = static_cast<uiBlock *>(arg2);
   UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
   wmWindow *win = CTX_wm_window(C);
@@ -1946,17 +1935,17 @@ int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent * /*event
 int WM_operator_props_dialog_popup(bContext *C,
                                    wmOperator *op,
                                    int width,
-                                   std::string title,
-                                   std::string confirm_text,
+                                   const char *title,
+                                   const char *confirm_text,
                                    bool cancel_default)
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
   data->width = width * UI_SCALE_FAC;
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
-  data->title = (title.empty()) ? WM_operatortype_description(C, op->type, op->ptr) : title;
-  data->confirm_text = (confirm_text.empty()) ? WM_operatortype_name(op->type, op->ptr) :
-                                                confirm_text;
+  data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
+  data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
+                                                   confirm_text;
   data->cancel_default = cancel_default;
   data->mouse_move_quit = false;
   data->include_properties = true;
