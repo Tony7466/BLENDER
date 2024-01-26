@@ -26,14 +26,15 @@ VKDrawList::VKDrawList(int list_length)
 
 void VKDrawList::append(GPUBatch *gpu_batch, int instance_first, int instance_count)
 {
-  // Check for different batch.
+  /* Check for different batch. When batch is different the previous commands should be flushed to
+   * the gpu. */
   VKBatch *batch = unwrap(gpu_batch);
   if (batch_ != batch) {
     submit();
     batch_ = batch;
   }
 
-  // Record new command
+  /* Record the new command */
   const VKIndexBuffer *index_buffer = batch_->index_buffer_get();
   const bool is_indexed = index_buffer != nullptr;
   if (is_indexed) {
@@ -58,7 +59,7 @@ void VKDrawList::append(GPUBatch *gpu_batch, int instance_first, int instance_co
   }
   command_index_++;
 
-  // Submit commands when command buffer is full.
+  /* Submit commands when command buffer is full. */
   if (command_index_ == length_) {
     submit();
   }
