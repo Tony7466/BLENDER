@@ -51,19 +51,21 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
+namespace blender::ed::sculpt_paint {
+
 /* -------------------------------------------------------------------- */
 /** \name Poll Functions
  * \{ */
 
-bool CURVES_SCULPT_mode_poll(bContext *C)
+bool curves_sculpt_poll(bContext *C)
 {
   const Object *ob = CTX_data_active_object(C);
   return ob && ob->mode & OB_MODE_SCULPT_CURVES;
 }
 
-bool CURVES_SCULPT_mode_poll_view3d(bContext *C)
+bool curves_sculpt_poll_view3d(bContext *C)
 {
-  if (!CURVES_SCULPT_mode_poll(C)) {
+  if (!curves_sculpt_poll(C)) {
     return false;
   }
   if (CTX_wm_region_view3d(C) == nullptr) {
@@ -73,10 +75,6 @@ bool CURVES_SCULPT_mode_poll_view3d(bContext *C)
 }
 
 /** \} */
-
-namespace blender::ed::sculpt_paint {
-
-using blender::bke::CurvesGeometry;
 
 /* -------------------------------------------------------------------- */
 /** \name Brush Stroke Operator
@@ -115,7 +113,7 @@ float brush_strength_get(const Scene &scene,
 static std::unique_ptr<CurvesSculptStrokeOperation> start_brush_operation(
     bContext &C, wmOperator &op, const StrokeExtension &stroke_start)
 {
-  const BrushStrokeMode mode = static_cast<BrushStrokeMode>(RNA_enum_get(op.ptr, "mode"));
+  const BrushStrokeMode mode = BrushStrokeMode(RNA_enum_get(op.ptr, "mode"));
 
   const Scene &scene = *CTX_data_scene(&C);
   const CurvesSculpt &curves_sculpt = *scene.toolsettings->curves_sculpt;
@@ -294,7 +292,7 @@ static void curves_sculptmode_enter(bContext *C)
   copy_v3_v3_uchar(paint->paint_cursor_col, PAINT_CURSOR_SCULPT_CURVES);
   paint->paint_cursor_col[3] = 128;
 
-  ED_paint_cursor_start(&curves_sculpt->paint, CURVES_SCULPT_mode_poll_view3d);
+  ED_paint_cursor_start(&curves_sculpt->paint, curves_sculpt_poll_view3d);
   paint_init_pivot(ob, scene);
 
   /* Necessary to change the object mode on the evaluated object. */

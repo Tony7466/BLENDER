@@ -919,29 +919,26 @@ struct wmTimer {
   bool sleep;
 };
 
-enum wmWarningSize {
+enum wmConfirmSize {
   WM_WARNING_SIZE_SMALL = 0,
   WM_WARNING_SIZE_LARGE,
 };
 
-enum wmWarningPosition {
+enum wmConfirmPosition {
   WM_WARNING_POSITION_MOUSE = 0,
   WM_WARNING_POSITION_CENTER,
 };
 
-struct wmWarningDetails {
-  char title[1024];
-  char message[1024];
-  char message2[1024];
-  char confirm_button[256];
-  char cancel_button[256];
+struct wmConfirmDetails {
+  std::string title;
+  std::string message;
+  std::string message2;
+  std::string confirm_text;
   int icon;
-  wmWarningSize size;
-  wmWarningPosition position;
-  bool confirm_default;
+  wmConfirmSize size;
+  wmConfirmPosition position;
   bool cancel_default;
   bool mouse_move_quit;
-  bool red_alert;
 };
 
 /**
@@ -1074,7 +1071,7 @@ struct wmOperatorType {
   /**
    * If using WM_operator_confirm the following can override all parts of the dialog.
    */
-  void (*warning)(bContext *C, wmOperator *, wmWarningDetails *warning);
+  void (*confirm)(bContext *C, wmOperator *, wmConfirmDetails *details);
 
   /** RNA for properties */
   StructRNA *srna;
@@ -1224,10 +1221,10 @@ struct wmDragGreasePencilLayer {
   GreasePencilLayer *layer;
 };
 
-using WMDropboxTooltipFunc = char *(*)(bContext *C,
-                                       wmDrag *drag,
-                                       const int xy[2],
-                                       wmDropBox *drop);
+using WMDropboxTooltipFunc = std::string (*)(bContext *C,
+                                             wmDrag *drag,
+                                             const int xy[2],
+                                             wmDropBox *drop);
 
 struct wmDragActiveDropState {
   wmDragActiveDropState();

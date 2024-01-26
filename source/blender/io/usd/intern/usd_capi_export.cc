@@ -29,7 +29,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_collection.h"
 #include "BKE_context.hh"

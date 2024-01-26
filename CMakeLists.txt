@@ -42,8 +42,8 @@ if(NOT DEFINED CMAKE_BUILD_TYPE_INIT)
   set(CMAKE_BUILD_TYPE_INIT "Release")
   # Internal logic caches this variable, avoid showing it by default
   # since it's easy to accidentally set instead of the build type.
-  mark_as_advanced(CMAKE_BUILD_TYPE_INIT)
 endif()
+mark_as_advanced(CMAKE_BUILD_TYPE_INIT)
 
 # Omit superfluous "Up-to-date" messages.
 if(NOT DEFINED CMAKE_INSTALL_MESSAGE)
@@ -110,7 +110,7 @@ enable_testing()
 # -----------------------------------------------------------------------------
 # Test Compiler Support
 #
-# Keep in sync with: https://wiki.blender.org/wiki/Building_Blender
+# Keep in sync with: https://developer.blender.org/docs/handbook/building_blender/
 
 if(CMAKE_COMPILER_IS_GNUCC)
   if("${CMAKE_C_COMPILER_VERSION}" VERSION_LESS "11.0.0")
@@ -1234,10 +1234,10 @@ if(WITH_PYTHON)
   # Do this before main 'platform_*' checks,
   # because UNIX will search for the old Python paths which may not exist.
   # giving errors about missing paths before this case is met.
-  if(DEFINED PYTHON_VERSION AND "${PYTHON_VERSION}" VERSION_LESS "3.10")
+  if(DEFINED PYTHON_VERSION AND "${PYTHON_VERSION}" VERSION_LESS "3.11")
     message(
       FATAL_ERROR
-      "At least Python 3.10 is required to build, but found Python ${PYTHON_VERSION}"
+      "At least Python 3.11 is required to build, but found Python ${PYTHON_VERSION}"
     )
   endif()
 

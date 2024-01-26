@@ -25,7 +25,7 @@
 
 #include "BKE_animsys.h"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 
 #include "ANIM_armature_iter.hh"
@@ -73,13 +73,13 @@ BoneCollection *ANIM_bonecoll_new(const char *name)
   return bcoll;
 }
 
-void ANIM_bonecoll_free(BoneCollection *bcoll)
+void ANIM_bonecoll_free(BoneCollection *bcoll, const bool do_id_user_count)
 {
   BLI_assert_msg(BLI_listbase_is_empty(&bcoll->bones),
                  "bone collection still has bones assigned to it, will cause dangling pointers in "
                  "bone runtime data");
   if (bcoll->prop) {
-    IDP_FreeProperty(bcoll->prop);
+    IDP_FreeProperty_ex(bcoll->prop, do_id_user_count);
   }
   MEM_delete(bcoll);
 }
@@ -614,6 +614,9 @@ void ANIM_armature_bonecoll_remove_from_index(bArmature *armature, int index)
 
   BoneCollection *bcoll = armature->collection_array[index];
 
+  /* Get the active bone collection index before the armature is manipulated. */
+  const int active_collection_index = armature->runtime.active_collection_index;
+
   /* The parent needs updating, so better to find it before this bone collection is removed. */
   int parent_bcoll_index = armature_bonecoll_find_parent_index(armature, index);
   BoneCollection *parent_bcoll = parent_bcoll_index >= 0 ?
@@ -670,7 +673,6 @@ void ANIM_armature_bonecoll_remove_from_index(bArmature *armature, int index)
   armature->collection_array[armature->collection_array_num] = nullptr;
 
   /* Update the active BoneCollection. */
-  const int active_collection_index = armature->runtime.active_collection_index;
   if (active_collection_index >= 0) {
     /* Default: select the next sibling.
      * If there is none: select the previous sibling.
@@ -694,7 +696,13 @@ void ANIM_armature_bonecoll_remove_from_index(bArmature *armature, int index)
     }
   }
 
+  const bool is_solo = bcoll->is_solo();
   internal::bonecoll_unassign_and_free(armature, bcoll);
+  if (is_solo) {
+    /* This might have been the last solo'ed bone collection, so check whether
+     * solo'ing should still be active on the armature. */
+    ANIM_armature_refresh_solo_active(armature);
+  }
 }
 
 void ANIM_armature_bonecoll_remove(bArmature *armature, BoneCollection *bcoll)
@@ -736,7 +744,7 @@ static void ancestors_visible_descendants_clear(bArmature *armature, BoneCollect
 /** Set or clear #BONE_COLLECTION_ANCESTORS_VISIBLE on all descendants of this bone collection. */
 static void ancestors_visible_descendants_update(bArmature *armature, BoneCollection *parent_bcoll)
 {
-  if (!parent_bcoll->is_visible_effectively()) {
+  if (!parent_bcoll->is_visible_with_ancestors()) {
     /* If this bone collection is not visible itself, or any of its ancestors are
      * invisible, all descendants have an invisible ancestor. */
     ancestors_visible_descendants_clear(armature, parent_bcoll);
@@ -757,7 +765,7 @@ static void ancestors_visible_update(bArmature *armature,
                                      const BoneCollection *parent_bcoll,
                                      BoneCollection *bcoll)
 {
-  if (parent_bcoll == nullptr || parent_bcoll->is_visible_effectively()) {
+  if (parent_bcoll == nullptr || parent_bcoll->is_visible_with_ancestors()) {
     bcoll->flags |= BONE_COLLECTION_ANCESTORS_VISIBLE;
   }
   else {
@@ -788,6 +796,54 @@ void ANIM_armature_bonecoll_is_visible_set(bArmature *armature,
   else {
     ANIM_bonecoll_hide(armature, bcoll);
   }
+}
+
+void ANIM_armature_bonecoll_solo_set(bArmature *armature,
+                                     BoneCollection *bcoll,
+                                     const bool is_solo)
+{
+  if (is_solo) {
+    /* Enabling solo is simple. */
+    bcoll->flags |= BONE_COLLECTION_SOLO;
+    armature->flag |= ARM_BCOLL_SOLO_ACTIVE;
+    return;
+  }
+
+  /* Disabling is harder, as the armature flag can only be disabled when there
+   * are no more bone collections with the SOLO flag set. */
+  bcoll->flags &= ~BONE_COLLECTION_SOLO;
+  ANIM_armature_refresh_solo_active(armature);
+}
+
+void ANIM_armature_refresh_solo_active(bArmature *armature)
+{
+  bool any_bcoll_solo = false;
+  for (const BoneCollection *bcoll : armature->collections_span()) {
+    if (bcoll->flags & BONE_COLLECTION_SOLO) {
+      any_bcoll_solo = true;
+      break;
+    }
+  }
+
+  if (any_bcoll_solo) {
+    armature->flag |= ARM_BCOLL_SOLO_ACTIVE;
+  }
+  else {
+    armature->flag &= ~ARM_BCOLL_SOLO_ACTIVE;
+  }
+}
+
+bool ANIM_armature_bonecoll_is_visible_effectively(const bArmature *armature,
+                                                   const BoneCollection *bcoll)
+{
+  const bool is_solo_active = armature->flag & ARM_BCOLL_SOLO_ACTIVE;
+
+  if (is_solo_active) {
+    /* If soloing is active, nothing in the hierarchy matters except the solo flag. */
+    return bcoll->is_solo();
+  }
+
+  return bcoll->is_visible_with_ancestors();
 }
 
 /* Store the bone's membership on the collection. */
@@ -923,7 +979,8 @@ void ANIM_armature_bonecoll_reconstruct(bArmature *armature)
   });
 }
 
-static bool any_bone_collection_visible(const ListBase /*BoneCollectionRef*/ *collection_refs)
+static bool any_bone_collection_visible(const bArmature *armature,
+                                        const ListBase /*BoneCollectionRef*/ *collection_refs)
 {
   /* Special case: when a bone is not in any collection, it is visible. */
   if (BLI_listbase_is_empty(collection_refs)) {
@@ -932,23 +989,20 @@ static bool any_bone_collection_visible(const ListBase /*BoneCollectionRef*/ *co
 
   LISTBASE_FOREACH (const BoneCollectionReference *, bcoll_ref, collection_refs) {
     const BoneCollection *bcoll = bcoll_ref->bcoll;
-    if (bcoll->is_visible_effectively()) {
+    if (ANIM_armature_bonecoll_is_visible_effectively(armature, bcoll)) {
       return true;
     }
   }
   return false;
 }
 
-/* TODO: these two functions were originally implemented for armature layers, hence the armature
- * parameters. These should be removed at some point. */
-
-bool ANIM_bone_in_visible_collection(const bArmature * /*armature*/, const Bone *bone)
+bool ANIM_bone_in_visible_collection(const bArmature *armature, const Bone *bone)
 {
-  return any_bone_collection_visible(&bone->runtime.collections);
+  return any_bone_collection_visible(armature, &bone->runtime.collections);
 }
-bool ANIM_bonecoll_is_visible_editbone(const bArmature * /*armature*/, const EditBone *ebone)
+bool ANIM_bonecoll_is_visible_editbone(const bArmature *armature, const EditBone *ebone)
 {
-  return any_bone_collection_visible(&ebone->bone_collections);
+  return any_bone_collection_visible(armature, &ebone->bone_collections);
 }
 
 void ANIM_armature_bonecoll_show_all(bArmature *armature)
@@ -1157,6 +1211,9 @@ bool armature_bonecoll_is_descendant_of(const bArmature *armature,
                                         const int potential_parent_index,
                                         const int potential_descendant_index)
 {
+  BLI_assert_msg(potential_descendant_index >= 0,
+                 "Potential descendant has to exist for this function call to make sense.");
+
   if (armature_bonecoll_is_child_of(armature, potential_parent_index, potential_descendant_index))
   {
     /* Found a direct child. */
