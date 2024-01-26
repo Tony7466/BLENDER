@@ -4973,55 +4973,11 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-uiLayout *uiLayoutPanelHeader(const bContext *C,
-                              uiLayout *layout,
-                              const char *name,
-                              PointerRNA *open_prop_owner,
-                              const char *open_prop_name)
-{
-  const ARegion *region = CTX_wm_region(C);
-
-  const bool is_real_open = RNA_boolean_get(open_prop_owner, open_prop_name);
-  const bool search_filter_active = region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE;
-  const bool is_open = is_real_open || search_filter_active;
-
-  uiLayoutItemPanelHeader *header_litem = MEM_cnew<uiLayoutItemPanelHeader>(__func__);
-  uiLayout *litem = &header_litem->litem;
-  ui_litem_init_from_parent(litem, layout, false);
-  litem->item.type = ITEM_LAYOUT_PANEL_HEADER;
-
-  header_litem->open_prop_owner = *open_prop_owner;
-  STRNCPY(header_litem->open_prop_name, open_prop_name);
-
-  uiLayout *row = uiLayoutRow(litem, true);
-  uiBlock *block = uiLayoutGetBlock(row);
-  const int icon = is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW;
-  const int width = ui_text_icon_width(layout, name, icon, false);
-  uiDefIconTextBut(block,
-                   UI_BTYPE_LABEL,
-                   0,
-                   icon,
-                   name,
-                   0,
-                   0,
-                   width,
-                   UI_UNIT_Y * 1.2f,
-                   nullptr,
-                   0.0,
-                   0.0,
-                   0.0,
-                   0.0,
-                   "");
-
-  return row;
-}
-
 uiLayout *uiLayoutPanel(const bContext *C,
                         uiLayout *layout,
                         const char *name,
                         PointerRNA *open_prop_owner,
-                        const char *open_prop_name,
-                        bool create_header)
+                        const char *open_prop_name)
 {
   const ARegion *region = CTX_wm_region(C);
 
@@ -5029,8 +4985,35 @@ uiLayout *uiLayoutPanel(const bContext *C,
   const bool search_filter_active = region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE;
   const bool is_open = is_real_open || search_filter_active;
 
-  if (create_header) {
-    uiLayoutPanelHeader(C, layout, name, open_prop_owner, open_prop_name);
+  {
+    uiLayoutItemPanelHeader *header_litem = MEM_cnew<uiLayoutItemPanelHeader>(__func__);
+    uiLayout *litem = &header_litem->litem;
+    ui_litem_init_from_parent(litem, layout, false);
+    litem->item.type = ITEM_LAYOUT_PANEL_HEADER;
+
+    header_litem->open_prop_owner = *open_prop_owner;
+    STRNCPY(header_litem->open_prop_name, open_prop_name);
+
+    UI_block_layout_set_current(layout->root->block, litem);
+
+    uiBlock *block = uiLayoutGetBlock(layout);
+    const int icon = is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW;
+    const int width = ui_text_icon_width(layout, name, icon, false);
+    uiDefIconTextBut(block,
+                     UI_BTYPE_LABEL,
+                     0,
+                     icon,
+                     name,
+                     0,
+                     0,
+                     width,
+                     UI_UNIT_Y * 1.2f,
+                     nullptr,
+                     0.0,
+                     0.0,
+                     0.0,
+                     0.0,
+                     "");
   }
 
   if (!is_open) {

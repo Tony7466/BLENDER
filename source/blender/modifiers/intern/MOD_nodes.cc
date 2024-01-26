@@ -1906,7 +1906,7 @@ static void draw_interface_panel_content(const bContext *C,
       PointerRNA panel_ptr = RNA_pointer_create(
           modifier_ptr->owner_id, &RNA_NodesModifierPanel, panel);
       if (uiLayout *panel_layout = uiLayoutPanel(
-              C, layout, sub_interface_panel.name, &panel_ptr, "is_open", true))
+              C, layout, sub_interface_panel.name, &panel_ptr, "is_open"))
       {
         draw_interface_panel_content(
             C, panel_layout, modifier_ptr, nmd, sub_interface_panel, next_input_index);
@@ -2066,12 +2066,12 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, ptr);
 
   if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, TIP_("Output Attributes"), ptr, "open_output_attributes_panel", true))
+          C, layout, TIP_("Output Attributes"), ptr, "open_output_attributes_panel"))
   {
     draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
   }
   if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, TIP_("Internal Dependencies"), ptr, "open_internal_dependencies_panel", true))
+          C, layout, TIP_("Internal Dependencies"), ptr, "open_internal_dependencies_panel"))
   {
     draw_internal_dependencies_panel(panel_layout, ptr, *nmd);
   }
