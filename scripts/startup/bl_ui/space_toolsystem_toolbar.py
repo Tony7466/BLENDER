@@ -1395,7 +1395,7 @@ class _defs_sculpt:
                 dict(
                     idname="builtin.brush",
                     label=brush.name,
-                    icon="builtin_brush.paint",
+                    icon="brush.sculpt.paint",
                     data_block=tool
                 )
             )
@@ -2460,7 +2460,7 @@ class _defs_curves_sculpt:
                 dict(
                     idname="builtin.brush",
                     label=brush.name,
-                    icon="builtin_brush.paint",
+                    icon="brush.sculpt.paint",
                     data_block=tool
                 )
             )
