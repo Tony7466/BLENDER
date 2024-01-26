@@ -998,7 +998,7 @@ static void ui_node_draw_input(uiLayout &layout,
           break;
         }
         case SOCK_MENU:
-          uiItemL(sub, "MENU SOCKET TODO", ICON_NONE);
+          uiItemL(sub, RPT_("Unsupported Menu Socket"), ICON_NONE);
           break;
         case SOCK_CUSTOM:
           input.typeinfo->draw(&C, sub, &inputptr, &nodeptr, input.name);
