@@ -43,8 +43,7 @@ static bool is_supported_socket_type(const eNodeSocketDatatype data_type)
               SOCK_OBJECT,
               SOCK_COLLECTION,
               SOCK_MATERIAL,
-              SOCK_IMAGE,
-              SOCK_MENU);
+              SOCK_IMAGE);
 }
 
 static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
