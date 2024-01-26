@@ -8,8 +8,6 @@
 
 #pragma once
 
-#include "BLI_vector.hh"
-
 #include "gpu_drawlist_private.hh"
 
 #include "vk_storage_buffer.hh"
