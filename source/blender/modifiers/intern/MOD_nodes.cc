@@ -2125,19 +2125,16 @@ static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
 {
   auto &data_block = *static_cast<NodesModifierDataBlock *>(itemptr->data);
   uiLayout *row = uiLayoutRow(layout, true);
-  uiLayoutSetRedAlert(row, data_block.id == nullptr);
-  const int icon = UI_icon_from_idcode(data_block.id_type);
-  if (!data_block.id) {
-    uiItemL(row, data_block.id_name, icon);
-  }
-  else if (bake::BakeDataBlockID(*data_block.id) == bake::BakeDataBlockID(data_block)) {
-    uiItemL(row, data_block.id_name, icon);
+
+  std::string name;
+  if (StringRef(data_block.lib_name).is_empty()) {
+    name = data_block.id_name;
   }
   else {
-    const char *format_str = IFACE_("{} " UI_MENU_ARROW_SEP " {}");
-    std::string label = fmt::format(format_str, data_block.id_name, data_block.id->name + 2);
-    uiItemL(row, label.c_str(), icon);
+    name = fmt::format("{} [{}]", data_block.id_name, data_block.lib_name);
   }
+
+  uiItemR(row, itemptr, "id", UI_ITEM_NONE, name.c_str(), ICON_NONE);
 }
 
 static void draw_bake_data_blocks_panel(const bContext *C,
@@ -2182,24 +2179,6 @@ static void draw_bake_data_blocks_panel(const bContext *C,
                     nmd.modifier.name);
     }
   }
-
-  if (nmd.active_data_block < 0 || nmd.active_data_block >= nmd.data_blocks_num) {
-    return;
-  }
-  NodesModifierDataBlock &data_block = nmd.data_blocks[nmd.active_data_block];
-
-  PointerRNA data_block_ptr = RNA_pointer_create(
-      modifier_ptr->owner_id, &RNA_NodesModifierDataBlock, &data_block);
-
-  {
-    uiLayout *col = uiLayoutColumn(layout, true);
-    {
-      uiLayout *subcol = uiLayoutColumn(col, true);
-      uiItemR(subcol, &data_block_ptr, "id_name", UI_ITEM_NONE, "Name", ICON_NONE);
-      uiItemR(subcol, &data_block_ptr, "lib_name", UI_ITEM_NONE, "Library Name", ICON_NONE);
-    }
-    uiItemR(col, &data_block_ptr, "id", UI_ITEM_NONE, "Data-Block", ICON_NONE);
-  }
 }
 
 static void draw_bake_panel(const bContext *C,
@@ -2213,7 +2192,7 @@ static void draw_bake_panel(const bContext *C,
   uiItemR(col, modifier_ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake Path"), ICON_NONE);
 
   if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, "Data-Blocks", modifier_ptr, "open_bake_data_blocks_panel"))
+          C, layout, "Referenced Data", modifier_ptr, "open_bake_data_blocks_panel"))
   {
     draw_bake_data_blocks_panel(C, panel_layout, modifier_ptr, nmd);
   }
