@@ -485,10 +485,10 @@ class NodeTreeMainUpdater {
     this->make_node_previews_dirty(ntree);
 
     this->propagate_runtime_flags(ntree);
-    if (this->propagate_enum_definitions(ntree)) {
-      result.interface_changed = true;
-    }
     if (ntree.type == NTREE_GEOMETRY) {
+      if (this->propagate_enum_definitions(ntree)) {
+        result.interface_changed = true;
+      }
       if (node_field_inferencing::update_field_inferencing(ntree)) {
         result.interface_changed = true;
       }
