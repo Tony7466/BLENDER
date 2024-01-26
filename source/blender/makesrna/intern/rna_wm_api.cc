@@ -229,7 +229,7 @@ static int rna_Operator_props_dialog_popup(bContext *C,
 {
   title = RNA_translate_ui_text(title, text_ctxt, nullptr, nullptr, translate);
   confirm_text = RNA_translate_ui_text(confirm_text, text_ctxt, nullptr, nullptr, translate);
-  return WM_operator_props_dialog_popup(C, op, width);
+  return WM_operator_props_dialog_popup(C, op, width, title, confirm_text, cancel_default);
 }
 
 static int keymap_item_modifier_flag_from_args(bool any, int shift, int ctrl, int alt, int oskey)
