@@ -218,6 +218,20 @@ static int rna_Operator_props_popup(bContext *C, wmOperator *op, wmEvent *event)
   return WM_operator_props_popup(C, op, event);
 }
 
+static int rna_Operator_props_dialog_popup(bContext *C,
+                                           wmOperator *op,
+                                           const int width,
+                                           const char *title,
+                                           const char *confirm_text,
+                                           const bool cancel_default,
+                                           const char *text_ctxt,
+                                           const bool translate)
+{
+  title = RNA_translate_ui_text(title, text_ctxt, nullptr, nullptr, translate);
+  confirm_text = RNA_translate_ui_text(confirm_text, text_ctxt, nullptr, nullptr, translate);
+  return WM_operator_props_dialog_popup(C, op, width);
+}
+
 static int keymap_item_modifier_flag_from_args(bool any, int shift, int ctrl, int alt, int oskey)
 {
   int modifier = 0;
@@ -859,12 +873,34 @@ void RNA_api_wm(StructRNA *srna)
   rna_generic_op_invoke(func, WM_GEN_INVOKE_EVENT | WM_GEN_INVOKE_RETURN);
 
   /* invoked dialog opens popup with OK button, does not auto-exec operator. */
-  func = RNA_def_function(srna, "invoke_props_dialog", "WM_operator_props_dialog_popup");
+  func = RNA_def_function(srna, "invoke_props_dialog", "rna_Operator_props_dialog_popup");
   RNA_def_function_ui_description(
       func,
       "Operator dialog (non-autoexec popup) invoke "
       "(show operator properties and only execute it on click on OK button)");
   rna_generic_op_invoke(func, WM_GEN_INVOKE_SIZE | WM_GEN_INVOKE_RETURN);
+
+  parm = RNA_def_property(func, "title", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(parm, "Title", "Optional text to show as title of the title.");
+  parm = RNA_def_property(func, "confirm_text", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      parm,
+      "Confirm Text",
+      "Optional text to show instead to the default \"OK\" confirmation button text.");
+  parm = RNA_def_property(func, "cancel_default", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(parm,
+                           "Cancel Default",
+                           "Whether the cancel button should be the default button instead of the "
+                           "confirmation button.");
+  parm = RNA_def_string(func,
+                        "text_ctxt",
+                        nullptr,
+                        0,
+                        "",
+                        "Override automatic translation context of the given text");
+  RNA_def_property_clear_flag(parm, PROP_NEVER_NULL);
+  RNA_def_boolean(
+      func, "translate", true, "", "Translate the given text, when UI translation is enabled");
 
   /* invoke enum */
   func = RNA_def_function(srna, "invoke_search_popup", "rna_Operator_enum_search_invoke");
