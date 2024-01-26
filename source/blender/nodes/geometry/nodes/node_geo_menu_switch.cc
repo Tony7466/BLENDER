@@ -62,7 +62,7 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
   }
 
   for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
-    const std::string identifier = "Item" + std::to_string(enum_item.identifier);
+    const std::string identifier = "Item_" + std::to_string(enum_item.identifier);
     auto &input = b.add_input(data_type, enum_item.name, std::move(identifier));
     if (supports_fields) {
       input.supports_field();
