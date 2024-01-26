@@ -2,10 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_node_types.h"
-
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
+
+#include "DNA_array_utils.hh"
+#include "DNA_node_types.h"
 
 #include "BKE_node.h"
 #include "BKE_node_enum.hh"
@@ -49,54 +50,47 @@ NodeEnumItem *NodeEnumDefinition::add_item(blender::StringRef name)
   return &new_item;
 }
 
+static void free_enum_item(NodeEnumItem *item)
+{
+  MEM_SAFE_FREE(item->name);
+  MEM_SAFE_FREE(item->description);
+}
+
 bool NodeEnumDefinition::remove_item(NodeEnumItem &item)
 {
   if (!this->items().contains_ptr(&item)) {
     return false;
   }
   const int remove_index = &item - this->items().begin();
-  NodeEnumItem *old_items = this->items_array;
-
-  this->items_array = MEM_cnew_array<NodeEnumItem>(this->items_num - 1, __func__);
-  std::copy_n(old_items, remove_index, this->items_array);
-  std::copy_n(old_items + remove_index + 1,
-              this->items_num - remove_index - 1,
-              this->items_array + remove_index);
-
-  this->items_num--;
-  MEM_SAFE_FREE(old_items);
-
+  /* DNA fields are 16 bits, can't use directly. */
+  int items_num = this->items_num;
+  int active_index = this->active_index;
+  blender::dna::array::remove_index(
+      &this->items_array, &items_num, &active_index, remove_index, free_enum_item);
+  this->items_num = int16_t(items_num);
+  this->active_index = int16_t(active_index);
   return true;
 }
 
 void NodeEnumDefinition::clear()
 {
-  if (this->items_num == 0) {
-    return;
-  }
-  this->items_num = 0;
-  MEM_SAFE_FREE(this->items_array);
+  /* DNA fields are 16 bits, can't use directly. */
+  int items_num = this->items_num;
+  int active_index = this->active_index;
+  blender::dna::array::clear(&this->items_array, &items_num, &active_index, free_enum_item);
+  this->items_num = int16_t(items_num);
+  this->active_index = int16_t(active_index);
 }
 
 bool NodeEnumDefinition::move_item(uint16_t from_index, uint16_t to_index)
 {
-  if (from_index >= this->items_num || to_index >= this->items_num) {
-    return false;
+  if (to_index < this->items_num) {
+    int items_num = this->items_num;
+    int active_index = this->active_index;
+    blender::dna::array::move_index(this->items_array, items_num, from_index, to_index);
+    this->items_num = int16_t(items_num);
+    this->active_index = int16_t(active_index);
   }
-
-  const NodeEnumItem tmp = this->items_array[from_index];
-  if (from_index < to_index) {
-    std::copy(this->items_array + from_index + 1,
-              this->items_array + to_index + 1,
-              this->items_array + from_index);
-  }
-  else if (from_index > to_index) {
-    std::copy_backward(this->items_array + to_index,
-                       this->items_array + from_index,
-                       this->items_array + from_index + 1);
-  }
-  this->items_array[to_index] = tmp;
-
   return true;
 }
 
