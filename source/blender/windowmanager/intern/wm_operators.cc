@@ -1528,7 +1528,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   if (data->mouse_move_quit) {
     UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
   }
-  if (data->icon >= ALERT_ICON_MAX) {
+  if (data->icon < ALERT_ICON_NONE || data->icon >= ALERT_ICON_MAX) {
     data->icon = ALERT_ICON_QUESTION;
   }
 
@@ -1551,7 +1551,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   const bool small = data->size == WM_POPUP_SIZE_SMALL;
   const short icon_size = (small ? (data->message.empty() ? 32 : 48) : 64) * UI_SCALE_FAC;
   int dialog_width = text_width + (style->columnspace * 2.5);
-  dialog_width += (data->icon > -1) ? icon_size : 0;
+  dialog_width += (data->icon == ALERT_ICON_NONE) ? 0 : icon_size;
 
   uiLayout *layout = UI_block_layout(block,
                                      UI_LAYOUT_VERTICAL,
@@ -1563,17 +1563,15 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
                                      0,
                                      style);
 
-  if (data->icon > -1) {
+  if (data->icon != ALERT_ICON_NONE) {
     /* Split layout to put alert icon on left side. */
     const float split_factor = (float)icon_size / (float)(dialog_width - style->columnspace);
     uiLayout *split_block = uiLayoutSplit(layout, split_factor, false);
-
     /* Alert icon on the left. */
     uiLayout *left = uiLayoutRow(split_block, true);
     /* Using 'align_left' with 'row' avoids stretching the icon along the width of column. */
     uiLayoutSetAlignment(left, UI_LAYOUT_ALIGN_LEFT);
     uiDefButAlert(block, data->icon, 0, 0, icon_size, icon_size);
-
     /* The rest of the content on the right. */
     layout = uiLayoutColumn(split_block, true);
   }
@@ -1859,7 +1857,7 @@ int WM_operator_props_dialog_popup(
   data->include_properties = true;
   data->position = WM_POPUP_POSITION_MOUSE;
   data->size = WM_POPUP_SIZE_SMALL;
-  data->icon = -1;
+  data->icon = ALERT_ICON_NONE;
 
   /* op is not executed until popup OK but is clicked */
   UI_popup_block_ex(
