@@ -397,7 +397,6 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   using namespace bke::greasepencil;
 
   ListBase anim_data = {nullptr, nullptr};
-  int filter;
 
   /* clear buffer first */
   copy_buffer.clear();
@@ -407,8 +406,8 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   Scene *scene = ac->scene;
   Object *object = ac->obact;
 
-  /* filter data */
-  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  /* Filter data */
+  const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
@@ -457,7 +456,6 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
   using namespace bke::greasepencil;
 
   ListBase anim_data = {nullptr, nullptr};
-  int filter;
 
   /* Check if buffer is empty */
   if (copy_buffer.is_empty()) {
@@ -484,7 +482,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
       break;
   }
 
-  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
