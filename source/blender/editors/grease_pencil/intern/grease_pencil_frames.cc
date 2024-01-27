@@ -493,11 +493,12 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
     blender::Span<Layer *> layers = grease_pencil->layers_for_write();
     for (const BufferItem buffer : copy_buffer) {
       for (Layer *layer : layers) {
-        if (layer->name() == buffer.layer_name) {
-          for (auto frame_number : buffer.frame_numbers) {
-            grease_pencil->insert_duplicate_frame(
-                *layer, frame_number, frame_number + offset, false);
-          }
+        if (layer->name() != buffer.layer_name) {
+          continue;
+        }
+        for (auto frame_number : buffer.frame_numbers) {
+          grease_pencil->insert_duplicate_frame(
+              *layer, frame_number, frame_number + offset, false);
         }
       }
     }
