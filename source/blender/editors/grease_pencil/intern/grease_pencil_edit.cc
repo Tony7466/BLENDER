@@ -1596,7 +1596,7 @@ static Array<int> get_reordered_indices(const IndexRange universe,
     B.to_indices(indices.as_mutable_span().take_back(B.size()));
   }
   else if (direction == ReorderDirection::DOWN) {
-    selected.foreach_index([&](const int curve_i, const int pos) {
+    selected.foreach_index_optimized<int>([&](const int curve_i, const int pos) {
       /* Check if the curve index is touching the beginning without any gaps. */
       if (curve_i != pos) {
         /* Move a index down by flipping it with the one below it. */
