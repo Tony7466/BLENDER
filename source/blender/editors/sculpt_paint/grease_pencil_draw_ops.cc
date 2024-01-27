@@ -324,8 +324,8 @@ static void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot)
 
   ot->invoke = WM_gesture_lasso_invoke;
   ot->modal = WM_gesture_lasso_modal;
-  ot->exec = greasepencil::grease_pencil_stroke_cutter_exec;
-  ot->poll = ed::greasepencil::editable_grease_pencil_poll;
+  ot->exec = ed::greasepencil::grease_pencil_stroke_cutter;
+  ot->poll = ed::greasepencil::grease_pencil_painting_poll;
   ot->cancel = WM_gesture_lasso_cancel;
 
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;

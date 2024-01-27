@@ -1817,7 +1817,6 @@ class _defs_paint_grease_pencil:
             label="Cutter",
             icon="ops.gpencil.stroke_cutter",
             cursor='KNIFE',
-            widget=None,
             keymap=(),
             draw_settings=draw_settings,
         )
