@@ -232,6 +232,7 @@ set(SRC
   intern/multires_versioning.cc
   intern/nla.cc
   intern/node.cc
+  intern/node_enum_definition.cc
   intern/node_runtime.cc
   intern/node_socket_value.cc
   intern/node_tree_anonymous_attributes.cc
@@ -432,8 +433,8 @@ set(SRC
   BKE_main_namemap.hh
   BKE_mask.h
   BKE_material.h
-  BKE_mball.h
-  BKE_mball_tessellate.h
+  BKE_mball.hh
+  BKE_mball_tessellate.hh
   BKE_mesh.h
   BKE_mesh.hh
   BKE_mesh_boolean_convert.hh
@@ -456,6 +457,7 @@ set(SRC
   BKE_nla.h
   BKE_node.h
   BKE_node.hh
+  BKE_node_enum.hh
   BKE_node_runtime.hh
   BKE_node_socket_value.hh
   BKE_node_tree_anonymous_attributes.hh
