@@ -278,9 +278,8 @@ Curves *reorder_curves(const Curves &src_curves,
 {
   const bke::CurvesGeometry src_curve_geometry = src_curves.geometry.wrap();
   Curves *dst_curves = BKE_curves_copy_for_eval(&src_curves);
-  bke::CurvesGeometry &dst_curve_geometry = dst_curves->geometry.wrap();
-  clean_unused_attributes(propagation_info, dst_curve_geometry.attributes_for_write());
-  reorder_curves_exec(src_curve_geometry, old_by_new_map, dst_curve_geometry);
+  dst_curves->geometry.wrap() = reorder_curves_geometry(
+      src_curve_geometry, old_by_new_map, propagation_info);
   return dst_curves;
 }
 
