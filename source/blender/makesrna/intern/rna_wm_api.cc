@@ -817,7 +817,7 @@ void RNA_api_window(StructRNA *srna)
 }
 
 const EnumPropertyItem rna_operator_popup_icon_items[] = {
-    {12, "NONE", 0, "None", ""},
+    {-1, "NONE", 0, "None", ""},
     {ALERT_ICON_WARNING, "WARNING", 0, "Warning", ""},
     {ALERT_ICON_QUESTION, "QUESTION", 0, "Question", ""},
     {ALERT_ICON_ERROR, "ERROR", 0, "Error", ""},
