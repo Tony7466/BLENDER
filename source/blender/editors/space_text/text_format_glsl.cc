@@ -322,7 +322,8 @@ static const char *text_format_glsl_literals_specialvar_data[] = {
     /* clang-format on */
 };
 static const Span<const char*> text_format_glsl_literals_specialvar(
-    *text_format_glsl_literals_specialvar_data, ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
+    text_format_glsl_literals_specialvar_data, 
+    ARRAY_SIZE(text_format_glsl_literals_specialvar_data));
 
 static const char *text_format_glsl_literals_preprocessor[] = {
 
@@ -563,7 +564,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
 
   /* If continuation has changed and we're allowed, process the next line */
   if (cont != cont_orig && do_next && line->next) {
-    txtfmt_osl_format_line(st, line->next, do_next);
+    txtfmt_glsl_format_line(st, line->next, do_next);
   }
 
   flatten_string_free(&fs);
