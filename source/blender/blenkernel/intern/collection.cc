@@ -340,7 +340,6 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
   LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
     BLO_read_data_address(reader, &data->export_properties);
     IDP_BlendDataRead(reader, &data->export_properties);
-    memset(&data->runtime, 0, sizeof(data->runtime));
   }
 
   BLO_read_data_address(reader, &collection->preview);
@@ -510,17 +509,6 @@ void BKE_collection_free_data(Collection *collection)
 
 void BKE_collection_io_handler_free_data(struct IOHandlerData *data)
 {
-  wmOperator *op = data->runtime.op;
-  if (op) {
-    op->properties = nullptr;
-    // No access to WM_api.h here in "blenkernel"
-    BKE_reports_free(op->reports);
-    MEM_freeN(op->reports);
-    MEM_freeN(op->ptr);
-    MEM_freeN(op);
-    data->runtime.op = nullptr;
-  }
-
   if (data->export_properties) {
     IDP_FreeProperty(data->export_properties);
   }

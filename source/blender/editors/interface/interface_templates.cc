@@ -2361,16 +2361,18 @@ static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *prope
   op->type = ot;
 
   /* Initialize properties but do not assume ownership of them.
-   * This "minimal" operator owns nothing except the reports list below. */
+   * This "minimal" operator owns nothing. */
   op->ptr = MEM_cnew<PointerRNA>("wmOperatorPtrRNA");
   op->properties = static_cast<IDProperty *>(properties->data);
   *op->ptr = *properties;
 
-  /* Initialize error reports. */
-  op->reports = MEM_cnew<ReportList>("wmOperatorReportList");
-  BKE_reports_init(op->reports, RPT_STORE | RPT_FREE);
-
   return op;
+}
+
+static void minimal_operator_free(wmOperator *op)
+{
+  MEM_freeN(op->ptr);
+  MEM_freeN(op);
 }
 
 void draw_export_controls(uiLayout *layout, const char *label, int index)
@@ -2380,18 +2382,18 @@ void draw_export_controls(uiLayout *layout, const char *label, int index)
   uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
 }
 
-void draw_export_properties(bContext *C,
-                            uiLayout *layout,
-                            PointerRNA *properties,
-                            IOHandlerData *data)
+void draw_export_properties(bContext *C, uiLayout *layout, wmOperatorType *ot, IOHandlerData *data)
 {
-  uiLayout *box = uiLayoutBox(layout);
-  uiItemR(box, properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+  PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
 
-  wmOperator *const op = data->runtime.op;
+  uiLayout *box = uiLayoutBox(layout);
+  uiItemR(box, &properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  wmOperator *op = minimal_operator_create(ot, &properties);
   op->layout = layout;
   op->type->ui(C, op);
   op->layout = nullptr;
+  minimal_operator_free(op);
 }
 
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
@@ -2413,18 +2415,12 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       continue;
     }
 
-    PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
     PointerRNA io_handler_ptr = RNA_pointer_create(nullptr, &RNA_IOHandlerData, data);
-
-    /* Create the operator if necessary. */
-    if (data->runtime.op == nullptr) {
-      data->runtime.op = minimal_operator_create(ot, &properties);
-    }
 
     PanelLayout panel = uiLayoutPanelWithHeader(C, layout, &io_handler_ptr, "is_open");
     draw_export_controls(panel.header, fh->label, index);
     if (panel.body) {
-      draw_export_properties(C, panel.body, &properties, data);
+      draw_export_properties(C, panel.body, ot, data);
     }
   }
 }

@@ -62,11 +62,6 @@ typedef struct CollectionChild {
   int _pad;
 } CollectionChild;
 
-typedef struct IOHandlerData_Runtime {
-  /* This operator is created on demand and only used for UI drawing. */
-  struct wmOperator *op;
-} IOHandlerData_Runtime;
-
 /* Collection IO property storage and access. */
 typedef struct IOHandlerData {
   struct IOHandlerData *next, *prev;
@@ -78,8 +73,6 @@ typedef struct IOHandlerData {
   uint32_t flag;
 
   uint32_t _pad0;
-
-  struct IOHandlerData_Runtime runtime;
 } IOHandlerData;
 
 typedef enum IOHandlerPanelFlag {
