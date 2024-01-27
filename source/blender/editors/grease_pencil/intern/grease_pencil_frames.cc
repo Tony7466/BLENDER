@@ -418,26 +418,23 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
       continue;
     }
 
-    GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-    blender::Span<const Layer *> layers = grease_pencil->layers();
-    for (const Layer *layer : layers) {
-      BufferItem buf = {{}, layer->name()};
-      for (auto [frame_number, frame] : layer->frames().items()) {
-        if (frame.is_selected()) {
-          buf.frame_numbers.append(frame_number);
+    Layer *layer = reinterpret_cast<Layer *>(ale->data);
+    BufferItem buf = {{}, layer->name()};
+    for (auto [frame_number, frame] : layer->frames().items()) {
+      if (frame.is_selected()) {
+        buf.frame_numbers.append(frame_number);
 
-          /* Check if this is the earliest frame encountered so far */
-          if (frame_number < copy_buffer_first_frame) {
-            copy_buffer_first_frame = frame_number;
-          }
-          if (frame_number > copy_buffer_last_frame) {
-            copy_buffer_last_frame = frame_number;
-          }
+        /* Check if this is the earliest frame encountered so far */
+        if (frame_number < copy_buffer_first_frame) {
+          copy_buffer_first_frame = frame_number;
+        }
+        if (frame_number > copy_buffer_last_frame) {
+          copy_buffer_last_frame = frame_number;
         }
       }
-      if (!buf.frame_numbers.is_empty()) {
-        copy_buffer.append(buf);
-      }
+    }
+    if (!buf.frame_numbers.is_empty()) {
+      copy_buffer.append(buf);
     }
   }
 
