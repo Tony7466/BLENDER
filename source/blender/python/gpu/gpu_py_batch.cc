@@ -237,12 +237,24 @@ PyDoc_STRVAR(
     "   :type program: :class:`gpu.types.GPUShader`\n");
 static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args)
 {
+  static bool deprecation_warning_issued = false;
+
   BPyGPUShader *py_program = nullptr;
 
   if (!PyArg_ParseTuple(args, "|O!:GPUBatch.draw", &BPyGPUShader_Type, &py_program)) {
     return nullptr;
   }
   if (py_program == nullptr) {
+
+    if (!deprecation_warning_issued) {
+      /*raising Deprecation Warning when calling `gpu.types.GPUBatch.draw` without a valid GPUShader */
+      PyErr_WarnEx(PyExc_DeprecationWarning,
+                   "Calling GPUBatch.draw without specifying a program is deprecated. "
+                   "Please provide a valid GPUShader as the 'program' parameter.",
+                   1);
+      deprecation_warning_issued = true;
+    }
+     
     if (!pygpu_batch_is_program_or_error(self)) {
       return nullptr;
     }
