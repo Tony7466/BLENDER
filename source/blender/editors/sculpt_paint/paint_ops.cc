@@ -36,6 +36,7 @@
 #include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
+#include "BKE_lib_override.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_preferences.h"
@@ -43,6 +44,7 @@
 
 #include "ED_asset_handle.h"
 #include "ED_asset_list.h"
+#include "ED_asset_mark_clear.h"
 #include "ED_image.hh"
 #include "ED_paint.hh"
 #include "ED_screen.hh"
@@ -986,9 +988,13 @@ static void PAINT_OT_brush_select(wmOperatorType *ot)
 
 /**************************** Brush Assets **********************************/
 
-static bool brush_asset_poll(bContext *C)
+static bool brush_asset_select_poll(bContext *C)
 {
-  return BKE_paint_get_active_from_context(C) != nullptr;
+  if (BKE_paint_get_active_from_context(C) == nullptr) {
+    return false;
+  }
+
+  return CTX_wm_asset(C) != nullptr;
 }
 
 static int brush_asset_select_exec(bContext *C, wmOperator *op)
@@ -997,9 +1003,6 @@ static int brush_asset_select_exec(bContext *C, wmOperator *op)
    * used for the asset-view template. Once the asset list design is used by the Asset Browser,
    * this can be simplified to just that case. */
   blender::asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
-  if (!asset) {
-    return OPERATOR_CANCELLED;
-  }
 
   AssetWeakReference *brush_asset_reference = asset->make_weak_reference();
   Brush *brush = BKE_brush_asset_runtime_ensure(CTX_data_main(C), brush_asset_reference);
@@ -1025,7 +1028,7 @@ static void BRUSH_OT_asset_select(wmOperatorType *ot)
   ot->idname = "BRUSH_OT_asset_select";
 
   ot->exec = brush_asset_select_exec;
-  ot->poll = brush_asset_poll;
+  ot->poll = brush_asset_select_poll;
 
   ot->prop = RNA_def_string(
       ot->srna, "name", nullptr, MAX_NAME, "Brush Name", "Name of the brush asset to select");
@@ -1052,29 +1055,40 @@ static AssetWeakReference *brush_asset_create_weakref_hack(const bUserAssetLibra
 
 static const bUserAssetLibrary *brush_asset_get_editable_library()
 {
-  for (const AssetLibraryReference &lib_ref :
-       blender::asset_system::all_valid_asset_library_refs())
-  {
-    if (lib_ref.type != ASSET_LIBRARY_CUSTOM) {
-      continue;
-    }
-
-    /* TODO: should be a preference (flag in bUserAssetLibrary or so). */
-    const bUserAssetLibrary *user_library = BKE_preferences_asset_library_find_index(
-        &U, lib_ref.custom_library_index);
-    if (user_library) {
-      return user_library;
-    }
+  /* TODO: take into account which one is marked as default. */
+  LISTBASE_FOREACH (const bUserAssetLibrary *, asset_library, &U.asset_libraries) {
+    return asset_library;
   }
   return nullptr;
 }
 
+static void brush_asset_refresh_editable_library(const bContext *C)
+{
+  const bUserAssetLibrary *user_library = brush_asset_get_editable_library();
+
+  /* TODO: Should the all library reference be automatically cleared? */
+  AssetLibraryReference all_lib_ref = blender::asset_system::all_library_reference();
+  ED_assetlist_clear(&all_lib_ref, C);
+
+  /* TODO: this is convoluted, can we create a reference from pointer? */
+  for (const AssetLibraryReference &lib_ref :
+       blender::asset_system::all_valid_asset_library_refs())
+  {
+    if (lib_ref.type == ASSET_LIBRARY_CUSTOM) {
+      const bUserAssetLibrary *ref_user_library = BKE_preferences_asset_library_find_index(
+          &U, lib_ref.custom_library_index);
+      if (ref_user_library == user_library) {
+        ED_assetlist_clear(&lib_ref, C);
+        return;
+      }
+    }
+  }
+}
+
 static std::string brush_asset_root_path_for_save()
 {
-  std::string root_path;
-
   const bUserAssetLibrary *user_library = brush_asset_get_editable_library();
-  if (!user_library) {
+  if (user_library == nullptr || user_library->dirpath[0] == '\0') {
     return "";
   }
 
@@ -1082,22 +1096,20 @@ static std::string brush_asset_root_path_for_save()
   BLI_strncpy(libpath, user_library->dirpath, sizeof(libpath));
   BLI_path_slash_native(libpath);
   BLI_path_normalize(libpath);
-  root_path = libpath;
-  if (!BLI_is_dir(root_path.c_str())) {
-    return "";
-  }
 
-  return root_path + SEP + "Saved" + SEP + "Brushes";
+  return std::string(libpath) + SEP + "Saved" + SEP + "Brushes";
 }
 
-static std::string brush_asset_blendfile_path_for_save(const blender::StringRefNull &base_name)
+static std::string brush_asset_blendfile_path_for_save(ReportList *reports,
+                                                       const blender::StringRefNull &base_name)
 {
   std::string root_path = brush_asset_root_path_for_save();
-  if (root_path.empty()) {
+  BLI_assert(!root_path.empty());
+
+  if (!BLI_dir_create_recursive(root_path.c_str())) {
+    BKE_report(reports, RPT_ERROR, "Failed to create asset library directory to save brush");
     return "";
   }
-
-  BLI_dir_create_recursive(root_path.c_str());
 
   char base_name_filesafe[FILE_MAXFILE];
   BLI_strncpy(base_name_filesafe, base_name.c_str(), sizeof(base_name_filesafe));
@@ -1185,85 +1197,95 @@ static bool brush_asset_write_in_library(Main *bmain,
   return sucess;
 }
 
+static bool brush_asset_save_as_poll(bContext *C)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = (paint) ? BKE_paint_brush(paint) : nullptr;
+  if (paint == nullptr || brush == nullptr) {
+    return false;
+  }
+
+  const bUserAssetLibrary *user_library = brush_asset_get_editable_library();
+  if (user_library == nullptr || user_library->dirpath[0] == '\0') {
+    CTX_wm_operator_poll_msg_set(C, "No default asset library available to save to");
+    return false;
+  }
+
+  return true;
+}
+
 static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 {
-  PropertyRNA *name_prop = RNA_struct_find_property(op->ptr, "brush_name");
-  if (!RNA_property_is_set(op->ptr, name_prop)) {
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = (paint) ? BKE_paint_brush(paint) : nullptr;
+  if (paint == nullptr || brush == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  char name[MAX_NAME];
-  RNA_property_string_get(op->ptr, name_prop, name);
+  /* Determine file path to save to. */
+  PropertyRNA *name_prop = RNA_struct_find_property(op->ptr, "name");
+  char name[MAX_NAME] = "";
+  if (RNA_property_is_set(op->ptr, name_prop)) {
+    RNA_property_string_get(op->ptr, name_prop, name);
+  }
+  if (name[0] == '\0') {
+    STRNCPY(name, brush->id.name + 2);
+  }
 
-  const std::string filepath = brush_asset_blendfile_path_for_save(name);
-
+  const std::string filepath = brush_asset_blendfile_path_for_save(op->reports, name);
   if (filepath.empty()) {
     return OPERATOR_CANCELLED;
   }
 
-  Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = nullptr;
-  if (!BKE_paint_brush_asset_get(paint, &brush).has_value()) {
-    return OPERATOR_CANCELLED;
+  /* Turn brush into asset if it isn't yet. */
+  if (!BKE_paint_brush_is_valid_asset(brush)) {
+    ED_asset_mark_id(&brush->id);
+    ED_asset_generate_preview(C, &brush->id);
   }
-
   BLI_assert(BKE_paint_brush_is_valid_asset(brush));
 
+  /* Save to asset library. */
   std::string final_full_asset_filepath;
   const bool sucess = brush_asset_write_in_library(
       CTX_data_main(C), brush, name, filepath, final_full_asset_filepath, op->reports);
 
-  if (sucess) {
-    const bUserAssetLibrary *asset_lib = brush_asset_get_editable_library();
-    AssetWeakReference *new_brush_weak_ref = brush_asset_create_weakref_hack(
-        asset_lib, final_full_asset_filepath);
-
-    Main *bmain = CTX_data_main(C);
-    brush = BKE_brush_asset_runtime_ensure(bmain, new_brush_weak_ref);
-
-    if (!BKE_paint_brush_asset_set(paint, brush, new_brush_weak_ref)) {
-      /* Note brush sset was still saved in editable asset library, so was not a no-op. */
-      BKE_report(op->reports, RPT_WARNING, "Unable to activate just-saved brush asset");
-    }
-
-    /* TODO Is this the right way to update the asset shelf?
-     * Also, how to update the active item there? */
-    /* FIXME does not seem to work. Presumably because context here does not have assetlib info? */
-    const AssetLibraryReference *library = CTX_wm_asset_library_ref(C);
-    ED_assetlist_clear(library, C);
-
-    return OPERATOR_FINISHED;
+  if (!sucess) {
+    BKE_report(op->reports, RPT_ERROR, "Failed to write to asset library");
+    return OPERATOR_CANCELLED;
   }
 
-  return OPERATOR_CANCELLED;
+  /* Create weak reference to new datablock. */
+  const bUserAssetLibrary *asset_lib = brush_asset_get_editable_library();
+  AssetWeakReference *new_brush_weak_ref = brush_asset_create_weakref_hack(
+      asset_lib, final_full_asset_filepath);
+
+  /* TODO: maybe not needed, even less so if there is more visual confirmation of change. */
+  BKE_reportf(op->reports, RPT_INFO, "Saved \"%s\"", filepath.c_str());
+
+  Main *bmain = CTX_data_main(C);
+  brush = BKE_brush_asset_runtime_ensure(bmain, new_brush_weak_ref);
+
+  if (!BKE_paint_brush_asset_set(paint, brush, new_brush_weak_ref)) {
+    /* Note brush sset was still saved in editable asset library, so was not a no-op. */
+    BKE_report(op->reports, RPT_WARNING, "Unable to activate just-saved brush asset");
+  }
+
+  brush_asset_refresh_editable_library(C);
+  WM_main_add_notifier(NC_ASSET | ND_ASSET_LIST | NA_ADDED, nullptr);
+
+  return OPERATOR_FINISHED;
 }
 
 static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = nullptr;
-  if (!BKE_paint_brush_asset_get(paint, &brush).has_value()) {
-    return OPERATOR_CANCELLED;
-  }
+  Brush *brush = BKE_paint_brush(paint);
 
-  RNA_string_set(op->ptr, "brush_name", brush->id.name + 2);
+  RNA_string_set(op->ptr, "name", brush->id.name + 2);
 
   /* TODO: add information about the asset library this will be saved to? */
+  /* TODO: autofocus name? */
   return WM_operator_props_dialog_popup(C, op, 400);
-}
-
-static bool brush_asset_save_as_poll(bContext *C)
-{
-  Paint *paint = BKE_paint_get_active_from_context(C);
-  if (paint == nullptr) {
-    return false;
-  }
-
-  Brush *brush = nullptr;
-  if (BKE_paint_brush_asset_get(paint, &brush).has_value()) {
-    return brush != nullptr;
-  }
-  return false;
 }
 
 static void BRUSH_OT_asset_save_as(wmOperatorType *ot)
@@ -1278,15 +1300,9 @@ static void BRUSH_OT_asset_save_as(wmOperatorType *ot)
   ot->invoke = brush_asset_save_as_invoke;
   ot->poll = brush_asset_save_as_poll;
 
-  RNA_def_string(ot->srna,
-                 "brush_name",
-                 nullptr,
-                 MAX_NAME,
-                 "Brush Asset Name",
-                 "Name used to save the brush asset");
+  RNA_def_string(ot->srna, "name", nullptr, MAX_NAME, "Name", "Name used to save the brush asset");
 }
 
-/* TODO: this looks expensive for a poll function? */
 static bool brush_asset_is_editable(const AssetWeakReference &brush_weak_ref)
 {
   /* Fairly simple checks, based on filepath only:
@@ -1313,51 +1329,57 @@ static bool brush_asset_is_editable(const AssetWeakReference &brush_weak_ref)
   return true;
 }
 
-static bool brush_asset_library_editable_poll(bContext *C)
+static bool brush_asset_delete_poll(bContext *C)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
-  if (paint == nullptr) {
+  Brush *brush = (paint) ? BKE_paint_brush(paint) : nullptr;
+  if (paint == nullptr || brush == nullptr) {
     return false;
   }
 
-  Brush *brush = nullptr;
-  const AssetWeakReference *brush_weak_ref =
-      BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
-
-  if (!brush_weak_ref || !brush) {
-    return false;
+  /* Asset brush, check if belongs to an editable blend file. */
+  if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
+    if (!brush_asset_is_editable(*paint->brush_asset_reference)) {
+      CTX_wm_operator_poll_msg_set(C, "Asset blend file is not editable");
+      return false;
+    }
   }
 
-  return brush_asset_is_editable(*brush_weak_ref);
+  return true;
 }
 
-static int brush_asset_delete_exec(bContext *C, wmOperator * /*op*/)
+static int brush_asset_delete_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = nullptr;
-  const AssetWeakReference *brush_weak_ref =
-      BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
-  if (!brush_weak_ref || !brush || !brush_asset_is_editable(*brush_weak_ref)) {
-    return OPERATOR_CANCELLED;
+  Brush *brush = BKE_paint_brush(paint);
+
+  if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
+    /* Delete from asset library on disk. */
+    char path_buffer[FILE_MAX_LIBEXTRA];
+    char *filepath;
+    AS_asset_full_path_explode_from_weak_ref(
+        paint->brush_asset_reference, path_buffer, &filepath, nullptr, nullptr);
+
+    if (BLI_delete(filepath, false, false) != 0) {
+      BKE_report(op->reports, RPT_ERROR, "Failed to delete asset library file");
+    }
   }
 
-  BLI_assert(BKE_paint_brush_is_valid_asset(brush));
+  /* Delete from session. If local override, also delete linked one.
+   * TODO: delete both in one step? */
+  ID *original_brush = (!ID_IS_LINKED(&brush->id) && ID_IS_OVERRIDE_LIBRARY_REAL(&brush->id)) ?
+                           brush->id.override_library->reference :
+                           nullptr;
+  BKE_id_delete(bmain, brush);
+  if (original_brush) {
+    BKE_id_delete(bmain, original_brush);
+  }
 
-  char path_buffer[FILE_MAX_LIBEXTRA];
-  char *filepath;
-  AS_asset_full_path_explode_from_weak_ref(
-      brush_weak_ref, path_buffer, &filepath, nullptr, nullptr);
+  brush_asset_refresh_editable_library(C);
+  WM_main_add_notifier(NC_ASSET | ND_ASSET_LIST | NA_REMOVED, nullptr);
 
-  BLI_delete(filepath, false, false);
-
-  /* TODO Is this the right way to update the asset shelf?
-   * Also, how to update the active item there? */
-  /* FIXME does not seem to work. Presumably because context here does not have assetlib info? */
-  const AssetLibraryReference *library = CTX_wm_asset_library_ref(C);
-  ED_assetlist_clear(library, C);
-
-  /* FIXME
-   * How to choose which brush asset should be made active then? */
+  /* TODO: activate default brush. */
 
   return OPERATOR_FINISHED;
 }
@@ -1365,14 +1387,32 @@ static int brush_asset_delete_exec(bContext *C, wmOperator * /*op*/)
 static void BRUSH_OT_asset_delete(wmOperatorType *ot)
 {
   ot->name = "Delete Brush Asset";
-  ot->description =
-      "Remove the active brush asset from the default asset library, but keeps it in the current "
-      "editing session (so it can be saved again to undo deletion)";
+  ot->description = "Delete the active brush asset both from the local session and asset library";
   ot->idname = "BRUSH_OT_asset_delete";
 
   ot->exec = brush_asset_delete_exec;
   ot->invoke = WM_operator_confirm;
-  ot->poll = brush_asset_library_editable_poll;
+  ot->poll = brush_asset_delete_poll;
+}
+
+static bool brush_asset_update_poll(bContext *C)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = (paint) ? BKE_paint_brush(paint) : nullptr;
+  if (paint == nullptr || brush == nullptr) {
+    return false;
+  }
+
+  if (!(paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush))) {
+    return false;
+  }
+
+  if (!brush_asset_is_editable(*paint->brush_asset_reference)) {
+    CTX_wm_operator_poll_msg_set(C, "Asset blend file is not editable");
+    return false;
+  }
+
+  return true;
 }
 
 static int brush_asset_update_exec(bContext *C, wmOperator *op)
@@ -1407,19 +1447,32 @@ static void BRUSH_OT_asset_update(wmOperatorType *ot)
   ot->idname = "BRUSH_OT_asset_update";
 
   ot->exec = brush_asset_update_exec;
-  ot->poll = brush_asset_library_editable_poll;
+  ot->poll = brush_asset_update_poll;
 }
 
-static int brush_asset_revert_exec(bContext *C, wmOperator *op)
+static bool brush_asset_revert_poll(bContext *C)
 {
+  /* TODO: check if there is anything to revert? */
   Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = nullptr;
-  const AssetWeakReference *brush_weak_ref =
-      BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
+  Brush *brush = (paint) ? BKE_paint_brush(paint) : nullptr;
+  if (paint == nullptr || brush == nullptr) {
+    return false;
+  }
 
-  /* TODO */
-  UNUSED_VARS(brush_weak_ref);
-  BKE_report(op->reports, RPT_ERROR, "Not implemented yet");
+  return paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush);
+}
+
+static int brush_asset_revert_exec(bContext *C, wmOperator * /*op*/)
+{
+  Main *bmain = CTX_data_main(C);
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = BKE_paint_brush(paint);
+
+  /* TODO: check if doing this for the hierarchy is ok. */
+  /* TODO: the overrides don't update immediately when tweaking brush settings. */
+  BKE_lib_override_library_id_hierarchy_reset(bmain, &brush->id, false);
+
+  WM_main_add_notifier(NC_BRUSH | NA_EDITED, brush);
 
   return OPERATOR_FINISHED;
 }
@@ -1432,7 +1485,7 @@ static void BRUSH_OT_asset_revert(wmOperatorType *ot)
   ot->idname = "BRUSH_OT_asset_revert";
 
   ot->exec = brush_asset_revert_exec;
-  ot->poll = brush_asset_library_editable_poll;
+  ot->poll = brush_asset_revert_poll;
 }
 
 /***** Stencil Control *****/

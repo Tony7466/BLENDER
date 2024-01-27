@@ -117,7 +117,7 @@ class AssetList : NonCopyable {
   void setup();
   void fetch(const bContext &C);
   void ensurePreviewsJob(const bContext *C);
-  void clear(bContext *C);
+  void clear(const bContext *C);
 
   AssetHandle asset_get_by_index(int index) const;
 
@@ -260,7 +260,7 @@ void AssetList::ensurePreviewsJob(const bContext *C)
   }
 }
 
-void AssetList::clear(bContext *C)
+void AssetList::clear(const bContext *C)
 {
   /* Based on #ED_fileselect_clear() */
 
@@ -268,6 +268,7 @@ void AssetList::clear(bContext *C)
   filelist_readjob_stop(files, CTX_wm_manager(C));
   filelist_freelib(files);
   filelist_clear(files);
+  filelist_tag_force_reset(files);
 
   WM_main_add_notifier(NC_ASSET | ND_ASSET_LIST, nullptr);
 }
@@ -486,7 +487,7 @@ void ED_assetlist_ensure_previews_job(const AssetLibraryReference *library_refer
   }
 }
 
-void ED_assetlist_clear(const AssetLibraryReference *library_reference, bContext *C)
+void ED_assetlist_clear(const AssetLibraryReference *library_reference, const bContext *C)
 {
   AssetList *list = AssetListStorage::lookup_list(*library_reference);
   if (list) {

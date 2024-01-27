@@ -46,25 +46,27 @@ class VIEW3D_MT_brush_context_menu(Menu):
             layout.label(text="No brush selected", icon='INFO')
             return
 
-        # TODO: asset library brushes don't seem to have asset data?
-        if True or brush.asset_data:
+
+        # TODO: Need actual check if this is an asset from library.
+        # TODO: why is brush.asset_data None for these?
+        is_linked = brush.library
+        is_override = brush.override_library and brush.override_library.reference
+        is_asset_brush = is_linked or is_override
+
+        if is_asset_brush:
             layout.operator("brush.asset_save_as", text="Duplicate Asset...", icon='DUPLICATE')
             layout.operator("brush.asset_delete", text="Delete Asset")
-        else:
-            layout.operator("brush.asset_save_as", text="Save As Asset...", icon='FILE_TICK')
 
-        # TODO: only show this when brush is not local.
-        # TODO: asset library brushes don't seem to have asset data?
-        if True or brush.asset_data:
             layout.separator()
 
             layout.operator("brush.asset_update", text="Update Asset")
             layout.operator("brush.asset_revert", text="Revert to Asset")
 
-            # TODO: is this functionality useful at all, better to create a new brush?
-            # Difference with Revert is not obvious.
             if context.sculpt_object:
                 layout.operator("brush.reset", text="Reset to Defaults")
+        else:
+            layout.operator("brush.asset_save_as", text="Save As Asset...", icon='FILE_TICK')
+            layout.operator("brush.asset_delete", text="Delete")
 
 
 class VIEW3D_MT_brush_gpencil_context_menu(Menu):
