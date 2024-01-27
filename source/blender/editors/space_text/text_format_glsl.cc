@@ -114,9 +114,9 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "while"
     /* clang-format on */
 };
-
 static const Span<const char *> text_format_glsl_literals_builtinfunc(
-    text_format_glsl_literals_builtinfunc_data, ARRAY_SIZE(text_format_glsl_literals_builtinfunc_data));
+    text_format_glsl_literals_builtinfunc_data, 
+    ARRAY_SIZE(text_format_glsl_literals_builtinfunc_data));
 
 static const char *text_format_glsl_literals_reserved_data[] = {
     /* Force single column, sorted list. */
@@ -322,7 +322,7 @@ static const char *text_format_glsl_literals_specialvar_data[] = {
     /* clang-format on */
 };
 static const Span<const char*> text_format_glsl_literals_specialvar(
-    text_format_glsl_literals_specialvar_data, ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
+    *text_format_glsl_literals_specialvar_data, ARRAY_SIZE(*text_format_glsl_literals_specialvar_data));
 
 static const char *text_format_glsl_literals_preprocessor[] = {
 
@@ -338,13 +338,10 @@ static const char *text_format_glsl_literals_preprocessor[] = {
     "version"
 };
 static const Span<const char *>text_format_glsl_literals_preprocessor(
-    text_format_glsl_literals_preprocessor, ARRAY_SIZE(text_format_glsl_literals_preprocessor));
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Local Functions (for #TextFormatType::format_line)
- * \{ */
+  text_format_glsl_literals_preprocessor, ARRAY_SIZE(text_format_glsl_literals_preprocessor));
+/*---------------------------------------------------------------------*/
+/* name local functions 
+*/
 
 static int txtfmt_glsl_find_builtinfunc(const char *string)
 {
@@ -406,12 +403,9 @@ static char txtfmt_glsl_format_identifier(const char *str)
 
     return fmt;
 }
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Format Line Implementation (#TextFormatType::format_line)
- * \{ */
+/*-----------------------------------------------------------------*/
+/* name format line implementation
+*/
 static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool do_next)
 {
   FlattenString fs;
@@ -420,19 +414,20 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
   char cont_orig, cont, find, prev = ' ';
   int len, i;
 
+  /* Get continuation from previous line */
   if (line->prev && line->prev->format != nullptr) {
     fmt = line->prev->format;
-    cont = fmt[strlen(fmt) + 1]; /* Just after the null-terminator. */
+    cont = fmt[strlen(fmt) + 1]; /* Just after the null-terminator */
     BLI_assert((FMT_CONT_ALL & cont) == cont);
   }
   else {
     cont = FMT_CONT_NOP;
   }
 
-  /* Get original continuation from this line. */
+  /* Get original continuation from this line */
   if (line->format != nullptr) {
     fmt = line->format;
-    cont_orig = fmt[strlen(fmt) + 1]; /* Just after the null-terminator. */
+    cont_orig = fmt[strlen(fmt) + 1]; /* Just after the null-terminator */
     BLI_assert((FMT_CONT_ALL & cont_orig) == cont_orig);
   }
   else {
@@ -448,7 +443,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
   fmt = line->format;
 
   while (*str) {
-    /* Handle escape sequences by skipping both \ and next char. */
+    /* Handle escape sequences by skipping both \ and next char */
     if (*str == '\\') {
       *fmt = prev;
       fmt++;
@@ -512,7 +507,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
       else if (*str == ' ') {
         *fmt = FMT_TYPE_WHITESPACE;
       }
-      /* Numbers (digits not part of an identifier and periods followed by digits). */
+      /* Numbers (digits not part of an identifier and periods followed by digits) */
       else if ((prev != FMT_TYPE_DEFAULT && text_check_digit(*str)) ||
                (*str == '.' && text_check_digit(*(str + 1))))
       {
@@ -566,9 +561,9 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
   fmt++;
   *fmt = cont;
 
-  /* If continuation has changed and we're allowed, process the next line. */
+  /* If continuation has changed and we're allowed, process the next line */
   if (cont != cont_orig && do_next && line->next) {
-    txtfmt_glsl_format_line(st, line->next, do_next);
+    txtfmt_osl_format_line(st, line->next, do_next);
   }
 
   flatten_string_free(&fs);
@@ -576,8 +571,8 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Registration
+/*-----------------------------------------------------------------*/
+/** \name registration 
  * \{ */
 
 void ED_text_format_register_glsl()
