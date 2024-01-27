@@ -1605,7 +1605,7 @@ static Array<int> get_reordered_indices(const IndexRange universe,
     });
   }
   else if (direction == ReorderDirection::UP) {
-    Array<int32_t> selected_indices(selected.size());
+    Array<int> selected_indices(selected.size());
     selected.to_indices(selected_indices.as_mutable_span());
 
     /* Because each index is moving up we need to loop thru the indices backwards,
