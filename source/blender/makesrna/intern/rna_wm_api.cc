@@ -214,31 +214,15 @@ static int rna_Operator_confirm(bContext *C,
                                 wmEvent * /*event*/,
                                 const char *title,
                                 const char *message,
-                                const char *message2,
                                 const char *confirm_text,
                                 const int icon,
-                                const int size,
-                                const int position,
-                                const bool cancel_default,
-                                const bool mouse_move_quit,
                                 const char *text_ctxt,
                                 const bool translate)
 {
   title = RNA_translate_ui_text(title, text_ctxt, nullptr, nullptr, translate);
   message = RNA_translate_ui_text(message, text_ctxt, nullptr, nullptr, translate);
-  message2 = RNA_translate_ui_text(message2, text_ctxt, nullptr, nullptr, translate);
   confirm_text = RNA_translate_ui_text(confirm_text, text_ctxt, nullptr, nullptr, translate);
-  return WM_operator_confirm_ex(C,
-                                op,
-                                title,
-                                message,
-                                message2,
-                                confirm_text,
-                                icon,
-                                wmPopupSize(size),
-                                wmPopupPosition(position),
-                                cancel_default,
-                                mouse_move_quit);
+  return WM_operator_confirm_ex(C, op, title, message, confirm_text, icon);
 }
 
 static int rna_Operator_props_popup(bContext *C, wmOperator *op, wmEvent *event)
@@ -826,17 +810,6 @@ const EnumPropertyItem rna_operator_popup_icon_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-const EnumPropertyItem rna_operator_popup_size_items[] = {
-    {WM_POPUP_POSITION_MOUSE, "MOUSE", 0, "Mouse", "Pop up at mouse position"},
-    {WM_POPUP_POSITION_CENTER, "CENTER", 0, "Large", "Pop up at window center"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
-const EnumPropertyItem rna_operator_popup_position_items[] = {
-    {WM_CURSOR_DEFAULT, "DEFAULT", 0, "Default", ""},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 void RNA_api_wm(StructRNA *srna)
 {
   FunctionRNA *func;
@@ -966,9 +939,6 @@ void RNA_api_wm(StructRNA *srna)
   parm = RNA_def_property(func, "message", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(parm, "Message", "Optional first line of content text");
 
-  parm = RNA_def_property(func, "message2", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(parm, "Message2", "Optional second line of content text");
-
   parm = RNA_def_property(func, "confirm_text", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(
       parm,
@@ -978,22 +948,6 @@ void RNA_api_wm(StructRNA *srna)
   parm = RNA_def_property(func, "icon", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(parm, rna_operator_popup_icon_items);
   RNA_def_property_ui_text(parm, "Icon", "Optional icon displayed in the dialog");
-
-  parm = RNA_def_property(func, "size", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(parm, rna_operator_popup_size_items);
-  RNA_def_property_ui_text(parm, "Size", "Size of the popup");
-
-  parm = RNA_def_property(func, "position", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(parm, rna_operator_popup_position_items);
-  RNA_def_property_ui_text(parm, "Position", "Position of the popup");
-
-  parm = RNA_def_property(func, "cancel_default", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(
-      parm, "Cancel Default", "Set to true to make the Cancel button the default action");
-
-  parm = RNA_def_property(func, "mouse_move_quit", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(
-      parm, "Mouse Move Quit", "Set to true close the popup by moving your mouse out of range");
 
   api_ui_item_common_translation(func);
 

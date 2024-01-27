@@ -929,18 +929,6 @@ enum wmPopupPosition {
   WM_POPUP_POSITION_CENTER,
 };
 
-struct wmConfirmDetails {
-  std::string title;
-  std::string message;
-  std::string message2;
-  std::string confirm_text;
-  int icon;
-  wmPopupSize size;
-  wmPopupPosition position;
-  bool cancel_default;
-  bool mouse_move_quit;
-};
-
 /**
  * Communication/status data owned by the wmJob, and passed to the worker code when calling
  * `startjob` callback.

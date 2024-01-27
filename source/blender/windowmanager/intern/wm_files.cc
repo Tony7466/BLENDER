@@ -3586,12 +3586,8 @@ static int wm_clear_recent_files_invoke(bContext *C, wmOperator *op, const wmEve
                                 op,
                                 nullptr,
                                 IFACE_("Remove all items from the recent files list"),
-                                nullptr,
                                 IFACE_("Remove All"),
                                 ALERT_ICON_WARNING,
-                                WM_POPUP_SIZE_LARGE,
-                                WM_POPUP_POSITION_CENTER,
-                                false,
                                 false);
 }
 

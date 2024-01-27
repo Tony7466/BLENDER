@@ -16,6 +16,8 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
+#include <sstream>
 
 #ifdef WIN32
 #  include "GHOST_C-api.h"
@@ -1466,7 +1468,6 @@ struct wmOpPopUp {
   int free_op;
   std::string title;
   std::string message;
-  std::string message2;
   std::string confirm_text;
   int icon;
   wmPopupSize size;
@@ -1520,6 +1521,8 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   wmOpPopUp *data = static_cast<wmOpPopUp *>(user_data);
   wmOperator *op = data->op;
   const uiStyle *style = UI_style_get_dpi();
+  const bool small = data->size == WM_POPUP_SIZE_SMALL;
+  const short icon_size = (small ? 32 : 64) * UI_SCALE_FAC;
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   UI_block_flag_disable(block, UI_BLOCK_LOOP);
@@ -1534,34 +1537,34 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
 
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NUMSELECT);
 
+  /* Width based on the text lengths. */
   int text_width = std::max(
       120 * UI_SCALE_FAC,
       BLF_width(style->widget.uifont_id, data->title.c_str(), data->title.length()));
-  if (!data->message.empty()) {
-    text_width = std::max(
-        text_width,
-        int(BLF_width(style->widget.uifont_id, data->message.c_str(), data->message.length())));
-  }
-  if (!data->message2.empty()) {
-    text_width = std::max(
-        text_width,
-        int(BLF_width(style->widget.uifont_id, data->message2.c_str(), data->message2.length())));
+
+  /* Break Message into multiple lines. */
+  std::vector<std::string> message_lines;
+  std::istringstream origStream(data->message);
+  std::string line;
+  while (std::getline(origStream, line)) {
+    if (!line.empty()) {
+      message_lines.push_back(line);
+      text_width = std::max(text_width,
+                            int(BLF_width(style->widget.uifont_id, line.c_str(), line.length())));
+    }
   }
 
-  const bool small = data->size == WM_POPUP_SIZE_SMALL;
-  const short icon_size = (small ? (data->message.empty() ? 32 : 48) : 64) * UI_SCALE_FAC;
-  int dialog_width = text_width + (style->columnspace * 2.5);
+  int dialog_width = std::max(text_width + int(style->columnspace * 2.5), data->width);
   dialog_width += (data->icon == ALERT_ICON_NONE) ? 0 : icon_size;
 
-  uiLayout *layout = UI_block_layout(block,
-                                     UI_LAYOUT_VERTICAL,
-                                     UI_LAYOUT_PANEL,
-                                     0,
-                                     0,
-                                     std::max(dialog_width, data->width),
-                                     0,
-                                     0,
-                                     style);
+  /* Adjust width if the button text is long. */
+  int longest_button_text = std::max(
+      BLF_width(style->widget.uifont_id, data->confirm_text.c_str(), data->confirm_text.length()),
+      BLF_width(style->widget.uifont_id, IFACE_("Cancel"), BLF_DRAW_STR_DUMMY_MAX));
+  dialog_width = std::max(dialog_width, 3 * longest_button_text);
+
+  uiLayout *layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, 0, 0, style);
 
   if (data->icon != ALERT_ICON_NONE) {
     /* Split layout to put alert icon on left side. */
@@ -1576,18 +1579,14 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
     layout = uiLayoutColumn(split_block, true);
   }
 
+  /* Title. */
   if (!data->title.empty()) {
-    if (data->message.empty() && !small) {
-      uiItemS(layout);
-    }
     uiItemL_ex(layout, data->title.c_str(), ICON_NONE, true, false);
   }
-  if (!data->message.empty()) {
-    uiItemL(layout, data->message.c_str(), ICON_NONE);
-  }
 
-  if (!data->message2.empty()) {
-    uiItemL(layout, data->message2.c_str(), ICON_NONE);
+  /* Message lines. */
+  for (auto &st : message_lines) {
+    uiItemL(layout, st.c_str(), ICON_NONE);
   }
 
   if (data->include_properties) {
@@ -1613,7 +1612,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
     uiBut *cancel_but;
 
     col = uiLayoutSplit(col, 0.0f, true);
-    uiLayoutSetScaleY(col, small ? 1.1f : 1.2f);
+    uiLayoutSetScaleY(col, small ? 1.0f : 1.2f);
 
     if (windows_layout) {
       confirm_but = uiDefBut(col_block,
@@ -1621,7 +1620,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
                              0,
                              data->confirm_text.c_str(),
                              0,
-                             -30,
+                             0,
                              0,
                              UI_UNIT_Y,
                              nullptr,
@@ -1633,20 +1632,8 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
       uiLayoutColumn(col, false);
     }
 
-    cancel_but = uiDefBut(col_block,
-                          UI_BTYPE_BUT,
-                          0,
-                          IFACE_("Cancel"),
-                          0,
-                          -30,
-                          0,
-                          UI_UNIT_Y,
-                          nullptr,
-                          0,
-                          0,
-                          0,
-                          0,
-                          "");
+    cancel_but = uiDefBut(
+        col_block, UI_BTYPE_BUT, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
 
     if (!windows_layout) {
       uiLayoutColumn(col, false);
@@ -1655,7 +1642,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
                              0,
                              data->confirm_text.c_str(),
                              0,
-                             -30,
+                             0,
                              0,
                              UI_UNIT_Y,
                              nullptr,
@@ -1676,7 +1663,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   if (data->position == WM_POPUP_POSITION_MOUSE) {
     int bounds_offset[2];
     bounds_offset[0] = uiLayoutGetWidth(layout) * (windows_layout ? -0.33f : -0.66f);
-    bounds_offset[1] = UI_UNIT_Y * (!data->message.empty() ? 3.1 : 2.5);
+    bounds_offset[1] = int(UI_UNIT_Y * (small ? 1.8 : 3.1));
     UI_block_bounds_set_popup(block, padding, bounds_offset);
   }
   else if (data->position == WM_POPUP_POSITION_CENTER) {
@@ -1744,29 +1731,24 @@ int WM_operator_confirm_ex(bContext *C,
                            wmOperator *op,
                            const char *title,
                            const char *message,
-                           const char *message2,
                            const char *confirm_text,
                            int icon,
-                           wmPopupSize size,
-                           wmPopupPosition position,
-                           bool cancel_default,
-                           bool mouse_move_quit)
+                           bool cancel_default)
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
-  data->width = 400;
+  data->width = 180 * UI_SCALE_FAC;
   data->free_op = true;
   data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
   data->message = (message == nullptr) ? std::string() : message;
-  data->message2 = (message2 == nullptr) ? std::string() : message2;
   data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
                                                    confirm_text;
   data->icon = icon;
-  data->cancel_default = cancel_default;
-  data->mouse_move_quit = mouse_move_quit;
   data->include_properties = false;
-  data->size = size;
-  data->position = position;
+  data->cancel_default = cancel_default;
+  data->mouse_move_quit = (message == nullptr) ? true : false;
+  data->size = (message == nullptr) ? WM_POPUP_SIZE_SMALL : WM_POPUP_SIZE_LARGE;
+  data->position = (message == nullptr) ? WM_POPUP_POSITION_MOUSE : WM_POPUP_POSITION_CENTER;
 
   UI_popup_block_ex(
       C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);

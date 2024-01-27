@@ -693,13 +693,9 @@ int WM_operator_confirm_ex(bContext *C,
                            wmOperator *op,
                            const char *title = nullptr,
                            const char *message = nullptr,
-                           const char *message2 = nullptr,
                            const char *confirm_text = nullptr,
                            int icon = 0, /* ALERT_ICON_WARNING. */
-                           wmPopupSize size = WM_POPUP_SIZE_SMALL,
-                           wmPopupPosition position = WM_POPUP_POSITION_MOUSE,
-                           bool cancel_default = false,
-                           bool mouse_move_quit = false);
+                           bool cancel_default = false);
 
 /**
  * Invoke callback, file selector "filepath" unset + exec.
