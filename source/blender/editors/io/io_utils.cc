@@ -4,10 +4,6 @@
 
 #include "BKE_context.hh"
 
-#include "BLT_translation.h"
-
-#include "BLI_path_util.h"
-
 #include "DNA_space_types.h"
 
 #include "ED_fileselect.hh"
@@ -17,8 +13,6 @@
 #include "WM_api.hh"
 
 #include "io_utils.hh"
-
-#include <fmt/format.h>
 
 namespace blender::ed::io {
 
@@ -30,28 +24,7 @@ int filesel_drop_import_invoke(bContext *C, wmOperator *op, const wmEvent * /* e
   if ((filepath_prop && RNA_property_is_set(op->ptr, filepath_prop)) ||
       (directory_prop && RNA_property_is_set(op->ptr, directory_prop)))
   {
-    std::string confirm_text;
-    PropertyRNA *files_prop = RNA_struct_find_property(op->ptr, "files");
-    const int files_len = files_prop ? RNA_collection_length(op->ptr, "files") : 0;
-    if (files_len < 2) {
-      char filename[FILE_MAX]{0};
-      if (filepath_prop && RNA_property_is_set(op->ptr, filepath_prop)) {
-        char filepath[FILE_MAX];
-        RNA_string_get(op->ptr, "filepath", filepath);
-        BLI_path_split_file_part(filepath, filename, sizeof(filename));
-      }
-      else if (files_len == 1) {
-        PointerRNA file_ptr;
-        RNA_property_collection_lookup_int(op->ptr, files_prop, 0, &file_ptr);
-        RNA_string_get(op->ptr, "name", filename);
-      }
-      confirm_text = fmt::format(TIP_("Import {}"), filename);
-    }
-    else {
-      confirm_text = fmt::format(TIP_("Import {} files"), files_len);
-    }
-    return WM_operator_props_dialog_popup(
-        C, op, 350, WM_operatortype_name(op->type, op->ptr).c_str(), confirm_text.c_str());
+    return WM_operator_props_dialog_popup(C, op, 350);
   }
 
   WM_event_add_fileselect(C, op);
