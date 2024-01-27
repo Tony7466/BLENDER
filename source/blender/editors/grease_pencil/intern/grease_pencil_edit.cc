@@ -1608,7 +1608,7 @@ static Array<int> get_reordered_indices(const IndexRange universe,
     Array<int> selected_indices(selected.size());
     selected.to_indices(selected_indices.as_mutable_span());
 
-    /* Because each index is moving up we need to loop thru the indices backwards,
+    /* Because each index is moving up we need to loop through the indices backwards,
      * starting at the largest. */
     for (const int i : selected_indices.index_range()) {
       const int pos = selected_indices.index_range().last(i);
