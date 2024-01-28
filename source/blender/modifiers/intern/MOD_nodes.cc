@@ -46,15 +46,15 @@
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
@@ -241,6 +241,11 @@ static bool depends_on_time(Scene * /*scene*/, ModifierData *md)
   if (tree == nullptr) {
     return false;
   }
+  for (const NodesModifierBake &bake : Span(nmd->bakes, nmd->bakes_num)) {
+    if (bake.bake_mode == NODES_MODIFIER_BAKE_MODE_ANIMATION) {
+      return true;
+    }
+  }
   Set<const bNodeTree *> checked_groups;
   return check_tree_for_time_node(*tree, checked_groups);
 }
@@ -339,37 +344,40 @@ static void update_existing_bake_caches(NodesModifierData &nmd)
 
   Map<int, std::unique_ptr<bake::SimulationNodeCache>> new_simulation_cache_by_id;
   Map<int, std::unique_ptr<bake::BakeNodeCache>> new_bake_cache_by_id;
-  for (const bNestedNodeRef &ref : nmd.node_group->nested_node_refs_span()) {
-    const bNode *node = nmd.node_group->find_nested_node(ref.id);
-    switch (node->type) {
-      case GEO_NODE_SIMULATION_OUTPUT: {
-        std::unique_ptr<bake::SimulationNodeCache> node_cache;
-        if (std::unique_ptr<bake::SimulationNodeCache> *old_node_cache_ptr =
-                old_simulation_cache_by_id.lookup_ptr(ref.id))
-        {
-          node_cache = std::move(*old_node_cache_ptr);
+  if (nmd.node_group) {
+    for (const bNestedNodeRef &ref : nmd.node_group->nested_node_refs_span()) {
+      const bNode *node = nmd.node_group->find_nested_node(ref.id);
+      switch (node->type) {
+        case GEO_NODE_SIMULATION_OUTPUT: {
+          std::unique_ptr<bake::SimulationNodeCache> node_cache;
+          if (std::unique_ptr<bake::SimulationNodeCache> *old_node_cache_ptr =
+                  old_simulation_cache_by_id.lookup_ptr(ref.id))
+          {
+            node_cache = std::move(*old_node_cache_ptr);
+          }
+          else {
+            node_cache = std::make_unique<bake::SimulationNodeCache>();
+          }
+          new_simulation_cache_by_id.add(ref.id, std::move(node_cache));
+          break;
         }
-        else {
-          node_cache = std::make_unique<bake::SimulationNodeCache>();
+        case GEO_NODE_BAKE: {
+          std::unique_ptr<bake::BakeNodeCache> node_cache;
+          if (std::unique_ptr<bake::BakeNodeCache> *old_node_cache_ptr =
+                  old_bake_cache_by_id.lookup_ptr(ref.id))
+          {
+            node_cache = std::move(*old_node_cache_ptr);
+          }
+          else {
+            node_cache = std::make_unique<bake::BakeNodeCache>();
+          }
+          new_bake_cache_by_id.add(ref.id, std::move(node_cache));
+          break;
         }
-        new_simulation_cache_by_id.add(ref.id, std::move(node_cache));
-        break;
-      }
-      case GEO_NODE_BAKE: {
-        std::unique_ptr<bake::BakeNodeCache> node_cache;
-        if (std::unique_ptr<bake::BakeNodeCache> *old_node_cache_ptr =
-                old_bake_cache_by_id.lookup_ptr(ref.id))
-        {
-          node_cache = std::move(*old_node_cache_ptr);
-        }
-        else {
-          node_cache = std::make_unique<bake::BakeNodeCache>();
-        }
-        new_bake_cache_by_id.add(ref.id, std::move(node_cache));
-        break;
       }
     }
   }
+
   modifier_cache.simulation_cache_by_id = std::move(new_simulation_cache_by_id);
   modifier_cache.bake_cache_by_id = std::move(new_bake_cache_by_id);
 }
@@ -1018,7 +1026,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         node_cache.reset();
       }
       if (!node_cache.bake.frames.is_empty() &&
-          current_frame_ < node_cache.bake.frames.first()->frame) {
+          current_frame_ < node_cache.bake.frames.first()->frame)
+      {
         node_cache.reset();
       }
     }
@@ -1399,7 +1408,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   {
     if (frame_cache.meta_path && frame_cache.state.items_by_id.is_empty()) {
       auto &read_error_info = behavior.emplace<sim_output::ReadError>();
-      read_error_info.message = TIP_("Can not load the baked data");
+      read_error_info.message = RPT_("Can not load the baked data");
       return true;
     }
     return false;
@@ -1556,7 +1565,7 @@ static NodesModifierData *get_modifier_data(Main &bmain,
     return nullptr;
   }
 
-  const Object *object = (Object *)BKE_libblock_find_session_uuid(
+  const Object *object = (Object *)BKE_libblock_find_session_uid(
       &bmain, ID_OB, data.object_session_uid);
   if (object == nullptr) {
     return nullptr;
@@ -1693,7 +1702,7 @@ static void add_attribute_search_button(const bContext &C,
   }
 
   AttributeSearchData *data = MEM_new<AttributeSearchData>(__func__);
-  data->object_session_uid = object->id.session_uuid;
+  data->object_session_uid = object->id.session_uid;
   STRNCPY(data->modifier_name, nmd.modifier.name);
   STRNCPY(data->socket_identifier, socket.identifier);
   data->is_output = is_output;
@@ -1786,8 +1795,7 @@ static void draw_property_for_socket(const bContext &C,
                                      NodesModifierData *nmd,
                                      PointerRNA *bmain_ptr,
                                      PointerRNA *md_ptr,
-                                     const bNodeTreeInterfaceSocket &socket,
-                                     const int socket_index)
+                                     const bNodeTreeInterfaceSocket &socket)
 {
   const StringRefNull identifier = socket.identifier;
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
@@ -1807,6 +1815,9 @@ static void draw_property_for_socket(const bContext &C,
 
   uiLayout *row = uiLayoutRow(layout, true);
   uiLayoutSetPropDecorate(row, true);
+
+  const int input_index =
+      const_cast<const bNodeTree *>(nmd->node_group)->interface_inputs().first_index(&socket);
 
   /* Use #uiItemPointerR to draw pointer properties because #uiItemR would not have enough
    * information about what type of ID to select for editing the values. This is because
@@ -1844,7 +1855,7 @@ static void draw_property_for_socket(const bContext &C,
       ATTR_FALLTHROUGH;
     }
     default: {
-      if (nodes::input_has_attribute_toggle(*nmd->node_group, socket_index)) {
+      if (nodes::input_has_attribute_toggle(*nmd->node_group, input_index)) {
         add_attribute_search_or_value_buttons(C, row, *nmd, md_ptr, socket);
       }
       else {
@@ -1852,7 +1863,7 @@ static void draw_property_for_socket(const bContext &C,
       }
     }
   }
-  if (!nodes::input_has_attribute_toggle(*nmd->node_group, socket_index)) {
+  if (!nodes::input_has_attribute_toggle(*nmd->node_group, input_index)) {
     uiItemL(row, "", ICON_BLANK1);
   }
 }
@@ -1892,8 +1903,7 @@ static void draw_interface_panel_content(const bContext *C,
                                          uiLayout *layout,
                                          PointerRNA *modifier_ptr,
                                          NodesModifierData &nmd,
-                                         const bNodeTreeInterfacePanel &interface_panel,
-                                         int &next_input_index)
+                                         const bNodeTreeInterfacePanel &interface_panel)
 {
   Main *bmain = CTX_data_main(C);
   PointerRNA bmain_ptr = RNA_main_pointer_create(bmain);
@@ -1907,21 +1917,33 @@ static void draw_interface_panel_content(const bContext *C,
       if (uiLayout *panel_layout = uiLayoutPanel(
               C, layout, sub_interface_panel.name, &panel_ptr, "is_open"))
       {
-        draw_interface_panel_content(
-            C, panel_layout, modifier_ptr, nmd, sub_interface_panel, next_input_index);
+        draw_interface_panel_content(C, panel_layout, modifier_ptr, nmd, sub_interface_panel);
       }
     }
     else {
       const auto &interface_socket = *reinterpret_cast<const bNodeTreeInterfaceSocket *>(item);
       if (interface_socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
         if (!(interface_socket.flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
-          draw_property_for_socket(
-              *C, layout, &nmd, &bmain_ptr, modifier_ptr, interface_socket, next_input_index);
+          draw_property_for_socket(*C, layout, &nmd, &bmain_ptr, modifier_ptr, interface_socket);
         }
-        next_input_index++;
       }
     }
   }
+}
+
+static bool has_output_attribute(const NodesModifierData &nmd)
+{
+  if (!nmd.node_group) {
+    return false;
+  }
+  for (const bNodeTreeInterfaceSocket *interface_socket : nmd.node_group->interface_outputs()) {
+    const bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+    if (nodes::socket_type_has_attribute_toggle(type)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static void draw_output_attributes_panel(const bContext *C,
@@ -1929,32 +1951,28 @@ static void draw_output_attributes_panel(const bContext *C,
                                          const NodesModifierData &nmd,
                                          PointerRNA *ptr)
 {
-  bool has_output_attribute = false;
   if (nmd.node_group != nullptr && nmd.settings.properties != nullptr) {
     for (const bNodeTreeInterfaceSocket *socket : nmd.node_group->interface_outputs()) {
       const bNodeSocketType *typeinfo = socket->socket_typeinfo();
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
       if (nodes::socket_type_has_attribute_toggle(type)) {
-        has_output_attribute = true;
         draw_property_for_output_socket(*C, layout, nmd, ptr, *socket);
       }
     }
   }
-  if (!has_output_attribute) {
-    uiItemL(layout, TIP_("No group output attributes connected"), ICON_INFO);
-  }
 }
 
-static void draw_internal_dependencies_panel(uiLayout *layout,
-                                             PointerRNA *ptr,
-                                             const NodesModifierData &nmd)
+static void draw_bake_panel(uiLayout *layout, PointerRNA *modifier_ptr)
 {
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
   uiLayoutSetPropDecorate(col, false);
-  uiItemR(col, ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake"), ICON_NONE);
+  uiItemR(col, modifier_ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake Path"), ICON_NONE);
+}
 
+static void draw_named_attributes_panel(uiLayout *layout, NodesModifierData &nmd)
+{
   geo_log::GeoTreeLog *tree_log = get_root_tree_log(nmd);
   if (tree_log == nullptr) {
     return;
@@ -1965,7 +1983,7 @@ static void draw_internal_dependencies_panel(uiLayout *layout,
       tree_log->used_named_attributes;
 
   if (usage_by_attribute.is_empty()) {
-    uiItemL(layout, IFACE_("No named attributes used"), ICON_INFO);
+    uiItemL(layout, RPT_("No named attributes used"), ICON_INFO);
     return;
   }
 
@@ -1994,13 +2012,13 @@ static void draw_internal_dependencies_panel(uiLayout *layout,
     std::stringstream ss;
     Vector<std::string> usages;
     if ((usage & geo_log::NamedAttributeUsage::Read) != geo_log::NamedAttributeUsage::None) {
-      usages.append(TIP_("Read"));
+      usages.append(IFACE_("Read"));
     }
     if ((usage & geo_log::NamedAttributeUsage::Write) != geo_log::NamedAttributeUsage::None) {
-      usages.append(TIP_("Write"));
+      usages.append(IFACE_("Write"));
     }
     if ((usage & geo_log::NamedAttributeUsage::Remove) != geo_log::NamedAttributeUsage::None) {
-      usages.append(TIP_("Remove"));
+      usages.append(IFACE_("Remove"));
     }
     for (const int i : usages.index_range()) {
       ss << usages[i];
@@ -2016,6 +2034,23 @@ static void draw_internal_dependencies_panel(uiLayout *layout,
 
     row = uiLayoutRow(split, false);
     uiItemL(row, attribute_name.c_str(), ICON_NONE);
+  }
+}
+
+static void draw_manage_panel(const bContext *C,
+                              uiLayout *layout,
+                              PointerRNA *modifier_ptr,
+                              NodesModifierData &nmd)
+{
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_("Bake"), modifier_ptr, "open_bake_panel"))
+  {
+    draw_bake_panel(panel_layout, modifier_ptr);
+  }
+  if (uiLayout *panel_layout = uiLayoutPanel(
+          C, layout, IFACE_("Named Attributes"), modifier_ptr, "open_named_attributes_panel"))
+  {
+    draw_named_attributes_panel(panel_layout, nmd);
   }
 }
 
@@ -2046,9 +2081,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
     nmd->node_group->ensure_interface_cache();
-    int next_input_index = 0;
-    draw_interface_panel_content(
-        C, layout, ptr, *nmd, nmd->node_group->tree_interface.root_panel, next_input_index);
+    draw_interface_panel_content(C, layout, ptr, *nmd, nmd->node_group->tree_interface.root_panel);
   }
 
   /* Draw node warnings. */
@@ -2064,15 +2097,17 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   modifier_panel_end(layout, ptr);
 
-  if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, TIP_("Output Attributes"), ptr, "open_output_attributes_panel"))
-  {
-    draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
+  if (has_output_attribute(*nmd)) {
+    if (uiLayout *panel_layout = uiLayoutPanel(
+            C, layout, IFACE_("Output Attributes"), ptr, "open_output_attributes_panel"))
+    {
+      draw_output_attributes_panel(C, panel_layout, *nmd, ptr);
+    }
   }
   if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, TIP_("Internal Dependencies"), ptr, "open_internal_dependencies_panel"))
+          C, layout, IFACE_("Manage"), ptr, "open_manage_panel"))
   {
-    draw_internal_dependencies_panel(panel_layout, ptr, *nmd);
+    draw_manage_panel(C, panel_layout, ptr, *nmd);
   }
 }
 
@@ -2259,4 +2294,5 @@ ModifierTypeInfo modifierType_Nodes = {
     /*panel_register*/ blender::panel_register,
     /*blend_write*/ blender::blend_write,
     /*blend_read*/ blender::blend_read,
+    /*foreach_cache*/ nullptr,
 };

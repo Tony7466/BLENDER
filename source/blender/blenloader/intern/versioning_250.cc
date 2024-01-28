@@ -57,7 +57,7 @@
 #include "BKE_colortools.hh"
 #include "BKE_customdata.hh"
 #include "BKE_global.h" /* for G */
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
@@ -450,7 +450,7 @@ static void versions_gpencil_add_main(Main *bmain, ListBase *lb, ID *id, const c
   /* alphabetic insertion: is in BKE_id_new_name_validate */
 
   if ((id->tag & LIB_TAG_TEMP_MAIN) == 0) {
-    BKE_lib_libblock_session_uuid_ensure(id);
+    BKE_lib_libblock_session_uid_ensure(id);
   }
 
   if (G.debug & G_DEBUG) {
@@ -1883,7 +1883,8 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
         }
         LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
           if (nodeCountSocketLinks(ntree, sock) == 0 &&
-              !((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0)) {
+              !((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0))
+          {
             bNodeSocket *gsock = do_versions_node_group_add_socket_2_56_2(
                 ntree, sock->name, sock->type, SOCK_OUT);
 

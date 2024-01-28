@@ -102,18 +102,17 @@ void ED_screen_draw_edges(wmWindow *win)
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
 
-     rctf rectf2 = {float(area->totrct.xmin) - half_line,
+    rctf rectf2 = {float(area->totrct.xmin) - half_line,
                    float(area->totrct.xmax) + 1.0f,
                    float(area->totrct.ymin) - 0.5f,
-                    float(area->totrct.ymax) + half_line};
-     UI_draw_roundbox_4fv_ex(&rectf2,
-                             nullptr,
-                             nullptr,
-                             1.0f,
-                             (area == active_area) ? border_highlight2 :
-                                                     border_highlight,
-                             U.pixelsize,
-                             5.0f * UI_SCALE_FAC);
+                   float(area->totrct.ymax) + half_line};
+    UI_draw_roundbox_4fv_ex(&rectf2,
+                            nullptr,
+                            nullptr,
+                            1.0f,
+                            (area == active_area) ? border_highlight2 : border_highlight,
+                            U.pixelsize,
+                            5.0f * UI_SCALE_FAC);
 
     drawscredge_area_edges(pos, area);
   }

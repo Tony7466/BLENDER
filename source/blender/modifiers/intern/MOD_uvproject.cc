@@ -27,7 +27,7 @@
 #include "BKE_camera.h"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_screen.hh"
@@ -102,6 +102,11 @@ static blender::bke::SpanAttributeWriter<blender::float2> get_uv_attribute(
     const StringRef name = CustomData_get_active_layer_name(&mesh.corner_data, CD_PROP_FLOAT2);
     return attributes.lookup_or_add_for_write_span<float2>(name.is_empty() ? "Float2" : name,
                                                            bke::AttrDomain::Corner);
+  }
+  if (bke::SpanAttributeWriter<float2> attribute = attributes.lookup_or_add_for_write_span<float2>(
+          md_name, bke::AttrDomain::Corner))
+  {
+    return attribute;
   }
   const std::string name = BKE_id_attribute_calc_unique_name(mesh.id, md_name);
   return attributes.lookup_or_add_for_write_span<float2>(name, bke::AttrDomain::Corner);
@@ -376,4 +381,5 @@ ModifierTypeInfo modifierType_UVProject = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

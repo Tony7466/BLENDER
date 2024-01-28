@@ -28,7 +28,7 @@
 
 #include "DNA_scene_types.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
 #include "BKE_global.h"
@@ -296,6 +296,10 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   worker_status->do_update = true;
 
   iter.release_writers();
+
+  if (params.export_shapekeys || params.export_armatures) {
+    iter.process_usd_skel();
+  }
 
   /* Set the default prim if it doesn't exist */
   if (!usd_stage->GetDefaultPrim()) {

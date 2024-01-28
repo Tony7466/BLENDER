@@ -240,6 +240,8 @@ bool rna_AnimaData_override_apply(struct Main *bmain,
 void rna_def_animviz_common(struct StructRNA *srna);
 void rna_def_motionpath_common(struct StructRNA *srna);
 
+void api_ui_item_common_translation(FunctionRNA *func);
+
 /**
  * Settings for curved bbone settings.
  */
@@ -657,25 +659,30 @@ void rna_RenderPass_rect_set(PointerRNA *ptr, const float *values);
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 #  define USE_RNA_RANGE_CHECK
 #  define TYPEOF_MAX(x) \
-    _Generic((x), bool : 1, char \
-             : CHAR_MAX, signed char \
-             : SCHAR_MAX, unsigned char \
-             : UCHAR_MAX, signed short \
-             : SHRT_MAX, unsigned short \
-             : USHRT_MAX, signed int \
-             : INT_MAX, unsigned int \
-             : UINT_MAX, float \
-             : FLT_MAX, double \
-             : DBL_MAX)
+    _Generic((x), \
+        bool: 1, \
+        char: CHAR_MAX, \
+        signed char: SCHAR_MAX, \
+        unsigned char: UCHAR_MAX, \
+        signed short: SHRT_MAX, \
+        unsigned short: USHRT_MAX, \
+        signed int: INT_MAX, \
+        unsigned int: UINT_MAX, \
+        float: FLT_MAX, \
+        double: DBL_MAX)
 
 #  define TYPEOF_MIN(x) \
-    _Generic((x), bool : 0, char \
-             : CHAR_MIN, signed char \
-             : SCHAR_MIN, unsigned char : 0, signed short \
-             : SHRT_MIN, unsigned short : 0, signed int \
-             : INT_MIN, unsigned int : 0, float \
-             : -FLT_MAX, double \
-             : -DBL_MAX)
+    _Generic((x), \
+        bool: 0, \
+        char: CHAR_MIN, \
+        signed char: SCHAR_MIN, \
+        unsigned char: 0, \
+        signed short: SHRT_MIN, \
+        unsigned short: 0, \
+        signed int: INT_MIN, \
+        unsigned int: 0, \
+        float: -FLT_MAX, \
+        double: -DBL_MAX)
 #endif
 
 #ifdef __cplusplus

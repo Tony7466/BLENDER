@@ -126,7 +126,7 @@ template<typename NodePtr> class GFieldBase {
 
   uint64_t hash() const
   {
-    return get_default_hash_2(*node_, node_output_index_);
+    return get_default_hash(*node_, node_output_index_);
   }
 
   const CPPType &cpp_type() const
@@ -179,8 +179,7 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {
-};
+struct TypedFieldBase {};
 }  // namespace detail
 
 /**

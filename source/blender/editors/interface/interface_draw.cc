@@ -29,9 +29,9 @@
 #include "BKE_node.hh"
 #include "BKE_tracking.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BIF_glutil.hh"
 
@@ -149,8 +149,7 @@ void UI_draw_roundbox_4fv(const rctf *rect, bool filled, float rad, const float 
   UI_draw_roundbox_4fv_ex(rect, (filled) ? col : nullptr, nullptr, 1.0f, col, U.pixelsize, rad);
 }
 
-void ui_draw_rounded_corners_inverted(const rcti &rect,
-                                      const float rad, const float color[4])
+void ui_draw_rounded_corners_inverted(const rcti &rect, const float rad, const float color[4])
 {
   GPUVertFormat *format = immVertexFormat();
   const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);

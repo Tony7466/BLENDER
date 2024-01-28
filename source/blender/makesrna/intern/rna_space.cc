@@ -538,6 +538,8 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <algorithm>
+
 #  include "AS_asset_representation.hh"
 
 #  include "DNA_anim_types.h"
@@ -555,7 +557,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "BKE_global.h"
 #  include "BKE_icons.h"
 #  include "BKE_idprop.h"
-#  include "BKE_layer.h"
+#  include "BKE_layer.hh"
 #  include "BKE_nla.h"
 #  include "BKE_paint.hh"
 #  include "BKE_preferences.h"
@@ -580,7 +582,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 
 #  include "GPU_material.h"
 
-#  include "IMB_imbuf_types.h"
+#  include "IMB_imbuf_types.hh"
 
 #  include "UI_interface.hh"
 #  include "UI_view2d.hh"
@@ -1527,7 +1529,8 @@ static void rna_3DViewShading_render_pass_set(PointerRNA *ptr, int value)
     STRNCPY(shading->aov_name, aov->name);
   }
   else if (value == EEVEE_RENDER_PASS_BLOOM &&
-           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0)) {
+           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0))
+  {
     shading->render_pass = EEVEE_RENDER_PASS_COMBINED;
   }
   else {
@@ -1899,7 +1902,7 @@ static void rna_SpaceUVEditor_tile_grid_shape_set(PointerRNA *ptr, const int *va
 
   int clamp[2] = {10, 100};
   for (int i = 0; i < 2; i++) {
-    data->tile_grid_shape[i] = CLAMPIS(values[i], 1, clamp[i]);
+    data->tile_grid_shape[i] = std::clamp(values[i], 1, clamp[i]);
   }
 }
 
@@ -1908,7 +1911,7 @@ static void rna_SpaceUVEditor_custom_grid_subdiv_set(PointerRNA *ptr, const int 
   SpaceImage *data = (SpaceImage *)(ptr->data);
 
   for (int i = 0; i < 2; i++) {
-    data->custom_grid_subdiv[i] = CLAMPIS(values[i], 1, 5000);
+    data->custom_grid_subdiv[i] = std::clamp(values[i], 1, 5000);
   }
 }
 
@@ -1937,7 +1940,7 @@ static void rna_SpaceTextEditor_text_set(PointerRNA *ptr,
   if (area) {
     ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
     if (region) {
-      ED_text_scroll_to_cursor(st, region, true);
+      ED_space_text_scroll_to_cursor(st, region, true);
     }
   }
 }
@@ -1954,6 +1957,12 @@ static void rna_SpaceTextEditor_updateEdited(Main * /*bmain*/, Scene * /*scene*/
   if (st->text) {
     WM_main_add_notifier(NC_TEXT | NA_EDITED, st->text);
   }
+}
+
+static int rna_SpaceTextEditor_visible_lines_get(PointerRNA *ptr)
+{
+  const SpaceText *st = static_cast<SpaceText *>(ptr->data);
+  return ED_space_text_visible_lines_get(st);
 }
 
 /* Space Properties */
@@ -2813,13 +2822,13 @@ static int rna_FileAssetSelectParams_asset_library_get(PointerRNA *ptr)
   /* Just an extra sanity check to ensure this isn't somehow called for RNA_FileSelectParams. */
   BLI_assert(ptr->type == &RNA_FileAssetSelectParams);
 
-  return ED_asset_library_reference_to_enum_value(&params->asset_library_ref);
+  return blender::ed::asset::library_reference_to_enum_value(&params->asset_library_ref);
 }
 
 static void rna_FileAssetSelectParams_asset_library_set(PointerRNA *ptr, int value)
 {
   FileAssetSelectParams *params = static_cast<FileAssetSelectParams *>(ptr->data);
-  params->asset_library_ref = ED_asset_library_reference_from_enum_value(value);
+  params->asset_library_ref = blender::ed::asset::library_reference_from_enum_value(value);
 }
 
 static PointerRNA rna_FileAssetSelectParams_filter_id_get(PointerRNA *ptr)
@@ -3523,7 +3532,7 @@ static void rna_def_space(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Type", "Space data type");
 
-  /* access to V2D_VIEWSYNC_SCREEN_TIME */
+  /* Access to #V2D_VIEWSYNC_SCREEN_TIME. */
   prop = RNA_def_property(srna, "show_locked_time", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_Space_view2d_sync_get", "rna_Space_view2d_sync_set");
   RNA_def_property_ui_text(prop,
@@ -4755,12 +4764,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Constant Screen Size Normals",
                            "Keep size of normals constant in relation to 3D view");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
-
-  prop = RNA_def_property(srna, "backwire_opacity", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_sdna(prop, nullptr, "overlay.backwire_opacity");
-  RNA_def_property_ui_text(prop, "Backwire Opacity", "Opacity when rendering transparent wires");
-  RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   prop = RNA_def_property(srna, "texture_paint_mode_opacity", PROP_FLOAT, PROP_FACTOR);
@@ -6163,7 +6166,7 @@ static void rna_def_space_text(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "visible_lines", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_int_sdna(prop, nullptr, "runtime.viewlines");
+  RNA_def_property_int_funcs(prop, "rna_SpaceTextEditor_visible_lines_get", nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "Visible Lines", "Amount of lines that can be visible in current editor");
 
