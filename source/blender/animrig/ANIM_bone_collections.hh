@@ -49,8 +49,11 @@ BoneCollection *ANIM_bonecoll_new(const char *name) ATTR_WARN_UNUSED_RESULT;
  * of a bArmature. Normally bone collections are owned (and thus managed) by the armature.
  *
  * \see ANIM_armature_bonecoll_remove
+ *
+ * \param do_id_user_count whether to update user counts for IDs referenced from IDProperties of
+ * the bone collection. Needs to be false when freeing a CoW copy, true otherwise.
  */
-void ANIM_bonecoll_free(BoneCollection *bcoll);
+void ANIM_bonecoll_free(BoneCollection *bcoll, bool do_id_user_count = true);
 
 /**
  * Recalculate the armature & bone runtime data.
@@ -235,6 +238,23 @@ void ANIM_bonecoll_hide(bArmature *armature, BoneCollection *bcoll);
 void ANIM_armature_bonecoll_is_visible_set(bArmature *armature,
                                            BoneCollection *bcoll,
                                            bool is_visible);
+
+/**
+ * Set or clear this bone collection's solo flag.
+ */
+void ANIM_armature_bonecoll_solo_set(bArmature *armature, BoneCollection *bcoll, bool is_solo);
+
+/**
+ * Refresh the ARM_BCOLL_SOLO_ACTIVE flag.
+ */
+void ANIM_armature_refresh_solo_active(bArmature *armature);
+
+/**
+ * Determine whether this bone collection is visible, taking into account the visibility of its
+ * ancestors and the "solo" flags that are in use.
+ */
+bool ANIM_armature_bonecoll_is_visible_effectively(const bArmature *armature,
+                                                   const BoneCollection *bcoll);
 
 /**
  * Assign the bone to the bone collection.

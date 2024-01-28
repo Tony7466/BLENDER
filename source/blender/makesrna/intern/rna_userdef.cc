@@ -29,7 +29,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_callbacks.h"
 #include "BKE_sound.h"
 #include "BKE_studiolight.h"
@@ -57,6 +57,7 @@ const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_EDITING, "EDITING", 0, "Editing", ""},
     {USER_SECTION_ANIMATION, "ANIMATION", 0, "Animation", ""},
     RNA_ENUM_ITEM_SEPR,
+    {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
     {USER_SECTION_ADDONS, "ADDONS", 0, "Add-ons", ""},
 #if 0 /* def WITH_USERDEF_WORKSPACES */
     RNA_ENUM_ITEM_SEPR,
@@ -72,7 +73,6 @@ const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_SYSTEM, "SYSTEM", 0, "System", ""},
     {USER_SECTION_SAVE_LOAD, "SAVE_LOAD", 0, "Save & Load", ""},
     {USER_SECTION_FILE_PATHS, "FILE_PATHS", 0, "File Paths", ""},
-    {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_EXPERIMENTAL, "EXPERIMENTAL", 0, "Experimental", ""},
     {0, nullptr, 0, nullptr, nullptr},
@@ -324,18 +324,26 @@ static void rna_userdef_font_update(Main * /*bmain*/, Scene * /*scene*/, Pointer
   UI_reinit_font();
 }
 
-static void rna_userdef_language_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
+static void rna_userdef_language_update(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   BLT_lang_set(nullptr);
 
   const char *uilng = BLT_lang_get();
   if (STREQ(uilng, "en_US")) {
-    U.transopts &= ~(USER_TR_IFACE | USER_TR_TOOLTIPS | USER_TR_NEWDATANAME);
+    U.transopts &= ~(USER_TR_IFACE | USER_TR_TOOLTIPS | USER_TR_REPORTS | USER_TR_NEWDATANAME);
   }
   else {
-    U.transopts |= (USER_TR_IFACE | USER_TR_TOOLTIPS | USER_TR_NEWDATANAME);
+    U.transopts |= (USER_TR_IFACE | USER_TR_TOOLTIPS | USER_TR_REPORTS | USER_TR_NEWDATANAME);
   }
 
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_TRANSLATION_UPDATE_POST);
+  USERDEF_TAG_DIRTY;
+}
+
+static void rna_userdef_translation_update(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
+{
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_TRANSLATION_UPDATE_POST);
+  WM_main_add_notifier(NC_WINDOW, nullptr);
   USERDEF_TAG_DIRTY;
 }
 
@@ -442,6 +450,40 @@ static void rna_userdef_script_directory_remove(ReportList *reports, PointerRNA 
   }
 
   BLI_freelinkN(&U.script_directories, script_dir);
+  RNA_POINTER_INVALIDATE(ptr);
+  USERDEF_TAG_DIRTY;
+}
+
+static bUserAssetLibrary *rna_userdef_asset_library_new(const char *name, const char *directory)
+{
+  bUserAssetLibrary *new_library = BKE_preferences_asset_library_add(
+      &U, name ? name : "", directory ? directory : "");
+
+  /* Trigger refresh for the Asset Browser. */
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
+
+  USERDEF_TAG_DIRTY;
+  return new_library;
+}
+
+static void rna_userdef_asset_library_remove(ReportList *reports, PointerRNA *ptr)
+{
+  bUserAssetLibrary *library = static_cast<bUserAssetLibrary *>(ptr->data);
+
+  if (BLI_findindex(&U.asset_libraries, library) == -1) {
+    BKE_report(reports, RPT_ERROR, "Asset Library not found");
+    return;
+  }
+
+  BKE_preferences_asset_library_remove(&U, library);
+
+  /* Update active library index to be in range. */
+  const int count_remaining = BLI_listbase_count(&U.asset_libraries);
+  CLAMP(U.active_asset_library, 0, count_remaining - 1);
+
+  /* Trigger refresh for the Asset Browser. */
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
+
   RNA_POINTER_INVALIDATE(ptr);
   USERDEF_TAG_DIRTY;
 }
@@ -925,6 +967,12 @@ static int rna_lang_enum_properties_get_no_international(PointerRNA * /*ptr*/)
 static void rna_Addon_module_set(PointerRNA *ptr, const char *value)
 {
   bAddon *addon = (bAddon *)ptr->data;
+
+  /* The module may be empty (for newly created data), skip the preferences search.
+   * Note that changing existing add-ons module isn't a common operation.
+   * Support this to allow for an extension repositories module to change at run-time. */
+  bAddonPrefType *apt = addon->module[0] ? BKE_addon_pref_type_find(addon->module, true) : nullptr;
+
   size_t module_len = STRNCPY_UTF8_RLEN(addon->module, value);
 
   /* Reserve half of `bAddon::module` for a package component.
@@ -948,6 +996,11 @@ static void rna_Addon_module_set(PointerRNA *ptr, const char *value)
       submodule_beg[submodule_len_limit] = '\0';
       BLI_str_utf8_invalid_strip(submodule_beg, submodule_len_limit);
     }
+  }
+
+  if (apt) {
+    /* Keep the associated preferences. */
+    STRNCPY(apt->idname, addon->module);
   }
 }
 
@@ -1025,6 +1078,13 @@ static StructRNA *rna_AddonPref_register(Main *bmain,
   /* Check if we have registered this add-on preference type before, and remove it. */
   apt = BKE_addon_pref_type_find(dummy_addon.module, true);
   if (apt) {
+    BKE_reportf(reports,
+                RPT_INFO,
+                "%s '%s', bl_idname '%s' has been registered before, unregistering previous",
+                error_prefix,
+                identifier,
+                dummy_apt.idname);
+
     StructRNA *srna = apt->rna_ext.srna;
     if (!(srna && rna_AddonPref_unregister(bmain, srna))) {
       BKE_reportf(reports,
@@ -5185,7 +5245,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Translate Tooltips",
                            "Translate the descriptions when hovering UI elements (recommended)");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_translation_update");
 
   prop = RNA_def_property(srna, "use_translate_interface", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "transopts", USER_TR_IFACE);
@@ -5194,14 +5254,20 @@ static void rna_def_userdef_view(BlenderRNA *brna)
       "Translate Interface",
       "Translate all labels in menus, buttons and panels "
       "(note that this might make it hard to follow tutorials or the manual)");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_translation_update");
+
+  prop = RNA_def_property(srna, "use_translate_reports", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "transopts", USER_TR_REPORTS);
+  RNA_def_property_ui_text(
+      prop, "Translate Reports", "Translate additional information, such as error messages");
+  RNA_def_property_update(prop, 0, "rna_userdef_translation_update");
 
   prop = RNA_def_property(srna, "use_translate_new_dataname", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "transopts", USER_TR_NEWDATANAME);
   RNA_def_property_ui_text(prop,
                            "Translate New Names",
                            "Translate the names of new data-blocks (objects, materials...)");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_translation_update");
 
   /* Status-bar. */
 
@@ -5356,13 +5422,13 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "(default setting used for new Scenes)");
 
   prop = RNA_def_property(srna, "use_keyframe_insert_available", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_INSERTAVAILABLE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", AUTOKEY_FLAG_INSERTAVAILABLE);
   RNA_def_property_ui_text(prop,
                            "Auto Keyframe Insert Available",
                            "Automatic keyframe insertion in available F-Curves");
 
   prop = RNA_def_property(srna, "use_auto_keying_warning", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_NOWARNING);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "keying_flag", AUTOKEY_FLAG_NOWARNING);
   RNA_def_property_ui_text(
       prop,
       "Show Auto Keying Warning",
@@ -5377,18 +5443,23 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Default Key Channels",
                            "Which channels to insert keys at when no keying set is active");
 
+  prop = RNA_def_property(srna, "use_auto_keyframe_insert_needed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", AUTOKEY_FLAG_INSERTNEEDED);
+  RNA_def_property_ui_text(
+      prop, "Autokey Insert Needed", "Auto-Keyframe insertion only when keyframe needed");
+
   prop = RNA_def_property(srna, "use_keyframe_insert_needed", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_INSERTNEEDED);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", MANUALKEY_FLAG_INSERTNEEDED);
   RNA_def_property_ui_text(
       prop, "Keyframe Insert Needed", "Keyframe insertion only when keyframe needed");
 
   prop = RNA_def_property(srna, "use_visual_keying", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_VISUALKEY);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", KEYING_FLAG_VISUALKEY);
   RNA_def_property_ui_text(
       prop, "Visual Keying", "Use Visual keying automatically for constrained objects");
 
   prop = RNA_def_property(srna, "use_insertkey_xyz_to_rgb", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "autokey_flag", AUTOKEY_FLAG_XYZ2RGB);
+  RNA_def_property_boolean_sdna(prop, nullptr, "keying_flag", KEYING_FLAG_XYZ2RGB);
   RNA_def_property_ui_text(
       prop,
       "New F-Curve Colors - XYZ to RGB",
@@ -6541,7 +6612,10 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_string_sdna(prop, nullptr, "dirpath");
-  RNA_def_property_ui_text(prop, "Local Directory", "The local directory containing extensions");
+  RNA_def_property_ui_text(prop,
+                           "Local Directory",
+                           "The local directory containing extensions. "
+                           "When unset, a path is used based on the user scripts path");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_property_string_funcs(
       prop, nullptr, nullptr, "rna_userdef_extension_repo_directory_set");
@@ -6631,6 +6705,34 @@ static void rna_def_userdef_script_directory_collection(BlenderRNA *brna, Proper
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Remove a Python script directory");
   parm = RNA_def_pointer(func, "script_directory", "ScriptDirectory", "", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+}
+
+static void rna_def_userdef_asset_library_collection(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "AssetLibraryCollection");
+  srna = RNA_def_struct(brna, "AssetLibraryCollection", nullptr);
+  RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
+  RNA_def_struct_ui_text(srna, "User Asset Libraries", "Collection of user asset libraries");
+
+  func = RNA_def_function(srna, "new", "rna_userdef_asset_library_new");
+  RNA_def_function_flag(func, FUNC_NO_SELF);
+  RNA_def_function_ui_description(func, "Add a new Asset Library");
+  RNA_def_string(func, "name", nullptr, sizeof(bUserAssetLibrary::name), "Name", "");
+  RNA_def_string(func, "directory", nullptr, sizeof(bUserAssetLibrary::dirpath), "Directory", "");
+  /* return type */
+  parm = RNA_def_pointer(func, "library", "UserAssetLibrary", "", "Newly added asset library");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_userdef_asset_library_remove");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove an Asset Library");
+  parm = RNA_def_pointer(func, "library", "UserAssetLibrary", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
@@ -6876,6 +6978,7 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   prop = RNA_def_property(srna, "asset_libraries", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "UserAssetLibrary");
   RNA_def_property_ui_text(prop, "Asset Libraries", "");
+  rna_def_userdef_asset_library_collection(brna, prop);
 
   prop = RNA_def_property(srna, "active_asset_library", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop,

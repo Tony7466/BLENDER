@@ -6,6 +6,7 @@
  * \ingroup RNA
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <cfloat>
 #include <cinttypes>
@@ -85,7 +86,7 @@ static const char *path_basename(const char *path)
     lfslash++;
   }
 
-  return MAX3(path, lfslash, lbslash);
+  return std::max({path, lfslash, lbslash});
 }
 
 /* forward declarations */
@@ -1100,10 +1101,10 @@ static void rna_clamp_value(FILE *f, PropertyRNA *prop, int array)
 
     if (iprop->hardmin != INT_MIN || iprop->hardmax != INT_MAX || iprop->range) {
       if (array) {
-        fprintf(f, "CLAMPIS(values[i], ");
+        fprintf(f, "std::clamp(values[i], ");
       }
       else {
-        fprintf(f, "CLAMPIS(value, ");
+        fprintf(f, "std::clamp(value, ");
       }
       if (iprop->range) {
         fprintf(f, "prop_clamp_min, prop_clamp_max);\n");
@@ -1122,10 +1123,10 @@ static void rna_clamp_value(FILE *f, PropertyRNA *prop, int array)
 
     if (fprop->hardmin != -FLT_MAX || fprop->hardmax != FLT_MAX || fprop->range) {
       if (array) {
-        fprintf(f, "CLAMPIS(values[i], ");
+        fprintf(f, "std::clamp(values[i], ");
       }
       else {
-        fprintf(f, "CLAMPIS(value, ");
+        fprintf(f, "std::clamp(value, ");
       }
       if (fprop->range) {
         fprintf(f, "prop_clamp_min, prop_clamp_max);\n");
@@ -1465,7 +1466,7 @@ static char *rna_def_property_set_func(
             /* C++ may require casting to an enum type. */
             fprintf(f, "#ifdef __cplusplus\n");
             fprintf(f,
-                    /* If #rna_clamp_value() adds an expression like `CLAMPIS(...)`
+                    /* If #rna_clamp_value() adds an expression like `std::clamp(...)`
                      * (instead of an `lvalue`), #decltype() yields a reference,
                      * so that has to be removed. */
                     "    data->%s = %s(std::remove_reference_t<decltype(data->%s)>)",
@@ -1965,15 +1966,15 @@ static void rna_set_raw_property(PropertyDefRNA *dp, PropertyRNA *prop)
   }
 
   if (STREQ(dp->dnatype, "char")) {
-    prop->rawtype = PROP_RAW_CHAR;
+    prop->rawtype = prop->type == PROP_BOOLEAN ? PROP_RAW_BOOLEAN : PROP_RAW_CHAR;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "int8_t")) {
-    prop->rawtype = PROP_RAW_INT8;
+    prop->rawtype = prop->type == PROP_BOOLEAN ? PROP_RAW_BOOLEAN : PROP_RAW_INT8;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "uchar")) {
-    prop->rawtype = PROP_RAW_UINT8;
+    prop->rawtype = prop->type == PROP_BOOLEAN ? PROP_RAW_BOOLEAN : PROP_RAW_UINT8;
     prop->flag_internal |= PROP_INTERN_RAW_ACCESS;
   }
   else if (STREQ(dp->dnatype, "short")) {
@@ -4847,6 +4848,7 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#include <limits>\n");
   fprintf(f, "#include <string.h>\n\n");
   fprintf(f, "#include <stddef.h>\n\n");
+  fprintf(f, "#include <algorithm>\n\n");
 
   fprintf(f, "#include \"MEM_guardedalloc.h\"\n\n");
 
@@ -4858,7 +4860,7 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#include \"BLI_utildefines.h\"\n\n");
 
   fprintf(f, "#include \"BKE_context.hh\"\n");
-  fprintf(f, "#include \"BKE_lib_id.h\"\n");
+  fprintf(f, "#include \"BKE_lib_id.hh\"\n");
   fprintf(f, "#include \"BKE_main.hh\"\n");
   fprintf(f, "#include \"BKE_report.h\"\n");
 

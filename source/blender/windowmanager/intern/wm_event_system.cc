@@ -14,7 +14,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "AS_asset_library.h"
+#include "AS_asset_library.hh"
 
 #include "DNA_listBase.h"
 #include "DNA_scene_types.h"
@@ -42,7 +42,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
-#include "BKE_undo_system.h"
+#include "BKE_undo_system.hh"
 #include "BKE_workspace.h"
 
 #include "BKE_sound.h"
@@ -397,7 +397,7 @@ void WM_main_remove_notifier_reference(const void *reference)
 
 static void wm_main_remap_assetlist(ID *old_id, ID *new_id, void * /*user_data*/)
 {
-  ED_assetlist_storage_id_remap(old_id, new_id);
+  blender::ed::asset::list::storage_id_remap(old_id, new_id);
 }
 
 static void wm_main_remap_msgbus_notify(ID *old_id, ID *new_id, void *user_data)
@@ -963,7 +963,7 @@ void WM_reportf(eReportType type, const char *format, ...)
 {
   va_list args;
 
-  format = TIP_(format);
+  format = RPT_(format);
   va_start(args, format);
   char *str = BLI_vsprintfN(format, args);
   WM_report(type, str);
@@ -2001,8 +2001,8 @@ void WM_operator_name_call_ptr_with_depends_on_cursor(bContext *C,
     char header_text[UI_MAX_DRAW_STR];
     SNPRINTF(header_text,
              "%s %s",
-             IFACE_("Input pending "),
-             (drawstr && drawstr[0]) ? drawstr : CTX_IFACE_(ot->translation_context, ot->name));
+             RPT_("Input pending "),
+             (drawstr && drawstr[0]) ? drawstr : CTX_RPT_(ot->translation_context, ot->name));
     if (area != nullptr) {
       ED_area_status_text(area, header_text);
     }

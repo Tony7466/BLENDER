@@ -6,10 +6,13 @@
  * \ingroup edinterface
  */
 
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+
+#include <fmt/format.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -36,6 +39,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
+#include "BLI_time.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
@@ -54,9 +58,9 @@
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_idtype.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_linestyle.h"
 #include "BKE_main.hh"
@@ -82,10 +86,10 @@
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
+#include "IMB_thumbs.hh"
 
 #include "RE_engine.h"
 
@@ -100,8 +104,6 @@
 #include "UI_string_search.hh"
 #include "UI_view2d.hh"
 #include "interface_intern.hh"
-
-#include "PIL_time.h"
 
 /* we may want to make this optional, disable for now. */
 // #define USE_OP_RESET_BUT
@@ -146,7 +148,7 @@ static int template_search_textbut_width(PointerRNA *ptr, PropertyRNA *name_prop
   }
 
   /* Clamp to some min/max width. */
-  return CLAMPIS(
+  return std::clamp(
       estimated_width, TEMPLATE_SEARCH_TEXTBUT_MIN_WIDTH, TEMPLATE_SEARCH_TEXTBUT_MIN_WIDTH * 3);
 }
 
@@ -2599,7 +2601,7 @@ void uiTemplateGpencilModifiers(uiLayout * /*layout*/, bContext *C)
 
 /** \} */
 
-#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
+#define ERROR_LIBDATA_MESSAGE N_("Can't edit external library data")
 
 /* -------------------------------------------------------------------- */
 /** \name ShaderFx Template
@@ -2715,7 +2717,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
   /* poll() on this operator may still fail,
    * at the moment there is no nice feedback when this happens just fails silently. */
   if (!WM_operator_repeat_check(C, op)) {
-    UI_block_lock_set(block, true, "Operator can't redo");
+    UI_block_lock_set(block, true, N_("Operator cannot redo"));
     return return_info;
   }
 
@@ -2974,7 +2976,7 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
 /** \name Constraint Header Template
  * \{ */
 
-#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
+#define ERROR_LIBDATA_MESSAGE N_("Can't edit external library data")
 
 static void constraint_active_func(bContext * /*C*/, void *ob_v, void *con_v)
 {
@@ -6139,7 +6141,7 @@ struct ProgressTooltip_Store {
   void *owner;
 };
 
-static char *progress_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
+static std::string progress_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
 {
   ProgressTooltip_Store *arg = static_cast<ProgressTooltip_Store *>(argN);
   wmWindowManager *wm = arg->wm;
@@ -6150,7 +6152,7 @@ static char *progress_tooltip_func(bContext * /*C*/, void *argN, const char * /*
   /* create tooltip text and associate it with the job */
   char elapsed_str[32];
   char remaining_str[32] = "Unknown";
-  const double elapsed = PIL_check_seconds_timer() - WM_jobs_starttime(wm, owner);
+  const double elapsed = BLI_check_seconds_timer() - WM_jobs_starttime(wm, owner);
   BLI_timecode_string_from_time_simple(elapsed_str, sizeof(elapsed_str), elapsed);
 
   if (progress) {
@@ -6158,9 +6160,9 @@ static char *progress_tooltip_func(bContext * /*C*/, void *argN, const char * /*
     BLI_timecode_string_from_time_simple(remaining_str, sizeof(remaining_str), remaining);
   }
 
-  return BLI_sprintfN(
-      "Time Remaining: %s\n"
-      "Time Elapsed: %s",
+  return fmt::format(
+      "Time Remaining: {}\n"
+      "Time Elapsed: {}",
       remaining_str,
       elapsed_str);
 }
@@ -6537,9 +6539,9 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     uiLayout *row = uiLayoutRow(col, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_LEFT);
 
-    const char *msg = CTX_TIP_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
+    const char *msg = CTX_RPT_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
                                WM_window_cursor_keymap_status_get(win, i, 0));
-    const char *msg_drag = CTX_TIP_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
+    const char *msg_drag = CTX_RPT_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
                                     WM_window_cursor_keymap_status_get(win, i, 1));
 
     if (msg || (msg_drag == nullptr)) {
@@ -6638,7 +6640,7 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
   BKE_blender_version_blendfile_string_from_values(
       writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
   SNPRINTF(compat_error_msg,
-           TIP_("File saved by newer Blender\n(%s), expect loss of data"),
+           RPT_("File saved by newer Blender\n(%s), expect loss of data"),
            writer_ver_str);
   but = uiDefIconBut(block,
                      UI_BTYPE_BUT,
@@ -6790,13 +6792,13 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
       uiItemL(layout, "", icon_mod[j]);
     }
-    uiItemL(layout, CTX_TIP_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), icon);
+    uiItemL(layout, CTX_RPT_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), icon);
     ok = true;
   }
   else if (text_fallback) {
     const char *event_text = WM_key_event_string(kmi->type, true);
     uiItemL(layout, event_text, ICON_NONE);
-    uiItemL(layout, CTX_TIP_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    uiItemL(layout, CTX_RPT_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
     ok = true;
   }
   return ok;
@@ -6980,7 +6982,7 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
 
   if (!is_alembic) {
     row = uiLayoutRow(layout, false);
-    uiItemL(row, TIP_("Only Alembic Procedurals supported"), ICON_INFO);
+    uiItemL(row, RPT_("Only Alembic Procedurals supported"), ICON_INFO);
   }
   else if (!engine_supports_procedural) {
     row = uiLayoutRow(layout, false);
@@ -6988,13 +6990,13 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
     if (BKE_scene_uses_cycles(scene) && !BKE_scene_uses_cycles_experimental_features(scene)) {
       uiItemL(
           row,
-          TIP_(
+          RPT_(
               "The Cycles Alembic Procedural is only available with the experimental feature set"),
           ICON_INFO);
     }
     else {
       uiItemL(
-          row, TIP_("The active render engine does not have an Alembic Procedural"), ICON_INFO);
+          row, RPT_("The active render engine does not have an Alembic Procedural"), ICON_INFO);
     }
   }
 
@@ -7200,8 +7202,13 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *
   /* File path. */
   char root[FILE_MAX];
   BLI_path_split_dir_part(path, root, FILE_MAX);
-  UI_tooltip_text_field_add(tip, BLI_strdup(root), nullptr, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
-  UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+  UI_tooltip_text_field_add(tip, root, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
+  UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+
+  if (!BLI_exists(path)) {
+    UI_tooltip_text_field_add(tip, N_("File Not Found"), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_ALERT);
+    return;
+  }
 
   /* Blender version. */
   char version_st[128] = {0};
@@ -7223,42 +7230,36 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *
   }
 
   if (version_st[0]) {
-    UI_tooltip_text_field_add(tip,
-                              BLI_sprintfN("Blender %s", version_st),
-                              nullptr,
-                              UI_TIP_STYLE_NORMAL,
-                              UI_TIP_LC_NORMAL);
-    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(
+        tip, fmt::format("Blender {}", version_st), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
   }
 
   BLI_stat_t status;
   if (BLI_stat(path, &status) != -1) {
     char date_st[FILELIST_DIRENTRY_DATE_LEN], time_st[FILELIST_DIRENTRY_TIME_LEN];
     bool is_today, is_yesterday;
-    std::string day_string = ("");
+    std::string day_string;
     BLI_filelist_entry_datetime_to_string(
         nullptr, int64_t(status.st_mtime), false, time_st, date_st, &is_today, &is_yesterday);
     if (is_today || is_yesterday) {
       day_string = (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
     }
     UI_tooltip_text_field_add(tip,
-                              BLI_sprintfN("%s: %s%s%s",
-                                           N_("Modified"),
-                                           day_string.c_str(),
-                                           (is_today || is_yesterday) ? "" : date_st,
-                                           (is_today || is_yesterday) ? time_st : ""),
-                              nullptr,
+                              fmt::format("{}: {}{}{}",
+                                          N_("Modified"),
+                                          day_string,
+                                          (is_today || is_yesterday) ? "" : date_st,
+                                          (is_today || is_yesterday) ? time_st : ""),
+                              {},
                               UI_TIP_STYLE_NORMAL,
                               UI_TIP_LC_NORMAL);
 
     if (status.st_size > 0) {
       char size[16];
       BLI_filelist_entry_size_to_string(nullptr, status.st_size, false, size);
-      UI_tooltip_text_field_add(tip,
-                                BLI_sprintfN("%s: %s", N_("Size"), size),
-                                nullptr,
-                                UI_TIP_STYLE_NORMAL,
-                                UI_TIP_LC_NORMAL);
+      UI_tooltip_text_field_add(
+          tip, fmt::format("{}: {}", N_("Size"), size), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
     }
   }
 
@@ -7272,10 +7273,10 @@ static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *
   }
 
   if (thumb) {
-    float scale = (72.0f * UI_SCALE_FAC) / float(MAX2(thumb->x, thumb->y));
+    float scale = (72.0f * UI_SCALE_FAC) / float(std::max(thumb->x, thumb->y));
     short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
-    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
-    UI_tooltip_text_field_add(tip, nullptr, nullptr, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_image_field_add(tip, thumb, size);
     IMB_freeImBuf(thumb);
   }
