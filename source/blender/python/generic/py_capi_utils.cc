@@ -19,7 +19,8 @@
 #include <Python.h>
 #include <frameobject.h>
 
-#include "BLI_utildefines.h" /* for bool */
+#include "BLI_endian_defines.h" /* for determining which buffer formats have native byte order. */
+#include "BLI_utildefines.h"    /* for bool */
 
 #include "py_capi_utils.h"
 
@@ -1798,6 +1799,21 @@ char PyC_StructFmt_type_from_str(const char *typestr)
       return typestr[1];
     default:
       return typestr[0];
+  }
+}
+
+bool PyC_StructFmt_byteorder_is_native(const char *typestr)
+{
+  switch (typestr[0]) {
+#if ENDIAN_ORDER == L_ENDIAN
+    case '!':
+    case '>':
+#else
+    case '<':
+#endif
+      return false;
+    default:
+      return true;
   }
 }
 
