@@ -1654,7 +1654,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
 
   if (data->position == WM_POPUP_POSITION_MOUSE) {
     const float button_center_x = windows_layout ? -0.33f : -0.66f;
-    const float button_center_y = small ? 1.8f : 3.1f;
+    const float button_center_y = small ? 1.9f : 3.1f;
     const int bounds_offset[2] = {button_center_x * uiLayoutGetWidth(layout),
                                   button_center_y * UI_UNIT_X};
     UI_block_bounds_set_popup(block, padding, bounds_offset);
@@ -1733,10 +1733,9 @@ int WM_operator_confirm_ex(bContext *C,
   data->width = int(180.0f * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
                     UI_DEFAULT_TEXT_POINTS);
   data->free_op = true;
-  data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
+  data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
   data->message = (message == nullptr) ? std::string() : message;
-  data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
-                                                   confirm_text;
+  data->confirm_text = (confirm_text == nullptr) ? IFACE_("OK") : confirm_text;
   data->icon = eAlertIcon(icon);
   data->size = (message == nullptr) ? WM_POPUP_SIZE_SMALL : WM_POPUP_SIZE_LARGE;
   data->position = (message == nullptr) ? WM_POPUP_POSITION_MOUSE : WM_POPUP_POSITION_CENTER;
@@ -1826,9 +1825,8 @@ int WM_operator_props_dialog_popup(
   data->width = int(float(width) * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
                     UI_DEFAULT_TEXT_POINTS);
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
-  data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
-  data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
-                                                   confirm_text;
+  data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
+  data->confirm_text = (confirm_text == nullptr) ? IFACE_("OK") : confirm_text;
   data->icon = ALERT_ICON_NONE;
   data->size = WM_POPUP_SIZE_SMALL;
   data->position = WM_POPUP_POSITION_MOUSE;
