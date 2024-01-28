@@ -123,6 +123,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   bool show_keyframes_no = (avs->path_viewflag & MOTIONPATH_VIEW_KFNOS) != 0;
   bool show_frame_no = (avs->path_viewflag & MOTIONPATH_VIEW_FNUMS) != 0;
   bool show_lines = (mpath->flag & MOTIONPATH_FLAG_LINES) != 0;
+  const bool points_in_camera_space = (avs->path_bakeflag & MOTIONPATH_BAKE_CAMERA_SPACE) != 0;
   float no_custom_col[3] = {-1.0f, -1.0f, -1.0f};
   float *color = (mpath->flag & MOTIONPATH_FLAG_CUSTOM) ? mpath->color : no_custom_col;
 
@@ -143,6 +144,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     DRW_shgroup_uniform_int_copy(grp, "lineThickness", mpath->line_thickness);
     DRW_shgroup_uniform_bool_copy(grp, "selected", selected);
     DRW_shgroup_uniform_vec3_copy(grp, "customColor", color);
+    DRW_shgroup_uniform_bool_copy(grp, "points_in_camera_space", points_in_camera_space);
     /* Only draw the required range. */
     DRW_shgroup_call_range(grp, nullptr, mpath_batch_line_get(mpath), start_index, len);
   }
@@ -155,6 +157,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     DRW_shgroup_uniform_ivec4_copy(grp, "mpathPointSettings", motion_path_settings);
     DRW_shgroup_uniform_bool_copy(grp, "showKeyFrames", show_keyframes);
     DRW_shgroup_uniform_vec3_copy(grp, "customColor", color);
+    DRW_shgroup_uniform_bool_copy(grp, "points_in_camera_space", points_in_camera_space);
     /* Only draw the required range. */
     DRW_shgroup_call_range(grp, nullptr, mpath_batch_points_get(mpath), start_index, len);
   }
@@ -168,17 +171,28 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     UI_GetThemeColor3ubv(TH_VERTEX_SELECT, col_kf);
     col[3] = col_kf[3] = 255;
 
+    Object *cam_eval = nullptr;
+    if (points_in_camera_space && mpath->camera) {
+      cam_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, mpath->camera);
+    }
+
     bMotionPathVert *mpv = mpath->points + start_index;
     for (i = 0; i < len; i += stepsize, mpv += stepsize) {
       int frame = sfra + i;
       char numstr[32];
       size_t numstr_len;
       bool is_keyframe = (mpv->flag & MOTIONPATH_VERT_KEY) != 0;
+      float vert_coordinate[3];
+      copy_v3_v3(vert_coordinate, mpv->co);
+      if (points_in_camera_space && cam_eval) {
+        /* Projecting the point into world space from the cameras pov. */
+        mul_m4_v3(cam_eval->object_to_world, vert_coordinate);
+      }
 
       if ((show_keyframes && show_keyframes_no && is_keyframe) || (show_frame_no && (i == 0))) {
         numstr_len = SNPRINTF_RLEN(numstr, " %d", frame);
         DRW_text_cache_add(
-            dt, mpv->co, numstr, numstr_len, 0, 0, txt_flag, (is_keyframe) ? col_kf : col);
+            dt, vert_coordinate, numstr, numstr_len, 0, 0, txt_flag, (is_keyframe) ? col_kf : col);
       }
       else if (show_frame_no) {
         bMotionPathVert *mpvP = (mpv - stepsize);
@@ -187,7 +201,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
          * don't occur on same point. */
         if ((equals_v3v3(mpv->co, mpvP->co) == 0) || (equals_v3v3(mpv->co, mpvN->co) == 0)) {
           numstr_len = SNPRINTF_RLEN(numstr, " %d", frame);
-          DRW_text_cache_add(dt, mpv->co, numstr, numstr_len, 0, 0, txt_flag, col);
+          DRW_text_cache_add(dt, vert_coordinate, numstr, numstr_len, 0, 0, txt_flag, col);
         }
       }
     }

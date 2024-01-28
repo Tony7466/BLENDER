@@ -149,6 +149,15 @@ bMotionPath *animviz_verify_motionpaths(ReportList *reports,
 
     mpath = *dst;
 
+    if (avs->path_bakeflag & MOTIONPATH_BAKE_CAMERA_SPACE) {
+      mpath->flag |= MOTIONPATH_FLAG_BAKE_CAMERA;
+      mpath->camera = scene->camera;
+    }
+    else {
+      mpath->flag &= ~MOTIONPATH_FLAG_BAKE_CAMERA;
+      mpath->camera = nullptr;
+    }
+
     /* Path is "valid" if length is valid,
      * but must also be of the same length as is being requested. */
     if ((mpath->start_frame != mpath->end_frame) && (mpath->length > 0)) {
@@ -167,6 +176,14 @@ bMotionPath *animviz_verify_motionpaths(ReportList *reports,
     /* create a new motionpath, and assign it */
     mpath = static_cast<bMotionPath *>(MEM_callocN(sizeof(bMotionPath), "bMotionPath"));
     *dst = mpath;
+    if (avs->path_bakeflag & MOTIONPATH_BAKE_CAMERA_SPACE) {
+      mpath->flag |= MOTIONPATH_FLAG_BAKE_CAMERA;
+      mpath->camera = scene->camera;
+    }
+    else {
+      mpath->flag &= ~MOTIONPATH_FLAG_BAKE_CAMERA;
+      mpath->camera = nullptr;
+    }
   }
 
   /* set settings from the viz settings */

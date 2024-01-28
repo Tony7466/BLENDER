@@ -25,7 +25,12 @@ float calc_intensity(int segment_start, int segment_current, int segment_end, fl
 
 void main()
 {
-  gl_Position = drw_view.winmat * (drw_view.viewmat * vec4(pos, 1.0));
+  if (points_in_camera_space) {
+    gl_Position = drw_view.winmat * vec4(pos, 1.0);
+  }
+  else {
+    gl_Position = drw_view.winmat * (drw_view.viewmat * vec4(pos, 1.0));
+  }
 
   interp_flat.ss_pos = proj(gl_Position);
 

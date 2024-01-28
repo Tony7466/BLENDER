@@ -127,7 +127,7 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
 /* ........ */
 
 /* perform baking for the targets on the current frame */
-static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
+static void motionpaths_calc_bake_targets(ListBase *targets, int cframe, Depsgraph *depsgraph)
 {
   /* for each target, check if it can be baked on the current frame */
   LISTBASE_FOREACH (MPathTarget *, mpt, targets) {
@@ -168,6 +168,12 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
     else {
       /* World-space object location. */
       copy_v3_v3(mpv->co, ob_eval->object_to_world[3]);
+      if (mpath->flag & MOTIONPATH_FLAG_BAKE_CAMERA && mpath->camera) {
+        DEG_evaluate_on_framechange(depsgraph, cframe);
+        Object *cam_eval = DEG_get_evaluated_object(depsgraph, mpath->camera);
+        /* Convert point to camera space. */
+        mul_m4_v3(cam_eval->world_to_object, mpv->co);
+      }
     }
 
     float mframe = float(cframe);
@@ -503,7 +509,7 @@ void animviz_calc_motionpaths(Depsgraph *depsgraph,
     }
 
     /* perform baking for targets */
-    motionpaths_calc_bake_targets(targets, scene->r.cfra);
+    motionpaths_calc_bake_targets(targets, scene->r.cfra, depsgraph);
   }
 
   /* reset original environment */

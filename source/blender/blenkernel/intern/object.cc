@@ -522,6 +522,10 @@ static void object_foreach_id(ID *id, LibraryForeachIDData *data)
       BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, fluidmd->fss->ipo, IDWALK_CB_USER);
     }
   }
+
+  if (object->mpath) {
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->mpath->camera, IDWALK_CB_USER);
+  }
 }
 
 static void object_foreach_path_pointcache(ListBase *ptcache_list,
