@@ -24,7 +24,7 @@
 #include "DNA_space_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 
@@ -32,6 +32,8 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
+
+#include "bmesh.hh"
 
 const EnumPropertyItem rna_enum_particle_edit_hair_brush_items[] = {
     {PE_BRUSH_COMB, "COMB", 0, "Comb", "Comb hairs"},

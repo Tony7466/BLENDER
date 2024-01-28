@@ -13,6 +13,7 @@ set(INC
   ../../makesrna
   ../../nodes
   ../../windowmanager
+  ../../../../extern/fmtlib/include
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -57,6 +58,9 @@ set(LIB
 )
 
 if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )

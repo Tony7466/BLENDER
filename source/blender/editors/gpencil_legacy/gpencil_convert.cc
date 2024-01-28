@@ -44,7 +44,7 @@
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_image.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_object.hh"
@@ -1522,7 +1522,8 @@ static int gpencil_convert_layer_exec(bContext *C, wmOperator *op)
   gtd.mode = RNA_enum_get(op->ptr, "timing_mode");
   /* Check for illegal timing mode! */
   if (!valid_timing &&
-      !ELEM(gtd.mode, GP_STROKECONVERT_TIMING_NONE, GP_STROKECONVERT_TIMING_LINEAR)) {
+      !ELEM(gtd.mode, GP_STROKECONVERT_TIMING_NONE, GP_STROKECONVERT_TIMING_LINEAR))
+  {
     gtd.mode = GP_STROKECONVERT_TIMING_LINEAR;
     RNA_enum_set(op->ptr, "timing_mode", gtd.mode);
   }
