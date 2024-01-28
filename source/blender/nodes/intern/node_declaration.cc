@@ -306,6 +306,17 @@ bool NodeDeclaration::matches(const bNode &node) const
   return true;
 }
 
+bool NodeDeclaration::is_enum_source() const
+{
+  return std::any_of(
+      this->inputs.begin(), this->inputs.end(), [](const SocketDeclaration *socket) -> bool {
+        if (const auto *menu_socket = dynamic_cast<const decl::Menu *>(socket)) {
+          return bool(menu_socket->definition);
+        }
+        return false;
+      });
+}
+
 bNodeSocket &SocketDeclaration::update_or_build(bNodeTree &ntree,
                                                 bNode &node,
                                                 bNodeSocket &socket) const

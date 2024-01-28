@@ -57,6 +57,11 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
   const bool supports_fields = socket_type_supports_fields(data_type);
 
   auto &menu = b.add_input<decl::Menu>("Menu");
+  menu.enum_source([](const bNode &node) {
+    const NodeMenuSwitch &storage = node_storage(node);
+    return storage.enum_definition;
+  });
+
   if (supports_fields) {
     menu.supports_field();
   }

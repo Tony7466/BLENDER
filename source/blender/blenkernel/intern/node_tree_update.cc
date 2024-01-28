@@ -29,6 +29,7 @@
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
+#include "NOD_socket_declarations.hh"
 #include "NOD_texture.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -810,33 +811,34 @@ class NodeTreeMainUpdater {
     /* Propagation from right to left to determine which enum
      * definition to use for menu sockets. */
     for (bNode *node : ntree.toposort_right_to_left()) {
-      const bool node_updated = this->should_update_individual_node(ntree, *node);
+      // const bool node_updated = this->should_update_individual_node(ntree, *node);
 
-      if (node->typeinfo->type == GEO_NODE_MENU_SWITCH) {
-        /* Generate new enum items when the node has changed, otherwise keep existing items. */
-        if (node_updated) {
-          const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
-          const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
-              storage.enum_definition);
+      /* Clear current enum references. */
+      for (bNodeSocket *socket : node->input_sockets()) {
+        if (socket->is_available() && socket->type == SOCK_MENU) {
+          clear_enum_reference(*socket);
+        }
+      }
+      for (bNodeSocket *socket : node->output_sockets()) {
+        if (socket->is_available() && socket->type == SOCK_MENU) {
+          clear_enum_reference(*socket);
+        }
+      }
 
-          bNodeSocket &input = *node->input_sockets()[0];
-          BLI_assert(input.is_available() && input.type == SOCK_MENU);
-          this->set_enum_ptr(*input.default_value_typed<bNodeSocketValueMenu>(), enum_items);
+      const nodes::NodeDeclaration *declaration = node->declaration();
+      if (declaration != nullptr && declaration->is_enum_source()) {
+        for (bNodeSocket *socket : node->input_sockets()) {
+          const nodes::SocketDeclaration *socket_decl = declaration->inputs[socket->index()];
+          if (const auto *menu_socket = dynamic_cast<const decl::Menu *>(socket_decl)) {
+            if (!bool(menu_socket->definition)) {
+              continue;
+            }
+            const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
+                menu_socket->definition(*node));
+            this->set_enum_ptr(*socket->default_value_typed<bNodeSocketValueMenu>(), enum_items);
+          }
         }
         continue;
-      }
-      else {
-        /* Clear current enum references. */
-        for (bNodeSocket *socket : node->input_sockets()) {
-          if (socket->is_available() && socket->type == SOCK_MENU) {
-            clear_enum_reference(*socket);
-          }
-        }
-        for (bNodeSocket *socket : node->output_sockets()) {
-          if (socket->is_available() && socket->type == SOCK_MENU) {
-            clear_enum_reference(*socket);
-          }
-        }
       }
 
       /* Propagate enum references from output links. */

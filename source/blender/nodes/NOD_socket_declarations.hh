@@ -9,8 +9,11 @@
 #include "RNA_types.hh"
 
 #include "BLI_color.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_math_euler_types.hh"
 #include "BLI_math_vector_types.hh"
+
+struct NodeEnumDefinition;
 
 namespace blender::nodes::decl {
 
@@ -193,11 +196,14 @@ class Menu : public SocketDeclaration {
   bool matches(const bNodeSocket &socket) const override;
   bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
   bool can_connect(const bNodeSocket &socket) const override;
+
+  FunctionRef<NodeEnumDefinition(const bNode &node)> definition;
 };
 
 class MenuBuilder : public SocketDeclarationBuilder<Menu> {
  public:
   MenuBuilder &default_value(int32_t value);
+  MenuBuilder &enum_source(FunctionRef<NodeEnumDefinition(const bNode &node)> function);
 };
 
 class IDSocketDeclaration : public SocketDeclaration {
@@ -520,6 +526,15 @@ inline MenuBuilder &MenuBuilder::default_value(const int32_t value)
   }
   if (decl_out_) {
     decl_out_->default_value = value;
+  }
+  return *this;
+}
+
+inline MenuBuilder &MenuBuilder::enum_source(
+    const FunctionRef<NodeEnumDefinition(const bNode &node)> function)
+{
+  if (decl_in_) {
+    decl_in_->definition = function;
   }
   return *this;
 }
