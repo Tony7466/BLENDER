@@ -155,4 +155,29 @@ const EnumPropertyItem *grid_socket_type_items_filter_fn(bContext *C,
 
 void node_geo_exec_with_missing_openvdb(GeoNodeExecParams &params);
 
+template<typename Key, typename Value> struct LinearMap {
+  Array<Key> keys;
+  Array<Value> values;
+
+  LinearMap(std::initializer_list<std::pair<Key, Value>> list)
+      : keys(list.size()), values(list.size())
+  {
+    for (const int i : IndexRange(list.size())) {
+      auto &&[key, value] = std::move(list.begin()[i]);
+      keys[i] = key;
+      values[i] = value;
+    }
+  }
+
+  int key_index(const Key &key) const
+  {
+    return keys.as_span().index_of(key);
+  }
+
+  int value_index(const Value &value) const
+  {
+    return values.as_span().index_of(value);
+  }
+};
+
 }  // namespace blender::nodes

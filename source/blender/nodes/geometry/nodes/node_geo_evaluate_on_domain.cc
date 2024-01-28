@@ -86,9 +86,34 @@ std::optional<AttrDomain> EvaluateOnDomainInput::preferred_domain(
 
 namespace blender::nodes::node_geo_evaluate_on_domain_cc {
 
+static const LinearMap<AttrDomain, std::string> &supported_domains()
+{
+  static const LinearMap<AttrDomain, std::string> domains({{AttrDomain::Point, "Point"},
+                                                           {AttrDomain::Edge, "Edge"},
+                                                           {AttrDomain::Face, "Face"},
+                                                           {AttrDomain::Corner, "Face Corner"},
+                                                           {AttrDomain::Curve, "Spline"},
+                                                           {AttrDomain::Instance, "Instance"}});
+  return domains;
+}
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   const bNode *node = b.node_or_null();
+
+  static const NodeEnumDefinition supported_domain_definition = []() {
+    NodeEnumDefinition definition;
+    definition.next_identifier = 0;
+    definition.items_array = nullptr;
+    definition.items_num = 0;
+    for (const std::string &domain_name : supported_domains().values) {
+      definition.add_item(domain_name);
+    }
+    return definition;
+  }();
+
+  auto menu = b.add_input<decl::Menu>("Domain");
+  menu.enum_source([](const bNode & /*node*/) { return supported_domain_definition; });
 
   if (node != nullptr) {
     const eCustomDataType data_type = eCustomDataType(node->custom2);
@@ -101,7 +126,6 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
-  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -126,9 +150,8 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  const bNode &node = params.node();
-  const AttrDomain domain = AttrDomain(node.custom1);
-
+  const int domain_index = params.get_input<int>("Domain");
+  const AttrDomain domain = supported_domains().keys[domain_index];
   GField src_field = params.extract_input<GField>("Value");
   GField dst_field{std::make_shared<EvaluateOnDomainInput>(std::move(src_field), domain)};
   params.set_output<GField>("Value", std::move(dst_field));
