@@ -136,6 +136,14 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   }
   int start_index = sfra - mpath->start_frame;
 
+  float camera_matrix[4][4];
+  if (points_in_camera_space && mpath->camera) {
+    copy_m4_m4(camera_matrix, mpath->camera->object_to_world);
+  }
+  else {
+    unit_m4(camera_matrix);
+  }
+
   /* Draw curve-line of path. */
   if (show_lines) {
     const int motion_path_settings[4] = {cfra, sfra, efra, mpath->start_frame};
@@ -144,7 +152,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     DRW_shgroup_uniform_int_copy(grp, "lineThickness", mpath->line_thickness);
     DRW_shgroup_uniform_bool_copy(grp, "selected", selected);
     DRW_shgroup_uniform_vec3_copy(grp, "customColor", color);
-    DRW_shgroup_uniform_bool_copy(grp, "points_in_camera_space", points_in_camera_space);
+    DRW_shgroup_uniform_mat4_copy(grp, "camera_space_matrix", camera_matrix);
     /* Only draw the required range. */
     DRW_shgroup_call_range(grp, nullptr, mpath_batch_line_get(mpath), start_index, len);
   }
@@ -157,7 +165,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     DRW_shgroup_uniform_ivec4_copy(grp, "mpathPointSettings", motion_path_settings);
     DRW_shgroup_uniform_bool_copy(grp, "showKeyFrames", show_keyframes);
     DRW_shgroup_uniform_vec3_copy(grp, "customColor", color);
-    DRW_shgroup_uniform_bool_copy(grp, "points_in_camera_space", points_in_camera_space);
+    DRW_shgroup_uniform_mat4_copy(grp, "camera_space_matrix", camera_matrix);
     /* Only draw the required range. */
     DRW_shgroup_call_range(grp, nullptr, mpath_batch_points_get(mpath), start_index, len);
   }
