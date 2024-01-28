@@ -1564,7 +1564,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   uiLayout *layout;
   if (data->icon != ALERT_ICON_NONE) {
     layout = uiItemsAlertBox(
-        block, dialog_width + icon_size, eAlertIcon(data->icon), icon_size, style);
+        block, style, dialog_width + icon_size, eAlertIcon(data->icon), icon_size);
   }
   else {
     layout = UI_block_layout(

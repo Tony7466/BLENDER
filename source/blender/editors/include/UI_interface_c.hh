@@ -3047,10 +3047,10 @@ const char *UI_layout_introspect(uiLayout *layout);
  * Returns the layout to place further items into the alert box.
  */
 uiLayout *uiItemsAlertBox(uiBlock *block,
+                          const uiStyle *style,
                           const int dialog_width,
                           const eAlertIcon icon,
-                          const int icon_size,
-                          const uiStyle *style);
+                          const int icon_size);
 uiLayout *uiItemsAlertBox(uiBlock *block, const int size, const eAlertIcon icon);
 
 /* UI Operators */

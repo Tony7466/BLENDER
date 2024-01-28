@@ -6434,7 +6434,7 @@ uiLayout *uiItemsAlertBox(uiBlock *block, const int size, const eAlertIcon icon)
   const short icon_size = 64 * UI_SCALE_FAC;
   const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
   const int dialog_width = icon_size + (text_points_max * size * UI_SCALE_FAC);
-  uiItemsAlertBox(block, dialog_width, icon, icon_size, style);
+  return uiItemsAlertBox(block, style, dialog_width, icon, icon_size);
 }
 
 /** \} */
