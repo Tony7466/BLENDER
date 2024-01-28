@@ -1001,7 +1001,6 @@ class NodeTreeMainUpdater {
       dst.enum_items = nullptr;
     }
     if (enum_items) {
-      enum_items->add_user();
       dst.enum_items = enum_items;
     }
   }
