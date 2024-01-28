@@ -49,23 +49,21 @@ ccl_device_forceinline bool osl_closure_skip(KernelGlobals kg,
 {
   /* Caustic options */
   if ((scattering & LABEL_GLOSSY) && (path_flag & PATH_RAY_DIFFUSE)) {
+    const bool has_reflect = (scattering & LABEL_REFLECT);
+    const bool has_transmit = (scattering & LABEL_TRANSMIT);
     const bool reflect_caustics_disabled = !kernel_data.integrator.caustics_reflective;
     const bool refract_caustics_disabled = !kernel_data.integrator.caustics_refractive;
 
     /* Reflective Caustics */
-    if (reflect_caustics_disabled && (scattering & LABEL_REFLECT) &&
-        !(scattering & LABEL_TRANSMIT)) {
+    if (reflect_caustics_disabled && has_reflect && !has_transmit) {
       return true;
     }
     /* Refractive Caustics*/
-    if (refract_caustics_disabled && (scattering & LABEL_TRANSMIT) &&
-        !(scattering & LABEL_REFLECT)) {
+    if (refract_caustics_disabled && has_transmit && !has_reflect) {
       return true;
     }
     /* Glass Caustics */
-    if (reflect_caustics_disabled && refract_caustics_disabled && (scattering & LABEL_REFLECT) &&
-        (scattering & LABEL_TRANSMIT))
-    {
+    if (reflect_caustics_disabled && refract_caustics_disabled && has_reflect && has_transmit) {
       return true;
     }
   }
