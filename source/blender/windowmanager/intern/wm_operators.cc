@@ -1540,43 +1540,35 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   /* Width based on the text lengths. */
   int text_width = std::max(
       120 * UI_SCALE_FAC,
-      BLF_width(style->widget.uifont_id, data->title.c_str(), data->title.length()));
+      BLF_width(style->widget.uifont_id, data->title.c_str(), BLF_DRAW_STR_DUMMY_MAX));
 
   /* Break Message into multiple lines. */
   std::vector<std::string> message_lines;
-  std::istringstream origStream(data->message);
+  blender::StringRef messaged_trimmed = blender::StringRef(data->message).trim();
+  std::istringstream message_stream(messaged_trimmed);
   std::string line;
-  while (std::getline(origStream, line)) {
-    if (!line.empty()) {
-      message_lines.push_back(line);
-      text_width = std::max(text_width,
-                            int(BLF_width(style->widget.uifont_id, line.c_str(), line.length())));
-    }
+  while (std::getline(message_stream, line)) {
+    message_lines.push_back(line);
+    text_width = std::max(
+        text_width, int(BLF_width(style->widget.uifont_id, line.c_str(), BLF_DRAW_STR_DUMMY_MAX)));
   }
 
   int dialog_width = std::max(text_width + int(style->columnspace * 2.5), data->width);
-  dialog_width += (data->icon == ALERT_ICON_NONE) ? 0 : icon_size;
 
   /* Adjust width if the button text is long. */
-  int longest_button_text = std::max(
-      BLF_width(style->widget.uifont_id, data->confirm_text.c_str(), data->confirm_text.length()),
+  const int longest_button_text = std::max(
+      BLF_width(style->widget.uifont_id, data->confirm_text.c_str(), BLF_DRAW_STR_DUMMY_MAX),
       BLF_width(style->widget.uifont_id, IFACE_("Cancel"), BLF_DRAW_STR_DUMMY_MAX));
   dialog_width = std::max(dialog_width, 3 * longest_button_text);
 
-  uiLayout *layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, 0, 0, style);
-
+  uiLayout *layout;
   if (data->icon != ALERT_ICON_NONE) {
-    /* Split layout to put alert icon on left side. */
-    const float split_factor = (float)icon_size / (float)(dialog_width - style->columnspace);
-    uiLayout *split_block = uiLayoutSplit(layout, split_factor, false);
-    /* Alert icon on the left. */
-    uiLayout *left = uiLayoutRow(split_block, true);
-    /* Using 'align_left' with 'row' avoids stretching the icon along the width of column. */
-    uiLayoutSetAlignment(left, UI_LAYOUT_ALIGN_LEFT);
-    uiDefButAlert(block, data->icon, 0, 0, icon_size, icon_size);
-    /* The rest of the content on the right. */
-    layout = uiLayoutColumn(split_block, true);
+    layout = uiItemsAlertBox(
+        block, dialog_width + icon_size, eAlertIcon(data->icon), icon_size, style);
+  }
+  else {
+    layout = UI_block_layout(
+        block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, 0, 0, style);
   }
 
   /* Title. */
@@ -1661,9 +1653,10 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
 
   if (data->position == WM_POPUP_POSITION_MOUSE) {
-    int bounds_offset[2];
-    bounds_offset[0] = uiLayoutGetWidth(layout) * (windows_layout ? -0.33f : -0.66f);
-    bounds_offset[1] = int(UI_UNIT_Y * (small ? 1.8 : 3.1));
+    const float button_center_x = windows_layout ? -0.33f : -0.66f;
+    const float button_center_y = small ? 1.8f : 3.1f;
+    const int bounds_offset[2] = {button_center_x * uiLayoutGetWidth(layout),
+                                  button_center_y * UI_UNIT_X};
     UI_block_bounds_set_popup(block, padding, bounds_offset);
   }
   else if (data->position == WM_POPUP_POSITION_CENTER) {
