@@ -1469,7 +1469,7 @@ struct wmOpPopUp {
   std::string title;
   std::string message;
   std::string confirm_text;
-  int icon;
+  eAlertIcon icon;
   wmPopupSize size;
   wmPopupPosition position;
   bool cancel_default;
@@ -1736,12 +1736,12 @@ int WM_operator_confirm_ex(bContext *C,
   data->message = (message == nullptr) ? std::string() : message;
   data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
                                                    confirm_text;
-  data->icon = icon;
-  data->include_properties = false;
-  data->cancel_default = cancel_default;
-  data->mouse_move_quit = (message == nullptr) ? true : false;
+  data->icon = eAlertIcon(icon);
   data->size = (message == nullptr) ? WM_POPUP_SIZE_SMALL : WM_POPUP_SIZE_LARGE;
   data->position = (message == nullptr) ? WM_POPUP_POSITION_MOUSE : WM_POPUP_POSITION_CENTER;
+  data->cancel_default = cancel_default;
+  data->mouse_move_quit = (message == nullptr) ? true : false;
+  data->include_properties = false;
 
   UI_popup_block_ex(
       C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);
@@ -1827,12 +1827,12 @@ int WM_operator_props_dialog_popup(
   data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
   data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
                                                    confirm_text;
+  data->icon = ALERT_ICON_NONE;
+  data->size = WM_POPUP_SIZE_SMALL;
+  data->position = WM_POPUP_POSITION_MOUSE;
   data->cancel_default = false;
   data->mouse_move_quit = false;
   data->include_properties = true;
-  data->position = WM_POPUP_POSITION_MOUSE;
-  data->size = WM_POPUP_SIZE_SMALL;
-  data->icon = ALERT_ICON_NONE;
 
   /* op is not executed until popup OK but is clicked */
   UI_popup_block_ex(
