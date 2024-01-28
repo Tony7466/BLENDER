@@ -1730,7 +1730,8 @@ int WM_operator_confirm_ex(bContext *C,
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
-  data->width = 180 * UI_SCALE_FAC;
+  data->width = int(180.0f * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
+                    UI_DEFAULT_TEXT_POINTS);
   data->free_op = true;
   data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
   data->message = (message == nullptr) ? std::string() : message;
@@ -1822,7 +1823,8 @@ int WM_operator_props_dialog_popup(
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
-  data->width = width * UI_SCALE_FAC;
+  data->width = int(float(width) * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
+                    UI_DEFAULT_TEXT_POINTS);
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
   data->title = (title == nullptr) ? WM_operatortype_description(C, op->type, op->ptr) : title;
   data->confirm_text = (confirm_text == nullptr) ? WM_operatortype_name(op->type, op->ptr) :
