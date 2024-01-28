@@ -82,7 +82,7 @@ void NodeEnumDefinition::clear()
   this->active_index = int16_t(active_index);
 }
 
-bool NodeEnumDefinition::move_item(uint16_t from_index, uint16_t to_index)
+bool NodeEnumDefinition::move_item(int from_index, int to_index)
 {
   if (to_index < this->items_num) {
     int items_num = this->items_num;
