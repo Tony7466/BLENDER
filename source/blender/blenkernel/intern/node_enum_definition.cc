@@ -120,29 +120,22 @@ void NodeEnumDefinition::set_item_name(NodeEnumItem &item, const blender::String
   char unique_name[MAX_NAME + 4];
   STRNCPY(unique_name, name.data());
 
-  struct Args {
-    NodeEnumDefinition *enum_def;
-    const NodeEnumItem *item;
-  } args = {this, &item};
-
   const char *default_name = items().is_empty() ? "Name" : items().last().name;
-  BLI_uniquename_cb(
-      [](void *arg, const char *name) {
-        const Args &args = *static_cast<Args *>(arg);
-        for (const NodeEnumItem &item : args.enum_def->items()) {
-          if (&item != args.item) {
-            if (STREQ(item.name, name)) {
-              return true;
-            }
-          }
-        }
-        return false;
-      },
-      &args,
-      default_name,
-      '.',
-      unique_name,
-      ARRAY_SIZE(unique_name));
+
+  auto name_predicate = [&](const char *name) -> bool {
+    const blender::Span<NodeEnumItem> items = this->items();
+    return std::any_of(items.begin(), items.end(), [&](const NodeEnumItem &other_item) -> bool {
+      return (&other_item != &item) && (STREQ(other_item.name, name));
+    });
+  };
+
+  using Func = decltype(name_predicate);
+  BLI_uniquename_cb([](void *arg, const char *name) { return (*static_cast<Func *>(arg))(name); },
+                    &name_predicate,
+                    default_name,
+                    '.',
+                    unique_name,
+                    ARRAY_SIZE(unique_name));
 
   MEM_SAFE_FREE(item.name);
   item.name = BLI_strdup(unique_name);
