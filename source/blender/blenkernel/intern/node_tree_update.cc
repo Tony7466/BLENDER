@@ -977,6 +977,7 @@ class NodeTreeMainUpdater {
     }
     else if (!dst.enum_items) {
       /* First connection, set the reference. */
+      src.enum_items->add_user();
       this->set_enum_ptr(dst, src.enum_items);
     }
     else if (src.enum_items && dst.enum_items != src.enum_items) {
