@@ -994,7 +994,9 @@ class NodeTreeMainUpdater {
     }
   }
 
-  void set_enum_ptr(bNodeSocketValueMenu &dst, const RuntimeNodeEnumItems *enum_items, const bool already_user)
+  void set_enum_ptr(bNodeSocketValueMenu &dst,
+                    const RuntimeNodeEnumItems *enum_items,
+                    const bool already_user)
   {
     if (dst.enum_items) {
       dst.enum_items->remove_user_and_delete_if_last();
