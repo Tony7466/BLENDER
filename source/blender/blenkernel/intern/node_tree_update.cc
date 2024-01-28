@@ -821,7 +821,7 @@ class NodeTreeMainUpdater {
 
           bNodeSocket &input = *node->input_sockets()[0];
           BLI_assert(input.is_available() && input.type == SOCK_MENU);
-          this->set_enum_ptr(*input.default_value_typed<bNodeSocketValueMenu>(), enum_items);
+          this->set_enum_ptr(*input.default_value_typed<bNodeSocketValueMenu>(), enum_items, true);
         }
         continue;
       }
@@ -977,8 +977,7 @@ class NodeTreeMainUpdater {
     }
     else if (!dst.enum_items) {
       /* First connection, set the reference. */
-      src.enum_items->add_user();
-      this->set_enum_ptr(dst, src.enum_items);
+      this->set_enum_ptr(dst, src.enum_items, false);
     }
     else if (src.enum_items && dst.enum_items != src.enum_items) {
       /* Error if enum ref does not match other connections. */
@@ -995,13 +994,16 @@ class NodeTreeMainUpdater {
     }
   }
 
-  void set_enum_ptr(bNodeSocketValueMenu &dst, const RuntimeNodeEnumItems *enum_items)
+  void set_enum_ptr(bNodeSocketValueMenu &dst, const RuntimeNodeEnumItems *enum_items, const bool already_user)
   {
     if (dst.enum_items) {
       dst.enum_items->remove_user_and_delete_if_last();
       dst.enum_items = nullptr;
     }
     if (enum_items) {
+      if (!already_user) {
+        enum_items->add_user();
+      }
       dst.enum_items = enum_items;
     }
   }
