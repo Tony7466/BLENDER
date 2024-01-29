@@ -16,22 +16,12 @@ namespace blender::deg::sync_writeback {
 void add(::Depsgraph &depsgraph, std::function<void()> fn)
 {
   deg::Depsgraph &deg_graph = reinterpret_cast<deg::Depsgraph &>(depsgraph);
+  if (!deg_graph.is_active) {
+    return;
+  }
+
   std::lock_guard lock{deg_graph.sync_writeback_callbacks_mutex};
   deg_graph.sync_writeback_callbacks.append(std::move(fn));
-}
-
-void run(::Depsgraph &depsgraph)
-{
-  deg::Depsgraph &deg_graph = reinterpret_cast<deg::Depsgraph &>(depsgraph);
-  Vector<std::function<void()>> writebacks;
-  {
-    /* Keep lock scope small. */
-    std::lock_guard lock{deg_graph.sync_writeback_callbacks_mutex};
-    writebacks = std::move(deg_graph.sync_writeback_callbacks);
-  }
-  for (std::function<void()> &fn : writebacks) {
-    fn();
-  }
 }
 
 }  // namespace blender::deg::sync_writeback

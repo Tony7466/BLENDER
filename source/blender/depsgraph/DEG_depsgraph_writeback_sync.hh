@@ -28,10 +28,4 @@ namespace blender::deg::sync_writeback {
  */
 void add(Depsgraph &depsgraph, std::function<void()> fn);
 
-/**
- * Execute all writeback tasks that have been gathered during the last depsgraph evaluation. This
- * should be called after depsgraph evaluation finished.
- */
-void run(Depsgraph &depsgraph);
-
 }  // namespace blender::deg::sync_writeback
