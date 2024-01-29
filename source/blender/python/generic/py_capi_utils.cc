@@ -1888,4 +1888,28 @@ bool PyC_StructFmt_type_is_bool(char format)
   }
 }
 
+bool PyC_Buffer_compatible(const size_t required_item_size,
+                           bool (*type_check_function)(char),
+                           const Py_buffer *buf)
+{
+  const char *format = buf->format;
+
+  /* format should be set when buffers are requested with PyBUF_FORMAT. */
+  if (format == nullptr) {
+    return false;
+  }
+
+  /* The buffer must be in native byte order. */
+  if (!PyC_StructFmt_byteorder_is_native(format)) {
+    return false;
+  }
+
+  /* The buffer's itemsize must match. */
+  if (buf->itemsize != required_item_size) {
+    return false;
+  }
+
+  return type_check_function(PyC_StructFmt_type_from_str(format));
+}
+
 /** \} */

@@ -331,6 +331,20 @@ bool PyC_StructFmt_type_is_unsigned_int_any(char format);
 bool PyC_StructFmt_type_is_byte(char format);
 bool PyC_StructFmt_type_is_bool(char format);
 
+/**
+ * Check if a buffer is compatible with the required item size and type checking function.
+ *
+ * The type checking function will usually be one of the #PyC_StructFmt_type_is_ functions.
+ *
+ * Only native byte order buffers are considered compatible.
+ *
+ * The buffer must have been requested with the #PyBUF_FORMAT flag, which requires the #PyBUF_ND
+ * flag or another flag that contains #PyBUF_ND's bits.
+ */
+bool PyC_Buffer_compatible(const size_t required_item_size,
+                           bool (*type_check_function)(char),
+                           const Py_buffer *buf);
+
 #ifdef __cplusplus
 }
 #endif
