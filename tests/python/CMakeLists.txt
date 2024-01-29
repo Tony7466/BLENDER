@@ -694,58 +694,72 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
     endif()
 
     if(WITH_GPU_RENDER_TESTS)
+      list(APPEND gpu_render_tests ${render_tests})
+      list(FILTER gpu_render_tests EXCLUDE REGEX light_group|light_linking|shadow_catcher|denoise|guiding|reports)
+
+      set(_gpu_render_tests_arguments)
+      if(WITH_GPU_RENDER_TESTS_SILENT)
+        list(APPEND _gpu_render_tests_arguments --fail-silently)
+      endif()
+
       # Eevee
-      foreach(render_test ${render_tests})
+      foreach(render_test ${gpu_render_tests})
         add_render_test(
           eevee_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/eevee_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/eevee"
+          ${_gpu_render_tests_arguments}
         )
       endforeach()
 
       # Eevee Next
-      foreach(render_test ${render_tests})
+      foreach(render_test ${gpu_render_tests})
         add_render_test(
           eevee_next_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/eevee_next_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/eevee_next"
+          ${_gpu_render_tests_arguments}
         )
       endforeach()
 
-      foreach(render_test ${render_tests})
+      foreach(render_test ${gpu_render_tests})
         # Workbench
         add_render_test(
           workbench_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/workbench_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/workbench"
+          ${_gpu_render_tests_arguments}
         )
       endforeach()
 
       if(WITH_HYDRA)
         # Hydra Storm
-        foreach(render_test ${render_tests})
+        foreach(render_test ${gpu_render_tests})
           add_render_test(
             storm_hydra_${render_test}
             ${CMAKE_CURRENT_LIST_DIR}/storm_render_tests.py
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
             -outdir "${TEST_OUT_DIR}/storm_hydra"
             -export_method "HYDRA"
+            ${_gpu_render_tests_arguments}
           )
         endforeach()
 
-        foreach(render_test ${render_tests})
+        foreach(render_test ${gpu_render_tests})
           add_render_test(
             storm_usd_${render_test}
             ${CMAKE_CURRENT_LIST_DIR}/storm_render_tests.py
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
             -outdir "${TEST_OUT_DIR}/storm_usd"
             -export_method "USD"
+            ${_gpu_render_tests_arguments}
           )
         endforeach()
       endif()
+    unset(_gpu_render_tests_arguments)
     endif()
   endif()
 endif()
@@ -996,6 +1010,7 @@ if(NOT OPENIMAGEIO_TOOL)
 else()
   set(render_tests
     transform
+    filter
   )
 
   foreach(render_test ${render_tests})

@@ -15,7 +15,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_task.hh"
-#include "BLI_vector.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_interp.hh"
@@ -39,42 +38,21 @@ struct TransformContext {
   /* Source UV step delta, when moving along one destination pixel in Y axis. */
   float2 add_y;
 
-  /* Per-subsample source image delta UVs. */
-  Vector<float2, 9> subsampling_deltas;
-
   IndexRange dst_region_x_range;
   IndexRange dst_region_y_range;
 
   /* Cropping region in source image pixel space. */
   rctf src_crop;
 
-  void init(const float4x4 &transform_matrix, const int num_subsamples, const bool has_source_crop)
+  void init(const float4x4 &transform_matrix, const bool has_source_crop)
   {
     start_uv = transform_matrix.location().xy();
     add_x = transform_matrix.x_axis().xy();
     add_y = transform_matrix.y_axis().xy();
-    init_subsampling(num_subsamples);
     init_destination_region(transform_matrix, has_source_crop);
   }
 
  private:
-  void init_subsampling(const int num_subsamples)
-  {
-    float2 subsample_add_x = add_x / num_subsamples;
-    float2 subsample_add_y = add_y / num_subsamples;
-    float2 offset_x = -add_x * 0.5f + subsample_add_x * 0.5f;
-    float2 offset_y = -add_y * 0.5f + subsample_add_y * 0.5f;
-
-    for (int y : IndexRange(0, num_subsamples)) {
-      for (int x : IndexRange(0, num_subsamples)) {
-        float2 delta_uv = offset_x + offset_y;
-        delta_uv += x * subsample_add_x;
-        delta_uv += y * subsample_add_y;
-        subsampling_deltas.append(delta_uv);
-      }
-    }
-  }
-
   void init_destination_region(const float4x4 &transform_matrix, const bool has_source_crop)
   {
     if (!has_source_crop) {
@@ -146,10 +124,10 @@ static void sample_image(const ImBuf *source, float u, float v, T *r_sample)
     u = wrap_uv(u, source->x);
     v = wrap_uv(v, source->y);
   }
-  /* BLI_bilinear_interpolation functions use `floor(uv)` and `floor(uv)+1`
+  /* Bilinear/cubic interpolation functions use `floor(uv)` and `floor(uv)+1`
    * texels. For proper mapping between pixel and texel spaces, need to
-   * subtract 0.5. Same for bicubic. */
-  if constexpr (ELEM(Filter, IMB_FILTER_BILINEAR, IMB_FILTER_BICUBIC)) {
+   * subtract 0.5. */
+  if constexpr (Filter != IMB_FILTER_NEAREST) {
     u -= 0.5f;
     v -= 0.5f;
   }
@@ -185,13 +163,23 @@ static void sample_image(const ImBuf *source, float u, float v, T *r_sample)
     math::interpolate_nearest_fl(
         source->float_buffer.data, r_sample, source->x, source->y, NumChannels, u, v);
   }
-  else if constexpr (Filter == IMB_FILTER_BICUBIC && std::is_same_v<T, float>) {
+  else if constexpr (Filter == IMB_FILTER_CUBIC_BSPLINE && std::is_same_v<T, float>) {
     math::interpolate_cubic_bspline_fl(
         source->float_buffer.data, r_sample, source->x, source->y, NumChannels, u, v);
   }
-  else if constexpr (Filter == IMB_FILTER_BICUBIC && std::is_same_v<T, uchar> && NumChannels == 4)
+  else if constexpr (Filter == IMB_FILTER_CUBIC_BSPLINE && std::is_same_v<T, uchar> &&
+                     NumChannels == 4)
   {
     interpolate_cubic_bspline_byte(source, r_sample, u, v);
+  }
+  else if constexpr (Filter == IMB_FILTER_CUBIC_MITCHELL && std::is_same_v<T, float>) {
+    math::interpolate_cubic_mitchell_fl(
+        source->float_buffer.data, r_sample, source->x, source->y, NumChannels, u, v);
+  }
+  else if constexpr (Filter == IMB_FILTER_CUBIC_MITCHELL && std::is_same_v<T, uchar> &&
+                     NumChannels == 4)
+  {
+    interpolate_cubic_mitchell_byte(source, r_sample, u, v);
   }
   else {
     /* Unsupported sampler. */
@@ -255,27 +243,47 @@ template<eIMBInterpolationFilterMode Filter,
          bool WrapUV>
 static void process_scanlines(const TransformContext &ctx, IndexRange y_range)
 {
-  /* Note: sample at pixel center for proper filtering. */
-  float2 uv_start = ctx.start_uv + ctx.add_x * 0.5f + ctx.add_y * 0.5f;
+  if constexpr (Filter == IMB_FILTER_BOX) {
 
-  if (ctx.subsampling_deltas.size() > 1) {
     /* Multiple samples per pixel: accumulate them pre-multiplied,
      * divide by sample count and write out (un-pre-multiplying if writing out
-     * to byte image). */
-    const float inv_count = 1.0f / ctx.subsampling_deltas.size();
+     * to byte image).
+     *
+     * Do a box filter: for each destination pixel, accumulate XxY samples from source,
+     * based on scaling factors (length of X/Y pixel steps). Use at least 2 samples
+     * along each direction, so that in case of rotation the resulting edges get
+     * some anti-aliasing, to match previous Subsampled3x3 filter behavior. The
+     * "at least 2" can be removed once/if transform edge anti-aliasing is implemented
+     * in general way for all filters. Use at most 100 samples along each direction,
+     * just as some way of clamping possible upper cost. Scaling something down by more
+     * than 100x should rarely if ever happen, worst case they will get some aliasing.
+     */
+    float2 uv_start = ctx.start_uv;
+    int sub_count_x = int(math::clamp(roundf(math::length(ctx.add_x)), 2.0f, 100.0f));
+    int sub_count_y = int(math::clamp(roundf(math::length(ctx.add_y)), 2.0f, 100.0f));
+    const float inv_count = 1.0f / (sub_count_x * sub_count_y);
+    const float2 sub_step_x = ctx.add_x / sub_count_x;
+    const float2 sub_step_y = ctx.add_y / sub_count_y;
+
     for (int yi : y_range) {
       T *output = init_pixel_pointer<T>(ctx.dst, ctx.dst_region_x_range.first(), yi);
       float2 uv_row = uv_start + yi * ctx.add_y;
       for (int xi : ctx.dst_region_x_range) {
-        float2 uv = uv_row + xi * ctx.add_x;
+        const float2 uv = uv_row + xi * ctx.add_x;
         float sample[4] = {};
 
-        for (const float2 &delta_uv : ctx.subsampling_deltas) {
-          const float2 sub_uv = uv + delta_uv;
-          if (!CropSource || !should_discard(ctx, sub_uv)) {
-            T sub_sample[4];
-            sample_image<Filter, T, SrcChannels, WrapUV>(ctx.src, sub_uv.x, sub_uv.y, sub_sample);
-            add_subsample(sub_sample, sample);
+        for (int sub_y = 0; sub_y < sub_count_y; sub_y++) {
+          for (int sub_x = 0; sub_x < sub_count_x; sub_x++) {
+            float2 delta = (sub_x + 0.5f) * sub_step_x + (sub_y + 0.5f) * sub_step_y;
+            float2 sub_uv = uv + delta;
+            if (!CropSource || !should_discard(ctx, sub_uv)) {
+              T sub_sample[4];
+              sample_image<eIMBInterpolationFilterMode::IMB_FILTER_NEAREST,
+                           T,
+                           SrcChannels,
+                           WrapUV>(ctx.src, sub_uv.x, sub_uv.y, sub_sample);
+              add_subsample(sub_sample, sample);
+            }
           }
         }
 
@@ -287,7 +295,8 @@ static void process_scanlines(const TransformContext &ctx, IndexRange y_range)
     }
   }
   else {
-    /* One sample per pixel. */
+    /* One sample per pixel. Note: sample at pixel center for proper filtering. */
+    float2 uv_start = ctx.start_uv + ctx.add_x * 0.5f + ctx.add_y * 0.5f;
     for (int yi : y_range) {
       T *output = init_pixel_pointer<T>(ctx.dst, ctx.dst_region_x_range.first(), yi);
       float2 uv_row = uv_start + yi * ctx.add_y;
@@ -359,7 +368,6 @@ void IMB_transform(const ImBuf *src,
                    ImBuf *dst,
                    const eIMBTransformMode mode,
                    const eIMBInterpolationFilterMode filter,
-                   const int num_subsamples,
                    const float transform_matrix[4][4],
                    const rctf *src_crop)
 {
@@ -376,7 +384,7 @@ void IMB_transform(const ImBuf *src,
   if (crop) {
     ctx.src_crop = *src_crop;
   }
-  ctx.init(blender::float4x4(transform_matrix), num_subsamples, crop);
+  ctx.init(blender::float4x4(transform_matrix), crop);
 
   threading::parallel_for(ctx.dst_region_y_range, 8, [&](IndexRange y_range) {
     if (filter == IMB_FILTER_NEAREST) {
@@ -385,8 +393,14 @@ void IMB_transform(const ImBuf *src,
     else if (filter == IMB_FILTER_BILINEAR) {
       transform_scanlines_filter<IMB_FILTER_BILINEAR>(ctx, y_range);
     }
-    else if (filter == IMB_FILTER_BICUBIC) {
-      transform_scanlines_filter<IMB_FILTER_BICUBIC>(ctx, y_range);
+    else if (filter == IMB_FILTER_CUBIC_BSPLINE) {
+      transform_scanlines_filter<IMB_FILTER_CUBIC_BSPLINE>(ctx, y_range);
+    }
+    else if (filter == IMB_FILTER_CUBIC_MITCHELL) {
+      transform_scanlines_filter<IMB_FILTER_CUBIC_MITCHELL>(ctx, y_range);
+    }
+    else if (filter == IMB_FILTER_BOX) {
+      transform_scanlines_filter<IMB_FILTER_BOX>(ctx, y_range);
     }
   });
 }
