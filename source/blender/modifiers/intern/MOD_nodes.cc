@@ -851,6 +851,53 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
   }
 }
 
+class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
+  /** Protects access to everything except `old_mappings` which is read-only during evaluation. */
+  std::mutex mutex_;
+
+ public:
+  Map<bake::BakeDataBlockID, ID *> old_mappings;
+  Map<bake::BakeDataBlockID, ID *> new_mappings;
+
+  ID *lookup_or_remember_missing(const bake::BakeDataBlockID &key) override
+  {
+    if (ID *id = this->old_mappings.lookup_default(key, nullptr)) {
+      return id;
+    }
+    if (this->old_mappings.contains(key)) {
+      /* Don't allow overwriting old mappings. */
+      return nullptr;
+    }
+    std::lock_guard lock{mutex_};
+    return this->new_mappings.lookup_or_add(key, nullptr);
+  }
+
+  void try_add(ID &id) override
+  {
+    bake::BakeDataBlockID key{id};
+    if (this->old_mappings.contains(key)) {
+      return;
+    }
+    std::lock_guard lock{mutex_};
+    this->new_mappings.add_overwrite(std::move(key), &id);
+  }
+
+ private:
+  ID *lookup_in_map(Map<bake::BakeDataBlockID, ID *> &map,
+                    const bake::BakeDataBlockID &key,
+                    const std::optional<ID_Type> &type)
+  {
+    ID *id = map.lookup_default(key, nullptr);
+    if (!id) {
+      return nullptr;
+    }
+    if (type && GS(id->name) != *type) {
+      return nullptr;
+    }
+    return id;
+  }
+};
+
 namespace sim_input = nodes::sim_input;
 namespace sim_output = nodes::sim_output;
 
@@ -939,7 +986,12 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
  private:
   static constexpr float max_delta_frames = 1.0f;
 
-  mutable Map<int, std::unique_ptr<nodes::SimulationZoneBehavior>> behavior_by_zone_id_;
+  struct DataPerZone {
+    nodes::SimulationZoneBehavior behavior;
+    NodesModifierBakeDataBlockMap data_block_map;
+  };
+
+  mutable Map<int, std::unique_ptr<DataPerZone>> data_by_zone_id_;
   const NodesModifierData &nmd_;
   const ModifierEvalContext &ctx_;
   const Main *bmain_;
@@ -1024,25 +1076,34 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       return nullptr;
     }
     std::lock_guard lock{modifier_cache_->mutex};
-    return behavior_by_zone_id_
-        .lookup_or_add_cb(zone_id,
-                          [&]() {
-                            auto info = std::make_unique<nodes::SimulationZoneBehavior>();
-                            this->init_simulation_info(zone_id, *info);
-                            return info;
-                          })
-        .get();
+    return &data_by_zone_id_
+                .lookup_or_add_cb(zone_id,
+                                  [&]() {
+                                    auto data = std::make_unique<DataPerZone>();
+                                    data->behavior.data_block_map = &data->data_block_map;
+                                    this->init_simulation_info(
+                                        zone_id, data->behavior, data->data_block_map);
+                                    return data;
+                                  })
+                ->behavior;
   }
 
-  void init_simulation_info(const int zone_id, nodes::SimulationZoneBehavior &zone_behavior) const
+  void init_simulation_info(const int zone_id,
+                            nodes::SimulationZoneBehavior &zone_behavior,
+                            NodesModifierBakeDataBlockMap &data_block_map) const
   {
     bake::SimulationNodeCache &node_cache =
         *modifier_cache_->simulation_cache_by_id.lookup_or_add_cb(
             zone_id, []() { return std::make_unique<bake::SimulationNodeCache>(); });
+    const NodesModifierBake &bake = *nmd_.find_bake(zone_id);
     const IndexRange sim_frame_range = *bake::get_node_bake_frame_range(
         *scene_, *ctx_.object, nmd_, zone_id);
     const SubFrame sim_start_frame{int(sim_frame_range.first())};
     const SubFrame sim_end_frame{int(sim_frame_range.last())};
+
+    for (const NodesModifierDataBlock &data_block : Span{bake.data_blocks, bake.data_blocks_num}) {
+      data_block_map.old_mappings.add(data_block, data_block.id);
+    }
 
     /* Try load baked data. */
     if (!node_cache.bake.failed_finding_bake) {
@@ -1249,7 +1310,12 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 
 class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
  private:
-  mutable Map<int, std::unique_ptr<nodes::BakeNodeBehavior>> behavior_by_node_id_;
+  struct DataPerNode {
+    nodes::BakeNodeBehavior behavior;
+    NodesModifierBakeDataBlockMap data_block_map;
+  };
+
+  mutable Map<int, std::unique_ptr<DataPerNode>> data_by_node_id_;
   const NodesModifierData &nmd_;
   const ModifierEvalContext &ctx_;
   Main *bmain_;
@@ -1274,22 +1340,31 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
       return nullptr;
     }
     std::lock_guard lock{modifier_cache_->mutex};
-    return behavior_by_node_id_
-        .lookup_or_add_cb(id,
-                          [&]() {
-                            auto info = std::make_unique<nodes::BakeNodeBehavior>();
-                            this->init_bake_behavior(id, *info);
-                            return info;
-                          })
-        .get();
+    return &data_by_node_id_
+                .lookup_or_add_cb(id,
+                                  [&]() {
+                                    auto data = std::make_unique<DataPerNode>();
+                                    data->behavior.data_block_map = &data->data_block_map;
+                                    this->init_bake_behavior(
+                                        id, data->behavior, data->data_block_map);
+                                    return data;
+                                  })
+                ->behavior;
     return nullptr;
   }
 
  private:
-  void init_bake_behavior(const int id, nodes::BakeNodeBehavior &behavior) const
+  void init_bake_behavior(const int id,
+                          nodes::BakeNodeBehavior &behavior,
+                          NodesModifierBakeDataBlockMap &data_block_map) const
   {
     bake::BakeNodeCache &node_cache = *modifier_cache_->bake_cache_by_id.lookup_or_add_cb(
         id, []() { return std::make_unique<bake::BakeNodeCache>(); });
+    const NodesModifierBake &bake = *nmd_.find_bake(id);
+
+    for (const NodesModifierDataBlock &data_block : Span{bake.data_blocks, bake.data_blocks_num}) {
+      data_block_map.old_mappings.add(data_block, data_block.id);
+    }
 
     if (depsgraph_is_active_) {
       if (modifier_cache_->requested_bakes.contains(id)) {
@@ -1391,53 +1466,6 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
       return true;
     }
     return false;
-  }
-};
-
-class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
-  /** Protects access to everything except `old_mappings` which is read-only during evaluation. */
-  std::mutex mutex_;
-
- public:
-  Map<bake::BakeDataBlockID, ID *> old_mappings;
-  Map<bake::BakeDataBlockID, ID *> new_mappings;
-
-  ID *lookup_or_remember_missing(const bake::BakeDataBlockID &key) override
-  {
-    if (ID *id = this->old_mappings.lookup_default(key, nullptr)) {
-      return id;
-    }
-    if (this->old_mappings.contains(key)) {
-      /* Don't allow overwriting old mappings. */
-      return nullptr;
-    }
-    std::lock_guard lock{mutex_};
-    return this->new_mappings.lookup_or_add(key, nullptr);
-  }
-
-  void try_add(ID &id) override
-  {
-    bake::BakeDataBlockID key{id};
-    if (this->old_mappings.contains(key)) {
-      return;
-    }
-    std::lock_guard lock{mutex_};
-    this->new_mappings.add_overwrite(std::move(key), &id);
-  }
-
- private:
-  ID *lookup_in_map(Map<bake::BakeDataBlockID, ID *> &map,
-                    const bake::BakeDataBlockID &key,
-                    const std::optional<ID_Type> &type)
-  {
-    ID *id = map.lookup_default(key, nullptr);
-    if (!id) {
-      return nullptr;
-    }
-    if (type && GS(id->name) != *type) {
-      return nullptr;
-    }
-    return id;
   }
 };
 
