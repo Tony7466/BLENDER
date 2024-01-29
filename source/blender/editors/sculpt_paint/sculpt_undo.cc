@@ -295,7 +295,7 @@ static void update_modified_node_mesh(PBVHNode &node, PartialUpdateData &data)
   if (!data.modified_position_verts.is_empty()) {
     for (const int vert : verts) {
       if (data.modified_position_verts[vert]) {
-        BKE_pbvh_node_mark_normals_update(&node);
+        BKE_pbvh_node_mark_positions_update(&node);
         break;
       }
     }
@@ -1993,7 +1993,7 @@ static UndoSculpt *get_nodes()
 
 static bool use_multires_mesh(bContext *C)
 {
-  if (BKE_paintmode_get_active_from_context(C) != PAINT_MODE_SCULPT) {
+  if (BKE_paintmode_get_active_from_context(C) != PaintMode::Sculpt) {
     return false;
   }
 
