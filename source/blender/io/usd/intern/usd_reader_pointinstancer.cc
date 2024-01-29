@@ -247,6 +247,8 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
 
   BKE_ntree_update_main_tree(bmain, ntree, nullptr);
 
+  BKE_object_modifier_set_active(object_, md);
+
   USDXformReader::read_object_data(bmain, motionSampleTime);
 }
 

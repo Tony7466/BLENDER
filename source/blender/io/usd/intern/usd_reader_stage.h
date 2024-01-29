@@ -125,8 +125,8 @@ class USDStageReader {
    * new readers in r_readers.
    *
    * \param prim: Root of the subtree to convert to readers
-   * \param pruned_prims: Optional set of paths to prune when iterating
-   *                      over the stage during conversion.  I.e., these
+   * \param pruned_prims: Set of paths to prune when iterating over
+   *                      the stage during conversion.  I.e., these
    *                      prims and their descendents will not be converted
    *                      to readers.
    * \param defined_prims_only: If true, only defined prims will be converted,
@@ -138,7 +138,7 @@ class USDStageReader {
    *          the prim cannot be converted.
    */
   USDPrimReader *collect_readers(const pxr::UsdPrim &prim,
-                                 const std::optional<UsdPathSet> pruned_prims,
+                                 const UsdPathSet &pruned_prims,
                                  bool defined_prims_only,
                                  blender::Vector<USDPrimReader *> &r_readers);
 
@@ -170,10 +170,10 @@ class USDStageReader {
    * Iterate over the stage and return the paths of all prototype
    * primitives references by point instancers.
    *
-   * \return: The prototype paths, or nullopt if the scene
+   * \return: The prototype paths, or an empty path set if the scene
    *          does not contain any point instancers.
    */
-  std::optional<UsdPathSet> collect_point_instancer_proto_paths() const;
+  UsdPathSet collect_point_instancer_proto_paths() const;
 
   /**
    * Populate the instancer_proto_readers_ map for the prototype prims

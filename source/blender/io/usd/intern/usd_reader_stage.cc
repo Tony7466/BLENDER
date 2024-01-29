@@ -339,7 +339,7 @@ static bool merge_with_parent(USDPrimReader *reader)
 }
 
 USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
-                                               const std::optional<UsdPathSet> pruned_prims,
+                                               const UsdPathSet &pruned_prims,
                                                const bool defined_prims_only,
                                                blender::Vector<USDPrimReader *> &r_readers)
 {
@@ -372,7 +372,7 @@ USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
   pxr::UsdPrimSiblingRange children = prim.GetFilteredChildren(filter_predicate);
 
   for (const auto &child_prim : children) {
-    if (pruned_prims && pruned_prims->contains(child_prim.GetPath())) {
+    if (pruned_prims.contains(child_prim.GetPath())) {
       continue;
     }
     if (USDPrimReader *child_reader = collect_readers(
@@ -440,7 +440,7 @@ void USDStageReader::collect_readers()
 
   /* Identify paths to point instancer prototypes, as these will be converted
    * in a separate pass over the stage. */
-  std::optional<UsdPathSet> instancer_proto_paths = collect_point_instancer_proto_paths();
+  UsdPathSet instancer_proto_paths = collect_point_instancer_proto_paths();
 
   /* Iterate through the stage. */
   pxr::UsdPrim root = stage_->GetPseudoRoot();
@@ -466,8 +466,8 @@ void USDStageReader::collect_readers()
     }
   }
 
-  if (instancer_proto_paths) {
-    create_point_instancer_proto_readers(*instancer_proto_paths);
+  if (!instancer_proto_paths.is_empty()) {
+    create_point_instancer_proto_readers(instancer_proto_paths);
   }
 }
 
@@ -718,13 +718,13 @@ void USDStageReader::create_point_instancer_proto_readers(const UsdPathSet &prot
   }
 }
 
-std::optional<UsdPathSet> USDStageReader::collect_point_instancer_proto_paths() const
+UsdPathSet USDStageReader::collect_point_instancer_proto_paths() const
 {
-  if (!stage_) {
-    return std::nullopt;
-  }
-
   UsdPathSet result;
+
+  if (!stage_) {
+    return result;
+  }
 
   io::usd::collect_point_instancer_proto_paths(stage_->GetPseudoRoot(), result);
 
@@ -734,7 +734,7 @@ std::optional<UsdPathSet> USDStageReader::collect_point_instancer_proto_paths() 
     io::usd::collect_point_instancer_proto_paths(proto_prim, result);
   }
 
-  return result.is_empty() ? std::nullopt : std::make_optional(result);
+  return result;
 }
 
 }  // Namespace blender::io::usd
