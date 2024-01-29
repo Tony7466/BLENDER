@@ -19,12 +19,15 @@
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_instances.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
 #include "BLO_read_write.hh"
+
+#include "GEO_realize_instances.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -86,44 +89,6 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   }
 }
 
-static int64_t count_curve_points(const bke::CurvesGeometry &curves, const IndexMask &curves_mask)
-{
-  int64_t point_num = 0;
-  curves_mask.foreach_index([&](const int64_t curve_i) {
-    const IndexRange points = curves.points_by_curve()[curve_i];
-    point_num += points.size();
-  });
-  return point_num;
-}
-
-/* Index map into original curve arrays. */
-static Array<int> build_curves_map(const int curve_num,
-                                   const IndexMask &curves_mask,
-                                   const int num_mirrored_axes)
-{
-  /* Selected source points. */
-  const int selected_curve_num = curves_mask.size();
-
-  /* Number of copies on top of the base curves. */
-  const int mirror_copies = (1 << num_mirrored_axes) - 1;
-  const int dst_curve_num = curve_num + selected_curve_num * mirror_copies;
-
-  /* Source indices for curves. */
-  Array<int> dst_curve_indices(dst_curve_num);
-
-  /* Initial curves range, copy original curves without mask. */
-  IndexRange dst_curves_range = IndexRange(curve_num);
-  array_utils::fill_index_range(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
-
-  for ([[maybe_unused]] const int i : IndexRange(mirror_copies)) {
-    /* Range of curves and points for the current mirrored part. */
-    dst_curves_range = dst_curves_range.after(selected_curve_num);
-    /* Copy curves mask indices to the mirrored section. */
-    curves_mask.to_indices(dst_curve_indices.as_mutable_span().slice(dst_curves_range));
-  }
-  return dst_curve_indices;
-}
-
 static float4x4 get_mirror_matrix(const Object &ob,
                                   const GreasePencilMirrorModifierData &mmd,
                                   const bool mirror_x,
@@ -143,14 +108,47 @@ static float4x4 get_mirror_matrix(const Object &ob,
   return matrix;
 }
 
-static void apply_point_transform(const float4x4 &matrix,
-                                  const Span<float3> src,
-                                  const MutableSpan<float3> dst)
+static bke::CurvesGeometry create_mirror_copies(const Object &ob,
+                                                const GreasePencilMirrorModifierData &mmd,
+                                                const bke::CurvesGeometry &base_curves,
+                                                const bke::CurvesGeometry &mirror_curves)
 {
-  BLI_assert(src.size() == dst.size());
-  for (const int i : dst.index_range()) {
-    dst[i] = math::transform_point(matrix, src[i]);
+  const bool use_mirror_x = (mmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X);
+  const bool use_mirror_y = (mmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y);
+  const bool use_mirror_z = (mmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z);
+
+  Curves *base_curves_id = bke::curves_new_nomain(base_curves);
+  Curves *mirror_curves_id = bke::curves_new_nomain(mirror_curves);
+  bke::GeometrySet base_geo = bke::GeometrySet::from_curves(base_curves_id);
+  bke::GeometrySet mirror_geo = bke::GeometrySet::from_curves(mirror_curves_id);
+
+  std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
+  const int base_handle = instances->add_reference(bke::InstanceReference{base_geo});
+  const int mirror_handle = instances->add_reference(bke::InstanceReference{mirror_geo});
+  for (const int mirror_x : IndexRange(use_mirror_x ? 2 : 1)) {
+    for (const int mirror_y : IndexRange(use_mirror_y ? 2 : 1)) {
+      for (const int mirror_z : IndexRange(use_mirror_z ? 2 : 1)) {
+        if (mirror_x == 0 && mirror_y == 0 && mirror_z == 0) {
+          instances->add_instance(base_handle, float4x4::identity());
+        }
+        else {
+          const float4x4 matrix = get_mirror_matrix(
+              ob, mmd, bool(mirror_x), bool(mirror_y), bool(mirror_z));
+          instances->add_instance(mirror_handle, matrix);
+        }
+      }
+    }
   }
+
+  bke::AnonymousAttributePropagationInfo propagation_info;
+  propagation_info.propagate_all = true;
+  geometry::RealizeInstancesOptions options;
+  options.keep_original_ids = true;
+  options.realize_instance_attributes = false;
+  options.propagation_info = propagation_info;
+  bke::GeometrySet result_geo = geometry::realize_instances(
+      bke::GeometrySet::from_instances(instances.release()), options);
+  return std::move(result_geo.get_curves_for_write()->geometry.wrap());
 }
 
 static void modify_drawing(const GreasePencilMirrorModifierData &mmd,
@@ -160,9 +158,7 @@ static void modify_drawing(const GreasePencilMirrorModifierData &mmd,
   const bool use_mirror_x = (mmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X);
   const bool use_mirror_y = (mmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y);
   const bool use_mirror_z = (mmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z);
-  const int num_mirrored_axes = (use_mirror_x ? 1 : 0) + (use_mirror_y ? 1 : 0) +
-                                (use_mirror_z ? 1 : 0);
-  if (num_mirrored_axes == 0) {
+  if (!use_mirror_x && !use_mirror_y && !use_mirror_z) {
     return;
   }
 
@@ -174,81 +170,24 @@ static void modify_drawing(const GreasePencilMirrorModifierData &mmd,
   IndexMaskMemory curve_mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, src_curves, mmd.influence, curve_mask_memory);
-  /* Selected source points. */
-  const int selected_curve_num = curves_mask.size();
-  const int selected_point_num = count_curve_points(src_curves, curves_mask);
 
-  /* Number of copies on top of the base curves. */
-  const int mirror_copies = (1 << num_mirrored_axes) - 1;
-  const int dst_curve_num = src_curves.curve_num + selected_curve_num * mirror_copies;
-  const int dst_point_num = src_curves.point_num + selected_point_num * mirror_copies;
+  bke::CurvesGeometry result;
+  if (curves_mask.size() == src_curves.curve_num) {
+    /* All geometry gets mirrored. */
+    result = create_mirror_copies(*ctx.object, mmd, src_curves, src_curves);
+  }
+  else {
+    /* Create masked geometry, then mirror it. */
+    bke::AnonymousAttributePropagationInfo propagation_info;
+    propagation_info.propagate_all = true;
 
-  Array<int> curves_index_map = build_curves_map(
-      src_curves.curve_num, curves_mask, num_mirrored_axes);
+    bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
+        src_curves, curves_mask, propagation_info);
 
-  bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
-
-  /* Construct new curve offsets for the destination, including repeated masked sections. */
-  offset_indices::gather_group_sizes(
-      src_curves.offsets(), curves_index_map, dst_curves.offsets_for_write());
-  offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
-
-  /* Copy original points without mask. */
-  array_utils::copy(src_curves.positions().slice(src_curves.points_range()),
-                    dst_curves.positions_for_write().slice(src_curves.points_range()));
-  /* Apply mirror transform to position attribute. */
-  IndexRange dst_curves_range = src_curves.curves_range();
-  for (const int mirror_x : IndexRange(use_mirror_x ? 2 : 1)) {
-    for (const int mirror_y : IndexRange(use_mirror_y ? 2 : 1)) {
-      for (const int mirror_z : IndexRange(use_mirror_z ? 2 : 1)) {
-        if (mirror_x == 0 && mirror_y == 0 && mirror_z == 0) {
-          /* Base geometry, already copied above. */
-          continue;
-        }
-
-        const float4x4 matrix = get_mirror_matrix(
-            *ctx.object, mmd, bool(mirror_x), bool(mirror_y), bool(mirror_z));
-
-        /* Range of curves and points for the current mirrored part. */
-        dst_curves_range = dst_curves_range.after(selected_curve_num);
-
-        /* Copy curves mask indices to the mirrored section. */
-        const Span<int> mirror_curve_indices = curves_index_map.as_span().slice(dst_curves_range);
-        const offset_indices::OffsetIndices src_offsets = src_curves.points_by_curve();
-        const offset_indices::OffsetIndices dst_offsets = dst_curves.points_by_curve().slice(
-            dst_curves_range);
-        threading::parallel_for(
-            mirror_curve_indices.index_range(), 512, [&](const IndexRange range) {
-              for (const int64_t i : range) {
-                const IndexRange dst_range = dst_offsets[i];
-                const IndexRange src_range = src_offsets[mirror_curve_indices[i]];
-                apply_point_transform(matrix,
-                                      src_curves.positions().slice(src_range),
-                                      dst_curves.positions_for_write().slice(dst_range));
-              }
-            });
-      }
-    }
+    result = create_mirror_copies(*ctx.object, mmd, src_curves, masked_curves);
   }
 
-  bke::AnonymousAttributePropagationInfo propagation_info;
-  propagation_info.propagate_all = false;
-  bke::gather_attributes(src_curves.attributes(),
-                         bke::AttrDomain::Curve,
-                         propagation_info,
-                         {},
-                         curves_index_map,
-                         dst_curves.attributes_for_write());
-  bke::gather_attributes_group_to_group(src_curves.attributes(),
-                                        bke::AttrDomain::Point,
-                                        propagation_info,
-                                        {"position"},
-                                        src_curves.points_by_curve(),
-                                        dst_curves.points_by_curve(),
-                                        curves_index_map,
-                                        dst_curves.attributes_for_write());
-
-  drawing.strokes_for_write() = std::move(dst_curves);
+  drawing.strokes_for_write() = std::move(result);
   drawing.tag_topology_changed();
 }
 
@@ -295,6 +234,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   LayoutPanelState *influence_panel_state = BKE_panel_layout_panel_state_ensure(
       panel, "influence", true);
+
   PointerRNA influence_state_ptr = RNA_pointer_create(
       nullptr, &RNA_LayoutPanelState, influence_panel_state);
   if (uiLayout *influence_panel = uiLayoutPanel(
