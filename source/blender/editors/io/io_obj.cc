@@ -106,6 +106,8 @@ static int wm_obj_export_exec(bContext *C, wmOperator *op)
   export_params.export_smooth_groups = RNA_boolean_get(op->ptr, "export_smooth_groups");
   export_params.smooth_groups_bitflags = RNA_boolean_get(op->ptr, "smooth_group_bitflags");
 
+  RNA_string_get(op->ptr, "collection", export_params.collection);
+
   OBJ_export(C, &export_params);
 
   return OPERATOR_FINISHED;
@@ -385,6 +387,9 @@ void WM_OT_obj_export(wmOperatorType *ot)
   /* Only show .obj or .mtl files by default. */
   prop = RNA_def_string(ot->srna, "filter_glob", "*.obj;*.mtl", 0, "Extension Filter", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
+
+  prop = RNA_def_string(ot->srna, "collection", nullptr, MAX_IDPROP_NAME, "Collection", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
@@ -561,6 +566,7 @@ void obj_file_handler_add()
   auto fh = std::make_unique<blender::bke::FileHandlerType>();
   STRNCPY(fh->idname, "IO_FH_obj");
   STRNCPY(fh->import_operator, "WM_OT_obj_import");
+  STRNCPY(fh->export_operator, "WM_OT_obj_export");
   STRNCPY(fh->label, "Wavefront OBJ");
   STRNCPY(fh->file_extensions_str, ".obj");
   fh->poll_drop = poll_file_object_drop;

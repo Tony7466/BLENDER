@@ -26,7 +26,7 @@ class OBJDepsgraph : NonMovable, NonCopyable {
   bool needs_free_ = false;
 
  public:
-  OBJDepsgraph(const bContext *C, eEvaluationMode eval_mode);
+  OBJDepsgraph(const bContext *C, eEvaluationMode eval_mode, const char *collection_name);
   ~OBJDepsgraph();
 
   Depsgraph *get();
