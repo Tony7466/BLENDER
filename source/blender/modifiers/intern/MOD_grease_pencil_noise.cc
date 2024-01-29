@@ -90,11 +90,6 @@ static Array<float> noise_table(const int len, const int offset, const int seed)
   return table;
 }
 
-static float table_sample(const Array<float> &table, const float x)
-{
-  return math::interpolate(table[int(math::ceil(x))], table[int(math::floor(x))], math::fract(x));
-}
-
 /**
  * Apply noise effect based on stroke direction.
  */
@@ -128,7 +123,7 @@ static void deform_drawing(const ModifierData &md,
 
   const OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
-  int seed = mmd.seed + strokes.points_num();
+  int seed = mmd.seed;
   /* Make sure different modifiers get different seeds. */
   seed += BLI_hash_string(ob.id.name + 2);
   seed += BLI_hash_string(md.name);
@@ -141,7 +136,6 @@ static void deform_drawing(const ModifierData &md,
       seed += start_frame_number;
     }
   }
-  const int noise_len = math::ceil(strokes.points_num() * noise_scale) + 2;
 
   auto get_weight = [&](const IndexRange points, const int point_i) {
     if (!use_curve) {
@@ -151,23 +145,30 @@ static void deform_drawing(const ModifierData &md,
     return BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
   };
 
+  auto get_noise = [](const Array<float> &noise_table, const float value) {
+    return math::interpolate(noise_table[int(math::ceil(value))],
+                             noise_table[int(math::floor(value))],
+                             math::fract(value));
+  };
+
   if (mmd.factor > 0.0f) {
     const Span<float3> curve_plane_normals = drawing.curve_plane_normals();
     const Span<float3> tangents = strokes.evaluated_tangents();
     MutableSpan<float3> positions = strokes.positions_for_write();
-    const Array<float> noise_table_position = noise_table(
-        noise_len, int(floor(mmd.noise_offset)), seed + 2);
 
     filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
+      const int noise_len = math::ceil(points.size() * noise_scale) + 2;
+      const Array<float> noise_table_positions = noise_table(
+          noise_len, int(math::floor(mmd.noise_offset)), seed + 2);
       for (const int i : points.index_range()) {
         const int point = points[i];
         float weight = get_weight(points, i);
         /* Vector orthogonal to normal. */
         const float3 bi_normal = math::normalize(
             math::cross(tangents[point], curve_plane_normals[stroke_i]));
-        const float noise = table_sample(noise_table_position,
-                                         point * noise_scale + math::fract(mmd.noise_offset));
+        const float noise = get_noise(noise_table_positions,
+                                      i * noise_scale + math::fract(mmd.noise_offset));
         positions[point] += bi_normal * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
       }
     });
@@ -176,16 +177,17 @@ static void deform_drawing(const ModifierData &md,
 
   if (mmd.factor_thickness > 0.0f) {
     MutableSpan<float> radii = drawing.radii_for_write();
-    const Array<float> noise_table_thickness = noise_table(
-        noise_len, int(floor(mmd.noise_offset)), seed);
 
     filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
+      const int noise_len = math::ceil(points.size() * noise_scale) + 2;
+      const Array<float> noise_table_radii = noise_table(
+          noise_len, int(math::floor(mmd.noise_offset)), seed);
       for (const int i : points.index_range()) {
         const int point = points[i];
         const float weight = get_weight(points, i);
-        const float noise = table_sample(noise_table_thickness,
-                                         point * noise_scale + math::fract(mmd.noise_offset));
+        const float noise = get_noise(noise_table_radii,
+                                      i * noise_scale + math::fract(mmd.noise_offset));
         radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd.factor_thickness,
                                   0.0f);
       }
@@ -194,16 +196,17 @@ static void deform_drawing(const ModifierData &md,
 
   if (mmd.factor_strength > 0.0f) {
     MutableSpan<float> opacities = drawing.opacities_for_write();
-    const Array<float> noise_table_strength = noise_table(
-        noise_len, int(floor(mmd.noise_offset)), seed + 3);
 
     filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
+      const int noise_len = math::ceil(points.size() * noise_scale) + 2;
+      const Array<float> noise_table_opacities = noise_table(
+          noise_len, int(math::floor(mmd.noise_offset)), seed + 3);
       for (const int i : points.index_range()) {
         const int point = points[i];
         const float weight = get_weight(points, i);
-        const float noise = table_sample(noise_table_strength,
-                                         point * noise_scale + math::fract(mmd.noise_offset));
+        const float noise = get_noise(noise_table_opacities,
+                                      i * noise_scale + math::fract(mmd.noise_offset));
         opacities[point] *= math::max(1.0f - noise * weight * mmd.factor_strength, 0.0f);
       }
     });
