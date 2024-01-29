@@ -162,7 +162,7 @@ struct ModifierEvalContext {
   ModifierApplyFlag flag;
 
   /* Line Art modifier cache will exist until the end of modifier stack evaluation. */
-  struct ::LineartCache *lineart_cache;
+  struct ::LineartCache *lineart_cache = nullptr;
 };
 
 struct ModifierTypeInfo {
@@ -564,6 +564,8 @@ typedef struct GreasePencilLineartLimitInfo {
   unsigned char shadow_selection;
   unsigned char silhouette_selection;
 } GreasePencilLineartLimitInfo;
+
+bool BKE_grease_pencil_has_lineart_modifier(const Object *ob);
 
 GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(
     const struct Object *ob);

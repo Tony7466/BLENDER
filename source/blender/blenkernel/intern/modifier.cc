@@ -889,6 +889,16 @@ void BKE_modifier_path_init(char *path, int path_maxncpy, const char *name)
   BLI_path_join(path, path_maxncpy, blendfile_path[0] ? "//" : BKE_tempdir_session(), name);
 }
 
+bool BKE_grease_pencil_has_lineart_modifier(const Object *ob)
+{
+  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+    if (md->type == eModifierType_GreasePencilLineart) {
+      return true;
+    }
+  }
+  return false;
+}
+
 GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object *ob)
 {
   GreasePencilLineartLimitInfo info = {0};
