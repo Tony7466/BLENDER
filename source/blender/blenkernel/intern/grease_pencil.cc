@@ -55,6 +55,10 @@
 
 #include "MEM_guardedalloc.h"
 
+/* For Line Art modifier cache calls. */
+#include "MOD_gpencil_legacy_lineart.h"
+#include "MOD_lineart.h"
+
 using blender::float3;
 using blender::Span;
 using blender::uint3;
@@ -1264,6 +1268,17 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
   return grease_pencil;
 }
 
+static struct ::LineartCache *init_lineart_cache()
+{
+  return MOD_lineart_init_cache();
+}
+
+static void clear_lineart_cache(struct ::LineartCache *lc)
+{
+  struct ::LineartCache **ptr = &lc;
+  MOD_lineart_clear_cache(ptr);
+}
+
 static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
                                              Scene *scene,
                                              Object *object,
@@ -1276,7 +1291,8 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
     required_mode |= eModifierMode_Editmode;
   }
   ModifierApplyFlag apply_flag = use_render ? MOD_APPLY_RENDER : MOD_APPLY_USECACHE;
-  const ModifierEvalContext mectx = {depsgraph, object, apply_flag};
+  LineartCache *lineart_cache = init_lineart_cache();
+  const ModifierEvalContext mectx = {depsgraph, object, apply_flag, lineart_cache};
 
   BKE_modifiers_clear_errors(object);
 
@@ -1305,6 +1321,8 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
       mti->modify_geometry_set(md, &mectx, &geometry_set);
     }
   }
+
+  clear_lineart_cache(lineart_cache);
 }
 
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)

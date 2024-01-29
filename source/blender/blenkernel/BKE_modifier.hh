@@ -160,6 +160,9 @@ struct ModifierEvalContext {
   Depsgraph *depsgraph;
   Object *object;
   ModifierApplyFlag flag;
+
+  /* Line Art modifier cache will exist until the end of modifier stack evaluation. */
+  struct ::LineartCache *lineart_cache;
 };
 
 struct ModifierTypeInfo {

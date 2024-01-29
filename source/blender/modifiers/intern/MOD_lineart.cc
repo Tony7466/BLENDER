@@ -707,8 +707,7 @@ static void panel_register(ARegionType *region_type)
 }
 
 static void generate_strokes(ModifierData &md,
-                             Depsgraph *depsgraph,
-                             Object &ob,
+                             const ModifierEvalContext &ctx,
                              GreasePencil &grease_pencil)
 {
   auto &lmd = reinterpret_cast<GreasePencilLineartModifierData &>(md);
@@ -718,21 +717,15 @@ static void generate_strokes(ModifierData &md,
     return;
   }
 
-  LineartCache *local_lc = grease_pencil.runtime->lineart_cache;
-  if (!grease_pencil.runtime->lineart_cache) {
+  LineartCache *local_lc = ctx.lineart_cache;
+
+  if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     MOD_lineart_compute_feature_lines_v3(
-        depsgraph, lmd, &grease_pencil.runtime->lineart_cache, !(ob.dtx & OB_DRAW_IN_FRONT));
+        ctx.depsgraph, lmd, &local_lc, !(ctx.object->dtx & OB_DRAW_IN_FRONT));
     MOD_lineart_destroy_render_data_v3(&lmd);
   }
-  else {
-    if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
-      MOD_lineart_compute_feature_lines_v3(
-          depsgraph, lmd, &local_lc, !(ob.dtx & OB_DRAW_IN_FRONT));
-      MOD_lineart_destroy_render_data_v3(&lmd);
-    }
-    MOD_lineart_chain_clear_picked_flag(local_lc);
-    lmd.cache = local_lc;
-  }
+  MOD_lineart_chain_clear_picked_flag(local_lc);
+  lmd.cache = local_lc;
 
   const int current_frame = grease_pencil.runtime->eval_frame;
 
@@ -752,14 +745,14 @@ static void generate_strokes(ModifierData &md,
 
   MOD_lineart_gpencil_generate_v3(
       lmd.cache,
-      ob,
+      *ctx.object,
       drawing,
       lmd.source_type,
       lmd.source_object,
       lmd.source_collection,
       lmd.level_start,
       lmd.use_multiple_levels ? lmd.level_end : lmd.level_start,
-      lmd.target_material ? BKE_object_material_index_get(&ob, lmd.target_material) : 0,
+      lmd.target_material ? BKE_object_material_index_get(ctx.object, lmd.target_material) : 0,
       lmd.edge_types,
       lmd.mask_switches,
       lmd.material_mask_bits,
@@ -772,12 +765,12 @@ static void generate_strokes(ModifierData &md,
 
   if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     /* Clear local cache. */
-    if (local_lc != grease_pencil.runtime->lineart_cache) {
+    if (local_lc != ctx.lineart_cache) {
       MOD_lineart_clear_cache(&local_lc);
     }
     /* Restore the original cache pointer so the modifiers below still have access to the "global"
      * cache. */
-    lmd.cache = grease_pencil.runtime->lineart_cache;
+    lmd.cache = ctx.lineart_cache;
   }
 }
 
@@ -790,7 +783,7 @@ static void modify_geometry_set(ModifierData *md,
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
 
-  generate_strokes(*md, ctx->depsgraph, *ctx->object, grease_pencil);
+  generate_strokes(*md, *ctx, grease_pencil);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
 }

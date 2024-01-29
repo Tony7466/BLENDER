@@ -11,6 +11,7 @@ set(INC
   ../draw
   ../functions
   ../gpencil_modifiers_legacy
+  ../gpencil_modifiers_legacy/intern/lineart
   ../gpu
   ../ikplugin
   ../imbuf

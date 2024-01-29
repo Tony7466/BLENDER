@@ -134,7 +134,7 @@ static void lineart_free_bounding_area_memory(LineartBoundingArea *ba, bool recu
 
 static void lineart_free_bounding_area_memories(LineartData *ld);
 
-static LineartCache *lineart_init_cache();
+LineartCache *MOD_lineart_init_cache();
 
 static void lineart_discard_segment(LineartData *ld, LineartEdgeSegment *es)
 {
@@ -3595,7 +3595,7 @@ void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd_legacy)
   MOD_lineart_unwrap_modifier_v3(lmd_legacy, &lmd);
 }
 
-static LineartCache *lineart_init_cache()
+LineartCache *MOD_lineart_init_cache()
 {
   LineartCache *lc = static_cast<LineartCache *>(
       MEM_callocN(sizeof(LineartCache), "Lineart Cache"));
@@ -5071,7 +5071,7 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
     }
   }
 
-  LineartCache *lc = lineart_init_cache();
+  LineartCache *lc = MOD_lineart_init_cache();
   *cached_result = lc;
 
   ld = lineart_create_render_buffer_v3(scene,
