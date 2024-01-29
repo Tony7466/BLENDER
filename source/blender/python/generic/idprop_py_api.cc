@@ -607,8 +607,9 @@ static IDProperty *idp_from_PySequence(const char *name, PyObject *ob)
     }
     else {
       const char format = PyC_StructFmt_type_from_str(buffer.format);
-      if (PyC_StructFmt_type_is_float_any(format) ||
-          (PyC_StructFmt_type_is_int_any(format) && buffer.itemsize == 4))
+      if (PyC_StructFmt_byteorder_is_native(buffer.format) &&
+          (PyC_StructFmt_type_is_float_any(format) ||
+           (PyC_StructFmt_type_is_int_any(format) && buffer.itemsize == 4)))
       {
         use_buffer = true;
       }
