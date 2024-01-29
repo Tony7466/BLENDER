@@ -2122,31 +2122,6 @@ static void draw_output_attributes_panel(const bContext *C,
   }
 }
 
-static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
-                                           const bContext * /*C*/,
-                                           uiLayout *layout,
-                                           PointerRNA * /*idataptr*/,
-                                           PointerRNA *itemptr,
-                                           int /*icon*/,
-                                           PointerRNA * /*active_dataptr*/,
-                                           const char * /*active_propname*/,
-                                           int /*index*/,
-                                           int /*flt_flag*/)
-{
-  auto &data_block = *static_cast<NodesModifierDataBlock *>(itemptr->data);
-  uiLayout *row = uiLayoutRow(layout, true);
-
-  std::string name;
-  if (StringRef(data_block.lib_name).is_empty()) {
-    name = data_block.id_name;
-  }
-  else {
-    name = fmt::format("{} [{}]", data_block.id_name, data_block.lib_name);
-  }
-
-  uiItemR(row, itemptr, "id", UI_ITEM_NONE, name.c_str(), ICON_NONE);
-}
-
 static void draw_bake_panel(const bContext *C,
                             uiLayout *layout,
                             PointerRNA *modifier_ptr,
