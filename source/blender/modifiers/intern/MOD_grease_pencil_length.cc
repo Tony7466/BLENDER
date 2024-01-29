@@ -205,6 +205,9 @@ static void deform_drawing(const ModifierData &md,
      * mode since the function itself will need length to be sampled anyway. */
     Array<float> starts(curves.curves_num());
     Array<float> ends(curves.curves_num());
+    Array<bool> needs_removal(curves.curves_num());
+    needs_removal.fill(false);
+
     curves.ensure_evaluated_lengths();
     for (const int curve : curves.curves_range()) {
       float length = curves.evaluated_length_total_for_curve(curve, false);
@@ -216,6 +219,9 @@ static void deform_drawing(const ModifierData &md,
         starts[curve] = -math::min(use_starts[curve], 0.0f) * length;
         ends[curve] = (1 + math::min(use_ends[curve], 0.0f)) * length;
       }
+      if (starts[curve] > ends[curve]) {
+        needs_removal[curve] = true;
+      }
     }
     curves = geometry::trim_curves(curves,
                                    selection,
@@ -223,6 +229,14 @@ static void deform_drawing(const ModifierData &md,
                                    VArray<float>::ForSpan(ends.as_span()),
                                    GEO_NODE_CURVE_SAMPLE_LENGTH,
                                    {});
+
+    /* #trim_curves() will leave the last segment there when trimmed length is greater than
+     * curve original length, thus we need to remove those curves afterwards. */
+    IndexMaskMemory memory_remove;
+    IndexMask to_remove = IndexMask::from_bools(needs_removal.as_span(), memory_remove);
+    if (!to_remove.is_empty()) {
+      curves.remove_curves(to_remove, {});
+    }
   }
 
   drawing.tag_topology_changed();
