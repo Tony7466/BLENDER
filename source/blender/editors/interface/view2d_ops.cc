@@ -27,7 +27,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ED_fileselect.hh"
 #include "ED_screen.hh"
+#include "ED_spreadsheet.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
@@ -1908,12 +1910,24 @@ static void scroller_activate_init(bContext *C,
    * - zooming must be allowed on this axis, otherwise, default to pan
    */
   View2DScrollers scrollers;
-  /* Some Editors like the File-browser or Spreadsheet already set up custom masks for scroll-bars
-   * (they don't cover the whole region width or height), these need to be considered, otherwise
-   * coords for `mouse_in_scroller_handle` later are not compatible. */
-  rcti scroller_mask = v2d->hor;
-  BLI_rcti_union(&scroller_mask, &v2d->vert);
-  view2d_scrollers_calc(v2d, &scroller_mask, &scrollers);
+  /* Some Editors already set up custom masks for scroll-bar drawing (they don't cover the whole
+   * region width or height), these need to be considered, otherwise coords for
+   * `mouse_in_scroller_handle` later are not compatible. */
+  ScrArea *area = CTX_wm_area(C);
+  rcti scroller_mask;
+  bool use_scroller_mask = false;
+  if (area->spacetype == SPACE_FILE) {
+    SpaceFile *sfile = CTX_wm_space_file(C);
+    ED_fileselect_layout_maskrect(sfile->layout, v2d, &scroller_mask);
+    use_scroller_mask = true;
+  }
+  else if (area->spacetype == SPACE_SPREADSHEET) {
+    SpaceSpreadsheet *sspreadsheet = CTX_wm_space_spreadsheet(C);
+    ED_spreadsheet_layout_maskrect(sspreadsheet, region, &scroller_mask);
+    use_scroller_mask = true;
+  }
+
+  view2d_scrollers_calc(v2d, use_scroller_mask ? &scroller_mask : nullptr, &scrollers);
 
   /* Use a union of 'cur' & 'tot' in case the current view is far outside 'tot'. In this cases
    * moving the scroll bars has far too little effect and the view can get stuck #31476. */

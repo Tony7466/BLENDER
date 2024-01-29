@@ -8,6 +8,10 @@
 
 #include "GPU_immediate.h"
 
+#include "BKE_context.hh"
+
+#include "ED_spreadsheet.hh"
+
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
@@ -16,13 +20,14 @@
 #include "spreadsheet_draw.hh"
 
 #define CELL_RIGHT_PADDING (2.0f * UI_SCALE_FAC)
+#define TOP_ROW_HEIGHT (UI_UNIT_Y * 1.1f)
 
 namespace blender::ed::spreadsheet {
 
 SpreadsheetDrawer::SpreadsheetDrawer()
 {
   left_column_width = UI_UNIT_X * 2;
-  top_row_height = UI_UNIT_Y * 1.1f;
+  top_row_height = TOP_ROW_HEIGHT;
   row_height = UI_UNIT_Y;
 }
 
@@ -289,11 +294,7 @@ void draw_spreadsheet_in_region(const bContext *C,
   draw_cell_contents(C, region, drawer, scroll_offset_x, scroll_offset_y);
 
   rcti scroller_mask;
-  BLI_rcti_init(&scroller_mask,
-                drawer.left_column_width,
-                region->winx,
-                0,
-                region->winy - drawer.top_row_height);
+  ED_spreadsheet_layout_maskrect(CTX_wm_space_spreadsheet(C), region, &scroller_mask);
   UI_view2d_scrollers_draw(v2d, &scroller_mask);
 }
 
