@@ -22,22 +22,16 @@ struct Depsgraph;
 namespace blender::deg::sync_writeback {
 
 /**
- * Enable gathering of writeback tasks before depsgraph evaluation.
- */
-void activate(const Depsgraph &depsgraph);
-
-/**
  * Add a writeback task during depsgraph evaluation. The given function is called after depsgraph
- * evaluation is done. It is allowed to change the original data blocks.
+ * evaluation is done if the depsgraph is active. It is allowed to change original data blocks and
+ * even to add new relations.
  */
-void add(const Depsgraph &depsgraph, std::function<void()> fn);
+void add(Depsgraph &depsgraph, std::function<void()> fn);
 
 /**
- * Execute all gathered writeback tasks for the given depsgraph. This should be called after
- * depsgraph evaluation finished.
- *
- * \return True if any original data was modified and the depsgraph might have to be updated.
+ * Execute all writeback tasks that have been gathered during the last depsgraph evaluation. This
+ * should be called after depsgraph evaluation finished.
  */
-bool run(const Depsgraph &depsgraph);
+void run(Depsgraph &depsgraph);
 
 }  // namespace blender::deg::sync_writeback

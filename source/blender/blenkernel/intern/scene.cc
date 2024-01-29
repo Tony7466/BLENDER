@@ -2568,15 +2568,14 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     // DEG_debug_graph_relations_validate(depsgraph, bmain, scene);
     /* Flush editing data if needed. */
     prepare_mesh_for_viewport_render(bmain, scene, view_layer);
-    /* Start collecting functions that need to run after depsgraph evaluation that writeback to
-     * original data. */
-    blender::deg::sync_writeback::activate(*depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed. */
     DEG_evaluate_on_refresh(depsgraph);
-    /* Write information gathered during evaluation back to original data. This may also create new
-     * depsgraph relations. */
-    blender::deg::sync_writeback::run(*depsgraph);
+    if (DEG_is_active(depsgraph)) {
+      /* Write information gathered during evaluation back to original data. This may also create
+       * new depsgraph relations. */
+      blender::deg::sync_writeback::run(*depsgraph);
+    }
     /* Update sound system. */
     BKE_scene_update_sound(depsgraph, bmain);
     /* Notify python about depsgraph update. */
@@ -2649,9 +2648,6 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
     BKE_image_editors_update_frame(bmain, scene->r.cfra);
     BKE_sound_set_cfra(scene->r.cfra);
     DEG_graph_relations_update(depsgraph);
-    /* Start collecting functions that need to run after depsgraph evaluation that writeback to
-     * original data. */
-    blender::deg::sync_writeback::activate(*depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed.
      *
@@ -2665,9 +2661,11 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
     else {
       DEG_evaluate_on_refresh(depsgraph);
     }
-    /* Write information gathered during evaluation back to original data. This may also create new
-     * depsgraph relations. */
-    blender::deg::sync_writeback::run(*depsgraph);
+    if (DEG_is_active(depsgraph)) {
+      /* Write information gathered during evaluation back to original data. This may also create
+       * new depsgraph relations. */
+      blender::deg::sync_writeback::run(*depsgraph);
+    }
     /* Update sound system animation. */
     BKE_scene_update_sound(depsgraph, bmain);
 

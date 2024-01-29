@@ -40,6 +40,8 @@ static void deg_flush_updates_and_refresh(deg::Depsgraph *deg_graph)
     BKE_scene_frame_set(deg_graph->scene_cow, deg_graph->frame);
   }
 
+  deg_graph->sync_writeback_callbacks.clear();
+
   deg::graph_tag_ids_for_visible_update(deg_graph);
   deg::deg_graph_flush_updates(deg_graph);
   deg::deg_evaluate_on_refresh(deg_graph);
