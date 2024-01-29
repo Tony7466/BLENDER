@@ -27,12 +27,7 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
     return;
   }
 
-  if (sd->flag & SD_TRANSPARENT || sd->flag & SD_PORTAL) {
-    sd->closure_transparent_extinction += weight;
-  }
-  else {
-    sd->closure_transparent_extinction = weight;
-  }
+  sd->closure_transparent_extinction += weight;
   sd->flag |= SD_BSDF | SD_PORTAL;
 
   ccl_private PortalClosure *pc = (ccl_private PortalClosure *)closure_alloc(
