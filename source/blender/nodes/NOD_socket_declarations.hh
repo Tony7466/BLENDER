@@ -543,8 +543,8 @@ inline MenuBuilder &MenuBuilder::enum_source(
 
 inline MenuBuilder &MenuBuilder::enum_output(int output_index)
 {
-  if (decl_out_) {
-    decl_out_->propagate_from = output_index;
+  if (decl_in_) {
+    decl_in_->propagate_from.emplace(output_index);
   }
   return *this;
 }

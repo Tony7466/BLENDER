@@ -827,12 +827,16 @@ class NodeTreeMainUpdater {
 
       /* Propagate enums from previous sources sockets. */
       for (bNodeSocket *output : node->output_sockets()) {
-        if (output->is_available() && output->type == SOCK_MENU) {
-          for (bNodeSocket *input : output->directly_linked_sockets()) {
-            this->update_socket_enum_definition(
-                *input->default_value_typed<bNodeSocketValueMenu>(),
-                *output->default_value_typed<bNodeSocketValueMenu>());
+        if (!output->is_available() || output->type != SOCK_MENU) {
+          continue;
+        }
+        for (bNodeSocket *input : output->directly_linked_sockets()) {
+          if (!input->is_available() && input->type != SOCK_MENU) {
+            continue;
           }
+          this->update_socket_enum_definition(
+              *input->default_value_typed<bNodeSocketValueMenu>(),
+              *output->default_value_typed<bNodeSocketValueMenu>());
         }
       }
 
@@ -868,9 +872,10 @@ class NodeTreeMainUpdater {
               const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
                   menu_socket->definition(*node));
               this->set_enum_ptr(*input->default_value_typed<bNodeSocketValueMenu>(), enum_items);
+              printf("hmmmmm????\n");
               continue;
             }
-            if (menu_socket->propagate_from) {
+            if (menu_socket->propagate_from.has_value()) {
               const bNodeSocket &output = *node_outputs[*menu_socket->propagate_from];
               this->update_socket_enum_definition(
                   *output.default_value_typed<bNodeSocketValueMenu>(),
@@ -888,7 +893,7 @@ class NodeTreeMainUpdater {
         if (!output->is_available() || output->type != SOCK_MENU) {
           continue;
         }
-        for (bNodeSocket *input : output->directly_linked_sockets()) {
+        for (bNodeSocket *input : node->input_sockets()) {
           if (!input->is_available() || input->type != SOCK_MENU) {
             continue;
           }
