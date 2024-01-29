@@ -181,8 +181,6 @@ PyDoc_STRVAR(
     "   :type program: :class:`gpu.types.GPUShader`\n");
 static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_shader)
 {
-<<<<<<< HEAD
-=======
 
   static bool deprecation_warning_issued = false;
 
@@ -195,7 +193,6 @@ static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_sha
     deprecation_warning_issued = true;
   }
 
->>>>>>> 902011ba93d (changes fixed)
   if (!BPyGPUShader_Check(py_shader)) {
     PyErr_Format(PyExc_TypeError, "Expected a GPUShader, got %s", Py_TYPE(py_shader)->tp_name);
     return nullptr;
