@@ -125,7 +125,6 @@ typedef enum eNoiseGpencil_Flag {
   GP_NOISE_MOD_UV = (1 << 9), /* Deprecated (only for versioning). */
   GP_NOISE_INVERT_LAYERPASS = (1 << 10),
   GP_NOISE_INVERT_MATERIAL = (1 << 11),
-  MOD_GREASE_PENCIL_NOISE_OPEN_INFLUENCE_PANEL = (1 << 12),
 } eNoiseGpencil_Flag;
 
 typedef enum eNoiseRandomGpencil_Mode {

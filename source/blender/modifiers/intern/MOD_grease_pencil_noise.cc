@@ -93,7 +93,7 @@ static Array<float> noise_table(const int len, const int offset, const int seed)
 /**
  * Apply noise effect based on stroke direction.
  */
-static void deform_drawing(const ModifierData &md,
+static void deform_drawing(const GreasePencilNoiseModifierData &mmd,
                            const Object &ob,
                            const int ctime,
                            const int start_frame_number,
@@ -103,9 +103,6 @@ static void deform_drawing(const ModifierData &md,
   if (strokes.points_num() == 0) {
     return;
   }
-
-  const GreasePencilNoiseModifierData &mmd =
-      reinterpret_cast<const GreasePencilNoiseModifierData &>(md);
 
   IndexMaskMemory memory;
   const IndexMask filtered_strokes = modifier::greasepencil::get_filtered_stroke_mask(
@@ -126,7 +123,7 @@ static void deform_drawing(const ModifierData &md,
   int seed = mmd.seed;
   /* Make sure different modifiers get different seeds. */
   seed += BLI_hash_string(ob.id.name + 2);
-  seed += BLI_hash_string(md.name);
+  seed += BLI_hash_string(mmd.modifier.name);
   if (mmd.flag & GP_NOISE_USE_RANDOM) {
     if (!is_keyframe) {
       seed += math::floor(ctime / mmd.step);
@@ -159,7 +156,7 @@ static void deform_drawing(const ModifierData &md,
     filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
       const int noise_len = math::ceil(points.size() * noise_scale) + 2;
-      const Array<float> noise_table_positions = noise_table(
+      const Array<float> table = noise_table(
           noise_len, int(math::floor(mmd.noise_offset)), seed + 2);
       for (const int i : points.index_range()) {
         const int point = points[i];
@@ -167,8 +164,7 @@ static void deform_drawing(const ModifierData &md,
         /* Vector orthogonal to normal. */
         const float3 bi_normal = math::normalize(
             math::cross(tangents[point], curve_plane_normals[stroke_i]));
-        const float noise = get_noise(noise_table_positions,
-                                      i * noise_scale + math::fract(mmd.noise_offset));
+        const float noise = get_noise(table, i * noise_scale + math::fract(mmd.noise_offset));
         positions[point] += bi_normal * (noise * 2.0f - 1.0f) * weight * mmd.factor * 0.1f;
       }
     });
@@ -181,13 +177,11 @@ static void deform_drawing(const ModifierData &md,
     filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
       const int noise_len = math::ceil(points.size() * noise_scale) + 2;
-      const Array<float> noise_table_radii = noise_table(
-          noise_len, int(math::floor(mmd.noise_offset)), seed);
+      const Array<float> table = noise_table(noise_len, int(math::floor(mmd.noise_offset)), seed);
       for (const int i : points.index_range()) {
         const int point = points[i];
         const float weight = get_weight(points, i);
-        const float noise = get_noise(noise_table_radii,
-                                      i * noise_scale + math::fract(mmd.noise_offset));
+        const float noise = get_noise(table, i * noise_scale + math::fract(mmd.noise_offset));
         radii[point] *= math::max(1.0f + (noise * 2.0f - 1.0f) * weight * mmd.factor_thickness,
                                   0.0f);
       }
@@ -200,13 +194,12 @@ static void deform_drawing(const ModifierData &md,
     filtered_strokes.foreach_index(GrainSize(512), [&](const int stroke_i) {
       const IndexRange points = points_by_curve[stroke_i];
       const int noise_len = math::ceil(points.size() * noise_scale) + 2;
-      const Array<float> noise_table_opacities = noise_table(
+      const Array<float> table = noise_table(
           noise_len, int(math::floor(mmd.noise_offset)), seed + 3);
       for (const int i : points.index_range()) {
         const int point = points[i];
         const float weight = get_weight(points, i);
-        const float noise = get_noise(noise_table_opacities,
-                                      i * noise_scale + math::fract(mmd.noise_offset));
+        const float noise = get_noise(table, i * noise_scale + math::fract(mmd.noise_offset));
         opacities[point] *= math::max(1.0f - noise * weight * mmd.factor_strength, 0.0f);
       }
     });
@@ -219,7 +212,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GreasePencilNoiseModifierData *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
+  const auto *mmd = reinterpret_cast<GreasePencilNoiseModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;
@@ -240,7 +233,7 @@ static void modify_geometry_set(ModifierData *md,
 
   threading::parallel_for_each(
       drawing_infos, [&](const modifier::greasepencil::FrameDrawingInfo &info) {
-        deform_drawing(*md, *ctx->object, current_frame, info.start_frame_number, *info.drawing);
+        deform_drawing(*mmd, *ctx->object, current_frame, info.start_frame_number, *info.drawing);
       });
 }
 

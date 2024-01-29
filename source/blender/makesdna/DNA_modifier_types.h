@@ -2673,8 +2673,7 @@ typedef struct GreasePencilNoiseModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
 
-  /** For convenience of versioning, these flags are kept in `eNoiseGpencil_Flag`
-   * Including `MOD_GREASE_PENCIL_NOISE_OPEN_INFLUENCE_PANEL`. */
+  /** For convenience of versioning, these flags are kept in `eNoiseGpencil_Flag`. */
   int flag;
 
   /** Factor of noise. */
