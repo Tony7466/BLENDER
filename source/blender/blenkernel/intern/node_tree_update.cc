@@ -872,7 +872,6 @@ class NodeTreeMainUpdater {
               const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
                   menu_socket->definition(*node));
               this->set_enum_ptr(*input->default_value_typed<bNodeSocketValueMenu>(), enum_items);
-              printf("hmmmmm????\n");
               continue;
             }
             if (menu_socket->propagate_from.has_value()) {
@@ -880,7 +879,6 @@ class NodeTreeMainUpdater {
               this->update_socket_enum_definition(
                   *output.default_value_typed<bNodeSocketValueMenu>(),
                   *input->default_value_typed<bNodeSocketValueMenu>());
-              printf("????\n");
               continue;
             }
           }

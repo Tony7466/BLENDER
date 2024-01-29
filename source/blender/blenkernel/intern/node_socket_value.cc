@@ -315,9 +315,6 @@ bool SocketValueVariant::valid_for_socket(eNodeSocketDatatype socket_type) const
   if (kind_ == Kind::None) {
     return false;
   }
-  if (ELEM(SOCK_INT, socket_type_, socket_type) && ELEM(SOCK_MENU, socket_type_, socket_type)) {
-    return true;
-  }
   return socket_type_ == socket_type;
 }
 
