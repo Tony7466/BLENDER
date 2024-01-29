@@ -847,4 +847,11 @@
     .stroke_start_offset = 0, \
   }
 
+#define _DNA_DEFAULT_GreasePencilThickModifierData \
+  { \
+    .flag = 0, \
+    .thickness_fac = 1.0f, \
+    .thickness = 30, \
+  }
+
 /* clang-format off */

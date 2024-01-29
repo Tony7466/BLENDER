@@ -18,6 +18,7 @@
 
 #include "RNA_access.hh"
 
+#include "BKE_colortools.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
@@ -26,8 +27,6 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-
-#include "GEO_smooth_curves.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
@@ -39,20 +38,19 @@ namespace blender {
 
 static void init_data(ModifierData *md)
 {
-  GreasePencilSmoothModifierData *gpmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+  GreasePencilThickModifierData *gpmd = reinterpret_cast<GreasePencilThickModifierData *>(md);
 
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
-  MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GreasePencilSmoothModifierData), modifier);
-  modifier::greasepencil::init_influence_data(&gpmd->influence, false);
+  MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GreasePencilThickModifierData), modifier);
+  modifier::greasepencil::init_influence_data(&gpmd->influence, true);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
-  const GreasePencilSmoothModifierData *gmd =
-      reinterpret_cast<const GreasePencilSmoothModifierData *>(md);
-  GreasePencilSmoothModifierData *tgmd = reinterpret_cast<GreasePencilSmoothModifierData *>(
-      target);
+  const GreasePencilThickModifierData *gmd =
+      reinterpret_cast<const GreasePencilThickModifierData *>(md);
+  GreasePencilThickModifierData *tgmd = reinterpret_cast<GreasePencilThickModifierData *>(target);
 
   BKE_modifier_copydata_generic(md, target, flag);
   modifier::greasepencil::copy_influence_data(&gmd->influence, &tgmd->influence, flag);
@@ -60,30 +58,30 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
 
 static void free_data(ModifierData *md)
 {
-  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+  GreasePencilThickModifierData *mmd = reinterpret_cast<GreasePencilThickModifierData *>(md);
 
   modifier::greasepencil::free_influence_data(&mmd->influence);
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
-  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+  GreasePencilThickModifierData *mmd = reinterpret_cast<GreasePencilThickModifierData *>(md);
 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
-  const GreasePencilSmoothModifierData *mmd =
-      reinterpret_cast<const GreasePencilSmoothModifierData *>(md);
+  const GreasePencilThickModifierData *mmd =
+      reinterpret_cast<const GreasePencilThickModifierData *>(md);
 
-  BLO_write_struct(writer, GreasePencilSmoothModifierData, mmd);
+  BLO_write_struct(writer, GreasePencilThickModifierData, mmd);
   modifier::greasepencil::write_influence_data(writer, &mmd->influence);
 }
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
-  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+  GreasePencilThickModifierData *mmd = reinterpret_cast<GreasePencilThickModifierData *>(md);
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
@@ -91,24 +89,7 @@ static void deform_drawing(const ModifierData &md,
                            const Object &ob,
                            bke::greasepencil::Drawing &drawing)
 {
-  auto &mmd = reinterpret_cast<const GreasePencilSmoothModifierData &>(md);
-
-  const int iterations = mmd.step;
-  const float influence = mmd.factor;
-  const bool keep_shape = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_KEEP_SHAPE);
-  const bool smooth_ends = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_SMOOTH_ENDS);
-
-  const bool smooth_position = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_LOCATION);
-  const bool smooth_radius = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_THICKNESS);
-  const bool smooth_opacity = (mmd.flag & MOD_GREASE_PENCIL_SMOOTH_MOD_STRENGTH);
-
-  if (iterations <= 0 || influence <= 0.0f) {
-    return;
-  }
-
-  if (!(smooth_position || smooth_radius || smooth_opacity)) {
-    return;
-  }
+  auto &mmd = reinterpret_cast<const GreasePencilThickModifierData &>(md);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   if (curves.points_num() == 0) {
@@ -123,58 +104,68 @@ static void deform_drawing(const ModifierData &md,
     return;
   }
 
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  blender::MutableSpan<float> radii = drawing.radii_for_write();
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  const VArray<bool> cyclic = curves.cyclic();
-  const VArray<bool> point_selection = VArray<bool>::ForSingle(true, curves.points_num());
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const VArray<float> vgroup_weights =
+      attributes
+          .lookup_or_default<float>(mmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f)
+          .varray;
+  const bool is_normalized = (mmd.flag & MOD_GREASE_PENCIL_THICK_NORMALIZE);
+  bool is_inverted = ((mmd.flag & MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR) == 0) &&
+                     ((mmd.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP) != 0);
 
-  if (smooth_position) {
-    bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-    geometry::smooth_curve_attribute(strokes,
-                                     points_by_curve,
-                                     point_selection,
-                                     cyclic,
-                                     iterations,
-                                     influence,
-                                     smooth_ends,
-                                     keep_shape,
-                                     positions.span);
-    positions.finish();
-    drawing.tag_positions_changed();
+  for (const int curve : curves.curves_range()) {
+    for (const int local_point : points_by_curve[curve].index_range()) {
+      const int point = local_point + points_by_curve[curve].first();
+      float weight = vgroup_weights[point];
+      if (weight <= 0.0f) {
+        continue;
+      }
+
+      if ((!is_normalized) && (mmd.flag & MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR)) {
+        radii[point] *= (is_inverted ? 1.0f - weight : weight);
+        if (radii[point] < 0.0f) {
+          radii[point] = 0.0f;
+        }
+        continue;
+      }
+
+      float curvef = 1.0f;
+      if (mmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE &&
+          (mmd.influence.custom_curve))
+      {
+        /* Normalize value to evaluate curve. */
+        const float value = float(local_point) / (points_by_curve[curve].size() - 1);
+        curvef = BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
+      }
+
+      float target;
+      if (is_normalized) {
+        target = mmd.thickness * 1;
+        target *= curvef;
+      }
+      else {
+        target = radii[point] * mmd.thickness_fac;
+        weight *= curvef;
+      }
+
+      float radius = math::interpolate(radii[point], target, weight * curvef);
+      if (radius < 0.0f) {
+        radius = 0.0f;
+      }
+      printf("%f %f\n", radii[point], radius);
+      radii[point] = radius;
+    }
   }
-  if (smooth_opacity && drawing.opacities().is_span()) {
-    bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
-    geometry::smooth_curve_attribute(strokes,
-                                     points_by_curve,
-                                     point_selection,
-                                     cyclic,
-                                     iterations,
-                                     influence,
-                                     smooth_ends,
-                                     false,
-                                     opacities.span);
-    opacities.finish();
-  }
-  if (smooth_radius && drawing.radii().is_span()) {
-    bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-    geometry::smooth_curve_attribute(strokes,
-                                     points_by_curve,
-                                     point_selection,
-                                     cyclic,
-                                     iterations,
-                                     influence,
-                                     smooth_ends,
-                                     false,
-                                     radii.span);
-    radii.finish();
-  }
+  drawing.tag_positions_changed();
 }
 
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GreasePencilSmoothModifierData *mmd = reinterpret_cast<GreasePencilSmoothModifierData *>(md);
+  GreasePencilThickModifierData *mmd = reinterpret_cast<GreasePencilThickModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;
@@ -195,28 +186,25 @@ static void modify_geometry_set(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, ptr, "use_edit_position", UI_ITEM_R_TOGGLE, IFACE_("Position"), ICON_NONE);
-  uiItemR(row, ptr, "use_edit_strength", UI_ITEM_R_TOGGLE, IFACE_("Strength"), ICON_NONE);
-  uiItemR(row, ptr, "use_edit_thickness", UI_ITEM_R_TOGGLE, IFACE_("Thickness"), ICON_NONE);
-
-  /* TODO: UV not implemented yet in GPv3. */
-  // uiItemR(row, ptr, "use_edit_uv", UI_ITEM_R_TOGGLE, IFACE_("UV"), ICON_NONE);
-
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "step", UI_ITEM_NONE, IFACE_("Repeat"), ICON_NONE);
-
-  col = uiLayoutColumn(layout, false);
-  uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_edit_position"));
-  uiItemR(col, ptr, "use_keep_shape", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "use_smooth_ends", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_normalized_thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (RNA_boolean_get(ptr, "use_normalized_thickness")) {
+    uiItemR(layout, ptr, "thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else {
+    const bool is_weighted = !RNA_boolean_get(ptr, "use_weight_factor");
+    uiLayout *row = uiLayoutRow(layout, true);
+    uiLayoutSetActive(row, is_weighted);
+    uiItemR(row, ptr, "thickness_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiLayout *sub = uiLayoutRow(row, true);
+    uiLayoutSetActive(sub, true);
+    uiItemR(row, ptr, "use_weight_factor", UI_ITEM_NONE, "", ICON_MOD_VERTEX_WEIGHT);
+  }
 
   if (uiLayout *influence_panel = uiLayoutPanel(
           C, layout, "Influence", ptr, "open_influence_panel"))
@@ -224,6 +212,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_vertex_group_settings(C, influence_panel, ptr);
+    modifier::greasepencil::draw_custom_curve_settings(C, influence_panel, ptr);
   }
 
   modifier_panel_end(layout, ptr);
@@ -231,22 +220,22 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GreasePencilSmooth, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilThickness, panel_draw);
 }
 
 }  // namespace blender
 
-ModifierTypeInfo modifierType_GreasePencilSmooth = {
-    /*idname*/ "GreasePencilSmoothModifier",
-    /*name*/ N_("Smooth"),
-    /*struct_name*/ "GreasePencilSmoothModifierData",
-    /*struct_size*/ sizeof(GreasePencilSmoothModifierData),
-    /*srna*/ &RNA_GreasePencilSmoothModifier,
+ModifierTypeInfo modifierType_GreasePencilThickness = {
+    /*idname*/ "GreasePencilThicknessModifier",
+    /*name*/ N_("Thickness"),
+    /*struct_name*/ "GreasePencilThickModifierData",
+    /*struct_size*/ sizeof(GreasePencilThickModifierData),
+    /*srna*/ &RNA_GreasePencilThickModifierData,
     /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/
     eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping,
-    /*icon*/ ICON_SMOOTHCURVE,
+    /*icon*/ ICON_MOD_THICKNESS,
 
     /*copy_data*/ blender::copy_data,
 

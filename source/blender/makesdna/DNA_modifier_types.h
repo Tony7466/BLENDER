@@ -99,6 +99,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilTint = 64,
   eModifierType_GreasePencilSmooth = 65,
   eModifierType_GreasePencilOffset = 66,
+  eModifierType_GreasePencilThickness = 67,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2668,20 +2669,20 @@ typedef enum GreasePencilOffsetModifierMode {
   MOD_GREASE_PENCIL_OFFSET_STROKE = 3,
 } GreasePencilOffsetModifierMode;
 
-typedef struct GreasePencilThicknessModifierData {
+typedef struct GreasePencilThickModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
-
+  /** #GreasePencilThicknessModifierFlag */
   int flag;
   /** Relative thickness factor. */
   float thickness_fac;
   /** Absolute thickness override. */
-  int thickness;
+  float thickness;
   char _pad[4];
-  struct CurveMapping *curve_thickness;
-} ThickGpencilModifierData;
+  void *_pad1;
+} GreasePencilThickModifierData;
 
-typedef enum eThickGpencil_Flag {
-  GP_THICK_NORMALIZE = (1 << 4),
-  GP_THICK_WEIGHT_FACTOR = (1 << 7),
-} eThickGpencil_Flag;
+typedef enum GreasePencilThicknessModifierFlag {
+  MOD_GREASE_PENCIL_THICK_NORMALIZE = (1 << 0),
+  MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR = (1 << 1),
+} GreasePencilThicknessModifierFlag;

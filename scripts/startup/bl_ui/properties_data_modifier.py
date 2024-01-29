@@ -190,6 +190,7 @@ class OBJECT_MT_modifier_add_deform(ModifierAddMenu, Menu):
         if ob_type == 'GREASEPENCIL':
             self.operator_modifier_add(layout, 'GREASE_PENCIL_OFFSET')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_SMOOTH')
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_THICKNESS')
         layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 
