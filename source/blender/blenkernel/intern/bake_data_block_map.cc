@@ -41,7 +41,7 @@ std::ostream &operator<<(std::ostream &stream, const BakeDataBlockID &id)
 
 uint64_t BakeDataBlockID::hash() const
 {
-  return get_default_hash_3(this->type, this->id_name, this->lib_name);
+  return get_default_hash(this->type, this->id_name, this->lib_name);
 }
 
 }  // namespace blender::bke::bake
