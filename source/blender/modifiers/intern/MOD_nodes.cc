@@ -23,6 +23,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_array_utils.hh"
 #include "DNA_collection_types.h"
 #include "DNA_curves_types.h"
 #include "DNA_defaults.h"
@@ -1101,8 +1102,11 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     const SubFrame sim_start_frame{int(sim_frame_range.first())};
     const SubFrame sim_end_frame{int(sim_frame_range.last())};
 
-    for (const NodesModifierDataBlock &data_block : Span{bake.data_blocks, bake.data_blocks_num}) {
-      data_block_map.old_mappings.add(data_block, data_block.id);
+    if (!node_cache.bake.frames.is_empty()) {
+      for (const NodesModifierDataBlock &data_block : Span{bake.data_blocks, bake.data_blocks_num})
+      {
+        data_block_map.old_mappings.add(data_block, data_block.id);
+      }
     }
 
     /* Try load baked data. */
@@ -1501,9 +1505,51 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
                                            NodesModifierSimulationParams &simulation_params,
                                            NodesModifierBakeParams &bake_params)
 {
+  Depsgraph *depsgraph = ctx.depsgraph;
+  Main *bmain = DEG_get_bmain(depsgraph);
+
   Map<int, NodesModifierBakeDataBlockMap *> data_block_maps;
   for (auto item : simulation_params.data_by_zone_id_.items()) {
-    data_block_maps.add(item.key, &item.value->data_block_map);
+    if (bake::SimulationNodeCache *node_cache = nmd_eval.runtime->cache->get_simulation_node_cache(
+            item.key))
+    {
+      /* Only writeback if the bake node has actually baked anything. */
+      if (!node_cache->bake.frames.is_empty()) {
+        data_block_maps.add(item.key, &item.value->data_block_map);
+      }
+    }
+    NodesModifierBake &bake = *nmd_eval.find_bake(item.key);
+    /* The list was reset. */
+    if (item.value->data_block_map.old_mappings.size() < bake.data_blocks_num) {
+      deg::sync_writeback::add(
+          *depsgraph,
+          [depsgraph = depsgraph,
+           object_eval = ctx.object,
+           bmain,
+           &nmd_orig,
+           &nmd_eval,
+           bake_id = item.key]() {
+            NodesModifierBake &bake_orig = *nmd_orig.find_bake(bake_id);
+            NodesModifierBake &bake_eval = *nmd_eval.find_bake(bake_id);
+
+            dna::array::clear<NodesModifierDataBlock>(&bake_orig.data_blocks,
+                                                      &bake_orig.data_blocks_num,
+                                                      &bake_orig.active_data_block,
+                                                      [](NodesModifierDataBlock *data_block) {
+                                                        MEM_SAFE_FREE(data_block->id_name);
+                                                        MEM_SAFE_FREE(data_block->lib_name);
+                                                        id_us_min(data_block->id);
+                                                      });
+
+            dna::array::clear<NodesModifierDataBlock>(&bake_eval.data_blocks,
+                                                      &bake_eval.data_blocks_num,
+                                                      &bake_eval.active_data_block,
+                                                      [](NodesModifierDataBlock *data_block) {
+                                                        MEM_SAFE_FREE(data_block->id_name);
+                                                        MEM_SAFE_FREE(data_block->lib_name);
+                                                      });
+          });
+    }
   }
   for (auto item : bake_params.data_by_node_id_.items()) {
     if (bake::BakeNodeCache *node_cache = nmd_eval.runtime->cache->get_bake_node_cache(item.key)) {
@@ -1513,9 +1559,6 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
       }
     }
   }
-
-  Depsgraph *depsgraph = ctx.depsgraph;
-  Main *bmain = DEG_get_bmain(depsgraph);
 
   for (auto item : data_block_maps.items()) {
     const int bake_id = item.key;

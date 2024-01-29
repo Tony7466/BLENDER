@@ -490,63 +490,6 @@ struct BakeDrawContext {
   return true;
 }
 
-static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
-                                           const bContext * /*C*/,
-                                           uiLayout *layout,
-                                           PointerRNA * /*idataptr*/,
-                                           PointerRNA *itemptr,
-                                           int /*icon*/,
-                                           PointerRNA * /*active_dataptr*/,
-                                           const char * /*active_propname*/,
-                                           int /*index*/,
-                                           int /*flt_flag*/)
-{
-  auto &data_block = *static_cast<NodesModifierDataBlock *>(itemptr->data);
-  uiLayout *row = uiLayoutRow(layout, true);
-
-  std::string name;
-  if (StringRef(data_block.lib_name).is_empty()) {
-    name = data_block.id_name;
-  }
-  else {
-    name = fmt::format("{} [{}]", data_block.id_name, data_block.lib_name);
-  }
-
-  uiItemR(row, itemptr, "id", UI_ITEM_NONE, name.c_str(), ICON_NONE);
-}
-
-static void draw_data_blocks(const bContext *C, uiLayout *layout, BakeDrawContext &ctx)
-{
-  static uiListType *data_block_list = []() {
-    uiListType *list = MEM_cnew<uiListType>(__func__);
-    STRNCPY(list->idname, "DATA_UL_nodes_modifier_data_blocks");
-    list->draw_item = draw_bake_data_block_list_item;
-    WM_uilisttype_add(list);
-    return list;
-  }();
-
-  PointerRNA data_blocks_ptr = RNA_pointer_create(
-      ctx.bake_rna.owner_id, &RNA_NodesModifierBakeDataBlocks, ctx.bake_rna.data);
-
-  {
-    uiLayout *row = uiLayoutRow(layout, false);
-    uiTemplateList(row,
-                   C,
-                   data_block_list->idname,
-                   "",
-                   &ctx.bake_rna,
-                   "data_blocks",
-                   &data_blocks_ptr,
-                   "active_index",
-                   nullptr,
-                   3,
-                   5,
-                   UILST_LAYOUT_DEFAULT,
-                   0,
-                   UI_TEMPLATE_LIST_FLAG_NONE);
-  }
-}
-
 static std::string get_baked_string(const BakeDrawContext &ctx)
 {
   if (ctx.bake_still && ctx.baked_range->size() == 1) {
@@ -675,7 +618,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     }
   }
 
-  draw_data_blocks(C, layout, ctx);
+  draw_data_blocks(C, layout, ctx.bake_rna);
 }
 
 static void node_register()
@@ -697,6 +640,63 @@ NOD_REGISTER_NODE(node_register)
 }  // namespace blender::nodes::node_geo_bake_cc
 
 namespace blender::nodes {
+
+static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
+                                           const bContext * /*C*/,
+                                           uiLayout *layout,
+                                           PointerRNA * /*idataptr*/,
+                                           PointerRNA *itemptr,
+                                           int /*icon*/,
+                                           PointerRNA * /*active_dataptr*/,
+                                           const char * /*active_propname*/,
+                                           int /*index*/,
+                                           int /*flt_flag*/)
+{
+  auto &data_block = *static_cast<NodesModifierDataBlock *>(itemptr->data);
+  uiLayout *row = uiLayoutRow(layout, true);
+
+  std::string name;
+  if (StringRef(data_block.lib_name).is_empty()) {
+    name = data_block.id_name;
+  }
+  else {
+    name = fmt::format("{} [{}]", data_block.id_name, data_block.lib_name);
+  }
+
+  uiItemR(row, itemptr, "id", UI_ITEM_NONE, name.c_str(), ICON_NONE);
+}
+
+void draw_data_blocks(const bContext *C, uiLayout *layout, PointerRNA &bake_rna)
+{
+  static uiListType *data_block_list = []() {
+    uiListType *list = MEM_cnew<uiListType>(__func__);
+    STRNCPY(list->idname, "DATA_UL_nodes_modifier_data_blocks");
+    list->draw_item = draw_bake_data_block_list_item;
+    WM_uilisttype_add(list);
+    return list;
+  }();
+
+  PointerRNA data_blocks_ptr = RNA_pointer_create(
+      bake_rna.owner_id, &RNA_NodesModifierBakeDataBlocks, bake_rna.data);
+
+  {
+    uiLayout *row = uiLayoutRow(layout, false);
+    uiTemplateList(row,
+                   C,
+                   data_block_list->idname,
+                   "",
+                   &bake_rna,
+                   "data_blocks",
+                   &data_blocks_ptr,
+                   "active_index",
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+  }
+}
 
 std::unique_ptr<LazyFunction> get_bake_lazy_function(
     const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)

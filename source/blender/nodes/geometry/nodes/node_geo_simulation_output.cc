@@ -914,6 +914,8 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       uiItemR(subcol, &bake_rna, "frame_end", UI_ITEM_NONE, "End", ICON_NONE);
     }
   }
+
+  draw_data_blocks(C, layout, bake_rna);
 }
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
