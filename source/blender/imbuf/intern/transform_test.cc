@@ -7,7 +7,7 @@
 #include "BLI_color.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion_types.hh"
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
 namespace blender::imbuf::tests {
 
@@ -71,9 +71,9 @@ TEST(imbuf_transform, nearest_subsample3_2x_smaller)
 {
   ImBuf *res = transform_2x_smaller(IMB_FILTER_NEAREST, 3);
   const ColorTheme4b *got = reinterpret_cast<ColorTheme4b *>(res->byte_buffer.data);
-  EXPECT_EQ(got[0], ColorTheme4b(226, 168, 113, 255));
-  EXPECT_EQ(got[1], ColorTheme4b(133, 55, 31, 16));
-  EXPECT_EQ(got[2], ColorTheme4b(55, 22, 64, 254));
+  EXPECT_EQ(got[0], ColorTheme4b(227, 170, 113, 255));
+  EXPECT_EQ(got[1], ColorTheme4b(133, 55, 31, 17));
+  EXPECT_EQ(got[2], ColorTheme4b(56, 22, 64, 253));
   IMB_freeImBuf(res);
 }
 
@@ -87,9 +87,9 @@ TEST(imbuf_transform, bilinear_2x_smaller)
   IMB_freeImBuf(res);
 }
 
-TEST(imbuf_transform, bicubic_2x_smaller)
+TEST(imbuf_transform, cubic_bspline_2x_smaller)
 {
-  ImBuf *res = transform_2x_smaller(IMB_FILTER_BICUBIC, 1);
+  ImBuf *res = transform_2x_smaller(IMB_FILTER_CUBIC_BSPLINE, 1);
   const ColorTheme4b *got = reinterpret_cast<ColorTheme4b *>(res->byte_buffer.data);
   EXPECT_EQ(got[0], ColorTheme4b(189, 126, 62, 250));
   EXPECT_EQ(got[1], ColorTheme4b(134, 57, 33, 26));
@@ -97,16 +97,26 @@ TEST(imbuf_transform, bicubic_2x_smaller)
   IMB_freeImBuf(res);
 }
 
-TEST(imbuf_transform, bicubic_fractional_larger)
+TEST(imbuf_transform, cubic_mitchell_2x_smaller)
 {
-  ImBuf *res = transform_fractional_larger(IMB_FILTER_BICUBIC, 1);
+  ImBuf *res = transform_2x_smaller(IMB_FILTER_CUBIC_MITCHELL, 1);
   const ColorTheme4b *got = reinterpret_cast<ColorTheme4b *>(res->byte_buffer.data);
-  EXPECT_EQ(got[0 + 0 * res->x], ColorTheme4b(35, 11, 1, 255));
-  EXPECT_EQ(got[1 + 0 * res->x], ColorTheme4b(131, 12, 6, 250));
-  EXPECT_EQ(got[7 + 0 * res->x], ColorTheme4b(54, 93, 19, 249));
-  EXPECT_EQ(got[2 + 2 * res->x], ColorTheme4b(206, 70, 56, 192));
-  EXPECT_EQ(got[3 + 2 * res->x], ColorTheme4b(165, 60, 42, 78));
-  EXPECT_EQ(got[8 + 6 * res->x], ColorTheme4b(57, 1, 90, 252));
+  EXPECT_EQ(got[0], ColorTheme4b(195, 130, 67, 255));
+  EXPECT_EQ(got[1], ColorTheme4b(132, 51, 28, 0));
+  EXPECT_EQ(got[2], ColorTheme4b(52, 52, 48, 255));
+  IMB_freeImBuf(res);
+}
+
+TEST(imbuf_transform, cubic_mitchell_fractional_larger)
+{
+  ImBuf *res = transform_fractional_larger(IMB_FILTER_CUBIC_MITCHELL, 1);
+  const ColorTheme4b *got = reinterpret_cast<ColorTheme4b *>(res->byte_buffer.data);
+  EXPECT_EQ(got[0 + 0 * res->x], ColorTheme4b(0, 0, 0, 255));
+  EXPECT_EQ(got[1 + 0 * res->x], ColorTheme4b(127, 0, 0, 255));
+  EXPECT_EQ(got[7 + 0 * res->x], ColorTheme4b(49, 109, 13, 255));
+  EXPECT_EQ(got[2 + 2 * res->x], ColorTheme4b(236, 53, 50, 215));
+  EXPECT_EQ(got[3 + 2 * res->x], ColorTheme4b(155, 55, 35, 54));
+  EXPECT_EQ(got[8 + 6 * res->x], ColorTheme4b(57, 0, 98, 252));
   IMB_freeImBuf(res);
 }
 
@@ -133,7 +143,7 @@ TEST(imbuf_transform, nearest_very_large_scale)
 
   /* Check result: leftmost red, middle green, two rightmost pixels blue and black.
    * If the transform code internally does not have enough precision while stepping
-   * through the scanline, the rightmost side will not come out correctly. */
+   * through the scan-line, the rightmost side will not come out correctly. */
   const ColorTheme4b *got = reinterpret_cast<ColorTheme4b *>(res->byte_buffer.data);
   EXPECT_EQ(got[0], col_r);
   EXPECT_EQ(got[res->x / 2], col_g);
