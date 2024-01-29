@@ -811,8 +811,6 @@ class NodeTreeMainUpdater {
     /* Propagation from right to left to determine which enum
      * definition to use for menu sockets. */
     for (bNode *node : ntree.toposort_right_to_left()) {
-      // const bool node_updated = this->should_update_individual_node(ntree, *node);
-
       /* Clear current enum references. */
       for (bNodeSocket *socket : node->input_sockets()) {
         if (socket->is_available() && socket->type == SOCK_MENU) {

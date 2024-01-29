@@ -44,8 +44,8 @@ static void node_declare(NodeDeclarationBuilder &b)
     if (supports_fields) {
       input.supports_field();
     }
-    if (auto *menu = dynamic_cast<decl::MenuBuilder *>(&input)) {
-      menu->enum_output(0);
+    if (data_type == SOCK_MENU) {
+      input.enum_output(0);
     }
     /* Labels are ugly in combination with data-block pickers and are usually disabled. */
     input.hide_label(ELEM(data_type, SOCK_OBJECT, SOCK_IMAGE, SOCK_COLLECTION, SOCK_MATERIAL));

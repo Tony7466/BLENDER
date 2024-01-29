@@ -314,6 +314,8 @@ class BaseSocketDeclarationBuilder {
   /** The output is a field if any of the inputs with indices in the given list is a field. */
   BaseSocketDeclarationBuilder &dependent_field(Vector<int> input_dependencies);
 
+  BaseSocketDeclarationBuilder &enum_output(int output_socket);
+
   /**
    * For outputs that combine all input fields into a new field. The output is a field even if none
    * of the inputs is a field.

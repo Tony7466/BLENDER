@@ -739,6 +739,14 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::dependent_field()
   return *this;
 }
 
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::enum_output(const int output_socket)
+{
+  if (auto *menu_input = dynamic_cast<decl::Menu *>(decl_in_base_)) {
+    menu_input->propagate_from.emplace(output_socket);
+  }
+  return *this;
+}
+
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_source_reference_all()
 {
   this->field_source();
