@@ -184,11 +184,12 @@ static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_sha
 
   static bool deprecation_warning_issued = false;
 
-  /*raising Deprecation Warning when calling `gpu.types.GPUBatch.program_set` */
+  /* deprecation warning raised when calling `gpu.types.GPUBatch.program_set`.  */
   if (!deprecation_warning_issued) {
     PyErr_WarnEx(PyExc_DeprecationWarning,
                  "Calls to GPUBatch.program_set are deprecated."
-                 "Please set the shader via the 'program' parameter when calling GPUBatch.draw/draw_instanced/draw_range.",
+                 "Please set the shader via the 'program' parameter when calling "
+                 "GPUBatch.draw/draw_instanced/draw_range.",
                  1);
     deprecation_warning_issued = true;
   }
@@ -244,14 +245,15 @@ static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args)
   if (py_program == nullptr) {
 
     if (!deprecation_warning_issued) {
-      /*raising Deprecation Warning when calling `gpu.types.GPUBatch.draw` without a valid GPUShader */
+      /* deprecation warning raised when calling gpu.types.GPUBatch.draw without a valid GPUShader.
+       */
       PyErr_WarnEx(PyExc_DeprecationWarning,
                    "Calling GPUBatch.draw without specifying a program is deprecated. "
                    "Please provide a valid GPUShader as the 'program' parameter.",
                    1);
       deprecation_warning_issued = true;
     }
-     
+
     if (!pygpu_batch_is_program_or_error(self)) {
       return nullptr;
     }
