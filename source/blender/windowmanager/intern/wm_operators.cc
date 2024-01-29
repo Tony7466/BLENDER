@@ -9,12 +9,15 @@
  * as well as some generic operators and shared operator properties.
  */
 
+#include <algorithm>
 #include <cctype>
 #include <cerrno>
 #include <cfloat>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
+#include <sstream>
 
 #ifdef WIN32
 #  include "GHOST_C-api.h"
@@ -35,35 +38,34 @@
 
 #include "BLT_translation.h"
 
-#include "PIL_time.h"
-
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.hh"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh" /* BKE_ST_MAXNAME */
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 
 #include "BLF_api.h"
 
@@ -72,7 +74,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_fileselect.hh"
 #include "ED_gpencil_legacy.hh"
@@ -97,12 +99,12 @@
 
 #include "wm.hh"
 #include "wm_draw.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_event_types.hh"
 #include "wm_files.hh"
 #include "wm_window.hh"
 #ifdef WITH_XR_OPENXR
-#  include "wm_xr.h"
+#  include "wm_xr.hh"
 #endif
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
@@ -567,6 +569,11 @@ static const char *wm_context_member_from_ptr(const bContext *C,
               const SpaceAction *sact = (SpaceAction *)space_data;
               const bDopeSheet *ads = &sact->ads;
               TEST_PTR_DATA_TYPE("space_data.dopesheet", RNA_DopeSheet, ptr, ads);
+              break;
+            }
+            case SPACE_NODE: {
+              const SpaceNode *snode = (SpaceNode *)space_data;
+              TEST_PTR_DATA_TYPE("space_data.overlay", RNA_SpaceNodeOverlay, ptr, snode);
               break;
             }
           }
@@ -1323,7 +1330,7 @@ ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
                   "Cannot read %s '%s': %s",
                   BKE_idtype_idcode_to_name(idcode),
                   filepath,
-                  errno ? strerror(errno) : TIP_("unsupported format"));
+                  errno ? strerror(errno) : RPT_("unsupported format"));
       return nullptr;
     }
 
@@ -1346,7 +1353,7 @@ ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
   }
 
   /* Lookup an already existing ID. */
-  id = WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_Type(idcode));
+  id = WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_Type(idcode));
 
   if (!id) {
     /* Print error with the name if the name is available. */
@@ -1433,8 +1440,16 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, void *arg_op)
 struct wmOpPopUp {
   wmOperator *op;
   int width;
-  int height;
   int free_op;
+  std::string title;
+  std::string message;
+  std::string confirm_text;
+  eAlertIcon icon;
+  wmPopupSize size;
+  wmPopupPosition position;
+  bool cancel_default;
+  bool mouse_move_quit;
+  bool include_properties;
 };
 
 /* Only invoked by OK button in popups created with wm_block_dialog_create() */
@@ -1446,7 +1461,7 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
      * In this case, wm_operator_ui_popup_cancel won't run. */
     wmOpPopUp *data = static_cast<wmOpPopUp *>(arg1);
     op = data->op;
-    MEM_freeN(data);
+    MEM_delete(data);
   }
 
   uiBlock *block = static_cast<uiBlock *>(arg2);
@@ -1463,44 +1478,165 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
   WM_operator_call_ex(C, op, true);
 }
 
+static void wm_operator_ui_popup_cancel(bContext *C, void *user_data);
+
+/* Only invoked by Cancel button in popups created with wm_block_dialog_create() */
+static void dialog_cancel_cb(bContext *C, void *arg1, void *arg2)
+{
+  wm_operator_ui_popup_cancel(C, arg1);
+  uiBlock *block = static_cast<uiBlock *>(arg2);
+  UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
+  wmWindow *win = CTX_wm_window(C);
+  UI_popup_block_close(C, win, block);
+}
+
 /* Dialogs are popups that require user verification (click OK) before exec */
 static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_data)
 {
   wmOpPopUp *data = static_cast<wmOpPopUp *>(user_data);
   wmOperator *op = data->op;
   const uiStyle *style = UI_style_get_dpi();
+  const bool small = data->size == WM_POPUP_SIZE_SMALL;
+  const short icon_size = (small ? 32 : 64) * UI_SCALE_FAC;
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   UI_block_flag_disable(block, UI_BLOCK_LOOP);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_REGULAR);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-  /* intentionally don't use 'UI_BLOCK_MOVEMOUSE_QUIT', some dialogues have many items
-   * where quitting by accident is very annoying */
+  if (data->mouse_move_quit) {
+    UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
+  }
+  if (data->icon < ALERT_ICON_NONE || data->icon >= ALERT_ICON_MAX) {
+    data->icon = ALERT_ICON_QUESTION;
+  }
+
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NUMSELECT);
 
-  uiLayout *layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, data->height, 0, style);
+  /* Width based on the text lengths. */
+  int text_width = std::max(
+      120 * UI_SCALE_FAC,
+      BLF_width(style->widget.uifont_id, data->title.c_str(), BLF_DRAW_STR_DUMMY_MAX));
 
-  uiTemplateOperatorPropertyButs(
-      C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
+  /* Break Message into multiple lines. */
+  std::vector<std::string> message_lines;
+  blender::StringRef messaged_trimmed = blender::StringRef(data->message).trim();
+  std::istringstream message_stream(messaged_trimmed);
+  std::string line;
+  while (std::getline(message_stream, line)) {
+    message_lines.push_back(line);
+    text_width = std::max(
+        text_width, int(BLF_width(style->widget.uifont_id, line.c_str(), BLF_DRAW_STR_DUMMY_MAX)));
+  }
+
+  int dialog_width = std::max(text_width + int(style->columnspace * 2.5), data->width);
+
+  /* Adjust width if the button text is long. */
+  const int longest_button_text = std::max(
+      BLF_width(style->widget.uifont_id, data->confirm_text.c_str(), BLF_DRAW_STR_DUMMY_MAX),
+      BLF_width(style->widget.uifont_id, IFACE_("Cancel"), BLF_DRAW_STR_DUMMY_MAX));
+  dialog_width = std::max(dialog_width, 3 * longest_button_text);
+
+  uiLayout *layout;
+  if (data->icon != ALERT_ICON_NONE) {
+    layout = uiItemsAlertBox(
+        block, style, dialog_width + icon_size, eAlertIcon(data->icon), icon_size);
+  }
+  else {
+    layout = UI_block_layout(
+        block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, 0, 0, style);
+  }
+
+  /* Title. */
+  if (!data->title.empty()) {
+    uiItemL_ex(layout, data->title.c_str(), ICON_NONE, true, false);
+  }
+
+  /* Message lines. */
+  for (auto &st : message_lines) {
+    uiItemL(layout, st.c_str(), ICON_NONE);
+  }
+
+  if (data->include_properties) {
+    uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, 0);
+  }
+
+  uiItemS_ex(layout, small ? 0.4f : 2.0f);
 
   /* clear so the OK button is left alone */
   UI_block_func_set(block, nullptr, nullptr, nullptr);
+
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
 
   /* new column so as not to interfere with custom layouts #26436. */
   {
     uiLayout *col = uiLayoutColumn(layout, false);
     uiBlock *col_block = uiLayoutGetBlock(col);
-    /* Create OK button, the callback of which will execute op */
-    uiBut *but = uiDefBut(
-        col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, -30, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
-    UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
-    UI_but_func_set(but, dialog_exec_cb, data, col_block);
+    uiBut *confirm_but;
+    uiBut *cancel_but;
+
+    col = uiLayoutSplit(col, 0.0f, true);
+    uiLayoutSetScaleY(col, small ? 1.0f : 1.2f);
+
+    if (windows_layout) {
+      confirm_but = uiDefBut(col_block,
+                             UI_BTYPE_BUT,
+                             0,
+                             data->confirm_text.c_str(),
+                             0,
+                             0,
+                             0,
+                             UI_UNIT_Y,
+                             nullptr,
+                             0,
+                             0,
+                             0,
+                             0,
+                             "");
+      uiLayoutColumn(col, false);
+    }
+
+    cancel_but = uiDefBut(
+        col_block, UI_BTYPE_BUT, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+
+    if (!windows_layout) {
+      uiLayoutColumn(col, false);
+      confirm_but = uiDefBut(col_block,
+                             UI_BTYPE_BUT,
+                             0,
+                             data->confirm_text.c_str(),
+                             0,
+                             0,
+                             0,
+                             UI_UNIT_Y,
+                             nullptr,
+                             0,
+                             0,
+                             0,
+                             0,
+                             "");
+    }
+
+    UI_but_func_set(confirm_but, dialog_exec_cb, data, col_block);
+    UI_but_func_set(cancel_but, dialog_cancel_cb, data, col_block);
+    UI_but_flag_enable((data->cancel_default) ? cancel_but : confirm_but, UI_BUT_ACTIVE_DEFAULT);
   }
 
-  /* center around the mouse */
-  UI_block_bounds_set_popup(
-      block, 6 * UI_SCALE_FAC, blender::int2{data->width / -2, data->height / 2});
+  const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
+
+  if (data->position == WM_POPUP_POSITION_MOUSE) {
+    const float button_center_x = windows_layout ? -0.33f : -0.66f;
+    const float button_center_y = small ? 1.9f : 3.1f;
+    const int bounds_offset[2] = {int(button_center_x * uiLayoutGetWidth(layout)),
+                                  int(button_center_y * UI_UNIT_X)};
+    UI_block_bounds_set_popup(block, padding, bounds_offset);
+  }
+  else if (data->position == WM_POPUP_POSITION_CENTER) {
+    UI_block_bounds_set_centered(block, padding);
+  }
 
   return block;
 }
@@ -1517,7 +1653,7 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *user_d
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_REGULAR);
 
   uiLayout *layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, data->height, 0, style);
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, 0, 0, style);
 
   /* since ui is defined the auto-layout args are not used */
   uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_COLUMN, 0);
@@ -1544,7 +1680,7 @@ static void wm_operator_ui_popup_cancel(bContext *C, void *user_data)
     }
   }
 
-  MEM_freeN(data);
+  MEM_delete(data);
 }
 
 static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
@@ -1556,17 +1692,43 @@ static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
     WM_operator_call_ex(C, op, true);
   }
 
-  MEM_freeN(data);
+  MEM_delete(data);
+}
+
+int WM_operator_confirm_ex(bContext *C,
+                           wmOperator *op,
+                           const char *title,
+                           const char *message,
+                           const char *confirm_text,
+                           int icon,
+                           bool cancel_default)
+{
+  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
+  data->op = op;
+  data->width = int(180.0f * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
+                    UI_DEFAULT_TEXT_POINTS);
+  data->free_op = true;
+  data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
+  data->message = (message == nullptr) ? std::string() : message;
+  data->confirm_text = (confirm_text == nullptr) ? IFACE_("OK") : confirm_text;
+  data->icon = eAlertIcon(icon);
+  data->size = (message == nullptr) ? WM_POPUP_SIZE_SMALL : WM_POPUP_SIZE_LARGE;
+  data->position = (message == nullptr) ? WM_POPUP_POSITION_MOUSE : WM_POPUP_POSITION_CENTER;
+  data->cancel_default = cancel_default;
+  data->mouse_move_quit = (message == nullptr) ? true : false;
+  data->include_properties = false;
+
+  UI_popup_block_ex(
+      C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);
+
+  return OPERATOR_RUNNING_MODAL;
 }
 
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(
-      MEM_callocN(sizeof(wmOpPopUp), "WM_operator_ui_popup"));
+  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
   data->width = width * UI_SCALE_FAC;
-  /* Actual used height depends on the content. */
-  data->height = 0;
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
   UI_popup_block_ex(C, wm_operator_ui_create, nullptr, wm_operator_ui_popup_cancel, data, op);
   return OPERATOR_RUNNING_MODAL;
@@ -1630,16 +1792,22 @@ int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent * /*event
   return wm_operator_props_popup_ex(C, op, false, true);
 }
 
-int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width)
+int WM_operator_props_dialog_popup(
+    bContext *C, wmOperator *op, int width, const char *title, const char *confirm_text)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(
-      MEM_callocN(sizeof(wmOpPopUp), "WM_operator_props_dialog_popup"));
-
+  wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
-  data->width = width * UI_SCALE_FAC;
-  /* Actual height depends on the content. */
-  data->height = 0;
+  data->width = int(float(width) * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
+                    UI_DEFAULT_TEXT_POINTS);
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
+  data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
+  data->confirm_text = (confirm_text == nullptr) ? IFACE_("OK") : confirm_text;
+  data->icon = ALERT_ICON_NONE;
+  data->size = WM_POPUP_SIZE_SMALL;
+  data->position = WM_POPUP_POSITION_MOUSE;
+  data->cancel_default = false;
+  data->mouse_move_quit = false;
+  data->include_properties = true;
 
   /* op is not executed until popup OK but is clicked */
   UI_popup_block_ex(
@@ -1860,8 +2028,6 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   }
 
   static SearchPopupInit_Data data{};
-  char temp_buffer[256] = "";
-  STRNCPY(temp_buffer, g_search_text);
 
   if (search_type == SEARCH_TYPE_SINGLE_MENU) {
     {
@@ -1875,16 +2041,15 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
       MEM_SAFE_FREE(buffer);
     }
   }
+  else {
+    g_search_text[0] = '\0';
+  }
 
   data.search_type = search_type;
   data.size[0] = UI_searchbox_size_x() * 2;
   data.size[1] = UI_searchbox_size_y();
 
   UI_popup_block_invoke_ex(C, wm_block_search_menu, &data, nullptr, false);
-
-  /* g_search_text contains pressed letter here, copy previous searched
-   * value back to it, this will retain last searched result. see: #112896 */
-  STRNCPY(g_search_text, temp_buffer);
 
   return OPERATOR_INTERFACE;
 }
@@ -2387,8 +2552,7 @@ static void radial_control_set_tex(RadialControl *rc)
                                             ibuf->y,
                                             1,
                                             GPU_R8,
-                                            GPU_TEXTURE_USAGE_SHADER_READ |
-                                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                            GPU_TEXTURE_USAGE_SHADER_READ,
                                             ibuf->float_buffer.data);
 
         GPU_texture_filter_mode(rc->texture, true);
@@ -3445,7 +3609,7 @@ static int redraw_timer_exec(bContext *C, wmOperator *op)
 
   WM_cursor_wait(true);
 
-  double time_start = PIL_check_seconds_timer();
+  double time_start = BLI_check_seconds_timer();
 
   wm_window_make_drawable(wm, win);
 
@@ -3455,14 +3619,14 @@ static int redraw_timer_exec(bContext *C, wmOperator *op)
     iter_steps += 1;
 
     if (time_limit != 0.0) {
-      if ((PIL_check_seconds_timer() - time_start) > time_limit) {
+      if ((BLI_check_seconds_timer() - time_start) > time_limit) {
         break;
       }
       a = 0;
     }
   }
 
-  double time_delta = (PIL_check_seconds_timer() - time_start) * 1000;
+  double time_delta = (BLI_check_seconds_timer() - time_start) * 1000;
 
   RNA_enum_description(redraw_timer_type_items, type, &infostr);
 
@@ -3892,6 +4056,7 @@ void wm_operatortypes_register()
   WM_operatortype_append(WM_OT_recover_auto_save);
   WM_operatortype_append(WM_OT_save_as_mainfile);
   WM_operatortype_append(WM_OT_save_mainfile);
+  WM_operatortype_append(WM_OT_clear_recent_files);
   WM_operatortype_append(WM_OT_redraw_timer);
   WM_operatortype_append(WM_OT_memory_statistics);
   WM_operatortype_append(WM_OT_debug_menu);

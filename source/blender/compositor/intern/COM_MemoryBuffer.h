@@ -9,9 +9,11 @@
 #include "COM_BuffersIterator.h"
 #include "COM_Enums.h"
 
-#include "BLI_math_interp.h"
+#include "BLI_math_interp.hh"
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
+
+#include <cstring>
 
 struct ColormanageProcessor;
 struct ImBuf;
@@ -247,11 +249,11 @@ class MemoryBuffer {
         single_y = rel_y - last_y;
       }
 
-      BLI_bilinear_interpolation_fl(buffer_, out, 1, 1, num_channels_, single_x, single_y);
+      math::interpolate_bilinear_fl(buffer_, out, 1, 1, num_channels_, single_x, single_y);
       return;
     }
 
-    BLI_bilinear_interpolation_fl(buffer_,
+    math::interpolate_bilinear_fl(buffer_,
                                   out,
                                   get_width(),
                                   get_height(),
@@ -449,10 +451,7 @@ class MemoryBuffer {
         }
         break;
       case MemoryBufferExtend::Repeat:
-        x = fmodf(x, w);
-        if (x < 0.0f) {
-          x += w;
-        }
+        x = floored_fmod(x, w);
         break;
     }
 
@@ -468,10 +467,7 @@ class MemoryBuffer {
         }
         break;
       case MemoryBufferExtend::Repeat:
-        y = fmodf(y, h);
-        if (y < 0.0f) {
-          y += h;
-        }
+        y = floored_fmod(y, h);
         break;
     }
 
@@ -545,7 +541,7 @@ class MemoryBuffer {
       memcpy(result, buffer_, sizeof(float) * num_channels_);
     }
     else {
-      BLI_bilinear_interpolation_wrap_fl(buffer_,
+      math::interpolate_bilinear_wrap_fl(buffer_,
                                          result,
                                          get_width(),
                                          get_height(),
@@ -603,12 +599,16 @@ class MemoryBuffer {
                  int to_x,
                  int to_y,
                  int to_channel_offset);
-  void copy_from(const struct ImBuf *src, const rcti &area, bool ensure_linear_space = false);
+  void copy_from(const struct ImBuf *src,
+                 const rcti &area,
+                 bool ensure_premultiplied = false,
+                 bool ensure_linear_space = false);
   void copy_from(const struct ImBuf *src,
                  const rcti &area,
                  int channel_offset,
                  int elem_size,
                  int to_channel_offset,
+                 bool ensure_premultiplied = false,
                  bool ensure_linear_space = false);
   void copy_from(const struct ImBuf *src,
                  const rcti &src_area,
@@ -617,6 +617,7 @@ class MemoryBuffer {
                  int to_x,
                  int to_y,
                  int to_channel_offset,
+                 bool ensure_premultiplied = false,
                  bool ensure_linear_space = false);
 
   void fill(const rcti &area, const float *value);

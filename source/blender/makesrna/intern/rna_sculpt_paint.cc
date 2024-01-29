@@ -24,7 +24,7 @@
 #include "DNA_space_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 
@@ -32,6 +32,8 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
+
+#include "bmesh.hh"
 
 const EnumPropertyItem rna_enum_particle_edit_hair_brush_items[] = {
     {PE_BRUSH_COMB, "COMB", 0, "Comb", "Comb hairs"},
@@ -108,7 +110,7 @@ const EnumPropertyItem rna_enum_symmetrize_direction_items[] = {
 #  include "MEM_guardedalloc.h"
 
 #  include "BKE_collection.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_object.hh"
 #  include "BKE_particle.h"
@@ -873,6 +875,17 @@ static void rna_def_sculpt(BlenderRNA *brna)
 
     RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
   } while ((++entry)->identifier);
+
+  prop = RNA_def_property(
+      srna, "automasking_boundary_edges_propagation_steps", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "automasking_boundary_edges_propagation_steps");
+  RNA_def_property_range(prop, 1, AUTOMASKING_BOUNDARY_EDGES_MAX_PROPAGATION_STEPS);
+  RNA_def_property_ui_range(prop, 1, AUTOMASKING_BOUNDARY_EDGES_MAX_PROPAGATION_STEPS, 1, -1);
+  RNA_def_property_ui_text(prop,
+                           "Propagation Steps",
+                           "Distance where boundary edge automasking is going to protect vertices "
+                           "from the fully masked edge");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
   prop = RNA_def_property(srna, "automasking_cavity_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "automasking_cavity_factor");

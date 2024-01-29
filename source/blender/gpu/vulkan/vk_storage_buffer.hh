@@ -28,7 +28,9 @@ class VKStorageBuffer : public StorageBuf, public VKBindableResource {
 
   void update(const void *data) override;
   void bind(int slot) override;
-  void bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type) override;
+  void bind(int slot,
+            shader::ShaderCreateInfo::Resource::BindType bind_type,
+            const GPUSamplerState sampler_state) override;
   void unbind() override;
   void clear(uint32_t clear_value) override;
   void copy_sub(VertBuf *src, uint dst_offset, uint src_offset, uint copy_size) override;
@@ -47,6 +49,11 @@ class VKStorageBuffer : public StorageBuf, public VKBindableResource {
 
   void ensure_allocated();
 
+  const VKBuffer &buffer_get() const
+  {
+    return buffer_;
+  }
+
  private:
   void allocate();
 };
@@ -54,6 +61,10 @@ class VKStorageBuffer : public StorageBuf, public VKBindableResource {
 BLI_INLINE VKStorageBuffer *unwrap(StorageBuf *storage_buffer)
 {
   return static_cast<VKStorageBuffer *>(storage_buffer);
+}
+BLI_INLINE StorageBuf *wrap(VKStorageBuffer *storage_buffer)
+{
+  return static_cast<StorageBuf *>(storage_buffer);
 }
 
 }  // namespace blender::gpu

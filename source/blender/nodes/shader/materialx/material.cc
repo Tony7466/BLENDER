@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -60,7 +60,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
-    if (output_node) {
+    if (output_node && output_node->typeinfo->materialx_fn) {
       NodeParserData data = {doc.get(),
                              depsgraph,
                              material,
