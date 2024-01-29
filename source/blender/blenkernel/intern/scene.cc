@@ -2561,8 +2561,6 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_DEPSGRAPH_UPDATE_PRE);
   }
 
-  blender::bke::scene::sync_writeback::activate(*depsgraph);
-
   for (int pass = 0; pass < 2; pass++) {
     /* (Re-)build dependency graph if needed. */
     DEG_graph_relations_update(depsgraph);
@@ -2570,9 +2568,15 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     // DEG_debug_graph_relations_validate(depsgraph, bmain, scene);
     /* Flush editing data if needed. */
     prepare_mesh_for_viewport_render(bmain, scene, view_layer);
+    /* Start collecting functions that need to run after depsgraph evaluation that writeback to
+     * original data. */
+    blender::bke::scene::sync_writeback::activate(*depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed. */
     DEG_evaluate_on_refresh(depsgraph);
+    /* Write information gathered during evaluation back to original data. This may also create new
+     * depsgraph relations. */
+    blender::bke::scene::sync_writeback::run(*depsgraph);
     /* Update sound system. */
     BKE_scene_update_sound(depsgraph, bmain);
     /* Notify python about depsgraph update. */
@@ -2617,10 +2621,6 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
 
   const bool backup = false;
   DEG_ids_clear_recalc(depsgraph, backup);
-
-  if (blender::bke::scene::sync_writeback::run(*depsgraph)) {
-    scene_graph_update_tagged(depsgraph, bmain, only_if_tagged);
-  }
 }
 
 void BKE_scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain)
@@ -2642,8 +2642,6 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
   /* Keep this first. */
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_FRAME_CHANGE_PRE);
 
-  blender::bke::scene::sync_writeback::activate(*depsgraph);
-
   for (int pass = 0; pass < 2; pass++) {
     /* Update animated image textures for particles, modifiers, gpu, etc,
      * call this at the start so modifiers with textures don't lag 1 frame.
@@ -2651,6 +2649,9 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
     BKE_image_editors_update_frame(bmain, scene->r.cfra);
     BKE_sound_set_cfra(scene->r.cfra);
     DEG_graph_relations_update(depsgraph);
+    /* Start collecting functions that need to run after depsgraph evaluation that writeback to
+     * original data. */
+    blender::bke::scene::sync_writeback::activate(*depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed.
      *
@@ -2664,6 +2665,9 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
     else {
       DEG_evaluate_on_refresh(depsgraph);
     }
+    /* Write information gathered during evaluation back to original data. This may also create new
+     * depsgraph relations. */
+    blender::bke::scene::sync_writeback::run(*depsgraph);
     /* Update sound system animation. */
     BKE_scene_update_sound(depsgraph, bmain);
 
@@ -2702,10 +2706,6 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
   if (clear_recalc) {
     const bool backup = false;
     DEG_ids_clear_recalc(depsgraph, backup);
-  }
-
-  if (blender::bke::scene::sync_writeback::run(*depsgraph)) {
-    BKE_scene_graph_update_for_newframe_ex(depsgraph, clear_recalc);
   }
 }
 
