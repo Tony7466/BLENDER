@@ -162,7 +162,7 @@ ccl_device int integrate_surface_portal(KernelGlobals kg,
                                         ccl_private ShaderData *sd,
                                         ccl_private const ShaderClosure *sc)
 {
-  const PortalClosure *pc = (const PortalClosure *)sc;
+  ccl_private const PortalClosure *pc = (ccl_private const PortalClosure *)sc;
 
   float sum_sample_weight = 0.0f;
   for (int i = 0; i < sd->num_closure; i++) {
