@@ -191,22 +191,6 @@ inline void gather_group_to_group(const OffsetIndices<int> src_offsets,
 }
 
 template<typename T>
-inline void gather_group_to_group(const OffsetIndices<int> src_offsets,
-                                  const OffsetIndices<int> dst_offsets,
-                                  const Span<int> indices,
-                                  const Span<T> src,
-                                  MutableSpan<T> dst)
-{
-  threading::parallel_for(indices.index_range(), 512, [&](const IndexRange range) {
-    for (const int64_t i : range) {
-      const IndexRange dst_range = dst_offsets[i];
-      const IndexRange src_range = src_offsets[indices[i]];
-      dst.slice(dst_range).copy_from(src.slice(src_range));
-    }
-  });
-}
-
-template<typename T>
 inline void gather_to_groups(const OffsetIndices<int> dst_offsets,
                              const IndexMask &src_selection,
                              const Span<T> src,
