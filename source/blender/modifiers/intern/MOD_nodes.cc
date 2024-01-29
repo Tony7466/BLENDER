@@ -983,7 +983,7 @@ static bool try_find_baked_data(bake::NodeBakeCache &bake,
 }
 
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
- private:
+ public:
   static constexpr float max_delta_frames = 1.0f;
 
   struct DataPerZone {
@@ -1309,7 +1309,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 };
 
 class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
- private:
+ public:
   struct DataPerNode {
     nodes::BakeNodeBehavior behavior;
     NodesModifierBakeDataBlockMap data_block_map;
@@ -1470,82 +1470,104 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
 };
 
 static void add_missing_data_block_mappings(
-    NodesModifierData &nmd,
+    NodesModifierBake &bake,
     const Span<bake::BakeDataBlockID> missing,
     FunctionRef<ID *(const bake::BakeDataBlockID &)> get_data_block)
 {
-  // const int old_num = nmd.data_blocks_num;
-  // const int new_num = old_num + missing.size();
-  // nmd.data_blocks = reinterpret_cast<NodesModifierDataBlock *>(
-  //     MEM_recallocN(nmd.data_blocks, sizeof(NodesModifierDataBlock) * new_num));
-  // for (const int i : missing.index_range()) {
-  //   NodesModifierDataBlock &data_block = nmd.data_blocks[old_num + i];
-  //   const blender::bke::bake::BakeDataBlockID &key = missing[i];
+  const int old_num = bake.data_blocks_num;
+  const int new_num = old_num + missing.size();
+  bake.data_blocks = reinterpret_cast<NodesModifierDataBlock *>(
+      MEM_recallocN(bake.data_blocks, sizeof(NodesModifierDataBlock) * new_num));
+  for (const int i : missing.index_range()) {
+    NodesModifierDataBlock &data_block = bake.data_blocks[old_num + i];
+    const blender::bke::bake::BakeDataBlockID &key = missing[i];
 
-  //   data_block.id_name = BLI_strdup(key.id_name.c_str());
-  //   if (!key.lib_name.empty()) {
-  //     data_block.lib_name = BLI_strdup(key.lib_name.c_str());
-  //   }
-  //   data_block.id_type = int(key.type);
-  //   ID *id = get_data_block(key);
-  //   if (id) {
-  //     data_block.id = id;
-  //   }
-  // }
-  // nmd.data_blocks_num = new_num;
+    data_block.id_name = BLI_strdup(key.id_name.c_str());
+    if (!key.lib_name.empty()) {
+      data_block.lib_name = BLI_strdup(key.lib_name.c_str());
+    }
+    data_block.id_type = int(key.type);
+    ID *id = get_data_block(key);
+    if (id) {
+      data_block.id = id;
+    }
+  }
+  bake.data_blocks_num = new_num;
 }
 
 static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
                                            NodesModifierData &nmd_eval,
                                            NodesModifierData &nmd_orig,
-                                           NodesModifierBakeDataBlockMap &data_block_map)
+                                           NodesModifierSimulationParams &simulation_params,
+                                           NodesModifierBakeParams &bake_params)
 {
+  Map<int, NodesModifierBakeDataBlockMap *> data_block_maps;
+  for (auto item : simulation_params.data_by_zone_id_.items()) {
+    data_block_maps.add(item.key, &item.value->data_block_map);
+  }
+  for (auto item : bake_params.data_by_node_id_.items()) {
+    data_block_maps.add(item.key, &item.value->data_block_map);
+  }
+
   Depsgraph *depsgraph = ctx.depsgraph;
   Main *bmain = DEG_get_bmain(depsgraph);
-  deg::sync_writeback::add(
-      *depsgraph,
-      [depsgraph = depsgraph,
-       object_eval = ctx.object,
-       bmain,
-       &nmd_orig,
-       &nmd_eval,
-       new_mappings = std::move(data_block_map.new_mappings)]() {
-        Vector<bake::BakeDataBlockID> sorted_new_mappings;
-        sorted_new_mappings.extend(new_mappings.keys().begin(), new_mappings.keys().end());
-        bool needs_reevaluation = false;
-        /* Add new data block mappings to the original modifier. This may do a name lookup in bmain
-         * to find the data block if there is not faster way to get it. */
-        add_missing_data_block_mappings(
-            nmd_orig, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
-              ID *id_orig = nullptr;
-              if (ID *id_eval = new_mappings.lookup_default(key, nullptr)) {
-                id_orig = DEG_get_original_id(id_eval);
-              }
-              else {
-                needs_reevaluation = true;
-                id_orig = BKE_libblock_find_name_and_library(
-                    bmain, key.id_name.c_str(), key.lib_name.c_str());
-              }
-              if (id_orig) {
-                id_us_plus(id_orig);
-              }
-              return id_orig;
-            });
-        /* Add new data block mappings to the evaluated modifier. In most cases this makes it so
-         * the evaluated modifier is in the same state as if it were copied from the updated
-         * original again. The exception is when a missing data block was found that is not in the
-         * depsgraph currently. */
-        add_missing_data_block_mappings(
-            nmd_eval, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
-              return new_mappings.lookup_default(key, nullptr);
-            });
 
-        if (needs_reevaluation) {
-          Object *object_orig = DEG_get_original_object(object_eval);
-          DEG_id_tag_update(&object_orig->id, ID_RECALC_GEOMETRY);
-          DEG_relations_tag_update(bmain);
-        }
-      });
+  for (auto item : data_block_maps.items()) {
+    const int bake_id = item.key;
+    NodesModifierBakeDataBlockMap &data_block_map = *item.value;
+    if (data_block_map.new_mappings.is_empty()) {
+      continue;
+    }
+
+    deg::sync_writeback::add(
+        *depsgraph,
+        [depsgraph = depsgraph,
+         object_eval = ctx.object,
+         bmain,
+         &nmd_orig,
+         &nmd_eval,
+         bake_id,
+         new_mappings = std::move(data_block_map.new_mappings)]() {
+          NodesModifierBake &bake_orig = *nmd_orig.find_bake(bake_id);
+          NodesModifierBake &bake_eval = *nmd_eval.find_bake(bake_id);
+
+          Vector<bake::BakeDataBlockID> sorted_new_mappings;
+          sorted_new_mappings.extend(new_mappings.keys().begin(), new_mappings.keys().end());
+          bool needs_reevaluation = false;
+          /* Add new data block mappings to the original modifier. This may do a name lookup in
+           * bmain to find the data block if there is not faster way to get it. */
+          add_missing_data_block_mappings(
+              bake_orig, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
+                ID *id_orig = nullptr;
+                if (ID *id_eval = new_mappings.lookup_default(key, nullptr)) {
+                  id_orig = DEG_get_original_id(id_eval);
+                }
+                else {
+                  needs_reevaluation = true;
+                  id_orig = BKE_libblock_find_name_and_library(
+                      bmain, key.id_name.c_str(), key.lib_name.c_str());
+                }
+                if (id_orig) {
+                  id_us_plus(id_orig);
+                }
+                return id_orig;
+              });
+          /* Add new data block mappings to the evaluated modifier. In most cases this makes it so
+           * the evaluated modifier is in the same state as if it were copied from the updated
+           * original again. The exception is when a missing data block was found that is not in
+           * the depsgraph currently. */
+          add_missing_data_block_mappings(
+              bake_eval, sorted_new_mappings, [&](const bake::BakeDataBlockID &key) -> ID * {
+                return new_mappings.lookup_default(key, nullptr);
+              });
+
+          if (needs_reevaluation) {
+            Object *object_orig = DEG_get_original_object(object_eval);
+            DEG_id_tag_update(&object_orig->id, ID_RECALC_GEOMETRY);
+            DEG_relations_tag_update(bmain);
+          }
+        });
+  }
 }
 
 static void modifyGeometry(ModifierData *md,
@@ -1639,9 +1661,9 @@ static void modifyGeometry(ModifierData *md,
     nmd_orig->runtime->eval_log = std::move(eval_log);
   }
 
-  // if (!data_block_map.new_mappings.is_empty()) {
-  //   add_data_block_items_writeback(*ctx, *nmd, *nmd_orig, data_block_map);
-  // }
+  if (DEG_is_active(ctx->depsgraph)) {
+    add_data_block_items_writeback(*ctx, *nmd, *nmd_orig, simulation_params, bake_params);
+  }
 
   if (use_orig_index_verts || use_orig_index_edges || use_orig_index_faces) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
