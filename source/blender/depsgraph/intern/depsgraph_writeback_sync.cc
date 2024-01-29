@@ -1,16 +1,15 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <mutex>
 
-#include "BKE_scene_writeback_sync.hh"
-
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_writeback_sync.hh"
 
 #include "BLI_map.hh"
 
-namespace blender::bke::scene::sync_writeback {
+namespace blender::deg::sync_writeback {
 
 struct WritebacksMap {
   std::mutex mutex;
@@ -60,4 +59,4 @@ bool run(const Depsgraph &depsgraph)
   return !writebacks.is_empty();
 }
 
-}  // namespace blender::bke::scene::sync_writeback
+}  // namespace blender::deg::sync_writeback

@@ -89,7 +89,6 @@
 #include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
-#include "BKE_scene_writeback_sync.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_unit.hh"
@@ -100,6 +99,7 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_debug.hh"
 #include "DEG_depsgraph_query.hh"
+#include "DEG_depsgraph_writeback_sync.hh"
 
 #include "RE_engine.h"
 
@@ -2570,13 +2570,13 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     prepare_mesh_for_viewport_render(bmain, scene, view_layer);
     /* Start collecting functions that need to run after depsgraph evaluation that writeback to
      * original data. */
-    blender::bke::scene::sync_writeback::activate(*depsgraph);
+    blender::deg::sync_writeback::activate(*depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed. */
     DEG_evaluate_on_refresh(depsgraph);
     /* Write information gathered during evaluation back to original data. This may also create new
      * depsgraph relations. */
-    blender::bke::scene::sync_writeback::run(*depsgraph);
+    blender::deg::sync_writeback::run(*depsgraph);
     /* Update sound system. */
     BKE_scene_update_sound(depsgraph, bmain);
     /* Notify python about depsgraph update. */
@@ -2651,7 +2651,7 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
     DEG_graph_relations_update(depsgraph);
     /* Start collecting functions that need to run after depsgraph evaluation that writeback to
      * original data. */
-    blender::bke::scene::sync_writeback::activate(*depsgraph);
+    blender::deg::sync_writeback::activate(*depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed.
      *
@@ -2667,7 +2667,7 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
     }
     /* Write information gathered during evaluation back to original data. This may also create new
      * depsgraph relations. */
-    blender::bke::scene::sync_writeback::run(*depsgraph);
+    blender::deg::sync_writeback::run(*depsgraph);
     /* Update sound system animation. */
     BKE_scene_update_sound(depsgraph, bmain);
 

@@ -57,7 +57,6 @@
 #include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
-#include "BKE_scene_writeback_sync.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
@@ -77,6 +76,7 @@
 
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
+#include "DEG_depsgraph_writeback_sync.hh"
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_nodes.hh"
@@ -1509,7 +1509,7 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
 {
   Depsgraph *depsgraph = ctx.depsgraph;
   Main *bmain = DEG_get_bmain(depsgraph);
-  bke::scene::sync_writeback::add(
+  deg::sync_writeback::add(
       *depsgraph,
       [depsgraph = depsgraph,
        object_eval = ctx.object,

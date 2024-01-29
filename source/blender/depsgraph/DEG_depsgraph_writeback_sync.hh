@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 
 struct Depsgraph;
 
-namespace blender::bke::scene::sync_writeback {
+namespace blender::deg::sync_writeback {
 
 /**
  * Enable gathering of writeback tasks before depsgraph evaluation.
@@ -40,4 +40,4 @@ void add(const Depsgraph &depsgraph, std::function<void()> fn);
  */
 bool run(const Depsgraph &depsgraph);
 
-}  // namespace blender::bke::scene::sync_writeback
+}  // namespace blender::deg::sync_writeback
