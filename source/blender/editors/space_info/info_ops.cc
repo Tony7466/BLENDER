@@ -157,12 +157,6 @@ static int pack_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void pack_all_confirm(bContext * /* C */, wmOperator * /* op */, wmConfirmDetails *confirm)
-{
-  confirm->message = IFACE_("Some images are modified. These changes will be lost. Continue?");
-  confirm->confirm_text = IFACE_("Pack");
-}
-
 static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Main *bmain = CTX_data_main(C);
@@ -178,7 +172,14 @@ static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*
   }
 
   if (ima) {
-    return WM_operator_confirm(C, op, nullptr);
+    return WM_operator_confirm_ex(
+        C,
+        op,
+        IFACE_("Pack all used external files into this .blend file"),
+        IFACE_("Warning: Some images are modified and these changes will be lost"),
+        IFACE_("Pack"),
+        ALERT_ICON_WARNING,
+        false);
   }
 
   return pack_all_exec(C, op);
@@ -194,7 +195,6 @@ void FILE_OT_pack_all(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = pack_all_exec;
   ot->invoke = pack_all_invoke;
-  ot->confirm = pack_all_confirm;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
