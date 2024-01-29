@@ -402,14 +402,13 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
 
   const bool reflective_caustics = (kernel_data.integrator.caustics_reflective ||
                                     (path_flag & PATH_RAY_DIFFUSE) == 0);
-  const bool transmissive_caustics = (kernel_data.integrator.caustics_refractive ||
-                                      (path_flag & PATH_RAY_DIFFUSE) == 0);
+  const bool refractive_caustics = (kernel_data.integrator.caustics_refractive ||
+                                    (path_flag & PATH_RAY_DIFFUSE) == 0);
 
   fresnel->reflection_tint = reflective_caustics ? rgb_to_spectrum(closure->reflection_tint) :
                                                    zero_spectrum();
-  fresnel->transmission_tint = transmissive_caustics ?
-                                   rgb_to_spectrum(closure->transmission_tint) :
-                                   zero_spectrum();
+  fresnel->transmission_tint = refractive_caustics ? rgb_to_spectrum(closure->transmission_tint) :
+                                                     zero_spectrum();
   fresnel->f0 = rgb_to_spectrum(closure->f0);
   fresnel->f90 = rgb_to_spectrum(closure->f90);
   fresnel->exponent = closure->exponent;

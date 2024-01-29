@@ -176,11 +176,11 @@ ccl_device
 #ifdef __CAUSTICS_TRICKS__
       const bool reflective_caustics = (kernel_data.integrator.caustics_reflective ||
                                         (path_flag & PATH_RAY_DIFFUSE) == 0);
-      const bool transmissive_caustics = (kernel_data.integrator.caustics_refractive ||
-                                          (path_flag & PATH_RAY_DIFFUSE) == 0);
+      const bool refractive_caustics = (kernel_data.integrator.caustics_refractive ||
+                                        (path_flag & PATH_RAY_DIFFUSE) == 0);
 #else
       const bool reflective_caustics = true;
-      const bool transmissive_caustics = true;
+      const bool refractive_caustics = true;
 #endif
 
       /* Before any actual shader components, apply transparency. */
@@ -301,7 +301,7 @@ ccl_device
 
       /* Transmission component */
       if (transmission_weight > CLOSURE_WEIGHT_CUTOFF) {
-        if (reflective_caustics || transmissive_caustics) {
+        if (reflective_caustics || refractive_caustics) {
           ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
               sd, sizeof(MicrofacetBsdf), transmission_weight * weight);
           ccl_private FresnelGeneralizedSchlick *fresnel =
@@ -320,7 +320,7 @@ ccl_device
             fresnel->f90 = one_spectrum();
             fresnel->exponent = -ior;
             fresnel->reflection_tint = reflective_caustics ? one_spectrum() : zero_spectrum();
-            fresnel->transmission_tint = transmissive_caustics ?
+            fresnel->transmission_tint = refractive_caustics ?
                                              sqrt(rgb_to_spectrum(clamped_base_color)) :
                                              zero_spectrum();
 
@@ -559,13 +559,13 @@ ccl_device
 #ifdef __CAUSTICS_TRICKS__
       const bool reflective_caustics = (kernel_data.integrator.caustics_reflective ||
                                         (path_flag & PATH_RAY_DIFFUSE) == 0);
-      const bool transmissive_caustics = (kernel_data.integrator.caustics_refractive ||
-                                          (path_flag & PATH_RAY_DIFFUSE) == 0);
-      if (!(reflective_caustics || transmissive_caustics))
+      const bool refractive_caustics = (kernel_data.integrator.caustics_refractive ||
+                                        (path_flag & PATH_RAY_DIFFUSE) == 0);
+      if (!(reflective_caustics || refractive_caustics))
         break;
 #else
       const bool reflective_caustics = true;
-      const bool transmissive_caustics = true;
+      const bool refractive_caustics = true;
 #endif
       ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
           sd, sizeof(MicrofacetBsdf), make_spectrum(mix_weight));
@@ -587,8 +587,8 @@ ccl_device
         fresnel->exponent = -ior;
         const float3 color = stack_load_float3(stack, data_node.z);
         fresnel->reflection_tint = reflective_caustics ? rgb_to_spectrum(color) : zero_spectrum();
-        fresnel->transmission_tint = transmissive_caustics ? rgb_to_spectrum(color) :
-                                                             zero_spectrum();
+        fresnel->transmission_tint = refractive_caustics ? rgb_to_spectrum(color) :
+                                                           zero_spectrum();
 
         /* setup bsdf */
         if (type == CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID) {
