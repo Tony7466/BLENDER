@@ -198,12 +198,14 @@ class Menu : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 
   FunctionRef<NodeEnumDefinition(const bNode &node)> definition;
+  std::optional<int> propagate_from;
 };
 
 class MenuBuilder : public SocketDeclarationBuilder<Menu> {
  public:
   MenuBuilder &default_value(int32_t value);
   MenuBuilder &enum_source(FunctionRef<NodeEnumDefinition(const bNode &node)> function);
+  MenuBuilder &enum_output(int output_index);
 };
 
 class IDSocketDeclaration : public SocketDeclaration {
@@ -535,6 +537,14 @@ inline MenuBuilder &MenuBuilder::enum_source(
 {
   if (decl_in_) {
     decl_in_->definition = function;
+  }
+  return *this;
+}
+
+inline MenuBuilder &MenuBuilder::enum_output(int output_index)
+{
+  if (decl_out_) {
+    decl_out_->propagate_from = output_index;
   }
   return *this;
 }

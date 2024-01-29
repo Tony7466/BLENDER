@@ -469,8 +469,6 @@ class NodeDeclaration {
   /** Returns true if the declaration is considered valid. */
   bool is_valid() const;
 
-  bool is_enum_source() const;
-
   bool matches(const bNode &node) const;
   Span<SocketDeclaration *> sockets(eNodeSocketInOut in_out) const;
 
