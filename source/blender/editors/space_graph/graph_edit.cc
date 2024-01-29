@@ -1877,6 +1877,11 @@ static bool euler_filter_multi_channel(tEulerFilter *euf, ReportList *reports)
       fcu_rot_z->bezt[0].vec[1][1],
   };
 
+  const bool is_selection_relevant = BKE_fcurve_has_selected_control_points(fcu_rot_x) ||
+                                     BKE_fcurve_has_selected_control_points(fcu_rot_y) ||
+                                     BKE_fcurve_has_selected_control_points(fcu_rot_z);
+  bool some_triples_partially_selected = false;
+
   for (int keyframe_index = 1; keyframe_index < fcu_rot_x->totvert; ++keyframe_index) {
     BezTriple *keyframes[3] = {
         &fcu_rot_x->bezt[keyframe_index],
@@ -1887,6 +1892,19 @@ static bool euler_filter_multi_channel(tEulerFilter *euf, ReportList *reports)
     if (keyframe_time_differs(keyframes)) {
       /* The X-coordinates of the keyframes are different, so we cannot correct this key. */
       continue;
+    }
+
+    if (is_selection_relevant) {
+      /* Skip this triple unless all the keys were selected. */
+      const bool is_first_selected = bool(keyframes[0]->f2 & SELECT);
+      const bool equally_selected = is_first_selected == bool(keyframes[1]->f2 & SELECT) &&
+                                    is_first_selected == bool(keyframes[2]->f2 & SELECT);
+      if (!is_first_selected || !equally_selected) {
+        if (!equally_selected) {
+          some_triples_partially_selected = true;
+        }
+        continue;
+      }
     }
 
     const float unfiltered_euler[3] = {
@@ -1908,6 +1926,13 @@ static bool euler_filter_multi_channel(tEulerFilter *euf, ReportList *reports)
     BKE_fcurve_keyframe_move_value_with_handles(keyframes[2], filtered_euler[2]);
   }
 
+  if (some_triples_partially_selected) {
+    BKE_reportf(reports,
+                RPT_INFO,
+                "Some XYZ rotations were not entirely selected for ID='%s' and RNA-Path='%s'",
+                euf->id->name,
+                euf->rna_path);
+  }
   return true;
 }
 
