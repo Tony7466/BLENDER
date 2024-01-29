@@ -1036,7 +1036,7 @@ void BKE_modifiers_persistent_uid_init(const Object &object, ModifierData &md)
 {
   uint64_t hash = blender::get_default_hash(blender::StringRef(md.name));
   if (object.id.lib) {
-    hash = blender::get_default_hash_2(hash, blender::StringRef(object.id.lib->filepath_abs));
+    hash = blender::get_default_hash(hash, blender::StringRef(object.id.lib->filepath_abs));
   }
   blender::RandomNumberGenerator rng{uint32_t(hash)};
   while (true) {
