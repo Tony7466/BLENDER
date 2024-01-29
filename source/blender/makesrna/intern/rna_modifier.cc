@@ -8224,7 +8224,7 @@ static void rna_def_modifier_grease_pencil_noise(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "noise_mode");
   RNA_def_property_enum_items(prop, modifier_noise_random_mode_items);
   RNA_def_property_ui_text(prop, "Mode", "Where to perform randomization");
-    RNA_define_lib_overridable(false);
+  RNA_define_lib_overridable(false);
 }
 
 void RNA_def_modifier(BlenderRNA *brna)

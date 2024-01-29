@@ -233,8 +233,7 @@ static void modify_geometry_set(ModifierData *md,
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, mmd->influence, mask_memory);
   const Vector<modifier::greasepencil::FrameDrawingInfo> drawing_infos =
-      modifier::greasepencil::get_drawing_infos_by_frame(
-          grease_pencil, layer_mask, current_frame);
+      modifier::greasepencil::get_drawing_infos_by_frame(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(
       drawing_infos, [&](const modifier::greasepencil::FrameDrawingInfo &info) {
