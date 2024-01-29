@@ -82,6 +82,12 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject * /*type*/, PyObject *args,
       return nullptr;
     }
 
+    if (!PyC_StructFmt_byteorder_is_native(pybuffer.format)) {
+      PyErr_Format(PyExc_ValueError, "Indices must be in native byte order");
+      PyBuffer_Release(&pybuffer);
+      return nullptr;
+    }
+
     index_len = pybuffer.shape[0];
     if (pybuffer.ndim != 1) {
       index_len *= pybuffer.shape[1];
