@@ -31,7 +31,7 @@ class VKShader : public Shader {
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   std::unique_ptr<VKPipeline> pipeline_;
-
+  bool vk_specialtization_dirty_ = false;
  public:
   VKShader(const char *name);
   virtual ~VKShader();

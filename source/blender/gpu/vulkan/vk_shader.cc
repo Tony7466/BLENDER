@@ -983,6 +983,7 @@ void VKShader::bind()
 {
   /* Intentionally empty. Binding of the pipeline are done just before drawing/dispatching.
    * See #VKPipeline.update_and_bind */
+  vk_specialtization_dirty_ = constants.is_dirty;
 }
 
 void VKShader::unbind() {}
@@ -1433,10 +1434,10 @@ VkSpecializationInfo VKShader::build_specialization(
 const VkSpecializationInfo VKShader::specialization_ensure(
     Vector<VkSpecializationMapEntry> &specialization_map_entries)
 {
-  if (!constants.is_dirty) {
+  if (!vk_specialtization_dirty_) {
     return {};
   };
-  constants.is_dirty = false;
+  vk_specialtization_dirty_ = false;
   if (constants.values.size() <= 0) {
     VkSpecializationInfo null = {};
     return null;

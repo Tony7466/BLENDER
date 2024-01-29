@@ -464,10 +464,12 @@ void GPU_shader_bind(GPUShader *gpu_shader)
     shader->bind();
     GPU_matrix_bind(gpu_shader);
     Shader::set_srgb_uniform(gpu_shader);
+    shader->constants.is_dirty = false;
   }
   else {
     if (shader->constants.is_dirty) {
       shader->bind();
+      shader->constants.is_dirty = false;
     }
     if (Shader::srgb_uniform_dirty_get()) {
       Shader::set_srgb_uniform(gpu_shader);
