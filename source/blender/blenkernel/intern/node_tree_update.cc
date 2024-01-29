@@ -872,6 +872,8 @@ class NodeTreeMainUpdater {
               const RuntimeNodeEnumItems *enum_items = this->create_runtime_enum_items(
                   menu_socket->definition(*node));
               this->set_enum_ptr(*input->default_value_typed<bNodeSocketValueMenu>(), enum_items);
+              /* Remove initial user. */
+              enum_items->remove_user_and_delete_if_last();
               continue;
             }
             if (menu_socket->propagate_from.has_value()) {
