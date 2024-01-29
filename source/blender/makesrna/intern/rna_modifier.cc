@@ -859,6 +859,7 @@ RNA_MOD_VGROUP_NAME_SET(WeightVGProximity, mask_defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(WeightedNormal, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Weld, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Wireframe, defgrp_name);
+RNA_MOD_VGROUP_NAME_SET(GreasePencilLineart, vgname);
 
 static void rna_ExplodeModifier_vgroup_get(PointerRNA *ptr, char *value)
 {
@@ -8330,7 +8331,8 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "vgname");
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_LineartGpencilModifier_vgname_set");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_GreasePencilLineartModifier_vgname_set");
   RNA_def_property_ui_text(prop, "Vertex Group", "Vertex group name for selected strokes");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
