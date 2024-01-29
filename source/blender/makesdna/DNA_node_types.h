@@ -1650,7 +1650,8 @@ typedef struct NodeEnumDefinition {
   NodeEnumItem *items_array;
   int16_t items_num;
   int16_t active_index;
-  uint32_t next_identifier;
+
+  char _pad[4];
 
 #ifdef __cplusplus
   blender::Span<NodeEnumItem> items() const;

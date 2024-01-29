@@ -87,7 +87,6 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_enum_definition_init(NodeEnumDefinition &enum_def)
 {
-  enum_def.next_identifier = 0;
   enum_def.items_array = nullptr;
   enum_def.items_num = 0;
 }
@@ -107,7 +106,6 @@ static void node_enum_definition_copy(NodeEnumDefinition &dst_enum_def,
   dst_enum_def.items_array = MEM_cnew_array<NodeEnumItem>(src_enum_def.items_num, __func__);
   dst_enum_def.items_num = src_enum_def.items_num;
   dst_enum_def.active_index = src_enum_def.active_index;
-  dst_enum_def.next_identifier = src_enum_def.next_identifier;
   for (const int i : IndexRange(src_enum_def.items_num)) {
     dst_enum_def.items_array[i].identifier = src_enum_def.items_array[i].identifier;
     if (char *name = src_enum_def.items_array[i].name) {

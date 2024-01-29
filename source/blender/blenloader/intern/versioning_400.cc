@@ -2789,6 +2789,25 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 17)) {
+    /* Change old identifiers to ensure it is based on name of item. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != GEO_NODE_MENU_SWITCH) {
+          continue;
+        }
+        NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
+        for (NodeEnumItem &item : storage.enum_definition.items_for_write()) {
+          storage.enum_definition.set_item_name(item, item.name);
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.

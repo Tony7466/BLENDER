@@ -4,6 +4,7 @@
 
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
+#include "BLI_vector_set.hh"
 
 #include "DNA_array_utils.hh"
 #include "DNA_node_types.h"
@@ -41,7 +42,6 @@ NodeEnumItem *NodeEnumDefinition::add_item(const blender::StringRef name)
               this->items_num - insert_index,
               this->items_array + insert_index + 1);
 
-  new_item.identifier = this->next_identifier++;
   this->set_item_name(new_item, name);
 
   this->items_num++;
@@ -115,6 +115,12 @@ void NodeEnumDefinition::active_item_set(NodeEnumItem *item)
   this->active_index = this->items().contains_ptr(item) ? item - this->items_array : -1;
 }
 
+static void name_base_identifier(NodeEnumItem &item)
+{
+  static blender::VectorSet<std::string> names;
+  item.identifier = names.index_of_or_add(item.name);
+}
+
 void NodeEnumDefinition::set_item_name(NodeEnumItem &item, const blender::StringRef name)
 {
   char unique_name[MAX_NAME + 4];
@@ -146,4 +152,6 @@ void NodeEnumDefinition::set_item_name(NodeEnumItem &item, const blender::String
 
   MEM_SAFE_FREE(item.name);
   item.name = BLI_strdup(unique_name);
+
+  name_base_identifier(item);
 }
