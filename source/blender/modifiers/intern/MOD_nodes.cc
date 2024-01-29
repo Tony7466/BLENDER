@@ -1506,7 +1506,12 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
     data_block_maps.add(item.key, &item.value->data_block_map);
   }
   for (auto item : bake_params.data_by_node_id_.items()) {
-    data_block_maps.add(item.key, &item.value->data_block_map);
+    if (bake::BakeNodeCache *node_cache = nmd_eval.runtime->cache->get_bake_node_cache(item.key)) {
+      /* Only writeback if the bake node has actually baked anything. */
+      if (!node_cache->bake.frames.is_empty()) {
+        data_block_maps.add(item.key, &item.value->data_block_map);
+      }
+    }
   }
 
   Depsgraph *depsgraph = ctx.depsgraph;
