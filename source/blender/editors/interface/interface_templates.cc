@@ -2375,16 +2375,17 @@ static void minimal_operator_free(wmOperator *op)
   MEM_freeN(op);
 }
 
-void draw_export_controls(uiLayout *layout, const char *label, int index)
+static void draw_export_controls(uiLayout *layout, const char *label, int index)
 {
   uiItemL(layout, label, ICON_NONE);
   uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
   uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
 }
 
-void draw_export_properties(bContext *C, uiLayout *layout, wmOperatorType *ot, IOHandlerData *data)
+static void draw_export_properties(
+    bContext *C, uiLayout *layout, ID *id, wmOperatorType *ot, IOHandlerData *data)
 {
-  PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+  PointerRNA properties = RNA_pointer_create(id, ot->srna, data->export_properties);
 
   uiLayout *box = uiLayoutBox(layout);
   uiItemR(box, &properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -2415,12 +2416,12 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
       continue;
     }
 
-    PointerRNA io_handler_ptr = RNA_pointer_create(nullptr, &RNA_IOHandlerData, data);
+    PointerRNA io_handler_ptr = RNA_pointer_create(&collection->id, &RNA_IOHandlerData, data);
 
     PanelLayout panel = uiLayoutPanelWithHeader(C, layout, &io_handler_ptr, "is_open");
     draw_export_controls(panel.header, fh->label, index);
     if (panel.body) {
-      draw_export_properties(C, panel.body, ot, data);
+      draw_export_properties(C, panel.body, &collection->id, ot, data);
     }
   }
 }
