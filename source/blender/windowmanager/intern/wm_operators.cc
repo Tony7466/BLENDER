@@ -1188,31 +1188,6 @@ int WM_enum_search_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/
   return OPERATOR_INTERFACE;
 }
 
-static void wm_operator_block_cancel(bContext *C, void *arg_op, void *arg_block)
-{
-  wmOperator *op = static_cast<wmOperator *>(arg_op);
-  uiBlock *block = static_cast<uiBlock *>(arg_block);
-  UI_popup_block_close(C, CTX_wm_window(C), block);
-  WM_redraw_windows(C);
-  if (op) {
-    if (op->type->cancel) {
-      op->type->cancel(C, op);
-    }
-    WM_operator_free(op);
-  }
-}
-
-static void wm_operator_block_confirm(bContext *C, void *arg_op, void *arg_block)
-{
-  wmOperator *op = static_cast<wmOperator *>(arg_op);
-  uiBlock *block = static_cast<uiBlock *>(arg_block);
-  UI_popup_block_close(C, CTX_wm_window(C), block);
-  WM_redraw_windows(C);
-  if (op) {
-    WM_operator_call_ex(C, op, true);
-  }
-}
-
 int WM_operator_confirm_message_ex(bContext *C,
                                    wmOperator *op,
                                    const char *title,
@@ -1655,8 +1630,8 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   if (data->position == WM_POPUP_POSITION_MOUSE) {
     const float button_center_x = windows_layout ? -0.33f : -0.66f;
     const float button_center_y = small ? 1.9f : 3.1f;
-    const int bounds_offset[2] = {button_center_x * uiLayoutGetWidth(layout),
-                                  button_center_y * UI_UNIT_X};
+    const int bounds_offset[2] = {int(button_center_x * uiLayoutGetWidth(layout)),
+                                  int(button_center_y * UI_UNIT_X)};
     UI_block_bounds_set_popup(block, padding, bounds_offset);
   }
   else if (data->position == WM_POPUP_POSITION_CENTER) {
