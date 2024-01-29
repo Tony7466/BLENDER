@@ -43,6 +43,7 @@
 #  include "DEG_depsgraph.hh"
 
 #  include "io_usd.hh"
+#  include "io_utils.hh"
 #  include "usd.h"
 
 #  include <cstdio>
@@ -462,7 +463,7 @@ static int wm_usd_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
   options->as_background_job = true;
   op->customdata = options;
 
-  return WM_operator_filesel(C, op, event);
+  return blender::ed::io::filesel_drop_import_invoke(C, op, event);
 }
 
 static int wm_usd_import_exec(bContext *C, wmOperator *op)
@@ -608,7 +609,6 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-
   uiLayout *box = uiLayoutBox(layout);
   uiLayout *col = uiLayoutColumnWithHeading(box, true, IFACE_("Data Types"));
   uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -677,7 +677,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
   ot->ui = wm_usd_import_draw;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER | FILE_TYPE_USD,
@@ -832,18 +832,18 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "Behavior when the name of an imported texture file conflicts with an existing file");
 }
 
-void register_usd_file_handler()
+namespace blender::ed::io {
+void usd_file_handler_add()
 {
-  using namespace blender;
-  std::unique_ptr<bke::FileHandlerType> fh = std::make_unique<bke::FileHandlerType>();
-  STRNCPY(fh->idname, "WM_FH_usd_io");
-  STRNCPY(fh->label, "Universal Scene Description (.usd*)");
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_usd");
   STRNCPY(fh->import_operator, "WM_OT_usd_import");
   STRNCPY(fh->export_operator, "WM_OT_usd_export");
-  STRNCPY(fh->file_extensions_str, ".usd;usda;usdc;usdz");
-
-  // fh->poll_drop = wm_usd_poll_drop;
-
+  STRNCPY(fh->label, "Universal Scene Description");
+  STRNCPY(fh->file_extensions_str, ".usd;.usda;.usdc;.usdz");
+  fh->poll_drop = poll_file_object_drop;
   bke::file_handler_add(std::move(fh));
 }
+}  // namespace blender::ed::io
+
 #endif /* WITH_USD */
