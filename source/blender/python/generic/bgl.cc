@@ -503,32 +503,28 @@ int BGL_typeSize(int type)
   return -1;
 }
 
-static int gl_buffer_type_from_py_buffer(Py_buffer *pybuffer)
+static bool gl_py_buffer_compatible(int bgl_type, Py_buffer *pybuffer)
 {
-  const char format = PyC_StructFmt_type_from_str(pybuffer->format);
-  const Py_ssize_t itemsize = pybuffer->itemsize;
-
-  if (PyC_StructFmt_type_is_float_any(format)) {
-    if (itemsize == 4) {
-      return GL_FLOAT;
-    }
-    if (itemsize == 8) {
-      return GL_DOUBLE;
-    }
-  }
-  if (PyC_StructFmt_type_is_byte(format) || PyC_StructFmt_type_is_int_any(format)) {
-    if (itemsize == 1) {
-      return GL_BYTE;
-    }
-    if (itemsize == 2) {
-      return GL_SHORT;
-    }
-    if (itemsize == 4) {
-      return GL_INT;
-    }
+  const int type_size = BGL_typeSize(bgl_type);
+  if (type_size == -1) {
+    return false;
   }
 
-  return -1; /* UNKNOWN */
+  switch (bgl_type) {
+    case GL_BYTE:
+    case GL_SHORT:
+    case GL_INT:
+      return PyC_Buffer_compatible(
+          type_size,
+          [](char format) {
+            return PyC_StructFmt_type_is_byte(format) || PyC_StructFmt_type_is_int_any(format);
+          },
+          pybuffer);
+    case GL_FLOAT:
+    case GL_DOUBLE:
+      return PyC_Buffer_compatible(type_size, &PyC_StructFmt_type_is_float_any, pybuffer);
+  }
+  return false;
 }
 
 static bool compare_dimensions(int ndim, const int *dim1, const Py_ssize_t *dim2)
@@ -835,7 +831,7 @@ static PyObject *Buffer_new(PyTypeObject * /*type*/, PyObject *args, PyObject *k
       return nullptr;
     }
 
-    if (type != gl_buffer_type_from_py_buffer(&pybuffer)) {
+    if (!gl_py_buffer_compatible(type, &pybuffer)) {
       PyErr_Format(PyExc_TypeError,
                    "`GL_TYPE` and `typestr` of object with buffer interface do not match. '%s'",
                    pybuffer.format);

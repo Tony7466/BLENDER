@@ -5470,52 +5470,31 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
   return 0;
 }
 
-static bool foreach_compat_buffer(RawPropertyType raw_type, int attr_signed, const char *format)
+static bool foreach_compat_buffer(RawPropertyType raw_type, int attr_signed, const Py_buffer *buf)
 {
-  const char f = format ? *format : 'B'; /* B is assumed when not set */
+  const size_t raw_size = RNA_raw_type_sizeof(raw_type);
 
   switch (raw_type) {
     case PROP_RAW_INT8:
+    case PROP_RAW_SHORT:
+    case PROP_RAW_INT:
+    case PROP_RAW_INT64:
       if (attr_signed) {
-        return (f == 'b') ? true : false;
+        return PyC_Buffer_compatible(raw_size, &PyC_StructFmt_type_is_signed_int_any, buf);
       }
       else {
-        return (f == 'B') ? true : false;
+        return PyC_Buffer_compatible(raw_size, &PyC_StructFmt_type_is_unsigned_int_any, buf);
       }
     case PROP_RAW_CHAR:
     case PROP_RAW_UINT8:
-      return (f == 'B') ? true : false;
-    case PROP_RAW_SHORT:
-      if (attr_signed) {
-        return (f == 'h') ? true : false;
-      }
-      else {
-        return (f == 'H') ? true : false;
-      }
     case PROP_RAW_UINT16:
-      return (f == 'H') ? true : false;
-    case PROP_RAW_INT:
-      if (attr_signed) {
-        return (f == 'i') ? true : false;
-      }
-      else {
-        return (f == 'I') ? true : false;
-      }
-    case PROP_RAW_BOOLEAN:
-      return (f == '?') ? true : false;
-    case PROP_RAW_FLOAT:
-      return (f == 'f') ? true : false;
-    case PROP_RAW_DOUBLE:
-      return (f == 'd') ? true : false;
-    case PROP_RAW_INT64:
-      if (attr_signed) {
-        return (f == 'q') ? true : false;
-      }
-      else {
-        return (f == 'Q') ? true : false;
-      }
     case PROP_RAW_UINT64:
-      return (f == 'Q') ? true : false;
+      return PyC_Buffer_compatible(raw_size, &PyC_StructFmt_type_is_unsigned_int_any, buf);
+    case PROP_RAW_BOOLEAN:
+      return PyC_Buffer_compatible(raw_size, &PyC_StructFmt_type_is_bool, buf);
+    case PROP_RAW_FLOAT:
+    case PROP_RAW_DOUBLE:
+      return PyC_Buffer_compatible(raw_size, &PyC_StructFmt_type_is_float_any, buf);
     case PROP_RAW_UNSET:
       return false;
   }
@@ -5568,7 +5547,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
       else {
         /* Check if the buffer matches. */
 
-        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
+        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, &buf);
 
         if (buffer_is_compat) {
           ok = RNA_property_collection_raw_set(
@@ -5644,7 +5623,7 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
       else {
         /* Check if the buffer matches. */
 
-        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
+        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, &buf);
 
         if (buffer_is_compat) {
           ok = RNA_property_collection_raw_get(
@@ -5868,9 +5847,10 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
     }
   }
   else {
-    const char f = buf.format ? buf.format[0] : 0;
-    if ((prop_type == PROP_INT && (buf.itemsize != sizeof(int) || !ELEM(f, 'l', 'i'))) ||
-        (prop_type == PROP_FLOAT && (buf.itemsize != sizeof(float) || f != 'f')))
+    if ((prop_type == PROP_INT &&
+         !PyC_Buffer_compatible(sizeof(int), &PyC_StructFmt_type_is_signed_int_any, &buf)) ||
+        (prop_type == PROP_FLOAT &&
+         !PyC_Buffer_compatible(sizeof(float), &PyC_StructFmt_type_is_float_any, &buf)))
     {
       PyBuffer_Release(&buf);
       PyErr_Format(PyExc_TypeError, "incorrect sequence item type: %s", buf.format);
