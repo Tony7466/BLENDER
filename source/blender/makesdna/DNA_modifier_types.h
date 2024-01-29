@@ -2667,3 +2667,21 @@ typedef enum GreasePencilOffsetModifierMode {
   MOD_GREASE_PENCIL_OFFSET_MATERIAL = 2,
   MOD_GREASE_PENCIL_OFFSET_STROKE = 3,
 } GreasePencilOffsetModifierMode;
+
+typedef struct GreasePencilThicknessModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  int flag;
+  /** Relative thickness factor. */
+  float thickness_fac;
+  /** Absolute thickness override. */
+  int thickness;
+  char _pad[4];
+  struct CurveMapping *curve_thickness;
+} ThickGpencilModifierData;
+
+typedef enum eThickGpencil_Flag {
+  GP_THICK_NORMALIZE = (1 << 4),
+  GP_THICK_WEIGHT_FACTOR = (1 << 7),
+} eThickGpencil_Flag;
