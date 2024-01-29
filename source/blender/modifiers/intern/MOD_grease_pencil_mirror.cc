@@ -13,6 +13,7 @@
 #include "BLI_offset_indices.hh"
 #include "BLI_rand.h"
 
+#include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
 
 #include "BKE_curves.hh"
