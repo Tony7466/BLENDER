@@ -6,3 +6,4 @@ Referenced by commit b24610053fbc41b85e8443b5c398874445516233, Fix: crash when u
 Referenced by pull request #113413, Geometry Nodes: use dynamic declaration for switch node
 Referenced by issue #116025, Geometry Nodes: Single value links not propagated correctly
 Referenced by commit f7383cfe9b009c5d2e44a9aeb7d729185777086d, Geometry Nodes: use dynamic declaration for switch node
+Referenced by pull request #117648, Fix #117647: Accumulate Field ID input is not connecting via gather link searcher
