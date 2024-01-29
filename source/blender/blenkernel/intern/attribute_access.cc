@@ -999,6 +999,37 @@ void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
   });
 }
 
+void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
+                                      const AttrDomain domain,
+                                      const AnonymousAttributePropagationInfo &propagation_info,
+                                      const Set<std::string> &skip,
+                                      const OffsetIndices<int> src_offsets,
+                                      const OffsetIndices<int> dst_offsets,
+                                      const Span<int> indices,
+                                      MutableAttributeAccessor dst_attributes)
+{
+  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+    if (meta_data.domain != domain) {
+      return true;
+    }
+    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+      return true;
+    }
+    if (skip.contains(id.name())) {
+      return true;
+    }
+    const GVArraySpan src = *src_attributes.lookup(id, domain);
+    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, domain, meta_data.data_type);
+    if (!dst) {
+      return true;
+    }
+    attribute_math::gather_group_to_group(src_offsets, dst_offsets, indices, src, dst.span);
+    dst.finish();
+    return true;
+  });
+}
+
 void gather_attributes_to_groups(const AttributeAccessor src_attributes,
                                  const AttrDomain domain,
                                  const AnonymousAttributePropagationInfo &propagation_info,
