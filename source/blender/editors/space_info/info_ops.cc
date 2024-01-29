@@ -86,13 +86,15 @@ static int unpack_libraries_exec(bContext *C, wmOperator *op)
 /** \name Unpack Blend File Libraries Operator
  * \{ */
 
-static void unpack_libraries_confirm(bContext * /* C */,
-                                     wmOperator * /* op */,
-                                     wmConfirmDetails *confirm)
+static int unpack_libraries_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  confirm->message = IFACE_("Creates directories, all new paths should work");
-  confirm->confirm_text = IFACE_("Unpack");
-  confirm->icon = ALERT_ICON_INFO;
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Restore Packed Linked Data to Their Original Locations"),
+                                IFACE_("Will create directories so that all paths should work"),
+                                IFACE_("Unpack"),
+                                ALERT_ICON_INFO,
+                                false);
 }
 
 void FILE_OT_unpack_libraries(wmOperatorType *ot)
@@ -103,9 +105,8 @@ void FILE_OT_unpack_libraries(wmOperatorType *ot)
   ot->description = "Restore all packed linked data-blocks to their original locations";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = unpack_libraries_invoke;
   ot->exec = unpack_libraries_exec;
-  ot->confirm = unpack_libraries_confirm;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
