@@ -851,7 +851,7 @@
   { \
     .flag = 0, \
     .thickness_fac = 1.0f, \
-    .thickness = 30, \
+    .thickness = 0.02, \
   }
 
 /* clang-format off */

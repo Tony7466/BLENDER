@@ -154,7 +154,6 @@ static void deform_drawing(const ModifierData &md,
       if (radius < 0.0f) {
         radius = 0.0f;
       }
-      printf("%f %f\n", radii[point], radius);
       radii[point] = radius;
     }
   }
