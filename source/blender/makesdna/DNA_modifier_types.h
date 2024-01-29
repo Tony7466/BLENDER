@@ -2383,6 +2383,17 @@ typedef struct NodesModifierBake {
    */
   int frame_start;
   int frame_end;
+
+  /**
+   * Maps data-block names to actual data-blocks, so that names stored in caches or on disk can be
+   * remapped to actual IDs on load. The mapping also makes sure that IDs referenced by baked data
+   * are not automatically removed because they are not referenced anymore. Furthermore, it allows
+   * the modifier to add all required IDs to the dependency graph before actually loading the baked
+   * data.
+   */
+  int data_blocks_num;
+  int active_data_block;
+  NodesModifierDataBlock *data_blocks;
 } NodesModifierBake;
 
 typedef struct NodesModifierPanel {
@@ -2420,17 +2431,6 @@ typedef struct NodesModifierData {
   char _pad[3];
   int bakes_num;
   NodesModifierBake *bakes;
-
-  /**
-   * Maps data-block names to actual data-blocks, so that names stored in caches or on disk can be
-   * remapped to actual IDs on load. The mapping also makes sure that IDs referenced by baked data
-   * are not automatically removed because they are not referenced anymore. Furthermore, it allows
-   * the us to add all required IDs to the dependency graph before actually loading the baked data.
-   */
-  int data_blocks_num;
-  int active_data_block;
-  NodesModifierDataBlock *data_blocks;
-  void *_pad3;
 
   char _pad2[4];
   int panels_num;

@@ -191,25 +191,26 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       this->set_default_outputs(params);
       return;
     }
-    if (auto *info = std::get_if<sim_output::ReadSingle>(behavior)) {
-      this->output_cached_state(params, user_data, info->state);
+    if (auto *info = std::get_if<sim_output::ReadSingle>(&behavior->behavior)) {
+      this->output_cached_state(params, user_data, behavior->data_block_map, info->state);
     }
-    else if (auto *info = std::get_if<sim_output::ReadInterpolated>(behavior)) {
+    else if (auto *info = std::get_if<sim_output::ReadInterpolated>(&behavior->behavior)) {
       this->output_mixed_cached_state(params,
                                       user_data,
+                                      behavior->data_block_map,
                                       *user_data.call_data->self_object(),
                                       *user_data.compute_context,
                                       info->prev_state,
                                       info->next_state,
                                       info->mix_factor);
     }
-    else if (std::get_if<sim_output::PassThrough>(behavior)) {
-      this->pass_through(params, user_data);
+    else if (std::get_if<sim_output::PassThrough>(&behavior->behavior)) {
+      this->pass_through(params, user_data, behavior->data_block_map);
     }
-    else if (auto *info = std::get_if<sim_output::StoreNewState>(behavior)) {
-      this->store(params, user_data, *info);
+    else if (auto *info = std::get_if<sim_output::StoreNewState>(&behavior->behavior)) {
+      this->store(params, user_data, behavior->data_block_map, *info);
     }
-    else if (auto *info = std::get_if<sim_output::ReadError>(behavior)) {
+    else if (auto *info = std::get_if<sim_output::ReadError>(&behavior->behavior)) {
       if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(
               user_data))
       {
@@ -228,10 +229,12 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     set_default_remaining_node_outputs(params, node_);
   }
 
-  void pass_through(lf::Params &params, GeoNodesLFUserData &user_data) const
+  void pass_through(lf::Params &params,
+                    GeoNodesLFUserData &user_data,
+                    bke::bake::BakeDataBlockMap *data_block_map) const
   {
-    std::optional<bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
-                                                                                 user_data);
+    std::optional<bake::BakeState> bake_state = this->get_bake_state_from_inputs(
+        params, user_data, data_block_map);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
@@ -242,6 +245,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     }
     this->move_bake_state_to_values(std::move(*bake_state),
                                     user_data,
+                                    data_block_map,
                                     *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     output_values);
@@ -252,20 +256,22 @@ class LazyFunctionForBakeNode final : public LazyFunction {
 
   void store(lf::Params &params,
              GeoNodesLFUserData &user_data,
+             bke::bake::BakeDataBlockMap *data_block_map,
              const sim_output::StoreNewState &info) const
   {
-    std::optional<bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
-                                                                                 user_data);
+    std::optional<bake::BakeState> bake_state = this->get_bake_state_from_inputs(
+        params, user_data, data_block_map);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
     }
-    this->output_cached_state(params, user_data, *bake_state);
+    this->output_cached_state(params, user_data, data_block_map, *bake_state);
     info.store_fn(std::move(*bake_state));
   }
 
   void output_cached_state(lf::Params &params,
                            GeoNodesLFUserData &user_data,
+                           bke::bake::BakeDataBlockMap *data_block_map,
                            const bake::BakeStateRef &bake_state) const
   {
     Array<void *> output_values(bake_items_.size());
@@ -274,6 +280,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     }
     this->copy_bake_state_to_values(bake_state,
                                     user_data,
+                                    data_block_map,
                                     *user_data.call_data->self_object(),
                                     *user_data.compute_context,
                                     output_values);
@@ -284,6 +291,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
 
   void output_mixed_cached_state(lf::Params &params,
                                  GeoNodesLFUserData &user_data,
+                                 bke::bake::BakeDataBlockMap *data_block_map,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
                                  const bake::BakeStateRef &prev_state,
@@ -295,7 +303,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       output_values[i] = params.get_output_data_ptr(i);
     }
     this->copy_bake_state_to_values(
-        prev_state, user_data, self_object, compute_context, output_values);
+        prev_state, user_data, data_block_map, self_object, compute_context, output_values);
 
     Array<void *> next_values(bake_items_.size());
     LinearAllocator<> allocator;
@@ -304,7 +312,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
       next_values[i] = allocator.allocate(type.size(), type.alignment());
     }
     this->copy_bake_state_to_values(
-        next_state, user_data, self_object, compute_context, next_values);
+        next_state, user_data, data_block_map, self_object, compute_context, next_values);
 
     for (const int i : bake_items_.index_range()) {
       mix_baked_data_item(eNodeSocketDatatype(bake_items_[i].socket_type),
@@ -323,8 +331,10 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     }
   }
 
-  std::optional<bake::BakeState> get_bake_state_from_inputs(lf::Params &params,
-                                                            GeoNodesLFUserData &user_data) const
+  std::optional<bake::BakeState> get_bake_state_from_inputs(
+      lf::Params &params,
+      GeoNodesLFUserData &user_data,
+      bke::bake::BakeDataBlockMap *data_block_map) const
   {
     Array<void *> input_values(bake_items_.size());
     for (const int i : bake_items_.index_range()) {
@@ -336,7 +346,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     }
 
     Array<std::unique_ptr<bake::BakeItem>> bake_items = bake::move_socket_values_to_bake_items(
-        input_values, bake_socket_config_, user_data.call_data->bake_data_block_map);
+        input_values, bake_socket_config_, data_block_map);
 
     bake::BakeState bake_state;
     for (const int i : bake_items_.index_range()) {
@@ -351,6 +361,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
 
   void move_bake_state_to_values(bake::BakeState bake_state,
                                  GeoNodesLFUserData &user_data,
+                                 bke::bake::BakeDataBlockMap *data_block_map,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
                                  Span<void *> r_output_values) const
@@ -364,7 +375,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     bake::move_bake_items_to_socket_values(
         bake_items,
         bake_socket_config_,
-        user_data.call_data->bake_data_block_map,
+        data_block_map,
         [&](const int i, const CPPType &type) {
           return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
         },
@@ -373,6 +384,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
 
   void copy_bake_state_to_values(const bake::BakeStateRef &bake_state,
                                  GeoNodesLFUserData &user_data,
+                                 bke::bake::BakeDataBlockMap *data_block_map,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
                                  Span<void *> r_output_values) const
@@ -385,7 +397,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     bake::copy_bake_items_to_socket_values(
         bake_items,
         bake_socket_config_,
-        user_data.call_data->bake_data_block_map,
+        data_block_map,
         [&](const int i, const CPPType &type) {
           return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
         },

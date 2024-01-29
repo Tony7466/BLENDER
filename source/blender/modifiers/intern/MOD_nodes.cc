@@ -181,9 +181,11 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
     }
   }
 
-  for (const NodesModifierDataBlock &data_block : Span(nmd->data_blocks, nmd->data_blocks_num)) {
-    if (data_block.id) {
-      used_ids.add(data_block.id);
+  for (const NodesModifierBake &bake : Span(nmd->bakes, nmd->bakes_num)) {
+    for (const NodesModifierDataBlock &data_block : Span(bake.data_blocks, bake.data_blocks_num)) {
+      if (data_block.id) {
+        used_ids.add(data_block.id);
+      }
     }
   }
 
@@ -281,8 +283,11 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
       },
       &settings);
 
-  for (NodesModifierDataBlock &data_block : MutableSpan(nmd->data_blocks, nmd->data_blocks_num)) {
-    walk(user_data, ob, &data_block.id, IDWALK_CB_USER);
+  for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
+    for (NodesModifierDataBlock &data_block : MutableSpan(bake.data_blocks, bake.data_blocks_num))
+    {
+      walk(user_data, ob, &data_block.id, IDWALK_CB_USER);
+    }
   }
 }
 
@@ -1289,7 +1294,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     if (depsgraph_is_active_) {
       if (modifier_cache_->requested_bakes.contains(id)) {
         /* This node is baked during the current evaluation. */
-        auto &store_info = behavior.emplace<sim_output::StoreNewState>();
+        auto &store_info = behavior.behavior.emplace<sim_output::StoreNewState>();
         store_info.store_fn = [modifier_cache = modifier_cache_,
                                node_cache = &node_cache,
                                current_frame = current_frame_](bake::BakeState state) {
@@ -1318,7 +1323,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     }
 
     if (node_cache.bake.frames.is_empty()) {
-      behavior.emplace<sim_output::PassThrough>();
+      behavior.behavior.emplace<sim_output::PassThrough>();
       return;
     }
     const BakeFrameIndices frame_indices = get_bake_frame_indices(node_cache.bake.frames,
@@ -1351,7 +1356,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     if (this->check_read_error(frame_cache, behavior)) {
       return;
     }
-    auto &read_single_info = behavior.emplace<sim_output::ReadSingle>();
+    auto &read_single_info = behavior.behavior.emplace<sim_output::ReadSingle>();
     read_single_info.state = frame_cache.state;
   }
 
@@ -1369,7 +1374,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     {
       return;
     }
-    auto &read_interpolated_info = behavior.emplace<sim_output::ReadInterpolated>();
+    auto &read_interpolated_info = behavior.behavior.emplace<sim_output::ReadInterpolated>();
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
                                          float(prev_frame_cache.frame));
@@ -1381,7 +1386,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
                                       nodes::BakeNodeBehavior &behavior) const
   {
     if (frame_cache.meta_path && frame_cache.state.items_by_id.is_empty()) {
-      auto &read_error_info = behavior.emplace<sim_output::ReadError>();
+      auto &read_error_info = behavior.behavior.emplace<sim_output::ReadError>();
       read_error_info.message = RPT_("Can not load the baked data");
       return true;
     }
@@ -1441,25 +1446,25 @@ static void add_missing_data_block_mappings(
     const Span<bake::BakeDataBlockID> missing,
     FunctionRef<ID *(const bake::BakeDataBlockID &)> get_data_block)
 {
-  const int old_num = nmd.data_blocks_num;
-  const int new_num = old_num + missing.size();
-  nmd.data_blocks = reinterpret_cast<NodesModifierDataBlock *>(
-      MEM_recallocN(nmd.data_blocks, sizeof(NodesModifierDataBlock) * new_num));
-  for (const int i : missing.index_range()) {
-    NodesModifierDataBlock &data_block = nmd.data_blocks[old_num + i];
-    const blender::bke::bake::BakeDataBlockID &key = missing[i];
+  // const int old_num = nmd.data_blocks_num;
+  // const int new_num = old_num + missing.size();
+  // nmd.data_blocks = reinterpret_cast<NodesModifierDataBlock *>(
+  //     MEM_recallocN(nmd.data_blocks, sizeof(NodesModifierDataBlock) * new_num));
+  // for (const int i : missing.index_range()) {
+  //   NodesModifierDataBlock &data_block = nmd.data_blocks[old_num + i];
+  //   const blender::bke::bake::BakeDataBlockID &key = missing[i];
 
-    data_block.id_name = BLI_strdup(key.id_name.c_str());
-    if (!key.lib_name.empty()) {
-      data_block.lib_name = BLI_strdup(key.lib_name.c_str());
-    }
-    data_block.id_type = int(key.type);
-    ID *id = get_data_block(key);
-    if (id) {
-      data_block.id = id;
-    }
-  }
-  nmd.data_blocks_num = new_num;
+  //   data_block.id_name = BLI_strdup(key.id_name.c_str());
+  //   if (!key.lib_name.empty()) {
+  //     data_block.lib_name = BLI_strdup(key.lib_name.c_str());
+  //   }
+  //   data_block.id_type = int(key.type);
+  //   ID *id = get_data_block(key);
+  //   if (id) {
+  //     data_block.id = id;
+  //   }
+  // }
+  // nmd.data_blocks_num = new_num;
 }
 
 static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
@@ -1581,11 +1586,6 @@ static void modifyGeometry(ModifierData *md,
   call_data.simulation_params = &simulation_params;
   NodesModifierBakeParams bake_params{*nmd, *ctx};
   call_data.bake_params = &bake_params;
-  NodesModifierBakeDataBlockMap data_block_map;
-  for (const NodesModifierDataBlock &data_block : Span(nmd->data_blocks, nmd->data_blocks_num)) {
-    data_block_map.old_mappings.add(data_block, data_block.id);
-  }
-  call_data.bake_data_block_map = &data_block_map;
 
   Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
@@ -1611,9 +1611,9 @@ static void modifyGeometry(ModifierData *md,
     nmd_orig->runtime->eval_log = std::move(eval_log);
   }
 
-  if (!data_block_map.new_mappings.is_empty()) {
-    add_data_block_items_writeback(*ctx, *nmd, *nmd_orig, data_block_map);
-  }
+  // if (!data_block_map.new_mappings.is_empty()) {
+  //   add_data_block_items_writeback(*ctx, *nmd, *nmd_orig, data_block_map);
+  // }
 
   if (use_orig_index_verts || use_orig_index_edges || use_orig_index_faces) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
@@ -2097,50 +2097,6 @@ static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
   uiItemR(row, itemptr, "id", UI_ITEM_NONE, name.c_str(), ICON_NONE);
 }
 
-static void draw_bake_data_blocks_panel(const bContext *C,
-                                        uiLayout *layout,
-                                        PointerRNA *modifier_ptr,
-                                        NodesModifierData &nmd)
-{
-  static uiListType *data_block_list = []() {
-    uiListType *list = MEM_cnew<uiListType>(__func__);
-    STRNCPY(list->idname, "DATA_UL_nodes_modifier_data_blocks");
-    list->draw_item = draw_bake_data_block_list_item;
-    WM_uilisttype_add(list);
-    return list;
-  }();
-
-  PointerRNA data_blocks_ptr = RNA_pointer_create(
-      modifier_ptr->owner_id, &RNA_NodesModifierDataBlocks, &nmd);
-
-  {
-    uiLayout *row = uiLayoutRow(layout, false);
-    uiTemplateList(row,
-                   C,
-                   data_block_list->idname,
-                   "",
-                   modifier_ptr,
-                   "data_blocks",
-                   &data_blocks_ptr,
-                   "active_index" /* TODO */,
-                   nullptr,
-                   3,
-                   5,
-                   UILST_LAYOUT_DEFAULT,
-                   0,
-                   UI_TEMPLATE_LIST_FLAG_NONE);
-    {
-      uiLayout *ops_col = uiLayoutColumn(row, false);
-      uiItemStringO(ops_col,
-                    "",
-                    ICON_REMOVE,
-                    "OBJECT_OT_geometry_nodes_modifier_data_block_remove",
-                    "modifier_name",
-                    nmd.modifier.name);
-    }
-  }
-}
-
 static void draw_bake_panel(const bContext *C,
                             uiLayout *layout,
                             PointerRNA *modifier_ptr,
@@ -2150,12 +2106,6 @@ static void draw_bake_panel(const bContext *C,
   uiLayoutSetPropSep(col, true);
   uiLayoutSetPropDecorate(col, false);
   uiItemR(col, modifier_ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake Path"), ICON_NONE);
-
-  if (uiLayout *panel_layout = uiLayoutPanel(
-          C, layout, "Referenced Data", modifier_ptr, "open_bake_data_blocks_panel"))
-  {
-    draw_bake_data_blocks_panel(C, panel_layout, modifier_ptr, nmd);
-  }
 }
 
 static void draw_named_attributes_panel(uiLayout *layout, NodesModifierData &nmd)
@@ -2332,15 +2282,16 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
      * and don't necessarily need to be written, but we can't just free them. */
     IDP_BlendWrite(writer, nmd->settings.properties);
 
-    BLO_write_struct_array(writer, NodesModifierDataBlock, nmd->data_blocks_num, nmd->data_blocks);
-    for (const NodesModifierDataBlock &item : Span(nmd->data_blocks, nmd->data_blocks_num)) {
-      BLO_write_string(writer, item.id_name);
-      BLO_write_string(writer, item.lib_name);
-    }
-
     BLO_write_struct_array(writer, NodesModifierBake, nmd->bakes_num, nmd->bakes);
     for (const NodesModifierBake &bake : Span(nmd->bakes, nmd->bakes_num)) {
       BLO_write_string(writer, bake.directory);
+
+      BLO_write_struct_array(
+          writer, NodesModifierDataBlock, bake.data_blocks_num, bake.data_blocks);
+      for (const NodesModifierDataBlock &item : Span(bake.data_blocks, bake.data_blocks_num)) {
+        BLO_write_string(writer, item.id_name);
+        BLO_write_string(writer, item.lib_name);
+      }
     }
     BLO_write_struct_array(writer, NodesModifierPanel, nmd->panels_num, nmd->panels);
 
@@ -2371,15 +2322,16 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
 
-  BLO_read_data_address(reader, &nmd->data_blocks);
-  for (NodesModifierDataBlock &data_block : MutableSpan(nmd->data_blocks, nmd->data_blocks_num)) {
-    BLO_read_data_address(reader, &data_block.id_name);
-    BLO_read_data_address(reader, &data_block.lib_name);
-  }
-
   BLO_read_data_address(reader, &nmd->bakes);
   for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     BLO_read_data_address(reader, &bake.directory);
+
+    BLO_read_data_address(reader, &bake.data_blocks);
+    for (NodesModifierDataBlock &data_block : MutableSpan(bake.data_blocks, bake.data_blocks_num))
+    {
+      BLO_read_data_address(reader, &data_block.id_name);
+      BLO_read_data_address(reader, &data_block.lib_name);
+    }
   }
   BLO_read_data_address(reader, &nmd->panels);
 
@@ -2394,25 +2346,24 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
 
   BKE_modifier_copydata_generic(md, target, flag);
 
-  if (nmd->data_blocks) {
-    tnmd->data_blocks = static_cast<NodesModifierDataBlock *>(MEM_dupallocN(nmd->data_blocks));
-    for (const int i : IndexRange(nmd->data_blocks_num)) {
-      NodesModifierDataBlock &data_block = tnmd->data_blocks[i];
-      if (data_block.id_name) {
-        data_block.id_name = BLI_strdup(data_block.id_name);
-      }
-      if (data_block.lib_name) {
-        data_block.lib_name = BLI_strdup(data_block.lib_name);
-      }
-    }
-  }
-
   if (nmd->bakes) {
     tnmd->bakes = static_cast<NodesModifierBake *>(MEM_dupallocN(nmd->bakes));
     for (const int i : IndexRange(nmd->bakes_num)) {
       NodesModifierBake &bake = tnmd->bakes[i];
       if (bake.directory) {
         bake.directory = BLI_strdup(bake.directory);
+      }
+      if (bake.data_blocks) {
+        bake.data_blocks = static_cast<NodesModifierDataBlock *>(MEM_dupallocN(bake.data_blocks));
+        for (const int i : IndexRange(bake.data_blocks_num)) {
+          NodesModifierDataBlock &data_block = bake.data_blocks[i];
+          if (data_block.id_name) {
+            data_block.id_name = BLI_strdup(data_block.id_name);
+          }
+          if (data_block.lib_name) {
+            data_block.lib_name = BLI_strdup(data_block.lib_name);
+          }
+        }
       }
     }
   }
@@ -2448,14 +2399,15 @@ static void free_data(ModifierData *md)
     nmd->settings.properties = nullptr;
   }
 
-  for (NodesModifierDataBlock &data_block : MutableSpan(nmd->data_blocks, nmd->data_blocks_num)) {
-    MEM_SAFE_FREE(data_block.id_name);
-    MEM_SAFE_FREE(data_block.lib_name);
-  }
-  MEM_SAFE_FREE(nmd->data_blocks);
-
   for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     MEM_SAFE_FREE(bake.directory);
+
+    for (NodesModifierDataBlock &data_block : MutableSpan(bake.data_blocks, bake.data_blocks_num))
+    {
+      MEM_SAFE_FREE(data_block.id_name);
+      MEM_SAFE_FREE(data_block.lib_name);
+    }
+    MEM_SAFE_FREE(bake.data_blocks);
   }
   MEM_SAFE_FREE(nmd->bakes);
 

@@ -121,6 +121,7 @@ using Behavior = std::variant<PassThrough, StoreNewState, ReadSingle, ReadInterp
 struct SimulationZoneBehavior {
   sim_input::Behavior input;
   sim_output::Behavior output;
+  bke::bake::BakeDataBlockMap *data_block_map = nullptr;
 };
 
 class GeoNodesSimulationParams {
@@ -133,8 +134,11 @@ class GeoNodesSimulationParams {
   virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
-/** The set of possible behaviors are the same for both of these nodes currently. */
-using BakeNodeBehavior = sim_output::Behavior;
+struct BakeNodeBehavior {
+  /** The set of possible behaviors are the same for both of these nodes currently. */
+  sim_output::Behavior behavior;
+  bke::bake::BakeDataBlockMap *data_block_map = nullptr;
+};
 
 class GeoNodesBakeParams {
  public:
@@ -209,12 +213,6 @@ struct GeoNodesCallData {
    * Data from execution as operator in 3D viewport.
    */
   GeoNodesOperatorData *operator_data = nullptr;
-  /**
-   * Maps weak name-based data-block references to actual data blocks that should be used during
-   * evaluation. This is used to restore data block references (e.g. materials) after loading baked
-   * data.
-   */
-  bke::bake::BakeDataBlockMap *bake_data_block_map = nullptr;
 
   /**
    * Self object has slightly different semantics depending on how geometry nodes is called.

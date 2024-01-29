@@ -3732,40 +3732,40 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 
 static int geometry_nodes_modifier_data_block_remove_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_active_context(C);
-  Main *bmain = CTX_data_main(C);
+  // Object *ob = ED_object_active_context(C);
+  // Main *bmain = CTX_data_main(C);
 
-  char modifier_name[MAX_NAME];
-  RNA_string_get(op->ptr, "modifier_name", modifier_name);
-  NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(
-      BKE_modifiers_findby_name(ob, modifier_name));
-  if (nmd == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-  if (nmd->data_blocks_num == 0) {
-    return OPERATOR_CANCELLED;
-  }
-  const int index_to_remove = nmd->active_data_block;
-  if (index_to_remove < 0 || index_to_remove >= nmd->data_blocks_num) {
-    return OPERATOR_CANCELLED;
-  }
+  // char modifier_name[MAX_NAME];
+  // RNA_string_get(op->ptr, "modifier_name", modifier_name);
+  // NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(
+  //     BKE_modifiers_findby_name(ob, modifier_name));
+  // if (nmd == nullptr) {
+  //   return OPERATOR_CANCELLED;
+  // }
+  // if (nmd->data_blocks_num == 0) {
+  //   return OPERATOR_CANCELLED;
+  // }
+  // const int index_to_remove = nmd->active_data_block;
+  // if (index_to_remove < 0 || index_to_remove >= nmd->data_blocks_num) {
+  //   return OPERATOR_CANCELLED;
+  // }
 
-  blender::dna::array::remove_index<NodesModifierDataBlock>(
-      &nmd->data_blocks,
-      &nmd->data_blocks_num,
-      &nmd->active_data_block,
-      index_to_remove,
-      [](NodesModifierDataBlock *data_block) {
-        MEM_SAFE_FREE(data_block->id_name);
-        MEM_SAFE_FREE(data_block->lib_name);
-        if (data_block->id) {
-          id_us_min(data_block->id);
-        }
-      });
+  // blender::dna::array::remove_index<NodesModifierDataBlock>(
+  //     &nmd->data_blocks,
+  //     &nmd->data_blocks_num,
+  //     &nmd->active_data_block,
+  //     index_to_remove,
+  //     [](NodesModifierDataBlock *data_block) {
+  //       MEM_SAFE_FREE(data_block->id_name);
+  //       MEM_SAFE_FREE(data_block->lib_name);
+  //       if (data_block->id) {
+  //         id_us_min(data_block->id);
+  //       }
+  //     });
 
-  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-  DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+  // DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  // DEG_relations_tag_update(bmain);
+  // WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
   return OPERATOR_FINISHED;
 }
