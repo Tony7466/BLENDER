@@ -150,7 +150,7 @@ static void deform_drawing(const ModifierData &md,
         weight *= curvef;
       }
 
-      float radius = math::interpolate(radii[point], target, weight * curvef);
+      float radius = math::interpolate(radii[point], target, weight);
       if (radius < 0.0f) {
         radius = 0.0f;
       }
