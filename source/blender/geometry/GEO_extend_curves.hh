@@ -17,7 +17,7 @@ namespace blender::geometry {
  * Create a new Curves instance by trimming the input curves. Copying the selected splines
  * between the start and end points.
  */
-bke::CurvesGeometry stretch_curves(const bke::CurvesGeometry &src_curves,
+bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
                                    const IndexMask &selection,
                                    const VArray<float> &start_lengths,
                                    const VArray<float> &end_lengths,

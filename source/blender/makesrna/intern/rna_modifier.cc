@@ -8277,7 +8277,7 @@ static void rna_def_modifier_grease_pencil_length(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, DEG2RAD(180.0f));
   RNA_def_property_ui_range(prop, 0.0f, DEG2RAD(179.5f), 10.0f, 1);
   RNA_def_property_update(prop, NC_SCENE, "rna_Modifier_update");
-  
+
   RNA_define_lib_overridable(false);
 }
 

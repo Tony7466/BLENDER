@@ -21,11 +21,11 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_geometry_set.hh"
 
-#include "GEO_stretch_curves.hh"
+#include "GEO_extend_curves.hh"
 
 namespace blender::geometry {
 
-bke::CurvesGeometry stretch_curves(
+bke::CurvesGeometry extend_curves(
     const bke::CurvesGeometry &src_curves,
     const IndexMask &selection,
     const VArray<float> &start_lengths,

@@ -35,7 +35,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "GEO_stretch_curves.hh"
+#include "GEO_extend_curves.hh"
 #include "GEO_trim_curves.hh"
 
 namespace blender {
@@ -182,7 +182,7 @@ static void deform_drawing(const ModifierData &md,
     }
   }
 
-  curves = geometry::stretch_curves(
+  curves = geometry::extend_curves(
       curves,
       selection,
       use_starts,
