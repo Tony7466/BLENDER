@@ -17,6 +17,8 @@ set(INC
   ../render
   ../windowmanager
   ../../../intern/eigen
+  
+  # Needed for shared line art functions from legacy implementations.
   ../gpencil_modifiers_legacy
   ../gpencil_modifiers_legacy/intern
   ../gpencil_modifiers_legacy/intern/lineart

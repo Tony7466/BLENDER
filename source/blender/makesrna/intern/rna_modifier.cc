@@ -8328,12 +8328,11 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
       "Match the beginning of vertex group names from mesh objects, match all when left empty");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  // prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
-  // RNA_def_property_string_sdna(prop, nullptr, "vgname");
-  // RNA_def_property_string_funcs(prop, nullptr, nullptr,
-  // "rna_LineartGpencilModifier_vgname_set"); RNA_def_property_ui_text(prop, "Vertex Group",
-  // "Vertex group name for selected strokes"); RNA_def_property_update(prop, 0,
-  // "rna_Modifier_update");
+  prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "vgname");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_LineartGpencilModifier_vgname_set");
+  RNA_def_property_ui_text(prop, "Vertex Group", "Vertex group name for selected strokes");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "is_baked", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flags", LINEART_GPENCIL_IS_BAKED);

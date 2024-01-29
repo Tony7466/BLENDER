@@ -924,8 +924,6 @@ LineartBoundingArea *MOD_lineart_get_parent_bounding_area(LineartData *ld, doubl
  */
 LineartBoundingArea *MOD_lineart_get_bounding_area(LineartData *ld, double x, double y);
 
-struct GreasePencilDrawing;
-
 /**
  * Wrapper for external calls.
  */
