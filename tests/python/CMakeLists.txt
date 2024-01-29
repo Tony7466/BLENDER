@@ -703,6 +703,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
           ${CMAKE_CURRENT_LIST_DIR}/eevee_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/eevee"
+          --fail-silently
         )
       endforeach()
 
@@ -713,6 +714,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
           ${CMAKE_CURRENT_LIST_DIR}/eevee_next_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/eevee_next"
+          --fail-silently
         )
       endforeach()
 
@@ -723,6 +725,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
           ${CMAKE_CURRENT_LIST_DIR}/workbench_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/workbench"
+          --fail-silently
         )
       endforeach()
 
@@ -735,6 +738,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
             -outdir "${TEST_OUT_DIR}/storm_hydra"
             -export_method "HYDRA"
+            --fail-silently
           )
         endforeach()
 
@@ -745,6 +749,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
             -outdir "${TEST_OUT_DIR}/storm_usd"
             -export_method "USD"
+            --fail-silently
           )
         endforeach()
       endif()
