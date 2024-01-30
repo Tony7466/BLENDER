@@ -673,12 +673,8 @@ void draw_data_blocks(const bContext *C, uiLayout *layout, PointerRNA &bake_rna)
   PointerRNA data_blocks_ptr = RNA_pointer_create(
       bake_rna.owner_id, &RNA_NodesModifierBakeDataBlocks, bake_rna.data);
 
-  Panel *panel = uiLayoutGetRootPanel(layout);
-  LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(
-      panel, "data_block_references", true);
-  PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
   if (uiLayout *panel = uiLayoutPanel(
-          C, layout, TIP_("Data-Block References"), &state_ptr, "is_open"))
+          C, layout, "data_block_references", true, TIP_("Data-Block References")))
   {
     uiTemplateList(panel,
                    C,
