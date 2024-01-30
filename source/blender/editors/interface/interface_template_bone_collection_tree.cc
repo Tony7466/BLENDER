@@ -303,8 +303,6 @@ class BoneCollectionItem : public AbstractTreeViewItem {
 
     RNA_property_boolean_set(&bcoll_ptr, prop, is_expanded);
     RNA_property_update(&C, &bcoll_ptr, prop);
-
-    ED_undo_push(&C, "Expand/collapse Bone Collection");
   }
 
   bool supports_renaming() const override
@@ -388,7 +386,6 @@ bool BoneCollectionTreeView::listen(const wmNotifier &notifier) const
 {
   return notifier.data == ND_BONE_COLLECTION;
 }
-
 
 void BoneCollectionTreeView::build_bcolls_with_selected_bones()
 {

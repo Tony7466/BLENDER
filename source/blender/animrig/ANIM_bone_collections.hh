@@ -370,6 +370,16 @@ bool armature_bonecoll_is_descendant_of(const bArmature *armature,
 bool bonecoll_has_children(const BoneCollection *bcoll);
 
 /**
+ * For each bone collection in the destination armature, copy its #BONE_COLLECTION_EXPANDED flag
+ * from the corresponding bone collection in the source armature.
+ *
+ * This is used in the handling of undo steps, to ensure that undo'ing does _not_
+ * modify this flag.
+ */
+void bonecolls_copy_expanded_flag(Span<BoneCollection *> bcolls_dest,
+                                  Span<const BoneCollection *> bcolls_source);
+
+/**
  * Move a bone collection from one parent to another.
  *
  * \param from_bcoll_index: Index of the bone collection to move.
