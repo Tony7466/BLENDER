@@ -291,9 +291,9 @@ class BoneCollectionItem : public AbstractTreeViewItem {
     return true;
   }
 
-  void on_collapsed(bContext &C) override
+  void on_collapse_change(bContext &C, const bool is_collapsed) override
   {
-    const bool is_expanded = !is_collapsed();
+    const bool is_expanded = !is_collapsed;
 
     /* Let RNA handle the property change. This makes sure all the notifiers and DEG
      * update calls are properly called. */

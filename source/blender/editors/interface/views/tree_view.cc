@@ -531,7 +531,7 @@ bool AbstractTreeViewItem::is_collapsible() const
   return this->supports_collapsing();
 }
 
-void AbstractTreeViewItem::on_collapsed(bContext & /*C*/)
+void AbstractTreeViewItem::on_collapse_change(bContext & /*C*/, const bool /*is_collapsed*/)
 {
   /* Do nothing by default. */
 }
@@ -544,7 +544,7 @@ std::optional<bool> AbstractTreeViewItem::should_be_collapsed() const
 void AbstractTreeViewItem::toggle_collapsed_from_view(bContext &C)
 {
   if (toggle_collapsed()) {
-    on_collapsed(C);
+    on_collapse_change(C, is_collapsed());
   }
 }
 
@@ -554,7 +554,8 @@ void AbstractTreeViewItem::change_state_delayed()
 
   const std::optional<bool> should_be_collapsed = this->should_be_collapsed();
   if (should_be_collapsed.has_value()) {
-    /* This reflects an external state change and therefore shouldn't call #on_collapsed(). */
+    /* This reflects an external state change and therefore shouldn't call #on_collapse_change().
+     */
     set_collapsed(*should_be_collapsed);
   }
 }

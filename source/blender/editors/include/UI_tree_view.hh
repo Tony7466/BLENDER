@@ -200,14 +200,14 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   /**
    * Toggle the expanded/collapsed state.
    *
-   * \note this does not call #on_collapsed().
+   * \note this does not call #on_collapse_change().
    * \returns true when the collapsed state was changed, false otherwise.
    */
   bool toggle_collapsed();
   /**
    * Expand or collapse this tree view item.
    *
-   * \note this does not call #on_collapsed().
+   * \note this does not call #on_collapse_change().
    * \returns true when the collapsed state was changed, false otherwise.
    */
   virtual bool set_collapsed(bool collapsed);
@@ -225,7 +225,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    * changes. E.g. a click on an item calls it, a change in the value returned by
    * #should_be_collapsed() to reflect an external state change does not.
    */
-  virtual void on_collapsed(bContext &C);
+  virtual void on_collapse_change(bContext &C, bool is_collapsed);
   /**
    * If the result is not empty, it controls whether the item should be collapsed or not, usually
    * depending on the data that the view represents.
@@ -245,7 +245,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   virtual bool supports_collapsing() const;
 
   /**
-   * Toggle the collapsed/expanded state, and call on_collapsed() if it changed.
+   * Toggle the collapsed/expanded state, and call on_collapse_change() if it changed.
    */
   void toggle_collapsed_from_view(bContext &C);
 
