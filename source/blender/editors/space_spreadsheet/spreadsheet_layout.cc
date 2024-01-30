@@ -433,7 +433,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
           ss << value[1] << ",\n";
           ss << value[2] << ",\n";
           ss << value[3];
-          return BLI_strdup(ss.str().c_str());
+          return ss.str();
         },
         MEM_new<float4x4>(__func__, value),
         MEM_freeN);
