@@ -8174,7 +8174,7 @@ static void rna_def_modifier_grease_pencil_thickness(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Weighted", "Use weight to modulate effect");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "use_normalized_thickness", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_uniform_thickness", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_THICK_NORMALIZE);
   RNA_def_property_ui_text(prop, "Uniform Thickness", "Replace the stroke thickness");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");

@@ -107,57 +107,52 @@ static void deform_drawing(const ModifierData &md,
   blender::MutableSpan<float> radii = drawing.radii_for_write();
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  const VArray<float> vgroup_weights =
-      attributes
-          .lookup_or_default<float>(mmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f)
-          .varray;
-  const bool is_normalized = (mmd.flag & MOD_GREASE_PENCIL_THICK_NORMALIZE);
-  bool is_inverted = ((mmd.flag & MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR) == 0) &&
-                     ((mmd.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP) != 0);
+  const VArray<float> vgroup_weights = *attributes.lookup_or_default<float>(
+      mmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
+  const bool is_normalized = (mmd.flag & MOD_GREASE_PENCIL_THICK_NORMALIZE) != 0;
+  const bool is_inverted = ((mmd.flag & MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR) == 0) &&
+                           ((mmd.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP) !=
+                            0);
 
-  for (const int curve : curves.curves_range()) {
-    for (const int local_point : points_by_curve[curve].index_range()) {
-      const int point = local_point + points_by_curve[curve].first();
-      float weight = vgroup_weights[point];
-      if (weight <= 0.0f) {
-        continue;
-      }
-
-      if ((!is_normalized) && (mmd.flag & MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR)) {
-        radii[point] *= (is_inverted ? 1.0f - weight : weight);
-        if (radii[point] < 0.0f) {
-          radii[point] = 0.0f;
+  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
+    for (const int curve : curves_range) {
+      for (const int local_point : points_by_curve[curve].index_range()) {
+        const int point = local_point + points_by_curve[curve].first();
+        const float weight = vgroup_weights[point];
+        if (weight <= 0.0f) {
+          continue;
         }
-        continue;
-      }
 
-      float curvef = 1.0f;
-      if (mmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE &&
-          (mmd.influence.custom_curve))
-      {
-        /* Normalize value to evaluate curve. */
-        const float value = float(local_point) / (points_by_curve[curve].size() - 1);
-        curvef = BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
-      }
+        if ((!is_normalized) && (mmd.flag & MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR)) {
+          radii[point] *= (is_inverted ? 1.0f - weight : weight);
+          radii[point] = math::max(radii[point], 0.0f);
+          continue;
+        }
 
-      float target;
-      if (is_normalized) {
-        target = mmd.thickness * 1;
-        target *= curvef;
-      }
-      else {
-        target = radii[point] * mmd.thickness_fac;
-        weight *= curvef;
-      }
+        const float influence = [&]() {
+          if (mmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE &&
+              (mmd.influence.custom_curve))
+          {
+            /* Normalize value to evaluate curve. */
+            const float value = float(local_point) / (points_by_curve[curve].size() - 1);
+            return BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
+          }
+          return 1.0f;
+        }();
 
-      float radius = math::interpolate(radii[point], target, weight);
-      if (radius < 0.0f) {
-        radius = 0.0f;
+        const float target = [&]() {
+          if (is_normalized) {
+            return mmd.thickness * influence;
+          }
+          return radii[point] * math::interpolate(1.0f, mmd.thickness_fac, influence);
+        }();
+
+        float radius = math::interpolate(radii[point], target, weight);
+        radius = math::max(radius, 0.0f);
+        radii[point] = radius;
       }
-      radii[point] = radius;
     }
-  }
-  drawing.tag_positions_changed();
+  });
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -191,8 +186,8 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "use_normalized_thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
-  if (RNA_boolean_get(ptr, "use_normalized_thickness")) {
+  uiItemR(layout, ptr, "use_uniform_thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (RNA_boolean_get(ptr, "use_uniform_thickness")) {
     uiItemR(layout, ptr, "thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else {
