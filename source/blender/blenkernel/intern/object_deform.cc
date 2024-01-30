@@ -199,6 +199,11 @@ bool BKE_object_defgroup_clear(Object *ob, bDeformGroup *dg, const bool use_sele
       }
     }
   }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    changed = blender::bke::greasepencil::remove_from_vertex_group(
+        *grease_pencil, dg->name, use_selection);
+  }
 
   return changed;
 }
@@ -266,6 +271,10 @@ static void object_defgroup_remove_common(Object *ob, bDeformGroup *dg, const in
       Lattice *lt = object_defgroup_lattice_get((ID *)(ob->data));
       MEM_SAFE_FREE(lt->dvert);
     }
+    else if (ob->type == OB_GREASE_PENCIL) {
+      GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+      blender::bke::greasepencil::clear_vertex_groups(*grease_pencil);
+    }
   }
   else if (BKE_object_defgroup_active_index_get(ob) < 1) {
     /* Keep a valid active index if we still have some vgroups. */
@@ -280,27 +289,32 @@ static void object_defgroup_remove_object_mode(Object *ob, bDeformGroup *dg)
   const ListBase *defbase = BKE_object_defgroup_list(ob);
 
   const int def_nr = BLI_findindex(defbase, dg);
-
   BLI_assert(def_nr != -1);
 
-  BKE_object_defgroup_array_get(static_cast<ID *>(ob->data), &dvert_array, &dvert_tot);
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    blender::bke::greasepencil::remove_from_vertex_group(*grease_pencil, dg->name, false);
+  }
+  else {
+    BKE_object_defgroup_array_get(static_cast<ID *>(ob->data), &dvert_array, &dvert_tot);
 
-  if (dvert_array) {
-    int i, j;
-    MDeformVert *dv;
-    for (i = 0, dv = dvert_array; i < dvert_tot; i++, dv++) {
-      MDeformWeight *dw;
+    if (dvert_array) {
+      int i, j;
+      MDeformVert *dv;
+      for (i = 0, dv = dvert_array; i < dvert_tot; i++, dv++) {
+        MDeformWeight *dw;
 
-      dw = BKE_defvert_find_index(dv, def_nr);
-      BKE_defvert_remove_group(dv, dw); /* dw can be nullptr */
+        dw = BKE_defvert_find_index(dv, def_nr);
+        BKE_defvert_remove_group(dv, dw); /* dw can be nullptr */
 
-      /* inline, make into a function if anything else needs to do this */
-      for (j = 0; j < dv->totweight; j++) {
-        if (dv->dw[j].def_nr > def_nr) {
-          dv->dw[j].def_nr--;
+        /* inline, make into a function if anything else needs to do this */
+        for (j = 0; j < dv->totweight; j++) {
+          if (dv->dw[j].def_nr > def_nr) {
+            dv->dw[j].def_nr--;
+          }
         }
+        /* done */
       }
-      /* done */
     }
   }
 
@@ -358,6 +372,10 @@ static void object_defgroup_remove_edit_mode(Object *ob, bDeformGroup *dg)
         }
       }
     }
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    blender::bke::greasepencil::remove_from_vertex_group(*grease_pencil, dg->name, false);
   }
 
   object_defgroup_remove_common(ob, dg, def_nr);
@@ -417,6 +435,10 @@ void BKE_object_defgroup_remove_all_ex(Object *ob, bool only_unlocked)
     else if (ob->type == OB_LATTICE) {
       Lattice *lt = object_defgroup_lattice_get((ID *)(ob->data));
       MEM_SAFE_FREE(lt->dvert);
+    }
+    else if (ob->type == OB_GREASE_PENCIL) {
+      GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+      blender::bke::greasepencil::clear_vertex_groups(*grease_pencil);
     }
     /* Fix counters/indices */
     BKE_object_defgroup_active_index_set(ob, 0);
@@ -513,6 +535,10 @@ bool BKE_object_defgroup_array_get(ID *id, MDeformVert **dvert_arr, int *dvert_t
         *dvert_tot = lt->pntsu * lt->pntsv * lt->pntsw;
         return true;
       }
+      case ID_GP:
+        /* Should not be used with grease pencil objects.*/
+        BLI_assert_unreachable();
+        break;
       default:
         break;
     }

@@ -20,6 +20,8 @@
 
 #include "BLT_translation.h"
 
+#include <iostream>
+
 namespace blender::bke::greasepencil {
 
 /* ------------------------------------------------------------------- */
@@ -55,7 +57,7 @@ void validate_drawing_vertex_groups(GreasePencil &grease_pencil)
   }
 }
 
-void assign_to_vertex_group(GreasePencil &grease_pencil, StringRef name, float weight)
+void assign_to_vertex_group(GreasePencil &grease_pencil, const StringRef name, const float weight)
 {
   for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
     if (base->type != GP_DRAWING) {
@@ -91,8 +93,7 @@ void assign_to_vertex_group(GreasePencil &grease_pencil, StringRef name, float w
       if (select_vert[i]) {
         ensure_group_in_drawing();
 
-        MDeformWeight *dw;
-        dw = BKE_defvert_ensure_index(&dverts[i], def_nr);
+        MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[i], def_nr);
         if (dw) {
           dw->weight = weight;
         }
@@ -100,6 +101,51 @@ void assign_to_vertex_group(GreasePencil &grease_pencil, StringRef name, float w
     }
   }
 }
+
+/** Remove selected vertices from the vertex group. */
+bool remove_from_vertex_group(GreasePencil &grease_pencil, StringRef name, bool use_selection)
+{
+  bool changed = false;
+  for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    bke::CurvesGeometry &curves = drawing.strokes_for_write();
+    ListBase &vertex_group_names = curves.vertex_group_names;
+
+    const int def_nr = BLI_findstringindex(
+        &vertex_group_names, name.data(), offsetof(bDeformGroup, name));
+    if (def_nr < 0) {
+      /* No vertices assigned to the group in this drawing. */
+      continue;
+    }
+
+    MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
+    const bke::AttributeAccessor attributes = curves.attributes();
+    const VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
+        ".selection", bke::AttrDomain::Point, false);
+    for (const int i : dverts.index_range()) {
+      if (!use_selection || select_vert[i]) {
+        MDeformVert *dv = &dverts[i];
+        MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
+        BKE_defvert_remove_group(dv, dw);
+
+        /* Adjust remaining vertex group indices. */
+        for (const int j : IndexRange(dv->totweight)) {
+          if (dv->dw[j].def_nr > def_nr) {
+            dv->dw[j].def_nr--;
+          }
+        }
+
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+void clear_vertex_groups(GreasePencil &grease_pencil) {}
 
 /** \} */
 
