@@ -663,7 +663,7 @@ class WM_OT_operator_preset_properties_cleanup(Operator):
     bl_label = "Cleanups operator preset properties"
 
     operator: StringProperty(name="operator")
-    properties: CollectionProperty(name="operator", type=OperatorFileListElement)
+    properties: CollectionProperty(name="properties", type=OperatorFileListElement)
 
     @staticmethod
     def cleanup_preset(filepath, properties):

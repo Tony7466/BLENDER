@@ -159,7 +159,7 @@ const EnumPropertyItem rna_enum_property_flag_items[] = {
      "SKIP_SAVE",
      0,
      "Skip Save",
-     "Don't use ghost values. Inherits 'SKIP_PRESET'"},
+     "Do not use ghost values. Inherits 'SKIP_PRESET'"},
     {PROP_SKIP_PRESET, "SKIP_PRESET", 0, "Skip Preset", "Do not write in presets"},
     {PROP_ANIMATABLE, "ANIMATABLE", 0, "Animatable", ""},
     {PROP_LIB_EXCEPTION, "LIBRARY_EDITABLE", 0, "Library Editable", ""},
