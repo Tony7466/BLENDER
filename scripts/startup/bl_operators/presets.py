@@ -622,7 +622,7 @@ class AddPresetOperator(AddPresetBase, Operator):
 
         ret = []
         for prop_id, prop in operator_rna.properties.items():
-            if not (prop.is_hidden or prop.is_skip_save):
+            if not prop.is_skip_preset:
                 if prop_id not in properties_blacklist:
                     ret.append("op.%s" % prop_id)
 
