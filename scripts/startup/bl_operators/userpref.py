@@ -148,6 +148,8 @@ class PREFERENCES_OT_copy_prev(Operator):
         # Reload preferences and `recent-files.txt`.
         bpy.ops.wm.read_userpref()
         bpy.ops.wm.read_history()
+        # Fix operator presets that have uwanted filepath properties
+        bpy.ops.wm.operator_preset_properties_cleanup()
 
         # don't loose users work if they open the splash later.
         if bpy.data.is_saved is bpy.data.is_dirty is False:

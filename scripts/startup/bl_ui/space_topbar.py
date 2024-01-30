@@ -454,6 +454,8 @@ class TOPBAR_MT_blender_system(Menu):
         layout.separator()
 
         layout.operator("screen.spacedata_cleanup")
+        layout.separator()
+        layout.operator("wm.operator_preset_properties_cleanup", text="Cleanup I/O operator presets")
 
 
 class TOPBAR_MT_templates_more(Menu):

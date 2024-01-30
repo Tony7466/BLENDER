@@ -6,10 +6,12 @@ import bpy
 from bpy.types import (
     Menu,
     Operator,
+    OperatorFileListElement,
     WindowManager,
 )
 from bpy.props import (
     BoolProperty,
+    CollectionProperty,
     StringProperty,
 )
 from bpy.app.translations import (
@@ -655,6 +657,72 @@ class WM_MT_operator_presets(Menu):
     preset_operator = "script.execute_preset"
 
 
+class WM_OT_operator_preset_properties_cleanup(Operator):
+    """Cleanups operator preset properties"""
+    bl_idname = "wm.operator_preset_properties_cleanup"
+    bl_label = "Cleanups operator preset properties"
+
+    operator: StringProperty(name="operator")
+    properties: CollectionProperty(name="operator", type=OperatorFileListElement)
+
+    @staticmethod
+    def cleanup_preset(filepath, properties):
+        if not filepath.endswith(".py"):
+            return
+        lines = []
+        import os
+        with open(os.path.join(filepath), "r") as file:
+            lines = file.readlines()
+        with open(os.path.join(filepath), "w") as file:
+            for line in lines:
+                if not any(line.startswith(("op.%s" % prop)) for prop in properties):
+                    file.write(line)
+
+    @staticmethod
+    def cleanup_operators_presets(operators, properties):
+        base_preset_directory = bpy.utils.user_resource(
+            'SCRIPTS', path="presets", create=False)
+        for operator in operators:
+            import os
+            operator_preset_directory = os.path.join(
+                base_preset_directory, AddPresetOperator.operator_path(operator))
+            if not os.path.isdir(operator_preset_directory):
+                continue
+            for file_name in os.listdir(operator_preset_directory):
+                file_preset_firectory = os.path.join(operator_preset_directory, file_name)
+                WM_OT_operator_preset_properties_cleanup.cleanup_preset(file_preset_firectory, properties)
+
+    def execute(self, context):
+        properties = []
+        operators = []
+        if self.operator:
+            operators.append(self.operator)
+            for prop in self.properties:
+                properties.append(prop.name)
+        else:
+            operators = ['WM_OT_alembic_export',
+                         'WM_OT_alembic_import',
+                         'WM_OT_collada_export',
+                         'WM_OT_collada_import',
+                         'WM_OT_gpencil_export_svg',
+                         'WM_OT_gpencil_export_pdf',
+                         'WM_OT_gpencil_export_svg',
+                         'WM_OT_gpencil_import_svg',
+                         'WM_OT_obj_export',
+                         'WM_OT_obj_import',
+                         'WM_OT_ply_export',
+                         'WM_OT_ply_import',
+                         'WM_OT_stl_export',
+                         'WM_OT_stl_import',
+                         'WM_OT_usd_export',
+                         'WM_OT_usd_import',]
+            properties = ["filepath", "directory", "files", "filename"]
+
+        WM_OT_operator_preset_properties_cleanup.cleanup_operators_presets(
+            operators, properties)
+        return {'FINISHED'}
+
+
 class AddPresetGpencilBrush(AddPresetBase, Operator):
     """Add or remove grease pencil brush preset"""
     bl_idname = "scene.gpencil_brush_preset_add"
@@ -748,4 +816,5 @@ classes = (
     AddPresetEEVEERaytracing,
     ExecutePreset,
     WM_MT_operator_presets,
+    WM_OT_operator_preset_properties_cleanup,
 )
