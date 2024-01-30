@@ -430,6 +430,8 @@ std::unique_ptr<SocketDeclaration> make_declaration_for_socket_type(
       return std::make_unique<decl::Collection>();
     case SOCK_MATERIAL:
       return std::make_unique<decl::Material>();
+    case SOCK_MENU:
+      return std::make_unique<decl::Menu>();
     default:
       return {};
   }
@@ -465,6 +467,8 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(
       return this->add_input<decl::Collection>(name, identifier);
     case SOCK_MATERIAL:
       return this->add_input<decl::Material>(name, identifier);
+    case SOCK_MENU:
+      return this->add_input<decl::Menu>(name, identifier);
     default:
       BLI_assert_unreachable();
       return this->add_input<decl::Float>("", "");
@@ -508,6 +512,8 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
       return this->add_output<decl::Collection>(name, identifier);
     case SOCK_MATERIAL:
       return this->add_output<decl::Material>(name, identifier);
+    case SOCK_MENU:
+      return this->add_output<decl::Menu>(name, identifier);
     default:
       BLI_assert_unreachable();
       return this->add_output<decl::Float>("", "");
