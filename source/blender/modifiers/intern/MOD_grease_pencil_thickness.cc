@@ -147,9 +147,8 @@ static void deform_drawing(const ModifierData &md,
           return radii[point] * math::interpolate(1.0f, mmd.thickness_fac, influence);
         }();
 
-        float radius = math::interpolate(radii[point], target, weight);
-        radius = math::max(radius, 0.0f);
-        radii[point] = radius;
+        const float radius = math::interpolate(radii[point], target, weight);
+        radii[point] = math::max(radius, 0.0f);
       }
     }
   });
