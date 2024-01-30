@@ -63,7 +63,7 @@ ccl_device_forceinline bool osl_closure_skip(KernelGlobals kg,
       return true;
     }
     /* Glass Caustics */
-    if (reflect_caustics_disabled && refract_caustics_disabled && has_reflect && has_transmit) {
+    if (reflect_caustics_disabled && refract_caustics_disabled) {
       return true;
     }
   }
