@@ -19,7 +19,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   static auto fn = mf::build::SI2_SO<math::Quaternion, math::Quaternion, math::Quaternion>(
-      "Rotate Rotation", [](math::Quaternion a, math::Quaternion b) { return a * b; });
+      "Rotate Rotation", [](math::Quaternion a, math::Quaternion b) { return b * a; });
   builder.set_matching_fn(fn);
 }
 
