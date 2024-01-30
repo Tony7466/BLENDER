@@ -860,6 +860,11 @@
     .seed = 1, \
   }
 
+#define _DNA_DEFAULT_GreasePencilMirrorModifierData \
+  { \
+    .flag = MOD_GREASE_PENCIL_MIRROR_AXIS_X, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilLineartModifierData \
   { \
     .edge_types = LRT_EDGE_FLAG_INIT_TYPE, \
@@ -879,4 +884,5 @@
     .shadow_camera_far = 200.0f, \
     .shadow_camera_size = 200.0f, \
   }
+
 /* clang-format off */
