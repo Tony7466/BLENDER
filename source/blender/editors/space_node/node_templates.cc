@@ -394,6 +394,9 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       else if (dynamic_cast<const decl::String *>(&socket_decl)) {
         item.socket_type = SOCK_STRING;
       }
+      else if (dynamic_cast<const decl::Menu *>(&socket_decl)) {
+        item.socket_type = SOCK_MENU;
+      }
       else if (dynamic_cast<const decl::Image *>(&socket_decl)) {
         item.socket_type = SOCK_IMAGE;
       }
@@ -937,7 +940,7 @@ static void ui_node_draw_input(uiLayout &layout,
   }
 
   if (dependency_loop) {
-    uiItemL(row, IFACE_("Dependency Loop"), ICON_ERROR);
+    uiItemL(row, RPT_("Dependency Loop"), ICON_ERROR);
     add_dummy_decorator = true;
   }
   else if (lnode) {
@@ -992,6 +995,9 @@ static void ui_node_draw_input(uiLayout &layout,
               split_wrapper.decorate_column, &inputptr, "default_value", RNA_NO_INDEX);
           break;
         }
+        case SOCK_MENU:
+          uiItemL(sub, RPT_("Unsupported Menu Socket"), ICON_NONE);
+          break;
         case SOCK_CUSTOM:
           input.typeinfo->draw(&C, sub, &inputptr, &nodeptr, input.name);
           break;
