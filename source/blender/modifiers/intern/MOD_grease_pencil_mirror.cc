@@ -6,13 +6,6 @@
  * \ingroup modifiers
  */
 
-#include "BLI_array_utils.hh"
-#include "BLI_hash.h"
-#include "BLI_index_mask.hh"
-#include "BLI_math_matrix.hh"
-#include "BLI_offset_indices.hh"
-#include "BLI_rand.h"
-
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
 
