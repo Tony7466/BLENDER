@@ -17,6 +17,6 @@ namespace blender::bke::greasepencil {
 void validate_drawing_vertex_groups(GreasePencil &grease_pencil);
 
 /** Assign selected vertices to the vertex group. */
-void assign_vertex_group(GreasePencil &grease_pencil, StringRef name, float weight);
+void assign_to_vertex_group(GreasePencil &grease_pencil, StringRef name, float weight);
 
 }

@@ -2314,7 +2314,7 @@ static void vgroup_assign_verts(Object *ob, const float weight)
     GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
     const bDeformGroup *defgroup = static_cast<const bDeformGroup *>(
         BLI_findlink(BKE_object_defgroup_list(ob), def_nr));
-    blender::bke::greasepencil::assign_vertex_group(*grease_pencil, defgroup->name, weight);
+    blender::bke::greasepencil::assign_to_vertex_group(*grease_pencil, defgroup->name, weight);
   }
 }
 

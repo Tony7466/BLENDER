@@ -55,7 +55,7 @@ void validate_drawing_vertex_groups(GreasePencil &grease_pencil)
   }
 }
 
-void assign_vertex_group(GreasePencil &grease_pencil, StringRef name, float weight)
+void assign_to_vertex_group(GreasePencil &grease_pencil, StringRef name, float weight)
 {
   for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
     if (base->type != GP_DRAWING) {
@@ -76,13 +76,7 @@ void assign_vertex_group(GreasePencil &grease_pencil, StringRef name, float weig
 
       bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
       STRNCPY(defgroup->name, name.data());
-      BLI_uniquename_cb(
-          [vertex_group_names](const StringRef name) {
-            return BLI_findstring(
-                       &vertex_group_names, name.data(), offsetof(bDeformGroup, name)) != nullptr;
-          },
-          '.',
-          name);
+
       BLI_addtail(&vertex_group_names, defgroup);
       def_nr = BLI_listbase_count(&vertex_group_names) - 1;
       BLI_assert(def_nr >= 0);
