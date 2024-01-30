@@ -164,22 +164,16 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe, Depsgra
 
       /* Result must be in world-space. */
       mul_m4_v3(ob_eval->object_to_world, mpv->co);
-      if (mpath->flag & MOTIONPATH_FLAG_BAKE_CAMERA && mpath->camera) {
-        DEG_evaluate_on_framechange(depsgraph, cframe);
-        Object *cam_eval = DEG_get_evaluated_object(depsgraph, mpath->camera);
-        /* Convert point to camera space. */
-        mul_m4_v3(cam_eval->world_to_object, mpv->co);
-      }
     }
     else {
       /* World-space object location. */
       copy_v3_v3(mpv->co, ob_eval->object_to_world[3]);
-      if (mpath->flag & MOTIONPATH_FLAG_BAKE_CAMERA && mpath->camera) {
-        DEG_evaluate_on_framechange(depsgraph, cframe);
-        Object *cam_eval = DEG_get_evaluated_object(depsgraph, mpath->camera);
-        /* Convert point to camera space. */
-        mul_m4_v3(cam_eval->world_to_object, mpv->co);
-      }
+    }
+
+    if (mpath->flag & MOTIONPATH_FLAG_BAKE_CAMERA && mpath->camera) {
+      Object *cam_eval = DEG_get_evaluated_object(depsgraph, mpath->camera);
+      /* Convert point to camera space. */
+      mul_m4_v3(cam_eval->world_to_object, mpv->co);
     }
 
     float mframe = float(cframe);
