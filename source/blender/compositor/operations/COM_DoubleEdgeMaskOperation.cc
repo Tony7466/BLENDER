@@ -72,7 +72,8 @@ void DoubleEdgeMaskOperation::compute_boundary(const float *inner_mask,
 
         bool is_inner_boundary = is_inner_masked && has_inner_non_masked_neighbors &&
                                  (is_outer_masked || include_all_inner_edges_);
-        bool is_outer_boundary = is_outer_masked && has_outer_non_masked_neighbors;
+        bool is_outer_boundary = is_outer_masked && !is_inner_masked &&
+                                 has_outer_non_masked_neighbors;
 
         int2 inner_jump_flooding_value = initialize_jump_flooding_value(texel, is_inner_boundary);
         int2 outer_jump_flooding_value = initialize_jump_flooding_value(texel, is_outer_boundary);
