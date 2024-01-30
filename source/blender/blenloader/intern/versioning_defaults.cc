@@ -383,6 +383,10 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (idprop) {
     IDP_ClearProperty(idprop);
   }
+
+  if (ts->sculpt) {
+    ts->sculpt->automasking_boundary_edges_propagation_steps = 1;
+  }
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
@@ -497,9 +501,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       }
 
       /* Ensure new Paint modes. */
-      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_VERTEX_GPENCIL);
-      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_SCULPT_GPENCIL);
-      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
+      BKE_paint_ensure_from_paintmode(scene, PaintMode::VertexGPencil);
+      BKE_paint_ensure_from_paintmode(scene, PaintMode::SculptGPencil);
+      BKE_paint_ensure_from_paintmode(scene, PaintMode::WeightGPencil);
 
       /* Enable cursor. */
       if (ts->gp_paint) {
