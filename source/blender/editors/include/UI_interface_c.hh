@@ -2302,13 +2302,13 @@ struct PanelLayout {
  * \return A #PanelLayout containing layouts for both the header row and the panel body. If the
  * panel is closed and should not be drawn, the body layout will be NULL.
  */
-PanelLayout uiLayoutPanelWithHeader(const bContext *C,
-                                    uiLayout *layout,
-                                    PointerRNA *open_prop_owner,
-                                    const char *open_prop_name);
+PanelLayout uiLayoutPanelProp(const bContext *C,
+                              uiLayout *layout,
+                              PointerRNA *open_prop_owner,
+                              const char *open_prop_name);
 
 /**
- * Variant of #uiLayoutPanelWithHeader() that automatically creates the header row with the
+ * Variant of #uiLayoutPanelProp() that automatically creates the header row with the
  * given label name and only returns the body layout.
  *
  * \param label: Text that's shown in the panel header. It should already be translated.
