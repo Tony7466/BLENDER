@@ -29,7 +29,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_callbacks.h"
 #include "BKE_sound.h"
 #include "BKE_studiolight.h"
@@ -72,7 +72,6 @@ const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_SYSTEM, "SYSTEM", 0, "System", ""},
     {USER_SECTION_SAVE_LOAD, "SAVE_LOAD", 0, "Save & Load", ""},
     {USER_SECTION_FILE_PATHS, "FILE_PATHS", 0, "File Paths", ""},
-    {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_EXPERIMENTAL, "EXPERIMENTAL", 0, "Experimental", ""},
     {0, nullptr, 0, nullptr, nullptr},
@@ -669,7 +668,7 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext * /*C*/,
   const bool use_developer_ui = (userdef->flag & USER_DEVELOPER_UI) != 0;
   const bool use_extension_repos = use_developer_ui && U.experimental.use_extension_repos;
 
-  if (use_developer_ui && use_extension_repos) {
+  if (use_developer_ui && use_extension_repos == false) {
     *r_free = false;
     return rna_enum_preference_section_items;
   }
@@ -685,12 +684,15 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext * /*C*/,
         continue;
       }
     }
-    else if (it->value == USER_SECTION_EXTENSIONS) {
-      if (use_extension_repos == false) {
-        continue;
+
+    RNA_enum_item_add(&items, &totitem, it);
+
+    /* Rename "Add-ons" to "Extensions" when extensions are enabled. */
+    if (it->value == USER_SECTION_ADDONS) {
+      if (use_extension_repos) {
+        items[totitem - 1].name = "Extensions";
       }
     }
-    RNA_enum_item_add(&items, &totitem, it);
   }
 
   RNA_enum_item_end(&items, &totitem);
@@ -6612,7 +6614,10 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_string_sdna(prop, nullptr, "dirpath");
-  RNA_def_property_ui_text(prop, "Local Directory", "The local directory containing extensions");
+  RNA_def_property_ui_text(prop,
+                           "Local Directory",
+                           "The local directory containing extensions. "
+                           "When unset, a path is used based on the user scripts path");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_property_string_funcs(
       prop, nullptr, nullptr, "rna_userdef_extension_repo_directory_set");
