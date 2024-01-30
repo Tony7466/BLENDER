@@ -10,7 +10,6 @@
 
 #include "BLI_color.hh"
 #include "BLI_math_euler_types.hh"
-#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::nodes::decl {
@@ -163,8 +162,6 @@ class MatrixBuilder;
 
 class Matrix : public SocketDeclaration {
  public:
-  float4x4 default_value;
-
   friend MatrixBuilder;
 
   using Builder = MatrixBuilder;
@@ -175,10 +172,7 @@ class Matrix : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
-class MatrixBuilder : public SocketDeclarationBuilder<Matrix> {
- public:
-  MatrixBuilder &default_value(const float4x4 &value);
-};
+class MatrixBuilder : public SocketDeclarationBuilder<Matrix> {};
 
 class StringBuilder;
 
