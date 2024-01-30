@@ -8,7 +8,7 @@
 
 #include "node_function_util.hh"
 
-namespace blender::nodes::node_fn_transform_vector_cc {
+namespace blender::nodes::node_fn_transform_point_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -28,7 +28,7 @@ static void search_link_ops(GatherLinkSearchOpParams &params)
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   static auto fn = mf::build::SI2_SO<float3, float4x4, float3>(
-      "Transform Vector",
+      "Transform Point",
       [](float3 point, float4x4 matrix) { return math::transform_point(matrix, point); });
   builder.set_matching_fn(fn);
 }
@@ -36,7 +36,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 static void node_register()
 {
   static bNodeType ntype;
-  fn_node_type_base(&ntype, FN_NODE_TRANSFORM_VECTOR, "Transform Vector", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_TRANSFORM_POINT, "Transform Point", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.gather_link_search_ops = search_link_ops;
   ntype.build_multi_function = node_build_multi_function;
@@ -44,4 +44,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_fn_transform_vector_cc
+}  // namespace blender::nodes::node_fn_transform_point_cc
