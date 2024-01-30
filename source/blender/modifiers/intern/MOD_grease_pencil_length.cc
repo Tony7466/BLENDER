@@ -182,19 +182,20 @@ static void deform_drawing(const ModifierData &md,
     }
   }
 
-  curves = geometry::extend_curves(
-      curves,
-      selection,
-      use_starts,
-      use_ends,
-      VArray<float>::ForSingle(mmd.overshoot_fac, curves_num),
-      VArray<bool>::ForSingle(mmd.flag & GP_LENGTH_USE_CURVATURE, curves_num),
-      VArray<int>::ForSingle(mmd.point_density, curves_num),
-      VArray<float>::ForSingle(mmd.segment_influence, curves_num),
-      VArray<float>::ForSingle(mmd.max_angle, curves_num),
-      VArray<bool>::ForSingle(mmd.flag & GP_LENGTH_INVERT_CURVATURE, curves_num),
-      mmd.mode & GP_LENGTH_ABSOLUTE ? GEO_NODE_CURVE_SAMPLE_LENGTH : GEO_NODE_CURVE_SAMPLE_FACTOR,
-      {});
+  curves = geometry::extend_curves(curves,
+                                   selection,
+                                   use_starts,
+                                   use_ends,
+                                   mmd.overshoot_fac,
+                                   (mmd.flag & GP_LENGTH_USE_CURVATURE) != 0,
+                                   mmd.point_density,
+                                   mmd.segment_influence,
+                                   mmd.max_angle,
+                                   (mmd.flag & GP_LENGTH_INVERT_CURVATURE) != 0,
+                                   ((mmd.mode & GP_LENGTH_ABSOLUTE) != 0) ?
+                                       GEO_NODE_CURVE_SAMPLE_LENGTH :
+                                       GEO_NODE_CURVE_SAMPLE_FACTOR,
+                                   {});
 
   /* Always do the stretching first since it might depend on points which could be deleted by the
    * shrink. */

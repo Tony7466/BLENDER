@@ -17,6 +17,7 @@ set(INC_SYS
 set(SRC
   intern/add_curves_on_mesh.cc
   intern/curve_constraints.cc
+  intern/extend_curves.cc
   intern/fillet_curves.cc
   intern/join_geometries.cc
   intern/mesh_copy_selection.cc
@@ -40,7 +41,6 @@ set(SRC
   intern/set_curve_type.cc
   intern/smooth_curves.cc
   intern/subdivide_curves.cc
-  intern/extend_curves.cc
   intern/trim_curves.cc
   intern/uv_pack.cc
   intern/uv_parametrizer.cc
