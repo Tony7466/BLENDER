@@ -133,12 +133,10 @@ static bke::CurvesGeometry create_mirror_copies(const Object &ob,
     }
   }
 
-  bke::AnonymousAttributePropagationInfo propagation_info;
-  propagation_info.propagate_all = true;
   geometry::RealizeInstancesOptions options;
   options.keep_original_ids = true;
   options.realize_instance_attributes = false;
-  options.propagation_info = propagation_info;
+  options.propagation_info = {};
   bke::GeometrySet result_geo = geometry::realize_instances(
       bke::GeometrySet::from_instances(instances.release()), options);
   return std::move(result_geo.get_curves_for_write()->geometry.wrap());
@@ -171,11 +169,8 @@ static void modify_drawing(const GreasePencilMirrorModifierData &mmd,
   }
   else {
     /* Create masked geometry, then mirror it. */
-    bke::AnonymousAttributePropagationInfo propagation_info;
-    propagation_info.propagate_all = true;
-
     bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
-        src_curves, curves_mask, propagation_info);
+        src_curves, curves_mask, {});
 
     result = create_mirror_copies(*ctx.object, mmd, src_curves, masked_curves);
   }
