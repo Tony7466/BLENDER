@@ -642,6 +642,18 @@ static float curvemap_calc_extend(const CurveMapping *cumap,
   return 0.0f;
 }
 
+/* Evaluate a point on a curve, given two bezier triples */
+static void BKE_curve_eval_bezier_point(float bezt1[3][3], float bezt2[3][3], float* point) {
+    BKE_curve_correct_bezpart(bezt1[1], bezt1[2], bezt2[0], bezt2[1]);
+    BKE_curve_forward_diff_bezier(
+        bezt1[1][0], bezt1[2][0], bezt2[0][0], bezt2[1][0],
+        point, CM_RESOL - 1, sizeof(float[2])
+    );
+    BKE_curve_forward_diff_bezier(
+        bezt1[1][1], bezt1[2][1], bezt2[0][1], bezt2[1][1], 
+        point + 1, CM_RESOL - 1, sizeof(float[2])
+    );
+}
 
 /* only creates a table for a single channel in CurveMapping */
 static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
@@ -779,66 +791,21 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   allpoints = static_cast<float *>(MEM_callocN(totpoint * 2 * sizeof(float), "table"));
   point = allpoints;
 
+  /* Handle pre point for wrapping */
   if (use_wrapping) {
-    /* Handle pre point for wrapping */
-    BKE_curve_correct_bezpart(bezt_pre->vec[1], bezt_pre->vec[2], bezt[0].vec[0], bezt[0].vec[1]);
-    BKE_curve_forward_diff_bezier(bezt_pre->vec[1][0],
-                                  bezt_pre->vec[2][0],
-                                  bezt[0].vec[0][0],
-                                  bezt[0].vec[1][0],
-                                  point,
-                                  CM_RESOL - 1,
-                                  sizeof(float[2]));
-    BKE_curve_forward_diff_bezier(bezt_pre->vec[1][1],
-                                  bezt_pre->vec[2][1],
-                                  bezt[0].vec[0][1],
-                                  bezt[0].vec[1][1],
-                                  point + 1,
-                                  CM_RESOL - 1,
-                                  sizeof(float[2]));
-    point += 2 * CM_RESOL;
+    BKE_curve_eval_bezier_point(bezt_pre->vec, bezt[0].vec, point);
+      point += 2 * CM_RESOL;
   }
 
   /* Process middle elements */
   for (int a = 0; a < cuma->totpoint - 1; a++, point += 2 * CM_RESOL) {
-    int b = a + 1;
-    BKE_curve_correct_bezpart(bezt[a].vec[1], bezt[a].vec[2], bezt[b].vec[0], bezt[b].vec[1]);
-    BKE_curve_forward_diff_bezier(bezt[a].vec[1][0],
-                                  bezt[a].vec[2][0],
-                                  bezt[b].vec[0][0],
-                                  bezt[b].vec[1][0],
-                                  point,
-                                  CM_RESOL - 1,
-                                  sizeof(float[2]));
-    BKE_curve_forward_diff_bezier(bezt[a].vec[1][1],
-                                  bezt[a].vec[2][1],
-                                  bezt[b].vec[0][1],
-                                  bezt[b].vec[1][1],
-                                  point + 1,
-                                  CM_RESOL - 1,
-                                  sizeof(float[2]));
+      int b = a + 1;
+      BKE_curve_eval_bezier_point(bezt[a].vec, bezt[b].vec, point);
   }
 
   if (use_wrapping) {
-    /* Handle post point for wrapping */
-    BKE_curve_correct_bezpart(bezt[cuma->totpoint - 1].vec[1],
-                              bezt[cuma->totpoint - 1].vec[2],
-                              bezt_post->vec[0],
-                              bezt_post->vec[1]);
-    BKE_curve_forward_diff_bezier(bezt[cuma->totpoint - 1].vec[1][0],
-                                  bezt[cuma->totpoint - 1].vec[2][0],
-                                  bezt_post->vec[0][0],
-                                  bezt_post->vec[1][0],
-                                  point,
-                                  CM_RESOL - 1,
-                                  sizeof(float[2]));
-    BKE_curve_forward_diff_bezier(bezt[cuma->totpoint - 1].vec[1][1],
-                                  bezt[cuma->totpoint - 1].vec[2][1],
-                                  bezt_post->vec[0][1],
-                                  bezt_post->vec[1][1],
-                                  point + 1,
-                                  CM_RESOL - 1,
-                                  sizeof(float[2]));
+      /* Handle post point for wrapping */
+      BKE_curve_eval_bezier_point(bezt[cuma->totpoint - 1].vec, bezt_post->vec, point);
   } else {
     /* store first and last handle for extrapolation, unit length */
     cuma->ext_in[0] = bezt[0].vec[0][0] - bezt[0].vec[1][0];
