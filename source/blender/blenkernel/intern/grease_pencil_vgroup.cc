@@ -86,9 +86,9 @@ void assign_to_vertex_group(GreasePencil &grease_pencil, const StringRef name, c
 
     const bke::AttributeAccessor attributes = curves.attributes();
     const VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
-        ".selection", bke::AttrDomain::Point, false);
+        ".selection", bke::AttrDomain::Point, true);
 
-    MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
+    const MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
     for (const int i : dverts.index_range()) {
       if (select_vert[i]) {
         ensure_group_in_drawing();
@@ -121,10 +121,10 @@ bool remove_from_vertex_group(GreasePencil &grease_pencil, StringRef name, bool 
       continue;
     }
 
-    MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
+    const MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
     const bke::AttributeAccessor attributes = curves.attributes();
     const VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
-        ".selection", bke::AttrDomain::Point, false);
+        ".selection", bke::AttrDomain::Point, true);
     for (const int i : dverts.index_range()) {
       if (!use_selection || select_vert[i]) {
         MDeformVert *dv = &dverts[i];
@@ -145,7 +145,49 @@ bool remove_from_vertex_group(GreasePencil &grease_pencil, StringRef name, bool 
   return changed;
 }
 
-void clear_vertex_groups(GreasePencil &grease_pencil) {}
+void clear_vertex_groups(GreasePencil &grease_pencil)
+{
+  /* TODO */
+  BLI_assert_unreachable();
+}
+
+void select_from_group(GreasePencil &grease_pencil, const StringRef name, const bool select)
+{
+  for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    bke::CurvesGeometry &curves = drawing.strokes_for_write();
+    ListBase &vertex_group_names = curves.vertex_group_names;
+
+    const int def_nr = BLI_findstringindex(
+        &vertex_group_names, name.data(), offsetof(bDeformGroup, name));
+    if (def_nr < 0) {
+      /* No vertices assigned to the group in this drawing. */
+      continue;
+    }
+
+    const Span<MDeformVert> dverts = curves.deform_verts_for_write();
+    if (!dverts.is_empty()) {
+      bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+      SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
+          ".selection",
+          bke::AttrDomain::Point,
+          AttributeInitVArray(VArray<bool>::ForSingle(true, curves.point_num)));
+
+      for (const int i : select_vert.span.index_range()) {
+        if (BKE_defvert_find_index(&dverts[i], def_nr)) {
+          select_vert.span[i] = select;
+          std::cout << "Change " << i << std::endl;
+        }
+      }
+
+      select_vert.finish();
+    }
+  }
+  std::flush(std::cout);
+}
 
 /** \} */
 

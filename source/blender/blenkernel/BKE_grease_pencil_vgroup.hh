@@ -28,4 +28,7 @@ bool remove_from_vertex_group(GreasePencil &grease_pencil, StringRef name, bool 
 /** Remove vertices from all vertex groups. */
 void clear_vertex_groups(GreasePencil &grease_pencil);
 
+/** Select or deselect vertices assigned to this group. */
+void select_from_group(GreasePencil &grease_pencil, StringRef name, bool select);
+
 }

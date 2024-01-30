@@ -1025,7 +1025,8 @@ static void vgroup_select_verts(Object *ob, int select)
   const int def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
 
   const ListBase *defbase = BKE_object_defgroup_list(ob);
-  if (!BLI_findlink(defbase, def_nr)) {
+  const bDeformGroup *def_group = static_cast<bDeformGroup *>(BLI_findlink(defbase, def_nr));
+  if (!def_group) {
     return;
   }
 
@@ -1107,6 +1108,11 @@ static void vgroup_select_verts(Object *ob, int select)
         }
       }
     }
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    blender::bke::greasepencil::select_from_group(*grease_pencil, def_group->name, bool(select));
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
   }
 }
 
