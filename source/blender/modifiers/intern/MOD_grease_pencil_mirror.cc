@@ -162,20 +162,19 @@ static void modify_drawing(const GreasePencilMirrorModifierData &mmd,
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, src_curves, mmd.influence, curve_mask_memory);
 
-  bke::CurvesGeometry result;
   if (curves_mask.size() == src_curves.curve_num) {
     /* All geometry gets mirrored. */
-    result = create_mirror_copies(*ctx.object, mmd, src_curves, src_curves);
+    drawing.strokes_for_write() = create_mirror_copies(*ctx.object, mmd, src_curves, src_curves);
   }
   else {
     /* Create masked geometry, then mirror it. */
     bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
         src_curves, curves_mask, {});
 
-    result = create_mirror_copies(*ctx.object, mmd, src_curves, masked_curves);
+    drawing.strokes_for_write() = create_mirror_copies(
+        *ctx.object, mmd, src_curves, masked_curves);
   }
 
-  drawing.strokes_for_write() = std::move(result);
   drawing.tag_topology_changed();
 }
 
