@@ -46,7 +46,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_bake_data_block_id.hh"
 #include "BKE_bpath.h"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"

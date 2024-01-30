@@ -99,6 +99,9 @@ typedef enum ModifierType {
   eModifierType_GreasePencilTint = 64,
   eModifierType_GreasePencilSmooth = 65,
   eModifierType_GreasePencilOffset = 66,
+  eModifierType_GreasePencilNoise = 67,
+  eModifierType_GreasePencilMirror = 68,
+  eModifierType_GreasePencilThickness = 69,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2657,7 +2660,6 @@ typedef struct GreasePencilSmoothModifierData {
   float factor;
   /** How many times apply smooth. */
   int step;
-
   char _pad[4];
   void *_pad1;
 } GreasePencilSmoothModifierData;
@@ -2704,3 +2706,61 @@ typedef enum GreasePencilOffsetModifierMode {
   MOD_GREASE_PENCIL_OFFSET_MATERIAL = 2,
   MOD_GREASE_PENCIL_OFFSET_STROKE = 3,
 } GreasePencilOffsetModifierMode;
+
+typedef struct GreasePencilNoiseModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /** For convenience of versioning, these flags are kept in `eNoiseGpencil_Flag`. */
+  int flag;
+
+  /** Factor of noise. */
+  float factor;
+  float factor_strength;
+  float factor_thickness;
+  float factor_uvs;
+  /** Noise Frequency scaling */
+  float noise_scale;
+  float noise_offset;
+  short noise_mode;
+  char _pad[2];
+  /** How many frames before recalculate randoms. */
+  int step;
+  /** Random seed */
+  int seed;
+
+  void *_pad1;
+} GreasePencilNoiseModifierData;
+
+typedef struct GreasePencilMirrorModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  struct Object *object;
+  /** #GreasePencilMirrorModifierFlag */
+  int flag;
+  char _pad[4];
+} GreasePencilMirrorModifierData;
+
+typedef enum GreasePencilMirrorModifierFlag {
+  MOD_GREASE_PENCIL_MIRROR_AXIS_X = (1 << 0),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_Y = (1 << 1),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_Z = (1 << 2),
+} GreasePencilMirrorModifierFlag;
+
+typedef struct GreasePencilThickModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** #GreasePencilThicknessModifierFlag */
+  int flag;
+  /** Relative thickness factor. */
+  float thickness_fac;
+  /** Absolute thickness override. */
+  float thickness;
+  char _pad[4];
+  void *_pad1;
+} GreasePencilThickModifierData;
+
+typedef enum GreasePencilThicknessModifierFlag {
+  MOD_GREASE_PENCIL_THICK_NORMALIZE = (1 << 0),
+  MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR = (1 << 1),
+} GreasePencilThicknessModifierFlag;
