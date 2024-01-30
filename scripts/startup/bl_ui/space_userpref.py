@@ -2000,34 +2000,6 @@ class USERPREF_PT_keymap(KeymapPanel, Panel):
 # -----------------------------------------------------------------------------
 # Extension Panels
 
-class ExtensionsPanel:
-    bl_space_type = 'PREFERENCES'
-    bl_region_type = 'WINDOW'
-    bl_context = "extensions"
-
-
-class USERPREF_PT_extensions(ExtensionsPanel, Panel):
-    bl_label = "Extensions"
-    bl_options = {'HIDE_HEADER'}
-
-    # NOTE: currently disabled by an add-on when used.
-    unused = True
-
-    def draw(self, context):
-        layout = self.layout
-
-        if self.unused:
-            row = layout.row()
-            row.label(text="The add-on to use extensions is disabled!")
-            row = layout.row()
-            row.label(text="Enable \"Blender Extensions\" add-on in Testing to use extensions.")
-
-            # Placeholder, show this popover so it's accessible,
-            # typically this is accessed via the the add-ons UI.
-            row = layout.row()
-            row.popover("USERPREF_PT_extensions_repos", icon='SETTINGS')
-
-
 class USERPREF_PT_extensions_repos(Panel):
     bl_label = "Repositories"
     bl_options = {'HIDE_HEADER'}
@@ -2149,6 +2121,23 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         return False
 
     @staticmethod
+    def draw_addon_preferences(layout, context, addon_preferences):
+        if (draw := getattr(addon_preferences, "draw", None)) is None:
+            return
+
+        addon_preferences_class = type(addon_preferences)
+        box_prefs = layout.box()
+        box_prefs.label(text="Preferences:")
+        addon_preferences_class.layout = box_prefs
+        try:
+            draw(context)
+        except BaseException:
+            import traceback
+            traceback.print_exc()
+            box_prefs.label(text="Error (see console)", icon='ERROR')
+        del addon_preferences_class.layout
+
+    @staticmethod
     def draw_error(layout, message):
         lines = message.split("\n")
         box = layout.box()
@@ -2175,13 +2164,6 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         row.prop(wm, "addon_search", text="", icon='VIEWZOOM')
 
     @staticmethod
-    def _draw_addon_header_for_extensions(layout, prefs, wm):
-        row = layout.row()
-        row.prop(wm, "addon_search", text="", icon='VIEWZOOM')
-        row.popover("USERPREF_PT_addons_filter", text="", icon='FILTER')
-        # See `_draw_addon_header_for_extensions_popover` for most content.
-
-    @staticmethod
     def _draw_addon_header_for_extensions_popover(layout, context):
 
         wm = context.window_manager
@@ -2202,14 +2184,17 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         import os
         import addon_utils
 
-        layout = self.layout
-
-        wm = context.window_manager
         prefs = context.preferences
-        used_ext = {ext.module for ext in prefs.addons}
 
-        # Experimental UI changes proposed in: #117285.
         use_extension_repos = prefs.experimental.use_extension_repos
+        if use_extension_repos:
+            # Rely on the draw function being appended to by the extensions add-on.
+            return
+
+        layout = self.layout
+        wm = context.window_manager
+
+        used_addon_module_name_map = {addon.module: addon for addon in prefs.addons}
 
         addon_user_dirs = tuple(
             p for p in (
@@ -2225,10 +2210,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
             for mod in addon_utils.modules(refresh=False)
         ]
 
-        if use_extension_repos:
-            self._draw_addon_header_for_extensions(layout, prefs, wm)
-        else:
-            self._draw_addon_header(layout, prefs, wm)
+        self._draw_addon_header(layout, prefs, wm)
 
         col = layout.column()
 
@@ -2258,16 +2240,13 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         search = wm.addon_search.lower()
         support = wm.addon_support
 
-        if use_extension_repos:
-            filter = "All"
-
         # initialized on demand
         user_addon_paths = []
 
         for mod, info in addons:
             module_name = mod.__name__
 
-            is_enabled = module_name in used_ext
+            is_enabled = module_name in used_addon_module_name_map
 
             if info["support"] not in support:
                 continue
@@ -2307,26 +2286,21 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                 emboss=False,
             ).module = module_name
 
-            if not use_extension_repos:
-                row.operator(
-                    "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
-                    icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
-                    emboss=False,
-                ).module = module_name
+            row.operator(
+                "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
+                icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
+                emboss=False,
+            ).module = module_name
 
             sub = row.row()
             sub.active = is_enabled
-            if use_extension_repos:
-                sub.label(text=iface_(info["name"]))
-            else:
-                sub.label(text="%s: %s" % (iface_(info["category"]), iface_(info["name"])))
+            sub.label(text="%s: %s" % (iface_(info["category"]), iface_(info["name"])))
 
             if info["warning"]:
                 sub.label(icon='ERROR')
 
             # icon showing support level.
-            if not use_extension_repos:
-                sub.label(icon=self._support_icon_mapping.get(info["support"], 'QUESTION'))
+            sub.label(icon=self._support_icon_mapping.get(info["support"], 'QUESTION'))
 
             # Expanded UI (only if additional info is available)
             if info["show_expanded"]:
@@ -2395,32 +2369,16 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
                 # Show addon user preferences
                 if is_enabled:
-                    addon_preferences = prefs.addons[module_name].preferences
-                    if addon_preferences is not None:
-                        draw = getattr(addon_preferences, "draw", None)
-                        if draw is not None:
-                            addon_preferences_class = type(addon_preferences)
-                            box_prefs = col_box.box()
-                            box_prefs.label(text="Preferences:")
-                            addon_preferences_class.layout = box_prefs
-                            try:
-                                draw(context)
-                            except BaseException:
-                                import traceback
-                                traceback.print_exc()
-                                box_prefs.label(text="Error (see console)", icon='ERROR')
-                            del addon_preferences_class.layout
-            if use_extension_repos:
-                row.operator(
-                    "preferences.addon_disable" if is_enabled else "preferences.addon_enable",
-                    icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT', text="",
-                    emboss=False,
-                ).module = module_name
+                    if (addon_preferences := used_addon_module_name_map[module_name].preferences) is not None:
+                        self.draw_addon_preferences(col_box, context, addon_preferences)
 
         # Append missing scripts
         # First collect scripts that are used but have no script file.
         module_names = {mod.__name__ for mod, info in addons}
-        missing_modules = {ext for ext in used_ext if ext not in module_names}
+        missing_modules = {
+            module_name for module_name in used_addon_module_name_map
+            if module_name not in module_names
+        }
 
         if missing_modules and filter in {"All", "Enabled"}:
             col.column().separator()
@@ -2428,7 +2386,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
             module_names = {mod.__name__ for mod, info in addons}
             for module_name in sorted(missing_modules):
-                is_enabled = module_name in used_ext
+                is_enabled = module_name in used_addon_module_name_map
                 # Addon UI Code
                 box = col.column().box()
                 colsub = box.column()
@@ -2807,7 +2765,6 @@ classes = (
 
     USERPREF_PT_addons,
 
-    USERPREF_PT_extensions,
     USERPREF_PT_extensions_repos,
 
     USERPREF_PT_studiolight_lights,
