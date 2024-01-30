@@ -2311,16 +2311,16 @@ PanelLayout uiLayoutPanelWithHeader(const bContext *C,
  * Variant of #uiLayoutPanelWithHeader() that automatically creates the header row with the
  * given label name and only returns the body layout.
  *
- * \param name: Text that's shown in the panel header. It should already be translated.
+ * \param label: Text that's shown in the panel header. It should already be translated.
  *
  * \return NULL if the panel is closed and should not be drawn, otherwise the layout where the
  * sub-panel should be inserted into.
  */
-uiLayout *uiLayoutPanel(const bContext *C,
-                        uiLayout *layout,
-                        const char *name,
-                        PointerRNA *open_prop_owner,
-                        const char *open_prop_name);
+uiLayout *uiLayoutPanelProp(const bContext *C,
+                            uiLayout *layout,
+                            PointerRNA *open_prop_owner,
+                            const char *open_prop_name,
+                            const char *label);
 
 bool uiLayoutEndsWithPanelHeader(const uiLayout &layout);
 

@@ -5035,14 +5035,14 @@ PanelLayout uiLayoutPanelWithHeader(const bContext *C,
   return panel_layout;
 }
 
-uiLayout *uiLayoutPanel(const bContext *C,
-                        uiLayout *layout,
-                        const char *name,
-                        PointerRNA *open_prop_owner,
-                        const char *open_prop_name)
+uiLayout *uiLayoutPanelProp(const bContext *C,
+                            uiLayout *layout,
+                            PointerRNA *open_prop_owner,
+                            const char *open_prop_name,
+                            const char *label)
 {
   PanelLayout panel = uiLayoutPanelWithHeader(C, layout, open_prop_owner, open_prop_name);
-  uiItemL(panel.header, name, ICON_NONE);
+  uiItemL(panel.header, label, ICON_NONE);
 
   return panel.body;
 }
