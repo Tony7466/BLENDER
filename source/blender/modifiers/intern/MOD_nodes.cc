@@ -1499,6 +1499,15 @@ static void add_missing_data_block_mappings(
   bake.data_blocks_num = new_num;
 }
 
+void nodes_modifier_data_block_destruct(NodesModifierDataBlock *data_block, const bool do_id_user)
+{
+  MEM_SAFE_FREE(data_block->id_name);
+  MEM_SAFE_FREE(data_block->lib_name);
+  if (do_id_user) {
+    id_us_min(data_block->id);
+  }
+}
+
 static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
                                            NodesModifierData &nmd_eval,
                                            NodesModifierData &nmd_orig,
@@ -1521,34 +1530,32 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
     NodesModifierBake &bake = *nmd_eval.find_bake(item.key);
     /* The list was reset. */
     if (item.value->data_block_map.old_mappings.size() < bake.data_blocks_num) {
-      deg::sync_writeback::add(
-          *depsgraph,
-          [depsgraph = depsgraph,
-           object_eval = ctx.object,
-           bmain,
-           &nmd_orig,
-           &nmd_eval,
-           bake_id = item.key]() {
-            NodesModifierBake &bake_orig = *nmd_orig.find_bake(bake_id);
-            NodesModifierBake &bake_eval = *nmd_eval.find_bake(bake_id);
+      deg::sync_writeback::add(*depsgraph,
+                               [depsgraph = depsgraph,
+                                object_eval = ctx.object,
+                                bmain,
+                                &nmd_orig,
+                                &nmd_eval,
+                                bake_id = item.key]() {
+                                 NodesModifierBake &bake_orig = *nmd_orig.find_bake(bake_id);
+                                 NodesModifierBake &bake_eval = *nmd_eval.find_bake(bake_id);
 
-            dna::array::clear<NodesModifierDataBlock>(&bake_orig.data_blocks,
-                                                      &bake_orig.data_blocks_num,
-                                                      &bake_orig.active_data_block,
-                                                      [](NodesModifierDataBlock *data_block) {
-                                                        MEM_SAFE_FREE(data_block->id_name);
-                                                        MEM_SAFE_FREE(data_block->lib_name);
-                                                        id_us_min(data_block->id);
-                                                      });
+                                 dna::array::clear<NodesModifierDataBlock>(
+                                     &bake_orig.data_blocks,
+                                     &bake_orig.data_blocks_num,
+                                     &bake_orig.active_data_block,
+                                     [](NodesModifierDataBlock *data_block) {
+                                       nodes_modifier_data_block_destruct(data_block, true);
+                                     });
 
-            dna::array::clear<NodesModifierDataBlock>(&bake_eval.data_blocks,
-                                                      &bake_eval.data_blocks_num,
-                                                      &bake_eval.active_data_block,
-                                                      [](NodesModifierDataBlock *data_block) {
-                                                        MEM_SAFE_FREE(data_block->id_name);
-                                                        MEM_SAFE_FREE(data_block->lib_name);
-                                                      });
-          });
+                                 dna::array::clear<NodesModifierDataBlock>(
+                                     &bake_eval.data_blocks,
+                                     &bake_eval.data_blocks_num,
+                                     &bake_eval.active_data_block,
+                                     [](NodesModifierDataBlock *data_block) {
+                                       nodes_modifier_data_block_destruct(data_block, false);
+                                     });
+                               });
     }
   }
   for (auto item : bake_params.data_by_node_id_.items()) {

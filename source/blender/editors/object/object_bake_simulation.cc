@@ -715,9 +715,7 @@ static void try_delete_bake(
                                             &bake->data_blocks_num,
                                             &bake->active_data_block,
                                             [](NodesModifierDataBlock *data_block) {
-                                              MEM_SAFE_FREE(data_block->id_name);
-                                              MEM_SAFE_FREE(data_block->lib_name);
-                                              id_us_min(data_block->id);
+                                              nodes_modifier_data_block_destruct(data_block, true);
                                             });
 
   const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
