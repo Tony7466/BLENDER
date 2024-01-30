@@ -2499,6 +2499,10 @@ void uiTemplateCurveMapping(uiLayout *layout,
                             bool brush,
                             bool neg_slope,
                             bool tone);
+
+void uiTemplateFrequencyMapping(
+    uiLayout *layout, PointerRNA *ptr, const char *propname, int type, bool neg_slope);
+
 /**
  * Template for a path creation widget intended for custom bevel profiles.
  * This section is quite similar to #uiTemplateCurveMapping, but with reduced complexity.
