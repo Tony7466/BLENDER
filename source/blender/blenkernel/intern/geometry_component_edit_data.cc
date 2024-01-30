@@ -100,7 +100,7 @@ static void remember_deformed_grease_pencil_if_necessary(const GreasePencil *gre
       continue;
     }
     /* Bring the positions into object space. */
-    const float4x4 layer_space_to_object_space = layer.runtime->transform_;
+    const float4x4 layer_space_to_object_space = layer.to_object_space();
     const Span<float3> positions = drawing->strokes().positions();
     Array<float3> deformed_positions(drawing->strokes().points_num());
     threading::parallel_for(drawing->strokes().points_range(), 1024, [&](const IndexRange range) {

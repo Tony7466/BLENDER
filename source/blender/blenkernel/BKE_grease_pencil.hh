@@ -335,7 +335,7 @@ class LayerRuntime {
   LayerTransformData trans_data_;
 
   /* Runtime transform data. */
-  float4x4 transform_;
+  mutable SharedCache<float4x4> transform_;
 
  public:
   /* Reset all runtime data. */
@@ -449,6 +449,9 @@ class Layer : public ::GreasePencilLayer {
    * Update from DNA #GreasePencilLayer data after blend-file reading.
    */
   void update_from_dna_read();
+
+  float4x4 to_world_space(Object &eval_object) const;
+  float4x4 transform() const;
 
  private:
   using SortedKeysIterator = const int *;

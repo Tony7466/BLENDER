@@ -298,7 +298,7 @@ typedef struct GreasePencilLayer {
   char parsubstr[64];
   /**
    * Layer transform UI settings. These should *not* be used to do any computation. They are
-   * autoamtically included in the "transform" matrix attribute of the layer.
+   * automatically converted to a matrix in `Layer::transform()`.
    */
   float translation[3], rotation[3], scale[3];
   char _pad2[4];

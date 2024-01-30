@@ -976,6 +976,34 @@ void Layer::update_from_dna_read()
   }
 }
 
+float4x4 Layer::to_world_space(const Object &object) const
+{
+  if (this->parent == nullptr) {
+    return float4x4_view(object.world_to_object) * this->transform();
+  }
+  const Object &parent = *layer->parent;
+  /* Get the parent matrix for this layer. */
+  const float4x4 parent_matrix = [&]() {
+    if (parent.type == OB_ARMATURE && layer->parsubstr[0] != '\0') {
+      if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer->parsubstr)) {
+        return float4x4_view(parent.object_to_world) * float4x4_view(channel->pose_mat);
+      }
+    }
+    return float4x4(float4x4_view(parent.object_to_world));
+  }();
+  
+  return float4x4_view(object.world_to_object) * parent_matrix * this->transform();
+}
+
+float4x4 Layer::transform() const
+{
+  this->runtime->transform_.ensure([&](float4x4 &transform) {
+    transform = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
+        float3(this->translation), float3(this->rotation), float3(this->scale));
+  });
+  return this->runtime->transform_.data();
+}
+
 LayerGroup::LayerGroup()
 {
   new (&this->base) TreeNode(GP_LAYER_TREE_GROUP);
@@ -1332,6 +1360,8 @@ static void grease_pencil_initialize_layer_transforms(const Object &object,
     if (!math::is_equal(layer->runtime->transform_, float4x4::identity())) {
       r_is_any_transformed = true;
     }
+
+    float test[3] = math::transform_point(float4x4::identity(), float3(1.0f)).xyz();
   }
 }
 

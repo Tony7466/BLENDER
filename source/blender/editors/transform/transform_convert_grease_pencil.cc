@@ -92,8 +92,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     const Array<ed::greasepencil::MutableDrawingInfo> drawings = all_drawings[i];
     for (ed::greasepencil::MutableDrawingInfo info : drawings) {
       const bke::greasepencil::Layer &layer = *layers[info.layer_index];
-      const float4x4 layer_space_to_world_space = layer.runtime->transform_ *
-                                                  float4x4(object_eval->object_to_world);
+      const float4x4 layer_space_to_world_space = layer.to_world_space(*object_eval);
       bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
       const IndexMask points = points_per_layer_per_object[layer_offset];
 
