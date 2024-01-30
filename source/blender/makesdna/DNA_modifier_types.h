@@ -2704,8 +2704,7 @@ typedef struct GreasePencilMirrorModifierData {
 } GreasePencilMirrorModifierData;
 
 typedef enum GreasePencilMirrorModifierFlag {
-  MOD_GREASE_PENCIL_MIRROR_CLIPPING = (1 << 0),
-  MOD_GREASE_PENCIL_MIRROR_AXIS_X = (1 << 1),
-  MOD_GREASE_PENCIL_MIRROR_AXIS_Y = (1 << 2),
-  MOD_GREASE_PENCIL_MIRROR_AXIS_Z = (1 << 3),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_X = (1 << 0),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_Y = (1 << 1),
+  MOD_GREASE_PENCIL_MIRROR_AXIS_Z = (1 << 2),
 } GreasePencilMirrorModifierFlag;

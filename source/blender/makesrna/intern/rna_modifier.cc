@@ -8267,11 +8267,6 @@ static void rna_def_modifier_grease_pencil_mirror(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
-  prop = RNA_def_property(srna, "use_clip", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_MIRROR_CLIPPING);
-  RNA_def_property_ui_text(prop, "Clip", "Clip points");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
   prop = RNA_def_property(srna, "use_axis_x", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_MIRROR_AXIS_X);
   RNA_def_property_ui_text(prop, "X", "Mirror the X axis");
