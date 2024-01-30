@@ -367,15 +367,16 @@ void BKE_object_defgroup_remove(Object *ob, bDeformGroup *defgroup)
   if (ob->type == OB_GPENCIL_LEGACY) {
     BKE_gpencil_vgroup_remove(ob, defgroup);
   }
-  else if (ob->type == OB_GREASE_PENCIL) {
-    static_cast<GreasePencil *>(ob->data)->remove_vertex_group(defgroup->name);
-  }
   else {
     if (BKE_object_is_in_editmode_vgroup(ob)) {
       object_defgroup_remove_edit_mode(ob, defgroup);
     }
     else {
       object_defgroup_remove_object_mode(ob, defgroup);
+    }
+
+    if (ob->type == OB_GREASE_PENCIL) {
+      static_cast<GreasePencil *>(ob->data)->validate_drawing_vertex_groups();
     }
 
     BKE_object_batch_cache_dirty_tag(ob);

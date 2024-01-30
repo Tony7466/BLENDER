@@ -2432,140 +2432,12 @@ void GreasePencil::print_layer_tree()
 /** \name Vertex groups in drawings
  * \{ */
 
-void GreasePencil::sync_vertex_groups_from_layers()
+void GreasePencil::validate_drawing_vertex_groups()
 {
-  struct DefGroupItem {
-    bDeformGroup *defgroup;
-    /* Number of drawings using this vertex group. */
-    mutable int drawings_count;
-  };
-
-  struct DefGroupHash {
-    uint64_t operator()(const DefGroupItem &item) const
-    {
-      return blender::get_default_hash(blender::StringRef(item.defgroup->name));
-    }
-  };
-
-  struct DefGroupEquality {
-    bool operator()(const DefGroupItem &a, const DefGroupItem &b) const
-    {
-      return STREQ(a.defgroup->name, b.defgroup->name);
-    }
-  };
-
-  using DefGroupVectorSet =
-      VectorSet<DefGroupItem, blender::DefaultProbingStrategy, DefGroupHash, DefGroupEquality>;
-
-  /* Initialize set of existing vertex groups. */
-  DefGroupVectorSet unique_vertex_groups;
-  LISTBASE_FOREACH (bDeformGroup *, defgroup, &this->vertex_group_names) {
-    unique_vertex_groups.add_new({defgroup, 0});
-  }
-  BLI_listbase_clear(&this->vertex_group_names);
-
-  for (const GreasePencilDrawingBase *base : this->drawings()) {
-    if (base->type != GP_DRAWING) {
-      continue;
-    }
-    const blender::bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
-    LISTBASE_FOREACH (const bDeformGroup *, curdefgroup, &drawing.strokes().vertex_group_names) {
-      const DefGroupItem key = {const_cast<bDeformGroup *>(curdefgroup), 0};
-      const DefGroupItem *item_ptr = unique_vertex_groups.lookup_key_ptr(key);
-      if (item_ptr) {
-        ++item_ptr->drawings_count;
-        /* Vertex group is locked if it's locked in any drawing. */
-        if (curdefgroup->flag & DG_LOCK_WEIGHT) {
-          item_ptr->defgroup->flag |= DG_LOCK_WEIGHT;
-        }
-      }
-      else {
-        /* Vertex group not found in the data block yet, add to the list. */
-        bDeformGroup *defgroup_new = static_cast<bDeformGroup *>(MEM_dupallocN(curdefgroup));
-        unique_vertex_groups.add({defgroup_new, 1});
-      }
-    }
-  }
-
-  /* Move used groups back to the data block. */
-  for (const DefGroupItem &item : unique_vertex_groups) {
-    if (item.drawings_count == 0) {
-      /* Discard unused groups. */
-      MEM_SAFE_FREE(item.defgroup);
-      continue;
-    }
-
-    BLI_addtail(&this->vertex_group_names, item.defgroup);
-  }
-}
-
-struct DeformGroupUniqueNameData {
-  const GreasePencil &grease_pencil;
-  const bDeformGroup &defgroup;
-};
-
-static bool defgroup_find_name_dupe(const GreasePencil &grease_pencil,
-                                    const bDeformGroup &defgroup,
-                                    blender::StringRef name)
-{
-  for (const GreasePencilDrawingBase *base : grease_pencil.drawings()) {
-    if (base->type != GP_DRAWING) {
-      continue;
-    }
-    const blender::bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
-    LISTBASE_FOREACH (const bDeformGroup *, curdefgroup, &drawing.strokes().vertex_group_names) {
-      if (curdefgroup != &defgroup) {
-        if (STREQ(curdefgroup->name, name.data())) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-static bool defgroup_unique_check(void *arg, const char *name)
-{
-  DeformGroupUniqueNameData &data = *static_cast<DeformGroupUniqueNameData *>(arg);
-  return defgroup_find_name_dupe(data.grease_pencil, data.defgroup, name);
-}
-
-static void defgroup_unique_name(GreasePencil &grease_pencil, bDeformGroup &defgroup)
-{
-  DeformGroupUniqueNameData data{grease_pencil, defgroup};
-  BLI_uniquename_cb(
-      defgroup_unique_check, &data, DATA_("Group"), '.', defgroup.name, sizeof(defgroup.name));
-}
-
-bDeformGroup *GreasePencil::find_vertex_group_by_name(blender::StringRef name)
-{
-  LISTBASE_FOREACH (bDeformGroup *, defgroup, &this->vertex_group_names) {
-    if (STREQ(defgroup->name, name.data())) {
-      return defgroup;
-    }
-  }
-  return nullptr;
-}
-
-const bDeformGroup *GreasePencil::find_vertex_group_by_name(blender::StringRef name) const
-{
+  blender::Set<const char *> valid_names;
   LISTBASE_FOREACH (const bDeformGroup *, defgroup, &this->vertex_group_names) {
-    if (STREQ(defgroup->name, name.data())) {
-      return defgroup;
-    }
+    valid_names.add_new(defgroup->name);
   }
-  return nullptr;
-}
-
-bDeformGroup &GreasePencil::add_vertex_group(blender::StringRef name)
-{
-  bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
-  STRNCPY(defgroup->name, name.data());
-  defgroup_unique_name(*this, *defgroup);
-
-  BLI_addtail(&this->vertex_group_names, defgroup);
 
   for (GreasePencilDrawingBase *base : this->drawings()) {
     if (base->type != GP_DRAWING) {
@@ -2573,46 +2445,21 @@ bDeformGroup &GreasePencil::add_vertex_group(blender::StringRef name)
     }
     blender::bke::greasepencil::Drawing &drawing =
         reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+
+    /* Remove unknown vertex groups. */
     blender::bke::CurvesGeometry &curves = drawing.strokes_for_write();
+    int defgroup_index = 0;
+    LISTBASE_FOREACH_MUTABLE (bDeformGroup *, defgroup, &curves.vertex_group_names) {
+      if (!valid_names.contains(defgroup->name)) {
+        blender::bke::remove_defgroup_index(curves.deform_verts_for_write(), defgroup_index);
 
-    bDeformGroup *drawing_defgroup = MEM_cnew<bDeformGroup>(__func__);
-    *drawing_defgroup = *defgroup;
-
-    BLI_addtail(&curves.vertex_group_names, drawing_defgroup);
-  }
-
-  this->sync_vertex_groups_from_layers();
-  /* Should still be using the group added above. */
-  BLI_assert(find_vertex_group_by_name(defgroup->name) == defgroup);
-
-  return *defgroup;
-}
-
-bool GreasePencil::remove_vertex_group(blender::StringRef name)
-{
-  bool found = false;
-  for (GreasePencilDrawingBase *base : this->drawings()) {
-    if (base->type != GP_DRAWING) {
-      continue;
-    }
-    blender::bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
-    blender::bke::CurvesGeometry &curves = drawing.strokes_for_write();
-
-    LISTBASE_FOREACH_MUTABLE (bDeformGroup *, drawing_defgroup, &curves.vertex_group_names) {
-      if (STREQ(drawing_defgroup->name, name.data())) {
-        BLI_remlink(&curves.vertex_group_names, drawing_defgroup);
-        MEM_SAFE_FREE(drawing_defgroup);
-        found = true;
+        BLI_remlink(&curves.vertex_group_names, defgroup);
+        MEM_SAFE_FREE(defgroup);
       }
+
+      ++defgroup_index;
     }
   }
-
-  this->sync_vertex_groups_from_layers();
-  /* Should have removed any group of this name. */
-  BLI_assert(find_vertex_group_by_name(name) == nullptr);
-
-  return found;
 }
 
 /** \} */

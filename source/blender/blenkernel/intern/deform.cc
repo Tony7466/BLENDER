@@ -50,18 +50,17 @@ bDeformGroup *BKE_object_defgroup_new(Object *ob, const char *name)
 
   BLI_assert(OB_TYPE_SUPPORT_VGROUP(ob->type));
 
+  defgroup = MEM_cnew<bDeformGroup>(__func__);
+
+  STRNCPY(defgroup->name, name);
+
+  ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
+
+  BLI_addtail(defbase, defgroup);
+  BKE_object_defgroup_unique_name(defgroup, ob);
+
   if (ob->type == OB_GREASE_PENCIL) {
-    static_cast<GreasePencil *>(ob->data)->add_vertex_group(name);
-  }
-  else {
-    defgroup = MEM_cnew<bDeformGroup>(__func__);
-
-    STRNCPY(defgroup->name, name);
-
-    ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
-
-    BLI_addtail(defbase, defgroup);
-    BKE_object_defgroup_unique_name(defgroup, ob);
+    static_cast<GreasePencil *>(ob->data)->validate_drawing_vertex_groups();
   }
 
   BKE_object_batch_cache_dirty_tag(ob);
