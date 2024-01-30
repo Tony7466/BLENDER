@@ -853,7 +853,7 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
 }
 
 class NodesModifierBakeDataBlockMap : public bake::BakeDataBlockMap {
-  /** Protects access to everything except `old_mappings` which is read-only during evaluation. */
+  /** Protects access to `new_mappings` which may be added to from multiple threads. */
   std::mutex mutex_;
 
  public:
@@ -984,15 +984,9 @@ static bool try_find_baked_data(bake::NodeBakeCache &bake,
 }
 
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
- public:
+ private:
   static constexpr float max_delta_frames = 1.0f;
 
-  struct DataPerZone {
-    nodes::SimulationZoneBehavior behavior;
-    NodesModifierBakeDataBlockMap data_block_map;
-  };
-
-  mutable Map<int, std::unique_ptr<DataPerZone>> data_by_zone_id_;
   const NodesModifierData &nmd_;
   const ModifierEvalContext &ctx_;
   const Main *bmain_;
@@ -1005,6 +999,13 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   bool has_invalid_simulation_ = false;
 
  public:
+  struct DataPerZone {
+    nodes::SimulationZoneBehavior behavior;
+    NodesModifierBakeDataBlockMap data_block_map;
+  };
+
+  mutable Map<int, std::unique_ptr<DataPerZone>> data_by_zone_id;
+
   NodesModifierSimulationParams(NodesModifierData &nmd, const ModifierEvalContext &ctx)
       : nmd_(nmd), ctx_(ctx)
   {
@@ -1077,7 +1078,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       return nullptr;
     }
     std::lock_guard lock{modifier_cache_->mutex};
-    return &data_by_zone_id_
+    return &this->data_by_zone_id
                 .lookup_or_add_cb(zone_id,
                                   [&]() {
                                     auto data = std::make_unique<DataPerZone>();
@@ -1102,13 +1103,6 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     const SubFrame sim_start_frame{int(sim_frame_range.first())};
     const SubFrame sim_end_frame{int(sim_frame_range.last())};
 
-    if (!node_cache.bake.frames.is_empty()) {
-      for (const NodesModifierDataBlock &data_block : Span{bake.data_blocks, bake.data_blocks_num})
-      {
-        data_block_map.old_mappings.add(data_block, data_block.id);
-      }
-    }
-
     /* Try load baked data. */
     if (!node_cache.bake.failed_finding_bake) {
       if (node_cache.cache_status != bake::CacheStatus::Baked) {
@@ -1118,6 +1112,14 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         else {
           node_cache.bake.failed_finding_bake = true;
         }
+      }
+    }
+
+    /* If there are no baked frames, we don't need keep track of the data-blocks. */
+    if (!node_cache.bake.frames.is_empty()) {
+      for (const NodesModifierDataBlock &data_block : Span{bake.data_blocks, bake.data_blocks_num})
+      {
+        data_block_map.old_mappings.add(data_block, data_block.id);
       }
     }
 
@@ -1313,13 +1315,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 };
 
 class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
- public:
-  struct DataPerNode {
-    nodes::BakeNodeBehavior behavior;
-    NodesModifierBakeDataBlockMap data_block_map;
-  };
-
-  mutable Map<int, std::unique_ptr<DataPerNode>> data_by_node_id_;
+ private:
   const NodesModifierData &nmd_;
   const ModifierEvalContext &ctx_;
   Main *bmain_;
@@ -1328,6 +1324,13 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   bool depsgraph_is_active_;
 
  public:
+  struct DataPerNode {
+    nodes::BakeNodeBehavior behavior;
+    NodesModifierBakeDataBlockMap data_block_map;
+  };
+
+  mutable Map<int, std::unique_ptr<DataPerNode>> data_by_node_id;
+
   NodesModifierBakeParams(NodesModifierData &nmd, const ModifierEvalContext &ctx)
       : nmd_(nmd), ctx_(ctx)
   {
@@ -1344,7 +1347,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
       return nullptr;
     }
     std::lock_guard lock{modifier_cache_->mutex};
-    return &data_by_node_id_
+    return &this->data_by_node_id
                 .lookup_or_add_cb(id,
                                   [&]() {
                                     auto data = std::make_unique<DataPerNode>();
@@ -1518,7 +1521,7 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
   Main *bmain = DEG_get_bmain(depsgraph);
 
   Map<int, NodesModifierBakeDataBlockMap *> data_block_maps;
-  for (auto item : simulation_params.data_by_zone_id_.items()) {
+  for (auto item : simulation_params.data_by_zone_id.items()) {
     if (bake::SimulationNodeCache *node_cache = nmd_eval.runtime->cache->get_simulation_node_cache(
             item.key))
     {
@@ -1558,7 +1561,7 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
                                });
     }
   }
-  for (auto item : bake_params.data_by_node_id_.items()) {
+  for (auto item : bake_params.data_by_node_id.items()) {
     if (bake::BakeNodeCache *node_cache = nmd_eval.runtime->cache->get_bake_node_cache(item.key)) {
       /* Only writeback if the bake node has actually baked anything. */
       if (!node_cache->bake.frames.is_empty()) {
