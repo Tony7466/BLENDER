@@ -71,6 +71,7 @@
 #include <algorithm> /* For `min/max`. */
 
 using blender::int3;
+using namespace blender;
 
 struct LineartIsecSingle {
   double v1[3], v2[3];
@@ -5539,54 +5540,6 @@ static void lineart_gpencil_generate(LineartCache *cache,
   }
 }
 
-namespace blender {
-
-static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
-                                               const Span<float> radii,
-                                               const Span<float> opacities,
-                                               const Span<int> offsets,
-                                               const Span<int> materials,
-                                               const float4x4 &matrix)
-{
-  using namespace blender::bke;
-  CurvesGeometry curves(offsets.last(), offsets.size() - 1);
-  curves.offsets_for_write().copy_from(offsets);
-
-  curves.fill_curve_types(CURVE_TYPE_POLY);
-
-  MutableAttributeAccessor attributes = curves.attributes_for_write();
-  MutableSpan<float3> point_positions = curves.positions_for_write();
-  point_positions.copy_from(positions);
-
-  curves.transform(matrix);
-
-  SpanAttributeWriter<float> point_radii = attributes.lookup_or_add_for_write_only_span<float>(
-      "radius", AttrDomain::Point);
-  point_radii.span.copy_from(radii);
-
-  SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
-      "opacity", AttrDomain::Point);
-  point_opacities.span.copy_from(opacities);
-
-  SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
-      "cyclic", AttrDomain::Curve);
-  stroke_cyclic.span.fill(false);
-
-  SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", AttrDomain::Curve);
-  stroke_materials.span.copy_from(materials);
-
-  point_radii.finish();
-  point_opacities.finish();
-
-  stroke_cyclic.finish();
-  stroke_materials.finish();
-
-  return curves;
-}
-
-}  // namespace blender
-
 typedef struct LineartChainWriteInfo {
   LineartEdgeChain *chain;
   int point_count;
@@ -5852,34 +5805,52 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
     return;
   }
 
-  blender::Array<blender::float3> positions(total_point_count);
-  blender::Array<float> radiis(total_point_count);
-  blender::Array<float> opacities(total_point_count);
-  blender::Array<int> materials(stroke_count);
-  blender::Array<int> curves(stroke_count + 1);
-  int up_to_point = 0;
+  bke::CurvesGeometry new_curves;
+  new_curves.resize(total_point_count, stroke_count);
+  new_curves.fill_curve_types(CURVE_TYPE_POLY);
 
+  bke::MutableAttributeAccessor attributes = new_curves.attributes_for_write();
+  MutableSpan<float3> point_positions = new_curves.positions_for_write();
+
+  bke::SpanAttributeWriter<float> point_radii =
+      attributes.lookup_or_add_for_write_only_span<float>("radius", bke::AttrDomain::Point);
+
+  bke::SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", bke::AttrDomain::Point);
+
+  bke::SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", bke::AttrDomain::Curve);
+
+  MutableSpan<int> offsets = new_curves.offsets_for_write();
+
+  int up_to_point = 0;
   for (int chain_i : writer.index_range()) {
     LineartChainWriteInfo &cwi = writer[chain_i];
     int i;
     LISTBASE_FOREACH_INDEX (LineartEdgeChainItem *, eci, &cwi.chain->chain, i) {
       int point_i = i + up_to_point;
-      float *point = (float *)&positions[point_i];
-      // mul_v3_m4v3(point, gp_obmat_inverse, eci->gpos);
+      float *point = (float *)&point_positions[point_i];
       copy_v3_v3(point, eci->gpos);
-      radiis[point_i] = thickness;
-      opacities[point_i] = opacity;
+      point_radii.span[point_i] = thickness;
+      point_opacities.span[point_i] = opacity;
     }
-    curves[chain_i] = up_to_point;
-    materials[chain_i] = max_ii(mat_nr, 0);
+    offsets[chain_i] = up_to_point;
+    stroke_materials.span[chain_i] = max_ii(mat_nr, 0);
     up_to_point += cwi.point_count;
     /* TODO: Vertex weight transfer not implemented for v3 yet. */
   }
-  curves[writer.index_range().last() + 1] = up_to_point;
+  offsets[writer.index_range().last() + 1] = up_to_point;
 
-  blender::float4x4 mat(gp_obmat_inverse);
-  drawing.strokes_for_write() = blender::create_drawing_data(
-      positions, radiis, opacities, curves, materials.as_span(), mat);
+  bke::SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", bke::AttrDomain::Curve);
+  stroke_cyclic.span.fill(false);
+  stroke_cyclic.finish();
+
+  point_radii.finish();
+  point_opacities.finish();
+  stroke_materials.finish();
+
+  drawing.strokes_for_write() = new_curves;
   drawing.tag_topology_changed();
 
   if (G.debug_value == 4000) {
