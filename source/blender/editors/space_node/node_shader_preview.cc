@@ -258,9 +258,9 @@ static Scene *preview_prepare_scene(const Main *bmain,
  */
 static bNodeSocket *node_find_preview_socket(bNodeTree &ntree, bNode &node)
 {
-  bNodeSocket *socket = get_main_socket(ntree, node, SOCK_OUT);
+  bNodeSocket *socket = get_main_socket(ntree, node, SOCK_OUT, nullptr);
   if (socket == nullptr) {
-    socket = get_main_socket(ntree, node, SOCK_IN);
+    socket = get_main_socket(ntree, node, SOCK_IN, nullptr);
     if (socket != nullptr && socket->link == nullptr) {
       if (!ELEM(socket->type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA)) {
         /* We can not preview a socket with no link and no manual value. */
