@@ -903,9 +903,9 @@ GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const
 {
   GreasePencilLineartLimitInfo info = {0};
   bool is_first = true;
-  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+  LISTBASE_FOREACH (const ModifierData *, md, &ob->modifiers) {
     if (md->type == eModifierType_GreasePencilLineart) {
-      auto *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
+      const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
       if (is_first || (lmd->flags & LRT_GPENCIL_USE_CACHE)) {
         info.min_level = blender::math::min(int(info.min_level), int(lmd->level_start));
         info.max_level = blender::math::max(
@@ -948,7 +948,7 @@ bool BKE_grease_pencil_is_first_lineart_in_stack(const Object *ob, const Modifie
   if (md->type != eModifierType_GreasePencilLineart) {
     return false;
   }
-  LISTBASE_FOREACH (ModifierData *, i_md, &ob->modifiers) {
+  LISTBASE_FOREACH (const ModifierData *, i_md, &ob->modifiers) {
     if (i_md->type == eModifierType_GreasePencilLineart) {
       if (i_md == md) {
         return true;

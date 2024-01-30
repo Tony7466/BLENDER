@@ -557,18 +557,17 @@ const char *BKE_modifier_path_relbase_from_global(Object *ob);
 
 /* Stores the maximum calculation range in the whole modifier stack for line art so the cache can
  * cover everything that will be visible. */
-typedef struct GreasePencilLineartLimitInfo {
-  short edge_types;
-  unsigned char min_level;
-  unsigned char max_level;
-  unsigned char shadow_selection;
-  unsigned char silhouette_selection;
-} GreasePencilLineartLimitInfo;
+struct GreasePencilLineartLimitInfo {
+  int16_t edge_types;
+  uint8_t min_level;
+  uint8_t max_level;
+  uint8_t shadow_selection;
+  uint8_t silhouette_selection;
+};
 
 bool BKE_grease_pencil_has_lineart_modifier(const Object *ob);
 
-GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(
-    const struct Object *ob);
+GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object *ob);
 
 void BKE_grease_pencil_set_lineart_modifier_limits(struct ModifierData *md,
                                                    const struct GreasePencilLineartLimitInfo *info,
