@@ -31,7 +31,7 @@
 #include "BKE_collection.h"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.hh"
 #include "BKE_global.h"
@@ -133,8 +133,6 @@ static void lineart_bounding_area_link_triangle(LineartData *ld,
 static void lineart_free_bounding_area_memory(LineartBoundingArea *ba, bool recursive);
 
 static void lineart_free_bounding_area_memories(LineartData *ld);
-
-LineartCache *MOD_lineart_init_cache();
 
 static void lineart_discard_segment(LineartData *ld, LineartEdgeSegment *es)
 {
