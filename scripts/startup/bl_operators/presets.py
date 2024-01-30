@@ -700,6 +700,7 @@ class WM_OT_operator_preset_properties_cleanup(Operator):
             for prop in self.properties:
                 properties.append(prop.name)
         else:
+            # Cleanup by dafult I/O Operators Presets 
             operators = ['WM_OT_alembic_export',
                          'WM_OT_alembic_import',
                          'WM_OT_collada_export',
