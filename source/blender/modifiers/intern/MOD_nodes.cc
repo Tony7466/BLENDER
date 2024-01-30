@@ -2170,10 +2170,7 @@ static void draw_output_attributes_panel(const bContext *C,
   }
 }
 
-static void draw_bake_panel(const bContext *C,
-                            uiLayout *layout,
-                            PointerRNA *modifier_ptr,
-                            NodesModifierData &nmd)
+static void draw_bake_panel(uiLayout *layout, PointerRNA *modifier_ptr)
 {
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
@@ -2255,7 +2252,7 @@ static void draw_manage_panel(const bContext *C,
   if (uiLayout *panel_layout = uiLayoutPanel(
           C, layout, IFACE_("Bake"), modifier_ptr, "open_bake_panel"))
   {
-    draw_bake_panel(C, panel_layout, modifier_ptr, nmd);
+    draw_bake_panel(panel_layout, modifier_ptr);
   }
   if (uiLayout *panel_layout = uiLayoutPanel(
           C, layout, IFACE_("Named Attributes"), modifier_ptr, "open_named_attributes_panel"))
