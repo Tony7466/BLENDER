@@ -896,10 +896,6 @@ typedef struct bNodeSocketValueRotation {
   float value_euler[3];
 } bNodeSocketValueRotation;
 
-typedef struct bNodeSocketValueMatrix {
-  float value[4][4];
-} bNodeSocketValueMatrix;
-
 typedef struct bNodeSocketValueRGBA {
   float value[4];
 } bNodeSocketValueRGBA;

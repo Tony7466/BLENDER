@@ -631,12 +631,6 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
       *data = dval;
       break;
     }
-    case SOCK_MATRIX: {
-      bNodeSocketValueMatrix *dval = MEM_cnew<bNodeSocketValueMatrix>(__func__);
-      unit_m4(dval->value);
-      *data = dval;
-      break;
-    }
     case SOCK_VECTOR: {
       static float default_value[] = {0.0f, 0.0f, 0.0f};
       bNodeSocketValueVector *dval = MEM_cnew<bNodeSocketValueVector>("node socket value vector");
@@ -712,6 +706,7 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
 
     case SOCK_CUSTOM:
     case SOCK_GEOMETRY:
+    case SOCK_MATRIX:
     case SOCK_SHADER:
       break;
   }
@@ -757,12 +752,6 @@ void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to,
     case SOCK_ROTATION: {
       bNodeSocketValueRotation *toval = (bNodeSocketValueRotation *)to;
       bNodeSocketValueRotation *fromval = (bNodeSocketValueRotation *)from;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_MATRIX: {
-      bNodeSocketValueMatrix *toval = (bNodeSocketValueMatrix *)to;
-      bNodeSocketValueMatrix *fromval = (bNodeSocketValueMatrix *)from;
       *toval = *fromval;
       break;
     }
@@ -816,6 +805,7 @@ void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to,
 
     case SOCK_CUSTOM:
     case SOCK_GEOMETRY:
+    case SOCK_MATRIX:
     case SOCK_SHADER:
       break;
   }
@@ -1001,14 +991,12 @@ static bNodeSocketType *make_socket_type_matrix()
 {
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATRIX, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<float4x4>();
-  socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
-    const auto &typed_value = *static_cast<const bNodeSocketValueMatrix *>(socket_value);
-    *static_cast<float4x4 *>(r_value) = float4x4(typed_value.value);
+  socktype->get_base_cpp_value = [](const void * /*socket_value*/, void *r_value) {
+    *static_cast<float4x4 *>(r_value) = float4x4::identity();
   };
   socktype->geometry_nodes_cpp_type = &blender::CPPType::get<SocketValueVariant>();
-  socktype->get_geometry_nodes_cpp_value = [](const void *socket_value, void *r_value) {
-    const auto &typed_value = *static_cast<const bNodeSocketValueMatrix *>(socket_value);
-    new (r_value) SocketValueVariant(float4x4(typed_value.value));
+  socktype->get_geometry_nodes_cpp_value = [](const void * /*socket_value*/, void *r_value) {
+    new (r_value) SocketValueVariant(float4x4::identity());
   };
   static SocketValueVariant default_value{float4x4::identity()};
   socktype->geometry_nodes_default_cpp_value = &default_value;

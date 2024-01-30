@@ -704,9 +704,6 @@ static void write_node_socket_default_value(BlendWriter *writer, const bNodeSock
     case SOCK_ROTATION:
       BLO_write_struct(writer, bNodeSocketValueRotation, sock->default_value);
       break;
-    case SOCK_MATRIX:
-      BLO_write_struct(writer, bNodeSocketValueMatrix, sock->default_value);
-      break;
     case SOCK_MENU: {
       BLO_write_struct(writer, bNodeSocketValueMenu, sock->default_value);
       break;
@@ -2768,8 +2765,6 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
     case SOCK_ROTATION:
       return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
-    case SOCK_MATRIX:
-      return &socket.default_value_typed<bNodeSocketValueMatrix>()->value;
     case SOCK_MENU:
       return &socket.default_value_typed<bNodeSocketValueMenu>()->value;
     case SOCK_STRING:

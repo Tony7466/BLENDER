@@ -177,9 +177,6 @@ template<typename Fn> bool socket_data_to_static_type(const eNodeSocketDatatype 
     case SOCK_ROTATION:
       fn.template operator()<bNodeSocketValueRotation>();
       return true;
-    case SOCK_MATRIX:
-      fn.template operator()<bNodeSocketValueMatrix>();
-      return true;
     case SOCK_VECTOR:
       fn.template operator()<bNodeSocketValueVector>();
       return true;
@@ -210,6 +207,7 @@ template<typename Fn> bool socket_data_to_static_type(const eNodeSocketDatatype 
 
     case SOCK_CUSTOM:
     case SOCK_SHADER:
+    case SOCK_MATRIX:
     case SOCK_GEOMETRY:
       return true;
   }

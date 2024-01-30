@@ -1015,20 +1015,10 @@ static void rna_def_node_socket_interface_rotation(BlenderRNA *brna, const char 
 static void rna_def_node_socket_matrix(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
-  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
   RNA_def_struct_ui_text(srna, "Matrix Node Socket", "Matrix value socket of a node");
   RNA_def_struct_sdna(srna, "bNodeSocket");
-
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix", "default_value");
-
-  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_MATRIX);
-  RNA_def_property_float_sdna(prop, nullptr, "value");
-  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
-  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_update");
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
 
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
@@ -1036,20 +1026,10 @@ static void rna_def_node_socket_matrix(BlenderRNA *brna, const char *identifier)
 static void rna_def_node_socket_interface_matrix(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
-  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, identifier, "NodeTreeInterfaceSocket");
   RNA_def_struct_ui_text(srna, "Matrix Node Socket Interface", "Matrix value socket of a node");
   RNA_def_struct_sdna(srna, "bNodeTreeInterfaceSocket");
-
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix", "socket_data");
-
-  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_MATRIX);
-  RNA_def_property_float_sdna(prop, nullptr, "value");
-  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
 
