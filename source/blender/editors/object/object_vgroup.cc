@@ -35,6 +35,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_grease_pencil_vgroup.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
@@ -2308,6 +2309,12 @@ static void vgroup_assign_verts(Object *ob, const float weight)
         }
       }
     }
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    const bDeformGroup *defgroup = static_cast<const bDeformGroup *>(
+        BLI_findlink(BKE_object_defgroup_list(ob), def_nr));
+    blender::bke::greasepencil::assign_vertex_group(*grease_pencil, defgroup->name, weight);
   }
 }
 

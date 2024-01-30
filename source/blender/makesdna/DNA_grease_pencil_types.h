@@ -594,9 +594,6 @@ typedef struct GreasePencil {
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
 
-  /** Make sure drawings only contain vertex groups of the #GreasePencil. */
-  void validate_drawing_vertex_groups();
-
   /* For debugging purposes. */
   void print_layer_tree();
 #endif

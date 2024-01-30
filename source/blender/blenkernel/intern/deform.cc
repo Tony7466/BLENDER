@@ -35,6 +35,7 @@
 #include "BKE_data_transfer.h"
 #include "BKE_deform.hh" /* own include */
 #include "BKE_grease_pencil.hh"
+#include "BKE_grease_pencil_vgroup.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
@@ -60,7 +61,8 @@ bDeformGroup *BKE_object_defgroup_new(Object *ob, const char *name)
   BKE_object_defgroup_unique_name(defgroup, ob);
 
   if (ob->type == OB_GREASE_PENCIL) {
-    static_cast<GreasePencil *>(ob->data)->validate_drawing_vertex_groups();
+    blender::bke::greasepencil::validate_drawing_vertex_groups(
+        *static_cast<GreasePencil *>(ob->data));
   }
 
   BKE_object_batch_cache_dirty_tag(ob);

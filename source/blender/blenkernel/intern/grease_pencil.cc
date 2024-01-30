@@ -2429,42 +2429,6 @@ void GreasePencil::print_layer_tree()
 /** \} */
 
 /* ------------------------------------------------------------------- */
-/** \name Vertex groups in drawings
- * \{ */
-
-void GreasePencil::validate_drawing_vertex_groups()
-{
-  blender::Set<const char *> valid_names;
-  LISTBASE_FOREACH (const bDeformGroup *, defgroup, &this->vertex_group_names) {
-    valid_names.add_new(defgroup->name);
-  }
-
-  for (GreasePencilDrawingBase *base : this->drawings()) {
-    if (base->type != GP_DRAWING) {
-      continue;
-    }
-    blender::bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
-
-    /* Remove unknown vertex groups. */
-    blender::bke::CurvesGeometry &curves = drawing.strokes_for_write();
-    int defgroup_index = 0;
-    LISTBASE_FOREACH_MUTABLE (bDeformGroup *, defgroup, &curves.vertex_group_names) {
-      if (!valid_names.contains(defgroup->name)) {
-        blender::bke::remove_defgroup_index(curves.deform_verts_for_write(), defgroup_index);
-
-        BLI_remlink(&curves.vertex_group_names, defgroup);
-        MEM_SAFE_FREE(defgroup);
-      }
-
-      ++defgroup_index;
-    }
-  }
-}
-
-/** \} */
-
-/* ------------------------------------------------------------------- */
 /** \name Drawing array read/write functions
  * \{ */
 
