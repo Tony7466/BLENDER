@@ -1593,7 +1593,7 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
                 else {
                   needs_reevaluation = true;
                   id_orig = BKE_libblock_find_name_and_library(
-                      bmain, key.id_name.c_str(), key.lib_name.c_str());
+                      bmain, short(key.type), key.id_name.c_str(), key.lib_name.c_str());
                 }
                 if (id_orig) {
                   id_us_plus(id_orig);

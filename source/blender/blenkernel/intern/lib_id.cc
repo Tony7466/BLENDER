@@ -1489,10 +1489,14 @@ ID *BKE_libblock_find_session_uid(Main *bmain, const short type, const uint32_t 
   return nullptr;
 }
 
-ID *BKE_libblock_find_name_and_library(Main *bmain, const char *name, const char *lib_name)
+ID *BKE_libblock_find_name_and_library(Main *bmain,
+                                       const short type,
+                                       const char *name,
+                                       const char *lib_name)
 {
-  ID *id;
-  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+  ListBase *lb = which_libbase(bmain, type);
+  BLI_assert(lb != nullptr);
+  LISTBASE_FOREACH (ID *, id, lb) {
     if (!STREQ(id->name + 2, name)) {
       continue;
     }
@@ -1507,7 +1511,6 @@ ID *BKE_libblock_find_name_and_library(Main *bmain, const char *name, const char
     }
     return id;
   }
-  FOREACH_MAIN_ID_END;
   return nullptr;
 }
 
