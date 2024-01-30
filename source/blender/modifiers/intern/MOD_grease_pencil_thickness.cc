@@ -114,10 +114,11 @@ static void deform_drawing(const ModifierData &md,
                            ((mmd.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP) !=
                             0);
 
-  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
-    for (const int curve : curves_range) {
-      for (const int local_point : points_by_curve[curve].index_range()) {
-        const int point = local_point + points_by_curve[curve].first();
+  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+    for (const int curve : range) {
+      const IndexRange points = points_by_curve[curve];
+      for (const int local_point : points.index_range()) {
+        const int point = local_point + points.first();
         const float weight = vgroup_weights[point];
         if (weight <= 0.0f) {
           continue;
@@ -134,7 +135,7 @@ static void deform_drawing(const ModifierData &md,
               (mmd.influence.custom_curve))
           {
             /* Normalize value to evaluate curve. */
-            const float value = float(local_point) / (points_by_curve[curve].size() - 1);
+            const float value = float(local_point) / (points.size() - 1);
             return BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
           }
           return 1.0f;
