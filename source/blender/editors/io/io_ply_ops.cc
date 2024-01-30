@@ -257,7 +257,7 @@ static int wm_ply_import_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
-  for (const auto path : paths) {
+  for (const auto &path : paths) {
     STRNCPY(params.filepath, path.c_str());
     PLY_import(C, &params, op);
   };

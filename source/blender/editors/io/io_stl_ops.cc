@@ -189,17 +189,16 @@ static int wm_stl_import_exec(bContext *C, wmOperator *op)
   params.global_scale = RNA_float_get(op->ptr, "global_scale");
   params.use_mesh_validate = RNA_boolean_get(op->ptr, "use_mesh_validate");
 
-  auto paths = blender::ed::io::paths_from_pointer(op->ptr);
+  const auto paths = blender::ed::io::paths_from_pointer(op->ptr);
 
   if (paths.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
-  for (const auto path : paths) {
+  for (const auto &path : paths) {
     STRNCPY(params.filepath, path.c_str());
     STL_import(C, &params);
   }
-
 
   Scene *scene = CTX_data_scene(C);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);

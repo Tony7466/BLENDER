@@ -410,7 +410,7 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
-  for (const auto path : paths) {
+  for (const auto &path : paths) {
     STRNCPY(import_params.filepath, path.c_str());
     OBJ_import(C, &import_params);
     /* Only first import clears selection. */
