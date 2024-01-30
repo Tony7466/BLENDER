@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <fcntl.h>
 
 #include "DNA_packedFile_types.h"
 
@@ -179,9 +180,47 @@ static void rna_Image_update(Image *image, ReportList *reports)
   BKE_image_release_ibuf(image, ibuf, nullptr);
 }
 
-static void rna_Image_scale(Image *image, ReportList *reports, int width, int height)
+static void rna_Image_scale(
+    Image *image, ReportList *reports, int width, int height, int frame, int tile_index)
 {
-  if (!BKE_image_scale(image, width, height)) {
+  ImageUser iuser{};
+  BKE_imageuser_default(&iuser);
+  bool use_imageuser = false;
+
+  if (image->source == IMA_SRC_TILED) {
+    const ImageTile *tile = static_cast<ImageTile *>(BLI_findlink(&image->tiles, tile_index));
+
+    if (tile == nullptr) {
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  "Image '%s' does not have a tile with index %i",
+                  image->id.name + 2,
+                  tile_index);
+      return;
+    }
+
+    iuser.tile = tile->tile_number;
+    use_imageuser = true;
+  }
+  else if (image->source == IMA_SRC_SEQUENCE && image->type == IMA_TYPE_IMAGE) {
+    iuser.framenr = frame;
+
+    /* Not exactly sure if we should check this beforehand? */
+    char filepath[FILE_MAX];
+    BKE_image_user_file_path(&iuser, image, filepath);
+    if (BLI_open(filepath, O_BINARY | O_RDONLY, 0) == -1) {
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  "Image '%s' does not have a frame with index %i",
+                  image->id.name + 2,
+                  frame);
+      return;
+    }
+
+    use_imageuser = true;
+  }
+
+  if (!BKE_image_scale(image, width, height, use_imageuser ? &iuser : nullptr)) {
     BKE_reportf(reports, RPT_ERROR, "Image '%s' does not have any image data", image->id.name + 2);
     return;
   }
@@ -334,6 +373,9 @@ void RNA_api_image(StructRNA *srna)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func, "height", 1, 1, INT_MAX, "", "Height", 1, INT_MAX);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_int(func, "frame", 0, 0, INT_MAX, "Frame", "Frame (for image sequences)", 0, INT_MAX);
+  RNA_def_int(
+      func, "tile_index", 0, 0, INT_MAX, "Tile", "Tile index (for tiled images)", 0, INT_MAX);
 
   func = RNA_def_function(srna, "gl_touch", "rna_Image_gl_touch");
   RNA_def_function_ui_description(
