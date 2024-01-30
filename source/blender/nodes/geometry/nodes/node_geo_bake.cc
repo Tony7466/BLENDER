@@ -197,7 +197,6 @@ class LazyFunctionForBakeNode final : public LazyFunction {
     }
     else if (auto *info = std::get_if<sim_output::ReadInterpolated>(&behavior->behavior)) {
       this->output_mixed_cached_state(params,
-                                      user_data,
                                       behavior->data_block_map,
                                       *user_data.call_data->self_object(),
                                       *user_data.compute_context,
@@ -289,7 +288,6 @@ class LazyFunctionForBakeNode final : public LazyFunction {
   }
 
   void output_mixed_cached_state(lf::Params &params,
-                                 GeoNodesLFUserData &user_data,
                                  bke::bake::BakeDataBlockMap *data_block_map,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
