@@ -31,6 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Rotation>("Rotation");
   b.add_output<decl::Vector>("Scale");
   b.add_output<decl::Geometry>("Geometry");
+  b.add_output<decl::String>("Name");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -96,6 +97,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     params.set_output("Geometry", geometry_set);
   }
+
+  std::string name(object->id.name + 2);
+  params.set_output("Name", std::move(name));
 }
 
 static void node_node_init(bNodeTree * /*tree*/, bNode *node)
