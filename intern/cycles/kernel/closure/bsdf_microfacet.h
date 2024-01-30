@@ -537,9 +537,14 @@ ccl_device Spectrum bsdf_microfacet_eval(ccl_private const ShaderClosure *sc,
   /* TODO: deal with the case when `bsdf->ior` is close to one. */
   /* TODO: check if the refraction configuration is valid. See `btdf_ggx()` in
    * `eevee_bxdf_lib.glsl`. */
-  float3 H = is_transmission ? -(bsdf->ior * wo + wi) : (wi + wo);
-  const float inv_len_H = safe_divide(1.0f, len(H));
-  H *= inv_len_H;
+
+  float3 H;
+  float inv_len_H;
+  if (!(is_transmission ? refraction_half_vector(wo, wi, bsdf->ior, &H, &inv_len_H) :
+                          half_vector(wo, wi, &H, &inv_len_H)))
+  {
+    return zero_spectrum();
+  }
 
   /* Compute Fresnel coefficients. */
   const float cos_HI = dot(H, wi);

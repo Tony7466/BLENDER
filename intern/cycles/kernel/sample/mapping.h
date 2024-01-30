@@ -58,6 +58,47 @@ ccl_device void make_orthonormals_safe_tangent(const float3 N,
   }
 }
 
+ccl_device bool half_vector(const float3 wo,
+                            const float3 wi,
+                            ccl_private float3 *H,
+                            ccl_private float *inv_len_H)
+{
+  const float H_min_length_sqr = 0.001f * 0.001f;
+
+  *H = wo + wi;
+  const float H_len_sqr = len_squared(*H);
+
+  if (H_len_sqr > H_min_length_sqr) {
+    *inv_len_H = 1.0f / sqrtf(H_len_sqr);
+    *H *= *inv_len_H;
+    return true;
+  }
+
+  /* H is too small and we are unable to properly reconstruct H. */
+  return false;
+}
+
+ccl_device bool refraction_half_vector(const float3 wo,
+                                       const float3 wi,
+                                       const float ior,
+                                       ccl_private float3 *H,
+                                       ccl_private float *inv_len_H)
+{
+  const float H_min_length_sqr = 0.001f * 0.001f;
+
+  *H = -(ior * wo + wi);
+  const float H_len_sqr = len_squared(*H);
+
+  if (H_len_sqr > H_min_length_sqr) {
+    *inv_len_H = 1.0f / sqrtf(H_len_sqr);
+    *H *= *inv_len_H;
+    return true;
+  }
+
+  /* H is too small and we are unable to properly reconstruct H. */
+  return false;
+}
+
 /* sample direction with cosine weighted distributed in hemisphere */
 ccl_device_inline void sample_cos_hemisphere(const float3 N,
                                              float2 rand_in,
