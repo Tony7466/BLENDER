@@ -41,6 +41,7 @@
 #endif
 
 #include "BLI_map.hh"
+#include "BLI_math_base.h"
 #include "BLI_sort.hh"
 #include "BLI_string.h"
 
@@ -53,6 +54,8 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_material_types.h"
+
+#include <iomanip>
 
 static CLG_LogRef LOG = {"io.usd"};
 
@@ -660,6 +663,20 @@ void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_co
   }
 
   /* Create collections for the point instancer prototypes. */
+
+  /* For every point instancer reader, create a "prototypes" collection and set it
+   * on the Collection Info node referenced by the geometry nodes modifier created by
+   * the reader.  We also create collections containing prototype geometry as children
+   * of the "prototypes" collection.  These child collections will be indexed for
+   * instancing by the Instance on Points geometry node.
+   *
+   * Note that the prototype collections will be ordered alphabetically by the Collection
+   * Info node.  We must therefore take care to generate collection names that will maintain
+   * the original prototype order, so that the prototype indices will remain valid.  We use
+   * the naming convention proto_<index>, where the index suffix may be zero padded (e.g.,
+   * "proto_00", "proto_01", "proto_02", etc.).
+   */
+
   for (USDPrimReader *reader : readers_) {
     USDPointInstancerReader *instancer_reader = dynamic_cast<USDPointInstancerReader *>(reader);
 
@@ -671,8 +688,22 @@ void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_co
     Collection *instancer_protos_coll = create_collection(
         bmain, all_protos_collection, instancer_path.GetName().c_str());
 
+    /* Determine the max number of digits we will need for the possibly zero-padded
+     * string representing the prototype index. */
+    int max_index_digits = integer_digits_i(instancer_reader->proto_paths().size());
+
+    int proto_index = 0;
+
     for (const pxr::SdfPath &proto_path : instancer_reader->proto_paths()) {
-      Collection *proto_coll = create_collection(bmain, instancer_protos_coll, "proto");
+      BLI_assert(max_index_digits > 0);
+
+      /* Format the collection name to follow the proto_<index> pattern. */
+      std::ostringstream ss;
+      ss << std::setw(max_index_digits) << std::setfill('0') << proto_index;
+      std::string coll_name = "proto_" + ss.str();
+
+      /* Create the collection and populate it with the prototype objects. */
+      Collection *proto_coll = create_collection(bmain, instancer_protos_coll, coll_name.c_str());
       blender::Vector<USDPrimReader *> proto_readers = instancer_proto_readers_.lookup_default(
           proto_path, {});
       for (USDPrimReader *reader : proto_readers) {
@@ -682,6 +713,7 @@ void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_co
         }
         BKE_collection_object_add(bmain, proto_coll, ob);
       }
+      ++proto_index;
     }
 
     instancer_reader->set_collection(bmain, *instancer_protos_coll);
