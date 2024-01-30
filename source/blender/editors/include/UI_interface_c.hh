@@ -589,7 +589,7 @@ using uiButSearchTooltipFn =
 using uiButSearchListenFn = void (*)(const wmRegionListenerParams *params, void *arg);
 
 /** Must return an allocated string. */
-using uiButToolTipFunc = char *(*)(bContext *C, void *argN, const char *tip);
+using uiButToolTipFunc = std::string (*)(bContext *C, void *argN, const char *tip);
 
 using uiButToolTipCustomFunc = void (*)(bContext *C, uiTooltipData *data, void *argN);
 
@@ -1402,7 +1402,7 @@ uiBut *uiDefIconTextButO_ptr(uiBlock *block,
                              const char *tip);
 
 /** For passing inputs to ButO buttons. */
-PointerRNA *UI_but_operator_ptr_get(uiBut *but);
+PointerRNA *UI_but_operator_ptr_ensure(uiBut *but);
 
 void UI_but_context_ptr_set(uiBlock *block, uiBut *but, const char *name, const PointerRNA *ptr);
 const PointerRNA *UI_but_context_ptr_get(const uiBut *but,
@@ -3043,10 +3043,15 @@ void uiItemTabsEnumR_prop(uiLayout *layout,
 const char *UI_layout_introspect(uiLayout *layout);
 
 /**
- * Helper to add a big icon and create a split layout for alert popups.
+ * Helpers to add a big icon and create a split layout for alert popups.
  * Returns the layout to place further items into the alert box.
  */
-uiLayout *uiItemsAlertBox(uiBlock *block, int size, eAlertIcon icon);
+uiLayout *uiItemsAlertBox(uiBlock *block,
+                          const uiStyle *style,
+                          const int dialog_width,
+                          const eAlertIcon icon,
+                          const int icon_size);
+uiLayout *uiItemsAlertBox(uiBlock *block, const int size, const eAlertIcon icon);
 
 /* UI Operators */
 struct uiDragColorHandle {
