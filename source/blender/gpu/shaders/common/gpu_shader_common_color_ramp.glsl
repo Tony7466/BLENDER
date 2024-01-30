@@ -26,9 +26,21 @@ void valtorgb_opti_ease(
   outalpha = outcol.a;
 }
 
+/* Color maps are stored in texture samplers, so ensure that the factor evaluates the sampler at
+ * the center of the pixels, because samplers are evaluated using linear interpolation. Given the
+ * factor in the [0, 1] range. */
+float compute_color_map_coordinates(float factor)
+{
+  /* Color maps have a fixed width of 257. We offset by the equivalent of half a pixel and scale
+   * down such that the normalized factor 1.0 corresponds to the center of the last pixel. */
+  float sampler_offset = 0.5 / 257.0;
+  float sampler_scale = 1.0 - (1.0 / 257.0);
+  return factor * sampler_scale + sampler_offset;
+}
+
 void valtorgb(float fac, sampler1DArray colormap, float layer, out vec4 outcol, out float outalpha)
 {
-  outcol = texture(colormap, vec2(fac, layer));
+  outcol = texture(colormap, vec2(compute_color_map_coordinates(fac), layer));
   outalpha = outcol.a;
 }
 
