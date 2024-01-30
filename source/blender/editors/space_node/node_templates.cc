@@ -23,7 +23,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
@@ -259,7 +259,8 @@ static void node_socket_add_replace(const bContext *C,
         }
 
         if (STREQ(sock_prev->identifier, sock_from->identifier) &&
-            sock_prev->type == sock_from->type) {
+            sock_prev->type == sock_from->type)
+        {
           bNodeLink *link = sock_prev->link;
 
           if (link && link->fromnode) {
