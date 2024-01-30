@@ -685,6 +685,18 @@ int WM_enum_search_invoke(bContext *C, wmOperator *op, const wmEvent *event);
  */
 int WM_operator_confirm(bContext *C, wmOperator *op, const wmEvent *event);
 int WM_operator_confirm_or_exec(bContext *C, wmOperator *op, const wmEvent *event);
+
+/**
+ * Like WM_operator_confirm, but with more options and can't be used as an invoke directly.
+ */
+int WM_operator_confirm_ex(bContext *C,
+                           wmOperator *op,
+                           const char *title = nullptr,
+                           const char *message = nullptr,
+                           const char *confirm_text = nullptr,
+                           int icon = 0, /* ALERT_ICON_WARNING. */
+                           bool cancel_default = false);
+
 /**
  * Invoke callback, file selector "filepath" unset + exec.
  *
@@ -708,7 +720,13 @@ int WM_operator_props_popup_confirm(bContext *C, wmOperator *op, const wmEvent *
  */
 int WM_operator_props_popup_call(bContext *C, wmOperator *op, const wmEvent *event);
 int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent *event);
-int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width);
+
+int WM_operator_props_dialog_popup(bContext *C,
+                                   wmOperator *op,
+                                   int width,
+                                   const char *title = nullptr,
+                                   const char *confirm_text = nullptr);
+
 int WM_operator_redo_popup(bContext *C, wmOperator *op);
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);
 
