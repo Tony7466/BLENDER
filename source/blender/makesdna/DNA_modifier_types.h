@@ -2698,7 +2698,7 @@ typedef struct GreasePencilMirrorModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
   struct Object *object;
-  /** Flags. */
+  /** #GreasePencilMirrorModifierFlag */
   int flag;
   char _pad[4];
 } GreasePencilMirrorModifierData;
