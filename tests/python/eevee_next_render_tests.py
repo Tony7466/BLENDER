@@ -26,9 +26,9 @@ def setup():
     eevee.use_volumetric_shadows = True
     eevee.volumetric_tile_size = '2'
     eevee.use_motion_blur = True
-    # Overscan of 8 will not offset the final image, and adds more information for screen based ray tracing.
+    # Overscan of 50 will doesn't offset the final image, and adds more information for screen based ray tracing.
     eevee.use_overscan = True
-    eevee.overscan_size = 8.0
+    eevee.overscan_size = 50.0
     eevee.use_raytracing = True
     eevee.ray_tracing_method = 'SCREEN'
     ray_tracing.resolution_scale = "1"
