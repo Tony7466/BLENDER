@@ -341,6 +341,8 @@ DefNode(GeometryNode, GEO_NODE_GET_NAMED_GRID, 0, "GET_NAMED_GRID", GetNamedGrid
 DefNode(GeometryNode, GEO_NODE_GRID_FILTER, 0, "GRID_FILTER", GridFilter, "Filter", "Perform a filtering operation on a grid")
 DefNode(GeometryNode, GEO_NODE_GRID_LEVEL_SET_FILTER, 0, "GRID_LEVEL_SET_FILTER", GridLevelSetFilter, "Level Set Filter", "Perform a filtering operation on a level set grid with surface tracking")
 DefNode(GeometryNode, GEO_NODE_GRID_POISSON_SOLVER, 0, "GRID_POISSON_SOLVER", GridPoissonSolver, "Grid Poisson Solver", "Solve a Poisson equation on a grid")
+DefNode(GeometryNode, GEO_NODE_GRID_PRIMITIVE_CUBE, 0, "GRID_PRIMITIVE_CUBE", GridPrimitiveCube, "Grid Cube", "Generate a cube-shaped grid")
+DefNode(GeometryNode, GEO_NODE_GRID_PRIMITIVE_SPHERE, 0, "GRID_PRIMITIVE_SPHERE", GridPrimitiveSphere, "Grid Sphere", "Generate a sphere-shaped grid")
 DefNode(GeometryNode, GEO_NODE_GRID_TO_POINTS, 0, "GRID_TO_POINTS", GridToPoints, "Grid to Points", "Create a point for each voxel in a grid")
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")

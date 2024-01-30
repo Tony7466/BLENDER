@@ -87,6 +87,8 @@ set(SRC
   nodes/node_geo_grid_filter.cc
   nodes/node_geo_grid_level_set_filter.cc
   nodes/node_geo_grid_poisson_solver.cc
+  nodes/node_geo_grid_primitive_cube.cc
+  nodes/node_geo_grid_primitive_sphere.cc
   nodes/node_geo_grid_to_points.cc
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc

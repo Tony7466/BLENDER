@@ -1339,6 +1339,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_GRID_FILTER 2132
 #define GEO_NODE_GRID_LEVEL_SET_FILTER 2133
 #define GEO_NODE_GRID_TO_POINTS 2134
+#define GEO_NODE_GRID_PRIMITIVE_CUBE 2135
+#define GEO_NODE_GRID_PRIMITIVE_SPHERE 2136
 
 /** \} */
 
