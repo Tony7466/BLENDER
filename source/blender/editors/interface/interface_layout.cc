@@ -5047,6 +5047,32 @@ uiLayout *uiLayoutPanelProp(const bContext *C,
   return panel.body;
 }
 
+PanelLayout uiLayoutPanel(const bContext *C,
+                          uiLayout *layout,
+                          const char *idname,
+                          const bool default_closed)
+{
+  Panel *panel = uiLayoutGetRootPanel(layout);
+  BLI_assert(panel != nullptr);
+
+  LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(panel, idname, default_closed);
+  PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
+
+  return uiLayoutPanelProp(C, layout, &state_ptr, "is_open");
+}
+
+uiLayout *uiLayoutPanel(const bContext *C,
+                        uiLayout *layout,
+                        const char *idname,
+                        const bool default_closed,
+                        const char *label)
+{
+  PanelLayout panel = uiLayoutPanel(C, layout, idname, default_closed);
+  uiItemL(panel.header, label, ICON_NONE);
+
+  return panel.body;
+}
+
 bool uiLayoutEndsWithPanelHeader(const uiLayout &layout)
 {
   if (BLI_listbase_is_empty(&layout.items)) {
