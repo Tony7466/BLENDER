@@ -57,7 +57,7 @@
 #include "BKE_curve.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_nla.h"
@@ -5767,7 +5767,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
                             UI_UNIT_X,
                             nullptr);
 
-        opptr_b = UI_but_operator_ptr_get(but);
+        opptr_b = UI_but_operator_ptr_ensure(but);
         RNA_int_set(opptr_b, "track_index", channel_index);
 
         UI_block_emboss_set(block, UI_EMBOSS_NONE);

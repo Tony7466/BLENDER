@@ -796,7 +796,7 @@ void rna_uiLayoutPanelProp(uiLayout *layout,
     return;
   }
 
-  PanelLayout panel_layout = uiLayoutPanelWithHeader(C, layout, data, property);
+  PanelLayout panel_layout = uiLayoutPanelProp(C, layout, data, property);
   *r_layout_header = panel_layout.header;
   *r_layout_body = panel_layout.body;
 }
@@ -816,9 +816,7 @@ void rna_uiLayoutPanel(uiLayout *layout,
     *r_layout_body = nullptr;
     return;
   }
-  LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(panel, idname, default_closed);
-  PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
-  PanelLayout panel_layout = uiLayoutPanelWithHeader(C, layout, &state_ptr, "is_open");
+  PanelLayout panel_layout = uiLayoutPanel(C, layout, idname, default_closed);
   *r_layout_header = panel_layout.header;
   *r_layout_body = panel_layout.body;
 }
@@ -973,21 +971,26 @@ static void api_ui_item_common_heading(FunctionRNA *func)
       func, "translate", true, "", "Translate the given heading, when UI translation is enabled");
 }
 
+void api_ui_item_common_translation(FunctionRNA *func)
+{
+  PropertyRNA *prop = RNA_def_string(func,
+                                     "text_ctxt",
+                                     nullptr,
+                                     0,
+                                     "",
+                                     "Override automatic translation context of the given text");
+  RNA_def_property_clear_flag(prop, PROP_NEVER_NULL);
+  RNA_def_boolean(
+      func, "translate", true, "", "Translate the given text, when UI translation is enabled");
+}
+
 static void api_ui_item_common_text(FunctionRNA *func)
 {
   PropertyRNA *prop;
 
   prop = RNA_def_string(func, "text", nullptr, 0, "", "Override automatic text of the item");
   RNA_def_property_clear_flag(prop, PROP_NEVER_NULL);
-  prop = RNA_def_string(func,
-                        "text_ctxt",
-                        nullptr,
-                        0,
-                        "",
-                        "Override automatic translation context of the given text");
-  RNA_def_property_clear_flag(prop, PROP_NEVER_NULL);
-  RNA_def_boolean(
-      func, "translate", true, "", "Translate the given text, when UI translation is enabled");
+  api_ui_item_common_translation(func);
 }
 
 static void api_ui_item_common(FunctionRNA *func)
