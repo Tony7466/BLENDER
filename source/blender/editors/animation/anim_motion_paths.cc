@@ -13,6 +13,7 @@
 #include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -129,6 +130,7 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
 /* perform baking for the targets on the current frame */
 static void motionpaths_calc_bake_targets(ListBase *targets, int cframe, Depsgraph *depsgraph)
 {
+  using namespace blender;
   /* for each target, check if it can be baked on the current frame */
   LISTBASE_FOREACH (MPathTarget *, mpt, targets) {
     bMotionPath *mpath = mpt->mpath;
@@ -173,7 +175,9 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe, Depsgra
     if (mpath->flag & MOTIONPATH_FLAG_BAKE_CAMERA && mpath->camera) {
       Object *cam_eval = DEG_get_evaluated_object(depsgraph, mpath->camera);
       /* Convert point to camera space. */
-      mul_m4_v3(cam_eval->world_to_object, mpv->co);
+      float3 co_camera_space = math::transform_point(float4x4(cam_eval->world_to_object),
+                                                     float3(mpv->co));
+      copy_v3_v3(mpv->co, co_camera_space);
     }
 
     float mframe = float(cframe);

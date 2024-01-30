@@ -9,6 +9,7 @@
 #include "DRW_render.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_string.h"
 
 #include "DNA_armature_types.h"
@@ -113,6 +114,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
                               bAnimVizSettings *avs,
                               bMotionPath *mpath)
 {
+  using namespace blender;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   DRWTextStore *dt = DRW_text_cache_ensure();
@@ -123,7 +125,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   bool show_keyframes_no = (avs->path_viewflag & MOTIONPATH_VIEW_KFNOS) != 0;
   bool show_frame_no = (avs->path_viewflag & MOTIONPATH_VIEW_FNUMS) != 0;
   bool show_lines = (mpath->flag & MOTIONPATH_FLAG_LINES) != 0;
-  const bool points_in_camera_space = (avs->path_bakeflag & MOTIONPATH_BAKE_CAMERA_SPACE) != 0;
+  const bool is_in_camera_space = (avs->path_bakeflag & MOTIONPATH_BAKE_CAMERA_SPACE) != 0;
   float no_custom_col[3] = {-1.0f, -1.0f, -1.0f};
   float *color = (mpath->flag & MOTIONPATH_FLAG_CUSTOM) ? mpath->color : no_custom_col;
 
@@ -137,7 +139,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   int start_index = sfra - mpath->start_frame;
 
   float camera_matrix[4][4];
-  if (points_in_camera_space && mpath->camera) {
+  if (is_in_camera_space && mpath->camera) {
     copy_m4_m4(camera_matrix, mpath->camera->object_to_world);
   }
   else {
@@ -180,7 +182,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     col[3] = col_kf[3] = 255;
 
     Object *cam_eval = nullptr;
-    if (points_in_camera_space && mpath->camera) {
+    if (is_in_camera_space && mpath->camera) {
       cam_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, mpath->camera);
     }
 
@@ -190,11 +192,12 @@ static void motion_path_cache(OVERLAY_Data *vedata,
       char numstr[32];
       size_t numstr_len;
       bool is_keyframe = (mpv->flag & MOTIONPATH_VERT_KEY) != 0;
-      float vert_coordinate[3];
+      float3 vert_coordinate;
       copy_v3_v3(vert_coordinate, mpv->co);
-      if (points_in_camera_space && cam_eval) {
+      if (is_in_camera_space && cam_eval) {
         /* Projecting the point into world space from the cameras pov. */
-        mul_m4_v3(cam_eval->object_to_world, vert_coordinate);
+        vert_coordinate = math::transform_point(float4x4(cam_eval->object_to_world),
+                                                vert_coordinate);
       }
 
       if ((show_keyframes && show_keyframes_no && is_keyframe) || (show_frame_no && (i == 0))) {
