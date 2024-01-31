@@ -66,7 +66,7 @@ void assign_to_vertex_group(GreasePencil &grease_pencil, const StringRef name, c
     ListBase &vertex_group_names = curves.vertex_group_names;
 
     const bke::AttributeAccessor attributes = curves.attributes();
-    const VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
+    const VArray<bool> selection = *attributes.lookup_or_default<bool>(
         ".selection", bke::AttrDomain::Point, true);
 
     /* Look for existing group, otherwise lazy-initialize if any vertex is selected. */
@@ -75,7 +75,7 @@ void assign_to_vertex_group(GreasePencil &grease_pencil, const StringRef name, c
 
     const MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
     for (const int i : dverts.index_range()) {
-      if (select_vert[i]) {
+      if (selection[i]) {
         /* Lazily add the vertex group if any vertex is selected. */
         if (def_nr < 0) {
           bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
@@ -116,10 +116,10 @@ bool remove_from_vertex_group(GreasePencil &grease_pencil, StringRef name, bool 
 
     const MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
     const bke::AttributeAccessor attributes = curves.attributes();
-    const VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
+    const VArray<bool> selection = *attributes.lookup_or_default<bool>(
         ".selection", bke::AttrDomain::Point, true);
     for (const int i : dverts.index_range()) {
-      if (!use_selection || select_vert[i]) {
+      if (!use_selection || selection[i]) {
         MDeformVert *dv = &dverts[i];
         MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
         BKE_defvert_remove_group(dv, dw);
@@ -173,18 +173,18 @@ void select_from_group(GreasePencil &grease_pencil, const StringRef name, const 
     const Span<MDeformVert> dverts = curves.deform_verts_for_write();
     if (!dverts.is_empty()) {
       bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-      SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
+      SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
           ".selection",
           bke::AttrDomain::Point,
           AttributeInitVArray(VArray<bool>::ForSingle(true, curves.point_num)));
 
-      for (const int i : select_vert.span.index_range()) {
+      for (const int i : selection.span.index_range()) {
         if (BKE_defvert_find_index(&dverts[i], def_nr)) {
-          select_vert.span[i] = select;
+          selection.span[i] = select;
         }
       }
 
-      select_vert.finish();
+      selection.finish();
     }
   }
 }
