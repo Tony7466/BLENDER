@@ -6,7 +6,7 @@
  * \ingroup modifiers
  */
 
-#include "BLI_string_utils.hh"
+#include "BLI_string.h"
 
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
@@ -230,13 +230,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(sub, &ds_ptr, "use_cyclic", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
-  LayoutPanelState *influence_panel_state = BKE_panel_layout_panel_state_ensure(
-      panel, "influence", true);
-
-  PointerRNA influence_state_ptr = RNA_pointer_create(
-      nullptr, &RNA_LayoutPanelState, influence_panel_state);
   if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", &influence_state_ptr, "is_open"))
+          C, layout, "Influence", ptr, "open_influence_panel"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
@@ -293,7 +288,7 @@ ModifierTypeInfo modifierType_GreasePencilDash = {
     /*name*/ N_("Dot Dash"),
     /*struct_name*/ "GreasePencilDashModifierData",
     /*struct_size*/ sizeof(GreasePencilDashModifierData),
-    /*srna*/ &RNA_GreasePencilDashModifier,
+    /*srna*/ &RNA_GreasePencilDashModifierData,
     /*type*/ ModifierTypeType::Nonconstructive,
     /*flags*/ eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping,
@@ -323,12 +318,12 @@ ModifierTypeInfo modifierType_GreasePencilDash = {
     /*blend_read*/ blender::blend_read,
 };
 
-Span<GreasePencilDashModifierSegment> GreasePencilDataModifierData::segments() const
+blender::Span<GreasePencilDashModifierSegment> GreasePencilDashModifierData::segments() const
 {
   return {this->segments_array, this->segments_num};
 }
 
-MutableSpan<GreasePencilDashModifierSegment> GreasePencilDashModifierData::segments()
+blender::MutableSpan<GreasePencilDashModifierSegment> GreasePencilDashModifierData::segments()
 {
   return {this->segments_array, this->segments_num};
 }
