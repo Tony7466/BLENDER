@@ -37,6 +37,7 @@
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_preferences.h"
@@ -69,7 +70,7 @@ static int brush_add_exec(bContext *C, wmOperator * /*op*/)
   // int type = RNA_enum_get(op->ptr, "type");
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *br = BKE_paint_brush(paint);
-  Main *bmain = CTX_data_main(C);
+  Main *bmain = CTX_data_main(C);  // TODO: add to asset main?
   PaintMode mode = BKE_paintmode_get_active_from_context(C);
 
   if (br) {
@@ -191,7 +192,7 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator * /*op*/)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *br = BKE_paint_brush(paint);
-  Main *bmain = CTX_data_main(C);
+  Main *bmain = CTX_data_main(C);  // TODO: add to asset main?
 
   if (br) {
     br = (Brush *)BKE_id_copy(bmain, &br->id);
@@ -941,6 +942,7 @@ static int brush_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  // TODO: won't work with asset brushes, needs different main.
   if (brush_generic_tool_set(C, bmain, paint, tool, tool_name, create_missing, toggle)) {
     return OPERATOR_FINISHED;
   }
@@ -1001,10 +1003,12 @@ static int brush_asset_select_exec(bContext *C, wmOperator *op)
   /* This operator currently covers both cases: the file/asset browser file list and the asset list
    * used for the asset-view template. Once the asset list design is used by the Asset Browser,
    * this can be simplified to just that case. */
+  Main *bmain = CTX_data_main(C);
   blender::asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
 
   AssetWeakReference *brush_asset_reference = asset->make_weak_reference();
-  Brush *brush = BKE_brush_asset_runtime_ensure(CTX_data_main(C), brush_asset_reference);
+  Brush *brush = reinterpret_cast<Brush *>(
+      BKE_asset_weak_reference_ensure(bmain, brush_asset_reference));
 
   Paint *paint = BKE_paint_get_active_from_context(C);
 
@@ -1212,6 +1216,7 @@ static bool brush_asset_save_as_poll(bContext *C)
 
 static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = (paint) ? BKE_paint_brush(paint) : nullptr;
   if (paint == nullptr || brush == nullptr) {
@@ -1241,9 +1246,11 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   BLI_assert(BKE_paint_brush_is_valid_asset(brush));
 
   /* Save to asset library. */
+  Main *asset_main = BKE_asset_weak_reference_main(bmain, &brush->id);
+
   std::string final_full_asset_filepath;
   const bool sucess = brush_asset_write_in_library(
-      CTX_data_main(C), brush, name, filepath, final_full_asset_filepath, op->reports);
+      asset_main, brush, name, filepath, final_full_asset_filepath, op->reports);
 
   if (!sucess) {
     BKE_report(op->reports, RPT_ERROR, "Failed to write to asset library");
@@ -1258,8 +1265,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   /* TODO: maybe not needed, even less so if there is more visual confirmation of change. */
   BKE_reportf(op->reports, RPT_INFO, "Saved \"%s\"", filepath.c_str());
 
-  Main *bmain = CTX_data_main(C);
-  brush = BKE_brush_asset_runtime_ensure(bmain, new_brush_weak_ref);
+  brush = reinterpret_cast<Brush *>(BKE_asset_weak_reference_ensure(bmain, new_brush_weak_ref));
 
   if (!BKE_paint_brush_asset_set(paint, brush, new_brush_weak_ref)) {
     /* Note brush sset was still saved in editable asset library, so was not a no-op. */
@@ -1347,9 +1353,10 @@ static bool brush_asset_delete_poll(bContext *C)
 
 static int brush_asset_delete_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
+  Main *bmain = CTX_data_main(C);
+  Main *asset_main = BKE_asset_weak_reference_main(bmain, &brush->id);
 
   if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
     /* Delete from asset library on disk. */
@@ -1363,15 +1370,12 @@ static int brush_asset_delete_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* Delete from session. If local override, also delete linked one.
-   * TODO: delete both in one step? */
-  ID *original_brush = (!ID_IS_LINKED(&brush->id) && ID_IS_OVERRIDE_LIBRARY_REAL(&brush->id)) ?
-                           brush->id.override_library->reference :
-                           nullptr;
-  BKE_id_delete(bmain, brush);
-  if (original_brush) {
-    BKE_id_delete(bmain, original_brush);
+  if (asset_main != bmain) {
+    // TODO: hack: no pointer should exist, should do runtime lookup
+    BKE_libblock_remap(bmain, brush, nullptr, 0);
   }
+  BKE_id_delete(asset_main, brush);
+  // TODO: delete whole asset main if empty?
 
   brush_asset_refresh_editable_library(C);
   WM_main_add_notifier(NC_ASSET | ND_ASSET_LIST | NA_REMOVED, nullptr);
@@ -1415,10 +1419,14 @@ static bool brush_asset_update_poll(bContext *C)
 
 static int brush_asset_update_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = nullptr;
   const AssetWeakReference *brush_weak_ref =
       BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
+
+  // TODO: maybe can check directly in poll
+  BLI_assert((brush->id.tag & LIB_TAG_ASSET_MAIN) != 0);
 
   char path_buffer[FILE_MAX_LIBEXTRA];
   char *filepath;
@@ -1427,13 +1435,10 @@ static int brush_asset_update_exec(bContext *C, wmOperator *op)
 
   BLI_assert(BKE_paint_brush_is_valid_asset(brush));
 
+  Main *asset_main = BKE_asset_weak_reference_main(bmain, &brush->id);
   std::string final_full_asset_filepath;
-  brush_asset_write_in_library(CTX_data_main(C),
-                               brush,
-                               brush->id.name + 2,
-                               filepath,
-                               final_full_asset_filepath,
-                               op->reports);
+  brush_asset_write_in_library(
+      asset_main, brush, brush->id.name + 2, filepath, final_full_asset_filepath, op->reports);
 
   return OPERATOR_FINISHED;
 }

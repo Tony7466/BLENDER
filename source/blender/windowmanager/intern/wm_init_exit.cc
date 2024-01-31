@@ -33,8 +33,10 @@
 #include "BLO_undofile.hh"
 #include "BLO_writefile.hh"
 
+#include "BKE_asset.hh"
 #include "BKE_blender.h"
 #include "BKE_blendfile.hh"
+#include "BKE_brush.hh"
 #include "BKE_callbacks.h"
 #include "BKE_context.hh"
 #include "BKE_global.h"
@@ -580,6 +582,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   ED_preview_restart_queue_free();
   ed::asset::list::storage_exit();
 
+  BKE_asset_weak_reference_main_free();
   BKE_tracking_clipboard_free();
   BKE_mask_clipboard_free();
   BKE_vfont_clipboard_free();

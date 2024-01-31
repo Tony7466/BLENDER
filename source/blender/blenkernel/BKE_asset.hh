@@ -20,6 +20,7 @@ struct BlendDataReader;
 struct BlendWriter;
 struct ID;
 struct IDProperty;
+struct Main;
 struct PreviewImage;
 
 using PreSaveFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
@@ -81,3 +82,7 @@ void BKE_asset_weak_reference_free(AssetWeakReference **weak_ref);
 AssetWeakReference *BKE_asset_weak_reference_copy(AssetWeakReference *weak_ref);
 void BKE_asset_weak_reference_write(BlendWriter *writer, const AssetWeakReference *weak_ref);
 void BKE_asset_weak_reference_read(BlendDataReader *reader, AssetWeakReference *weak_ref);
+
+Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id);
+void BKE_asset_weak_reference_main_free();
+ID *BKE_asset_weak_reference_ensure(Main *global_main, const AssetWeakReference *weak_ref);

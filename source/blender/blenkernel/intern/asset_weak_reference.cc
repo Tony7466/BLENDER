@@ -7,15 +7,25 @@
  */
 
 #include <memory>
+#include <utility>
 
 #include "BLI_string.h"
+
+#include "DNA_space_types.h"
 
 #include "AS_asset_identifier.hh"
 #include "AS_asset_library.hh"
 
 #include "BKE_asset.hh"
+#include "BKE_blendfile_link_append.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+
+#include "BLI_vector.hh"
 
 #include "BLO_read_write.hh"
+#include "BLO_readfile.h"
 
 #include "DNA_asset_types.h"
 
@@ -97,3 +107,129 @@ void BKE_asset_weak_reference_read(BlendDataReader *reader, AssetWeakReference *
   BLO_read_data_address(reader, &weak_ref->asset_library_identifier);
   BLO_read_data_address(reader, &weak_ref->relative_asset_identifier);
 }
+
+/* Main database for each brush asset blend file.
+ *
+ * This avoids mixing asset datablocks in the regular main, which leads to naming conflicts and
+ * confusing user interface.
+ *
+ * TODO: Heavily WIP code. */
+
+struct AssetWeakReferenceMain {
+  /* TODO: not sure if this is the best unique identifier. */
+  std::string lib_path;
+  Main *main;
+
+  AssetWeakReferenceMain(const char *lib_path) : lib_path(lib_path), main(BKE_main_new()) {}
+  AssetWeakReferenceMain(const AssetWeakReferenceMain &) = delete;
+  AssetWeakReferenceMain(AssetWeakReferenceMain &&other) : main(std::exchange(other.main, nullptr))
+  {
+  }
+
+  ~AssetWeakReferenceMain()
+  {
+    if (main) {
+      BKE_main_free(main);
+    }
+  }
+};
+
+blender::Vector<AssetWeakReferenceMain> ASSET_WEAK_REFERENCE_MAINS;
+
+Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id)
+{
+  if (!(id->tag & LIB_TAG_ASSET_MAIN)) {
+    return global_main;
+  }
+
+  for (const AssetWeakReferenceMain &weak_ref_main : ASSET_WEAK_REFERENCE_MAINS) {
+    /* TODO: just loop over listbase of same type, or make this whole thing
+     * more efficient. */
+    ID *other_id;
+    FOREACH_MAIN_ID_BEGIN (weak_ref_main.main, other_id) {
+      if (id == other_id) {
+        return weak_ref_main.main;
+      }
+    }
+    FOREACH_MAIN_ID_END;
+  }
+
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+static Main *asset_weak_reference_main_ensure(const char *lib_path)
+{
+  for (const AssetWeakReferenceMain &weak_ref_main : ASSET_WEAK_REFERENCE_MAINS) {
+    if (weak_ref_main.lib_path == lib_path) {
+      return weak_ref_main.main;
+    }
+  }
+
+  ASSET_WEAK_REFERENCE_MAINS.append(lib_path);
+  return ASSET_WEAK_REFERENCE_MAINS.last().main;
+}
+
+void BKE_asset_weak_reference_main_free()
+{
+  ASSET_WEAK_REFERENCE_MAINS.clear_and_shrink();
+}
+
+ID *BKE_asset_weak_reference_ensure(Main *global_main, const AssetWeakReference *weak_ref)
+{
+  BLI_assert(weak_ref != nullptr);
+
+  char asset_full_path_buffer[FILE_MAX_LIBEXTRA];
+  char *asset_lib_path, *asset_group, *asset_name;
+
+  AS_asset_full_path_explode_from_weak_ref(
+      weak_ref, asset_full_path_buffer, &asset_lib_path, &asset_group, &asset_name);
+
+  if (asset_lib_path == nullptr && asset_group == nullptr && asset_name == nullptr) {
+    return nullptr;
+  }
+
+  // TODO: make not brush specific
+  BLI_assert(STREQ(asset_group, IDType_ID_BR.name));
+  BLI_assert(asset_name != nullptr);
+
+  /* If weak reference resolves to a null library path, assume we are in local asset case. */
+  Main *asset_main = global_main;
+
+  if (asset_lib_path != nullptr) {
+    /* TODO: avoid appending twice? */
+    asset_main = asset_weak_reference_main_ensure(asset_lib_path);
+
+    LibraryLink_Params lapp_parameters{};
+    lapp_parameters.bmain = asset_main;
+    BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(
+        &lapp_parameters);
+    BKE_blendfile_link_append_context_flag_set(lapp_context, BLO_LIBLINK_FORCE_INDIRECT, true);
+    BKE_blendfile_link_append_context_flag_set(lapp_context, 0, true);
+
+    BKE_blendfile_link_append_context_library_add(lapp_context, asset_lib_path, nullptr);
+
+    // TODO: make not brush specific
+    BlendfileLinkAppendContextItem *lapp_item = BKE_blendfile_link_append_context_item_add(
+        lapp_context, asset_name, ID_BR, nullptr);
+    BKE_blendfile_link_append_context_item_library_index_enable(lapp_context, lapp_item, 0);
+
+    BKE_blendfile_link(lapp_context, nullptr);
+    BKE_blendfile_append(lapp_context, nullptr);
+
+    BKE_blendfile_link_append_context_free(lapp_context);
+
+    /* TODO: only do for new ones? */
+    BKE_main_id_tag_all(asset_main, LIB_TAG_ASSET_MAIN, true);
+  }
+
+  /* TODO: are we sure it will not get renamed? */
+  ID *local_asset = reinterpret_cast<ID *>(
+      BLI_findstring(&asset_main->brushes, asset_name, offsetof(ID, name) + 2));
+
+  if (local_asset == nullptr || !ID_IS_ASSET(local_asset)) {
+    return nullptr;
+  }
+  return local_asset;
+}
+
