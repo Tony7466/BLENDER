@@ -28,7 +28,7 @@ namespace blender::bke::greasepencil {
 
 void validate_drawing_vertex_groups(GreasePencil &grease_pencil)
 {
-  Set<const char *> valid_names;
+  Set<std::string> valid_names;
   LISTBASE_FOREACH (const bDeformGroup *, defgroup, &grease_pencil.vertex_group_names) {
     valid_names.add_new(defgroup->name);
   }
