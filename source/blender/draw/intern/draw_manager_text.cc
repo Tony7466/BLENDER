@@ -55,7 +55,6 @@ struct ViewCachedString {
   short xoffs, yoffs;
   short flag;
   int str_len;
-  bool shadow;
   bool align_center;
 
   /* str is allocated past the end */
@@ -87,8 +86,7 @@ void DRW_text_cache_add(DRWTextStore *dt,
                         short yoffs,
                         short flag,
                         const uchar col[4],
-                        bool shadow,
-                        bool align_center)
+                        const bool align_center)
 {
   int alloc_len;
   ViewCachedString *vos;
@@ -110,7 +108,6 @@ void DRW_text_cache_add(DRWTextStore *dt,
   vos->yoffs = yoffs;
   vos->flag = flag;
   vos->str_len = str_len;
-  vos->shadow = shadow;
   vos->align_center = align_center;
 
   /* allocate past the end */
@@ -146,8 +143,8 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
         col_pack_prev = vos->col.pack;
       }
 
-      /* Measure the size of the string, then offset to align to the vertex. */
       if (vos->align_center) {
+        /* Measure the size of the string, then offset to align to the vertex. */
         float width, height;
         BLF_width_and_height(font_id,
                              (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) :
@@ -159,22 +156,12 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
         vos->yoffs -= short(height / 2.0f);
       }
 
-      if (vos->shadow) {
-        BLF_draw_default_shadowed(
-            float(vos->sco[0] + vos->xoffs),
-            float(vos->sco[1] + vos->yoffs),
-            2.0f,
-            (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
-            vos->str_len);
-      }
-      else {
-        BLF_draw_default(float(vos->sco[0] + vos->xoffs),
-                         float(vos->sco[1] + vos->yoffs),
-                         2.0f,
-                         (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) :
-                                                                   vos->str,
-                         vos->str_len);
-      }
+      BLF_draw_default_shadowed(
+          float(vos->sco[0] + vos->xoffs),
+          float(vos->sco[1] + vos->yoffs),
+          2.0f,
+          (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
+          vos->str_len);
     }
   }
 
