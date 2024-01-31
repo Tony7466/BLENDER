@@ -289,6 +289,7 @@ static void object_defgroup_remove_object_mode(Object *ob, bDeformGroup *dg)
   const ListBase *defbase = BKE_object_defgroup_list(ob);
 
   const int def_nr = BLI_findindex(defbase, dg);
+
   BLI_assert(def_nr != -1);
 
   if (ob->type == OB_GREASE_PENCIL) {

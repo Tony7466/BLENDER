@@ -430,7 +430,6 @@ typedef struct GreasePencil {
   struct Material **material_array;
   short material_array_num;
   char _pad3[2];
-
   /**
    * Global flag on the data-block.
    */
