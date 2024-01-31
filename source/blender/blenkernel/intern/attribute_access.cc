@@ -6,7 +6,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_type_conversions.hh"
 
@@ -20,8 +20,6 @@
 #include "BLT_translation.h"
 
 #include "FN_field.hh"
-
-#include "BLT_translation.h"
 
 #include "CLG_log.h"
 
