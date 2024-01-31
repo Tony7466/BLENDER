@@ -55,6 +55,7 @@ struct ViewCachedString {
   short xoffs, yoffs;
   short flag;
   int str_len;
+  bool shadow;
   bool align_center;
 
   /* str is allocated past the end */
@@ -86,6 +87,7 @@ void DRW_text_cache_add(DRWTextStore *dt,
                         short yoffs,
                         short flag,
                         const uchar col[4],
+                        const bool shadow,
                         const bool align_center)
 {
   int alloc_len;
@@ -108,6 +110,7 @@ void DRW_text_cache_add(DRWTextStore *dt,
   vos->yoffs = yoffs;
   vos->flag = flag;
   vos->str_len = str_len;
+  vos->shadow = shadow;
   vos->align_center = align_center;
 
   /* allocate past the end */
@@ -156,12 +159,22 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
         vos->yoffs -= short(height / 2.0f);
       }
 
-      BLF_draw_default_shadowed(
-          float(vos->sco[0] + vos->xoffs),
-          float(vos->sco[1] + vos->yoffs),
-          2.0f,
-          (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
-          vos->str_len);
+      if (vos->shadow) {
+        BLF_draw_default_shadowed(
+            float(vos->sco[0] + vos->xoffs),
+            float(vos->sco[1] + vos->yoffs),
+            2.0f,
+            (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) : vos->str,
+            vos->str_len);
+      }
+      else {
+        BLF_draw_default(float(vos->sco[0] + vos->xoffs),
+                         float(vos->sco[1] + vos->yoffs),
+                         2.0f,
+                         (vos->flag & DRW_TEXT_CACHE_STRING_PTR) ? *((const char **)vos->str) :
+                                                                   vos->str,
+                         vos->str_len);
+      }
     }
   }
 
