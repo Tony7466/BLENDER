@@ -3947,6 +3947,16 @@ static void wm_event_handle_autosave(bContext *C, const wmEvent *event)
     return;
   }
 
+  static bool is_mouse_down = false;
+  if (ISMOUSE_BUTTON(event->type)) {
+    if (event->val == KM_PRESS) {
+      is_mouse_down = true;
+    }
+    else if (event->val == KM_RELEASE) {
+      is_mouse_down = false;
+    }
+  }
+
   auto start_counting_mouse_moves = [&]() {
     return ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && event->val == KM_RELEASE;
   };
@@ -3974,7 +3984,7 @@ static void wm_event_handle_autosave(bContext *C, const wmEvent *event)
         G.autosave_mouse_move_count = 0;
       }
       if (allow_autosave) {
-        if (ISMOUSE_MOTION(event->type)) {
+        if (!is_mouse_down && ISMOUSE_MOTION(event->type)) {
           G.autosave_mouse_move_count++;
         }
         if (G.autosave_mouse_move_count > 5) {
