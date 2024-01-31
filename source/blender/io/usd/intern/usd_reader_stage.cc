@@ -342,7 +342,7 @@ static bool merge_with_parent(USDPrimReader *reader)
 }
 
 USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
-                                               const UsdPathSet *pruned_prims,
+                                               const UsdPathSet &pruned_prims,
                                                const bool defined_prims_only,
                                                blender::Vector<USDPrimReader *> &r_readers)
 {
@@ -375,7 +375,7 @@ USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
   pxr::UsdPrimSiblingRange children = prim.GetFilteredChildren(filter_predicate);
 
   for (const auto &child_prim : children) {
-    if (pruned_prims && pruned_prims->contains(child_prim.GetPath())) {
+    if (pruned_prims.contains(child_prim.GetPath())) {
       continue;
     }
     if (USDPrimReader *child_reader = collect_readers(
@@ -451,7 +451,7 @@ void USDStageReader::collect_readers()
   stage_->SetInterpolationType(pxr::UsdInterpolationType::UsdInterpolationTypeHeld);
 
   /* Create readers, skipping over prototype prims in this pass. */
-  collect_readers(root, &instancer_proto_paths, true, readers_);
+  collect_readers(root, instancer_proto_paths, true, readers_);
 
   if (params_.support_scene_instancing) {
     /* Collect the scene-graph instance prototypes. */
@@ -459,7 +459,7 @@ void USDStageReader::collect_readers()
 
     for (const pxr::UsdPrim &proto_prim : protos) {
       blender::Vector<USDPrimReader *> proto_readers;
-      collect_readers(proto_prim, &instancer_proto_paths, true, proto_readers);
+      collect_readers(proto_prim, instancer_proto_paths, true, proto_readers);
       proto_readers_.add(proto_prim.GetPath(), proto_readers);
 
       for (USDPrimReader *reader : proto_readers) {
@@ -738,7 +738,7 @@ void USDStageReader::create_point_instancer_proto_readers(const UsdPathSet &prot
 
     /* Note that point instancer prototypes may be defined as overs, so
      * we must call collect readers with argument defined_prims_only = false. */
-    collect_readers(proto_prim, &proto_paths, false /* include undefined prims */, proto_readers);
+    collect_readers(proto_prim, proto_paths, false /* include undefined prims */, proto_readers);
 
     instancer_proto_readers_.add(path, proto_readers);
 

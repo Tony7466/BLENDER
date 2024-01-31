@@ -125,11 +125,10 @@ class USDStageReader {
    * new readers in r_readers.
    *
    * \param prim: Root of the subtree to convert to readers
-   * \param pruned_prims: Optional pointer to set of paths to prune when
-   *                      iterating over the stage during conversion.  I.e.,
-   *                      these prims and their descendents will not be
-   *                      converted to readers.  May be null if no pruning
-   *                      is desired.
+   * \param pruned_prims: Set of paths to prune when iterating over the
+   *                      stage during conversion.  I.e., these prims
+   *                      and their descendents will not be converted to
+   *                      readers.
    * \param defined_prims_only: If true, only defined prims will be converted,
    *                            skipping abstract and over prims.  This should
    *                            be set to false when converting point instancer
@@ -139,7 +138,7 @@ class USDStageReader {
    *          the prim cannot be converted.
    */
   USDPrimReader *collect_readers(const pxr::UsdPrim &prim,
-                                 const UsdPathSet *pruned_prims,
+                                 const UsdPathSet &pruned_prims,
                                  bool defined_prims_only,
                                  blender::Vector<USDPrimReader *> &r_readers);
 
