@@ -1709,14 +1709,28 @@ static void rna_def_strip_crop(BlenderRNA *brna)
 }
 
 static const EnumPropertyItem transform_filter_items[] = {
-    {SEQ_TRANSFORM_FILTER_NEAREST, "NEAREST", 0, "Nearest", ""},
-    {SEQ_TRANSFORM_FILTER_BILINEAR, "BILINEAR", 0, "Bilinear", ""},
-    {SEQ_TRANSFORM_FILTER_BICUBIC, "BICUBIC", 0, "Bicubic", ""},
-    {SEQ_TRANSFORM_FILTER_NEAREST_3x3,
-     "SUBSAMPLING_3x3",
+    {SEQ_TRANSFORM_FILTER_NEAREST, "NEAREST", 0, "Nearest", "Use nearest sample"},
+    {SEQ_TRANSFORM_FILTER_BILINEAR,
+     "BILINEAR",
      0,
-     "Subsampling (3" BLI_STR_UTF8_MULTIPLICATION_SIGN "3)",
-     "Use nearest with 3" BLI_STR_UTF8_MULTIPLICATION_SIGN "3 subsamples during rendering"},
+     "Bilinear",
+     "Interpolate between 2" BLI_STR_UTF8_MULTIPLICATION_SIGN "2 samples"},
+    {SEQ_TRANSFORM_FILTER_CUBIC_MITCHELL,
+     "CUBIC_MITCHELL",
+     0,
+     "Cubic Mitchell",
+     "Cubic Mitchell filter on 4" BLI_STR_UTF8_MULTIPLICATION_SIGN "4 samples"},
+    {SEQ_TRANSFORM_FILTER_CUBIC_BSPLINE,
+     "CUBIC_BSPLINE",
+     0,
+     "Cubic B-Spline",
+     "Cubic B-Spline filter (blurry but no ringing) on 4" BLI_STR_UTF8_MULTIPLICATION_SIGN
+     "4 samples"},
+    {SEQ_TRANSFORM_FILTER_BOX,
+     "BOX",
+     0,
+     "Box",
+     "Averages source image samples that fall under destination pixel"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -3627,7 +3641,7 @@ static void rna_def_modifier(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQUENCE_MODIFIER_EXPANDED);
   RNA_def_property_ui_text(prop, "Expanded", "Mute expanded settings for the modifier");
-  RNA_def_property_ui_icon(prop, ICON_TRIA_RIGHT, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
 
   prop = RNA_def_property(srna, "input_mask_type", PROP_ENUM, PROP_NONE);
