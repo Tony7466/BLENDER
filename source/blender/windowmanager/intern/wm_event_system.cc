@@ -4059,11 +4059,15 @@ void wm_event_do_handlers(bContext *C)
             case AUTOSAVE_SCHEDULED: {
               if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && event->val == KM_PRESS) {
                 G.autosave_schedule_state = AUTOSAVE_SCHEDULED_CLICKED;
+                G.autosave_mouse_move_count = 0;
               }
               break;
             }
             case AUTOSAVE_SCHEDULED_CLICKED: {
               if (ISMOUSE_MOTION(event->type)) {
+                G.autosave_mouse_move_count++;
+              }
+              if (G.autosave_mouse_move_count > 5) {
                 wm_autosave_write(CTX_data_main(C), wm);
               }
               break;

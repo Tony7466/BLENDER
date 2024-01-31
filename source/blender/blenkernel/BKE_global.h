@@ -170,6 +170,7 @@ typedef struct Global {
   int opengl_deprecation_usage_lineno;
 
   AutosaveScheduleState autosave_schedule_state;
+  int autosave_mouse_move_count;
 } Global;
 
 /* **************** GLOBAL ********************* */
