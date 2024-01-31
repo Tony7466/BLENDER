@@ -3,8 +3,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.types import Operator
-from bpy.props import StringProperty
+from bpy.types import (
+    Operator, OperatorFileListElement, FileHandler,)
+from bpy.props import (
+    BoolProperty,
+    CollectionProperty,
+    StringProperty,)
 from bpy.app.translations import pgettext_rpt as rpt_
 
 
@@ -191,8 +195,92 @@ class ProjectApply(Operator):
         return {'FINISHED'}
 
 
+class IMAGE_OT_open_images(Operator):
+    bl_idname = "image.open_images"
+    bl_label = "Open Images"
+
+    directory: StringProperty(subtype='FILE_PATH', options={'SKIP_SAVE', 'HIDDEN'})
+    files: CollectionProperty(type=OperatorFileListElement, options={'SKIP_SAVE', 'HIDDEN'})
+    relative_path: BoolProperty(name="Use relative path", default=False)
+    use_sequence_detection: BoolProperty(name="Use sequence detection", default=False)
+    use_udim_detection: BoolProperty(name="Use UDIM detection", default=False)
+
+    @classmethod
+    def poll(cls, context):
+        return (context.area and context.area.ui_type == 'IMAGE_EDITOR'
+                and context.region and context.region.type == 'WINDOW')
+
+    def execute(self, context):
+        if not self.directory:
+            return {'CANCELLED'}
+        files = []
+        # Groups of files that may result on a sequence or in a UDIM group.
+        # The elements looks like [(prefix,ext,frame_size,[file.name,...]),...]
+        sequences = []
+        for file in self.files:
+            import re
+            mathc = re.search("([0-9]*)(\\..*)$", file.name)
+            if mathc and (self.use_sequence_detection or self.use_udim_detection):
+                ext = mathc.group(2)
+                prefix = file.name[:len(file.name) - len(mathc.group(0))]
+                frame_size = len(mathc.group(1))
+                seq = None
+                for test_seq in sequences:
+                    if test_seq[0] == prefix and test_seq[1] == ext and test_seq[2] == frame_size:
+                        seq = test_seq
+                        seq[3].append(file.name)
+                        break
+                if not seq:
+                    sequences.append((prefix, ext, frame_size, [file.name,]))
+            else:
+                files.append(file.name)
+
+        for file in files:
+            import os
+            filepath = os.path.join(self.directory, file)
+            bpy.ops.image.open(filepath=filepath, relative_path=self.relative_path)
+        for seq in sequences:
+            seq[3].sort()
+            import os
+            directory = self.directory
+            filepath = os.path.join(directory, seq[3][0])
+            files = [{"name": file} for file in seq[3]]
+            bpy.ops.image.open(
+                filepath=filepath,
+                directory=directory,
+                files=files,
+                use_sequence_detection=self.use_sequence_detection,
+                use_udim_detecting=self.use_udim_detection,
+                relative_path=self.relative_path)
+            if len(files) > 1 and self.use_sequence_detection:
+                context.edit_image.name = "{prefix}{hash}{ext}".format(prefix=seq[0], hash=("#" * seq[2]), ext=seq[1])
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        if not self.directory:
+            return {'CANCELLED'}
+        title = self.files[0].name if len(self.files) == 1 else "Open {len} imagenes".format(len=len(self.files))
+        context.window_manager.invoke_props_dialog(self, title=title, confirm_text="Open")
+        return {'RUNNING_MODAL'}
+
+
+class IMAGE_FH_drop_handler(FileHandler):
+    bl_idname = "IMAGE_FH_drop_handler"
+    bl_label = "Open droped imagenes"
+    bl_import_operator = "image.open_images"
+    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';'.join(bpy.path.extensions_movie)
+
+    @classmethod
+    def poll_drop(cls, context):
+        return (context.area and context.area.ui_type == 'IMAGE_EDITOR'
+                and context.region and context.region.type == 'WINDOW')
+
+
 classes = (
     EditExternally,
     ProjectApply,
+    IMAGE_OT_open_images,
+    IMAGE_FH_drop_handler,
     ProjectEdit,
 )
