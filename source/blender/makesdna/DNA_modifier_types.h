@@ -15,6 +15,8 @@
 #include "DNA_session_uid_types.h"
 
 #ifdef __cplusplus
+#  include "BLI_span.hh"
+
 namespace blender {
 struct NodesModifierRuntime;
 }
@@ -102,6 +104,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilNoise = 67,
   eModifierType_GreasePencilMirror = 68,
   eModifierType_GreasePencilThickness = 69,
+  eModifierType_GreasePencilDash = 70,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2727,3 +2730,35 @@ typedef enum GreasePencilThicknessModifierFlag {
   MOD_GREASE_PENCIL_THICK_NORMALIZE = (1 << 0),
   MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR = (1 << 1),
 } GreasePencilThicknessModifierFlag;
+
+typedef struct GreasePencilDashModifierSegment {
+  char name[64];
+  int dash;
+  int gap;
+  float radius;
+  float opacity;
+  int mat_nr;
+  int flag;
+} GreasePencilDashModifierSegment;
+
+typedef struct GreasePencilDashModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** #GreasePencilDashModifierFlag */
+  int flag;
+
+  int dash_offset;
+
+  GreasePencilDashModifierSegment *segments_array;
+  int segments_num;
+  int segment_active_index;
+
+#ifdef __cplusplus
+  blender::Span<GreasePencilDashModifierSegment> segments() const;
+  blender::MutableSpan<GreasePencilDashModifierSegment> segments();
+#endif
+} GreasePencilDashModifierData;
+
+typedef enum GreasePencilDashModifierFlag {
+  MOD_GREASE_PENCIL_DASH_USE_CYCLIC = (1 << 0),
+} GreasePencilDashModifierFlag;
