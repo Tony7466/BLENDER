@@ -35,7 +35,7 @@
 #include "BKE_collection.h"
 #include "BKE_editlattice.h"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 
@@ -314,6 +314,8 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <algorithm>
+
 #  include "DNA_ID.h"
 #  include "DNA_constraint_types.h"
 #  include "DNA_gpencil_legacy_types.h"
@@ -326,11 +328,11 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 #  include "BKE_constraint.h"
 #  include "BKE_context.hh"
 #  include "BKE_curve.hh"
-#  include "BKE_deform.h"
+#  include "BKE_deform.hh"
 #  include "BKE_effect.h"
 #  include "BKE_global.h"
 #  include "BKE_gpencil_modifier_legacy.h"
-#  include "BKE_key.h"
+#  include "BKE_key.hh"
 #  include "BKE_light_linking.h"
 #  include "BKE_material.h"
 #  include "BKE_mesh.hh"
@@ -1096,7 +1098,7 @@ void rna_object_vcollayer_name_set(PointerRNA *ptr,
 static int rna_Object_active_material_index_get(PointerRNA *ptr)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
-  return MAX2(ob->actcol - 1, 0);
+  return std::max<int>(ob->actcol - 1, 0);
 }
 
 static void rna_Object_active_material_index_set(PointerRNA *ptr, int value)
@@ -1544,7 +1546,7 @@ static int rna_Object_active_shape_key_index_get(PointerRNA *ptr)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
 
-  return MAX2(ob->shapenr - 1, 0);
+  return std::max<int>(ob->shapenr - 1, 0);
 }
 
 static void rna_Object_active_shape_key_index_set(PointerRNA *ptr, int value)
