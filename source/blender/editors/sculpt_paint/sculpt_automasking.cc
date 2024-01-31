@@ -204,9 +204,6 @@ static bool needs_factors_cache(const Sculpt *sd, const Brush *brush)
     return true;
   }
 
-  /* TODO: Unsure why the BRUSH_AUTOMASKING_VIEW_NORMAL mode requires a check against the
-   * propagation steps variable. This can probably be limited to checking if the brush itself
-   * exists. */
   if (automasking_flags & BRUSH_AUTOMASKING_VIEW_NORMAL) {
     return brush && brush->automasking_boundary_edges_propagation_steps != 1;
   }
@@ -820,6 +817,11 @@ bool tool_can_reuse_automask(int sculpt_tool)
               SCULPT_TOOL_SMEAR,
               SCULPT_TOOL_MASK,
               SCULPT_TOOL_DRAW_FACE_SETS);
+}
+
+std::unique_ptr<Cache> cache_init(const Sculpt *sd, Object *ob)
+{
+  return cache_init(sd, nullptr, ob);
 }
 
 std::unique_ptr<Cache> cache_init(const Sculpt *sd, const Brush *brush, Object *ob)

@@ -1290,12 +1290,8 @@ Cache *active_cache_get(SculptSession *ss);
  *
  * For automasking modes that cannot be calculated in real time,
  * data is also stored at the vertex level prior to the stroke starting.
- *
- * \param sd: the sculpt tool
- * \param brush: the brush being used (optional)
- * \param ob: the object being operated on
- * \return the automask cache
  */
+std::unique_ptr<Cache> cache_init(const Sculpt *sd, Object *ob);
 std::unique_ptr<Cache> cache_init(const Sculpt *sd, const Brush *brush, Object *ob);
 void cache_free(Cache *automasking);
 
