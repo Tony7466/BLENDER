@@ -1,1 +1,2 @@
 Referenced by issue #117674, When rendering an image sequence with stereoscopy and overwrite disabled, images still get overwritten.
+Referenced by pull request #117696, Fix #117674: stereoscopy rendering with overwrite disabled broken
