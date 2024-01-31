@@ -20,8 +20,6 @@
 
 #include "BLT_translation.h"
 
-#include <iostream>
-
 namespace blender::bke::greasepencil {
 
 /* ------------------------------------------------------------------- */
