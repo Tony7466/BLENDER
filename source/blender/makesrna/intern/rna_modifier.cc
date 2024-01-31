@@ -7767,6 +7767,9 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
@@ -7874,6 +7877,8 @@ static void rna_def_modifier_grease_pencil_color(BlenderRNA *brna)
       srna, "rna_GreasePencilColorModifier_material_filter_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
 
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
@@ -7934,6 +7939,8 @@ static void rna_def_modifier_grease_pencil_tint(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilTintModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   RNA_define_lib_overridable(true);
 
@@ -8093,6 +8100,8 @@ static void rna_def_modifier_grease_pencil_offset(BlenderRNA *brna)
       srna, "rna_GreasePencilOffsetModifier_material_filter_set");
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilOffsetModifier_vertex_group_name_set");
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   prop = RNA_def_property(srna, "offset_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, offset_mode_items);
@@ -8265,6 +8274,8 @@ static void rna_def_modifier_grease_pencil_mirror(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_material_filter(
       srna, "rna_GreasePencilMirrorModifier_material_filter_set");
 
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
@@ -8402,7 +8413,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag", 0);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
-  RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   prop = RNA_def_property(srna, "is_active", PROP_BOOLEAN, PROP_NONE);

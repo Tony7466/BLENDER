@@ -395,8 +395,8 @@ static void panel_draw(const bContext *C, Panel *panel)
       panel, "advanced", true);
   PointerRNA advanced_state_ptr = RNA_pointer_create(
       nullptr, &RNA_LayoutPanelState, advanced_panel_state);
-  if (uiLayout *advanced_panel = uiLayoutPanel(
-          C, layout, "Advanced", &advanced_state_ptr, "is_open"))
+  if (uiLayout *advanced_panel = uiLayoutPanelProp(
+          C, layout, &advanced_state_ptr, "is_open", "Advanced"))
   {
     uiItemR(advanced_panel, ptr, "offset_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
@@ -425,12 +425,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
   }
 
-  LayoutPanelState *influence_panel_state = BKE_panel_layout_panel_state_ensure(
-      panel, "influence", true);
-  PointerRNA influence_state_ptr = RNA_pointer_create(
-      nullptr, &RNA_LayoutPanelState, influence_panel_state);
-  if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", &influence_state_ptr, "is_open"))
+  if (uiLayout *influence_panel = uiLayoutPanelProp(
+          C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
