@@ -72,6 +72,29 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&dmd->influence, ob, walk, user_data);
 }
 
+/**
+ * Gap==0 means to start the next segment at the immediate next point, which will leave a visual
+ * gap of "1 point". This makes the algorithm give the same visual appearance as displayed on the
+ * UI and also simplifies the check for "no-length" situation where SEG==0 (which will not produce
+ * any effective dash).
+ */
+static int real_gap(const GreasePencilDashModifierSegment &dash_segment)
+{
+  return dash_segment.gap - 1;
+}
+
+static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
+{
+  const auto *dmd = reinterpret_cast<GreasePencilDashModifierData *>(md);
+  /* Enable if at least one segment has non-zero length. */
+  for (const GreasePencilDashModifierSegment &dash_segment : dmd->segments()) {
+    if (dash_segment.dash + real_gap(dash_segment) > 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // static bke::CurvesGeometry create_mirror_copies(const Object &ob,
 //                                                 const GreasePencilDashModifierData &dmd,
 //                                                 const bke::CurvesGeometry &base_curves,
@@ -306,7 +329,7 @@ ModifierTypeInfo modifierType_GreasePencilDash = {
     /*init_data*/ blender::init_data,
     /*required_data_mask*/ nullptr,
     /*free_data*/ blender::free_data,
-    /*is_disabled*/ nullptr,
+    /*is_disabled*/ blender::is_disabled,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
