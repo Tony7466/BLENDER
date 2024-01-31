@@ -147,8 +147,17 @@ bool remove_from_vertex_group(GreasePencil &grease_pencil, StringRef name, bool 
 
 void clear_vertex_groups(GreasePencil &grease_pencil)
 {
-  /* TODO */
-  BLI_assert_unreachable();
+  for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+    for (MDeformVert &dvert : curves.deform_verts_for_write()) {
+      BKE_defvert_clear(&dvert);
+    }
+  }
 }
 
 void select_from_group(GreasePencil &grease_pencil, const StringRef name, const bool select)
@@ -179,14 +188,12 @@ void select_from_group(GreasePencil &grease_pencil, const StringRef name, const 
       for (const int i : select_vert.span.index_range()) {
         if (BKE_defvert_find_index(&dverts[i], def_nr)) {
           select_vert.span[i] = select;
-          std::cout << "Change " << i << std::endl;
         }
       }
 
       select_vert.finish();
     }
   }
-  std::flush(std::cout);
 }
 
 /** \} */
