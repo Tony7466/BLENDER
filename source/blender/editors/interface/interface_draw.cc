@@ -989,6 +989,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
   const float alpha = scopes->vecscope_alpha;
 
+  GPU_line_smooth(true);
   GPU_blend(GPU_BLEND_ALPHA);
 
   float color[4];
@@ -1055,11 +1056,13 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
       circle_vertex_colors[i * 4] = r;
       circle_vertex_colors[i * 4 + 1] = g;
       circle_vertex_colors[i * 4 + 2] = b;
-      circle_vertex_colors[i * 4 + 3] = 0.7f;
+      circle_vertex_colors[i * 4 + 3] = 0.8f;
     }
 
   GPU_blend(GPU_BLEND_ALPHA);
+  GPU_line_width(2.5f);
   circle_draw_rgb(circle_points, tot_points, circle_vertex_colors);
+  GPU_line_width(1.0f);
 
   /* inner circles */
   for (int j = 0; j < 5; j++) {
