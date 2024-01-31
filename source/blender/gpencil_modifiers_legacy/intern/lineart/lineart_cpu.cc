@@ -3564,6 +3564,9 @@ void MOD_lineart_wrap_modifier_v3(const LineartGpencilModifierData *lmd_legacy,
   LMD_WRAP(light_contour_object);
   LMD_WRAP(source_object);
   LMD_WRAP(source_collection);
+  LMD_WRAP(target_material);
+  strcpy(lmd->source_vertex_group, lmd_legacy->source_vertex_group);
+  strcpy(lmd->vgname, lmd_legacy->vgname);
   LMD_WRAP(overscan);
   LMD_WRAP(shadow_camera_fov);
   LMD_WRAP(shadow_camera_size);
@@ -3608,6 +3611,9 @@ void MOD_lineart_unwrap_modifier_v3(LineartGpencilModifierData *lmd_legacy,
   LMD_UNWRAP(light_contour_object);
   LMD_UNWRAP(source_object);
   LMD_UNWRAP(source_collection);
+  LMD_UNWRAP(target_material);
+  strcpy(lmd_legacy->source_vertex_group, lmd->source_vertex_group);
+  strcpy(lmd_legacy->vgname, lmd->vgname);
   LMD_UNWRAP(overscan);
   LMD_UNWRAP(shadow_camera_fov);
   LMD_UNWRAP(shadow_camera_size);
@@ -5618,6 +5624,7 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
 
 void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
                                      const Object &ob,
+                                     Depsgraph *depsgraph,
                                      blender::bke::greasepencil::Drawing &drawing,
                                      const int8_t source_type,
                                      Object *source_object,
@@ -5633,7 +5640,10 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
                                      const float opacity,
                                      const uchar shadow_selection,
                                      const uchar silhouette_mode,
-                                     const int modifier_flags)
+                                     const char *source_vgname,
+                                     const char *vgname,
+                                     const int modifier_flags,
+                                     const int modifier_calculation_flags)
 {
   if (G.debug_value == 4000) {
     printf("Line Art v3: Generating...\n");
@@ -5668,9 +5678,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
 
   int enabled_types = cache->all_enabled_edge_types;
 
-  /* Vertex weight transferring not implemented into GPv3 yet. */
-  /* bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP; */
-  /* bool match_output = modifier_calculation_flags & LRT_GPENCIL_MATCH_OUTPUT_VGROUP; */
+  bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP;
 
   bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
 
@@ -5823,9 +5831,28 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
 
   MutableSpan<int> offsets = new_curves.offsets_for_write();
 
+  bke::SpanAttributeWriter<float> vgroup_weights;
+  if (vgname) {
+    vgroup_weights = attributes.lookup_or_add_for_write_span<float>(vgname,
+                                                                    bke::AttrDomain::Point);
+  }
+
   int up_to_point = 0;
   for (int chain_i : writer.index_range()) {
     LineartChainWriteInfo &cwi = writer[chain_i];
+
+    MDeformVert *src_dvert = nullptr;
+    int src_deform_group = -1;
+    Mesh *src_mesh = nullptr;
+    if (source_vgname && vgroup_weights) {
+      Object *eval_ob = DEG_get_evaluated_object(depsgraph, cwi.chain->object_ref);
+      if (eval_ob && eval_ob->type == OB_MESH) {
+        src_mesh = BKE_object_get_evaluated_mesh(eval_ob);
+        src_dvert = src_mesh->deform_verts_for_write().data();
+        src_deform_group = BKE_id_defgroup_name_index(&src_mesh->id, source_vgname);
+      }
+    }
+
     int i;
     LISTBASE_FOREACH_INDEX (LineartEdgeChainItem *, eci, &cwi.chain->chain, i) {
       int point_i = i + up_to_point;
@@ -5833,11 +5860,21 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
       copy_v3_v3(point, eci->gpos);
       point_radii.span[point_i] = thickness;
       point_opacities.span[point_i] = opacity;
+
+      if (src_deform_group >= 0) {
+        int sindex = 0, vindex;
+        vindex = eci->index;
+        if (vindex >= src_mesh->verts_num) {
+          break;
+        }
+        MDeformWeight *mdw = BKE_defvert_ensure_index(&src_dvert[vindex], src_deform_group);
+
+        vgroup_weights.span[point_i] = invert_input ? (1 - mdw->weight) : mdw->weight;
+      }
     }
     offsets[chain_i] = up_to_point;
     stroke_materials.span[chain_i] = max_ii(mat_nr, 0);
     up_to_point += cwi.point_count;
-    /* TODO: Vertex weight transfer not implemented for v3 yet. */
   }
   offsets[writer.index_range().last() + 1] = up_to_point;
 

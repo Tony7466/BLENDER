@@ -605,11 +605,7 @@ static void vgroup_panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiItemR(col, ptr, "use_output_vertex_group_match_by_name", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  const bool match_output = RNA_boolean_get(ptr, "use_output_vertex_group_match_by_name");
-  if (!match_output) {
-    uiItemPointerR(
-        col, ptr, "vertex_group", &ob_ptr, "vertex_groups", IFACE_("Target"), ICON_NONE);
-  }
+  uiItemPointerR(col, ptr, "vertex_group", &ob_ptr, "vertex_groups", IFACE_("Target"), ICON_NONE);
 }
 
 static void bake_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -746,6 +742,7 @@ static void generate_strokes(ModifierData &md,
   MOD_lineart_gpencil_generate_v3(
       lmd.cache,
       *ctx.object,
+      ctx.depsgraph,
       drawing,
       lmd.source_type,
       lmd.source_object,
@@ -761,7 +758,10 @@ static void generate_strokes(ModifierData &md,
       lmd.opacity,
       lmd.shadow_selection,
       lmd.silhouette_selection,
-      lmd.flags);
+      lmd.source_vertex_group,
+      lmd.vgname,
+      lmd.flags,
+      lmd.calculation_flags);
 
   if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     /* Clear local cache. */

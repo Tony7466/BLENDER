@@ -951,10 +951,11 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   int modifier_calculation_flags);
 void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
                                      const Object &ob,
+                                     Depsgraph *depsgraph,
                                      blender::bke::greasepencil::Drawing &drawing,
                                      const int8_t source_type,
-                                     struct Object *source_object,
-                                     struct Collection *source_collection,
+                                     Object *source_object,
+                                     Collection *source_collection,
                                      const int level_start,
                                      const int level_end,
                                      const int mat_nr,
@@ -962,11 +963,14 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
                                      const uchar mask_switches,
                                      const uchar material_mask_bits,
                                      const uchar intersection_mask,
-                                     const float radius,
+                                     const float thickness,
                                      const float opacity,
                                      const uchar shadow_selection,
                                      const uchar silhouette_mode,
-                                     const int modifier_flags);
+                                     const char *source_vgname,
+                                     const char *vgname,
+                                     const int modifier_flags,
+                                     const int modifier_calculation_flags);
 
 /**
  * Length is in image space.
