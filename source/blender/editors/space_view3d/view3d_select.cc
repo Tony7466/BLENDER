@@ -3404,6 +3404,12 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   /* Pass-through allows tweaks
    * FINISHED to signal one operator worked */
   if (changed) {
+    /* Don't auto-save directly after selection because it's likely that the user wants to operate
+     * on it shortly after. */
+    if (G.autosave_schedule_state == AUTOSAVE_SCHEDULED_MOUSE_MOVE) {
+      G.autosave_schedule_state = AUTOSAVE_SCHEDULED;
+    }
+
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
     return OPERATOR_PASS_THROUGH | OPERATOR_FINISHED;
   }
