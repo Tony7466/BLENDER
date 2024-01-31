@@ -2112,12 +2112,10 @@ static void wm_autosave_location(char filepath[FILE_MAX])
 
 void wm_autosave_write(Main *bmain, wmWindowManager *wm)
 {
-  printf("auto-save start\n");
   G.autosave_schedule_state = AUTOSAVE_NOT_SCHEDULED;
 
   char filepath[FILE_MAX];
   wm_autosave_location(filepath);
-  BLI_sleep_ms(500);
 
   /* Fast save of last undo-buffer, now with UI. */
   const bool use_memfile = (U.uiflag & USER_GLOBALUNDO) != 0;
@@ -2140,8 +2138,6 @@ void wm_autosave_write(Main *bmain, wmWindowManager *wm)
     BlendFileWriteParams params{};
     BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
   }
-
-  printf("auto-save done\n");
 }
 
 static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
@@ -2155,7 +2151,7 @@ static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
 
 void wm_autosave_timer_begin(wmWindowManager *wm)
 {
-  wm_autosave_timer_begin_ex(wm, 0.3);
+  wm_autosave_timer_begin_ex(wm, U.savetime * 60.0);
 }
 
 void wm_autosave_timer_end(wmWindowManager *wm)
@@ -2171,7 +2167,7 @@ void WM_file_autosave_init(wmWindowManager *wm)
   wm_autosave_timer_begin(wm);
 }
 
-void wm_autosave_timer(Main * /*bmain*/, wmWindowManager *wm, wmTimer * /*wt*/)
+void wm_autosave_timer(wmWindowManager *wm)
 {
   wm_autosave_timer_end(wm);
   if (G.autosave_schedule_state == AUTOSAVE_NOT_SCHEDULED) {

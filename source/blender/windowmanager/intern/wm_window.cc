@@ -1766,7 +1766,7 @@ static bool wm_window_timers_process(const bContext *C, int *sleep_us_p)
       wm_jobs_timer(wm, wt);
     }
     else if (wt->event_type == TIMERAUTOSAVE) {
-      wm_autosave_timer(bmain, wm, wt);
+      wm_autosave_timer(wm);
     }
     else if (wt->event_type == TIMERNOTIFIER) {
       WM_main_add_notifier(POINTER_AS_UINT(wt->customdata), nullptr);
