@@ -1269,7 +1269,7 @@ typedef struct SpaceImage {
 
   float uv_opacity;
 
-  float stretching_opacity;
+  float stretch_opacity;
 
   int tile_grid_shape[2];
   /**

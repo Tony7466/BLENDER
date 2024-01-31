@@ -82,5 +82,5 @@ void main()
 
 #endif
 
-  finalColor = vec4(weight_to_rgb(stretch), stretching_opacity);
+  finalColor = vec4(weight_to_rgb(stretch), stretch_opacity);
 }

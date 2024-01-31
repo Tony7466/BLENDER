@@ -395,7 +395,7 @@ struct OVERLAY_PrivateData {
 
     float uv_opacity;
 
-    float stretching_opacity;
+    float stretch_opacity;
 
     int image_size[2];
     float image_aspect[2];
