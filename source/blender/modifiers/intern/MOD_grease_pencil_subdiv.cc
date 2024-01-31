@@ -6,11 +6,7 @@
  * \ingroup modifiers
  */
 
-#include "BLI_array.hh"
 #include "BLI_index_mask.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_task.h"
-#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -18,32 +14,22 @@
 
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.hh"
-#include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_lib_query.hh"
 #include "BKE_modifier.hh"
-#include "BKE_screen.hh"
 
 #include "GEO_subdivide_curves.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "ED_grease_pencil.hh"
-
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
 #include "RNA_prototypes.h"
-
-#include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
 
 namespace blender {
 
@@ -91,21 +77,44 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void deform_drawing(ModifierData &md,
-                           Depsgraph * /*depsgraph*/,
-                           Object &ob,
-                           bke::greasepencil::Drawing &drawing)
+static void subdivide_drawing(ModifierData &md, Object &ob, bke::greasepencil::Drawing &drawing)
 {
   GreasePencilSubdivModifierData &mmd = reinterpret_cast<GreasePencilSubdivModifierData &>(md);
+  const bool use_catmull_clark = mmd.type == MOD_GREASE_PENCIL_SUBDIV_CATMULL;
 
   IndexMaskMemory memory;
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, drawing.strokes_for_write(), mmd.influence, memory);
 
-  VArray<int> cuts = VArray<int>::ForSingle(mmd.level, drawing.strokes().points_num());
+  if (use_catmull_clark) {
+    bke::CurvesGeometry subdivided_curves = drawing.strokes();
+    for ([[maybe_unused]] const int level_i : IndexRange(mmd.level)) {
+      VArray<int> one_cut = VArray<int>::ForSingle(1, subdivided_curves.points_num());
+      subdivided_curves = geometry::subdivide_curves(
+          subdivided_curves, strokes, std::move(one_cut), {});
 
-  drawing.strokes_for_write() = geometry::subdivide_curves(
-      drawing.strokes(), strokes, std::move(cuts), {});
+      offset_indices::OffsetIndices<int> points_by_curve = subdivided_curves.points_by_curve();
+      MutableSpan<float3> positions = subdivided_curves.positions_for_write();
+      threading::parallel_for(subdivided_curves.curves_range(), 1024, [&](const IndexRange range) {
+        for (const int curve_i : range) {
+          const IndexRange points = points_by_curve[curve_i];
+          for (const int point_i : points.drop_front(1).drop_back(1)) {
+            positions[point_i] = math::interpolate(
+                positions[point_i],
+                math::interpolate(positions[point_i - 1], positions[point_i + 1], 0.5f),
+                0.5f);
+          }
+        }
+      });
+    }
+    drawing.strokes_for_write() = subdivided_curves;
+  }
+  else {
+    VArray<int> cuts = VArray<int>::ForSingle(math::pow(mmd.level, 2),
+                                              drawing.strokes().points_num());
+    drawing.strokes_for_write() = geometry::subdivide_curves(drawing.strokes(), strokes, cuts, {});
+  }
+
   drawing.tag_topology_changed();
 }
 
@@ -120,7 +129,7 @@ static void modify_geometry_set(ModifierData *md,
   }
 
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
-  const int current_frame = DEG_get_evaluated_scene(ctx->depsgraph)->r.cfra;
+  const int current_frame = grease_pencil.runtime->eval_frame;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
@@ -129,7 +138,7 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md, ctx->depsgraph, *ctx->object, *drawing);
+    subdivide_drawing(*md, *ctx->object, *drawing);
   });
 }
 
@@ -148,10 +157,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
+  uiItemR(layout, ptr, "subdivision_type", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "level", UI_ITEM_NONE, IFACE_("Subdivisions"), ICON_NONE);
 
-  if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", ptr, "open_influence_panel"))
+  if (uiLayout *influence_panel = uiLayoutPanelProp(
+          C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
@@ -176,8 +186,8 @@ ModifierTypeInfo modifierType_GreasePencilSubdiv = {
     /*srna*/ &RNA_GreasePencilSubdivModifier,
     /*type*/ ModifierTypeType::Constructive,
     /*flags*/
-    (eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
-     eModifierTypeFlag_EnableInEditmode),
+    eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+        eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_SUBSURF,
 
     /*copy_data*/ blender::copy_data,
@@ -202,4 +212,5 @@ ModifierTypeInfo modifierType_GreasePencilSubdiv = {
     /*panel_register*/ blender::panel_register,
     /*blend_write*/ blender::blend_write,
     /*blend_read*/ blender::blend_read,
+    /*foreach_cache*/ nullptr,
 };

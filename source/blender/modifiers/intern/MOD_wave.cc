@@ -19,7 +19,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_lib_id.hh"
@@ -452,4 +452,5 @@ ModifierTypeInfo modifierType_Wave = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

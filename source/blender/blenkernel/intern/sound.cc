@@ -42,7 +42,7 @@
 
 #include "BKE_bpath.h"
 #include "BKE_global.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
@@ -121,8 +121,8 @@ static void sound_foreach_cache(ID *id,
 {
   bSound *sound = (bSound *)id;
   IDCacheKey key{};
-  key.id_session_uuid = id->session_uuid;
-  key.offset_in_ID = offsetof(bSound, waveform);
+  key.id_session_uid = id->session_uid;
+  key.identifier = offsetof(bSound, waveform);
 
   function_callback(id, &key, &sound->waveform, 0, user_data);
 }
