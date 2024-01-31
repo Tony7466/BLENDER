@@ -381,13 +381,13 @@ void gbuffer_header_normal_layer_id_set(inout uint header, int layer_id, uint no
   }
   header |= normal_id << ((GBUFFER_NORMAL_BITS_SHIRT - 2) + layer_id * 2);
 }
-bool gbuffer_header_normal_layer_id_get(uint header, int layer_id)
+int gbuffer_header_normal_layer_id_get(uint header, int layer_id)
 {
   /* Layer 0 will always have normal id 0. */
   if (layer_id == 0) {
     return 0;
   }
-  return 3u & (header >> ((GBUFFER_NORMAL_BITS_SHIRT - 2) + layer_id * 2));
+  return int(3u & (header >> ((GBUFFER_NORMAL_BITS_SHIRT - 2) + layer_id * 2)));
 }
 
 void gbuffer_append_normal(inout GBufferWriter gbuf, vec3 normal)
