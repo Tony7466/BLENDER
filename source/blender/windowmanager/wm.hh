@@ -93,6 +93,7 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer *wt);
 void wm_autosave_timer_begin(wmWindowManager *wm);
 void wm_autosave_timer_end(wmWindowManager *wm);
 void wm_autosave_delete();
+void wm_autosave_write(Main *bmain, wmWindowManager *wm);
 
 /* `wm_splash_screen.cc` */
 

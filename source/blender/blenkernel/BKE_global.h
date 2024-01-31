@@ -20,6 +20,12 @@ extern "C" {
 
 struct Main;
 
+enum AutosaveScheduleState {
+  AUTOSAVE_NOT_SCHEDULED = 0,
+  AUTOSAVE_SCHEDULED = 1,
+  AUTOSAVE_SCHEDULED_CLICKED = 2,
+};
+
 typedef struct Global {
 
   /**
@@ -162,6 +168,8 @@ typedef struct Global {
   bool opengl_deprecation_usage_detected;
   const char *opengl_deprecation_usage_filename;
   int opengl_deprecation_usage_lineno;
+
+  AutosaveScheduleState autosave_schedule_state;
 } Global;
 
 /* **************** GLOBAL ********************* */

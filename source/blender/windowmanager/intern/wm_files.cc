@@ -41,6 +41,7 @@
 #include "BLI_system.h"
 #include "BLI_threads.h"
 #include "BLI_time.h"
+#include "BLI_timeit.hh"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 #include BLI_SYSTEM_PID_H
@@ -2109,11 +2110,14 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   BLI_path_join(filepath, FILE_MAX, tempdir_base, filename);
 }
 
-static void wm_autosave_write(Main *bmain, wmWindowManager *wm)
+void wm_autosave_write(Main *bmain, wmWindowManager *wm)
 {
-  char filepath[FILE_MAX];
+  SCOPED_TIMER("autosave");
+  G.autosave_schedule_state = AUTOSAVE_NOT_SCHEDULED;
 
+  char filepath[FILE_MAX];
   wm_autosave_location(filepath);
+  BLI_sleep_ms(500);
 
   /* Fast save of last undo-buffer, now with UI. */
   const bool use_memfile = (U.uiflag & USER_GLOBALUNDO) != 0;
@@ -2149,7 +2153,7 @@ static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
 
 void wm_autosave_timer_begin(wmWindowManager *wm)
 {
-  wm_autosave_timer_begin_ex(wm, U.savetime * 60.0);
+  wm_autosave_timer_begin_ex(wm, 0.3);
 }
 
 void wm_autosave_timer_end(wmWindowManager *wm)
@@ -2165,27 +2169,12 @@ void WM_file_autosave_init(wmWindowManager *wm)
   wm_autosave_timer_begin(wm);
 }
 
-void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
+void wm_autosave_timer(Main * /*bmain*/, wmWindowManager *wm, wmTimer * /*wt*/)
 {
   wm_autosave_timer_end(wm);
-
-  /* If a modal operator is running, don't autosave because we might not be in
-   * a valid state to save. But try again in 10ms. */
-  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-    LISTBASE_FOREACH (wmEventHandler *, handler_base, &win->modalhandlers) {
-      if (handler_base->type == WM_HANDLER_TYPE_OP) {
-        wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
-        if (handler->op) {
-          wm_autosave_timer_begin_ex(wm, 0.01);
-          return;
-        }
-      }
-    }
+  if (G.autosave_schedule_state == AUTOSAVE_NOT_SCHEDULED) {
+    G.autosave_schedule_state = AUTOSAVE_SCHEDULED;
   }
-
-  wm_autosave_write(bmain, wm);
-
-  /* Restart the timer after file write, just in case file write takes a long time. */
   wm_autosave_timer_begin(wm);
 }
 

@@ -3911,6 +3911,23 @@ static eHandlerActionFlag wm_event_do_handlers_area_regions(bContext *C,
   return wm_event_do_region_handlers(C, event, region_hovered);
 }
 
+static bool allow_autosave_now(wmWindowManager *wm)
+{
+  /* If a modal operator is running, don't autosave because we might not be in
+   * a valid state to save. */
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    LISTBASE_FOREACH (wmEventHandler *, handler_base, &win->modalhandlers) {
+      if (handler_base->type == WM_HANDLER_TYPE_OP) {
+        wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
+        if (handler->op) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 void wm_event_do_handlers(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -4031,6 +4048,28 @@ void wm_event_do_handlers(bContext *C)
       if (G.debug & (G_DEBUG_HANDLERS | G_DEBUG_EVENTS) && !ISMOUSE_MOTION(event->type)) {
         printf("\n%s: Handling event\n", __func__);
         WM_event_print(event);
+      }
+
+      if (G.autosave_schedule_state != AUTOSAVE_NOT_SCHEDULED) {
+        if (allow_autosave_now(wm)) {
+          switch (G.autosave_schedule_state) {
+            case AUTOSAVE_NOT_SCHEDULED: {
+              break;
+            }
+            case AUTOSAVE_SCHEDULED: {
+              if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && event->val == KM_PRESS) {
+                G.autosave_schedule_state = AUTOSAVE_SCHEDULED_CLICKED;
+              }
+              break;
+            }
+            case AUTOSAVE_SCHEDULED_CLICKED: {
+              if (ISMOUSE_MOTION(event->type)) {
+                wm_autosave_write(CTX_data_main(C), wm);
+              }
+              break;
+            }
+          }
+        }
       }
 
       /* Take care of pie event filter. */
