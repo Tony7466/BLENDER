@@ -16,7 +16,7 @@
 #include "BKE_curves.hh"
 #include "BKE_deform.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_grease_pencil_vgroup.hh"
+#include "BKE_grease_pencil_vertex_groups.hh"
 
 #include "BLT_translation.h"
 

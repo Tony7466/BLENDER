@@ -35,7 +35,7 @@
 #include "BKE_data_transfer.h"
 #include "BKE_deform.hh" /* own include */
 #include "BKE_grease_pencil.hh"
-#include "BKE_grease_pencil_vgroup.hh"
+#include "BKE_grease_pencil_vertex_groups.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"

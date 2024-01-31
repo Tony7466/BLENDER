@@ -36,7 +36,7 @@
 #include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_grease_pencil_vgroup.hh"
+#include "BKE_grease_pencil_vertex_groups.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"

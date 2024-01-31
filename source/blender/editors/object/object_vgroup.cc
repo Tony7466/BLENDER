@@ -35,7 +35,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_grease_pencil_vgroup.hh"
+#include "BKE_grease_pencil_vertex_groups.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
