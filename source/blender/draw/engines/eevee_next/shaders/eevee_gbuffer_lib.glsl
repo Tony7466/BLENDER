@@ -20,7 +20,7 @@
 #define GBUFFER_LAYER_MAX 3
 #define GBUFFER_NORMAL_MAX GBUFFER_LAYER_MAX
 #define GBUFFER_DATA_MAX (GBUFFER_LAYER_MAX * 2)
-/* Note: Reserve the last 4 bits for the normal bit. */
+/* Note: Reserve the last 4 bits for the normal layers ids. */
 #define GBUFFER_NORMAL_BITS_SHIFT 12
 
 struct GBufferData {
@@ -379,6 +379,7 @@ void gbuffer_header_normal_layer_id_set(inout uint header, int layer_id, uint no
   if (layer_id == 0) {
     return;
   }
+  /* -2 is to skip the layer_id 0 and start encoding for layer_id 1. This keeps the FMA. */
   header |= normal_id << ((GBUFFER_NORMAL_BITS_SHIFT - 2) + layer_id * 2);
 }
 int gbuffer_header_normal_layer_id_get(uint header, int layer_id)
@@ -387,6 +388,7 @@ int gbuffer_header_normal_layer_id_get(uint header, int layer_id)
   if (layer_id == 0) {
     return 0;
   }
+  /* -2 is to skip the layer_id 0 and start encoding for layer_id 1. This keeps the FMA. */
   return int(3u & (header >> ((GBUFFER_NORMAL_BITS_SHIFT - 2) + layer_id * 2)));
 }
 
