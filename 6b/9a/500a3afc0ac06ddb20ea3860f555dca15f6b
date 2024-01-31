@@ -1,0 +1,1 @@
+Referenced by issue #117674, When rendering an image sequence with stereoscopy and overwrite disabled, images still get overwritten.
