@@ -985,12 +985,12 @@ static bool closure_node_filter(const bNode *node)
   }
 }
 
-static bool shader_to_rgba_node_gather(bNode * /*fromnode*/, bNode *tonode, void *userdata)
+static bool shader_to_rgba_node_gather(bNode *fromnode, bNode * /*tonode*/, void *userdata)
 {
   Vector<bNode *> &shader_to_rgba_nodes = *(Vector<bNode *> *)userdata;
-  if (tonode->runtime->tmp_flag == -1 && tonode->type == SH_NODE_SHADERTORGB) {
-    tonode->runtime->tmp_flag = 0;
-    shader_to_rgba_nodes.append(tonode);
+  if (fromnode->runtime->tmp_flag == -1 && fromnode->type == SH_NODE_SHADERTORGB) {
+    fromnode->runtime->tmp_flag = 0;
+    shader_to_rgba_nodes.append(fromnode);
   }
   return true;
 }
