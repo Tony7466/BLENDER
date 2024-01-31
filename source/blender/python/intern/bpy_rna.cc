@@ -939,7 +939,7 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
         ret = PyUnicode_FromFormat("bpy.data.%s[%R].%s",
                                    BKE_idtype_idcode_to_name_plural(GS(real_id->name)),
                                    tmp_str,
-                                   path);
+                                   path->c_str());
       }
       else {
         /* Can't find the path, print something useful as a fallback. */
@@ -1063,7 +1063,7 @@ static PyObject *pyrna_prop_repr_ex(BPy_PropertyRNA *self, const int index_dim, 
                                BKE_idtype_idcode_to_name_plural(GS(real_id->name)),
                                tmp_str,
                                data_delim,
-                               path);
+                               path->c_str());
   }
   else {
     /* Can't find the path, print something useful as a fallback. */
@@ -6780,7 +6780,7 @@ static PyObject *pyrna_func_doc_get(BPy_FunctionRNA *self, void * /*closure*/)
   ret = PyUnicode_FromFormat("%.200s.%.200s(%.200s)\n%s",
                              RNA_struct_identifier(self->ptr.type),
                              RNA_function_identifier(self->func),
-                             args,
+                             args.c_str(),
                              RNA_function_ui_description(self->func));
 
   return ret;
