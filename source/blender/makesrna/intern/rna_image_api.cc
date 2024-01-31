@@ -185,43 +185,16 @@ static void rna_Image_scale(
 {
   ImageUser iuser{};
   BKE_imageuser_default(&iuser);
-  bool use_imageuser = false;
-
+  iuser.framenr = frame;
   if (image->source == IMA_SRC_TILED) {
     const ImageTile *tile = static_cast<ImageTile *>(BLI_findlink(&image->tiles, tile_index));
-
-    if (tile == nullptr) {
-      BKE_reportf(reports,
-                  RPT_ERROR,
-                  "Image '%s' does not have a tile with index %i",
-                  image->id.name + 2,
-                  tile_index);
-      return;
+    if (tile != nullptr) {
+      iuser.tile = tile->tile_number;
     }
-
-    iuser.tile = tile->tile_number;
-    use_imageuser = true;
-  }
-  else if (image->source == IMA_SRC_SEQUENCE && image->type == IMA_TYPE_IMAGE) {
-    iuser.framenr = frame;
-
-    /* Not exactly sure if we should check this beforehand? */
-    char filepath[FILE_MAX];
-    BKE_image_user_file_path(&iuser, image, filepath);
-    if (BLI_open(filepath, O_BINARY | O_RDONLY, 0) == -1) {
-      BKE_reportf(reports,
-                  RPT_ERROR,
-                  "Image '%s' does not have a frame with index %i",
-                  image->id.name + 2,
-                  frame);
-      return;
-    }
-
-    use_imageuser = true;
   }
 
-  if (!BKE_image_scale(image, width, height, use_imageuser ? &iuser : nullptr)) {
-    BKE_reportf(reports, RPT_ERROR, "Image '%s' does not have any image data", image->id.name + 2);
+  if (!BKE_image_scale(image, width, height, &iuser)) {
+    BKE_reportf(reports, RPT_ERROR, "Image '%s' failed to load image buffer", image->id.name + 2);
     return;
   }
   BKE_image_partial_update_mark_full_update(image);
