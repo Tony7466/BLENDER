@@ -865,6 +865,13 @@
     .flag = MOD_GREASE_PENCIL_MIRROR_AXIS_X, \
   }
 
+#define _DNA_DEFAULT_GreasePencilThickModifierData \
+  { \
+    .flag = 0, \
+    .thickness_fac = 1.0f, \
+    .thickness = 0.02, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilLineartModifierData \
   { \
     .edge_types = LRT_EDGE_FLAG_INIT_TYPE, \
