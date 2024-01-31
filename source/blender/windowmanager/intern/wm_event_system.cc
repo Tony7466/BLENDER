@@ -30,6 +30,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
+#include "BLI_time.h"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 
@@ -3928,6 +3929,63 @@ static bool allow_autosave_now(wmWindowManager *wm)
   return true;
 }
 
+static void wm_event_handle_autosave(bContext *C, const wmEvent *event)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  if (G.autosave_schedule_state == AUTOSAVE_NOT_SCHEDULED) {
+    return;
+  }
+  Main *bmain = CTX_data_main(C);
+  const bool allow_autosave = allow_autosave_now(wm);
+
+  /* If no good auto-save moment has been found after a while, auto-save anyway. */
+  const double seconds_since_schedule = BLI_check_seconds_timer() - G.autosave_schedule_time;
+  if (seconds_since_schedule > 10.0) {
+    if (allow_autosave) {
+      wm_autosave_write(bmain, wm);
+    }
+    return;
+  }
+
+  auto start_counting_mouse_moves = [&]() {
+    return ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && event->val == KM_RELEASE;
+  };
+
+  /* Implements a heuristic to determine when to auto-save exactly. The goal is to do it when the
+   * user is currently doing something that doesn't require Blender to react immediatly. For
+   * example, it's good to do it while the user is moving the mouse from one place to another.
+   *
+   * The heuristic implemented is that we want to auto-save after the user clicked followed by a
+   * few mouse-move events.
+   */
+  switch (G.autosave_schedule_state) {
+    case AUTOSAVE_NOT_SCHEDULED: {
+      break;
+    }
+    case AUTOSAVE_SCHEDULED: {
+      if (start_counting_mouse_moves()) {
+        G.autosave_schedule_state = AUTOSAVE_SCHEDULED_MOUSE_MOVE;
+        G.autosave_mouse_move_count = 0;
+      }
+      break;
+    }
+    case AUTOSAVE_SCHEDULED_MOUSE_MOVE: {
+      if (start_counting_mouse_moves()) {
+        G.autosave_mouse_move_count = 0;
+      }
+      if (allow_autosave) {
+        if (ISMOUSE_MOTION(event->type)) {
+          G.autosave_mouse_move_count++;
+        }
+        if (G.autosave_mouse_move_count > 5) {
+          wm_autosave_write(bmain, wm);
+        }
+      }
+      break;
+    }
+  }
+}
+
 void wm_event_do_handlers(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -4050,31 +4108,7 @@ void wm_event_do_handlers(bContext *C)
         WM_event_print(event);
       }
 
-      if (G.autosave_schedule_state != AUTOSAVE_NOT_SCHEDULED) {
-        if (allow_autosave_now(wm)) {
-          switch (G.autosave_schedule_state) {
-            case AUTOSAVE_NOT_SCHEDULED: {
-              break;
-            }
-            case AUTOSAVE_SCHEDULED: {
-              if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && event->val == KM_PRESS) {
-                G.autosave_schedule_state = AUTOSAVE_SCHEDULED_CLICKED;
-                G.autosave_mouse_move_count = 0;
-              }
-              break;
-            }
-            case AUTOSAVE_SCHEDULED_CLICKED: {
-              if (ISMOUSE_MOTION(event->type)) {
-                G.autosave_mouse_move_count++;
-              }
-              if (G.autosave_mouse_move_count > 5) {
-                wm_autosave_write(CTX_data_main(C), wm);
-              }
-              break;
-            }
-          }
-        }
-      }
+      wm_event_handle_autosave(C, event);
 
       /* Take care of pie event filter. */
       if (wm_event_pie_filter(win, event)) {

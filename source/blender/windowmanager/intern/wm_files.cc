@@ -2112,7 +2112,7 @@ static void wm_autosave_location(char filepath[FILE_MAX])
 
 void wm_autosave_write(Main *bmain, wmWindowManager *wm)
 {
-  SCOPED_TIMER("autosave");
+  printf("auto-save start\n");
   G.autosave_schedule_state = AUTOSAVE_NOT_SCHEDULED;
 
   char filepath[FILE_MAX];
@@ -2140,6 +2140,8 @@ void wm_autosave_write(Main *bmain, wmWindowManager *wm)
     BlendFileWriteParams params{};
     BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
   }
+
+  printf("auto-save done\n");
 }
 
 static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
@@ -2174,6 +2176,7 @@ void wm_autosave_timer(Main * /*bmain*/, wmWindowManager *wm, wmTimer * /*wt*/)
   wm_autosave_timer_end(wm);
   if (G.autosave_schedule_state == AUTOSAVE_NOT_SCHEDULED) {
     G.autosave_schedule_state = AUTOSAVE_SCHEDULED;
+    G.autosave_schedule_time = BLI_check_seconds_timer();
   }
   wm_autosave_timer_begin(wm);
 }

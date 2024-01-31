@@ -20,10 +20,11 @@ extern "C" {
 
 struct Main;
 
+/** Small state machine used to find a good moment for auto-save that won't interrupt the user. */
 enum AutosaveScheduleState {
   AUTOSAVE_NOT_SCHEDULED = 0,
   AUTOSAVE_SCHEDULED = 1,
-  AUTOSAVE_SCHEDULED_CLICKED = 2,
+  AUTOSAVE_SCHEDULED_MOUSE_MOVE = 2,
 };
 
 typedef struct Global {
@@ -169,8 +170,12 @@ typedef struct Global {
   const char *opengl_deprecation_usage_filename;
   int opengl_deprecation_usage_lineno;
 
+  /**
+   * Used to find a good moment to auto-save that won't interrupt the user too much.
+   */
   AutosaveScheduleState autosave_schedule_state;
   int autosave_mouse_move_count;
+  double autosave_schedule_time;
 } Global;
 
 /* **************** GLOBAL ********************* */
