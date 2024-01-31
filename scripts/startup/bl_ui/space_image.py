@@ -256,9 +256,9 @@ class IMAGE_MT_image_transform(Menu):
         layout.operator("image.flip", text="Flip Horizontally").use_flip_x = True
         layout.operator("image.flip", text="Flip Vertically").use_flip_y = True
         layout.separator()
-        layout.operator("image.rotate_orthogonal", text="Rotate 90\u00B0 Clockwise").degrees = 90
-        layout.operator("image.rotate_orthogonal", text="Rotate 90\u00B0 Counter-Clockwise").degrees = -90
-        layout.operator("image.rotate_orthogonal", text="Rotate 180\u00B0").degrees = 180
+        layout.operator("image.rotate_orthogonal", text="Rotate 90\u00B0 Clockwise").degrees = '90'
+        layout.operator("image.rotate_orthogonal", text="Rotate 90\u00B0 Counter-Clockwise").degrees = '270'
+        layout.operator("image.rotate_orthogonal", text="Rotate 180\u00B0").degrees = '180'
 
 
 class IMAGE_MT_image_invert(Menu):

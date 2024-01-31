@@ -2842,7 +2842,7 @@ void IMAGE_OT_flip(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Rotate Orthogonal Operator (90, 180, 270, -90, etc)
+/** \name Rotate Orthogonal Operator (90, 180, 270)
  * \{ */
 
 static int image_rotate_orthogonal_exec(bContext *C, wmOperator *op)
@@ -2858,7 +2858,7 @@ static int image_rotate_orthogonal_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  int degrees = RNA_int_get(op->ptr, "degrees");
+  int degrees = RNA_enum_get(op->ptr, "degrees");
 
   ED_image_undo_push_begin_with_image(op->type->name, ima, ibuf, &iuser);
 
@@ -2891,6 +2891,13 @@ static int image_rotate_orthogonal_exec(bContext *C, wmOperator *op)
 
 void IMAGE_OT_rotate_orthogonal(wmOperatorType *ot)
 {
+  static const EnumPropertyItem orthogonal_rotation_items[] = {
+      {90, "90", 0, "90 Degrees", "Rotate 90 degrees clockwise"},
+      {180, "180", 0, "180 Degrees", "Rotate 180 degrees clockwise"},
+      {270, "270", 0, "270 Degrees", "Rotate 270 degrees clockwise"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   /* identifiers */
   ot->name = "Rotate Image Orthogonal";
   ot->idname = "IMAGE_OT_rotate_orthogonal";
@@ -2902,15 +2909,12 @@ void IMAGE_OT_rotate_orthogonal(wmOperatorType *ot)
 
   /* properties */
   PropertyRNA *prop;
-  prop = RNA_def_int(ot->srna,
-                     "degrees",
-                     90,
-                     INT_MIN,
-                     INT_MAX,
-                     "Degrees",
-                     "Amount of rotation in degrees (90, 180, 270, -90, etc)",
-                     -270,
-                     270);
+  prop = RNA_def_enum(ot->srna,
+                      "degrees",
+                      orthogonal_rotation_items,
+                      90,
+                      "Degrees",
+                      "Amount of rotation in degrees (90, 180, 270)");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   /* flags */

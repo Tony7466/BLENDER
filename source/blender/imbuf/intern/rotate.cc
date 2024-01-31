@@ -16,17 +16,7 @@
 
 bool IMB_rotate_orthogonal(ImBuf *ibuf, int degrees)
 {
-  if (ibuf == nullptr) {
-    return false;
-  }
-
-  /* Fold to -359 to 359. Note Mod operator is machine-dependent for negative operands. */
-  degrees = degrees - (degrees / 360) * 360;
-  if (degrees == 270) {
-    degrees = -90;
-  }
-
-  if (!ELEM(degrees, -90, 90, 180)) {
+  if (!ELEM(degrees, 90, 180, 270)) {
     return false;
   }
 
@@ -36,31 +26,40 @@ bool IMB_rotate_orthogonal(ImBuf *ibuf, int degrees)
   if (ibuf->float_buffer.data) {
     float *float_pixels = ibuf->float_buffer.data;
     float *orig_float_pixels = static_cast<float *>(MEM_dupallocN(float_pixels));
-    if (degrees != 180) {
+    const int channels = ibuf->channels;
+    if (degrees == 90) {
       SWAP(int, ibuf->x, ibuf->y);
+      for (int y = 0; y < size_y; y++) {
+        for (int x = 0; x < size_x; x++) {
+          const float *source_pixel = &orig_float_pixels[(y * size_x + x) * channels];
+          memcpy(&float_pixels[(y + ((size_x - x - 1) * size_y)) * channels],
+                 source_pixel,
+                 sizeof(float) * channels);
+        }
+      }
     }
-    for (int y = 0; y < size_y; y++) {
-      for (int x = 0; x < size_x; x++) {
-        const float *source_pixel = &orig_float_pixels[(y * size_x + x) * 4];
-        if (degrees == 90) {
-          memcpy(&float_pixels[(y + ((size_x - x - 1) * size_y)) * 4],
+    else if (degrees == 180) {
+      for (int y = 0; y < size_y; y++) {
+        for (int x = 0; x < size_x; x++) {
+          const float *source_pixel = &orig_float_pixels[(y * size_x + x) * channels];
+          memcpy(&float_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * channels],
                  source_pixel,
-                 sizeof(float[4]));
+                 sizeof(float) * channels);
         }
-        else if (degrees == -90) {
-          memcpy(&float_pixels[((size_y - y - 1) + (x * size_y)) * 4],
+      }
+    }
+    else if (degrees == 270) {
+      SWAP(int, ibuf->x, ibuf->y);
+      for (int y = 0; y < size_y; y++) {
+        for (int x = 0; x < size_x; x++) {
+          const float *source_pixel = &orig_float_pixels[(y * size_x + x) * channels];
+          memcpy(&float_pixels[((size_y - y - 1) + (x * size_y)) * channels],
                  source_pixel,
-                 sizeof(float[4]));
-        }
-        else if (degrees == 180) {
-          memcpy(&float_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
-                 source_pixel,
-                 sizeof(float[4]));
+                 sizeof(float) * channels);
         }
       }
     }
     MEM_freeN(orig_float_pixels);
-
     if (ibuf->byte_buffer.data) {
       IMB_rect_from_float(ibuf);
     }
@@ -68,24 +67,33 @@ bool IMB_rotate_orthogonal(ImBuf *ibuf, int degrees)
   else if (ibuf->byte_buffer.data) {
     uchar *char_pixels = ibuf->byte_buffer.data;
     uchar *orig_char_pixels = static_cast<uchar *>(MEM_dupallocN(char_pixels));
-    if (degrees != 180) {
+    if (degrees == 90) {
       SWAP(int, ibuf->x, ibuf->y);
-    }
-    for (int y = 0; y < size_y; y++) {
-      for (int x = 0; x < size_x; x++) {
-        const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
-        if (degrees == 90) {
+      for (int y = 0; y < size_y; y++) {
+        for (int x = 0; x < size_x; x++) {
+          const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
           memcpy(
               &char_pixels[(y + ((size_x - x - 1) * size_y)) * 4], source_pixel, sizeof(uchar[4]));
         }
-        else if (degrees == -90) {
-          memcpy(
-              &char_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel, sizeof(uchar[4]));
-        }
-        else if (degrees == 180) {
+      }
+    }
+    else if (degrees == 180) {
+      for (int y = 0; y < size_y; y++) {
+        for (int x = 0; x < size_x; x++) {
+          const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
           memcpy(&char_pixels[(((size_y - y - 1) * size_x) + (size_x - x - 1)) * 4],
                  source_pixel,
                  sizeof(uchar[4]));
+        }
+      }
+    }
+    else if (degrees == 270) {
+      SWAP(int, ibuf->x, ibuf->y);
+      for (int y = 0; y < size_y; y++) {
+        for (int x = 0; x < size_x; x++) {
+          const uchar *source_pixel = &orig_char_pixels[(y * size_x + x) * 4];
+          memcpy(
+              &char_pixels[((size_y - y - 1) + (x * size_y)) * 4], source_pixel, sizeof(uchar[4]));
         }
       }
     }
