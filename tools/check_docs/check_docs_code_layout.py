@@ -4,15 +4,15 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
-This script is to validate the WIKI page that documents Blender's file-structure, see:
+This script is to validate the MARKDOWN page that documents Blender's file-structure, see:
 
-    https://wiki.blender.org/wiki/Source/File_Structure
+    https://developer.blender.org/docs/features/code_layout/
 
-It can run without any arguments, where it will download the WIKI to Blender's source root:
+It can run without any arguments, where it will download the MARKDOWN to Blender's source root:
 
-You may pass the wiki text as an argument, e.g.
+You may pass the markdown as an argument, e.g.
 
-check_wiki_file_structure.py --wiki=wiki.txt
+check_docs_code_layout.py --markdown=markdown.txt
 """
 
 import os
@@ -32,8 +32,8 @@ from typing import (
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 SOURCE_DIR = os.path.normpath(os.path.join(CURRENT_DIR, "..", ".."))
 
-WIKI_URL = "https://wiki.blender.org/wiki/Source/File_Structure"
-WIKI_URL_EDIT = "https://wiki.blender.org/w/index.php?title=Source/File_Structure&action=edit"
+MARKDOWN_URL = "https://projects.blender.org/blender/blender-developer-docs/raw/branch/main/docs/features/code_layout.md"
+
 
 
 # -----------------------------------------------------------------------------
@@ -43,28 +43,23 @@ def text_with_title_underline(text: str, underline: str = "=") -> str:
     return "\n{:s}\n{:s}\n".format(text, len(text) * underline)
 
 
-def html_extract_first_textarea(data: str) -> Optional[str]:
+def html_extract_markdown(data: str) -> Optional[str]:
     """
-    Extract and escape text within the first
-    ``<textarea ...> ... </textarea>`` found in the HTML text.
+    Extract and escape text within the
+    ``# ... </table>`` found in the MARKDOWN.
     """
-    beg = data.find("<textarea")
+    beg = data.find("#")
     if beg == -1:
-        print("Failed to extract <textarea ...> start")
+        print("Failed to extract # start")
         return None
 
-    beg = data.find(">", beg)
-    if beg == -1:
-        print("Failed to extract <textarea ...> end")
-        return None
-    beg += 1
-
-    end = data.find("</textarea>", beg)
+    end = data.rfind("</table>", beg)
     if end == -1:
-        print("Failed to extract </textarea>")
+        print("Failed to extract </table>")
         return None
+    
 
-    data = data[beg:end]
+    data = data[beg:end+len("</table>")]
     for (src, dst) in (
             ("&lt;", "<"),
             ("&gt;", ">"),
@@ -75,7 +70,7 @@ def html_extract_first_textarea(data: str) -> Optional[str]:
     return data
 
 
-def html_extract_first_textarea_from_url(url: str) -> Optional[str]:
+def html_extract_markdown_from_url(url: str) -> Optional[str]:
     """
     Download
     """
@@ -85,16 +80,16 @@ def html_extract_first_textarea_from_url(url: str) -> Optional[str]:
     with urllib.request.urlopen(req) as fh:
         data = fh.read().decode('utf-8')
 
-    return html_extract_first_textarea(data)
+    return html_extract_markdown(data)
 
 
 # -----------------------------------------------------------------------------
-# WIKI Text Parsing
+# MARKDOWN Text Parsing
 
-def wiki_to_paths_and_docstrings(wiki_text: str) -> Tuple[List[str], List[str]]:
+def markdown_to_paths_and_docstrings(markdown: str) -> Tuple[List[str], List[str]]:
     file_paths = []
     file_paths_docstring = []
-    lines = wiki_text.split("\n")
+    lines = markdown.split("\n")
     i = 0
     while i < len(lines):
         if lines[i].startswith("| /"):
@@ -119,8 +114,8 @@ def wiki_to_paths_and_docstrings(wiki_text: str) -> Tuple[List[str], List[str]]:
 # -----------------------------------------------------------------------------
 # Reporting
 
-def report_known_wiki_paths(file_paths: List[str]) -> None:
-    heading = "Paths Found in WIKI Table"
+def report_known_markdown_paths(file_paths: List[str]) -> None:
+    heading = "Paths Found in MARKDOWN Table"
     print(text_with_title_underline(heading))
     for p in file_paths:
         print("-", p)
@@ -136,7 +131,7 @@ def report_missing_source(file_paths: List[str]) -> int:
     if not test:
         return 0
 
-    print("The following paths were found in the WIKI text\n"
+    print("The following paths were found in the MARKDOWN\n"
           "but were not found in Blender's source directory:\n")
     for p in test:
         print("-", p)
@@ -165,7 +160,7 @@ def report_incomplete(file_paths: List[str]) -> int:
         return 0
 
     print("The following paths were found in Blender's source directory\n"
-          "but are missing from the WIKI text:\n")
+          "but are missing from the MARKDOWN:\n")
     for p in sorted(test):
         print("-", p)
 
@@ -225,13 +220,20 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument(
-        "-w",
-        "--wiki",
-        dest="wiki_text",
+        "-m",
+        "--markdown",
+        dest="markdown",
         metavar='PATH',
-        default=os.path.join(SOURCE_DIR, "wiki_file_structure.txt"),
-        help="WIKI text file path, NOTE: this will be downloaded if not found!",
+        default=os.path.join(SOURCE_DIR, "markdown_file_structure.txt"),
+        help="markdown file path, NOTE: this will be downloaded if not found!",
     )
+    parser.add_argument(
+        "-o",
+        "--output",
+        dest="output_path",
+        metavar='OUTPUT_PATH',
+        help="file path to write the output to"
+        )
     return parser
 
 
@@ -243,24 +245,32 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if os.path.exists(args.wiki_text):
-        print("Using existing WIKI text:", args.wiki_text)
-    else:
-        data = html_extract_first_textarea_from_url(WIKI_URL_EDIT)
+    if (args.output_path):
+        data = html_extract_markdown_from_url(MARKDOWN_URL)
         if data is not None:
-            with open(args.wiki_text, 'w', encoding='utf-8') as fh:
+            with open(args.output_path, 'w', encoding='utf-8') as fh:
                 fh.write(data)
-            print("Downloaded WIKI text to:", args.wiki_text)
-            print("Update and save to:", WIKI_URL)
-        else:
-            print("Failed to downloaded or extract WIKI text, aborting!")
+            print("Downloaded MARKDOWN to:", args.output_path)
             return
 
-    with open(args.wiki_text, 'r', encoding='utf-8') as fh:
-        file_paths, file_paths_docstring = wiki_to_paths_and_docstrings(fh.read())
+    if os.path.exists(args.markdown):
+        print("Using existing MARKDOWN:", args.markdown)
+    else:
+        data = html_extract_markdown_from_url(MARKDOWN_URL)
+        if data is not None:
+            with open(args.markdown, 'w', encoding='utf-8') as fh:
+                fh.write(data)
+            print("Downloaded MARKDOWN to:", args.markdown)
+            print("Update and save to:", MARKDOWN_URL)
+        else:
+            print("Failed to downloaded or extract MARKDOWN, aborting!")
+            return
+
+    with open(args.markdown, 'r', encoding='utf-8') as fh:
+        file_paths, file_paths_docstring = markdown_to_paths_and_docstrings(fh.read())
 
     # Disable, mostly useful when debugging why paths might not be found.
-    # report_known_wiki_paths()
+    # report_known_markdown_paths()
     issues = 0
     issues += report_missing_source(file_paths)
     issues += report_incomplete(file_paths)
@@ -270,7 +280,7 @@ def main() -> None:
     if issues:
         print("Warning, found {:d} issues!\n".format(issues))
     else:
-        print("Success! The WIKI text is up to date with Blender's source tree!\n")
+        print("Success! The MARKDOWN is up to date with Blender's source tree!\n")
 
 
 if __name__ == "__main__":
