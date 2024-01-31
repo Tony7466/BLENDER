@@ -24,7 +24,6 @@
 #include "BKE_object_types.hh"
 
 #include "BLI_bounds.hh"
-#include "BLI_hash.hh"
 #include "BLI_map.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
