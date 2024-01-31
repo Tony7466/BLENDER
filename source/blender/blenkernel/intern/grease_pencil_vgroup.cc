@@ -65,31 +65,26 @@ void assign_to_vertex_group(GreasePencil &grease_pencil, const StringRef name, c
     bke::CurvesGeometry &curves = drawing.strokes_for_write();
     ListBase &vertex_group_names = curves.vertex_group_names;
 
-    /* Look for existing group, otherwise lazy-initialize if any vertex is selected. */
-    int def_nr = BLI_findstringindex(
-        &vertex_group_names, name.data(), offsetof(bDeformGroup, name));
-    auto ensure_group_in_drawing = [&]() {
-      if (def_nr >= 0) {
-        /* Group already exists. */
-        return;
-      }
-
-      bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
-      STRNCPY(defgroup->name, name.data());
-
-      BLI_addtail(&vertex_group_names, defgroup);
-      def_nr = BLI_listbase_count(&vertex_group_names) - 1;
-      BLI_assert(def_nr >= 0);
-    };
-
     const bke::AttributeAccessor attributes = curves.attributes();
     const VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
         ".selection", bke::AttrDomain::Point, true);
 
+    /* Look for existing group, otherwise lazy-initialize if any vertex is selected. */
+    int def_nr = BLI_findstringindex(
+        &vertex_group_names, name.data(), offsetof(bDeformGroup, name));
+
     const MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
     for (const int i : dverts.index_range()) {
       if (select_vert[i]) {
-        ensure_group_in_drawing();
+        /* Lazily add the vertex group if any vertex is selected. */
+        if (def_nr < 0) {
+          bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
+          STRNCPY(defgroup->name, name.data());
+
+          BLI_addtail(&vertex_group_names, defgroup);
+          def_nr = BLI_listbase_count(&vertex_group_names) - 1;
+          BLI_assert(def_nr >= 0);
+        }
 
         MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[i], def_nr);
         if (dw) {
