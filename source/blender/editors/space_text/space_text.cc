@@ -17,7 +17,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_lib_id.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_screen.hh"
 
@@ -307,7 +307,7 @@ static bool text_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*eve
 {
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (ELEM(file_type, 0, FILE_TYPE_PYSCRIPT, FILE_TYPE_TEXT)) {
+    if (ELEM(file_type, FILE_TYPE_PYSCRIPT, FILE_TYPE_TEXT)) {
       return true;
     }
   }
