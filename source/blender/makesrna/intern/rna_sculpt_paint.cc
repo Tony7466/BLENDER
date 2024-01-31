@@ -559,20 +559,6 @@ static char *rna_GPencilSculptSettings_path(const PointerRNA * /*ptr*/)
   return BLI_strdup("tool_settings.gpencil_sculpt");
 }
 
-static int rna_GPencilSculptSettings_automasking_icon_get(PointerRNA *ptr)
-{
-  const GP_Sculpt_Settings *gp_sculpt = (const GP_Sculpt_Settings *)ptr->data;
-  /* clang-format off */
-  const bool is_automasking = (gp_sculpt->flag & (GP_SCULPT_SETT_FLAG_AUTOMASK_STROKE |
-                                                  GP_SCULPT_SETT_FLAG_AUTOMASK_LAYER_STROKE |
-                                                  GP_SCULPT_SETT_FLAG_AUTOMASK_MATERIAL_STROKE |
-                                                  GP_SCULPT_SETT_FLAG_AUTOMASK_LAYER_ACTIVE |
-                                                  GP_SCULPT_SETT_FLAG_AUTOMASK_MATERIAL_ACTIVE)) != 0;
-  /* clang-format on */
-
-  return is_automasking ? ICON_CLIPUV_DEHLT : ICON_CLIPUV_HLT;
-}
-
 static char *rna_GPencilSculptGuide_path(const PointerRNA * /*ptr*/)
 {
   return BLI_strdup("tool_settings.gpencil_sculpt.guide");
@@ -602,12 +588,6 @@ static void rna_Sculpt_automasking_cavity_set(PointerRNA *ptr, bool val)
   else {
     sd->automasking_flags &= ~BRUSH_AUTOMASKING_CAVITY_NORMAL;
   }
-}
-
-static int rna_Sculpt_automasking_icon_get(PointerRNA *ptr)
-{
-  const Sculpt *sd = (const Sculpt *)ptr->data;
-  return sd->automasking_flags == 0 ? ICON_CLIPUV_HLT : ICON_CLIPUV_DEHLT;
 }
 #else
 
@@ -1023,11 +1003,6 @@ static void rna_def_sculpt(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Orientation", "Object whose Z axis defines orientation of gravity");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
-
-  prop = RNA_def_property(srna, "automasking_icon", PROP_INT, PROP_NONE);
-  RNA_def_property_int_funcs(prop, "rna_Sculpt_automasking_icon_get", nullptr, nullptr);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Visibility Icon", "");
 }
 
 static void rna_def_uv_sculpt(BlenderRNA *brna)
@@ -1704,12 +1679,6 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 0.1f);
   RNA_def_property_ui_text(prop, "Threshold", "Threshold for stroke intersections");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-
-  prop = RNA_def_property(srna, "automasking_icon", PROP_INT, PROP_NONE);
-  RNA_def_property_int_funcs(
-      prop, "rna_GPencilSculptSettings_automasking_icon_get", nullptr, nullptr);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Visibility Icon", "");
 }
 
 static void rna_def_curves_sculpt(BlenderRNA *brna)
