@@ -435,7 +435,6 @@ typedef struct GreasePencil {
    */
   uint32_t flag;
 
-  /** Vertex groups combined from layers (bDeformGroup). */
   ListBase vertex_group_names;
   int vertex_group_active_index;
   char _pad4[4];
