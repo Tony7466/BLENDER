@@ -197,55 +197,40 @@ void AssetViewItem::disable_asset_drag()
 
 void AssetViewItem::build_grid_tile(uiLayout &layout) const
 {
-  // const ui::GridViewStyle &style = this->get_view().get_style();
-  uiLayoutSetEmboss(&layout, UI_EMBOSS_NONE);
-  uiLayoutSetFixedSize(&layout, true);
-  PointerRNA op_ptr;
-  uiItemFullO(&layout,
-              "BRUSH_OT_asset_select",
-              hide_label_ ? "" : label.c_str(),
-              this->preview_icon_id,
-              nullptr,
-              WM_OP_EXEC_DEFAULT,
-              this->is_active() ? UI_ITEM_O_DEPRESS : UI_ITEM_NONE,
-              &op_ptr);
-  operator_asset_reference_props_set(*handle_get_representation(&asset_), op_ptr);
+  const ui::GridViewStyle &style = this->get_view().get_style();
 
-  // uiBlock *block = uiLayoutGetBlock(&layout);
+  uiBlock *block = uiLayoutGetBlock(&layout);
 
-  // uiBut *but = uiDefButO(block,
-  //                        UI_BTYPE_BUT,
-  //                        "BRUSH_OT_asset_select",
-  //                        WM_OP_EXEC_DEFAULT,
-  //                        hide_label_ ? "" : label.c_str(),
-  //                        0,
-  //                        0,
-  //                        style.tile_width,
-  //                        style.tile_height,
-  //                        "");
-  // PointerRNA *ptr = UI_but_operator_ptr_ensure(but);
-  // operator_asset_reference_props_set(*handle_get_representation(&asset_), *ptr);
+  uiBut *but = uiDefButO(block,
+                         UI_BTYPE_BUT,
+                         "BRUSH_OT_asset_select",
+                         WM_OP_EXEC_DEFAULT,
+                         hide_label_ ? "" : label.c_str(),
+                         0,
+                         0,
+                         style.tile_width,
+                         style.tile_height,
+                         "");
+  PointerRNA *ptr = UI_but_operator_ptr_ensure(but);
+  operator_asset_reference_props_set(*handle_get_representation(&asset_), *ptr);
 
-  // if (this->is_active()) {
-  //   UI_but_flag_enable(but, UI_SELECT_DRAW);
-  // }
+  if (this->is_active()) {
+    UI_but_flag_enable(but, UI_SELECT_DRAW);
+  }
 
   /* Draw icons that are not previews or images as normal icons with a fixed icon size.
    * Otherwise they will be upscaled to the button size. Should probably be done by the widget
    * code. */
-  // const int is_preview_flag = (BKE_icon_is_preview(preview_icon_id) ||
-  //                              BKE_icon_is_image(preview_icon_id)) ?
-  //                                 int(UI_BUT_ICON_PREVIEW) :
-  //                                 0;
-  // ui_def_but_icon(but,
-  //                 preview_icon_id,
-  //                 /* NOLINTNEXTLINE: bugprone-suspicious-enum-usage */
-  //                 UI_HAS_ICON | is_preview_flag);
-  // UI_but_func_set(but, [](bContext &C) {
-
-  // });
-  // UI_but_func_tooltip_label_set(but, [this](const uiBut * /*but*/) { return label; });
-  // but->emboss = UI_EMBOSS_NONE;
+  const int is_preview_flag = (BKE_icon_is_preview(preview_icon_id) ||
+                               BKE_icon_is_image(preview_icon_id)) ?
+                                  int(UI_BUT_ICON_PREVIEW) :
+                                  0;
+  ui_def_but_icon(but,
+                  preview_icon_id,
+                  /* NOLINTNEXTLINE: bugprone-suspicious-enum-usage */
+                  UI_HAS_ICON | is_preview_flag);
+  UI_but_func_tooltip_label_set(but, [this](const uiBut * /*but*/) { return label; });
+  but->emboss = UI_EMBOSS_NONE;
 }
 
 void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
