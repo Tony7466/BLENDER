@@ -1252,7 +1252,7 @@ BLI_STATIC_ASSERT_ALIGN(HiZData, 16)
 /** \name Ray-Tracing
  * \{ */
 
-enum eClosureBits : ENUM_TYPE_USHORT {
+enum eClosureBits : uint32_t {
   CLOSURE_NONE = 0u,
   CLOSURE_DIFFUSE = (1u << 0u),
   CLOSURE_SSS = (1u << 1u),
