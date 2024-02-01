@@ -514,6 +514,7 @@ set(ICON_NAMES
   ipo_ease_in_out
   normalize_fcurves
   orientation_parent
+  face_corner
   vertexsel
   edgesel
   facesel
@@ -694,6 +695,9 @@ set(ICON_NAMES
   handle_aligned
   handle_vector
   handle_free
+  view_camera_unselected
+  view_unlocked
+  view_locked
   view_perspective
   view_ortho
   view_camera
