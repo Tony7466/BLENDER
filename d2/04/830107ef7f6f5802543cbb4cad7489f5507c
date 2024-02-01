@@ -1,1 +1,2 @@
 Referenced by commit 6590a288b05, Fix number sliders not working
+Referenced by commit 809499a3d0a2ef17c612f5e970cbed9ad4fb750d, Refactor: UI: Use derived struct for number slider buttons
