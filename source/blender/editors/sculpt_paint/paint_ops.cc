@@ -1470,12 +1470,21 @@ static int brush_asset_revert_exec(bContext *C, wmOperator * /*op*/)
   Main *bmain = CTX_data_main(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
+  Main *asset_main = BKE_asset_weak_reference_main(bmain, &brush->id);
 
-  /* TODO: check if doing this for the hierarchy is ok. */
-  /* TODO: the overrides don't update immediately when tweaking brush settings. */
-  BKE_lib_override_library_id_hierarchy_reset(bmain, &brush->id, false);
+  // TODO: delete and reload dependencies too?
+  // TODO: hack to make remapping work, should not be needed
+  // if we can make brush pointer not part of ID management at all
+  BLI_remlink(&asset_main->brushes, brush);
 
-  WM_main_add_notifier(NC_BRUSH | NA_EDITED, brush);
+  Brush *new_brush = reinterpret_cast<Brush *>(
+      BKE_asset_weak_reference_ensure(bmain, paint->brush_asset_reference));
+
+  BKE_libblock_remap(bmain, brush, new_brush, 0);
+  BLI_addtail(&asset_main->brushes, brush);
+  BKE_id_delete(asset_main, brush);
+
+  WM_main_add_notifier(NC_BRUSH | NA_EDITED, new_brush);
 
   return OPERATOR_FINISHED;
 }
