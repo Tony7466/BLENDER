@@ -87,11 +87,10 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   }
 }
 
-static void get_array_matrix(const Object &ob,
-                             const GreasePencilArrayModifierData &mmd,
-                             const int elem_idx,
-                             float4x4 &r_mat,
-                             float4x4 &r_offset)
+static float4x4 get_array_matrix(const Object &ob,
+                                 const GreasePencilArrayModifierData &mmd,
+                                 const int elem_idx,
+                                 const bool use_object_offset)
 {
   float3 offset, rot(0.0f), scale(1.0f);
 
@@ -104,32 +103,38 @@ static void get_array_matrix(const Object &ob,
     offset = float3(0.0f);
   }
 
-  r_mat = math::from_loc_rot_scale<float4x4, float3, 3>(offset, rot, scale);
-  r_offset = r_mat;
+  const float4x4 r_mat = math::from_loc_rot_scale<float4x4, float3, 3>(offset, rot, scale);
 
-  /* offset object */
-  if ((mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET) && (mmd.object)) {
+  if (use_object_offset) {
     float4x4 mat_offset = float4x4::identity();
     float4x4 obinv;
-
     if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
       mat_offset[3] += mmd.offset;
     }
     obinv = math::invert(float4x4(ob.object_to_world));
 
-    r_offset = mat_offset * obinv * float4x4(mmd.object->object_to_world);
-    mat_offset = r_offset;
-
-    /* clear r_mat locations to avoid double transform */
-    r_mat[3] = {0.0f, 0.0f, 0.0f, 1.0f};
+    return mat_offset * obinv * float4x4(mmd.object->object_to_world);
+  }
+  else {
+    return r_mat;
   }
 }
 
 static bke::CurvesGeometry create_array_copies(const Object &ob,
                                                const GreasePencilArrayModifierData &mmd,
                                                const bke::CurvesGeometry &base_curves,
-                                               const bke::CurvesGeometry &filtered_curves)
+                                               bke::CurvesGeometry &filtered_curves)
 {
+  /* Assign replacement material on filterd curves so all copies can have this material when later
+   * when they get instanced. */
+  if (mmd.mat_rpl > 0) {
+    bke::MutableAttributeAccessor attributes = filtered_curves.attributes_for_write();
+    bke::SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
+        "material_index", bke::AttrDomain::Curve);
+    stroke_materials.span.fill(mmd.mat_rpl - 1);
+    stroke_materials.finish();
+  }
+
   Curves *base_curves_id = bke::curves_new_nomain(base_curves);
   Curves *filtered_curves_id = bke::curves_new_nomain(filtered_curves);
   bke::GeometrySet base_geo = bke::GeometrySet::from_curves(base_curves_id);
@@ -161,7 +166,7 @@ static bke::CurvesGeometry create_array_copies(const Object &ob,
     float3x3 rand;
     for (int j = 0; j < 3; j++) {
       const uint3 primes(2, 3, 7);
-      double3 offset(0.0, 0.0, 0.0);
+      double3 offset(0.0);
       double3 r;
       /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
       BLI_halton_3d(primes, offset, elem_id, r);
@@ -180,23 +185,18 @@ static bke::CurvesGeometry create_array_copies(const Object &ob,
       }
     }
     /* Calculate Random matrix. */
-    float3 loc, rot;
-    float3 scale(1.0f, 1.0f, 1.0f);
-    loc = mmd.rnd_offset * rand[0];
-    rot = mmd.rnd_rot * rand[1];
-    scale += mmd.rnd_scale * rand[2];
-
-    return math::from_loc_rot_scale<float4x4, float3, 3>(loc, rot, scale);
+    return math::from_loc_rot_scale<float4x4>(
+        mmd.rnd_offset * rand[0], mmd.rnd_rot * rand[1], float3(1.0f) + mmd.rnd_scale * rand[2]);
   };
 
   float4x4 current_offset = float4x4::identity();
-  for (const int elem_id : IndexRange(1, mmd.count)) {
-    float4x4 mat, mat_offset;
-    get_array_matrix(ob, mmd, elem_id, mat, mat_offset);
+  for (const int elem_id : IndexRange(1, mmd.count - 1)) {
+    const bool use_object_offset = (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET) &&
+                                   (mmd.object);
+    const float4x4 mat = get_array_matrix(ob, mmd, elem_id, use_object_offset);
 
-    if ((mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET) && (mmd.object)) {
-      /* recalculate cumulative offset here */
-      current_offset = current_offset * mat_offset;
+    if (use_object_offset) {
+      current_offset = current_offset * mat;
     }
     else {
       current_offset = mat;
@@ -237,7 +237,11 @@ static void modify_drawing(const GreasePencilArrayModifierData &mmd,
       ctx.object, src_curves, mmd.influence, curve_mask_memory);
 
   if (curves_mask.size() == src_curves.curve_num) {
-    drawing.strokes_for_write() = create_array_copies(*ctx.object, mmd, src_curves, src_curves);
+    /* Make a full copy so we can modify materials inside #create_array_copies before instancing.
+     */
+    bke::CurvesGeometry copy = bke::CurvesGeometry(src_curves);
+
+    drawing.strokes_for_write() = create_array_copies(*ctx.object, mmd, src_curves, copy);
   }
   else {
     bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(

@@ -2747,16 +2747,8 @@ typedef struct GreasePencilArrayModifierData {
   /** (first element is the index) random values. (?) */
   int seed;
 
-  /** Custom index for passes. */
-  // int pass_index;
-  ///** Layer name. */
-  // char layername[64];
-  /** Material name. */
-  // char materialname[64] DNA_DEPRECATED;
-  /** Material replace (0 keep default). */
+  /* Replacement material index. */
   int mat_rpl;
-  /** Custom index for passes. */
-  // int layer_pass;
 } GreasePencilArrayModifierData;
 
 typedef enum GreasePencilArrayModifierFlag {
