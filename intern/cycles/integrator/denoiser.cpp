@@ -28,6 +28,7 @@ unique_ptr<Denoiser> Denoiser::create(Device *path_trace_device, const DenoisePa
 
 #ifdef WITH_OPENIMAGEDENOISE
   if (params.type == DENOISER_OPENIMAGEDENOISE && path_trace_device->info.type != DEVICE_CPU &&
+      (path_trace_device->info.denoisers & DENOISER_OPENIMAGEDENOISE) &&
       OIDNDenoiserGPU::is_device_supported(path_trace_device->info))
   {
     return make_unique<OIDNDenoiserGPU>(path_trace_device, params);

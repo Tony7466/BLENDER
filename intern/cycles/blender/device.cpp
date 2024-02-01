@@ -59,6 +59,10 @@ void static adjust_device_info_from_preferences(DeviceInfo &info, PointerRNA cpr
   if (info.type == DEVICE_HIP && !get_boolean(cpreferences, "use_hiprt")) {
     info.use_hardware_raytracing = false;
   }
+
+  if (!get_boolean(cpreferences, "use_oidngpu")) {
+    info.denoisers &= ~DENOISER_OPENIMAGEDENOISE;
+  }
 }
 
 DeviceInfo blender_device_info(BL::Preferences &b_preferences,

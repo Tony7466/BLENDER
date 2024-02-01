@@ -1484,6 +1484,12 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         default=True,
     )
 
+    use_oidngpu: BoolProperty(
+        name="OIDN on GPU",
+        description="",
+        default=True,
+    )
+
     kernel_optimization_level: EnumProperty(
         name="Kernel Optimization",
         description="Kernels can be optimized based on scene content. Optimized kernels are requested at the start of a render. "
@@ -1686,11 +1692,14 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         import _cycles
         has_peer_memory = 0
         has_rt_api_support = False
+        has_oidn_gpu_support = False
         for device in _cycles.available_devices(compute_device_type):
             if device[3] and self.find_existing_device_entry(device).use:
                 has_peer_memory += 1
             if device[4] and self.find_existing_device_entry(device).use:
                 has_rt_api_support = True
+            if device[5] and self.find_existing_device_entry(device).use:
+                has_oidn_gpu_support = True
 
         if has_peer_memory > 1:
             row = layout.row()
@@ -1728,6 +1737,10 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         elif compute_device_type == 'ONEAPI' and _cycles.with_embree_gpu:
             row = layout.row()
             row.prop(self, "use_oneapirt")
+
+        if has_oidn_gpu_support:
+            row = layout.row()
+            row.prop(self, "use_oidngpu")
 
     def draw(self, context):
         self.draw_impl(self.layout, context)
