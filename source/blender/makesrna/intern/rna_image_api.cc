@@ -21,19 +21,18 @@
 
 #include "BKE_packedFile.h"
 
-#include "rna_internal.h" /* own include */
+#include "rna_internal.hh" /* own include */
 
 #ifdef RNA_RUNTIME
 
 #  include "BKE_image.h"
 #  include "BKE_image_format.h"
 #  include "BKE_image_save.h"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #  include "BKE_scene.h"
 #  include <errno.h>
 
-#  include "IMB_colormanagement.h"
-#  include "IMB_imbuf.h"
+#  include "IMB_imbuf.hh"
 
 #  include "DNA_image_types.h"
 #  include "DNA_scene_types.h"

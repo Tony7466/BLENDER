@@ -83,6 +83,7 @@ def rna_idprop_ui_create(
         step=None,
         precision=None,
         id_type='OBJECT',
+        items=None,
 ):
     """Create and initialize a custom property with limits, defaults and other settings."""
 
@@ -129,16 +130,24 @@ def rna_idprop_ui_create(
         if step is None:
             step = 1
 
-        ui_data.update(
-            subtype=subtype,
-            min=min,
-            max=max,
-            soft_min=soft_min,
-            soft_max=soft_max,
-            step=step,
-            description=description,
-            default=default,
-        )
+        if items is None:
+            ui_data.update(
+                subtype=subtype,
+                min=min,
+                max=max,
+                soft_min=soft_min,
+                soft_max=soft_max,
+                step=step,
+                description=description,
+                default=default,
+            )
+        else:
+            ui_data.update(
+                subtype=subtype,
+                description=description,
+                default=default,
+                items=items,
+            )
     else:
         raise TypeError("Unexpected value type")
 
@@ -152,8 +161,6 @@ def draw(layout, context, context_member, property_type, *, use_edit=True):
     # poll should really get this...
     if not rna_item:
         return
-
-    from bpy.utils import escape_identifier
 
     if rna_item.id_data.library is not None:
         use_edit = False

@@ -140,6 +140,11 @@ eLightProbeResolution ReflectionProbeModule::reflection_probe_resolution() const
   return LIGHT_PROBE_RESOLUTION_2048;
 }
 
+int ReflectionProbeModule::probe_render_extent() const
+{
+  return instance_.scene->eevee.gi_cubemap_resolution / 2;
+}
+
 void ReflectionProbeModule::init()
 {
   if (!is_initialized) {
@@ -167,19 +172,26 @@ void ReflectionProbeModule::init()
                                1,
                                GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ,
                                nullptr,
-                               9999);
+                               REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
     probes_tx_.clear(float4(0.0f));
   }
 
   {
+    const RaytraceEEVEE &options = instance_.scene->eevee.ray_tracing_options;
+    float probe_brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
+
     PassSimple &pass = remap_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_REMAP));
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
-    pass.bind_image("octahedral_img", &probes_tx_);
-    pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&reflection_probe_coord_));
-    pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_probe_coord_));
+    pass.bind_texture("atlas_tx", &probes_tx_);
+    pass.bind_image("atlas_img", &probes_tx_);
+    pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
+    pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
+    pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_sampling_coord_));
+    pass.push_constant("mip_level", &probe_mip_level_);
+    pass.push_constant("probe_brightness_clamp", probe_brightness_clamp);
     pass.dispatch(&dispatch_probe_pack_);
   }
 
@@ -187,11 +199,13 @@ void ReflectionProbeModule::init()
     PassSimple &pass = update_irradiance_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_UPDATE_IRRADIANCE));
-    pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_probe_coord_));
+    pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_sampling_coord_));
     pass.bind_image("irradiance_atlas_img", &instance_.irradiance_cache.irradiance_atlas_tx_);
     pass.bind_texture("reflection_probes_tx", &probes_tx_);
     pass.dispatch(int2(1, 1));
   }
+
+  do_display_draw_ = false;
 }
 
 void ReflectionProbeModule::begin_sync()
@@ -205,7 +219,6 @@ void ReflectionProbeModule::begin_sync()
   update_probes_this_sample_ = false;
   if (update_probes_next_sample_) {
     update_probes_this_sample_ = true;
-    instance_.sampling.reset();
   }
 
   {
@@ -215,6 +228,7 @@ void ReflectionProbeModule::begin_sync()
     pass.push_constant("reflection_probe_count", &reflection_probe_count_);
     pass.bind_ssbo("reflection_probe_buf", &data_buf_);
     instance_.irradiance_cache.bind_resources(pass);
+    instance_.sampling.bind_resources(pass);
     pass.dispatch(&dispatch_probe_select_);
     pass.barrier(GPU_BARRIER_UNIFORM);
   }
@@ -236,7 +250,7 @@ static int layer_subdivision_for(const int max_resolution,
   return max_ii(int(log2(max_resolution)) - i_probe_resolution, 0);
 }
 
-void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle*/)
+void ReflectionProbeModule::sync_world(::World *world)
 {
   ReflectionProbe &probe = probes_.lookup(world_object_key_);
 
@@ -246,16 +260,21 @@ void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle
     probe.atlas_coord = find_empty_atlas_region(layer_subdivision);
     do_world_update_set(true);
   }
-  world_probe_coord_ = probe.atlas_coord;
+  world_sampling_coord_ = probe.atlas_coord.as_sampling_coord(atlas_extent());
 }
 
 void ReflectionProbeModule::sync_world_lookdev()
 {
-  do_world_update_set(true);
+  ReflectionProbe &probe = probes_.lookup(world_object_key_);
 
-  if (!update_probes_this_sample_) {
-    update_probes_next_sample_ = true;
+  const eLightProbeResolution resolution = reflection_probe_resolution();
+  int layer_subdivision = layer_subdivision_for(max_resolution_, resolution);
+  if (layer_subdivision != probe.atlas_coord.layer_subdivision) {
+    probe.atlas_coord = find_empty_atlas_region(layer_subdivision);
   }
+  world_sampling_coord_ = probe.atlas_coord.as_sampling_coord(atlas_extent());
+
+  do_world_update_set(true);
 }
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
@@ -265,7 +284,7 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     return;
   }
 
-  ReflectionProbe &probe = probes_.lookup_or_add_cb(ob_handle.object_key.hash(), []() {
+  ReflectionProbe &probe = probes_.lookup_or_add_cb(ob_handle.object_key.hash(), [&]() {
     ReflectionProbe probe = {};
     probe.do_render = true;
     probe.type = ReflectionProbe::Type::PROBE;
@@ -311,6 +330,9 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe.influence_scale = 1.0 / max_ff(1e-8f, influence_falloff);
   probe.influence_bias = probe.influence_scale;
   probe.parallax_distance = parallax_distance / influence_distance;
+
+  probe.viewport_display = light_probe.flag & LIGHTPROBE_FLAG_SHOW_DATA;
+  probe.viewport_display_size = light_probe.data_display_size;
 }
 
 ReflectionProbeAtlasCoordinate ReflectionProbeModule::find_empty_atlas_region(
@@ -343,6 +365,10 @@ void ReflectionProbeModule::end_sync()
 
   const bool do_update = instance_.do_reflection_probe_sync() || (only_world && world_updated);
   if (!do_update) {
+    /* World has changed this sample, but probe update isn't initialized this sample. */
+    if (world_updated && !only_world) {
+      update_probes_next_sample_ = true;
+    }
     if (update_probes_next_sample_ && !update_probes_this_sample_) {
       DRW_viewport_request_redraw();
     }
@@ -364,6 +390,10 @@ void ReflectionProbeModule::end_sync()
     probes_tx_.clear(float4(0.0f));
   }
 
+  /* Check reset probe updating as we will rendering probes. */
+  if (update_probes_this_sample_ || only_world) {
+    update_probes_next_sample_ = false;
+  }
   data_buf_.push_update();
 }
 
@@ -371,10 +401,6 @@ bool ReflectionProbeModule::remove_unused_probes()
 {
   const int64_t removed_count = probes_.remove_if(
       [](const ReflectionProbes::Item &item) { return !item.value.is_probe_used; });
-
-  if (removed_count > 0) {
-    instance_.sampling.reset();
-  }
   return removed_count > 0;
 }
 
@@ -445,11 +471,6 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     return info;
   }
 
-  /* Check reset probe updating as we completed rendering all Probes. */
-  if (probe_type == ReflectionProbe::Type::PROBE && update_probes_this_sample_) {
-    update_probes_next_sample_ = false;
-  }
-
   return std::nullopt;
 }
 
@@ -458,7 +479,9 @@ void ReflectionProbeModule::remap_to_octahedral_projection(
 {
   int resolution = max_resolution_ >> atlas_coord.layer_subdivision;
   /* Update shader parameters that change per dispatch. */
-  reflection_probe_coord_ = atlas_coord;
+  probe_sampling_coord_ = atlas_coord.as_sampling_coord(atlas_extent());
+  probe_write_coord_ = atlas_coord.as_write_coord(atlas_extent(), 0);
+  probe_mip_level_ = atlas_coord.layer_subdivision;
   dispatch_probe_pack_ = int3(int2(ceil_division(resolution, REFLECTION_PROBE_GROUP_SIZE)), 1);
 
   instance_.manager->submit(remap_ps_);
@@ -482,7 +505,7 @@ void ReflectionProbeModule::set_view(View & /*view*/)
     if (reflection_probe_count_ >= REFLECTION_PROBES_MAX - 1) {
       break;
     }
-    probe.recalc_lod_factors(probes_tx_.width());
+    probe.prepare_for_upload(atlas_extent());
     /* World is always considered active and added last. */
     if (probe.type == ReflectionProbe::Type::WORLD) {
       continue;
@@ -514,7 +537,7 @@ void ReflectionProbeModule::set_view(View & /*view*/)
                 return _a.z < _b.z;
               }
               else {
-                /* Fallback to memory address, since there's no good alternative.*/
+                /* Fallback to memory address, since there's no good alternative. */
                 return a < b;
               }
             });
@@ -532,6 +555,22 @@ void ReflectionProbeModule::set_view(View & /*view*/)
   }
   data_buf_.push_update();
 
+  do_display_draw_ = DRW_state_draw_support() && probe_active.size() > 0;
+  if (do_display_draw_) {
+    int display_index = 0;
+    for (int i : probe_active.index_range()) {
+      if (probe_active[i]->viewport_display) {
+        display_data_buf_.get_or_resize(display_index++) = {
+            i, probe_active[i]->viewport_display_size};
+      }
+    }
+    do_display_draw_ = display_index > 0;
+    if (do_display_draw_) {
+      display_data_buf_.resize(display_index);
+      display_data_buf_.push_update();
+    }
+  }
+
   /* Add one for world probe. */
   reflection_probe_count_ = probe_active.size() + 1;
   dispatch_probe_select_.x = divide_ceil_u(reflection_probe_count_,
@@ -542,6 +581,24 @@ void ReflectionProbeModule::set_view(View & /*view*/)
 ReflectionProbeAtlasCoordinate ReflectionProbeModule::world_atlas_coord_get() const
 {
   return probes_.lookup(world_object_key_).atlas_coord;
+}
+
+void ReflectionProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
+{
+  if (!do_display_draw_) {
+    return;
+  }
+
+  viewport_display_ps_.init();
+  viewport_display_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                                 DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK);
+  viewport_display_ps_.framebuffer_set(&view_fb);
+  viewport_display_ps_.shader_set(instance_.shaders.static_shader_get(DISPLAY_PROBE_REFLECTION));
+  bind_resources(viewport_display_ps_);
+  viewport_display_ps_.bind_ssbo("display_data_buf", display_data_buf_);
+  viewport_display_ps_.draw_procedural(GPU_PRIM_TRIS, 1, display_data_buf_.size() * 6);
+
+  instance_.manager->submit(viewport_display_ps_, view);
 }
 
 /** \} */

@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_subdiv_modifier.hh"
 
 #include "MEM_guardedalloc.h"
@@ -14,13 +14,13 @@
 #include "DNA_userdef_types.h"
 
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_subdiv.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
 
-#include "opensubdiv_capi.h"
+#include "opensubdiv_capi.hh"
 
 SubdivSettings BKE_subsurf_modifier_settings_init(const SubsurfModifierData *smd,
                                                   const bool use_render_params)
@@ -97,7 +97,7 @@ static bool is_subdivision_evaluation_possible_on_gpu()
     return false;
   }
 
-  if (!(GPU_compute_shader_support())) {
+  if (!GPU_compute_shader_support()) {
     return false;
   }
 
@@ -134,7 +134,7 @@ bool BKE_subsurf_modifier_can_do_gpu_subdiv(const Scene *scene,
     return false;
   }
 
-  /* Deactivate GPU subdivision if autosmooth or custom split normals are used as those are
+  /* Deactivate GPU subdivision if auto-smooth or custom split normals are used as those are
    * complicated to support on GPU, and should really be separate workflows. */
   if (BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh)) {
     return false;

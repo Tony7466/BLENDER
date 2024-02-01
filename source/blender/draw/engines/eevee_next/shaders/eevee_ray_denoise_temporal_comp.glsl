@@ -19,7 +19,6 @@
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 
 struct LocalStatistics {
@@ -33,10 +32,12 @@ struct LocalStatistics {
 
 LocalStatistics local_statistics_get(ivec2 texel, vec3 center_radiance)
 {
+  vec3 center_radiance_YCoCg = colorspace_YCoCg_from_scene_linear(center_radiance);
+
   /* Build Local statistics (slide 46). */
   LocalStatistics result;
-  result.mean = center_radiance;
-  result.variance = center_radiance;
+  result.mean = center_radiance_YCoCg;
+  result.moment = square(center_radiance_YCoCg);
   float weight_accum = 1.0;
 
   for (int x = -1; x <= 1; x++) {
@@ -56,7 +57,7 @@ LocalStatistics local_statistics_get(ivec2 texel, vec3 center_radiance)
       }
 
       /* Weight corners less to avoid box artifacts.
-       * Same idea as in "High Quality Temporal Supersampling" by Brian Karis at Siggraph 2014
+       * Same idea as in "High Quality Temporal Supersampling" by Brian Karis at SIGGRAPH 2014
        * (Slide 32) Simple clamp to min/max of 8 neighbors results in 3x3 box artifacts. */
       float weight = (x == y) ? 0.25 : 1.0;
       /* Use YCoCg for clamping and accumulation to avoid color shift artifacts. */
@@ -93,7 +94,8 @@ vec4 radiance_history_fetch(ivec2 texel, float bilinear_weight)
   if (!in_texture_range(texel, radiance_history_tx)) {
     return vec4(0.0);
   }
-  ivec2 history_tile = texel / RAYTRACE_GROUP_SIZE;
+
+  ivec3 history_tile = ivec3(texel / RAYTRACE_GROUP_SIZE, closure_index);
   /* Fetch previous tilemask to avoid loading invalid data. */
   bool is_valid_history = texelFetch(tilemask_history_tx, history_tile, 0).r != 0;
   /* Exclude unprocessed pixels. */
@@ -148,7 +150,7 @@ vec2 variance_history_sample(vec3 P)
   float history_variance = texture(variance_history_tx, uv).r;
 
   ivec2 history_texel = ivec2(floor(uv * vec2(textureSize(variance_history_tx, 0).xy)));
-  ivec2 history_tile = history_texel / RAYTRACE_GROUP_SIZE;
+  ivec3 history_tile = ivec3(history_texel / RAYTRACE_GROUP_SIZE, closure_index);
   /* Fetch previous tilemask to avoid loading invalid data. */
   bool is_valid_history = texelFetch(tilemask_history_tx, history_tile, 0).r != 0;
 

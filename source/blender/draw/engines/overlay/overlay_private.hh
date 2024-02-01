@@ -11,7 +11,7 @@
 #include "BKE_global.h"
 
 #include "DRW_gpu_wrapper.hh"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "UI_resources.hh"
 
@@ -367,7 +367,6 @@ struct OVERLAY_PrivateData {
   struct {
     bool do_zbufclip;
     bool do_faces;
-    bool do_edges;
     bool select_vert;
     bool select_face;
     bool select_edge;
@@ -709,6 +708,8 @@ void OVERLAY_sculpt_curves_draw_wires(OVERLAY_Data *vedata);
 void OVERLAY_viewer_attribute_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_viewer_attribute_cache_populate(OVERLAY_Data *vedata, Object *object);
 void OVERLAY_viewer_attribute_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_viewer_attribute_text(const Object &object);
 
 void OVERLAY_wireframe_init(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata);

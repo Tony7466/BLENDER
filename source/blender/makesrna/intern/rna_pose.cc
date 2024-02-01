@@ -12,7 +12,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "DNA_action_types.h"
 #include "DNA_armature_types.h"
@@ -59,19 +59,21 @@ const EnumPropertyItem rna_enum_color_sets_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <fmt/format.h>
+
 #  include "BLI_ghash.h"
 #  include "BLI_string_utils.hh"
 
 #  include "BIK_api.h"
 #  include "BKE_action.h"
-#  include "BKE_armature.h"
+#  include "BKE_armature.hh"
 
 #  include "DNA_userdef_types.h"
 
 #  include "MEM_guardedalloc.h"
 
 #  include "BKE_constraint.h"
-#  include "BKE_context.h"
+#  include "BKE_context.hh"
 #  include "BKE_global.h"
 #  include "BKE_idprop.h"
 
@@ -112,18 +114,18 @@ static void rna_Pose_IK_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *
   BIK_clear_data(ob->pose);
 }
 
-static char *rna_Pose_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_Pose_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("pose");
+  return "pose";
 }
 
-static char *rna_PoseBone_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_PoseBone_path(const PointerRNA *ptr)
 {
   const bPoseChannel *pchan = static_cast<const bPoseChannel *>(ptr->data);
   char name_esc[sizeof(pchan->name) * 2];
 
   BLI_str_escape(name_esc, pchan->name, sizeof(name_esc));
-  return BLI_sprintfN("pose.bones[\"%s\"]", name_esc);
+  return fmt::format("pose.bones[\"{}\"]", name_esc);
 }
 
 /* shared for actions groups and bone groups */

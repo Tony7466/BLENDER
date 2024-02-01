@@ -13,7 +13,7 @@
 #include "../generic/py_capi_utils.h"
 #include "bpy_rna.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "RE_engine.h"
 
@@ -176,7 +176,7 @@ static PyObject *cache_or_get_image_file_func(PyObject * /*self*/, PyObject *arg
 
   std::string image_path = io::hydra::cache_or_get_image_file(
       CTX_data_main(context), CTX_data_scene(context), image, nullptr);
-  return PyC_UnicodeFromBytes(image_path.c_str());
+  return PyC_UnicodeFromStdStr(image_path);
 }
 
 static PyMethodDef methods[] = {

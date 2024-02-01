@@ -13,7 +13,7 @@
 #include "BLI_linklist.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
@@ -237,6 +237,7 @@ static void lineart_gpencil_bake_startjob(void *customdata, wmJobWorkerStatus *w
 
     BKE_scene_frame_set(bj->scene, frame);
     BKE_scene_graph_update_for_newframe(bj->dg);
+    DEG_graph_build_from_view_layer(bj->dg);
 
     for (LinkNode *l = bj->objects; l; l = l->next) {
       Object *ob = static_cast<Object *>(l->link);
