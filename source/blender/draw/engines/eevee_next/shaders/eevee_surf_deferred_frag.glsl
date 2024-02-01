@@ -24,7 +24,9 @@ vec4 closure_to_rgba(Closure cl)
   out_color.a = saturate(1.0 - average(g_transmittance));
 
   /* Reset for the next closure tree. */
-  closure_weights_reset();
+  float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).r;
+  float closure_rand = fract(noise + sampling_rng_1D_get(SAMPLING_CLOSURE));
+  closure_weights_reset(closure_rand);
 
   return out_color;
 }
@@ -37,11 +39,11 @@ void main()
   init_globals();
 
   float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).r;
-  g_closure_rand = fract(noise + sampling_rng_1D_get(SAMPLING_CLOSURE));
+  float closure_rand = fract(noise + sampling_rng_1D_get(SAMPLING_CLOSURE));
 
   fragment_displacement();
 
-  nodetree_surface();
+  nodetree_surface(closure_rand);
 
   g_holdout = saturate(g_holdout);
 

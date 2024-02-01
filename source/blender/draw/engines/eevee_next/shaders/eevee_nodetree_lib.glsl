@@ -87,9 +87,7 @@ void closure_select(inout ClosureUndetermined destination,
   }
 }
 
-float g_closure_rand;
-
-void closure_weights_reset()
+void closure_weights_reset(float closure_rand)
 {
   g_diffuse_data.weight = 0.0;
   g_translucent_data.weight = 0.0;
@@ -101,7 +99,7 @@ void closure_weights_reset()
   g_volume_absorption = vec3(0.0);
 
 #if defined(GPU_FRAGMENT_SHADER)
-  g_diffuse_rand = g_translucent_rand = g_reflection_rand = g_refraction_rand = g_closure_rand;
+  g_diffuse_rand = g_translucent_rand = g_reflection_rand = g_refraction_rand = closure_rand;
 #else
   g_diffuse_rand = 0.0;
   g_translucent_rand = 0.0;
@@ -327,7 +325,7 @@ float ambient_occlusion_eval(vec3 normal,
 
 #ifndef GPU_METAL
 void attrib_load();
-Closure nodetree_surface();
+Closure nodetree_surface(float closure_rand);
 /* Closure nodetree_volume(); */
 vec3 nodetree_displacement();
 float nodetree_thickness();
@@ -513,7 +511,7 @@ vec2 bsdf_lut(float cos_theta, float roughness, float ior, bool do_multiscatter)
 #ifdef EEVEE_MATERIAL_STUBS
 #  define attrib_load()
 #  define nodetree_displacement() vec3(0.0)
-#  define nodetree_surface() Closure(0)
+#  define nodetree_surface(closure_rand) Closure(0)
 #  define nodetree_volume() Closure(0)
 #  define nodetree_thickness() 0.1
 #endif

@@ -27,9 +27,9 @@ void main()
   init_globals();
 
   /* TODO(fclem): Remove random sampling for capture and accumulate color. */
-  g_closure_rand = 0.5;
+  float closure_rand = 0.5;
 
-  nodetree_surface();
+  nodetree_surface(closure_rand);
 
   g_diffuse_data.color *= g_diffuse_data.weight;
   g_reflection_data.color *= g_reflection_data.weight;
