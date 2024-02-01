@@ -80,7 +80,7 @@ TEST(math_interp, BilinearFloatSamples)
   EXPECT_V4_NEAR(exp2, res, float_tolerance);
 }
 
-TEST(math_interp, BilinearCharPartiallyOutsideImage)
+TEST(math_interp, BilinearCharPartiallyOutsideImageBorder)
 {
   uchar4 res;
   uchar4 exp1 = {1, 1, 2, 2};
@@ -92,6 +92,20 @@ TEST(math_interp, BilinearCharPartiallyOutsideImage)
   uchar4 exp3 = {173, 115, 65, 14};
   res = interpolate_bilinear_border_byte(image_char[0][0], image_width, image_height, 2.2f, -0.1f);
   EXPECT_EQ(exp3, res);
+}
+
+TEST(math_interp, BilinearCharPartiallyOutsideImage)
+{
+  uchar4 res;
+  uint4 exp1 = {1, 2, 3, 4};
+  res = interpolate_bilinear_byte(image_char[0][0], image_width, image_height, -0.5f, 2.0f);
+  EXPECT_EQ(exp1, uint4(res));
+  uint4 exp2 = {87, 113, 147, 221};
+  res = interpolate_bilinear_byte(image_char[0][0], image_width, image_height, 1.25f, 2.9f);
+  EXPECT_EQ(exp2, uint4(res));
+  uint4 exp3 = {240, 160, 90, 20};
+  res = interpolate_bilinear_byte(image_char[0][0], image_width, image_height, 2.2f, -0.1f);
+  EXPECT_EQ(exp3, uint4(res));
 }
 
 TEST(math_interp, BilinearCharPartiallyOutsideImageWrap)
@@ -108,7 +122,7 @@ TEST(math_interp, BilinearCharPartiallyOutsideImageWrap)
   EXPECT_EQ(exp3, res);
 }
 
-TEST(math_interp, BilinearFloatPartiallyOutsideImage)
+TEST(math_interp, BilinearFloatPartiallyOutsideImageBorder)
 {
   float4 res;
   float4 exp1 = {0.5f, 1, 1.5f, 2};
@@ -119,6 +133,20 @@ TEST(math_interp, BilinearFloatPartiallyOutsideImage)
   EXPECT_V4_NEAR(exp2, res, float_tolerance);
   float4 exp3 = {172.8f, 115.2f, 64.8f, 14.4f};
   res = interpolate_bilinear_border_fl(image_fl[0][0], image_width, image_height, 2.2f, -0.1f);
+  EXPECT_V4_NEAR(exp3, res, float_tolerance);
+}
+
+TEST(math_interp, BilinearFloatPartiallyOutsideImage)
+{
+  float4 res;
+  float4 exp1 = {1.0f, 2.0f, 3.0f, 4.0f};
+  res = interpolate_bilinear_fl(image_fl[0][0], image_width, image_height, -0.5f, 2.0f);
+  EXPECT_V4_NEAR(exp1, res, float_tolerance);
+  float4 exp2 = {86.75f, 113.25f, 147.25f, 221.0f};
+  res = interpolate_bilinear_fl(image_fl[0][0], image_width, image_height, 1.25f, 2.9f);
+  EXPECT_V4_NEAR(exp2, res, float_tolerance);
+  float4 exp3 = {240.0f, 160.0f, 90.0f, 20.0f};
+  res = interpolate_bilinear_fl(image_fl[0][0], image_width, image_height, 2.2f, -0.1f);
   EXPECT_V4_NEAR(exp3, res, float_tolerance);
 }
 
