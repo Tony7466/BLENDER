@@ -51,7 +51,7 @@ def main():
     report = render_report.Report("Sequencer", output_dir, oiiotool)
     report.set_pixelated(True)
     # default error tolerances are quite large, lower them
-    report.set_fail_threshold(1.0/255.0)
+    report.set_fail_threshold(1.0 / 255.0)
     report.set_fail_percent(0.01)
     report.set_reference_dir("reference")
 

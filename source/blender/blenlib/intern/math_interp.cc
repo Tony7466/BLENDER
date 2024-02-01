@@ -317,21 +317,21 @@ BLI_INLINE void bilinear_fl_impl(const float *buffer,
 
   /* Sample locations. */
   if constexpr (border) {
-    row1 = (x1 < 0 || y1 < 0) ? empty : buffer + (size_t(width) * y1 + x1) * components;
-    row2 = (x1 < 0 || y2 > height - 1) ? empty : buffer + (size_t(width) * y2 + x1) * components;
-    row3 = (x2 > width - 1 || y1 < 0) ? empty : buffer + (size_t(width) * y1 + x2) * components;
+    row1 = (x1 < 0 || y1 < 0) ? empty : buffer + (int64_t(width) * y1 + x1) * components;
+    row2 = (x1 < 0 || y2 > height - 1) ? empty : buffer + (int64_t(width) * y2 + x1) * components;
+    row3 = (x2 > width - 1 || y1 < 0) ? empty : buffer + (int64_t(width) * y1 + x2) * components;
     row4 = (x2 > width - 1 || y2 > height - 1) ? empty :
-                                                 buffer + (size_t(width) * y2 + x2) * components;
+                                                 buffer + (int64_t(width) * y2 + x2) * components;
   }
   else {
     x1 = blender::math::clamp(x1, 0, width - 1);
     x2 = blender::math::clamp(x2, 0, width - 1);
     y1 = blender::math::clamp(y1, 0, height - 1);
     y2 = blender::math::clamp(y2, 0, height - 1);
-    row1 = buffer + (size_t(width) * y1 + x1) * components;
-    row2 = buffer + (size_t(width) * y2 + x1) * components;
-    row3 = buffer + (size_t(width) * y1 + x2) * components;
-    row4 = buffer + (size_t(width) * y2 + x2) * components;
+    row1 = buffer + (int64_t(width) * y1 + x1) * components;
+    row2 = buffer + (int64_t(width) * y2 + x1) * components;
+    row3 = buffer + (int64_t(width) * y1 + x2) * components;
+    row4 = buffer + (int64_t(width) * y2 + x2) * components;
   }
 
   a = u - uf;
