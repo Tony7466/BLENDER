@@ -352,8 +352,8 @@ void append_strokes_from(bke::CurvesGeometry &&other, bke::CurvesGeometry &dst)
 
   dst.resize(initial_points_num + other_points_num, initial_curves_num + other_curves_num);
 
-  Array other_raw_offsets{0, other_points_num};
-  Array dst_raw_offsets{initial_points_num, initial_points_num + other_points_num};
+  Array<int> other_raw_offsets{0, other_points_num};
+  Array<int> dst_raw_offsets{initial_points_num, initial_points_num + other_points_num};
 
   OffsetIndices<int> other_point_offsets{other_raw_offsets};
   OffsetIndices<int> dst_point_offsets{dst_raw_offsets};
