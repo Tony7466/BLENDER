@@ -872,6 +872,20 @@
     .thickness = 0.02, \
   }
 
+#define _DNA_DEFAULT_GreasePencilArrayModifierData \
+  { \
+    .object = NULL, \
+    .count = 2, \
+    .flag = GP_ARRAY_USE_RELATIVE, \
+    .offset = {0.0f, 0.0f, 0.0f}, \
+    .shift = {1.0f, 0.0f, 0.0f}, \
+    .rnd_offset = {0.0f, 0.0f, 0.0f}, \
+    .rnd_rot = {0.0f, 0.0f, 0.0f}, \
+    .rnd_scale = {0.0f, 0.0f, 0.0f}, \
+    .seed = 1, \
+    .mat_rpl = 0, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilDashModifierData \
   { \
     .dash_offset = 0, \
