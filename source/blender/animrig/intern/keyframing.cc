@@ -69,7 +69,7 @@ class CombinedKeyingResult {
 
   int get_count(const SingleKeyingResult result) const
   {
-    return result_counter[int(result)] > 0;
+    return result_counter[int(result)];
   }
 
   bool has_errors() const
