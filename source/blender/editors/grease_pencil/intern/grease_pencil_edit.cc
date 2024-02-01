@@ -1826,8 +1826,6 @@ static bool grease_pencil_separate_selected(bContext &C,
     remove_unused_materials(&bmain, object_dst);
     DEG_id_tag_update(&grease_pencil_dst.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(&C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
-
-    remove_unused_materials(&bmain, &object_src);
   }
   return changed;
 }
