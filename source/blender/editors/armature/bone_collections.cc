@@ -418,6 +418,8 @@ static bool bone_collection_assign_poll(bContext *C)
     return false;
   }
 
+  CTX_wm_operator_poll_msg_set(C, "Cannot edit linked bone collections");
+
   /* The target bone collection can be specified by name in an operator property, but that's not
    * available here. So just allow in the poll function, and do the final check in the execute. */
   return true;
@@ -1003,6 +1005,8 @@ static bool move_to_collection_poll(bContext *C)
     return false;
   }
 
+  CTX_wm_operator_poll_msg_set(C, "Cannot edit linked bone collections");
+
   /* Ideally this would also check the target bone collection to move/assign to.
    * However, that requires access to the operator properties, and those are not
    * available in the poll function. */
@@ -1133,7 +1137,6 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
       uiLayout *sub = uiLayoutRow(layout, false);
       uiLayoutSetEnabled(sub, false);
 
-      /* TODO: figure out if we can add a 'disabled' message in the tooltip. */
       menu_add_item_for_move_assign_unassign(sub, arm, bcoll, index, is_move_operation);
       continue;
     }
