@@ -342,9 +342,9 @@ void GridViewLayoutBuilder::build_grid_tile(uiLayout &grid_layout,
 void GridViewLayoutBuilder::build_from_view(const AbstractGridView &grid_view,
                                             const View2D &v2d) const
 {
-  uiLayout *parent_layout = current_layout();
+  uiLayout *parent_layout = this->current_layout();
 
-  uiLayout &layout = *uiLayoutColumn(current_layout(), true);
+  uiLayout &layout = *uiLayoutColumn(parent_layout, true);
   const GridViewStyle &style = grid_view.get_style();
 
   const int cols_per_row = std::max(uiLayoutGetWidth(&layout) / style.tile_width, 1);
@@ -367,7 +367,7 @@ void GridViewLayoutBuilder::build_from_view(const AbstractGridView &grid_view,
       row = uiLayoutRow(&layout, true);
     }
 
-    build_grid_tile(*row, item);
+    this->build_grid_tile(*row, item);
     item_idx++;
   });
 
@@ -411,7 +411,7 @@ PreviewGridItem::PreviewGridItem(StringRef identifier, StringRef label, int prev
 
 void PreviewGridItem::build_grid_tile(uiLayout &layout) const
 {
-  const GridViewStyle &style = get_view().get_style();
+  const GridViewStyle &style = this->get_view().get_style();
   uiBlock *block = uiLayoutGetBlock(&layout);
 
   uiBut *but = uiDefBut(block,

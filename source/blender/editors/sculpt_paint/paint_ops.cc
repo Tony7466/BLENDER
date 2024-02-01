@@ -1020,7 +1020,6 @@ static int brush_asset_select_exec(bContext *C, wmOperator *op)
 
 static void BRUSH_OT_asset_select(wmOperatorType *ot)
 {
-  using namespace blender;
   using namespace blender::ed;
   ot->name = "Select Brush Asset";
   ot->description = "Select a brush asset as current sculpt and paint tool";

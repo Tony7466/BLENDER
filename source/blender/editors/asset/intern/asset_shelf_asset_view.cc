@@ -200,21 +200,25 @@ void AssetViewItem::build_grid_tile(uiLayout &layout) const
   const ui::GridViewStyle &style = this->get_view().get_style();
 
   uiBlock *block = uiLayoutGetBlock(&layout);
+  const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+  const AssetShelfType &shelf_type = *asset_view.shelf_.type;
 
-  uiBut *but = uiDefButO(block,
-                         UI_BTYPE_BUT,
-                         "BRUSH_OT_asset_select",
-                         WM_OP_EXEC_DEFAULT,
-                         hide_label_ ? "" : label.c_str(),
-                         0,
-                         0,
-                         style.tile_width,
-                         style.tile_height,
-                         "");
+  uiBut *but = uiDefIconTextButO(block,
+                                 UI_BTYPE_BUT,
+                                 shelf_type.activate_operator.c_str(),
+                                 WM_OP_EXEC_DEFAULT,
+                                 this->preview_icon_id,
+                                 hide_label_ ? "" : label.c_str(),
+                                 0,
+                                 0,
+                                 style.tile_width,
+                                 style.tile_height,
+                                 "");
   PointerRNA *ptr = UI_but_operator_ptr_ensure(but);
   operator_asset_reference_props_set(*handle_get_representation(&asset_), *ptr);
 
   if (this->is_active()) {
+    printf("IS ACTIVE!\n");
     UI_but_flag_enable(but, UI_SELECT_DRAW);
   }
 

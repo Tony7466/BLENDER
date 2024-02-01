@@ -523,6 +523,8 @@ struct AssetShelfType {
 
   int space_type;
 
+  std::string activate_operator;
+
   AssetShelfTypeFlag flag;
 
   /** Determine if asset shelves of this type should be available in current context or not. */

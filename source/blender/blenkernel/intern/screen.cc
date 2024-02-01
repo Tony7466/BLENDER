@@ -231,7 +231,9 @@ static void spacetype_free(SpaceType *st)
   }
 
   BLI_freelistN(&st->regiontypes);
-  BLI_freelistN(&st->asset_shelf_types);
+  LISTBASE_FOREACH_MUTABLE (AssetShelfType *, shelf_type, &st->asset_shelf_types) {
+    delete shelf_type;
+  }
 }
 
 void BKE_spacetypes_free()
