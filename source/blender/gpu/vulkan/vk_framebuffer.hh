@@ -101,9 +101,14 @@ class VKFrameBuffer : public FrameBuffer {
   Array<VkRect2D, 16> vk_render_areas_get() const;
 
   void depth_attachment_layout_ensure(VKContext &context, VkImageLayout requested_layout);
-  void color_attachment_layout_ensure(VKContext &context,
-                                      int color_attachment,
-                                      VkImageLayout requested_layout);
+  void color_attachment_layout_ensure(
+      VKContext &context,
+      int color_attachment,
+      VkImageLayout requested_layout,
+      VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VkAccessFlags src_access = VK_ACCESS_MEMORY_WRITE_BIT,
+      VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VkAccessFlags dst_access = VK_ACCESS_MEMORY_READ_BIT);
   /**
    * Ensure that the size of the frame-buffer matches the first attachment resolution.
    *

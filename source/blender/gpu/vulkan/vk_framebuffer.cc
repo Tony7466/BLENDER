@@ -589,7 +589,11 @@ void VKFrameBuffer::render_pass_free()
 
 void VKFrameBuffer::color_attachment_layout_ensure(VKContext &context,
                                                    int color_attachment,
-                                                   VkImageLayout requested_layout)
+                                                   VkImageLayout requested_layout,
+                                                   const VkPipelineStageFlags src_stage,
+                                                   const VkAccessFlags src_access,
+                                                   const VkPipelineStageFlags dst_stage,
+                                                   const VkAccessFlags dst_access)
 {
   VKTexture *color_texture = unwrap(unwrap(color_tex(color_attachment)));
   if (color_texture == nullptr) {
@@ -600,7 +604,8 @@ void VKFrameBuffer::color_attachment_layout_ensure(VKContext &context,
     return;
   }
 
-  color_texture->layout_ensure(context, requested_layout);
+  color_texture->layout_ensure(
+      context, requested_layout, src_stage, src_access, dst_stage, dst_access);
   dirty_attachments_ = true;
 }
 

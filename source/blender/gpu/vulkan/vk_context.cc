@@ -253,7 +253,7 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
    * Ensure no graphics/compute commands are scheduled. They could use the back buffer, which
    * layout is altered here.
    */
-  command_buffers_get().submit();
+  // command_buffers_get().submit();
 
   VKFrameBuffer &framebuffer = *unwrap(back_left);
 
@@ -261,8 +261,20 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
   wrapper.init(swap_chain_data.image,
                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                to_gpu_format(swap_chain_data.format));
-  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  framebuffer.color_attachment_layout_ensure(*this, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  wrapper.layout_ensure(*this,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_ACCESS_MEMORY_READ_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_ACCESS_MEMORY_WRITE_BIT);
+  framebuffer.color_attachment_layout_ensure(*this,
+                                             0,
+                                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                             VK_ACCESS_MEMORY_WRITE_BIT,
+                                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                             VK_ACCESS_MEMORY_READ_BIT);
+
   VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
 
   VkImageBlit image_blit = {};
@@ -286,7 +298,13 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
                              *color_attachment,
                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                              Span<VkImageBlit>(&image_blit, 1));
-  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  wrapper.layout_ensure(*this,
+                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_ACCESS_MEMORY_WRITE_BIT,
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        VK_ACCESS_MEMORY_READ_BIT);
+
   command_buffers_get().submit();
 }
 
