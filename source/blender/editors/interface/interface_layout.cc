@@ -3602,6 +3602,9 @@ static int menu_item_enum_opname_menu_active(bContext *C, uiBut *but, MenuItemLe
   /* so the context is passed to itemf functions (some need it) */
   WM_operator_properties_sanitize(&ptr, false);
   PropertyRNA *prop = RNA_struct_find_property(&ptr, lvl->propname);
+  if (!prop) {
+    return -1;
+  }
   RNA_property_enum_items_gettexted(C, &ptr, prop, &item_array, &totitem, &free);
   int active = RNA_enum_from_name(item_array, but->str.c_str());
   if (free) {
@@ -4974,10 +4977,10 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-PanelLayout uiLayoutPanelWithHeader(const bContext *C,
-                                    uiLayout *layout,
-                                    PointerRNA *open_prop_owner,
-                                    const char *open_prop_name)
+PanelLayout uiLayoutPanelProp(const bContext *C,
+                              uiLayout *layout,
+                              PointerRNA *open_prop_owner,
+                              const char *open_prop_name)
 {
   const ARegion *region = CTX_wm_region(C);
 
@@ -5035,14 +5038,40 @@ PanelLayout uiLayoutPanelWithHeader(const bContext *C,
   return panel_layout;
 }
 
+uiLayout *uiLayoutPanelProp(const bContext *C,
+                            uiLayout *layout,
+                            PointerRNA *open_prop_owner,
+                            const char *open_prop_name,
+                            const char *label)
+{
+  PanelLayout panel = uiLayoutPanelProp(C, layout, open_prop_owner, open_prop_name);
+  uiItemL(panel.header, label, ICON_NONE);
+
+  return panel.body;
+}
+
+PanelLayout uiLayoutPanel(const bContext *C,
+                          uiLayout *layout,
+                          const char *idname,
+                          const bool default_closed)
+{
+  Panel *panel = uiLayoutGetRootPanel(layout);
+  BLI_assert(panel != nullptr);
+
+  LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(panel, idname, default_closed);
+  PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
+
+  return uiLayoutPanelProp(C, layout, &state_ptr, "is_open");
+}
+
 uiLayout *uiLayoutPanel(const bContext *C,
                         uiLayout *layout,
-                        const char *name,
-                        PointerRNA *open_prop_owner,
-                        const char *open_prop_name)
+                        const char *idname,
+                        const bool default_closed,
+                        const char *label)
 {
-  PanelLayout panel = uiLayoutPanelWithHeader(C, layout, open_prop_owner, open_prop_name);
-  uiItemL(panel.header, name, ICON_NONE);
+  PanelLayout panel = uiLayoutPanel(C, layout, idname, default_closed);
+  uiItemL(panel.header, label, ICON_NONE);
 
   return panel.body;
 }
