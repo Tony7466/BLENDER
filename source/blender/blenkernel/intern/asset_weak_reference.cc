@@ -232,7 +232,7 @@ ID *BKE_asset_weak_reference_ensure(Main *global_main, const AssetWeakReference 
   BKE_main_id_tag_all(asset_main, LIB_TAG_ASSET_MAIN, true);
 
   /* Verify that the name matches. It must for referencing the same asset again to work.  */
-  BLI_asset(local_asset == nullptr || STREQ(local_asset->name + 2, asset_name));
+  BLI_assert(local_asset == nullptr || STREQ(local_asset->name + 2, asset_name));
 
   return local_asset;
 }
