@@ -1923,7 +1923,7 @@ static void scroller_activate_init(bContext *C,
   }
   else if (area->spacetype == SPACE_SPREADSHEET) {
     SpaceSpreadsheet *sspreadsheet = CTX_wm_space_spreadsheet(C);
-    ED_spreadsheet_layout_maskrect(sspreadsheet, region, &scroller_mask);
+    blender::ed::spreadsheet::ED_spreadsheet_layout_maskrect(sspreadsheet, region, &scroller_mask);
     use_scroller_mask = true;
   }
 
