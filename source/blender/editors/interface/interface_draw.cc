@@ -630,8 +630,7 @@ static void waveform_draw_rgb(float *waveform, int waveform_num, float *col)
   GPU_batch_discard(batch);
 }
 
-
-static void circle_draw_rgb(float *points, int tot_points, float *col)
+static void circle_draw_rgb(float *points, int tot_points, float *col, GPUPrimType prim)
 {
   GPUVertFormat format = {0};
   const uint pos_id = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -643,7 +642,7 @@ static void circle_draw_rgb(float *points, int tot_points, float *col)
   GPU_vertbuf_attr_fill(vbo, pos_id, points);
   GPU_vertbuf_attr_fill(vbo, col_id, col);
 
-  GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_LINE_LOOP, vbo, nullptr, GPU_BATCH_OWNS_VBO);
+  GPUBatch *batch = GPU_batch_create_ex(prim, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 
   GPU_batch_program_set_builtin(batch, GPU_SHADER_3D_SMOOTH_COLOR);
   GPU_batch_draw(batch);
@@ -1014,63 +1013,96 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-  /* circles */
   const int increment = 6;
   const int tot_points = int(360 / increment);
   const float r = 0.5f;
+  float step = 360.0f / (tot_points - 1);
 
-  GPU_blend(GPU_BLEND_NONE);
-  immBegin(GPU_PRIM_TRI_FAN, tot_points + 2);
-  immUniformColor3f(0.16f, 0.16f, 0.16f);
-  immVertex2f(pos, centerx, centery);
+  float circle_fill_points[(tot_points * 2) + 2];
+  float circle_fill_vertex_colors[(tot_points * 4) + 4];
 
-  for (int i = 0; i <= 360; i += increment) {
-    const float a = DEG2RADF(float(i));
-    immVertex2f(pos, polar_to_x(centerx, diam, r, a), polar_to_y(centery, diam, r, a));
-  }
-  immEnd();
+  /* draw filled RGB circle for background, only for LUMA mode */
+  if (scopes->vecscope_mode == SCOPES_VECSCOPE_LUMA) {
+    /* Initialize center point and color */
+    circle_fill_points[0] = centerx;
+    circle_fill_points[1] = centery;
+    circle_fill_vertex_colors[0] = 0.2f;
+    circle_fill_vertex_colors[1] = 0.2f;
+    circle_fill_vertex_colors[2] = 0.2f;
+    circle_fill_vertex_colors[3] = 0.8f;
 
-  /* draw skin tone line */
-  float circle_points[(tot_points * 2)+3] = {};
-  float circle_vertex_colors[(tot_points * 4)+5] = {};
-
-  float step = 360.0f / float(tot_points);
-
-  for (int i = 0; i < tot_points; i++) {
+    for (int i = 0; i < tot_points; i++) {
       float angle = step * i;
       const float a = DEG2RADF(angle);
 
-      const float x = polar_to_x(centerx, diam, 0.5f, a);
-      const float y = polar_to_y(centery, diam, 0.5f, a);
+      const float x = polar_to_x(centerx, diam, r, a);
+      const float y = polar_to_y(centery, diam, r, a);
 
       const float u = polar_to_x(0.0f, 1.0, 1.0f, a);
       const float v = polar_to_y(0.0f, 1.0, 1.0f, a);
 
-      circle_points[i * 2] = x;
-      circle_points[i * 2 + 1] = y;
+      circle_fill_points[(i + 1) * 2] = x;
+      circle_fill_points[(i + 1) * 2 + 1] = y;
 
-      float r = 0.0f, g = 0.0f, b = 0.0f;
+      float r, g, b;
       yuv_to_rgb(0.5f, u, v, &r, &g, &b, BLI_YUV_ITU_BT709);
 
-      circle_vertex_colors[i * 4] = r;
-      circle_vertex_colors[i * 4 + 1] = g;
-      circle_vertex_colors[i * 4 + 2] = b;
-      circle_vertex_colors[i * 4 + 3] = 0.8f;
+      circle_fill_vertex_colors[(i + 1) * 4] = r * 0.2f;
+      circle_fill_vertex_colors[(i + 1) * 4 + 1] = g * 0.2f;
+      circle_fill_vertex_colors[(i + 1) * 4 + 2] = b * 0.2f;
+      circle_fill_vertex_colors[(i + 1) * 4 + 3] = 0.8f;
     }
+
+    GPU_blend(GPU_BLEND_ALPHA);
+    circle_draw_rgb(circle_fill_points, tot_points+2, circle_fill_vertex_colors, GPU_PRIM_TRI_FAN);
+  }
+  /* draw filled Gray circle for background, only for RGB mode */
+  else if (scopes->vecscope_mode == SCOPES_VECSCOPE_RGB) {
+    GPU_blend(GPU_BLEND_NONE);
+    immBegin(GPU_PRIM_TRI_FAN, tot_points + 2);
+    immUniformColor3f(0.16f, 0.16f, 0.16f);
+    immVertex2f(pos, centerx, centery);
+
+    for (int i = 0; i <= 360; i += increment) {
+      const float a = DEG2RADF(float(i));
+      immVertex2f(pos, polar_to_x(centerx, diam, r, a), polar_to_y(centery, diam, r, a));
+    }
+    immEnd();
+  }
+
+  /* draw RGB ring */
+  float circle_points[(tot_points * 2) + 3] = {};
+  float circle_vertex_colors[(tot_points * 4) + 5] = {};
+
+  for (int i = 0; i < tot_points; i++) {
+    float angle = step * i;
+    const float a = DEG2RADF(angle);
+
+    const float x = polar_to_x(centerx, diam, 0.5f, a);
+    const float y = polar_to_y(centery, diam, 0.5f, a);
+    circle_points[i * 2] = x;
+    circle_points[i * 2 + 1] = y;
+
+    const float u = polar_to_x(0.0f, 1.0, 1.0f, a);
+    const float v = polar_to_y(0.0f, 1.0, 1.0f, a);
+    float r, g, b;
+    yuv_to_rgb(0.5f, u, v, &r, &g, &b, BLI_YUV_ITU_BT709);
+
+    circle_vertex_colors[i * 4] = r;
+    circle_vertex_colors[i * 4 + 1] = g;
+    circle_vertex_colors[i * 4 + 2] = b;
+    circle_vertex_colors[i * 4 + 3] = 0.8f;
+  }
 
   GPU_blend(GPU_BLEND_ALPHA);
   GPU_line_width(2.5f);
-  circle_draw_rgb(circle_points, tot_points, circle_vertex_colors);
-  GPU_line_width(1.0f);
+  circle_draw_rgb(circle_points, tot_points, circle_vertex_colors, GPU_PRIM_LINE_LOOP);
+  GPU_line_width(1.5f);
 
   /* inner circles */
-  for (int j = 0; j < 5; j++) {
-    if (j == 4)
-      continue;
-
+  for (int j = 0; j < 4; j++) {
     GPU_blend(GPU_BLEND_ADDITIVE);
-    immUniformColor3f(0.2f, 0.2f, 0.2f);
+    immUniformColor3f(0.1f, 0.1f, 0.1f);
     immBegin(GPU_PRIM_LINE_LOOP, tot_points);
 
     for (int i = 0; i < 360; i += increment) {
