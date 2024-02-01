@@ -5846,6 +5846,8 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.operator("grease_pencil.set_uniform_thickness")
         layout.operator("grease_pencil.set_uniform_opacity")
 
+        layout.operator_menu_enum("grease_pencil.reorder", text="Reorder", property="direction")
+
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
     bl_label = "Point"
@@ -8527,7 +8529,7 @@ class VIEW3D_PT_sculpt_automasking(Panel):
         col.prop(sculpt, "use_automasking_boundary_face_sets", text="Face Sets Boundary")
 
         if sculpt.use_automasking_boundary_edges or sculpt.use_automasking_boundary_face_sets:
-            col.prop(sculpt.brush, "automasking_boundary_edges_propagation_steps")
+            col.prop(sculpt, "automasking_boundary_edges_propagation_steps")
 
         col.separator()
 
