@@ -357,7 +357,8 @@ BLI_INLINE void bilinear_fl_impl(const float *buffer,
 
 namespace blender::math {
 
-uchar4 interpolate_bilinear_byte(const uchar *buffer, int width, int height, float u, float v)
+uchar4 interpolate_bilinear_border_byte(
+    const uchar *buffer, int width, int height, float u, float v)
 {
   BLI_assert(buffer);
   uchar4 res;
@@ -502,14 +503,14 @@ uchar4 interpolate_bilinear_byte(const uchar *buffer, int width, int height, flo
   return res;
 }
 
-float4 interpolate_bilinear_fl(const float *buffer, int width, int height, float u, float v)
+float4 interpolate_bilinear_border_fl(const float *buffer, int width, int height, float u, float v)
 {
   float4 res;
   bilinear_fl_impl(buffer, res, width, height, 4, u, v);
   return res;
 }
 
-void interpolate_bilinear_fl(
+void interpolate_bilinear_border_fl(
     const float *buffer, float *output, int width, int height, int components, float u, float v)
 {
   bilinear_fl_impl(buffer, output, width, height, components, u, v);

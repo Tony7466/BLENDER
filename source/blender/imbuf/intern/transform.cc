@@ -136,7 +136,7 @@ static void sample_image(const ImBuf *source, float u, float v, T *r_sample)
     v -= 0.5f;
   }
   if constexpr (Filter == IMB_FILTER_BILINEAR && std::is_same_v<T, float> && NumChannels == 4) {
-    interpolate_bilinear_fl(source, r_sample, u, v);
+    interpolate_bilinear_border_fl(source, r_sample, u, v);
   }
   else if constexpr (Filter == IMB_FILTER_NEAREST && std::is_same_v<T, uchar> && NumChannels == 4)
   {
@@ -144,7 +144,7 @@ static void sample_image(const ImBuf *source, float u, float v, T *r_sample)
   }
   else if constexpr (Filter == IMB_FILTER_BILINEAR && std::is_same_v<T, uchar> && NumChannels == 4)
   {
-    interpolate_bilinear_byte(source, r_sample, u, v);
+    interpolate_bilinear_border_byte(source, r_sample, u, v);
   }
   else if constexpr (Filter == IMB_FILTER_BILINEAR && std::is_same_v<T, float>) {
     if constexpr (WrapUV) {
@@ -159,7 +159,7 @@ static void sample_image(const ImBuf *source, float u, float v, T *r_sample)
                                          true);
     }
     else {
-      math::interpolate_bilinear_fl(
+      math::interpolate_bilinear_border_fl(
           source->float_buffer.data, r_sample, source->x, source->y, NumChannels, u, v);
     }
   }
