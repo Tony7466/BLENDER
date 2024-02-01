@@ -1,2 +1,3 @@
 Referenced by issue #117679, blender python operator_menu_enum : crash
 Referenced by pull request #117691, Fix #117679: operator_menu_enum crashes for an unfound property
+Referenced by commit 33fc594da124648a0370d1ecaa19bfd2363df35b, Fix #117679: operator_menu_enum crashes for an unfound property
