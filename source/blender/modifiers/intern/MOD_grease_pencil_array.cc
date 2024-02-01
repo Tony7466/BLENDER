@@ -27,8 +27,10 @@
 
 #include "BLT_translation.h"
 
-#include "BLI_math_matrix.hh"
 #include "BLI_bounds_types.hh"
+#include "BLI_hash.h"
+#include "BLI_math_matrix.hh"
+#include "BLI_rand.h"
 
 #include "WM_types.hh"
 
@@ -80,16 +82,16 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   auto *mmd = reinterpret_cast<GreasePencilArrayModifierData *>(md);
   if (mmd->object != nullptr) {
     DEG_add_object_relation(
-        ctx->node, mmd->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Mirror Modifier");
-    DEG_add_depends_on_transform_relation(ctx->node, "Grease Pencil Mirror Modifier");
+        ctx->node, mmd->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Array Modifier");
+    DEG_add_depends_on_transform_relation(ctx->node, "Grease Pencil Array Modifier");
   }
 }
 
 static void get_array_matrix(const Object &ob,
-                            const GreasePencilArrayModifierData &mmd,
-                            const int elem_idx,
-                            float4x4 &r_mat,
-                            float4x4 &r_offset)
+                             const GreasePencilArrayModifierData &mmd,
+                             const int elem_idx,
+                             float4x4 &r_mat,
+                             float4x4 &r_offset)
 {
   float3 offset, rot(0.0f), scale(1.0f);
 
@@ -99,7 +101,7 @@ static void get_array_matrix(const Object &ob,
     offset[2] = mmd.offset[2] * elem_idx;
   }
   else {
-    offset=float3(0.0f);
+    offset = float3(0.0f);
   }
 
   r_mat = math::from_loc_rot_scale<float4x4, float3, 3>(offset, rot, scale);
@@ -114,20 +116,19 @@ static void get_array_matrix(const Object &ob,
       mat_offset[3] += mmd.offset;
     }
     obinv = math::invert(float4x4(ob.object_to_world));
-    
 
     r_offset = mat_offset * obinv * float4x4(mmd.object->object_to_world);
     mat_offset = r_offset;
 
     /* clear r_mat locations to avoid double transform */
-    r_mat[3]={0.0f,0.0f,0.0f,1.0f};
+    r_mat[3] = {0.0f, 0.0f, 0.0f, 1.0f};
   }
 }
 
 static bke::CurvesGeometry create_array_copies(const Object &ob,
-                                                const GreasePencilArrayModifierData &mmd,
-                                                const bke::CurvesGeometry &base_curves,
-                                                const bke::CurvesGeometry &filtered_curves)
+                                               const GreasePencilArrayModifierData &mmd,
+                                               const bke::CurvesGeometry &base_curves,
+                                               const bke::CurvesGeometry &filtered_curves)
 {
   Curves *base_curves_id = bke::curves_new_nomain(base_curves);
   Curves *filtered_curves_id = bke::curves_new_nomain(filtered_curves);
@@ -141,21 +142,57 @@ static bke::CurvesGeometry create_array_copies(const Object &ob,
   /* Always add untouched original curves. */
   instances->add_instance(base_handle, float4x4::identity());
 
+  int seed = mmd.seed;
+  seed += BLI_hash_string(ob.id.name + 2);
+  seed += BLI_hash_string(mmd.modifier.name);
+  float rand_offset = BLI_hash_int_01(seed);
 
   float3 size(0.0f);
   if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_RELATIVE) {
-    std::optional<blender::Bounds<float3>> bounds = base_curves.bounds_min_max();
-    if(bounds.has_value()){
-      size = bounds.value().max-bounds.value().min;
+    std::optional<blender::Bounds<float3>> bounds = filtered_curves.bounds_min_max();
+    if (bounds.has_value()) {
+      size = bounds.value().max - bounds.value().min;
       /* Need a minimum size (for flat drawings). */
       size = math::max(size, float3(0.01f));
     }
   }
 
+  auto get_rand_matrix = [&](const int elem_id) {
+    float3x3 rand;
+    for (int j = 0; j < 3; j++) {
+      const uint3 primes(2, 3, 7);
+      double3 offset(0.0, 0.0, 0.0);
+      double3 r;
+      /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
+      BLI_halton_3d(primes, offset, elem_id, r);
+
+      if ((mmd.flag & MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE) && j == 2) {
+        float rand_value;
+        rand_value = math::mod(r[0] * 2.0 - 1.0 + rand_offset, 1.0d);
+        rand_value = math::mod(math::sin(rand_value * 12.9898 + j * 78.233) * 43758.5453, 1.0d);
+        rand[j] = float3(rand_value);
+      }
+      else {
+        for (int i = 0; i < 3; i++) {
+          rand[j][i] = math::mod(r[i] * 2.0 - 1.0 + rand_offset, 1.0d);
+          rand[j][i] = math::mod(math::sin(rand[j][i] * 12.9898 + j * 78.233) * 43758.5453, 1.0d);
+        }
+      }
+    }
+    /* Calculate Random matrix. */
+    float3 loc, rot;
+    float3 scale(1.0f, 1.0f, 1.0f);
+    loc = mmd.rnd_offset * rand[0];
+    rot = mmd.rnd_rot * rand[1];
+    scale += mmd.rnd_scale * rand[2];
+
+    return math::from_loc_rot_scale<float4x4, float3, 3>(loc, rot, scale);
+  };
+
   float4x4 current_offset = float4x4::identity();
-  for (const int elem_id : IndexRange(1, mmd.count)){
-    float4x4 mat,mat_offset;
-    get_array_matrix(ob,mmd,elem_id,mat,mat_offset);
+  for (const int elem_id : IndexRange(1, mmd.count)) {
+    float4x4 mat, mat_offset;
+    get_array_matrix(ob, mmd, elem_id, mat, mat_offset);
 
     if ((mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET) && (mmd.object)) {
       /* recalculate cumulative offset here */
@@ -168,11 +205,11 @@ static bke::CurvesGeometry create_array_copies(const Object &ob,
     /* Apply relative offset. */
     if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_RELATIVE) {
       float3 relative = size * float3(mmd.shift);
-      //mul_v3_v3v3(relative, mmd->shift, size);
-      float3 translate=relative * float3(float(elem_id));
-      current_offset.w.xyz() = translate;
-      //madd_v3_v3fl(current_offset[3], relative, elem_id);
+      float3 translate = relative * float3(float(elem_id));
+      current_offset.w += float4(translate, 1.0f);
     }
+
+    current_offset *= get_rand_matrix(elem_id);
 
     instances->add_instance(filtered_handle, current_offset);
   }
@@ -206,8 +243,7 @@ static void modify_drawing(const GreasePencilArrayModifierData &mmd,
     bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
         src_curves, curves_mask, {});
 
-    drawing.strokes_for_write() = create_array_copies(
-        *ctx.object, mmd, src_curves, masked_curves);
+    drawing.strokes_for_write() = create_array_copies(*ctx.object, mmd, src_curves, masked_curves);
   }
 
   drawing.tag_topology_changed();
@@ -249,14 +285,13 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, ptr, "count", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "replace_material", UI_ITEM_NONE, IFACE_("Material Override"), ICON_NONE);
 
-
   if (uiLayout *sub = uiLayoutPanelProp(
           C, layout, ptr, "open_relative_offset_panel", "Relative Offset"))
   {
     uiLayoutSetPropSep(sub, true);
     uiItemR(sub, ptr, "use_relative_offset", UI_ITEM_NONE, IFACE_("Enable"), ICON_NONE);
 
-    uiLayout* col = uiLayoutColumn(sub,false);
+    uiLayout *col = uiLayoutColumn(sub, false);
     uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_relative_offset"));
     uiItemR(col, ptr, "relative_offset", UI_ITEM_NONE, IFACE_("Factor"), ICON_NONE);
   }
@@ -267,25 +302,23 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiLayoutSetPropSep(sub, true);
     uiItemR(sub, ptr, "use_constant_offset", UI_ITEM_NONE, IFACE_("Enable"), ICON_NONE);
 
-    uiLayout* col = uiLayoutColumn(sub,false);
+    uiLayout *col = uiLayoutColumn(sub, false);
     uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_constant_offset"));
     uiItemR(col, ptr, "constant_offset", UI_ITEM_NONE, IFACE_("Distance"), ICON_NONE);
   }
 
   if (uiLayout *sub = uiLayoutPanelProp(
-          C, layout, ptr, "open_object_offset_panel", "Constant Offset"))
+          C, layout, ptr, "open_object_offset_panel", "Object Offset"))
   {
     uiLayoutSetPropSep(sub, true);
     uiItemR(sub, ptr, "use_object_offset", UI_ITEM_NONE, IFACE_("Enable"), ICON_NONE);
 
-    uiLayout* col = uiLayoutColumn(sub,false);
+    uiLayout *col = uiLayoutColumn(sub, false);
     uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_object_offset"));
     uiItemR(col, ptr, "offset_object", UI_ITEM_NONE, IFACE_("Object"), ICON_NONE);
   }
 
-  if (uiLayout *sub = uiLayoutPanelProp(
-          C, layout, ptr, "open_randomize_panel", "Randomize"))
-  {
+  if (uiLayout *sub = uiLayoutPanelProp(C, layout, ptr, "open_randomize_panel", "Randomize")) {
     uiLayoutSetPropSep(sub, true);
     uiItemR(sub, ptr, "random_offset", UI_ITEM_NONE, IFACE_("Offset"), ICON_NONE);
     uiItemR(sub, ptr, "random_rotation", UI_ITEM_NONE, IFACE_("Rotation"), ICON_NONE);

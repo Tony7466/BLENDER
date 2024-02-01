@@ -2748,15 +2748,15 @@ typedef struct GreasePencilArrayModifierData {
   int seed;
 
   /** Custom index for passes. */
-  //int pass_index;
+  // int pass_index;
   ///** Layer name. */
-  //char layername[64];
+  // char layername[64];
   /** Material name. */
-  //char materialname[64] DNA_DEPRECATED;
+  // char materialname[64] DNA_DEPRECATED;
   /** Material replace (0 keep default). */
   int mat_rpl;
   /** Custom index for passes. */
-  //int layer_pass;
+  // int layer_pass;
 } GreasePencilArrayModifierData;
 
 typedef enum GreasePencilArrayModifierFlag {
