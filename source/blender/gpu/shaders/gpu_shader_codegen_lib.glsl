@@ -158,9 +158,7 @@ struct ClosureUndetermined {
   /* Additional data different for each closure type. */
   packed_vec4 data;
   packed_vec3 color;
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
   packed_vec3 N;
   ClosureType type;
 };
@@ -177,17 +175,13 @@ struct ClosureOcclusion {
 };
 
 struct ClosureDiffuse {
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
   packed_vec3 color;
   packed_vec3 N;
 };
 
 struct ClosureSubsurface {
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
   packed_vec3 color;
   packed_vec3 N;
   packed_vec3 sss_radius;
@@ -196,16 +190,12 @@ struct ClosureSubsurface {
 struct ClosureTranslucent {
   packed_vec3 color;
   packed_vec3 N;
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
 };
 
 struct ClosureReflection {
   packed_vec3 color;
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
   packed_vec3 N;
   float roughness;
 };
@@ -215,9 +205,7 @@ struct ClosureRefraction {
   float roughness;
   packed_vec3 N;
   float ior;
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
 };
 
 struct ClosureHair {
@@ -225,24 +213,18 @@ struct ClosureHair {
   packed_vec3 color;
   float offset;
   packed_vec3 T;
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
   packed_vec2 roughness;
 };
 
 struct ClosureVolumeScatter {
   packed_vec3 scattering;
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
   float anisotropy;
 };
 
 struct ClosureVolumeAbsorption {
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
   packed_vec3 absorption;
 };
 
@@ -254,9 +236,7 @@ struct ClosureEmission {
 struct ClosureTransparency {
   packed_vec3 transmittance;
   float holdout;
-#ifndef CLOSURE_NO_WEIGHT
   float weight;
-#endif
 };
 
 ClosureDiffuse to_closure_diffuse(ClosureUndetermined cl)
