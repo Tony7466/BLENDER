@@ -9,6 +9,7 @@
 #include "COM_BuffersIterator.h"
 #include "COM_Enums.h"
 
+#include "BLI_math_base.hh"
 #include "BLI_math_interp.hh"
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
@@ -192,6 +193,16 @@ class MemoryBuffer {
   {
     BLI_assert(has_coords(x, y));
     return buffer_ + get_coords_offset(x, y);
+  }
+
+  /**
+   * Get buffer element at given coordinates, clamped to border.
+   */
+  const float *get_elem_clamped(int x, int y) const
+  {
+    const int clamped_x = math::clamp(x, 0, this->get_width() - 1);
+    const int clamped_y = math::clamp(y, 0, this->get_height() - 1);
+    return buffer_ + get_coords_offset(clamped_x, clamped_y);
   }
 
   void read_elem(int x, int y, float *out) const
