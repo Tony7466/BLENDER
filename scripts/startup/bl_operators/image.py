@@ -211,19 +211,25 @@ class IMAGE_OT_open_images(Operator):
                 and context.region and context.region.type == 'WINDOW')
 
     def execute(self, context):
-        if not self.directory:
+        if not self.directory or len(self.files) == 0:
             return {'CANCELLED'}
+        # List of files that are not part of an image sequence or UDIM group
         files = []
-        # Groups of files that may result on a sequence or in a UDIM group.
+        # Groups of files that may be part of an image sequence or a UDIM group.
         # The elements looks like [(prefix,ext,frame_size,[file.name,...]),...]
         sequences = []
         for file in self.files:
             import re
-            mathc = re.search("([0-9]*)(\\..*)$", file.name)
-            if mathc and (self.use_sequence_detection or self.use_udim_detection):
-                ext = mathc.group(2)
-                prefix = file.name[:len(file.name) - len(mathc.group(0))]
-                frame_size = len(mathc.group(1))
+            match = re.search("\\.[\\w\\d]+$", file.name)
+            # Filter by extension
+            if not match or not (match.group(0) in bpy.path.extensions_image or match.group(0)
+                                 in bpy.path.extensions_movie):
+                continue
+            match = re.search("(\\d*)(\\.[\\w\\d]*)$", file.name)
+            if match and (self.use_sequence_detection or self.use_udim_detection):
+                prefix = file.name[:len(file.name) - len(match.group(0))]
+                ext = match.group(2)
+                frame_size = len(match.group(1))
                 seq = None
                 for test_seq in sequences:
                     if test_seq[0] == prefix and test_seq[1] == ext and test_seq[2] == frame_size:
@@ -258,7 +264,7 @@ class IMAGE_OT_open_images(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        if not self.directory:
+        if not self.directory or len(self.files) == 0:
             return {'CANCELLED'}
         title = self.files[0].name if len(self.files) == 1 else "Open {len} imagenes".format(len=len(self.files))
         context.window_manager.invoke_props_dialog(self, title=title, confirm_text="Open")
