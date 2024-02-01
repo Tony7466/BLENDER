@@ -36,8 +36,6 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-using namespace blender::ed::greasepencil;
-
 class EraseOperation : public GreasePencilStrokeOperation {
 
  public:
@@ -406,13 +404,13 @@ struct EraseOperationExecutor {
                                           src_point_side,
                                           src_intersections);
 
-    Array<Vector<PointTransferData>> src_to_dst_points(src_points_num);
+    Array<Vector<ed::greasepencil::PointTransferData>> src_to_dst_points(src_points_num);
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     for (const int src_curve : src.curves_range()) {
       const IndexRange src_points = src_points_by_curve[src_curve];
 
       for (const int src_point : src_points) {
-        Vector<PointTransferData> &dst_points = src_to_dst_points[src_point];
+        Vector<ed::greasepencil::PointTransferData> &dst_points = src_to_dst_points[src_point];
         const int src_next_point = (src_point == src_points.last()) ? src_points.first() :
                                                                       (src_point + 1);
         const PointCircleSide point_side = src_point_side[src_point];
@@ -445,7 +443,7 @@ struct EraseOperationExecutor {
       }
     }
 
-    compute_topology_change(src, dst, src_to_dst_points, keep_caps);
+    ed::greasepencil::compute_topology_change(src, dst, src_to_dst_points, keep_caps);
 
     return true;
   }

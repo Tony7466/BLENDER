@@ -51,6 +51,8 @@ void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_material();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
+void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot);
+
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
@@ -257,7 +259,5 @@ Array<PointTransferData> compute_topology_change(
     bke::CurvesGeometry &dst,
     const Span<Vector<PointTransferData>> src_to_dst_points,
     const bool keep_caps);
-
-int grease_pencil_stroke_cutter(bContext *C, wmOperator *op);
 
 }  // namespace blender::ed::greasepencil

@@ -23,6 +23,7 @@
 #include "ED_view3d.hh"
 
 #include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 
@@ -390,13 +391,13 @@ static void expand_cutter_segment(CutterSegment *segment,
  * Find curve points within the lasso area, expand them to segments between other curves and
  * delete them from the geometry.
  */
-static bool stroke_cutter_find_and_remove_segments(const bke::CurvesGeometry &src,
-                                                   bke::CurvesGeometry &dst,
-                                                   const int mcoords[][2],
-                                                   const int mcoords_len,
-                                                   const Span<float2> screen_space_positions,
-                                                   const Span<rcti> screen_space_bbox,
-                                                   const bool keep_caps)
+static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments(
+    const bke::CurvesGeometry &src,
+    const int mcoords[][2],
+    const int mcoords_len,
+    const Span<float2> screen_space_positions,
+    const Span<rcti> screen_space_bbox,
+    const bool keep_caps)
 {
   const int src_curves_num = src.curves_num();
   const int src_points_num = src.points_num();
@@ -445,7 +446,7 @@ static bool stroke_cutter_find_and_remove_segments(const bke::CurvesGeometry &sr
 
   /* Abort when no cutter segments are found in the lasso area. */
   if (cutter_segments.segments.is_empty()) {
-    return false;
+    return std::nullopt;
   }
 
   /* Merge adjacent cutter segments. E.g. two point ranges of 0-10 and 11-20 will be merged
@@ -519,13 +520,76 @@ static bool stroke_cutter_find_and_remove_segments(const bke::CurvesGeometry &sr
   }
 
   /* Create the new curves geometry. */
+  bke::CurvesGeometry dst;
   compute_topology_change(src, dst, src_to_dst_points, keep_caps);
 
-  return true;
+  return dst;
 }
 
 /**
- * Apply the stroke cutter to every editable layer.
+ * Apply the stroke cutter to a drawing.
+ */
+static bool execute_cutter_on_drawing(const int layer_index,
+                                      const int frame_number,
+                                      const Object &ob_eval,
+                                      const Object &obact,
+                                      const ARegion &region,
+                                      const float4x4 &projection,
+                                      const int mcoords[][2],
+                                      const int mcoords_len,
+                                      const bool keep_caps,
+                                      bke::greasepencil::Drawing &drawing)
+{
+  const bke::CurvesGeometry &src = drawing.strokes();
+
+  /* Get evaluated geometry. */
+  bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+          &ob_eval, obact, layer_index, frame_number);
+
+  /* Compute screen space positions. */
+  Array<float2> screen_space_positions(src.points_num());
+  threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
+    for (const int src_point : src_points) {
+      screen_space_positions[src_point] = ED_view3d_project_float_v2_m4(
+          &region, deformation.positions[src_point], projection);
+    }
+  });
+
+  /* Compute bounding boxes of curves in screen space. The bounding boxes are used to speed
+   * up the search for intersecting curves. */
+  Array<rcti> screen_space_bbox(src.curves_num());
+  const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
+  threading::parallel_for(src.curves_range(), 512, [&](const IndexRange src_curves) {
+    for (const int src_curve : src_curves) {
+      rcti *bbox = &screen_space_bbox[src_curve];
+      BLI_rcti_init_minmax(bbox);
+
+      const IndexRange src_points = src_points_by_curve[src_curve];
+      for (const int src_point : src_points) {
+        BLI_rcti_do_minmax_v(bbox, int2(screen_space_positions[src_point]));
+      }
+
+      /* Add some padding, otherwise we could just miss intersections. */
+      BLI_rcti_pad(bbox, RCTI_PADDING, RCTI_PADDING);
+    }
+  });
+
+  /* Apply cutter. */
+  std::optional<bke::CurvesGeometry> cutted_strokes = stroke_cutter_find_and_remove_segments(
+      src, mcoords, mcoords_len, screen_space_positions, screen_space_bbox, keep_caps);
+
+  if (cutted_strokes.has_value()) {
+    /* Set the new geometry. */
+    drawing.geometry.wrap() = std::move(cutted_strokes.value());
+    drawing.tag_topology_changed();
+  }
+
+  return cutted_strokes.has_value();
+}
+
+/**
+ * Apply the stroke cutter to all layers.
  */
 static int stroke_cutter_execute(wmOperator *op,
                                  const bContext *C,
@@ -540,72 +604,32 @@ static int stroke_cutter_execute(wmOperator *op,
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *obact = CTX_data_active_object(C);
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
+  const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, obact);
 
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
   const bool keep_caps = !RNA_boolean_get(op->ptr, "flat_caps");
   const bool active_layer_only = RNA_boolean_get(op->ptr, "active_layer");
-  bool changed = false;
-
-  /* Lambda function for executing the cutter on each drawing. */
-  const auto execute_cutter_on_drawing =
-      [&](const int layer_index, const int frame_number, Drawing &drawing) {
-        const bke::CurvesGeometry &src = drawing.strokes();
-
-        /* Get evaluated geometry. */
-        bke::crazyspace::GeometryDeformation deformation =
-            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *obact, layer_index, frame_number);
-
-        /* Compute screen space positions. */
-        const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, obact);
-
-        Array<float2> screen_space_positions(src.points_num());
-        threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
-          for (const int src_point : src_points) {
-            screen_space_positions[src_point] = ED_view3d_project_float_v2_m4(
-                region, deformation.positions[src_point], projection);
-          }
-        });
-
-        /* Compute bounding boxes of curves in screen space. The bounding boxes are used to speed
-         * up the search for intersecting curves. */
-        Array<rcti> screen_space_bbox(src.curves_num());
-        const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
-        threading::parallel_for(src.curves_range(), 512, [&](const IndexRange src_curves) {
-          for (const int src_curve : src_curves) {
-            rcti *bbox = &screen_space_bbox[src_curve];
-            BLI_rcti_init_minmax(bbox);
-
-            const IndexRange src_points = src_points_by_curve[src_curve];
-            for (const int src_point : src_points) {
-              BLI_rcti_do_minmax_v(bbox, int2(screen_space_positions[src_point]));
-            }
-
-            /* Add some padding, otherwise we could just miss intersections. */
-            BLI_rcti_pad(bbox, RCTI_PADDING, RCTI_PADDING);
-          }
-        });
-
-        /* Apply cutter. */
-        bke::CurvesGeometry dst;
-        const bool cutted = stroke_cutter_find_and_remove_segments(
-            src, dst, mcoords, mcoords_len, screen_space_positions, screen_space_bbox, keep_caps);
-
-        if (cutted) {
-          /* Set the new geometry. */
-          drawing.geometry.wrap() = std::move(dst);
-          drawing.tag_topology_changed();
-          changed = true;
-        }
-      };
+  std::atomic<bool> changed = false;
 
   if (active_layer_only) {
     /* Apply cutter on drawings of active layer. */
     const Array<ed::greasepencil::MutableDrawingInfo> drawings =
         ed::greasepencil::retrieve_editable_drawings_of_active_layer(*scene, grease_pencil);
     threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
-      execute_cutter_on_drawing(info.layer_index, info.frame_number, info.drawing);
+      if (execute_cutter_on_drawing(info.layer_index,
+                                    info.frame_number,
+                                    *ob_eval,
+                                    *obact,
+                                    *region,
+                                    projection,
+                                    mcoords,
+                                    mcoords_len,
+                                    keep_caps,
+                                    info.drawing))
+      {
+        changed = true;
+      }
     });
   }
   else {
@@ -613,7 +637,19 @@ static int stroke_cutter_execute(wmOperator *op,
     const Array<ed::greasepencil::MutableDrawingInfo> drawings =
         ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
     threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
-      execute_cutter_on_drawing(info.layer_index, info.frame_number, info.drawing);
+      if (execute_cutter_on_drawing(info.layer_index,
+                                    info.frame_number,
+                                    *ob_eval,
+                                    *obact,
+                                    *region,
+                                    projection,
+                                    mcoords,
+                                    mcoords_len,
+                                    keep_caps,
+                                    info.drawing))
+      {
+        changed = true;
+      }
     });
   }
 
@@ -625,7 +661,7 @@ static int stroke_cutter_execute(wmOperator *op,
   return (changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED);
 }
 
-int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
+static int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
 {
   int mcoords_len;
   const int(*mcoords)[2] = WM_gesture_lasso_path_to_array(C, op, &mcoords_len);
@@ -642,3 +678,30 @@ int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
 }
 
 }  // namespace blender::ed::greasepencil
+
+void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot)
+{
+  using namespace blender::ed::greasepencil;
+
+  PropertyRNA *prop;
+
+  ot->name = "Grease Pencil Cutter";
+  ot->idname = "GREASE_PENCIL_OT_stroke_cutter";
+  ot->description = "Delete stroke points in between intersecting strokes";
+
+  ot->invoke = WM_gesture_lasso_invoke;
+  ot->modal = WM_gesture_lasso_modal;
+  ot->exec = grease_pencil_stroke_cutter;
+  ot->poll = grease_pencil_painting_poll;
+  ot->cancel = WM_gesture_lasso_cancel;
+
+  ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
+
+  WM_operator_properties_gesture_lasso(ot);
+
+  prop = RNA_def_boolean(ot->srna, "flat_caps", false, "Flat Caps", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+  prop = RNA_def_boolean(
+      ot->srna, "active_layer", false, "Active Layer", "Only edit the active layer of the object");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+}

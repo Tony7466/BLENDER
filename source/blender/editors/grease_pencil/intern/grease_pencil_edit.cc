@@ -1558,4 +1558,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_subdivide);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_cutter);
 }
