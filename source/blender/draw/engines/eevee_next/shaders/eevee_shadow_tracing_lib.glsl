@@ -56,7 +56,7 @@ struct ShadowMapTracingState {
   float ray_step_bias;
   /* State of the trace. */
   float ray_time;
-  bool hit BITFIELD(1);
+  bool hit;
 };
 
 ShadowMapTracingState shadow_map_trace_init(int sample_count, float step_offset)

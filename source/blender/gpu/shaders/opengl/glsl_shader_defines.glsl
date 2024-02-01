@@ -9,9 +9,6 @@
 #  define samplerCubeArray sampler2DArray
 #endif
 
-/* Bitfield no-op. */
-#define BITFIELD(N)
-
 /* Fast store variant macro. In GLSL this is the same as imageStore, but assumes no bounds
  * checking. */
 #define imageStoreFast imageStore

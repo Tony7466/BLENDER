@@ -57,14 +57,6 @@ struct GBufferReader {
   /* Texel of the gbuffer being read. */
   ivec2 texel;
 
-  uint header;
-  bool has_diffuse BITFIELD(1);
-  bool has_translucent BITFIELD(1);
-  bool has_reflection BITFIELD(1);
-  bool has_refraction BITFIELD(1);
-  bool has_sss BITFIELD(1);
-  bool has_any_surface BITFIELD(1);
-
   /* Number of valid closure encoded in the gbuffer. */
   uchar closure_count;
   /* Only used for book-keeping when reading. */
