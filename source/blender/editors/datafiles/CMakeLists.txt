@@ -612,6 +612,7 @@ set(ICON_NAMES
   outliner_ob_volume
   outliner_data_volume
   volume_data
+  pointcloud_point
   current_file
   home
   documents
