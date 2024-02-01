@@ -155,6 +155,47 @@ static void rna_GreasePencilLayerGroup_name_set(PointerRNA *ptr, const char *val
   grease_pencil->rename_node(group->wrap().as_node(), value);
 }
 
+static void rna_iterator_grease_pencil_frames_begin(CollectionPropertyIterator *iter,
+                                                    PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+
+  // TODO
+  // blender::Span<Frame *> frame = grease_pencil
+  blender::Span<Frames *> frames = grease_pencil->frames_for_write();
+
+  rna_iterator_array_begin(iter, (void *)groups.data(), sizeof(Frames *), frames.size(), nullptr);
+}
+
+static void rna_iterator_grease_pencil_frames_end(CollectionPropertyIterator *iter,
+                                                  PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  // TODO
+}
+
+static void rna_iterator_grease_pencil_frames_length(CollectionPropertyIterator *iter,
+                                                     PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  // TODO
+}
+
+static void rna_iterator_grease_pencil_frames_length(CollectionPropertyIterator *iter,
+                                                     PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  // TODO
+}
+
+static void rna_iterator_grease_pencil_frames_get(CollectionPropertyIterator *iter,
+                                                  PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  // TODO
+}
+
 static void rna_iterator_grease_pencil_layer_groups_begin(CollectionPropertyIterator *iter,
                                                           PointerRNA *ptr)
 {
@@ -184,6 +225,20 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "GreasePencilLayer");
   RNA_def_struct_ui_text(srna, "Grease Pencil Layer", "Collection of related drawings");
   RNA_def_struct_path_func(srna, "rna_GreasePencilLayer_path");
+
+  /* Frames */
+  prop = RNA_def_property(srna, "frames", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilFrame");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_grease_pencil_frames_begin",   // TODO
+                                    "rna_iterator_grease_pencil_frames_next",    // TODO
+                                    "rna_iterator_grease_pencil_frames_end",     // TODO
+                                    "rna_iterator_grease_pencil_frames_get",     // TODO
+                                    "rna_iterator_grease_pencil_frames_length",  // TODO
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Name */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
