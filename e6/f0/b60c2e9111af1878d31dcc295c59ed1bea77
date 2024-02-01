@@ -2,3 +2,4 @@ Referenced by commit fd110291a5f, Fix T81794: ColorRampElement step regression
 Referenced by commit 3cafaf0fa86, Fix possible use-after-free for number slider buttons
 Referenced by issue #81794, Color Ramp Element position stepping is unusable
 Referenced by issue #80613, Assert in UI_but_number_precision_set
+Referenced by commit 5155feeeb8a00f3a9bffa72c27bfb8dfd387b5fd, Cleanup: UI: Remove a1 and a2 unused arguments from uiDefButF function
