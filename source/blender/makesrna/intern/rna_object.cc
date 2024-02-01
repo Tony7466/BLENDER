@@ -1242,6 +1242,12 @@ static void rna_Object_dimensions_set(PointerRNA *ptr, const float *value)
 {
   Object *ob = static_cast<Object *>(ptr->data);
   BKE_object_dimensions_set(ob, value, 0);
+
+  /* Reset the bounds, so will get the new ones*/
+  ob->runtime->bounds_eval.reset();
+
+  /* calculate local matrix so when getting bounds the scale match  */
+  BKE_object_to_mat4(ob, ob->object_to_world);
 }
 
 static int rna_Object_location_editable(PointerRNA *ptr, int index)
