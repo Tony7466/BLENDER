@@ -35,20 +35,12 @@ constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 
 #define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
 
-#if defined(GPU_METAL) || defined(WITH_METAL_BACKEND)
-#  define ENUM_TYPE_UCHAR uchar
-#  define ENUM_TYPE_USHORT ushort
-#else
-#  define ENUM_TYPE_UCHAR uint32_t
-#  define ENUM_TYPE_USHORT uint32_t
-#endif
-
 /* -------------------------------------------------------------------- */
 /** \name Debug Mode
  * \{ */
 
 /** These are just to make more sense of G.debug_value's values. Reserved range is 1-30. */
-enum eDebugMode : ENUM_TYPE_UCHAR {
+enum eDebugMode : uint32_t {
   DEBUG_NONE = 0u,
   /**
    * Gradient showing light evaluation hot-spots.
@@ -102,7 +94,7 @@ enum eDebugMode : ENUM_TYPE_UCHAR {
 /** \name Look-Up Table Generation
  * \{ */
 
-enum PrecomputeType : ENUM_TYPE_UCHAR {
+enum PrecomputeType : uint32_t {
   LUT_GGX_BRDF_SPLIT_SUM = 0u,
   LUT_GGX_BTDF_IOR_GT_ONE = 1u,
   LUT_GGX_BSDF_SPLIT_SUM = 2u,
@@ -116,7 +108,7 @@ enum PrecomputeType : ENUM_TYPE_UCHAR {
 /** \name Sampling
  * \{ */
 
-enum eSamplingDimension : ENUM_TYPE_UCHAR {
+enum eSamplingDimension : uint32_t {
   SAMPLING_FILTER_U = 0u,
   SAMPLING_FILTER_V = 1u,
   SAMPLING_LENS_U = 2u,
@@ -179,7 +171,7 @@ static inline int sampling_web_ring_count_get(int web_density, int sample_count)
 /** \name Camera
  * \{ */
 
-enum eCameraType : ENUM_TYPE_UCHAR {
+enum eCameraType : uint32_t {
   CAMERA_PERSP = 0u,
   CAMERA_ORTHO = 1u,
   CAMERA_PANO_EQUIRECT = 2u,
@@ -237,12 +229,12 @@ BLI_STATIC_ASSERT_ALIGN(CameraData, 16)
 
 #define FILM_PRECOMP_SAMPLE_MAX 16
 
-enum eFilmWeightLayerIndex : ENUM_TYPE_UCHAR {
+enum eFilmWeightLayerIndex : uint32_t {
   FILM_WEIGHT_LAYER_ACCUMULATION = 0u,
   FILM_WEIGHT_LAYER_DISTANCE = 1u,
 };
 
-enum ePassStorageType : ENUM_TYPE_UCHAR {
+enum ePassStorageType : uint32_t {
   PASS_STORAGE_COLOR = 0u,
   PASS_STORAGE_VALUE = 1u,
   PASS_STORAGE_CRYPTOMATTE = 2u,
@@ -410,7 +402,7 @@ BLI_STATIC_ASSERT_ALIGN(RenderBuffersInfoData, 16)
 
 #define VELOCITY_INVALID 512.0
 
-enum eVelocityStep : ENUM_TYPE_UCHAR {
+enum eVelocityStep : uint32_t {
   STEP_PREVIOUS = 0,
   STEP_NEXT = 1,
   STEP_CURRENT = 2,
@@ -717,7 +709,7 @@ BLI_STATIC_ASSERT_ALIGN(LightCullingData, 16)
 
 #define LIGHT_NO_SHADOW -1
 
-enum eLightType : ENUM_TYPE_UCHAR {
+enum eLightType : uint32_t {
   LIGHT_SUN = 0u,
   LIGHT_SUN_ORTHO = 1u,
   LIGHT_POINT = 10u,
@@ -726,7 +718,7 @@ enum eLightType : ENUM_TYPE_UCHAR {
   LIGHT_ELLIPSE = 21u
 };
 
-enum LightingType : ENUM_TYPE_UCHAR {
+enum LightingType : uint32_t {
   LIGHT_DIFFUSE = 0u,
   LIGHT_SPECULAR = 1u,
   LIGHT_TRANSMIT = 2u,
@@ -833,7 +825,7 @@ static inline int light_tilemap_max_get(LightData light)
  * covering twice as much area as the previous one.
  * \{ */
 
-enum eShadowProjectionType : ENUM_TYPE_UCHAR {
+enum eShadowProjectionType : uint32_t {
   SHADOW_PROJECTION_CUBEFACE = 0u,
   SHADOW_PROJECTION_CLIPMAP = 1u,
   SHADOW_PROJECTION_CASCADE = 2u,
@@ -1275,7 +1267,7 @@ enum eClosureBits : ENUM_TYPE_USHORT {
   CLOSURE_SHADER_TO_RGBA = (1u << 13u),
 };
 
-enum GBufferMode : ENUM_TYPE_UCHAR {
+enum GBufferMode : uint32_t {
   /** None mode for pixels not rendered. */
   GBUF_NONE = 0u,
 
