@@ -11,7 +11,6 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_curves.hh"
-#include "BKE_customdata.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"

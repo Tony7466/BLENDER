@@ -5,6 +5,7 @@
 #include "GEO_separate_geometry.hh"
 
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
