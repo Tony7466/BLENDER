@@ -117,12 +117,13 @@ void BKE_asset_weak_reference_read(BlendDataReader *reader, AssetWeakReference *
 
 struct AssetWeakReferenceMain {
   /* TODO: not sure if this is the best unique identifier. */
-  std::string lib_path;
+  std::string filepath;
   Main *main;
 
-  AssetWeakReferenceMain(const char *lib_path) : lib_path(lib_path), main(BKE_main_new()) {}
+  AssetWeakReferenceMain(const char *filepath) : filepath(filepath), main(BKE_main_new()) {}
   AssetWeakReferenceMain(const AssetWeakReferenceMain &) = delete;
-  AssetWeakReferenceMain(AssetWeakReferenceMain &&other) : main(std::exchange(other.main, nullptr))
+  AssetWeakReferenceMain(AssetWeakReferenceMain &&other)
+      : filepath(std::exchange(other.filepath, "")), main(std::exchange(other.main, nullptr))
   {
   }
 
@@ -158,15 +159,15 @@ Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id)
   return nullptr;
 }
 
-static Main *asset_weak_reference_main_ensure(const char *lib_path)
+static Main *asset_weak_reference_main_ensure(const char *filepath)
 {
   for (const AssetWeakReferenceMain &weak_ref_main : ASSET_WEAK_REFERENCE_MAINS) {
-    if (weak_ref_main.lib_path == lib_path) {
+    if (weak_ref_main.filepath == filepath) {
       return weak_ref_main.main;
     }
   }
 
-  ASSET_WEAK_REFERENCE_MAINS.append(lib_path);
+  ASSET_WEAK_REFERENCE_MAINS.append(filepath);
   return ASSET_WEAK_REFERENCE_MAINS.last().main;
 }
 
@@ -194,42 +195,45 @@ ID *BKE_asset_weak_reference_ensure(Main *global_main, const AssetWeakReference 
   BLI_assert(asset_name != nullptr);
 
   /* If weak reference resolves to a null library path, assume we are in local asset case. */
-  Main *asset_main = global_main;
+  Main *asset_main = (asset_lib_path) ? asset_weak_reference_main_ensure(asset_lib_path) :
+                                        global_main;
 
-  if (asset_lib_path != nullptr) {
-    /* TODO: avoid appending twice? */
-    asset_main = asset_weak_reference_main_ensure(asset_lib_path);
-
-    LibraryLink_Params lapp_parameters{};
-    lapp_parameters.bmain = asset_main;
-    BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(
-        &lapp_parameters);
-    BKE_blendfile_link_append_context_flag_set(lapp_context, BLO_LIBLINK_FORCE_INDIRECT, true);
-    BKE_blendfile_link_append_context_flag_set(lapp_context, 0, true);
-
-    BKE_blendfile_link_append_context_library_add(lapp_context, asset_lib_path, nullptr);
-
-    // TODO: make not brush specific
-    BlendfileLinkAppendContextItem *lapp_item = BKE_blendfile_link_append_context_item_add(
-        lapp_context, asset_name, ID_BR, nullptr);
-    BKE_blendfile_link_append_context_item_library_index_enable(lapp_context, lapp_item, 0);
-
-    BKE_blendfile_link(lapp_context, nullptr);
-    BKE_blendfile_append(lapp_context, nullptr);
-
-    BKE_blendfile_link_append_context_free(lapp_context);
-
-    /* TODO: only do for new ones? */
-    BKE_main_id_tag_all(asset_main, LIB_TAG_ASSET_MAIN, true);
-  }
-
-  /* TODO: are we sure it will not get renamed? */
+  /* Check if we have the asset already, or if it's global main and there is nothing we can add. */
   ID *local_asset = reinterpret_cast<ID *>(
       BLI_findstring(&asset_main->brushes, asset_name, offsetof(ID, name) + 2));
-
-  if (local_asset == nullptr || !ID_IS_ASSET(local_asset)) {
-    return nullptr;
+  if (local_asset || asset_lib_path == nullptr) {
+    BLI_assert(local_asset == nullptr || ID_IS_ASSET(local_asset));
+    return local_asset;
   }
+
+  /* Load asset from asset library. */
+  LibraryLink_Params lapp_parameters{};
+  lapp_parameters.bmain = asset_main;
+  BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(
+      &lapp_parameters);
+  BKE_blendfile_link_append_context_flag_set(lapp_context, BLO_LIBLINK_FORCE_INDIRECT, true);
+  BKE_blendfile_link_append_context_flag_set(lapp_context, 0, true);
+
+  BKE_blendfile_link_append_context_library_add(lapp_context, asset_lib_path, nullptr);
+
+  // TODO: make not brush specific
+  BlendfileLinkAppendContextItem *lapp_item = BKE_blendfile_link_append_context_item_add(
+      lapp_context, asset_name, ID_BR, nullptr);
+  BKE_blendfile_link_append_context_item_library_index_enable(lapp_context, lapp_item, 0);
+
+  BKE_blendfile_link(lapp_context, nullptr);
+  BKE_blendfile_append(lapp_context, nullptr);
+
+  local_asset = BKE_blendfile_link_append_context_item_newid_get(lapp_context, lapp_item);
+
+  BKE_blendfile_link_append_context_free(lapp_context);
+
+  /* TODO: only do for new ones? */
+  BKE_main_id_tag_all(asset_main, LIB_TAG_ASSET_MAIN, true);
+
+  /* Verify that the name matches. It must for referencing the same asset again to work.  */
+  BLI_asset(local_asset == nullptr || STREQ(local_asset->name + 2, asset_name));
+
   return local_asset;
 }
 
