@@ -92,7 +92,7 @@ static float4x4 get_array_matrix(const Object &ob,
                                  const int elem_idx,
                                  const bool use_object_offset)
 {
-  float3 offset, rot(0.0f), scale(1.0f);
+  float3 offset;
 
   if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
     offset[0] = mmd.offset[0] * elem_idx;
@@ -103,27 +103,61 @@ static float4x4 get_array_matrix(const Object &ob,
     offset = float3(0.0f);
   }
 
-  const float4x4 r_mat = math::from_loc_rot_scale<float4x4, float3, 3>(offset, rot, scale);
+  float4x4 r_mat = float4x4::identity();
+  r_mat.location() = offset;
 
   if (use_object_offset) {
     float4x4 mat_offset = float4x4::identity();
-    float4x4 obinv;
+
     if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
       mat_offset[3] += mmd.offset;
     }
-    obinv = math::invert(float4x4(ob.object_to_world));
+    const float4x4 obinv = math::invert(float4x4(ob.object_to_world));
 
     return mat_offset * obinv * float4x4(mmd.object->object_to_world);
   }
-  else {
-    return r_mat;
-  }
+
+  return r_mat;
 }
+
+static float4x4 get_rand_matrix(const GreasePencilArrayModifierData &mmd,
+                                const Object &ob,
+                                const int elem_id)
+{
+  int seed = mmd.seed;
+  seed += BLI_hash_string(ob.id.name + 2);
+  seed += BLI_hash_string(mmd.modifier.name);
+  const float rand_offset = BLI_hash_int_01(seed);
+  float3x3 rand;
+  for (int j = 0; j < 3; j++) {
+    const uint3 primes(2, 3, 7);
+    double3 offset(0.0);
+    double3 r;
+    /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
+    BLI_halton_3d(primes, offset, elem_id, r);
+
+    if ((mmd.flag & MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE) && j == 2) {
+      float rand_value;
+      rand_value = math::mod(r[0] * 2.0 - 1.0 + rand_offset, 1.0d);
+      rand_value = math::mod(math::sin(rand_value * 12.9898 + j * 78.233) * 43758.5453, 1.0d);
+      rand[j] = float3(rand_value);
+    }
+    else {
+      for (int i = 0; i < 3; i++) {
+        rand[j][i] = math::mod(r[i] * 2.0 - 1.0 + rand_offset, 1.0d);
+        rand[j][i] = math::mod(math::sin(rand[j][i] * 12.9898 + j * 78.233) * 43758.5453, 1.0d);
+      }
+    }
+  }
+  /* Calculate Random matrix. */
+  return math::from_loc_rot_scale<float4x4>(
+      mmd.rnd_offset * rand[0], mmd.rnd_rot * rand[1], float3(1.0f) + mmd.rnd_scale * rand[2]);
+};
 
 static bke::CurvesGeometry create_array_copies(const Object &ob,
                                                const GreasePencilArrayModifierData &mmd,
                                                const bke::CurvesGeometry &base_curves,
-                                               bke::CurvesGeometry &filtered_curves)
+                                               bke::CurvesGeometry filtered_curves)
 {
   /* Assign replacement material on filterd curves so all copies can have this material when later
    * when they get instanced. */
@@ -147,11 +181,6 @@ static bke::CurvesGeometry create_array_copies(const Object &ob,
   /* Always add untouched original curves. */
   instances->add_instance(base_handle, float4x4::identity());
 
-  int seed = mmd.seed;
-  seed += BLI_hash_string(ob.id.name + 2);
-  seed += BLI_hash_string(mmd.modifier.name);
-  float rand_offset = BLI_hash_int_01(seed);
-
   float3 size(0.0f);
   if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_RELATIVE) {
     std::optional<blender::Bounds<float3>> bounds = filtered_curves.bounds_min_max();
@@ -161,33 +190,6 @@ static bke::CurvesGeometry create_array_copies(const Object &ob,
       size = math::max(size, float3(0.01f));
     }
   }
-
-  auto get_rand_matrix = [&](const int elem_id) {
-    float3x3 rand;
-    for (int j = 0; j < 3; j++) {
-      const uint3 primes(2, 3, 7);
-      double3 offset(0.0);
-      double3 r;
-      /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
-      BLI_halton_3d(primes, offset, elem_id, r);
-
-      if ((mmd.flag & MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE) && j == 2) {
-        float rand_value;
-        rand_value = math::mod(r[0] * 2.0 - 1.0 + rand_offset, 1.0d);
-        rand_value = math::mod(math::sin(rand_value * 12.9898 + j * 78.233) * 43758.5453, 1.0d);
-        rand[j] = float3(rand_value);
-      }
-      else {
-        for (int i = 0; i < 3; i++) {
-          rand[j][i] = math::mod(r[i] * 2.0 - 1.0 + rand_offset, 1.0d);
-          rand[j][i] = math::mod(math::sin(rand[j][i] * 12.9898 + j * 78.233) * 43758.5453, 1.0d);
-        }
-      }
-    }
-    /* Calculate Random matrix. */
-    return math::from_loc_rot_scale<float4x4>(
-        mmd.rnd_offset * rand[0], mmd.rnd_rot * rand[1], float3(1.0f) + mmd.rnd_scale * rand[2]);
-  };
 
   float4x4 current_offset = float4x4::identity();
   for (const int elem_id : IndexRange(1, mmd.count - 1)) {
@@ -209,7 +211,7 @@ static bke::CurvesGeometry create_array_copies(const Object &ob,
       current_offset.w += float4(translate, 1.0f);
     }
 
-    current_offset *= get_rand_matrix(elem_id);
+    current_offset *= get_rand_matrix(mmd, ob, elem_id);
 
     instances->add_instance(filtered_handle, current_offset);
   }
@@ -241,13 +243,15 @@ static void modify_drawing(const GreasePencilArrayModifierData &mmd,
      */
     bke::CurvesGeometry copy = bke::CurvesGeometry(src_curves);
 
-    drawing.strokes_for_write() = create_array_copies(*ctx.object, mmd, src_curves, copy);
+    drawing.strokes_for_write() = create_array_copies(
+        *ctx.object, mmd, src_curves, std::move(copy));
   }
   else {
     bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
         src_curves, curves_mask, {});
 
-    drawing.strokes_for_write() = create_array_copies(*ctx.object, mmd, src_curves, masked_curves);
+    drawing.strokes_for_write() = create_array_copies(
+        *ctx.object, mmd, src_curves, std::move(masked_curves));
   }
 
   drawing.tag_topology_changed();
