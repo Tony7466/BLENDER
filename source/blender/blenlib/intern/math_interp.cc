@@ -488,35 +488,24 @@ BLI_INLINE uchar4 bilinear_byte_impl(const uchar *buffer, int width, int height,
     return uchar4(0);
   }
 
-  /* Sample including outside of edges of image. */
+  /* Sample locations. */
   const uchar *row1, *row2, *row3, *row4;
   uchar empty[4] = {0, 0, 0, 0};
-  if (x1 < 0 || y1 < 0) {
-    row1 = empty;
+  if constexpr (border) {
+    row1 = (x1 < 0 || y1 < 0) ? empty : buffer + (int64_t(width) * y1 + x1) * 4;
+    row2 = (x1 < 0 || y2 > height - 1) ? empty : buffer + (int64_t(width) * y2 + x1) * 4;
+    row3 = (x2 > width - 1 || y1 < 0) ? empty : buffer + (int64_t(width) * y1 + x2) * 4;
+    row4 = (x2 > width - 1 || y2 > height - 1) ? empty : buffer + (int64_t(width) * y2 + x2) * 4;
   }
   else {
-    row1 = buffer + width * y1 * 4 + 4 * x1;
-  }
-
-  if (x1 < 0 || y2 > height - 1) {
-    row2 = empty;
-  }
-  else {
-    row2 = buffer + width * y2 * 4 + 4 * x1;
-  }
-
-  if (x2 > width - 1 || y1 < 0) {
-    row3 = empty;
-  }
-  else {
-    row3 = buffer + width * y1 * 4 + 4 * x2;
-  }
-
-  if (x2 > width - 1 || y2 > height - 1) {
-    row4 = empty;
-  }
-  else {
-    row4 = buffer + width * y2 * 4 + 4 * x2;
+    x1 = blender::math::clamp(x1, 0, width - 1);
+    x2 = blender::math::clamp(x2, 0, width - 1);
+    y1 = blender::math::clamp(y1, 0, height - 1);
+    y2 = blender::math::clamp(y2, 0, height - 1);
+    row1 = buffer + (int64_t(width) * y1 + x1) * 4;
+    row2 = buffer + (int64_t(width) * y2 + x1) * 4;
+    row3 = buffer + (int64_t(width) * y1 + x2) * 4;
+    row4 = buffer + (int64_t(width) * y2 + x2) * 4;
   }
 
   float a = u - uf;
