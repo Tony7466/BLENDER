@@ -3354,9 +3354,10 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 }
 
 /** Separator line. */
-static void ui_draw_separator(const rcti *rect, const uiWidgetColors *wcol, bool vertical)
+static void ui_draw_separator(const uiWidgetColors *wcol, uiBut *but, const rcti *rect)
 {
-  const int mid = (vertical) ? BLI_rcti_cent_x(rect) : BLI_rcti_cent_y(rect);
+  const bool vertical = but->a1 == 1.0f;
+  const int mid = vertical ? BLI_rcti_cent_x(rect) : BLI_rcti_cent_y(rect);
   const uchar col[4] = {
       wcol->text[0],
       wcol->text[1],
@@ -4841,7 +4842,7 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
       case UI_BTYPE_SEPR:
         break;
       case UI_BTYPE_SEPR_LINE:
-        ui_draw_separator(rect, &tui->wcol_menu_item, but->a1 == 1.0f);
+        ui_draw_separator(&tui->wcol_menu_item, but, rect);
         break;
       default: {
         const bool use_unpadded = (but->flag & UI_BUT_ICON_PREVIEW) ||
@@ -4896,7 +4897,7 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
       case UI_BTYPE_SEPR_SPACER:
         break;
       case UI_BTYPE_SEPR_LINE:
-        ui_draw_separator(rect, &tui->wcol_menu_item, but->a1 == 1.0f);
+        ui_draw_separator(&tui->wcol_menu_item, but, rect);
         break;
 
       case UI_BTYPE_BUT:

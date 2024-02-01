@@ -3448,7 +3448,7 @@ void uiItemV(uiLayout *layout, const char *name, int icon, int argval)
   }
 }
 
-void uiItemS_ex(uiLayout *layout, float factor, int type)
+void uiItemS_ex(uiLayout *layout, float factor, LayoutSeparatorType type)
 {
   uiBlock *block = layout->root->block;
   const bool is_menu = ui_block_is_menu(block);
@@ -3457,15 +3457,20 @@ void uiItemS_ex(uiLayout *layout, float factor, int type)
   }
 
   bool is_vertical = (layout->w > 0);
-  int width = (is_vertical) ? int(UI_UNIT_X) : int(0.3f * UI_UNIT_X * factor);
-  int height = (is_vertical) ? int(0.35f * UI_UNIT_X * factor) : int(UI_UNIT_Y);
+  int width = is_vertical ? int(UI_UNIT_X) : int(0.3f * UI_UNIT_X * factor);
+  int height = is_vertical ? int(0.35f * UI_UNIT_X * factor) : int(UI_UNIT_Y);
 
-  eButType but_type = UI_BTYPE_SEPR;
-  if (type == UI_LAYOUT_SEPARATOR_LINE) {
-    but_type = UI_BTYPE_SEPR_LINE;
-  }
-  else if (type == UI_LAYOUT_SEPARATOR_AUTO) {
-    but_type = (is_menu) ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR;
+  eButType but_type;
+
+  switch (type) {
+    case LayoutSeparatorType::Line:
+      but_type = UI_BTYPE_SEPR_LINE;
+      break;
+    case LayoutSeparatorType::Auto:
+      but_type = is_menu ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR;
+      break;
+    default:
+      but_type = UI_BTYPE_SEPR;
   }
 
   bool is_vertical_bar = !is_vertical && but_type == UI_BTYPE_SEPR_LINE;
@@ -3481,7 +3486,8 @@ void uiItemS_ex(uiLayout *layout, float factor, int type)
            height,
            nullptr,
            0.0,
-           0.0, (is_vertical_bar) ? 1.0f : 0.0f,
+           0.0,
+           is_vertical_bar ? 1.0f : 0.0f,
            0,
            "");
 }

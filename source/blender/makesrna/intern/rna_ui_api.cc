@@ -516,6 +516,11 @@ static void rna_uiItemProgress(uiLayout *layout,
   uiItemProgressIndicator(layout, text, factor, eButProgressType(progress_type));
 }
 
+static void rna_uiItemSeparator(uiLayout *layout, float factor, int type)
+{
+  uiItemS_ex(layout, factor, LayoutSeparatorType(type));
+}
+
 static void rna_uiTemplateID(uiLayout *layout,
                              bContext *C,
                              PointerRNA *ptr,
@@ -1072,17 +1077,17 @@ void RNA_api_ui_layout(StructRNA *srna)
   };
 
   static const EnumPropertyItem rna_enum_separator_type_items[] = {
-      {UI_LAYOUT_SEPARATOR_AUTO,
+      {int(LayoutSeparatorType::Auto),
        "AUTO",
        0,
        "Auto",
        "Best guess at what type of separator is needed."},
-      {UI_LAYOUT_SEPARATOR_SPACE,
+      {int(LayoutSeparatorType::Space),
        "SPACE",
        0,
        "Empty space",
        "Horizontal or Vertical empty space, depending on layout direction."},
-      {UI_LAYOUT_SEPARATOR_LINE,
+      {int(LayoutSeparatorType::Line),
        "LINE",
        0,
        "Line",
@@ -1499,7 +1504,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_string(func, "category", nullptr, 0, "", "panel type category");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "separator", "uiItemS_ex");
+  func = RNA_def_function(srna, "separator", "rna_uiItemSeparator");
   RNA_def_function_ui_description(func, "Item. Inserts empty space into the layout between items");
   RNA_def_float(func,
                 "factor",
@@ -1513,7 +1518,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_enum(func,
                "type",
                rna_enum_separator_type_items,
-               UI_LAYOUT_SEPARATOR_AUTO,
+               int(LayoutSeparatorType::Auto),
                "Type",
                "The type of the separator");
 
