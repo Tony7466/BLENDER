@@ -429,16 +429,15 @@ static void update_visible_columns(ListBase &columns, DataSource &data_source)
         }
       });
 }
-
-void ED_spreadsheet_layout_maskrect(const SpaceSpreadsheet *sspreadsheet,
-                                    const ARegion *region,
-                                    rcti *r_rect)
+rcti get_layout_maskrect(const SpaceSpreadsheet &sspreadsheet, const ARegion &region)
 {
-  BLI_rcti_init(r_rect,
-                get_index_column_width(sspreadsheet->runtime->tot_rows),
-                region->winx,
+  rcti maskrect;
+  BLI_rcti_init(&maskrect,
+                get_index_column_width(sspreadsheet.runtime->tot_rows),
+                region.winx,
                 0,
-                region->winy - TOP_ROW_HEIGHT);
+                region.winy - TOP_ROW_HEIGHT);
+  return maskrect;
 }
 
 static void spreadsheet_main_region_draw(const bContext *C, ARegion *region)
@@ -472,6 +471,7 @@ static void spreadsheet_main_region_draw(const bContext *C, ARegion *region)
   spreadsheet_layout.index_column_width = get_index_column_width(tot_rows);
   spreadsheet_layout.row_indices = spreadsheet_filter_rows(
       *sspreadsheet, spreadsheet_layout, *data_source, scope);
+
   sspreadsheet->runtime->tot_columns = spreadsheet_layout.columns.size();
   sspreadsheet->runtime->tot_rows = tot_rows;
   sspreadsheet->runtime->visible_rows = spreadsheet_layout.row_indices.size();

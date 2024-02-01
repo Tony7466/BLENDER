@@ -20,7 +20,6 @@
 #include "spreadsheet_draw.hh"
 
 #define CELL_RIGHT_PADDING (2.0f * UI_SCALE_FAC)
-#define TOP_ROW_HEIGHT (UI_UNIT_Y * 1.1f)
 
 namespace blender::ed::spreadsheet {
 
@@ -293,8 +292,8 @@ void draw_spreadsheet_in_region(const bContext *C,
   draw_top_row_content(C, region, drawer, scroll_offset_x);
   draw_cell_contents(C, region, drawer, scroll_offset_x, scroll_offset_y);
 
-  rcti scroller_mask;
-  ED_spreadsheet_layout_maskrect(CTX_wm_space_spreadsheet(C), region, &scroller_mask);
+  SpaceSpreadsheet *sspreadsheet = CTX_wm_space_spreadsheet(C);
+  rcti scroller_mask = get_layout_maskrect(*sspreadsheet, *region);
   UI_view2d_scrollers_draw(v2d, &scroller_mask);
 }
 

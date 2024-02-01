@@ -12,9 +12,6 @@ struct SpaceSpreadsheet;
 namespace blender::ed::spreadsheet {
 
 ID *get_current_id(const SpaceSpreadsheet *sspreadsheet);
+rcti get_layout_maskrect(const SpaceSpreadsheet &sspreadsheet, const ARegion &region);
 
-void ED_spreadsheet_layout_maskrect(const SpaceSpreadsheet *sspreadsheet,
-                                    const ARegion *region,
-                                    rcti *r_rect);
-
-}
+}  // namespace blender::ed::spreadsheet
