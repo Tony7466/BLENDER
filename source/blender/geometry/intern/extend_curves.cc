@@ -24,6 +24,176 @@
 
 namespace blender::geometry {
 
+static auto extend_curves_straight(const float used_percent_length,
+                                   const float new_size,
+                                   const Array<int> &start_points,
+                                   const Array<int> &end_points,
+                                   const int curve,
+                                   const IndexRange new_curve,
+                                   const Array<float> &use_start_lengths,
+                                   const Array<float> &use_end_lengths,
+                                   MutableSpan<float3> positions)
+{
+  float overshoot_point_param = used_percent_length * (new_size - 1);
+  float3 result;
+  if (start_points[curve]) {
+    // TODO: I don't think the algorithm here is correct?
+    // I think It should always be endpoint to overshoot point?
+    int index1 = math::floor(overshoot_point_param);
+    int index2 = math::ceil(overshoot_point_param);
+    result = math::interpolate(positions[new_curve[index1]],
+                               positions[new_curve[index2]],
+                               fmodf(overshoot_point_param, 1.0f));
+    result -= positions[new_curve.first()];
+    if (UNLIKELY(math::is_zero(result))) {
+      result = positions[new_curve[1]] - positions[new_curve[0]];
+    }
+    positions[new_curve[0]] += result * (-use_start_lengths[curve] / len_v3(result));
+  }
+
+  if (end_points[curve]) {
+    int index1 = new_size - 1 - math::floor(overshoot_point_param);
+    int index2 = new_size - 1 - math::ceil(overshoot_point_param);
+    result = math::interpolate(positions[new_curve[index1]],
+                               positions[new_curve[index2]],
+                               fmodf(overshoot_point_param, 1.0f));
+    result -= positions[new_curve.last()];
+    if (UNLIKELY(math::is_zero(result))) {
+      result = positions[new_curve[new_size - 2]] - positions[new_curve[new_size - 1]];
+    }
+    positions[new_curve[new_size - 1]] += result * (-use_end_lengths[curve] / len_v3(result));
+  }
+}
+
+static void extend_curves_curved(const float used_percent_length,
+                                 const Array<int> &start_points,
+                                 const Array<int> &end_points,
+                                 const OffsetIndices<int> &points_by_curve,
+                                 const int curve,
+                                 const IndexRange new_curve,
+                                 const Array<float> &use_start_lengths,
+                                 const Array<float> &use_end_lengths,
+                                 const float max_angle,
+                                 const float segment_influence,
+                                 const bool invert_curvature,
+                                 MutableSpan<float3> positions)
+{
+
+  /* Curvature calculation. */
+
+  const int first_old_index = start_points[curve] ? start_points[curve] : 0;
+  const int last_old_index = points_by_curve[curve].size() - 1 + first_old_index;
+  const int orig_totpoints = points_by_curve[curve].size();
+
+  /* The fractional amount of points to query when calculating the average curvature of the
+   * strokes. */
+  const float overshoot_parameter = used_percent_length * (orig_totpoints - 2);
+  int overshoot_pointcount = math::ceil(overshoot_parameter);
+  overshoot_pointcount = std::clamp(overshoot_pointcount, 1, orig_totpoints - 2);
+
+  /* Do for both sides without code duplication. */
+  float3 vec1, total_angle;
+  for (int k = 0; k < 2; k++) {
+    if ((k == 0 && !start_points[curve]) || (k == 1 && !end_points[curve])) {
+      continue;
+    }
+
+    const int start_i = k == 0 ? first_old_index : last_old_index;
+    const int dir_i = 1 - k * 2;
+
+    vec1 = positions[new_curve[start_i + dir_i]] - positions[new_curve[start_i]];
+    total_angle = float3({0, 0, 0});
+
+    float segment_length;
+    vec1 = math::normalize_and_get_length(vec1, segment_length);
+
+    float overshoot_length = 0.0f;
+
+    /* Accumulate rotation angle and length. */
+    int j = 0;
+    float3 no, vec2;
+    for (int i = start_i; j < overshoot_pointcount; i += dir_i, j++) {
+      /* Don't fully add last segment to get continuity in overshoot_fac. */
+      float fac = math::min(overshoot_parameter - j, 1.0f);
+
+      /* Read segments. */
+      vec2 = vec1;
+      vec1 = positions[new_curve[i + dir_i * 2]] - positions[new_curve[i + dir_i]];
+
+      float len;
+      vec1 = math::normalize_and_get_length(vec1, len);
+      float angle = math::angle_between(vec1, vec2).radian() * fac;
+
+      /* Add half of both adjacent legs of the current angle. */
+      const float added_len = (segment_length + len) * 0.5f * fac;
+      overshoot_length += added_len;
+      segment_length = len;
+
+      if (angle > max_angle) {
+        continue;
+      }
+      if (angle > M_PI * 0.995f) {
+        continue;
+      }
+
+      angle *= math::pow(added_len, segment_influence);
+
+      no = math::cross(vec1, vec2);
+      no = math::normalize(no) * angle;
+      total_angle += no;
+    }
+
+    if (UNLIKELY(overshoot_length == 0.0f)) {
+      /* Don't do a proper extension if the used points are all in the same position. */
+      continue;
+    }
+
+    vec1 = positions[new_curve[start_i]] - positions[new_curve[start_i + dir_i]];
+    /* In general curvature = 1/radius. For the case without the
+     * weights introduced by #segment_influence, the calculation is:
+     * `curvature = delta angle/delta arclength = len_v3(total_angle) / overshoot_length` */
+    float curvature = normalize_v3(total_angle) / overshoot_length;
+    /* Compensate for the weights powf(added_len, segment_influence). */
+    curvature /= math::pow(overshoot_length / math::min(overshoot_parameter, float(j)),
+                           segment_influence);
+    if (invert_curvature) {
+      curvature = -curvature;
+    }
+    const float dist = k == 0 ? use_start_lengths[curve] : use_end_lengths[curve];
+    const int extra_point_count = k == 0 ? start_points[curve] : end_points[curve];
+    const float angle_step = curvature * dist / extra_point_count;
+    float step_length = dist / extra_point_count;
+    if (math::abs(angle_step) > FLT_EPSILON) {
+      /* Make a direct step length from the assigned arc step length. */
+      step_length *= sin(angle_step * 0.5f) / (angle_step * 0.5f);
+    }
+    else {
+      total_angle = float3({0, 0, 0});
+    }
+    float prev_length;
+    vec1 = math::normalize_and_get_length(vec1, prev_length);
+    vec1 *= step_length;
+
+    /* Build rotation matrix here to get best performance. */
+    math::AxisAngle axis_base(total_angle, angle_step);
+    math::Quaternion q = math::to_quaternion(axis_base);
+    float3x3 rot = math::from_rotation<float3x3>(q);
+
+    /* Rotate the starting direction to account for change in edge lengths. */
+    math::AxisAngle step_base(total_angle,
+                              math::max(0.0f, 1.0f - math::abs(segment_influence)) *
+                                  (curvature * prev_length - angle_step) / 2.0f);
+    q = math::to_quaternion(step_base);
+    vec1 = math::transform_point(q, vec1);
+
+    /* Now iteratively accumulate the segments with a rotating added direction. */
+    for (int i = start_i - dir_i, j = 0; j < extra_point_count; i -= dir_i, j++) {
+      vec1 = rot * vec1;
+      positions[new_curve[i]] = vec1 + positions[new_curve[i + dir_i]];
+    }
+  }
+}
+
 bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
                                   const IndexMask &selection,
                                   const VArray<float> &start_lengths,
@@ -147,155 +317,30 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
       const float used_percent_length = std::clamp(
           isfinite(overshoot_fac) ? 0.1f : overshoot_fac, 1e-4f, 1.0f);
 
-      /* Handle simple case first, straight stretching. */
       if (!follow_curvature) {
-
-        float overshoot_point_param = used_percent_length * (new_size - 1);
-        float3 result;
-        if (start_points[curve]) {
-          // TODO: I don't think the algorithm here is correct?
-          // I think It should always be endpoint to overshoot point?
-          int index1 = math::floor(overshoot_point_param);
-          int index2 = math::ceil(overshoot_point_param);
-          result = math::interpolate(positions[new_curve[index1]],
-                                     positions[new_curve[index2]],
-                                     fmodf(overshoot_point_param, 1.0f));
-          result -= positions[new_curve.first()];
-          if (UNLIKELY(math::is_zero(result))) {
-            result = positions[new_curve[1]] - positions[new_curve[0]];
-          }
-          positions[new_curve[0]] += result * (-use_start_lengths[curve] / len_v3(result));
-        }
-
-        if (end_points[curve]) {
-          int index1 = new_size - 1 - math::floor(overshoot_point_param);
-          int index2 = new_size - 1 - math::ceil(overshoot_point_param);
-          result = math::interpolate(positions[new_curve[index1]],
-                                     positions[new_curve[index2]],
-                                     fmodf(overshoot_point_param, 1.0f));
-          result -= positions[new_curve.last()];
-          if (UNLIKELY(math::is_zero(result))) {
-            result = positions[new_curve[new_size - 2]] - positions[new_curve[new_size - 1]];
-          }
-          positions[new_curve[new_size - 1]] += result *
-                                                (-use_end_lengths[curve] / len_v3(result));
-        }
+        extend_curves_straight(used_percent_length,
+                               new_size,
+                               start_points,
+                               end_points,
+                               curve,
+                               new_curve,
+                               use_start_lengths,
+                               use_end_lengths,
+                               positions);
       }
-      else { /* Now take care of stretching with curvature. */
-
-        /* Curvature calculation. */
-
-        const int first_old_index = start_points[curve] ? start_points[curve] : 0;
-        const int last_old_index = points_by_curve[curve].size() - 1 + first_old_index;
-        const int orig_totpoints = points_by_curve[curve].size();
-
-        /* The fractional amount of points to query when calculating the average curvature of the
-         * strokes. */
-        const float overshoot_parameter = used_percent_length * (orig_totpoints - 2);
-        int overshoot_pointcount = math::ceil(overshoot_parameter);
-        overshoot_pointcount = std::clamp(overshoot_pointcount, 1, orig_totpoints - 2);
-
-        /* Do for both sides without code duplication. */
-        float3 vec1, total_angle;
-        for (int k = 0; k < 2; k++) {
-          if ((k == 0 && !start_points[curve]) || (k == 1 && !end_points[curve])) {
-            continue;
-          }
-
-          const int start_i = k == 0 ? first_old_index : last_old_index;
-          const int dir_i = 1 - k * 2;
-
-          vec1 = positions[new_curve[start_i + dir_i]] - positions[new_curve[start_i]];
-          total_angle = float3({0, 0, 0});
-
-          float segment_length;
-          vec1 = math::normalize_and_get_length(vec1, segment_length);
-
-          float overshoot_length = 0.0f;
-
-          /* Accumulate rotation angle and length. */
-          int j = 0;
-          float3 no, vec2;
-          for (int i = start_i; j < overshoot_pointcount; i += dir_i, j++) {
-            /* Don't fully add last segment to get continuity in overshoot_fac. */
-            float fac = math::min(overshoot_parameter - j, 1.0f);
-
-            /* Read segments. */
-            vec2 = vec1;
-            vec1 = positions[new_curve[i + dir_i * 2]] - positions[new_curve[i + dir_i]];
-
-            float len;
-            vec1 = math::normalize_and_get_length(vec1, len);
-            float angle = math::angle_between(vec1, vec2).radian() * fac;
-
-            /* Add half of both adjacent legs of the current angle. */
-            const float added_len = (segment_length + len) * 0.5f * fac;
-            overshoot_length += added_len;
-            segment_length = len;
-
-            if (angle > max_angle) {
-              continue;
-            }
-            if (angle > M_PI * 0.995f) {
-              continue;
-            }
-
-            angle *= math::pow(added_len, segment_influence);
-
-            no = math::cross(vec1, vec2);
-            no = math::normalize(no) * angle;
-            total_angle += no;
-          }
-
-          if (UNLIKELY(overshoot_length == 0.0f)) {
-            /* Don't do a proper extension if the used points are all in the same position. */
-            continue;
-          }
-
-          vec1 = positions[new_curve[start_i]] - positions[new_curve[start_i + dir_i]];
-          /* In general curvature = 1/radius. For the case without the
-           * weights introduced by #segment_influence, the calculation is:
-           * `curvature = delta angle/delta arclength = len_v3(total_angle) / overshoot_length` */
-          float curvature = normalize_v3(total_angle) / overshoot_length;
-          /* Compensate for the weights powf(added_len, segment_influence). */
-          curvature /= math::pow(overshoot_length / math::min(overshoot_parameter, float(j)),
-                                 segment_influence);
-          if (invert_curvature) {
-            curvature = -curvature;
-          }
-          const float dist = k == 0 ? use_start_lengths[curve] : use_end_lengths[curve];
-          const int extra_point_count = k == 0 ? start_points[curve] : end_points[curve];
-          const float angle_step = curvature * dist / extra_point_count;
-          float step_length = dist / extra_point_count;
-          if (math::abs(angle_step) > FLT_EPSILON) {
-            /* Make a direct step length from the assigned arc step length. */
-            step_length *= sin(angle_step * 0.5f) / (angle_step * 0.5f);
-          }
-          else {
-            total_angle = float3({0, 0, 0});
-          }
-          float prev_length;
-          vec1 = math::normalize_and_get_length(vec1, prev_length);
-          vec1 *= step_length;
-
-          /* Build rotation matrix here to get best performance. */
-          math::AxisAngle axis_base(total_angle, angle_step);
-          math::Quaternion q = math::to_quaternion(axis_base);
-          float3x3 rot = math::from_rotation<float3x3>(q);
-
-          /* Rotate the starting direction to account for change in edge lengths. */
-          math::AxisAngle step_base(total_angle,
-                                    math::max(0.0f, 1.0f - math::abs(segment_influence)) *
-                                        (curvature * prev_length - angle_step) / 2.0f);
-          q = math::to_quaternion(step_base);
-          vec1 = math::transform_point(q, vec1);
-
-          /* Now iteratively accumulate the segments with a rotating added direction. */
-          for (int i = start_i - dir_i, j = 0; j < extra_point_count; i -= dir_i, j++) {
-            vec1 = rot * vec1;
-            positions[new_curve[i]] = vec1 + positions[new_curve[i + dir_i]];
-          }
-        }
+      else {
+        extend_curves_curved(used_percent_length,
+                             start_points,
+                             end_points,
+                             points_by_curve,
+                             curve,
+                             new_curve,
+                             use_start_lengths,
+                             use_end_lengths,
+                             max_angle,
+                             segment_influence,
+                             invert_curvature,
+                             positions);
       }
     }
   });

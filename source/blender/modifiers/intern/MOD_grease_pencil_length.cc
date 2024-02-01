@@ -288,7 +288,9 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, ptr, "overshoot_factor", UI_ITEM_R_SLIDER, IFACE_("Used Length"), ICON_NONE);
 
-  if (uiLayout *random_layout = uiLayoutPanel(C, layout, "Randomize", ptr, "open_random_panel")) {
+  if (uiLayout *random_layout = uiLayoutPanelProp(
+          C, layout, ptr, "open_random_panel", "Randomize"))
+  {
     uiItemR(random_layout, ptr, "use_random", UI_ITEM_NONE, IFACE_("Randomize"), ICON_NONE);
 
     uiLayout *subcol = uiLayoutColumn(random_layout, false);
@@ -303,8 +305,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(subcol, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
-  if (uiLayout *curvature_layout = uiLayoutPanel(
-          C, layout, "Curvature", ptr, "open_curvature_panel"))
+  if (uiLayout *curvature_layout = uiLayoutPanelProp(
+          C, layout, ptr, "open_curvature_panel", "Curvature"))
   {
     uiItemR(curvature_layout, ptr, "use_curvature", UI_ITEM_NONE, IFACE_("Curvature"), ICON_NONE);
 
@@ -318,8 +320,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(subcol, ptr, "invert_curvature", UI_ITEM_NONE, IFACE_("Invert"), ICON_NONE);
   }
 
-  if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", ptr, "open_influence_panel"))
+  if (uiLayout *influence_panel = uiLayoutPanelProp(
+          C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
