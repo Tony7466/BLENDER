@@ -1811,7 +1811,7 @@ static bool grease_pencil_separate_selected(bContext &C,
     drawing_dst.tag_topology_changed();
 
     changed = true;
-  };
+  }
 
   if (changed) {
     grease_pencil_dst.set_active_layer(0);
@@ -1888,7 +1888,7 @@ static bool grease_pencil_separate_layer(bContext &C,
       drawing_dst.tag_topology_changed();
 
       changed = true;
-    };
+    }
 
     remove_unused_materials(&bmain, object_dst);
 
@@ -1955,7 +1955,7 @@ static bool grease_pencil_separate_material(bContext &C,
       WM_event_add_notifier(&C, NC_OBJECT | ND_DRAW, &grease_pencil_dst);
 
       changed = true;
-    };
+    }
 
     remove_unused_materials(&bmain, object_dst);
   }
