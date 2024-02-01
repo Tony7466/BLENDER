@@ -335,7 +335,7 @@ void BKE_image_merge(struct Main *bmain, struct Image *dest, struct Image *sourc
 /**
  * Scale the image.
  */
-bool BKE_image_scale(struct Image *image, int width, int height);
+bool BKE_image_scale(struct Image *image, int width, int height, struct ImageUser *iuser);
 
 /**
  * Check if texture has alpha `planes == 32 || planes == 16`.
@@ -533,12 +533,8 @@ void BKE_image_ensure_gpu_texture(struct Image *image, struct ImageUser *iuser);
 struct GPUTexture *BKE_image_get_gpu_texture(struct Image *image,
                                              struct ImageUser *iuser,
                                              struct ImBuf *ibuf);
-struct GPUTexture *BKE_image_get_gpu_tiles(struct Image *image,
-                                           struct ImageUser *iuser,
-                                           struct ImBuf *ibuf);
-struct GPUTexture *BKE_image_get_gpu_tilemap(struct Image *image,
-                                             struct ImageUser *iuser,
-                                             struct ImBuf *ibuf);
+struct GPUTexture *BKE_image_get_gpu_tiles(struct Image *image, struct ImageUser *iuser);
+struct GPUTexture *BKE_image_get_gpu_tilemap(struct Image *image, struct ImageUser *iuser);
 /**
  * Is the alpha of the `GPUTexture` for a given image/ibuf premultiplied.
  */
