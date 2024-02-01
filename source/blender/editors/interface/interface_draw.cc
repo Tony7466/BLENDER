@@ -901,11 +901,12 @@ static float polar_to_y(float center, float diam, float ampli, float angle)
 }
 
 static void vectorscope_draw_target(
-    uint pos, float centerx, float centery, float diam, const float colf[3], const char *name)
+    uint pos, float centerx, float centery, float diam, const float colf[3], char label)
 {
   float y, u, v;
   float tangle = 0.0f, tampli;
   float dangle, dampli, dangle2, dampli2;
+  char labelstr[2] = {label, '\0'};
 
   rgb_to_yuv(colf[0], colf[1], colf[2], &y, &u, &v, BLI_YUV_ITU_BT709);
 
@@ -949,8 +950,8 @@ static void vectorscope_draw_target(
   BLF_draw_default(polar_to_x(centerx, diam, tampli, tangle) + 5,
                    polar_to_y(centery, diam, tampli, tangle),
                    0,
-                   name,
-                   strlen(name));
+                   labelstr,
+                   strlen(labelstr));
 
   immEnd();
 }
@@ -972,7 +973,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
         {0.75, 0.0, 0.75},  /* Magenta */
   };
 
-  const char color_names[6][4] = {"R", "Y", "G", "C", "B", "M"};
+  const char color_names[] = {'R', 'Y', 'G', 'C', 'B', 'M'};
 
   rctf rect{};
   rect.xmin = float(recti->xmin + 1);
@@ -1100,19 +1101,27 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   GPU_line_width(1.5f);
 
   /* inner circles */
+  GPU_blend(GPU_BLEND_ADDITIVE);
   for (int j = 0; j < 4; j++) {
-    GPU_blend(GPU_BLEND_ADDITIVE);
-    immUniformColor3f(0.1f, 0.1f, 0.1f);
-    immBegin(GPU_PRIM_LINE_LOOP, tot_points);
+    float inner_circle_points[(tot_points * 2) + 3] = {};
+    float inner_circle_colors[(tot_points * 4) + 5] = {};
+    const float r = (j + 1) * 0.1f;
 
-    for (int i = 0; i < 360; i += increment) {
-      const float a = DEG2RADF(float(i));
-      const float r = (j + 1) * 0.1f;
-      immVertex2f(pos, polar_to_x(centerx, diam, r, a), polar_to_y(centery, diam, r, a));
+    for (int i = 0; i < tot_points; i++) {
+      float angle = step * i;
+      const float a = DEG2RADF(angle);
+
+      inner_circle_points[i * 2] = polar_to_x(centerx, diam, r, a);
+      inner_circle_points[i * 2 + 1] = polar_to_y(centery, diam, r, a);
+
+      inner_circle_colors[i * 4] = 0.1f;
+      inner_circle_colors[i * 4 + 1] = 0.1f;
+      inner_circle_colors[i * 4 + 2] = 0.1f;
+      inner_circle_colors[i * 4 + 3] = 0.8f;
     }
-
-    immEnd();
+    circle_draw_rgb(inner_circle_points, tot_points, inner_circle_colors, GPU_PRIM_LINE_LOOP);
   }
+
 
   /* draw grid elements */
   /* cross */
