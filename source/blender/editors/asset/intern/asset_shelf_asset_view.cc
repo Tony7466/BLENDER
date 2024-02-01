@@ -11,6 +11,7 @@
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
+#include "BKE_icons.h"
 #include "BKE_screen.hh"
 
 #include "BLI_fnmatch.h"
@@ -22,6 +23,7 @@
 
 #include "ED_asset_handle.hh"
 #include "ED_asset_list.hh"
+#include "ED_asset_menu_utils.hh"
 #include "ED_asset_shelf.hh"
 
 #include "UI_grid_view.hh"
@@ -33,6 +35,7 @@
 
 #include "WM_api.hh"
 
+#include "../interface/interface_intern.hh"
 #include "asset_shelf.hh"
 
 namespace blender::ed::asset::shelf {
@@ -194,16 +197,55 @@ void AssetViewItem::disable_asset_drag()
 
 void AssetViewItem::build_grid_tile(uiLayout &layout) const
 {
-  PointerRNA file_ptr = RNA_pointer_create(
-      nullptr,
-      &RNA_FileSelectEntry,
-      /* XXX passing file pointer here, should be asset handle or asset representation. */
-      const_cast<FileDirEntry *>(asset_.file_data));
+  // const ui::GridViewStyle &style = this->get_view().get_style();
+  uiLayoutSetEmboss(&layout, UI_EMBOSS_NONE);
+  uiLayoutSetFixedSize(&layout, true);
+  PointerRNA op_ptr;
+  uiItemFullO(&layout,
+              "BRUSH_OT_asset_select",
+              hide_label_ ? "" : label.c_str(),
+              this->preview_icon_id,
+              nullptr,
+              WM_OP_EXEC_DEFAULT,
+              this->is_active() ? UI_ITEM_O_DEPRESS : UI_ITEM_NONE,
+              &op_ptr);
+  operator_asset_reference_props_set(*handle_get_representation(&asset_), op_ptr);
 
-  uiBlock *block = uiLayoutGetBlock(&layout);
-  UI_but_context_ptr_set(
-      block, reinterpret_cast<uiBut *>(view_item_but_), "active_file", &file_ptr);
-  ui::PreviewGridItem::build_grid_tile(layout);
+  // uiBlock *block = uiLayoutGetBlock(&layout);
+
+  // uiBut *but = uiDefButO(block,
+  //                        UI_BTYPE_BUT,
+  //                        "BRUSH_OT_asset_select",
+  //                        WM_OP_EXEC_DEFAULT,
+  //                        hide_label_ ? "" : label.c_str(),
+  //                        0,
+  //                        0,
+  //                        style.tile_width,
+  //                        style.tile_height,
+  //                        "");
+  // PointerRNA *ptr = UI_but_operator_ptr_ensure(but);
+  // operator_asset_reference_props_set(*handle_get_representation(&asset_), *ptr);
+
+  // if (this->is_active()) {
+  //   UI_but_flag_enable(but, UI_SELECT_DRAW);
+  // }
+
+  /* Draw icons that are not previews or images as normal icons with a fixed icon size.
+   * Otherwise they will be upscaled to the button size. Should probably be done by the widget
+   * code. */
+  // const int is_preview_flag = (BKE_icon_is_preview(preview_icon_id) ||
+  //                              BKE_icon_is_image(preview_icon_id)) ?
+  //                                 int(UI_BUT_ICON_PREVIEW) :
+  //                                 0;
+  // ui_def_but_icon(but,
+  //                 preview_icon_id,
+  //                 /* NOLINTNEXTLINE: bugprone-suspicious-enum-usage */
+  //                 UI_HAS_ICON | is_preview_flag);
+  // UI_but_func_set(but, [](bContext &C) {
+
+  // });
+  // UI_but_func_tooltip_label_set(but, [this](const uiBut * /*but*/) { return label; });
+  // but->emboss = UI_EMBOSS_NONE;
 }
 
 void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const

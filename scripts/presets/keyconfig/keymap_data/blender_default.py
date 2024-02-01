@@ -6801,10 +6801,6 @@ def km_asset_shelf_brushes(_params):
         {"items": items},
     )
 
-    items.extend([
-        ("brush.asset_select", {"type": 'LEFTMOUSE', "value": 'CLICK'}, None),
-    ])
-
     return keymap
 
 
