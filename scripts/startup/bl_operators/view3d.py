@@ -270,7 +270,7 @@ class VIEW3D_FH_image_plane(FileHandler):
 
     @classmethod
     def poll_drop(cls, context):
-        if context.space_data.type != 'VIEW_3D':
+        if context.space_data and context.space_data.type != 'VIEW_3D':
             return False
         rv3d = context.space_data.region_3d
         return rv3d.view_perspective == 'PERSP' or rv3d.view_perspective == 'ORTHO'
@@ -284,7 +284,7 @@ class VIEW3D_FH_background_image(FileHandler):
 
     @classmethod
     def poll_drop(cls, context):
-        if context.space_data.type != 'VIEW_3D':
+        if context.space_data and context.space_data.type != 'VIEW_3D':
             return False
         rv3d = context.space_data.region_3d
         return rv3d.view_perspective == 'CAMERA'
