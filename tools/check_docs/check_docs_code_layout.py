@@ -4,13 +4,13 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
-This script is to validate the MARKDOWN page that documents Blender's file-structure, see:
+This script is to validate the markdown page that documents Blender's file-structure, see:
 
     https://developer.blender.org/docs/features/code_layout/
 
-It can run without any arguments, where it will download the MARKDOWN to Blender's source root:
+It can run without any arguments, where it will download the markdown to Blender's source root:
 
-You may pass the markdown as an argument, e.g.
+You may pass the markdown text as an argument, e.g.
 
 check_docs_code_layout.py --markdown=markdown.txt
 """
@@ -43,32 +43,6 @@ def text_with_title_underline(text: str, underline: str = "=") -> str:
     return "\n{:s}\n{:s}\n".format(text, len(text) * underline)
 
 
-def html_extract_markdown(data: str) -> Optional[str]:
-    """
-    Extract and escape text within the
-    ``# ... </table>`` found in the MARKDOWN.
-    """
-    beg = data.find("#")
-    if beg == -1:
-        print("Failed to extract # start")
-        return None
-
-    end = data.rfind("</table>", beg)
-    if end == -1:
-        print("Failed to extract </table>")
-        return None
-    
-
-    data = data[beg:end+len("</table>")]
-    for (src, dst) in (
-            ("&lt;", "<"),
-            ("&gt;", ">"),
-            ("&amp;", "&"),
-            ("&quot;", "\""),
-    ):
-        data = data.replace(src, dst)
-    return data
-
 
 def html_extract_markdown_from_url(url: str) -> Optional[str]:
     """
@@ -80,11 +54,34 @@ def html_extract_markdown_from_url(url: str) -> Optional[str]:
     with urllib.request.urlopen(req) as fh:
         data = fh.read().decode('utf-8')
 
-    return html_extract_markdown(data)
+    return data
 
 
 # -----------------------------------------------------------------------------
-# MARKDOWN Text Parsing
+# markdown Text Parsing
+
+def markdown_file_structure_parse_between_p_and_strong(lines:list):
+    strong_content=''
+    start_index=lines.find('<p>')
+    if start_index!=1:
+        start_index+=len('<p>')
+        end_index=lines.find('<strong>',start_index)
+        if end_index!=-1:
+            strong_content=lines[start_index:end_index]
+    return strong_content
+
+def markdown_file_structure_parse_between_strong(lines:list):
+    strong_content=''
+            # Convert:
+            # `| /source/'''blender/'''` -> `/source/blender`.
+    start_content=markdown_file_structure_parse_between_p_and_strong(lines)
+    start_index=lines.find("<strong>")
+    if start_index!=-1:
+        start_index+=len("<strong>")
+        end_index=lines.find("</strong>",start_index)
+        if end_index!=-1:
+            strong_content=lines[start_index:end_index]
+    return start_content+strong_content  
 
 def markdown_to_paths_and_docstrings(markdown: str) -> Tuple[List[str], List[str]]:
     file_paths = []
@@ -92,30 +89,27 @@ def markdown_to_paths_and_docstrings(markdown: str) -> Tuple[List[str], List[str
     lines = markdown.split("\n")
     i = 0
     while i < len(lines):
-        if lines[i].startswith("| /"):
-            # Convert:
-            # `| /source/'''blender/'''` -> `/source/blender`.
-            p = lines[i][3:].replace("'''", "").split(" ", 1)[0].rstrip("/")
-            file_paths.append(p)
-
+        if lines[i].startswith("<td markdown><p>"):
+            file_paths.append(markdown_file_structure_parse_between_strong(lines[i]))
             body = []
             i += 1
-            while lines[i].strip() not in {"|-", "|}"}:
-                body.append(lines[i].lstrip("| "))
-                i += 1
-            i -= 1
-            file_paths_docstring.append("\n".join(body))
+            start_index=lines[i].find("<p>")
+            if start_index!=-1:
+                start_index+=len("<p>")
+                end_index=lines[i].find("<p>",start_index)
+                if end_index!=-1:
+                    file_paths_docstring.append(lines[i][start_index:end_index])
 
         i += 1
 
-    return file_paths, file_paths_docstring
+    return file_paths,file_paths_docstring
 
 
 # -----------------------------------------------------------------------------
 # Reporting
 
 def report_known_markdown_paths(file_paths: List[str]) -> None:
-    heading = "Paths Found in MARKDOWN Table"
+    heading = "Paths Found in markdown Table"
     print(text_with_title_underline(heading))
     for p in file_paths:
         print("-", p)
@@ -124,14 +118,14 @@ def report_known_markdown_paths(file_paths: List[str]) -> None:
 def report_missing_source(file_paths: List[str]) -> int:
     heading = "Missing in Source Dir"
 
-    test = [p for p in file_paths if not os.path.exists(os.path.join(SOURCE_DIR, p))]
+    test = [p for p in file_paths if not os.path.exists(os.path.join(SOURCE_DIR, p.lstrip("/")))]
 
     amount = str(len(test)) if test else "none found"
     print(text_with_title_underline("{:s} ({:s})".format(heading, amount)))
     if not test:
         return 0
 
-    print("The following paths were found in the MARKDOWN\n"
+    print("The following paths were found in the markdown\n"
           "but were not found in Blender's source directory:\n")
     for p in test:
         print("-", p)
@@ -145,14 +139,15 @@ def report_incomplete(file_paths: List[str]) -> int:
     test = []
     basedirs = {os.path.dirname(p) for p in file_paths}
     for base in sorted(basedirs):
-        base_abs = os.path.join(SOURCE_DIR, base)
-        for p in os.listdir(base_abs):
-            if not p.startswith("."):
-                p_abs = os.path.join(base_abs, p)
-                if os.path.isdir(p_abs):
-                    p_rel = os.path.join(base, p)
-                    if p_rel not in file_paths:
-                        test.append(p_rel)
+        base_abs = os.path.join(SOURCE_DIR, base.lstrip("/"))
+        if(os.path.exists(base_abs)):
+            for p in os.listdir(base_abs):
+                if not p.startswith("."):
+                    p_abs = os.path.join(base_abs, p)
+                    if os.path.isdir(p_abs):
+                        p_rel = os.path.join(base, p)
+                        if p_rel not in file_paths:
+                            test.append(p_rel)
 
     amount = str(len(test)) if test else "none found"
     print(text_with_title_underline("{:s} ({:s})".format(heading, amount)))
@@ -160,7 +155,7 @@ def report_incomplete(file_paths: List[str]) -> int:
         return 0
 
     print("The following paths were found in Blender's source directory\n"
-          "but are missing from the MARKDOWN:\n")
+          "but are missing from the markdown:\n")
     for p in sorted(test):
         print("-", p)
 
@@ -225,15 +220,8 @@ def create_parser() -> argparse.ArgumentParser:
         dest="markdown",
         metavar='PATH',
         default=os.path.join(SOURCE_DIR, "markdown_file_structure.txt"),
-        help="markdown file path, NOTE: this will be downloaded if not found!",
+        help="markdown text file path, NOTE: this will be downloaded if not found!",
     )
-    parser.add_argument(
-        "-o",
-        "--output",
-        dest="output_path",
-        metavar='OUTPUT_PATH',
-        help="file path to write the output to"
-        )
     return parser
 
 
@@ -245,29 +233,21 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if (args.output_path):
-        data = html_extract_markdown_from_url(MARKDOWN_URL)
-        if data is not None:
-            with open(args.output_path, 'w', encoding='utf-8') as fh:
-                fh.write(data)
-            print("Downloaded MARKDOWN to:", args.output_path)
-            return
-
     if os.path.exists(args.markdown):
-        print("Using existing MARKDOWN:", args.markdown)
+        print("Using existing markdown text:", args.markdown)
     else:
         data = html_extract_markdown_from_url(MARKDOWN_URL)
         if data is not None:
             with open(args.markdown, 'w', encoding='utf-8') as fh:
                 fh.write(data)
-            print("Downloaded MARKDOWN to:", args.markdown)
+            print("Downloaded markdown text to:", args.markdown)
             print("Update and save to:", MARKDOWN_URL)
         else:
-            print("Failed to downloaded or extract MARKDOWN, aborting!")
+            print("Failed to downloaded or extract markdown text, aborting!")
             return
 
     with open(args.markdown, 'r', encoding='utf-8') as fh:
-        file_paths, file_paths_docstring = markdown_to_paths_and_docstrings(fh.read())
+        file_paths,file_paths_docstring = markdown_to_paths_and_docstrings(fh.read())
 
     # Disable, mostly useful when debugging why paths might not be found.
     # report_known_markdown_paths()
@@ -280,7 +260,7 @@ def main() -> None:
     if issues:
         print("Warning, found {:d} issues!\n".format(issues))
     else:
-        print("Success! The MARKDOWN is up to date with Blender's source tree!\n")
+        print("Success! The markdown text is up to date with Blender's source tree!\n")
 
 
 if __name__ == "__main__":
