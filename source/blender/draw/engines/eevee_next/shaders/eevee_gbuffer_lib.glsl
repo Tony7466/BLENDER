@@ -701,7 +701,6 @@ GBufferWriter gbuffer_pack(GBufferData data_in)
 
   return gbuf;
 }
-#endif
 
 /* Return the number of closure as encoded in the give header value. */
 int gbuffer_closure_count(uint header)
