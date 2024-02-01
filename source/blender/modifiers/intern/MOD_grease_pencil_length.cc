@@ -123,21 +123,16 @@ static void deform_drawing(const ModifierData &md,
   const int curves_num = curves.curves_num();
 
   /* Variable for tagging shrinking when values are adjusted after random. */
-  bool needs_additional_shrinking = false;
+  std::atomic<bool> needs_additional_shrinking = false;
 
   VArray<float> use_starts = VArray<float>::ForSingle(mmd.start_fac, curves_num);
   VArray<float> use_ends = VArray<float>::ForSingle(mmd.end_fac, curves_num);
 
-  /* Use random to modify start/end factors. Put the modified values outside the
-   * branch so it could be accessed in later stretching/shrinking stages. */
-  Array<float> modified_starts;
-  Array<float> modified_ends;
-
   if (mmd.rand_start_fac != 0.0 || mmd.rand_end_fac != 0.0) {
-    modified_starts = Array<float>(curves.curves_num());
-    modified_ends = Array<float>(curves.curves_num());
-    modified_starts.fill(mmd.start_fac);
-    modified_ends.fill(mmd.end_fac);
+    /* Use random to modify start/end factors. Put the modified values outside the
+     * branch so it could be accessed in later stretching/shrinking stages. */
+    Array<float> modified_starts(curves.curves_num(), mmd.start_fac);
+    Array<float> modified_ends(curves.curves_num(), mmd.end_fac);
     use_starts = VArray<float>::ForSpan(modified_starts.as_mutable_span());
     use_ends = VArray<float>::ForSpan(modified_ends.as_mutable_span());
 
@@ -156,30 +151,31 @@ static void deform_drawing(const ModifierData &md,
     Array<float> noise_table_length = noise_table(
         4 + curves_num, int(math::floor(mmd.rand_offset)), seed + 2);
 
-    for (int i = 0; i < curves_num; i++) {
+    threading::parallel_for(IndexRange(curves_num), 512, [&](const IndexRange parallel_range) {
+      for (const int i : parallel_range) {
+        /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
+        double r[2];
+        const uint primes[2] = {2, 3};
+        double offset[2] = {0.0f, 0.0f};
+        BLI_halton_2d(primes, offset, i, r);
 
-      /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
-      double r[2];
-      const uint primes[2] = {2, 3};
-      double offset[2] = {0.0f, 0.0f};
-      BLI_halton_2d(primes, offset, i, r);
+        float rand[2] = {0.0f, 0.0f};
+        for (int j = 0; j < 2; j++) {
+          float noise = table_sample(noise_table_length, i + j * 2 + math::fract(mmd.rand_offset));
 
-      float rand[2] = {0.0f, 0.0f};
-      for (int j = 0; j < 2; j++) {
-        float noise = table_sample(noise_table_length, i + j * 2 + math::fract(mmd.rand_offset));
+          rand[j] = math::mod(float(r[j] + rand_offset), 1.0f);
+          rand[j] = math::abs(
+              math::mod(sin(rand[j] * 12.9898f + j * 78.233f) * 43758.5453f, 1.0f) + noise);
+        }
 
-        rand[j] = math::mod(float(r[j] + rand_offset), 1.0f);
-        rand[j] = math::abs(math::mod(sin(rand[j] * 12.9898f + j * 78.233f) * 43758.5453f, 1.0f) +
-                            noise);
+        modified_starts[i] = modified_starts[i] + rand[0] * mmd.rand_start_fac;
+        modified_ends[i] = modified_ends[i] + rand[1] * mmd.rand_end_fac;
+
+        if (modified_starts[i] <= 0.0f || modified_ends[i] <= 0.0f) {
+          needs_additional_shrinking.store(true, std::memory_order_relaxed);
+        }
       }
-
-      modified_starts[i] = modified_starts[i] + rand[0] * mmd.rand_start_fac;
-      modified_ends[i] = modified_ends[i] + rand[1] * mmd.rand_end_fac;
-
-      if (modified_starts[i] <= 0.0f || modified_ends[i] <= 0.0f) {
-        needs_additional_shrinking = true;
-      }
-    }
+    });
   }
 
   curves = geometry::extend_curves(curves,
@@ -210,20 +206,23 @@ static void deform_drawing(const ModifierData &md,
     needs_removal.fill(false);
 
     curves.ensure_evaluated_lengths();
-    for (const int curve : curves.curves_range()) {
-      float length = curves.evaluated_length_total_for_curve(curve, false);
-      if (mmd.mode & GP_LENGTH_ABSOLUTE) {
-        starts[curve] = -math::min(use_starts[curve], 0.0f);
-        ends[curve] = length - (-math::min(use_ends[curve], 0.0f));
+
+    threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange parallel_range) {
+      for (const int curve : parallel_range) {
+        float length = curves.evaluated_length_total_for_curve(curve, false);
+        if (mmd.mode & GP_LENGTH_ABSOLUTE) {
+          starts[curve] = -math::min(use_starts[curve], 0.0f);
+          ends[curve] = length - (-math::min(use_ends[curve], 0.0f));
+        }
+        else {
+          starts[curve] = -math::min(use_starts[curve], 0.0f) * length;
+          ends[curve] = (1 + math::min(use_ends[curve], 0.0f)) * length;
+        }
+        if (starts[curve] > ends[curve]) {
+          needs_removal[curve] = true;
+        }
       }
-      else {
-        starts[curve] = -math::min(use_starts[curve], 0.0f) * length;
-        ends[curve] = (1 + math::min(use_ends[curve], 0.0f)) * length;
-      }
-      if (starts[curve] > ends[curve]) {
-        needs_removal[curve] = true;
-      }
-    }
+    });
     curves = geometry::trim_curves(curves,
                                    selection,
                                    VArray<float>::ForSpan(starts.as_span()),
@@ -234,7 +233,7 @@ static void deform_drawing(const ModifierData &md,
     /* #trim_curves() will leave the last segment there when trimmed length is greater than
      * curve original length, thus we need to remove those curves afterwards. */
     IndexMaskMemory memory_remove;
-    IndexMask to_remove = IndexMask::from_bools(needs_removal.as_span(), memory_remove);
+    const IndexMask to_remove = IndexMask::from_bools(needs_removal.as_span(), memory_remove);
     if (!to_remove.is_empty()) {
       curves.remove_curves(to_remove, {});
     }

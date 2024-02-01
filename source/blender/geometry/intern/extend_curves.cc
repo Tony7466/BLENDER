@@ -137,17 +137,16 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
       }
       const IndexRange new_curve = new_points_by_curve[curve];
       int new_size = new_curve.size();
-      float used_percent_length = overshoot_fac;
-      used_percent_length = std::clamp(used_percent_length, 1e-4f, 1.0f);
-      if (!isfinite(used_percent_length)) {
-        /* #used_percent_length must always be finite, otherwise a segfault occurs.
-         * Since this function should never segfault, set #used_percent_length to a safe fallback.
-         */
-        /* NOTE: This fallback is used if `gps->totpoints == 2`, see
-         * `MOD_gpencil_legacy_length.cc`.
-         */
-        used_percent_length = 0.1f;
-      }
+
+      /* #used_percent_length must always be finite, otherwise a segfault occurs.
+       * Since this function should never segfault, set #used_percent_length to a safe fallback.
+       */
+      /* NOTE: This fallback is used if `gps->totpoints == 2`, see
+       * `MOD_gpencil_legacy_length.cc`.
+       */
+      const float used_percent_length = std::clamp(
+          isfinite(overshoot_fac) ? 0.1f : overshoot_fac, 1e-4f, 1.0f);
+
       /* Handle simple case first, straight stretching. */
       if (!follow_curvature) {
 
