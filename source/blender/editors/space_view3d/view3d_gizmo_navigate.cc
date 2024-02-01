@@ -42,7 +42,7 @@
 #define GIZMO_MINI_SIZE 28.0f
 
 /* Margin around the smaller buttons. */
-#define GIZMO_MINI_OFFSET 4.0f
+#define GIZMO_MINI_OFFSET 2.0f
 
 enum {
   GZ_INDEX_MOVE = 0,
