@@ -48,7 +48,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 #include "BLT_translation.h"
 
 #include "UI_interface.hh"
@@ -78,6 +78,7 @@
 
 #include "interface_intern.hh"
 
+using blender::StringRef;
 using blender::Vector;
 
 /* prototypes. */
@@ -3108,13 +3109,6 @@ bool ui_but_string_eval_number(bContext *C, const uiBut *but, const char *str, d
   return ui_number_from_string(C, str, r_value);
 }
 
-/* just the assignment/free part */
-static void ui_but_string_set_internal(uiBut *but, const char *str, size_t str_len)
-{
-  BLI_assert(str_len == strlen(str));
-  but->str = std::string(str, str_len);
-}
-
 bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 {
   if (but->rnaprop && but->rnapoin.data && ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU)) {
@@ -3805,12 +3799,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
       break;
   }
 
-  /* safety is 4 to enable small number buttons (like 'users') */
-  // okwidth = -4 + (BLI_rcti_size_x(&but->rect)); /* UNUSED */
-
-  /* name: */
   switch (but->type) {
-
     case UI_BTYPE_MENU:
       if (BLI_rctf_size_x(&but->rect) >= (UI_UNIT_X * 2)) {
         /* only needed for menus in popup blocks that don't recreate buttons on redraw */
@@ -3826,9 +3815,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
                     value_enum,
                     &item))
             {
-              const size_t slen = strlen(item.name);
-              but->str.clear();
-              ui_but_string_set_internal(but, item.name, slen);
+              but->str = item.name;
               but->icon = item.icon;
             }
           }
@@ -4064,8 +4051,6 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
 }
 
 /**
- * \brief ui_def_but is the function that draws many button types
- *
  * \param x, y: The lower left hand corner of the button (X axis)
  * \param width, height: The size of the button.
  *
@@ -4077,7 +4062,7 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
 static uiBut *ui_def_but(uiBlock *block,
                          int type,
                          int retval,
-                         const char *str,
+                         const StringRef str,
                          int x,
                          int y,
                          short width,
@@ -4112,8 +4097,7 @@ static uiBut *ui_def_but(uiBlock *block,
 
   but->retval = retval;
 
-  const int slen = strlen(str);
-  ui_but_string_set_internal(but, str, slen);
+  but->str = str;
 
   but->rect.xmin = x;
   but->rect.ymin = y;
@@ -4148,7 +4132,7 @@ static uiBut *ui_def_but(uiBlock *block,
   but->pos = -1; /* cursor invisible */
 
   if (ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER)) { /* add a space to name */
-    if (slen > 0 && slen < UI_MAX_NAME_STR - 2) {
+    if (!but->str.empty() && but->str.size() < UI_MAX_NAME_STR - 2) {
       if (but->str[but->str.size() - 1] != ' ') {
         but->str += ' ';
       }
@@ -4176,7 +4160,7 @@ static uiBut *ui_def_but(uiBlock *block,
   }
 #ifdef USE_NUMBUTS_LR_ALIGN
   else if (ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER)) {
-    if (slen != 0) {
+    if (!but->str.empty()) {
       but->drawflag |= UI_BUT_TEXT_LEFT;
     }
   }
@@ -4820,7 +4804,7 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
 uiBut *uiDefBut(uiBlock *block,
                 int type,
                 int retval,
-                const char *str,
+                const StringRef str,
                 int x,
                 int y,
                 short width,
@@ -4861,8 +4845,11 @@ uiBut *uiDefButImage(
 uiBut *uiDefButAlert(uiBlock *block, int icon, int x, int y, short width, short height)
 {
   ImBuf *ibuf = UI_icon_alert_imbuf_get((eAlertIcon)icon);
-  bTheme *btheme = UI_GetTheme();
-  return uiDefButImage(block, ibuf, x, y, width, height, btheme->tui.wcol_menu_back.text);
+  if (ibuf) {
+    bTheme *btheme = UI_GetTheme();
+    return uiDefButImage(block, ibuf, x, y, width, height, btheme->tui.wcol_menu_back.text);
+  }
+  return nullptr;
 }
 
 /**
@@ -5020,7 +5007,7 @@ static uiBut *uiDefButBit(uiBlock *block,
                           int type,
                           int bit,
                           int retval,
-                          const char *str,
+                          const StringRef str,
                           int x,
                           int y,
                           short width,
@@ -5054,7 +5041,7 @@ static uiBut *uiDefButBit(uiBlock *block,
 uiBut *uiDefButF(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5084,7 +5071,7 @@ uiBut *uiDefButF(uiBlock *block,
 uiBut *uiDefButI(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5115,7 +5102,7 @@ uiBut *uiDefButBitI(uiBlock *block,
                     int type,
                     int bit,
                     int retval,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -5146,7 +5133,7 @@ uiBut *uiDefButBitI(uiBlock *block,
 uiBut *uiDefButS(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5177,7 +5164,7 @@ uiBut *uiDefButBitS(uiBlock *block,
                     int type,
                     int bit,
                     int retval,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -5208,7 +5195,7 @@ uiBut *uiDefButBitS(uiBlock *block,
 uiBut *uiDefButC(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5239,7 +5226,7 @@ uiBut *uiDefButBitC(uiBlock *block,
                     int type,
                     int bit,
                     int retval,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -5636,7 +5623,7 @@ uiBut *uiDefIconTextBut(uiBlock *block,
                         int type,
                         int retval,
                         int icon,
-                        const char *str,
+                        const StringRef str,
                         int x,
                         int y,
                         short width,
@@ -5658,7 +5645,7 @@ uiBut *uiDefIconTextButF(uiBlock *block,
                          int type,
                          int retval,
                          int icon,
-                         const char *str,
+                         const StringRef str,
                          int x,
                          int y,
                          short width,
@@ -5690,7 +5677,7 @@ uiBut *uiDefIconTextButI(uiBlock *block,
                          int type,
                          int retval,
                          int icon,
-                         const char *str,
+                         const StringRef str,
                          int x,
                          int y,
                          short width,
@@ -6097,7 +6084,7 @@ void UI_but_func_pushed_state_set(uiBut *but, std::function<bool(const uiBut &)>
 uiBut *uiDefBlockBut(uiBlock *block,
                      uiBlockCreateFunc func,
                      void *arg,
-                     const char *str,
+                     const StringRef str,
                      int x,
                      int y,
                      short width,
@@ -6114,7 +6101,7 @@ uiBut *uiDefBlockBut(uiBlock *block,
 uiBut *uiDefBlockButN(uiBlock *block,
                       uiBlockCreateFunc func,
                       void *argN,
-                      const char *str,
+                      const StringRef str,
                       int x,
                       int y,
                       short width,
@@ -6132,27 +6119,10 @@ uiBut *uiDefBlockButN(uiBlock *block,
   return but;
 }
 
-uiBut *uiDefPulldownBut(uiBlock *block,
-                        uiBlockCreateFunc func,
-                        void *arg,
-                        const char *str,
-                        int x,
-                        int y,
-                        short width,
-                        short height,
-                        const char *tip)
-{
-  uiBut *but = ui_def_but(
-      block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
-  but->block_create_func = func;
-  ui_but_update(but);
-  return but;
-}
-
 uiBut *uiDefMenuBut(uiBlock *block,
                     uiMenuCreateFunc func,
                     void *arg,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -6170,7 +6140,7 @@ uiBut *uiDefIconTextMenuBut(uiBlock *block,
                             uiMenuCreateFunc func,
                             void *arg,
                             int icon,
-                            const char *str,
+                            const StringRef str,
                             int x,
                             int y,
                             short width,
@@ -6208,34 +6178,6 @@ uiBut *uiDefIconMenuBut(uiBlock *block,
   but->drawflag &= ~UI_BUT_ICON_LEFT;
 
   but->menu_create_func = func;
-  ui_but_update(but);
-
-  return but;
-}
-
-uiBut *uiDefIconTextBlockBut(uiBlock *block,
-                             uiBlockCreateFunc func,
-                             void *arg,
-                             int icon,
-                             const char *str,
-                             int x,
-                             int y,
-                             short width,
-                             short height,
-                             const char *tip)
-{
-  uiBut *but = ui_def_but(
-      block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
-
-  /* XXX temp, old menu calls pass on icon arrow, which is now UI_BUT_ICON_SUBMENU flag */
-  if (icon != ICON_RIGHTARROW_THIN) {
-    ui_def_but_icon(but, icon, 0);
-    but->drawflag |= UI_BUT_ICON_LEFT;
-  }
-  but->flag |= UI_HAS_ICON;
-  ui_but_submenu_enable(block, but);
-
-  but->block_create_func = func;
   ui_but_update(but);
 
   return but;
