@@ -57,16 +57,9 @@ enum class KeyingResultOptions {
 class KeyingResult {
  private:
   /* The index into the array is defined by `KeyingResultOptions`. */
-  blender::Array<int> result_counter;
+  std::array<int, (int(KeyingResultOptions::NO_KEY_NEEDED) + 1)> result_counter{0};
 
  public:
-  KeyingResult()
-  {
-    /* Keep this in sync with the last item of `KeyingResultOptions`. */
-    result_counter.reinitialize(int(KeyingResultOptions::NO_KEY_NEEDED) + 1);
-    result_counter.fill(0);
-  }
-
   void add_result(const KeyingResultOptions result)
   {
     result_counter[int(result)]++;
