@@ -660,7 +660,7 @@ static void draw_bake_data_block_list_item(uiList * /*ui_list*/,
 
 void draw_data_blocks(const bContext *C, uiLayout *layout, PointerRNA &bake_rna)
 {
-  static uiListType *data_block_list = []() {
+  static const uiListType *data_block_list = []() {
     uiListType *list = MEM_cnew<uiListType>(__func__);
     STRNCPY(list->idname, "DATA_UL_nodes_modifier_data_blocks");
     list->draw_item = draw_bake_data_block_list_item;
