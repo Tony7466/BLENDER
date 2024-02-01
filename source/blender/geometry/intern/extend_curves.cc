@@ -89,7 +89,7 @@ static void extend_curves_curved(const float used_percent_length,
    * strokes. */
   const float overshoot_parameter = used_percent_length * (orig_totpoints - 2);
   int overshoot_pointcount = math::ceil(overshoot_parameter);
-  overshoot_pointcount = std::clamp(overshoot_pointcount, 1, orig_totpoints - 2);
+  overshoot_pointcount = math::clamp(overshoot_pointcount, 1, orig_totpoints - 2);
 
   /* Do for both sides without code duplication. */
   float3 vec1, total_angle;
@@ -314,7 +314,7 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
       /* NOTE: This fallback is used if `gps->totpoints == 2`, see
        * `MOD_gpencil_legacy_length.cc`.
        */
-      const float used_percent_length = std::clamp(
+      const float used_percent_length = math::clamp(
           isfinite(overshoot_fac) ? 0.1f : overshoot_fac, 1e-4f, 1.0f);
 
       if (!follow_curvature) {
