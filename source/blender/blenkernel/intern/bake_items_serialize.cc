@@ -11,7 +11,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
 
-#include "BLI_chunkify_array.hh"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_hash_md5.hh"
@@ -134,74 +133,13 @@ DictionaryValuePtr BlobWriteSharing::write_implicitly_shared(
 }
 
 std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplicated(
-    BlobWriter &writer, const void *data, int64_t size_in_bytes)
+    BlobWriter &writer, const void *data, const int64_t size_in_bytes)
 {
-  Vector<int64_t> offsets_vec;
-  ChunkifyArrayParams chunkify_params;
-  chunkify_params.approximate_elements_per_chunk = 10000;
-  chunkify_params.element_size = 1;
-  OffsetIndices<int64_t> chunks = chunkify_array(
-      data, size_in_bytes, chunkify_params, offsets_vec);
-  Array<SliceHash> chunk_hashes(chunks.size());
-  threading::parallel_for(chunks.index_range(), 1, [&](const IndexRange range) {
-    for (const int64_t chunk_i : range) {
-      const IndexRange chunk_range = chunks[chunk_i];
-      SliceHash hash;
-      BLI_hash_md5_buffer(static_cast<const char *>(POINTER_OFFSET(data, chunk_range.start())),
-                          chunk_range.size(),
-                          &hash);
-      chunk_hashes[chunk_i] = hash;
-    }
-  });
-  struct SliceWithRepeats {
-    BlobSlice slice;
-    int64_t repeats = 1;
-  };
-  Vector<SliceWithRepeats> slices;
-  for (const int64_t chunk_i : chunks.index_range()) {
-    const IndexRange chunk_range = chunks[chunk_i];
-    const SliceHash chunk_hash = chunk_hashes[chunk_i];
-    const BlobSlice slice = slice_by_content_hash_.lookup_or_add_cb(chunk_hash, [&]() {
-      return writer.write(POINTER_OFFSET(data, chunk_range.start()), chunk_range.size());
-    });
-    if (slices.is_empty()) {
-      slices.append({slice});
-    }
-    else {
-      BlobSlice &last_slice = slices.last().slice;
-      if (last_slice == slice) {
-        slices.last().repeats++;
-      }
-      else if (slices.last().repeats == 1 && last_slice.name == slice.name &&
-               last_slice.range.one_after_last() == slice.range.start())
-      {
-        last_slice.range = IndexRange(last_slice.range.start(),
-                                      last_slice.range.size() + slice.range.size());
-      }
-      else {
-        slices.append({slice});
-      }
-    }
-  }
-
-  if (slices.is_empty()) {
-    return BlobSlice().serialize();
-  }
-  if (slices.size() == 1 && slices[0].repeats == 1) {
-    return slices[0].slice.serialize();
-  }
-  auto io_data = std::make_shared<DictionaryValue>();
-  auto io_chunks = io_data->append_array("chunks");
-  for (const int64_t i : slices.index_range()) {
-    const BlobSlice &slice = slices[i].slice;
-    const int repeats = slices[i].repeats;
-    auto io_slice = slice.serialize();
-    if (repeats >= 2) {
-      io_slice->append_int("repeats", repeats);
-    }
-    io_chunks->append(io_slice);
-  }
-  return io_data;
+  SliceHash content_hash;
+  BLI_hash_md5_buffer(static_cast<const char *>(data), size_in_bytes, &content_hash);
+  const BlobSlice slice = slice_by_content_hash_.lookup_or_add_cb(
+      content_hash, [&]() { return writer.write(data, size_in_bytes); });
+  return slice.serialize();
 }
 
 std::optional<ImplicitSharingInfoAndData> BlobReadSharing::read_shared(
@@ -287,74 +225,25 @@ static std::shared_ptr<DictionaryValue> write_blob_raw_data_with_endian(
   return io_data;
 }
 
-bool BlobReadSharing::read_deduplicated(const BlobReader &blob_reader,
-                                        const io::serialize::DictionaryValue &io_data,
-                                        const int64_t size_in_bytes,
-                                        void *r_data) const
-{
-  if (const auto *io_chunks = io_data.lookup_array("chunks")) {
-    int64_t current_offset = 0;
-    for (const auto &io_chunk_value : io_chunks->elements()) {
-      const auto *io_chunk = io_chunk_value->as_dictionary_value();
-      if (!io_chunk) {
-        return false;
-      }
-      const std::optional<BlobSlice> slice = BlobSlice::deserialize(*io_chunk);
-      if (!slice) {
-        return false;
-      }
-      const int64_t slice_size = slice->range.size();
-      const int repeats = io_chunk->lookup_int("repeats").value_or(1);
-      if (repeats == 0) {
-        continue;
-      }
-      if (current_offset + repeats * slice_size > size_in_bytes) {
-        return false;
-      }
-      const int64_t first_repeat_offset = current_offset;
-      if (!blob_reader.read(*slice, POINTER_OFFSET(r_data, current_offset))) {
-        return false;
-      }
-      current_offset += slice_size;
-      for ([[maybe_unused]] const int repeat_i : IndexRange(repeats - 1)) {
-        memcpy(POINTER_OFFSET(r_data, current_offset),
-               POINTER_OFFSET(r_data, first_repeat_offset),
-               slice_size);
-        current_offset += slice_size;
-      }
-    }
-    if (current_offset != size_in_bytes) {
-      return false;
-    }
-    return true;
-  }
-  const std::optional<BlobSlice> slice = BlobSlice::deserialize(io_data);
-  if (!slice) {
-    return false;
-  }
-  if (slice->range.size() != size_in_bytes) {
-    return false;
-  }
-  if (!blob_reader.read(*slice, r_data)) {
-    return false;
-  }
-  return true;
-}
-
 /**
  * Read data of an into an array and optionally perform an endian switch if necessary.
  */
 [[nodiscard]] static bool read_blob_raw_data_with_endian(const BlobReader &blob_reader,
-                                                         const BlobReadSharing &blob_sharing,
                                                          const DictionaryValue &io_data,
                                                          const int64_t element_size,
                                                          const int64_t elements_num,
                                                          void *r_data)
 {
-  if (!blob_sharing.read_deduplicated(blob_reader, io_data, element_size * elements_num, r_data)) {
+  const std::optional<BlobSlice> slice = BlobSlice::deserialize(io_data);
+  if (!slice) {
     return false;
   }
-
+  if (slice->range.size() != element_size * elements_num) {
+    return false;
+  }
+  if (!blob_reader.read(*slice, r_data)) {
+    return false;
+  }
   const StringRefNull stored_endian = io_data.lookup_str("endian").value_or("little");
   const StringRefNull current_endian = get_endian_io_name(ENDIAN_ORDER);
   const bool need_endian_switch = stored_endian != current_endian;
@@ -389,12 +278,18 @@ static std::shared_ptr<DictionaryValue> write_blob_raw_bytes(BlobWriter &blob_wr
 
 /** Read bytes ignoring endianness. */
 [[nodiscard]] static bool read_blob_raw_bytes(const BlobReader &blob_reader,
-                                              const BlobReadSharing &blob_sharing,
                                               const DictionaryValue &io_data,
                                               const int64_t bytes_num,
                                               void *r_data)
 {
-  return blob_sharing.read_deduplicated(blob_reader, io_data, bytes_num, r_data);
+  const std::optional<BlobSlice> slice = BlobSlice::deserialize(io_data);
+  if (!slice) {
+    return false;
+  }
+  if (slice->range.size() != bytes_num) {
+    return false;
+  }
+  return blob_reader.read(*slice, r_data);
 }
 
 static std::shared_ptr<DictionaryValue> write_blob_simple_gspan(BlobWriter &blob_writer,
@@ -411,35 +306,33 @@ static std::shared_ptr<DictionaryValue> write_blob_simple_gspan(BlobWriter &blob
 }
 
 [[nodiscard]] static bool read_blob_simple_gspan(const BlobReader &blob_reader,
-                                                 const BlobReadSharing &blob_sharing,
                                                  const DictionaryValue &io_data,
                                                  GMutableSpan r_data)
 {
   const CPPType &type = r_data.type();
   BLI_assert(type.is_trivial());
   if (type.size() == 1 || type.is<ColorGeometry4b>()) {
-    return read_blob_raw_bytes(
-        blob_reader, blob_sharing, io_data, r_data.size_in_bytes(), r_data.data());
+    return read_blob_raw_bytes(blob_reader, io_data, r_data.size_in_bytes(), r_data.data());
   }
   if (type.is_any<int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float>()) {
     return read_blob_raw_data_with_endian(
-        blob_reader, blob_sharing, io_data, type.size(), r_data.size(), r_data.data());
+        blob_reader, io_data, type.size(), r_data.size(), r_data.data());
   }
   if (type.is_any<float2, int2>()) {
     return read_blob_raw_data_with_endian(
-        blob_reader, blob_sharing, io_data, sizeof(int32_t), r_data.size() * 2, r_data.data());
+        blob_reader, io_data, sizeof(int32_t), r_data.size() * 2, r_data.data());
   }
   if (type.is<float3>()) {
     return read_blob_raw_data_with_endian(
-        blob_reader, blob_sharing, io_data, sizeof(float), r_data.size() * 3, r_data.data());
+        blob_reader, io_data, sizeof(float), r_data.size() * 3, r_data.data());
   }
   if (type.is<float4x4>()) {
     return read_blob_raw_data_with_endian(
-        blob_reader, blob_sharing, io_data, sizeof(float), r_data.size() * 16, r_data.data());
+        blob_reader, io_data, sizeof(float), r_data.size() * 16, r_data.data());
   }
   if (type.is<ColorGeometry4f>()) {
     return read_blob_raw_data_with_endian(
-        blob_reader, blob_sharing, io_data, sizeof(float), r_data.size() * 4, r_data.data());
+        blob_reader, io_data, sizeof(float), r_data.size() * 4, r_data.data());
   }
   return false;
 }
@@ -466,8 +359,7 @@ static std::shared_ptr<DictionaryValue> write_blob_shared_simple_gspan(
   const std::optional<ImplicitSharingInfoAndData> sharing_info_and_data = blob_sharing.read_shared(
       io_data, [&]() -> std::optional<ImplicitSharingInfoAndData> {
         void *data_mem = MEM_mallocN_aligned(size * cpp_type.size(), cpp_type.alignment(), func);
-        if (!read_blob_simple_gspan(
-                blob_reader, blob_sharing, io_data, {cpp_type, data_mem, size})) {
+        if (!read_blob_simple_gspan(blob_reader, io_data, {cpp_type, data_mem, size})) {
           MEM_freeN(data_mem);
           return std::nullopt;
         }
@@ -771,8 +663,7 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
   if (!io_transforms) {
     return {};
   }
-  if (!read_blob_simple_gspan(blob_reader, blob_sharing, *io_transforms, instances->transforms()))
-  {
+  if (!read_blob_simple_gspan(blob_reader, *io_transforms, instances->transforms())) {
     return {};
   }
 
@@ -780,9 +671,7 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
   if (!io_handles) {
     return {};
   }
-  if (!read_blob_simple_gspan(
-          blob_reader, blob_sharing, *io_handles, instances->reference_handles()))
-  {
+  if (!read_blob_simple_gspan(blob_reader, *io_handles, instances->reference_handles())) {
     return {};
   }
 
@@ -1222,7 +1111,7 @@ static std::unique_ptr<BakeItem> deserialize_bake_item(const DictionaryValue &io
       }
       std::string str;
       str.resize(*size);
-      if (!read_blob_raw_bytes(blob_reader, blob_sharing, *io_string, *size, str.data())) {
+      if (!read_blob_raw_bytes(blob_reader, *io_string, *size, str.data())) {
         return {};
       }
       return std::make_unique<StringBakeItem>(std::move(str));
