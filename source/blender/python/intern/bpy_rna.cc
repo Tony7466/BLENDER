@@ -8735,7 +8735,7 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
   if (err != -1 && (is_staticmethod || is_classmethod || py_class_instance)) {
     PyObject *item = PyObject_GetAttrString((PyObject *)py_class, RNA_function_identifier(func));
 
-	  const bool item_type_valid = (is_staticmethod) ? PyMethod_Check(item) : PyFunction_Check(item);
+	  const bool item_type_valid = (item != nullptr) && (is_staticmethod ? PyMethod_Check(item) : PyFunction_Check(item));
     if (item_type_valid) {
       funcptr = RNA_pointer_create(nullptr, &RNA_Function, func);
 
