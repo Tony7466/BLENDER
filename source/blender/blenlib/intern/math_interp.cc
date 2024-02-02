@@ -54,13 +54,9 @@ template<enum eCubicFilter filter> static float4 cubic_filter_coefficients(float
 #    include <smmintrin.h> /* _mm_floor_ps */
 #  endif
 
-/* Functions below are hard to express before SSE4. If compiling to that
- * or NEON via sse2neon, just use the simple forms. On SSE2, do it the
- * hard way. */
-
 BLI_INLINE __m128 floor_simd(__m128 v)
 {
-#  if defined(__SSE4_1__) || defined(__ARM_NEON) && defined(WITH_SSE2NEON)
+#  if BLI_HAVE_SSE4
   __m128 v_floor = _mm_floor_ps(v);
 #  else
   /* Truncate, for negative inputs this will round towards zero. Then compare
@@ -74,7 +70,7 @@ BLI_INLINE __m128 floor_simd(__m128 v)
 
 BLI_INLINE __m128i min_i_simd(__m128i a, __m128i b)
 {
-#  if defined(__SSE4_1__) || defined(__ARM_NEON) && defined(WITH_SSE2NEON)
+#  if BLI_HAVE_SSE4
   return _mm_min_epi32(a, b);
 #  else
   __m128i cmp = _mm_cmplt_epi32(a, b);
@@ -86,7 +82,7 @@ BLI_INLINE __m128i min_i_simd(__m128i a, __m128i b)
 
 BLI_INLINE __m128i max_i_simd(__m128i a, __m128i b)
 {
-#  if defined(__SSE4_1__) || defined(__ARM_NEON) && defined(WITH_SSE2NEON)
+#  if BLI_HAVE_SSE4
   return _mm_max_epi32(a, b);
 #  else
   __m128i cmp = _mm_cmplt_epi32(b, a);

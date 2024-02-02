@@ -338,8 +338,9 @@ template<eIMBInterpolationFilterMode Filter>
 static void transform_scanlines_filter(const TransformContext &ctx, IndexRange y_range)
 {
   int channels = ctx.src->channels;
+
   if (ctx.dst->float_buffer.data && ctx.src->float_buffer.data) {
-    /* Float images. */
+    /* Float pixels. */
     if (channels == 4) {
       transform_scanlines<Filter, float, 4>(ctx, y_range);
     }
@@ -353,8 +354,9 @@ static void transform_scanlines_filter(const TransformContext &ctx, IndexRange y
       transform_scanlines<Filter, float, 1>(ctx, y_range);
     }
   }
-  else if (ctx.dst->byte_buffer.data && ctx.src->byte_buffer.data) {
-    /* Byte images. */
+
+  if (ctx.dst->byte_buffer.data && ctx.src->byte_buffer.data) {
+    /* Byte pixels. */
     if (channels == 4) {
       transform_scanlines<Filter, uchar, 4>(ctx, y_range);
     }
@@ -423,8 +425,8 @@ static void edge_aa(const TransformContext &ctx)
 
     /* DDA line raster: step one pixel along the longer direction. */
     delta /= length;
-    if (ctx.dst->float_buffer.data) {
-      /* Float image. */
+    if (ctx.dst->float_buffer.data != nullptr) {
+      /* Float pixels. */
       float *dst = ctx.dst->float_buffer.data;
       for (int i = 0; i < length; i++) {
         float2 pos = ptA + i * delta;
@@ -439,8 +441,8 @@ static void edge_aa(const TransformContext &ctx)
         }
       }
     }
-    else {
-      /* Byte image. */
+    if (ctx.dst->byte_buffer.data != nullptr) {
+      /* Byte pixels. */
       uchar *dst = ctx.dst->byte_buffer.data;
       for (int i = 0; i < length; i++) {
         float2 pos = ptA + i * delta;
