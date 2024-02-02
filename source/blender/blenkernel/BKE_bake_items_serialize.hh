@@ -84,6 +84,9 @@ class BlobWriteSharing : NonCopyable, NonMovable {
   [[nodiscard]] std::shared_ptr<io::serialize::DictionaryValue> write_implicitly_shared(
       const ImplicitSharingInfo *sharing_info,
       FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn);
+
+  [[nodiscard]] std::shared_ptr<io::serialize::DictionaryValue> write_deduplicated(
+      BlobWriter &writer, const void *data, int64_t size_in_bytes);
 };
 
 /**
