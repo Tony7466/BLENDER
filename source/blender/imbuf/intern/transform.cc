@@ -413,12 +413,12 @@ static void edge_aa(const TransformContext &ctx)
     constexpr float NO_ROTATION = 1.0e-6f;
     constexpr float NO_AA_CONTRIB = 1.0e-2f;
     if (is_steep) {
-      if (abs_delta.x < NO_ROTATION && fabsf(ptA.x - roundf(ptA.x) < NO_AA_CONTRIB)) {
+      if ((abs_delta.x < NO_ROTATION) && (fabsf(ptA.x - roundf(ptA.x)) < NO_AA_CONTRIB)) {
         continue;
       }
     }
     else {
-      if (abs_delta.y < NO_ROTATION && fabsf(ptA.y - roundf(ptA.y) < NO_AA_CONTRIB)) {
+      if ((abs_delta.y < NO_ROTATION) && (fabsf(ptA.y - roundf(ptA.y)) < NO_AA_CONTRIB)) {
         continue;
       }
     }
