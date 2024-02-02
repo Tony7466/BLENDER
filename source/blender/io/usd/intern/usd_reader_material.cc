@@ -762,7 +762,7 @@ bool USDMaterialReader::follow_connection(const pxr::UsdShadeInput &usd_input,
 
   return true;
 }
-
+// only done for shader_id == usdtokens::UsdUVTexture
 void USDMaterialReader::convert_usd_uv_texture(const pxr::UsdShadeShader &usd_shader,
                                                const pxr::TfToken &usd_source_name,
                                                bNode *dest_node,
@@ -803,7 +803,33 @@ void USDMaterialReader::convert_usd_uv_texture(const pxr::UsdShadeShader &usd_sh
   /* Get the source socket name. */
   std::string source_socket_name = usd_source_name == usdtokens::a ? "Alpha" : "Color";
 
-  link_nodes(ntree, tex_image, source_socket_name.c_str(), dest_node, dest_socket_name);
+  if (usd_source_name == usdtokens::r || usd_source_name == usdtokens::g ||
+      usd_source_name == usdtokens::b)
+  {
+    float locx = 0.0f;
+    float locy = 0.0f;
+    compute_node_loc(column, &locx, &locy, r_ctx);
+
+    /* Create a Separate Color node. */
+    bNode *sep_color = add_node(nullptr, ntree, SH_NODE_SEPARATE_COLOR, locx, locy);
+    link_nodes(ntree, tex_image, source_socket_name.c_str(), sep_color, "Color");
+
+    if (usd_source_name == usdtokens::r) {
+      printf("need a Separate RGB node, connect the R output\n");
+      link_nodes(ntree, sep_color, "Red", dest_node, dest_socket_name);
+    }
+    if (usd_source_name == usdtokens::g) {
+      printf("need a Separate RGB node, connect the G output\n");
+      link_nodes(ntree, sep_color, "Green", dest_node, dest_socket_name);
+    }
+    if (usd_source_name == usdtokens::b) {
+      printf("need a Separate RGB node, connect the B output\n");
+      link_nodes(ntree, sep_color, "Blue", dest_node, dest_socket_name);
+    }
+  }
+  else {
+    link_nodes(ntree, tex_image, source_socket_name.c_str(), dest_node, dest_socket_name);
+  }
 
   /* Connect the texture image node "Vector" input. */
   if (pxr::UsdShadeInput st_input = usd_shader.GetInput(usdtokens::st)) {
