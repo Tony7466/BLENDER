@@ -104,9 +104,9 @@ class BlobWriteSharing : NonCopyable, NonMovable {
       FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn);
 
   /**
-   * Checks of the given data was written before. If it was, it's not written again, but a
+   * Checks if the given data was written before. If it was, it's not written again, but a
    * reference to the previously written data is returned. If the data is new, it's written now.
-   * It's hash is remembered so that the same data won't be written again.
+   * Its hash is remembered so that the same data won't be written again.
    */
   [[nodiscard]] std::shared_ptr<io::serialize::DictionaryValue> write_deduplicated(
       BlobWriter &writer, const void *data, int64_t size_in_bytes);
