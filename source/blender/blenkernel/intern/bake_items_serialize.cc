@@ -292,6 +292,42 @@ bool BlobReadSharing::read_deduplicated(const BlobReader &blob_reader,
                                         const int64_t size_in_bytes,
                                         void *r_data) const
 {
+  if (const auto *io_chunks = io_data.lookup_array("chunks")) {
+    int64_t current_offset = 0;
+    for (const auto &io_chunk_value : io_chunks->elements()) {
+      const auto *io_chunk = io_chunk_value->as_dictionary_value();
+      if (!io_chunk) {
+        return false;
+      }
+      const std::optional<BlobSlice> slice = BlobSlice::deserialize(*io_chunk);
+      if (!slice) {
+        return false;
+      }
+      const int64_t slice_size = slice->range.size();
+      const int repeats = io_chunk->lookup_int("repeats").value_or(1);
+      if (repeats == 0) {
+        continue;
+      }
+      if (current_offset + repeats * slice_size > size_in_bytes) {
+        return false;
+      }
+      const int64_t first_repeat_offset = current_offset;
+      if (!blob_reader.read(*slice, POINTER_OFFSET(r_data, current_offset))) {
+        return false;
+      }
+      current_offset += slice_size;
+      for ([[maybe_unused]] const int repeat_i : IndexRange(repeats - 1)) {
+        memcpy(POINTER_OFFSET(r_data, current_offset),
+               POINTER_OFFSET(r_data, first_repeat_offset),
+               slice_size);
+        current_offset += slice_size;
+      }
+    }
+    if (current_offset != size_in_bytes) {
+      return false;
+    }
+    return true;
+  }
   const std::optional<BlobSlice> slice = BlobSlice::deserialize(io_data);
   if (!slice) {
     return false;
