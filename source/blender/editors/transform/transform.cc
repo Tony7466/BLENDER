@@ -967,34 +967,11 @@ static bool transform_event_modal_constraint(TransInfo *t, short modal_type)
   return true;
 }
 
-static bool editor_forces_constraints(TransInfo *t)
-{
-  switch (t->spacetype) {
-    case SPACE_GRAPH: {
-      if (t->mode != TFM_TRANSLATION) {
-        return false;
-      }
-      SpaceGraph *space_graph = (SpaceGraph *)t->area->spacedata.first;
-      return space_graph->flag & SIPO_AUTOLOCK_AXIS;
-    }
-
-    default:
-      break;
-  }
-  return false;
-}
-
 int transformEvent(TransInfo *t, const wmEvent *event)
 {
   bool handled = false;
   bool is_navigating = t->vod ? ((RegionView3D *)t->region->regiondata)->rflag & RV3D_NAVIGATING :
                                 false;
-
-  /* Auto set constraints if the editor supports it. Don't do it if a constraint is already active
-   * or it would be impossible for the user to change it. */
-  if (editor_forces_constraints(t) && (t->con.mode & CON_APPLY) == 0) {
-    initSelectConstraint(t);
-  }
 
   /* Handle modal numinput events first, if already activated. */
   if (!is_navigating && ((event->val == KM_PRESS) || (event->type == EVT_MODAL_MAP)) &&

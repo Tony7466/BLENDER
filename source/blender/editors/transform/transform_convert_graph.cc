@@ -27,6 +27,7 @@
 #include "UI_view2d.hh"
 
 #include "transform.hh"
+#include "transform_constraints.hh"
 #include "transform_convert.hh"
 #include "transform_mode.hh"
 #include "transform_snap.hh"
@@ -143,6 +144,22 @@ static bool graph_edit_is_translation_mode(TransInfo *t)
 static bool graph_edit_use_local_center(TransInfo *t)
 {
   return ((t->around == V3D_AROUND_LOCAL_ORIGINS) && (graph_edit_is_translation_mode(t) == false));
+}
+
+static void enable_autolock(TransInfo *t, SpaceGraph *space_graph)
+{
+  if (t->mode != TFM_TRANSLATION) {
+    return;
+  }
+
+  /* Those flags are set when using tweak mode on handles. */
+  if ((space_graph->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT) ||
+      (space_graph->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT))
+  {
+    return;
+  }
+
+  initSelectConstraint(t);
 }
 
 /**
@@ -367,6 +384,8 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     }
   }
 
+  bool only_handles_selected = true;
+
   /* loop 2: build transdata arrays */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
@@ -405,7 +424,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
         TransDataCurveHandleFlags *hdata = nullptr;
 
         graph_bezt_get_transform_selection(t, bezt, use_handle, &sel_left, &sel_key, &sel_right);
-
+        only_handles_selected &= !sel_key;
         if (is_prop_edit) {
           bool is_sel = (sel_key || sel_left || sel_right);
           /* we always select all handles for proportional editing if central handle is selected */
@@ -459,6 +478,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
           }
         }
         else {
+
           /* only include handles if selected, irrespective of the interpolation modes.
            * also, only treat handles specially if the center point isn't selected.
            */
@@ -614,6 +634,10 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
         }
       }
     }
+  }
+
+  if (sipo->flag & SIPO_AUTOLOCK_AXIS && !only_handles_selected) {
+    enable_autolock(t, sipo);
   }
 
   /* cleanup temp list */
