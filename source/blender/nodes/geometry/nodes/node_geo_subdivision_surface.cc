@@ -229,9 +229,9 @@ static void node_register()
   ntype.initfunc = node_init;
   bke::node_type_size_preset(&ntype, bke::eNodeSizePreset::MIDDLE);
   blender::bke::node_type_storage(&ntype,
-                    "NodeGeometrySubdivisionSurface",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+                                  "NodeGeometrySubdivisionSurface",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);

@@ -381,7 +381,8 @@ static void node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
              tlink = tlink->next)
         {
           if (tlink->tonode == gnode && STREQ(tlink->tosock->identifier, identifier)) {
-            blender::bke::nodeAddLink(ntree, tlink->fromnode, tlink->fromsock, link->tonode, link->tosock);
+            blender::bke::nodeAddLink(
+                ntree, tlink->fromnode, tlink->fromsock, link->tonode, link->tosock);
             num_external_links++;
           }
         }
@@ -419,7 +420,8 @@ static void node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
           /* only use active output node */
           if (tlink->tonode->type == NODE_GROUP_OUTPUT && (tlink->tonode->flag & NODE_DO_OUTPUT)) {
             if (STREQ(tlink->tosock->identifier, identifier)) {
-              blender::bke::nodeAddLink(ntree, tlink->fromnode, tlink->fromsock, link->tonode, link->tosock);
+              blender::bke::nodeAddLink(
+                  ntree, tlink->fromnode, tlink->fromsock, link->tonode, link->tosock);
               num_internal_links++;
             }
           }
@@ -567,10 +569,10 @@ static bool node_group_separate_selected(
       /* make a copy of internal links */
       if (fromselect && toselect) {
         blender::bke::nodeAddLink(&ntree,
-                    node_map.lookup(link->fromnode),
-                    socket_map.lookup(link->fromsock),
-                    node_map.lookup(link->tonode),
-                    socket_map.lookup(link->tosock));
+                                  node_map.lookup(link->fromnode),
+                                  socket_map.lookup(link->fromsock),
+                                  node_map.lookup(link->tonode),
+                                  socket_map.lookup(link->tosock));
       }
     }
     else {
@@ -1156,7 +1158,8 @@ static void node_group_make_insert_selected(const bContext &C,
     /* Create a new link inside of the group. */
     const StringRefNull io_identifier = info.interface_socket->identifier;
     bNodeSocket *output_sock = node_group_output_find_socket(output_node, io_identifier.c_str());
-    blender::bke::nodeAddLink(&group, info.link->fromnode, info.link->fromsock, output_node, output_sock);
+    blender::bke::nodeAddLink(
+        &group, info.link->fromnode, info.link->fromsock, output_node, output_sock);
   }
 
   /* Handle new links inside the group. */

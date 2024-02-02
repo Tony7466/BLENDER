@@ -577,10 +577,10 @@ void ED_node_shader_default(const bContext *C, ID *id)
       shader = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_BACKGROUND);
       output = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_WORLD);
       blender::bke::nodeAddLink(ntree,
-                  shader,
-                  blender::bke::nodeFindSocket(shader, SOCK_OUT, "Background"),
-                  output,
-                  blender::bke::nodeFindSocket(output, SOCK_IN, "Surface"));
+                                shader,
+                                blender::bke::nodeFindSocket(shader, SOCK_OUT, "Background"),
+                                output,
+                                blender::bke::nodeFindSocket(output, SOCK_IN, "Surface"));
 
       bNodeSocket *color_sock = blender::bke::nodeFindSocket(shader, SOCK_IN, "Color");
       copy_v3_v3(((bNodeSocketValueRGBA *)color_sock->default_value)->value, &world->horr);
@@ -589,10 +589,10 @@ void ED_node_shader_default(const bContext *C, ID *id)
       shader = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_EMISSION);
       output = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_LIGHT);
       blender::bke::nodeAddLink(ntree,
-                  shader,
-                  blender::bke::nodeFindSocket(shader, SOCK_OUT, "Emission"),
-                  output,
-                  blender::bke::nodeFindSocket(output, SOCK_IN, "Surface"));
+                                shader,
+                                blender::bke::nodeFindSocket(shader, SOCK_OUT, "Emission"),
+                                output,
+                                blender::bke::nodeFindSocket(output, SOCK_IN, "Surface"));
     }
 
     shader->locx = 10.0f;
@@ -771,7 +771,8 @@ void ED_node_set_active(
     if ((node->flag & NODE_ACTIVE_TEXTURE) && !was_active_texture) {
       /* If active texture changed, free GLSL materials. */
       LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
-        if (ma->nodetree && ma->use_nodes && blender::bke::ntreeContainsTree(ma->nodetree, ntree)) {
+        if (ma->nodetree && ma->use_nodes && blender::bke::ntreeContainsTree(ma->nodetree, ntree))
+        {
           GPU_material_free(&ma->gpumaterial);
 
           /* Sync to active texpaint slot, otherwise we can end up painting on a different slot
@@ -790,7 +791,8 @@ void ED_node_set_active(
       }
 
       LISTBASE_FOREACH (World *, wo, &bmain->worlds) {
-        if (wo->nodetree && wo->use_nodes && blender::bke::ntreeContainsTree(wo->nodetree, ntree)) {
+        if (wo->nodetree && wo->use_nodes && blender::bke::ntreeContainsTree(wo->nodetree, ntree))
+        {
           GPU_material_free(&wo->gpumaterial);
         }
       }

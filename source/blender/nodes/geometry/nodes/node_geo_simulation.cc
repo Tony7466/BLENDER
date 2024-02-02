@@ -409,9 +409,9 @@ static void node_register()
   ntype.gather_link_search_ops = nullptr;
   ntype.no_muting = true;
   blender::bke::node_type_storage(&ntype,
-                    "NodeGeometrySimulationInput",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+                                  "NodeGeometrySimulationInput",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
@@ -897,7 +897,8 @@ static void node_register()
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.no_muting = true;
-  blender::bke::node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
+  blender::bke::node_type_storage(
+      &ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
   blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

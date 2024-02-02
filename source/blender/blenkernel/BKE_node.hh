@@ -9,9 +9,9 @@
 
 #include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
+#include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
-#include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 
 #include "DNA_listBase.h"
@@ -497,7 +497,6 @@ struct bNodeTree *ntreeAddTreeEmbedded(struct Main *bmain,
 
 /* Copy/free functions, need to manage ID users. */
 
-
 /**
  * Free (or release) any data used by this node-tree.
  * Does not free the node-tree itself and does no ID user counting.
@@ -608,12 +607,12 @@ void ntreeRemoveSocketInterface(struct bNodeTree *ntree, struct bNodeSocket *soc
 /** \name Generic API, Nodes
  * \{ */
 
- bNodeType *nodeTypeFind(const char *idname);
+bNodeType *nodeTypeFind(const char *idname);
 const char *nodeTypeFindAlias(const char *idname);
-void nodeRegisterType( bNodeType *ntype);
-void nodeUnregisterType( bNodeType *ntype);
-void nodeRegisterAlias( bNodeType *nt, const char *alias);
- GHashIterator *nodeTypeGetIterator(void);
+void nodeRegisterType(bNodeType *ntype);
+void nodeUnregisterType(bNodeType *ntype);
+void nodeRegisterAlias(bNodeType *nt, const char *alias);
+GHashIterator *nodeTypeGetIterator(void);
 
 /* Helper macros for iterating over node types. */
 #define NODE_TYPES_BEGIN(ntype) \
@@ -779,10 +778,11 @@ float2 nodeFromView(const bNode *node, float2 view_loc);
 void nodeAttachNode(struct bNodeTree *ntree, struct bNode *node, struct bNode *parent);
 void nodeDetachNode(struct bNodeTree *ntree, struct bNode *node);
 
-
-void nodePositionRelative(struct bNode *from_node, const  bNode *to_node, const  bNodeSocket *from_sock, const  bNodeSocket *to_sock);
+void nodePositionRelative(struct bNode *from_node,
+                          const bNode *to_node,
+                          const bNodeSocket *from_sock,
+                          const bNodeSocket *to_sock);
 void nodePositionPropagate(struct bNode *node);
-
 
 /**
  * Finds a node based on its name.
@@ -918,16 +918,16 @@ extern const bNodeInstanceKey NODE_INSTANCE_KEY_BASE;
 extern const bNodeInstanceKey NODE_INSTANCE_KEY_NONE;
 
 bNodeInstanceKey node_instance_key(bNodeInstanceKey parent_key,
-                                       const struct bNodeTree *ntree,
-                                       const struct bNode *node);
+                                   const struct bNodeTree *ntree,
+                                   const struct bNode *node);
 
 bNodeInstanceHash *node_instance_hash_new(const char *info);
 void node_instance_hash_free(bNodeInstanceHash *hash, bNodeInstanceValueFP valfreefp);
 void node_instance_hash_insert(bNodeInstanceHash *hash, bNodeInstanceKey key, void *value);
 void *node_instance_hash_lookup(bNodeInstanceHash *hash, bNodeInstanceKey key);
 int node_instance_hash_remove(bNodeInstanceHash *hash,
-                                  bNodeInstanceKey key,
-                                  bNodeInstanceValueFP valfreefp);
+                              bNodeInstanceKey key,
+                              bNodeInstanceValueFP valfreefp);
 void node_instance_hash_clear(bNodeInstanceHash *hash, bNodeInstanceValueFP valfreefp);
 void *node_instance_hash_pop(bNodeInstanceHash *hash, bNodeInstanceKey key);
 int node_instance_hash_haskey(bNodeInstanceHash *hash, bNodeInstanceKey key);
@@ -936,8 +936,7 @@ int node_instance_hash_size(bNodeInstanceHash *hash);
 void node_instance_hash_clear_tags(bNodeInstanceHash *hash);
 void node_instance_hash_tag(bNodeInstanceHash *hash, void *value);
 bool node_instance_hash_tag_key(bNodeInstanceHash *hash, bNodeInstanceKey key);
-void node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
-                                            bNodeInstanceValueFP valfreefp);
+void node_instance_hash_remove_untagged(bNodeInstanceHash *hash, bNodeInstanceValueFP valfreefp);
 
 using bNodeInstanceHashIterator = GHashIterator;
 
@@ -1006,11 +1005,11 @@ void node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, bool re
 /** \name Node Type Access
  * \{ */
 
-void nodeLabel(const  bNodeTree *ntree, const  bNode *node, char *label, int maxlen);
+void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, int maxlen);
 /**
  * Get node socket label if it is set.
  */
-const char *nodeSocketLabel(const  bNodeSocket *sock);
+const char *nodeSocketLabel(const bNodeSocket *sock);
 
 /**
  * Get node socket short label if it is set.
@@ -1018,15 +1017,12 @@ const char *nodeSocketLabel(const  bNodeSocket *sock);
  */
 const char *nodeSocketShortLabel(const bNodeSocket *sock);
 
-bool nodeGroupPoll(const  bNodeTree *nodetree,
-                   const  bNodeTree *grouptree,
+bool nodeGroupPoll(const bNodeTree *nodetree,
+                   const bNodeTree *grouptree,
                    const char **r_disabled_hint);
 
-void node_type_base_custom( bNodeType *ntype,
-                           const char *idname,
-                           const char *name,
-                           const char *enum_name,
-                           short nclass);
+void node_type_base_custom(
+    bNodeType *ntype, const char *idname, const char *name, const char *enum_name, short nclass);
 
 bool node_type_is_undefined(const bNode *node);
 /**
@@ -1116,7 +1112,7 @@ void node_type_storage(struct bNodeType *ntype,
  *
  * \{ */
 
-} // namespace blender::bke
+}  // namespace blender::bke
 
 /* should be an opaque type, only for internal use by BKE_node_tree_iter_*** */
 struct NodeTreeIterStore {
@@ -1133,8 +1129,8 @@ struct NodeTreeIterStore {
 namespace blender::bke {
 void node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
 bool node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
-                             struct bNodeTree **r_nodetree,
-                             struct ID **r_id);
+                         struct bNodeTree **r_nodetree,
+                         struct ID **r_id);
 
 #define FOREACH_NODETREE_BEGIN(bmain, _nodetree, _id) \
   { \
@@ -1665,7 +1661,6 @@ void nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, int l
 #define FN_NODE_INVERT_ROTATION 1231
 
 /** \} */
-
 
 void node_system_init(void);
 void node_system_exit(void);

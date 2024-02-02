@@ -71,17 +71,17 @@ static void add_reroute_node_fn(nodes::LinkSearchOpParams &params)
   bNode &reroute = params.add_node("NodeReroute");
   if (params.socket.in_out == SOCK_IN) {
     blender::bke::nodeAddLink(&params.node_tree,
-                &reroute,
-                static_cast<bNodeSocket *>(reroute.outputs.first),
-                &params.node,
-                &params.socket);
+                              &reroute,
+                              static_cast<bNodeSocket *>(reroute.outputs.first),
+                              &params.node,
+                              &params.socket);
   }
   else {
     blender::bke::nodeAddLink(&params.node_tree,
-                &params.node,
-                &params.socket,
-                &reroute,
-                static_cast<bNodeSocket *>(reroute.inputs.first));
+                              &params.node,
+                              &params.socket,
+                              &reroute,
+                              static_cast<bNodeSocket *>(reroute.inputs.first));
   }
 }
 
@@ -118,11 +118,13 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = blender::bke::nodeFindSocket(&group_input, SOCK_OUT, socket_iface->identifier);
+  bNodeSocket *socket = blender::bke::nodeFindSocket(
+      &group_input, SOCK_OUT, socket_iface->identifier);
   if (socket) {
     /* Unhide the socket for the new input in the new node and make a connection to it. */
     socket->flag &= ~SOCK_HIDDEN;
-    blender::bke::nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
+    blender::bke::nodeAddLink(
+        &params.node_tree, &group_input, socket, &params.node, &params.socket);
 
     bke::node_socket_move_default_value(
         *CTX_data_main(&params.C), params.node_tree, params.socket, *socket);
@@ -143,10 +145,12 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = blender::bke::nodeFindSocket(&group_input, SOCK_OUT, interface_socket.identifier);
+  bNodeSocket *socket = blender::bke::nodeFindSocket(
+      &group_input, SOCK_OUT, interface_socket.identifier);
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
-    blender::bke::nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
+    blender::bke::nodeAddLink(
+        &params.node_tree, &group_input, socket, &params.node, &params.socket);
   }
 }
 
@@ -219,7 +223,8 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
                node, in_out, socket_property->name);
            if (new_node_socket != nullptr) {
              /* Rely on the way #nodeAddLink switches in/out if necessary. */
-             blender::bke::nodeAddLink(&params.node_tree, &params.node, &params.socket, &node, new_node_socket);
+             blender::bke::nodeAddLink(
+                 &params.node_tree, &params.node, &params.socket, &node, new_node_socket);
            }
          },
          weight});
@@ -327,7 +332,8 @@ static void gather_socket_link_operations(const bContext &C,
       const bNodeTreeInterfaceSocket &interface_socket =
           reinterpret_cast<const bNodeTreeInterfaceSocket &>(item);
       {
-        const bNodeSocketType *from_typeinfo = blender::bke::nodeSocketTypeFind(interface_socket.socket_type);
+        const bNodeSocketType *from_typeinfo = blender::bke::nodeSocketTypeFind(
+            interface_socket.socket_type);
         const eNodeSocketDatatype from = from_typeinfo ? eNodeSocketDatatype(from_typeinfo->type) :
                                                          SOCK_CUSTOM;
         const eNodeSocketDatatype to = eNodeSocketDatatype(socket.typeinfo->type);

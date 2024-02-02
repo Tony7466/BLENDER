@@ -190,10 +190,10 @@ static int add_reroute_exec(bContext *C, wmOperator *op)
     bNode *reroute = blender::bke::nodeAddStaticNode(C, &ntree, NODE_REROUTE);
 
     blender::bke::nodeAddLink(&ntree,
-                item.value.from_node,
-                item.key,
-                reroute,
-                static_cast<bNodeSocket *>(reroute->inputs.first));
+                              item.value.from_node,
+                              item.key,
+                              reroute,
+                              static_cast<bNodeSocket *>(reroute->inputs.first));
 
     /* Reconnect links from the original output socket to the new reroute. */
     for (bNodeLink *link : cuts.keys()) {
