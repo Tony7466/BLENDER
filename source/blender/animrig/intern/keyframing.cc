@@ -522,8 +522,8 @@ static void generate_keyframe_reports_from_result(ReportList *reports,
         "\n- Cannot create F-Curves. Can happen when only inserting to available F-Curves.");
   }
   if (result.get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE) > 0) {
-    const int count = result.get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE);
-    error.append("\n- {count} F-Curves are not keyframeable. They might be locked or sampled.");
+    error.append(
+        "\n- One or more F-Curves are not keyframeable. They might be locked or sampled.");
   }
   if (result.get_count(SingleKeyingResult::NO_KEY_NEEDED) > 0) {
     error.append(
