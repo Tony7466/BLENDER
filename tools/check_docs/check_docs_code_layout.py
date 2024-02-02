@@ -60,45 +60,23 @@ def html_extract_markdown_from_url(url: str) -> Optional[str]:
 # -----------------------------------------------------------------------------
 # markdown Text Parsing
 
-def markdown_file_structure_parse_between_p_and_strong(lines:list):
-    strong_content=''
-    start_index=lines.find('<p>')
-    if start_index!=1:
-        start_index+=len('<p>')
-        end_index=lines.find('<strong>',start_index)
-        if end_index!=-1:
-            strong_content=lines[start_index:end_index]
-    return strong_content
-
-def markdown_file_structure_parse_between_strong(lines:list):
-    strong_content=''
-            # Convert:
-            # `| /source/'''blender/'''` -> `/source/blender`.
-    start_content=markdown_file_structure_parse_between_p_and_strong(lines)
-    start_index=lines.find("<strong>")
-    if start_index!=-1:
-        start_index+=len("<strong>")
-        end_index=lines.find("</strong>",start_index)
-        if end_index!=-1:
-            strong_content=lines[start_index:end_index]
-    return start_content+strong_content  
-
 def markdown_to_paths_and_docstrings(markdown: str) -> Tuple[List[str], List[str]]:
     file_paths = []
     file_paths_docstring = []
+    start_index=0
+    markdown = markdown.replace("<p>", "")
+    markdown = markdown.replace("</p>", "")
+    markdown = markdown.replace("<strong>", "")
+    markdown = markdown.replace("</strong>", "")
+    markdown = markdown.replace("</td>", "")
     lines = markdown.split("\n")
     i = 0
     while i < len(lines):
-        if lines[i].startswith("<td markdown><p>"):
-            file_paths.append(markdown_file_structure_parse_between_strong(lines[i]))
+        if lines[i].startswith("<td markdown>/"):
+            start_index=len("<td markdown>")
+            file_paths.append(lines[i][start_index:])
             body = []
-            i += 1
-            start_index=lines[i].find("<p>")
-            if start_index!=-1:
-                start_index+=len("<p>")
-                end_index=lines[i].find("<p>",start_index)
-                if end_index!=-1:
-                    file_paths_docstring.append(lines[i][start_index:end_index])
+            file_paths_docstring.append(lines[i][start_index:])
 
         i += 1
 
@@ -145,7 +123,7 @@ def report_incomplete(file_paths: List[str]) -> int:
                 if not p.startswith("."):
                     p_abs = os.path.join(base_abs, p)
                     if os.path.isdir(p_abs):
-                        p_rel = os.path.join(base, p)
+                        p_rel = os.path.join(base, p+"/")
                         if p_rel not in file_paths:
                             test.append(p_rel)
 
