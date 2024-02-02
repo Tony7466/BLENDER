@@ -44,6 +44,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_image.h"
 #include "BKE_key.hh"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
@@ -5626,13 +5627,8 @@ static void sculpt_stroke_done(const bContext *C, PaintStroke * /*stroke*/)
   sculpt_brush_exit_tex(sd);
 }
 
-static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static bool sculpt_can_see_object(bContext *C, Object *ob)
 {
-  PaintStroke *stroke;
-  int ignore_background_click;
-  int retval;
-  Object *ob = CTX_data_active_object(C);
-
   /* Test that ob is visible; otherwise we won't be able to get evaluated data
    * from the depsgraph. We do this here instead of SCULPT_mode_poll
    * to avoid falling through to the translate operator in the
@@ -5641,8 +5637,39 @@ static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent
    * NOTE: #BKE_object_is_visible_in_viewport is not working here (it returns false
    * if the object is in local view); instead, test for OB_HIDE_VIEWPORT directly.
    */
-
   if (ob->visibility_flag & OB_HIDE_VIEWPORT) {
+    return false;
+  }
+
+  const Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+
+  BKE_view_layer_synced_ensure(scene, view_layer);
+  const Base *base = BKE_view_layer_base_find(view_layer, ob);
+
+  if (base->flag & BASE_HIDDEN) {
+    return false;
+  }
+
+  const Vector<LayerCollection *> collections = BKE_enclosing_layer_collections_get(view_layer,
+                                                                                    ob);
+  for (const int idx : collections.index_range()) {
+    if (collections[idx]->flag & LAYER_COLLECTION_HIDE) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  PaintStroke *stroke;
+  int ignore_background_click;
+  int retval;
+  Object *ob = CTX_data_active_object(C);
+
+  if (!sculpt_can_see_object(C, ob)) {
     return OPERATOR_CANCELLED;
   }
 
