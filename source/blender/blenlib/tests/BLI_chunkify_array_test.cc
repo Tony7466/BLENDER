@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0 */
 
 #include "BLI_chunkify_array.hh"
-#include "BLI_hash_mm3.h"
+#include "BLI_hash_mm3.hh"
 #include "BLI_rand.hh"
 
 #include "testing/testing.h"

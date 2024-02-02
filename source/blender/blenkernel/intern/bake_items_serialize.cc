@@ -14,7 +14,7 @@
 #include "BLI_chunkify_array.hh"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
-#include "BLI_hash_mm3.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_path_util.h"
 
@@ -142,14 +142,14 @@ std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplic
   chunkify_params.element_size = 1;
   OffsetIndices<int64_t> chunks = chunkify_array(
       data, size_in_bytes, chunkify_params, offsets_vec);
-  Array<uint32_t> chunk_hashes(chunks.size());
+  Array<SliceHash> chunk_hashes(chunks.size());
   threading::parallel_for(chunks.index_range(), 1, [&](const IndexRange range) {
     for (const int64_t chunk_i : range) {
       const IndexRange chunk_range = chunks[chunk_i];
-      const uint32_t hash = BLI_hash_mm3(
-          static_cast<const uint8_t *>(POINTER_OFFSET(data, chunk_range.start())),
-          chunk_range.size(),
-          123);
+      SliceHash hash;
+      BLI_hash_md5_buffer(static_cast<const char *>(POINTER_OFFSET(data, chunk_range.start())),
+                          chunk_range.size(),
+                          &hash);
       chunk_hashes[chunk_i] = hash;
     }
   });
@@ -160,7 +160,7 @@ std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplic
   Vector<SliceWithRepeats> slices;
   for (const int64_t chunk_i : chunks.index_range()) {
     const IndexRange chunk_range = chunks[chunk_i];
-    const uint32_t chunk_hash = chunk_hashes[chunk_i];
+    const SliceHash chunk_hash = chunk_hashes[chunk_i];
     const BlobSlice slice = slice_by_content_hash_.lookup_or_add_cb(chunk_hash, [&]() {
       return writer.write(POINTER_OFFSET(data, chunk_range.start()), chunk_range.size());
     });

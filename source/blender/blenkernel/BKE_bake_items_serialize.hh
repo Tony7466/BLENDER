@@ -74,8 +74,19 @@ class BlobWriteSharing : NonCopyable, NonMovable {
    */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
 
-  /* TODO: Use more unique hash. */
-  Map<uint32_t, BlobSlice> slice_by_content_hash_;
+  struct SliceHash {
+    uint64_t a;
+    uint64_t b;
+
+    BLI_STRUCT_EQUALITY_OPERATORS_2(SliceHash, a, b)
+
+    uint64_t hash() const
+    {
+      return get_default_hash(this->a, this->b);
+    }
+  };
+
+  Map<SliceHash, BlobSlice> slice_by_content_hash_;
 
  public:
   ~BlobWriteSharing();
