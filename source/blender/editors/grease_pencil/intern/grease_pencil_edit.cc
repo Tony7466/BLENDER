@@ -1666,34 +1666,33 @@ static int grease_pencil_stroke_reorder_exec(bContext *C, wmOperator *op)
 }
 
 static void GREASE_PENCIL_OT_stroke_reorder(wmOperatorType *ot)
-
-static const EnumPropertyItem prop_reorder_direction[] = {
+{
+  static const EnumPropertyItem prop_reorder_direction[] = {
       {int(ReorderDirection::TOP), "TOP", 0, "Bring to Front", ""},
       {int(ReorderDirection::UP), "UP", 0, "Bring Forward", ""},
       RNA_ENUM_ITEM_SEPR,
       {int(ReorderDirection::DOWN), "DOWN", 0, "Send Backward", ""},
       {int(ReorderDirection::BOTTOM), "BOTTOM", 0, "Send to Back", ""},
       {0, nullptr, 0, nullptr, nullptr},
-};
+  };
 
-/* Identifiers. */
-ot->name = "Reorder";
-ot->idname = "GREASE_PENCIL_OT_reorder";
-ot->description = "Change the display order of the selected strokes";
+  /* Identifiers. */
+  ot->name = "Reorder";
+  ot->idname = "GREASE_PENCIL_OT_reorder";
+  ot->description = "Change the display order of the selected strokes";
 
-/* Callbacks. */
-ot->exec = grease_pencil_stroke_reorder_exec;
-ot->poll = editable_grease_pencil_poll;
+  /* Callbacks. */
+  ot->exec = grease_pencil_stroke_reorder_exec;
+  ot->poll = editable_grease_pencil_poll;
 
-ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-/* Simplify parameters. */
-ot->prop = RNA_def_enum(
-    ot->srna, "direction", prop_reorder_direction, int(ReorderDirection::TOP), "Direction", "");
+  /* Simplify parameters. */
+  ot->prop = RNA_def_enum(
+      ot->srna, "direction", prop_reorder_direction, int(ReorderDirection::TOP), "Direction", "");
 }
 
 /** \} */
-
 
 /* -------------------------------------------------------------------- */
 /** \name Move To Layer Operator
@@ -1802,16 +1801,15 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
 
 static void grease_pencil_operatormacros_define()
 {
-    wmOperatorType* ot;
+  wmOperatorType *ot;
 
-
-    /* Add a new layer and move selected strokes */
-    ot = WM_operatortype_append_macro("GREASE_PENCIL_OT_move_to_new_layer",
-        "Move strokes to new Layer",
-        "Move selected strokes to a new Layer",
-        OPTYPE_UNDO | OPTYPE_REGISTER);
-    WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_layer_add");
-    WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_move_to_layer");
+  /* Add a new layer and move selected strokes */
+  ot = WM_operatortype_append_macro("GREASE_PENCIL_OT_move_to_new_layer",
+                                    "Move strokes to new Layer",
+                                    "Move selected strokes to a new Layer",
+                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_layer_add");
+  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_move_to_layer");
 }
 
 }  // namespace blender::ed::greasepencil
