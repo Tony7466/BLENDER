@@ -21,6 +21,7 @@
 
 #include "ED_screen.hh"
 
+#include "DNA_array_utils.hh"
 #include "DNA_curves_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
@@ -227,7 +228,7 @@ struct NodeBakeRequest {
   bake::BakePath path;
   int frame_start;
   int frame_end;
-  std::unique_ptr<bake::BlobSharing> blob_sharing;
+  std::unique_ptr<bake::BlobWriteSharing> blob_sharing;
 };
 
 struct BakeGeometryNodesJob {
@@ -480,7 +481,7 @@ static Vector<NodeBakeRequest> collect_simulations_to_bake(Main &bmain,
         request.nmd = nmd;
         request.bake_id = id;
         request.node_type = node->type;
-        request.blob_sharing = std::make_unique<bake::BlobSharing>();
+        request.blob_sharing = std::make_unique<bake::BlobWriteSharing>();
         std::optional<bake::BakePath> path = bake::get_node_bake_path(bmain, *object, *nmd, id);
         if (!path) {
           continue;
@@ -706,6 +707,17 @@ static void try_delete_bake(
   else if (auto *node_cache = modifier_cache.bake_cache_by_id.lookup_ptr(bake_id)) {
     (*node_cache)->reset();
   }
+  NodesModifierBake *bake = nmd.find_bake(bake_id);
+  if (!bake) {
+    return;
+  }
+  dna::array::clear<NodesModifierDataBlock>(&bake->data_blocks,
+                                            &bake->data_blocks_num,
+                                            &bake->active_data_block,
+                                            [](NodesModifierDataBlock *data_block) {
+                                              nodes_modifier_data_block_destruct(data_block, true);
+                                            });
+
   const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
       *bmain, object, nmd, bake_id);
   if (!bake_path) {
@@ -820,7 +832,7 @@ static Vector<NodeBakeRequest> bake_single_node_gather_bake_request(bContext *C,
   request.nmd = &nmd;
   request.bake_id = bake_id;
   request.node_type = node->type;
-  request.blob_sharing = std::make_unique<bake::BlobSharing>();
+  request.blob_sharing = std::make_unique<bake::BlobWriteSharing>();
 
   const NodesModifierBake *bake = nmd.find_bake(bake_id);
   if (!bake) {
