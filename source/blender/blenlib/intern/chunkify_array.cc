@@ -44,7 +44,7 @@ static const int64_t determine_chunk_boundary(const void *data,
 
   /* Remember window with the "best" hash because it will become the chunk boundary. */
   uint64_t best_hash = 0;
-  int64_t best_window_start = 0;
+  int64_t best_window_start = begin_window_start;
 
   /* Every iteration finishes a hash. One element is removed and element is added to the hash. */
   for (int64_t window_start = begin_window_start; window_start < end_window_start; window_start++)
