@@ -28,7 +28,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_global.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mirror.hh"
@@ -69,7 +69,7 @@
 
 #include "UI_interface.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "object_intern.h" /* own include */
 

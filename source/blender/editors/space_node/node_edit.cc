@@ -21,7 +21,7 @@
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_node.hh"
@@ -63,9 +63,9 @@
 #include "UI_view2d.hh"
 
 #include "GPU_capabilities.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "NOD_composite.hh"
 #include "NOD_geometry.hh"

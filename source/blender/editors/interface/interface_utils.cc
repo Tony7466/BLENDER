@@ -25,7 +25,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
@@ -163,8 +163,8 @@ uiBut *uiDefAutoButR(uiBlock *block,
                              index,
                              0,
                              0,
-                             -1,
-                             -1,
+                             0,
+                             0,
                              nullptr);
       }
       else {
