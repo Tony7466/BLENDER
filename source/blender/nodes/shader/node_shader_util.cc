@@ -305,7 +305,7 @@ bNode *nodeGetActivePaintCanvas(bNodeTree *ntree)
 }
 }  // namespace blender::bke
 
-void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node)
+void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node, int *depth_level)
 {
   bNodeExec *nodeexec;
   bNode *node;
@@ -320,6 +320,11 @@ void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node
 
   for (n = 0, nodeexec = exec->nodeexec; n < exec->totnodes; n++, nodeexec++) {
     node = nodeexec->node;
+
+    if (depth_level && node->runtime->tmp_flag != *depth_level) {
+      BLI_assert(*depth_level >= 0);
+      continue;
+    }
 
     do_it = false;
     /* for groups, only execute outputs for edited group */

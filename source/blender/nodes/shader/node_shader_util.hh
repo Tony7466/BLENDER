@@ -68,7 +68,11 @@ bNodeTreeExec *ntreeShaderBeginExecTree_internal(bNodeExecContext *context,
                                                  bNodeInstanceKey parent_key);
 void ntreeShaderEndExecTree_internal(bNodeTreeExec *exec);
 
-void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node);
+void ntreeExecGPUNodes(bNodeTreeExec *exec,
+                       GPUMaterial *mat,
+                       bNode *output_node,
+                       int *depth_level = nullptr);
+
 void get_XYZ_to_RGB_for_gpu(XYZ_to_RGB *data);
 
 bool node_socket_not_zero(const GPUNodeStack &socket);

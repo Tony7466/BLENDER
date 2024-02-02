@@ -1038,6 +1038,29 @@ static void ntree_shader_shader_to_rgba_branch(bNodeTree *ntree, bNode *output_n
   }
 }
 
+static void iter_shader_to_rgba_depth_count(bNode *node,
+                                            int16_t &max_depth,
+                                            int16_t depth_level = 0)
+{
+  if (node->type == SH_NODE_SHADERTORGB) {
+    depth_level++;
+    max_depth = std::max(max_depth, depth_level);
+  }
+  node->runtime->tmp_flag = std::max(node->runtime->tmp_flag, depth_level);
+
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
+    bNodeLink *link = sock->link;
+    if (link == nullptr) {
+      continue;
+    }
+    if ((link->flag & NODE_LINK_VALID) == 0) {
+      /* Skip links marked as cyclic. */
+      continue;
+    }
+    iter_shader_to_rgba_depth_count(link->fromnode, depth_level);
+  }
+}
+
 static void shader_node_disconnect_input(bNodeTree *ntree, bNode *node, int index)
 {
   bNodeLink *link = ntree_shader_node_input_get(node, index)->link;
@@ -1192,7 +1215,17 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
   }
 
   exec = ntreeShaderBeginExecTree(localtree);
-  ntreeExecGPUNodes(exec, mat, output);
+  /* Execute nodes ordered by the number of ShaderToRGB nodes found in their path,
+   * so all closures can be properly evaluated. */
+  int16_t max_depth = 0;
+  LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
+    node->runtime->tmp_flag = -1;
+  }
+  iter_shader_to_rgba_depth_count(output, max_depth);
+  for (int depth = max_depth; depth >= 0; depth--) {
+    ntreeExecGPUNodes(exec, mat, output, &depth);
+  }
+  /* Execute the remaining AOV-only nodes. */
   LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
     if (node->type == SH_NODE_OUTPUT_AOV) {
       ntreeExecGPUNodes(exec, mat, node);
