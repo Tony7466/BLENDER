@@ -19,6 +19,8 @@ struct BlobSlice {
   std::string name;
   IndexRange range;
 
+  BLI_STRUCT_EQUALITY_OPERATORS_2(BlobSlice, name, range)
+
   std::shared_ptr<io::serialize::DictionaryValue> serialize() const;
   static std::optional<BlobSlice> deserialize(const io::serialize::DictionaryValue &io_slice);
 };
@@ -71,6 +73,9 @@ class BlobWriteSharing : NonCopyable, NonMovable {
    * sharing info's pointer and version.
    */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
+
+  /* TODO: Use more unique hash. */
+  Map<uint32_t, BlobSlice> slice_by_content_hash_;
 
  public:
   ~BlobWriteSharing();

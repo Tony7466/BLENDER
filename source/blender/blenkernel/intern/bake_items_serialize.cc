@@ -11,8 +11,10 @@
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
 
+#include "BLI_chunkify_array.hh"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
+#include "BLI_hash_mm3.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_path_util.h"
 
@@ -134,7 +136,72 @@ DictionaryValuePtr BlobWriteSharing::write_implicitly_shared(
 std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplicated(
     BlobWriter &writer, const void *data, int64_t size_in_bytes)
 {
-  return writer.write(data, size_in_bytes).serialize();
+  Vector<int64_t> offsets_vec;
+  ChunkifyArrayParams chunkify_params;
+  chunkify_params.approximate_elements_per_chunk = 1000;
+  chunkify_params.element_size = 1;
+  OffsetIndices<int64_t> chunks = chunkify_array(
+      data, size_in_bytes, chunkify_params, offsets_vec);
+  Array<uint32_t> chunk_hashes(chunks.size());
+  threading::parallel_for(chunks.index_range(), 1, [&](const IndexRange range) {
+    for (const int64_t chunk_i : range) {
+      const IndexRange chunk_range = chunks[chunk_i];
+      const uint32_t hash = BLI_hash_mm3(
+          static_cast<const uint8_t *>(POINTER_OFFSET(data, chunk_range.start())),
+          chunk_range.size(),
+          123);
+      chunk_hashes[chunk_i] = hash;
+    }
+  });
+  struct SliceWithRepeats {
+    BlobSlice slice;
+    int64_t repeats = 1;
+  };
+  Vector<SliceWithRepeats> slices;
+  for (const int64_t chunk_i : chunks.index_range()) {
+    const IndexRange chunk_range = chunks[chunk_i];
+    const uint32_t chunk_hash = chunk_hashes[chunk_i];
+    const BlobSlice slice = slice_by_content_hash_.lookup_or_add_cb(chunk_hash, [&]() {
+      return writer.write(POINTER_OFFSET(data, chunk_range.start()), chunk_range.size());
+    });
+    if (slices.is_empty()) {
+      slices.append({slice});
+    }
+    else {
+      BlobSlice &last_slice = slices.last().slice;
+      if (last_slice == slice) {
+        slices.last().repeats++;
+      }
+      else if (last_slice.name == slice.name &&
+               last_slice.range.one_after_last() == slice.range.start())
+      {
+        last_slice.range = IndexRange(last_slice.range.start(),
+                                      last_slice.range.size() + slice.range.size());
+      }
+      else {
+        slices.append({slice});
+      }
+    }
+  }
+
+  if (slices.is_empty()) {
+    return BlobSlice().serialize();
+  }
+  if (slices.size() == 1 && slices[0].repeats == 1) {
+    return slices[0].slice.serialize();
+  }
+  auto io_data = std::make_shared<DictionaryValue>();
+  auto io_chunks = io_data->append_array("chunks");
+  for (const int64_t i : slices.index_range()) {
+    const BlobSlice &slice = slices[i].slice;
+    const int repeats = slices[i].repeats;
+    auto io_slice = slice.serialize();
+    if (repeats >= 2) {
+      io_slice->append_int("repeats", repeats);
+    }
+    io_chunks->append(io_slice);
+  }
+  return io_data;
 }
 
 std::optional<ImplicitSharingInfoAndData> BlobReadSharing::read_shared(
