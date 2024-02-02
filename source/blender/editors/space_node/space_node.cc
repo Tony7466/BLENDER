@@ -113,7 +113,7 @@ void ED_node_tree_push(SpaceNode *snode, bNodeTree *ntree, bNode *gnode)
   path->nodetree = ntree;
   if (gnode) {
     if (prev_path) {
-      path->parent_key = blender::bke::BKE_node_instance_key(prev_path->parent_key, prev_path->nodetree, gnode);
+      path->parent_key = blender::bke::node_instance_key(prev_path->parent_key, prev_path->nodetree, gnode);
     }
     else {
       path->parent_key = blender::bke::NODE_INSTANCE_KEY_BASE;

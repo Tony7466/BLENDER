@@ -519,7 +519,7 @@ struct bNodeTree *ntreeCopyTree(struct Main *bmain, const struct bNodeTree *ntre
  * \warning Using this function directly is potentially dangerous, if you don't know or are not
  * sure, please use `ntreeFromID()` instead.
  */
-struct bNodeTree **BKE_ntree_ptr_from_id(struct ID *id);
+struct bNodeTree **ntree_ptr_from_id(struct ID *id);
 /**
  * Returns the private NodeTree object of the data-block, if it has one.
  */
@@ -917,26 +917,26 @@ namespace blender::bke {
 extern const bNodeInstanceKey NODE_INSTANCE_KEY_BASE;
 extern const bNodeInstanceKey NODE_INSTANCE_KEY_NONE;
 
-bNodeInstanceKey BKE_node_instance_key(bNodeInstanceKey parent_key,
+bNodeInstanceKey node_instance_key(bNodeInstanceKey parent_key,
                                        const struct bNodeTree *ntree,
                                        const struct bNode *node);
 
-bNodeInstanceHash *BKE_node_instance_hash_new(const char *info);
-void BKE_node_instance_hash_free(bNodeInstanceHash *hash, bNodeInstanceValueFP valfreefp);
-void BKE_node_instance_hash_insert(bNodeInstanceHash *hash, bNodeInstanceKey key, void *value);
-void *BKE_node_instance_hash_lookup(bNodeInstanceHash *hash, bNodeInstanceKey key);
-int BKE_node_instance_hash_remove(bNodeInstanceHash *hash,
+bNodeInstanceHash *node_instance_hash_new(const char *info);
+void node_instance_hash_free(bNodeInstanceHash *hash, bNodeInstanceValueFP valfreefp);
+void node_instance_hash_insert(bNodeInstanceHash *hash, bNodeInstanceKey key, void *value);
+void *node_instance_hash_lookup(bNodeInstanceHash *hash, bNodeInstanceKey key);
+int node_instance_hash_remove(bNodeInstanceHash *hash,
                                   bNodeInstanceKey key,
                                   bNodeInstanceValueFP valfreefp);
-void BKE_node_instance_hash_clear(bNodeInstanceHash *hash, bNodeInstanceValueFP valfreefp);
-void *BKE_node_instance_hash_pop(bNodeInstanceHash *hash, bNodeInstanceKey key);
-int BKE_node_instance_hash_haskey(bNodeInstanceHash *hash, bNodeInstanceKey key);
-int BKE_node_instance_hash_size(bNodeInstanceHash *hash);
+void node_instance_hash_clear(bNodeInstanceHash *hash, bNodeInstanceValueFP valfreefp);
+void *node_instance_hash_pop(bNodeInstanceHash *hash, bNodeInstanceKey key);
+int node_instance_hash_haskey(bNodeInstanceHash *hash, bNodeInstanceKey key);
+int node_instance_hash_size(bNodeInstanceHash *hash);
 
-void BKE_node_instance_hash_clear_tags(bNodeInstanceHash *hash);
-void BKE_node_instance_hash_tag(bNodeInstanceHash *hash, void *value);
-bool BKE_node_instance_hash_tag_key(bNodeInstanceHash *hash, bNodeInstanceKey key);
-void BKE_node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
+void node_instance_hash_clear_tags(bNodeInstanceHash *hash);
+void node_instance_hash_tag(bNodeInstanceHash *hash, void *value);
+bool node_instance_hash_tag_key(bNodeInstanceHash *hash, bNodeInstanceKey key);
+void node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
                                             bNodeInstanceValueFP valfreefp);
 
 using bNodeInstanceHashIterator = GHashIterator;
@@ -1131,8 +1131,8 @@ struct NodeTreeIterStore {
 };
 
 namespace blender::bke {
-void BKE_node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
-bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
+void node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
+bool node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
                              struct bNodeTree **r_nodetree,
                              struct ID **r_id);
 
@@ -1142,8 +1142,8 @@ bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
     bNodeTree *_nodetree; \
     ID *_id; \
     /* avoid compiler warning about unused variables */ \
-    blender::bke::BKE_node_tree_iter_init(&_nstore, bmain); \
-    while (blender::bke::BKE_node_tree_iter_step(&_nstore, &_nodetree, &_id) == true) { \
+    blender::bke::node_tree_iter_init(&_nstore, bmain); \
+    while (blender::bke::node_tree_iter_step(&_nstore, &_nodetree, &_id) == true) { \
       if (_nodetree) {
 
 #define FOREACH_NODETREE_END \
@@ -1158,7 +1158,7 @@ bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
 /** \name Node Tree
  */
 
-void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, int layer_index);
+void nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, int layer_index);
 
 /* -------------------------------------------------------------------- */
 /** \name Shader Nodes
@@ -1667,8 +1667,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 /** \} */
 
 
-void BKE_node_system_init(void);
-void BKE_node_system_exit(void);
+void node_system_init(void);
+void node_system_exit(void);
 
 extern bNodeTreeType NodeTreeTypeUndefined;
 extern struct bNodeType NodeTypeUndefined;

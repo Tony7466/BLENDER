@@ -836,8 +836,8 @@ static void id_swap(Main *bmain,
     id_b->recalc = id_a_back.recalc;
   }
 
-  id_embedded_swap((ID **)blender::bke::BKE_ntree_ptr_from_id(id_a),
-                   (ID **)blender::bke::BKE_ntree_ptr_from_id(id_b),
+  id_embedded_swap((ID **)blender::bke::ntree_ptr_from_id(id_a),
+                   (ID **)blender::bke::ntree_ptr_from_id(id_b),
                    do_full_id,
                    remapper_id_a,
                    remapper_id_b);

@@ -1982,7 +1982,7 @@ static void direct_link_id_embedded_id(BlendDataReader *reader,
                                        ID *id_old)
 {
   /* Handle 'private IDs'. */
-  bNodeTree **nodetree = blender::bke::BKE_ntree_ptr_from_id(id);
+  bNodeTree **nodetree = blender::bke::ntree_ptr_from_id(id);
   if (nodetree != nullptr && *nodetree != nullptr) {
     BLO_read_data_address(reader, nodetree);
     direct_link_id_common(reader,

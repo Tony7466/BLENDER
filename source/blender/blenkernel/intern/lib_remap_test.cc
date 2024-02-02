@@ -132,7 +132,7 @@ template<typename TestData> class Context {
     CLG_init();
     BKE_idtype_init();
     RNA_init();
-    blender::bke::BKE_node_system_init();
+    blender::bke::node_system_init();
     BKE_appdir_init();
     IMB_init();
 

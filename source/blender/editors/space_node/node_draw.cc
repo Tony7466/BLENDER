@@ -2888,7 +2888,7 @@ static void node_draw_basis(const bContext &C,
       }
       else if (previews_compo) {
         bNodePreview *preview_compositor = static_cast<bNodePreview *>(
-            blender::bke::BKE_node_instance_hash_lookup(previews_compo, key));
+            blender::bke::node_instance_hash_lookup(previews_compo, key));
         if (preview_compositor) {
           node_draw_extra_info_panel(
               C, tree_draw_ctx, snode, node, preview_compositor->ibuf, block);
@@ -3991,7 +3991,7 @@ static void node_draw_nodetree(const bContext &C,
       continue;
     }
 
-    const bNodeInstanceKey key = blender::bke::BKE_node_instance_key(parent_key, &ntree, nodes[i]);
+    const bNodeInstanceKey key = blender::bke::node_instance_key(parent_key, &ntree, nodes[i]);
     node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[i], *blocks[i], key);
   }
 
@@ -4021,7 +4021,7 @@ static void node_draw_nodetree(const bContext &C,
       continue;
     }
 
-    const bNodeInstanceKey key = blender::bke::BKE_node_instance_key(parent_key, &ntree, nodes[i]);
+    const bNodeInstanceKey key = blender::bke::node_instance_key(parent_key, &ntree, nodes[i]);
     node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[i], *blocks[i], key);
   }
 }

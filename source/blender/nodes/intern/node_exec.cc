@@ -223,8 +223,8 @@ bNodeTreeExec *ntree_exec_begin(bNodeExecContext *context,
       /* ns = */ setup_stack(exec->stack, ntree, node, sock);
     }
 
-    nodekey = blender::bke::BKE_node_instance_key(parent_key, ntree, node);
-    nodeexec->data.preview = context->previews ? (bNodePreview *)blender::bke::BKE_node_instance_hash_lookup(
+    nodekey = blender::bke::node_instance_key(parent_key, ntree, node);
+    nodeexec->data.preview = context->previews ? (bNodePreview *)blender::bke::node_instance_hash_lookup(
                                                      context->previews, nodekey) :
                                                  nullptr;
     if (node->typeinfo->init_exec_fn) {

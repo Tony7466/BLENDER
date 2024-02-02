@@ -82,7 +82,7 @@ void BKE_blender_free()
 
   IMB_moviecache_destruct();
 
-  blender::bke::BKE_node_system_exit();
+  blender::bke::node_system_exit();
 }
 
 /** \} */
