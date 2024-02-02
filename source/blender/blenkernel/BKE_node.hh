@@ -466,7 +466,7 @@ struct GHashIterator *ntreeTypeGetIterator(void);
 /* Helper macros for iterating over tree types. */
 #define NODE_TREE_TYPES_BEGIN(ntype) \
   { \
-    GHashIterator *__node_tree_type_iter__ = ntreeTypeGetIterator(); \
+    GHashIterator *__node_tree_type_iter__ = blender::bke::ntreeTypeGetIterator(); \
     for (; !BLI_ghashIterator_done(__node_tree_type_iter__); \
          BLI_ghashIterator_step(__node_tree_type_iter__)) \
     { \
@@ -618,7 +618,7 @@ void nodeRegisterAlias( bNodeType *nt, const char *alias);
 /* Helper macros for iterating over node types. */
 #define NODE_TYPES_BEGIN(ntype) \
   { \
-    GHashIterator *__node_type_iter__ = nodeTypeGetIterator(); \
+    GHashIterator *__node_type_iter__ = blender::bke::nodeTypeGetIterator(); \
     for (; !BLI_ghashIterator_done(__node_type_iter__); \
          BLI_ghashIterator_step(__node_type_iter__)) { \
       bNodeType *ntype = (bNodeType *)BLI_ghashIterator_getValue(__node_type_iter__);
@@ -645,7 +645,7 @@ const char *nodeSocketSubTypeLabel(int subtype);
 /* Helper macros for iterating over node types. */
 #define NODE_SOCKET_TYPES_BEGIN(stype) \
   { \
-    GHashIterator *__node_socket_type_iter__ = nodeSocketTypeGetIterator(); \
+    GHashIterator *__node_socket_type_iter__ = blender::bke::nodeSocketTypeGetIterator(); \
     for (; !BLI_ghashIterator_done(__node_socket_type_iter__); \
          BLI_ghashIterator_step(__node_socket_type_iter__)) \
     { \
@@ -1116,8 +1116,8 @@ bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
     bNodeTree *_nodetree; \
     ID *_id; \
     /* avoid compiler warning about unused variables */ \
-    BKE_node_tree_iter_init(&_nstore, bmain); \
-    while (BKE_node_tree_iter_step(&_nstore, &_nodetree, &_id) == true) { \
+    blender::bke::BKE_node_tree_iter_init(&_nstore, bmain); \
+    while (blender::bke::BKE_node_tree_iter_step(&_nstore, &_nodetree, &_id) == true) { \
       if (_nodetree) {
 
 #define FOREACH_NODETREE_END \
@@ -1709,8 +1709,6 @@ Span<int> all_zone_output_node_types();
 const bNodeZoneType *zone_type_by_node_type(const int node_type);
 
 }  // namespace blender::bke
-
-#endif
 
 #define NODE_STORAGE_FUNCS(StorageT) \
   [[maybe_unused]] static StorageT &node_storage(bNode &node) \
