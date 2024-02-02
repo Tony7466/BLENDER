@@ -10,6 +10,8 @@
 #include <cmath>
 #include <string>
 
+#include <fmt/format.h>
+
 #include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
@@ -74,6 +76,8 @@ class CombinedKeyingResult {
 
   bool has_errors() const
   {
+    /* For loop starts at 1 to skip the SUCCESS flag. Assumes that SUCCESS is 0 and the rest of the
+     * enum are sequential values. */
     for (int i = 1; i < result_counter.size(); i++) {
       if (result_counter[i] > 0) {
         return true;
@@ -522,8 +526,14 @@ static void generate_keyframe_reports_from_result(ReportList *reports,
         "\n- Cannot create F-Curves. Can happen when only inserting to available F-Curves.");
   }
   if (result.get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE) > 0) {
-    error.append(
-        "\n- One or more F-Curves are not keyframeable. They might be locked or sampled.");
+    const int error_count = result.get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE);
+    if (error_count == 1) {
+      error.append("\n- One F-Curve is not keyframeable. It might be locked or sampled.");
+    }
+    else {
+      error.append(fmt::format(
+          "\n- {} F-Curves are not keyframeable. They might be locked or sampled.", error_count));
+    }
   }
   if (result.get_count(SingleKeyingResult::NO_KEY_NEEDED) > 0) {
     error.append(
