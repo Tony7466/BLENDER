@@ -35,13 +35,11 @@ SOURCE_DIR = os.path.normpath(os.path.join(CURRENT_DIR, "..", ".."))
 MARKDOWN_URL = "https://projects.blender.org/blender/blender-developer-docs/raw/branch/main/docs/features/code_layout.md"
 
 
-
 # -----------------------------------------------------------------------------
 # HTML Utilities
 
 def text_with_title_underline(text: str, underline: str = "=") -> str:
     return "\n{:s}\n{:s}\n".format(text, len(text) * underline)
-
 
 
 def html_extract_markdown_from_url(url: str) -> Optional[str]:
@@ -69,7 +67,7 @@ def markdown_to_paths(markdown: str) -> Tuple[List[str], List[str]]:
     markdown = markdown.replace("</td>", "")
 
     path_prefix = "<td markdown>/"
-  
+
     for line in markdown.splitlines():
         line = line.strip()
         if line.startswith(path_prefix):
