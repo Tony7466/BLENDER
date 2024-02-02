@@ -19,6 +19,7 @@
 #include "UI_resources.hh"
 
 struct bContext;
+struct PointerRNA;
 struct uiBlock;
 struct uiButViewItem;
 struct uiLayout;
@@ -197,12 +198,15 @@ class PreviewGridItem : public AbstractGridViewItem {
   bool hide_label_ = false;
 
  public:
-  std::string label{};
+  std::string label;
   int preview_icon_id = ICON_NONE;
 
   PreviewGridItem(StringRef identifier, StringRef label, int preview_icon_id);
 
   void build_grid_tile(uiLayout &layout) const override;
+  void build_grid_tile_button(uiLayout &layout,
+                              const wmOperatorType *ot,
+                              const PointerRNA &op_props) const;
 
   /**
    * Set a custom callback to execute when activating this view item. This way users don't have to
