@@ -67,11 +67,15 @@ def markdown_to_paths(markdown: str) -> Tuple[List[str], List[str]]:
     markdown = markdown.replace("<strong>", "")
     markdown = markdown.replace("</strong>", "")
     markdown = markdown.replace("</td>", "")
+
+    path_prefix = "<td markdown>/"
   
     for line in markdown.splitlines():
-        if line.startswith("<td markdown>/"):
-            start_index = len("<td markdown>")
-            file_paths.append(line[start_index+1:])
+        line = line.strip()
+        if line.startswith(path_prefix):
+            file_path = line[len(path_prefix):]
+            file_path = file_path.rstrip("/")
+            file_paths.append(file_path)
 
     return file_paths
 
