@@ -320,7 +320,8 @@ static void rna_def_animviz_paths(BlenderRNA *brna)
       prop,
       "Bake to active Camera",
       "Motion path points will be baked into the camera space of the active camera. This means "
-      "they will only look right when looking through that camera");
+      "they will only look right when looking through that camera. Switching cameras using "
+      "markers is not supported");
 
   RNA_define_lib_overridable(false);
 }
