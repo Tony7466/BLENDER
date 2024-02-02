@@ -172,7 +172,7 @@ std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplic
       if (last_slice == slice) {
         slices.last().repeats++;
       }
-      else if (last_slice.name == slice.name &&
+      else if (slices.last().repeats == 1 && last_slice.name == slice.name &&
                last_slice.range.one_after_last() == slice.range.start())
       {
         last_slice.range = IndexRange(last_slice.range.start(),
