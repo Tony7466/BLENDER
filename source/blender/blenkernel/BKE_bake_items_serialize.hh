@@ -86,6 +86,10 @@ class BlobWriteSharing : NonCopyable, NonMovable {
     }
   };
 
+  /**
+   * Remembers where data was stored based on the hash of the data. This allows us to skip writing
+   * the same array again if it has the same hash.
+   */
   Map<SliceHash, BlobSlice> slice_by_content_hash_;
 
  public:
