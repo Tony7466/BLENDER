@@ -101,7 +101,7 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
 
 static int floored_modulo(const int a, const int b)
 {
-  return a - math::floor(a / b) * b;
+  return a - math::floor(float(a) / float(b)) * b;
 }
 
 /* Combined segment info used by all strokes. */
