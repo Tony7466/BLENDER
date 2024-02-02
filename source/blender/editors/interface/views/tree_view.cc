@@ -318,6 +318,8 @@ void AbstractTreeViewItem::add_indent(uiLayout &row) const
 
   uiDefBut(block, UI_BTYPE_SEPR, 0, "", 0, 0, indent_width(), 0, nullptr, 0.0, 0.0, 0, 0, "");
 
+  /* Indent items without collapsing icon some more within their parent. Makes it clear that they
+   * are actually nested and not just a row at the same level without a chevron. */
   if (!is_collapsible()) {
     uiDefBut(
         block, UI_BTYPE_SEPR, 0, "", 0, 0, UI_TREEVIEW_INDENT, 0, nullptr, 0.0, 0.0, 0, 0, "");
