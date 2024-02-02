@@ -19,8 +19,6 @@ struct BlobSlice {
   std::string name;
   IndexRange range;
 
-  BLI_STRUCT_EQUALITY_OPERATORS_2(BlobSlice, name, range)
-
   std::shared_ptr<io::serialize::DictionaryValue> serialize() const;
   static std::optional<BlobSlice> deserialize(const io::serialize::DictionaryValue &io_slice);
 };
@@ -105,6 +103,11 @@ class BlobWriteSharing : NonCopyable, NonMovable {
       const ImplicitSharingInfo *sharing_info,
       FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn);
 
+  /**
+   * Checks of the given data was written before. If it was, it's not written again, but a
+   * reference to the previously written data is returned. If the data is new, it's written now.
+   * It's hash is remembered so that the same data won't be written again.
+   */
   [[nodiscard]] std::shared_ptr<io::serialize::DictionaryValue> write_deduplicated(
       BlobWriter &writer, const void *data, int64_t size_in_bytes);
 };
