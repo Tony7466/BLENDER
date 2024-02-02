@@ -134,7 +134,7 @@ uint OIDNDenoiserGPU::get_device_type_mask() const
 #  endif
 #  ifdef OIDN_DEVICE_SYCL
   device_mask |= DEVICE_MASK_METAL;
-#endif
+#  endif
   return device_mask;
 }
 
@@ -200,7 +200,7 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
       const MTLCommandQueue_id queue = (const MTLCommandQueue_id)denoiser_queue_->native_queue();
       oidn_device_ = oidnNewMetalDevice(&queue, 1);
     } break;
-#endif
+#  endif
     default:
       break;
   }
