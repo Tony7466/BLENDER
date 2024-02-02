@@ -51,6 +51,7 @@ struct GreasePencil;
 struct BlendDataReader;
 struct BlendWriter;
 struct Object;
+struct bDeformGroup;
 
 typedef enum GreasePencilStrokeCapType {
   GP_STROKE_CAP_TYPE_ROUND = 0,
@@ -433,6 +434,11 @@ typedef struct GreasePencil {
    * Global flag on the data-block.
    */
   uint32_t flag;
+
+  ListBase vertex_group_names;
+  int vertex_group_active_index;
+  char _pad4[4];
+
   /**
    * Onion skinning settings.
    */
@@ -461,6 +467,9 @@ typedef struct GreasePencil {
 
   blender::Span<const blender::bke::greasepencil::TreeNode *> nodes() const;
   blender::Span<blender::bke::greasepencil::TreeNode *> nodes_for_write();
+
+  /* Return the index of the layer if it's found, otherwise `std::nullopt`. */
+  std::optional<int> get_layer_index(const blender::bke::greasepencil::Layer &layer) const;
 
   /* Active layer functions. */
   bool has_active_layer() const;
@@ -569,13 +578,13 @@ typedef struct GreasePencil {
    * drawing exists.
    */
   const blender::bke::greasepencil::Drawing *get_drawing_at(
-      const blender::bke::greasepencil::Layer *layer, int frame_number) const;
+      const blender::bke::greasepencil::Layer &layer, int frame_number) const;
   /**
    * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
    * drawing exists.
    */
   blender::bke::greasepencil::Drawing *get_editable_drawing_at(
-      const blender::bke::greasepencil::Layer *layer, int frame_number);
+      const blender::bke::greasepencil::Layer &layer, int frame_number);
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max(int frame) const;
   std::optional<blender::Bounds<blender::float3>> bounds_min_max_eval() const;

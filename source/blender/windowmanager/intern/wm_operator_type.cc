@@ -36,7 +36,7 @@
 #include "WM_types.hh"
 
 #include "wm.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
 
@@ -606,9 +606,9 @@ std::string WM_operatortype_description_or_name(bContext *C,
 {
   std::string text = WM_operatortype_description(C, ot, properties);
   if (text.empty()) {
-    const std::string text_orig = WM_operatortype_name(ot, properties);
+    std::string text_orig = WM_operatortype_name(ot, properties);
     if (!text_orig.empty()) {
-      text = BLI_strdupn(text_orig.c_str(), text_orig.size());
+      return text_orig;
     }
   }
   return text;

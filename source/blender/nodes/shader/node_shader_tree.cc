@@ -28,8 +28,8 @@
 
 #include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_linestyle.h"
 #include "BKE_material.h"
 #include "BKE_node.hh"
@@ -40,7 +40,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "RE_texture.h"
 
@@ -158,8 +158,13 @@ static bool shader_validate_link(eNodeSocketDatatype from, eNodeSocketDatatype t
 static bool shader_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
                                                bNodeSocketType *socket_type)
 {
-  return blender::bke::nodeIsStaticSocketType(socket_type) &&
-         ELEM(socket_type->type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_SHADER);
+  return blender::bke::nodeIsStaticSocketType(socket_type) && ELEM(socket_type->type,
+                                                                   SOCK_FLOAT,
+                                                                   SOCK_INT,
+                                                                   SOCK_BOOLEAN,
+                                                                   SOCK_VECTOR,
+                                                                   SOCK_RGBA,
+                                                                   SOCK_SHADER);
 }
 
 bNodeTreeType *ntreeType_Shader;

@@ -17,7 +17,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_listbase_wrapper.hh"
 #include "BLI_math_color.h"
@@ -27,7 +27,7 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
@@ -849,6 +849,7 @@ static void drw_shgroup_bone_custom_solid_mesh(const ArmatureDrawContext *ctx,
                                                const float outline_color[4],
                                                Object *custom)
 {
+  using namespace blender::draw;
   /* TODO(fclem): arg... less than ideal but we never iter on this object
    * to assure batch cache is valid. */
   DRW_mesh_batch_cache_validate(custom, mesh);
@@ -893,6 +894,7 @@ static void drw_shgroup_bone_custom_mesh_wire(const ArmatureDrawContext *ctx,
                                               const float color[4],
                                               Object *custom)
 {
+  using namespace blender::draw;
   /* TODO(fclem): arg... less than ideal but we never iter on this object
    * to assure batch cache is valid. */
   DRW_mesh_batch_cache_validate(custom, mesh);
@@ -917,6 +919,7 @@ static void drw_shgroup_custom_bone_curve(const ArmatureDrawContext *ctx,
                                           const float outline_color[4],
                                           Object *custom)
 {
+  using namespace blender::draw;
   /* TODO(fclem): arg... less than ideal but we never iter on this object
    * to assure batch cache is valid. */
   DRW_curve_batch_cache_validate(curve);
@@ -1950,7 +1953,8 @@ static void draw_bone_name(const ArmatureDrawContext *ctx,
                      10,
                      0,
                      DRW_TEXT_CACHE_GLOBALSPACE | DRW_TEXT_CACHE_STRING_PTR,
-                     color);
+                     color,
+                     true);
 }
 
 /** \} */

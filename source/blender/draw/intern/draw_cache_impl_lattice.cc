@@ -18,7 +18,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_lattice.hh"
 
 #include "GPU_batch.h"
@@ -26,6 +26,8 @@
 #include "draw_cache_impl.hh" /* own include */
 
 #define SELECT 1
+
+namespace blender::draw {
 
 static void lattice_batch_cache_clear(Lattice *lt);
 
@@ -502,3 +504,5 @@ GPUBatch *DRW_lattice_batch_cache_get_edit_verts(Lattice *lt)
 
   return cache->overlay_verts;
 }
+
+}  // namespace blender::draw

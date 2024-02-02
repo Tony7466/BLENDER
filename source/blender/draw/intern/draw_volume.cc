@@ -9,7 +9,7 @@
  */
 
 #include "DRW_gpu_wrapper.hh"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "DNA_fluid_types.h"
 #include "DNA_volume_types.h"
@@ -21,7 +21,7 @@
 #include "BKE_volume.hh"
 #include "BKE_volume_render.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "draw_common.h"
 #include "draw_manager.h"

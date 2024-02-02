@@ -17,27 +17,13 @@
  *
  * \{ */
 
-#define GBUFFER_LAYER_MAX 4
+#define GBUFFER_LAYER_MAX 3
 #define GBUFFER_NORMAL_MAX GBUFFER_LAYER_MAX
 #define GBUFFER_DATA_MAX (GBUFFER_LAYER_MAX * 2)
+/* Note: Reserve the last 4 bits for the normal layers ids. */
+#define GBUFFER_NORMAL_BITS_SHIFT 12
 
-/* Structure used as input and output of the packing & read functions. */
 struct GBufferData {
-  /* Only valid (or null) if `has_diffuse`, `has_reflection` or `has_refraction` is true. */
-  /* TODO(fclem): This should eventually become ClosureUndetermined. */
-  ClosureDiffuse diffuse;
-  ClosureTranslucent translucent;
-  ClosureReflection reflection;
-  ClosureRefraction refraction;
-  /* Additional object information if any closure needs it. */
-  float thickness;
-  uint object_id;
-  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
-  vec3 surface_N;
-};
-
-/* TODO(fclem): This should replace GBufferData. */
-struct GBufferDataUndetermined {
   ClosureUndetermined diffuse;
   ClosureUndetermined translucent;
   ClosureUndetermined reflection;
@@ -51,30 +37,31 @@ struct GBufferDataUndetermined {
 
 /* Result of Packing the GBuffer. */
 struct GBufferWriter {
-  uint header;
   /* TODO(fclem): Better packing. */
   vec4 data[GBUFFER_DATA_MAX];
   vec2 N[GBUFFER_NORMAL_MAX];
 
-  /* Only used for book-keeping. Not actually written. Can be derived from header. */
-  int closure_count;
+  uint header;
+  /** Only used for book-keeping. Not actually written. Can be derived from header. */
+  /* Number of layers written in the header. */
+  int layer_gbuf;
+  /* Number of data written in the data array. */
   int layer_data;
+  /* Number of normal written in the normal array. */
   int layer_normal;
 };
 
 /* Result of loading the GBuffer. */
 struct GBufferReader {
-  GBufferData data;
-
   ClosureUndetermined closures[GBUFFER_LAYER_MAX];
+  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
+  vec3 surface_N;
+  /* Additional object information if any closure needs it. */
+  float thickness;
+  uint object_id;
 
-  bool has_diffuse;
-  bool has_translucent;
-  bool has_reflection;
-  bool has_refraction;
-  bool has_sss;
-  bool has_any_surface;
   uint header;
+  /* Number of valid closure encoded in the gbuffer. */
   int closure_count;
   /* Only used for book-keeping when reading. */
   int layer_data;
@@ -88,7 +75,7 @@ struct GBufferReader {
 /* -------------------------------------------------------------------- */
 /** \name Load / Store macros
  *
- * This allows for writting unit tests that read and write during the same shader invocation.
+ * This allows for writing unit tests that read and write during the same shader invocation.
  * \{ */
 
 #ifdef GBUFFER_LOAD
@@ -294,54 +281,84 @@ GBufferMode gbuffer_header_unpack(uint data, uint layer)
 
 void gbuffer_append_closure(inout GBufferWriter gbuf, GBufferMode closure_type)
 {
-  gbuf.header |= gbuffer_header_pack(closure_type, gbuf.closure_count);
-  gbuf.closure_count++;
+  gbuf.header |= gbuffer_header_pack(closure_type, gbuf.layer_gbuf);
+  gbuf.layer_gbuf++;
 }
-void gbuffer_register_closure(inout GBufferReader gbuf, ClosureUndetermined cl)
+void gbuffer_register_closure(inout GBufferReader gbuf, ClosureUndetermined cl, int slot)
 {
-  gbuf.closures[gbuf.closure_count] = cl;
-  gbuf.closure_count++;
-  switch (cl.type) {
-    case CLOSURE_NONE_ID:
-      /* TODO(fclem): Assert. */
+  switch (slot) {
+#if GBUFFER_LAYER_MAX > 0
+    case 0:
+      gbuf.closures[0] = cl;
       break;
-    case CLOSURE_BSSRDF_BURLEY_ID:
-      /* TODO(fclem): BSSSRDF closure. */
-      gbuf.data.diffuse.N = cl.N;
-      gbuf.data.diffuse.color = cl.color;
-      gbuf.data.diffuse.sss_radius = cl.data.xyz;
-      gbuf.has_diffuse = true;
-      gbuf.has_sss = true;
+#endif
+#if GBUFFER_LAYER_MAX > 1
+    case 1:
+      gbuf.closures[1] = cl;
       break;
-    case CLOSURE_BSDF_DIFFUSE_ID:
-      gbuf.data.diffuse.N = cl.N;
-      gbuf.data.diffuse.color = cl.color;
-      gbuf.has_diffuse = true;
+#endif
+#if GBUFFER_LAYER_MAX > 2
+    case 2:
+      gbuf.closures[2] = cl;
       break;
-    case CLOSURE_BSDF_TRANSLUCENT_ID:
-      gbuf.data.translucent.N = cl.N;
-      gbuf.data.translucent.color = cl.color;
-      gbuf.has_translucent = true;
-      break;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-      gbuf.data.reflection.N = cl.N;
-      gbuf.data.reflection.color = cl.color;
-      gbuf.data.reflection.roughness = cl.data.x;
-      gbuf.has_reflection = true;
-      break;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-      gbuf.data.refraction.N = cl.N;
-      gbuf.data.refraction.color = cl.color;
-      gbuf.data.refraction.roughness = cl.data.x;
-      gbuf.data.refraction.ior = cl.data.y;
-      gbuf.has_refraction = true;
-      break;
+#endif
+  }
+}
+
+ClosureUndetermined gbuffer_closure_get(GBufferReader gbuf, int i)
+{
+  switch (i) {
+#if GBUFFER_LAYER_MAX > 0
+    case 0:
+      return gbuf.closures[0];
+#endif
+#if GBUFFER_LAYER_MAX > 1
+    case 1:
+      return gbuf.closures[1];
+#endif
+#if GBUFFER_LAYER_MAX > 2
+    case 2:
+      return gbuf.closures[2];
+#endif
+    default:
+      return closure_new(CLOSURE_NONE_ID);
   }
 }
 
 void gbuffer_append_data(inout GBufferWriter gbuf, vec4 data)
 {
-  gbuf.data[gbuf.layer_data] = data;
+  switch (gbuf.layer_data) {
+#if GBUFFER_DATA_MAX > 0
+    case 0:
+      gbuf.data[0] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 1
+    case 1:
+      gbuf.data[1] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 2
+    case 2:
+      gbuf.data[2] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 3
+    case 3:
+      gbuf.data[3] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 4
+    case 4:
+      gbuf.data[4] = data;
+      break;
+#endif
+#if GBUFFER_DATA_MAX > 5
+    case 5:
+      gbuf.data[5] = data;
+      break;
+#endif
+  }
   gbuf.layer_data++;
 }
 vec4 gbuffer_pop_first_data(inout GBufferReader gbuf, samplerGBufferClosure closure_tx)
@@ -351,15 +368,80 @@ vec4 gbuffer_pop_first_data(inout GBufferReader gbuf, samplerGBufferClosure clos
   return data;
 }
 
+/**
+ * Set the dedicated normal bit for the last added closure.
+ * Expects `layer_id` to be in [0..2].
+ * Expects `normal_id` to be in [0..3].
+ */
+void gbuffer_header_normal_layer_id_set(inout uint header, int layer_id, uint normal_id)
+{
+  /* Layer 0 will always have normal id 0. It doesn't have to be encoded. Skip it. */
+  if (layer_id == 0) {
+    return;
+  }
+  /* -2 is to skip the layer_id 0 and start encoding for layer_id 1. This keeps the FMA. */
+  header |= normal_id << ((GBUFFER_NORMAL_BITS_SHIFT - 2) + layer_id * 2);
+}
+int gbuffer_header_normal_layer_id_get(uint header, int layer_id)
+{
+  /* Layer 0 will always have normal id 0. */
+  if (layer_id == 0) {
+    return 0;
+  }
+  /* -2 is to skip the layer_id 0 and start encoding for layer_id 1. This keeps the FMA. */
+  return int(3u & (header >> ((GBUFFER_NORMAL_BITS_SHIFT - 2) + layer_id * 2)));
+}
+
 void gbuffer_append_normal(inout GBufferWriter gbuf, vec3 normal)
 {
-  gbuf.N[gbuf.layer_normal] = gbuffer_normal_pack(normal);
+  vec2 packed_N = gbuffer_normal_pack(normal);
+  int layer_id = gbuf.layer_gbuf - 1;
+  /* Try to reuse previous normals. */
+#if GBUFFER_NORMAL_MAX > 1
+  if (gbuf.layer_normal > 0 && all(equal(gbuf.N[0], packed_N))) {
+    gbuffer_header_normal_layer_id_set(gbuf.header, layer_id, 0u);
+    return;
+  }
+#endif
+#if GBUFFER_NORMAL_MAX > 2
+  if (gbuf.layer_normal > 1 && all(equal(gbuf.N[1], packed_N))) {
+    gbuffer_header_normal_layer_id_set(gbuf.header, layer_id, 1u);
+    return;
+  }
+#endif
+#if GBUFFER_NORMAL_MAX > 3
+  if (gbuf.layer_normal > 2 && all(equal(gbuf.N[2], packed_N))) {
+    gbuffer_header_normal_layer_id_set(gbuf.header, layer_id, 2u);
+    return;
+  }
+#endif
+  /* Could not reuse. Add another normal. */
+  gbuffer_header_normal_layer_id_set(gbuf.header, layer_id, uint(gbuf.layer_normal));
+
+  switch (gbuf.layer_normal) {
+#if GBUFFER_NORMAL_MAX > 0
+    case 0:
+      gbuf.N[0] = packed_N;
+      break;
+#endif
+#if GBUFFER_NORMAL_MAX > 1
+    case 1:
+      gbuf.N[1] = packed_N;
+      break;
+#endif
+#if GBUFFER_NORMAL_MAX > 2
+    case 2:
+      gbuf.N[2] = packed_N;
+      break;
+#endif
+  }
   gbuf.layer_normal++;
 }
-vec3 gbuffer_pop_first_normal(inout GBufferReader gbuf, samplerGBufferNormal normal_tx)
+vec3 gbuffer_normal_get(inout GBufferReader gbuf, int layer_id, samplerGBufferNormal normal_tx)
 {
-  vec2 normal_packed = fetchGBuffer(normal_tx, gbuf.texel, gbuf.layer_normal).rg;
-  gbuf.layer_normal++;
+  int normal_layer_id = gbuffer_header_normal_layer_id_get(gbuf.header, layer_id);
+  vec2 normal_packed = fetchGBuffer(normal_tx, gbuf.texel, normal_layer_id).rg;
+  gbuf.layer_normal = max(gbuf.layer_normal, normal_layer_id + 1);
   return gbuffer_normal_unpack(normal_packed);
 }
 
@@ -374,8 +456,8 @@ void gbuffer_additional_info_load(inout GBufferReader gbuf, samplerGBufferNormal
 {
   vec2 data_packed = fetchGBuffer(normal_tx, gbuf.texel, gbuf.layer_normal).rg;
   gbuf.layer_normal++;
-  gbuf.data.thickness = gbuffer_thickness_unpack(data_packed.x);
-  gbuf.data.object_id = gbuffer_object_id_unorm16_unpack(data_packed.y);
+  gbuf.thickness = gbuffer_thickness_unpack(data_packed.x);
+  gbuf.object_id = gbuffer_object_id_unorm16_unpack(data_packed.y);
 }
 
 /** \} */
@@ -393,6 +475,7 @@ void gbuffer_closure_diffuse_pack(inout GBufferWriter gbuf, ClosureUndetermined 
 }
 
 void gbuffer_closure_diffuse_load(inout GBufferReader gbuf,
+                                  int layer,
                                   samplerGBufferClosure closure_tx,
                                   samplerGBufferNormal normal_tx)
 {
@@ -400,9 +483,9 @@ void gbuffer_closure_diffuse_load(inout GBufferReader gbuf,
 
   ClosureUndetermined cl = closure_new(CLOSURE_BSDF_DIFFUSE_ID);
   cl.color = gbuffer_closure_color_unpack(data0);
-  cl.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  cl.N = gbuffer_normal_get(gbuf, layer, normal_tx);
 
-  gbuffer_register_closure(gbuf, cl);
+  gbuffer_register_closure(gbuf, cl, layer);
 }
 
 void gbuffer_closure_translucent_pack(inout GBufferWriter gbuf, ClosureUndetermined cl)
@@ -413,6 +496,7 @@ void gbuffer_closure_translucent_pack(inout GBufferWriter gbuf, ClosureUndetermi
 }
 
 void gbuffer_closure_translucent_load(inout GBufferReader gbuf,
+                                      int layer,
                                       samplerGBufferClosure closure_tx,
                                       samplerGBufferNormal normal_tx)
 {
@@ -420,9 +504,9 @@ void gbuffer_closure_translucent_load(inout GBufferReader gbuf,
 
   ClosureUndetermined cl = closure_new(CLOSURE_BSDF_TRANSLUCENT_ID);
   cl.color = gbuffer_closure_color_unpack(data0);
-  cl.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  cl.N = gbuffer_normal_get(gbuf, layer, normal_tx);
 
-  gbuffer_register_closure(gbuf, cl);
+  gbuffer_register_closure(gbuf, cl, layer);
 }
 
 void gbuffer_closure_subsurface_pack(inout GBufferWriter gbuf, ClosureUndetermined cl)
@@ -434,6 +518,7 @@ void gbuffer_closure_subsurface_pack(inout GBufferWriter gbuf, ClosureUndetermin
 }
 
 void gbuffer_closure_subsurface_load(inout GBufferReader gbuf,
+                                     int layer,
                                      samplerGBufferClosure closure_tx,
                                      samplerGBufferNormal normal_tx)
 {
@@ -443,9 +528,9 @@ void gbuffer_closure_subsurface_load(inout GBufferReader gbuf,
   ClosureUndetermined cl = closure_new(CLOSURE_BSSRDF_BURLEY_ID);
   cl.color = gbuffer_closure_color_unpack(data0);
   cl.data.rgb = gbuffer_sss_radii_unpack(data1);
-  cl.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  cl.N = gbuffer_normal_get(gbuf, layer, normal_tx);
 
-  gbuffer_register_closure(gbuf, cl);
+  gbuffer_register_closure(gbuf, cl, layer);
 }
 
 void gbuffer_closure_reflection_pack(inout GBufferWriter gbuf, ClosureUndetermined cl)
@@ -457,6 +542,7 @@ void gbuffer_closure_reflection_pack(inout GBufferWriter gbuf, ClosureUndetermin
 }
 
 void gbuffer_closure_reflection_load(inout GBufferReader gbuf,
+                                     int layer,
                                      samplerGBufferClosure closure_tx,
                                      samplerGBufferNormal normal_tx)
 {
@@ -466,9 +552,9 @@ void gbuffer_closure_reflection_load(inout GBufferReader gbuf,
   ClosureUndetermined cl = closure_new(CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID);
   cl.color = gbuffer_closure_color_unpack(data0);
   cl.data.x = data1.x;
-  cl.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  cl.N = gbuffer_normal_get(gbuf, layer, normal_tx);
 
-  gbuffer_register_closure(gbuf, cl);
+  gbuffer_register_closure(gbuf, cl, layer);
 }
 
 void gbuffer_closure_refraction_pack(inout GBufferWriter gbuf, ClosureUndetermined cl)
@@ -480,6 +566,7 @@ void gbuffer_closure_refraction_pack(inout GBufferWriter gbuf, ClosureUndetermin
 }
 
 void gbuffer_closure_refraction_load(inout GBufferReader gbuf,
+                                     int layer,
                                      samplerGBufferClosure closure_tx,
                                      samplerGBufferNormal normal_tx)
 {
@@ -490,9 +577,9 @@ void gbuffer_closure_refraction_load(inout GBufferReader gbuf,
   cl.color = gbuffer_closure_color_unpack(data0);
   cl.data.x = data1.x;
   cl.data.y = gbuffer_ior_unpack(data1.y);
-  cl.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  cl.N = gbuffer_normal_get(gbuf, layer, normal_tx);
 
-  gbuffer_register_closure(gbuf, cl);
+  gbuffer_register_closure(gbuf, cl, layer);
 }
 
 /** \} */
@@ -512,6 +599,7 @@ void gbuffer_closure_reflection_colorless_pack(inout GBufferWriter gbuf, Closure
 }
 
 void gbuffer_closure_reflection_colorless_load(inout GBufferReader gbuf,
+                                               int layer,
                                                samplerGBufferClosure closure_tx,
                                                samplerGBufferNormal normal_tx)
 {
@@ -521,9 +609,9 @@ void gbuffer_closure_reflection_colorless_load(inout GBufferReader gbuf,
   cl.data.x = data0.x;
   cl.color = vec3(gbuffer_closure_intensity_unpack(data0.zw));
 
-  cl.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  cl.N = gbuffer_normal_get(gbuf, layer, normal_tx);
 
-  gbuffer_register_closure(gbuf, cl);
+  gbuffer_register_closure(gbuf, cl, layer);
 }
 
 void gbuffer_closure_refraction_colorless_pack(inout GBufferWriter gbuf, ClosureUndetermined cl)
@@ -535,6 +623,7 @@ void gbuffer_closure_refraction_colorless_pack(inout GBufferWriter gbuf, Closure
 }
 
 void gbuffer_closure_refraction_colorless_load(inout GBufferReader gbuf,
+                                               int layer,
                                                samplerGBufferClosure closure_tx,
                                                samplerGBufferNormal normal_tx)
 {
@@ -545,9 +634,9 @@ void gbuffer_closure_refraction_colorless_load(inout GBufferReader gbuf,
   cl.data.y = gbuffer_ior_unpack(data0.y);
   cl.color = vec3(gbuffer_closure_intensity_unpack(data0.zw));
 
-  cl.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  cl.N = gbuffer_normal_get(gbuf, layer, normal_tx);
 
-  gbuffer_register_closure(gbuf, cl);
+  gbuffer_register_closure(gbuf, cl, layer);
 }
 
 /** \} */
@@ -584,10 +673,10 @@ void gbuffer_closure_metal_clear_coat_load(inout GBufferReader gbuf,
   coat.color = vec3(gbuffer_closure_intensity_unpack(data1.zw));
   coat.data.x = data1.y;
 
-  coat.N = bottom.N = gbuffer_pop_first_normal(gbuf, normal_tx);
+  coat.N = bottom.N = gbuffer_normal_get(gbuf, 0, normal_tx);
 
-  gbuffer_register_closure(gbuf, bottom);
-  gbuffer_register_closure(gbuf, coat);
+  gbuffer_register_closure(gbuf, bottom, 0);
+  gbuffer_register_closure(gbuf, coat, 1);
 }
 
 /** \} */
@@ -597,52 +686,69 @@ void gbuffer_closure_metal_clear_coat_load(inout GBufferReader gbuf,
  *
  * \{ */
 
-GBufferWriter gbuffer_pack(GBufferDataUndetermined data_in)
+GBufferWriter gbuffer_pack(GBufferData data_in)
 {
   GBufferWriter gbuf;
   gbuf.header = 0u;
-  gbuf.closure_count = 0;
+  gbuf.layer_gbuf = 0;
   gbuf.layer_data = 0;
   gbuf.layer_normal = 0;
 
-  bool has_refraction = data_in.refraction.weight > 1e-5;
-  bool has_reflection = data_in.reflection.weight > 1e-5;
-  bool has_diffuse = data_in.diffuse.weight > 1e-5;
-  bool has_translucent = data_in.translucent.weight > 1e-5;
-  bool has_sss = (data_in.diffuse.type == CLOSURE_BSSRDF_BURLEY_ID);
-
   /* Check special configurations first. */
 
-  if (has_diffuse) {
-    if (has_sss) {
-      /* Subsurface need to be first to be outputed in first lighting texture. */
-      gbuffer_closure_subsurface_pack(gbuf, data_in.diffuse);
+  bool has_additional_data = false;
+  for (int i = 0; i < 4; i++) {
+    ClosureUndetermined cl;
+    /* TODO(fclem): Rename inside GBufferData. */
+    switch (i) {
+      case 0:
+        cl = data_in.diffuse;
+        break;
+      case 1:
+        cl = data_in.refraction;
+        break;
+      case 2:
+        cl = data_in.reflection;
+        break;
+      case 3:
+        cl = data_in.translucent;
+        break;
     }
-    else {
-      gbuffer_closure_diffuse_pack(gbuf, data_in.diffuse);
-    }
-  }
 
-  if (has_refraction) {
-    if (color_is_grayscale(data_in.refraction.color)) {
-      gbuffer_closure_refraction_colorless_pack(gbuf, data_in.refraction);
+    if (cl.weight <= 1e-5) {
+      continue;
     }
-    else {
-      gbuffer_closure_refraction_pack(gbuf, data_in.refraction);
-    }
-  }
 
-  if (has_reflection) {
-    if (color_is_grayscale(data_in.reflection.color)) {
-      gbuffer_closure_reflection_colorless_pack(gbuf, data_in.reflection);
+    switch (cl.type) {
+      case CLOSURE_BSSRDF_BURLEY_ID:
+        gbuffer_closure_subsurface_pack(gbuf, cl);
+        has_additional_data = true;
+        break;
+      case CLOSURE_BSDF_DIFFUSE_ID:
+        gbuffer_closure_diffuse_pack(gbuf, cl);
+        break;
+      case CLOSURE_BSDF_TRANSLUCENT_ID:
+        gbuffer_closure_translucent_pack(gbuf, cl);
+        has_additional_data = true;
+        break;
+      case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+        if (color_is_grayscale(cl.color)) {
+          gbuffer_closure_reflection_colorless_pack(gbuf, cl);
+        }
+        else {
+          gbuffer_closure_reflection_pack(gbuf, cl);
+        }
+        break;
+      case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+        if (color_is_grayscale(cl.color)) {
+          gbuffer_closure_refraction_colorless_pack(gbuf, cl);
+        }
+        else {
+          gbuffer_closure_refraction_pack(gbuf, cl);
+        }
+        has_additional_data = true;
+        break;
     }
-    else {
-      gbuffer_closure_reflection_pack(gbuf, data_in.reflection);
-    }
-  }
-
-  if (has_translucent) {
-    gbuffer_closure_translucent_pack(gbuf, data_in.translucent);
   }
 
   if (gbuf.layer_normal == 0) {
@@ -651,53 +757,55 @@ GBufferWriter gbuffer_pack(GBufferDataUndetermined data_in)
     gbuffer_append_normal(gbuf, data_in.surface_N);
   }
 
-  if (has_sss || has_translucent) {
+  if (has_additional_data) {
     gbuffer_additional_info_pack(gbuf, data_in.thickness, data_in.object_id);
   }
 
   return gbuf;
 }
 
-/* Populate the GBufferReader only based on the header. The rest of the data is undefined. */
-GBufferReader gbuffer_read_header(uint header)
+/* Return the number of closure as encoded in the give header value. */
+int gbuffer_closure_count(uint header)
+{
+  /* Note: Need to be adjusted for different global GBUFFER_LAYER_MAX. */
+  uvec3 closure_types = (uvec3(header) >> uvec3(0u, 4u, 8u)) & ((1u << 4) - 1);
+
+  if (closure_types.x == GBUF_METAL_CLEARCOAT) {
+    return 2;
+  }
+  return reduce_add(ivec3(not(equal(closure_types, uvec3(0u)))));
+}
+
+GBufferReader gbuffer_read_header_closure_types(uint header)
 {
   GBufferReader gbuf;
-  gbuf.header = header;
-  gbuf.has_any_surface = (header != 0u);
-  gbuf.has_diffuse = false;
-  gbuf.has_reflection = false;
-  gbuf.has_refraction = false;
-  gbuf.has_translucent = false;
-  gbuf.has_sss = false;
-  gbuf.closure_count = 0;
 
-  for (int layer = 0; layer < 4; layer++) {
-    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
+  for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
+    GBufferMode mode = gbuffer_header_unpack(header, layer);
+    ClosureType closure_type = CLOSURE_NONE_ID;
     switch (mode) {
-      case GBUF_NONE:
-        break;
       case GBUF_DIFFUSE:
-        gbuf.has_diffuse = true;
+        closure_type = CLOSURE_BSDF_DIFFUSE_ID;
         break;
       case GBUF_TRANSLUCENT:
-        gbuf.has_translucent = true;
+        closure_type = CLOSURE_BSDF_TRANSLUCENT_ID;
         break;
       case GBUF_SUBSURFACE:
-        gbuf.has_diffuse = true;
-        gbuf.has_sss = true;
+        closure_type = CLOSURE_BSSRDF_BURLEY_ID;
         break;
-      case GBUF_METAL_CLEARCOAT:
       case GBUF_REFLECTION_COLORLESS:
       case GBUF_REFLECTION:
-        gbuf.has_reflection = true;
+        closure_type = CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID;
         break;
       case GBUF_REFRACTION_COLORLESS:
       case GBUF_REFRACTION:
-        gbuf.has_refraction = true;
+        closure_type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
+        break;
+      default:
         break;
     }
+    gbuffer_register_closure(gbuf, closure_new(closure_type), layer);
   }
-
   return gbuf;
 }
 
@@ -708,82 +816,68 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
 {
   GBufferReader gbuf;
   gbuf.texel = texel;
-  gbuf.header = fetchGBuffer(header_tx, texel);
-  gbuf.has_any_surface = (gbuf.header != 0u);
-  gbuf.has_diffuse = false;
-  gbuf.has_reflection = false;
-  gbuf.has_refraction = false;
-  gbuf.has_translucent = false;
-  gbuf.has_sss = false;
-  gbuf.data.thickness = 0.0;
+  gbuf.thickness = 0.0;
   gbuf.closure_count = 0;
+  gbuf.object_id = 0u;
   gbuf.layer_data = 0;
   gbuf.layer_normal = 0;
+  gbuf.surface_N = vec3(0.0);
 
-  if (!gbuf.has_any_surface) {
+  gbuf.header = fetchGBuffer(header_tx, texel);
+  if (gbuf.header == 0u) {
+    for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
+      gbuffer_register_closure(gbuf, closure_new(CLOSURE_NONE_ID), layer);
+    }
     return gbuf;
   }
 
   /* First closure is always written. */
-  gbuf.data.surface_N = gbuffer_normal_unpack(fetchGBuffer(normal_tx, texel, 0).xy);
+  gbuf.surface_N = gbuffer_normal_unpack(fetchGBuffer(normal_tx, texel, 0).xy);
 
-  /* Default values. */
-  gbuf.data.refraction.color = vec3(0.0);
-  gbuf.data.refraction.N = vec3(0.0, 0.0, 1.0);
-  gbuf.data.refraction.roughness = 0.0;
-  gbuf.data.refraction.ior = 1.1; /* Avoid NaN in some places. */
-
-  gbuf.data.reflection.color = vec3(0.0);
-  gbuf.data.reflection.N = vec3(0.0, 0.0, 1.0);
-  gbuf.data.reflection.roughness = 0.0;
-
-  gbuf.data.diffuse.color = vec3(0.0);
-  gbuf.data.diffuse.N = vec3(0.0, 0.0, 1.0);
-  gbuf.data.diffuse.sss_radius = vec3(0.0, 0.0, 0.0);
-  gbuf.data.diffuse.sss_id = 0u;
-
-  gbuf.data.translucent.color = vec3(0.0);
-  gbuf.data.translucent.N = vec3(0.0, 0.0, 1.0);
-
-  gbuf.data.thickness = 0.0;
-
-  for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
-    gbuf.closures[layer].type = CLOSURE_NONE_ID;
-  }
-
+  bool has_additional_data = false;
   for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
     GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
     switch (mode) {
+      default:
       case GBUF_NONE:
+        gbuffer_register_closure(gbuf, closure_new(CLOSURE_NONE_ID), layer);
         break;
       case GBUF_DIFFUSE:
-        gbuffer_closure_diffuse_load(gbuf, closure_tx, normal_tx);
+        gbuffer_closure_diffuse_load(gbuf, layer, closure_tx, normal_tx);
+        gbuf.closure_count++;
         break;
       case GBUF_TRANSLUCENT:
-        gbuffer_closure_translucent_load(gbuf, closure_tx, normal_tx);
+        gbuffer_closure_translucent_load(gbuf, layer, closure_tx, normal_tx);
+        gbuf.closure_count++;
+        has_additional_data = true;
         break;
       case GBUF_SUBSURFACE:
-        gbuffer_closure_subsurface_load(gbuf, closure_tx, normal_tx);
+        gbuffer_closure_subsurface_load(gbuf, layer, closure_tx, normal_tx);
+        gbuf.closure_count++;
+        has_additional_data = true;
         break;
       case GBUF_REFLECTION:
-        gbuffer_closure_reflection_load(gbuf, closure_tx, normal_tx);
+        gbuffer_closure_reflection_load(gbuf, layer, closure_tx, normal_tx);
+        gbuf.closure_count++;
         break;
       case GBUF_REFRACTION:
-        gbuffer_closure_refraction_load(gbuf, closure_tx, normal_tx);
+        gbuffer_closure_refraction_load(gbuf, layer, closure_tx, normal_tx);
+        gbuf.closure_count++;
+        has_additional_data = true;
         break;
       case GBUF_REFLECTION_COLORLESS:
-        gbuffer_closure_reflection_colorless_load(gbuf, closure_tx, normal_tx);
+        gbuffer_closure_reflection_colorless_load(gbuf, layer, closure_tx, normal_tx);
+        gbuf.closure_count++;
         break;
       case GBUF_REFRACTION_COLORLESS:
-        gbuffer_closure_refraction_colorless_load(gbuf, closure_tx, normal_tx);
-        break;
-      case GBUF_METAL_CLEARCOAT:
-        gbuffer_closure_metal_clear_coat_load(gbuf, closure_tx, normal_tx);
+        gbuffer_closure_refraction_colorless_load(gbuf, layer, closure_tx, normal_tx);
+        gbuf.closure_count++;
+        has_additional_data = true;
         break;
     }
   }
 
-  if (gbuf.has_sss || gbuf.has_translucent) {
+  if (has_additional_data) {
     gbuffer_additional_info_load(gbuf, normal_tx);
   }
 

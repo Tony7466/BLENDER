@@ -555,11 +555,15 @@ endif()
 
 set(_PYTHON_VERSION "3.11")
 string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${_PYTHON_VERSION})
-if(NOT EXISTS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS})
-  set(_PYTHON_VERSION "3.10")
-  string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${_PYTHON_VERSION})
+
+# Enable for a short time when bumping to the next Python version.
+if(FALSE)
   if(NOT EXISTS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS})
-    message(FATAL_ERROR "Missing python libraries! Neither 3.11 nor 3.10 are found in ${LIBDIR}/python")
+    set(_PYTHON_VERSION "3.12")
+    string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${_PYTHON_VERSION})
+    if(NOT EXISTS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS})
+      message(FATAL_ERROR "Missing python libraries! Neither 3.12 nor 3.11 are found in ${LIBDIR}/python")
+    endif()
   endif()
 endif()
 
@@ -680,7 +684,7 @@ if(NOT OpenImageIO_FOUND)
   set(OIIO_OPTIMIZED optimized ${OPENIMAGEIO_LIBPATH}/OpenImageIO.lib optimized ${OPENIMAGEIO_LIBPATH}/OpenImageIO_Util.lib)
   set(OIIO_DEBUG debug ${OPENIMAGEIO_LIBPATH}/OpenImageIO_d.lib debug ${OPENIMAGEIO_LIBPATH}/OpenImageIO_Util_d.lib)
   set(OPENIMAGEIO_LIBRARIES ${OIIO_OPTIMIZED} ${OIIO_DEBUG})
-  set(OPENIMAGEIO_IDIFF "${OPENIMAGEIO}/bin/idiff.exe")
+  set(OPENIMAGEIO_TOOL "${OPENIMAGEIO}/bin/oiiotool.exe")
 endif()
 
 if(WITH_LLVM)

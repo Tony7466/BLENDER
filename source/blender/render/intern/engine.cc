@@ -25,7 +25,7 @@
 
 #include "BKE_camera.h"
 #include "BKE_global.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_node.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -42,13 +42,13 @@
 #  include "BPY_extern.h"
 #endif
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "RE_bake.h"
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "WM_api.hh"
 

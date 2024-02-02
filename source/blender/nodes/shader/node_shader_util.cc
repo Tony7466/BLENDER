@@ -15,7 +15,7 @@
 #include "BKE_context.hh"
 #include "BKE_node_runtime.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "node_shader_util.hh"
 
@@ -30,7 +30,7 @@ bool sh_node_poll_default(const bNodeType * /*ntype*/,
                           const char **r_disabled_hint)
 {
   if (!STREQ(ntree->idname, "ShaderNodeTree")) {
-    *r_disabled_hint = TIP_("Not a shader node tree");
+    *r_disabled_hint = RPT_("Not a shader node tree");
     return false;
   }
   return true;
@@ -41,7 +41,7 @@ static bool sh_fn_poll_default(const bNodeType * /*ntype*/,
                                const char **r_disabled_hint)
 {
   if (!STR_ELEM(ntree->idname, "ShaderNodeTree", "GeometryNodeTree")) {
-    *r_disabled_hint = TIP_("Not a shader or geometry node tree");
+    *r_disabled_hint = RPT_("Not a shader or geometry node tree");
     return false;
   }
   return true;

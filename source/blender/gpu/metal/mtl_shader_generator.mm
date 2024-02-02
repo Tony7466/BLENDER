@@ -929,9 +929,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Concatenate msl_shader_defines to provide functionality mapping
    * from GLSL to MSL. Also include additional GPU defines for
    * optional high-level feature support. */
-  std::string msl_defines_string =
-      "#define GPU_ARB_texture_cube_map_array 1\n\
-      #define GPU_ARB_shader_draw_parameters 1\n";
+  std::string msl_defines_string = "#define GPU_ARB_shader_draw_parameters 1\n";
 
   /* NOTE(Metal): textureGather appears to not function correctly on non-Apple-silicon GPUs.
    * Manifests as selection outlines not showing up (#103412). Disable texture gather if
@@ -1037,6 +1035,11 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     msl_iface.uses_gl_FragDepth = (info->depth_write_ != DepthWrite::UNCHANGED) &&
                                   shd_builder_->glsl_fragment_source_.find("gl_FragDepth") !=
                                       std::string::npos;
+
+    /* TODO(fclem): Add to create info. */
+    msl_iface.uses_gl_FragStencilRefARB = shd_builder_->glsl_fragment_source_.find(
+                                              "gl_FragStencilRefARB") != std::string::npos;
+
     msl_iface.depth_write = info->depth_write_;
 
     /* Early fragment tests. */
@@ -1345,6 +1348,9 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     if (msl_iface.uses_gl_FragDepth) {
       ss_fragment << "float gl_FragDepth;" << std::endl;
     }
+    if (msl_iface.uses_gl_FragStencilRefARB) {
+      ss_fragment << "int gl_FragStencilRefARB;" << std::endl;
+    }
     if (msl_iface.uses_gl_PointCoord) {
       ss_fragment << "float2 gl_PointCoord;" << std::endl;
     }
@@ -1530,8 +1536,7 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   /** Generate Compute shader stage. **/
   std::stringstream ss_compute;
 
-  ss_compute << "#define GPU_ARB_texture_cube_map_array 1\n"
-                "#define GPU_ARB_shader_draw_parameters 1\n";
+  ss_compute << "#define GPU_ARB_shader_draw_parameters 1\n";
   if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC) &&
       MTLBackend::get_capabilities().supports_texture_atomics)
   {
@@ -3008,6 +3013,10 @@ std::string MSLGeneratorInterface::generate_msl_fragment_struct(bool is_input)
                                                                                      "any"));
     out << "\tfloat fragdepth [[depth(" << out_depth_argument << ")]];" << std::endl;
   }
+  /* Add gl_FragStencilRefARB output if used. */
+  if (!is_input && this->uses_gl_FragStencilRefARB) {
+    out << "\tuint fragstencil [[stencil]];" << std::endl;
+  }
   if (is_input) {
     out << "} " FRAGMENT_TILE_IN_STRUCT_NAME ";" << std::endl;
   }
@@ -3442,6 +3451,12 @@ std::string MSLGeneratorInterface::generate_msl_fragment_output_population()
   /* Output gl_FragDepth. */
   if (this->uses_gl_FragDepth) {
     out << "\toutput.fragdepth = " << shader_stage_inst_name << ".gl_FragDepth;" << std::endl;
+  }
+
+  /* Output gl_FragStencilRefARB. */
+  if (this->uses_gl_FragStencilRefARB) {
+    out << "\toutput.fragstencil = uint(" << shader_stage_inst_name << ".gl_FragStencilRefARB);"
+        << std::endl;
   }
 
   /* Output attributes. */
