@@ -139,8 +139,8 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   int start_index = sfra - mpath->start_frame;
 
   float camera_matrix[4][4];
-  if (is_in_camera_space && mpath->camera) {
-    copy_m4_m4(camera_matrix, mpath->camera->object_to_world);
+  if (is_in_camera_space && draw_ctx->v3d->camera) {
+    copy_m4_m4(camera_matrix, draw_ctx->v3d->camera->object_to_world);
   }
   else {
     unit_m4(camera_matrix);
@@ -182,8 +182,8 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     col[3] = col_kf[3] = 255;
 
     Object *cam_eval = nullptr;
-    if (is_in_camera_space && mpath->camera) {
-      cam_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, mpath->camera);
+    if (is_in_camera_space && draw_ctx->v3d->camera) {
+      cam_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, draw_ctx->v3d->camera);
     }
 
     bMotionPathVert *mpv = mpath->points + start_index;

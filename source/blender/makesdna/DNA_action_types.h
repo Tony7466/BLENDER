@@ -69,9 +69,6 @@ typedef struct bMotionPath {
   /** Baking settings - eMotionPath_Flag. */
   int flag;
 
-  /* The camera to bake to if MOTIONPATH_FLAG_BAKE_CAMERA is set.*/
-  struct Object *camera;
-
   /* Used for drawing. */
   struct GPUVertBuf *points_vbo;
   struct GPUBatch *batch_line;

@@ -128,7 +128,10 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
 /* ........ */
 
 /* perform baking for the targets on the current frame */
-static void motionpaths_calc_bake_targets(ListBase *targets, int cframe, Depsgraph *depsgraph)
+static void motionpaths_calc_bake_targets(ListBase *targets,
+                                          int cframe,
+                                          Depsgraph *depsgraph,
+                                          Object *camera)
 {
   using namespace blender;
   /* for each target, check if it can be baked on the current frame */
@@ -172,8 +175,8 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe, Depsgra
       copy_v3_v3(mpv->co, ob_eval->object_to_world[3]);
     }
 
-    if (mpath->flag & MOTIONPATH_FLAG_BAKE_CAMERA && mpath->camera) {
-      Object *cam_eval = DEG_get_evaluated_object(depsgraph, mpath->camera);
+    if (mpath->flag & MOTIONPATH_FLAG_BAKE_CAMERA && camera) {
+      Object *cam_eval = DEG_get_evaluated_object(depsgraph, camera);
       /* Convert point to camera space. */
       float3 co_camera_space = math::transform_point(float4x4(cam_eval->world_to_object),
                                                      float3(mpv->co));
@@ -513,7 +516,7 @@ void animviz_calc_motionpaths(Depsgraph *depsgraph,
     }
 
     /* perform baking for targets */
-    motionpaths_calc_bake_targets(targets, scene->r.cfra, depsgraph);
+    motionpaths_calc_bake_targets(targets, scene->r.cfra, depsgraph, scene->camera);
   }
 
   /* reset original environment */
