@@ -130,11 +130,6 @@ class BlobReadSharing : NonCopyable, NonMovable {
   [[nodiscard]] std::optional<ImplicitSharingInfoAndData> read_shared(
       const io::serialize::DictionaryValue &io_data,
       FunctionRef<std::optional<ImplicitSharingInfoAndData>()> read_fn) const;
-
-  [[nodiscard]] bool read_deduplicated(const BlobReader &blob_reader,
-                                       const io::serialize::DictionaryValue &io_data,
-                                       int64_t size_in_bytes,
-                                       void *r_data) const;
 };
 
 /**
