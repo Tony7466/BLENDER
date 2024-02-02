@@ -44,15 +44,7 @@ struct NlaKeyframingContext;
  * \param use_autokey_mode: include settings from key-framing mode in the result
  * (i.e. replace only).
  */
-eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, bool use_autokey_mode);
-
-/* -------- */
-
-/**
- * Get (or add relevant data to be able to do so) the Active Action for the given
- * Animation Data block, given an ID block where the Animation Data should reside.
- */
-bAction *ED_id_action_ensure(Main *bmain, ID *id);
+eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene);
 
 /* -------- */
 

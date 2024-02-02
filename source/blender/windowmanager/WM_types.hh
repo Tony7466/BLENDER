@@ -119,19 +119,19 @@ struct wmWindowManager;
 #include "RNA_types.hh"
 
 /* exported types for WM */
-#include "gizmo/WM_gizmo_types.h"
+#include "gizmo/WM_gizmo_types.hh"
 #include "wm_cursors.hh"
 #include "wm_event_types.hh"
 
 /* Include external gizmo API's */
-#include "gizmo/WM_gizmo_api.h"
+#include "gizmo/WM_gizmo_api.hh"
 
 namespace blender::asset_system {
 class AssetRepresentation;
 }
 using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
 
-typedef void (*wmGenericUserDataFreeFn)(void *data);
+using wmGenericUserDataFreeFn = void (*)(void *data);
 
 struct wmGenericUserData {
   void *data;
@@ -632,11 +632,11 @@ enum eWM_EventFlag {
    */
   WM_EVENT_IS_REPEAT = (1 << 1),
   /**
-   * Generated for consecutive track-pad or NDOF-motion events,
+   * Generated for consecutive trackpad or NDOF-motion events,
    * the repeat chain is broken by key/button events,
    * or cursor motion exceeding #WM_EVENT_CURSOR_MOTION_THRESHOLD.
    *
-   * Changing the type of track-pad or gesture event also breaks the chain.
+   * Changing the type of trackpad or gesture event also breaks the chain.
    */
   WM_EVENT_IS_CONSECUTIVE = (1 << 2),
   /**
@@ -674,7 +674,7 @@ struct wmTabletData {
  *   See: #ISKEYBOARD_OR_BUTTON.
  *
  * - Previous x/y are exceptions: #wmEvent.prev
- *   these are set on mouse motion, see #MOUSEMOVE & track-pad events.
+ *   these are set on mouse motion, see #MOUSEMOVE & trackpad events.
  *
  * - Modal key-map handling sets `prev_val` & `prev_type` to `val` & `type`,
  *   this allows modal keys-maps to check the original values (needed in some cases).
@@ -919,6 +919,16 @@ struct wmTimer {
   bool sleep;
 };
 
+enum wmPopupSize {
+  WM_POPUP_SIZE_SMALL = 0,
+  WM_POPUP_SIZE_LARGE,
+};
+
+enum wmPopupPosition {
+  WM_POPUP_POSITION_MOUSE = 0,
+  WM_POPUP_POSITION_CENTER,
+};
+
 /**
  * Communication/status data owned by the wmJob, and passed to the worker code when calling
  * `startjob` callback.
@@ -1135,6 +1145,7 @@ enum eWM_DragDataType {
   WM_DRAG_ASSET_CATALOG,
   WM_DRAG_GREASE_PENCIL_LAYER,
   WM_DRAG_NODE_TREE_INTERFACE,
+  WM_DRAG_BONE_COLLECTION,
 };
 
 enum eWM_DragFlags {
@@ -1193,10 +1204,10 @@ struct wmDragGreasePencilLayer {
   GreasePencilLayer *layer;
 };
 
-using WMDropboxTooltipFunc = char *(*)(bContext *C,
-                                       wmDrag *drag,
-                                       const int xy[2],
-                                       wmDropBox *drop);
+using WMDropboxTooltipFunc = std::string (*)(bContext *C,
+                                             wmDrag *drag,
+                                             const int xy[2],
+                                             wmDropBox *drop);
 
 struct wmDragActiveDropState {
   wmDragActiveDropState();
@@ -1315,8 +1326,12 @@ struct wmDropBox {
   /**
    * If poll succeeds, operator is called.
    * Not saved in file, so can be pointer.
+   * This may be null when the operator has been unregistered,
+   * where `opname` can be used to re-initialize it.
    */
   wmOperatorType *ot;
+  /** #wmOperatorType::idname, needed for re-registration. */
+  char opname[64];
 
   /** Operator properties, assigned to ptr->data and can be written to a file. */
   IDProperty *properties;
