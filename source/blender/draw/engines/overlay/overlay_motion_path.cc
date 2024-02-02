@@ -108,6 +108,11 @@ static void motion_path_get_frame_range_to_draw(bAnimVizSettings *avs,
   *r_step = max_ii(avs->path_step, 1);
 }
 
+static Object *get_camera_for_motion_path(const DRWContextState *draw_context)
+{
+  return draw_context->v3d->camera;
+}
+
 static void motion_path_cache(OVERLAY_Data *vedata,
                               Object *ob,
                               bPoseChannel *pchan,
@@ -139,8 +144,9 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   int start_index = sfra - mpath->start_frame;
 
   float camera_matrix[4][4];
-  if (is_in_camera_space && draw_ctx->v3d->camera) {
-    copy_m4_m4(camera_matrix, draw_ctx->v3d->camera->object_to_world);
+  Object *motion_path_camera = get_camera_for_motion_path(draw_ctx);
+  if (is_in_camera_space && motion_path_camera) {
+    copy_m4_m4(camera_matrix, motion_path_camera->object_to_world);
   }
   else {
     unit_m4(camera_matrix);
@@ -182,8 +188,8 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     col[3] = col_kf[3] = 255;
 
     Object *cam_eval = nullptr;
-    if (is_in_camera_space && draw_ctx->v3d->camera) {
-      cam_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, draw_ctx->v3d->camera);
+    if (is_in_camera_space && motion_path_camera) {
+      cam_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, motion_path_camera);
     }
 
     bMotionPathVert *mpv = mpath->points + start_index;
