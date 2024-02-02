@@ -1222,13 +1222,17 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
     node->runtime->tmp_flag = -1;
   }
   iter_shader_to_rgba_depth_count(output, max_depth);
-  for (int depth = max_depth; depth >= 0; depth--) {
-    ntreeExecGPUNodes(exec, mat, output, &depth);
-  }
-  /* Execute the remaining AOV-only nodes. */
   LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
     if (node->type == SH_NODE_OUTPUT_AOV) {
-      ntreeExecGPUNodes(exec, mat, node);
+      iter_shader_to_rgba_depth_count(node, max_depth);
+    }
+  }
+  for (int depth = max_depth; depth >= 0; depth--) {
+    ntreeExecGPUNodes(exec, mat, output, &depth);
+    LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
+      if (node->type == SH_NODE_OUTPUT_AOV) {
+        ntreeExecGPUNodes(exec, mat, node, &depth);
+      }
     }
   }
   ntreeShaderEndExecTree(exec);
