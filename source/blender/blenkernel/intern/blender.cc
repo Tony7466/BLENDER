@@ -34,7 +34,7 @@
 #include "BKE_image.h"
 #include "BKE_layer.hh"
 #include "BKE_main.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"

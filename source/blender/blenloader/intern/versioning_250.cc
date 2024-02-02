@@ -62,7 +62,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"

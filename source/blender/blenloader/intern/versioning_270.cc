@@ -56,7 +56,7 @@
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
 #include "BKE_tracking.h"

@@ -58,7 +58,7 @@
 #include "BKE_report.h"
 
 /* Only for types. */
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "DEG_depsgraph_query.hh"
 

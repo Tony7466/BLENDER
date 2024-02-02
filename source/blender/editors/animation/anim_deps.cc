@@ -30,7 +30,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_main.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "DEG_depsgraph.hh"
 

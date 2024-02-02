@@ -34,7 +34,7 @@
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
