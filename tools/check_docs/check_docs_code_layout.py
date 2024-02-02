@@ -60,7 +60,7 @@ def html_extract_markdown_from_url(url: str) -> Optional[str]:
 # -----------------------------------------------------------------------------
 # markdown Text Parsing
 
-def markdown_to_paths_and_docstrings(markdown: str) -> Tuple[List[str], List[str]]:
+def markdown_to_paths(markdown: str) -> Tuple[List[str], List[str]]:
     file_paths = []
     markdown = markdown.replace("<p>", "")
     markdown = markdown.replace("</p>", "")
@@ -198,7 +198,7 @@ def main() -> None:
             return
 
     with open(args.markdown, 'r', encoding='utf-8') as fh:
-        file_paths = markdown_to_paths_and_docstrings(fh.read())
+        file_paths = markdown_to_paths(fh.read())
 
     # Disable, mostly useful when debugging why paths might not be found.
     # report_known_markdown_paths()
