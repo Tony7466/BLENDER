@@ -138,7 +138,7 @@ std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplic
 {
   Vector<int64_t> offsets_vec;
   ChunkifyArrayParams chunkify_params;
-  chunkify_params.approximate_elements_per_chunk = 1000;
+  chunkify_params.approximate_elements_per_chunk = 10000;
   chunkify_params.element_size = 1;
   OffsetIndices<int64_t> chunks = chunkify_array(
       data, size_in_bytes, chunkify_params, offsets_vec);
