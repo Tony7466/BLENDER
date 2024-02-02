@@ -890,7 +890,7 @@
   { \
     .dash_offset = 0, \
     .segments_array = NULL, \
-    .segments_num = 1, \
+    .segments_num = 0, \
     .segment_active_index = 0, \
   }
 

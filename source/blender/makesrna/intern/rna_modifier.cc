@@ -1932,7 +1932,7 @@ static const GreasePencilDashModifierData *find_grease_pencil_dash_modifier_of_s
   return nullptr;
 }
 
-static char *rna_GreasePencilDashModifierSegment_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_GreasePencilDashModifierSegment_path(const PointerRNA *ptr)
 
 {
   const Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
@@ -1947,7 +1947,7 @@ static char *rna_GreasePencilDashModifierSegment_path(const PointerRNA *ptr)
   char ds_name_esc[sizeof(dash_segment->name) * 2];
   BLI_str_escape(ds_name_esc, dash_segment->name, sizeof(ds_name_esc));
 
-  return BLI_sprintfN("modifiers[\"%s\"].segments[\"%s\"]", name_esc, ds_name_esc);
+  return fmt::format("modifiers[\"{}\"].segments[\"{}\"]", name_esc, ds_name_esc);
 }
 
 static void rna_GreasePencilDashModifierSegment_name_set(PointerRNA *ptr, const char *value)

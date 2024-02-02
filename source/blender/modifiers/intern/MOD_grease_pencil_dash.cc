@@ -6,7 +6,10 @@
  * \ingroup modifiers
  */
 
+#include "BLI_index_range.hh"
+#include "BLI_span.hh"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
@@ -37,6 +40,8 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
+#include <iostream>
+
 namespace blender {
 
 static void init_data(ModifierData *md)
@@ -47,6 +52,11 @@ static void init_data(ModifierData *md)
 
   MEMCPY_STRUCT_AFTER(dmd, DNA_struct_default_get(GreasePencilDashModifierData), modifier);
   modifier::greasepencil::init_influence_data(&dmd->influence, false);
+
+  GreasePencilDashModifierSegment *ds = DNA_struct_default_alloc(GreasePencilDashModifierSegment);
+  STRNCPY_UTF8(ds->name, DATA_("Segment"));
+  dmd->segments_array = ds;
+  dmd->segments_num = 1;
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -58,12 +68,17 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
 
   BKE_modifier_copydata_generic(md, target, flag);
   modifier::greasepencil::copy_influence_data(&dmd->influence, &tmmd->influence, flag);
+
+  tmmd->segments_array = static_cast<GreasePencilDashModifierSegment *>(
+      MEM_dupallocN(dmd->segments_array));
 }
 
 static void free_data(ModifierData *md)
 {
   auto *dmd = reinterpret_cast<GreasePencilDashModifierData *>(md);
   modifier::greasepencil::free_influence_data(&dmd->influence);
+
+  MEM_SAFE_FREE(dmd->segments_array);
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
@@ -72,105 +87,289 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&dmd->influence, ob, walk, user_data);
 }
 
-/**
- * Gap==0 means to start the next segment at the immediate next point, which will leave a visual
- * gap of "1 point". This makes the algorithm give the same visual appearance as displayed on the
- * UI and also simplifies the check for "no-length" situation where SEG==0 (which will not produce
- * any effective dash).
- */
-static int real_gap(const GreasePencilDashModifierSegment &dash_segment)
-{
-  return dash_segment.gap - 1;
-}
-
 static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
 {
   const auto *dmd = reinterpret_cast<GreasePencilDashModifierData *>(md);
   /* Enable if at least one segment has non-zero length. */
   for (const GreasePencilDashModifierSegment &dash_segment : dmd->segments()) {
-    if (dash_segment.dash + real_gap(dash_segment) > 0) {
+    if (dash_segment.dash + dash_segment.gap - 1 > 0) {
       return false;
     }
   }
   return true;
 }
 
-// static bke::CurvesGeometry create_mirror_copies(const Object &ob,
-//                                                 const GreasePencilDashModifierData &dmd,
-//                                                 const bke::CurvesGeometry &base_curves,
-//                                                 const bke::CurvesGeometry &mirror_curves)
-// {
-//   const bool use_mirror_x = (dmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X);
-//   const bool use_mirror_y = (dmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y);
-//   const bool use_mirror_z = (dmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z);
+static int floored_modulo(const int a, const int b)
+{
+  return a - math::floor(a / b) * b;
+}
 
-//   Curves *base_curves_id = bke::curves_new_nomain(base_curves);
-//   Curves *mirror_curves_id = bke::curves_new_nomain(mirror_curves);
-//   bke::GeometrySet base_geo = bke::GeometrySet::from_curves(base_curves_id);
-//   bke::GeometrySet mirror_geo = bke::GeometrySet::from_curves(mirror_curves_id);
+/* Combined segment info used by all strokes. */
+struct PatternInfo {
+  /* Segment indices per point over the length of the pattern.
+   * -1: Gap, discard point.
+   * >= 0: Segment index, same indices form a curve.
+   */
+  Array<int> dash_ids;
+  int dash_offset = 0;
 
-//   std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
-//   const int base_handle = instances->add_reference(bke::InstanceReference{base_geo});
-//   const int mirror_handle = instances->add_reference(bke::InstanceReference{mirror_geo});
-//   for (const int mirror_x : IndexRange(use_mirror_x ? 2 : 1)) {
-//     for (const int mirror_y : IndexRange(use_mirror_y ? 2 : 1)) {
-//       for (const int mirror_z : IndexRange(use_mirror_z ? 2 : 1)) {
-//         if (mirror_x == 0 && mirror_y == 0 && mirror_z == 0) {
-//           instances->add_instance(base_handle, float4x4::identity());
-//         }
-//         else {
-//           const float4x4 matrix = get_mirror_matrix(
-//               ob, dmd, bool(mirror_x), bool(mirror_y), bool(mirror_z));
-//           instances->add_instance(mirror_handle, matrix);
-//         }
-//       }
-//     }
-//   }
+  int point_num = 0;
+  int curve_num = 0;
+};
 
-//   geometry::RealizeInstancesOptions options;
-//   options.keep_original_ids = true;
-//   options.realize_instance_attributes = false;
-//   options.propagation_info = {};
-//   bke::GeometrySet result_geo = geometry::realize_instances(
-//       bke::GeometrySet::from_instances(instances.release()), options);
-//   return std::move(result_geo.get_curves_for_write()->geometry.wrap());
-// }
+static PatternInfo get_pattern_info(const GreasePencilDashModifierData &dmd)
+{
+  int pattern_length = 0;
+  for (const GreasePencilDashModifierSegment &dash_segment : dmd.segments()) {
+    pattern_length += dash_segment.dash + dash_segment.gap;
+  }
+
+  PatternInfo info;
+  info.dash_ids.reinitialize(pattern_length);
+  info.dash_offset = floored_modulo(dmd.dash_offset, pattern_length);
+  info.curve_num = dmd.segments().size();
+
+  IndexRange dash_range(0);
+  IndexRange gap_range(0);
+  for (const int i : dmd.segments().index_range()) {
+    const GreasePencilDashModifierSegment &dash_segment = dmd.segments()[i];
+    dash_range = gap_range.after(dash_segment.dash);
+    gap_range = dash_range.after(dash_segment.gap);
+    info.dash_ids.as_mutable_span().slice(dash_range).fill(i);
+    info.dash_ids.as_mutable_span().slice(gap_range).fill(-1);
+
+    info.point_num += dash_range.size();
+  }
+  return info;
+}
+
+/**
+ * Iterate over all dash curves.
+ * \param fn: Function taking an \a IndexMask of source points, describing new curves.
+ */
+template<typename Fn>
+static void foreach_dash(const PatternInfo &pattern_info, const int src_point_num, Fn fn)
+{
+  BLI_assert(src_point_num > 0);
+
+  const Span<int> dash_ids = pattern_info.dash_ids;
+  const int pattern_length = dash_ids.size();
+  /* Points range in "pattern space". */
+  const IndexRange points = {pattern_info.dash_offset, src_point_num};
+
+  int prev_dash_id = -1;
+  IndexRange src_curve_points(0);
+  for (const int i : points.index_range()) {
+    const int repeat = points[i] / pattern_length;
+    const int pattern_i = points[i] - repeat * pattern_length;
+    BLI_assert(pattern_i < pattern_length);
+    /* Unique ID, to ensure curve breaks in case there is just one dash. */
+    const int dash_id = dash_ids[pattern_i] + repeat * pattern_info.curve_num;
+    if (dash_id >= 0 && dash_id == prev_dash_id) {
+      /* Extend curve. */
+      src_curve_points = IndexRange(src_curve_points.start(), src_curve_points.size() + 1);
+    }
+    else {
+      if (!src_curve_points.is_empty()) {
+        /* Report finished curve. */
+        fn(IndexMask(src_curve_points));
+      }
+
+      if (dash_id >= 0) {
+        /* New curve. */
+        src_curve_points = IndexRange(i, 1);
+      }
+    }
+
+    prev_dash_id = dash_id;
+  }
+}
+
+#if 0
+/** Count how many points and curves are generated from an input curve of length \a point_num. */
+static auto count_dash_points_and_curves(const PatternInfo &pattern_info, const int src_point_num)
+{
+  BLI_assert(src_point_num > 0);
+
+  int dst_point_num = 0;
+  int dst_curve_num = 0;
+
+  const Span<int> dash_ids = pattern_info.dash_ids;
+  const int pattern_length = dash_ids.size();
+  /* Number of pattern repetitions to cover the entire point range. */
+  const int repeats = (pattern_info.dash_offset + src_point_num + pattern_length - 1) /
+                      pattern_length;
+  BLI_assert(repeats > 0);
+
+  /* Points range in "pattern space". */
+  const IndexRange points = {pattern_info.dash_offset, src_point_num};
+
+  /* Index range of the first pattern instance. */
+  const IndexRange first_pattern_range = IndexRange(pattern_length).intersect(points);
+  for (const int i : first_pattern_range.index_range()) {
+    const int pattern_i = first_pattern_range[i];
+    if (dash_ids[pattern_i] >= 0) {
+      dst_point_num++;
+    }
+    if (i == 0 || dash_ids[pattern_i] != dash_ids[pattern_i - 1]) {
+      dst_curve_num++;
+    }
+  }
+
+  if (repeats > 1) {
+    /* Add full pattern repetitions. */
+    dst_point_num += pattern_info.point_num * (repeats - 2);
+    dst_curve_num += pattern_info.curve_num * (repeats - 2);
+
+    const IndexRange last_pattern_range = IndexRange((repeats - 1) * pattern_length,
+                                                     pattern_length)
+                                              .intersect(points)
+                                              .shift(-(repeats - 1) * pattern_length);
+    for (const int i : last_pattern_range.index_range()) {
+      const int pattern_i = last_pattern_range[i];
+      if (dash_ids[pattern_i] >= 0) {
+        dst_point_num++;
+      }
+      if (i == 0 || dash_ids[pattern_i] != dash_ids[pattern_i - 1]) {
+        dst_curve_num++;
+      }
+    }
+  }
+
+  return std::make_tuple(dst_point_num, dst_curve_num);
+}
+
+static void build_dashes(const PatternInfo &pattern_info,
+                         const int src_point_num,
+                         MutableSpan<int> offsets)
+{
+  BLI_assert(src_point_num > 0);
+
+  const Span<int> dash_ids = pattern_info.dash_ids;
+  const int pattern_length = dash_ids.size();
+  /* Number of pattern repetitions to cover the entire point range. */
+  const int repeats = (pattern_info.dash_offset + src_point_num + pattern_length - 1) /
+                      pattern_length;
+  BLI_assert(repeats > 0);
+
+  /* Points range in "pattern space". */
+  const IndexRange points = {pattern_info.dash_offset, src_point_num};
+
+  int dst_point_num = 0;
+  int dst_curve_num = 0;
+
+  /* Index range of the first pattern instance. */
+  const IndexRange first_pattern_range = IndexRange(pattern_length).intersect(points);
+  for (const int i : first_pattern_range.index_range()) {
+    const int pattern_i = first_pattern_range[i];
+    if (dash_ids[pattern_i] >= 0) {
+      dst_point_num++;
+    }
+    if (i == 0 || dash_ids[pattern_i] != dash_ids[pattern_i - 1]) {
+      dst_curve_num++;
+    }
+  }
+
+  if (repeats > 1) {
+    /* Add full pattern repetitions. */
+    dst_point_num += pattern_info.point_num * (repeats - 2);
+    dst_curve_num += pattern_info.curve_num * (repeats - 2);
+
+    const IndexRange last_pattern_range = IndexRange((repeats - 1) * pattern_length,
+                                                     pattern_length)
+                                              .intersect(points)
+                                              .shift(-(repeats - 1) * pattern_length);
+    for (const int i : last_pattern_range.index_range()) {
+      const int pattern_i = last_pattern_range[i];
+      if (dash_ids[pattern_i] >= 0) {
+        dst_point_num++;
+      }
+      if (i == 0 || dash_ids[pattern_i] != dash_ids[pattern_i - 1]) {
+        dst_curve_num++;
+      }
+    }
+  }
+
+  return std::make_tuple(dst_point_num, dst_curve_num);
+}
+#endif
+
+static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd,
+                                         const PatternInfo &pattern_info,
+                                         const bke::CurvesGeometry &src_curves,
+                                         const IndexMask &curves_mask)
+{
+  /* Count new curves and points. */
+  int dst_point_num = 0;
+  int dst_curve_num = 0;
+  for (const int src_curve_i : src_curves.curves_range()) {
+    const int src_point_num = src_curves.points_by_curve()[src_curve_i].size();
+    foreach_dash(pattern_info, src_point_num, [&](const IndexMask &src_points) {
+      dst_point_num += src_points.size();
+      dst_curve_num += 1;
+    });
+  }
+
+  bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
+  /* Map each destination point and curve to its source. */
+  Array<int> src_point_indices(dst_point_num);
+  Array<int> src_curve_indices(dst_curve_num);
+
+  std::cout << "Dash Curves (points=" << dst_point_num << ", curves=" << dst_curve_num << ")"
+            << std::endl;
+  {
+    IndexRange dst_point_range(0);
+    int dst_curve_i = 0;
+    for (const int src_curve_i : src_curves.curves_range()) {
+      const int src_point_num = src_curves.points_by_curve()[src_curve_i].size();
+      foreach_dash(pattern_info, src_point_num, [&](const IndexMask &src_points) {
+        dst_point_range = dst_point_range.after(src_points.size());
+        dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.start();
+        std::cout << dst_curve_i << ": " << dst_point_range << std::endl;
+
+        src_points.to_indices(src_point_indices.as_mutable_span().slice(dst_point_range));
+        src_curve_indices[dst_curve_i] = src_curve_i;
+
+        ++dst_curve_i;
+      });
+    }
+    dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.one_after_last();
+    std::cout << dst_curve_i << ": " << dst_point_range.one_after_last() << std::endl;
+  }
+  std::flush(std::cout);
+
+  bke::gather_attributes(src_curves.attributes(),
+                         bke::AttrDomain::Point,
+                         {},
+                         {},
+                         src_point_indices,
+                         dst_curves.attributes_for_write());
+  bke::gather_attributes(src_curves.attributes(),
+                         bke::AttrDomain::Curve,
+                         {},
+                         {},
+                         src_curve_indices,
+                         dst_curves.attributes_for_write());
+
+  return std::move(dst_curves);
+}
 
 static void modify_drawing(const GreasePencilDashModifierData &dmd,
                            const ModifierEvalContext &ctx,
+                           const PatternInfo &pattern_info,
                            bke::greasepencil::Drawing &drawing)
 {
   UNUSED_VARS(dmd, ctx);
-  //   const bool use_mirror_x = (dmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_X);
-  //   const bool use_mirror_y = (dmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Y);
-  //   const bool use_mirror_z = (dmd.flag & MOD_GREASE_PENCIL_MIRROR_AXIS_Z);
-  //   if (!use_mirror_x && !use_mirror_y && !use_mirror_z) {
-  //     return;
-  //   }
+  const bke::CurvesGeometry &src_curves = drawing.strokes();
+  if (src_curves.curve_num == 0) {
+    return;
+  }
+  /* Selected source curves. */
+  IndexMaskMemory curve_mask_memory;
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+      ctx.object, src_curves, dmd.influence, curve_mask_memory);
 
-  //   const bke::CurvesGeometry &src_curves = drawing.strokes();
-  //   if (src_curves.curve_num == 0) {
-  //     return;
-  //   }
-  //   /* Selected source curves. */
-  //   IndexMaskMemory curve_mask_memory;
-  //   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
-  //       ctx.object, src_curves, dmd.influence, curve_mask_memory);
-
-  //   if (curves_mask.size() == src_curves.curve_num) {
-  //     /* All geometry gets mirrored. */
-  //     drawing.strokes_for_write() = create_mirror_copies(*ctx.object, dmd, src_curves,
-  //     src_curves);
-  //   }
-  //   else {
-  //     /* Create masked geometry, then mirror it. */
-  //     bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
-  //         src_curves, curves_mask, {});
-
-  //     drawing.strokes_for_write() = create_mirror_copies(
-  //         *ctx.object, dmd, src_curves, masked_curves);
-  //   }
-
+  drawing.strokes_for_write() = create_dashes(dmd, pattern_info, src_curves, curves_mask);
   drawing.tag_topology_changed();
 }
 
@@ -188,14 +387,16 @@ static void modify_geometry_set(ModifierData *md,
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
   const int frame = grease_pencil.runtime->eval_frame;
 
+  const PatternInfo pattern_info = get_pattern_info(*dmd);
+
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, dmd->influence, mask_memory);
 
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       grease_pencil, layer_mask, frame);
-  threading::parallel_for_each(drawings,
-                               [&](Drawing *drawing) { modify_drawing(*dmd, *ctx, *drawing); });
+  threading::parallel_for_each(
+      drawings, [&](Drawing *drawing) { modify_drawing(*dmd, *ctx, pattern_info, *drawing); });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
@@ -230,12 +431,18 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayout *col = uiLayoutColumn(row, false);
   uiLayout *sub = uiLayoutColumn(col, true);
-  uiItemO(sub, "", ICON_ADD, "GPENCIL_OT_segment_add");
-  uiItemO(sub, "", ICON_REMOVE, "GPENCIL_OT_segment_remove");
+  uiItemO(sub, "", ICON_ADD, "OBJECT_OT_grease_pencil_dash_modifier_segment_add");
+  uiItemO(sub, "", ICON_REMOVE, "OBJECT_OT_grease_pencil_dash_modifier_segment_remove");
   uiItemS(col);
   sub = uiLayoutColumn(col, true);
-  uiItemEnumO_string(sub, "", ICON_TRIA_UP, "GPENCIL_OT_segment_move", "type", "UP");
-  uiItemEnumO_string(sub, "", ICON_TRIA_DOWN, "GPENCIL_OT_segment_move", "type", "DOWN");
+  uiItemEnumO_string(
+      sub, "", ICON_TRIA_UP, "OBJECT_OT_grease_pencil_dash_modifier_segment_move", "type", "UP");
+  uiItemEnumO_string(sub,
+                     "",
+                     ICON_TRIA_DOWN,
+                     "OBJECT_OT_grease_pencil_dash_modifier_segment_move",
+                     "type",
+                     "DOWN");
 
   if (dmd->segment_active_index >= 0 && dmd->segment_active_index < dmd->segments_num) {
     PointerRNA ds_ptr = RNA_pointer_create(ptr->owner_id,
@@ -253,8 +460,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(sub, &ds_ptr, "use_cyclic", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
-  if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", ptr, "open_influence_panel"))
+  if (uiLayout *influence_panel = uiLayoutPanelProp(
+          C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
@@ -280,7 +487,7 @@ static void segment_list_item_draw(uiList * /*ui_list*/,
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GreasePencilMirror, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilDash, panel_draw);
 
   uiListType *list_type = static_cast<uiListType *>(
       MEM_callocN(sizeof(uiListType), "Grease Pencil Dash modifier segments"));
@@ -295,6 +502,9 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
   BLO_write_struct(writer, GreasePencilDashModifierData, dmd);
   modifier::greasepencil::write_influence_data(writer, &dmd->influence);
+
+  BLO_write_struct_array(
+      writer, GreasePencilDashModifierSegment, dmd->segments_num, dmd->segments_array);
 }
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
@@ -302,6 +512,8 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   auto *dmd = reinterpret_cast<GreasePencilDashModifierData *>(md);
 
   modifier::greasepencil::read_influence_data(reader, &dmd->influence);
+
+  BLO_read_data_address(reader, &dmd->segments_array);
 }
 
 }  // namespace blender
