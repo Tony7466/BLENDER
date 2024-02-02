@@ -31,6 +31,21 @@ float g_translucent_rand;
 float g_reflection_rand;
 float g_refraction_rand;
 
+ClosureUndetermined g_closure_get(int i)
+{
+  switch (i) {
+    default:
+    case 0:
+      return g_diffuse_data;
+    case 1:
+      return g_translucent_data;
+    case 2:
+      return g_reflection_data;
+    case 3:
+      return g_refraction_data;
+  }
+}
+
 ClosureType closure_type_get(ClosureDiffuse cl)
 {
   return CLOSURE_BSDF_DIFFUSE_ID;
