@@ -1,1 +1,2 @@
 Referenced by commit 8dd30838e91d1dac0f045d7f832e8de4f86c65a3, Fix #117423: Broken UI button float display after cleanup
+Referenced by issue #117632, Crash when Using IME in the Fields Existing more than 24 Bytes Text
