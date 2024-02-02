@@ -62,25 +62,18 @@ def html_extract_markdown_from_url(url: str) -> Optional[str]:
 
 def markdown_to_paths_and_docstrings(markdown: str) -> Tuple[List[str], List[str]]:
     file_paths = []
-    file_paths_docstring = []
-    start_index=0
     markdown = markdown.replace("<p>", "")
     markdown = markdown.replace("</p>", "")
     markdown = markdown.replace("<strong>", "")
     markdown = markdown.replace("</strong>", "")
     markdown = markdown.replace("</td>", "")
-    lines = markdown.split("\n")
-    i = 0
-    while i < len(lines):
-        if lines[i].startswith("<td markdown>/"):
-            start_index=len("<td markdown>")
-            file_paths.append(lines[i][start_index:])
-            body = []
-            file_paths_docstring.append(lines[i][start_index:])
+  
+    for line in markdown.splitlines():
+        if line.startswith("<td markdown>/"):
+            start_index = len("<td markdown>")
+            file_paths.append(line[start_index+1:])
 
-        i += 1
-
-    return file_paths,file_paths_docstring
+    return file_paths
 
 
 # -----------------------------------------------------------------------------
@@ -96,7 +89,7 @@ def report_known_markdown_paths(file_paths: List[str]) -> None:
 def report_missing_source(file_paths: List[str]) -> int:
     heading = "Missing in Source Dir"
 
-    test = [p for p in file_paths if not os.path.exists(os.path.join(SOURCE_DIR, p.lstrip("/")))]
+    test = [p for p in file_paths if not os.path.exists(os.path.join(SOURCE_DIR, p))]
 
     amount = str(len(test)) if test else "none found"
     print(text_with_title_underline("{:s} ({:s})".format(heading, amount)))
@@ -117,13 +110,13 @@ def report_incomplete(file_paths: List[str]) -> int:
     test = []
     basedirs = {os.path.dirname(p) for p in file_paths}
     for base in sorted(basedirs):
-        base_abs = os.path.join(SOURCE_DIR, base.lstrip("/"))
+        base_abs = os.path.join(SOURCE_DIR, base)
         if(os.path.exists(base_abs)):
             for p in os.listdir(base_abs):
                 if not p.startswith("."):
                     p_abs = os.path.join(base_abs, p)
                     if os.path.isdir(p_abs):
-                        p_rel = os.path.join(base, p+"/")
+                        p_rel = os.path.join(base, p)
                         if p_rel not in file_paths:
                             test.append(p_rel)
 
@@ -162,26 +155,6 @@ def report_alphabetical_order(file_paths: List[str]) -> int:
 
     for p_prev, p in test:
         print("-", p, "(should be before)\n ", p_prev)
-
-    return len(test)
-
-
-def report_todo_in_docstrings(file_paths: List[str], file_paths_docstring: List[str]) -> int:
-    heading = "Marked as TODO"
-    test = []
-
-    re_todo = re.compile(r"\bTODO\b")
-    for p, docstring in zip(file_paths, file_paths_docstring):
-        if re_todo.match(docstring):
-            test.append(p)
-
-    amount = str(len(test)) if test else "none found"
-    print(text_with_title_underline("{:s} ({:s})".format(heading, amount)))
-    if not test:
-        return 0
-
-    for p in test:
-        print("-", p)
 
     return len(test)
 
@@ -225,7 +198,7 @@ def main() -> None:
             return
 
     with open(args.markdown, 'r', encoding='utf-8') as fh:
-        file_paths,file_paths_docstring = markdown_to_paths_and_docstrings(fh.read())
+        file_paths = markdown_to_paths_and_docstrings(fh.read())
 
     # Disable, mostly useful when debugging why paths might not be found.
     # report_known_markdown_paths()
@@ -233,7 +206,6 @@ def main() -> None:
     issues += report_missing_source(file_paths)
     issues += report_incomplete(file_paths)
     issues += report_alphabetical_order(file_paths)
-    issues += report_todo_in_docstrings(file_paths, file_paths_docstring)
 
     if issues:
         print("Warning, found {:d} issues!\n".format(issues))
