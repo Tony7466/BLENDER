@@ -56,6 +56,7 @@ set(SRC
   intern/boxpack_2d.c
   intern/buffer.c
   intern/cache_mutex.cc
+  intern/chunkify_array.cc
   intern/compute_context.cc
   intern/convexhull_2d.c
   intern/cpp_type.cc
@@ -198,6 +199,7 @@ set(SRC
   BLI_boxpack_2d.h
   BLI_buffer.h
   BLI_cache_mutex.hh
+  BLI_chunkify_array.hh
   BLI_color.hh
   BLI_color_mix.hh
   BLI_compiler_attrs.h
@@ -495,6 +497,7 @@ if(WITH_GTESTS)
     tests/BLI_bit_vector_test.cc
     tests/BLI_bitmap_test.cc
     tests/BLI_bounds_test.cc
+    tests/BLI_chunkify_array_test.cc
     tests/BLI_color_test.cc
     tests/BLI_cpp_type_test.cc
     tests/BLI_delaunay_2d_test.cc
