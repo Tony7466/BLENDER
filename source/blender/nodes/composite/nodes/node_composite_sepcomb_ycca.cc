@@ -89,7 +89,7 @@ void register_node_type_cmp_sepycca()
   ntype.gather_link_search_ops = nullptr;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /* **************** COMBINE YCCA ******************** */
@@ -174,5 +174,5 @@ void register_node_type_cmp_combycca()
   ntype.gather_link_search_ops = nullptr;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

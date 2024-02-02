@@ -278,7 +278,7 @@ static int node_shader_gpu_tex_sky(GPUMaterial *mat,
 
 static void node_shader_update_sky(bNodeTree *ntree, bNode *node)
 {
-  bNodeSocket *sockVector = nodeFindSocket(node, SOCK_IN, "Vector");
+  bNodeSocket *sockVector = blender::bke::nodeFindSocket(node, SOCK_IN, "Vector");
 
   NodeTexSky *tex = (NodeTexSky *)node->storage;
   bke::nodeSetSocketAvailability(ntree, sockVector, !(tex->sky_model == 2 && tex->sun_disc == 1));
@@ -317,11 +317,11 @@ void register_node_type_sh_tex_sky()
   ntype.draw_buttons = file_ns::node_shader_buts_tex_sky;
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.initfunc = file_ns::node_shader_init_tex_sky;
-  node_type_storage(&ntype, "NodeTexSky", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype, "NodeTexSky", node_free_standard_storage, node_copy_standard_storage);
   ntype.gpu_fn = file_ns::node_shader_gpu_tex_sky;
   /* Remove vector input for Nishita sky model. */
   ntype.updatefunc = file_ns::node_shader_update_sky;
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

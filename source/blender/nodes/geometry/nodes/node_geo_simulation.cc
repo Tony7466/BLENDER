@@ -54,8 +54,8 @@ namespace blender::nodes::node_geo_simulation_cc {
 
 static const CPPType &get_simulation_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
-  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  const char *socket_idname = blender::bke::nodeStaticSocketType(socket_type, 0);
+  const bNodeSocketType *typeinfo = blender::bke::nodeSocketTypeFind(socket_idname);
   BLI_assert(typeinfo);
   BLI_assert(typeinfo->geometry_nodes_cpp_type);
   return *typeinfo->geometry_nodes_cpp_type;
@@ -408,11 +408,11 @@ static void node_register()
   ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
   ntype.no_muting = true;
-  node_type_storage(&ntype,
+  blender::bke::node_type_storage(&ntype,
                     "NodeGeometrySimulationInput",
                     node_free_standard_storage,
                     node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
@@ -897,8 +897,8 @@ static void node_register()
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.no_muting = true;
-  node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

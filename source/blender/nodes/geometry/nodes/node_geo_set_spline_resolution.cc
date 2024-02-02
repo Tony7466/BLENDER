@@ -86,7 +86,7 @@ static void node_register()
       &ntype, GEO_NODE_SET_SPLINE_RESOLUTION, "Set Spline Resolution", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

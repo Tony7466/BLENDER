@@ -80,5 +80,5 @@ void register_node_type_sh_blackbody()
   ntype.build_multi_function = file_ns::sh_node_blackbody_build_multi_function;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

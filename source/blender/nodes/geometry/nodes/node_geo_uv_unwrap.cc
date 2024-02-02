@@ -213,12 +213,12 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_UV_UNWRAP, "UV Unwrap", NODE_CLASS_CONVERTER);
   ntype.initfunc = node_init;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryUVUnwrap", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

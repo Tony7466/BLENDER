@@ -48,5 +48,5 @@ void register_node_type_tex_at()
   blender::bke::node_type_size(&ntype, 140, 100, 320);
   ntype.exec_fn = exec;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

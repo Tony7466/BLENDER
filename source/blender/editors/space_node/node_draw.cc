@@ -154,7 +154,7 @@ static bNodeTree *node_tree_from_ID(ID *id)
     if (GS(id->name) == ID_NT) {
       return (bNodeTree *)id;
     }
-    return ntreeFromID(id);
+    return blender::bke::ntreeFromID(id);
   }
 
   return nullptr;
@@ -1099,7 +1099,7 @@ static void node_draw_mute_line(const bContext &C,
   GPU_blend(GPU_BLEND_ALPHA);
 
   for (const bNodeLink &link : node.internal_links()) {
-    if (!nodeLinkIsHidden(&link)) {
+    if (!blender::bke::nodeLinkIsHidden(&link)) {
       node_draw_link_bezier(C, v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
     }
   }
@@ -2888,7 +2888,7 @@ static void node_draw_basis(const bContext &C,
       }
       else if (previews_compo) {
         bNodePreview *preview_compositor = static_cast<bNodePreview *>(
-            BKE_node_instance_hash_lookup(previews_compo, key));
+            blender::bke::BKE_node_instance_hash_lookup(previews_compo, key));
         if (preview_compositor) {
           node_draw_extra_info_panel(
               C, tree_draw_ctx, snode, node, preview_compositor->ibuf, block);
@@ -3991,7 +3991,7 @@ static void node_draw_nodetree(const bContext &C,
       continue;
     }
 
-    const bNodeInstanceKey key = BKE_node_instance_key(parent_key, &ntree, nodes[i]);
+    const bNodeInstanceKey key = blender::bke::BKE_node_instance_key(parent_key, &ntree, nodes[i]);
     node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[i], *blocks[i], key);
   }
 
@@ -4000,14 +4000,14 @@ static void node_draw_nodetree(const bContext &C,
   nodelink_batch_start(snode);
 
   for (const bNodeLink *link : ntree.all_links()) {
-    if (!nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
+    if (!blender::bke::nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
   for (const bNodeLink *link : ntree.all_links()) {
-    if (!nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
+    if (!blender::bke::nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, true);
     }
   }
@@ -4021,7 +4021,7 @@ static void node_draw_nodetree(const bContext &C,
       continue;
     }
 
-    const bNodeInstanceKey key = BKE_node_instance_key(parent_key, &ntree, nodes[i]);
+    const bNodeInstanceKey key = blender::bke::BKE_node_instance_key(parent_key, &ntree, nodes[i]);
     node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[i], *blocks[i], key);
   }
 }
@@ -4273,7 +4273,7 @@ void node_draw_space(const bContext &C, ARegion &region)
   else {
 
     /* Backdrop. */
-    draw_nodespace_back_pix(C, region, snode, NODE_INSTANCE_KEY_NONE);
+    draw_nodespace_back_pix(C, region, snode, blender::bke::NODE_INSTANCE_KEY_NONE);
   }
 
   ED_region_draw_cb_draw(&C, &region, REGION_DRAW_POST_VIEW);

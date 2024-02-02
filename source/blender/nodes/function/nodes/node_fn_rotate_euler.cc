@@ -139,7 +139,7 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.build_multi_function = node_build_multi_function;
   ntype.gather_link_search_ops = nullptr;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

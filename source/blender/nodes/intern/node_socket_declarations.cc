@@ -63,9 +63,9 @@ static bool basic_types_can_connect(const SocketDeclaration & /*socket_decl*/,
 
 static void modify_subtype_except_for_storage(bNodeSocket &socket, int new_subtype)
 {
-  const char *idname = nodeStaticSocketType(socket.type, new_subtype);
+  const char *idname = blender::bke::nodeStaticSocketType(socket.type, new_subtype);
   STRNCPY(socket.idname, idname);
-  bNodeSocketType *socktype = nodeSocketTypeFind(idname);
+  bNodeSocketType *socktype = blender::bke::nodeSocketTypeFind(idname);
   socket.typeinfo = socktype;
 }
 
@@ -75,7 +75,7 @@ static void modify_subtype_except_for_storage(bNodeSocket &socket, int new_subty
 
 bNodeSocket &Float::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_FLOAT,
@@ -147,7 +147,7 @@ bNodeSocket &Float::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &
 
 bNodeSocket &Int::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_INT,
@@ -216,7 +216,7 @@ bNodeSocket &Int::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &so
 
 bNodeSocket &Vector::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_VECTOR,
@@ -289,7 +289,7 @@ bNodeSocket &Vector::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket 
 
 bNodeSocket &Bool::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_BOOLEAN,
@@ -339,7 +339,7 @@ bNodeSocket &Bool::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &s
 
 bNodeSocket &Color::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_RGBA,
@@ -388,7 +388,7 @@ bNodeSocket &Color::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &
 
 bNodeSocket &Rotation::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_ROTATION,
@@ -441,7 +441,7 @@ bNodeSocket &Rotation::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocke
 
 bNodeSocket &String::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_STRING,
@@ -487,7 +487,7 @@ bNodeSocket &String::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket 
 
 bNodeSocket &Menu::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddStaticSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddStaticSocket(&ntree,
                                              &node,
                                              this->in_out,
                                              SOCK_MENU,
@@ -534,7 +534,7 @@ bNodeSocket &Menu::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &s
 
 bNodeSocket &IDSocketDeclaration::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddSocket(
+  bNodeSocket &socket = *blender::bke::nodeAddSocket(
       &ntree, &node, this->in_out, this->idname, this->identifier.c_str(), this->name.c_str());
   if (this->default_value_fn) {
     ID *id = this->default_value_fn(node);
@@ -583,7 +583,7 @@ bNodeSocket &IDSocketDeclaration::update_or_build(bNodeTree &ntree,
 
 bNodeSocket &Geometry::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddSocket(&ntree,
                                        &node,
                                        this->in_out,
                                        "NodeSocketGeometry",
@@ -677,7 +677,7 @@ GeometryBuilder &GeometryBuilder::only_instances(bool value)
 
 bNodeSocket &Shader::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddSocket(&ntree,
                                        &node,
                                        this->in_out,
                                        "NodeSocketShader",
@@ -719,7 +719,7 @@ bool Shader::can_connect(const bNodeSocket &socket) const
 
 bNodeSocket &Extend::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddSocket(&ntree,
+  bNodeSocket &socket = *blender::bke::nodeAddSocket(&ntree,
                                        &node,
                                        this->in_out,
                                        "NodeSocketVirtual",
@@ -756,7 +756,7 @@ bNodeSocket &Extend::update_or_build(bNodeTree & /*ntree*/,
 
 bNodeSocket &Custom::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddSocket(
+  bNodeSocket &socket = *blender::bke::nodeAddSocket(
       &ntree, &node, this->in_out, idname_, this->identifier.c_str(), this->name.c_str());
   if (this->init_socket_fn) {
     this->init_socket_fn(node, socket, "interface");

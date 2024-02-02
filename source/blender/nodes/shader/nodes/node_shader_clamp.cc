@@ -107,5 +107,5 @@ void register_node_type_sh_clamp()
   ntype.build_multi_function = file_ns::sh_node_clamp_build_multi_function;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

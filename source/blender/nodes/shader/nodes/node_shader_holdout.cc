@@ -35,5 +35,5 @@ void register_node_type_sh_holdout()
   ntype.declare = file_ns::node_declare;
   ntype.gpu_fn = file_ns::gpu_shader_rgb;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

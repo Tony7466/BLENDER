@@ -46,5 +46,5 @@ void register_node_type_sh_output_world()
 
   ntype.no_muting = true;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

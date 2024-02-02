@@ -619,7 +619,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.draw_buttons_ex = node_layout_ex;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

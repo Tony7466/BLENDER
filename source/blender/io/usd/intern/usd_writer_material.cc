@@ -189,7 +189,7 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
 
     if (input_spec.input_name == usdtokens::emissive_color) {
       /* Don't export emission color if strength is zero. */
-      bNodeSocket *emission_strength_sock = nodeFindSocket(node, SOCK_IN, "Emission Strength");
+      bNodeSocket *emission_strength_sock = blender::bke::nodeFindSocket(node, SOCK_IN, "Emission Strength");
 
       if (!emission_strength_sock) {
         continue;
@@ -235,7 +235,7 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
       }
 
       /* Look for a connected uvmap node. */
-      if (bNodeSocket *socket = nodeFindSocket(input_node, SOCK_IN, "Vector")) {
+      if (bNodeSocket *socket = blender::bke::nodeFindSocket(input_node, SOCK_IN, "Vector")) {
         if (pxr::UsdShadeInput st_input = usd_shader.CreateInput(usdtokens::st,
                                                                  pxr::SdfValueTypeNames->Float2))
         {
@@ -416,7 +416,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
   }
 
   if (mapping_node->custom1 != TEXMAP_TYPE_POINT) {
-    if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
+    if (bNodeSocket *socket = blender::bke::nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
       create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv, reports);
     }
     return;
@@ -436,19 +436,19 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
   float loc[3] = {0.0f, 0.0f, 0.0f};
   float rot[3] = {0.0f, 0.0f, 0.0f};
 
-  if (bNodeSocket *scale_socket = nodeFindSocket(mapping_node, SOCK_IN, "Scale")) {
+  if (bNodeSocket *scale_socket = blender::bke::nodeFindSocket(mapping_node, SOCK_IN, "Scale")) {
     copy_v3_v3(scale, ((bNodeSocketValueVector *)scale_socket->default_value)->value);
     /* Ignore the Z scale. */
     scale[2] = 1.0f;
   }
 
-  if (bNodeSocket *loc_socket = nodeFindSocket(mapping_node, SOCK_IN, "Location")) {
+  if (bNodeSocket *loc_socket = blender::bke::nodeFindSocket(mapping_node, SOCK_IN, "Location")) {
     copy_v3_v3(loc, ((bNodeSocketValueVector *)loc_socket->default_value)->value);
     /* Ignore the Z translation. */
     loc[2] = 0.0f;
   }
 
-  if (bNodeSocket *rot_socket = nodeFindSocket(mapping_node, SOCK_IN, "Rotation")) {
+  if (bNodeSocket *rot_socket = blender::bke::nodeFindSocket(mapping_node, SOCK_IN, "Rotation")) {
     copy_v3_v3(rot, ((bNodeSocketValueVector *)rot_socket->default_value)->value);
     /* Ignore the X and Y rotations. */
     rot[0] = 0.0f;
@@ -477,7 +477,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
     rot_input.Set(rot_val);
   }
 
-  if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
+  if (bNodeSocket *socket = blender::bke::nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
     if (pxr::UsdShadeInput in_input = transform2d_shader.CreateInput(
             usdtokens::in, pxr::SdfValueTypeNames->Float2))
     {

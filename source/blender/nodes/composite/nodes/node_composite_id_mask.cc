@@ -118,5 +118,5 @@ void register_node_type_cmp_idmask()
   ntype.draw_buttons = file_ns::node_composit_buts_id_mask;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

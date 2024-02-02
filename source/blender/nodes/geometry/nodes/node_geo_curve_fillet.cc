@@ -196,13 +196,13 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_FILLET_CURVE, "Fillet Curve", NODE_CLASS_GEOMETRY);
   ntype.draw_buttons = node_layout;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryCurveFillet", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

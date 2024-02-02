@@ -93,9 +93,9 @@ static void node_register()
   ntype.gather_link_search_ops = nullptr;
   ntype.insert_link = node_insert_link;
   ntype.no_muting = true;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryRepeatInput", node_free_standard_storage, node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
@@ -172,8 +172,8 @@ static void node_register()
   ntype.labelfunc = repeat_input_node::node_label;
   ntype.insert_link = node_insert_link;
   ntype.no_muting = true;
-  node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

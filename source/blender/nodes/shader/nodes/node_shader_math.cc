@@ -361,5 +361,5 @@ void register_node_type_sh_math()
   ntype.gather_link_search_ops = file_ns::sh_node_math_gather_link_searches;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

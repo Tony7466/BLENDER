@@ -118,8 +118,8 @@ void register_node_type_cmp_map_value()
   ntype.declare = file_ns::cmp_node_map_value_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_map_value;
   ntype.initfunc = file_ns::node_composit_init_map_value;
-  node_type_storage(&ntype, "TexMapping", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype, "TexMapping", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

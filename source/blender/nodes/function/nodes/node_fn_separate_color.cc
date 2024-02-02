@@ -219,12 +219,12 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeCombSepColor", node_free_standard_storage, node_copy_standard_storage);
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

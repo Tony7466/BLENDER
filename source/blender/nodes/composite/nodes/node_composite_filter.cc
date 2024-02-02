@@ -167,5 +167,5 @@ void register_node_type_cmp_filter()
   ntype.flag |= NODE_PREVIEW;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

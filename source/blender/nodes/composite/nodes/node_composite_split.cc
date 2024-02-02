@@ -119,5 +119,5 @@ void register_node_type_cmp_split()
 
   ntype.no_muting = true;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

@@ -115,5 +115,5 @@ void register_node_type_tex_bricks()
   ntype.exec_fn = exec;
   ntype.flag |= NODE_PREVIEW;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

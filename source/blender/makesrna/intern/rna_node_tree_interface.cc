@@ -67,7 +67,7 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = node_interface::get_item_as<bNodeTreeInterfaceSocket>(
           *item);
-      bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket.socket_type);
+      bNodeSocketType *socket_typeinfo = blender::bke::nodeSocketTypeFind(socket.socket_type);
       if (socket_typeinfo && socket_typeinfo->ext_interface.srna) {
         return socket_typeinfo->ext_interface.srna;
       }
@@ -152,7 +152,7 @@ static void rna_NodeTreeInterfaceSocket_draw_custom(ID *id,
                                                     bContext *C,
                                                     uiLayout *layout)
 {
-  bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
+  bNodeSocketType *typeinfo = blender::bke::nodeSocketTypeFind(interface_socket->socket_type);
   if (typeinfo == nullptr) {
     return;
   }
@@ -190,7 +190,7 @@ static void rna_NodeTreeInterfaceSocket_init_socket_custom(
     bNodeSocket *socket,
     const char *data_path)
 {
-  bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
+  bNodeSocketType *typeinfo = blender::bke::nodeSocketTypeFind(interface_socket->socket_type);
   if (typeinfo == nullptr) {
     return;
   }
@@ -225,7 +225,7 @@ static void rna_NodeTreeInterfaceSocket_from_socket_custom(
     const bNode *node,
     const bNodeSocket *socket)
 {
-  bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
+  bNodeSocketType *typeinfo = blender::bke::nodeSocketTypeFind(interface_socket->socket_type);
   if (typeinfo == nullptr) {
     return;
   }
@@ -266,7 +266,7 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   }
 
   /* Check if we have registered this socket type before. */
-  bNodeSocketType *st = nodeSocketTypeFind(dummy_socket.socket_type);
+  bNodeSocketType *st = blender::bke::nodeSocketTypeFind(dummy_socket.socket_type);
   if (st) {
     /* Socket type registered before. */
   }
@@ -275,7 +275,7 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
     st = MEM_cnew<bNodeSocketType>(__func__);
     BLI_strncpy(st->idname, dummy_socket.socket_type, sizeof(st->idname));
 
-    nodeRegisterSocketType(st);
+    blender::bke::nodeRegisterSocketType(st);
   }
 
   st->free_self = (void (*)(bNodeSocketType *stype))MEM_freeN;
@@ -726,7 +726,7 @@ void rna_NodeTreeInterfaceSocketFloat_default_value_range(
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
   bNodeSocketValueFloat *dval = static_cast<bNodeSocketValueFloat *>(socket->socket_data);
-  bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket->socket_type);
+  bNodeSocketType *socket_typeinfo = blender::bke::nodeSocketTypeFind(socket->socket_type);
   int subtype = socket_typeinfo ? socket_typeinfo->subtype : PROP_NONE;
 
   if (dval->max < dval->min) {
@@ -752,7 +752,7 @@ void rna_NodeTreeInterfaceSocketInt_default_value_range(
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
   bNodeSocketValueInt *dval = static_cast<bNodeSocketValueInt *>(socket->socket_data);
-  bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket->socket_type);
+  bNodeSocketType *socket_typeinfo = blender::bke::nodeSocketTypeFind(socket->socket_type);
   int subtype = socket_typeinfo ? socket_typeinfo->subtype : PROP_NONE;
 
   if (dval->max < dval->min) {

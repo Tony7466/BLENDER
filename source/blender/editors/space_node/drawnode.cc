@@ -1605,7 +1605,7 @@ void ED_node_type_draw_color(const char *idname, float *r_color)
 {
   using namespace blender::ed::space_node;
 
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(idname);
+  const bNodeSocketType *typeinfo = blender::bke::nodeSocketTypeFind(idname);
   if (!typeinfo || typeinfo->type == SOCK_CUSTOM) {
     r_color[0] = 0.0f;
     r_color[1] = 0.0f;
@@ -1629,7 +1629,7 @@ void draw_nodespace_back_pix(const bContext &C,
 {
   Main *bmain = CTX_data_main(&C);
   bNodeInstanceKey active_viewer_key = (snode.nodetree ? snode.nodetree->active_viewer_key :
-                                                         NODE_INSTANCE_KEY_NONE);
+                                                         blender::bke::NODE_INSTANCE_KEY_NONE);
   GPU_matrix_push_projection();
   GPU_matrix_push();
   wmOrtho2_region_pixelspace(&region);

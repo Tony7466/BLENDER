@@ -67,5 +67,5 @@ void register_node_type_sh_displacement()
   ntype.gpu_fn = file_ns::gpu_shader_displacement;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

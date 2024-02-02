@@ -81,7 +81,7 @@ static void register_node()
       &ntype, GEO_NODE_TRANSFORM_GEOMETRY, "Transform Geometry", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(register_node)
 

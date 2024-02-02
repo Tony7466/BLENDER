@@ -292,7 +292,7 @@ static bNode *node_get_active(bNodeTree *ntree, int sub_activity)
   return inactivenode;
 }
 
-bNode *nodeGetActiveTexture(bNodeTree *ntree)
+bNode *blender::bke::nodeGetActiveTexture(bNodeTree *ntree)
 {
   return node_get_active(ntree, NODE_ACTIVE_TEXTURE);
 }

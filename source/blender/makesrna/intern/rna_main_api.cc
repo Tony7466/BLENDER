@@ -290,7 +290,7 @@ static bNodeTree *rna_Main_nodetree_new(Main *bmain, const char *name, int type)
 
   bNodeTreeType *typeinfo = rna_node_tree_type_from_enum(type);
   if (typeinfo) {
-    bNodeTree *ntree = ntreeAddTree(bmain, safe_name, typeinfo->idname);
+    bNodeTree *ntree = blender::bke::ntreeAddTree(bmain, safe_name, typeinfo->idname);
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
 
     id_us_min(&ntree->id);

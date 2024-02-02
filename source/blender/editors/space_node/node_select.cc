@@ -248,7 +248,7 @@ static void node_socket_toggle(bNode *node, bNodeSocket &sock, bool deselect_nod
 void node_deselect_all(bNodeTree &node_tree)
 {
   for (bNode *node : node_tree.all_nodes()) {
-    nodeSetSelected(node, false);
+    blender::bke::nodeSetSelected(node, false);
   }
 }
 
@@ -353,7 +353,7 @@ static bool node_select_grouped_type(bNodeTree &node_tree, bNode &node_act)
   for (bNode *node : node_tree.all_nodes()) {
     if ((node->flag & SELECT) == 0) {
       if (node->type == node_act.type) {
-        nodeSetSelected(node, true);
+        blender::bke::nodeSetSelected(node, true);
         changed = true;
       }
     }
@@ -367,7 +367,7 @@ static bool node_select_grouped_color(bNodeTree &node_tree, bNode &node_act)
   for (bNode *node : node_tree.all_nodes()) {
     if ((node->flag & SELECT) == 0) {
       if (compare_v3v3(node->color, node_act.color, 0.005f)) {
-        nodeSetSelected(node, true);
+        blender::bke::nodeSetSelected(node, true);
         changed = true;
       }
     }
@@ -408,7 +408,7 @@ static bool node_select_grouped_name(bNodeTree &node_tree, bNode &node_act, cons
         (!from_right && (pref_len_act == pref_len_curr) &&
          STREQLEN(node_act.name, node->name, pref_len_act)))
     {
-      nodeSetSelected(node, true);
+      blender::bke::nodeSetSelected(node, true);
       changed = true;
     }
   }
@@ -427,7 +427,7 @@ static int node_select_grouped_exec(bContext *C, wmOperator *op)
 {
   SpaceNode &snode = *CTX_wm_space_node(C);
   bNodeTree &node_tree = *snode.edittree;
-  bNode *node_act = nodeGetActive(snode.edittree);
+  bNode *node_act = blender::bke::nodeGetActive(snode.edittree);
 
   if (node_act == nullptr) {
     return OPERATOR_CANCELLED;
@@ -440,7 +440,7 @@ static int node_select_grouped_exec(bContext *C, wmOperator *op)
   if (!extend) {
     node_deselect_all(node_tree);
   }
-  nodeSetSelected(node_act, true);
+  blender::bke::nodeSetSelected(node_act, true);
 
   switch (type) {
     case NODE_SELECT_GROUPED_TYPE:
@@ -520,10 +520,10 @@ void node_select_single(bContext &C, bNode &node)
 
   for (bNode *node_iter : node_tree.all_nodes()) {
     if (node_iter != &node) {
-      nodeSetSelected(node_iter, false);
+      blender::bke::nodeSetSelected(node_iter, false);
     }
   }
-  nodeSetSelected(&node, true);
+  blender::bke::nodeSetSelected(&node, true);
 
   ED_node_set_active(bmain, &snode, &node_tree, &node, &active_texture_changed);
   ED_node_set_active_viewer_key(&snode);
@@ -639,19 +639,19 @@ static bool node_mouse_select(bContext *C,
     if (found) {
       switch (params->sel_op) {
         case SEL_OP_ADD:
-          nodeSetSelected(node, true);
+          blender::bke::nodeSetSelected(node, true);
           break;
         case SEL_OP_SUB:
-          nodeSetSelected(node, false);
+          blender::bke::nodeSetSelected(node, false);
           break;
         case SEL_OP_XOR: {
           /* Check active so clicking on an inactive node activates it. */
           bool is_selected = (node->flag & NODE_SELECT) && (node->flag & NODE_ACTIVE);
-          nodeSetSelected(node, !is_selected);
+          blender::bke::nodeSetSelected(node, !is_selected);
           break;
         }
         case SEL_OP_SET:
-          nodeSetSelected(node, true);
+          blender::bke::nodeSetSelected(node, true);
           break;
         case SEL_OP_AND:
           /* Doesn't make sense for picking. */
@@ -801,7 +801,7 @@ static int node_box_select_exec(bContext *C, wmOperator *op)
         if (BLI_rctf_isect(&rectf, &node->runtime->totr, nullptr) &&
             !BLI_rctf_inside_rctf(&frame_inside, &rectf))
         {
-          nodeSetSelected(node, select);
+          blender::bke::nodeSetSelected(node, select);
           is_inside = true;
         }
         break;
@@ -813,7 +813,7 @@ static int node_box_select_exec(bContext *C, wmOperator *op)
     }
 
     if (is_inside) {
-      nodeSetSelected(node, select);
+      blender::bke::nodeSetSelected(node, select);
     }
   }
 
@@ -907,13 +907,13 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
         if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius_adjusted) &&
             !BLI_rctf_isect_circle(&frame_inside, offset, radius_adjusted))
         {
-          nodeSetSelected(node, select);
+          blender::bke::nodeSetSelected(node, select);
         }
         break;
       }
       default: {
         if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius / zoom)) {
-          nodeSetSelected(node, select);
+          blender::bke::nodeSetSelected(node, select);
         }
         break;
       }
@@ -1002,7 +1002,7 @@ static bool do_lasso_select_node(bContext *C,
         if (BLI_rctf_isect(&rectf, &node->runtime->totr, nullptr) &&
             !BLI_rctf_inside_rctf(&frame_inside, &rectf))
         {
-          nodeSetSelected(node, select);
+          blender::bke::nodeSetSelected(node, select);
           changed = true;
         }
         break;
@@ -1018,7 +1018,7 @@ static bool do_lasso_select_node(bContext *C,
             BLI_rcti_isect_pt(&rect, screen_co.x, screen_co.y) &&
             BLI_lasso_is_point_inside(mcoords, mcoords_len, screen_co.x, screen_co.y, INT_MAX))
         {
-          nodeSetSelected(node, select);
+          blender::bke::nodeSetSelected(node, select);
           changed = true;
         }
         break;
@@ -1114,7 +1114,7 @@ static int node_select_all_exec(bContext *C, wmOperator *op)
   switch (action) {
     case SEL_SELECT:
       for (bNode *node : node_tree.all_nodes()) {
-        nodeSetSelected(node, true);
+        blender::bke::nodeSetSelected(node, true);
       }
       break;
     case SEL_DESELECT:
@@ -1122,7 +1122,7 @@ static int node_select_all_exec(bContext *C, wmOperator *op)
       break;
     case SEL_INVERT:
       for (bNode *node : node_tree.all_nodes()) {
-        nodeSetSelected(node, !(node->flag & SELECT));
+        blender::bke::nodeSetSelected(node, !(node->flag & SELECT));
       }
       break;
   }
@@ -1174,7 +1174,7 @@ static int node_select_linked_to_exec(bContext *C, wmOperator * /*op*/)
         if (!input_socket->is_available()) {
           continue;
         }
-        nodeSetSelected(&input_socket->owner_node(), true);
+        blender::bke::nodeSetSelected(&input_socket->owner_node(), true);
       }
     }
   }
@@ -1224,7 +1224,7 @@ static int node_select_linked_from_exec(bContext *C, wmOperator * /*op*/)
         if (!output_socket->is_available()) {
           continue;
         }
-        nodeSetSelected(&output_socket->owner_node(), true);
+        blender::bke::nodeSetSelected(&output_socket->owner_node(), true);
       }
     }
   }
@@ -1266,7 +1266,7 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
   const bool prev = RNA_boolean_get(op->ptr, "prev");
-  bNode &active_node = *nodeGetActive(snode->edittree);
+  bNode &active_node = *blender::bke::nodeGetActive(snode->edittree);
 
   bNodeTree &node_tree = *snode->edittree;
   node_tree.ensure_topology_cache();

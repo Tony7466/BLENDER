@@ -105,9 +105,9 @@ void register_node_type_sh_tangent()
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.initfunc = file_ns::node_shader_init_tangent;
   ntype.gpu_fn = file_ns::node_shader_gpu_tangent;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeShaderTangent", node_free_standard_storage, node_copy_standard_storage);
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

@@ -61,7 +61,7 @@ void register_node_type_cmp_sepyuva()
   ntype.gather_link_search_ops = nullptr;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /* **************** COMBINE YUVA ******************** */
@@ -112,5 +112,5 @@ void register_node_type_cmp_combyuva()
   ntype.gather_link_search_ops = nullptr;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

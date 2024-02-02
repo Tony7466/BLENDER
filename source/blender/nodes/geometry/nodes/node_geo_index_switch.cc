@@ -339,10 +339,10 @@ static void register_node()
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.insert_link = node_insert_link;
-  node_type_storage(&ntype, "NodeIndexSwitch", node_free_storage, node_copy_storage);
+  blender::bke::node_type_storage(&ntype, "NodeIndexSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

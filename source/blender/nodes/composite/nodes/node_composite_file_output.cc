@@ -139,7 +139,7 @@ bNodeSocket *ntreeCompositOutputFileAddSocket(bNodeTree *ntree,
                                               const ImageFormatData *im_format)
 {
   NodeImageMultiFile *nimf = (NodeImageMultiFile *)node->storage;
-  bNodeSocket *sock = nodeAddStaticSocket(
+  bNodeSocket *sock = blender::bke::nodeAddStaticSocket(
       ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, nullptr, name);
 
   /* create format data for the input socket */
@@ -187,7 +187,7 @@ int ntreeCompositOutputFileRemoveActiveSocket(bNodeTree *ntree, bNode *node)
   /* free format data */
   MEM_freeN(sock->storage);
 
-  nodeRemoveSocket(ntree, node, sock);
+  blender::bke::nodeRemoveSocket(ntree, node, sock);
   return 1;
 }
 
@@ -283,11 +283,11 @@ static void update_output_file(bNodeTree *ntree, bNode *node)
    */
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (sock->storage == nullptr) {
-      nodeRemoveSocket(ntree, node, sock);
+      blender::bke::nodeRemoveSocket(ntree, node, sock);
     }
   }
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
-    nodeRemoveSocket(ntree, node, sock);
+    blender::bke::nodeRemoveSocket(ntree, node, sock);
   }
 
   cmp_node_update_default(ntree, node);
@@ -756,10 +756,10 @@ void register_node_type_cmp_output_file()
   ntype.draw_buttons_ex = file_ns::node_composit_buts_file_output_ex;
   ntype.initfunc_api = file_ns::init_output_file;
   ntype.flag |= NODE_PREVIEW;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeImageMultiFile", file_ns::free_output_file, file_ns::copy_output_file);
   ntype.updatefunc = file_ns::update_output_file;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

@@ -395,7 +395,7 @@ static void scene_free_data(ID *id)
 
   /* is no lib link block, but scene extension */
   if (scene->nodetree) {
-    ntreeFreeEmbeddedTree(scene->nodetree);
+    blender::bke::ntreeFreeEmbeddedTree(scene->nodetree);
     MEM_freeN(scene->nodetree);
     scene->nodetree = nullptr;
   }
@@ -1161,7 +1161,7 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
                                 bNodeTree,
                                 sce->nodetree,
                                 BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
-    ntreeBlendWrite(
+    blender::bke::ntreeBlendWrite(
         writer,
         reinterpret_cast<bNodeTree *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
   }

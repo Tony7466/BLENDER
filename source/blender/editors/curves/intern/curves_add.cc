@@ -71,7 +71,7 @@ void ensure_surface_deformation_node_exists(bContext &C, Object &curves_ob)
   ModifierData *md = ED_object_modifier_add(
       nullptr, bmain, scene, &curves_ob, DATA_("Surface Deform"), eModifierType_Nodes);
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  nmd.node_group = ntreeAddTree(bmain, DATA_("Surface Deform"), "GeometryNodeTree");
+  nmd.node_group = blender::bke::ntreeAddTree(bmain, DATA_("Surface Deform"), "GeometryNodeTree");
 
   bNodeTree *ntree = nmd.node_group;
   ntree->tree_interface.add_socket("Geometry",
@@ -79,20 +79,20 @@ void ensure_surface_deformation_node_exists(bContext &C, Object &curves_ob)
                                    "NodeSocketGeometry",
                                    NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
                                    nullptr);
-  bNode *group_input = nodeAddStaticNode(&C, ntree, NODE_GROUP_INPUT);
-  bNode *group_output = nodeAddStaticNode(&C, ntree, NODE_GROUP_OUTPUT);
-  bNode *deform_node = nodeAddStaticNode(&C, ntree, GEO_NODE_DEFORM_CURVES_ON_SURFACE);
+  bNode *group_input = blender::bke::nodeAddStaticNode(&C, ntree, NODE_GROUP_INPUT);
+  bNode *group_output = blender::bke::nodeAddStaticNode(&C, ntree, NODE_GROUP_OUTPUT);
+  bNode *deform_node = blender::bke::nodeAddStaticNode(&C, ntree, GEO_NODE_DEFORM_CURVES_ON_SURFACE);
 
   ED_node_tree_propagate_change(&C, bmain, nmd.node_group);
 
-  nodeAddLink(ntree,
+  blender::bke::nodeAddLink(ntree,
               group_input,
               static_cast<bNodeSocket *>(group_input->outputs.first),
               deform_node,
-              nodeFindSocket(deform_node, SOCK_IN, "Curves"));
-  nodeAddLink(ntree,
+              blender::bke::nodeFindSocket(deform_node, SOCK_IN, "Curves"));
+  blender::bke::nodeAddLink(ntree,
               deform_node,
-              nodeFindSocket(deform_node, SOCK_OUT, "Curves"),
+              blender::bke::nodeFindSocket(deform_node, SOCK_OUT, "Curves"),
               group_output,
               static_cast<bNodeSocket *>(group_output->inputs.first));
 

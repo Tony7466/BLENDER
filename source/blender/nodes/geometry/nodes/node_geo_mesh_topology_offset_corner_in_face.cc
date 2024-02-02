@@ -114,7 +114,7 @@ static void node_register()
                      NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

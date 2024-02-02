@@ -131,5 +131,5 @@ void register_node_type_cmp_displace()
   ntype.declare = file_ns::cmp_node_displace_declare;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

@@ -375,7 +375,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

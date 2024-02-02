@@ -59,11 +59,11 @@ void register_node_type_tex_curve_time()
   blender::bke::node_type_socket_templates(&ntype, nullptr, time_outputs);
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
   ntype.initfunc = time_init;
-  node_type_storage(&ntype, "CurveMapping", node_free_curves, node_copy_curves);
+  blender::bke::node_type_storage(&ntype, "CurveMapping", node_free_curves, node_copy_curves);
   ntype.init_exec_fn = node_initexec_curves;
   ntype.exec_fn = time_exec;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /* **************** CURVE RGB  ******************** */
@@ -109,9 +109,9 @@ void register_node_type_tex_curve_rgb()
   blender::bke::node_type_socket_templates(&ntype, rgb_inputs, rgb_outputs);
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
   ntype.initfunc = rgb_init;
-  node_type_storage(&ntype, "CurveMapping", node_free_curves, node_copy_curves);
+  blender::bke::node_type_storage(&ntype, "CurveMapping", node_free_curves, node_copy_curves);
   ntype.init_exec_fn = node_initexec_curves;
   ntype.exec_fn = rgb_exec;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

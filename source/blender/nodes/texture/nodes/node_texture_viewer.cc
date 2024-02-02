@@ -44,5 +44,5 @@ void register_node_type_tex_viewer()
   ntype.no_muting = true;
   ntype.flag |= NODE_PREVIEW;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

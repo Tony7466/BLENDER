@@ -143,11 +143,11 @@ void register_node_type_tex_output()
   blender::bke::node_type_socket_templates(&ntype, inputs, nullptr);
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.initfunc = init;
-  node_type_storage(&ntype, "TexNodeOutput", node_free_standard_storage, copy);
+  blender::bke::node_type_storage(&ntype, "TexNodeOutput", node_free_standard_storage, copy);
   ntype.exec_fn = exec;
 
   ntype.flag |= NODE_PREVIEW;
   ntype.no_muting = true;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

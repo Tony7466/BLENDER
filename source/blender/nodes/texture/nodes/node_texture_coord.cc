@@ -39,5 +39,5 @@ void register_node_type_tex_coord()
   blender::bke::node_type_socket_templates(&ntype, nullptr, outputs);
   ntype.exec_fn = exec;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

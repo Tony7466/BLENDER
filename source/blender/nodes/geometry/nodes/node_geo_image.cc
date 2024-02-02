@@ -44,7 +44,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

@@ -239,10 +239,10 @@ void register_node_type_cmp_viewer()
   ntype.draw_buttons_ex = file_ns::node_composit_buts_viewer_ex;
   ntype.flag |= NODE_PREVIEW;
   ntype.initfunc = file_ns::node_composit_init_viewer;
-  node_type_storage(&ntype, "ImageUser", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype, "ImageUser", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
   ntype.no_muting = true;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

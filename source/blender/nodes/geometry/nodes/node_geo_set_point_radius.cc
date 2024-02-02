@@ -62,7 +62,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_SET_POINT_RADIUS, "Set Point Radius", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

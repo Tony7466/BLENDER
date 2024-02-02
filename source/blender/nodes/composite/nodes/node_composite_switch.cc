@@ -67,5 +67,5 @@ void register_node_type_cmp_switch()
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::DEFAULT);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

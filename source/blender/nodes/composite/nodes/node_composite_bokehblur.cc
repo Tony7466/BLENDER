@@ -219,5 +219,5 @@ void register_node_type_cmp_bokehblur()
   ntype.initfunc = file_ns::node_composit_init_bokehblur;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

@@ -75,5 +75,5 @@ void register_node_type_tex_combine_color()
   ntype.exec_fn = exec;
   ntype.updatefunc = update;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

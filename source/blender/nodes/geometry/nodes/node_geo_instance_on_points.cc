@@ -285,7 +285,7 @@ static void node_register()
       &ntype, GEO_NODE_INSTANCE_ON_POINTS, "Instance on Points", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

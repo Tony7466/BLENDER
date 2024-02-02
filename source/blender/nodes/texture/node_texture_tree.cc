@@ -151,7 +151,7 @@ void register_node_tree_type_tex()
 
   tt->rna_ext.srna = &RNA_TextureNodeTree;
 
-  ntreeTypeAdd(tt);
+  blender::bke::ntreeTypeAdd(tt);
 }
 
 /**** Material/Texture trees ****/
@@ -244,7 +244,7 @@ bNodeTreeExec *ntreeTexBeginExecTree(bNodeTree *ntree)
 
   context.previews = ntree->previews;
 
-  exec = ntreeTexBeginExecTree_internal(&context, ntree, NODE_INSTANCE_KEY_BASE);
+  exec = ntreeTexBeginExecTree_internal(&context, ntree, blender::bke::NODE_INSTANCE_KEY_BASE);
 
   /* XXX this should not be necessary, but is still used for compositor/shading/texture nodes,
    * which only store the ntree pointer. Should be fixed at some point!

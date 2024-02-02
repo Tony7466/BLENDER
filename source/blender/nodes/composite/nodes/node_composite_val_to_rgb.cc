@@ -138,10 +138,10 @@ void register_node_type_cmp_valtorgb()
   ntype.declare = file_ns::cmp_node_valtorgb_declare;
   blender::bke::node_type_size(&ntype, 240, 200, 320);
   ntype.initfunc = file_ns::node_composit_init_valtorgb;
-  node_type_storage(&ntype, "ColorBand", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype, "ColorBand", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /* **************** RGBTOBW ******************** */
@@ -197,5 +197,5 @@ void register_node_type_cmp_rgbtobw()
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::DEFAULT);
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

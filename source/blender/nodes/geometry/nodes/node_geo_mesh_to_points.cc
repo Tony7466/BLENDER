@@ -246,9 +246,9 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryMeshToPoints", node_free_standard_storage, node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

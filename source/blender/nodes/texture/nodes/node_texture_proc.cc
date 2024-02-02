@@ -260,11 +260,11 @@ static void init(bNodeTree * /*ntree*/, bNode *node)
     blender::bke::node_type_socket_templates(&ntype, name##_inputs, outputs); \
     blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE); \
     ntype.initfunc = init; \
-    node_type_storage(&ntype, "Tex", node_free_standard_storage, node_copy_standard_storage); \
+    blender::bke::node_type_storage(&ntype, "Tex", node_free_standard_storage, node_copy_standard_storage); \
     ntype.exec_fn = name##_exec; \
     ntype.flag |= NODE_PREVIEW; \
 \
-    nodeRegisterType(&ntype); \
+    blender::bke::nodeRegisterType(&ntype); \
   }
 
 #define C outputs_color_only

@@ -260,7 +260,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
   ntype.build_multi_function = node_build_multi_function;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

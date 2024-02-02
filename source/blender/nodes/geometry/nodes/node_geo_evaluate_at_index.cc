@@ -108,7 +108,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

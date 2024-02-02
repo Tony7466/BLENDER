@@ -94,7 +94,7 @@ static void cmp_node_image_add_pass_output(bNodeTree *ntree,
 
   /* Replace if types don't match. */
   if (sock && sock->type != type) {
-    nodeRemoveSocket(ntree, node, sock);
+    blender::bke::nodeRemoveSocket(ntree, node, sock);
     sock = nullptr;
   }
 
@@ -105,7 +105,7 @@ static void cmp_node_image_add_pass_output(bNodeTree *ntree,
           ntree, node, &cmp_node_rlayers_out[rres_index], SOCK_OUT);
     }
     else {
-      sock = nodeAddStaticSocket(ntree, node, SOCK_OUT, type, PROP_NONE, name, name);
+      sock = blender::bke::nodeAddStaticSocket(ntree, node, SOCK_OUT, type, PROP_NONE, name, name);
     }
     /* extra socket info */
     NodeImageLayer *sockdata = MEM_cnew<NodeImageLayer>(__func__);
@@ -376,7 +376,7 @@ static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rl
       }
       if (!link && (!rlayer || sock_index >= NUM_LEGACY_SOCKETS)) {
         MEM_freeN(sock->storage);
-        nodeRemoveSocket(ntree, node, sock);
+        blender::bke::nodeRemoveSocket(ntree, node, sock);
       }
       else {
         blender::bke::nodeSetSocketAvailability(ntree, sock, false);
@@ -526,14 +526,14 @@ void register_node_type_cmp_image()
 
   cmp_node_type_base(&ntype, CMP_NODE_IMAGE, "Image", NODE_CLASS_INPUT);
   ntype.initfunc = file_ns::node_composit_init_image;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "ImageUser", file_ns::node_composit_free_image, file_ns::node_composit_copy_image);
   ntype.updatefunc = file_ns::cmp_node_image_update;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
   ntype.labelfunc = node_image_label;
   ntype.flag |= NODE_PREVIEW;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /* **************** RENDER RESULT ******************** */
@@ -791,11 +791,11 @@ void register_node_type_cmp_rlayers()
   ntype.realtime_compositor_unsupported_message = N_(
       "Render passes not supported in the Viewport compositor");
   ntype.flag |= NODE_PREVIEW;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, nullptr, file_ns::node_composit_free_rlayers, file_ns::node_composit_copy_rlayers);
   ntype.updatefunc = file_ns::cmp_node_rlayers_update;
   ntype.initfunc = node_cmp_rlayers_outputs;
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

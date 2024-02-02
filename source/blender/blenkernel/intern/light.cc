@@ -69,7 +69,7 @@ static void light_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
   if (la_src->nodetree) {
     if (is_localized) {
-      la_dst->nodetree = ntreeLocalize(la_src->nodetree);
+      la_dst->nodetree = blender::bke::ntreeLocalize(la_src->nodetree);
     }
     else {
       BKE_id_copy_ex(
@@ -92,7 +92,7 @@ static void light_free_data(ID *id)
 
   /* is no lib link block, but light extension */
   if (la->nodetree) {
-    ntreeFreeEmbeddedTree(la->nodetree);
+    blender::bke::ntreeFreeEmbeddedTree(la->nodetree);
     MEM_freeN(la->nodetree);
     la->nodetree = nullptr;
   }
@@ -139,7 +139,7 @@ static void light_blend_write(BlendWriter *writer, ID *id, const void *id_addres
         temp_embedded_id_buffer, &la->nodetree->id, BLO_write_is_undo(writer));
     BLO_write_struct_at_address(
         writer, bNodeTree, la->nodetree, BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
-    ntreeBlendWrite(writer, (bNodeTree *)BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
+    blender::bke::ntreeBlendWrite(writer, (bNodeTree *)BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
     BLO_write_destroy_id_buffer(&temp_embedded_id_buffer);
   }
 

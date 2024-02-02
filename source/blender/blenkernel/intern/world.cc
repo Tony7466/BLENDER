@@ -52,7 +52,7 @@ static void world_free_data(ID *id)
 
   /* is no lib link block, but world extension */
   if (wrld->nodetree) {
-    ntreeFreeEmbeddedTree(wrld->nodetree);
+    blender::bke::ntreeFreeEmbeddedTree(wrld->nodetree);
     MEM_freeN(wrld->nodetree);
     wrld->nodetree = nullptr;
   }
@@ -94,7 +94,7 @@ static void world_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
   if (wrld_src->nodetree) {
     if (is_localized) {
-      wrld_dst->nodetree = ntreeLocalize(wrld_src->nodetree);
+      wrld_dst->nodetree = blender::bke::ntreeLocalize(wrld_src->nodetree);
     }
     else {
       BKE_id_copy_ex(
@@ -154,7 +154,7 @@ static void world_blend_write(BlendWriter *writer, ID *id, const void *id_addres
                                 bNodeTree,
                                 wrld->nodetree,
                                 BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
-    ntreeBlendWrite(writer, (bNodeTree *)BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
+    blender::bke::ntreeBlendWrite(writer, (bNodeTree *)BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
     BLO_write_destroy_id_buffer(&temp_embedded_id_buffer);
   }
 

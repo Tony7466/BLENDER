@@ -37,5 +37,5 @@ void register_node_type_sh_background()
   ntype.add_ui_poll = world_shader_nodes_poll;
   ntype.gpu_fn = file_ns::node_shader_gpu_background;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

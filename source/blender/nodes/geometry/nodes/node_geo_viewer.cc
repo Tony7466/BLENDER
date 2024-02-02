@@ -89,7 +89,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       /* If the source node has a geometry socket, connect it to the new viewer node as well. */
       LISTBASE_FOREACH (bNodeSocket *, socket, &params.node.outputs) {
         if (socket->type == SOCK_GEOMETRY && socket->is_visible()) {
-          nodeAddLink(&params.node_tree,
+          blender::bke::nodeAddLink(&params.node_tree,
                       &params.node,
                       socket,
                       &node,
@@ -127,7 +127,7 @@ static void node_register()
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_VIEWER, "Viewer", NODE_CLASS_OUTPUT);
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryViewer", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
@@ -135,7 +135,7 @@ static void node_register()
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.no_muting = true;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

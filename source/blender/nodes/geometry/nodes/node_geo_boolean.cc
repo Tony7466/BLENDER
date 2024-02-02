@@ -236,7 +236,7 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

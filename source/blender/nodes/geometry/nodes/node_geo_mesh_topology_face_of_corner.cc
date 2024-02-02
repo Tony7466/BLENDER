@@ -114,7 +114,7 @@ static void node_register()
       &ntype, GEO_NODE_MESH_TOPOLOGY_FACE_OF_CORNER, "Face of Corner", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

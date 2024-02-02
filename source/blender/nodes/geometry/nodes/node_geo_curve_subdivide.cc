@@ -113,7 +113,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_SUBDIVIDE_CURVE, "Subdivide Curve", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

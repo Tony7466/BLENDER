@@ -68,5 +68,5 @@ void register_node_type_tex_decompose()
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);
   ntype.exec_fn = exec;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

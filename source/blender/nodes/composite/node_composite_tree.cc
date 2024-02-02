@@ -100,7 +100,7 @@ static void local_merge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
   blender::bke::node_preview_merge_tree(ntree, localtree, true);
 
   LISTBASE_FOREACH (bNode *, lnode, &localtree->nodes) {
-    if (bNode *orig_node = nodeFindNodebyName(ntree, lnode->name)) {
+    if (bNode *orig_node = blender::bke::nodeFindNodebyName(ntree, lnode->name)) {
       if (lnode->type == CMP_NODE_VIEWER) {
         if (lnode->id && (lnode->flag & NODE_DO_OUTPUT)) {
           /* image_merge does sanity check for pointers */
@@ -125,7 +125,7 @@ static void local_merge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
 
 static void update(bNodeTree *ntree)
 {
-  ntreeSetOutput(ntree);
+  blender::bke::ntreeSetOutput(ntree);
 
   ntree_update_reroute_nodes(ntree);
 }
@@ -170,7 +170,7 @@ void register_node_tree_type_cmp()
 
   tt->rna_ext.srna = &RNA_CompositorNodeTree;
 
-  ntreeTypeAdd(tt);
+  blender::bke::ntreeTypeAdd(tt);
 }
 
 void ntreeCompositExecTree(Render *render,

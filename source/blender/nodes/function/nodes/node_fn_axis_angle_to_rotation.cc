@@ -38,7 +38,7 @@ static void node_register()
       &ntype, FN_NODE_AXIS_ANGLE_TO_ROTATION, "Axis Angle to Rotation", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

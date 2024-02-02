@@ -100,10 +100,10 @@ void register_node_type_tex_image()
   tex_node_type_base(&ntype, TEX_NODE_IMAGE, "Image", NODE_CLASS_INPUT);
   blender::bke::node_type_socket_templates(&ntype, nullptr, outputs);
   ntype.initfunc = init;
-  node_type_storage(&ntype, "ImageUser", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype, "ImageUser", node_free_standard_storage, node_copy_standard_storage);
   ntype.exec_fn = exec;
   ntype.labelfunc = node_image_label;
   ntype.flag |= NODE_PREVIEW;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

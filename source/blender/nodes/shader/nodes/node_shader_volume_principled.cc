@@ -165,5 +165,5 @@ void register_node_type_sh_volume_principled()
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
   ntype.gpu_fn = file_ns::node_shader_gpu_volume_principled;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

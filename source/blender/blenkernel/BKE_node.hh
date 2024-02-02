@@ -638,7 +638,7 @@ const char *nodeSocketTypeLabel(const bNodeSocketType *stype);
 
 bool nodeIsStaticSocketType(const struct bNodeSocketType *stype);
 const char *nodeStaticSocketType(int type, int subtype);
-const char *nodeStaticSocketInterfaceType(int type, int subtype);
+const char *nodeStaticSocketInterfaceTypeNew(int type, int subtype);
 const char *nodeStaticSocketLabel(int type, int subtype);
 const char *nodeSocketSubTypeLabel(int subtype);
 
@@ -898,7 +898,7 @@ bool nodeDeclarationEnsureOnOutdatedNode(struct bNodeTree *ntree, struct bNode *
  */
 void nodeSocketDeclarationsUpdate(struct bNode *node);
 
-
+}  // namespace blender::bke
 /**
  * Node Instance Hash.
  */
@@ -908,6 +908,8 @@ typedef struct bNodeInstanceHash {
 } bNodeInstanceHash;
 
 typedef void (*bNodeInstanceValueFP)(void *value);
+
+namespace blender::bke {
 
 /**
  * Magic number for initial hash key.
@@ -937,59 +939,66 @@ bool BKE_node_instance_hash_tag_key(bNodeInstanceHash *hash, bNodeInstanceKey ke
 void BKE_node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
                                             bNodeInstanceValueFP valfreefp);
 
-typedef GHashIterator bNodeInstanceHashIterator;
+using bNodeInstanceHashIterator = GHashIterator;
 
-BLI_INLINE bNodeInstanceHashIterator *BKE_node_instance_hash_iterator_new(bNodeInstanceHash *hash)
+BLI_INLINE bNodeInstanceHashIterator *node_instance_hash_iterator_new(bNodeInstanceHash *hash)
 {
   return BLI_ghashIterator_new(hash->ghash);
 }
-BLI_INLINE void BKE_node_instance_hash_iterator_init(bNodeInstanceHashIterator *iter,
-                                                     bNodeInstanceHash *hash)
+
+BLI_INLINE void node_instance_hash_iterator_init(bNodeInstanceHashIterator *iter,
+                                                 bNodeInstanceHash *hash)
 {
   BLI_ghashIterator_init(iter, hash->ghash);
 }
-BLI_INLINE void BKE_node_instance_hash_iterator_free(bNodeInstanceHashIterator *iter)
+
+BLI_INLINE void node_instance_hash_iterator_free(bNodeInstanceHashIterator *iter)
 {
   BLI_ghashIterator_free(iter);
 }
-BLI_INLINE bNodeInstanceKey
-BKE_node_instance_hash_iterator_get_key(bNodeInstanceHashIterator *iter)
+
+BLI_INLINE bNodeInstanceKey node_instance_hash_iterator_get_key(bNodeInstanceHashIterator *iter)
 {
   return *(bNodeInstanceKey *)BLI_ghashIterator_getKey(iter);
 }
-BLI_INLINE void *BKE_node_instance_hash_iterator_get_value(bNodeInstanceHashIterator *iter)
+
+BLI_INLINE void *node_instance_hash_iterator_get_value(bNodeInstanceHashIterator *iter)
 {
   return BLI_ghashIterator_getValue(iter);
 }
-BLI_INLINE void BKE_node_instance_hash_iterator_step(bNodeInstanceHashIterator *iter)
+
+BLI_INLINE void node_instance_hash_iterator_step(bNodeInstanceHashIterator *iter)
 {
   BLI_ghashIterator_step(iter);
 }
-BLI_INLINE bool BKE_node_instance_hash_iterator_done(bNodeInstanceHashIterator *iter)
+
+BLI_INLINE bool node_instance_hash_iterator_done(bNodeInstanceHashIterator *iter)
 {
   return BLI_ghashIterator_done(iter);
 }
 
 #define NODE_INSTANCE_HASH_ITER(iter_, hash_) \
-  for (BKE_node_instance_hash_iterator_init(&iter_, hash_); \
-       BKE_node_instance_hash_iterator_done(&iter_) == false; \
-       BKE_node_instance_hash_iterator_step(&iter_))
+  for (blender::bke::node_instance_hash_iterator_init(&iter_, hash_); \
+       blender::bke::node_instance_hash_iterator_done(&iter_) == false; \
+       blender::bke::node_instance_hash_iterator_step(&iter_))
 
 /* Node Previews */
+bool node_preview_used(const bNode *node);
 
-bool BKE_node_preview_used(const struct bNode *node);
-bNodePreview *BKE_node_preview_verify(
-    struct bNodeInstanceHash *previews, bNodeInstanceKey key, int xsize, int ysize, bool create);
-bNodePreview *BKE_node_preview_copy(struct bNodePreview *preview);
-void BKE_node_preview_free(struct bNodePreview *preview);
-void BKE_node_preview_init_tree(struct bNodeTree *ntree, int xsize, int ysize);
-void BKE_node_preview_remove_unused(struct bNodeTree *ntree);
-void BKE_node_preview_clear(struct bNodePreview *preview);
-void BKE_node_preview_clear_tree(struct bNodeTree *ntree);
+bNodePreview *node_preview_verify(
+    bNodeInstanceHash *previews, bNodeInstanceKey key, int xsize, int ysize, bool create);
 
-void BKE_node_preview_merge_tree(struct bNodeTree *to_ntree,
-                                 struct bNodeTree *from_ntree,
-                                 bool remove_old);
+bNodePreview *node_preview_copy(bNodePreview *preview);
+
+void node_preview_free(bNodePreview *preview);
+
+void node_preview_init_tree(bNodeTree *ntree, int xsize, int ysize);
+
+void node_preview_remove_unused(bNodeTree *ntree);
+
+void node_preview_clear(bNodePreview *preview);
+
+void node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, bool remove_old);
 
 /** \} */
 
@@ -1003,6 +1012,11 @@ void nodeLabel(const  bNodeTree *ntree, const  bNode *node, char *label, int max
  */
 const char *nodeSocketLabel(const  bNodeSocket *sock);
 
+/**
+ * Get node socket short label if it is set.
+ * It is used when grouping sockets under panels, to avoid redundancy in the label.
+ */
+const char *nodeSocketShortLabel(const bNodeSocket *sock);
 
 bool nodeGroupPoll(const  bNodeTree *nodetree,
                    const  bNodeTree *grouptree,
@@ -1027,8 +1041,17 @@ void node_type_base_custom(struct bNodeType *ntype,
 void node_type_socket_templates(struct bNodeType *ntype,
                                 struct bNodeSocketTemplate *inputs,
                                 struct bNodeSocketTemplate *outputs);
-void node_type_size(struct bNodeType *ntype, int width, int minwidth, int maxwidth);
-void node_type_size_preset(struct bNodeType *ntype, eNodeSizePreset size);
+
+void node_type_size(bNodeType *ntype, int width, int minwidth, int maxwidth);
+
+enum class eNodeSizePreset : int8_t {
+  DEFAULT,
+  SMALL,
+  MIDDLE,
+  LARGE,
+};
+
+void node_type_size_preset(bNodeType *ntype, eNodeSizePreset size);
 /**
  * \warning Nodes defining a storage type _must_ allocate this for new nodes.
  * Otherwise nodes will reload as undefined (#46619).
@@ -1093,6 +1116,8 @@ void node_type_storage(struct bNodeType *ntype,
  *
  * \{ */
 
+} // namespace blender::bke
+
 /* should be an opaque type, only for internal use by BKE_node_tree_iter_*** */
 struct NodeTreeIterStore {
   bNodeTree *ngroup;
@@ -1105,6 +1130,7 @@ struct NodeTreeIterStore {
   struct Simulation *simulation;
 };
 
+namespace blender::bke {
 void BKE_node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
 bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
                              struct bNodeTree **r_nodetree,

@@ -207,8 +207,8 @@ static void restore_data_blocks(const Span<GeometrySet *> geometries,
 
 static void default_initialize_socket_value(const eNodeSocketDatatype socket_type, void *r_value)
 {
-  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  const char *socket_idname = blender::bke::nodeStaticSocketType(socket_type, 0);
+  const bNodeSocketType *typeinfo = blender::bke::nodeSocketTypeFind(socket_idname);
   typeinfo->geometry_nodes_cpp_type->copy_construct(typeinfo->geometry_nodes_default_cpp_value,
                                                     r_value);
 }

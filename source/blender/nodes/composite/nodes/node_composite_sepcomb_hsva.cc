@@ -61,7 +61,7 @@ void register_node_type_cmp_sephsva()
   ntype.gather_link_search_ops = nullptr;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /* **************** COMBINE HSVA ******************** */
@@ -112,5 +112,5 @@ void register_node_type_cmp_combhsva()
   ntype.gather_link_search_ops = nullptr;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
