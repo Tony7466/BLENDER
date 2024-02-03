@@ -1,1 +1,2 @@
 Referenced by issue #117720, Crash when selecting these two armatures
+Referenced by pull request #117785, Refactor: Use std::string for keymap string return values
