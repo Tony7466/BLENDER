@@ -167,6 +167,7 @@ class DiskBlobWriter : public BlobWriter {
   /** Directory path that contains all blob files. */
   std::string blob_dir_;
   /** Name of the file that data is written to. */
+  std::string base_name_;
   std::string blob_name_;
   /** File handle. The file is opened when the first data is written. */
   std::fstream blob_stream_;
@@ -175,7 +176,7 @@ class DiskBlobWriter : public BlobWriter {
   int independent_file_count_ = 0;
 
  public:
-  DiskBlobWriter(std::string blob_dir, std::string blob_name);
+  DiskBlobWriter(std::string blob_dir, std::string base_name);
 
   BlobSlice write(const void *data, int64_t size) override;
 

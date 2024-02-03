@@ -24,6 +24,7 @@
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
+#include <fmt/format.h>
 #include <sstream>
 
 #if WITH_OPENVDB
@@ -82,9 +83,10 @@ DiskBlobReader::DiskBlobReader(std::string blobs_dir) : blobs_dir_(std::move(blo
   return true;
 }
 
-DiskBlobWriter::DiskBlobWriter(std::string blob_dir, std::string blob_name)
-    : blob_dir_(std::move(blob_dir)), blob_name_(std::move(blob_name))
+DiskBlobWriter::DiskBlobWriter(std::string blob_dir, std::string base_name)
+    : blob_dir_(std::move(blob_dir)), base_name_(std::move(base_name))
 {
+  blob_name_ = base_name_ + ".blob";
 }
 
 BlobSlice BlobWriter::write_as_stream(const StringRef /*file_extension*/,
@@ -129,9 +131,10 @@ BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
 BlobSlice DiskBlobWriter::write_as_stream(const StringRef file_extension,
                                           const FunctionRef<void(std::ostream &)> fn)
 {
-  const std::string file_name = blob_name_ + "_" + std::to_string(independent_file_count_) +
-                                file_extension;
+  BLI_assert(file_extension.startswith("."));
   independent_file_count_++;
+  const std::string file_name = fmt::format(
+      "{}_file_{}{}", base_name_, independent_file_count_, std::string(file_extension));
 
   char path[FILE_MAX];
   BLI_path_join(path, sizeof(path), blob_dir_.c_str(), file_name.c_str());
@@ -738,9 +741,7 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
 }
 
 #ifdef WITH_OPENVDB
-static Volume *try_load_volume(const DictionaryValue &io_geometry,
-                               const BlobReader &blob_reader,
-                               const BlobReadSharing &blob_sharing)
+static Volume *try_load_volume(const DictionaryValue &io_geometry, const BlobReader &blob_reader)
 {
   const DictionaryValue *io_volume = io_geometry.lookup_dict("volume");
   if (!io_volume) {
@@ -782,7 +783,7 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
   geometry.replace_curves(try_load_curves(io_geometry, blob_reader, blob_sharing));
   geometry.replace_instances(try_load_instances(io_geometry, blob_reader, blob_sharing).release());
 #ifdef WITH_OPENVDB
-  geometry.replace_volume(try_load_volume(io_geometry, blob_reader, blob_sharing));
+  geometry.replace_volume(try_load_volume(io_geometry, blob_reader));
 #endif
   return geometry;
 }
