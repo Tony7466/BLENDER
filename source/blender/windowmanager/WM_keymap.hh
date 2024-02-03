@@ -144,7 +144,6 @@ std::optional<std::string> WM_modalkeymap_operator_items_to_string(wmOperatorTyp
                                                                    int propvalue,
                                                                    bool compact);
 
-
 wmKeyMap *WM_modalkeymap_ensure(wmKeyConfig *keyconf,
                                 const char *idname,
                                 const EnumPropertyItem *items);
