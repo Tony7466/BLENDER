@@ -143,7 +143,7 @@ template<typename TestData> class Context {
   {
     test_data.teardown();
 
-    BKE_node_system_exit();
+    node_system_exit();
     RNA_exit();
     IMB_exit();
     BKE_appdir_exit();

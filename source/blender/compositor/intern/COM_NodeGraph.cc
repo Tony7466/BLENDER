@@ -30,7 +30,7 @@ NodeGraph::~NodeGraph()
 
 void NodeGraph::from_bNodeTree(const CompositorContext &context, bNodeTree *tree)
 {
-  add_bNodeTree(context, 0, tree, NODE_INSTANCE_KEY_BASE);
+  add_bNodeTree(context, 0, tree, blender::bke::NODE_INSTANCE_KEY_BASE);
 }
 
 bNodeSocket *NodeGraph::find_b_node_input(bNode *b_node, const char *identifier)
@@ -217,7 +217,7 @@ void NodeGraph::add_proxies_group_inputs(bNode *b_node, bNode *b_node_io)
   BLI_assert(b_group_tree); /* should have been checked in advance */
 
   /* not important for proxies */
-  bNodeInstanceKey key = NODE_INSTANCE_KEY_BASE;
+  bNodeInstanceKey key = blender::bke::NODE_INSTANCE_KEY_BASE;
   bool is_active_group = false;
 
   for (bNodeSocket *b_sock_io = (bNodeSocket *)b_node_io->outputs.first; b_sock_io;
@@ -239,7 +239,7 @@ void NodeGraph::add_proxies_group_outputs(const CompositorContext &context,
   BLI_assert(b_group_tree); /* should have been checked in advance */
 
   /* not important for proxies */
-  bNodeInstanceKey key = NODE_INSTANCE_KEY_BASE;
+  bNodeInstanceKey key = blender::bke::NODE_INSTANCE_KEY_BASE;
   bool is_active_group = false;
 
   for (bNodeSocket *b_sock_io = (bNodeSocket *)b_node_io->inputs.first; b_sock_io;
