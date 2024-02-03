@@ -10,6 +10,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
+#include "BKE_volume.hh"
 
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
@@ -18,11 +19,19 @@
 #include "BLI_path_util.h"
 
 #include "DNA_material_types.h"
+#include "DNA_volume_types.h"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
 #include <sstream>
+
+#if WITH_OPENVDB
+#  include <openvdb/io/Stream.h>
+#  include <openvdb/openvdb.h>
+
+#  include "BKE_volume_grid.hh"
+#endif
 
 namespace blender::bke::bake {
 
@@ -78,6 +87,15 @@ DiskBlobWriter::DiskBlobWriter(std::string blob_name,
                                const int64_t current_offset)
     : blob_name_(std::move(blob_name)), blob_file_(blob_file), current_offset_(current_offset)
 {
+}
+
+BlobSlice BlobWriter::write_standalone(const StringRef /*file_extension*/,
+                                       const FunctionRef<void(std::ostream &)> fn)
+{
+  std::ostringstream stream{std::ios::binary};
+  fn(stream);
+  std::string data = stream.rdbuf()->str();
+  return this->write(data.data(), data.size());
 }
 
 BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
@@ -818,6 +836,31 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
     auto io_attributes = serialize_attributes(curves.attributes(), blob_writer, blob_sharing, {});
     io_curves->append("attributes", io_attributes);
   }
+#ifdef WITH_OPENVDB
+  if (geometry.has_volume()) {
+    const Volume &volume = *geometry.get_volume();
+    const int grids_num = BKE_volume_num_grids(&volume);
+
+    auto io_volume = io_geometry->append_dict("volume");
+    auto io_vdb = blob_writer
+                      .write_standalone(
+                          ".vdb",
+                          [&](std::ostream &stream) {
+                            openvdb::GridCPtrVec vdb_grids;
+                            Vector<bke::VolumeTreeAccessToken> tree_tokens;
+                            for (const int i : IndexRange(grids_num)) {
+                              const bke::VolumeGridData *grid = BKE_volume_grid_get(&volume, i);
+                              tree_tokens.append_as();
+                              vdb_grids.push_back(grid->grid_ptr(tree_tokens.last()));
+                            }
+
+                            openvdb::io::Stream vdb_stream(stream);
+                            vdb_stream.write(vdb_grids);
+                          })
+                      .serialize();
+    io_volume->append("vdb", std::move(io_vdb));
+  }
+#endif
   if (geometry.has_instances()) {
     const Instances &instances = *geometry.get_instances();
     auto io_instances = io_geometry->append_dict("instances");

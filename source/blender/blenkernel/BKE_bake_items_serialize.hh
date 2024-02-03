@@ -5,6 +5,7 @@
 #pragma once
 
 #include "BLI_fileops.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_serialize.hh"
 
 #include "BKE_bake_items.hh"
@@ -45,6 +46,9 @@ class BlobWriter {
    * \return Slice where the data has been written to.
    */
   virtual BlobSlice write(const void *data, int64_t size) = 0;
+
+  virtual BlobSlice write_standalone(StringRef file_extension,
+                                     FunctionRef<void(std::ostream &)> fn);
 };
 
 /**
