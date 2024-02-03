@@ -763,10 +763,20 @@ static Volume *try_load_volume(const DictionaryValue &io_geometry, const BlobRea
     }
   }
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
+  auto cancel = [&]() {
+    BKE_id_free(nullptr, volume);
+    return nullptr;
+  };
+
   for (openvdb::GridBase::Ptr &vdb_grid : *vdb_grids) {
     if (vdb_grid) {
       bke::GVolumeGrid grid{std::move(vdb_grid)};
       BKE_volume_grid_add(volume, *grid.release());
+    }
+  }
+  if (const io::serialize::ArrayValue *io_materials = io_volume->lookup_array("materials")) {
+    if (!load_materials(*io_materials, volume->runtime->bake_materials)) {
+      return cancel();
     }
   }
   return volume;
@@ -934,6 +944,9 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
                                        })
                       .serialize();
     io_volume->append("vdb", std::move(io_vdb));
+
+    auto io_materials = serialize_materials(volume.runtime->bake_materials);
+    io_volume->append("materials", io_materials);
   }
 #endif
   if (geometry.has_instances()) {
