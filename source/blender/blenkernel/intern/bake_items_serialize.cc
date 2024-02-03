@@ -13,6 +13,7 @@
 
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_path_util.h"
 
@@ -72,17 +73,22 @@ DiskBlobReader::DiskBlobReader(std::string blobs_dir) : blobs_dir_(std::move(blo
   return true;
 }
 
-DiskBlobWriter::DiskBlobWriter(std::string blob_name,
-                               std::ostream &blob_file,
-                               const int64_t current_offset)
-    : blob_name_(std::move(blob_name)), blob_file_(blob_file), current_offset_(current_offset)
+DiskBlobWriter::DiskBlobWriter(std::string blob_dir, std::string blob_name)
+    : blob_dir_(std::move(blob_dir)), blob_name_(std::move(blob_name))
 {
 }
 
 BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
 {
+  if (!blob_stream_.is_open()) {
+    char blob_path[FILE_MAX];
+    BLI_path_join(blob_path, sizeof(blob_path), blob_dir_.c_str(), blob_name_.c_str());
+    BLI_file_ensure_parent_dir_exists(blob_path);
+    blob_stream_.open(blob_path, std::ios::out | std::ios::binary);
+  }
+
   const int64_t old_offset = current_offset_;
-  blob_file_.write(static_cast<const char *>(data), size);
+  blob_stream_.write(static_cast<const char *>(data), size);
   current_offset_ += size;
   return {blob_name_, {old_offset, size}};
 }
@@ -129,6 +135,16 @@ DictionaryValuePtr BlobWriteSharing::write_implicitly_shared(
         }
         return value->io_data;
       });
+}
+
+std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplicated(
+    BlobWriter &writer, const void *data, const int64_t size_in_bytes)
+{
+  SliceHash content_hash;
+  BLI_hash_md5_buffer(static_cast<const char *>(data), size_in_bytes, &content_hash);
+  const BlobSlice slice = slice_by_content_hash_.lookup_or_add_cb(
+      content_hash, [&]() { return writer.write(data, size_in_bytes); });
+  return slice.serialize();
 }
 
 std::optional<ImplicitSharingInfoAndData> BlobReadSharing::read_shared(
@@ -202,9 +218,12 @@ static std::optional<eCustomDataType> get_data_type_from_io_name(const StringRef
  * Write the data and remember which endianness the data had.
  */
 static std::shared_ptr<DictionaryValue> write_blob_raw_data_with_endian(
-    BlobWriter &blob_writer, const void *data, const int64_t size_in_bytes)
+    BlobWriter &blob_writer,
+    BlobWriteSharing &blob_sharing,
+    const void *data,
+    const int64_t size_in_bytes)
 {
-  auto io_data = blob_writer.write(data, size_in_bytes).serialize();
+  auto io_data = blob_sharing.write_deduplicated(blob_writer, data, size_in_bytes);
   if (ENDIAN_ORDER == B_ENDIAN) {
     io_data->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
   }
@@ -255,10 +274,11 @@ static std::shared_ptr<DictionaryValue> write_blob_raw_data_with_endian(
 
 /** Write bytes ignoring endianness. */
 static std::shared_ptr<DictionaryValue> write_blob_raw_bytes(BlobWriter &blob_writer,
+                                                             BlobWriteSharing &blob_sharing,
                                                              const void *data,
                                                              const int64_t size_in_bytes)
 {
-  return blob_writer.write(data, size_in_bytes).serialize();
+  return blob_sharing.write_deduplicated(blob_writer, data, size_in_bytes);
 }
 
 /** Read bytes ignoring endianness. */
@@ -278,14 +298,16 @@ static std::shared_ptr<DictionaryValue> write_blob_raw_bytes(BlobWriter &blob_wr
 }
 
 static std::shared_ptr<DictionaryValue> write_blob_simple_gspan(BlobWriter &blob_writer,
+                                                                BlobWriteSharing &blob_sharing,
                                                                 const GSpan data)
 {
   const CPPType &type = data.type();
   BLI_assert(type.is_trivial());
   if (type.size() == 1 || type.is<ColorGeometry4b>()) {
-    return write_blob_raw_bytes(blob_writer, data.data(), data.size_in_bytes());
+    return write_blob_raw_bytes(blob_writer, blob_sharing, data.data(), data.size_in_bytes());
   }
-  return write_blob_raw_data_with_endian(blob_writer, data.data(), data.size_in_bytes());
+  return write_blob_raw_data_with_endian(
+      blob_writer, blob_sharing, data.data(), data.size_in_bytes());
 }
 
 [[nodiscard]] static bool read_blob_simple_gspan(const BlobReader &blob_reader,
@@ -327,7 +349,7 @@ static std::shared_ptr<DictionaryValue> write_blob_shared_simple_gspan(
     const ImplicitSharingInfo *sharing_info)
 {
   return blob_sharing.write_implicitly_shared(
-      sharing_info, [&]() { return write_blob_simple_gspan(blob_writer, data); });
+      sharing_info, [&]() { return write_blob_simple_gspan(blob_writer, blob_sharing, data); });
 }
 
 [[nodiscard]] static const void *read_blob_shared_simple_gspan(
@@ -814,10 +836,11 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
           serialize_geometry_set(reference.geometry_set(), blob_writer, blob_sharing));
     }
 
-    io_instances->append("transforms",
-                         write_blob_simple_gspan(blob_writer, instances.transforms()));
-    io_instances->append("handles",
-                         write_blob_simple_gspan(blob_writer, instances.reference_handles()));
+    io_instances->append(
+        "transforms", write_blob_simple_gspan(blob_writer, blob_sharing, instances.transforms()));
+    io_instances->append(
+        "handles",
+        write_blob_simple_gspan(blob_writer, blob_sharing, instances.reference_handles()));
 
     auto io_attributes = serialize_attributes(
         instances.attributes(), blob_writer, blob_sharing, {"position"});
@@ -1037,7 +1060,8 @@ static void serialize_bake_item(const BakeItem &item,
       r_io_item.append_str("data", string_state_item->value());
     }
     else {
-      r_io_item.append("data", write_blob_raw_bytes(blob_writer, str.data(), str.size()));
+      r_io_item.append("data",
+                       write_blob_raw_bytes(blob_writer, blob_sharing, str.data(), str.size()));
     }
   }
   else if (const auto *primitive_state_item = dynamic_cast<const PrimitiveBakeItem *>(&item)) {

@@ -72,6 +72,24 @@ class BlobWriteSharing : NonCopyable, NonMovable {
    */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
 
+  struct SliceHash {
+    uint64_t a;
+    uint64_t b;
+
+    BLI_STRUCT_EQUALITY_OPERATORS_2(SliceHash, a, b)
+
+    uint64_t hash() const
+    {
+      return get_default_hash(this->a, this->b);
+    }
+  };
+
+  /**
+   * Remembers where data was stored based on the hash of the data. This allows us to skip writing
+   * the same array again if it has the same hash.
+   */
+  Map<SliceHash, BlobSlice> slice_by_content_hash_;
+
  public:
   ~BlobWriteSharing();
 
@@ -84,6 +102,14 @@ class BlobWriteSharing : NonCopyable, NonMovable {
   [[nodiscard]] std::shared_ptr<io::serialize::DictionaryValue> write_implicitly_shared(
       const ImplicitSharingInfo *sharing_info,
       FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn);
+
+  /**
+   * Checks if the given data was written before. If it was, it's not written again, but a
+   * reference to the previously written data is returned. If the data is new, it's written now.
+   * Its hash is remembered so that the same data won't be written again.
+   */
+  [[nodiscard]] std::shared_ptr<io::serialize::DictionaryValue> write_deduplicated(
+      BlobWriter &writer, const void *data, int64_t size_in_bytes);
 };
 
 /**
@@ -132,15 +158,17 @@ class DiskBlobReader : public BlobReader {
  */
 class DiskBlobWriter : public BlobWriter {
  private:
+  /** Directory path that contains all blob files. */
+  std::string blob_dir_;
   /** Name of the file that data is written to. */
   std::string blob_name_;
-  /** File handle. */
-  std::ostream &blob_file_;
+  /** File handle. The file is opened when the first data is written. */
+  std::fstream blob_stream_;
   /** Current position in the file. */
-  int64_t current_offset_;
+  int64_t current_offset_ = 0;
 
  public:
-  DiskBlobWriter(std::string blob_name, std::ostream &blob_file, int64_t current_offset);
+  DiskBlobWriter(std::string blob_dir, std::string blob_name);
 
   BlobSlice write(const void *data, int64_t size) override;
 };
