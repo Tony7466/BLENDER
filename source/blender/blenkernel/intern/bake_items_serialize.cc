@@ -126,6 +126,22 @@ BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
   return {blob_name_, {old_offset, size}};
 }
 
+BlobSlice DiskBlobWriter::write_as_stream(const StringRef file_extension,
+                                          const FunctionRef<void(std::ostream &)> fn)
+{
+  const std::string file_name = blob_name_ + "_" + std::to_string(independent_file_count_) +
+                                file_extension;
+  independent_file_count_++;
+
+  char path[FILE_MAX];
+  BLI_path_join(path, sizeof(path), blob_dir_.c_str(), file_name.c_str());
+  BLI_file_ensure_parent_dir_exists(path);
+  std::fstream stream{path, std::ios::out | std::ios::binary};
+  fn(stream);
+  const int64_t written_bytes_num = stream.tellg();
+  return {file_name, {0, written_bytes_num}};
+}
+
 BlobWriteSharing::~BlobWriteSharing()
 {
   for (const ImplicitSharingInfo *sharing_info : stored_by_runtime_.keys()) {

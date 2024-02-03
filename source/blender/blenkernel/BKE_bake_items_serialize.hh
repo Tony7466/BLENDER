@@ -172,11 +172,15 @@ class DiskBlobWriter : public BlobWriter {
   std::fstream blob_stream_;
   /** Current position in the file. */
   int64_t current_offset_ = 0;
+  int independent_file_count_ = 0;
 
  public:
   DiskBlobWriter(std::string blob_dir, std::string blob_name);
 
   BlobSlice write(const void *data, int64_t size) override;
+
+  BlobSlice write_as_stream(StringRef file_extension,
+                            FunctionRef<void(std::ostream &)> fn) override;
 };
 
 void serialize_bake(const BakeState &bake_state,
