@@ -143,8 +143,9 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
   BLI_assert(context.is_instance());
 
   if (context.export_path == context.original_export_path) {
-    CLOG_ERROR(
-        &LOG, "USD ref error: export path is reference path: %s", context.export_path.c_str());
+    CLOG_ERROR(&LOG,
+               "Reference error: export path matches reference path: %s",
+               context.export_path.c_str());
     BLI_assert_msg(0, "USD reference error");
     return false;
   }
@@ -155,7 +156,7 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
      * https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
      */
     CLOG_WARN(&LOG,
-              "USD Export warning: unable to add reference from %s to %s, not instancing object",
+              "Unable to add reference from %s to %s, not instancing object for export",
               context.export_path.c_str(),
               context.original_export_path.c_str());
     return false;
