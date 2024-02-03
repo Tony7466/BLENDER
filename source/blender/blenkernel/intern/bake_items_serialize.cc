@@ -754,9 +754,14 @@ static Volume *try_load_volume(const DictionaryValue &io_geometry, const BlobRea
   openvdb::GridPtrVecPtr vdb_grids;
   if (std::optional<BlobSlice> vdb_slice = BlobSlice::deserialize(*io_vdb)) {
     if (!blob_reader.read_as_stream(*vdb_slice, [&](std::istream &stream) {
-          openvdb::io::Stream vdb_stream{stream};
-          vdb_grids = vdb_stream.getGrids();
-          return true;
+          try {
+            openvdb::io::Stream vdb_stream{stream};
+            vdb_grids = vdb_stream.getGrids();
+            return true;
+          }
+          catch (...) {
+            return false;
+          }
         }))
     {
       return nullptr;
