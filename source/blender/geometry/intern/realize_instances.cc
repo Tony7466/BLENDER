@@ -552,7 +552,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
     const int i = indices[mask_index];
 
     /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
-    const int depth_target = current_depth == 0 ? gather_info.depths[mask_index] : target_depth;
+    const int depth_target = current_depth == 0 ? gather_info.depths[mask_index] :  target_depth;
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
@@ -732,6 +732,7 @@ static OrderedAttributes gather_generic_instance_attributes_to_propagate(
                                                     bke::GeometryComponent::Type::Instance,
                                                     true,
                                                     options.depths,
+                                                    options.selection,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
@@ -756,12 +757,12 @@ static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
   if (options.realize_instance_attributes) {
     src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
-
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
                                                     bke::GeometryComponent::Type::PointCloud,
                                                     true,
                                                     options.depths,
+                                                    options.selection,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
@@ -941,7 +942,6 @@ static void execute_instances_tasks(const Span<const bke::GeometryComponent *> s
     const Span<int> src_handles = src_instances.reference_handles();
     array_utils::gather(handle_map.as_span(), src_handles, all_handles.slice(dst_range));
     array_utils::copy(src_instances.transforms(), all_transforms.slice(dst_range));
-
     for (blender::float4x4& transfrom : all_transforms.slice(dst_range)){
       transfrom *= src_base_transform;
     }
@@ -1046,6 +1046,7 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
                                                     bke::GeometryComponent::Type::Mesh,
                                                     true,
                                                     options.depths,
+                                                    options.selection,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
@@ -1394,6 +1395,7 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
                                                     bke::GeometryComponent::Type::Curve,
                                                     true,
                                                     options.depths,
+                                                    options.selection,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
@@ -1777,8 +1779,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   AllPointCloudsInfo all_pointclouds_info = preprocess_pointclouds(geometry_set, options);
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options);
-  bool a = true;
-  OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(geometry_set, options, a);
+  bool tmp = true;
+  OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(geometry_set, options, tmp);
 
   Vector<std::unique_ptr<GArray<>>> temporary_arrays;
   const bool create_id_attribute = all_pointclouds_info.create_id_attribute ||
@@ -1802,8 +1804,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     gather_info.instances.instances_components_to_merge.append(
         &temp_geometry_set.get_component_for_write<bke::InstancesComponent>());
     gather_info.instances.instances_components_transforms.append(float4x4::identity());
-    const void *null_ptr = nullptr;
-    gather_info.instances.attribute_fallback.append((null_ptr, gather_info.instances_attriubutes.size()));
+    gather_info.instances.attribute_fallback.append((gather_info.instances_attriubutes.size()));
   }
 
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
