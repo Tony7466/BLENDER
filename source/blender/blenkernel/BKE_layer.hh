@@ -542,13 +542,6 @@ Base *BKE_view_layer_active_base_get(ViewLayer *view_layer);
 
 LayerCollection *BKE_view_layer_active_collection_get(ViewLayer *view_layer);
 
-/**
- * For a given view layer, finds all layer collections that ultimately contain
- * a given object.
- */
-blender::Vector<LayerCollection *> BKE_enclosing_layer_collections_get(const ViewLayer *view_layer,
-                                                                       const Object *object);
-
 void BKE_view_layer_need_resync_tag(ViewLayer *view_layer);
 void BKE_view_layer_synced_ensure(const Scene *scene, ViewLayer *view_layer);
 

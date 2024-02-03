@@ -16,7 +16,6 @@
 #include "BKE_layer.hh"
 
 #include "DNA_ID.h"
-#include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -210,45 +209,6 @@ LayerCollection *BKE_view_layer_active_collection_get(ViewLayer *view_layer)
   BLI_assert_msg((view_layer->flag & VIEW_LAYER_OUT_OF_SYNC) == 0,
                  "Active Collection out of sync, invoke BKE_view_layer_synced_ensure.");
   return view_layer->active_collection;
-}
-
-static bool search_for_layer_collections(LayerCollection *root,
-                                         const Object *target,
-                                         blender::Vector<LayerCollection *> &r_lc)
-{
-  bool found = false;
-  LISTBASE_FOREACH (CollectionObject *, co, &root->collection->gobject) {
-    const Object *obj = co->ob;
-    if (obj->id.session_uid == target->id.session_uid) {
-      r_lc.append(root);
-      found = true;
-      break;
-    }
-  }
-
-  LISTBASE_FOREACH (LayerCollection *, lc, &root->layer_collections) {
-    bool child_result = search_for_layer_collections(lc, target, r_lc);
-    /* If any children collections have the target object, the
-     * current collection also should be included in the final result. */
-    if (!found && child_result) {
-      r_lc.append(root);
-      found = true;
-    }
-  }
-
-  return found;
-}
-
-blender::Vector<LayerCollection *> BKE_enclosing_layer_collections_get(const ViewLayer *view_layer,
-                                                                       const Object *object)
-{
-  blender::Vector<LayerCollection *> collections;
-
-  LISTBASE_FOREACH (LayerCollection *, lc, &view_layer->layer_collections) {
-    search_for_layer_collections(lc, object, collections);
-  }
-
-  return collections;
 }
 
 /** \} */
