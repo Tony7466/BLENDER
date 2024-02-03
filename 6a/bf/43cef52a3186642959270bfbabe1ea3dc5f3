@@ -1,1 +1,2 @@
 Referenced by commit bbaa4e9d2622b58e256ea32c3a10fda0bb0ee750, Fix #117354: Crash loading file browser tooltips
+Referenced by pull request #117785, Refactor: Use std::string for keymap string return values
