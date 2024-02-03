@@ -34,6 +34,8 @@ class BlobReader {
    * \return True on success, otherwise false.
    */
   [[nodiscard]] virtual bool read(const BlobSlice &slice, void *r_data) const = 0;
+  [[nodiscard]] virtual bool read_as_stream(const BlobSlice &slice,
+                                            FunctionRef<bool(std::istream &)> fn) const;
 };
 
 /**
@@ -47,8 +49,8 @@ class BlobWriter {
    */
   virtual BlobSlice write(const void *data, int64_t size) = 0;
 
-  virtual BlobSlice write_standalone(StringRef file_extension,
-                                     FunctionRef<void(std::ostream &)> fn);
+  virtual BlobSlice write_as_stream(StringRef file_extension,
+                                    FunctionRef<void(std::ostream &)> fn);
 };
 
 /**

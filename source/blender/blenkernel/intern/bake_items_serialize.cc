@@ -89,13 +89,28 @@ DiskBlobWriter::DiskBlobWriter(std::string blob_name,
 {
 }
 
-BlobSlice BlobWriter::write_standalone(const StringRef /*file_extension*/,
-                                       const FunctionRef<void(std::ostream &)> fn)
+BlobSlice BlobWriter::write_as_stream(const StringRef /*file_extension*/,
+                                      const FunctionRef<void(std::ostream &)> fn)
 {
   std::ostringstream stream{std::ios::binary};
   fn(stream);
   std::string data = stream.rdbuf()->str();
   return this->write(data.data(), data.size());
+}
+
+bool BlobReader::read_as_stream(const BlobSlice &slice, FunctionRef<bool(std::istream &)> fn) const
+{
+  const int64_t size = slice.range.size();
+  std::string buffer;
+  buffer.resize(size);
+  if (!this->read(slice, buffer.data())) {
+    return false;
+  }
+  std::istringstream stream{buffer, std::ios::binary};
+  if (!fn(stream)) {
+    return false;
+  }
+  return true;
 }
 
 BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
@@ -701,6 +716,41 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
   return instances;
 }
 
+#ifdef WITH_OPENVDB
+static Volume *try_load_volume(const DictionaryValue &io_geometry,
+                               const BlobReader &blob_reader,
+                               const BlobReadSharing &blob_sharing)
+{
+  const DictionaryValue *io_volume = io_geometry.lookup_dict("volume");
+  if (!io_volume) {
+    return nullptr;
+  }
+  const auto *io_vdb = io_volume->lookup_dict("vdb");
+  if (!io_vdb) {
+    return nullptr;
+  }
+  openvdb::GridPtrVecPtr vdb_grids;
+  if (std::optional<BlobSlice> vdb_slice = BlobSlice::deserialize(*io_vdb)) {
+    if (!blob_reader.read_as_stream(*vdb_slice, [&](std::istream &stream) {
+          openvdb::io::Stream vdb_stream{stream};
+          vdb_grids = vdb_stream.getGrids();
+          return true;
+        }))
+    {
+      return nullptr;
+    }
+  }
+  Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
+  for (openvdb::GridBase::Ptr &vdb_grid : *vdb_grids) {
+    if (vdb_grid) {
+      bke::GVolumeGrid grid{std::move(vdb_grid)};
+      BKE_volume_grid_add(volume, *grid.release());
+    }
+  }
+  return volume;
+}
+#endif
+
 static GeometrySet load_geometry(const DictionaryValue &io_geometry,
                                  const BlobReader &blob_reader,
                                  const BlobReadSharing &blob_sharing)
@@ -710,6 +760,9 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
   geometry.replace_pointcloud(try_load_pointcloud(io_geometry, blob_reader, blob_sharing));
   geometry.replace_curves(try_load_curves(io_geometry, blob_reader, blob_sharing));
   geometry.replace_instances(try_load_instances(io_geometry, blob_reader, blob_sharing).release());
+#ifdef WITH_OPENVDB
+  geometry.replace_volume(try_load_volume(io_geometry, blob_reader, blob_sharing));
+#endif
   return geometry;
 }
 
@@ -843,20 +896,20 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
 
     auto io_volume = io_geometry->append_dict("volume");
     auto io_vdb = blob_writer
-                      .write_standalone(
-                          ".vdb",
-                          [&](std::ostream &stream) {
-                            openvdb::GridCPtrVec vdb_grids;
-                            Vector<bke::VolumeTreeAccessToken> tree_tokens;
-                            for (const int i : IndexRange(grids_num)) {
-                              const bke::VolumeGridData *grid = BKE_volume_grid_get(&volume, i);
-                              tree_tokens.append_as();
-                              vdb_grids.push_back(grid->grid_ptr(tree_tokens.last()));
-                            }
+                      .write_as_stream(".vdb",
+                                       [&](std::ostream &stream) {
+                                         openvdb::GridCPtrVec vdb_grids;
+                                         Vector<bke::VolumeTreeAccessToken> tree_tokens;
+                                         for (const int i : IndexRange(grids_num)) {
+                                           const bke::VolumeGridData *grid = BKE_volume_grid_get(
+                                               &volume, i);
+                                           tree_tokens.append_as();
+                                           vdb_grids.push_back(grid->grid_ptr(tree_tokens.last()));
+                                         }
 
-                            openvdb::io::Stream vdb_stream(stream);
-                            vdb_stream.write(vdb_grids);
-                          })
+                                         openvdb::io::Stream vdb_stream(stream);
+                                         vdb_stream.write(vdb_grids);
+                                       })
                       .serialize();
     io_volume->append("vdb", std::move(io_vdb));
   }
