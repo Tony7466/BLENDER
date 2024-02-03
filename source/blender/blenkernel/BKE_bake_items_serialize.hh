@@ -48,7 +48,6 @@ class BlobWriter {
    * \return Slice where the data has been written to.
    */
   virtual BlobSlice write(const void *data, int64_t size) = 0;
-
   virtual BlobSlice write_as_stream(StringRef file_extension,
                                     FunctionRef<void(std::ostream &)> fn);
 };
@@ -173,6 +172,7 @@ class DiskBlobWriter : public BlobWriter {
   std::fstream blob_stream_;
   /** Current position in the file. */
   int64_t current_offset_ = 0;
+  /** Used to generate file names for bake data that is stored in independent files. */
   int independent_file_count_ = 0;
 
  public:

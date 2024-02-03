@@ -60,6 +60,30 @@ std::optional<BlobSlice> BlobSlice::deserialize(const DictionaryValue &io_slice)
   return BlobSlice{*name, {*start, *size}};
 }
 
+BlobSlice BlobWriter::write_as_stream(const StringRef /*file_extension*/,
+                                      const FunctionRef<void(std::ostream &)> fn)
+{
+  std::ostringstream stream{std::ios::binary};
+  fn(stream);
+  std::string data = stream.rdbuf()->str();
+  return this->write(data.data(), data.size());
+}
+
+bool BlobReader::read_as_stream(const BlobSlice &slice, FunctionRef<bool(std::istream &)> fn) const
+{
+  const int64_t size = slice.range.size();
+  std::string buffer;
+  buffer.resize(size);
+  if (!this->read(slice, buffer.data())) {
+    return false;
+  }
+  std::istringstream stream{buffer, std::ios::binary};
+  if (!fn(stream)) {
+    return false;
+  }
+  return true;
+}
+
 DiskBlobReader::DiskBlobReader(std::string blobs_dir) : blobs_dir_(std::move(blobs_dir)) {}
 
 [[nodiscard]] bool DiskBlobReader::read(const BlobSlice &slice, void *r_data) const
@@ -87,30 +111,6 @@ DiskBlobWriter::DiskBlobWriter(std::string blob_dir, std::string base_name)
     : blob_dir_(std::move(blob_dir)), base_name_(std::move(base_name))
 {
   blob_name_ = base_name_ + ".blob";
-}
-
-BlobSlice BlobWriter::write_as_stream(const StringRef /*file_extension*/,
-                                      const FunctionRef<void(std::ostream &)> fn)
-{
-  std::ostringstream stream{std::ios::binary};
-  fn(stream);
-  std::string data = stream.rdbuf()->str();
-  return this->write(data.data(), data.size());
-}
-
-bool BlobReader::read_as_stream(const BlobSlice &slice, FunctionRef<bool(std::istream &)> fn) const
-{
-  const int64_t size = slice.range.size();
-  std::string buffer;
-  buffer.resize(size);
-  if (!this->read(slice, buffer.data())) {
-    return false;
-  }
-  std::istringstream stream{buffer, std::ios::binary};
-  if (!fn(stream)) {
-    return false;
-  }
-  return true;
 }
 
 BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
