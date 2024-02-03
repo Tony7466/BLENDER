@@ -30,6 +30,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
+#include "BKE_bake_data_block_id.hh"
 #include "BKE_bpath.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
