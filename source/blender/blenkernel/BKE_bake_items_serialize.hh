@@ -56,6 +56,8 @@ class BlobWriter {
 
   /**
    * Provides an #ostream that can be used to write the blob.
+   * \param file_extension: May be used if the data is written to an independent file. Based on the
+   *   implementation, this may be ignored.
    * \return Slice where the data has been written to.
    */
   virtual BlobSlice write_as_stream(StringRef file_extension,
