@@ -287,6 +287,12 @@ static void rna_NodeSocket_link_limit_set(PointerRNA *ptr, int value)
   sock->limit = (value == 0 ? 0xFFF : value);
 }
 
+static void rna_NodeSocket_location_get(PointerRNA *ptr, float *location)
+{
+  bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
+  copy_v2_v2(location, sock->runtime->location / UI_SCALE_FAC);
+}
+
 static void rna_NodeSocket_hide_set(PointerRNA *ptr, bool value)
 {
   bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
@@ -520,6 +526,15 @@ static void rna_def_node_socket(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_NodeSocket_is_output_get", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Is Output", "True if the socket is an output, otherwise input");
+
+  prop = RNA_def_property(srna, "location", PROP_FLOAT, PROP_XYZ);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_array(prop, 2);
+  RNA_def_property_ui_text(prop,
+                           "Location",
+                           "Location of the socket in the node editor. Can return a zero vector "
+                           "if the node tree has not been drawn yet");
+  RNA_def_property_float_funcs(prop, "rna_NodeSocket_location_get", nullptr, nullptr);
 
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SOCK_HIDDEN);
