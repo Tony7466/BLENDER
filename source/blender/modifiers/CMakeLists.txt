@@ -122,6 +122,7 @@ set(LIB
   PRIVATE bf::depsgraph
   PUBLIC bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::extern::fmtlib
 )
 
 if(WITH_ALEMBIC)
