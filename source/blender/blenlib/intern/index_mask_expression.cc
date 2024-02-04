@@ -80,7 +80,6 @@ static ChunkResult evaluate_chunk(
     LinearAllocator<> &allocator)
 {
   BLI_assert(chunk_range.size() <= max_segment_size);
-  const std::array<int16_t, max_segment_size> &static_indices = get_static_indices_array();
   const int expr_array_size = root_expression.expression_array_size();
 
   Array<std::optional<ChunkResult>> chunk_results(expr_array_size);
@@ -188,8 +187,65 @@ static ChunkResult evaluate_chunk(
         break;
       }
       case Expr::Type::Difference: {
-        /* TODO */
-        BLI_assert_unreachable();
+        const auto &expr = expression.as_difference();
+        bool all_terms_computed = true;
+        {
+          if (const std::optional<ChunkResult> &term_result = chunk_results[expr.main_term->index])
+          {
+            if (term_result->result_size == 0) {
+              /* Other terms don't have to be computed anymore. */
+              chunk_results[expression.index].emplace();
+              break;
+            }
+          }
+          else {
+            expressions_to_compute.push(expr.main_term);
+            all_terms_computed = false;
+            break;
+          }
+        }
+        for (const Expr *term : expr.subtract_terms) {
+          if (const std::optional<ChunkResult> &term_result = chunk_results[term->index]) {
+            if (term_result->result_size == chunk_range.size()) {
+              /* Other terms don't have to be computed anymore. */
+              chunk_results[expression.index].emplace();
+              break;
+            }
+          }
+          else {
+            expressions_to_compute.push(term);
+            all_terms_computed = false;
+            break;
+          }
+        }
+        if (all_terms_computed) {
+          ChunkResult &result = chunk_results[expression.index].emplace();
+          /* TODO: Optimize difference. */
+          Set<int16_t> indices_set;
+          {
+            const ChunkResult &term_result = *chunk_results[expr.main_term->index];
+            for (const IndexMaskSegment &segment : term_result.segments) {
+              for (const int64_t i : segment) {
+                BLI_assert(i < max_segment_size);
+                indices_set.add_new(int16_t(i));
+              }
+            }
+          }
+          for (const Expr *term : expr.subtract_terms) {
+            const ChunkResult &term_result = *chunk_results[term->index];
+            for (const IndexMaskSegment &segment : term_result.segments) {
+              for (const int64_t i : segment) {
+                BLI_assert(i < max_segment_size);
+                indices_set.remove(int16_t(i));
+              }
+            }
+          }
+          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
+          std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
+          std::sort(indices.begin(), indices.end());
+          result.result_size = int16_t(indices.size());
+          result.segments.append(IndexMaskSegment(0, indices));
+        }
         break;
       }
     }
