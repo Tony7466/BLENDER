@@ -139,7 +139,7 @@ static void generate_curves(GreasePencilMultiModifierData &mmd, const ModifierEv
   const float offset = math::length(math::to_scale(float4x4(ctx.object->object_to_world))) * mmd.offset;
   const float distance = mmd.distance;
 
-  const Span<float3> positions = duplicated_strokes.positions();
+  MutableSpan<float3> positions = duplicated_strokes.positions_for_write();
   const Span<float3> normals = duplicated_strokes.evaluated_normals();
   const Span<float3> tangents = duplicated_strokes.evaluated_tangents();
 
@@ -148,26 +148,28 @@ static void generate_curves(GreasePencilMultiModifierData &mmd, const ModifierEv
   Array<float3> pos_l(points_num_pending);
   Array<float3> pos_r(points_num_pending);
   
-  threading::parallel_for(curves.points_range().take_front(points_num_pending),1024,[&](const IndexRange parallel_range){
+  threading::parallel_for(duplicated_strokes.points_range().take_front(points_num_pending),1024,[&](const IndexRange parallel_range){
     for(const int point : parallel_range){
       const float3 minter = math::cross(normals[point],tangents[point]) * distance;
-      pos_l = positions[point] + minter;
-      pos_r = positions[point] - minter;
+      pos_l[point] = positions[point] + minter;
+      pos_r[point] = positions[point] - minter;
     }
   });
 
   for(const int i : IndexRange(mmd.duplications + 1)){
-    Span<float3> instance_positions = positions.slice(IndexRange(original_point_count*i,original_point_count));
+    MutableSpan<float3> instance_positions = positions.slice(IndexRange(original_point_count*i,original_point_count));
     Span<float3> use_pos_l = pos_l.as_span().slice(IndexRange(original_point_count*i,original_point_count));
     Span<float3> use_pos_r = pos_r.as_span().slice(IndexRange(original_point_count*i,original_point_count));
     threading::parallel_for(instance_positions.index_range(),512,[&](const IndexRange parallel_range){
       for(const int point : parallel_range){
-        instance_positions[point] = math::interpolate(use_pos_l,use_pos_r,float(i) / float(mmd.duplications));
+        printf("%f\n",float(i) / float(mmd.duplications));
+        instance_positions[point] = math::interpolate(use_pos_l[point],use_pos_r[point],float(i) / float(mmd.duplications));
       }
     });
   }
 
   curves = duplicated_strokes;
+  drawing.tag_topology_changed();
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -188,7 +190,7 @@ static void modify_geometry_set(ModifierData *md,
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       grease_pencil, layer_mask, frame);
   threading::parallel_for_each(drawings,
-                               [&](Drawing *drawing) { generate_curves(*md, *ctx, *drawing); });
+                               [&](Drawing *drawing) { generate_curves(*mmd, *ctx, *drawing); });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
