@@ -15,19 +15,24 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
                                           const int shader_flags,
                                           ccl_private LightSample *ls)
 {
+  const float r_sq = sqr(klight->spot.radius);
+
   float3 lightN = P - klight->co;
   const float d_sq = len_squared(lightN);
   const float d = sqrtf(d_sq);
   lightN /= d;
 
-  const float r_sq = sqr(klight->spot.radius);
+  ls->eval_fac = klight->spot.eval_fac;
 
+  /* Spherical light geometry. */
   float cos_theta;
   if (d_sq > r_sq) {
+    /* Outside sphere. */
     const float one_minus_cos = sin_sqr_to_one_minus_cos(r_sq / d_sq);
     ls->D = sample_uniform_cone(-lightN, one_minus_cos, rand, &cos_theta, &ls->pdf);
   }
   else {
+    /* Inside sphere. */
     const bool has_transmission = (shader_flags & SD_BSDF_HAS_TRANSMISSION);
     if (has_transmission) {
       ls->D = sample_uniform_sphere(rand);
@@ -44,7 +49,6 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
 
   ls->P = P + ls->D * ls->t;
 
-  ls->eval_fac = klight->spot.eval_fac;
   if (r_sq == 0) {
     /* Use intensity instead of radiance for point light. */
     ls->eval_fac /= sqr(ls->t);
@@ -57,6 +61,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
     ls->P = ls->Ng * klight->spot.radius + klight->co;
   }
 
+  /* Texture coordinates. */
   const Transform itfm = klight->itfm;
   const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
   /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
@@ -92,21 +97,19 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
     const float r_sq = sqr(radius);
     const float t_sq = sqr(ls->t);
 
-    ls->pdf = point_light_pdf(d_sq, r_sq, N, ls->D, path_flag);
-
     /* NOTE : preserve pdf in area measure. */
-    ls->pdf *= 0.5f * fabsf(d_sq - r_sq - t_sq) / (radius * ls->t * t_sq);
+    const float pdf_solid_angle_to_area = 0.5f * fabsf(d_sq - r_sq - t_sq) /
+                                          (radius * ls->t * t_sq);
+    ls->pdf = point_light_pdf(d_sq, r_sq, N, ls->D, path_flag) * pdf_solid_angle_to_area;
 
     ls->Ng = normalize(ls->P - klight->co);
   }
   else {
-    ls->eval_fac = klight->spot.eval_fac;
-
-    ls->Ng = -ls->D;
-
     /* PDF does not change. */
+    ls->Ng = -ls->D;
   }
 
+  /* Texture coordinates. */
   const Transform itfm = klight->itfm;
   const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
   /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
@@ -136,24 +139,23 @@ ccl_device_inline bool point_light_sample_from_intersection(
     const uint32_t path_flag,
     ccl_private LightSample *ccl_restrict ls)
 {
-  ls->eval_fac = klight->spot.eval_fac;
-
   const float radius = klight->spot.radius;
 
-  ls->Ng = radius > 0 ? normalize(ls->P - klight->co) : -ray_D;
+  ls->eval_fac = klight->spot.eval_fac;
 
+  if (radius > 0) {
+    ls->Ng = normalize(ls->P - klight->co);
+  }
+  else {
+    ls->Ng = -ray_D;
+  }
+
+  /* Texture coordinates. */
   const Transform itfm = klight->itfm;
   const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
   /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
   ls->u = uv.y;
   ls->v = 1.0f - uv.x - uv.y;
-
-  if (ls->t == FLT_MAX) {
-    ls->pdf = 0.0f;
-  }
-  else {
-    ls->pdf = point_light_pdf(len_squared(ray_P - klight->co), sqr(radius), N, ray_D, path_flag);
-  }
 
   return true;
 }
@@ -175,6 +177,7 @@ ccl_device_forceinline bool point_light_tree_parameters(const ccl_global KernelL
   point_to_centroid = safe_normalize_len(centroid - P, &dist_point_to_centroid);
 
   const float radius = klight->spot.radius;
+
   if (dist_point_to_centroid > radius) {
     /* Equivalent to a disk light with the same angular span. */
     cos_theta_u = cos_from_sin(radius / dist_point_to_centroid);
