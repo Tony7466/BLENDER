@@ -759,4 +759,95 @@ template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;
 template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 
+template<int Count, typename Func>
+static void foreach_sequence(std::array<IndexMask, Count> masks, Func &&func)
+{
+  BLI_assert(std::all_of(masks.begin() + 1, masks.end(), [&](const IndexMask &maks) {
+    return masks[0].size() == maks.size();
+  }));
+
+  std::array<int64_t, Count> segment_iter;
+  MutableSpan(segment_iter).fill(0);
+
+  std::array<int16_t, Count> start_iter;
+  MutableSpan(start_iter).fill(0);
+
+  std::array<IndexMaskSegment, Count> segments;
+  for (const int64_t mask_i : IndexRange(Count)) {
+    segments[mask_i] = masks[mask_i].segment(0);
+  }
+
+  while (segment_iter[0] != masks[0].segments_num()) {
+    int16_t min_sequence_size = std::numeric_limits<int16_t>::max();
+    for (const int64_t mask_i : IndexRange(Count)) {
+      min_sequence_size = math::min(min_sequence_size,
+                                    int16_t(segments[mask_i].size() - start_iter[mask_i]));
+    }
+
+    std::array<IndexMaskSegment, Count> sequences;
+    for (const int64_t mask_i : IndexRange(Count)) {
+      sequences[mask_i] = segments[mask_i].slice(start_iter[mask_i], min_sequence_size);
+    }
+
+    if (!func(sequences)) {
+      break;
+    }
+
+    for (const int64_t mask_i : IndexRange(Count)) {
+      if (segments[mask_i].size() - start_iter[mask_i] == min_sequence_size) {
+        start_iter[mask_i] = 0;
+        segment_iter[mask_i]++;
+        segments[mask_i] = masks[mask_i].segment(segment_iter[mask_i]);
+      }
+      else {
+        start_iter[mask_i] += min_sequence_size;
+      }
+    }
+  }
+}
+
+static bool operator==(const IndexMaskSegment &a, const IndexMaskSegment &b)
+{
+  if (UNLIKELY(a.size() != b.size())) {
+    return false;
+  }
+
+  if (a[0] != b[0]) {
+    return false;
+  }
+
+  const bool a_is_range = unique_sorted_indices::non_empty_is_range(a.base_span());
+  const bool b_is_range = unique_sorted_indices::non_empty_is_range(b.base_span());
+  if (a_is_range || b_is_range) {
+    return a_is_range && b_is_range;
+  }
+
+  /* Offset differents for the equal int16_t indices should be bounded in int16_t range.
+   * Make type of offsets smaller for hot loop. */
+  const int16_t offset_different = int16_t(b.offset() - a.offset());
+  const Span<int16_t> a_indices = a.base_span();
+
+  return std::equal(a_indices.begin(),
+                    a_indices.end(),
+                    b.base_span().begin(),
+                    [offset_different](const int16_t a, const int16_t b) -> bool {
+                      return a == b + offset_different;
+                    });
+}
+
+bool operator==(const IndexMask &a, const IndexMask &b)
+{
+  if (a.size() != b.size()) {
+    return false;
+  }
+
+  bool equals = true;
+  foreach_sequence<2>({a, b}, [&](const std::array<IndexMaskSegment, 2> segments) {
+    equals &= segments[0] == segments[1];
+    return equals;
+  });
+
+  return equals;
+}
+
 }  // namespace blender::index_mask

@@ -368,6 +368,9 @@ class IndexMask : private IndexMaskData {
    * Is used by some functions to get low level access to the mask in order to construct it.
    */
   IndexMaskData &data_for_inplace_construction();
+
+  friend bool operator==(const IndexMask &a, const IndexMask &b);
+  friend bool operator!=(const IndexMask &a, const IndexMask &b);
 };
 
 /**
@@ -903,6 +906,11 @@ inline Vector<std::variant<IndexRange, IndexMaskSegment>, N> IndexMask::to_spans
   Vector<std::variant<IndexRange, IndexMaskSegment>, N> segments;
   this->foreach_segment_optimized([&](const auto segment) { segments.append(segment); });
   return segments;
+}
+
+inline bool operator!=(const IndexMask &a, const IndexMask &b)
+{
+  return !(a == b);
 }
 
 }  // namespace blender::index_mask
