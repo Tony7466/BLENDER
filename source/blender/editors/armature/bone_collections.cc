@@ -418,7 +418,7 @@ static bool bone_collection_assign_poll(bContext *C)
     return false;
   }
 
-  CTX_wm_operator_poll_msg_set(C, "Cannot edit linked bone collections");
+  CTX_wm_operator_poll_msg_set(C, "Linked bone collections are not editable");
 
   /* The target bone collection can be specified by name in an operator property, but that's not
    * available here. So just allow in the poll function, and do the final check in the execute. */
@@ -1005,7 +1005,7 @@ static bool move_to_collection_poll(bContext *C)
     return false;
   }
 
-  CTX_wm_operator_poll_msg_set(C, "Cannot edit linked bone collections");
+  CTX_wm_operator_poll_msg_set(C, "Linked bone collections are not editable");
 
   /* Ideally this would also check the target bone collection to move/assign to.
    * However, that requires access to the operator properties, and those are not
