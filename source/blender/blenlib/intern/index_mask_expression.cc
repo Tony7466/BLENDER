@@ -5,12 +5,14 @@
 #include <fmt/format.h>
 
 #include "BLI_array.hh"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask_expression.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_task.hh"
+#include "BLI_timeit.hh"
 #include "BLI_vector_set.hh"
 
 namespace blender::index_mask {
@@ -98,8 +100,14 @@ static ChunkResult evaluate_chunk(
         const Span<IndexMaskSegment> segments = segments_by_mask.lookup(expr.mask);
         ChunkResult &result = chunk_results[expr.index].emplace();
         for (const IndexMaskSegment &segment : segments) {
-          result.segments.append(
-              IndexMaskSegment(segment.offset() - chunk_range.start(), segment.base_span()));
+          const IndexMaskSegment shifted_segment = IndexMaskSegment(
+              segment.offset() - chunk_range.start(), segment.base_span());
+#ifndef NDEBUG
+          for (const int64_t i : shifted_segment) {
+            BLI_assert(i < max_segment_size);
+          }
+#endif
+          result.segments.append(shifted_segment);
           result.result_size += int16_t(segment.size());
         }
         break;
@@ -121,7 +129,7 @@ static ChunkResult evaluate_chunk(
             break;
           }
         }
-        if (all_terms_computed) {
+        if (all_terms_computed && !chunk_results[expression.index]) {
           ChunkResult &result = chunk_results[expression.index].emplace();
           /* TODO: Optimize merge. */
           Set<int16_t> indices_set;
@@ -159,7 +167,7 @@ static ChunkResult evaluate_chunk(
             break;
           }
         }
-        if (all_terms_computed) {
+        if (all_terms_computed && !chunk_results[expression.index]) {
           ChunkResult &result = chunk_results[expression.index].emplace();
           /* TODO: Optimize intersection. */
           Map<int16_t, int> count_by_index;
@@ -218,7 +226,7 @@ static ChunkResult evaluate_chunk(
             break;
           }
         }
-        if (all_terms_computed) {
+        if (all_terms_computed && !chunk_results[expression.index]) {
           ChunkResult &result = chunk_results[expression.index].emplace();
           /* TODO: Optimize difference. */
           Set<int16_t> indices_set;
@@ -302,7 +310,7 @@ static IndexMask evaluated_generic(const Expr &root_expression, IndexMaskMemory 
     }
   }
 
-  VectorSet<int64_t> possible_chunk_starts;
+  Set<int64_t> possible_chunk_starts_set;
   /* TODO: Only use masks which have a "positive" impact on the final result. */
   for (const IndexMask *mask : masks) {
     mask->foreach_segment([&](const IndexMaskSegment segment) {
@@ -311,12 +319,16 @@ static IndexMask evaluated_generic(const Expr &root_expression, IndexMaskMemory 
       }
       const int64_t begin_chunk_offset = segment[0] & max_segment_size_mask_high;
       const int64_t end_chunk_offset = segment.last() & max_segment_size_mask_high;
-      possible_chunk_starts.add(begin_chunk_offset);
+      possible_chunk_starts_set.add(begin_chunk_offset);
       if (begin_chunk_offset != end_chunk_offset) {
-        possible_chunk_starts.add(end_chunk_offset);
+        possible_chunk_starts_set.add(end_chunk_offset);
       }
     });
   }
+
+  Vector<int64_t> possible_chunk_starts;
+  possible_chunk_starts.extend(possible_chunk_starts_set.begin(), possible_chunk_starts_set.end());
+  std::sort(possible_chunk_starts.begin(), possible_chunk_starts.end());
 
   Map<int64_t, MultiValueMap<const IndexMask *, IndexMaskSegment>> segments_by_chunk;
   for (const IndexMask *mask : masks) {
@@ -345,9 +357,11 @@ static IndexMask evaluated_generic(const Expr &root_expression, IndexMaskMemory 
 
   Vector<ChunkResult> all_chunk_results(possible_chunk_starts.size());
 
+  threading::EnumerableThreadSpecific<LinearAllocator<>> locals;
+
   threading::parallel_for(
       possible_chunk_starts.index_range(), 1, [&](const IndexRange chunk_start_range) {
-        LinearAllocator<> local_allocator;
+        LinearAllocator<> &local_allocator = locals.local();
         for (const int64_t chunk_start_i : chunk_start_range) {
           const int64_t segment_start = possible_chunk_starts[chunk_start_i];
           all_chunk_results[chunk_start_i] = evaluate_chunk(
@@ -377,6 +391,7 @@ static IndexMask evaluated_generic(const Expr &root_expression, IndexMaskMemory 
 
 IndexMask evaluate_expression(const Expr &expression, IndexMaskMemory &memory)
 {
+  SCOPED_TIMER(__func__);
   return evaluated_generic(expression, memory);
 }
 

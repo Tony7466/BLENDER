@@ -232,6 +232,16 @@ IndexMask IndexMask::from_segments(const Span<IndexMaskSegment> segments, IndexM
   if (segments.is_empty()) {
     return {};
   }
+#ifndef NDEBUG
+  {
+    int64_t last_index = segments[0].last();
+    for (const IndexMaskSegment &segment : segments.drop_front(1)) {
+      BLI_assert(std::is_sorted(segment.base_span().begin(), segment.base_span().end()));
+      BLI_assert(last_index < segment[0]);
+      last_index = segment.last();
+    }
+  }
+#endif
   const int64_t segments_num = segments.size();
 
   /* Allocate buffers for the mask. */
@@ -634,7 +644,14 @@ bool operator==(const IndexMask &a, const IndexMask &b)
   a.to_indices(indices_a.as_mutable_span());
   Array<int64_t> indices_b(b.size());
   b.to_indices(indices_b.as_mutable_span());
-  return indices_a.as_span() == indices_b.as_span();
+  for (const int64_t i : indices_a.index_range()) {
+    const int64_t val_a = indices_a[i];
+    const int64_t val_b = indices_b[i];
+    if (val_a != val_b) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool operator!=(const IndexMask &a, const IndexMask &b)

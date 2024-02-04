@@ -58,4 +58,17 @@ TEST(index_mask_expression, Difference)
                 {IndexRange(50, 10), IndexRange(61, 39), IndexRange(120, 30), 100'000}, memory));
 }
 
+TEST(index_mask_expression, UnionLargeRanges)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask_a(IndexRange(0, 1'000'000));
+  const IndexMask mask_b(IndexRange(900'000, 1'100'000));
+
+  ExprBuilder builder;
+  const Expr &expr = builder.merge(&mask_a, &mask_b);
+  const IndexMask result_mask = evaluate_expression(expr, memory);
+
+  EXPECT_EQ(result_mask, IndexMask(IndexRange(0, 2'000'000)));
+}
+
 }  // namespace blender::index_mask::tests
