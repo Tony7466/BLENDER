@@ -20,15 +20,23 @@
  */
 
 #include <mutex>
+#include <optional>
 
+#include "BLI_array.hh"
+#include "BLI_function_ref.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_vector.hh"
-#include "BLI_vector_set.hh"
 
-#include "BKE_attribute.hh"
+#include "DNA_customdata_types.h"
 
 struct Object;
 struct Collection;
+namespace blender::bke {
+class AnonymousAttributePropagationInfo;
+class AttributeAccessor;
+class MutableAttributeAccessor;
+}  // namespace blender::bke
 
 namespace blender::bke {
 

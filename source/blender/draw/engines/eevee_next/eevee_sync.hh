@@ -16,8 +16,8 @@
 #include "BLI_map.hh"
 #include "DEG_depsgraph_query.hh"
 #include "DNA_object_types.h"
-#include "DRW_render.h"
-#include "GPU_material.h"
+#include "DRW_render.hh"
+#include "GPU_material.hh"
 
 #include "eevee_shader_shared.hh"
 
@@ -34,15 +34,15 @@ class Instance;
 
 class ObjectKey {
   /** Hash value of the key. */
-  uint64_t hash_value_;
+  uint64_t hash_value_ = 0;
   /** Original Object or source object for duplis. */
-  Object *ob_;
+  Object *ob_ = nullptr;
   /** Original Parent object for duplis. */
-  Object *parent_;
+  Object *parent_ = nullptr;
   /** Dupli objects recursive unique identifier */
   int id_[MAX_DUPLI_RECUR];
   /** Used for particle system hair. */
-  int sub_key_;
+  int sub_key_ = 0;
 
  public:
   ObjectKey() = default;
@@ -145,11 +145,9 @@ struct ObjectHandle : BaseHandle {
   ObjectKey object_key;
 };
 
-struct WorldHandle : public BaseHandle {
-};
+struct WorldHandle : public BaseHandle {};
 
-struct SceneHandle : public BaseHandle {
-};
+struct SceneHandle : public BaseHandle {};
 
 class SyncModule {
  private:

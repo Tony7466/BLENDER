@@ -425,7 +425,7 @@ struct GWL_Cursor {
    * The size of the cursor (when looking up a cursor theme).
    * This must be scaled by the maximum output scale when passing to wl_cursor_theme_load.
    * See #update_cursor_scale.
-   * */
+   */
   int theme_size = 0;
   int custom_scale = 1;
 };
@@ -836,6 +836,13 @@ static void gwl_primary_selection_discard_source(GWL_PrimarySelection *primary)
 
 #ifdef WITH_INPUT_IME
 struct GWL_SeatIME {
+  /**
+   * The surface associated with this text input method.
+   *
+   * \note Even when null, IME callbacks run and events are generated to ensure
+   * the IME state remains consistent & allow for the compositor to assign the surface
+   * at any point in time which is then defines `window` IME events are associated with.
+   */
   wl_surface *surface_window = nullptr;
   GHOST_TEventImeData event_ime_data = {
       /*result_len*/ nullptr,
@@ -1320,7 +1327,7 @@ struct GWL_Display {
 };
 
 /**
- * Free the #GWL_Display and it's related members.
+ * Free the #GWL_Display and its related members.
  *
  * \note This may run on a partially initialized struct,
  * so it can't be assumed all members are set.
@@ -2079,6 +2086,13 @@ static int memfd_create_sealed(const char *name)
 #endif /* !HAVE_MEMFD_CREATE */
 }
 
+#if defined(WITH_GHOST_WAYLAND_LIBDECOR) && defined(WITH_VULKAN_BACKEND)
+int memfd_create_sealed_for_vulkan_hack(const char *name)
+{
+  return memfd_create_sealed(name);
+}
+#endif
+
 enum {
   GWL_IOR_READ = 1 << 0,
   GWL_IOR_WRITE = 1 << 1,
@@ -2338,6 +2352,9 @@ static char *read_file_as_buffer(const int fd, const bool nil_terminate, size_t 
       if (len_chunk <= 0) {
         if (UNLIKELY(len_chunk < 0)) {
           ok = false;
+        }
+        if (chunk == chunk_first) {
+          chunk_first = nullptr;
         }
         free(chunk);
         break;
@@ -2641,7 +2658,7 @@ static void gwl_seat_cursor_anim_begin(GWL_Seat *seat)
           if (!anim_handle->exit_pending.load()) {
             std::lock_guard lock_server_guard{*server_mutex};
             if (!anim_handle->exit_pending.load()) {
-              const struct wl_cursor *wl_cursor = seat->cursor.wl.theme_cursor;
+              const wl_cursor *wl_cursor = seat->cursor.wl.theme_cursor;
               frame = (frame + 1) % wl_cursor->image_count;
               wl_cursor_image *image = wl_cursor->images[frame];
               wl_buffer *buffer = wl_cursor_image_get_buffer(image);
@@ -3874,7 +3891,7 @@ static void gesture_pinch_handle_begin(void *data,
   seat->pointer_gesture_pinch.rotation.factor = 5;
 
   if (win) {
-    /* NOTE(@ideasman42): Blender's use of track-pad coordinates is inconsistent and needs work.
+    /* NOTE(@ideasman42): Blender's use of trackpad coordinates is inconsistent and needs work.
      * This isn't specific to WAYLAND, in practice they tend to work well enough in most cases.
      * Some operators scale by the UI scale, some don't.
      * Even though the window scale is correct, it doesn't account for the UI scale preference
@@ -4300,10 +4317,8 @@ static void tablet_tool_handle_tilt(void *data,
   CLOG_INFO(LOG, 2, "tilt (x=%.4f, y=%.4f)", UNPACK2(tilt_unit));
   GWL_TabletTool *tablet_tool = static_cast<GWL_TabletTool *>(data);
   GHOST_TabletData &td = tablet_tool->data;
-  td.Xtilt = tilt_unit[0];
-  td.Ytilt = tilt_unit[1];
-  CLAMP(td.Xtilt, -1.0f, 1.0f);
-  CLAMP(td.Ytilt, -1.0f, 1.0f);
+  td.Xtilt = std::clamp(tilt_unit[0], -1.0f, 1.0f);
+  td.Ytilt = std::clamp(tilt_unit[1], -1.0f, 1.0f);
 
   gwl_tablet_tool_frame_event_add(tablet_tool, GWL_TabletTool_EventTypes::Tilt);
 }
@@ -4637,7 +4652,8 @@ static void keyboard_handle_keymap(void *data,
   if (seat->xkb.state_empty_with_shift) {
     seat->xkb_use_non_latin_workaround = true;
     for (xkb_keycode_t key_code = KEY_1 + EVDEV_OFFSET; key_code <= KEY_0 + EVDEV_OFFSET;
-         key_code++) {
+         key_code++)
+    {
       const xkb_keysym_t sym_test = xkb_state_key_get_one_sym(seat->xkb.state_empty_with_shift,
                                                               key_code);
       if (!(sym_test >= XKB_KEY_0 && sym_test <= XKB_KEY_9)) {
@@ -5288,10 +5304,6 @@ static void text_input_handle_preedit_string(void *data,
             cursor_end);
 
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
-  if (UNLIKELY(seat->ime.surface_window == nullptr)) {
-    return;
-  }
-
   if (seat->ime.has_preedit == false) {
     /* Starting IME input. */
     gwl_seat_ime_full_reset(seat);
@@ -5318,10 +5330,6 @@ static void text_input_handle_commit_string(void *data,
   CLOG_INFO(LOG, 2, "commit_string (text=\"%s\")", text ? text : "<null>");
 
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
-  if (UNLIKELY(seat->ime.surface_window == nullptr)) {
-    return;
-  }
-
   seat->ime.result_is_null = (text == nullptr);
   if (seat->ime.result_is_null) {
     seat->ime.result = "";
@@ -5363,7 +5371,9 @@ static void text_input_handle_done(void *data,
 
   CLOG_INFO(LOG, 2, "done");
 
-  GHOST_WindowWayland *win = ghost_wl_surface_user_data(seat->ime.surface_window);
+  GHOST_WindowWayland *win = seat->ime.surface_window ?
+                                 ghost_wl_surface_user_data(seat->ime.surface_window) :
+                                 nullptr;
   if (seat->ime.has_commit_string_callback) {
     if (seat->ime.has_preedit) {
       const bool is_end = seat->ime.composite_is_null;
@@ -7339,7 +7349,7 @@ uint8_t GHOST_SystemWayland::getNumDisplays() const
 uint64_t GHOST_SystemWayland::getMilliSeconds() const
 {
   /* Match the timing method used by LIBINPUT, so the result is closer to WAYLAND's time-stamps. */
-  struct timespec ts = {0, 0};
+  timespec ts = {0, 0};
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (uint64_t(ts.tv_sec) * 1000) + uint64_t(ts.tv_nsec / 1000000);
 }
@@ -8271,8 +8281,10 @@ uint64_t GHOST_SystemWayland::ms_from_input_time(const uint32_t timestamp_as_uin
   GWL_DisplayTimeStamp &input_timestamp = display_->input_timestamp;
   if (UNLIKELY(timestamp_as_uint < input_timestamp.last)) {
     /* NOTE(@ideasman42): Sometimes event times are out of order,
-     * while this should _never_ happen, it occasionally does when resizing the window then
-     * clicking on the window with GNOME+LIBDECOR.
+     * while this should _never_ happen, it occasionally does:
+     * - When resizing the window then clicking on the window with GNOME+LIBDECOR.
+     * - With accepting IME text with GNOME-v45.2 the timestamp is in seconds, see:
+     *   https://gitlab.gnome.org/GNOME/mutter/-/issues/3214
      * Accept events must occur within ~25 days, out-of-order time-stamps above this time-frame
      * will be treated as a wrapped integer. */
     if (input_timestamp.last - timestamp_as_uint > std::numeric_limits<uint32_t>::max() / 2) {
@@ -8531,7 +8543,8 @@ bool GHOST_SystemWayland::window_cursor_grab_set(const GHOST_TGrabCursorMode mod
       }
       else if (mode_current == GHOST_kGrabHide) {
         if ((init_grab_xy[0] != seat->grab_lock_xy[0]) ||
-            (init_grab_xy[1] != seat->grab_lock_xy[1])) {
+            (init_grab_xy[1] != seat->grab_lock_xy[1]))
+        {
           const wl_fixed_t xy_next[2] = {
               gwl_window_scale_wl_fixed_from(scale_params, wl_fixed_from_int(init_grab_xy[0])),
               gwl_window_scale_wl_fixed_from(scale_params, wl_fixed_from_int(init_grab_xy[1])),

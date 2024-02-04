@@ -15,7 +15,9 @@ if(NOT APPLE)
     -DOIDN_DEVICE_SYCL=ON
     -DOIDN_DEVICE_SYCL_AOT=OFF
     -DOIDN_DEVICE_METAL=ON
-    -DLEVEL_ZERO_ROOT=${LIBDIR}/level-zero/lib
+    -DOIDN_DEVICE_CUDA=ON
+    -DOIDN_DEVICE_HIP=ON
+    -DLEVEL_ZERO_ROOT=${LIBDIR}/level-zero
   )
 endif()
 
@@ -63,6 +65,21 @@ add_dependencies(
   external_ispc
   external_python
 )
+
+if(UNIX AND NOT APPLE)
+  add_dependencies(
+    external_openimagedenoise
+    external_dpcpp
+    external_ocloc
+  )
+endif()
+
+if(NOT APPLE)
+  add_dependencies(
+    external_openimagedenoise
+    external_level-zero
+  )
+endif()
 
 if(BUILD_MODE STREQUAL Release AND WIN32)
     ExternalProject_Add_Step(external_openimagedenoise after_install
