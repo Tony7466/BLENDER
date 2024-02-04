@@ -8447,7 +8447,7 @@ static void rna_def_modifier_grease_pencil_multiply(BlenderRNA *brna)
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "use_fade", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flags", GP_MULTIPLY_ENABLE_FADING);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flags", MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING);
   RNA_def_property_ui_text(prop, "Fade", "Fade the stroke thickness for each generated stroke");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 

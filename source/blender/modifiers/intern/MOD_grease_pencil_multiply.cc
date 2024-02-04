@@ -15,6 +15,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
@@ -83,15 +84,19 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
 {
   auto *mmd = reinterpret_cast<GreasePencilMultiModifierData *>(md);
-  if (mmd->duplications < 1) {
+  if (mmd->duplications <= 1) {
     return true;
   }
   return false;
 }
 
-static bke::CurvesGeometry duplicate_strokes(const bke::CurvesGeometry &curves, const IndexMask curves_mask, const IndexMask unselected_mask, const int count, int &original_point_count){
-  bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
-      curves, curves_mask, {});
+static bke::CurvesGeometry duplicate_strokes(const bke::CurvesGeometry &curves,
+                                             const IndexMask curves_mask,
+                                             const IndexMask unselected_mask,
+                                             const int count,
+                                             int &original_point_count)
+{
+  bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(curves, curves_mask, {});
   bke::CurvesGeometry unselected_curves = bke::curves_copy_curve_selection(
       curves, unselected_mask, {});
 
@@ -107,7 +112,7 @@ static bke::CurvesGeometry duplicate_strokes(const bke::CurvesGeometry &curves, 
   const int masked_handle = instances->add_reference(bke::InstanceReference{masked_geo});
   const int unselected_handle = instances->add_reference(bke::InstanceReference{unselected_geo});
 
-  for(int i=0;i<count;i++){
+  for (int i = 0; i < count; i++) {
     instances->add_instance(masked_handle, float4x4::identity());
   }
   instances->add_instance(unselected_handle, float4x4::identity());
@@ -121,7 +126,9 @@ static bke::CurvesGeometry duplicate_strokes(const bke::CurvesGeometry &curves, 
   return std::move(result_geo.get_curves_for_write()->geometry.wrap());
 }
 
-static void generate_curves(GreasePencilMultiModifierData &mmd, const ModifierEvalContext &ctx, Drawing &drawing)
+static void generate_curves(GreasePencilMultiModifierData &mmd,
+                            const ModifierEvalContext &ctx,
+                            Drawing &drawing)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
@@ -129,44 +136,80 @@ static void generate_curves(GreasePencilMultiModifierData &mmd, const ModifierEv
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, curves, mmd.influence, mask_memory);
 
-  const IndexMask unselected_mask = curves_mask.complement(curves.curves_range(),mask_memory);
-  
-  if(curves_mask.is_empty()){ return; }
-  
-  int original_point_count;
-  bke::CurvesGeometry duplicated_strokes = duplicate_strokes(curves,curves_mask,unselected_mask,mmd.duplications + 1,original_point_count);
+  if (curves_mask.is_empty()) {
+    return;
+  }
 
-  const float offset = math::length(math::to_scale(float4x4(ctx.object->object_to_world))) * mmd.offset;
+  const IndexMask unselected_mask = curves_mask.complement(curves.curves_range(), mask_memory);
+
+  int original_point_count;
+  bke::CurvesGeometry duplicated_strokes = duplicate_strokes(
+      curves, curves_mask, unselected_mask, mmd.duplications, original_point_count);
+
+  const float offset = math::length(math::to_scale(float4x4(ctx.object->object_to_world))) *
+                       mmd.offset;
   const float distance = mmd.distance;
+  bool use_fading = (mmd.flag & MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING) != 0;
+  const float fading_thickness = mmd.fading_thickness;
+  const float fading_opacity = mmd.fading_opacity;
+  const float fading_center = mmd.fading_center;
 
   MutableSpan<float3> positions = duplicated_strokes.positions_for_write();
   const Span<float3> normals = duplicated_strokes.evaluated_normals();
   const Span<float3> tangents = duplicated_strokes.evaluated_tangents();
 
-  const int points_num_pending = (mmd.duplications+1)*original_point_count;
+  bke::MutableAttributeAccessor attributes = duplicated_strokes.attributes_for_write();
+  bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
+      "radii", bke::AttrDomain::Point);
+
+  const int points_num_pending = (mmd.duplications + 1) * original_point_count;
 
   Array<float3> pos_l(points_num_pending);
   Array<float3> pos_r(points_num_pending);
-  
-  threading::parallel_for(duplicated_strokes.points_range().take_front(points_num_pending),1024,[&](const IndexRange parallel_range){
-    for(const int point : parallel_range){
-      const float3 minter = math::cross(normals[point],tangents[point]) * distance;
-      pos_l[point] = positions[point] + minter;
-      pos_r[point] = positions[point] - minter;
-    }
-  });
 
-  for(const int i : IndexRange(mmd.duplications + 1)){
-    MutableSpan<float3> instance_positions = positions.slice(IndexRange(original_point_count*i,original_point_count));
-    Span<float3> use_pos_l = pos_l.as_span().slice(IndexRange(original_point_count*i,original_point_count));
-    Span<float3> use_pos_r = pos_r.as_span().slice(IndexRange(original_point_count*i,original_point_count));
-    threading::parallel_for(instance_positions.index_range(),512,[&](const IndexRange parallel_range){
-      for(const int point : parallel_range){
-        printf("%f\n",float(i) / float(mmd.duplications));
-        instance_positions[point] = math::interpolate(use_pos_l[point],use_pos_r[point],float(i) / float(mmd.duplications));
-      }
-    });
+  threading::parallel_for(duplicated_strokes.points_range().take_front(points_num_pending),
+                          1024,
+                          [&](const IndexRange parallel_range) {
+                            for (const int point : parallel_range) {
+                              const float3 minter = math::cross(normals[point], tangents[point]) *
+                                                    distance;
+                              pos_l[point] = positions[point] + minter;
+                              pos_r[point] = positions[point] - minter;
+                            }
+                          });
+
+  for (const int i : IndexRange(mmd.duplications)) {
+    const IndexRange this_stroke = IndexRange(original_point_count * i, original_point_count);
+    MutableSpan<float3> instance_positions = positions.slice(this_stroke);
+    MutableSpan<float> instance_opacity = opacities.span.slice(this_stroke);
+    MutableSpan<float> instance_radii = radii.span.slice(this_stroke);
+    Span<float3> use_pos_l = pos_l.as_span().slice(this_stroke);
+    Span<float3> use_pos_r = pos_r.as_span().slice(this_stroke);
+    const float offset_fac = (mmd.duplications == 1) ? 0.5f :
+                                                       (float(i) / float(mmd.duplications - 1));
+    const float thickness_factor = use_fading ? interpf(1.0f - fading_thickness,
+                                                        1.0f,
+                                                        fabsf(offset_fac - fading_center)) :
+                                                1.0f;
+    const float opacity_factor = use_fading ? interpf(1.0f - fading_opacity,
+                                                      1.0f,
+                                                      fabsf(offset_fac - fading_center)) :
+                                              1.0f;
+    threading::parallel_for(
+        instance_positions.index_range(), 512, [&](const IndexRange parallel_range) {
+          for (const int point : parallel_range) {
+            const float fac = interpf(1 + offset, offset, float(i) / float(mmd.duplications - 1));
+            instance_positions[point] = math::interpolate(use_pos_l[point], use_pos_r[point], fac);
+            instance_radii[point] *= thickness_factor;
+            instance_opacity[point] *= opacity_factor;
+          }
+        });
   }
+
+  radii.finish();
+  opacities.finish();
 
   curves = duplicated_strokes;
   drawing.tag_topology_changed();
