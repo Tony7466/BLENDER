@@ -19,10 +19,9 @@ TEST(index_mask_expression, Union)
   const IndexMask mask_a = IndexMask::from_initializers({5, IndexRange(50, 100)}, memory);
   const IndexMask mask_b = IndexMask::from_initializers({IndexRange(10, 10), 60, 200}, memory);
 
-  AtomicExpr a_expr{mask_a};
-  AtomicExpr b_expr{mask_b};
-  UnionExpr union_expr{{&a_expr, &b_expr}};
-  const IndexMask union_mask = evaluate_expression(union_expr, memory);
+  ExprBuilder builder;
+  const Expr &expr = builder.merge(&mask_a, &mask_b);
+  const IndexMask union_mask = evaluate_expression(expr, memory);
 
   EXPECT_EQ(
       union_mask,

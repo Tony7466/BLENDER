@@ -5,6 +5,7 @@
 #pragma once
 
 #include "BLI_index_mask.hh"
+#include "BLI_resource_scope.hh"
 
 namespace blender::index_mask {
 
@@ -55,6 +56,41 @@ struct DifferenceExpr : public Expr {
       : Expr(Type::Difference), main_term(&main_term), subtract_terms(subtract_terms)
   {
     BLI_assert(!subtract_terms.contains(nullptr));
+  }
+};
+
+class ExprBuilder {
+ private:
+  ResourceScope scope_;
+
+ public:
+  using Term = std::variant<const Expr *, const IndexMask *>;
+
+  const UnionExpr &merge(const Term &a, const Term &b)
+  {
+    return scope_.construct<UnionExpr>(
+        Span<const Expr *>{&this->term_to_expr(a), &this->term_to_expr(b)});
+  }
+
+  const DifferenceExpr &subtract(const Term &a, const Term &b)
+  {
+    return scope_.construct<DifferenceExpr>(this->term_to_expr(a),
+                                            Span<const Expr *>{&this->term_to_expr(b)});
+  }
+
+  const IntersectionExpr &intersect(const Term &a, const Term &b)
+  {
+    return scope_.construct<IntersectionExpr>(
+        Span<const Expr *>{&this->term_to_expr(a), &this->term_to_expr(b)});
+  }
+
+ private:
+  const Expr &term_to_expr(const Term &term)
+  {
+    if (const Expr *const *expr = std::get_if<const Expr *>(&term)) {
+      return **expr;
+    }
+    return scope_.construct<AtomicExpr>(*std::get<const IndexMask *>(term));
   }
 };
 
