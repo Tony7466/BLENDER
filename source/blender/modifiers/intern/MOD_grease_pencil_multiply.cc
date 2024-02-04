@@ -18,6 +18,7 @@
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_instances.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
@@ -26,6 +27,8 @@
 #include "BLO_read_write.hh"
 
 #include "DEG_depsgraph_query.hh"
+
+#include "GEO_realize_instances.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -80,27 +83,91 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
 {
   auto *mmd = reinterpret_cast<GreasePencilMultiModifierData *>(md);
-  if (mmd->duplications <= 1) {
+  if (mmd->duplications < 1) {
     return true;
   }
   return false;
 }
 
-static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
-{
-  auto *mmd = reinterpret_cast<GreasePencilMultiModifierData *>(md);
-  DEG_add_object_relation(
-      ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Tint Modifier");
+static bke::CurvesGeometry duplicate_strokes(const bke::CurvesGeometry &curves, const IndexMask curves_mask, const IndexMask unselected_mask, const int count, int &original_point_count){
+  bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(
+      curves, curves_mask, {});
+  bke::CurvesGeometry unselected_curves = bke::curves_copy_curve_selection(
+      curves, unselected_mask, {});
+
+  original_point_count = masked_curves.points_num();
+
+  Curves *masked_curves_id = bke::curves_new_nomain(masked_curves);
+  Curves *unselected_curves_id = bke::curves_new_nomain(unselected_curves);
+
+  bke::GeometrySet masked_geo = bke::GeometrySet::from_curves(masked_curves_id);
+  bke::GeometrySet unselected_geo = bke::GeometrySet::from_curves(unselected_curves_id);
+
+  std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
+  const int masked_handle = instances->add_reference(bke::InstanceReference{masked_geo});
+  const int unselected_handle = instances->add_reference(bke::InstanceReference{unselected_geo});
+
+  for(int i=0;i<count;i++){
+    instances->add_instance(masked_handle, float4x4::identity());
+  }
+  instances->add_instance(unselected_handle, float4x4::identity());
+
+  geometry::RealizeInstancesOptions options;
+  options.keep_original_ids = true;
+  options.realize_instance_attributes = true;
+  options.propagation_info = {};
+  bke::GeometrySet result_geo = geometry::realize_instances(
+      bke::GeometrySet::from_instances(instances.release()), options);
+  return std::move(result_geo.get_curves_for_write()->geometry.wrap());
 }
 
-static void generate_curves(ModifierData &md, const ModifierEvalContext &ctx, Drawing &drawing)
+static void generate_curves(GreasePencilMultiModifierData &mmd, const ModifierEvalContext &ctx, Drawing &drawing)
 {
-  auto &mmd = reinterpret_cast<GreasePencilMultiModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   IndexMaskMemory mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, curves, mmd.influence, mask_memory);
+
+  const IndexMask unselected_mask = curves_mask.complement(curves.curves_range(),mask_memory);
+  
+  if(curves_mask.is_empty()){ return; }
+  
+  int original_point_count;
+  bke::CurvesGeometry duplicated_strokes = duplicate_strokes(curves,curves_mask,unselected_mask,mmd.duplications + 1,original_point_count);
+
+  const float offset = math::length(math::to_scale(float4x4(ctx.object->object_to_world))) * mmd.offset;
+  const float distance = mmd.distance;
+
+  const Span<float3> positions = duplicated_strokes.positions();
+  const Span<float3> normals = duplicated_strokes.evaluated_normals();
+  const Span<float3> tangents = duplicated_strokes.evaluated_tangents();
+
+  const int points_num_pending = (mmd.duplications+1)*original_point_count;
+
+  Array<float3> pos_l(points_num_pending);
+  Array<float3> pos_r(points_num_pending);
+  
+  threading::parallel_for(curves.points_range().take_front(points_num_pending),1024,[&](const IndexRange parallel_range){
+    for(const int point : parallel_range){
+      const float3 minter = math::cross(normals[point],tangents[point]) * distance;
+      pos_l = positions[point] + minter;
+      pos_r = positions[point] - minter;
+    }
+  });
+
+  for(const int i : IndexRange(mmd.duplications + 1)){
+    Span<float3> instance_positions = positions.slice(IndexRange(original_point_count*i,original_point_count));
+    Span<float3> use_pos_l = pos_l.as_span().slice(IndexRange(original_point_count*i,original_point_count));
+    Span<float3> use_pos_r = pos_r.as_span().slice(IndexRange(original_point_count*i,original_point_count));
+    threading::parallel_for(instance_positions.index_range(),512,[&](const IndexRange parallel_range){
+      for(const int point : parallel_range){
+        instance_positions[point] = math::interpolate(use_pos_l,use_pos_r,float(i) / float(mmd.duplications));
+      }
+    });
+  }
+
+  curves = duplicated_strokes;
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -208,7 +275,7 @@ ModifierTypeInfo modifierType_GreasePencilMultiply = {
     /*required_data_mask*/ nullptr,
     /*free_data*/ blender::free_data,
     /*is_disabled*/ blender::is_disabled,
-    /*update_depsgraph*/ blender::update_depsgraph,
+    /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ blender::foreach_ID_link,
