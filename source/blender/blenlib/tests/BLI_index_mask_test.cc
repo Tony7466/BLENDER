@@ -329,4 +329,69 @@ TEST(index_mask, OffsetIndexRangeFind)
   EXPECT_EQ(mask[0], 1);
 }
 
+TEST(index_mask, EqualsRangeSelf)
+{
+  IndexMask mask = IndexRange(16384);
+  EXPECT_EQ(mask, mask);
+}
+
+TEST(index_mask, EqualsRange)
+{
+  IndexMask mask_a = IndexRange(16384);
+  IndexMask mask_b = IndexRange(16384);
+  EXPECT_EQ(mask_a, mask_b);
+}
+
+TEST(index_mask, EqualsRangeLarge)
+{
+  IndexMask mask_a = IndexRange(96384);
+  IndexMask mask_b = IndexRange(96384);
+  EXPECT_EQ(mask_a, mask_b);
+}
+
+TEST(index_mask, EqualsRangeBegin)
+{
+  IndexMask mask_a = IndexRange(102, 16384 - 102);
+  IndexMask mask_b = IndexRange(102, 16384 - 102);
+  EXPECT_EQ(mask_a, mask_b);
+}
+
+TEST(index_mask, EqualsRangeEnd)
+{
+  IndexMask mask_a = IndexRange(16384 + 1);
+  IndexMask mask_b = IndexRange(16384 + 1);
+  EXPECT_EQ(mask_a, mask_b);
+}
+
+TEST(index_mask, NonEqualsRange)
+{
+  IndexMask mask_a = IndexRange(16384);
+  IndexMask mask_b = IndexRange(1, 16384);
+  EXPECT_NE(mask_a, mask_b);
+}
+
+TEST(index_mask, EqualsSelf)
+{
+  IndexMaskMemory memory;
+  IndexMask mask = IndexMask::from_union(IndexRange(16384), IndexRange(16384 * 3, 533), memory);
+  EXPECT_EQ(mask, mask);
+}
+
+TEST(index_mask, Equals)
+{
+  IndexMaskMemory memory;
+  IndexMask mask_a = IndexMask::from_union(IndexRange(16384), IndexRange(16384 * 3, 533), memory);
+  IndexMask mask_b = IndexMask::from_union(IndexRange(16384), IndexRange(16384 * 3, 533), memory);
+  EXPECT_EQ(mask_a, mask_b);
+}
+
+TEST(index_mask, NonEquals)
+{
+  IndexMaskMemory memory;
+  IndexMask mask_a = IndexMask::from_union(IndexRange(16384), IndexRange(16384 * 3, 533), memory);
+  IndexMask mask_b = IndexMask::from_union(
+      IndexRange(55, 16384), IndexRange(16384 * 5, 533), memory);
+  EXPECT_NE(mask_a, mask_b);
+}
+
 }  // namespace blender::index_mask::tests
