@@ -394,4 +394,20 @@ TEST(index_mask, NonEquals)
   EXPECT_NE(mask_a, mask_b);
 }
 
+TEST(index_mask, NotEqualsRangeAndIndices)
+{
+  IndexMaskMemory memory;
+  IndexMask mask_a = IndexMask::from_union(
+      IndexRange(2040),
+      IndexMask::from_indices<int>({2052, 2053, 2054, 2060, 2070, 2071, 2072, 2073, 2075}, memory),
+      memory);
+  IndexMask mask_b = IndexMask::from_union(
+      IndexRange(2040),
+      IndexMask::from_indices<int>({2052, 2053, 2054, 2060, 2070, 2071, 2072, 2073 + 1, 2075},
+                                   memory),
+      memory);
+
+  EXPECT_NE(mask_a, mask_b);
+}
+
 }  // namespace blender::index_mask::tests

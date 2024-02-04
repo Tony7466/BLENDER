@@ -777,7 +777,7 @@ static void foreach_sequence(std::array<IndexMask, Count> masks, Func &&func)
   while (segment_iter[0] != masks[0].segments_num()) {
     for (const int64_t mask_i : IndexRange(Count)) {
       if (start_iter[mask_i] == 0) {
-        segments[mask_i] = masks[mask_i].segment(0);
+        segments[mask_i] = masks[mask_i].segment(segment_iter[mask_i]);
       }
     }
 
