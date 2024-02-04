@@ -808,11 +808,7 @@ static void foreach_sequence(std::array<IndexMask, Count> masks, Func &&func)
 
 static bool operator==(const IndexMaskSegment &a, const IndexMaskSegment &b)
 {
-  if (UNLIKELY(a.size() != b.size())) {
-    return false;
-  }
-
-  if (a[0] != b[0]) {
+  if (a.size() != b.size() || a[0] != b[0]) {
     return false;
   }
 
@@ -822,8 +818,8 @@ static bool operator==(const IndexMaskSegment &a, const IndexMaskSegment &b)
     return a_is_range && b_is_range;
   }
 
-  /* Offset differents for the equal int16_t indices should be bounded in int16_t range.
-   * Make type of offsets smaller for hot loop. */
+  /* Offset differents, for the equal int16_t indices, should be bounded in int16_t range.
+   * Make type of offset smaller for the hot loop. */
   const int16_t offset_different = int16_t(b.offset() - a.offset());
   const Span<int16_t> a_indices = a.base_span();
 
@@ -831,7 +827,9 @@ static bool operator==(const IndexMaskSegment &a, const IndexMaskSegment &b)
                     a_indices.end(),
                     b.base_span().begin(),
                     [offset_different](const int16_t a, const int16_t b) -> bool {
-                      return a == b + offset_different;
+                      /* Be careful with int16_t overflow. /p a and /p b always will be positive.
+                       */
+                      return a - offset_different == b;
                     });
 }
 
@@ -839,6 +837,12 @@ bool operator==(const IndexMask &a, const IndexMask &b)
 {
   if (a.size() != b.size()) {
     return false;
+  }
+
+  const std::optional<IndexRange> a_as_range = a.to_range();
+  const std::optional<IndexRange> b_as_range = b.to_range();
+  if (a_as_range.has_value() || b_as_range.has_value()) {
+    return a_as_range.value_or(IndexRange()) == b_as_range.value_or(IndexRange());
   }
 
   bool equals = true;
