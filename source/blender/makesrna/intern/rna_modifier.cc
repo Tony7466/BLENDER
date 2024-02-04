@@ -41,7 +41,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -719,6 +719,7 @@ const EnumPropertyItem rna_enum_subdivision_boundary_smooth_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include <algorithm>
+#  include <fmt/format.h>
 
 #  include "DNA_curve_types.h"
 #  include "DNA_fluid_types.h"
@@ -787,13 +788,13 @@ static void rna_Modifier_name_update(Main *bmain, Scene * /*scene*/, PointerRNA 
   DEG_relations_tag_update(bmain);
 }
 
-static char *rna_Modifier_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_Modifier_path(const PointerRNA *ptr)
 {
   const ModifierData *md = static_cast<const ModifierData *>(ptr->data);
   char name_esc[sizeof(md->name) * 2];
 
   BLI_str_escape(name_esc, md->name, sizeof(name_esc));
-  return BLI_sprintfN("modifiers[\"%s\"]", name_esc);
+  return fmt::format("modifiers[\"{}\"]", name_esc);
 }
 
 static void rna_Modifier_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -1793,6 +1794,12 @@ static PointerRNA rna_NodesModifierBake_node_get(PointerRNA *ptr)
   }
   BLI_assert(tree != nullptr);
   return RNA_pointer_create(const_cast<ID *>(&tree->id), &RNA_Node, const_cast<bNode *>(node));
+}
+
+static StructRNA *rna_NodesModifierBake_data_block_typef(PointerRNA *ptr)
+{
+  NodesModifierDataBlock *data_block = static_cast<NodesModifierDataBlock *>(ptr->data);
+  return ID_code_to_RNA_type(data_block->id_type);
 }
 
 bool rna_GreasePencilModifier_material_poll(PointerRNA *ptr, PointerRNA value)
@@ -7275,8 +7282,63 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_nodes_data_block(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "NodesModifierDataBlock", nullptr);
+  RNA_def_struct_sdna(srna, "NodesModifierDataBlock");
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Data-Block Name", "Name that is mapped to the referenced data-block");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "lib_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Library Name",
+                           "Used when the data block is not local to the current .blend file but "
+                           "is linked from some library");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ID");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, nullptr, "rna_NodesModifierBake_data_block_typef", nullptr);
+  RNA_def_property_ui_text(prop, "Data-Block", "");
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  prop = RNA_def_property(srna, "id_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_id_type_items);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_nodes_bake_data_blocks(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "NodesModifierBakeDataBlocks", nullptr);
+  RNA_def_struct_sdna(srna, "NodesModifierBake");
+  RNA_def_struct_ui_text(
+      srna, "Data-Blocks", "Collection of data-blocks that can be referenced by baked data");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "active_data_block");
+}
+
 static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
 {
+  rna_def_modifier_nodes_bake_data_blocks(brna);
+
   static EnumPropertyItem bake_mode_items[] = {
       {NODES_MODIFIER_BAKE_MODE_ANIMATION, "ANIMATION", 0, "Animation", "Bake a frame range"},
       {NODES_MODIFIER_BAKE_MODE_STILL, "STILL", 0, "Still", "Bake a single frame"},
@@ -7336,6 +7398,11 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
                            "none in some cases like missing linked data blocks");
   RNA_def_property_pointer_funcs(
       prop, "rna_NodesModifierBake_node_get", nullptr, nullptr, nullptr);
+
+  prop = RNA_def_property(srna, "data_blocks", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "NodesModifierDataBlock");
+  RNA_def_property_collection_sdna(prop, nullptr, "data_blocks", "data_blocks_num");
+  RNA_def_property_srna(prop, "NodesModifierBakeDataBlocks");
 }
 
 static void rna_def_modifier_nodes_bakes(BlenderRNA *brna)
@@ -7375,6 +7442,8 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+
+  rna_def_modifier_nodes_data_block(brna);
 
   rna_def_modifier_nodes_bake(brna);
   rna_def_modifier_nodes_bakes(brna);
@@ -7423,6 +7492,7 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   rna_def_modifier_panel_open_prop(srna, "open_manage_panel", 1);
   rna_def_modifier_panel_open_prop(srna, "open_bake_panel", 2);
   rna_def_modifier_panel_open_prop(srna, "open_named_attributes_panel", 3);
+  rna_def_modifier_panel_open_prop(srna, "open_bake_data_blocks_panel", 4);
 
   RNA_define_lib_overridable(false);
 }
@@ -7773,6 +7843,9 @@ static void rna_def_modifier_grease_pencil_opacity(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilOpacityModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
@@ -7880,6 +7953,8 @@ static void rna_def_modifier_grease_pencil_color(BlenderRNA *brna)
       srna, "rna_GreasePencilColorModifier_material_filter_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
 
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
@@ -7940,6 +8015,8 @@ static void rna_def_modifier_grease_pencil_tint(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilTintModifier_vertex_group_name_set");
   rna_def_modifier_grease_pencil_custom_curve(srna);
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   RNA_define_lib_overridable(true);
 
@@ -8099,6 +8176,8 @@ static void rna_def_modifier_grease_pencil_offset(BlenderRNA *brna)
       srna, "rna_GreasePencilOffsetModifier_material_filter_set");
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilOffsetModifier_vertex_group_name_set");
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   prop = RNA_def_property(srna, "offset_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, offset_mode_items);
@@ -8417,6 +8496,8 @@ static void rna_def_modifier_grease_pencil_mirror(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_layer_filter(srna);
   rna_def_modifier_grease_pencil_material_filter(
       srna, "rna_GreasePencilMirrorModifier_material_filter_set");
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   RNA_define_lib_overridable(true);
 
