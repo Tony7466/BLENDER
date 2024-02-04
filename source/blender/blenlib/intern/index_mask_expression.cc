@@ -111,6 +111,7 @@ static ChunkResult evaluate_chunk(
         for (const Expr *term : expr.terms) {
           if (const std::optional<ChunkResult> &term_result = chunk_results[term->index]) {
             if (term_result->result_size == chunk_range.size()) {
+              /* Other terms don't have to be computed anymore. */
               chunk_results[expression.index].emplace(*term_result);
               break;
             }
@@ -136,14 +137,54 @@ static ChunkResult evaluate_chunk(
           }
           MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
           std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
+          std::sort(indices.begin(), indices.end());
           result.result_size = int16_t(indices.size());
           result.segments.append(IndexMaskSegment(0, indices));
         }
         break;
       }
       case Expr::Type::Intersection: {
-        /* TODO */
-        BLI_assert_unreachable();
+        const auto &expr = expression.as_intersection();
+        bool all_terms_computed = true;
+        for (const Expr *term : expr.terms) {
+          if (const std::optional<ChunkResult> &term_result = chunk_results[term->index]) {
+            if (term_result->result_size == 0) {
+              /* Other terms don't have to be computed anymore. */
+              chunk_results[expression.index].emplace();
+              break;
+            }
+          }
+          else {
+            expressions_to_compute.push(term);
+            all_terms_computed = false;
+            break;
+          }
+        }
+        if (all_terms_computed) {
+          ChunkResult &result = chunk_results[expression.index].emplace();
+          /* TODO: Optimize intersection. */
+          Map<int16_t, int> count_by_index;
+          for (const Expr *term : expr.terms) {
+            const ChunkResult &term_result = *chunk_results[term->index];
+            for (const IndexMaskSegment &segment : term_result.segments) {
+              for (const int64_t i : segment) {
+                BLI_assert(i < max_segment_size);
+                count_by_index.lookup_or_add(int16_t(i), 0) += 1;
+              }
+            }
+          }
+          Set<int16_t> indices_set;
+          for (const auto item : count_by_index.items()) {
+            if (item.value == expr.terms.size()) {
+              indices_set.add_new(item.key);
+            }
+          }
+          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
+          std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
+          std::sort(indices.begin(), indices.end());
+          result.result_size = int16_t(indices.size());
+          result.segments.append(IndexMaskSegment(0, indices));
+        }
         break;
       }
       case Expr::Type::Difference: {
@@ -266,8 +307,10 @@ static IndexMask evaluated_generic(const Expr &root_expression, IndexMaskMemory 
     const int64_t chunk_offset = possible_chunk_starts[chunk_i];
     const ChunkResult &chunk_result = all_chunk_results[chunk_i];
     for (const IndexMaskSegment &segment : chunk_result.segments) {
-      result_segments.append(IndexMaskSegment(segment.offset() + chunk_offset,
-                                              memory.construct_array_copy(segment.base_span())));
+      if (!segment.is_empty()) {
+        result_segments.append(IndexMaskSegment(segment.offset() + chunk_offset,
+                                                memory.construct_array_copy(segment.base_span())));
+      }
     }
   }
 
