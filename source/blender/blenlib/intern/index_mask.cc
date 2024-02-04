@@ -773,11 +773,14 @@ static void foreach_sequence(std::array<IndexMask, Count> masks, Func &&func)
   MutableSpan(start_iter).fill(0);
 
   std::array<IndexMaskSegment, Count> segments;
-  for (const int64_t mask_i : IndexRange(Count)) {
-    segments[mask_i] = masks[mask_i].segment(0);
-  }
 
   while (segment_iter[0] != masks[0].segments_num()) {
+    for (const int64_t mask_i : IndexRange(Count)) {
+      if (start_iter[mask_i] == 0) {
+        segments[mask_i] = masks[mask_i].segment(0);
+      }
+    }
+
     int16_t min_sequence_size = std::numeric_limits<int16_t>::max();
     for (const int64_t mask_i : IndexRange(Count)) {
       min_sequence_size = math::min(min_sequence_size,
@@ -795,9 +798,8 @@ static void foreach_sequence(std::array<IndexMask, Count> masks, Func &&func)
 
     for (const int64_t mask_i : IndexRange(Count)) {
       if (segments[mask_i].size() - start_iter[mask_i] == min_sequence_size) {
-        start_iter[mask_i] = 0;
         segment_iter[mask_i]++;
-        segments[mask_i] = masks[mask_i].segment(segment_iter[mask_i]);
+        start_iter[mask_i] = 0;
       }
       else {
         start_iter[mask_i] += min_sequence_size;
