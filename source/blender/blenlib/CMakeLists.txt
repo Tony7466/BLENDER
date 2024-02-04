@@ -82,6 +82,7 @@ set(SRC
   intern/hash_tables.cc
   intern/implicit_sharing.cc
   intern/index_mask.cc
+  intern/index_mask_expression.cc
   intern/index_range.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
