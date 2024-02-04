@@ -420,7 +420,7 @@ BLI_INLINE GlyphBLF *blf_glyph_from_utf8_and_step(FontBLF *font,
   /* Invalid unicode sequences return the byte value, stepping forward one.
    * This allows `latin1` to display (which is sometimes used for file-paths). */
   BLI_assert(charcode != BLI_UTF8_ERR);
-  GlyphBLF *g = blf_glyph_ensure(font, gc, charcode);
+  GlyphBLF *g = GlyphBLF::get_glyph(font, gc, charcode);
   if (g && pen_x && !(font->flags & BLF_MONOSPACED)) {
     *pen_x += blf_kerning(font, g_prev, g);
 
@@ -433,7 +433,7 @@ BLI_INLINE GlyphBLF *blf_glyph_from_utf8_and_step(FontBLF *font,
 #endif
 
 #ifdef BLF_SUBPIXEL_AA
-    g = blf_glyph_ensure_subpixel(font, gc, g, *pen_x);
+    g = g->glyph_refine_aa(font, gc, *pen_x);
 #endif
   }
   return g;
@@ -469,7 +469,7 @@ static void blf_font_draw_ex(FontBLF *font,
       continue;
     }
     /* Do not return this loop if clipped, we want every character tested. */
-    blf_glyph_draw(font, gc, g, ft_pix_to_int_floor(pen_x), ft_pix_to_int_floor(pen_y));
+    g->draw(font, gc, ft_pix_to_int_floor(pen_x), ft_pix_to_int_floor(pen_y));
     pen_x += g->advance_x;
   }
 
@@ -482,9 +482,9 @@ static void blf_font_draw_ex(FontBLF *font,
 }
 void blf_font_draw(FontBLF *font, const char *str, const size_t str_len, ResultBLF *r_info)
 {
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
   blf_font_draw_ex(font, gc, str, str_len, r_info, 0);
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
 }
 
 int blf_font_draw_mono(
@@ -497,7 +497,7 @@ int blf_font_draw_mono(
 
   size_t i = 0;
 
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
 
   blf_batch_draw_begin(font);
 
@@ -508,7 +508,7 @@ int blf_font_draw_mono(
       continue;
     }
     /* Do not return this loop if clipped, we want every character tested. */
-    blf_glyph_draw(font, gc, g, ft_pix_to_int_floor(pen_x), ft_pix_to_int_floor(pen_y));
+    g->draw(font, gc, ft_pix_to_int_floor(pen_x), ft_pix_to_int_floor(pen_y));
 
     const int col = UNLIKELY(g->c == '\t') ? (tab_columns - (columns % tab_columns)) :
                                              BLI_wcwidth_safe(char32_t(g->c));
@@ -518,7 +518,7 @@ int blf_font_draw_mono(
 
   blf_batch_draw_end();
 
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
   return columns;
 }
 
@@ -674,9 +674,9 @@ static void blf_font_draw_buffer_ex(FontBLF *font,
 
 void blf_font_draw_buffer(FontBLF *font, const char *str, const size_t str_len, ResultBLF *r_info)
 {
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
   blf_font_draw_buffer_ex(font, gc, str, str_len, r_info, 0);
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
 }
 
 /** \} */
@@ -713,7 +713,7 @@ static bool blf_font_width_to_strlen_glyph_process(FontBLF *font,
 #endif
 
 #ifdef BLF_SUBPIXEL_AA
-    g = blf_glyph_ensure_subpixel(font, gc, g, *pen_x);
+    g = g->glyph_refine_aa(font, gc, *pen_x);
 #endif
   }
 
@@ -731,7 +731,7 @@ size_t blf_font_width_to_strlen(
   ft_pix width_new;
   size_t i, i_prev;
 
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
   const int width_i = int(width);
 
   for (i_prev = i = 0, width_new = pen_x = 0, g_prev = nullptr; (i < str_len) && str[i];
@@ -747,7 +747,7 @@ size_t blf_font_width_to_strlen(
     *r_width = ft_pix_to_int(width_new);
   }
 
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
   return i_prev;
 }
 
@@ -759,7 +759,7 @@ size_t blf_font_width_to_rstrlen(
   size_t i, i_prev, i_tmp;
   const char *s, *s_prev;
 
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
 
   i = BLI_strnlen(str, str_len);
   s = BLI_str_find_prev_char_utf8(&str[i], str);
@@ -790,7 +790,7 @@ size_t blf_font_width_to_rstrlen(
     *r_width = ft_pix_to_int(width_new);
   }
 
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
   return i;
 }
 
@@ -867,9 +867,9 @@ static void blf_font_boundbox_ex(FontBLF *font,
 void blf_font_boundbox(
     FontBLF *font, const char *str, const size_t str_len, rcti *r_box, ResultBLF *r_info)
 {
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
   blf_font_boundbox_ex(font, gc, str, str_len, r_box, r_info, 0);
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
 }
 
 void blf_font_width_and_height(FontBLF *font,
@@ -945,9 +945,9 @@ float blf_font_height(FontBLF *font, const char *str, const size_t str_len, Resu
 
 float blf_font_fixed_width(FontBLF *font)
 {
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
   float width = (gc) ? float(gc->fixed_width) : font->size / 2.0f;
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
   return width;
 }
 
@@ -966,7 +966,7 @@ void blf_font_boundbox_foreach_glyph(FontBLF *font,
   ft_pix pen_x = 0;
   size_t i = 0;
 
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
 
   while ((i < str_len) && str[i]) {
     const size_t i_curr = i;
@@ -987,7 +987,7 @@ void blf_font_boundbox_foreach_glyph(FontBLF *font,
     pen_x += g->advance_x;
   }
 
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
 }
 
 struct CursorPositionForeachGlyph_Data {
@@ -1104,7 +1104,7 @@ static void blf_font_wrap_apply(FontBLF *font,
 
   ft_pix line_height = blf_font_height_max_ft_pix(font);
 
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphCacheBLF *gc = GlyphCacheBLF::cache_acquire(font);
 
   struct WordWrapVars {
     ft_pix wrap_width;
@@ -1183,7 +1183,7 @@ static void blf_font_wrap_apply(FontBLF *font,
     r_info->width = ft_pix_to_int(pen_x_next);
   }
 
-  blf_glyph_cache_release(font);
+  GlyphCacheBLF::cache_release(font);
 }
 
 /** Utility for #blf_font_draw__wrap. */
@@ -1826,7 +1826,7 @@ void blf_font_attach_from_mem(FontBLF *font, const uchar *mem, const size_t mem_
 
 void blf_font_free(FontBLF *font)
 {
-  blf_glyph_cache_clear(font);
+  GlyphCacheBLF::cache_clear(font);
 
   if (font->kerning_cache) {
     MEM_freeN(font->kerning_cache);

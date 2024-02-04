@@ -93,7 +93,7 @@ typedef struct BatchBLF {
   /* Previous call `modelmatrix`. */
   float mat[4][4];
   bool enabled, active, simple_shader;
-  struct GlyphCacheBLF *glyph_cache;
+  GlyphCacheBLF *glyph_cache;
 } BatchBLF;
 
 extern BatchBLF g_batch;
@@ -106,9 +106,10 @@ typedef struct KerningCacheBLF {
   int ascii_table[KERNING_CACHE_TABLE_SIZE][KERNING_CACHE_TABLE_SIZE];
 } KerningCacheBLF;
 
-typedef struct GlyphCacheBLF {
-  struct GlyphCacheBLF *next;
-  struct GlyphCacheBLF *prev;
+class GlyphCacheBLF {
+ private:
+  GlyphCacheBLF *next;
+  GlyphCacheBLF *prev;
 
   /** Font size. */
   float size;
@@ -121,11 +122,12 @@ typedef struct GlyphCacheBLF {
   bool bold;
   bool italic;
 
-  /** Column width when printing monospaced. */
-  int fixed_width;
-
   /** The glyphs. */
   ListBase bucket[257];
+
+ public:
+  /** Column width when printing monospaced. */
+  int fixed_width;
 
   /** Texture array, to draw the glyphs. */
   GPUTexture *texture;
@@ -134,12 +136,23 @@ typedef struct GlyphCacheBLF {
   int bitmap_len_landed;
   int bitmap_len_alloc;
 
-} GlyphCacheBLF;
+  GlyphCacheBLF();
+  ~GlyphCacheBLF();
+  GlyphBLF *find_glyph(uint charcode, uint8_t subpixel) const;
+  void cache_glyph(GlyphBLF *glyph, uint charcode, uint8_t subpixel);
 
-typedef struct GlyphBLF {
-  struct GlyphBLF *next;
-  struct GlyphBLF *prev;
+  static GlyphCacheBLF *cache_acquire(FontBLF *font);
+  static void cache_release(FontBLF *font);
+  static void cache_clear(FontBLF *font);
+};
 
+class GlyphBLF {
+ private:
+  GlyphBLF *next;
+  GlyphBLF *prev;
+  GlyphCacheBLF *glyph_cache;
+
+ public:
   /** The character, as UTF-32. */
   unsigned int c;
 
@@ -183,8 +196,41 @@ typedef struct GlyphBLF {
    */
   int pos[2];
 
-  struct GlyphCacheBLF *glyph_cache;
-} GlyphBLF;
+  void calc_rect(rcti *rect, const int x, const int y);
+  void calc_rect_test(rcti *rect, const int x, const int y);
+  void calc_rect_shadow(rcti *rect, const int x, const int y, FontBLF *font);
+
+  void texture_draw(const uchar color[4],
+                    const int glyph_size[2],
+                    const int x1,
+                    const int y1,
+                    const int x2,
+                    const int y2);
+  void texture5_draw(
+      const uchar color_in[4], const int x1, const int y1, const int x2, const int y2);
+  void texture3_draw(
+      const uchar color_in[4], const int x1, const int y1, const int x2, const int y2);
+
+  static GlyphBLF *create(
+      FontBLF *font, FT_GlyphSlot glyph, uint charcode, FT_UInt glyph_index, uint8_t subpixel);
+
+ public:
+  GlyphBLF();
+  ~GlyphBLF();
+
+  static GlyphBLF *get_glyph(struct FontBLF *font,
+                             GlyphCacheBLF *gc,
+                             uint charcode,
+                             uint8_t subpixel = 0);
+
+#ifdef BLF_SUBPIXEL_AA
+  GlyphBLF *glyph_refine_aa(struct FontBLF *font, GlyphCacheBLF *gc, int32_t pen_x);
+#endif
+
+  void draw(FontBLF *font, GlyphCacheBLF *gc, const int x, const int y);
+
+  static GlyphBLF *cache_match(GlyphBLF *glyph, uint charcode, uint8_t subpixel);
+};
 
 typedef struct FontBufInfoBLF {
   /** For draw to buffer, always set this to NULL after finish! */
@@ -355,7 +401,7 @@ typedef struct FontBLF {
 
   /**
    * List of glyph caches (#GlyphCacheBLF) for this font for size, DPI, bold, italic.
-   * Use blf_glyph_cache_acquire(font) and blf_glyph_cache_release(font) to access cache!
+   * Use GlyphCacheBLF::cache_acquire(font) and GlyphCacheBLF::cache_release(font) to access cache!
    */
   ListBase cache;
 

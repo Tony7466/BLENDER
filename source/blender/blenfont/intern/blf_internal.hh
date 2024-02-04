@@ -9,8 +9,8 @@
 #pragma once
 
 struct FontBLF;
-struct GlyphBLF;
-struct GlyphCacheBLF;
+class GlyphBLF;
+class GlyphCacheBLF;
 struct ResultBLF;
 struct rcti;
 
@@ -166,22 +166,6 @@ void blf_str_offset_to_glyph_bounds(struct FontBLF *font,
 
 void blf_font_free(struct FontBLF *font);
 
-struct GlyphCacheBLF *blf_glyph_cache_acquire(struct FontBLF *font);
-void blf_glyph_cache_release(struct FontBLF *font);
-void blf_glyph_cache_clear(struct FontBLF *font);
-
-/**
- * Create (or load from cache) a fully-rendered bitmap glyph.
- */
-struct GlyphBLF *blf_glyph_ensure(struct FontBLF *font, struct GlyphCacheBLF *gc, uint charcode);
-
-#ifdef BLF_SUBPIXEL_AA
-struct GlyphBLF *blf_glyph_ensure_subpixel(struct FontBLF *font,
-                                           struct GlyphCacheBLF *gc,
-                                           struct GlyphBLF *g,
-                                           int32_t pen_x);
-#endif
-
 /**
  * Convert a character's outlines into curves.
  */
@@ -189,10 +173,6 @@ float blf_character_to_curves(FontBLF *font,
                               unsigned int unicode,
                               struct ListBase *nurbsbase,
                               const float scale);
-
-void blf_glyph_free(struct GlyphBLF *g);
-void blf_glyph_draw(
-    struct FontBLF *font, struct GlyphCacheBLF *gc, struct GlyphBLF *g, int x, int y);
 
 #ifdef WIN32
 /* `blf_font_win32_compat.cc` */

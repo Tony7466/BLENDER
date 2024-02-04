@@ -101,7 +101,7 @@ void BLF_cache_clear()
   for (int i = 0; i < BLF_MAX_FONT; i++) {
     FontBLF *font = global_font[i];
     if (font) {
-      blf_glyph_cache_clear(font);
+      GlyphCacheBLF::cache_clear(font);
     }
   }
 }
