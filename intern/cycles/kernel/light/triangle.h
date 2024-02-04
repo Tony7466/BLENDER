@@ -236,7 +236,8 @@ ccl_device_forceinline bool triangle_light_sample(KernelGlobals kg,
       u -= v;
     }
 
-    ls->P = V[0] + u * (V[1] - V[0]) + v * (V[2] - V[0]);
+    const float t = 1.0f - u - v;
+    ls->P = t * V[0] + u * V[1] + v * V[2];
     /* compute incoming direction, distance and pdf */
     ls->D = normalize_len(ls->P - P, &ls->t);
     ls->pdf = triangle_light_pdf_area_sampling(ls->Ng, -ls->D, ls->t) / area;
