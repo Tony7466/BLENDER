@@ -11,7 +11,6 @@ namespace blender::index_mask {
 struct Expr {
   enum class Type {
     Atomic,
-    Complement,
     Union,
     Intersection,
     Difference,
@@ -26,12 +25,6 @@ struct AtomicExpr : public Expr {
   const IndexMask *mask = nullptr;
 
   AtomicExpr(const IndexMask &mask) : Expr(Type::Atomic), mask(&mask) {}
-};
-
-struct ComplementExpr : public Expr {
-  const Expr *term;
-
-  ComplementExpr(const Expr &term) : Expr(Type::Complement), term(&term) {}
 };
 
 struct UnionExpr : public Expr {
@@ -65,8 +58,6 @@ struct DifferenceExpr : public Expr {
   }
 };
 
-IndexMask evaluate_expression(const Expr &expression,
-                              const IndexMask &universe,
-                              IndexMaskMemory &memory);
+IndexMask evaluate_expression(const Expr &expression, IndexMaskMemory &memory);
 
 }  // namespace blender::index_mask

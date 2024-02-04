@@ -599,6 +599,53 @@ IndexMask IndexMask::from_union(const IndexMask &mask_a,
   return IndexMask::from_bools(tmp, memory);
 }
 
+IndexMask IndexMask::from_initializers(const Span<Initializer> initializers,
+                                       IndexMaskMemory &memory)
+{
+  Set<int64_t> values;
+  for (const Initializer &item : initializers) {
+    if (const auto *range = std::get_if<IndexRange>(&item)) {
+      for (const int64_t i : *range) {
+        values.add(i);
+      }
+    }
+    else if (const auto *span_i64 = std::get_if<Span<int64_t>>(&item)) {
+      for (const int64_t i : *span_i64) {
+        values.add(i);
+      }
+    }
+    else if (const auto *span_i32 = std::get_if<Span<int>>(&item)) {
+      for (const int i : *span_i32) {
+        values.add(i);
+      }
+    }
+    else if (const auto *index = std::get_if<int64_t>(&item)) {
+      values.add(*index);
+    }
+  }
+  Vector<int64_t> values_vec;
+  values_vec.extend(values.begin(), values.end());
+  std::sort(values_vec.begin(), values_vec.end());
+  return IndexMask::from_indices(values_vec.as_span(), memory);
+}
+
+bool operator==(const IndexMask &a, const IndexMask &b)
+{
+  if (a.size() != b.size()) {
+    return false;
+  }
+  Array<int64_t> indices_a(a.size());
+  a.to_indices(indices_a.as_mutable_span());
+  Array<int64_t> indices_b(b.size());
+  b.to_indices(indices_b.as_mutable_span());
+  return indices_a.as_span() == indices_b.as_span();
+}
+
+bool operator!=(const IndexMask &a, const IndexMask &b)
+{
+  return !(a == b);
+}
+
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
 {
   BLI_assert(this->size() == r_indices.size());

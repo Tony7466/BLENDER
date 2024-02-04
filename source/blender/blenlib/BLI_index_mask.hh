@@ -186,6 +186,13 @@ class IndexMask : private IndexMaskData {
   static IndexMask from_bools(const IndexMask &universe,
                               const VArray<bool> &bools,
                               IndexMaskMemory &memory);
+  /**
+   * Construct a mask from some parts. This is mainly meant for more concise testing code.
+   * The individual items are unioned together.
+   */
+  using Initializer = std::variant<IndexRange, Span<int64_t>, Span<int>, int64_t>;
+  static IndexMask from_initializers(const Span<Initializer> initializers,
+                                     IndexMaskMemory &memory);
   /** Construct a mask from the union of two other masks. */
   static IndexMask from_union(const IndexMask &mask_a,
                               const IndexMask &mask_b,
@@ -214,6 +221,9 @@ class IndexMask : private IndexMaskData {
    * index stored in the mask.
    */
   int64_t min_array_size() const;
+
+  friend bool operator==(const IndexMask &a, const IndexMask &b);
+  friend bool operator!=(const IndexMask &a, const IndexMask &b);
 
   /**
    * \return Position where the #query_index is stored, or none if the index is not in the mask.
