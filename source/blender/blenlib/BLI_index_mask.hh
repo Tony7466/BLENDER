@@ -187,6 +187,11 @@ class IndexMask : private IndexMaskData {
                               const VArray<bool> &bools,
                               IndexMaskMemory &memory);
   /**
+   * Construct a mask from the given segments. The provided segments are expected to be
+   * sorted and owned by #memory already.
+   */
+  static IndexMask from_segments(Span<IndexMaskSegment> segments, IndexMaskMemory &memory);
+  /**
    * Construct a mask from some parts. This is mainly meant for more concise testing code.
    * The individual items are unioned together.
    */

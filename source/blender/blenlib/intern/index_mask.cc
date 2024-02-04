@@ -227,11 +227,7 @@ static void consolidate_segments(Vector<IndexMaskSegment, 16> &segments,
   segments.remove_if([](const IndexMaskSegment segment) { return segment.is_empty(); });
 }
 
-/**
- * Create a new #IndexMask from the given segments. The provided segments are expected to be
- * owned by #memory already.
- */
-static IndexMask mask_from_segments(const Span<IndexMaskSegment> segments, IndexMaskMemory &memory)
+IndexMask IndexMask::from_segments(const Span<IndexMaskSegment> segments, IndexMaskMemory &memory)
 {
   if (segments.is_empty()) {
     return {};
@@ -498,7 +494,7 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
     range_to_segments(universe.take_back(universe.last() - this->last()), segments);
   }
 
-  return mask_from_segments(segments, memory);
+  return IndexMask::from_segments(segments, memory);
 }
 
 template<typename T>
@@ -535,7 +531,7 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
     segments_collector.reduce(memory, segments);
   }
   consolidate_segments(segments, memory);
-  return mask_from_segments(segments, memory);
+  return IndexMask::from_segments(segments, memory);
 }
 
 IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory)
@@ -757,7 +753,7 @@ IndexMask from_predicate_impl(
   }
 
   consolidate_segments(segments, memory);
-  return mask_from_segments(segments, memory);
+  return IndexMask::from_segments(segments, memory);
 }
 }  // namespace detail
 
