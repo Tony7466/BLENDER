@@ -14,7 +14,6 @@ set(INC
 set(INC_SYS
   ../../../extern/wcwidth
   ../../../extern/json/include
-  ../../../extern/fmtlib/include
 
   ${EIGEN3_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
@@ -29,7 +28,7 @@ set(SRC
   intern/BLI_dynstr.c
   intern/BLI_filelist.cc
   intern/BLI_ghash.c
-  intern/BLI_ghash_utils.c
+  intern/BLI_ghash_utils.cc
   intern/BLI_heap.c
   intern/BLI_heap_simple.c
   intern/BLI_index_range.cc
@@ -77,9 +76,9 @@ set(SRC
   intern/generic_virtual_array.cc
   intern/generic_virtual_vector_array.cc
   intern/gsqueue.c
-  intern/hash_md5.c
-  intern/hash_mm2a.c
-  intern/hash_mm3.c
+  intern/hash_md5.cc
+  intern/hash_mm2a.cc
+  intern/hash_mm3.cc
   intern/hash_tables.cc
   intern/implicit_sharing.cc
   intern/index_mask.cc
@@ -132,7 +131,7 @@ set(SRC
   intern/scanfill.c
   intern/scanfill_utils.c
   intern/serialize.cc
-  intern/session_uuid.c
+  intern/session_uid.c
   intern/smaa_textures.c
   intern/sort.c
   intern/sort_utils.c
@@ -242,9 +241,9 @@ set(SRC
   BLI_gsqueue.h
   BLI_hash.h
   BLI_hash.hh
-  BLI_hash_md5.h
-  BLI_hash_mm2a.h
-  BLI_hash_mm3.h
+  BLI_hash_md5.hh
+  BLI_hash_mm2a.hh
+  BLI_hash_mm3.hh
   BLI_hash_tables.hh
   BLI_heap.h
   BLI_heap_simple.h
@@ -335,7 +334,7 @@ set(SRC
   BLI_resource_scope.hh
   BLI_scanfill.h
   BLI_serialize.hh
-  BLI_session_uuid.h
+  BLI_session_uid.h
   BLI_set.hh
   BLI_set_slots.hh
   BLI_shared_cache.hh
@@ -392,6 +391,7 @@ set(SRC
 
 set(LIB
   PUBLIC bf::dna
+  PRIVATE bf::extern::fmtlib
   bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
@@ -544,7 +544,7 @@ if(WITH_GTESTS)
     tests/BLI_pool_test.cc
     tests/BLI_ressource_strings.h
     tests/BLI_serialize_test.cc
-    tests/BLI_session_uuid_test.cc
+    tests/BLI_session_uid_test.cc
     tests/BLI_set_test.cc
     tests/BLI_span_test.cc
     tests/BLI_stack_cxx_test.cc

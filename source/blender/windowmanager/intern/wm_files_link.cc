@@ -41,8 +41,8 @@
 #include "BKE_blendfile_link_append.hh"
 #include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_key.h"
-#include "BKE_layer.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_query.hh"
@@ -54,7 +54,7 @@
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"

@@ -523,7 +523,7 @@ static bool clip_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*eve
 {
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (ELEM(file_type, 0, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
+    if (ELEM(file_type, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
       return true;
     }
   }
@@ -1199,7 +1199,7 @@ static void clip_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_clip()
 {
-  SpaceType *st = MEM_cnew<SpaceType>("spacetype clip");
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_CLIP;
@@ -1281,8 +1281,6 @@ void ED_spacetype_clip()
 
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
-
   /* channels */
   art = MEM_cnew<ARegionType>("spacetype clip channels region");
   art->regionid = RGN_TYPE_CHANNELS;
@@ -1298,6 +1296,8 @@ void ED_spacetype_clip()
   /* regions: hud */
   art = ED_area_type_hud(st->spaceid);
   BLI_addhead(&st->regiontypes, art);
+
+  BKE_spacetype_register(std::move(st));
 }
 
 /** \} */
