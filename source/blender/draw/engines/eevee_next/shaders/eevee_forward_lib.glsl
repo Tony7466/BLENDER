@@ -34,8 +34,9 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT; i++) {
     ClosureUndetermined cl = g_closure_get(i);
     lightprobe_eval(samp, cl, g_data.P, V, stack.cl[i].light_shadowed);
-    vec3 color = (cl.weight < 1e-5) ? vec3(0.0) : cl.color;
-    radiance += stack.cl[i].light_shadowed * color * cl.weight;
+    if (cl.weight > 1e-5) {
+      radiance += stack.cl[i].light_shadowed * cl.color * cl.weight;
+    }
   }
   transmittance = g_transmittance;
 }

@@ -419,17 +419,17 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     switch (lit_closure_count) {
       case 0:
         /* Define nothing. This will in turn define SKIP_LIGHT_EVAL. */
-        break;
+        // break;
       /* These need to be separated since the strings need to be static. */
       case 1:
-        info.define("LIGHT_CLOSURE_EVAL_COUNT", "1");
-        break;
+        // info.define("LIGHT_CLOSURE_EVAL_COUNT", "1");
+        // break;
       case 2:
-        info.define("LIGHT_CLOSURE_EVAL_COUNT", "2");
-        break;
+        // info.define("LIGHT_CLOSURE_EVAL_COUNT", "2");
+        // break;
       case 3:
-        info.define("LIGHT_CLOSURE_EVAL_COUNT", "3");
-        break;
+        // info.define("LIGHT_CLOSURE_EVAL_COUNT", "3");
+        // break;
       case 4:
         info.define("LIGHT_CLOSURE_EVAL_COUNT", "4");
         break;
