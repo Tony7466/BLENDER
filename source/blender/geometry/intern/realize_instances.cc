@@ -17,6 +17,7 @@
 #include "BLI_math_rotation.hh"
 #include "BLI_noise.hh"
 #include "BLI_task.hh"
+#include "BLI_string.h"
 
 #include "BKE_collection.h"
 #include "BKE_curves.hh"
@@ -58,6 +59,11 @@ struct OrderedAttributes {
   }
 };
 
+struct InstanceListEntry {
+  int handle;
+  char *name;
+  float4x4 transform;
+};
 struct AttributeFallbacksArray {
   /**
    * Instance attribute values used as fallback when the geometry does not have the
@@ -309,6 +315,38 @@ struct InstanceContext {
   }
 };
 
+static void realize_collections(Collection *collection, bke::Instances* instances){
+  Vector<Collection *> children_collections;
+  LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
+    children_collections.append(collection_child->collection);
+  }
+  Vector<Object *> children_objects;
+  LISTBASE_FOREACH (CollectionObject *, collection_object, &collection->gobject) {
+    children_objects.append(collection_object->ob);
+  }
+
+  Vector<InstanceListEntry> entries;
+  entries.reserve(children_collections.size() + children_objects.size());
+
+  for (Collection *child_collection : children_collections) {
+    float4x4 transform = float4x4::identity();
+    transform.location() += float3(child_collection->instance_offset);
+    transform.location() -= float3(collection->instance_offset);
+    const int handle = instances->add_reference(*child_collection);
+    entries.append({handle, &(child_collection->id.name[2]), transform});
+  }
+  for (Object *child_object : children_objects) {
+    const int handle = instances->add_reference(*child_object);
+    float4x4 transform = float4x4::identity();
+      transform.location() -= float3(collection->instance_offset);
+      transform *= float4x4(child_object->object_to_world);
+    entries.append({handle, &(child_object->id.name[2]), transform});
+  }
+  for (const InstanceListEntry &entry : entries) {
+    instances->add_instance(entry.handle, entry.transform);
+  }
+}
+
 static void copy_transformed_positions(const Span<float3> src,
                                        const float4x4 &transform,
                                        MutableSpan<float3> dst)
@@ -489,19 +527,13 @@ static void foreach_geometry_in_reference(
       break;
     }
     case InstanceReference::Type::Collection: {
-      Collection &collection = reference.collection();
-      float4x4 offset_matrix = float4x4::identity();
-      offset_matrix.location() -= collection.instance_offset;
-      int index = 0;
-      FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (&collection, object) {
-        const bke::GeometrySet object_geometry = bke::object_get_evaluated_geometry_set(*object);
-        const float4x4 matrix = base_transform * offset_matrix *
-                                float4x4_view(object->object_to_world);
-        const int sub_id = noise::hash(id, index);
-        fn(object_geometry, matrix, sub_id);
-        index++;
-      }
-      FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+      Collection *collection_ptr = &reference.collection();
+      std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
+      realize_collections(collection_ptr, instances.get());
+      const bke::GeometrySet colleciton_geometry = bke::GeometrySet::from_instances(instances.release());
+      /* important as otherwise the Instances pointer would be deleted with the GeomtrySet*/
+      colleciton_geometry.get_component(bke::GeometryComponent::Type::Instance)->add_user(); 
+      fn(colleciton_geometry, base_transform, id);
       break;
     }
     case InstanceReference::Type::GeometrySet: {
