@@ -75,6 +75,83 @@ struct ChunkResult {
   int16_t result_size = 0;
 };
 
+BLI_NOINLINE static ChunkResult compute_union(const Span<const ChunkResult *> term_results,
+                                              LinearAllocator<> &allocator)
+{
+  ChunkResult result;
+  Set<int16_t> indices_set;
+  for (const ChunkResult *term_result : term_results) {
+    for (const IndexMaskSegment &segment : term_result->segments) {
+      for (const int64_t i : segment) {
+        BLI_assert(i < max_segment_size);
+        indices_set.add(int16_t(i));
+      }
+    }
+  }
+  MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
+  std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
+  std::sort(indices.begin(), indices.end());
+  result.result_size = int16_t(indices.size());
+  result.segments.append(IndexMaskSegment(0, indices));
+  return result;
+}
+
+BLI_NOINLINE static ChunkResult compute_intersection(const Span<const ChunkResult *> term_results,
+                                                     LinearAllocator<> &allocator)
+{
+  ChunkResult result;
+  Map<int16_t, int> count_by_index;
+  for (const ChunkResult *term_result : term_results) {
+    for (const IndexMaskSegment &segment : term_result->segments) {
+      for (const int64_t i : segment) {
+        BLI_assert(i < max_segment_size);
+        count_by_index.lookup_or_add(int16_t(i), 0) += 1;
+      }
+    }
+  }
+  Set<int16_t> indices_set;
+  for (const auto item : count_by_index.items()) {
+    if (item.value == term_results.size()) {
+      indices_set.add_new(item.key);
+    }
+  }
+  MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
+  std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
+  std::sort(indices.begin(), indices.end());
+  result.result_size = int16_t(indices.size());
+  result.segments.append(IndexMaskSegment(0, indices));
+  return result;
+}
+
+BLI_NOINLINE static ChunkResult compute_difference(
+    const ChunkResult &main_term_result,
+    const Span<const ChunkResult *> subtract_term_results,
+    LinearAllocator<> &allocator)
+{
+  ChunkResult result;
+  Set<int16_t> indices_set;
+  for (const IndexMaskSegment &segment : main_term_result.segments) {
+    for (const int64_t i : segment) {
+      BLI_assert(i < max_segment_size);
+      indices_set.add_new(int16_t(i));
+    }
+  }
+  for (const ChunkResult *term_result : subtract_term_results) {
+    for (const IndexMaskSegment &segment : term_result->segments) {
+      for (const int64_t i : segment) {
+        BLI_assert(i < max_segment_size);
+        indices_set.remove(int16_t(i));
+      }
+    }
+  }
+  MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
+  std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
+  std::sort(indices.begin(), indices.end());
+  result.result_size = int16_t(indices.size());
+  result.segments.append(IndexMaskSegment(0, indices));
+  return result;
+}
+
 static ChunkResult evaluate_chunk(
     const Expr &root_expression,
     const IndexRange chunk_range,
@@ -130,23 +207,11 @@ static ChunkResult evaluate_chunk(
           }
         }
         if (all_terms_computed && !chunk_results[expression.index]) {
-          ChunkResult &result = chunk_results[expression.index].emplace();
-          /* TODO: Optimize merge. */
-          Set<int16_t> indices_set;
+          Vector<const ChunkResult *> term_results;
           for (const Expr *term : expr.terms) {
-            const ChunkResult &term_result = *chunk_results[term->index];
-            for (const IndexMaskSegment &segment : term_result.segments) {
-              for (const int64_t i : segment) {
-                BLI_assert(i < max_segment_size);
-                indices_set.add(int16_t(i));
-              }
-            }
+            term_results.append(&*chunk_results[term->index]);
           }
-          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
-          std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
-          std::sort(indices.begin(), indices.end());
-          result.result_size = int16_t(indices.size());
-          result.segments.append(IndexMaskSegment(0, indices));
+          chunk_results[expression.index] = compute_union(term_results, allocator);
         }
         break;
       }
@@ -168,29 +233,11 @@ static ChunkResult evaluate_chunk(
           }
         }
         if (all_terms_computed && !chunk_results[expression.index]) {
-          ChunkResult &result = chunk_results[expression.index].emplace();
-          /* TODO: Optimize intersection. */
-          Map<int16_t, int> count_by_index;
+          Vector<const ChunkResult *> term_results;
           for (const Expr *term : expr.terms) {
-            const ChunkResult &term_result = *chunk_results[term->index];
-            for (const IndexMaskSegment &segment : term_result.segments) {
-              for (const int64_t i : segment) {
-                BLI_assert(i < max_segment_size);
-                count_by_index.lookup_or_add(int16_t(i), 0) += 1;
-              }
-            }
+            term_results.append(&*chunk_results[term->index]);
           }
-          Set<int16_t> indices_set;
-          for (const auto item : count_by_index.items()) {
-            if (item.value == expr.terms.size()) {
-              indices_set.add_new(item.key);
-            }
-          }
-          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
-          std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
-          std::sort(indices.begin(), indices.end());
-          result.result_size = int16_t(indices.size());
-          result.segments.append(IndexMaskSegment(0, indices));
+          chunk_results[expression.index] = compute_intersection(term_results, allocator);
         }
         break;
       }
@@ -227,32 +274,12 @@ static ChunkResult evaluate_chunk(
           }
         }
         if (all_terms_computed && !chunk_results[expression.index]) {
-          ChunkResult &result = chunk_results[expression.index].emplace();
-          /* TODO: Optimize difference. */
-          Set<int16_t> indices_set;
-          {
-            const ChunkResult &term_result = *chunk_results[expr.main_term->index];
-            for (const IndexMaskSegment &segment : term_result.segments) {
-              for (const int64_t i : segment) {
-                BLI_assert(i < max_segment_size);
-                indices_set.add_new(int16_t(i));
-              }
-            }
-          }
+          Vector<const ChunkResult *> subtract_term_results;
           for (const Expr *term : expr.subtract_terms) {
-            const ChunkResult &term_result = *chunk_results[term->index];
-            for (const IndexMaskSegment &segment : term_result.segments) {
-              for (const int64_t i : segment) {
-                BLI_assert(i < max_segment_size);
-                indices_set.remove(int16_t(i));
-              }
-            }
+            subtract_term_results.append(&*chunk_results[term->index]);
           }
-          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_set.size());
-          std::copy_n(indices_set.begin(), indices_set.size(), indices.begin());
-          std::sort(indices.begin(), indices.end());
-          result.result_size = int16_t(indices.size());
-          result.segments.append(IndexMaskSegment(0, indices));
+          chunk_results[expression.index] = compute_difference(
+              *chunk_results[expr.main_term->index], subtract_term_results, allocator);
         }
         break;
       }
