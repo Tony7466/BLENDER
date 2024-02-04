@@ -102,6 +102,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilNoise = 67,
   eModifierType_GreasePencilMirror = 68,
   eModifierType_GreasePencilThickness = 69,
+  eModifierType_GreasePencilMultiply = 70,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2764,3 +2765,30 @@ typedef enum GreasePencilThicknessModifierFlag {
   MOD_GREASE_PENCIL_THICK_NORMALIZE = (1 << 0),
   MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR = (1 << 1),
 } GreasePencilThicknessModifierFlag;
+
+typedef struct GreasePencilMultiModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /* #GreasePencilMultiplyModifierFlag */
+  int flag;
+
+  /* ? */
+  int flags;
+
+  int duplications;
+  float distance;
+  /* -1:inner 0:middle 1:outer */
+  float offset;
+
+  float fading_center;
+  float fading_thickness;
+  float fading_opacity;
+
+  void *_pad;
+} GreasePencilMultiModifierData;
+
+typedef enum GreasePencilMultiplyModifierFlag {
+  /* GP_MULTIPLY_ENABLE_ANGLE_SPLITTING = (1 << 1),  Deprecated. */
+  MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING = (1 << 2),
+} GreasePencilMultiplyModifierFlag;
