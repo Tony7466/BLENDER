@@ -784,9 +784,8 @@ bool RNA_struct_override_matches(Main *bmain,
                                                                              rna_path->c_str());
       if (op != nullptr) {
         BKE_lib_override_library_operations_tag(op, LIBOVERRIDE_PROP_OP_TAG_UNUSED, false);
+        continue;
       }
-
-      continue;
     }
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
