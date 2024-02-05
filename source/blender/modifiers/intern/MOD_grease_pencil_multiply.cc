@@ -94,13 +94,13 @@ static bke::CurvesGeometry duplicate_strokes(const bke::CurvesGeometry &curves,
                                              const IndexMask curves_mask,
                                              const IndexMask unselected_mask,
                                              const int count,
-                                             int &original_point_count)
+                                             int &r_original_point_count)
 {
   bke::CurvesGeometry masked_curves = bke::curves_copy_curve_selection(curves, curves_mask, {});
   bke::CurvesGeometry unselected_curves = bke::curves_copy_curve_selection(
       curves, unselected_mask, {});
 
-  original_point_count = masked_curves.points_num();
+  r_original_point_count = masked_curves.points_num();
 
   Curves *masked_curves_id = bke::curves_new_nomain(masked_curves);
   Curves *unselected_curves_id = bke::curves_new_nomain(unselected_curves);
@@ -149,7 +149,7 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   const float offset = math::length(math::to_scale(float4x4(ctx.object->object_to_world))) *
                        mmd.offset;
   const float distance = mmd.distance;
-  bool use_fading = (mmd.flag & MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING) != 0;
+  const bool use_fading = (mmd.flag & MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING) != 0;
   const float fading_thickness = mmd.fading_thickness;
   const float fading_opacity = mmd.fading_opacity;
   const float fading_center = mmd.fading_center;
