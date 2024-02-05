@@ -1866,12 +1866,11 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
 {
   using namespace bke::greasepencil;
 
-  const Layer *layer_src = grease_pencil_src.layers().get(layer_index, layer_src);
+  Layer layer_src = *grease_pencil_src.layers().get(layer_index, &layer_src);
 
-  for (Layer *layer : grease_pencil_dst.layers_for_write()) {
-    if (layer_src->name() == layer->name()) {
-      return *layer;
-    }
+  const int dst_layer_index = grease_pencil_dst.layers_for_write().first_index_try(&layer_src);
+  if (dst_layer_index != -1) {
+    return *grease_pencil_dst.layers_for_write()[dst_layer_index];
   }
 
   /* Transfer Layer attributes. */
@@ -1882,7 +1881,7 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
                          Span({layer_index}),
                          grease_pencil_dst.attributes_for_write());
 
-  return grease_pencil_dst.add_layer(layer_src->name());
+  return grease_pencil_dst.add_layer(layer_src.name());
 }
 
 static bool grease_pencil_separate_selected(bContext &C,
