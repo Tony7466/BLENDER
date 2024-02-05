@@ -161,9 +161,33 @@ static void foreach_dash(const PatternInfo &pattern_info,
   /* Points range in "pattern space". */
   const IndexRange points = {pattern_info.dash_offset, src_points.size()};
 
+  /* Range of points at the start of the curve which connects to the last dash
+   * (remains empty for non-cyclic curves). */
+  IndexRange cyclic_start_range(0);
+  if (cyclic) {
+    int prev_dash_id = -1;
+    for (const int i : points.index_range()) {
+      /* Only count the first pattern. */
+      if (points[i] >= pattern_length) {
+        break;
+      }
+      const int pattern_i = points[i];
+      const int dash_id = dash_ids[pattern_i];
+      if (dash_id >= 0 && dash_id == prev_dash_id) {
+        /* Extend curve. */
+        cyclic_start_range = IndexRange(cyclic_start_range.start(), cyclic_start_range.size() + 1);
+      }
+      else {
+        break;
+      }
+
+      prev_dash_id = dash_id;
+    }
+  }
+
   int prev_dash_id = -1;
   IndexRange src_curve_points(0);
-  for (const int i : points.index_range()) {
+  for (const int i : points.index_range().drop_front(cyclic_start_range.size())) {
     const int repeat = points[i] / pattern_length;
     const int pattern_i = points[i] - repeat * pattern_length;
     BLI_assert(pattern_i < pattern_length);
@@ -177,8 +201,17 @@ static void foreach_dash(const PatternInfo &pattern_info,
     }
     else {
       if (!src_curve_points.is_empty()) {
-        /* Report finished curve. */
-        fn(IndexMask(src_curve_points.shift(src_points.start())));
+        const IndexMask src_points_mask(src_curve_points.shift(src_points.start()));
+        if (i < points.size() - 1) {
+          /* Report finished curve. */
+          fn(src_points_mask);
+        }
+        else {
+          /* Last dash, combine with start range in case of cyclic curves. */
+          const IndexMask cyclic_start_mask(cyclic_start_range.shift(src_points.start()));
+          IndexMaskMemory mask_memory;
+          fn(IndexMask::from_union(src_points_mask, cyclic_start_mask, mask_memory));
+        }
       }
 
       /* New curve. */
