@@ -37,11 +37,11 @@
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
+#include "GEO_curve_copy_selection.hh"
 #include "GEO_join_geometries.hh"
 #include "GEO_reorder.hh"
 #include "GEO_smooth_curves.hh"
 #include "GEO_subdivide_curves.hh"
-#include "GEO_curve_copy_selection.hh"
 
 #include "UI_resources.hh"
 
@@ -360,7 +360,8 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
   const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
-    const IndexMask elements = ed::greasepencil::retrieve_editable_and_selected_elements(*object, info.drawing, selection_domain, memory);
+    const IndexMask elements = ed::greasepencil::retrieve_editable_and_selected_elements(
+        *object, info.drawing, selection_domain, memory);
     if (elements.is_empty()) {
       return;
     }
