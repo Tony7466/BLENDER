@@ -395,7 +395,8 @@ NODE_SHADER_MATERIALX_BEGIN
           break;
         case NODE_VECTOR_MATH_PROJECT: {
           NodeItem len_sq = y.dotproduct(y);
-          res = len_sq.if_else(NodeItem::CompareOp::NotEq, val(0.0f), (x.dotproduct(y) / len_sq) * y, null_vec);
+          res = len_sq.if_else(
+              NodeItem::CompareOp::NotEq, val(0.0f), (x.dotproduct(y) / len_sq) * y, null_vec);
           break;
         }
         case NODE_VECTOR_MATH_REFLECT:
@@ -437,7 +438,9 @@ NODE_SHADER_MATERIALX_BEGIN
               std::vector<std::string> inputs = {"in1", "in2", "in3"};
 
               for (size_t i = 0; i < inputs.size(); ++i) {
-                res.set_input(inputs[i], range[i].if_else(NodeItem::CompareOp::NotEq, val(0.0f), if_branch[i], z[i]));
+                res.set_input(
+                    inputs[i],
+                    range[i].if_else(NodeItem::CompareOp::NotEq, val(0.0f), if_branch[i], z[i]));
               }
               break;
             }

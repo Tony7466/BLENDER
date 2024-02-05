@@ -303,7 +303,8 @@ NODE_SHADER_MATERIALX_BEGIN
           break;
         }
         case NODE_MATH_FLOORED_MODULO:
-          res = y.if_else(NodeItem::CompareOp::NotEq, val(0.0f), (x - (x / y).floor() * y), val(0.0f));
+          res = y.if_else(
+              NodeItem::CompareOp::NotEq, val(0.0f), (x - (x / y).floor() * y), val(0.0f));
           break;
 
         default: {
@@ -332,7 +333,8 @@ NODE_SHADER_MATERIALX_BEGIN
               };
               if (op == NODE_MATH_SMOOTH_MIN) {
                 res = make_smoothmin(x, y, z);
-              } else {
+              }
+              else {
                 res = -make_smoothmin(-x, -y, -z);
               }
               break;
