@@ -430,6 +430,7 @@ void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
                         style.tile_width,
                         style.tile_height,
                         "");
+    but->opptr = MEM_new<PointerRNA>(__func__, op_props);
   }
   else {
     but = uiDefBut(block,

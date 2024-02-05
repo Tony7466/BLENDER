@@ -12,7 +12,6 @@
 #include "AS_asset_representation.hh"
 
 #include "BKE_asset.hh"
-#include "BKE_icons.h"
 #include "BKE_screen.hh"
 
 #include "BLI_fnmatch.h"
@@ -36,7 +35,6 @@
 
 #include "WM_api.hh"
 
-#include "../interface/interface_intern.hh"
 #include "asset_shelf.hh"
 
 namespace blender::ed::asset::shelf {
