@@ -1145,6 +1145,29 @@ static bool asset_shelf_poll(const bContext *C, const AssetShelfType *shelf_type
   return is_visible;
 }
 
+static const AssetWeakReference *asset_shelf_get_active_asset(const AssetShelfType *shelf_type)
+{
+  extern FunctionRNA rna_AssetShelf_get_active_asset_func;
+
+  PointerRNA ptr = RNA_pointer_create(nullptr, shelf_type->rna_ext.srna, nullptr); /* dummy */
+
+  FunctionRNA *func = &rna_AssetShelf_get_active_asset_func;
+  // RNA_struct_find_function(&ptr, "get_active_asset");
+
+  ParameterList list;
+  RNA_parameter_list_create(&list, &ptr, func);
+  shelf_type->rna_ext.call(nullptr, &ptr, func, &list);
+
+  void *ret;
+  RNA_parameter_get_lookup(&list, "asset_reference", &ret);
+  /* Get the value before freeing. */
+  AssetWeakReference *active_asset = *(AssetWeakReference **)ret;
+
+  RNA_parameter_list_free(&list);
+
+  return active_asset;
+}
+
 static void asset_shelf_draw_context_menu(const bContext *C,
                                           const AssetShelfType *shelf_type,
                                           const AssetRepresentationHandle *asset,
@@ -1185,8 +1208,13 @@ static bool rna_AssetShelf_unregister(Main *bmain, StructRNA *type)
   RNA_struct_free_extension(type, &shelf_type->rna_ext);
   RNA_struct_free(&BLENDER_RNA, type);
 
-  BLI_remlink(&space_type->asset_shelf_types, shelf_type);
-  delete shelf_type;
+  const auto it = std::find_if(
+      space_type->asset_shelf_types.begin(),
+      space_type->asset_shelf_types.end(),
+      [&](const std::unique_ptr<AssetShelfType> &type) { return type.get() == shelf_type; });
+  BLI_assert(it != space_type->asset_shelf_types.end());
+
+  space_type->asset_shelf_types.remove(it - space_type->asset_shelf_types.begin());
 
   /* update while blender is running */
   WM_main_add_notifier(NC_WINDOW, nullptr);
@@ -1209,7 +1237,7 @@ static StructRNA *rna_AssetShelf_register(Main *bmain,
   dummy_shelf.type = shelf_type.get();
   PointerRNA dummy_shelf_ptr = RNA_pointer_create(nullptr, &RNA_AssetShelf, &dummy_shelf);
 
-  bool have_function[3];
+  bool have_function[4];
 
   /* validate the python class */
   if (validate(&dummy_shelf_ptr, data, have_function) != 0) {
@@ -1232,7 +1260,7 @@ static StructRNA *rna_AssetShelf_register(Main *bmain,
   }
 
   /* Check if we have registered this asset shelf type before, and remove it. */
-  LISTBASE_FOREACH (AssetShelfType *, iter_shelf_type, &space_type->asset_shelf_types) {
+  for (std::unique_ptr<AssetShelfType> &iter_shelf_type : space_type->asset_shelf_types) {
     if (STREQ(iter_shelf_type->idname, shelf_type->idname)) {
       if (iter_shelf_type->rna_ext.srna) {
         BKE_reportf(reports,
@@ -1262,11 +1290,12 @@ static StructRNA *rna_AssetShelf_register(Main *bmain,
 
   shelf_type->poll = have_function[0] ? asset_shelf_poll : nullptr;
   shelf_type->asset_poll = have_function[1] ? asset_shelf_asset_poll : nullptr;
-  shelf_type->draw_context_menu = have_function[2] ? asset_shelf_draw_context_menu : nullptr;
+  shelf_type->get_active_asset = have_function[2] ? asset_shelf_get_active_asset : nullptr;
+  shelf_type->draw_context_menu = have_function[3] ? asset_shelf_draw_context_menu : nullptr;
 
   StructRNA *srna = shelf_type->rna_ext.srna;
 
-  BLI_addtail(&space_type->asset_shelf_types, shelf_type.release());
+  space_type->asset_shelf_types.append(std::move(shelf_type));
 
   /* update while blender is running */
   WM_main_add_notifier(NC_WINDOW, nullptr);
@@ -2149,7 +2178,7 @@ static void rna_def_header(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "ID Name",
                            "If this is set, the header gets a custom ID, otherwise it takes the "
-                           "name of the class used to define the panel; for example, if the "
+                           "name of the class used to define the header; for example, if the "
                            "class name is \"OBJECT_HT_hello\", and bl_idname is not set by the "
                            "script, then bl_idname = \"OBJECT_HT_hello\"");
 
@@ -2293,7 +2322,7 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "ID Name",
                            "If this is set, the asset gets a custom ID, otherwise it takes the "
-                           "name of the class used to define the menu (for example, if the "
+                           "name of the class used to define the asset (for example, if the "
                            "class name is \"OBJECT_AST_hello\", and bl_idname is not set by the "
                            "script, then bl_idname = \"OBJECT_AST_hello\")");
 
@@ -2341,6 +2370,19 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
   RNA_def_function_return(func, RNA_def_boolean(func, "visible", true, "", ""));
   parm = RNA_def_pointer(func, "asset", "AssetRepresentation", "", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "get_active_asset", nullptr);
+  RNA_def_function_ui_description(
+      func,
+      "Return a reference to the asset that should be highlighted as active in the asset shelf");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
+  /* return type */
+  parm = RNA_def_pointer(func,
+                         "asset_reference",
+                         "AssetWeakReference",
+                         "",
+                         "The weak reference to the asset to be hightlighted as active, or None");
+  RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "draw_context_menu", nullptr);
   RNA_def_function_ui_description(
