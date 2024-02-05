@@ -141,6 +141,8 @@ class USDHookExample(bpy.types.USDHook):
 
         ob.data.body = text
 
+        return True
+
 
 def register():
     bpy.utils.register_class(USDHookExample)
