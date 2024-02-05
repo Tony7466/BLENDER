@@ -868,9 +868,9 @@ template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;
 template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 
-/* Any mask is built from segments. Even if masks is the same, segment fragmentation might be
- * different. Produce re-fragmentation of all masks on the fly to have segments of all masks in the
- * same range and call function for them. */
+/* Any mask is built from segments. Even if masks is the same, segments fragmentation might be
+ * different. Produce re-fragmentation of each mask on the fly to have segment of each mask in some
+ * certain range and call function for them. */
 template<int Count, typename Func>
 static void foreach_sequence(std::array<IndexMask, Count> masks, Func &&func)
 {
