@@ -1008,6 +1008,11 @@ void CurvesGeometry::ensure_evaluated_lengths() const
         const bool cyclic = curves_cyclic[curve_index];
         const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
         const IndexRange lengths_range = this->lengths_range_for_curve(curve_index, cyclic);
+        if (evaluated_points.size() == 1) {
+          /* No lengths in case of a single point. */
+          BLI_assert(lengths_range.is_empty());
+          continue;
+        }
         length_parameterize::accumulate_lengths(evaluated_positions.slice(evaluated_points),
                                                 cyclic,
                                                 evaluated_lengths.slice(lengths_range));
