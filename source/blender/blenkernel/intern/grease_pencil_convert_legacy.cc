@@ -301,6 +301,10 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     /* TODO: Update drawing user counts. */
   }
 
+  /* Copy vertex group names and settings. */
+  BKE_defgroup_copy_list(&grease_pencil.vertex_group_names, &gpd.vertex_group_names);
+  grease_pencil.vertex_group_active_index = gpd.vertex_group_active_index;
+
   /* Convert the onion skinning settings. */
   grease_pencil.onion_skinning_settings.opacity = gpd.onion_factor;
   grease_pencil.onion_skinning_settings.mode = gpd.onion_mode;
