@@ -1004,27 +1004,18 @@ static bool closure_node_filter(const bNode *node)
   }
 }
 
-static bool shader_to_rgba_node_gather(bNode *fromnode, bNode * /*tonode*/, void *userdata)
-{
-  Vector<bNode *> &shader_to_rgba_nodes = *(Vector<bNode *> *)userdata;
-  if (fromnode->runtime->tmp_flag == -1 && fromnode->type == SH_NODE_SHADERTORGB) {
-    fromnode->runtime->tmp_flag = 0;
-    shader_to_rgba_nodes.append(fromnode);
-  }
-  return true;
-}
-
 /* Shader to rgba needs their associated closure duplicated and the weight tree generated for. */
 static void ntree_shader_shader_to_rgba_branch(bNodeTree *ntree, bNode *output_node)
 {
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    node->runtime->tmp_flag = -1;
-  }
-  /* First gather the shader_to_rgba nodes linked to the output. This is separate to avoid
-   * conflicting usage of the `node->runtime->tmp_flag`. */
+  auto gather_nodes = [](bNode *fromnode, bNode * /*tonode*/, void *userdata) {
+    if (fromnode->type == SH_NODE_SHADERTORGB) {
+      Vector<bNode *> &vector = *reinterpret_cast<Vector<bNode *> *>(userdata);
+      vector.append(fromnode);
+    }
+    return true;
+  };
   Vector<bNode *> shader_to_rgba_nodes;
-  blender::bke::nodeChainIterBackwards(
-      ntree, output_node, shader_to_rgba_node_gather, &shader_to_rgba_nodes, 0);
+  blender::bke::nodeChainIterBackwards(ntree, output_node, gather_nodes, &shader_to_rgba_nodes, 0);
 
   for (bNode *shader_to_rgba : shader_to_rgba_nodes) {
     bNodeSocket *closure_input = ntree_shader_node_input_get(shader_to_rgba, 0);
