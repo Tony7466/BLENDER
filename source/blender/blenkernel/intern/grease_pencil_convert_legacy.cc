@@ -28,13 +28,13 @@ namespace blender::bke::greasepencil::convert {
  * Find vertex groups that have assigned vertices in this drawing.
  * Returns:
  * - ListBase with used vertex group names (bDeformGroup)
- * - Vector of indices in the new vertex group list for remapping
+ * - Array of indices in the new vertex group list for remapping
  */
-static std::tuple<ListBase, Vector<int>> find_used_vertex_groups(
-    const bGPDframe &gpf, const ListBase &vertex_group_names)
+static std::tuple<ListBase, Array<int>> find_used_vertex_groups(const bGPDframe &gpf,
+                                                                const ListBase &vertex_group_names)
 {
   const int num_vertex_groups = BLI_listbase_count(&vertex_group_names);
-  Vector<int> is_group_used(num_vertex_groups, false);
+  Array<int> is_group_used(num_vertex_groups, false);
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
     if (!gps->dvert) {
       continue;
@@ -48,7 +48,7 @@ static std::tuple<ListBase, Vector<int>> find_used_vertex_groups(
   }
   ListBase new_names;
   BLI_listbase_clear(&new_names);
-  Vector<int> index_map(num_vertex_groups);
+  Array<int> index_map(num_vertex_groups);
   int new_group_i = 0;
   int old_group_i;
   LISTBASE_FOREACH_INDEX (const bDeformGroup *, def_group, &vertex_group_names, old_group_i) {
