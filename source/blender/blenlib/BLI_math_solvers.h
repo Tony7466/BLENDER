@@ -75,12 +75,19 @@ bool BLI_tridiagonal_solve_cyclic(
 /**
  * Generic 3 variable Newton's method solver.
  */
+
+typedef enum Newton3D_CorrectionType {
+  NEWTON3D_ABORT = 0,
+  NEWTON3D_CONTINUE,
+  NEWWON3D_MODIFIED
+} Newton3D_CorrectionType;
+
 typedef void (*Newton3D_DeltaFunc)(void *userdata, const float x[3], float r_delta[3]);
 typedef void (*Newton3D_JacobianFunc)(void *userdata, const float x[3], float r_jacobian[3][3]);
-typedef bool (*Newton3D_CorrectionFunc)(void *userdata,
-                                        const float x[3],
-                                        float step[3],
-                                        float x_next[3]);
+typedef Newton3D_CorrectionType (*Newton3D_CorrectionFunc)(void *userdata,
+                                                           const float x[3],
+                                                           const float step[3],
+                                                           float x_next[3]);
 
 /**
  * \brief Solve a generic f(x) = 0 equation using Newton's method.
@@ -92,6 +99,8 @@ typedef bool (*Newton3D_CorrectionFunc)(void *userdata,
  * \param userdata: Data for the callbacks.
  * \param epsilon: Desired precision.
  * \param max_iterations: Limit on the iterations.
+ * \param det_epsilon: Minimum allowed value for the Jacobian determinant (singularity threshold).
+ * \param max_line_steps: Maximum number of line search steps.
  * \param trace: Enables logging to console.
  * \param x_init: Initial solution vector.
  * \param result: Final result.
@@ -103,6 +112,8 @@ bool BLI_newton3d_solve(Newton3D_DeltaFunc func_delta,
                         void *userdata,
                         float epsilon,
                         int max_iterations,
+                        float det_epsilon,
+                        int max_line_steps,
                         bool trace,
                         const float x_init[3],
                         float result[3]);

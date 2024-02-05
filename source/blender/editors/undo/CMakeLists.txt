@@ -11,6 +11,9 @@ set(INC
   ../../bmesh
   ../../makesrna
   ../../windowmanager
+
+  # RNA_prototypes.h
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS

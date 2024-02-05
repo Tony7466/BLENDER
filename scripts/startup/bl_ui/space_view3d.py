@@ -4622,6 +4622,7 @@ class VIEW3D_MT_edit_mesh_vertices(Menu):
         layout.separator()
 
         layout.operator("mesh.blend_from_shape")
+        layout.operator("mesh.smooth_shape")
         layout.operator("mesh.shape_propagate_to_all", text="Propagate to Shapes")
 
         layout.separator()

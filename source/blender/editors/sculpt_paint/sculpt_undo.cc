@@ -1825,9 +1825,6 @@ static void sculpt_undosys_step_decode_undo(bContext *C,
     sculpt_undosys_step_decode_undo_impl(C, depsgraph, us_iter);
 
     if (us_iter == us) {
-      if (us_iter->step.prev && us_iter->step.prev->type == BKE_UNDOSYS_TYPE_SCULPT) {
-        set_active_layer(C, &((SculptUndoStep *)us_iter->step.prev)->active_color_end);
-      }
       break;
     }
 

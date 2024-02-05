@@ -50,6 +50,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
+#include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -447,7 +448,30 @@ bool ED_undo_is_memfile_compatible(const bContext *C)
   return true;
 }
 
-bool ED_undo_is_legacy_compatible_for_property(bContext *C, ID *id)
+static bool ed_undo_skip_in_paint_mode(const ID *id, const PropertyRNA *prop)
+{
+  if (id == nullptr) {
+    return true;
+  }
+  /* Don't create undo steps for brush and tool settings. */
+  switch (GS(id->name)) {
+    case ID_BR:
+      return true;
+    case ID_SCE:
+      if (prop == nullptr) {
+        return true;
+      }
+      /* Retain undo steps for outliner hide toggles, which also belong to Scene. */
+      return BLI_findindex(RNA_struct_type_properties(&RNA_ObjectBase), prop) < 0 &&
+             BLI_findindex(RNA_struct_type_properties(&RNA_LayerCollection), prop) < 0;
+    default:
+      return false;
+  }
+}
+
+bool ED_undo_is_legacy_compatible_for_property(const bContext *C,
+                                               const ID *id,
+                                               const PropertyRNA *prop)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -456,10 +480,15 @@ bool ED_undo_is_legacy_compatible_for_property(bContext *C, ID *id)
     Object *obact = BKE_view_layer_active_object_get(view_layer);
     if (obact != nullptr) {
       if (obact->mode & OB_MODE_ALL_PAINT) {
-        /* Don't store property changes when painting
-         * (only do undo pushes on brush strokes which each paint operator handles on its own). */
-        CLOG_INFO(&LOG, 1, "skipping undo for paint-mode");
-        return false;
+        /* Don't store tool property changes when painting.
+         *
+         * In Sculpt and Vertex Paint, most other property change undo pushes will be also
+         * suppressed by another check later in ui_apply_but_undo, unless preceeded by
+         * a memfile push; however these properties should always be blocked. */
+        if (ed_undo_skip_in_paint_mode(id, prop)) {
+          CLOG_INFO(&LOG, 1, "skipping undo for paint-mode");
+          return false;
+        }
       }
       if (obact->mode & OB_MODE_EDIT) {
         if ((id == nullptr) || (obact->data == nullptr) ||

@@ -836,6 +836,18 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
     }
     ED_object_vpaintmode_enter_ex(bmain, depsgraph, scene, ob);
     BKE_paint_toolslots_brush_validate(bmain, &ts->vpaint->paint);
+
+    /* Recheck the mode after entering it, and create a sculpt style undo step,
+     * same as in sculpt_mode_toggle_exec for Sculpt Mode. */
+    if (ob->mode & mode_flag) {
+      /* Without this the memfile undo step is used,
+       * while it works it causes lag when undoing the first undo step, see #71564. */
+      wmWindowManager *wm = CTX_wm_manager(C);
+      if (wm->op_undo_depth <= 1) {
+        undo::push_begin(ob, op);
+        undo::push_end(ob);
+      }
+    }
   }
 
   BKE_mesh_batch_cache_dirty_tag((Mesh *)ob->data, BKE_MESH_BATCH_DIRTY_ALL);
