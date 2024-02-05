@@ -1057,7 +1057,7 @@ static void iter_shader_to_rgba_depth_count(bNode *node,
       /* Skip links marked as cyclic. */
       continue;
     }
-    iter_shader_to_rgba_depth_count(link->fromnode, depth_level);
+    iter_shader_to_rgba_depth_count(link->fromnode, max_depth, depth_level);
   }
 }
 
