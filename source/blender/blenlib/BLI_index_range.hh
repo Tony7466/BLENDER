@@ -65,12 +65,6 @@ class IndexRange {
     BLI_assert(size >= 0);
   }
 
-  static constexpr IndexRange from_begin_end(const int64_t begin, const int64_t end)
-  {
-    BLI_assert(begin <= end);
-    return IndexRange(begin, end - begin);
-  }
-
   class Iterator {
    public:
     using iterator_category = std::forward_iterator_tag;

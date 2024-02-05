@@ -82,7 +82,6 @@ set(SRC
   intern/hash_tables.cc
   intern/implicit_sharing.cc
   intern/index_mask.cc
-  intern/index_mask_expression.cc
   intern/index_range.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
@@ -514,7 +513,6 @@ if(WITH_GTESTS)
     tests/BLI_heap_test.cc
     tests/BLI_implicit_sharing_test.cc
     tests/BLI_index_mask_test.cc
-    tests/BLI_index_mask_expression_test.cc
     tests/BLI_index_range_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
