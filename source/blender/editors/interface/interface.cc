@@ -1101,7 +1101,7 @@ static bool ui_but_is_rna_undo(const uiBut *but)
     return true;
   }
 
-  /* No owner or type known. Assume we do not undo push as it may for be a property from
+  /* No owner or type known. Assume we do not undo push as it may be a property from
    * the preferences stored outside datablocks. */
   if (but->rnapoin.owner_id == nullptr || but->rnapoin.type == nullptr) {
     return false;
