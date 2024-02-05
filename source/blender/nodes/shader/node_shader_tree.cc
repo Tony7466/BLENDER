@@ -1007,15 +1007,12 @@ static bool closure_node_filter(const bNode *node)
 /* Shader to rgba needs their associated closure duplicated and the weight tree generated for. */
 static void ntree_shader_shader_to_rgba_branch(bNodeTree *ntree, bNode *output_node)
 {
-  auto gather_nodes = [](bNode *fromnode, bNode * /*tonode*/, void *userdata) {
-    if (fromnode->type == SH_NODE_SHADERTORGB) {
-      Vector<bNode *> &vector = *reinterpret_cast<Vector<bNode *> *>(userdata);
-      vector.append(fromnode);
-    }
-    return true;
-  };
   Vector<bNode *> shader_to_rgba_nodes;
-  blender::bke::nodeChainIterBackwards(ntree, output_node, gather_nodes, &shader_to_rgba_nodes, 0);
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == SH_NODE_SHADERTORGB) {
+      shader_to_rgba_nodes.append(node);
+    }
+  }
 
   for (bNode *shader_to_rgba : shader_to_rgba_nodes) {
     bNodeSocket *closure_input = ntree_shader_node_input_get(shader_to_rgba, 0);
