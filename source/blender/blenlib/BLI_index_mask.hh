@@ -255,18 +255,24 @@ class IndexMask : private IndexMaskData {
   int64_t operator[](const RawMaskIterator &it) const;
 
   /**
-   * Get a new mask that contains a consecutive subset of this mask. Takes O(log n) time and but
-   * can reuse the memory from the source mask.
+   * Get a new mask that contains a consecutive subset of this mask.
+   * Takes O(0) time and can reuse the memory from the source mask.
+   */
+  IndexMask slice(RawMaskIterator first_it, RawMaskIterator last_it) const;
+
+  /**
+   * Same as above but can take arbitrary positions in the mask. Takes O(log n) time.
    */
   IndexMask slice(IndexRange range) const;
   IndexMask slice(int64_t start, int64_t size) const;
-  IndexMask slice(RawMaskIterator first_it, RawMaskIterator last_it, int64_t size) const;
+
   /**
    * Slices the mask based on the stored indices. The resulting mask only contains the indices that
    * are within the given range.
    */
   IndexMask slice_content(IndexRange range) const;
   IndexMask slice_content(int64_t start, int64_t size) const;
+
   /**
    * Same as above but can also add an offset to every index in the mask.
    * Takes O(log n + range.size()) time but with a very small constant factor.
@@ -627,10 +633,47 @@ inline IndexMaskSegment IndexMask::segment(const int64_t segment_i) const
                           {indices_by_segment_[segment_i] + begin_index, segment_size}};
 }
 
+inline IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
+{
+  return this->slice(IndexRange(start, size));
+}
+
 inline IndexMask IndexMask::slice(const IndexRange range) const
 {
-  return this->slice(range.start(), range.size());
+  if (range.is_empty()) {
+    return {};
+  }
+  if (const std::optional<IndexRange> mask_range = this->to_range()) {
+    return mask_range->slice(range);
+  }
+  const RawMaskIterator first_it = this->index_to_iterator(range.first());
+  const RawMaskIterator last_it = this->index_to_iterator(range.last());
+
+  return this->slice(first_it, last_it);
 }
+
+inline IndexMask IndexMask::slice_content(const int64_t start, const int64_t size) const
+{
+  return this->slice_content(IndexRange(start, std::max<int64_t>(0, size)));
+}
+
+inline IndexMask IndexMask::slice_content(const IndexRange range) const
+{
+  if (range.is_empty()) {
+    return {};
+  }
+  if (const std::optional<IndexRange> mask_range = this->to_range()) {
+    return mask_range->intersect(range);
+  }
+
+  const std::optional<RawMaskIterator> first_it = this->find_larger_equal(range.first());
+  const std::optional<RawMaskIterator> last_it = this->find_smaller_equal(range.last());
+  if (!first_it || !last_it) {
+    return {};
+  }
+  return this->slice(*first_it, *last_it);
+}
+
 
 inline IndexMaskData &IndexMask::data_for_inplace_construction()
 {
