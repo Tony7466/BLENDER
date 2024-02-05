@@ -38,7 +38,7 @@ AbstractGridViewItem &AbstractGridView::add_item(std::unique_ptr<AbstractGridVie
 
   AbstractGridViewItem &added_item = *items_.last();
   item_map_.add(added_item.identifier_, &added_item);
-  register_item(added_item);
+  this->register_item(added_item);
 
   return added_item;
 }
@@ -108,9 +108,9 @@ int AbstractGridView::get_item_count_filtered() const
   }
 
   int i = 0;
-  foreach_filtered_item([&i](const auto &) { i++; });
+  this->foreach_filtered_item([&i](const auto &) { i++; });
 
-  BLI_assert(i <= get_item_count());
+  BLI_assert(i <= this->get_item_count());
   item_count_filtered_ = i;
   return i;
 }
@@ -144,7 +144,7 @@ void AbstractGridViewItem::grid_tile_click_fn(bContext *C, void *but_arg1, void 
 
 void AbstractGridViewItem::add_grid_tile_button(uiBlock &block)
 {
-  const GridViewStyle &style = get_view().get_style();
+  const GridViewStyle &style = this->get_view().get_style();
   view_item_but_ = (uiButViewItem *)uiDefBut(&block,
                                              UI_BTYPE_VIEW_ITEM,
                                              0,
@@ -232,7 +232,7 @@ BuildOnlyVisibleButtonsHelper::BuildOnlyVisibleButtonsHelper(const View2D &v2d,
                                                              const int cols_per_row)
     : v2d_(v2d), grid_view_(grid_view), style_(grid_view.get_style()), cols_per_row_(cols_per_row)
 {
-  visible_items_range_ = get_visible_range();
+  visible_items_range_ = this->get_visible_range();
 }
 
 IndexRange BuildOnlyVisibleButtonsHelper::get_visible_range() const
@@ -267,7 +267,7 @@ void BuildOnlyVisibleButtonsHelper::fill_layout_before_visible(uiBlock &block) c
   }
   const int tot_tiles_before_visible = first_idx_in_view;
   const int scrolled_away_rows = tot_tiles_before_visible / cols_per_row_;
-  add_spacer_button(block, scrolled_away_rows);
+  this->add_spacer_button(block, scrolled_away_rows);
 }
 
 void BuildOnlyVisibleButtonsHelper::fill_layout_after_visible(uiBlock &block) const
@@ -415,7 +415,7 @@ void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
                                              const wmOperatorType *ot,
                                              const PointerRNA &op_props) const
 {
-  const GridViewStyle &style = get_view().get_style();
+  const GridViewStyle &style = this->get_view().get_style();
   uiBlock *block = uiLayoutGetBlock(&layout);
 
   uiBut *but;
