@@ -129,6 +129,37 @@ IndexMask IndexMask::slice(const RawMaskIterator first_it, const RawMaskIterator
   return sliced;
 }
 
+IndexMask IndexMask::slice(const IndexRange range) const
+{
+  if (range.is_empty()) {
+    return {};
+  }
+  if (const std::optional<IndexRange> mask_range = this->to_range()) {
+    return mask_range->slice(range);
+  }
+
+  const RawMaskIterator first_it = this->index_to_iterator(range.first());
+  const RawMaskIterator last_it = this->index_to_iterator(range.last());
+  return this->slice(first_it, last_it);
+}
+
+IndexMask IndexMask::slice_content(const IndexRange range) const
+{
+  if (range.is_empty()) {
+    return {};
+  }
+  if (const std::optional<IndexRange> mask_range = this->to_range()) {
+    return mask_range->intersect(range);
+  }
+
+  const std::optional<RawMaskIterator> first_it = this->find_larger_equal(range.first());
+  const std::optional<RawMaskIterator> last_it = this->find_smaller_equal(range.last());
+  if (!first_it || !last_it) {
+    return {};
+  }
+  return this->slice(*first_it, *last_it);
+}
+
 IndexMask IndexMask::slice_and_offset(const IndexRange range,
                                       const int64_t offset,
                                       IndexMaskMemory &memory) const
