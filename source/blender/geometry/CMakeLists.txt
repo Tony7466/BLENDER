@@ -17,6 +17,7 @@ set(INC_SYS
 set(SRC
   intern/add_curves_on_mesh.cc
   intern/curve_constraints.cc
+  intern/curve_copy_selection.cc
   intern/fillet_curves.cc
   intern/join_geometries.cc
   intern/mesh_copy_selection.cc
@@ -49,6 +50,7 @@ set(SRC
 
   GEO_add_curves_on_mesh.hh
   GEO_curve_constraints.hh
+  GEO_curve_copy_selection.hh
   GEO_fillet_curves.hh
   GEO_join_geometries.hh
   GEO_mesh_copy_selection.hh
