@@ -374,7 +374,7 @@ static int grease_pencil_layer_isolate_exec(bContext *C, wmOperator *op)
   using namespace ::blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  int affect_visibility = RNA_boolean_get(op->ptr, "affect_visibility");
+  const int affect_visibility = RNA_boolean_get(op->ptr, "affect_visibility");
   bool isolate = false;
 
   for (const Layer *layer : grease_pencil.layers()) {
