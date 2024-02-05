@@ -875,7 +875,6 @@
 #define _DNA_DEFAULT_GreasePencilMultiModifierData \
   { \
     .flag = 0, \
-    .flags = 0, \
     .duplications = 3, \
     .distance = 0.1f, \
     .offset = 0.0f, \

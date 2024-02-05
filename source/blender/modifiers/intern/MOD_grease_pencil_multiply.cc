@@ -142,9 +142,9 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
 
   const IndexMask unselected_mask = curves_mask.complement(curves.curves_range(), mask_memory);
 
-  int original_point_count;
+  int src_point_count;
   bke::CurvesGeometry duplicated_strokes = duplicate_strokes(
-      curves, curves_mask, unselected_mask, mmd.duplications, original_point_count);
+      curves, curves_mask, unselected_mask, mmd.duplications, src_point_count);
 
   const float offset = math::length(math::to_scale(float4x4(ctx.object->object_to_world))) *
                        mmd.offset;
@@ -164,17 +164,17 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
       "radii", bke::AttrDomain::Point);
 
-  const int points_num_pending = (mmd.duplications + 1) * original_point_count;
+  const int dst_point_count = (mmd.duplications + 1) * src_point_count;
 
-  Array<float3> pos_l(points_num_pending);
-  Array<float3> pos_r(points_num_pending);
+  Array<float3> pos_l(dst_point_count);
+  Array<float3> pos_r(dst_point_count);
 
-  threading::parallel_for(duplicated_strokes.points_range().take_front(points_num_pending),
+  threading::parallel_for(duplicated_strokes.points_range().take_front(dst_point_count),
                           1024,
                           [&](const IndexRange range) {
                             for (const int point : range) {
                               const float3 miter = math::cross(normals[point], tangents[point]) *
-                                                    distance;
+                                                   distance;
                               pos_l[point] = positions[point] + miter;
                               pos_r[point] = positions[point] - miter;
                             }
@@ -182,28 +182,30 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
 
   for (const int i : IndexRange(mmd.duplications)) {
     using bke::attribute_math::mix2;
-    const IndexRange this_stroke = IndexRange(original_point_count * i, original_point_count);
-    MutableSpan<float3> instance_positions = positions.slice(this_stroke);
-    MutableSpan<float> instance_opacity = opacities.span.slice(this_stroke);
-    MutableSpan<float> instance_radii = radii.span.slice(this_stroke);
-    Span<float3> use_pos_l = pos_l.as_span().slice(this_stroke);
-    Span<float3> use_pos_r = pos_r.as_span().slice(this_stroke);
+    const IndexRange stroke = IndexRange(src_point_count * i, src_point_count);
+    MutableSpan<float3> instance_positions = positions.slice(stroke);
+    MutableSpan<float> instance_opacity = opacities.span.slice(stroke);
+    MutableSpan<float> instance_radii = radii.span.slice(stroke);
+    Span<float3> stroke_pos_l = pos_l.as_span().slice(stroke);
+    Span<float3> stroke_pos_r = pos_r.as_span().slice(stroke);
     const float offset_fac = (mmd.duplications == 1) ? 0.5f :
                                                        (float(i) / float(mmd.duplications - 1));
-    const float thickness_factor = use_fading ? mix2(fabsf(offset_fac - fading_center),
-                                                     1.0f - fading_thickness,
-                                                     1.0f) :
+    const float fading_fac=fabsf(offset_fac - fading_center);
+    const float thickness_factor = use_fading ? mix2(fading_fac,
+                                                     1.0f,
+                                                     1.0f - fading_thickness) :
                                                 1.0f;
-    const float opacity_factor = use_fading ? interpf(1.0f - fading_opacity,
-                                                      1.0f,
-                                                      fabsf(offset_fac - fading_center)) :
+    const float opacity_factor = use_fading ? mix2(fading_fac,
+                                                   1.0f,
+                                                   1.0f - fading_opacity) :
                                               1.0f;
     threading::parallel_for(instance_positions.index_range(), 512, [&](const IndexRange range) {
       for (const int point : range) {
         const float fac = interpf(1 + offset, offset, float(i) / float(mmd.duplications - 1));
-        instance_positions[point] = mix2(fac, use_pos_l[point], use_pos_r[point]);
+        instance_positions[point] = mix2(fac, stroke_pos_l[point], stroke_pos_r[point]);
         instance_radii[point] *= thickness_factor;
         instance_opacity[point] *= opacity_factor;
+        printf("%f\n",instance_radii[point]);
       }
     });
   }
@@ -257,7 +259,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(fade_panel, ptr, "use_fade", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     uiLayout *sub = uiLayoutColumn(fade_panel, false);
-    uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_fade"));
+    uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_fade"));
 
     uiItemR(sub, ptr, "fading_center", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(sub, ptr, "fading_thickness", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);

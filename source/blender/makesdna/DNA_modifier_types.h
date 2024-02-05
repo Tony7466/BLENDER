@@ -2773,9 +2773,6 @@ typedef struct GreasePencilMultiModifierData {
   /* #GreasePencilMultiplyModifierFlag */
   int flag;
 
-  /* ? */
-  int flags;
-
   int duplications;
   float distance;
   /* -1:inner 0:middle 1:outer */
@@ -2784,6 +2781,8 @@ typedef struct GreasePencilMultiModifierData {
   float fading_center;
   float fading_thickness;
   float fading_opacity;
+
+  int _pad0;
 
   void *_pad;
 } GreasePencilMultiModifierData;
