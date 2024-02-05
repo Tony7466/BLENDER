@@ -114,11 +114,8 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   return stream;
 }
 
-IndexMask IndexMask::slice(const RawMaskIterator first_it, const RawMaskIterator last_it) const
+static void slice_data(const int64_t size, const RawMaskIterator first_it, const RawMaskIterator last_it, IndexMaskData &mask_data)
 {
-  const int64_t size = this->iterator_to_index(last_it) - this->iterator_to_index(first_it) + 1;
-
-  IndexMask sliced = *this;
   sliced.indices_num_ = size;
   sliced.segments_num_ = last_it.segment_i - first_it.segment_i + 1;
   sliced.indices_by_segment_ += first_it.segment_i;
@@ -126,6 +123,14 @@ IndexMask IndexMask::slice(const RawMaskIterator first_it, const RawMaskIterator
   sliced.cumulative_segment_sizes_ += first_it.segment_i;
   sliced.begin_index_in_segment_ = first_it.index_in_segment;
   sliced.end_index_in_segment_ = last_it.index_in_segment + 1;
+}
+
+IndexMask IndexMask::slice(const RawMaskIterator first_it, const RawMaskIterator last_it) const
+{
+  const int64_t size = this->iterator_to_index(last_it) - this->iterator_to_index(first_it) + 1;
+
+  IndexMask sliced = *this;
+  slice_data(size, first_it, last_it, sliced.data_for_inplace_construction());
   return sliced;
 }
 
@@ -140,7 +145,10 @@ IndexMask IndexMask::slice(const IndexRange range) const
 
   const RawMaskIterator first_it = this->index_to_iterator(range.first());
   const RawMaskIterator last_it = this->index_to_iterator(range.last());
-  return this->slice(first_it, last_it);
+
+  IndexMask sliced = *this;
+  slice_data(range.size(), first_it, last_it, sliced.data_for_inplace_construction());
+  return sliced;
 }
 
 IndexMask IndexMask::slice_content(const IndexRange range) const
