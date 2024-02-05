@@ -47,7 +47,7 @@ void MotionBlurModule::init()
   initial_subframe_ = scene->r.subframe;
   frame_time_ = initial_frame_ + initial_subframe_;
   shutter_position_ = scene->r.motion_blur_position;
-  shutter_time_ = scene->eevee.motion_blur_shutter;
+  shutter_time_ = scene->r.motion_blur_shutter;
 
   data_.depth_scale = scene->eevee.motion_blur_depth_scale;
   motion_blur_fx_enabled_ = true; /* TODO(fclem): UI option. */

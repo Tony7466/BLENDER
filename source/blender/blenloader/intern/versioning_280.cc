@@ -3467,7 +3467,7 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.bloom_clamp = 0.0f;
 
         scene->eevee.motion_blur_samples = 8;
-        scene->eevee.motion_blur_shutter = 0.5f;
+        scene->eevee.motion_blur_shutter_deprecated = 0.5f;
 
         scene->eevee.shadow_method = SHADOW_ESM;
         scene->eevee.shadow_cube_size = 512;
@@ -3587,7 +3587,7 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
         EEVEE_GET_FLOAT(props, bloom_clamp);
 
         EEVEE_GET_INT(props, motion_blur_samples);
-        EEVEE_GET_FLOAT(props, motion_blur_shutter);
+        EEVEE_GET_FLOAT(props, motion_blur_shutter_deprecated);
 
         EEVEE_GET_INT(props, shadow_method);
         EEVEE_GET_INT(props, shadow_cube_size);

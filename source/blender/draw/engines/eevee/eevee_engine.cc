@@ -482,7 +482,7 @@ static void eevee_render_to_image(void *vedata,
 
   int initial_frame = scene->r.cfra;
   float initial_subframe = scene->r.subframe;
-  float shuttertime = (do_motion_blur) ? scene->eevee.motion_blur_shutter : 0.0f;
+  float shuttertime = (do_motion_blur) ? scene->r.motion_blur_shutter : 0.0f;
   int time_steps_tot = (do_motion_blur) ? max_ii(1, scene->eevee.motion_blur_steps) : 1;
   g_data->render_timesteps = time_steps_tot;
 
