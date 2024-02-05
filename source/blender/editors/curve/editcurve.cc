@@ -3961,7 +3961,7 @@ void CURVE_OT_spline_type_set(wmOperatorType *ot)
                   "use_handles",
                   false,
                   "Handles",
-                  "Use handles when converting bezier curves into polygons");
+                  "Use handles when converting Bézier curves into polygons");
 }
 
 /** \} */
@@ -6789,7 +6789,7 @@ static int curve_decimate_exec(bContext *C, wmOperator *op)
   }
 
   if (all_supported_multi == false) {
-    BKE_report(op->reports, RPT_WARNING, "Only bezier curves are supported");
+    BKE_report(op->reports, RPT_WARNING, "Only Bézier curves are supported");
   }
 
   return OPERATOR_FINISHED;
