@@ -733,6 +733,14 @@ void CUDADevice::tex_alloc(device_texture &mem)
   }
 
   /* Image Texture Storage */
+  /* Blender expects to read all texture data as normalized float values withing the
+   * kernel/device/gpu/image.h But storing all data as floats would be highly unefficient due to
+   * the huge size of float textures, particularly when the original texture format is not a float.
+   * So in the code below we are defining various texture types, including even an integer type,
+   * with the intention of utilize CUDA's default promotion behaviour of integer data to floating
+   * point data in the range [0, 1], as it stated in CUDA's documentation about cuTexObjectCreate
+   * API call. Note, that 32bit integers are not supported this promotion behaviour and can't be
+   * used with Blender's approach. */
   CUarray_format_enum format;
   switch (mem.data_type) {
     case TYPE_UCHAR:
@@ -740,12 +748,6 @@ void CUDADevice::tex_alloc(device_texture &mem)
       break;
     case TYPE_UINT16:
       format = CU_AD_FORMAT_UNSIGNED_INT16;
-      break;
-    case TYPE_UINT:
-      format = CU_AD_FORMAT_UNSIGNED_INT32;
-      break;
-    case TYPE_INT:
-      format = CU_AD_FORMAT_SIGNED_INT32;
       break;
     case TYPE_FLOAT:
       format = CU_AD_FORMAT_FLOAT;
@@ -900,6 +902,8 @@ void CUDADevice::tex_alloc(device_texture &mem)
     texDesc.addressMode[1] = address_mode;
     texDesc.addressMode[2] = address_mode;
     texDesc.filterMode = filter_mode;
+    /* CUDA's flag CU_TRSF_READ_AS_INTEGER is intentionally not used and it is
+     * significant, see above an explanation about how Blender treat textures. */
     texDesc.flags = CU_TRSF_NORMALIZED_COORDINATES;
 
     thread_scoped_lock lock(device_mem_map_mutex);
