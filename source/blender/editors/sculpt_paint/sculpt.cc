@@ -5635,12 +5635,7 @@ static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent
   Object *ob = CTX_data_active_object(C);
 
   const View3D *v3d = CTX_wm_view3d(C);
-  const Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  const Base *base = BKE_view_layer_base_find(view_layer, ob);
-
+  const Base *base = CTX_data_active_base(C);
   /* Test that ob is visible; otherwise we won't be able to get evaluated data
    * from the depsgraph. We do this here instead of SCULPT_mode_poll
    * to avoid falling through to the translate operator in the

@@ -1416,13 +1416,8 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
      * raycast check, however the method is used by many different editors across the entirety of
      * sculpt. To mitigate potential unwanted changes of hiding the cursor, the logic is extracted
      * here. */
-    Object *ob = CTX_data_active_object(C);
     const View3D *v3d = CTX_wm_view3d(C);
-    const Scene *scene = CTX_data_scene(C);
-    ViewLayer *view_layer = CTX_data_view_layer(C);
-
-    BKE_view_layer_synced_ensure(scene, view_layer);
-    const Base *base = BKE_view_layer_base_find(view_layer, ob);
+    const Base *base = CTX_data_active_base(C);
     if (!BKE_base_is_visible(v3d, base)) {
       zero_v3(gi.location);
       zero_v3(gi.normal);
