@@ -657,26 +657,31 @@ class WM_MT_operator_presets(Menu):
     preset_operator = "script.execute_preset"
 
 
-class WM_OT_operator_preset_properties_cleanup(Operator):
-    """Cleanups operator preset properties"""
-    bl_idname = "wm.operator_preset_properties_cleanup"
-    bl_label = "Cleanups operator preset properties"
+class WM_OT_operator_presets_cleanup(Operator):
+
+    bl_idname = "wm.operator_presets_cleanup"
+    bl_label = "Clean Up Operator Presets"
+    bl_label = "Remove outdated operator properties from presets that may cause problems"
 
     operator: StringProperty(name="operator")
     properties: CollectionProperty(name="properties", type=OperatorFileListElement)
 
     @staticmethod
     def cleanup_preset(filepath, properties):
-        if not filepath.endswith(".py"):
+        from pathlib import Path
+        file = Path(filepath)
+        if not (file.exists() and file.is_file() and filepath.suffix == ".py"):
             return
-        lines = []
-        import os
-        with open(os.path.join(filepath), "r") as file:
-            lines = file.readlines()
-        with open(os.path.join(filepath), "w") as file:
-            for line in lines:
-                if not any(line.startswith(("op.%s" % prop)) for prop in properties):
-                    file.write(line)
+        lines = file.read_text().split('\n')
+        if len(lines) == 0:
+            return
+        text = ''
+        for line in lines:
+            if not any(line.startswith(("op.%s" % prop)) for prop in properties):
+                text += line + '\n'
+        # Remove an additional line break added with the last element in previous the for-loop
+        text = text[:len(text) - 1]
+        file.write_text(text)
 
     @staticmethod
     def cleanup_operators_presets(operators, properties):
@@ -686,11 +691,13 @@ class WM_OT_operator_preset_properties_cleanup(Operator):
             import os
             operator_preset_directory = os.path.join(
                 base_preset_directory, AddPresetOperator.operator_path(operator))
-            if not os.path.isdir(operator_preset_directory):
+            from pathlib import Path
+            directory = Path(operator_preset_directory)
+            if not (directory.exists() and directory.is_dir()):
                 continue
-            for file_name in os.listdir(operator_preset_directory):
-                file_preset_firectory = os.path.join(operator_preset_directory, file_name)
-                WM_OT_operator_preset_properties_cleanup.cleanup_preset(file_preset_firectory, properties)
+
+            for filepath in directory.iterdir():
+                WM_OT_operator_presets_cleanup.cleanup_preset(filepath, properties)
 
     def execute(self, context):
         properties = []
@@ -700,7 +707,7 @@ class WM_OT_operator_preset_properties_cleanup(Operator):
             for prop in self.properties:
                 properties.append(prop.name)
         else:
-            # Cleanup by dafult I/O Operators Presets 
+            # Cleanup by dafult I/O Operators Presets
             operators = ['WM_OT_alembic_export',
                          'WM_OT_alembic_import',
                          'WM_OT_collada_export',
@@ -719,7 +726,7 @@ class WM_OT_operator_preset_properties_cleanup(Operator):
                          'WM_OT_usd_import',]
             properties = ["filepath", "directory", "files", "filename"]
 
-        WM_OT_operator_preset_properties_cleanup.cleanup_operators_presets(
+        WM_OT_operator_presets_cleanup.cleanup_operators_presets(
             operators, properties)
         return {'FINISHED'}
 
@@ -817,5 +824,5 @@ classes = (
     AddPresetEEVEERaytracing,
     ExecutePreset,
     WM_MT_operator_presets,
-    WM_OT_operator_preset_properties_cleanup,
+    WM_OT_operator_presets_cleanup,
 )
