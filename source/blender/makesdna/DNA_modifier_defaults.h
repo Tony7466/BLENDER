@@ -872,4 +872,10 @@
     .thickness = 0.02, \
   }
 
+#define _DNA_DEFAULT_GPWeightAngleModifierData \
+  { \
+    .flag = 0, \
+    .axis = 1, \
+  }
+
 /* clang-format off */
