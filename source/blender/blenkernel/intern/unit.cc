@@ -1922,6 +1922,13 @@ static bool unit_distribute_negatives(char *str, const int str_maxncpy)
 {
   bool changed = false;
 
+  /* Remove double negatives. */
+  while (char *double_negative = strstr(str, "--")) {
+    double_negative[0] = ' ';
+    double_negative[1] = ' ';
+    changed = true;
+  }
+
   char *remaining_str = str;
   while ((remaining_str = const_cast<char *>(find_next_negative(str, remaining_str))) != nullptr) {
     int remaining_str_maxncpy;
