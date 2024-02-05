@@ -10,13 +10,12 @@
 
 #include <cfloat>
 #include <cmath>
-#include <cstring>
 
 #include "BKE_node.hh"
 
 #include "DNA_node_types.h"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "NOD_socket_declarations.hh"
 
@@ -30,7 +29,6 @@
 #endif
 
 struct bContext;
-typedef struct bContext bContext;
 struct bNodeExecContext;
 struct bNodeExecData;
 struct bNodeTreeExec;

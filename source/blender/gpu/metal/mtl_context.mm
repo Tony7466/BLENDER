@@ -29,7 +29,7 @@
 #include "GPU_vertex_buffer.h"
 #include "intern/gpu_matrix_private.h"
 
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 #include <fstream>
 #include <string>
@@ -2612,7 +2612,8 @@ id<MTLComputePipelineState> MTLContextComputeUtils::get_buffer_clear_pso()
     if (error) {
       /* Only exit out if genuine error and not warning. */
       if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
-          NSNotFound) {
+          NSNotFound)
+      {
         NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
         BLI_assert(false);
         return nil;
@@ -2677,7 +2678,7 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
   }
 
   while (MTLContext::max_drawables_in_flight > min_ii(perf_max_drawables, MTL_MAX_DRAWABLES)) {
-    PIL_sleep_ms(1);
+    BLI_sleep_ms(1);
   }
 
   /* Present is submitted in its own CMD Buffer to ensure drawable reference released as early as

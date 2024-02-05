@@ -16,7 +16,7 @@
  */
 
 #include "BKE_global.h"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "eevee_instance.hh"
 
@@ -186,6 +186,15 @@ GPUTexture *ShadingView::render_postfx(GPUTexture *input_tx)
     return input_tx;
   }
   postfx_tx_.acquire(extent_, GPU_RGBA16F);
+
+  /* Fix a sync bug on AMD + Mesa when volume + motion blur create artifacts
+   * except if there is a clear event between them. */
+  if (inst_.volume.enabled() && inst_.motion_blur.postfx_enabled() &&
+      !inst_.depth_of_field.postfx_enabled() &&
+      GPU_type_matches_ex(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OFFICIAL, GPU_BACKEND_OPENGL))
+  {
+    postfx_tx_.clear(float4(0.0f));
+  }
 
   GPUTexture *output_tx = postfx_tx_;
 

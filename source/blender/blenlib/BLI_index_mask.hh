@@ -5,20 +5,19 @@
 #pragma once
 
 #include <array>
+#include <limits>
 #include <optional>
 #include <variant>
 
 #include "BLI_bit_span.hh"
 #include "BLI_function_ref.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_span.hh"
 #include "BLI_task.hh"
 #include "BLI_unique_sorted_indices.hh"
 #include "BLI_vector.hh"
-
-namespace blender {
-template<typename T> class VArray;
-}
+#include "BLI_virtual_array_fwd.hh"
 
 namespace blender::index_mask {
 
@@ -141,8 +140,8 @@ using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
  *   various sources. Those generally need additional memory which is provided with by an
  *   #IndexMaskMemory.
  *
- *   Some of the `IndexMask::from_*` functions are have an `IndexMask universe` input. When
- *   provided, the function will only consider the indices in the "universe". The term comes from
+ *   Some of the `IndexMask::from_*` functions have an `IndexMask universe` input. When provided,
+ *   the function will only consider the indices in the "universe". The term comes from
  *   mathematics: https://en.wikipedia.org/wiki/Universe_(mathematics).
  *
  * Iteration:
@@ -471,7 +470,7 @@ inline void init_empty_mask(IndexMaskData &data)
   data.indices_num_ = 0;
   data.segments_num_ = 0;
   data.cumulative_segment_sizes_ = cumulative_sizes_for_empty_mask;
-  /* Intentionally leave some pointer uninitialized which must not be accessed on empty masks
+  /* Intentionally leave some pointers uninitialized which must not be accessed on empty masks
    * anyway. */
 }
 

@@ -28,7 +28,7 @@
 
 #include "DNA_scene_types.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
 #include "BKE_global.h"
@@ -255,8 +255,8 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   /* For restoring the current frame after exporting animation is done. */
   const int orig_frame = scene->r.cfra;
 
-  /* Ensure Python types for invoking export hooks are registered. */
-  register_export_hook_converters();
+  /* Ensure Python types for invoking hooks are registered. */
+  register_hook_converters();
 
   usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
   ensure_root_prim(usd_stage, params);
@@ -296,6 +296,10 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   worker_status->do_update = true;
 
   iter.release_writers();
+
+  if (params.export_shapekeys || params.export_armatures) {
+    iter.process_usd_skel();
+  }
 
   /* Set the default prim if it doesn't exist */
   if (!usd_stage->GetDefaultPrim()) {

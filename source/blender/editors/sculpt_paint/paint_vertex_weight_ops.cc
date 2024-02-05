@@ -26,7 +26,7 @@
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
 #include "BKE_mesh_runtime.hh"
@@ -187,7 +187,8 @@ static int weight_sample_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
     if (use_vert_sel) {
       if (ED_mesh_pick_vert(
-              C, vc.obact, event->mval, ED_MESH_PICK_DEFAULT_VERT_DIST, true, &index)) {
+              C, vc.obact, event->mval, ED_MESH_PICK_DEFAULT_VERT_DIST, true, &index))
+      {
         v_idx_best = index;
       }
     }
@@ -444,7 +445,8 @@ static bool weight_paint_set(Object *ob, float paintweight)
     for (const int vert : corner_verts.slice(faces[i])) {
       if (!dvert[vert].flag) {
         if ((paint_selmode == SCE_SELECT_VERTEX) &&
-            !(!select_vert.is_empty() && select_vert[vert])) {
+            !(!select_vert.is_empty() && select_vert[vert]))
+        {
           continue;
         }
 

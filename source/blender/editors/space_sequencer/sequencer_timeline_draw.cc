@@ -26,8 +26,7 @@
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -64,7 +63,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -517,7 +516,7 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
       CLAMP_MIN(value_min, -1.0f);
     }
 
-    /* We are drawing only half ot the waveform, mirroring the lower part upwards.
+    /* We are drawing only half to the waveform, mirroring the lower part upwards.
      * If both min and max are on the same side of zero line, we want to draw a bar
      * between them. If min and max cross zero, we want to fill bar from zero to max
      * of those. */
@@ -777,7 +776,8 @@ static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawC
    */
   const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(timeline_ctx->scene);
   if ((G.moving & G_TRANSFORM_SEQ) && (seq->flag & SELECT) &&
-      overlap_mode != SEQ_OVERLAP_OVERWRITE) {
+      overlap_mode != SEQ_OVERLAP_OVERWRITE)
+  {
     if (seq->flag & SEQ_OVERLAP) {
       col[0] = 255;
       col[1] = col[2] = 33;
@@ -1046,12 +1046,10 @@ static uchar mute_overlap_alpha_factor_get(const ListBase *channels, const Seque
     return MUTE_ALPHA;
   }
   /* Draw background semi-transparent when overlapping strips. */
-  else if (seq->flag & SEQ_OVERLAP) {
+  if (seq->flag & SEQ_OVERLAP) {
     return OVERLAP_ALPHA;
   }
-  else {
-    return 255;
-  }
+  return 255;
 }
 
 static void draw_strip_color_band(TimelineDrawContext *timeline_ctx,
@@ -1114,10 +1112,10 @@ static void draw_strip_background(TimelineDrawContext *timeline_ctx,
   }
 }
 
-typedef enum {
+enum TransitionType {
   STRIP_TRANSITION_IN,
   STRIP_TRANSITION_OUT,
-} TransitionType;
+};
 
 static void draw_seq_transition_strip_half(TimelineDrawContext *timeline_ctx,
                                            const StripDrawContext *strip_ctx,
@@ -1624,7 +1622,8 @@ static bool draw_cache_view_iter_fn(void *userdata,
   size_t *vert_count;
 
   if ((cache_type & SEQ_CACHE_STORE_FINAL_OUT) &&
-      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT)) {
+      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT))
+  {
     stripe_bot = UI_view2d_region_to_view_y(v2d, V2D_SCROLL_HANDLE_HEIGHT);
     vbo = drawdata->final_out_vbo;
     vert_count = &drawdata->final_out_vert_count;

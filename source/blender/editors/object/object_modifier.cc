@@ -16,6 +16,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
+#include "DNA_array_utils.hh"
 #include "DNA_curve_types.h"
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_fluid_types.h"
@@ -49,13 +50,13 @@
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_mball.h"
+#include "BKE_mball.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
@@ -67,7 +68,7 @@
 #include "BKE_ocean.h"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_softbody.h"
@@ -186,7 +187,8 @@ ModifierData *ED_object_modifier_add(
       md = static_cast<ModifierData *>(ob->modifiers.first);
 
       while (md &&
-             BKE_modifier_get_info((ModifierType)md->type)->type == ModifierTypeType::OnlyDeform) {
+             BKE_modifier_get_info((ModifierType)md->type)->type == ModifierTypeType::OnlyDeform)
+      {
         md = md->next;
       }
 
@@ -775,7 +777,8 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
 
   if (build_shapekey_layers && mesh->key) {
     if (KeyBlock *kb = static_cast<KeyBlock *>(
-            BLI_findlink(&mesh->key->block, ob_eval->shapenr - 1))) {
+            BLI_findlink(&mesh->key->block, ob_eval->shapenr - 1)))
+    {
       BKE_keyblock_convert_to_mesh(
           kb,
           reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data()),

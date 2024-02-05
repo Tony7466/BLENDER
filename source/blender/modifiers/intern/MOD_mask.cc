@@ -27,8 +27,8 @@
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
-#include "BKE_lib_query.h"
+#include "BKE_deform.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
@@ -498,7 +498,8 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
   int sub_face_index = 0;
   int last_i_src = -1;
   for (const int i_dst :
-       IndexRange(faces_masked_num, masked_face_indices.size() - faces_masked_num)) {
+       IndexRange(faces_masked_num, masked_face_indices.size() - faces_masked_num))
+  {
     const int i_src = masked_face_indices[i_dst];
     if (i_src == last_i_src) {
       sub_face_index++;
@@ -829,4 +830,5 @@ ModifierTypeInfo modifierType_Mask = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

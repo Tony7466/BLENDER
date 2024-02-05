@@ -38,7 +38,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_object.hh"
@@ -4072,7 +4072,7 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
 
         if (ED_view3d_context_user_region(C, &v3d_user, &region_user)) {
           if (region != region_user) {
-            SWAP(void *, region->regiondata, region_user->regiondata);
+            std::swap(region->regiondata, region_user->regiondata);
             rv3d = static_cast<RegionView3D *>(region->regiondata);
           }
         }
@@ -4702,7 +4702,7 @@ static void screen_animation_region_tag_redraw(
   ED_region_tag_redraw(region);
 }
 
-//#define PROFILE_AUDIO_SYNCH
+// #define PROFILE_AUDIO_SYNCH
 
 static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {

@@ -45,7 +45,7 @@
 #endif
 
 #include "GPU_capabilities.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 #include "GPU_uniform_buffer.h"
 
 #include "intern/gpu_codegen.h"
@@ -714,7 +714,7 @@ static void drw_call_obinfos_init(DRWObjectInfos *ob_infos, const Object *ob)
   drw_call_calc_orco(ob, ob_infos->orcotexfac);
   /* Random float value. */
   uint random = (DST.dupli_source) ?
-                     DST.dupli_source->random_id :
+                    DST.dupli_source->random_id :
                      /* TODO(fclem): this is rather costly to do at runtime. Maybe we can
                       * put it in ob->runtime and make depsgraph ensure it is up to date. */
                      BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
@@ -1385,7 +1385,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
     DRW_debug_modelmat(scd->ob->object_to_world);
     BKE_pbvh_draw_debug_cb(
         pbvh,
-        (void (*)(PBVHNode * n, void *d, const float min[3], const float max[3], PBVHNodeFlags f))
+        (void (*)(PBVHNode *n, void *d, const float min[3], const float max[3], PBVHNodeFlags f))
             DRW_sculpt_debug_cb,
         &debug_node_nr);
   }
@@ -1426,7 +1426,8 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
   if (use_color) {
     if (const char *name = mesh->active_color_attribute) {
       if (const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
-              name)) {
+              name))
+      {
         attrs.append(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
       }
     }
@@ -1802,18 +1803,15 @@ void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, GPUMaterial *mater
   /* Bind all textures needed by the material. */
   LISTBASE_FOREACH (GPUMaterialTexture *, tex, &textures) {
     if (tex->ima) {
-      /* Image */
-      GPUTexture *gputex;
+      const bool use_tile_mapping = tex->tiled_mapping_name[0];
       ImageUser *iuser = tex->iuser_available ? &tex->iuser : nullptr;
-      if (tex->tiled_mapping_name[0]) {
-        gputex = BKE_image_get_gpu_tiles(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
-        gputex = BKE_image_get_gpu_tilemap(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->tiled_mapping_name, tex->sampler_state);
-      }
-      else {
-        gputex = BKE_image_get_gpu_texture(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
+      ImageGPUTextures gputex = BKE_image_get_gpu_material_texture(
+          tex->ima, iuser, use_tile_mapping);
+
+      drw_shgroup_material_texture(grp, gputex.texture, tex->sampler_name, tex->sampler_state);
+      if (gputex.tile_mapping) {
+        drw_shgroup_material_texture(
+            grp, gputex.tile_mapping, tex->tiled_mapping_name, tex->sampler_state);
       }
     }
     else if (tex->colorband) {
