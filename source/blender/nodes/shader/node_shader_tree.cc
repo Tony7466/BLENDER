@@ -604,7 +604,7 @@ static void ntree_shader_copy_branch(bNodeTree *ntree,
   iter_data.node_count = 0;
   blender::bke::nodeChainIterBackwards(
       ntree, start_node, ntree_branch_count_and_tag_nodes, &iter_data, 1);
-  /* Copies of the BSDF nodes on the branch. */
+  /* Copies of the non-filtered nodes on the branch. */
   Array<bNode *> nodes_copy(iter_data.node_count);
 
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
