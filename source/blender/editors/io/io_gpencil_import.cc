@@ -100,7 +100,7 @@ static int wm_gpencil_import_svg_exec(bContext *C, wmOperator *op)
 
   /* Loop all selected files to import them. All SVG imported shared the same import
    * parameters, but they are created in separated grease pencil objects. */
-  const auto paths = blender::ed::io::paths_from_pointer(op->ptr);
+  const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
   for (const auto &path : paths) {
     /* Do Import. */
     WM_cursor_wait(true);

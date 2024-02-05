@@ -189,7 +189,7 @@ static int wm_stl_import_exec(bContext *C, wmOperator *op)
   params.global_scale = RNA_float_get(op->ptr, "global_scale");
   params.use_mesh_validate = RNA_boolean_get(op->ptr, "use_mesh_validate");
 
-  const auto paths = blender::ed::io::paths_from_pointer(op->ptr);
+  const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
 
   if (paths.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");

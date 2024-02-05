@@ -251,7 +251,7 @@ static int wm_ply_import_exec(bContext *C, wmOperator *op)
   params.import_attributes = RNA_boolean_get(op->ptr, "import_attributes");
   params.vertex_colors = ePLYVertexColorMode(RNA_enum_get(op->ptr, "import_colors"));
 
-  const auto paths = blender::ed::io::paths_from_pointer(op->ptr);
+  const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
 
   if (paths.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");

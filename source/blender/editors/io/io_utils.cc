@@ -51,7 +51,7 @@ bool poll_file_object_drop(const bContext *C, blender::bke::FileHandlerType * /*
   return false;
 }
 
-Vector<std::string> paths_from_pointer(PointerRNA *ptr)
+Vector<std::string> paths_from_operator_properties(PointerRNA *ptr)
 {
   Vector<std::string> paths;
   PropertyRNA *directory_prop = RNA_struct_find_property(ptr, "directory");

@@ -404,7 +404,7 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
   import_params.relative_paths = ((U.flag & USER_RELPATHS) != 0);
   import_params.clear_selection = true;
 
-  const auto paths = blender::ed::io::paths_from_pointer(op->ptr);
+  const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
 
   if (paths.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");

@@ -32,5 +32,5 @@ bool poll_file_object_drop(const bContext *C, blender::bke::FileHandlerType *fh)
  * a `files` #RNA_OperatorFileListElement collection property.
  * If the pointer has a `filepath` property is also returned as fallback.
  */
-Vector<std::string> paths_from_pointer(PointerRNA *ptr);
+Vector<std::string> paths_from_operator_properties(PointerRNA *ptr);
 }  // namespace blender::ed::io
