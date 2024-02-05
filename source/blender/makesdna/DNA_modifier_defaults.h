@@ -835,7 +835,7 @@
     .factor = 1.0f, \
     .step = 1, \
   }
-  
+
 #define _DNA_DEFAULT_GreasePencilOffsetModifierData \
   { \
     .flag = 0, \
