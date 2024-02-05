@@ -646,9 +646,9 @@ inline IndexMask IndexMask::slice(const IndexRange range) const
   if (const std::optional<IndexRange> mask_range = this->to_range()) {
     return mask_range->slice(range);
   }
+
   const RawMaskIterator first_it = this->index_to_iterator(range.first());
   const RawMaskIterator last_it = this->index_to_iterator(range.last());
-
   return this->slice(first_it, last_it);
 }
 
@@ -673,7 +673,6 @@ inline IndexMask IndexMask::slice_content(const IndexRange range) const
   }
   return this->slice(*first_it, *last_it);
 }
-
 
 inline IndexMaskData &IndexMask::data_for_inplace_construction()
 {
