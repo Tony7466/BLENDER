@@ -114,15 +114,18 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   return stream;
 }
 
-static void slice_data(const int64_t size, const RawMaskIterator first_it, const RawMaskIterator last_it, IndexMaskData &mask_data)
+static void slice_data(const int64_t size,
+                       const RawMaskIterator first_it,
+                       const RawMaskIterator last_it,
+                       IndexMaskData &mask_data)
 {
-  sliced.indices_num_ = size;
-  sliced.segments_num_ = last_it.segment_i - first_it.segment_i + 1;
-  sliced.indices_by_segment_ += first_it.segment_i;
-  sliced.segment_offsets_ += first_it.segment_i;
-  sliced.cumulative_segment_sizes_ += first_it.segment_i;
-  sliced.begin_index_in_segment_ = first_it.index_in_segment;
-  sliced.end_index_in_segment_ = last_it.index_in_segment + 1;
+  mask_data.indices_num_ = size;
+  mask_data.segments_num_ = last_it.segment_i - first_it.segment_i + 1;
+  mask_data.indices_by_segment_ += first_it.segment_i;
+  mask_data.segment_offsets_ += first_it.segment_i;
+  mask_data.cumulative_segment_sizes_ += first_it.segment_i;
+  mask_data.begin_index_in_segment_ = first_it.index_in_segment;
+  mask_data.end_index_in_segment_ = last_it.index_in_segment + 1;
 }
 
 IndexMask IndexMask::slice(const RawMaskIterator first_it, const RawMaskIterator last_it) const
