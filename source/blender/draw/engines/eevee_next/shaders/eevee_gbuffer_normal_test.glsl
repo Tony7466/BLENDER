@@ -15,10 +15,10 @@
 GBufferData gbuffer_new()
 {
   GBufferData data;
-  data.diffuse.weight = 0.0;
-  data.translucent.weight = 0.0;
-  data.reflection.weight = 0.0;
-  data.refraction.weight = 0.0;
+  data.closure[0].weight = 0.0;
+  data.closure[1].weight = 0.0;
+  data.closure[2].weight = 0.0;
+  data.closure[3].weight = 0.0;
   data.thickness = 0.2;
   data.object_id = 0xF220u;
   data.surface_N = normalize(vec3(0.1, 0.2, 0.3));
@@ -115,8 +115,8 @@ void main()
   TEST(eevee_gbuffer, NormalReuseDoubleFirst)
   {
     data_in = gbuffer_new();
-    data_in.refraction = cl1;
-    data_in.reflection = cl1;
+    data_in.closure[0] = cl1;
+    data_in.closure[1] = cl1;
 
     g_data_packed = gbuffer_pack(data_in);
 
@@ -134,8 +134,8 @@ void main()
   TEST(eevee_gbuffer, NormalReuseDoubleNone)
   {
     data_in = gbuffer_new();
-    data_in.refraction = cl1;
-    data_in.reflection = cl2;
+    data_in.closure[0] = cl1;
+    data_in.closure[1] = cl2;
 
     g_data_packed = gbuffer_pack(data_in);
 
@@ -153,9 +153,9 @@ void main()
   TEST(eevee_gbuffer, NormalReuseTripleFirst)
   {
     data_in = gbuffer_new();
-    data_in.diffuse = cl1;
-    data_in.refraction = cl2;
-    data_in.reflection = cl2;
+    data_in.closure[0] = cl1;
+    data_in.closure[1] = cl2;
+    data_in.closure[2] = cl2;
 
     g_data_packed = gbuffer_pack(data_in);
 
@@ -173,9 +173,9 @@ void main()
   TEST(eevee_gbuffer, NormalReuseTripleSecond)
   {
     data_in = gbuffer_new();
-    data_in.diffuse = cl2;
-    data_in.refraction = cl1;
-    data_in.reflection = cl2;
+    data_in.closure[0] = cl2;
+    data_in.closure[1] = cl1;
+    data_in.closure[2] = cl2;
 
     g_data_packed = gbuffer_pack(data_in);
 
@@ -193,9 +193,9 @@ void main()
   TEST(eevee_gbuffer, NormalReuseTripleThird)
   {
     data_in = gbuffer_new();
-    data_in.diffuse = cl2;
-    data_in.refraction = cl2;
-    data_in.reflection = cl1;
+    data_in.closure[0] = cl2;
+    data_in.closure[1] = cl2;
+    data_in.closure[2] = cl1;
 
     g_data_packed = gbuffer_pack(data_in);
 
@@ -213,9 +213,9 @@ void main()
   TEST(eevee_gbuffer, NormalReuseTripleNone)
   {
     data_in = gbuffer_new();
-    data_in.diffuse = cl1;
-    data_in.refraction = cl2;
-    data_in.reflection = cl3;
+    data_in.closure[0] = cl1;
+    data_in.closure[1] = cl2;
+    data_in.closure[2] = cl3;
 
     g_data_packed = gbuffer_pack(data_in);
 

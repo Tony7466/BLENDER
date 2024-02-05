@@ -24,10 +24,7 @@
 #define GBUFFER_NORMAL_BITS_SHIFT 12
 
 struct GBufferData {
-  ClosureUndetermined diffuse;
-  ClosureUndetermined translucent;
-  ClosureUndetermined reflection;
-  ClosureUndetermined refraction;
+  ClosureUndetermined closure[4];
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;
@@ -698,22 +695,7 @@ GBufferWriter gbuffer_pack(GBufferData data_in)
 
   bool has_additional_data = false;
   for (int i = 0; i < 4; i++) {
-    ClosureUndetermined cl;
-    /* TODO(fclem): Rename inside GBufferData. */
-    switch (i) {
-      case 0:
-        cl = data_in.diffuse;
-        break;
-      case 1:
-        cl = data_in.refraction;
-        break;
-      case 2:
-        cl = data_in.reflection;
-        break;
-      case 3:
-        cl = data_in.translucent;
-        break;
-    }
+    ClosureUndetermined cl = data_in.closure[i];
 
     if (cl.weight <= 1e-5) {
       continue;

@@ -84,10 +84,10 @@ void main()
   /* ----- GBuffer output ----- */
 
   GBufferData gbuf_data;
-  gbuf_data.diffuse = g_diffuse_data;
-  gbuf_data.translucent = g_translucent_data;
-  gbuf_data.reflection = g_reflection_data;
-  gbuf_data.refraction = g_refraction_data;
+  gbuf_data.closure[0] = g_diffuse_data;
+  gbuf_data.closure[1] = g_translucent_data;
+  gbuf_data.closure[2] = g_reflection_data;
+  gbuf_data.closure[3] = g_refraction_data;
   gbuf_data.surface_N = g_data.N;
   gbuf_data.thickness = g_thickness;
   gbuf_data.object_id = resource_id;
