@@ -5129,6 +5129,10 @@ static void slim_flush_uvs(ParamHandle *phandle,
       auto &UV = mt_chart->uv_matrices;
 
       for (v = chart->verts; v; v = v->nextlink) {
+        if (v->flag & PVERT_PIN) {
+          continue;
+        }
+
         vid = v->slim_id;
         v->uv[0] = UV[vid * 2];
         v->uv[1] = UV[vid * 2 + 1];

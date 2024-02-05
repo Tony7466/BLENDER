@@ -120,7 +120,7 @@ void GeometryData::construct_slim_data(SLIMData &slim_data,
   slim_data.withWeightedParameterization = use_weights;
   set_geometry_data_matrices(slim_data);
 
-  double penalty_for_violating_pinned_positions = pow(10, 9);
+  double penalty_for_violating_pinned_positions = 10.0e100;
   slim_data.soft_const_p = penalty_for_violating_pinned_positions;
   slim_data.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
 }
