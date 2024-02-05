@@ -31,11 +31,16 @@ void main()
 
   nodetree_surface(closure_rand);
 
-  g_diffuse_data.color *= g_diffuse_data.weight;
-  g_reflection_data.color *= g_reflection_data.weight;
-  g_refraction_data.color *= g_refraction_data.weight;
+  vec3 albedo = vec3(0.0);
 
-  vec3 albedo = g_diffuse_data.color + g_reflection_data.color;
+  for (int i = 0; i < 4; i++) {
+    ClosureUndetermined cl = g_closure_get_resolved(i, 1.0);
+    if (cl.type != CLOSURE_BSDF_TRANSLUCENT_ID &&
+        cl.type != CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID)
+    {
+      albedo += cl.color;
+    }
+  }
 
   /* ----- Surfel output ----- */
 

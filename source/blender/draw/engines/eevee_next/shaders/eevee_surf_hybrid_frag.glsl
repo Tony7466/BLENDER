@@ -56,15 +56,6 @@ void main()
   float transparency = 1.0 - average(g_transmittance);
   float transparency_rcp = safe_rcp(transparency);
   g_emission *= transparency_rcp;
-  g_diffuse_data.weight *= transparency_rcp;
-  g_translucent_data.weight *= transparency_rcp;
-  g_reflection_data.weight *= transparency_rcp;
-  g_refraction_data.weight *= transparency_rcp;
-
-  g_diffuse_data.color *= g_diffuse_data.weight;
-  g_translucent_data.color *= g_translucent_data.weight;
-  g_reflection_data.color *= g_reflection_data.weight;
-  g_refraction_data.color *= g_refraction_data.weight;
 
   ivec2 out_texel = ivec2(gl_FragCoord.xy);
 
@@ -84,10 +75,10 @@ void main()
   /* ----- GBuffer output ----- */
 
   GBufferData gbuf_data;
-  gbuf_data.closure[0] = g_diffuse_data;
-  gbuf_data.closure[1] = g_translucent_data;
-  gbuf_data.closure[2] = g_reflection_data;
-  gbuf_data.closure[3] = g_refraction_data;
+  gbuf_data.closure[0] = g_closure_get_resolved(0, transparency_rcp);
+  gbuf_data.closure[1] = g_closure_get_resolved(1, transparency_rcp);
+  gbuf_data.closure[2] = g_closure_get_resolved(2, transparency_rcp);
+  gbuf_data.closure[3] = g_closure_get_resolved(3, transparency_rcp);
   gbuf_data.surface_N = g_data.N;
   gbuf_data.thickness = g_thickness;
   gbuf_data.object_id = resource_id;

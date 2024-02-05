@@ -46,6 +46,13 @@ ClosureUndetermined g_closure_get(int i)
   }
 }
 
+ClosureUndetermined g_closure_get_resolved(int i, float weight_fac)
+{
+  ClosureUndetermined cl = g_closure_get(i);
+  cl.color *= cl.weight * weight_fac;
+  return cl;
+}
+
 ClosureType closure_type_get(ClosureDiffuse cl)
 {
   return CLOSURE_BSDF_DIFFUSE_ID;
