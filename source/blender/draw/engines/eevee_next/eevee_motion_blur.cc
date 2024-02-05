@@ -46,7 +46,7 @@ void MotionBlurModule::init()
   initial_frame_ = scene->r.cfra;
   initial_subframe_ = scene->r.subframe;
   frame_time_ = initial_frame_ + initial_subframe_;
-  shutter_position_ = scene->eevee.motion_blur_position;
+  shutter_position_ = scene->r.motion_blur_position;
   shutter_time_ = scene->eevee.motion_blur_shutter;
 
   data_.depth_scale = scene->eevee.motion_blur_depth_scale;
@@ -108,13 +108,13 @@ void MotionBlurModule::step()
 float MotionBlurModule::shutter_time_to_scene_time(float time)
 {
   switch (shutter_position_) {
-    case SCE_EEVEE_MB_START:
+    case SCE_MB_START:
       /* No offset. */
       break;
-    case SCE_EEVEE_MB_CENTER:
+    case SCE_MB_CENTER:
       time -= 0.5f;
       break;
-    case SCE_EEVEE_MB_END:
+    case SCE_MB_END:
       time -= 1.0;
       break;
     default:

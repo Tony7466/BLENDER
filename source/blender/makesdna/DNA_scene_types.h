@@ -845,7 +845,9 @@ typedef struct RenderData {
   /* Hair Display. */
   short hair_type, hair_subdiv;
 
-  /** Motion blur shutter. */
+  /** Motion blur */
+  int motion_blur_position;
+  char _pad11[4];
   struct CurveMapping mblur_shutter_curve;
 } RenderData;
 
@@ -859,6 +861,13 @@ typedef enum eHairType {
   SCE_HAIR_SHAPE_STRAND = 0,
   SCE_HAIR_SHAPE_STRIP = 1,
 } eHairType;
+
+/** #RenderData::motion_blur_position */
+enum {
+  SCE_MB_CENTER = 0,
+  SCE_MB_START = 1,
+  SCE_MB_END = 2,
+};
 
 /** \} */
 
@@ -1890,7 +1899,7 @@ typedef struct SceneEEVEE {
   int motion_blur_samples DNA_DEPRECATED;
   int motion_blur_max;
   int motion_blur_steps;
-  int motion_blur_position;
+  int motion_blur_position DNA_DEPRECATED;
   float motion_blur_shutter;
   float motion_blur_depth_scale;
 
@@ -2886,13 +2895,6 @@ enum {
   SHADOW_ESM = 1,
   /* SHADOW_VSM = 2, */        /* UNUSED */
   /* SHADOW_METHOD_MAX = 3, */ /* UNUSED */
-};
-
-/** #SceneEEVEE::motion_blur_position */
-enum {
-  SCE_EEVEE_MB_CENTER = 0,
-  SCE_EEVEE_MB_START = 1,
-  SCE_EEVEE_MB_END = 2,
 };
 
 /** #SceneDisplay->render_aa and #SceneDisplay->viewport_aa */

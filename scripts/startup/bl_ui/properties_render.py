@@ -221,7 +221,7 @@ class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
 
         layout.active = props.use_motion_blur
         col = layout.column()
-        col.prop(props, "motion_blur_position", text="Position")
+        col.prop(scene.render, "motion_blur_position", text="Position")
         col.prop(props, "motion_blur_shutter")
         col.separator()
         col.prop(props, "motion_blur_depth_scale")

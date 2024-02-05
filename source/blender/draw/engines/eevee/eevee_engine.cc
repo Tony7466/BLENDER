@@ -496,14 +496,14 @@ static void eevee_render_to_image(void *vedata,
 
   /* Compute start time. The motion blur will cover `[time ...time + shuttertime]`. */
   float time = initial_frame + initial_subframe;
-  switch (scene->eevee.motion_blur_position) {
-    case SCE_EEVEE_MB_START:
+  switch (scene->r.motion_blur_position) {
+    case SCE_MB_START:
       /* No offset. */
       break;
-    case SCE_EEVEE_MB_CENTER:
+    case SCE_MB_CENTER:
       time -= shuttertime * 0.5f;
       break;
-    case SCE_EEVEE_MB_END:
+    case SCE_MB_END:
       time -= shuttertime;
       break;
     default:
