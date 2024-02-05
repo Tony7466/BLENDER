@@ -71,6 +71,10 @@ template<typename T> inline std::optional<IndexRange> non_empty_as_range_try(con
 template<typename T> inline int64_t find_size_of_next_range(const Span<T> indices)
 {
   BLI_assert(!indices.is_empty());
+  /* Heuristic: first check last element. Range-span is pretty common case in some area. */
+  if (const std::optional<IndexRange> range = non_empty_as_range_try(indices)) {
+    return range->size();
+  }
   return binary_search::find_predicate_begin(indices,
                                              [indices, offset = indices[0]](const T &value) {
                                                const int64_t index = &value - indices.begin();
