@@ -173,10 +173,10 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
                           1024,
                           [&](const IndexRange range) {
                             for (const int point : range) {
-                              const float3 minter = math::cross(normals[point], tangents[point]) *
+                              const float3 miter = math::cross(normals[point], tangents[point]) *
                                                     distance;
-                              pos_l[point] = positions[point] + minter;
-                              pos_r[point] = positions[point] - minter;
+                              pos_l[point] = positions[point] + miter;
+                              pos_r[point] = positions[point] - miter;
                             }
                           });
 
