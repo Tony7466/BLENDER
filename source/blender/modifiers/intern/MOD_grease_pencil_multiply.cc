@@ -162,7 +162,7 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
       "opacity", bke::AttrDomain::Point);
   bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
-      "radii", bke::AttrDomain::Point);
+      "radius", bke::AttrDomain::Point);
 
   const int dst_point_count = (mmd.duplications + 1) * src_point_count;
 
@@ -188,24 +188,19 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
     MutableSpan<float> instance_radii = radii.span.slice(stroke);
     Span<float3> stroke_pos_l = pos_l.as_span().slice(stroke);
     Span<float3> stroke_pos_r = pos_r.as_span().slice(stroke);
-    const float offset_fac = (mmd.duplications == 1) ? 0.5f :
-                                                       (float(i) / float(mmd.duplications - 1));
-    const float fading_fac=fabsf(offset_fac - fading_center);
-    const float thickness_factor = use_fading ? mix2(fading_fac,
-                                                     1.0f,
-                                                     1.0f - fading_thickness) :
+    const float offset_fac = (mmd.duplications == 1) ?
+                                 0.5f :
+                                 (1.0f - (float(i) / float(mmd.duplications - 1)));
+    const float fading_fac = fabsf(offset_fac - fading_center);
+    const float thickness_factor = use_fading ? mix2(fading_fac, 1.0f, 1.0f - fading_thickness) :
                                                 1.0f;
-    const float opacity_factor = use_fading ? mix2(fading_fac,
-                                                   1.0f,
-                                                   1.0f - fading_opacity) :
-                                              1.0f;
+    const float opacity_factor = use_fading ? mix2(fading_fac, 1.0f, 1.0f - fading_opacity) : 1.0f;
     threading::parallel_for(instance_positions.index_range(), 512, [&](const IndexRange range) {
       for (const int point : range) {
-        const float fac = interpf(1 + offset, offset, float(i) / float(mmd.duplications - 1));
+        const float fac = mix2(float(i) / float(mmd.duplications - 1), 1 + offset, offset);
         instance_positions[point] = mix2(fac, stroke_pos_l[point], stroke_pos_r[point]);
         instance_radii[point] *= thickness_factor;
         instance_opacity[point] *= opacity_factor;
-        printf("%f\n",instance_radii[point]);
       }
     });
   }
