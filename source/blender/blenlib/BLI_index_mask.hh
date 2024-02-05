@@ -235,6 +235,8 @@ class IndexMask : private IndexMaskData {
    * \return Position where the #query_index is stored, or none if the index is not in the mask.
    */
   std::optional<RawMaskIterator> find(int64_t query_index) const;
+  std::optional<RawMaskIterator> find_larger_equal(int64_t query_index) const;
+  std::optional<RawMaskIterator> find_smaller_equal(int64_t query_index) const;
   /**
    * \return True when the #query_index is stored in the mask.
    */
