@@ -766,25 +766,24 @@ std::optional<RawMaskIterator> IndexMask::find_larger_equal(const int64_t query_
       IndexRange(segments_num_),
       [&](const int64_t seg_i) { return this->segment(seg_i).last() >= query_index; });
   if (segment_i == segments_num_) {
+    /* The query index is larger than the largest index in this mask. */
     return std::nullopt;
   }
   const IndexMaskSegment segment = this->segment(segment_i);
   const int64_t segment_begin_index = segment.base_span().data() - indices_by_segment_[segment_i];
   if (query_index < segment[0]) {
+    /* The query index is the first element in this segment. */
     const int64_t index_in_segment = segment_begin_index;
     BLI_assert(index_in_segment < max_segment_size);
     return RawMaskIterator{segment_i, int16_t(index_in_segment)};
   }
-  if (query_index <= segment.last()) {
-    const int64_t local_index = query_index - segment.offset();
-    const int64_t index_in_segment = binary_search::find_predicate_begin(
-        segment.base_span(), [&](const int16_t i) { return i >= local_index; });
-    const int64_t actual_index_in_segment = index_in_segment + segment_begin_index;
-    BLI_assert(actual_index_in_segment < max_segment_size);
-    return RawMaskIterator{segment_i, int16_t(actual_index_in_segment)};
-  }
-
-  return std::nullopt;
+  /* The query index is somewhere within this segment. */
+  const int64_t local_index = query_index - segment.offset();
+  const int64_t index_in_segment = binary_search::find_predicate_begin(
+      segment.base_span(), [&](const int16_t i) { return i >= local_index; });
+  const int64_t actual_index_in_segment = index_in_segment + segment_begin_index;
+  BLI_assert(actual_index_in_segment < max_segment_size);
+  return RawMaskIterator{segment_i, int16_t(actual_index_in_segment)};
 }
 
 std::optional<RawMaskIterator> IndexMask::find_smaller_equal(const int64_t query_index) const
