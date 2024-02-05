@@ -12,14 +12,19 @@ set(INC
 )
 
 set(INC_SYS
-
+  ${BOOST_INCLUDE_DIR}
 )
 
 set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  ${BOOST_LIBRARIES}
 )
 
+
+list(APPEND LIB
+  ${BOOST_LIBRARIES}
+)
 add_definitions(-DWITH_DNA_GHASH)
 
 # Needed for `mallocn.c`.
@@ -130,7 +135,8 @@ set(SRC
 
   ${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
   dna_rename_defs.h
-  dna_utils.h
+  dna_utils.hh
+  dna_utils_c.h
 )
 
 set_source_files_properties(
@@ -167,3 +173,12 @@ set(LIB
 )
 
 blender_add_lib(bf_dna_blenlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_INC
+  )
+  set(TEST_SRC
+    dna_test.cc
+  )
+  blender_add_test_suite_lib(dna "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+endif()

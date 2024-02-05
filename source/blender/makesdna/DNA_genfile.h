@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "intern/dna_utils.h"
+#include "intern/dna_utils_c.h"
 
 struct SDNA;
 

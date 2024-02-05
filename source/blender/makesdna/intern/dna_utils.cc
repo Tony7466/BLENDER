@@ -20,7 +20,10 @@
 
 #include "BLI_memarena.h"
 
-#include "dna_utils.h"
+#include <boost/regex.hpp>
+
+#include "dna_utils.hh"
+#include "dna_utils_c.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Struct Member Evaluation
@@ -338,4 +341,58 @@ extern "C" void _DNA_internal_swap(void *a, void *b, const size_t size)
   memcpy(b, tmp, size);
 }
 
+namespace blender::dna {
+
+void gather_defines(std::string str, std::vector<DefineConstValue> &defines)
+{
+  const char define_pattern[]{"^\\#\\s*define\\s+([\\w\\_]+)\\s(\\d+)$"};
+
+  const boost::regex define_regex(define_pattern);
+  boost::sregex_iterator it(str.begin(), str.end(), define_regex);
+  boost::sregex_iterator end;
+  for (; it != end; ++it) {
+    defines.push_back({(*it)[1].str(), stoi((*it)[2].str())});
+  }
+}
+
+int array_size(std::string str, std::vector<DefineConstValue> &defines)
+{
+  {
+    /**
+     * Match first if the `string` is an array members expresion, like:
+     * `*name[123][CONSTANT_EXPRESION]`
+     * `name[123][CONSTANT_EXPRESION][123]`
+     * `name[123]`
+     * `name[CONSTANT_EXPRESION]`
+     */
+    const char array_member_pattern[]{"^\\*?\\w+(?:\\[\\w+\\])+$"};
+    const boost::regex array_member_regex(array_member_pattern);
+    if (!boost::regex_match(str, array_member_regex)) {
+      return 0;
+    }
+  }
+  /** Get the actual size. */
+  const char dimension_pattern[]{"\\[(\\w+)\\]"};
+  boost::regex dimension_regex(dimension_pattern);
+  boost::sregex_iterator it(str.begin(), str.end(), dimension_regex);
+  boost::sregex_iterator end;
+  size_t size = 1;
+  for (; it != end; ++it) {
+    const auto &match = (*it)[1].str();
+    if (std::all_of(match.begin(), match.end(), ::isdigit)) {
+      size *= stoi(match);
+      continue;
+    }
+    auto itr = std::find_if(defines.begin(), defines.end(), [&](DefineConstValue &define) {
+      return define.identifier == match;
+    });
+    if (itr != defines.end()) {
+      size *= itr->value;
+      continue;
+    }
+    return 0;
+  }
+  return size;
+}
+}  // namespace blender::dna
 /** \} */

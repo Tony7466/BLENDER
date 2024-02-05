@@ -42,7 +42,8 @@
 #include "BLI_system.h"    /* for 'BLI_system_backtrace' stub. */
 #include "BLI_utildefines.h"
 
-#include "dna_utils.h"
+#include "dna_utils.hh"
+#include "dna_utils_c.h"
 
 #define SDNA_MAX_FILENAME_LENGTH 255
 
@@ -560,6 +561,8 @@ static char *match_preproc_strstr(char *__restrict str, const char *__restrict s
   return nullptr;
 }
 
+static std::vector<blender::dna::DefineConstValue> defines;
+
 static int preprocess_include(char *maindata, const int maindata_len)
 {
   /* NOTE: len + 1, last character is a dummy to prevent
@@ -568,6 +571,7 @@ static int preprocess_include(char *maindata, const int maindata_len)
   temp[maindata_len] = ' ';
 
   memcpy(temp, maindata, maindata_len);
+  gather_defines({temp}, defines);
 
   /* remove all c++ comments */
   /* replace all enters/tabs/etc with spaces */
@@ -1000,7 +1004,7 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
             /* has the name an extra length? (array) */
             int mul = 1;
             if (cp[namelen - 1] == ']') {
-              mul = DNA_elem_array_size(cp);
+              mul = array_size(cp, defines);
             }
 
             if (mul == 0) {
@@ -1059,7 +1063,7 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
             /* has the name an extra length? (array) */
             int mul = 1;
             if (cp[namelen - 1] == ']') {
-              mul = DNA_elem_array_size(cp);
+              mul = array_size(cp, defines);
             }
 
             if (mul == 0) {

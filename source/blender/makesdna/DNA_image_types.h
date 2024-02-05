@@ -12,6 +12,7 @@
 #include "DNA_color_types.h" /* for color management */
 #include "DNA_defs.h"
 
+#define FILE_MAX 1024
 struct GPUTexture;
 struct ImBufAnim;
 struct MovieCache;
@@ -54,8 +55,7 @@ typedef struct ImageView {
   struct ImageView *next, *prev;
   /** MAX_NAME. */
   char name[64];
-  /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 } ImageView;
 
 typedef struct ImagePackedFile {
@@ -66,8 +66,7 @@ typedef struct ImagePackedFile {
    * respectively when creating their ImagePackedFile. Must be provided for each packed image. */
   int view;
   int tile_number;
-  /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 } ImagePackedFile;
 
 typedef struct RenderSlot {
@@ -143,8 +142,7 @@ typedef struct Image {
    */
   DrawDataList drawdata;
 
-  /** File path, 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   /** Not written in file. */
   struct MovieCache *cache;
