@@ -448,6 +448,7 @@ void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
                    0,
                    "");
   }
+
   /* Draw icons that are not previews or images as normal icons with a fixed icon size. Otherwise
    * they will be upscaled to the button size. Should probably be done by the widget code. */
   const int is_preview_flag = (BKE_icon_is_preview(preview_icon_id) ||
