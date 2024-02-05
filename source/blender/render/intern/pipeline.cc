@@ -50,7 +50,7 @@
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
@@ -2403,18 +2403,17 @@ void RE_RenderAnim(Render *re,
         }
         else {
           bool is_skip = false;
-          char filepath[FILE_MAX];
+          char filepath_view[FILE_MAX];
 
           LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
             if (!BKE_scene_multiview_is_render_view_active(&scene->r, srv)) {
               continue;
             }
 
-            BKE_scene_multiview_filepath_get(srv, filepath, filepath);
-
-            if (BLI_exists(filepath)) {
+            BKE_scene_multiview_filepath_get(srv, filepath, filepath_view);
+            if (BLI_exists(filepath_view)) {
               is_skip = true;
-              printf("skipping existing frame \"%s\" for view \"%s\"\n", filepath, srv->name);
+              printf("skipping existing frame \"%s\" for view \"%s\"\n", filepath_view, srv->name);
             }
           }
 

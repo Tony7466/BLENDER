@@ -46,7 +46,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 /* Include for Bake Options */
 #include "RE_engine.h"
@@ -709,6 +709,8 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 
 #  include <algorithm>
 
+#  include <fmt/format.h>
+
 #  include "BLI_string_utils.hh"
 
 #  include "DNA_anim_types.h"
@@ -735,7 +737,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_idprop.h"
 #  include "BKE_image.h"
 #  include "BKE_image_format.h"
-#  include "BKE_layer.h"
+#  include "BKE_layer.hh"
 #  include "BKE_main.hh"
 #  include "BKE_mesh.hh"
 #  include "BKE_node.h"
@@ -764,6 +766,8 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  ifdef WITH_FREESTYLE
 #    include "FRS_freestyle.h"
 #  endif
+
+using blender::Vector;
 
 static int rna_ToolSettings_snap_mode_get(PointerRNA *ptr)
 {
@@ -1210,19 +1214,19 @@ static void rna_Scene_all_keyingsets_next(CollectionPropertyIterator *iter)
   iter->valid = (internal->link != nullptr);
 }
 
-static char *rna_SceneEEVEE_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_SceneEEVEE_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("eevee");
+  return "eevee";
 }
 
-static char *rna_SceneGpencil_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_SceneGpencil_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("grease_pencil_settings");
+  return "grease_pencil_settings";
 }
 
-static char *rna_SceneHydra_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_SceneHydra_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("hydra");
+  return "hydra";
 }
 
 static int rna_RenderSettings_stereoViews_skip(CollectionPropertyIterator *iter, void * /*data*/)
@@ -1243,17 +1247,17 @@ static void rna_RenderSettings_stereoViews_begin(CollectionPropertyIterator *ite
   rna_iterator_listbase_begin(iter, &rd->views, rna_RenderSettings_stereoViews_skip);
 }
 
-static char *rna_RenderSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_RenderSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("render");
+  return "render";
 }
 
-static char *rna_BakeSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_BakeSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("render.bake");
+  return "render.bake";
 }
 
-static char *rna_ImageFormatSettings_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ImageFormatSettings_path(const PointerRNA *ptr)
 {
   ImageFormatData *imf = (ImageFormatData *)ptr->data;
   ID *id = ptr->owner_id;
@@ -1263,12 +1267,12 @@ static char *rna_ImageFormatSettings_path(const PointerRNA *ptr)
       Scene *scene = (Scene *)id;
 
       if (&scene->r.im_format == imf) {
-        return BLI_strdup("render.image_settings");
+        return "render.image_settings";
       }
       else if (&scene->r.bake.im_format == imf) {
-        return BLI_strdup("render.bake.image_settings");
+        return "render.bake.image_settings";
       }
-      return BLI_strdup("..");
+      return "..";
     }
     case ID_NT: {
       bNodeTree *ntree = (bNodeTree *)id;
@@ -1279,7 +1283,7 @@ static char *rna_ImageFormatSettings_path(const PointerRNA *ptr)
           if (&((NodeImageMultiFile *)node->storage)->format == imf) {
             char node_name_esc[sizeof(node->name) * 2];
             BLI_str_escape(node_name_esc, node->name, sizeof(node_name_esc));
-            return BLI_sprintfN("nodes[\"%s\"].format", node_name_esc);
+            return fmt::format("nodes[\"{}\"].format", node_name_esc);
           }
           else {
             bNodeSocket *sock;
@@ -1294,17 +1298,17 @@ static char *rna_ImageFormatSettings_path(const PointerRNA *ptr)
                 char socketdata_path_esc[sizeof(sockdata->path) * 2];
                 BLI_str_escape(socketdata_path_esc, sockdata->path, sizeof(socketdata_path_esc));
 
-                return BLI_sprintfN(
-                    "nodes[\"%s\"].file_slots[\"%s\"].format", node_name_esc, socketdata_path_esc);
+                return fmt::format(
+                    "nodes[\"{}\"].file_slots[\"{}\"].format", node_name_esc, socketdata_path_esc);
               }
             }
           }
         }
       }
-      return BLI_strdup("..");
+      return "..";
     }
     default:
-      return BLI_strdup("..");
+      return "..";
   }
 }
 
@@ -1909,7 +1913,7 @@ void rna_ViewLayer_pass_update(Main *bmain, Scene *activescene, PointerRNA *ptr)
   rna_Scene_render_update(bmain, activescene, ptr);
 }
 
-static char *rna_ViewLayerEEVEE_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ViewLayerEEVEE_path(const PointerRNA *ptr)
 {
   const ViewLayerEEVEE *view_layer_eevee = (ViewLayerEEVEE *)ptr->data;
   const ViewLayer *view_layer = (ViewLayer *)((uint8_t *)view_layer_eevee -
@@ -1921,15 +1925,15 @@ static char *rna_ViewLayerEEVEE_path(const PointerRNA *ptr)
 
   BLI_strncpy(rna_path + view_layer_path_len, ".eevee", sizeof(rna_path) - view_layer_path_len);
 
-  return BLI_strdup(rna_path);
+  return rna_path;
 }
 
-static char *rna_SceneRenderView_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_SceneRenderView_path(const PointerRNA *ptr)
 {
   const SceneRenderView *srv = (SceneRenderView *)ptr->data;
   char srv_name_esc[sizeof(srv->name) * 2];
   BLI_str_escape(srv_name_esc, srv->name, sizeof(srv_name_esc));
-  return BLI_sprintfN("render.views[\"%s\"]", srv_name_esc);
+  return fmt::format("render.views[\"{}\"]", srv_name_esc);
 }
 
 static void rna_Scene_use_nodes_update(bContext *C, PointerRNA *ptr)
@@ -2216,7 +2220,7 @@ static void rna_View3DCursor_matrix_set(PointerRNA *ptr, const float *values)
   BKE_scene_cursor_from_mat4(cursor, unit_mat, false);
 }
 
-static char *rna_TransformOrientationSlot_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_TransformOrientationSlot_path(const PointerRNA *ptr)
 {
   const Scene *scene = (Scene *)ptr->owner_id;
   const TransformOrientationSlot *orientation_slot = static_cast<const TransformOrientationSlot *>(
@@ -2225,19 +2229,19 @@ static char *rna_TransformOrientationSlot_path(const PointerRNA *ptr)
   if (!ELEM(nullptr, scene, orientation_slot)) {
     for (int i = 0; i < ARRAY_SIZE(scene->orientation_slots); i++) {
       if (&scene->orientation_slots[i] == orientation_slot) {
-        return BLI_sprintfN("transform_orientation_slots[%d]", i);
+        return fmt::format("transform_orientation_slots[{}]", i);
       }
     }
   }
 
   /* Should not happen, but in case, just return default path. */
   BLI_assert_unreachable();
-  return BLI_strdup("transform_orientation_slots[0]");
+  return "transform_orientation_slots[0]";
 }
 
-static char *rna_View3DCursor_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_View3DCursor_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("cursor");
+  return "cursor";
 }
 
 static TimeMarker *rna_TimeLine_add(Scene *scene, const char name[], int frame)
@@ -2334,19 +2338,19 @@ static void rna_UnifiedPaintSettings_radius_update(bContext *C, PointerRNA *ptr)
   rna_UnifiedPaintSettings_update(C, ptr);
 }
 
-static char *rna_UnifiedPaintSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_UnifiedPaintSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("tool_settings.unified_paint_settings");
+  return "tool_settings.unified_paint_settings";
 }
 
-static char *rna_CurvePaintSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_CurvePaintSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("tool_settings.curve_paint_settings");
+  return "tool_settings.curve_paint_settings";
 }
 
-static char *rna_SequencerToolSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_SequencerToolSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("tool_settings.sequencer_tool_settings");
+  return "tool_settings.sequencer_tool_settings";
 }
 
 /* generic function to recalc geometry */
@@ -2356,23 +2360,19 @@ static void rna_EditMesh_update(bContext *C, PointerRNA * /*ptr*/)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Mesh *mesh = BKE_mesh_from_object(obedit);
 
     DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
     WM_main_add_notifier(NC_GEOM | ND_DATA, mesh);
   }
-
-  MEM_freeN(objects);
 }
 
-static char *rna_MeshStatVis_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_MeshStatVis_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("tool_settings.statvis");
+  return "tool_settings.statvis";
 }
 
 /* NOTE: without this, when Multi-Paint is activated/deactivated, the colors
@@ -2410,9 +2410,9 @@ static void rna_SceneSequencer_update(Main * /*bmain*/, Scene * /*scene*/, Point
   SEQ_cache_cleanup((Scene *)ptr->owner_id);
 }
 
-static char *rna_ToolSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ToolSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("tool_settings");
+  return "tool_settings";
 }
 
 PointerRNA rna_FreestyleLineSet_linestyle_get(PointerRNA *ptr)
@@ -2869,14 +2869,14 @@ static void rna_UnitSettings_system_update(Main * /*bmain*/, Scene *scene, Point
   }
 }
 
-static char *rna_UnitSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_UnitSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("unit_settings");
+  return "unit_settings";
 }
 
-static char *rna_FFmpegSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_FFmpegSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("render.ffmpeg");
+  return "render.ffmpeg";
 }
 
 #  ifdef WITH_FFMPEG
@@ -4184,6 +4184,13 @@ static void rna_def_unified_paint_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Use Unified Color", "Instead of per-brush color, the color is shared across brushes");
 
+  prop = RNA_def_property(srna, "use_unified_input_samples", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", UNIFIED_PAINT_INPUT_SAMPLES);
+  RNA_def_property_ui_text(
+      prop,
+      "Use Unified Input Samples",
+      "Instead of per-brush input samples, the value is shared across brushes");
+
   /* unified paint settings that override the equivalent settings
    * from the active brush */
   prop = RNA_def_property(srna, "size", PROP_INT, PROP_PIXEL);
@@ -4232,6 +4239,17 @@ static void rna_def_unified_paint_settings(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_float_sdna(prop, nullptr, "secondary_rgb");
   RNA_def_property_ui_text(prop, "Secondary Color", "");
+  RNA_def_property_update(prop, 0, "rna_UnifiedPaintSettings_update");
+
+  prop = RNA_def_property(srna, "input_samples", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "input_samples");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_range(prop, 1, PAINT_MAX_INPUT_SAMPLES);
+  RNA_def_property_ui_range(prop, 1, PAINT_MAX_INPUT_SAMPLES, 1, -1);
+  RNA_def_property_ui_text(
+      prop,
+      "Input Samples",
+      "Number of input samples to average together to smooth the brush stroke");
   RNA_def_property_update(prop, 0, "rna_UnifiedPaintSettings_update");
 
   prop = RNA_def_property(srna, "use_locked_size", PROP_ENUM, PROP_NONE); /* as an enum */
