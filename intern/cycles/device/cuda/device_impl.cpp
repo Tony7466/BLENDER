@@ -733,14 +733,15 @@ void CUDADevice::tex_alloc(device_texture &mem)
   }
 
   /* Image Texture Storage */
-  /* Blender expects to read all texture data as normalized float values withing the
-   * kernel/device/gpu/image.h But storing all data as floats would be highly unefficient due to
-   * the huge size of float textures, particularly when the original texture format is not a float.
-   * So in the code below we are defining various texture types, including even an integer type,
-   * with the intention of utilize CUDA's default promotion behaviour of integer data to floating
-   * point data in the range [0, 1], as it stated in CUDA's documentation about cuTexObjectCreate
-   * API call. Note, that 32bit integers are not supported this promotion behaviour and can't be
-   * used with Blender's approach. */
+  /* Cycles expects to read all texture data as normalized float values in
+   * kernel/device/gpu/image.h. But storing all data as floats would be very inefficient due to the
+   * huge size of float textures. So in the code below, we define different texture types including
+   * integer types, with the aim of using CUDA's default promotion behavior of integer data to
+   * floating point data in the range [0, 1], as noted in the CUDA documentation on
+   * cuTexObjectCreate API Call.
+   * Note that 32-bit integers are not supported by this promotion behavior and cannot be used
+   * with Cycles's current implementation in kernel/device/gpu/image.h.
+   */
   CUarray_format_enum format;
   switch (mem.data_type) {
     case TYPE_UCHAR:
