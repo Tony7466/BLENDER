@@ -27,7 +27,7 @@
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
@@ -716,17 +716,17 @@ static void gpencil_weightpaint_brush_header_set(bContext *C, tGP_BrushWeightpai
 {
   switch (gso->brush->gpencil_weight_tool) {
     case GPWEIGHT_TOOL_DRAW:
-      ED_workspace_status_text(C, TIP_("GPencil Weight Paint: LMB to paint | RMB/Escape to Exit"));
+      ED_workspace_status_text(C, RPT_("GPencil Weight Paint: LMB to paint | RMB/Escape to Exit"));
       break;
     case GPWEIGHT_TOOL_BLUR:
-      ED_workspace_status_text(C, TIP_("GPencil Weight Blur: LMB to blur | RMB/Escape to Exit"));
+      ED_workspace_status_text(C, RPT_("GPencil Weight Blur: LMB to blur | RMB/Escape to Exit"));
       break;
     case GPWEIGHT_TOOL_AVERAGE:
       ED_workspace_status_text(
-          C, TIP_("GPencil Weight Average: LMB to set average | RMB/Escape to Exit"));
+          C, RPT_("GPencil Weight Average: LMB to set average | RMB/Escape to Exit"));
       break;
     case GPWEIGHT_TOOL_SMEAR:
-      ED_workspace_status_text(C, TIP_("GPencil Weight Smear: LMB to smear | RMB/Escape to Exit"));
+      ED_workspace_status_text(C, RPT_("GPencil Weight Smear: LMB to smear | RMB/Escape to Exit"));
       break;
   }
 }

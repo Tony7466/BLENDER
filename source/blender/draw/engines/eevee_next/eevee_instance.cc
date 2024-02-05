@@ -17,7 +17,7 @@
 #include "DNA_ID.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 #include "RE_pipeline.h"
 
 #include "eevee_engine.h"
@@ -363,7 +363,7 @@ bool Instance::do_planar_probe_sync() const
 /**
  * Conceptually renders one sample per pixel.
  * Everything based on random sampling should be done here (i.e: DRWViews jitter)
- **/
+ */
 void Instance::render_sample()
 {
   if (sampling.finished_viewport()) {

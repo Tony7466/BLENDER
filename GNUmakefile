@@ -73,10 +73,10 @@ Static Source Code Checking
 
 Documentation Checking
 
-   * check_wiki_file_structure:
-     Check the WIKI documentation for the source-tree's file structure
+   * check_docs_file_structure:
+     Check the documentation for the source-tree's file structure
      matches Blender's source-code.
-     See: https://wiki.blender.org/wiki/Source/File_Structure
+     See: https://developer.blender.org/docs/features/code_layout/
 
 Spell Checkers
    This runs the spell checker from the developer tools repositor.
@@ -199,11 +199,6 @@ ifndef DEPS_INSTALL_DIR
 	endif
 endif
 
-# Allow to use alternative binary (pypy3, etc)
-ifndef PYTHON
-	PYTHON:=python3
-endif
-
 # Set the LIBDIR, an empty string when not found.
 LIBDIR:=$(wildcard ../lib/${OS_NCASE}_${CPU})
 ifeq (, $(LIBDIR))
@@ -215,15 +210,15 @@ endif
 
 # Find the newest Python version bundled in `LIBDIR`.
 PY_LIB_VERSION:=3.15
-ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 	PY_LIB_VERSION:=3.14
-	ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+	ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 		PY_LIB_VERSION:=3.13
-		ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+		ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 			PY_LIB_VERSION:=3.12
-			ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+			ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 				PY_LIB_VERSION:=3.11
-				ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
+				ifeq (, $(wildcard $(LIBDIR)/python/bin/python$(PY_LIB_VERSION)))
 					PY_LIB_VERSION:=3.10
 				endif
 			endif
@@ -231,14 +226,20 @@ ifeq (, $(wildcard $(LIBDIR)/python/lib/python$(PY_LIB_VERSION)))
 	endif
 endif
 
-# For macOS python3 is not installed by default, so fallback to python binary
-# in libraries, or python 2 for running make update to get it.
-ifeq ($(OS_NCASE),darwin)
-	ifeq (, $(shell command -v $(PYTHON)))
-		PYTHON:=$(LIBDIR)/python/bin/python$(PY_LIB_VERSION)
+# Allow to use alternative binary (pypy3, etc)
+ifndef PYTHON
+	# If not overriden, first try using Python from LIBDIR.
+	PYTHON:=$(LIBDIR)/python/bin/python$(PY_LIB_VERSION)
+	ifeq (, $(wildcard $(PYTHON)))
+		# If not available, use system python3 or python command.
+		PYTHON:=python3
 		ifeq (, $(shell command -v $(PYTHON)))
 			PYTHON:=python
 		endif
+	else
+		# Don't generate __pycache__ files in lib folder, they
+		# can interfere with updates.
+		PYTHON:=$(PYTHON) -B
 	endif
 endif
 
@@ -502,9 +503,9 @@ check_clang_array: .FORCE
 check_mypy: .FORCE
 	@$(PYTHON) "$(BLENDER_DIR)/tools/check_source/check_mypy.py"
 
-check_wiki_file_structure: .FORCE
+check_docs_file_structure: .FORCE
 	@PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/tools/check_wiki/check_wiki_file_structure.py"
+	    "$(BLENDER_DIR)/tools/check_docs/check_docs_code_layout.py"
 
 check_spelling_py: .FORCE
 	@PYTHONIOENCODING=utf_8 $(PYTHON) \
@@ -569,14 +570,10 @@ source_archive_complete: .FORCE
 # This assumes CMake is still using a default `PACKAGE_DIR` variable:
 	@$(PYTHON) ./build_files/utils/make_source_archive.py --include-packages "$(BUILD_DIR)/source_archive/packages"
 
-INKSCAPE_BIN?="inkscape"
 icons: .FORCE
-	@BLENDER_BIN=$(BLENDER_BIN) INKSCAPE_BIN=$(INKSCAPE_BIN) \
-	    "$(BLENDER_DIR)/release/datafiles/blender_icons_update.py"
-	@INKSCAPE_BIN=$(INKSCAPE_BIN) \
-	    "$(BLENDER_DIR)/release/datafiles/prvicons_update.py"
-	@INKSCAPE_BIN=$(INKSCAPE_BIN) \
-	    "$(BLENDER_DIR)/release/datafiles/alert_icons_update.py"
+	@BLENDER_BIN=$(BLENDER_BIN) "$(BLENDER_DIR)/release/datafiles/blender_icons_update.py"
+	"$(BLENDER_DIR)/release/datafiles/prvicons_update.py"
+	"$(BLENDER_DIR)/release/datafiles/alert_icons_update.py"
 
 icons_geom: .FORCE
 	@BLENDER_BIN=$(BLENDER_BIN) \

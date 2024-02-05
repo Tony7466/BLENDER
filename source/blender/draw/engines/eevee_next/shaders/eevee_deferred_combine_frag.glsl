@@ -53,47 +53,64 @@ void main()
     return;
   }
 
-  vec3 out_diffuse = vec3(0.0);
-  vec3 out_specular = vec3(0.0);
+  vec3 diffuse_color = vec3(0.0);
+  vec3 diffuse_light = vec3(0.0);
+  vec3 specular_color = vec3(0.0);
+  vec3 specular_light = vec3(0.0);
+  vec3 average_normal = vec3(0.0);
 
   for (int i = 0; i < GBUFFER_LAYER_MAX && i < gbuf.closure_count; i++) {
     vec3 closure_light = load_radiance_direct(texel, i);
-
-    /* TODO(fclem): Enable for OpenGL and VULKAN once they fully support specialization constants.
-     */
-#ifndef GPU_METAL
-    bool use_combined_lightprobe_eval = uniform_buf.pipeline.use_combined_lightprobe_eval;
-#endif
-    if (!use_combined_lightprobe_eval) {
-      closure_light += load_radiance_indirect(texel, i);
-    }
-
     ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
-    closure_light *= cl.color;
-    out_combined.rgb += closure_light;
+
+    if (!use_combined_lightprobe_eval) {
+      vec3 closure_indirect = load_radiance_indirect(texel, i);
+      if (cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
+        /* TODO(fclem): Add instead of replacing when we support correct refracted light. */
+        closure_light = closure_indirect;
+      }
+      else {
+        closure_light += closure_indirect;
+      }
+    }
 
     switch (cl.type) {
       case CLOSURE_BSDF_TRANSLUCENT_ID:
       case CLOSURE_BSSRDF_BURLEY_ID:
       case CLOSURE_BSDF_DIFFUSE_ID:
-        out_diffuse += closure_light;
+        diffuse_color += cl.color;
+        diffuse_light += closure_light;
+        average_normal += cl.N * reduce_add(cl.color);
         break;
       case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-        out_specular += closure_light;
+        specular_color += cl.color;
+        specular_light += closure_light;
+        average_normal += cl.N * reduce_add(cl.color);
         break;
       case CLOSURE_NONE_ID:
         /* TODO(fclem): Assert. */
         break;
     }
+
+    closure_light *= cl.color;
+    out_combined.rgb += closure_light;
   }
 
   /* Light passes. */
   if (render_pass_diffuse_light_enabled) {
-    output_renderpass_color(uniform_buf.render_pass.diffuse_light_id, vec4(out_diffuse, 1.0));
+    output_renderpass_color(uniform_buf.render_pass.diffuse_color_id, vec4(diffuse_color, 1.0));
+    output_renderpass_color(uniform_buf.render_pass.diffuse_light_id, vec4(diffuse_light, 1.0));
   }
   if (render_pass_specular_light_enabled) {
-    output_renderpass_color(uniform_buf.render_pass.specular_light_id, vec4(out_specular, 1.0));
+    output_renderpass_color(uniform_buf.render_pass.specular_color_id, vec4(specular_color, 1.0));
+    output_renderpass_color(uniform_buf.render_pass.specular_light_id, vec4(specular_light, 1.0));
+  }
+  if (render_pass_normal_enabled) {
+    float normal_len = length(average_normal);
+    /* Normalize or fallback to default normal. */
+    average_normal = (normal_len < 1e-5) ? gbuf.surface_N : (average_normal / normal_len);
+    output_renderpass_color(uniform_buf.render_pass.normal_id, vec4(average_normal, 1.0));
   }
 
   if (any(isnan(out_combined))) {

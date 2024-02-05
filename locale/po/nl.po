@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'98c6bded9844')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-02 10:08:43\n"
+"POT-Creation-Date: 2024-01-22 11:04+0000\n"
 "PO-Revision-Date: 2023-12-21 01:55+0000\n"
 "Last-Translator: Lisa <blendergirl@tutanota.com>\n"
 "Language-Team: Dutch <https://translate.blender.org/projects/blender-ui/ui/nl/>\n"
@@ -830,6 +830,10 @@ msgid "Bones"
 msgstr "Botten"
 
 
+msgid "Index"
+msgstr "Index"
+
+
 msgid "Visible"
 msgstr "Zichtbaar"
 
@@ -1197,10 +1201,6 @@ msgstr "Vlak"
 
 msgid "View"
 msgstr "Weergave"
-
-
-msgid "Index"
-msgstr "Index"
 
 
 msgid "Segments"
@@ -3948,6 +3948,11 @@ msgid "Export BVH"
 msgstr "Exporteer BVH"
 
 
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exporteer PLY"
+
+
 msgid "Apply Modifiers"
 msgstr "Pas Aanpassers Toe"
 
@@ -4484,6 +4489,11 @@ msgstr "Importeer SVG"
 msgctxt "Operator"
 msgid "Import Images as Planes"
 msgstr "Importeer Afbeeldingen als Vlakken"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importeer PLY"
 
 
 msgctxt "Operator"
@@ -6309,16 +6319,6 @@ msgstr "Objecteigenschappen"
 
 msgid "Open a Blender file"
 msgstr "Open een Blender Bestand"
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exporteer PLY"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importeer PLY"
 
 
 msgid "All Types"
@@ -8967,10 +8967,6 @@ msgid "Copy All to Selected"
 msgstr "Kopieer Alles naar Geselecteerd"
 
 
-msgid "Value: %s"
-msgstr "Waarde: %s"
-
-
 msgid "Double click to rename"
 msgstr "Dubbelklik om te hernoemen"
 
@@ -8989,6 +8985,18 @@ msgstr "Verwijder punten"
 
 msgid "Choose Screen layout"
 msgstr "Kies Scherm indeling"
+
+
+msgid "File Not Found"
+msgstr "Bestand Niet Gevonden"
+
+
+msgid "Today"
+msgstr "Vandaag"
+
+
+msgid "Yesterday"
+msgstr "Gisteren"
 
 
 msgctxt "Object"
@@ -9287,14 +9295,6 @@ msgid "Active Keyframe"
 msgstr "Actieve Sleutelframe"
 
 
-msgid "Today"
-msgstr "Vandaag"
-
-
-msgid "Yesterday"
-msgstr "Gisteren"
-
-
 msgid "File does not exist"
 msgstr "Bestand bestaat niet"
 
@@ -9550,10 +9550,6 @@ msgstr "Niet Opslaan"
 
 msgid "unable to open the file"
 msgstr "kan het bestand niet openen"
-
-
-msgid "File Not Found"
-msgstr "Bestand Niet Gevonden"
 
 
 msgid "This may lead to unexpected behavior"
