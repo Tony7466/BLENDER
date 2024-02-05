@@ -322,7 +322,6 @@ void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node
     node = nodeexec->node;
 
     if (depth_level && node->runtime->tmp_flag != *depth_level) {
-      BLI_assert(*depth_level >= 0);
       continue;
     }
 
@@ -339,6 +338,7 @@ void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node
     }
 
     if (do_it) {
+      BLI_assert(!depth_level || node->runtime->tmp_flag >= 0);
       if (node->typeinfo->gpu_fn) {
         node_get_stack(node, stack, nsin, nsout);
         gpu_stack_from_data_list(gpuin, &node->inputs, nsin);
