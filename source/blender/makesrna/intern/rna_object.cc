@@ -1244,6 +1244,7 @@ static void rna_Object_dimensions_set(PointerRNA *ptr, const float *value)
 {
   Object *ob = static_cast<Object *>(ptr->data);
   BKE_object_dimensions_set(ob, value, 0);
+
 }
 
 static int rna_Object_location_editable(PointerRNA *ptr, int index)
@@ -3245,11 +3246,8 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_float_funcs(
       prop, "rna_Object_dimensions_get", "rna_Object_dimensions_set", nullptr);
   RNA_def_property_ui_range(prop, 0.0f, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
-  RNA_def_property_ui_text(prop,
-                           "Dimensions",
-                           "Absolute bounding box dimensions of the object.\n"
-                           "Warning: Assigning to it or its members multiple consecutive times "
-                           "will not work correctly, as this needs up-to-date evaluated data");
+  RNA_def_property_ui_text(
+    prop, "Dimensions", "Absolute bounding box dimensions of the object.");
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
   /* delta transforms */
