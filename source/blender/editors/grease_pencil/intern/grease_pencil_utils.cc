@@ -340,8 +340,8 @@ IndexMask retrieve_editable_strokes(Object &object,
 
 IndexMask retrieve_editable_strokes_by_material(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
-                                                IndexMaskMemory &memory,
-                                                const int mat_i)
+                                                const int mat_i,
+                                                IndexMaskMemory &memory)
 {
   using namespace blender;
 

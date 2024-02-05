@@ -2045,7 +2045,7 @@ static bool grease_pencil_separate_material(bContext &C,
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       IndexMaskMemory memory;
       const IndexMask strokes = retrieve_editable_strokes_by_material(
-          object_src, info.drawing, memory, mat_i);
+          object_src, info.drawing, mat_i, memory);
       if (strokes.is_empty()) {
         continue;
       }
