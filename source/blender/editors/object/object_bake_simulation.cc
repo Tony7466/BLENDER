@@ -318,15 +318,13 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
 
       const bake::BakePath path = request.path;
 
-      const std::string blob_file_name = frame_file_name + ".blob";
-
       char meta_path[FILE_MAX];
       BLI_path_join(meta_path,
                     sizeof(meta_path),
                     path.meta_dir.c_str(),
                     (frame_file_name + ".json").c_str());
       BLI_file_ensure_parent_dir_exists(meta_path);
-      bake::DiskBlobWriter blob_writer{path.blobs_dir, blob_file_name};
+      bake::DiskBlobWriter blob_writer{path.blobs_dir, frame_file_name};
       fstream meta_file{meta_path, std::ios::out};
       bake::serialize_bake(frame_cache.state, blob_writer, *request.blob_sharing, meta_file);
     }
@@ -837,7 +835,7 @@ static Vector<NodeBakeRequest> bake_single_node_gather_bake_request(bContext *C,
   const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
       *bmain, *object, nmd, bake_id);
   if (!bake_path.has_value()) {
-    BKE_report(op->reports, RPT_ERROR, "Can not determine bake location on disk");
+    BKE_report(op->reports, RPT_ERROR, "Cannot determine bake location on disk");
     return {};
   }
   request.path = std::move(*bake_path);
