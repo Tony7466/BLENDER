@@ -36,6 +36,9 @@ static std::tuple<ListBase, Vector<int>> find_used_vertex_groups(
   const int num_vertex_groups = BLI_listbase_count(&vertex_group_names);
   Vector<int> is_group_used(num_vertex_groups, false);
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
+    if (!gps->dvert) {
+      continue;
+    }
     Span<MDeformVert> dverts = {gps->dvert, gps->totpoints};
     for (const MDeformVert &dvert : dverts) {
       for (const MDeformWeight &weight : Span<MDeformWeight>{dvert.dw, dvert.totweight}) {
@@ -94,6 +97,24 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   /* All strokes are poly curves. */
   curves.fill_curve_types(CURVE_TYPE_POLY);
 
+  /* Find used vertex groups in this drawing. */
+  auto [stroke_vertex_group_names,
+        stroke_def_nr_map] = find_used_vertex_groups(gpf, vertex_group_names);
+  BLI_assert(BLI_listbase_is_empty(&curves.vertex_group_names));
+  curves.vertex_group_names = stroke_vertex_group_names;
+  const bool use_dverts = !BLI_listbase_is_empty(&curves.vertex_group_names);
+
+  /* Copy vertex weights and map the vertex group indices. */
+  auto copy_dvert = [&](const MDeformVert &src_dvert, MDeformVert &dst_dvert) {
+    dst_dvert = src_dvert;
+    dst_dvert.dw = static_cast<MDeformWeight *>(MEM_dupallocN(src_dvert.dw));
+    const MutableSpan<MDeformWeight> vertex_weights = {dst_dvert.dw, dst_dvert.totweight};
+    for (MDeformWeight &weight : vertex_weights) {
+      /* Map def_nr to the reduced vertex group list. */
+      weight.def_nr = stroke_def_nr_map[weight.def_nr];
+    }
+  };
+
   /* Point Attributes. */
   MutableSpan<float3> positions = curves.positions_for_write();
   MutableSpan<float> radii = drawing.radii_for_write();
@@ -106,7 +127,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", AttrDomain::Point);
   SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
       ".selection", AttrDomain::Point);
-  MutableSpan<MDeformVert> dverts = curves.wrap().deform_verts_for_write();
+  MutableSpan<MDeformVert> dverts = use_dverts ? curves.wrap().deform_verts_for_write() :
+                                                 MutableSpan<MDeformVert>();
 
   /* Curve Attributes. */
   SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
@@ -132,12 +154,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", AttrDomain::Curve);
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", AttrDomain::Curve);
-
-  /* Find used vertex groups in this drawing. */
-  auto [stroke_vertex_group_names,
-        stroke_def_nr_map] = find_used_vertex_groups(gpf, vertex_group_names);
-  BLI_assert(BLI_listbase_is_empty(&curves.vertex_group_names));
-  curves.vertex_group_names = stroke_vertex_group_names;
 
   int stroke_i = 0;
   LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
@@ -173,7 +189,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     MutableSpan<ColorGeometry4f> stroke_vertex_colors = vertex_colors.span.slice(
         stroke_points_range);
     MutableSpan<bool> stroke_selections = selection.span.slice(stroke_points_range);
-    MutableSpan<MDeformVert> stroke_dverts = dverts.slice(stroke_points_range);
+    MutableSpan<MDeformVert> stroke_dverts = use_dverts ? dverts.slice(stroke_points_range) :
+                                                          MutableSpan<MDeformVert>();
 
     /* Do first point. */
     const bGPDspoint &first_pt = stroke_points.first();
@@ -191,8 +208,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     stroke_rotations.first() = first_pt.uv_rot;
     stroke_vertex_colors.first() = ColorGeometry4f(first_pt.vert_color);
     stroke_selections.first() = (first_pt.flag & GP_SPOINT_SELECT) != 0;
-    stroke_dverts.first() = gps->dvert[0];
-    stroke_dverts.first().dw = static_cast<MDeformWeight *>(MEM_dupallocN(gps->dvert[0].dw));
+    if (use_dverts && gps->dvert) {
+      copy_dvert(gps->dvert[0], stroke_dverts.first());
+    }
 
     /* Do the rest of the points. */
     for (const int i : stroke_points.index_range().drop_back(1)) {
@@ -206,14 +224,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       stroke_rotations[point_i] = pt.uv_rot;
       stroke_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
       stroke_selections[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
-      stroke_dverts[point_i] = gps->dvert[point_i];
-      stroke_dverts[point_i].dw = static_cast<MDeformWeight *>(
-          MEM_dupallocN(gps->dvert[point_i].dw));
-      const MutableSpan<MDeformWeight> vertex_weights = {stroke_dverts[point_i].dw,
-                                                         stroke_dverts[point_i].totweight};
-      for (MDeformWeight &weight : vertex_weights) {
-        /* Map def_nr to the reduced vertex group list. */
-        weight.def_nr = stroke_def_nr_map[weight.def_nr];
+      if (use_dverts && gps->dvert) {
+        copy_dvert(gps->dvert[point_i], stroke_dverts[point_i]);
       }
     }
   }
