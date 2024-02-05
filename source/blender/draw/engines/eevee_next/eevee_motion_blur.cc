@@ -28,7 +28,7 @@ void MotionBlurModule::init()
   const Scene *scene = inst_.scene;
   const ViewLayer *view_layer = inst_.view_layer;
 
-  enabled_ = (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) != 0;
+  enabled_ = (scene->r.mode & R_MBLUR) != 0;
   if (enabled_) {
     enabled_ = (view_layer->layflag & SCE_LAY_MOTION_BLUR) != 0;
   }

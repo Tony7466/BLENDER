@@ -472,7 +472,7 @@ static void eevee_render_to_image(void *vedata,
   Depsgraph *depsgraph = draw_ctx->depsgraph;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   EEVEE_ViewLayerData *sldata = EEVEE_view_layer_data_ensure();
-  const bool do_motion_blur = (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) != 0;
+  const bool do_motion_blur = (scene->r.mode & R_MBLUR) != 0;
   const bool do_motion_blur_fx = do_motion_blur && (scene->eevee.motion_blur_max > 0);
 
   if (!EEVEE_render_init(static_cast<EEVEE_Data *>(vedata), engine, depsgraph)) {

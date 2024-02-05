@@ -2854,7 +2854,7 @@ enum {
   SCE_EEVEE_GTAO_BOUNCE = (1 << 6),
   // SCE_EEVEE_DOF_ENABLED = (1 << 7), /* Moved to camera->dof.flag */
   SCE_EEVEE_BLOOM_ENABLED = (1 << 8),
-  SCE_EEVEE_MOTION_BLUR_ENABLED = (1 << 9),
+  SCE_EEVEE_MOTION_BLUR_ENABLED_DEPRECATED = (1 << 9), /* Moved to scene->r.mode */
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),
   // SCE_EEVEE_SSS_ENABLED = (1 << 12), /* Unused */
