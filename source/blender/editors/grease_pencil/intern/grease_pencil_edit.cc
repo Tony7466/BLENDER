@@ -1861,7 +1861,7 @@ static Object *duplicate_grease_pencil_object(Main *bmain,
   return object_dst;
 }
 
-static bke::greasepencil::Layer &find_or_create_layer_by_name(
+static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
     const int layer_index, const GreasePencil &grease_pencil_src, GreasePencil &grease_pencil_dst)
 {
   using namespace bke::greasepencil;
@@ -1912,7 +1912,7 @@ static bool grease_pencil_separate_selected(bContext &C,
     }
 
     /* Insert Keyframe at current frame/layer. */
-    Layer &layer_dst = find_or_create_layer_by_name(
+    Layer &layer_dst = find_or_create_layer_in_dst_by_name(
         info.layer_index, grease_pencil_src, grease_pencil_dst);
     grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
@@ -1967,7 +1967,7 @@ static bool grease_pencil_separate_layer(bContext &C,
     Object *object_dst = duplicate_grease_pencil_object(
         &bmain, &scene, &view_layer, &base_prev, grease_pencil_src);
     GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
-    Layer &layer_dst = find_or_create_layer_by_name(
+    Layer &layer_dst = find_or_create_layer_in_dst_by_name(
         grease_pencil_src.layers().first_index(layer_src), grease_pencil_src, grease_pencil_dst);
 
     /* Iterate through all the drawings at current frame. */
@@ -2053,7 +2053,7 @@ static bool grease_pencil_separate_material(bContext &C,
       GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(object_dst->data);
 
       /* Insert Keyframe at current frame/layer. */
-      Layer &layer_dst = find_or_create_layer_by_name(
+      Layer &layer_dst = find_or_create_layer_in_dst_by_name(
           info.layer_index, grease_pencil_src, grease_pencil_dst);
       grease_pencil_dst.insert_blank_frame(layer_dst, info.frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
 
