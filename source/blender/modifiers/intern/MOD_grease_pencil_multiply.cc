@@ -112,7 +112,7 @@ static bke::CurvesGeometry duplicate_strokes(const bke::CurvesGeometry &curves,
   const int masked_handle = instances->add_reference(bke::InstanceReference{masked_geo});
   const int unselected_handle = instances->add_reference(bke::InstanceReference{unselected_geo});
 
-  for (int i = 0; i < count; i++) {
+  for ([[maybe_unused]] const int i : IndexRange(count)) {
     instances->add_instance(masked_handle, float4x4::identity());
   }
   instances->add_instance(unselected_handle, float4x4::identity());
@@ -171,8 +171,8 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
 
   threading::parallel_for(duplicated_strokes.points_range().take_front(points_num_pending),
                           1024,
-                          [&](const IndexRange parallel_range) {
-                            for (const int point : parallel_range) {
+                          [&](const IndexRange range) {
+                            for (const int point : range) {
                               const float3 minter = math::cross(normals[point], tangents[point]) *
                                                     distance;
                               pos_l[point] = positions[point] + minter;
@@ -181,6 +181,7 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
                           });
 
   for (const int i : IndexRange(mmd.duplications)) {
+    using bke::attribute_math::mix2;
     const IndexRange this_stroke = IndexRange(original_point_count * i, original_point_count);
     MutableSpan<float3> instance_positions = positions.slice(this_stroke);
     MutableSpan<float> instance_opacity = opacities.span.slice(this_stroke);
@@ -189,23 +190,22 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
     Span<float3> use_pos_r = pos_r.as_span().slice(this_stroke);
     const float offset_fac = (mmd.duplications == 1) ? 0.5f :
                                                        (float(i) / float(mmd.duplications - 1));
-    const float thickness_factor = use_fading ? interpf(1.0f - fading_thickness,
-                                                        1.0f,
-                                                        fabsf(offset_fac - fading_center)) :
+    const float thickness_factor = use_fading ? mix2(fabsf(offset_fac - fading_center),
+                                                     1.0f - fading_thickness,
+                                                     1.0f) :
                                                 1.0f;
     const float opacity_factor = use_fading ? interpf(1.0f - fading_opacity,
                                                       1.0f,
                                                       fabsf(offset_fac - fading_center)) :
                                               1.0f;
-    threading::parallel_for(
-        instance_positions.index_range(), 512, [&](const IndexRange parallel_range) {
-          for (const int point : parallel_range) {
-            const float fac = interpf(1 + offset, offset, float(i) / float(mmd.duplications - 1));
-            instance_positions[point] = math::interpolate(use_pos_l[point], use_pos_r[point], fac);
-            instance_radii[point] *= thickness_factor;
-            instance_opacity[point] *= opacity_factor;
-          }
-        });
+    threading::parallel_for(instance_positions.index_range(), 512, [&](const IndexRange range) {
+      for (const int point : range) {
+        const float fac = interpf(1 + offset, offset, float(i) / float(mmd.duplications - 1));
+        instance_positions[point] = mix2(fac, use_pos_l[point], use_pos_r[point]);
+        instance_radii[point] *= thickness_factor;
+        instance_opacity[point] *= opacity_factor;
+      }
+    });
   }
 
   radii.finish();
@@ -227,9 +227,9 @@ static void modify_geometry_set(ModifierData *md,
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
   const int frame = grease_pencil.runtime->eval_frame;
 
-  IndexMaskMemory mask_memory;
+  IndexMaskMemory memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      grease_pencil, mmd->influence, mask_memory);
+      grease_pencil, mmd->influence, memory);
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       grease_pencil, layer_mask, frame);
   threading::parallel_for_each(drawings,
