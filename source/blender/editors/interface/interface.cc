@@ -48,7 +48,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 #include "BLT_translation.h"
 
 #include "UI_interface.hh"
@@ -78,6 +78,7 @@
 
 #include "interface_intern.hh"
 
+using blender::StringRef;
 using blender::Vector;
 
 /* prototypes. */
@@ -640,6 +641,9 @@ static float ui_but_get_float_precision(uiBut *but)
   if (but->type == UI_BTYPE_NUM) {
     return ((uiButNumber *)but)->precision;
   }
+  if (but->type == UI_BTYPE_NUM_SLIDER) {
+    return ((uiButNumberSlider *)but)->precision;
+  }
 
   return but->a2;
 }
@@ -648,6 +652,9 @@ static float ui_but_get_float_step_size(uiBut *but)
 {
   if (but->type == UI_BTYPE_NUM) {
     return ((uiButNumber *)but)->step_size;
+  }
+  if (but->type == UI_BTYPE_NUM_SLIDER) {
+    return ((uiButNumberSlider *)but)->step_size;
   }
 
   return but->a1;
@@ -1355,6 +1362,7 @@ static bool ui_but_event_property_operator_string(const bContext *C,
                                                   char *buf,
                                                   const size_t buf_maxncpy)
 {
+  using namespace blender;
   /* Context toggle operator names to check. */
 
   /* NOTE(@ideasman42): This function could use a refactor to generalize button type to operator
@@ -1444,18 +1452,19 @@ static bool ui_but_event_property_operator_string(const bContext *C,
   /* There may be multiple data-paths to the same properties,
    * support different variations so key bindings are properly detected no matter which are used.
    */
-  char *data_path_variations[2] = {nullptr};
-  int data_path_variations_num = 0;
+  Vector<std::string, 2> data_path_variations;
 
   {
-    char *data_path = WM_context_path_resolve_property_full(C, ptr, prop, prop_index);
+    std::optional<std::string> data_path = WM_context_path_resolve_property_full(
+        C, ptr, prop, prop_index);
 
     /* Always iterate once, even if data-path isn't set. */
-    data_path_variations[data_path_variations_num++] = data_path;
+    data_path_variations.append(data_path.has_value() ? data_path.value() : "");
 
-    if (data_path) {
-      if (STRPREFIX(data_path, "scene.tool_settings.")) {
-        data_path_variations[data_path_variations_num++] = BLI_strdup(data_path + 6);
+    if (data_path.has_value()) {
+      StringRef data_path_ref = StringRef(data_path.value());
+      if (data_path_ref.startswith("scene.tool_settings.")) {
+        data_path_variations.append(data_path_ref.drop_known_prefix("scene."));
       }
     }
   }
@@ -1463,18 +1472,18 @@ static bool ui_but_event_property_operator_string(const bContext *C,
   /* We have a data-path! */
   bool found = false;
 
-  for (int data_path_index = 0; data_path_index < data_path_variations_num && (found == false);
+  for (int data_path_index = 0; data_path_index < data_path_variations.size() && (found == false);
        data_path_index++)
   {
-    const char *data_path = data_path_variations[data_path_index];
-    if (data_path || (prop_enum_value_ok && prop_enum_value_id)) {
+    const StringRefNull data_path = data_path_variations[data_path_index];
+    if (!data_path.is_empty() || (prop_enum_value_ok && prop_enum_value_id)) {
       /* Create a property to host the "data_path" property we're sending to the operators. */
       IDProperty *prop_path;
 
       const IDPropertyTemplate group_val = {0};
       prop_path = IDP_New(IDP_GROUP, &group_val, __func__);
-      if (data_path) {
-        IDP_AddToGroup(prop_path, IDP_NewString(data_path, "data_path"));
+      if (!data_path.is_empty()) {
+        IDP_AddToGroup(prop_path, IDP_NewString(data_path.c_str(), "data_path"));
       }
       if (prop_enum_value_ok) {
         const EnumPropertyItem *item;
@@ -1518,12 +1527,6 @@ static bool ui_but_event_property_operator_string(const bContext *C,
     }
   }
 
-  for (int data_path_index = 0; data_path_index < data_path_variations_num; data_path_index++) {
-    char *data_path = data_path_variations[data_path_index];
-    if (data_path) {
-      MEM_freeN(data_path);
-    }
-  }
   return found;
 }
 
@@ -3108,13 +3111,6 @@ bool ui_but_string_eval_number(bContext *C, const uiBut *but, const char *str, d
   return ui_number_from_string(C, str, r_value);
 }
 
-/* just the assignment/free part */
-static void ui_but_string_set_internal(uiBut *but, const char *str, size_t str_len)
-{
-  BLI_assert(str_len == strlen(str));
-  but->str = std::string(str, str_len);
-}
-
 bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 {
   if (but->rnaprop && but->rnapoin.data && ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU)) {
@@ -3805,12 +3801,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
       break;
   }
 
-  /* safety is 4 to enable small number buttons (like 'users') */
-  // okwidth = -4 + (BLI_rcti_size_x(&but->rect)); /* UNUSED */
-
-  /* name: */
   switch (but->type) {
-
     case UI_BTYPE_MENU:
       if (BLI_rctf_size_x(&but->rect) >= (UI_UNIT_X * 2)) {
         /* only needed for menus in popup blocks that don't recreate buttons on redraw */
@@ -3826,9 +3817,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
                     value_enum,
                     &item))
             {
-              const size_t slen = strlen(item.name);
-              but->str.clear();
-              ui_but_string_set_internal(but, item.name, slen);
+              but->str = item.name;
               but->icon = item.icon;
             }
           }
@@ -3977,6 +3966,9 @@ static uiBut *ui_but_new(const eButType type)
     case UI_BTYPE_NUM:
       but = MEM_new<uiButNumber>("uiButNumber");
       break;
+    case UI_BTYPE_NUM_SLIDER:
+      but = MEM_new<uiButNumberSlider>("uiButNumber");
+      break;
     case UI_BTYPE_COLOR:
       but = MEM_new<uiButColor>("uiButColor");
       break;
@@ -4064,8 +4056,6 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
 }
 
 /**
- * \brief ui_def_but is the function that draws many button types
- *
  * \param x, y: The lower left hand corner of the button (X axis)
  * \param width, height: The size of the button.
  *
@@ -4077,7 +4067,7 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
 static uiBut *ui_def_but(uiBlock *block,
                          int type,
                          int retval,
-                         const char *str,
+                         const StringRef str,
                          int x,
                          int y,
                          short width,
@@ -4112,8 +4102,7 @@ static uiBut *ui_def_but(uiBlock *block,
 
   but->retval = retval;
 
-  const int slen = strlen(str);
-  ui_but_string_set_internal(but, str, slen);
+  but->str = str;
 
   but->rect.xmin = x;
   but->rect.ymin = y;
@@ -4148,7 +4137,7 @@ static uiBut *ui_def_but(uiBlock *block,
   but->pos = -1; /* cursor invisible */
 
   if (ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER)) { /* add a space to name */
-    if (slen > 0 && slen < UI_MAX_NAME_STR - 2) {
+    if (!but->str.empty() && but->str.size() < UI_MAX_NAME_STR - 2) {
       if (but->str[but->str.size() - 1] != ' ') {
         but->str += ' ';
       }
@@ -4176,7 +4165,7 @@ static uiBut *ui_def_but(uiBlock *block,
   }
 #ifdef USE_NUMBUTS_LR_ALIGN
   else if (ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER)) {
-    if (slen != 0) {
+    if (!but->str.empty()) {
       but->drawflag |= UI_BUT_TEXT_LEFT;
     }
   }
@@ -4560,7 +4549,7 @@ static uiBut *ui_def_but_rna(uiBlock *block,
   const PropertyType proptype = RNA_property_type(prop);
   int icon = 0;
   uiMenuCreateFunc func = nullptr;
-  const bool always_set_a1_a2 = ELEM(type, UI_BTYPE_NUM);
+  const bool always_set_a1_a2 = ELEM(type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER);
 
   if (ELEM(type, UI_BTYPE_COLOR, UI_BTYPE_HSVCIRCLE, UI_BTYPE_HSVCUBE)) {
     BLI_assert(index == -1);
@@ -4675,6 +4664,11 @@ static uiBut *ui_def_but_rna(uiBlock *block,
     UI_but_number_step_size_set(but, a1);
     UI_but_number_precision_set(but, a2);
   }
+  else if (but->type == UI_BTYPE_NUM_SLIDER) {
+    /* Set default values, can be overridden later. */
+    UI_but_number_slider_step_size_set(but, a1);
+    UI_but_number_slider_precision_set(but, a2);
+  }
 
   but->rnapoin = *ptr;
   but->rnaprop = prop;
@@ -4724,6 +4718,10 @@ static uiBut *ui_def_but_rna(uiBlock *block,
   if ((proptype == PROP_FLOAT) && ui_but_is_unit(but)) {
     if (type == UI_BTYPE_NUM) {
       uiButNumber *number_but = (uiButNumber *)but;
+      number_but->step_size = ui_get_but_step_unit(but, number_but->step_size);
+    }
+    if (type == UI_BTYPE_NUM_SLIDER) {
+      uiButNumberSlider *number_but = (uiButNumberSlider *)but;
       number_but->step_size = ui_get_but_step_unit(but, number_but->step_size);
     }
     else {
@@ -4777,24 +4775,13 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
                                       int type,
                                       wmOperatorType *ot,
                                       wmOperatorCallContext opcontext,
-                                      const char *str,
+                                      const StringRef str,
                                       int x,
                                       int y,
                                       short width,
                                       short height,
                                       const char *tip)
 {
-  std::string operator_name;
-  if (!str) {
-    if (ot && ot->srna) {
-      operator_name = WM_operatortype_name(ot, nullptr);
-      str = operator_name.c_str();
-    }
-    else {
-      str = "";
-    }
-  }
-
   if ((!tip || tip[0] == '\0') && ot && ot->srna && !ot->get_description) {
     tip = RNA_struct_ui_description(ot->srna);
   }
@@ -4804,9 +4791,8 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
   but->opcontext = opcontext;
   but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
 
-  const bool has_label = str && str[0];
   /* Enable quick tooltip label if this is a tool button without a label. */
-  if (!has_label && !ui_block_is_popover(block) && UI_but_is_tool(but)) {
+  if (str.is_empty() && !ui_block_is_popover(block) && UI_but_is_tool(but)) {
     UI_but_drawflag_enable(but, UI_BUT_HAS_TOOLTIP_LABEL);
   }
 
@@ -4820,7 +4806,7 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
 uiBut *uiDefBut(uiBlock *block,
                 int type,
                 int retval,
-                const char *str,
+                const StringRef str,
                 int x,
                 int y,
                 short width,
@@ -4861,8 +4847,11 @@ uiBut *uiDefButImage(
 uiBut *uiDefButAlert(uiBlock *block, int icon, int x, int y, short width, short height)
 {
   ImBuf *ibuf = UI_icon_alert_imbuf_get((eAlertIcon)icon);
-  bTheme *btheme = UI_GetTheme();
-  return uiDefButImage(block, ibuf, x, y, width, height, btheme->tui.wcol_menu_back.text);
+  if (ibuf) {
+    bTheme *btheme = UI_GetTheme();
+    return uiDefButImage(block, ibuf, x, y, width, height, btheme->tui.wcol_menu_back.text);
+  }
+  return nullptr;
 }
 
 /**
@@ -5020,7 +5009,7 @@ static uiBut *uiDefButBit(uiBlock *block,
                           int type,
                           int bit,
                           int retval,
-                          const char *str,
+                          const StringRef str,
                           int x,
                           int y,
                           short width,
@@ -5054,7 +5043,7 @@ static uiBut *uiDefButBit(uiBlock *block,
 uiBut *uiDefButF(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5062,8 +5051,6 @@ uiBut *uiDefButF(uiBlock *block,
                  float *poin,
                  float min,
                  float max,
-                 float a1,
-                 float a2,
                  const char *tip)
 {
   return uiDefBut(block,
@@ -5077,14 +5064,14 @@ uiBut *uiDefButF(uiBlock *block,
                   (void *)poin,
                   min,
                   max,
-                  a1,
-                  a2,
+                  0.0f,
+                  0.0f,
                   tip);
 }
 uiBut *uiDefButI(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5115,7 +5102,7 @@ uiBut *uiDefButBitI(uiBlock *block,
                     int type,
                     int bit,
                     int retval,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -5146,7 +5133,7 @@ uiBut *uiDefButBitI(uiBlock *block,
 uiBut *uiDefButS(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5177,7 +5164,7 @@ uiBut *uiDefButBitS(uiBlock *block,
                     int type,
                     int bit,
                     int retval,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -5208,7 +5195,7 @@ uiBut *uiDefButBitS(uiBlock *block,
 uiBut *uiDefButC(uiBlock *block,
                  int type,
                  int retval,
-                 const char *str,
+                 const StringRef str,
                  int x,
                  int y,
                  short width,
@@ -5239,7 +5226,7 @@ uiBut *uiDefButBitC(uiBlock *block,
                     int type,
                     int bit,
                     int retval,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -5316,7 +5303,7 @@ uiBut *uiDefButO_ptr(uiBlock *block,
                      int type,
                      wmOperatorType *ot,
                      wmOperatorCallContext opcontext,
-                     const char *str,
+                     const StringRef str,
                      int x,
                      int y,
                      short width,
@@ -5636,7 +5623,7 @@ uiBut *uiDefIconTextBut(uiBlock *block,
                         int type,
                         int retval,
                         int icon,
-                        const char *str,
+                        const StringRef str,
                         int x,
                         int y,
                         short width,
@@ -5658,7 +5645,7 @@ uiBut *uiDefIconTextButF(uiBlock *block,
                          int type,
                          int retval,
                          int icon,
-                         const char *str,
+                         const StringRef str,
                          int x,
                          int y,
                          short width,
@@ -5690,7 +5677,7 @@ uiBut *uiDefIconTextButI(uiBlock *block,
                          int type,
                          int retval,
                          int icon,
-                         const char *str,
+                         const StringRef str,
                          int x,
                          int y,
                          short width,
@@ -5771,7 +5758,7 @@ uiBut *uiDefIconTextButO_ptr(uiBlock *block,
                              wmOperatorType *ot,
                              wmOperatorCallContext opcontext,
                              int icon,
-                             const char *str,
+                             const StringRef str,
                              int x,
                              int y,
                              short width,
@@ -5788,7 +5775,7 @@ uiBut *uiDefIconTextButO(uiBlock *block,
                          const char *opname,
                          wmOperatorCallContext opcontext,
                          int icon,
-                         const char *str,
+                         const StringRef str,
                          int x,
                          int y,
                          short width,
@@ -5796,7 +5783,7 @@ uiBut *uiDefIconTextButO(uiBlock *block,
                          const char *tip)
 {
   wmOperatorType *ot = WM_operatortype_find(opname, false);
-  if (str && str[0] == '\0') {
+  if (str.is_empty()) {
     return uiDefIconButO_ptr(block, type, ot, opcontext, icon, x, y, width, height, tip);
   }
   return uiDefIconTextButO_ptr(block, type, ot, opcontext, icon, str, x, y, width, height, tip);
@@ -5932,7 +5919,7 @@ int UI_but_return_value_get(uiBut *but)
   return but->retval;
 }
 
-PointerRNA *UI_but_operator_ptr_get(uiBut *but)
+PointerRNA *UI_but_operator_ptr_ensure(uiBut *but)
 {
   if (but->optype && !but->opptr) {
     but->opptr = MEM_cnew<PointerRNA>(__func__);
@@ -6097,7 +6084,7 @@ void UI_but_func_pushed_state_set(uiBut *but, std::function<bool(const uiBut &)>
 uiBut *uiDefBlockBut(uiBlock *block,
                      uiBlockCreateFunc func,
                      void *arg,
-                     const char *str,
+                     const StringRef str,
                      int x,
                      int y,
                      short width,
@@ -6114,7 +6101,7 @@ uiBut *uiDefBlockBut(uiBlock *block,
 uiBut *uiDefBlockButN(uiBlock *block,
                       uiBlockCreateFunc func,
                       void *argN,
-                      const char *str,
+                      const StringRef str,
                       int x,
                       int y,
                       short width,
@@ -6132,27 +6119,10 @@ uiBut *uiDefBlockButN(uiBlock *block,
   return but;
 }
 
-uiBut *uiDefPulldownBut(uiBlock *block,
-                        uiBlockCreateFunc func,
-                        void *arg,
-                        const char *str,
-                        int x,
-                        int y,
-                        short width,
-                        short height,
-                        const char *tip)
-{
-  uiBut *but = ui_def_but(
-      block, UI_BTYPE_PULLDOWN, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
-  but->block_create_func = func;
-  ui_but_update(but);
-  return but;
-}
-
 uiBut *uiDefMenuBut(uiBlock *block,
                     uiMenuCreateFunc func,
                     void *arg,
-                    const char *str,
+                    const StringRef str,
                     int x,
                     int y,
                     short width,
@@ -6170,7 +6140,7 @@ uiBut *uiDefIconTextMenuBut(uiBlock *block,
                             uiMenuCreateFunc func,
                             void *arg,
                             int icon,
-                            const char *str,
+                            const StringRef str,
                             int x,
                             int y,
                             short width,
@@ -6208,34 +6178,6 @@ uiBut *uiDefIconMenuBut(uiBlock *block,
   but->drawflag &= ~UI_BUT_ICON_LEFT;
 
   but->menu_create_func = func;
-  ui_but_update(but);
-
-  return but;
-}
-
-uiBut *uiDefIconTextBlockBut(uiBlock *block,
-                             uiBlockCreateFunc func,
-                             void *arg,
-                             int icon,
-                             const char *str,
-                             int x,
-                             int y,
-                             short width,
-                             short height,
-                             const char *tip)
-{
-  uiBut *but = ui_def_but(
-      block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, arg, 0.0, 0.0, 0.0, 0.0, tip);
-
-  /* XXX temp, old menu calls pass on icon arrow, which is now UI_BUT_ICON_SUBMENU flag */
-  if (icon != ICON_RIGHTARROW_THIN) {
-    ui_def_but_icon(but, icon, 0);
-    but->drawflag |= UI_BUT_ICON_LEFT;
-  }
-  but->flag |= UI_HAS_ICON;
-  ui_but_submenu_enable(block, but);
-
-  but->block_create_func = func;
   ui_but_update(but);
 
   return but;
@@ -6417,7 +6359,7 @@ static void operator_enum_search_update_fn(
   }
   else {
     /* Will create it if needed! */
-    PointerRNA *ptr = UI_but_operator_ptr_get(static_cast<uiBut *>(but));
+    PointerRNA *ptr = UI_but_operator_ptr_ensure(static_cast<uiBut *>(but));
 
     bool do_free;
     const EnumPropertyItem *all_items;
@@ -6449,7 +6391,7 @@ static void operator_enum_search_exec_fn(bContext * /*C*/, void *but, void *arg2
 {
   wmOperatorType *ot = ((uiBut *)but)->optype;
   /* Will create it if needed! */
-  PointerRNA *opptr = UI_but_operator_ptr_get(static_cast<uiBut *>(but));
+  PointerRNA *opptr = UI_but_operator_ptr_ensure(static_cast<uiBut *>(but));
 
   if (ot) {
     if (ot->prop) {
@@ -6494,7 +6436,7 @@ uiBut *uiDefSearchButO_ptr(uiBlock *block,
   but->opcontext = WM_OP_EXEC_DEFAULT;
 
   if (properties) {
-    PointerRNA *ptr = UI_but_operator_ptr_get(but);
+    PointerRNA *ptr = UI_but_operator_ptr_ensure(but);
     /* Copy id-properties. */
     ptr->data = IDP_CopyProperty(properties);
   }
@@ -6538,6 +6480,25 @@ void UI_but_number_precision_set(uiBut *but, float precision)
   BLI_assert(precision > -2);
 }
 
+void UI_but_number_slider_step_size_set(uiBut *but, float step_size)
+{
+  uiButNumberSlider *but_number = (uiButNumberSlider *)but;
+  BLI_assert(but->type == UI_BTYPE_NUM_SLIDER);
+
+  but_number->step_size = step_size;
+  BLI_assert(step_size > 0);
+}
+
+void UI_but_number_slider_precision_set(uiBut *but, float precision)
+{
+  uiButNumberSlider *but_number = (uiButNumberSlider *)but;
+  BLI_assert(but->type == UI_BTYPE_NUM_SLIDER);
+
+  but_number->precision = precision;
+  /* -1 is a valid value, UI code figures out an appropriate precision then. */
+  BLI_assert(precision > -2);
+}
+
 void UI_but_focus_on_enter_event(wmWindow *win, uiBut *but)
 {
   wmEvent event;
@@ -6573,7 +6534,7 @@ std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C, uiBut &but
     wmOperatorType *ot = but.optype;
 
     /* So the context is passed to `itemf` functions. */
-    PointerRNA *opptr = UI_but_operator_ptr_get(&but);
+    PointerRNA *opptr = UI_but_operator_ptr_ensure(&but);
     WM_operator_properties_sanitize(opptr, false);
 
     /* If the default property of the operator is an enum and is set, fetch the tooltip of the
@@ -6658,7 +6619,7 @@ std::string UI_but_string_get_rna_label(uiBut &but)
     return RNA_property_ui_name(but.rnaprop);
   }
   if (but.optype) {
-    PointerRNA *opptr = UI_but_operator_ptr_get(&but);
+    PointerRNA *opptr = UI_but_operator_ptr_ensure(&but);
     return WM_operatortype_name(but.optype, opptr).c_str();
   }
   if (ELEM(but.type, UI_BTYPE_MENU, UI_BTYPE_PULLDOWN, UI_BTYPE_POPOVER)) {
@@ -6713,7 +6674,7 @@ std::string UI_but_string_get_rna_tooltip(bContext &C, uiBut &but)
     }
   }
   else if (but.optype) {
-    PointerRNA *opptr = UI_but_operator_ptr_get(&but);
+    PointerRNA *opptr = UI_but_operator_ptr_ensure(&but);
     const bContextStore *previous_ctx = CTX_store_get(&C);
     CTX_store_set(&C, but.context);
     std::string tmp = WM_operatortype_description(&C, but.optype, opptr).c_str();
