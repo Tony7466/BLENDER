@@ -15,7 +15,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "BLI_hash_md5.h" /* own include */
+#include "BLI_hash_md5.hh" /* own include */
 
 #if defined HAVE_LIMITS_H || defined _LIBC
 #  include <limits.h>
@@ -84,7 +84,7 @@ static const unsigned char fillbuf[64] = {0x80, 0 /* , 0, 0, ... */};
  * Initialize structure containing state of computation.
  * (RFC 1321, 3.3: Step 3)
  */
-static void md5_init_ctx(struct md5_ctx *ctx)
+static void md5_init_ctx(md5_ctx *ctx)
 {
   ctx->A = 0x67452301;
   ctx->B = 0xefcdab89;
@@ -97,7 +97,7 @@ static void md5_init_ctx(struct md5_ctx *ctx)
  * this function updates the 'ctx' context for the next 'len' bytes starting at 'buffer'.
  * It is necessary that 'len' is a multiple of 64!!!
  */
-static void md5_process_block(const void *buffer, size_t len, struct md5_ctx *ctx)
+static void md5_process_block(const void *buffer, size_t len, md5_ctx *ctx)
 {
 /* These are the four functions used in the four steps of the MD5 algorithm and defined in the
  * RFC 1321. The first function is a little bit optimized
@@ -114,7 +114,7 @@ static void md5_process_block(const void *buffer, size_t len, struct md5_ctx *ct
 #define CYCLIC(w, s) (w = (w << s) | (w >> (32 - s)))
 
   md5_uint32 correct_words[16];
-  const md5_uint32 *words = buffer;
+  const md5_uint32 *words = static_cast<const md5_uint32 *>(buffer);
   size_t nwords = len / sizeof(md5_uint32);
   const md5_uint32 *endp = words + nwords;
   md5_uint32 A = ctx->A;
@@ -257,9 +257,9 @@ static void md5_process_block(const void *buffer, size_t len, struct md5_ctx *ct
  * The result is always in little endian byte order,
  * so that a byte-wise output yields to the wanted ASCII representation of the message digest.
  */
-static void *md5_read_ctx(const struct md5_ctx *ctx, void *resbuf)
+static void *md5_read_ctx(const md5_ctx *ctx, void *resbuf)
 {
-  md5_uint32 *digest = resbuf;
+  md5_uint32 *digest = static_cast<md5_uint32 *>(resbuf);
   digest[0] = SWAP(ctx->A);
   digest[1] = SWAP(ctx->B);
   digest[2] = SWAP(ctx->C);
@@ -268,12 +268,13 @@ static void *md5_read_ctx(const struct md5_ctx *ctx, void *resbuf)
   return resbuf;
 }
 
-/* Top level public functions. */
+/*
+Top level public functions. */
 
 int BLI_hash_md5_stream(FILE *stream, void *resblock)
 {
 #define BLOCKSIZE 4096 /* IMPORTANT: must be a multiple of 64. */
-  struct md5_ctx ctx;
+  md5_ctx ctx;
   md5_uint32 len[2];
   char buffer[BLOCKSIZE + 72];
   size_t pad, sum;
@@ -345,7 +346,7 @@ int BLI_hash_md5_stream(FILE *stream, void *resblock)
 
 void *BLI_hash_md5_buffer(const char *buffer, size_t len, void *resblock)
 {
-  struct md5_ctx ctx;
+  md5_ctx ctx;
   char restbuf[64 + 72];
   size_t blocks = len & ~63;
   size_t pad, rest;
