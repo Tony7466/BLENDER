@@ -120,14 +120,6 @@ void ED_operatormacros_grease_pencil()
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
   WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_subdivide");
   WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_stroke_smooth");
-
-  /* Add a new layer and move selected strokes */
-  ot = WM_operatortype_append_macro("GREASE_PENCIL_OT_move_to_new_layer",
-                                    "Move strokes to new Layer",
-                                    "Move selected strokes to a new Layer",
-                                    OPTYPE_UNDO | OPTYPE_REGISTER);
-  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_layer_add");
-  WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_move_to_layer");
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)

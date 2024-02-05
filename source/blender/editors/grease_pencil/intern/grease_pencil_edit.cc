@@ -1707,20 +1707,27 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  Layer *layer_dst = nullptr;
 
   int target_layer_name_length;
-  char *target_layer_name = RNA_string_get_alloc(
-      op->ptr, "target_layer_name", nullptr, 0, &target_layer_name_length);
+  char *target_layer_name = nullptr;
+  BLI_SCOPED_DEFER([&] { MEM_SAFE_FREE(target_layer_name); });
+  const bool add_new_layer = RNA_boolean_get(op->ptr, "add_new_layer");
+  if (add_new_layer) {
+    Layer &new_layer = grease_pencil.add_layer("Layer");
+    target_layer_name = BLI_strdup_null(new_layer.name().c_str());
+  }
+  else {
+    target_layer_name = RNA_string_get_alloc(
+        op->ptr, "target_layer_name", nullptr, 0, &target_layer_name_length);
+  }
 
   TreeNode *target_node = grease_pencil.find_node_by_name(target_layer_name);
-  layer_dst = &target_node->as_layer();
-
-  if (layer_dst == nullptr) {
+  if (target_node == nullptr) {
     BKE_reportf(op->reports, RPT_ERROR, "There is no layer '%s'", target_layer_name);
     return OPERATOR_CANCELLED;
   }
 
+  Layer *layer_dst = &target_node->as_layer();
   if (layer_dst->is_locked()) {
     BKE_reportf(op->reports, RPT_ERROR, "'%s' Layer is locked", target_layer_name);
     return OPERATOR_CANCELLED;
@@ -1779,6 +1786,7 @@ static int grease_pencil_move_to_layer_exec(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
 
   /* identifiers. */
   ot->name = "Move to Layer";
@@ -1792,8 +1800,11 @@ static void GREASE_PENCIL_OT_move_to_layer(wmOperatorType *ot)
   /* flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  PropertyRNA *prop = RNA_def_string(
+  prop = RNA_def_string(
       ot->srna, "target_layer_name", "Layer", INT16_MAX, "Name", "Target Grease Pencil Layer");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(
+      ot->srna, "add_new_layer", false, "New Layer", "Move selection to a new layer");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
