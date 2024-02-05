@@ -92,9 +92,9 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void deform_drawing(const ModifierData &md,
-                           const Object &ob,
-                           bke::greasepencil::Drawing &drawing)
+static void write_weights_for_drawing(const ModifierData &md,
+                                      const Object &ob,
+                                      bke::greasepencil::Drawing &drawing)
 {
   auto &mmd = reinterpret_cast<const GPWeightAngleModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
@@ -109,21 +109,22 @@ static void deform_drawing(const ModifierData &md,
   }
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float> target = attributes.lookup_or_add_for_write_span<float>(mmd.target_vgname,bke::AttrDomain::Point);
-  if (target.span.is_empty()) {
+  bke::SpanAttributeWriter<float> dst_weights = attributes.lookup_or_add_for_write_span<float>(
+      mmd.target_vgname, bke::AttrDomain::Point);
+  if (dst_weights.span.is_empty()) {
     return;
   }
   const VArray<float> input_weights = *attributes.lookup_or_default<float>(
       mmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
 
   /* Use default Z up. */
-  float3 vec_axis(0.0f, 0.0f, 1.0f);
+  const float3 z_up(0.0f, 0.0f, 1.0f);
   float3 axis(0.0f);
   axis[mmd.axis] = 1.0f;
   float3 vec_ref;
   /* Apply modifier rotation (sub 90 degrees for Y axis due Z-Up vector). */
   const float rot_angle = mmd.angle - ((mmd.axis == 1) ? M_PI_2 : 0.0f);
-  rotate_normalized_v3_v3v3fl(vec_ref, vec_axis, axis, rot_angle);
+  rotate_normalized_v3_v3v3fl(vec_ref, z_up, axis, rot_angle);
 
   const float3x3 obmat3x3(float4x4(ob.object_to_world));
 
@@ -136,32 +137,32 @@ static void deform_drawing(const ModifierData &md,
   const Span<float3> positions = curves.positions();
 
   strokes.foreach_index(GrainSize(512), [&](const int stroke) {
-    IndexRange points = points_by_curve[stroke];
+    const IndexRange points = points_by_curve[stroke];
     if (points.size() == 1) {
-      target.span[points.start()] = 1.0f;
+      dst_weights.span[points.start()] = 1.0f;
       return;
     }
     for (const int point : points.drop_front(1)) {
-      float3 p1 = math::transform_point(obmat3x3, positions[point]);
-      float3 p2 = math::transform_point(obmat3x3, positions[point - 1]);
-      float3 vec = p2 - p1;
+      const float3 p1 = math::transform_point(obmat3x3, positions[point]);
+      const float3 p2 = math::transform_point(obmat3x3, positions[point - 1]);
+      const float3 vec = p2 - p1;
       const float angle = angle_on_axis_v3v3_v3(vec_ref, vec, axis);
-      float weight = target.span[point] = 1.0f - sin(angle);
+      float weight = 1.0f - math::sin(angle);
 
       if (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_ANGLE_INVERT_OUTPUT) {
         weight = 1.0f - weight;
       }
 
-      target.span[point] = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_ANGLE_MULTIPLY_DATA) ?
-                               target.span[point] * weight :
-                               weight;
-      target.span[point] = math::clamp(target.span[point], mmd.min_weight, 1.0f);
+      dst_weights.span[point] = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_ANGLE_MULTIPLY_DATA) ?
+                                    dst_weights.span[point] * weight :
+                                    weight;
+      dst_weights.span[point] = math::clamp(dst_weights.span[point], mmd.min_weight, 1.0f);
     }
     /* First point has the same weight as the second one. */
-    target.span[0] = target.span[1];
+    dst_weights.span[0] = dst_weights.span[1];
   });
 
-  target.finish();
+  dst_weights.finish();
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -183,7 +184,7 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md, *ctx->object, *drawing);
+    write_weights_for_drawing(*md, *ctx->object, *drawing);
   });
 }
 
