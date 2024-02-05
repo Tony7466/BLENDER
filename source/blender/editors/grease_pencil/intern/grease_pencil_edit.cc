@@ -1971,7 +1971,7 @@ static bool grease_pencil_separate_layer(bContext &C,
         grease_pencil_src.layers().first_index(layer_src), grease_pencil_src, grease_pencil_dst);
 
     /* Iterate through all the drawings at current frame. */
-    const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_by_layer(
+    const Array<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_from_layer(
         scene, grease_pencil_src, *layer_src);
     for (const MutableDrawingInfo &info : drawings_src) {
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();

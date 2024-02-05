@@ -171,7 +171,7 @@ struct MutableDrawingInfo {
 };
 Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                      GreasePencil &grease_pencil);
-Array<MutableDrawingInfo> retrieve_editable_drawings_by_layer(
+Array<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
 Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
                                              const GreasePencil &grease_pencil);

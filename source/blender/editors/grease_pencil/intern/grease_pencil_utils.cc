@@ -224,7 +224,7 @@ Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
   return editable_drawings.as_span();
 }
 
-Array<MutableDrawingInfo> retrieve_editable_drawings_by_layer(
+Array<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene,
     GreasePencil &grease_pencil,
     const blender::bke::greasepencil::Layer &layer)
