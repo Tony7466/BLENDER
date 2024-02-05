@@ -623,8 +623,12 @@ typedef struct bUserExtensionRepo {
    */
   char module[48];
 
-  char dirpath[1024];     /* FILE_MAX */
-  char remote_path[1024]; /* FILE_MAX */
+  /**
+   * The "local" directory where extensions are stored.
+   * When unset, use `{BLENDER_RESOURCE_PATH_USER}/extensions/{bUserExtensionRepo::module}`.
+   */
+  char custom_dirpath[1024]; /* FILE_MAX */
+  char remote_path[1024];    /* FILE_MAX */
 
   int flag;
   char _pad0[4];
@@ -634,6 +638,8 @@ typedef enum eUserExtensionRepo_Flag {
   /** Maintain disk cache. */
   USER_EXTENSION_REPO_FLAG_NO_CACHE = 1 << 0,
   USER_EXTENSION_REPO_FLAG_DISABLED = 1 << 1,
+  USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
+  USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH = 1 << 3,
 } eUserExtensionRepo_Flag;
 
 typedef struct SolidLight {
@@ -1295,7 +1301,7 @@ typedef enum eKeying_Flag {
   KEYING_FLAG_XYZ2RGB = (1 << 3),
   KEYING_FLAG_CYCLEAWARE = (1 << 8),
 
-  /* Autokey options. */
+  /* Auto-key options. */
   AUTOKEY_FLAG_INSERTAVAILABLE = (1 << 0),
   AUTOKEY_FLAG_INSERTNEEDED = (1 << 1),
   AUTOKEY_FLAG_ONLYKEYINGSET = (1 << 6),
