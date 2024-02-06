@@ -575,7 +575,6 @@ GreasePencil *GeometrySet::get_grease_pencil_for_write()
 }
 
 bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> component_types,
-                                    const bool include_instances,
                                     const int current_depth,
                                     const int depth_target,
                                     const VArray<int> instance_depth,
@@ -598,7 +597,7 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
   bool is_child_has_component = true;
 
   // Process instances if required and instances are available.
-  if (include_instances && this->has_instances()) {
+  if (this->has_instances()) {
     is_child_has_component = false;
 
     // Iterate over instances based on the selection index mask.
@@ -620,7 +619,6 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
         bke::GeometrySet instance_geometry_set = reference.geometry_set();
         if (current_depth != depth_target_tmp) {
           is_child_has_component = instance_geometry_set.attribute_foreach(component_types,
-                                                                           include_instances,
                                                                            current_depth + 1,
                                                                            depth_target_tmp,
                                                                            instance_depth,
@@ -776,7 +774,6 @@ void GeometrySet::gather_attributes_for_propagation(
 void GeometrySet::gather_attributes_for_propagation(
     const Span<GeometryComponent::Type> component_types,
     const GeometryComponent::Type dst_component_type,
-    bool include_instances,
     const VArray<int> instance_depth,
     const IndexMask selection,
     const AnonymousAttributePropagationInfo &propagation_info,
@@ -787,7 +784,6 @@ void GeometrySet::gather_attributes_for_propagation(
   const GeometryComponentPtr dummy_component = GeometryComponent::create(dst_component_type);
   this->attribute_foreach(
       component_types,
-      include_instances,
       0,
       -1,
       instance_depth,

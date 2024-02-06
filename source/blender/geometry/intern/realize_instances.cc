@@ -763,7 +763,6 @@ static OrderedAttributes gather_generic_instance_attributes_to_propagate(
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
                                                     bke::GeometryComponent::Type::Instance,
-                                                    true,
                                                     options.depths,
                                                     options.selection,
                                                     options.propagation_info,
@@ -793,7 +792,6 @@ static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
                                                     bke::GeometryComponent::Type::PointCloud,
-                                                    true,
                                                     options.depths,
                                                     options.selection,
                                                     options.propagation_info,
@@ -1081,7 +1079,6 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
                                                     bke::GeometryComponent::Type::Mesh,
-                                                    true,
                                                     options.depths,
                                                     options.selection,
                                                     options.propagation_info,
@@ -1445,7 +1442,6 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
                                                     bke::GeometryComponent::Type::Curve,
-                                                    true,
                                                     options.depths,
                                                     options.selection,
                                                     options.propagation_info,

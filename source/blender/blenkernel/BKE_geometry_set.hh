@@ -237,9 +237,8 @@ struct GeometrySet {
                                                     const GeometryComponent &component)>;
 
   bool attribute_foreach(Span<GeometryComponent::Type> component_types,
-                         bool include_instances,
-                         const int current_depth,
-                         const int depth_target,
+                         int current_depth,
+                         int depth_target,
                          const VArray<int> instance_depth,
                          const IndexMask selection,
                          AttributeForeachCallback callback) const;
@@ -261,7 +260,6 @@ struct GeometrySet {
 
   void gather_attributes_for_propagation(Span<GeometryComponent::Type> component_types,
                                          GeometryComponent::Type dst_component_type,
-                                         bool include_instances,
                                          const VArray<int> instance_depth,
                                          const IndexMask selection,
                                          const AnonymousAttributePropagationInfo &propagation_info,
