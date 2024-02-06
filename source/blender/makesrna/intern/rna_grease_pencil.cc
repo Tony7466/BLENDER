@@ -119,7 +119,9 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
   grease_pencil->rename_node(layer->wrap().as_node(), value);
 }
 
-static void rna_grease_pencil_transform_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
+static void rna_grease_pencil_transform_update(Main * /*bmain*/,
+                                               Scene * /*scene*/,
+                                               PointerRNA *ptr)
 {
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
   layer->wrap().runtime->local_transform_.tag_dirty();
