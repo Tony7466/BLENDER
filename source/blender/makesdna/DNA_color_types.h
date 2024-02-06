@@ -180,8 +180,8 @@ enum {
 
 /** #Scopes.vecscope_mode */
 enum {
- SCOPES_VECSCOPE_RGB = 0,
- SCOPES_VECSCOPE_LUMA = 1,
+  SCOPES_VECSCOPE_RGB = 0,
+  SCOPES_VECSCOPE_LUMA = 1,
 };
 
 typedef struct ColorManagedViewSettings {

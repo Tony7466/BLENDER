@@ -610,7 +610,6 @@ static void waveform_draw_one(float *waveform, int waveform_num, const float col
   GPU_batch_discard(batch);
 }
 
-
 static void waveform_draw_rgb(float *waveform, int waveform_num, float *col)
 {
   GPUVertFormat format = {0};
@@ -648,7 +647,6 @@ static void circle_draw_rgb(float *points, int tot_points, float *col, GPUPrimTy
   GPU_batch_draw(batch);
   GPU_batch_discard(batch);
 }
-
 
 void ui_draw_but_WAVEFORM(ARegion * /*region*/,
                           uiBut *but,
@@ -965,12 +963,12 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
   Scopes *scopes = (Scopes *)but->poin;
 
   const float colors[6][3] = {
-        {0.75, 0.0, 0.0},   /* Red */
-        {0.75, 0.75, 0.0},  /* Yellow */
-        {0.0, 0.75, 0.0},   /* Green */
-        {0.0, 0.75, 0.75},  /* Cyan */
-        {0.0, 0.0, 0.75},   /* Blue */
-        {0.75, 0.0, 0.75},  /* Magenta */
+      {0.75, 0.0, 0.0},  /* Red */
+      {0.75, 0.75, 0.0}, /* Yellow */
+      {0.0, 0.75, 0.0},  /* Green */
+      {0.0, 0.75, 0.75}, /* Cyan */
+      {0.0, 0.0, 0.75},  /* Blue */
+      {0.75, 0.0, 0.75}, /* Magenta */
   };
 
   const char color_names[] = {'R', 'Y', 'G', 'C', 'B', 'M'};
@@ -1055,7 +1053,8 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
     }
 
     GPU_blend(GPU_BLEND_ALPHA);
-    circle_draw_rgb(circle_fill_points, tot_points+2, circle_fill_vertex_colors, GPU_PRIM_TRI_FAN);
+    circle_draw_rgb(
+        circle_fill_points, tot_points + 2, circle_fill_vertex_colors, GPU_PRIM_TRI_FAN);
   }
   /* draw filled Gray circle for background, only for RGB mode */
   else if (scopes->vecscope_mode == SCOPES_VECSCOPE_RGB) {
@@ -1121,7 +1120,6 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
     }
     circle_draw_rgb(inner_circle_points, tot_points, inner_circle_colors, GPU_PRIM_LINE_LOOP);
   }
-
 
   /* draw grid elements */
   /* cross */

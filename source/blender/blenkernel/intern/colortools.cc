@@ -1365,8 +1365,6 @@ static void save_sample_line(
   scopes->vecscope_rgb[color_idx + 2] = rgb[2];
   scopes->vecscope_rgb[color_idx + 3] = scopes->vecscope_alpha;
 
-
-
   /* Waveform. */
   switch (scopes->wavefrm_mode) {
     case SCOPES_WAVEFRM_RGB:
