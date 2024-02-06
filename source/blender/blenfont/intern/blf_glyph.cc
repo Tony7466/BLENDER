@@ -74,7 +74,7 @@ static float from_16dot16(FT_Fixed value)
 /** \name Glyph Cache List
  * \{ */
 
-GlyphCacheListBLF::GlyphCacheListBLF(FontBLF *font) : list{nullptr, nullptr}, font(font)
+GlyphCacheListBLF::GlyphCacheListBLF(FontBLF *font) : list{}, font(font)
 {
   BLI_mutex_init(&glyph_cache_mutex);
 };
@@ -91,9 +91,9 @@ GlyphCacheBLF *GlyphCacheListBLF::acquire()
 
   GlyphCacheBLF *gc = nullptr;
 
-  LISTBASE_FOREACH (GlyphCacheBLF *, cache_entry, &list) {
-    if (cache_entry->matches(font)) {
-      gc = cache_entry;
+  for (auto &entry : list) {
+    if (entry->matches(font)) {
+      gc = entry;
       break;
     }
   }
@@ -101,7 +101,7 @@ GlyphCacheBLF *GlyphCacheListBLF::acquire()
   if (!gc) {
     gc = new GlyphCacheBLF();
     gc->init(font);
-    BLI_addhead(&list, gc);
+    list.push_back(gc);
   }
 
   return gc;
@@ -115,9 +115,10 @@ void GlyphCacheListBLF::release()
 void GlyphCacheListBLF::clear()
 {
   BLI_mutex_lock(&glyph_cache_mutex);
-  while (GlyphCacheBLF *gc = static_cast<GlyphCacheBLF *>(BLI_pophead(&list))) {
-    delete gc;
+  for (auto &entry : list) {
+    delete entry;
   }
+  list.clear();
   BLI_mutex_unlock(&glyph_cache_mutex);
 }
 

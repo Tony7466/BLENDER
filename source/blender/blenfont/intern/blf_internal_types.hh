@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "GPU_texture.h"
 #include "GPU_vertex_buffer.h"
 
@@ -110,9 +112,9 @@ class GlyphCacheListBLF {
  private:
   /**
    * List of glyph caches (#GlyphCacheBLF) for this font for size, DPI, bold, italic.
-   * Use GlyphCacheBLF::cache_acquire(font) and GlyphCacheBLF::cache_release(font) to access cache!
+   * Use font->cache->acquire() and font->cache->release() to access cache!
    */
-  ListBase list;
+  std::vector<GlyphCacheBLF *> list;
 
   FontBLF *font;
 
