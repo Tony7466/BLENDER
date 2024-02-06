@@ -1210,7 +1210,7 @@ int WM_operator_confirm_message_ex(bContext *C,
 int WM_operator_confirm_message(bContext *C, wmOperator *op, const char *message)
 {
   return WM_operator_confirm_message_ex(
-      C, op, IFACE_("OK?"), ICON_QUESTION, message, WM_OP_EXEC_REGION_WIN);
+      C, op, IFACE_("Okay?"), ICON_QUESTION, message, WM_OP_EXEC_REGION_WIN);
 }
 
 int WM_operator_confirm(bContext *C, wmOperator *op, const wmEvent * /*event*/)
@@ -1704,7 +1704,7 @@ int WM_operator_confirm_ex(bContext *C,
   data->free_op = true;
   data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
   data->message = (message == nullptr) ? std::string() : message;
-  data->confirm_text = (confirm_text == nullptr) ? IFACE_("OK") : confirm_text;
+  data->confirm_text = (confirm_text == nullptr) ? IFACE_("Okay") : confirm_text;
   data->icon = eAlertIcon(icon);
   data->size = (message == nullptr) ? WM_POPUP_SIZE_SMALL : WM_POPUP_SIZE_LARGE;
   data->position = (message == nullptr) ? WM_POPUP_POSITION_MOUSE : WM_POPUP_POSITION_CENTER;
@@ -1795,7 +1795,7 @@ int WM_operator_props_dialog_popup(
                     UI_DEFAULT_TEXT_POINTS);
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
   data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
-  data->confirm_text = (confirm_text == nullptr) ? IFACE_("OK") : confirm_text;
+  data->confirm_text = (confirm_text == nullptr) ? IFACE_("Okay") : confirm_text;
   data->icon = ALERT_ICON_NONE;
   data->size = WM_POPUP_SIZE_SMALL;
   data->position = WM_POPUP_POSITION_MOUSE;
