@@ -183,7 +183,7 @@ url_manual_mapping = (
     ("bpy.types.cyclesrendersettings.adaptive_min_samples*", "render/cycles/render_settings/sampling.html#bpy-types-cyclesrendersettings-adaptive-min-samples"),
     ("bpy.types.cyclesrendersettings.debug_bvh_time_steps*", "render/cycles/render_settings/performance.html#bpy-types-cyclesrendersettings-debug-bvh-time-steps"),
     ("bpy.types.cyclesrendersettings.distance_cull_margin*", "render/cycles/render_settings/simplify.html#bpy-types-cyclesrendersettings-distance-cull-margin"),
-    ("bpy.types.cyclesrendersettings.motion_blur_position*", "render/cycles/render_settings/motion_blur.html#bpy-types-cyclesrendersettings-motion-blur-position"),
+    ("bpy.types.rendersettings.motion_blur_position*", "render/cycles/render_settings/motion_blur.html#bpy-types-rendersettings-motion-blur-position"),
     ("bpy.types.cyclesrendersettings.rolling_shutter_type*", "render/cycles/render_settings/motion_blur.html#bpy-types-cyclesrendersettings-rolling-shutter-type"),
     ("bpy.types.cyclesrendersettings.transmission_bounces*", "render/cycles/render_settings/light_paths.html#bpy-types-cyclesrendersettings-transmission-bounces"),
     ("bpy.types.cyclesworldsettings.sample_map_resolution*", "render/cycles/world_settings.html#bpy-types-cyclesworldsettings-sample-map-resolution"),
