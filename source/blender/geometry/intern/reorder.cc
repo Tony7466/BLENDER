@@ -199,11 +199,13 @@ static void reorder_curves_exec(const bke::CurvesGeometry &src_curves,
   dst_curves.tag_topology_changed();
 }
 
-static void reorder_instaces_exec(const bke::Instances &src_instances,
-                                  const Span<int> old_by_new_map,
-                                  bke::Instances &dst_instances,
-                                  const bke::AnonymousAttributePropagationInfo &propagation_info)
+static void copy_and_reorder_instaces(
+    const bke::Instances &src_instances,
+    const Span<int> old_by_new_map,
+    bke::Instances &dst_instances,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
+  dst_instances.resize(src_instances.instances_num());
   bke::gather_attributes(src_instances.attributes(),
                          bke::AttrDomain::Instance,
                          propagation_info,
@@ -298,8 +300,7 @@ bke::Instances *reorder_instaces(const bke::Instances &src_instances,
                                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   bke::Instances *dst_instances = new bke::Instances();
-  dst_instances->resize(src_instances.instances_num());
-  reorder_instaces_exec(src_instances, old_by_new_map, *dst_instances, propagation_info);
+  copy_and_reorder_instaces(src_instances, old_by_new_map, *dst_instances, propagation_info);
   return dst_instances;
 }
 
