@@ -58,8 +58,49 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
 
 struct ReflectionCube : public LightProbe {};
 
+struct ProbePlane : public LightProbe, ProbePlanarData {
+  /* Copy of object matrices. */
+  float4x4 plane_to_world;
+  float4x4 world_to_plane;
+  /* Offset to the clipping plane in the normal direction. */
+  float clipping_offset;
+  /* Index in the resource array. */
+  int resource_index;
+  /** Display a debug plane in the viewport. */
+  bool viewport_display = false;
+
+ public:
+  /**
+   * Update the ProbePlanarData part of the struct.
+   * `view` is the view we want to render this probe with.
+   */
+  void set_view(const draw::View &view, int layer_id);
+
+  /**
+   * Create the reflection clip plane equation that clips along the XY plane of the given
+   * transform. The `clip_offset` will push the clip plane a bit further to avoid missing pixels in
+   * reflections. The transform does not need to be normalized but is expected to be orthogonal.
+   * \note Only works after `set_view` was called.
+   */
+  float4 reflection_clip_plane_get()
+  {
+    return float4(-normal, math::dot(normal, plane_to_world.location()) - clipping_offset);
+  }
+
+ private:
+  /**
+   * Create the reflection matrix that reflect along the XY plane of the given transform.
+   * The transform does not need to be normalized but is expected to be orthogonal.
+   */
+  float4x4 reflection_matrix_get()
+  {
+    return plane_to_world * math::from_scale<float4x4>(float3(1, 1, -1)) * world_to_plane;
+  }
+};
+
 class LightProbeModule {
   friend class IrradianceCache;
+  friend class PlanarProbeModule;
 
  private:
   Instance &inst_;
@@ -67,10 +108,11 @@ class LightProbeModule {
   /** Light Probe map to detect deletion and store associated data. */
   Map<ObjectKey, IrradianceGrid> grid_map_;
   Map<ObjectKey, ReflectionCube> cube_map_;
-  /** True if a grid update was detected. It will trigger a bake if auto bake is enabled. */
+  Map<ObjectKey, ProbePlane> plane_map_;
+  /** True if a light-probe update was detected. */
   bool grid_update_;
-  /** True if a grid update was detected. It will trigger a bake if auto bake is enabled. */
   bool cube_update_;
+  bool plane_update_;
   /** True if the auto bake feature is enabled & available in this context. */
   bool auto_bake_enabled_;
 
@@ -80,12 +122,14 @@ class LightProbeModule {
 
   void begin_sync();
 
-  void sync_cube(ObjectHandle &handle);
-  void sync_grid(const Object *ob, ObjectHandle &handle);
-
   void sync_probe(const Object *ob, ObjectHandle &handle);
 
   void end_sync();
+
+ private:
+  void sync_cube(const Object *ob, ObjectHandle &handle);
+  void sync_grid(const Object *ob, ObjectHandle &handle);
+  void sync_plane(const Object *ob, ObjectHandle &handle);
 };
 
 }  // namespace blender::eevee

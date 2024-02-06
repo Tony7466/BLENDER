@@ -57,13 +57,31 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
   }
 }
 
-void LightProbeModule::sync_cube(ObjectHandle &handle)
+void LightProbeModule::sync_cube(const Object * /*ob*/, ObjectHandle &handle)
 {
   ReflectionCube &cube = cube_map_.lookup_or_add_default(handle.object_key);
   cube.used = true;
   if (handle.recalc != 0 || cube.initialized == false) {
     cube.initialized = true;
-    cube_update_ = true;
+    cube.updated = true;
+  }
+}
+
+void LightProbeModule::sync_plane(const Object *ob, ObjectHandle &handle)
+{
+  ProbePlane &plane = plane_map_.lookup_or_add_default(handle.object_key);
+  plane.used = true;
+  if (handle.recalc != 0 || plane.initialized == false) {
+    const ::LightProbe *light_probe = (::LightProbe *)ob->data;
+
+    plane.initialized = true;
+    plane.updated = true;
+    plane.plane_to_world = float4x4(ob->object_to_world);
+    plane.plane_to_world.z_axis() = math::normalize(plane.plane_to_world.z_axis()) *
+                                    light_probe->distinf;
+    plane.world_to_plane = math::invert(plane.plane_to_world);
+    plane.clipping_offset = light_probe->clipsta;
+    plane.viewport_display = (light_probe->flag & LIGHTPROBE_FLAG_SHOW_DATA) != 0;
   }
 }
 
@@ -72,10 +90,10 @@ void LightProbeModule::sync_probe(const Object *ob, ObjectHandle &handle)
   const ::LightProbe *lightprobe = static_cast<const ::LightProbe *>(ob->data);
   switch (lightprobe->type) {
     case LIGHTPROBE_TYPE_SPHERE:
-      sync_cube(handle);
+      sync_cube(ob, handle);
       return;
     case LIGHTPROBE_TYPE_PLANE:
-      /* TODO(fclem): Remove support? Add support? */
+      sync_plane(ob, handle);
       return;
     case LIGHTPROBE_TYPE_VOLUME:
       sync_grid(ob, handle);
@@ -86,70 +104,44 @@ void LightProbeModule::sync_probe(const Object *ob, ObjectHandle &handle)
 
 void LightProbeModule::end_sync()
 {
-  {
-    /* Check for deleted or updated grid. */
-    grid_update_ = false;
-    auto it_end = grid_map_.items().end();
-    for (auto it = grid_map_.items().begin(); it != it_end; ++it) {
-      IrradianceGrid &grid = (*it).value;
-      if (grid.updated) {
-        grid.updated = false;
-        grid_update_ = true;
-      }
-      if (!grid.used) {
-        inst_.irradiance_cache.bricks_free(grid.bricks);
-        grid_map_.remove(it);
-        grid_update_ = true;
-        continue;
-      }
-      /* Untag for next sync. */
-      grid.used = false;
+  /* Check for deleted or updated grid. */
+  grid_update_ = false;
+  grid_map_.remove_if([&](const Map<ObjectKey, IrradianceGrid>::MutableItem &item) {
+    IrradianceGrid &grid = item.value;
+    bool remove_grid = !grid.used;
+    if (grid.updated || remove_grid) {
+      grid_update_ = true;
     }
-  }
-  {
-    /* Check for deleted or updated cube. */
-    cube_update_ = false;
-    auto it_end = cube_map_.items().end();
-    for (auto it = cube_map_.items().begin(); it != it_end; ++it) {
-      ReflectionCube &cube = (*it).value;
-      if (cube.updated) {
-        cube.updated = false;
-        cube_update_ = true;
-      }
-      if (!cube.used) {
-        cube_map_.remove(it);
-        cube_update_ = true;
-        continue;
-      }
-      /* Untag for next sync. */
-      cube.used = false;
-    }
-  }
+    grid.updated = false;
+    grid.used = false;
+    return remove_grid;
+  });
 
-#if 0 /* TODO make this work with new per object light cache. */
-  /* If light-cache auto-update is enable we tag the relevant part
-   * of the cache to update and fire up a baking job. */
-  if (auto_bake_enabled_ && (grid_update_ || cube_update_)) {
-    Scene *original_scene = DEG_get_input_scene(inst_.depsgraph);
-    LightCache *light_cache = original_scene->eevee.light_cache_data;
-
-    if (light_cache != nullptr) {
-      if (grid_update_) {
-        light_cache->flag |= LIGHTCACHE_UPDATE_GRID;
-      }
-      /* TODO(fclem): Reflection Cube-map should capture albedo + normal and be
-       * relit at runtime. So no dependency like in the old system. */
-      if (cube_update_) {
-        light_cache->flag |= LIGHTCACHE_UPDATE_CUBE;
-      }
-      /* Tag the lightcache to auto update. */
-      light_cache->flag |= LIGHTCACHE_UPDATE_AUTO;
-      /* Use a notifier to trigger the operator after drawing. */
-      /* TODO(fclem): Avoid usage of global DRW. */
-      WM_event_add_notifier(DRW_context_state_get()->evil_C, NC_LIGHTPROBE, original_scene);
+  /* Check for deleted or updated cube. */
+  cube_update_ = false;
+  cube_map_.remove_if([&](const Map<ObjectKey, ReflectionCube>::MutableItem &item) {
+    ReflectionCube &cube = item.value;
+    bool remove_cube = !cube.used;
+    if (cube.updated || remove_cube) {
+      cube_update_ = true;
     }
-  }
-#endif
+    cube.updated = false;
+    cube.used = false;
+    return remove_cube;
+  });
+
+  /* Check for deleted or updated plane. */
+  plane_update_ = false;
+  plane_map_.remove_if([&](const Map<ObjectKey, ProbePlane>::MutableItem &item) {
+    ProbePlane &plane = item.value;
+    bool remove_plane = !plane.used;
+    if (plane.updated || remove_plane) {
+      plane_update_ = true;
+    }
+    plane.updated = false;
+    plane.used = false;
+    return remove_plane;
+  });
 }
 
 }  // namespace blender::eevee

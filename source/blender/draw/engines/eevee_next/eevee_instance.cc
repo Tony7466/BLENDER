@@ -174,7 +174,6 @@ void Instance::begin_sync()
   pipelines.begin_sync();
   cryptomatte.begin_sync();
   reflection_probes.begin_sync();
-  planar_probes.begin_sync();
   light_probes.begin_sync();
 
   gpencil_engine_enabled = false;
@@ -267,7 +266,7 @@ void Instance::object_sync(Object *ob)
         sync.sync_gpencil(ob, ob_handle, res_handle);
         break;
       case OB_LIGHTPROBE:
-        sync.sync_light_probe(ob, ob_handle);
+        light_probes.sync_probe(ob, ob_handle);
         break;
       default:
         break;
@@ -478,12 +477,6 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 
 void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
 {
-  /* TODO(jbakker): should we check on the subtype as well? Now it also populates even when there
-   * are other light probes in the scene. */
-  if (DEG_id_type_any_exists(this->depsgraph, ID_LP)) {
-    reflection_probes.update_probes_next_sample_ = true;
-    planar_probes.update_probes_ = true;
-  }
 
   while (!sampling.finished()) {
     this->render_sample();
