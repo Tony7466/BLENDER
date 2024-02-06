@@ -581,30 +581,17 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
                                     const IndexMask selection,
                                     const AttributeForeachCallback callback) const
 {
-  /**
-   * Iterate over attributes of a geometric set and its instances.
-   * Parameters:
-   * - component_types: Types of components to consider.
-   * - include_instances: Flag indicating whether to include instances.
-   * - current_depth: Current depth in the hierarchy.
-   * - depth_target: Target depth for attribute processing.
-   * - instance_depth: Depth information for instances.
-   * - selection: Index mask for selection.
-   * - callback: Callback function for attribute processing.
-   */
 
-  //  Initialize flag to track if child instances have the specified components.
+  /*Initialize flag to track if child instances have the specified components.*/
   bool is_child_has_component = true;
 
-  // Process instances if required and instances are available.
   if (this->has_instances()) {
     is_child_has_component = false;
 
-    // Iterate over instances based on the selection index mask.
     const Instances &instances = *this->get_instances();
-    // ensure objects and collection are included.
+    /*ensure objects and collection are included.*/
     Instances ensure_instances = instances;
-    ensure_instances.ensure_geometry_instances();
+    ensure_instances.ensure_geometry_instances(); 
     const IndexMask indices = (current_depth == 0) ?
                                   selection :
                                   IndexMask(IndexRange(ensure_instances.instances_num()));
@@ -614,7 +601,7 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
       bke::InstanceReference reference =
           ensure_instances.references()[ensure_instances.reference_handles()[i]];
 
-      // Process child instances with a recursive call.
+      /*Process child instances with a recursive call.*/
       if (reference.type() == InstanceReference::Type::GeometrySet) {
         bke::GeometrySet instance_geometry_set = reference.geometry_set();
         if (current_depth != depth_target_tmp) {
@@ -627,42 +614,37 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
         }
       }
     }
+
   }
 
-  // Flag to track if any relevant attributes were found.
+  /*Flag to track if any relevant attributes were found.*/
   bool is_relevant = false;
 
-  // Iterate over specified component types.
   for (const GeometryComponent::Type component_type : component_types) {
-    // Skip if the component type is not present.
     if (!this->has(component_type)) {
       continue;
     }
 
-    // Check for a special instance condition.
+    /*Check if the current instance components is the main one*/
     const bool is_special_instance = (component_type == GeometryComponent::Type::Instance) &&
                                      (component_types.size() > 1);
     if (is_special_instance && !is_child_has_component) {
       continue;
     }
-
-    // Process attributes for the current component.
+    /*Process attributes for the current component.*/
     const GeometryComponent &component = *this->get_component(component_type);
     const std::optional<AttributeAccessor> attributes = component.attributes();
     if (attributes.has_value()) {
-      // Invoke callback for each attribute.
       attributes->for_all(
           [&](const AttributeIDRef &attributeId, const AttributeMetaData &metaData) {
             callback(attributeId, metaData, component);
             return true;
           });
 
-      // Set the flag indicating relevant attributes were found.
       is_relevant = true;
     }
   }
 
-  // Return whether any relevant attributes were found.
   return is_relevant;
 }
 
