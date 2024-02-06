@@ -108,9 +108,13 @@ static void motion_path_get_frame_range_to_draw(bAnimVizSettings *avs,
   *r_step = max_ii(avs->path_step, 1);
 }
 
-static Object *get_camera_for_motion_path(const DRWContextState *draw_context)
+static Object *get_camera_for_motion_path(const DRWContextState *draw_context,
+                                          const eMotionPath_BakeFlag bake_flag)
 {
-  return draw_context->v3d->camera;
+  if (bake_flag & MOTIONPATH_BAKE_CAMERA_SPACE) {
+    return draw_context->v3d->camera;
+  }
+  return nullptr;
 }
 
 static void motion_path_cache(OVERLAY_Data *vedata,
@@ -130,7 +134,6 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   bool show_keyframes_no = (avs->path_viewflag & MOTIONPATH_VIEW_KFNOS) != 0;
   bool show_frame_no = (avs->path_viewflag & MOTIONPATH_VIEW_FNUMS) != 0;
   bool show_lines = (mpath->flag & MOTIONPATH_FLAG_LINES) != 0;
-  const bool is_in_camera_space = (avs->path_bakeflag & MOTIONPATH_BAKE_CAMERA_SPACE) != 0;
   float no_custom_col[3] = {-1.0f, -1.0f, -1.0f};
   float *color = (mpath->flag & MOTIONPATH_FLAG_CUSTOM) ? mpath->color : no_custom_col;
 
@@ -144,8 +147,9 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   int start_index = sfra - mpath->start_frame;
 
   float camera_matrix[4][4];
-  Object *motion_path_camera = get_camera_for_motion_path(draw_ctx);
-  if (is_in_camera_space && motion_path_camera) {
+  Object *motion_path_camera = get_camera_for_motion_path(
+      draw_ctx, eMotionPath_BakeFlag(avs->path_bakeflag));
+  if (motion_path_camera) {
     copy_m4_m4(camera_matrix, motion_path_camera->object_to_world);
   }
   else {
@@ -188,7 +192,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
     col[3] = col_kf[3] = 255;
 
     Object *cam_eval = nullptr;
-    if (is_in_camera_space && motion_path_camera) {
+    if (motion_path_camera) {
       cam_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, motion_path_camera);
     }
 
@@ -200,7 +204,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
       bool is_keyframe = (mpv->flag & MOTIONPATH_VERT_KEY) != 0;
       float3 vert_coordinate;
       copy_v3_v3(vert_coordinate, mpv->co);
-      if (is_in_camera_space && cam_eval) {
+      if (cam_eval) {
         /* Projecting the point into world space from the cameras pov. */
         vert_coordinate = math::transform_point(float4x4(cam_eval->object_to_world),
                                                 vert_coordinate);
