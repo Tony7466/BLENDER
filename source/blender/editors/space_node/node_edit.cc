@@ -320,6 +320,9 @@ static void compo_canceljob(void *cjv)
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_CANCEL);
   cj->cancelled = true;
+
+  cj->ntree->runtime->compositor.per_node_execution_time =
+      cj->localtree->runtime->compositor.per_node_execution_time;
 }
 
 static void compo_completejob(void *cjv)
@@ -328,6 +331,9 @@ static void compo_completejob(void *cjv)
   Main *bmain = cj->bmain;
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_POST);
+
+  cj->ntree->runtime->compositor.per_node_execution_time =
+      cj->localtree->runtime->compositor.per_node_execution_time;
 }
 
 /** \} */

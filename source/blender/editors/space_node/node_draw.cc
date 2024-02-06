@@ -92,6 +92,8 @@
 
 #include "GEO_fillet_curves.hh"
 
+#include "COM_profile.hh"
+
 #include "node_intern.hh" /* own include */
 
 #include <fmt/format.h>
@@ -2408,9 +2410,11 @@ static void node_add_error_message_button(const TreeDrawContext &tree_draw_ctx,
   UI_block_emboss_set(&block, UI_EMBOSS);
 }
 
-static std::optional<std::chrono::nanoseconds> node_get_execution_time(
-    const TreeDrawContext &tree_draw_ctx, const bNodeTree &ntree, const bNode &node)
+static std::optional<std::chrono::nanoseconds> geo_node_get_execution_time(
+    const TreeDrawContext &tree_draw_ctx, const SpaceNode &snode, const bNode &node)
 {
+  const bNodeTree &ntree = *snode.edittree;
+
   geo_log::GeoTreeLog *tree_log = [&]() -> geo_log::GeoTreeLog * {
     const bNodeTreeZones *zones = ntree.zones();
     if (!zones) {
@@ -2433,8 +2437,8 @@ static std::optional<std::chrono::nanoseconds> node_get_execution_time(
 
     for (const bNode *tnode : node.direct_children_in_frame()) {
       if (tnode->is_frame()) {
-        std::optional<std::chrono::nanoseconds> sub_frame_run_time = node_get_execution_time(
-            tree_draw_ctx, ntree, *tnode);
+        std::optional<std::chrono::nanoseconds> sub_frame_run_time = geo_node_get_execution_time(
+            tree_draw_ctx, snode, *tnode);
         if (sub_frame_run_time.has_value()) {
           run_time += *sub_frame_run_time;
           found_node = true;
@@ -2459,12 +2463,89 @@ static std::optional<std::chrono::nanoseconds> node_get_execution_time(
   return std::nullopt;
 }
 
+/* Cerate node key instance, assuming the node comes from the currently editing node tree. */
+static bNodeInstanceKey current_node_instance_key(const SpaceNode &snode, const bNode &node)
+{
+  /* Assume that the currently editing tree is the last in the path. */
+  BLI_assert(snode.edittree == snode.treepath.last);
+
+  const bNodeTreePath *path = static_cast<const bNodeTreePath *>(snode.treepath.last);
+  /* Some code in this file checks for the non-null elements of the tree path. However, if we did
+   * iterate into a node it is expected that there is a tree, and it should be in the path.
+   * Otherwise something else went wrong. */
+  BLI_assert(path);
+
+  return BKE_node_instance_key(path->parent_key, snode.edittree, &node);
+}
+
+static std::optional<std::chrono::nanoseconds> compositor_accumulate_frame_node_execution_time(
+    const SpaceNode &snode, const bNode &node)
+{
+  const bNodeTree &compositor_tree = *snode.nodetree;
+  const bke::bCompositorNodeTreeRuntime &compositor_runtime = compositor_tree.runtime->compositor;
+
+  timeit::Nanoseconds frame_execution_time(0);
+  bool has_any_execution_time = false;
+
+  for (const bNode *current_node : node.direct_children_in_frame()) {
+    const bNodeInstanceKey key = current_node_instance_key(snode, *current_node);
+    if (const timeit::Nanoseconds *node_execution_time =
+            compositor_runtime.per_node_execution_time.lookup_ptr(key))
+    {
+      frame_execution_time += *node_execution_time;
+      has_any_execution_time = true;
+    }
+  }
+
+  if (!has_any_execution_time) {
+    return std::nullopt;
+  }
+
+  return frame_execution_time;
+}
+
+static std::optional<std::chrono::nanoseconds> compositor_node_get_execution_time(
+    const TreeDrawContext & /*tree_draw_ctx*/, const SpaceNode &snode, const bNode &node)
+{
+
+  const bNodeTree &compositor_tree = *snode.nodetree;
+  const bke::bCompositorNodeTreeRuntime &compositor_runtime = compositor_tree.runtime->compositor;
+
+  /* For the frame nodes accumulate execution time of its children. */
+  if (node.is_frame()) {
+    return compositor_accumulate_frame_node_execution_time(snode, node);
+  }
+
+  /* For other nodes simply lookup execution time.
+   * The group node instances have their own entries in the execution times map. */
+  const bNodeInstanceKey key = current_node_instance_key(snode, node);
+  if (const timeit::Nanoseconds *execution_time =
+          compositor_runtime.per_node_execution_time.lookup_ptr(key))
+  {
+    return *execution_time;
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<std::chrono::nanoseconds> node_get_execution_time(
+    const TreeDrawContext &tree_draw_ctx, const SpaceNode &snode, const bNode &node)
+{
+  switch (snode.edittree->type) {
+    case NTREE_GEOMETRY:
+      return geo_node_get_execution_time(tree_draw_ctx, snode, node);
+    case NTREE_COMPOSIT:
+      return compositor_node_get_execution_time(tree_draw_ctx, snode, node);
+  }
+  return std::nullopt;
+}
+
 static std::string node_get_execution_time_label(TreeDrawContext &tree_draw_ctx,
                                                  const SpaceNode &snode,
                                                  const bNode &node)
 {
   const std::optional<std::chrono::nanoseconds> exec_time = node_get_execution_time(
-      tree_draw_ctx, *snode.edittree, node);
+      tree_draw_ctx, snode, node);
 
   if (!exec_time.has_value()) {
     return std::string("");
@@ -2603,6 +2684,35 @@ static std::optional<NodeExtraInfoRow> node_get_accessed_attributes_row(
   return row_from_used_named_attribute(node_log->used_named_attributes);
 }
 
+static std::optional<NodeExtraInfoRow> node_get_execution_time_label_row(
+    TreeDrawContext &tree_draw_ctx, const SpaceNode &snode, const bNode &node)
+{
+  NodeExtraInfoRow row;
+  row.text = node_get_execution_time_label(tree_draw_ctx, snode, node);
+  if (row.text.empty()) {
+    return std::nullopt;
+  }
+  row.tooltip = TIP_(
+      "The execution time from the node tree's latest evaluation. For frame and group "
+      "nodes, the time for all sub-nodes");
+  row.icon = ICON_PREVIEW_RANGE;
+  return row;
+}
+
+static void node_get_compositor_extra_info(TreeDrawContext &tree_draw_ctx,
+                                           const SpaceNode &snode,
+                                           const bNode &node,
+                                           Vector<NodeExtraInfoRow> &rows)
+{
+  if (snode.overlay.flag & SN_OVERLAY_SHOW_TIMINGS) {
+    std::optional<NodeExtraInfoRow> row = node_get_execution_time_label_row(
+        tree_draw_ctx, snode, node);
+    if (row.has_value()) {
+      rows.append(std::move(*row));
+    }
+  }
+}
+
 static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
                                                     TreeDrawContext &tree_draw_ctx,
                                                     const SpaceNode &snode,
@@ -2615,8 +2725,13 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
     node.typeinfo->get_extra_info(params);
   }
 
+  if (snode.edittree->type == NTREE_COMPOSIT) {
+    node_get_compositor_extra_info(tree_draw_ctx, snode, node, rows);
+    return rows;
+  }
+
   if (!(snode.edittree->type == NTREE_GEOMETRY)) {
-    /* Currently geometry nodes are the only nodes to have extra infos per nodes. */
+    /* Currently geometry and compositor nodes are the only nodes to have extra infos per nodes. */
     return rows;
   }
 
@@ -2632,15 +2747,10 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
       (ELEM(node.typeinfo->nclass, NODE_CLASS_GEOMETRY, NODE_CLASS_GROUP, NODE_CLASS_ATTRIBUTE) ||
        ELEM(node.type, NODE_FRAME, NODE_GROUP_OUTPUT)))
   {
-    NodeExtraInfoRow row;
-    row.text = node_get_execution_time_label(tree_draw_ctx, snode, node);
-    if (!row.text.empty()) {
-      row.tooltip = TIP_(
-          "The execution time from the node tree's latest evaluation. For frame and group "
-          "nodes, "
-          "the time for all sub-nodes");
-      row.icon = ICON_PREVIEW_RANGE;
-      rows.append(std::move(row));
+    std::optional<NodeExtraInfoRow> row = node_get_execution_time_label_row(
+        tree_draw_ctx, snode, node);
+    if (row.has_value()) {
+      rows.append(std::move(*row));
     }
   }
 

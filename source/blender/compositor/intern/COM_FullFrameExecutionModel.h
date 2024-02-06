@@ -8,6 +8,7 @@
 
 #include "COM_Enums.h"
 #include "COM_ExecutionModel.h"
+#include "COM_profile.hh"
 
 #ifdef WITH_CXX_GUARDEDALLOC
 #  include "MEM_guardedalloc.h"
@@ -42,6 +43,8 @@ class FullFrameExecutionModel : public ExecutionModel {
    * Order of priorities for output operations execution.
    */
   Vector<eCompositorPriority> priorities_;
+
+  Profiler profiler_;
 
  public:
   FullFrameExecutionModel(CompositorContext &context,
