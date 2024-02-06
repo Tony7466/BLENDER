@@ -92,19 +92,12 @@ static float4x4 get_array_matrix(const Object &ob,
                                  const int elem_idx,
                                  const bool use_object_offset)
 {
-  float3 offset;
-
-  if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
-    offset[0] = mmd.offset[0] * elem_idx;
-    offset[1] = mmd.offset[1] * elem_idx;
-    offset[2] = mmd.offset[2] * elem_idx;
-  }
-  else {
-    offset = float3(0.0f);
-  }
-
-  float4x4 r_mat = float4x4::identity();
-  r_mat.location() = offset;
+  const float3 offset = [&]() {
+    if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
+      return float3(mmd.offset) * elem_idx;
+    }
+    return float3(0.0f);
+  }();
 
   if (use_object_offset) {
     float4x4 mat_offset = float4x4::identity();
@@ -112,12 +105,12 @@ static float4x4 get_array_matrix(const Object &ob,
     if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
       mat_offset[3] += mmd.offset;
     }
-    const float4x4 obinv = math::invert(float4x4(ob.object_to_world));
+    const float4x4 obinv = float4x4(ob.world_to_object);
 
     return mat_offset * obinv * float4x4(mmd.object->object_to_world);
   }
 
-  return r_mat;
+  return math::from_location<float4x4>(offset);
 }
 
 static float4x4 get_rand_matrix(const GreasePencilArrayModifierData &mmd,
