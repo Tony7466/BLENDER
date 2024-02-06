@@ -5,3 +5,4 @@ Referenced by issue #98444, Regression: image.save_render() command changes colo
 Referenced by issue #74610, Saving image from image editor resets Image Texture color space
 Referenced by issue #68926, Color Management Improvements
 Referenced by issue #108754, Test bf_imbuf_save fails with an assert in debug builds (DPX 8-bit save)
+Referenced by pull request #117914, Fix #108754: remove overactive color management assert
