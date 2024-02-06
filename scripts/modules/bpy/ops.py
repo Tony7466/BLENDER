@@ -13,7 +13,26 @@ _op_as_string = _ops_module.as_string
 _op_get_rna_type = _ops_module.get_rna_type
 _op_get_bl_options = _ops_module.get_bl_options
 
+_op_handlers = _ops_module.handlers
+
 _ModuleType = type(_ops_module)
+
+class handler_action:
+    def __init__(self, mod, append_func, remove_func):
+        self._mod = mod
+        self._append_func = append_func
+        self._remove_func = remove_func
+
+    def append(self,cb, owner = None, args = None, poll = None):
+         #is there a way to remove self from console show?
+         self._append_func(owner=owner, op = self._mod.idname(), cb=cb, args=args, poll = poll)
+
+    def remove(self, cb = None, owner = None):
+        self._remove_func(owner=owner, op = self._mod.idname(), cb=cb, args=None, poll = None)
+
+
+def remove_handlers(owner = None, cb = None):
+	_op_handlers.remove(owner = owner, cb = cb, op = None, args = None, poll = None)
 
 
 # -----------------------------------------------------------------------------
@@ -26,7 +45,14 @@ class _BPyOpsSubModOp:
     eg. bpy.ops.object.somefunc
     """
 
-    __slots__ = ("_module", "_func")
+    __slots__ = ("_module", "_func", "handlers")
+
+    class _handlers:
+        def __init__(self, mod):
+            self.invoke_pre = handler_action(mod, _op_handlers.pre_invoke, _op_handlers.pre_invoke_remove)
+            self.invoke_post = handler_action(mod, _op_handlers.post_invoke, _op_handlers.post_invoke_remove)
+            self.modal = handler_action(mod, _op_handlers.modal, _op_handlers.modal_remove)
+            self.modal_end = handler_action(mod, _op_handlers.modal_end, _op_handlers.modal_end_remove)
 
     def _get_doc(self):
         idname = self.idname()
@@ -77,6 +103,7 @@ class _BPyOpsSubModOp:
     def __init__(self, module, func):
         self._module = module
         self._func = func
+        self.handlers = self._handlers(self)
 
     def poll(self, *args):
         C_exec, _C_undo = _BPyOpsSubModOp._parse_args(args)
@@ -177,5 +204,7 @@ def __dir__():
             submodules.add(id_split[0].lower())
         else:
             submodules.add(id_split[0])
+
+    submodules.add("remove_handlers")
 
     return list(submodules)

@@ -41,6 +41,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
+#include "WM_op_handlers.h"
 #include "WM_types.hh"
 #include "wm.hh"
 #include "wm_draw.hh"
@@ -217,6 +218,7 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
   wm->undo_stack = nullptr;
 
   wm->message_bus = nullptr;
+  wm->op_handlers = nullptr;
 
   wm->xr.runtime = nullptr;
 
@@ -474,6 +476,10 @@ void WM_check(bContext *C)
     wm->message_bus = WM_msgbus_create();
   }
 
+  if (wm->op_handlers == NULL) {
+    wm->op_handlers = WM_op_handlers_create();
+  }
+
   if (!G.background) {
     /* Case: file-read. */
     if ((wm->init_flag & WM_INIT_FLAG_WINDOW) == 0) {
@@ -573,6 +579,11 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
   if (wm->message_bus != nullptr) {
     WM_msgbus_destroy(wm->message_bus);
   }
+
+  if (wm->op_handlers != nullptr) {
+    WM_op_handlers_destroy(wm->op_handlers);
+  }
+
 
 #ifdef WITH_PYTHON
   BPY_callback_wm_free(wm);

@@ -69,6 +69,7 @@ struct View3D;
 struct ViewLayer;
 struct wmGizmoGroup;
 struct wmMsgBus;
+struct wmOpHandlers;
 struct wmWindow;
 struct wmWindowManager;
 struct WorkSpace;
@@ -191,6 +192,7 @@ void *CTX_wm_region_data(const bContext *C);
 ARegion *CTX_wm_menu(const bContext *C);
 wmGizmoGroup *CTX_wm_gizmo_group(const bContext *C);
 wmMsgBus *CTX_wm_message_bus(const bContext *C);
+wmOpHandlers *CTX_wm_op_handlers(const bContext *C);
 ReportList *CTX_wm_reports(const bContext *C);
 
 View3D *CTX_wm_view3d(const bContext *C);

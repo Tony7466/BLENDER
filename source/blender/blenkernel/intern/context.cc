@@ -763,6 +763,11 @@ wmMsgBus *CTX_wm_message_bus(const bContext *C)
   return C->wm.manager ? C->wm.manager->message_bus : nullptr;
 }
 
+struct wmOpHandlers *CTX_wm_op_handlers(const bContext *C)
+{
+  return C->wm.manager ? C->wm.manager->op_handlers : nullptr;
+}
+
 ReportList *CTX_wm_reports(const bContext *C)
 {
   if (C->wm.manager) {

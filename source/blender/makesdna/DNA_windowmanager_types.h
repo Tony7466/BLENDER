@@ -213,6 +213,8 @@ typedef struct wmWindowManager {
 
   struct wmMsgBus *message_bus;
 
+  struct wmOpHandlers *op_handlers;
+
   // #ifdef WITH_XR_OPENXR
   wmXrData xr;
   // #endif

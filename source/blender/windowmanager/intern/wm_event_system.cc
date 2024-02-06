@@ -66,6 +66,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
+#include "WM_op_handlers.h"
 #include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
@@ -1510,6 +1511,12 @@ static int wm_operator_invoke(bContext *C,
     return WM_operator_poll(C, ot);
   }
 
+  // Ensure any change is processed by poll
+  if (WM_op_handlers_operator_pre_invoke(C, event, CTX_wm_op_handlers(C), ot, properties) ==
+      false) {
+    return OPERATOR_FINISHED;
+  }
+
   if (WM_operator_poll(C, ot)) {
     wmWindowManager *wm = CTX_wm_manager(C);
     const intptr_t undo_id_prev = wm_operator_undo_active_id(wm);
@@ -1550,6 +1557,8 @@ static int wm_operator_invoke(bContext *C,
       retval = op->type->invoke(C, op, &event_temp);
       OPERATOR_RETVAL_CHECK(retval);
 
+      WM_op_handlers_operator_post_invoke(C, event, CTX_wm_op_handlers(C), ot, op->ptr, retval);
+
       if (op->type->flag & OPTYPE_UNDO && CTX_wm_manager(C) == wm) {
         wm->op_undo_depth--;
       }
@@ -1561,6 +1570,8 @@ static int wm_operator_invoke(bContext *C,
 
       retval = op->type->exec(C, op);
       OPERATOR_RETVAL_CHECK(retval);
+
+      WM_op_handlers_operator_post_invoke(C, event, CTX_wm_op_handlers(C), ot, op->ptr, retval);
 
       if (op->type->flag & OPTYPE_UNDO && CTX_wm_manager(C) == wm) {
         wm->op_undo_depth--;
@@ -2476,9 +2487,20 @@ static eHandlerActionFlag wm_handler_operator_call(bContext *C,
         wm->op_undo_depth++;
       }
 
-      /* Warning, after this call all context data and 'event' may be freed. see check below. */
-      retval = ot->modal(C, op, event);
-      OPERATOR_RETVAL_CHECK(retval);
+      if ( (WM_get_op_handlers(CTX_wm_op_handlers(C), ot->idname) != NULL) &&  !ot->poll(C)) {
+        // Py Handler, changing poll conditions
+        retval = OPERATOR_CANCELLED;
+      }
+      else {
+
+        /* Warning, after this call all context data and 'event' may be freed. see check below. */
+        retval = ot->modal(C, op, event);
+        OPERATOR_RETVAL_CHECK(retval);
+
+        if (WM_op_handlers_operator_modal(C, event, CTX_wm_op_handlers(C), ot, retval) == false) {
+          retval = OPERATOR_CANCELLED;
+        }
+      }
 
       if (ot->flag & OPTYPE_UNDO && CTX_wm_manager(C) == wm) {
         wm->op_undo_depth--;
@@ -2492,6 +2514,9 @@ static eHandlerActionFlag wm_handler_operator_call(bContext *C,
         wm_event_modalkeymap_end(event, &event_backup);
 
         if (retval & (OPERATOR_CANCELLED | OPERATOR_FINISHED)) {
+
+          WM_op_handlers_operator_modal_end(C, nullptr, CTX_wm_op_handlers(C), ot, retval);
+
           wm_operator_reports(C, op, retval, false);
 
           wmOperator *op_test = handler->op->opm ? handler->op->opm : handler->op;

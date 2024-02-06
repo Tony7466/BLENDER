@@ -189,6 +189,8 @@ PyObject *pyrna_id_CreatePyObject(struct ID *id);
 bool pyrna_id_FromPyObject(PyObject *obj, struct ID **id);
 bool pyrna_id_CheckPyObject(PyObject *obj);
 
+PyObject *pyrna_enum_bitfield_to_py(const struct EnumPropertyItem *items, int value);
+
 /* operators also need this to set args */
 int pyrna_pydict_to_props(PointerRNA *ptr, PyObject *kw, bool all_args, const char *error_prefix);
 PyObject *pyrna_prop_to_py(PointerRNA *ptr, PropertyRNA *prop);
