@@ -30,69 +30,38 @@
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
-/** \name Draw Data
+/** \name Recalc
  *
  * \{ */
 
-static void draw_data_init_cb(DrawData *dd)
+void SyncModule::view_update()
 {
-  /* Object has just been created or was never evaluated by the engine. */
-  dd->recalc = ID_RECALC_ALL;
+  if (DEG_id_type_updated(inst_.depsgraph, ID_WO)) {
+    world_updated_ = true;
+  }
 }
 
-ObjectHandle &SyncModule::sync_object(Object *ob)
+ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
 {
-  ObjectKey key(ob);
+  ObjectKey key(ob_ref.object);
 
   ObjectHandle &handle = ob_handles.lookup_or_add_cb(key, [&]() {
     ObjectHandle new_handle;
     new_handle.object_key = key;
-    new_handle.recalc = ID_RECALC_ALL;
     return new_handle;
   });
 
-  /** TODO(Miguel Pozo): DrawData is the only way of retrieving the correct recalc flags.
-   * We should find a more optimal way to handle this. */
-  DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  DrawData *dd = DRW_drawdata_ensure((ID *)ob, owner, sizeof(DrawData), nullptr, nullptr);
-  handle.recalc |= dd->recalc;
-  dd->recalc = 0;
-
-  const int recalc_flags = ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM | ID_RECALC_SHADING |
-                           ID_RECALC_GEOMETRY;
-  if ((handle.recalc & recalc_flags) != 0) {
-    inst_.sampling.reset();
-  }
+  handle.recalc = inst_.get_recalc_flags(ob_ref);
 
   return handle;
 }
 
-WorldHandle &SyncModule::sync_world(::World *world)
+WorldHandle SyncModule::sync_world()
 {
-  DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  DrawData *dd = DRW_drawdata_ensure(
-      (ID *)world, owner, sizeof(eevee::WorldHandle), draw_data_init_cb, nullptr);
-  WorldHandle &eevee_dd = *reinterpret_cast<WorldHandle *>(dd);
-
-  const int recalc_flags = ID_RECALC_ALL;
-  if ((eevee_dd.recalc & recalc_flags) != 0) {
-    inst_.sampling.reset();
-  }
-  return eevee_dd;
-}
-
-SceneHandle &SyncModule::sync_scene(::Scene *scene)
-{
-  DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  DrawData *dd = DRW_drawdata_ensure(
-      (ID *)scene, owner, sizeof(eevee::SceneHandle), draw_data_init_cb, nullptr);
-  SceneHandle &eevee_dd = *reinterpret_cast<SceneHandle *>(dd);
-
-  const int recalc_flags = ID_RECALC_ALL;
-  if ((eevee_dd.recalc & recalc_flags) != 0) {
-    inst_.sampling.reset();
-  }
-  return eevee_dd;
+  WorldHandle handle;
+  handle.recalc = world_updated_ ? int(ID_RECALC_SHADING) : 0;
+  world_updated_ = false;
+  return handle;
 }
 
 /** \} */
@@ -121,6 +90,10 @@ void SyncModule::sync_mesh(Object *ob,
                            ResourceHandle res_handle,
                            const ObjectRef &ob_ref)
 {
+  if (!inst_.use_surfaces) {
+    return;
+  }
+
   bool has_motion = inst_.velocity.step_object_sync(
       ob, ob_handle.object_key, res_handle, ob_handle.recalc);
 
@@ -140,8 +113,8 @@ void SyncModule::sync_mesh(Object *ob,
     return;
   }
 
-  bool is_shadow_caster = false;
   bool is_alpha_blend = false;
+  float inflate_bounds = 0.0f;
   for (auto i : material_array.gpu_materials.index_range()) {
     GPUBatch *geom = mat_geom[i];
     if (geom == nullptr) {
@@ -173,16 +146,23 @@ void SyncModule::sync_mesh(Object *ob,
     geometry_call(material.reflection_probe_prepass.sub_pass, geom, res_handle);
     geometry_call(material.reflection_probe_shading.sub_pass, geom, res_handle);
 
-    is_shadow_caster = is_shadow_caster || material.shadow.sub_pass != nullptr;
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
 
     ::Material *mat = GPU_material_get_material(gpu_material);
     inst_.cryptomatte.sync_material(mat);
+
+    if (GPU_material_has_displacement_output(gpu_material)) {
+      inflate_bounds = math::max(inflate_bounds, mat->inflate_bounds);
+    }
+  }
+
+  if (inflate_bounds != 0.0f) {
+    inst_.manager->update_handle_bounds(res_handle, ob_ref, inflate_bounds);
   }
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
 
-  inst_.shadows.sync_object(ob_handle, res_handle, is_shadow_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
   inst_.cryptomatte.sync_object(ob, res_handle);
 }
 
@@ -191,6 +171,10 @@ bool SyncModule::sync_sculpt(Object *ob,
                              ResourceHandle res_handle,
                              const ObjectRef &ob_ref)
 {
+  if (!inst_.use_surfaces) {
+    return false;
+  }
+
   bool pbvh_draw = BKE_sculptsession_use_pbvh_draw(ob, inst_.rv3d) && !DRW_state_is_image_render();
   /* Needed for mesh cache validation, to prevent two copies of
    * of vertex color arrays from being sent to the GPU (e.g.
@@ -204,19 +188,11 @@ bool SyncModule::sync_sculpt(Object *ob,
     return false;
   }
 
-  /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
-  /* bounding box is still needed for directional shadow tile-map bounds computation. */
-  float3 min, max;
-  BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh, min, max);
-  float3 center = (min + max) * 0.5;
-  float3 half_extent = max - center;
-  res_handle = inst_.manager->resource_handle(ob_ref, nullptr, &center, &half_extent);
-
   bool has_motion = false;
   MaterialArray &material_array = inst_.materials.material_array_get(ob, has_motion);
 
-  bool is_shadow_caster = false;
   bool is_alpha_blend = false;
+  float inflate_bounds = 0.0f;
   for (SculptBatch &batch :
        sculpt_batches_per_material_get(ob_ref.object, material_array.gpu_materials))
   {
@@ -249,17 +225,27 @@ bool SyncModule::sync_sculpt(Object *ob,
     geometry_call(material.reflection_probe_prepass.sub_pass, geom, res_handle);
     geometry_call(material.reflection_probe_shading.sub_pass, geom, res_handle);
 
-    is_shadow_caster = is_shadow_caster || material.shadow.sub_pass != nullptr;
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
 
     GPUMaterial *gpu_material = material_array.gpu_materials[batch.material_slot];
     ::Material *mat = GPU_material_get_material(gpu_material);
     inst_.cryptomatte.sync_material(mat);
+
+    if (GPU_material_has_displacement_output(gpu_material)) {
+      inflate_bounds = math::max(inflate_bounds, mat->inflate_bounds);
+    }
   }
+
+  /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
+  /* bounding box is still needed for directional shadow tile-map bounds computation. */
+  const Bounds<float3> bounds = BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh);
+  const float3 center = math::midpoint(bounds.min, bounds.max);
+  const float3 half_extent = bounds.max - center + inflate_bounds;
+  inst_.manager->update_handle_bounds(res_handle, center, half_extent);
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
 
-  inst_.shadows.sync_object(ob_handle, res_handle, is_shadow_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
   inst_.cryptomatte.sync_object(ob, res_handle);
 
   return true;
@@ -274,7 +260,7 @@ bool SyncModule::sync_sculpt(Object *ob,
 void SyncModule::sync_point_cloud(Object *ob,
                                   ObjectHandle &ob_handle,
                                   ResourceHandle res_handle,
-                                  const ObjectRef & /*ob_ref*/)
+                                  const ObjectRef &ob_ref)
 {
   const int material_slot = POINTCLOUD_MATERIAL_NR;
 
@@ -322,9 +308,13 @@ void SyncModule::sync_point_cloud(Object *ob,
   ::Material *mat = GPU_material_get_material(gpu_material);
   inst_.cryptomatte.sync_material(mat);
 
-  bool is_caster = material.shadow.sub_pass != nullptr;
   bool is_alpha_blend = material.is_alpha_blend_transparent;
-  inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+
+  if (GPU_material_has_displacement_output(gpu_material) && mat->inflate_bounds != 0.0f) {
+    inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
+  }
+
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
 }
 
 /** \} */
@@ -335,6 +325,10 @@ void SyncModule::sync_point_cloud(Object *ob,
 
 void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
 {
+  if (!inst_.use_volumes) {
+    return;
+  }
+
   const int material_slot = VOLUME_MATERIAL_NR;
 
   /* Motion is not supported on volumes yet. */
@@ -478,6 +472,11 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
     inst_.gpencil_engine_enabled = true;
     return;
   }
+  /* Is this a surface or curves? */
+  if (!inst_.use_surfaces) {
+    return;
+  }
+
   UNUSED_VARS(res_handle);
 
   gpIterData iter(inst_, ob, ob_handle, res_handle);
@@ -486,9 +485,8 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
 
   gpencil_drawcall_flush(iter);
 
-  bool is_caster = true;      /* TODO material.shadow.sub_pass. */
   bool is_alpha_blend = true; /* TODO material.is_alpha_blend. */
-  inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
 }
 
 /** \} */
@@ -500,9 +498,14 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
 void SyncModule::sync_curves(Object *ob,
                              ObjectHandle &ob_handle,
                              ResourceHandle res_handle,
+                             const ObjectRef &ob_ref,
                              ModifierData *modifier_data,
                              ParticleSystem *particle_sys)
 {
+  if (!inst_.use_curves) {
+    return;
+  }
+
   int mat_nr = CURVES_MATERIAL_NR;
   if (particle_sys != nullptr) {
     mat_nr = particle_sys->part->omat;
@@ -557,9 +560,13 @@ void SyncModule::sync_curves(Object *ob,
   ::Material *mat = GPU_material_get_material(gpu_material);
   inst_.cryptomatte.sync_material(mat);
 
-  bool is_caster = material.shadow.sub_pass != nullptr;
   bool is_alpha_blend = material.is_alpha_blend_transparent;
-  inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+
+  if (GPU_material_has_displacement_output(gpu_material) && mat->inflate_bounds != 0.0f) {
+    inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
+  }
+
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
 }
 
 /** \} */
@@ -588,7 +595,8 @@ void foreach_hair_particle_handle(Object *ob, ObjectHandle ob_handle, HairHandle
       const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
                                                                        part_settings->draw_as;
       if (draw_as != PART_DRAW_PATH ||
-          !DRW_object_is_visible_psys_in_active_context(ob, particle_sys)) {
+          !DRW_object_is_visible_psys_in_active_context(ob, particle_sys))
+      {
         continue;
       }
 

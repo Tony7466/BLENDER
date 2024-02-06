@@ -44,15 +44,7 @@ struct NlaKeyframingContext;
  * \param use_autokey_mode: include settings from key-framing mode in the result
  * (i.e. replace only).
  */
-eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene, bool use_autokey_mode);
-
-/* -------- */
-
-/**
- * Get (or add relevant data to be able to do so) the Active Action for the given
- * Animation Data block, given an ID block where the Animation Data should reside.
- */
-bAction *ED_id_action_ensure(Main *bmain, ID *id);
+eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene);
 
 /* -------- */
 
@@ -63,41 +55,8 @@ bAction *ED_id_action_ensure(Main *bmain, ID *id);
  * but also through RNA when editing an ID prop, see #37103).
  */
 void update_autoflags_fcurve(FCurve *fcu, bContext *C, ReportList *reports, PointerRNA *ptr);
-void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
 
 /* -------- */
-
-/**
- * \brief Lesser Key-framing API call.
- *
- * Use this when validation of necessary animation data isn't necessary as it already
- * exists, and there is a #BezTriple that can be directly copied into the array.
- *
- * This function adds a given #BezTriple to an F-Curve. It will allocate
- * memory for the array if needed, and will insert the #BezTriple into a
- * suitable place in chronological order.
- *
- * \note any recalculate of the F-Curve that needs to be done will need to be done by the caller.
- */
-int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag);
-
-/**
- * \brief Main Key-framing API call.
- *
- * Use this when validation of necessary animation data isn't necessary as it
- * already exists. It will insert a keyframe using the current value being keyframed.
- * Returns the index at which a keyframe was added (or -1 if failed).
- *
- * This function is a wrapper for #insert_bezt_fcurve(), and should be used when
- * adding a new keyframe to a curve, when the keyframe doesn't exist anywhere else yet.
- * It returns the index at which the keyframe was added.
- *
- * \param keyframe_type: The type of keyframe (#eBezTriple_KeyframeType).
- * \param flag: Optional flags (#eInsertKeyFlags) for controlling how keys get added
- * and/or whether updates get done.
- */
-int insert_vert_fcurve(
-    FCurve *fcu, float x, float y, eBezTriple_KeyframeType keyframe_type, eInsertKeyFlags flag);
 
 /**
  * Add the given number of keyframes to the FCurve. Their coordinates are

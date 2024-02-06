@@ -9,7 +9,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_texture.h"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -178,8 +178,7 @@ NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
   /* Getting node name for Color output. This name will be used for <image> node. */
-  std::string image_node_name = node_name();
-  image_node_name = image_node_name.substr(0, image_node_name.rfind('_')) + "_Color";
+  std::string image_node_name = node_name(false) + "_Color";
 
   NodeItem res = empty();
   res.node = graph_->getNode(image_node_name);
