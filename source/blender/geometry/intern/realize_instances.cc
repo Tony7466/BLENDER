@@ -17,7 +17,6 @@
 #include "BLI_math_rotation.hh"
 #include "BLI_noise.hh"
 #include "BLI_task.hh"
-#include "BLI_string.h"
 
 #include "BKE_collection.h"
 #include "BKE_curves.hh"
