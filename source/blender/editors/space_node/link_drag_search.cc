@@ -8,12 +8,12 @@
 
 #include "DNA_space_types.h"
 
-#include "BKE_asset.h"
-#include "BKE_context.h"
+#include "BKE_asset.hh"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_screen.hh"
 
 #include "UI_string_search.hh"
@@ -238,10 +238,9 @@ static void gather_search_link_ops_for_asset_library(const bContext &C,
   AssetFilterSettings filter_settings{};
   filter_settings.id_types = FILTER_ID_NT;
 
-  ED_assetlist_storage_fetch(&library_ref, &C);
-  ED_assetlist_ensure_previews_job(&library_ref, &C);
-  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
-    if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
+  asset::list::storage_fetch(&library_ref, &C);
+  asset::list::iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (!asset::filter_matches_asset(&filter_settings, asset)) {
       return true;
     }
     if (skip_local && asset.is_local_id()) {
@@ -336,12 +335,12 @@ static void gather_socket_link_operations(const bContext &C,
           return true;
         }
       }
-      search_link_ops.append(
-          {std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket.name,
-           [interface_socket](nodes::LinkSearchOpParams &params) {
-             add_existing_group_input_fn(params, interface_socket);
-           },
-           weight});
+      search_link_ops.append({std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP +
+                                  (interface_socket.name ? interface_socket.name : ""),
+                              [interface_socket](nodes::LinkSearchOpParams &params) {
+                                add_existing_group_input_fn(params, interface_socket);
+                              },
+                              weight});
       weight--;
       return true;
     });
@@ -361,7 +360,8 @@ static void link_drag_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  ui::string_search::StringSearch<SocketLinkOperation> search;
+  ui::string_search::StringSearch<SocketLinkOperation> search{
+      string_search::MainWordsHeuristic::All};
 
   for (SocketLinkOperation &op : storage.search_link_ops) {
     search.add(op.name, &op, op.weight);

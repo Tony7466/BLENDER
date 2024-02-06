@@ -362,7 +362,8 @@ static std::optional<float> score_query_against_words(Span<StringRef> query_word
     {
       /* Try to match against word initials. */
       if (std::optional<InitialsMatch> match = match_word_initials(
-              query_word, item, word_match_map)) {
+              query_word, item, word_match_map))
+      {
         /* If the all matched words are in the main group, give the match a higher priority. */
         bool all_main_group_matches = match->count_main_group_matches(item) ==
                                       match->matched_word_indices.size();
@@ -415,15 +416,24 @@ void extract_normalized_words(StringRef str,
                               Vector<int, 64> &r_word_group_ids)
 {
   const uint32_t unicode_space = uint32_t(' ');
+  const uint32_t unicode_dash = uint32_t('-');
+  const uint32_t unicode_underscore = uint32_t('_');
   const uint32_t unicode_slash = uint32_t('/');
   const uint32_t unicode_right_triangle = UI_MENU_ARROW_SEP_UNICODE;
 
   BLI_assert(unicode_space == BLI_str_utf8_as_unicode_safe(" "));
+  BLI_assert(unicode_dash == BLI_str_utf8_as_unicode_safe("-"));
+  BLI_assert(unicode_underscore == BLI_str_utf8_as_unicode_safe("_"));
   BLI_assert(unicode_slash == BLI_str_utf8_as_unicode_safe("/"));
   BLI_assert(unicode_right_triangle == BLI_str_utf8_as_unicode_safe(UI_MENU_ARROW_SEP));
 
   auto is_separator = [&](uint32_t unicode) {
-    return ELEM(unicode, unicode_space, unicode_slash, unicode_right_triangle);
+    return ELEM(unicode,
+                unicode_space,
+                unicode_dash,
+                unicode_underscore,
+                unicode_slash,
+                unicode_right_triangle);
   };
 
   Vector<int, 64> section_indices;
@@ -478,11 +488,37 @@ void StringSearchBase::add_impl(const StringRef str, void *user_data, const int 
   const int recent_time = recent_cache_ ?
                               recent_cache_->logical_time_by_str.lookup_default(str, -1) :
                               -1;
-  const int main_group_id = word_group_ids.is_empty() ? 0 : word_group_ids.last();
+  int main_group_id = 0;
+  if (!word_group_ids.is_empty()) {
+    switch (main_words_heuristic_) {
+      case MainWordsHeuristic::FirstGroup: {
+        main_group_id = 0;
+        break;
+      }
+      case MainWordsHeuristic::LastGroup: {
+        main_group_id = word_group_ids.last();
+        break;
+      }
+      case MainWordsHeuristic::All: {
+        main_group_id = 0;
+        word_group_ids.fill(0);
+        break;
+      }
+    }
+  }
+
+  int main_group_length = 0;
+  for (const int i : words.index_range()) {
+    if (word_group_ids[i] == main_group_id) {
+      main_group_length += int(words[i].size());
+    }
+  }
+
   items_.append({user_data,
                  allocator_.construct_array_copy(words.as_span()),
                  allocator_.construct_array_copy(word_group_ids.as_span()),
                  main_group_id,
+                 main_group_length,
                  int(str.size()),
                  weight,
                  recent_time});
@@ -531,7 +567,12 @@ Vector<void *> StringSearchBase::query_impl(const StringRef query) const
          * looking for. This also ensures that exact matches will be at the top, even if the query
          * is a sub-string of another item. */
         std::sort(indices.begin(), indices.end(), [&](int a, int b) {
-          return items_[a].length < items_[b].length;
+          const SearchItem &item_a = items_[a];
+          const SearchItem &item_b = items_[b];
+          /* The length of the main group has priority over the total length. */
+          return item_a.main_group_length < item_b.main_group_length ||
+                 (item_a.main_group_length == item_b.main_group_length &&
+                  item_a.total_length < item_b.total_length);
         });
         /* Prefer items with larger weights. Use `stable_sort` so that if the weights are the same,
          * the order won't be changed. */

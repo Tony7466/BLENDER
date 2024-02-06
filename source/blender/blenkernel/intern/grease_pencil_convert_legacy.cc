@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
@@ -58,38 +59,38 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   MutableSpan<float> radii = drawing.radii_for_write();
   MutableSpan<float> opacities = drawing.opacities_for_write();
   SpanAttributeWriter<float> delta_times = attributes.lookup_or_add_for_write_span<float>(
-      "delta_time", ATTR_DOMAIN_POINT);
+      "delta_time", AttrDomain::Point);
   SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
-      "rotation", ATTR_DOMAIN_POINT);
+      "rotation", AttrDomain::Point);
   SpanAttributeWriter<ColorGeometry4f> vertex_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", ATTR_DOMAIN_POINT);
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", AttrDomain::Point);
   SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
-      ".selection", ATTR_DOMAIN_POINT);
+      ".selection", AttrDomain::Point);
 
   /* Curve Attributes. */
   SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
-      "cyclic", ATTR_DOMAIN_CURVE);
+      "cyclic", AttrDomain::Curve);
   /* TODO: This should be a `double` attribute. */
   SpanAttributeWriter<float> stroke_init_times = attributes.lookup_or_add_for_write_span<float>(
-      "init_time", ATTR_DOMAIN_CURVE);
+      "init_time", AttrDomain::Curve);
   SpanAttributeWriter<int8_t> stroke_start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
-      "start_cap", ATTR_DOMAIN_CURVE);
+      "start_cap", AttrDomain::Curve);
   SpanAttributeWriter<int8_t> stroke_end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
-      "end_cap", ATTR_DOMAIN_CURVE);
+      "end_cap", AttrDomain::Curve);
   SpanAttributeWriter<float> stroke_hardnesses = attributes.lookup_or_add_for_write_span<float>(
-      "hardness", ATTR_DOMAIN_CURVE);
+      "hardness", AttrDomain::Curve);
   SpanAttributeWriter<float> stroke_point_aspect_ratios =
-      attributes.lookup_or_add_for_write_span<float>("point_aspect_ratio", ATTR_DOMAIN_CURVE);
+      attributes.lookup_or_add_for_write_span<float>("aspect_ratio", AttrDomain::Curve);
   SpanAttributeWriter<float2> stroke_fill_translations =
-      attributes.lookup_or_add_for_write_span<float2>("fill_translation", ATTR_DOMAIN_CURVE);
+      attributes.lookup_or_add_for_write_span<float2>("fill_translation", AttrDomain::Curve);
   SpanAttributeWriter<float> stroke_fill_rotations =
-      attributes.lookup_or_add_for_write_span<float>("fill_rotation", ATTR_DOMAIN_CURVE);
+      attributes.lookup_or_add_for_write_span<float>("fill_rotation", AttrDomain::Curve);
   SpanAttributeWriter<float2> stroke_fill_scales = attributes.lookup_or_add_for_write_span<float2>(
-      "fill_scale", ATTR_DOMAIN_CURVE);
+      "fill_scale", AttrDomain::Curve);
   SpanAttributeWriter<ColorGeometry4f> stroke_fill_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", ATTR_DOMAIN_CURVE);
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", AttrDomain::Curve);
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", ATTR_DOMAIN_CURVE);
+      "material_index", AttrDomain::Curve);
 
   int stroke_i = 0;
   LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
@@ -112,7 +113,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 
     /* Write point attributes. */
     IndexRange stroke_points_range = points_by_curve[stroke_i];
-    if (stroke_points_range.size() == 0) {
+    if (stroke_points_range.is_empty()) {
       continue;
     }
 
@@ -129,8 +130,14 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     /* Do first point. */
     const bGPDspoint &first_pt = stroke_points.first();
     stroke_positions.first() = float3(first_pt.x, first_pt.y, first_pt.z);
-    /* Store the actual radius of the stroke (without layer adjustment). */
-    stroke_radii.first() = gps->thickness * first_pt.pressure;
+    /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px` was
+     * the brush size which would be stored in the stroke thickness and then scaled by the point
+     * pressure factor. Finally, the render engine would divide this thickness value by 2000 (we're
+     * going from a thickness to a radius, hence the factor of two) to convert back into blender
+     * units.
+     * Store the radius now directly in blender units. This makes it consistent with how hair
+     * curves handle the radius. */
+    stroke_radii.first() = gps->thickness * first_pt.pressure / 2000.0f;
     stroke_opacities.first() = first_pt.strength;
     stroke_deltatimes.first() = 0;
     stroke_rotations.first() = first_pt.uv_rot;
@@ -143,8 +150,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       const bGPDspoint &pt_prev = stroke_points[point_i - 1];
       const bGPDspoint &pt = stroke_points[point_i];
       stroke_positions[point_i] = float3(pt.x, pt.y, pt.z);
-      /* Store the actual radius of the stroke (without layer adjustment). */
-      stroke_radii[point_i] = gps->thickness * pt.pressure;
+      stroke_radii[point_i] = gps->thickness * pt.pressure / 2000.0f;
       stroke_opacities[point_i] = pt.strength;
       stroke_deltatimes[point_i] = pt.time - pt_prev.time;
       stroke_rotations[point_i] = pt.uv_rot;
@@ -188,7 +194,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
     /* Create a new layer. */
     Layer &new_layer = grease_pencil.add_layer(
-        grease_pencil.root_group(), StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
+        StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
 
     /* Flags. */
     new_layer.set_visible((gpl->flag & GP_LAYER_HIDE) == 0);

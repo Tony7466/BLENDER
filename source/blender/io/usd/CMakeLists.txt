@@ -61,14 +61,12 @@ set(INC
   ../../blenloader
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../editors/include
   ../../imbuf
   ../../makesrna
   ../../nodes
   ../../python/intern
   ../../windowmanager
-  ../../../../intern/clog
   ../../../../intern/utfconv
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -79,15 +77,19 @@ set(INC_SYS
   ${BOOST_INCLUDE_DIR}
   ${TBB_INCLUDE_DIR}
   ${PYTHON_INCLUDE_DIR}
+
 )
 
 set(SRC
+  intern/usd_armature_utils.cc
   intern/usd_asset_utils.cc
+  intern/usd_blend_shape_utils.cc
   intern/usd_capi_export.cc
   intern/usd_capi_import.cc
   intern/usd_hierarchy_iterator.cc
   intern/usd_hook.cc
   intern/usd_writer_abstract.cc
+  intern/usd_writer_armature.cc
   intern/usd_writer_camera.cc
   intern/usd_writer_curves.cc
   intern/usd_writer_hair.cc
@@ -101,6 +103,7 @@ set(SRC
   intern/usd_reader_camera.cc
   intern/usd_reader_curve.cc
   intern/usd_reader_geom.cc
+  intern/usd_reader_instance.cc
   intern/usd_reader_light.cc
   intern/usd_reader_material.cc
   intern/usd_reader_mesh.cc
@@ -111,17 +114,22 @@ set(SRC
   intern/usd_reader_stage.cc
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
+  intern/usd_reader_pointinstancer.cc
   intern/usd_skel_convert.cc
+  intern/usd_skel_root_utils.cc
 
   usd.h
   usd.hh
 
+  intern/usd_armature_utils.h
   intern/usd_asset_utils.h
+  intern/usd_blend_shape_utils.h
   intern/usd_exporter_context.h
   intern/usd_hash_types.h
   intern/usd_hierarchy_iterator.h
   intern/usd_hook.h
   intern/usd_writer_abstract.h
+  intern/usd_writer_armature.h
   intern/usd_writer_camera.h
   intern/usd_writer_curves.h
   intern/usd_writer_hair.h
@@ -135,6 +143,7 @@ set(SRC
   intern/usd_reader_camera.h
   intern/usd_reader_curve.h
   intern/usd_reader_geom.h
+  intern/usd_reader_instance.h
   intern/usd_reader_light.h
   intern/usd_reader_material.h
   intern/usd_reader_mesh.h
@@ -145,12 +154,13 @@ set(SRC
   intern/usd_reader_stage.h
   intern/usd_reader_volume.h
   intern/usd_reader_xform.h
+  intern/usd_reader_pointinstancer.h
   intern/usd_skel_convert.h
+  intern/usd_skel_root_utils.h
 )
 
 if(WITH_HYDRA)
   list(APPEND SRC
-    hydra/camera.cc
     hydra/curves.cc
     hydra/hydra_scene_delegate.cc
     hydra/id.cc
@@ -165,7 +175,6 @@ if(WITH_HYDRA)
     hydra/volume_modifier.cc
     hydra/world.cc
 
-    hydra/camera.h
     hydra/curves.h
     hydra/hydra_scene_delegate.h
     hydra/id.h
@@ -185,10 +194,14 @@ endif()
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::animrig
   bf_imbuf
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_io_common
+  PRIVATE bf::extern::fmtlib
 )
 
 list(APPEND LIB
@@ -201,6 +214,9 @@ list(APPEND LIB
 
 if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+  list(APPEND INC
+    ../../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
@@ -240,9 +256,9 @@ if(WITH_GTESTS)
   set(TEST_INC
   )
   set(TEST_LIB
+    bf_blenloader_test_util
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_io_usd_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_lib(io_usd "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()
 
 # In CMAKE version 3.21 and up, we can instead use the `NO_CACHE` option for

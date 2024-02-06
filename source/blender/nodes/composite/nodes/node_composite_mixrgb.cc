@@ -10,7 +10,7 @@
 
 #include "DNA_material_types.h"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "COM_shader_node.hh"
 
@@ -58,11 +58,10 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   const int weight = ELEM(params.other_socket().type, SOCK_RGBA) ? 0 : -1;
 
   for (const EnumPropertyItem *item = rna_enum_ramp_blend_items; item->identifier != nullptr;
-       item++) {
+       item++)
+  {
     if (item->name != nullptr && item->identifier[0] != '\0') {
-      params.add_item(CTX_IFACE_(BLT_I18NCONTEXT_ID_NODETREE, item->name),
-                      SocketSearchOp{"Image", item->value},
-                      weight);
+      params.add_item(IFACE_(item->name), SocketSearchOp{"Image", item->value}, weight);
     }
   }
 }

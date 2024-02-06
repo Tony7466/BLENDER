@@ -10,8 +10,9 @@
 
 #  include "DNA_space_types.h"
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_file_handler.hh"
+#  include "BKE_main.hh"
 #  include "BKE_report.h"
 
 #  include "BLI_path_util.h"
@@ -41,6 +42,7 @@
 #  include "IO_wavefront_obj.hh"
 
 #  include "io_obj.hh"
+#  include "io_utils.hh"
 
 static const EnumPropertyItem io_obj_export_evaluation_mode[] = {
     {DAG_EVAL_RENDER, "DAG_EVAL_RENDER", 0, "Render", "Export objects as they appear in render"},
@@ -127,7 +129,7 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(
       sub, imfptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selected Only"), ICON_NONE);
   uiItemR(sub, imfptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
-
+  uiItemR(sub, imfptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward Axis"), ICON_NONE);
   uiItemR(sub, imfptr, "up_axis", UI_ITEM_NONE, IFACE_("Up Axis"), ICON_NONE);
 
   col = uiLayoutColumn(box, false);
@@ -385,12 +387,6 @@ void WM_OT_obj_export(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  WM_event_add_fileselect(C, op);
-  return OPERATOR_RUNNING_MODAL;
-}
-
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
   OBJImportParams import_params{};
@@ -403,6 +399,9 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
   import_params.use_split_groups = RNA_boolean_get(op->ptr, "use_split_groups");
   import_params.import_vertex_groups = RNA_boolean_get(op->ptr, "import_vertex_groups");
   import_params.validate_meshes = RNA_boolean_get(op->ptr, "validate_meshes");
+  char separator[2] = {};
+  RNA_string_get(op->ptr, "collection_separator", separator);
+  import_params.collection_separator = separator[0];
   import_params.relative_paths = ((U.flag & USER_RELPATHS) != 0);
   import_params.clear_selection = true;
 
@@ -465,6 +464,7 @@ static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(col, imfptr, "use_split_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, imfptr, "import_vertex_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, imfptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "collection_separator", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void wm_obj_import_draw(bContext *C, wmOperator *op)
@@ -481,9 +481,9 @@ void WM_OT_obj_import(wmOperatorType *ot)
   ot->name = "Import Wavefront OBJ";
   ot->description = "Load a Wavefront OBJ scene";
   ot->idname = "WM_OT_obj_import";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
-  ot->invoke = wm_obj_import_invoke;
+  ot->invoke = blender::ed::io::filesel_drop_import_invoke;
   ot->exec = wm_obj_import_exec;
   ot->poll = WM_operator_winactive;
   ot->ui = wm_obj_import_draw;
@@ -543,9 +543,29 @@ void WM_OT_obj_import(wmOperatorType *ot)
                   "Validate Meshes",
                   "Check imported mesh objects for invalid data (slow)");
 
+  RNA_def_string(ot->srna,
+                 "collection_separator",
+                 nullptr,
+                 2,
+                 "Path Separator",
+                 "Character used to separate objects name into hierarchical structure");
+
   /* Only show .obj or .mtl files by default. */
   prop = RNA_def_string(ot->srna, "filter_glob", "*.obj;*.mtl", 0, "Extension Filter", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
+
+namespace blender::ed::io {
+void obj_file_handler_add()
+{
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_obj");
+  STRNCPY(fh->import_operator, "WM_OT_obj_import");
+  STRNCPY(fh->label, "Wavefront OBJ");
+  STRNCPY(fh->file_extensions_str, ".obj");
+  fh->poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh));
+}
+}  // namespace blender::ed::io
 
 #endif /* WITH_IO_WAVEFRONT_OBJ */

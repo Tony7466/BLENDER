@@ -41,6 +41,12 @@ struct ShaderCache {
     if (MetalInfo::get_device_vendor(mtlDevice) == METAL_GPU_APPLE) {
       switch (MetalInfo::get_apple_gpu_architecture(mtlDevice)) {
         default:
+        case APPLE_M3:
+          /* Peak occupancy is achieved through Dynamic Caching on M3 GPUs. */
+          for (size_t i = 0; i < DEVICE_KERNEL_NUM; i++) {
+            occupancy_tuning[i] = {64, 64};
+          }
+          break;
         case APPLE_M2_BIG:
           occupancy_tuning[DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES] = {384, 128};
           occupancy_tuning[DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA] = {640, 128};
@@ -355,7 +361,8 @@ MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const M
       thread_scoped_lock lock(cache_mutex);
       for (auto &candidate : pipelines[kernel]) {
         if (candidate->loaded &&
-            candidate->kernels_md5 == device->kernels_md5[candidate->pso_type]) {
+            candidate->kernels_md5 == device->kernels_md5[candidate->pso_type])
+        {
           /* Replace existing match if candidate is more specialized. */
           if (!best_match || candidate->pso_type > best_match->pso_type) {
             best_match = candidate.get();
@@ -789,7 +796,8 @@ void MetalKernelPipeline::compile()
     if (ShaderCache::running) {
       if (creating_new_archive || recreate_archive) {
         if (![archive serializeToURL:[NSURL fileURLWithPath:@(metalbin_path.c_str())]
-                               error:&error]) {
+                               error:&error])
+        {
           metal_printf("Failed to save binary archive to %s, error:\n%s\n",
                        metalbin_path.c_str(),
                        [[error localizedDescription] UTF8String]);

@@ -19,12 +19,12 @@
 #  include "BLI_winstuff.h"
 #endif
 
-#include "IMB_filetype.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "imbuf.h"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "imbuf.hh"
 
-#include "IMB_anim.h"
+#include "IMB_anim.hh"
 
 #ifdef WITH_FFMPEG
 #  include "BLI_string.h" /* BLI_vsnprintf */
@@ -66,7 +66,7 @@ const char *imb_ext_image[] = {
 const char *imb_ext_movie[] = {
     ".avi",  ".flc", ".mov", ".movie", ".mp4",  ".m4v",  ".m2v", ".m2t",  ".m2ts", ".mts",
     ".ts",   ".mv",  ".avs", ".wmv",   ".ogv",  ".ogg",  ".r3d", ".dv",   ".mpeg", ".mpg",
-    ".mpg2", ".vob", ".mkv", ".flv",   ".divx", ".xvid", ".mxf", ".webm", nullptr,
+    ".mpg2", ".vob", ".mkv", ".flv",   ".divx", ".xvid", ".mxf", ".webm", ".gif",  nullptr,
 };
 
 /** Sort of wrong having audio extensions in imbuf. */
@@ -92,7 +92,7 @@ const char *imb_ext_audio[] = {
 /* OIIO will validate the entire header of some files and DPX requires 2048 */
 #define HEADER_SIZE 2048
 
-static ssize_t imb_ispic_read_header_from_filepath(const char *filepath, uchar buf[HEADER_SIZE])
+static int64_t imb_ispic_read_header_from_filepath(const char *filepath, uchar buf[HEADER_SIZE])
 {
   BLI_stat_t st;
   int fp;
@@ -114,7 +114,7 @@ static ssize_t imb_ispic_read_header_from_filepath(const char *filepath, uchar b
     return -1;
   }
 
-  const ssize_t size = read(fp, buf, HEADER_SIZE);
+  const int64_t size = BLI_read(fp, buf, HEADER_SIZE);
 
   close(fp);
   return size;
@@ -136,7 +136,7 @@ int IMB_ispic_type_from_memory(const uchar *buf, const size_t buf_size)
 int IMB_ispic_type(const char *filepath)
 {
   uchar buf[HEADER_SIZE];
-  const ssize_t buf_size = imb_ispic_read_header_from_filepath(filepath, buf);
+  const int64_t buf_size = imb_ispic_read_header_from_filepath(filepath, buf);
   if (buf_size <= 0) {
     return IMB_FTYPE_NONE;
   }
@@ -146,7 +146,7 @@ int IMB_ispic_type(const char *filepath)
 bool IMB_ispic_type_matches(const char *filepath, int filetype)
 {
   uchar buf[HEADER_SIZE];
-  const ssize_t buf_size = imb_ispic_read_header_from_filepath(filepath, buf);
+  const int64_t buf_size = imb_ispic_read_header_from_filepath(filepath, buf);
   if (buf_size <= 0) {
     return false;
   }

@@ -25,21 +25,21 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_node.h"
 #include "BKE_preview_image.hh"
 #include "BKE_world.h"
 
 #include "BLT_translation.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "BLO_read_write.hh"
 
@@ -81,7 +81,7 @@ static void world_init_data(ID *id)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
 static void world_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
 {
@@ -182,7 +182,7 @@ IDTypeInfo IDType_ID_WO = {
     /*main_listbase_index*/ INDEX_ID_WO,
     /*struct_size*/ sizeof(World),
     /*name*/ "World",
-    /*name_plural*/ "worlds",
+    /*name_plural*/ N_("worlds"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_WORLD,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

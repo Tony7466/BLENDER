@@ -30,15 +30,16 @@
 #define CULLING_TILE_GROUP_SIZE 256
 
 /* Reflection Probes. */
-#define REFLECTION_PROBES_MAX 256
+#define REFLECTION_PROBES_MAX 128
 #define REFLECTION_PROBE_GROUP_SIZE 16
 #define REFLECTION_PROBE_SELECT_GROUP_SIZE 64
 /* Number of additional pixels on the border of an octahedral map to reserve for fixing seams.
  * Border size requires depends on the max number of mipmap levels. */
 #define REFLECTION_PROBE_MIPMAP_LEVELS 5
-#define REFLECTION_PROBE_BORDER_SIZE float(1 << (REFLECTION_PROBE_MIPMAP_LEVELS - 1))
 #define REFLECTION_PROBE_SH_GROUP_SIZE 512
 #define REFLECTION_PROBE_SH_SAMPLES_PER_GROUP 64
+
+#define PLANAR_PROBES_MAX 16
 
 /**
  * IMPORTANT: Some data packing are tweaked for these values.
@@ -96,12 +97,15 @@
 #define SHADOW_MAX_RAY 4
 #define SHADOW_ROG_ID 0
 
+/* Deferred Lighting. */
+#define DEFERRED_RADIANCE_FORMAT GPU_R11F_G11F_B10F
+#define DEFERRED_GBUFFER_ROG_ID 0
+
 /* Ray-tracing. */
 #define RAYTRACE_GROUP_SIZE 8
 /* Keep this as a define to avoid shader variations. */
 #define RAYTRACE_RADIANCE_FORMAT GPU_R11F_G11F_B10F
 #define RAYTRACE_RAYTIME_FORMAT GPU_R32F
-#define RAYTRACE_HORIZON_FORMAT GPU_R32UI
 #define RAYTRACE_VARIANCE_FORMAT GPU_R16F
 #define RAYTRACE_TILEMASK_FORMAT GPU_R8UI
 
@@ -152,6 +156,10 @@
 /* Volumes. */
 #define VOLUME_GROUP_SIZE 4
 #define VOLUME_INTEGRATION_GROUP_SIZE 8
+#define VOLUME_HIT_DEPTH_MAX 16
+
+/* Velocity. */
+#define VERTEX_COPY_GROUP_SIZE 64
 
 /* Resource bindings. */
 
@@ -166,19 +174,26 @@
 #define REFLECTION_PROBE_TEX_SLOT 7
 #define VOLUME_SCATTERING_TEX_SLOT 8
 #define VOLUME_TRANSMITTANCE_TEX_SLOT 9
+/* Currently only used by ray-tracing, but might become used by forward too. */
+#define PLANAR_PROBE_DEPTH_TEX_SLOT 10
+#define PLANAR_PROBE_RADIANCE_TEX_SLOT 11
 
 /* Images. */
 #define RBUFS_COLOR_SLOT 0
 #define RBUFS_VALUE_SLOT 1
 #define RBUFS_CRYPTOMATTE_SLOT 2
 #define GBUF_CLOSURE_SLOT 3
-#define GBUF_COLOR_SLOT 4
+#define GBUF_NORMAL_SLOT 4
 #define GBUF_HEADER_SLOT 5
 /* Volume properties pass do not write to `rbufs`. Reuse the same bind points. */
 #define VOLUME_PROP_SCATTERING_IMG_SLOT 0
 #define VOLUME_PROP_EXTINCTION_IMG_SLOT 1
 #define VOLUME_PROP_EMISSION_IMG_SLOT 2
 #define VOLUME_PROP_PHASE_IMG_SLOT 3
+#define VOLUME_OCCUPANCY_SLOT 4
+/* Only during volume pre-pass. */
+#define VOLUME_HIT_DEPTH_SLOT 0
+#define VOLUME_HIT_COUNT_SLOT 1
 /* Only during shadow rendering. */
 #define SHADOW_ATLAS_IMG_SLOT 4
 
@@ -188,6 +203,7 @@
 /* Only during surface shading (forward and deferred eval). */
 #define IRRADIANCE_GRID_BUF_SLOT 2
 #define REFLECTION_PROBE_BUF_SLOT 3
+#define PLANAR_PROBE_BUF_SLOT 4
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 2
 #define VELOCITY_CAMERA_CURR_BUF 3
@@ -217,3 +233,6 @@
 #define VELOCITY_GEO_PREV_BUF_SLOT 2
 #define VELOCITY_GEO_NEXT_BUF_SLOT 3
 #define VELOCITY_INDIRECTION_BUF_SLOT 4
+
+/* Treat closure as singular if the roughness is below this threshold. */
+#define BSDF_ROUGHNESS_THRESHOLD 2e-2

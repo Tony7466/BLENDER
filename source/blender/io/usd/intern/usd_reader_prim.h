@@ -9,9 +9,13 @@
 
 #include "usd.h"
 
+#include "BLI_map.hh"
+
+#include "WM_types.hh"
+
+#include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/prim.h>
 
-#include <map>
 #include <string>
 
 struct CacheFile;
@@ -40,22 +44,24 @@ struct ImportSettings {
 
   bool validate_meshes;
 
-  CacheFile *cache_file;
+  std::function<CacheFile *()> get_cache_file;
 
   /* Map a USD material prim path to a Blender material name.
    * This map is updated by readers during stage traversal.
    * This field is mutable because it is used to keep track
    * of what the importer is doing. This is necessary even
    * when all the other import settings are to remain const. */
-  mutable std::map<std::string, std::string> usd_path_to_mat_name;
+  mutable blender::Map<std::string, std::string> usd_path_to_mat_name;
   /* Map a material name to Blender material.
    * This map is updated by readers during stage traversal,
    * and is mutable similar to the map above. */
-  mutable std::map<std::string, Material *> mat_name_to_mat;
+  mutable blender::Map<std::string, Material *> mat_name_to_mat;
 
   /* We use the stage metersPerUnit to convert camera properties from USD scene units to the
    * correct millimeter scale that Blender uses for camera parameters. */
   double stage_meters_per_unit;
+
+  pxr::SdfPath skip_prefix;
 
   ImportSettings()
       : do_convert_mat(false),
@@ -68,8 +74,9 @@ struct ImportSettings {
         sequence_offset(0),
         read_flag(0),
         validate_meshes(false),
-        cache_file(NULL),
-        stage_meters_per_unit(1.0)
+        get_cache_file(nullptr),
+        stage_meters_per_unit(1.0),
+        skip_prefix(pxr::SdfPath{})
   {
   }
 };
@@ -87,6 +94,7 @@ class USDPrimReader {
   USDPrimReader *parent_reader_;
   const ImportSettings *settings_;
   int refcount_;
+  bool is_in_instancer_proto_;
 
  public:
   USDPrimReader(const pxr::UsdPrim &prim,
@@ -113,6 +121,12 @@ class USDPrimReader {
     parent_reader_ = parent;
   }
 
+  /** Get the wmJobWorkerStatus-provided `reports` list pointer, to use with the BKE_report API. */
+  ReportList *reports() const
+  {
+    return import_params_.worker_status ? import_params_.worker_status->reports : nullptr;
+  }
+
   /* Since readers might be referenced through handles
    * maintained by modifiers and constraints, we provide
    * a reference count to facilitate managing the object
@@ -134,6 +148,18 @@ class USDPrimReader {
   {
     return prim_path_;
   }
+
+  void set_is_in_instancer_proto(bool flag)
+  {
+    is_in_instancer_proto_ = flag;
+  }
+
+  bool is_in_instancer_proto() const
+  {
+    return is_in_instancer_proto_;
+  }
+
+  bool is_in_proto() const;
 };
 
 }  // namespace blender::io::usd

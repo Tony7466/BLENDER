@@ -2,11 +2,19 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 #define EEVEE_SHADOW_LIB
 
-float shadow_read_depth_at_tilemap_uv(usampler2DArray atlas_tx,
+#ifdef SHADOW_READ_ATOMIC
+#  define SHADOW_ATLAS_TYPE usampler2DArrayAtomic
+#else
+#  define SHADOW_ATLAS_TYPE usampler2DArray
+#endif
+
+float shadow_read_depth_at_tilemap_uv(SHADOW_ATLAS_TYPE atlas_tx,
                                       usampler2D tilemaps_tx,
                                       int tilemap_index,
                                       vec2 tilemap_uv)
@@ -30,12 +38,6 @@ float shadow_read_depth_at_tilemap_uv(usampler2DArray atlas_tx,
   ivec3 texel = ivec3((ivec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);
 
   return uintBitsToFloat(texelFetch(atlas_tx, texel, 0).r);
-}
-
-/* TODO(fclem): Use utildef version. Only here to avoid include order hell with common_math_lib. */
-float shadow_orderedIntBitsToFloat(int int_value)
-{
-  return intBitsToFloat((int_value < 0) ? (int_value ^ 0x7FFFFFFF) : int_value);
 }
 
 struct ShadowEvalResult {
@@ -80,8 +82,8 @@ float shadow_linear_occluder_distance(LightData light,
                                       vec3 lP,
                                       float occluder)
 {
-  float near = shadow_orderedIntBitsToFloat(light.clip_near);
-  float far = shadow_orderedIntBitsToFloat(light.clip_far);
+  float near = orderedIntBitsToFloat(light.clip_near);
+  float far = orderedIntBitsToFloat(light.clip_far);
 
   float occluder_z = (is_directional) ? (occluder * (far - near) + near) :
                                         ((near * far) / (occluder * (near - far) + far));
@@ -90,7 +92,7 @@ float shadow_linear_occluder_distance(LightData light,
   return receiver_z - occluder_z;
 }
 
-ShadowEvalResult shadow_punctual_sample_get(usampler2DArray atlas_tx,
+ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
                                             usampler2D tilemaps_tx,
                                             LightData light,
                                             vec3 P)
@@ -120,7 +122,7 @@ ShadowEvalResult shadow_punctual_sample_get(usampler2DArray atlas_tx,
   return result;
 }
 
-ShadowEvalResult shadow_directional_sample_get(usampler2DArray atlas_tx,
+ShadowEvalResult shadow_directional_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
                                                usampler2D tilemaps_tx,
                                                LightData light,
                                                vec3 P)
@@ -128,8 +130,8 @@ ShadowEvalResult shadow_directional_sample_get(usampler2DArray atlas_tx,
   vec3 lP = P * mat3(light.object_mat);
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
 
-  float clip_near = shadow_orderedIntBitsToFloat(light.clip_near);
-  float clip_far = shadow_orderedIntBitsToFloat(light.clip_far);
+  float clip_near = orderedIntBitsToFloat(light.clip_near);
+  float clip_far = orderedIntBitsToFloat(light.clip_far);
   /* Assumed to be non-null. */
   float z_range = clip_far - clip_near;
   float dist_to_near_plane = -lP.z - clip_near;
@@ -163,7 +165,7 @@ ShadowEvalResult shadow_directional_sample_get(usampler2DArray atlas_tx,
 }
 
 ShadowEvalResult shadow_sample(const bool is_directional,
-                               usampler2DArray atlas_tx,
+                               SHADOW_ATLAS_TYPE atlas_tx,
                                usampler2D tilemaps_tx,
                                LightData light,
                                vec3 P)

@@ -10,8 +10,8 @@
  * Render functions for final render outputs.
  */
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -31,7 +31,7 @@
 
 #include "RE_pipeline.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "eevee_private.h"
 
@@ -538,6 +538,7 @@ static void eevee_render_draw_background(EEVEE_Data *vedata)
 
 void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl, const rcti *rect)
 {
+  using namespace blender::draw;
   const char *viewname = RE_GetActiveRenderView(engine->re);
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
@@ -663,6 +664,16 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
     /* Perform render step between samples to allow
      * flushing of freed GPUBackend resources. */
     GPU_render_step();
+    if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_METAL)) {
+      if (render_samples > 0 && ((render_samples % 64) == 0)) {
+        /* Allow GPU to sync with CPU to prevent overly large command submissions being in-flight
+         * simultaneously. Reduces total in-flight memory required for rendering. */
+        GPU_finish();
+      }
+      else {
+        GPU_flush();
+      }
+    }
 
     RE_engine_update_progress(engine, float(render_samples++) / float(tot_sample));
   }

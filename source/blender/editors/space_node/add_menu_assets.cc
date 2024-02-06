@@ -13,7 +13,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_asset.h"
+#include "BKE_asset.hh"
 #include "BKE_idprop.h"
 #include "BKE_screen.hh"
 
@@ -38,7 +38,7 @@ static bool node_add_menu_poll(const bContext *C, MenuType * /*mt*/)
 static bool all_loading_finished()
 {
   AssetLibraryReference all_library_ref = asset_system::all_library_reference();
-  return ED_assetlist_is_loaded(&all_library_ref);
+  return asset::list::is_loaded(&all_library_ref);
 }
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C, const bNodeTree &node_tree)
@@ -64,51 +64,84 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C, const bNodeTre
  * removing the need to define the add menu completely, instead using a per-node-type path which
  * can be merged with catalog tree.
  */
-static const Set<StringRef> get_builtin_menus()
+static Set<StringRef> get_builtin_menus(const int tree_type)
 {
   Set<StringRef> menus;
-  menus.add_multiple_new({"Attribute",
-                          "Input",
-                          "Input/Constant",
-                          "Input/Group",
-                          "Input/Scene",
-                          "Output",
-                          "Geometry",
-                          "Geometry/Read",
-                          "Geometry/Sample",
-                          "Geometry/Write",
-                          "Geometry/Operations",
-                          "Curve",
-                          "Curve/Read",
-                          "Curve/Sample",
-                          "Curve/Write",
-                          "Curve/Operations",
-                          "Curve/Primitives",
-                          "Curve/Topology",
-                          "Mesh",
-                          "Mesh/Read",
-                          "Mesh/Sample",
-                          "Mesh/Write",
-                          "Mesh/Operations",
-                          "Mesh/Primitives",
-                          "Mesh/Topology",
-                          "Mesh/UV",
-                          "Point",
-                          "Volume",
-                          "Simulation",
-                          "Material",
-                          "Texture",
-                          "Utilities",
-                          "Utilities/Color",
-                          "Utilities/Text",
-                          "Utilities/Vector",
-                          "Utilities/Field",
-                          "Utilities/Math",
-                          "Utilities/Rotation",
-                          "Group",
-                          "Layout",
-                          "Unassigned"});
-  return menus;
+  switch (tree_type) {
+    case NTREE_GEOMETRY:
+      return {"Attribute",
+              "Input",
+              "Input/Constant",
+              "Input/Group",
+              "Input/Scene",
+              "Output",
+              "Geometry",
+              "Geometry/Read",
+              "Geometry/Sample",
+              "Geometry/Write",
+              "Geometry/Operations",
+              "Curve",
+              "Curve/Read",
+              "Curve/Sample",
+              "Curve/Write",
+              "Curve/Operations",
+              "Curve/Primitives",
+              "Curve/Topology",
+              "Instances",
+              "Mesh",
+              "Mesh/Read",
+              "Mesh/Sample",
+              "Mesh/Write",
+              "Mesh/Operations",
+              "Mesh/Primitives",
+              "Mesh/Topology",
+              "Mesh/UV",
+              "Point",
+              "Volume",
+              "Simulation",
+              "Material",
+              "Texture",
+              "Utilities",
+              "Utilities/Color",
+              "Utilities/Text",
+              "Utilities/Vector",
+              "Utilities/Field",
+              "Utilities/Math",
+              "Utilities/Rotation",
+              "Group",
+              "Layout",
+              "Unassigned"};
+    case NTREE_COMPOSIT:
+      return {"Input",
+              "Input/Constant",
+              "Input/Scene",
+              "Output",
+              "Color",
+              "Color/Adjust",
+              "Color/Mix",
+              "Filter",
+              "Filter/Blur",
+              "Keying",
+              "Mask",
+              "Tracking",
+              "Transform",
+              "Utilities",
+              "Vector",
+              "Group",
+              "Layout"};
+    case NTREE_SHADER:
+      return {"Input",
+              "Output",
+              "Color",
+              "Converter",
+              "Shader",
+              "Texture",
+              "Vector",
+              "Script",
+              "Group",
+              "Layout"};
+  }
+  return {};
 }
 
 static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
@@ -155,19 +188,19 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
                 IFACE_(asset->get_name().c_str()),
                 ICON_NONE,
                 nullptr,
-                WM_OP_INVOKE_DEFAULT,
+                WM_OP_INVOKE_REGION_WIN,
                 UI_ITEM_NONE,
                 &op_ptr);
     asset::operator_asset_reference_props_set(*asset, op_ptr);
   }
 
-  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+  asset_system::AssetLibrary *all_library = asset::list::library_get_once_available(
       asset_system::all_library_reference());
   if (!all_library) {
     return;
   }
 
-  const Set<StringRef> all_builtin_menus = get_builtin_menus();
+  const Set<StringRef> all_builtin_menus = get_builtin_menus(edit_tree->type);
 
   catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &item) {
     if (all_builtin_menus.contains_as(item.catalog_path().str())) {
@@ -202,7 +235,7 @@ static void node_add_unassigned_assets_draw(const bContext *C, Menu *menu)
                 IFACE_(asset->get_name().c_str()),
                 ICON_NONE,
                 nullptr,
-                WM_OP_INVOKE_DEFAULT,
+                WM_OP_INVOKE_REGION_WIN,
                 UI_ITEM_NONE,
                 &op_ptr);
     asset::operator_asset_reference_props_set(*asset, op_ptr);
@@ -235,9 +268,9 @@ static void add_root_catalogs_draw(const bContext *C, Menu *menu)
     uiItemL(layout, IFACE_("Loading Asset Libraries"), ICON_INFO);
   }
 
-  const Set<StringRef> all_builtin_menus = get_builtin_menus();
+  const Set<StringRef> all_builtin_menus = get_builtin_menus(edit_tree->type);
 
-  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+  asset_system::AssetLibrary *all_library = asset::list::library_get_once_available(
       asset_system::all_library_reference());
   if (!all_library) {
     return;
@@ -262,7 +295,7 @@ MenuType add_catalog_assets_menu_type()
   STRNCPY(type.idname, "NODE_MT_node_add_catalog_assets");
   type.poll = node_add_menu_poll;
   type.draw = node_add_catalog_assets_draw;
-  type.listener = asset::asset_reading_region_listen_fn;
+  type.listener = asset::list::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
   return type;
 }
@@ -273,7 +306,7 @@ MenuType add_unassigned_assets_menu_type()
   STRNCPY(type.idname, "NODE_MT_node_add_unassigned_assets");
   type.poll = node_add_menu_poll;
   type.draw = node_add_unassigned_assets_draw;
-  type.listener = asset::asset_reading_region_listen_fn;
+  type.listener = asset::list::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
   type.description = N_(
       "Node group assets not assigned to a catalog.\n"
@@ -287,7 +320,7 @@ MenuType add_root_catalogs_menu_type()
   STRNCPY(type.idname, "NODE_MT_node_add_root_catalogs");
   type.poll = node_add_menu_poll;
   type.draw = add_root_catalogs_draw;
-  type.listener = asset::asset_reading_region_listen_fn;
+  type.listener = asset::list::asset_reading_region_listen_fn;
   return type;
 }
 
@@ -305,7 +338,7 @@ void ui_template_node_asset_menu_items(uiLayout &layout,
   if (!item) {
     return;
   }
-  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+  asset_system::AssetLibrary *all_library = asset::list::library_get_once_available(
       asset_system::all_library_reference());
   if (!all_library) {
     return;
@@ -314,7 +347,6 @@ void ui_template_node_asset_menu_items(uiLayout &layout,
   if (path_ptr.data == nullptr) {
     return;
   }
-  uiItemS(&layout);
   uiLayout *col = uiLayoutColumn(&layout, false);
   uiLayoutSetContextPointer(col, "asset_catalog_path", &path_ptr);
   uiItemMContents(col, "NODE_MT_node_add_catalog_assets");

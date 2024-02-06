@@ -24,6 +24,7 @@ BokehBlurOperation::BokehBlurOperation()
 
   flags_.complex = true;
   flags_.open_cl = true;
+  flags_.can_be_constant = true;
 
   size_ = 1.0f;
   sizeavailable_ = false;
@@ -44,7 +45,7 @@ void BokehBlurOperation::init_data()
   const int width = bokeh->get_width();
   const int height = bokeh->get_height();
 
-  const float dimension = MIN2(width, height);
+  const float dimension = std::min(width, height);
 
   bokeh_mid_x_ = width / 2.0f;
   bokeh_mid_y_ = height / 2.0f;
@@ -88,7 +89,7 @@ void BokehBlurOperation::execute_pixel(float output[4], int x, int y, void *data
     int bufferwidth = input_buffer->get_width();
     int bufferstartx = input_rect.xmin;
     int bufferstarty = input_rect.ymin;
-    const float max_dim = MAX2(this->get_width(), this->get_height());
+    const float max_dim = std::max(this->get_width(), this->get_height());
     int pixel_size = size_ * max_dim / 100.0f;
     zero_v4(color_accum);
 
@@ -103,10 +104,10 @@ void BokehBlurOperation::execute_pixel(float output[4], int x, int y, void *data
     int maxy = y + pixel_size;
     int minx = x - pixel_size;
     int maxx = x + pixel_size;
-    miny = MAX2(miny, input_rect.ymin);
-    minx = MAX2(minx, input_rect.xmin);
-    maxy = MIN2(maxy, input_rect.ymax);
-    maxx = MIN2(maxx, input_rect.xmax);
+    miny = std::max(miny, input_rect.ymin);
+    minx = std::max(minx, input_rect.xmin);
+    maxy = std::min(maxy, input_rect.ymax);
+    maxx = std::min(maxx, input_rect.xmax);
 
     int step = get_step();
     int offsetadd = get_offset_add() * COM_DATA_TYPE_COLOR_CHANNELS;
@@ -148,7 +149,7 @@ bool BokehBlurOperation::determine_depending_area_of_interest(rcti *input,
 {
   rcti new_input;
   rcti bokeh_input;
-  const float max_dim = MAX2(this->get_width(), this->get_height());
+  const float max_dim = std::max(this->get_width(), this->get_height());
 
   if (sizeavailable_) {
     new_input.xmax = input->xmax + (size_ * max_dim / 100.0f);
@@ -204,7 +205,7 @@ void BokehBlurOperation::execute_opencl(OpenCLDevice *device,
   if (!sizeavailable_) {
     update_size();
   }
-  const float max_dim = MAX2(this->get_width(), this->get_height());
+  const float max_dim = std::max(this->get_width(), this->get_height());
   cl_int radius = size_ * max_dim / 100.0f;
   cl_int step = this->get_step();
 
@@ -259,14 +260,14 @@ void BokehBlurOperation::determine_canvas(const rcti &preferred_area, rcti &r_ar
   switch (execution_model_) {
     case eExecutionModel::Tiled: {
       NodeOperation::determine_canvas(preferred_area, r_area);
-      const float max_dim = MAX2(BLI_rcti_size_x(&r_area), BLI_rcti_size_y(&r_area));
+      const float max_dim = std::max(BLI_rcti_size_x(&r_area), BLI_rcti_size_y(&r_area));
       r_area.xmax += 2 * size_ * max_dim / 100.0f;
       r_area.ymax += 2 * size_ * max_dim / 100.0f;
       break;
     }
     case eExecutionModel::FullFrame: {
       set_determined_canvas_modifier([=](rcti &canvas) {
-        const float max_dim = MAX2(BLI_rcti_size_x(&canvas), BLI_rcti_size_y(&canvas));
+        const float max_dim = std::max(BLI_rcti_size_x(&canvas), BLI_rcti_size_y(&canvas));
         /* Rounding to even prevents image jiggling in backdrop while switching size values. */
         float add_size = round_to_even(2 * size_ * max_dim / 100.0f);
         canvas.xmax += add_size;
@@ -284,7 +285,7 @@ void BokehBlurOperation::get_area_of_interest(const int input_idx,
 {
   switch (input_idx) {
     case IMAGE_INPUT_INDEX: {
-      const float max_dim = MAX2(this->get_width(), this->get_height());
+      const float max_dim = std::max(this->get_width(), this->get_height());
       const float add_size = size_ * max_dim / 100.0f;
       r_input_area.xmin = output_area.xmin - add_size;
       r_input_area.xmax = output_area.xmax + add_size;
@@ -311,7 +312,7 @@ void BokehBlurOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                       const rcti &area,
                                                       Span<MemoryBuffer *> inputs)
 {
-  const float max_dim = MAX2(this->get_width(), this->get_height());
+  const float max_dim = std::max(this->get_width(), this->get_height());
   const int pixel_size = size_ * max_dim / 100.0f;
   const float m = bokehDimension_ / pixel_size;
 
@@ -338,10 +339,10 @@ void BokehBlurOperation::update_memory_buffer_partial(MemoryBuffer *output,
       multiplier_accum[2] = 1.0f;
       multiplier_accum[3] = 1.0f;
     }
-    const int miny = MAX2(y - pixel_size, image_rect.ymin);
-    const int maxy = MIN2(y + pixel_size, image_rect.ymax);
-    const int minx = MAX2(x - pixel_size, image_rect.xmin);
-    const int maxx = MIN2(x + pixel_size, image_rect.xmax);
+    const int miny = std::max(y - pixel_size, image_rect.ymin);
+    const int maxy = std::min(y + pixel_size, image_rect.ymax);
+    const int minx = std::max(x - pixel_size, image_rect.xmin);
+    const int maxx = std::min(x + pixel_size, image_rect.xmax);
     const int step = get_step();
     const int elem_stride = image_input->elem_stride * step;
     const int row_stride = image_input->row_stride * step;
