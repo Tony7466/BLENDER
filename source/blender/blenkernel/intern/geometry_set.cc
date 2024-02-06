@@ -581,6 +581,13 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
                                     const IndexMask selection,
                                     const AttributeForeachCallback callback) const
 {
+  /**  
+   * This function iterates through a set of geometries, applying a callback to each attribute of eligible children based on specified conditions. 
+   * Relevant children are determined by three criteria: the component type (e.g., mesh, curve), a depth value greater than 0 and a selection.
+   * If the primary component is an instance, the condition is true only when the depth is exactly 0. 
+   * Additionally, the function extends its operation to instances if any of their nested children meet the first condition.
+   * Also, an initial depth of 0 is equal to infinity for easier use.
+  */
 
   /*Initialize flag to track if child instances have the specified components.*/
   bool is_child_has_component = true;
