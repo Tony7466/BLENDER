@@ -21,7 +21,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_mask.h"
 #include "BKE_scene.h"
 
@@ -49,7 +49,7 @@
 
 #include "RNA_access.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 #include "BLT_translation.h"
 
 #include "transform.hh"
@@ -1559,7 +1559,7 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
   uchar color[3];
   UI_GetThemeColorShade3ubv(TH_TEXT_HI, -50, color);
   BLF_color3ubv(font_id, color);
-  BLF_draw_default(xco, yco, 0.0f, printable, BLF_DRAW_STR_DUMMY_MAX);
+  BLF_draw_default_shadowed(xco, yco, 0.0f, printable, BLF_DRAW_STR_DUMMY_MAX);
 
   /* autokey recording icon... */
   GPU_blend(GPU_BLEND_ALPHA);
