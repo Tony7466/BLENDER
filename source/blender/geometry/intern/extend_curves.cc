@@ -24,21 +24,23 @@
 
 namespace blender::geometry {
 
-static auto extend_curves_straight(const float used_percent_length,
+static void extend_curves_straight(const float used_percent_length,
                                    const float new_size,
-                                   const Array<int> &start_points,
-                                   const Array<int> &end_points,
+                                   const Span<int> start_points,
+                                   const Span<int> end_points,
                                    const int curve,
                                    const IndexRange new_curve,
-                                   const Array<float> &use_start_lengths,
-                                   const Array<float> &use_end_lengths,
+                                   const Span<float> use_start_lengths,
+                                   const Span<float> use_end_lengths,
                                    MutableSpan<float3> positions)
 {
   float overshoot_point_param = used_percent_length * (new_size - 1);
   float3 result;
   if (start_points[curve]) {
-    // TODO: I don't think the algorithm here is correct?
-    // I think It should always be endpoint to overshoot point?
+    /** Here we use the vector between two adjacent points around #overshoot_point_param as
+     * our reference forthe direction of extention, however to have better tolerance for jitter,
+     * using the vector (a_few_points_back - end_point) might be a better solution in the future.
+     */
     int index1 = math::floor(overshoot_point_param);
     int index2 = math::ceil(overshoot_point_param);
     result = math::interpolate(positions[new_curve[index1]],
@@ -66,21 +68,19 @@ static auto extend_curves_straight(const float used_percent_length,
 }
 
 static void extend_curves_curved(const float used_percent_length,
-                                 const Array<int> &start_points,
-                                 const Array<int> &end_points,
+                                 const Span<int> start_points,
+                                 const Span<int> end_points,
                                  const OffsetIndices<int> &points_by_curve,
                                  const int curve,
                                  const IndexRange new_curve,
-                                 const Array<float> &use_start_lengths,
-                                 const Array<float> &use_end_lengths,
+                                 const Span<float> use_start_lengths,
+                                 const Span<float> use_end_lengths,
                                  const float max_angle,
                                  const float segment_influence,
                                  const bool invert_curvature,
                                  MutableSpan<float3> positions)
 {
-
   /* Curvature calculation. */
-
   const int first_old_index = start_points[curve] ? start_points[curve] : 0;
   const int last_old_index = points_by_curve[curve].size() - 1 + first_old_index;
   const int orig_totpoints = points_by_curve[curve].size();
@@ -200,7 +200,7 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
                                   const VArray<float> &end_lengths,
                                   const float overshoot_fac,
                                   const bool follow_curvature,
-                                  const int point_density,
+                                  const float point_density,
                                   const float segment_influence,
                                   const float max_angle,
                                   const bool invert_curvature,
@@ -226,16 +226,12 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
   src_curves.ensure_evaluated_lengths();
 
   /* Count how many points we need. */
-  for (const int curve : src_curves.curves_range()) {
+  selection.foreach_index([&](const int curve) {
     int point_count = points_by_curve[curve].size();
     dst_point_offsets[curve] = point_count;
     /* Curve not suitable for stretching... */
-    if (point_count <= 2 || (!selection.contains(curve))) {
-      continue;
-    }
-    float density = point_density;
-    if (density < 1e-4f) {
-      density = 0.1;
+    if (point_count <= 2) {
+      return;
     }
 
     use_start_lengths[curve] = start_lengths[curve];
@@ -247,16 +243,17 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
     }
 
     const int count_start = (use_start_lengths[curve] > 0) ?
-                                (math::ceil(use_start_lengths[curve] * density)) :
+                                (math::ceil(use_start_lengths[curve] * point_density)) :
                                 0;
     const int count_end = (use_end_lengths[curve] > 0) ?
-                              (math::ceil(use_end_lengths[curve] * density)) :
+                              (math::ceil(use_end_lengths[curve] * point_density)) :
                               0;
     dst_point_offsets[curve] += count_start;
     dst_point_offsets[curve] += count_end;
     start_points[curve] = count_start;
     end_points[curve] = count_end;
-  }
+  });
+
   OffsetIndices dst_indicies = offset_indices::accumulate_counts_to_offsets(dst_point_offsets);
   int target_point_count = dst_point_offsets.last();
 
@@ -292,7 +289,7 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
   gather_attributes(src_attributes,
                     bke::AttrDomain::Point,
                     propagation_info,
-                    {},  //{"position"},
+                    {},
                     dst_to_src_point,
                     dst_attributes);
 
@@ -308,35 +305,29 @@ bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
       const IndexRange new_curve = new_points_by_curve[curve];
       int new_size = new_curve.size();
 
-      /* #used_percent_length must always be finite, otherwise a segfault occurs.
-       * Since this function should never segfault, set #used_percent_length to a safe fallback.
-       */
-      /* NOTE: This fallback is used if `gps->totpoints == 2`, see
-       * `MOD_gpencil_legacy_length.cc`.
-       */
       const float used_percent_length = math::clamp(
-          isfinite(overshoot_fac) ? 0.1f : overshoot_fac, 1e-4f, 1.0f);
+          isfinite(overshoot_fac) ? overshoot_fac : 0.1f, 1e-4f, 1.0f);
 
       if (!follow_curvature) {
         extend_curves_straight(used_percent_length,
                                new_size,
-                               start_points,
-                               end_points,
+                               start_points.as_span(),
+                               end_points.as_span(),
                                curve,
                                new_curve,
-                               use_start_lengths,
-                               use_end_lengths,
+                               use_start_lengths.as_span(),
+                               use_end_lengths.as_span(),
                                positions);
       }
       else {
         extend_curves_curved(used_percent_length,
-                             start_points,
-                             end_points,
+                             start_points.as_span(),
+                             end_points.as_span(),
                              points_by_curve,
                              curve,
                              new_curve,
-                             use_start_lengths,
-                             use_end_lengths,
+                             use_start_lengths.as_span(),
+                             use_end_lengths.as_span(),
                              max_angle,
                              segment_influence,
                              invert_curvature,
