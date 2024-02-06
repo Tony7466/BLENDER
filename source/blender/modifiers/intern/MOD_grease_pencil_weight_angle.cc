@@ -96,7 +96,7 @@ static void write_weights_for_drawing(const ModifierData &md,
                                       const Object &ob,
                                       bke::greasepencil::Drawing &drawing)
 {
-  auto &mmd = reinterpret_cast<const GPWeightAngleModifierData &>(md);
+  const auto &mmd = reinterpret_cast<const GPWeightAngleModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   if (curves.points_num() == 0) {
     return;
@@ -114,8 +114,9 @@ static void write_weights_for_drawing(const ModifierData &md,
   if (dst_weights.span.is_empty()) {
     return;
   }
-  const VArray<float> input_weights = *attributes.lookup_or_default<float>(
-      mmd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f);
+
+  const VArray<float> input_weights = modifier::greasepencil::get_influence_vertex_weights(
+      curves, mmd.influence);
 
   /* Use default Z up. */
   const float3 z_up(0.0f, 0.0f, 1.0f);
@@ -159,7 +160,7 @@ static void write_weights_for_drawing(const ModifierData &md,
       dst_weights.span[point] = math::clamp(dst_weights.span[point], mmd.min_weight, 1.0f);
     }
     /* First point has the same weight as the second one. */
-    dst_weights.span[0] = dst_weights.span[1];
+    dst_weights.span[points[0]] = dst_weights.span[points[1]];
   });
 
   dst_weights.finish();
@@ -169,7 +170,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  GPWeightAngleModifierData *mmd = reinterpret_cast<GPWeightAngleModifierData *>(md);
+  const GPWeightAngleModifierData *mmd = reinterpret_cast<GPWeightAngleModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;

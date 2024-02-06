@@ -120,7 +120,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "GREASE_PENCIL_VERTEX_WEIGHT_ANGLE",
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Angle",
-     "Set the vertex group weights based on the angle of the stroke"},
+     "Generate vertex weights base on stroke angle"},
 
     RNA_ENUM_ITEM_HEADING(N_("Generate"), nullptr),
     {eModifierType_Array,
