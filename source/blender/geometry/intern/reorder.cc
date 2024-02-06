@@ -201,18 +201,28 @@ static void reorder_curves_exec(const bke::CurvesGeometry &src_curves,
 
 static void reorder_instaces_exec(const bke::Instances &src_instances,
                                   const Span<int> old_by_new_map,
-                                  bke::Instances &dst_instances)
+                                  bke::Instances &dst_instances,
+                                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   bke::gather_attributes(src_instances.attributes(),
                          bke::AttrDomain::Instance,
-                         {},
+                         propagation_info,
                          {},
                          old_by_new_map,
                          dst_instances.attributes_for_write());
 
+  Vector<int> mapping;
+  mapping.reserve(src_instances.references_num());
+  for (const bke::InstanceReference &reference : src_instances.references()) {
+    mapping.append(dst_instances.add_reference(reference));
+  }
+
   const Span<int> old_reference_handles = src_instances.reference_handles();
   MutableSpan<int> new_reference_handles = dst_instances.reference_handles();
   array_utils::gather(old_reference_handles, old_by_new_map, new_reference_handles);
+  if (!array_utils::indices_are_range(mapping.as_span(), mapping.index_range())) {
+    array_utils::gather(mapping.as_span(), new_reference_handles.as_span(), new_reference_handles);
+  }
 
   const Span<float4x4> old_transforms = src_instances.transforms();
   MutableSpan<float4x4> new_transforms = dst_instances.transforms();
@@ -287,9 +297,9 @@ bke::Instances *reorder_instaces(const bke::Instances &src_instances,
                                  Span<int> old_by_new_map,
                                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  bke::Instances *dst_instances = new bke::Instances(src_instances);
-  clean_unused_attributes(propagation_info, dst_instances->attributes_for_write());
-  reorder_instaces_exec(src_instances, old_by_new_map, *dst_instances);
+  bke::Instances *dst_instances = new bke::Instances();
+  dst_instances->resize(src_instances.instances_num());
+  reorder_instaces_exec(src_instances, old_by_new_map, *dst_instances, propagation_info);
   return dst_instances;
 }
 
