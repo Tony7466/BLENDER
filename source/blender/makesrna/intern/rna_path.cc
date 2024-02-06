@@ -32,7 +32,7 @@
 #include "RNA_prototypes.h"
 
 #include "rna_access_internal.h"
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 /**
  * Extract the first token from `path`.
@@ -902,15 +902,23 @@ std::optional<std::string> RNA_path_from_struct_to_idproperty(PointerRNA *ptr,
 {
   const IDProperty *haystack = RNA_struct_idprops(ptr, false);
 
-  if (haystack) { /* can fail when called on bones */
-    return rna_idp_path(ptr, haystack, needle, nullptr);
+  if (!haystack) { /* can fail when called on bones */
+    return std::nullopt;
   }
-  return std::nullopt;
+
+  const char *path = rna_idp_path(ptr, haystack, needle, nullptr);
+  if (!path) {
+    return std::nullopt;
+  }
+
+  std::string string_path(path);
+  MEM_freeN((void *)path);
+
+  return string_path;
 }
 
 static std::optional<std::string> rna_path_from_ID_to_idpgroup(const PointerRNA *ptr)
 {
-
   BLI_assert(ptr->owner_id != nullptr);
 
   /* TODO: Support Bones/PoseBones. no pointers stored to the bones from here, only the ID.
@@ -970,7 +978,7 @@ static std::optional<std::string> rna_prepend_real_ID_path(Main * /*bmain*/,
   if (!path.is_empty()) {
     if (real_id) {
       if (prefix[0]) {
-        return fmt::format("{}{}{}", prefix, path[0] == '[' ? "" : ".", std::string_view(path));
+        return fmt::format("{}{}{}", prefix, path[0] == '[' ? "" : ".", path);
       }
       return path;
     }
@@ -994,9 +1002,7 @@ std::optional<std::string> RNA_path_from_ID_to_struct(const PointerRNA *ptr)
   if (!RNA_struct_is_ID(ptr->type)) {
     if (ptr->type->path) {
       /* if type has a path to some ID, use it */
-      char *path_cstr = ptr->type->path((PointerRNA *)ptr);
-      ptrpath = path_cstr;
-      MEM_freeN(path_cstr);
+      ptrpath = ptr->type->path((PointerRNA *)ptr);
     }
     else if (ptr->type->nested && RNA_struct_is_ID(ptr->type->nested)) {
       PropertyRNA *userprop;
@@ -1099,11 +1105,11 @@ static std::string rna_path_from_ptr_to_property_index_ex(const PointerRNA *ptr,
 
   if (!path_prefix.is_empty()) {
     if (is_rna) {
-      return fmt::format("{}.{}{}", std::string_view(path_prefix), propname, index_str);
+      return fmt::format("{}.{}{}", path_prefix, propname, index_str);
     }
     char propname_esc[MAX_IDPROP_NAME * 2];
     BLI_str_escape(propname_esc, propname, sizeof(propname_esc));
-    return fmt::format("{}[\"{}\"]{}", std::string_view(path_prefix), propname_esc, index_str);
+    return fmt::format("{}[\"{}\"]{}", path_prefix, propname_esc, index_str);
   }
 
   if (is_rna) {

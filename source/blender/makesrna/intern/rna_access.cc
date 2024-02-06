@@ -29,7 +29,7 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 #include "BLT_translation.h"
 
 #include "BKE_anim_data.h"
@@ -62,7 +62,7 @@
 #include "WM_types.hh"
 
 #include "rna_access_internal.h"
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 const PointerRNA PointerRNA_NULL = {nullptr};
 
@@ -532,6 +532,7 @@ void rna_property_rna_or_id_get(PropertyRNA *prop,
             idprop->ui_data);
         if (ui_data_int && ui_data_int->enum_items_num > 0) {
           r_prop_rna_or_id->rnaprop = &rna_PropertyGroupItem_enum;
+          return;
         }
       }
       r_prop_rna_or_id->rnaprop = typemap[int(idprop->type)];
