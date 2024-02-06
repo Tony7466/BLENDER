@@ -111,10 +111,10 @@ static void motion_path_get_frame_range_to_draw(bAnimVizSettings *avs,
 static Object *get_camera_for_motion_path(const DRWContextState *draw_context,
                                           const eMotionPath_BakeFlag bake_flag)
 {
-  if (bake_flag & MOTIONPATH_BAKE_CAMERA_SPACE) {
-    return draw_context->v3d->camera;
+  if ((bake_flag & MOTIONPATH_BAKE_CAMERA_SPACE) == 0) {
+    return nullptr;
   }
-  return nullptr;
+  return draw_context->v3d->camera;
 }
 
 static void motion_path_cache(OVERLAY_Data *vedata,
