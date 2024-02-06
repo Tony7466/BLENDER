@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import glob
+from pathlib import PurePath
 
 # XXX Relative import does not work here when used from Blender...
 from bl_i18n_utils import settings as settings_i18n, utils
@@ -664,6 +665,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
             root_node = ast.parse(filedata.read(), fp, 'exec')
 
         fp_rel = make_rel(fp)
+        fp_rel = PurePath(fp_rel).as_posix()
 
         for node in ast.walk(root_node):
             if type(node) == ast.Call:
@@ -778,7 +780,7 @@ def dump_src_messages(msgs, reports, settings):
 
     def clean_str(s):
         # The encode/decode to/from 'raw_unicode_escape' allows to transform the C-type unicode hexadecimal escapes
-        # (like '\u2715' for the '×' symbol) back into a proper unicode character.
+        # (like '\u00d7' for the '×' symbol) back into a proper unicode character.
         return "".join(
             m.group("clean") for m in _clean_str(s)
         ).encode('raw_unicode_escape').decode('raw_unicode_escape')
@@ -1100,14 +1102,14 @@ def dump_messages(do_messages, do_checks, settings):
     return pot  # Not used currently, but may be useful later (and to be consistent with dump_addon_messages!).
 
 
-def dump_addon_messages(module_name, do_checks, settings):
+def dump_addon_messages(addon_module_name, do_checks, settings):
     import addon_utils
 
     # Get current addon state (loaded or not):
-    was_loaded = addon_utils.check(module_name)[1]
+    was_loaded = addon_utils.check(addon_module_name)[1]
 
     # Enable our addon.
-    addon = utils.enable_addons(addons={module_name})[0]
+    addon = utils.enable_addons(addons={addon_module_name})[0]
 
     addon_info = addon_utils.module_bl_info(addon)
     ver = addon_info["name"] + " " + ".".join(str(v) for v in addon_info["version"])
@@ -1131,7 +1133,7 @@ def dump_addon_messages(module_name, do_checks, settings):
     print("C")
 
     # Now disable our addon, and re-scan RNA.
-    utils.enable_addons(addons={module_name}, disable=True)
+    utils.enable_addons(addons={addon_module_name}, disable=True)
     print("D")
     reports["check_ctxt"] = minus_check_ctxt
     print("E")
@@ -1140,7 +1142,7 @@ def dump_addon_messages(module_name, do_checks, settings):
 
     # Restore previous state if needed!
     if was_loaded:
-        utils.enable_addons(addons={module_name})
+        utils.enable_addons(addons={addon_module_name})
 
     # and make the diff!
     for key in minus_msgs:
