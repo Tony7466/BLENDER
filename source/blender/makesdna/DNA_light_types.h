@@ -39,8 +39,6 @@ typedef struct Light {
   float radius;
 
   /* Spot Light. */
-  short spot_shape;
-  short _pad3;
   float spotsize;
   float spotblend;
 
@@ -79,6 +77,7 @@ typedef struct Light {
   float spec_fac, att_dist;
   float shadow_softness_factor;
   float shadow_trace_distance;
+  float _pad3;
 
   /* Preview */
   struct PreviewImage *preview;
@@ -140,6 +139,7 @@ enum {
   // LA_SHOW_SHADOW_BOX = 1 << 18,
   LA_SHAD_CONTACT = 1 << 19,
   LA_CUSTOM_ATTENUATION = 1 << 20,
+  LA_USE_FALLOFF = 1 << 21,
 };
 
 /** #Light::falloff_type */
@@ -160,10 +160,4 @@ enum {
   // LA_AREA_BOX = 3,  /* Deprecated. */
   LA_AREA_DISK = 4,
   LA_AREA_ELLIPSE = 5,
-};
-
-/** #Light::spot_shape */
-enum {
-  LA_SPOT_SPHERE = 0,
-  LA_SPOT_DISK = 1,
 };
