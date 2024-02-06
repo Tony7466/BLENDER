@@ -30,10 +30,12 @@ namespace blender::bke::greasepencil::convert {
  * - ListBase with used vertex group names (bDeformGroup)
  * - Array of indices in the new vertex group list for remapping
  */
-static std::pair<ListBase, Array<int>> find_used_vertex_groups(const bGPDframe &gpf,
-                                                               const ListBase &vertex_group_names)
+static void find_used_vertex_groups(const bGPDframe &gpf,
+                                    const ListBase &all_names,
+                                    ListBase &r_vertex_group_names,
+                                    Array<int> &r_indices)
 {
-  const int num_vertex_groups = BLI_listbase_count(&vertex_group_names);
+  const int num_vertex_groups = BLI_listbase_count(&all_names);
   Array<int> is_group_used(num_vertex_groups, false);
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
     if (!gps->dvert) {
@@ -46,22 +48,20 @@ static std::pair<ListBase, Array<int>> find_used_vertex_groups(const bGPDframe &
       }
     }
   }
-  ListBase new_names;
-  BLI_listbase_clear(&new_names);
-  Array<int> index_map(num_vertex_groups);
+  BLI_listbase_clear(&r_vertex_group_names);
+  r_indices.reinitialize(num_vertex_groups);
   int new_group_i = 0;
   int old_group_i;
-  LISTBASE_FOREACH_INDEX (const bDeformGroup *, def_group, &vertex_group_names, old_group_i) {
+  LISTBASE_FOREACH_INDEX (const bDeformGroup *, def_group, &all_names, old_group_i) {
     if (!is_group_used[old_group_i]) {
-      index_map[old_group_i] = -1;
+      r_indices[old_group_i] = -1;
       continue;
     }
-    index_map[old_group_i] = new_group_i++;
+    r_indices[old_group_i] = new_group_i++;
 
     bDeformGroup *def_group_copy = static_cast<bDeformGroup *>(MEM_dupallocN(def_group));
-    BLI_addtail(&new_names, def_group_copy);
+    BLI_addtail(&r_vertex_group_names, def_group_copy);
   }
-  return std::make_pair(std::move(new_names), std::move(index_map));
 }
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
@@ -98,8 +98,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   curves.fill_curve_types(CURVE_TYPE_POLY);
 
   /* Find used vertex groups in this drawing. */
-  auto [stroke_vertex_group_names,
-        stroke_def_nr_map] = find_used_vertex_groups(gpf, vertex_group_names);
+  ListBase stroke_vertex_group_names;
+  Array<int> stroke_def_nr_map;
+  find_used_vertex_groups(gpf, vertex_group_names, stroke_vertex_group_names, stroke_def_nr_map);
   BLI_assert(BLI_listbase_is_empty(&curves.vertex_group_names));
   curves.vertex_group_names = stroke_vertex_group_names;
   const bool use_dverts = !BLI_listbase_is_empty(&curves.vertex_group_names);
