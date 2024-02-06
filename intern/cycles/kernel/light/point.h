@@ -115,7 +115,9 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
     ls->Ng = normalize(ls->P - klight->co);
   }
   else {
-    /* PDF does not change. */
+    /* NOTE : preserve pdf in area measure. */
+    ls->pdf = ls->eval_fac * 4.0f * M_PI_F;
+
     ls->Ng = -ls->D;
   }
 

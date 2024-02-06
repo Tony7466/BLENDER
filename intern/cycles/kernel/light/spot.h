@@ -189,7 +189,9 @@ ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global Kerne
     use_attenuation = (d_sq > r_sq);
   }
   else {
-    /* PDF does not change. */
+    /* NOTE : preserve pdf in area measure. */
+    ls->pdf = ls->eval_fac * 4.0f * M_PI_F;
+
     ls->Ng = -ls->D;
   }
 
