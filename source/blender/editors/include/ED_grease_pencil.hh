@@ -16,6 +16,8 @@
 
 #include "ED_keyframes_edit.hh"
 
+#include "WM_api.hh"
+
 struct bContext;
 struct Main;
 struct Object;
@@ -152,8 +154,6 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
 
-float brush_radius_world_space(bContext &C, int x, int y);
-
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
@@ -171,12 +171,18 @@ struct MutableDrawingInfo {
 };
 Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                      GreasePencil &grease_pencil);
+Array<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
+    const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
 Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
                                              const GreasePencil &grease_pencil);
 
 IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
                                     IndexMaskMemory &memory);
+IndexMask retrieve_editable_strokes_by_material(Object &object,
+                                                const bke::greasepencil::Drawing &drawing,
+                                                const int mat_i,
+                                                IndexMaskMemory &memory);
 IndexMask retrieve_editable_points(Object &object,
                                    const bke::greasepencil::Drawing &drawing,
                                    IndexMaskMemory &memory);
@@ -203,14 +209,6 @@ IndexMask retrieve_editable_and_selected_elements(Object &object,
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
 void create_suzanne(Main &bmain, Object &object, float4x4 matrix, int frame_number);
-
-void gaussian_blur_1D(const GSpan src,
-                      int64_t iterations,
-                      float influence,
-                      bool smooth_ends,
-                      bool keep_shape,
-                      bool is_cyclic,
-                      GMutableSpan dst);
 
 int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        float epsilon,

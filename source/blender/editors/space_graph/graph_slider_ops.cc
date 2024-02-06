@@ -432,7 +432,7 @@ static void decimate_graph_keys(bAnimContext *ac, float factor, float error_sq_m
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     if (!decimate_fcurve(ale, factor, error_sq_max)) {
       /* The selection contains unsupported keyframe types! */
-      WM_report(RPT_WARNING, "Decimate: Skipping non linear/bezier keyframes!");
+      WM_report(RPT_WARNING, "Decimate: Skipping non linear/Bézier keyframes!");
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -2330,11 +2330,11 @@ static void scale_from_neighbor_draw_status_header(bContext *C, wmOperator *op)
   const FCurveSegmentAnchor anchor = FCurveSegmentAnchor(RNA_enum_get(op->ptr, "anchor"));
   switch (anchor) {
     case FCurveSegmentAnchor::LEFT:
-      SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Scale From Right End");
+      SNPRINTF(op_slider_string, "%s | %s", slider_string, IFACE_("[D] - Scale From Right End"));
       break;
 
     case FCurveSegmentAnchor::RIGHT:
-      SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Scale From Left End");
+      SNPRINTF(op_slider_string, "%s | %s", slider_string, IFACE_("[D] - Scale From Left End"));
       break;
   }
 
@@ -2440,8 +2440,7 @@ void GRAPH_OT_scale_from_neighbor(wmOperatorType *ot)
   ot->name = "Scale from Neighbor";
   ot->idname = "GRAPH_OT_scale_from_neighbor";
   ot->description =
-      "Increase or decrease the value of selected keys \n\
-  in relationship to the neighboring one";
+      "Increase or decrease the value of selected keys in relationship to the neighboring one";
 
   /* API callbacks. */
   ot->invoke = scale_from_neighbor_invoke;
