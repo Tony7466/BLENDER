@@ -188,7 +188,7 @@ class _defs_annotate:
                     row = layout.row(align=True)
                     row.prop(gpl, "color", text="Annotation")
                     row.popover(
-                        panel="PROPERTIES_PT_annotation_layers",
+                        panel="TOPBAR_PT_annotation_layers",
                         text=text,
                     )
                 else:
