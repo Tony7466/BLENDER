@@ -22,16 +22,18 @@ namespace blender::eevee {
 /** \name LightData
  * \{ */
 
-static eLightType to_light_type(short blender_light_type, short blender_area_type)
+static eLightType to_light_type(short blender_light_type,
+                                short blender_area_type,
+                                short blender_spot_type)
 {
   switch (blender_light_type) {
     default:
     case LA_LOCAL:
-      return LIGHT_POINT;
+      return (blender_spot_type == LA_SPOT_SPHERE) ? LIGHT_OMNI_SPHERE : LIGHT_OMNI_DISK;
     case LA_SUN:
       return LIGHT_SUN;
     case LA_SPOT:
-      return LIGHT_SPOT;
+      return (blender_spot_type == LA_SPOT_SPHERE) ? LIGHT_SPOT_SPHERE : LIGHT_SPOT_DISK;
     case LA_AREA:
       return ELEM(blender_area_type, LA_AREA_DISK, LA_AREA_ELLIPSE) ? LIGHT_ELLIPSE : LIGHT_RECT;
   }
@@ -76,7 +78,7 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   this->power[LIGHT_SPECULAR] = la->spec_fac * shape_power;
   this->power[LIGHT_VOLUME] = la->volume_fac * point_power;
 
-  eLightType new_type = to_light_type(la->type, la->area_shape);
+  eLightType new_type = to_light_type(la->type, la->area_shape, la->spot_shape);
   if (assign_if_different(this->type, new_type)) {
     shadow_discard_safe(shadows);
   }

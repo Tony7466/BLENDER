@@ -331,7 +331,13 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
     /* Disk rotated towards light vector. */
     vec3 right, up;
     make_orthonormal_basis(L, right, up);
-    random_2d *= light_sphere_disk_radius(light._radius, dist);
+    if (light.type == LIGHT_OMNI_SPHERE || light.type == LIGHT_SPOT_SPHERE) {
+      /* FIXME(weizhen): this is not well-defined when `dist < light._radius`. */
+      random_2d *= light_sphere_disk_radius(light._radius, dist);
+    }
+    else {
+      random_2d *= light._radius;
+    }
 
     random_2d *= light.shadow_shape_scale_or_angle;
     vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
