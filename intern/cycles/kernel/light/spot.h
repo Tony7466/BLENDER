@@ -118,7 +118,7 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
     spot_light_uv(local_ray, klight->spot.half_cot_half_spot_angle, &ls->u, &ls->v);
   }
   else {
-    /* Point light with ad-hoc radius based on orienteded disk. */
+    /* Point light with ad-hoc radius based on oriented disk. */
     ls->P = klight->co;
     if (r_sq > 0.0f) {
       ls->P += disk_light_sample(lightN, rand) * klight->spot.radius;
@@ -179,10 +179,10 @@ ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global Kerne
     const float t_sq = sqr(ls->t);
 
     /* NOTE : preserve pdf in area measure. */
-    const float pdf_solid_angle_to_area = 0.5f * fabsf(d_sq - r_sq - t_sq) /
-                                          (radius * ls->t * t_sq);
+    const float jacobian_solid_angle_to_area = 0.5f * fabsf(d_sq - r_sq - t_sq) /
+                                               (radius * ls->t * t_sq);
     ls->pdf = spot_light_pdf(klight->spot.cos_half_spot_angle, d_sq, r_sq, N, ls->D, path_flag) *
-              pdf_solid_angle_to_area;
+              jacobian_solid_angle_to_area;
 
     ls->Ng = normalize(ls->P - klight->co);
 

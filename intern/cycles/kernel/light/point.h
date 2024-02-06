@@ -55,7 +55,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
     ls->P = ls->Ng * klight->spot.radius + klight->co;
   }
   else {
-    /* Point light with ad-hoc radius based on orienteded disk. */
+    /* Point light with ad-hoc radius based on oriented disk. */
     ls->P = klight->co;
     if (r_sq > 0.0f) {
       ls->P += disk_light_sample(lightN, rand) * klight->spot.radius;
@@ -67,6 +67,8 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
     /* PDF. */
     const float invarea = (r_sq > 0.0f) ? 1.0f / (r_sq * M_PI_F) : 1.0f;
     ls->pdf = invarea * light_pdf_area_to_solid_angle(lightN, -ls->D, ls->t);
+
+    /* TODO: texture coordinates. */
   }
 
   /* Texture coordinates. */
@@ -79,7 +81,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   return true;
 }
 
-ccl_device_forceinline float point_light_pdf(
+ccl_device_forceinline float sphere_light_pdf(
     const float d_sq, const float r_sq, const float3 N, const float3 D, const uint32_t path_flag)
 {
   if (d_sq > r_sq) {
@@ -106,9 +108,9 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
     const float t_sq = sqr(ls->t);
 
     /* NOTE : preserve pdf in area measure. */
-    const float pdf_solid_angle_to_area = 0.5f * fabsf(d_sq - r_sq - t_sq) /
-                                          (radius * ls->t * t_sq);
-    ls->pdf = point_light_pdf(d_sq, r_sq, N, ls->D, path_flag) * pdf_solid_angle_to_area;
+    const float jacobian_solid_angle_to_area = 0.5f * fabsf(d_sq - r_sq - t_sq) /
+                                               (radius * ls->t * t_sq);
+    ls->pdf = sphere_light_pdf(d_sq, r_sq, N, ls->D, path_flag) * jacobian_solid_angle_to_area;
 
     ls->Ng = normalize(ls->P - klight->co);
   }
@@ -161,7 +163,7 @@ ccl_device_inline bool point_light_sample_from_intersection(
 
   if (klight->spot.is_sphere) {
     const float d_sq = len_squared(ray_P - klight->co);
-    ls->pdf = point_light_pdf(d_sq, r_sq, N, ray_D, path_flag);
+    ls->pdf = sphere_light_pdf(d_sq, r_sq, N, ray_D, path_flag);
     ls->Ng = normalize(ls->P - klight->co);
   }
   else {
@@ -174,6 +176,8 @@ ccl_device_inline bool point_light_sample_from_intersection(
       ls->pdf = 0.0f;
     }
     ls->Ng = -ray_D;
+
+    // TODO: texture coordinates.
   }
 
   /* Texture coordinates. */
