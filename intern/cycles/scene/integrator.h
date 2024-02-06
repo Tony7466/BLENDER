@@ -94,6 +94,7 @@ class Integrator : public Node {
 
   NODE_SOCKET_API(bool, use_denoise);
   NODE_SOCKET_API(DenoiserType, denoiser_type);
+  NODE_SOCKET_API(bool, denoise_allow_oidn_gpu);
   NODE_SOCKET_API(int, denoise_start_sample);
   NODE_SOCKET_API(bool, use_denoise_pass_albedo);
   NODE_SOCKET_API(bool, use_denoise_pass_normal);

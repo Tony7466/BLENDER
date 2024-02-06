@@ -340,6 +340,11 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=4,  # Use integer to avoid error in builds without OpenImageDenoise.
         update=update_render_passes,
     )
+    denoising_oidn_allow_gpu: BoolProperty(
+        name="OpenImageDenoise on GPU",
+        description="Perform denoising on GPU devices, if available. This is significantly faster than on CPU, but requires additional GPU memory. When large scenes need more GPU memory, this option can be disabled",
+        default=True,
+    )
     denoising_prefilter: EnumProperty(
         name="Denoising Prefilter",
         description="Prefilter noisy guiding (albedo and normal) passes to improve denoising quality when using OpenImageDenoiser",
@@ -363,6 +368,11 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Denoise the image after each preview update with the selected denoiser",
         items=enum_preview_denoiser,
         default=0,
+    )
+    preview_denoising_oidn_allow_gpu: BoolProperty(
+        name="OpenImageDenoise on GPU",
+        description="Perform denoising on GPU devices, if available. This is significantly faster than on CPU, but requires additional GPU memory. When large scenes need more GPU memory, this option can be disabled",
+        default=True,
     )
     preview_denoising_prefilter: EnumProperty(
         name="Viewport Denoising Prefilter",
