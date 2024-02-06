@@ -63,8 +63,6 @@ bke::CurvesGeometry copy_curve_points(
   const OffsetIndices<int> points_by_curve = src_curves.points_by_curve();
 
   IndexMaskMemory memory;
-  /* TODO: IndexMask is large structure, better to use some raw-slice to point to single mask data.
-   */
   Array<IndexMask> curves_masks(points_by_curve.size());
   split_mask_for_ranges(points_by_curve, points_mask, curves_masks);
   Array<int> curves_subdivision(points_by_curve.size() + 1, 0);
