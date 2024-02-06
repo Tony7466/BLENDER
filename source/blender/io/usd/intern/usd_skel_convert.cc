@@ -2,12 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_skel_convert.h"
+#include "usd_skel_convert.hh"
 
 #include "usd.h"
-#include "usd_armature_utils.h"
-#include "usd_blend_shape_utils.h"
-#include "usd_hash_types.h"
+#include "usd_armature_utils.hh"
+#include "usd_blend_shape_utils.hh"
+#include "usd_hash_types.hh"
 
 #include <pxr/usd/sdf/namespaceEdit.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
@@ -28,9 +28,9 @@
 #include "BKE_action.h"
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_fcurve.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"

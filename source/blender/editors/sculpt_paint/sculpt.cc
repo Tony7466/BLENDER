@@ -43,7 +43,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_image.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
@@ -5277,6 +5277,8 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
          * are trivial to access from the PBVH. Updating the object's evaluated geometry bounding
          * box is necessary because sculpt strokes don't cause an object reevaluation. */
         mesh->tag_positions_changed_no_normals();
+        /* Sculpt mode does node use or recalculate face corner normals, so they are cleared. */
+        mesh->runtime->corner_normals_cache.tag_dirty();
       }
       else {
         /* Drawing happens from the modifier stack evaluation result.
