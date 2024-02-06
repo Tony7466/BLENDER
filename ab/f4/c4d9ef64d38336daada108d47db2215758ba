@@ -1,2 +1,3 @@
 Referenced by issue #117851, Switch to Camera with Background image in LocalView causes to Blender crash
 Referenced by pull request #117884, Fix #117851: Crash switching to Camera with Background image
+Referenced by commit 289d7fa7d200d2fa008b9a4a848fdee06448efef, Fix #117851: Crash switching to Camera with Background image
