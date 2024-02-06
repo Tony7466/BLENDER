@@ -2775,20 +2775,20 @@ typedef struct GreasePencilDashModifierSegment {
   float radius;
   float opacity;
   int mat_nr;
+  /** #GreasePencilDashModifierFlag */
   int flag;
 } GreasePencilDashModifierSegment;
 
 typedef struct GreasePencilDashModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
-  /** #GreasePencilDashModifierFlag */
-  int flag;
-
-  int dash_offset;
 
   GreasePencilDashModifierSegment *segments_array;
   int segments_num;
   int segment_active_index;
+
+  int dash_offset;
+  char _pad[4];
 
 #ifdef __cplusplus
   blender::Span<GreasePencilDashModifierSegment> segments() const;

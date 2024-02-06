@@ -107,6 +107,10 @@ struct PatternInfo {
   int offset = 0;
   int length = 0;
   Array<IndexRange> segments;
+  Array<bool> cyclic;
+  Array<int> material;
+  Array<float> radius;
+  Array<float> opacity;
 };
 
 static PatternInfo get_pattern_info(const GreasePencilDashModifierData &dmd)
@@ -117,6 +121,10 @@ static PatternInfo get_pattern_info(const GreasePencilDashModifierData &dmd)
   }
 
   info.segments.reinitialize(dmd.segments().size());
+  info.cyclic.reinitialize(dmd.segments().size());
+  info.material.reinitialize(dmd.segments().size());
+  info.radius.reinitialize(dmd.segments().size());
+  info.opacity.reinitialize(dmd.segments().size());
   info.offset = floored_modulo(dmd.dash_offset, info.length);
 
   /* Store segments as ranges. */
@@ -127,6 +135,10 @@ static PatternInfo get_pattern_info(const GreasePencilDashModifierData &dmd)
     dash_range = gap_range.after(dash_segment.dash);
     gap_range = dash_range.after(dash_segment.gap);
     info.segments[i] = dash_range;
+    info.cyclic[i] = dash_segment.flag & MOD_GREASE_PENCIL_DASH_USE_CYCLIC;
+    info.material[i] = dash_segment.mat_nr;
+    info.radius[i] = dash_segment.radius;
+    info.opacity[i] = dash_segment.opacity;
   }
   return info;
 }
@@ -156,7 +168,7 @@ static int find_dash_segment(const PatternInfo &pattern_info, const int index)
 static void foreach_dash(const PatternInfo &pattern_info,
                          const IndexRange src_points,
                          const bool cyclic,
-                         FunctionRef<void(IndexRange)> fn)
+                         FunctionRef<void(IndexRange, bool, int, float, float)> fn)
 {
   const int points_num = src_points.size();
   const int segments_num = pattern_info.segments.size();
@@ -165,13 +177,13 @@ static void foreach_dash(const PatternInfo &pattern_info,
   const int last_segment = find_dash_segment(pattern_info, pattern_info.offset + points_num - 1);
   BLI_assert(first_segment < segments_num);
   BLI_assert(last_segment >= first_segment);
-  const IndexRange first_segment_points = pattern_info.segments[first_segment];
 
   const IndexRange all_segments = IndexRange(first_segment, last_segment - first_segment + 1);
   for (const int i : all_segments) {
     const int repeat = i / segments_num;
-    const IndexRange range = pattern_info.segments[i - repeat * segments_num].shift(
-        repeat * pattern_info.length);
+    const int segment_index = i - repeat * segments_num;
+    const IndexRange range = pattern_info.segments[segment_index].shift(repeat *
+                                                                        pattern_info.length);
 
     const int64_t point_shift = src_points.start() - pattern_info.offset;
     const int64_t min_point = src_points.start();
@@ -181,19 +193,25 @@ static void foreach_dash(const PatternInfo &pattern_info,
 
     IndexRange points(start, end - start);
     if (!points.is_empty()) {
-      fn(points);
+      fn(points,
+         pattern_info.cyclic[segment_index],
+         pattern_info.material[segment_index],
+         pattern_info.radius[segment_index],
+         pattern_info.opacity[segment_index]);
     }
   }
 }
 
-static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd,
-                                         const PatternInfo &pattern_info,
+static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
                                          const bke::CurvesGeometry &src_curves,
                                          const IndexMask &curves_mask)
 {
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
   const VArray<bool> src_cyclic = *src_attributes.lookup_or_default(
       "cyclic", bke::AttrDomain::Curve, false);
+  const VArray<float> src_radius = *src_attributes.lookup<float>("radius", bke::AttrDomain::Point);
+  const VArray<float> src_opacity = *src_attributes.lookup<float>("opacity",
+                                                                  bke::AttrDomain::Point);
 
   /* Count new curves and points. */
   int dst_point_num = 0;
@@ -201,15 +219,29 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
   for (const int src_curve_i : src_curves.curves_range()) {
     const IndexRange src_points = src_curves.points_by_curve()[src_curve_i];
 
-    foreach_dash(
-        pattern_info, src_points, src_cyclic[src_curve_i], [&](const IndexMask &src_points) {
-          dst_point_num += src_points.size();
-          dst_curve_num += 1;
-        });
+    foreach_dash(pattern_info,
+                 src_points,
+                 src_cyclic[src_curve_i],
+                 [&](const IndexMask &src_points,
+                     bool /*cyclic*/,
+                     int /*material*/,
+                     float /*radius*/,
+                     float /*opacity*/) {
+                   dst_point_num += src_points.size();
+                   dst_curve_num += 1;
+                 });
   }
 
   bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  bke::SpanAttributeWriter<bool> dst_cyclic = dst_attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<int> dst_material = dst_attributes.lookup_or_add_for_write_span<int>(
+      "material_index", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<float> dst_radius = dst_attributes.lookup_or_add_for_write_span<float>(
+      "radius", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> dst_opacity = dst_attributes.lookup_or_add_for_write_span<float>(
+      "opacity", bke::AttrDomain::Point);
   /* Map each destination point and curve to its source. */
   Array<int> src_point_indices(dst_point_num);
   Array<int> src_curve_indices(dst_curve_num);
@@ -223,7 +255,11 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
       foreach_dash(pattern_info,
                    src_points,
                    src_cyclic[src_curve_i],
-                   [&](const IndexRange &src_points_range) {
+                   [&](const IndexRange &src_points_range,
+                       bool cyclic,
+                       int material,
+                       float radius,
+                       float opacity) {
                      dst_point_range = dst_point_range.after(src_points_range.size());
                      dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.start();
 
@@ -240,6 +276,12 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
                        src_point_indices[dst_point_range.last()] = src_points.first();
                      }
                      src_curve_indices[dst_curve_i] = src_curve_i;
+                     dst_cyclic.span[dst_curve_i] = cyclic;
+                     dst_material.span[dst_curve_i] = material;
+                     for (const int i : dst_point_range) {
+                       dst_radius.span[i] = src_radius[src_point_indices[i]] * radius;
+                       dst_opacity.span[i] = src_opacity[src_point_indices[i]] * opacity;
+                     }
 
                      ++dst_curve_i;
                    });
@@ -250,11 +292,23 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
     }
   }
 
-  bke::gather_attributes(
-      src_attributes, bke::AttrDomain::Point, {}, {}, src_point_indices, dst_attributes);
-  bke::gather_attributes(
-      src_attributes, bke::AttrDomain::Curve, {}, {"cyclic"}, src_curve_indices, dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Point,
+                         {},
+                         {"radius", "opacity"},
+                         src_point_indices,
+                         dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Curve,
+                         {},
+                         {"cyclic", "material_index"},
+                         src_curve_indices,
+                         dst_attributes);
 
+  dst_cyclic.finish();
+  dst_material.finish();
+  dst_radius.finish();
+  dst_opacity.finish();
   dst_curves.update_curve_types();
 
   return dst_curves;
@@ -265,7 +319,6 @@ static void modify_drawing(const GreasePencilDashModifierData &dmd,
                            const PatternInfo &pattern_info,
                            bke::greasepencil::Drawing &drawing)
 {
-  UNUSED_VARS(dmd, ctx);
   const bke::CurvesGeometry &src_curves = drawing.strokes();
   if (src_curves.curve_num == 0) {
     return;
@@ -275,7 +328,7 @@ static void modify_drawing(const GreasePencilDashModifierData &dmd,
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, src_curves, dmd.influence, curve_mask_memory);
 
-  drawing.strokes_for_write() = create_dashes(dmd, pattern_info, src_curves, curves_mask);
+  drawing.strokes_for_write() = create_dashes(pattern_info, src_curves, curves_mask);
   drawing.tag_topology_changed();
 }
 
