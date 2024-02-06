@@ -114,13 +114,15 @@ class GlyphCacheListBLF {
    */
   ListBase list;
 
+  FontBLF *font;
+
   /** Mutex lock for glyph cache. */
   ThreadMutex glyph_cache_mutex;
 
  public:
-  GlyphCacheListBLF();
+  GlyphCacheListBLF(FontBLF *font);
   ~GlyphCacheListBLF();
-  GlyphCacheBLF *acquire(FontBLF *font);
+  GlyphCacheBLF *acquire();
   void release();
   void clear();
 };
@@ -442,7 +444,4 @@ typedef struct FontBLF {
 
   /** Data for buffer usage (drawing into a texture buffer) */
   FontBufInfoBLF buf_info;
-
-  /** Mutex lock for glyph cache. */
-  // ThreadMutex glyph_cache_mutex;
 } FontBLF;
