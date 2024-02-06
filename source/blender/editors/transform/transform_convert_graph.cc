@@ -148,11 +148,13 @@ static bool graph_edit_use_local_center(TransInfo *t)
 
 static void enable_autolock(TransInfo *t, SpaceGraph *space_graph)
 {
+  /* Locking the axis makes most sense for translation. We may want to enable it for scaling as
+   * well if artists require that. */
   if (t->mode != TFM_TRANSLATION) {
     return;
   }
 
-  /* Those flags are set when using tweak mode on handles. */
+  /* These flags are set when using tweak mode on handles. */
   if ((space_graph->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT) ||
       (space_graph->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT))
   {
@@ -478,7 +480,6 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
           }
         }
         else {
-
           /* only include handles if selected, irrespective of the interpolation modes.
            * also, only treat handles specially if the center point isn't selected.
            */
