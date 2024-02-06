@@ -2592,10 +2592,6 @@ typedef enum GreasePencilOpacityModifierFlag {
   MOD_GREASE_PENCIL_OPACITY_USE_UNIFORM_OPACITY = (1 << 1),
 } GreasePencilOpacityModifierFlag;
 
-typedef struct GPTransformModifierData {
-  ModifierData modifier;
-} GPTransformModifierData;
-
 typedef struct GreasePencilSubdivModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
