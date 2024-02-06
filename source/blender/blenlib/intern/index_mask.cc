@@ -863,6 +863,49 @@ bool IndexMask::contains(const int64_t query_index) const
   return this->find(query_index).has_value();
 }
 
+void IndexMask::foreach_real_range(const FunctionRef<void(IndexRange)> func) const
+{
+  if (const std::optional<IndexRange> range = this->to_range()) {
+    func(*range);
+    return;
+  }
+
+  IndexRange segments(this->segments_num());
+  IndexMaskSegment segment = this->segment(segments.first());
+  segments = segments.drop_front(1);
+
+  while (!segment.is_empty()) {
+    const int64_t current_begin = segment[0];
+
+    /* Checking for begin of range. */
+    int64_t range_size = unique_sorted_indices::find_size_of_next_range(segment.base_span());
+    segment = IndexMaskSegment(segment.offset(), segment.base_span().drop_front(range_size));
+    if (!segment.is_empty()) {
+      func(IndexRange(current_begin, range_size));
+      continue;
+    }
+
+    /* Body of range. */
+    for (const int64_t segment_i : segments) {
+      segment = this->segment(segment_i);
+      segments = segments.drop_front(1);
+      /* End of range. */
+      if (segment[0] != current_begin + range_size) {
+        break;
+      }
+
+      range_size += unique_sorted_indices::find_size_of_next_range(segment.base_span());
+      segment = IndexMaskSegment(segment.offset(), segment.base_span().drop_front(range_size));
+      /* End of range and segment. */
+      if (!segment.is_empty()) {
+        break;
+      }
+    }
+
+    func(IndexRange(current_begin, range_size));
+  }
+}
+
 template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
 template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;
