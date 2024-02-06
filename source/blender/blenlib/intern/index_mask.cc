@@ -934,7 +934,7 @@ static void foreach_sequence(std::array<IndexMask, IndexMaskNum> masks, Func &&f
   }
 }
 
-static bool operator==(const IndexMaskSegment &a, const IndexMaskSegment &b)
+static bool segments_is_equal(const IndexMaskSegment &a, const IndexMaskSegment &b)
 {
   if (a.size() != b.size() || a[0] != b[0]) {
     return false;
@@ -975,7 +975,7 @@ bool operator==(const IndexMask &a, const IndexMask &b)
 
   bool equals = true;
   foreach_sequence<2>({a, b}, [&](const std::array<IndexMaskSegment, 2> segments) {
-    equals &= segments[0] == segments[1];
+    equals &= segments_is_equal(segments[0], segments[1]);
     return equals;
   });
 
