@@ -1573,6 +1573,7 @@ class CYCLES_LIGHT_PT_light(CyclesButtonsPanel, Panel):
         col.separator()
 
         if light.type in {'POINT', 'SPOT'}:
+            col.prop(light, "shape", text="Shape")
             col.prop(light, "shadow_soft_size", text="Radius")
         elif light.type == 'SUN':
             col.prop(light, "angle")
@@ -1587,6 +1588,7 @@ class CYCLES_LIGHT_PT_light(CyclesButtonsPanel, Panel):
                 sub.prop(light, "size_y", text="Y")
 
         if not (light.type == 'AREA' and clamp.is_portal):
+            col.separator()
             sub = col.column()
             sub.prop(clamp, "max_bounces")
 

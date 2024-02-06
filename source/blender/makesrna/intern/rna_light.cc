@@ -337,6 +337,17 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
   }
 }
 
+const EnumPropertyItem prop_spotshape_items[] = {
+    {LA_SPOT_SPHERE, "SPHERE", 0, "Sphere", "Emits light from a double-sided sphere geometry"},
+    {LA_SPOT_DISK,
+     "DISK",
+     0,
+     "Aligned Disk",
+     "The light appears to be a disk pointing towards the shading point. This shape is not "
+     "physically feasible, but gives softer shadows compared to sphere light"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static void rna_def_point_light(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -345,6 +356,13 @@ static void rna_def_point_light(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "Light");
   RNA_def_struct_ui_text(srna, "Point Light", "Omnidirectional point Light");
   RNA_def_struct_ui_icon(srna, ICON_LIGHT_POINT);
+
+  PropertyRNA *prop;
+  prop = RNA_def_property(srna, "shape", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "spot_shape");
+  RNA_def_property_enum_items(prop, prop_spotshape_items);
+  RNA_def_property_ui_text(prop, "Shape", "Sphere or aligned disk");
+  RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 
   rna_def_light_energy(srna, LA_LOCAL);
   rna_def_light_shadow(srna, false);
@@ -441,6 +459,12 @@ static void rna_def_spot_light(BlenderRNA *brna)
       prop,
       "Show Cone",
       "Display transparent cone in 3D view to visualize which objects are contained in it");
+  RNA_def_property_update(prop, 0, "rna_Light_draw_update");
+
+  prop = RNA_def_property(srna, "shape", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "spot_shape");
+  RNA_def_property_enum_items(prop, prop_spotshape_items);
+  RNA_def_property_ui_text(prop, "Shape", "Sphere or aligned disk");
   RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 }
 
