@@ -2877,6 +2877,17 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 20)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      int uid = 1;
+      LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+        /* These identifiers are not necessarily stable for linked data. If the linked data has a
+         * new modifier inserted, the identifiers of other modifiers can change. */
+        md->persistent_uid = uid++;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 21)) {
     if (!DNA_struct_member_exists(fd->filesdna, "SpaceImage", "float", "stretch_opacity")) {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
