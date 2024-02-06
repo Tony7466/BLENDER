@@ -434,7 +434,8 @@ static void split_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     const bool curve_cyclic = src_cyclic[curve_i];
 
     /* Note, these ranges start at zero and needed to be shifted by `points.first()` */
-    const Vector<IndexRange> ranges = array_utils::to_ranges(curve_points);
+    Vector<int> memory;
+    const OffsetIndices<int> ranges = array_utils::to_ranges(curve_points, memory);
 
     const bool is_last_and_first_same = curve_cyclic &&
                                         curve_points.first() == curve_points.last();

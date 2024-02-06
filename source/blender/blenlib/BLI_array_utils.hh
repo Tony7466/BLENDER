@@ -252,28 +252,23 @@ inline BooleanMix booleans_mix_calc(const VArray<bool> &varray)
 /**
  * Finds all the index ranges for consecutive values in \a span.
  */
-template<typename T> inline Vector<IndexRange> to_ranges(const Span<T> span)
+template<typename T> inline OffsetIndices<int> to_ranges(const Span<T> span, Vector<int> &memory)
 {
   if (span.is_empty()) {
-    return Vector<IndexRange>();
+    return OffsetIndices<int>();
   }
-  Vector<IndexRange> ranges;
-  int64_t length = 1;
-  int64_t last = 0;
-  for (const int64_t i : span.index_range().drop_front(1)) {
+
+  memory.append(0);
+  int last = 0;
+  for (const int i : span.index_range().drop_front(1)) {
     if (span[i - 1] == span[last] && span[i] != span[last]) {
-      ranges.append(IndexRange(i - length, length));
-      length = 1;
+      memory.append(i);
       last = i;
     }
-    else if (span[i] == span[last]) {
-      length++;
-    }
   }
-  if (length > 0) {
-    ranges.append(IndexRange(span.size() - length, length));
-  }
-  return ranges;
+  memory.append(span.size());
+
+  return OffsetIndices<int>(memory);
 }
 
 /**
