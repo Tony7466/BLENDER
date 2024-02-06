@@ -141,9 +141,6 @@ NODE_DEFINE(Integrator)
    * the desired effect for that denoiser. */
   SOCKET_BOOLEAN(use_denoise, "Use Denoiser", false);
   SOCKET_ENUM(denoiser_type, "Denoiser Type", denoiser_type_enum, DENOISER_OPENIMAGEDENOISE);
-  SOCKET_BOOLEAN(denoise_allow_oidn_gpu,
-                 "Allow OpenImageDenoise to be executed on GPU if possible, instead of CPU",
-                 true);
   SOCKET_INT(denoise_start_sample, "Start Sample to Denoise", 0);
   SOCKET_BOOLEAN(use_denoise_pass_albedo, "Use Albedo Pass for Denoiser", true);
   SOCKET_BOOLEAN(use_denoise_pass_normal, "Use Normal Pass for Denoiser", true);
@@ -151,6 +148,7 @@ NODE_DEFINE(Integrator)
               "Denoiser Prefilter",
               denoiser_prefilter_enum,
               DENOISER_PREFILTER_ACCURATE);
+  SOCKET_BOOLEAN(denoise_use_gpu, "Denoise on GPU", true);
 
   return type;
 }
@@ -396,7 +394,7 @@ DenoiseParams Integrator::get_denoise_params() const
 
   denoise_params.type = denoiser_type;
 
-  denoise_params.allow_oidn_gpu = denoise_allow_oidn_gpu;
+  denoise_params.use_gpu = denoise_use_gpu;
 
   denoise_params.start_sample = denoise_start_sample;
 

@@ -78,7 +78,6 @@ class AddPresetViewportSampling(AddPresetBase, Operator):
         "cycles.preview_adaptive_min_samples",
         "cycles.use_preview_denoising",
         "cycles.preview_denoiser",
-        "cycles.preview_denoising_oidn_allow_gpu",
         "cycles.preview_denoising_input_passes",
         "cycles.preview_denoising_prefilter",
         "cycles.preview_denoising_start_sample",

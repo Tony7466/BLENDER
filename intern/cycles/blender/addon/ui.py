@@ -123,18 +123,6 @@ def use_optix(context):
 
     return (get_device_type(context) == 'OPTIX' and cscene.device == 'GPU' and backend_has_active_gpu(context))
 
-def has_oidn_gpu_devices(context):
-    import _cycles
-    compute_device_type = context.preferences.addons[__package__].preferences.get_compute_device_type()
-    for device in _cycles.available_devices(compute_device_type):
-        has_device_oidn_support = device[5];
-        device_type = device[1]
-        # We need devices, which are no CPU, but will used for render and supporting OIDN GPU denoising
-        if has_device_oidn_support and device_type != 'CPU' and context.preferences.addons[__package__].preferences.find_existing_device_entry(device).use:
-            return True
-    return False
-
-
 def use_oneapi(context):
     cscene = context.scene.cycles
 
@@ -166,6 +154,9 @@ def get_effective_preview_denoiser(context):
         return 'OPTIX'
 
     return 'OIDN'
+
+def has_oidn_gpu_devices(context):
+    return context.preferences.addons[__package__].preferences.has_oidn_gpu_devices()
 
 
 def use_mnee(context):
@@ -243,12 +234,14 @@ class CYCLES_RENDER_PT_sampling_viewport_denoise(CyclesButtonsPanel, Panel):
 
         effective_preview_denoiser = get_effective_preview_denoiser(context)
         if effective_preview_denoiser == 'OPENIMAGEDENOISE':
-            row = col.row()
-            row.enabled = not use_cpu(context) and has_oidn_gpu_devices(context)
-            row.prop(cscene, "preview_denoising_oidn_allow_gpu", text="OpenImageDenoise on GPU")
             col.prop(cscene, "preview_denoising_prefilter", text="Prefilter")
 
         col.prop(cscene, "preview_denoising_start_sample", text="Start Sample")
+
+        if effective_preview_denoiser == 'OPENIMAGEDENOISE':
+            row = col.row()
+            row.active = not use_cpu(context) and has_oidn_gpu_devices(context)
+            row.prop(cscene, "preview_denoising_use_gpu", text="Use GPU")
 
 
 class CYCLES_RENDER_PT_sampling_render(CyclesButtonsPanel, Panel):
@@ -307,10 +300,12 @@ class CYCLES_RENDER_PT_sampling_render_denoise(CyclesButtonsPanel, Panel):
         col.prop(cscene, "denoiser", text="Denoiser")
         col.prop(cscene, "denoising_input_passes", text="Passes")
         if cscene.denoiser == 'OPENIMAGEDENOISE':
-            row = col.row()
-            row.enabled = not use_cpu(context) and has_oidn_gpu_devices(context)
-            row.prop(cscene, "denoising_oidn_allow_gpu", text="OpenImageDenoise on GPU")
             col.prop(cscene, "denoising_prefilter", text="Prefilter")
+
+        if cscene.denoiser == 'OPENIMAGEDENOISE':
+            row = col.row()
+            row.active = not use_cpu(context) and has_oidn_gpu_devices(context)
+            row.prop(cscene, "denoising_use_gpu", text="Use GPU")
 
 
 class CYCLES_RENDER_PT_sampling_path_guiding(CyclesButtonsPanel, Panel):

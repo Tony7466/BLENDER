@@ -66,7 +66,7 @@ class DenoiseParams : public Node {
   /* If true, then allow, if supported, OpenImageDenoise to use GPU device.
    * If false, then OpenImageDenoise will always use CPU regardless of GPU device
    * precense. */
-  bool allow_oidn_gpu = true;
+  bool use_gpu = true;
 
   DenoiserPrefilter prefilter = DENOISER_PREFILTER_FAST;
 
@@ -80,8 +80,8 @@ class DenoiseParams : public Node {
     return !(use == other.use && type == other.type && start_sample == other.start_sample &&
              use_pass_albedo == other.use_pass_albedo &&
              use_pass_normal == other.use_pass_normal &&
-             temporally_stable == other.temporally_stable &&
-             allow_oidn_gpu == other.allow_oidn_gpu && prefilter == other.prefilter);
+             temporally_stable == other.temporally_stable && use_gpu == other.use_gpu &&
+             prefilter == other.prefilter);
   }
 };
 
