@@ -40,8 +40,6 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include <iostream>
-
 namespace blender {
 
 static void init_data(ModifierData *md)
@@ -152,37 +150,16 @@ static int find_dash_segment(const PatternInfo &pattern_info, const int index)
 
 /**
  * Iterate over all dash curves.
- * \param fn: Function taking an \a IndexMask of source points, describing new curves.
+ * \param fn: Function taking an index range of source points describing new curves.
+ * \note Point range can be larger than the source point range in case of cyclic curves.
  */
-template<typename Fn>
 static void foreach_dash(const PatternInfo &pattern_info,
                          const IndexRange src_points,
                          const bool cyclic,
-                         Fn fn)
+                         FunctionRef<void(IndexRange)> fn)
 {
   const int points_num = src_points.size();
   const int segments_num = pattern_info.segments.size();
-
-  auto segment_to_points_mask = [&](const int segment, IndexMaskMemory &memory) -> IndexMask {
-    const int repeat = segment / segments_num;
-    const IndexRange range = pattern_info.segments[segment - repeat * segments_num].shift(
-        repeat * pattern_info.length);
-
-    const int64_t point_shift = src_points.start() - pattern_info.offset;
-    const int64_t min_point = src_points.start();
-    const int64_t max_point = cyclic ? src_points.last() : src_points.one_after_last();
-    const int64_t start = std::clamp(range.start() + point_shift, min_point, max_point);
-    const int64_t end = std::clamp(range.one_after_last() + point_shift, min_point, max_point);
-
-    if (cyclic && end == max_point) {
-      return IndexMask::from_union(IndexRange(start, std::max(end - start - 1, int64_t(0))),
-                                   IndexRange(min_point, 1),
-                                   memory);
-    }
-    else {
-      return IndexRange(start, end - start);
-    }
-  };
 
   const int first_segment = find_dash_segment(pattern_info, pattern_info.offset);
   const int last_segment = find_dash_segment(pattern_info, pattern_info.offset + points_num - 1);
@@ -192,10 +169,19 @@ static void foreach_dash(const PatternInfo &pattern_info,
 
   const IndexRange all_segments = IndexRange(first_segment, last_segment - first_segment + 1);
   for (const int i : all_segments) {
-    IndexMaskMemory mask_memory;
-    const IndexMask points_mask = segment_to_points_mask(i, mask_memory);
-    if (!points_mask.is_empty()) {
-      fn(points_mask);
+    const int repeat = i / segments_num;
+    const IndexRange range = pattern_info.segments[i - repeat * segments_num].shift(
+        repeat * pattern_info.length);
+
+    const int64_t point_shift = src_points.start() - pattern_info.offset;
+    const int64_t min_point = src_points.start();
+    const int64_t max_point = cyclic ? src_points.one_after_last() : src_points.last();
+    const int64_t start = std::clamp(range.start() + point_shift, min_point, max_point);
+    const int64_t end = std::clamp(range.one_after_last() + point_shift, min_point, max_point + 1);
+
+    IndexRange points(start, end - start);
+    if (!points.is_empty()) {
+      fn(points);
     }
   }
 }
@@ -234,16 +220,29 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
     int dst_curve_i = 0;
     for (const int src_curve_i : src_curves.curves_range()) {
       const IndexRange src_points = src_curves.points_by_curve()[src_curve_i];
-      foreach_dash(
-          pattern_info, src_points, src_cyclic[src_curve_i], [&](const IndexMask &src_points) {
-            dst_point_range = dst_point_range.after(src_points.size());
-            dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.start();
+      foreach_dash(pattern_info,
+                   src_points,
+                   src_cyclic[src_curve_i],
+                   [&](const IndexRange &src_points_range) {
+                     dst_point_range = dst_point_range.after(src_points_range.size());
+                     dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.start();
 
-            src_points.to_indices(src_point_indices.as_mutable_span().slice(dst_point_range));
-            src_curve_indices[dst_curve_i] = src_curve_i;
+                     if (src_points.contains(src_points_range.last())) {
+                       array_utils::fill_index_range(
+                           src_point_indices.as_mutable_span().slice(dst_point_range),
+                           int(src_points_range.start()));
+                     }
+                     else {
+                       /* Cyclic curve. */
+                       array_utils::fill_index_range(
+                           src_point_indices.as_mutable_span().slice(dst_point_range.drop_back(1)),
+                           int(src_points_range.start()));
+                       src_point_indices[dst_point_range.last()] = src_points.first();
+                     }
+                     src_curve_indices[dst_curve_i] = src_curve_i;
 
-            ++dst_curve_i;
-          });
+                     ++dst_curve_i;
+                   });
     }
     if (dst_curve_i > 0) {
       /* Last offset entry is total point count. */
@@ -254,7 +253,7 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
   bke::gather_attributes(
       src_attributes, bke::AttrDomain::Point, {}, {}, src_point_indices, dst_attributes);
   bke::gather_attributes(
-      src_attributes, bke::AttrDomain::Curve, {}, {}, src_curve_indices, dst_attributes);
+      src_attributes, bke::AttrDomain::Curve, {}, {"cyclic"}, src_curve_indices, dst_attributes);
 
   dst_curves.update_curve_types();
 
