@@ -56,65 +56,97 @@ static void node_declare(NodeDeclarationBuilder &b)
   grids::declare_grid_type_output(b, data_type, "Grid");
 }
 
-//static float map(const float x,
-//                 const float in_min,
-//                 const float in_max,
-//                 const float out_min,
-//                 const float out_max)
-//{
-//  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-//}
-//
-//class Grid3DFieldContext : public FieldContext {
-// private:
-//  int3 resolution_;
-//  float3 bounds_min_;
-//  float3 bounds_max_;
-//
-// public:
-//  Grid3DFieldContext(const int3 resolution, const float3 bounds_min, const float3 bounds_max)
-//      : resolution_(resolution), bounds_min_(bounds_min), bounds_max_(bounds_max)
-//  {
-//  }
-//
-//  int64_t points_num() const
-//  {
-//    return int64_t(resolution_.x) * int64_t(resolution_.y) * int64_t(resolution_.z);
-//  }
-//
-//  GVArray get_varray_for_input(const FieldInput &field_input,
-//                               const IndexMask & /*mask*/,
-//                               ResourceScope & /*scope*/) const
-//  {
-//    const bke::AttributeFieldInput *attribute_field_input =
-//        dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
-//    if (attribute_field_input == nullptr) {
-//      return {};
-//    }
-//    if (attribute_field_input->attribute_name() != "position") {
-//      return {};
-//    }
-//
-//    Array<float3> positions(this->points_num());
-//
-//    threading::parallel_for(IndexRange(resolution_.x), 1, [&](const IndexRange x_range) {
-//      /* Start indexing at current X slice. */
-//      int64_t index = x_range.start() * resolution_.y * resolution_.z;
-//      for (const int64_t x_i : x_range) {
-//        const float x = map(x_i, 0.0f, resolution_.x - 1, bounds_min_.x, bounds_max_.x);
-//        for (const int64_t y_i : IndexRange(resolution_.y)) {
-//          const float y = map(y_i, 0.0f, resolution_.y - 1, bounds_min_.y, bounds_max_.y);
-//          for (const int64_t z_i : IndexRange(resolution_.z)) {
-//            const float z = map(z_i, 0.0f, resolution_.z - 1, bounds_min_.z, bounds_max_.z);
-//            positions[index] = float3(x, y, z);
-//            index++;
-//          }
-//        }
-//      }
-//    });
-//    return VArray<float3>::ForContainer(std::move(positions));
-//  }
-//};
+class DensePrimitiveFieldContext : public FieldContext {
+ private:
+  float4x4 transform_;
+  int3 resolution_;
+
+  Array<float3> positions_;
+
+ public:
+  DensePrimitiveFieldContext(const float4x4 &transform, const int3 resolution)
+      : transform_(transform), resolution_(resolution)
+  {
+    positions_.reinitialize(points_num());
+    threading::parallel_for_each(IndexRange(resolution_.x), [&](const IndexRange x_range) {
+      /* Start indexing at current X slice. */
+      int64_t index = x_range.start() * resolution_.y * resolution_.z;
+      for (const int64_t x : x_range) {
+        for (const int64_t y : IndexRange(resolution_.y)) {
+          for (const int64_t z : IndexRange(resolution_.z)) {
+            positions_[index] = math::transform_point(transform_, float3(x, y, z));
+            index++;
+          }
+        }
+      }
+    });
+  }
+
+  int64_t points_num() const
+  {
+    return int64_t(resolution_.x) * int64_t(resolution_.y) * int64_t(resolution_.z);
+  }
+
+  IndexRange points_range() const
+  {
+    return IndexRange(points_num());
+  }
+
+  GVArray get_varray_for_input(const FieldInput &field_input,
+                               const IndexMask & /*mask*/,
+                               ResourceScope & /*scope*/) const
+  {
+    const bke::AttributeFieldInput *attribute_field_input =
+        dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
+    if (attribute_field_input == nullptr) {
+      return {};
+    }
+    if (attribute_field_input->attribute_name() == "position") {
+      return VArray<float3>::ForSpan(positions_);
+    }
+    return {};
+  }
+};
+
+struct MakeCubeOp {
+  GeoNodeExecParams params;
+  float4x4 transform;
+  int3 resolution;
+
+  template<typename T> bke::GVolumeGrid operator()()
+  {
+    using GridType = bke::OpenvdbGridType<T>;
+    using Converter = bke::grids::Converter<T>;
+    using ValueType = typename GridType::ValueType;
+
+    //const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+    //const auto topo_grid = this->params.extract_input<bke::GVolumeGrid>("Grid");
+    const Field<T> value_field = this->params.extract_input<Field<T>>("Value");
+    const T background = this->params.extract_input<T>("Background");
+
+    /* Evaluate input field on a 3D grid. */
+    DensePrimitiveFieldContext context(transform, resolution);
+    FieldEvaluator evaluator(context, context.points_num());
+    Array<ValueType> values(context.points_num());
+    evaluator.add_with_destination(std::move(value_field), values.as_mutable_span());
+    evaluator.evaluate();
+
+    /* Store resulting values in openvdb grid. */
+    const ValueType vdb_background = Converter::to_openvdb(background);
+    typename GridType::Ptr grid = GridType::create(vdb_background);
+    grid->setGridClass(openvdb::GRID_FOG_VOLUME);
+
+    openvdb::tools::Dense<ValueType, openvdb::tools::LayoutZYX> dense_grid{
+        openvdb::math::CoordBBox({0, 0, 0},
+                                 {resolution.x - 1, resolution.y - 1, resolution.z - 1}),
+        values.data()};
+    openvdb::tools::copyFromDense(dense_grid, *grid, 0.0f);
+
+    grid->setTransform(BKE_volume_matrix_to_vdb_transform(transform));
+
+    return bke::GVolumeGrid(std::move(grid));
+  }
+};
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -148,6 +180,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
+  const float4x4 transform = math::from_location<float4x4>(bounds_min) *
+                             math::from_scale<float4x4>(float3(scale_fac)) *
+                             math::from_location<float4x4>(float3(-0.5f));
+
   //Field<float> input_field = params.extract_input<Field<float>>("Density");
 
   ///* Evaluate input field on a 3D grid. */
@@ -162,21 +198,29 @@ static void node_geo_exec(GeoNodeExecParams params)
   //openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background);
   //grid->setGridClass(openvdb::GRID_FOG_VOLUME);
 
-  openvdb::tools::Dense<float, openvdb::tools::LayoutZYX> dense_grid{
-      openvdb::math::CoordBBox({0, 0, 0}, {resolution.x - 1, resolution.y - 1, resolution.z - 1})};
-  openvdb::tools::copyFromDense(dense_grid, *grid, 0.0f);
+  //openvdb::tools::Dense<float, openvdb::tools::LayoutZYX> dense_grid{
+  //    openvdb::math::CoordBBox({0, 0, 0}, {resolution.x - 1, resolution.y - 1, resolution.z - 1})};
+  //openvdb::tools::copyFromDense(dense_grid, *grid, 0.0f);
 
-  grid->transform().preTranslate(openvdb::math::Vec3<float>(-0.5f));
-  grid->transform().postScale(openvdb::math::Vec3<double>(scale_fac.x, scale_fac.y, scale_fac.z));
-  grid->transform().postTranslate(
-      openvdb::math::Vec3<float>(bounds_min.x, bounds_min.y, bounds_min.z));
+  //grid->transform().preTranslate(openvdb::math::Vec3<float>(-0.5f));
+  //grid->transform().postScale(openvdb::math::Vec3<double>(scale_fac.x, scale_fac.y, scale_fac.z));
+  //grid->transform().postTranslate(
+  //    openvdb::math::Vec3<float>(bounds_min.x, bounds_min.y, bounds_min.z));
 
-  Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
-  BKE_volume_grid_add_vdb(*volume, "density", std::move(grid));
+  //Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
+  //BKE_volume_grid_add_vdb(*volume, "density", std::move(grid));
 
-  GeometrySet r_geometry_set;
-  r_geometry_set.replace_volume(volume);
-  params.set_output("Volume", r_geometry_set);
+  //GeometrySet r_geometry_set;
+  //r_geometry_set.replace_volume(volume);
+  //params.set_output("Volume", r_geometry_set);
+
+  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  BLI_assert(grid_type_supported(data_type));
+
+  MakeCubeOp op = {params, transform, resolution};
+  bke::GVolumeGrid grid = grids::apply(data_type, op);
+
+  params.set_output("Grid", grid);
 #else
   node_geo_exec_with_missing_openvdb(params);
 #endif
