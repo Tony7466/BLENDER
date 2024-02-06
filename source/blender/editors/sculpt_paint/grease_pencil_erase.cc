@@ -61,7 +61,7 @@ struct EraseOperationExecutor {
   int2 mouse_position_pixels{};
   int64_t eraser_squared_radius_pixels{};
 
-  EraseOperationExecutor(const bContext &C) {}
+  EraseOperationExecutor(const bContext & /*C*/) {}
 
   /**
    * Computes the intersections between a 2D line segment and a circle with integer values.
