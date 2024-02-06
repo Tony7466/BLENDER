@@ -256,7 +256,7 @@ class IndexMask : private IndexMaskData {
 
   /**
    * Get a new mask that contains a consecutive subset of this mask.
-   * Takes O(0) time and can reuse the memory from the source mask.
+   * Takes O(1) time and can reuse the memory from the source mask.
    */
   IndexMask slice(RawMaskIterator first_it, RawMaskIterator last_it) const;
 
