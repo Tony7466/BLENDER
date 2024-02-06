@@ -3,3 +3,4 @@ Referenced by commit 9ecd1063070fcfaed387c71e2df11dbe10ab703d, Fix (unreported) 
 Referenced by pull request #111909, VSE: use c++ container for strip iterator
 Referenced by commit 869372ffc33517a1dcd7a7a72bd899f9a1176d48, Fix (studio-reported) VSE crash when deleting strips.
 Referenced by commit 2b1b600456293e9703936cc176634f4baa7fe743, Cleanup: Remove unused old sequencer iterator
+Referenced by commit a17e3a6fbb8a347e0834dbc497e17673578f36da, Fix: VSE prefetching doesn't work
