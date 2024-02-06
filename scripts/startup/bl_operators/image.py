@@ -198,12 +198,13 @@ class ProjectApply(Operator):
 class IMAGE_OT_open_images(Operator):
     bl_idname = "image.open_images"
     bl_label = "Open Images"
+    bl_options = {'REGISTER', 'UNDO'}
 
     directory: StringProperty(subtype='FILE_PATH', options={'SKIP_SAVE', 'HIDDEN'})
     files: CollectionProperty(type=OperatorFileListElement, options={'SKIP_SAVE', 'HIDDEN'})
-    relative_path: BoolProperty(name="Use relative path", default=False)
-    use_sequence_detection: BoolProperty(name="Use sequence detection", default=False)
-    use_udim_detection: BoolProperty(name="Use UDIM detection", default=False)
+    relative_path: BoolProperty(name="Use relative path", default=True)
+    use_sequence_detection: BoolProperty(name="Use sequence detection", default=True)
+    use_udim_detection: BoolProperty(name="Use UDIM detection", default=True)
 
     @classmethod
     def poll(cls, context):
@@ -262,13 +263,6 @@ class IMAGE_OT_open_images(Operator):
                 context.edit_image.name = "{prefix}{hash}{ext}".format(prefix=seq[0], hash=("#" * seq[2]), ext=seq[1])
 
         return {'FINISHED'}
-
-    def invoke(self, context, event):
-        if not self.directory or len(self.files) == 0:
-            return {'CANCELLED'}
-        title = self.files[0].name if len(self.files) == 1 else "Open {len} imagenes".format(len=len(self.files))
-        context.window_manager.invoke_props_dialog(self, title=title, confirm_text="Open")
-        return {'RUNNING_MODAL'}
 
 
 class IMAGE_FH_drop_handler(FileHandler):
