@@ -1485,8 +1485,9 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     )
 
     use_oidngpu: BoolProperty(
-        name="OIDN on GPU",
-        description="",
+        name="OpenImageDenoise on GPU",
+        description="Perform denoising on GPU devices. This is significantly faster than on CPU, but requires additional GPU memory. "
+                    "When large scenes need more GPU memory, this option can be disabled",
         default=True,
     )
 
