@@ -30,8 +30,8 @@ namespace blender::bke::greasepencil::convert {
  * - ListBase with used vertex group names (bDeformGroup)
  * - Array of indices in the new vertex group list for remapping
  */
-static std::tuple<ListBase, Array<int>> find_used_vertex_groups(const bGPDframe &gpf,
-                                                                const ListBase &vertex_group_names)
+static std::pair<ListBase, Array<int>> find_used_vertex_groups(const bGPDframe &gpf,
+                                                               const ListBase &vertex_group_names)
 {
   const int num_vertex_groups = BLI_listbase_count(&vertex_group_names);
   Array<int> is_group_used(num_vertex_groups, false);
@@ -61,7 +61,7 @@ static std::tuple<ListBase, Array<int>> find_used_vertex_groups(const bGPDframe 
     bDeformGroup *def_group_copy = static_cast<bDeformGroup *>(MEM_dupallocN(def_group));
     BLI_addtail(&new_names, def_group_copy);
   }
-  return std::make_tuple(std::move(new_names), std::move(index_map));
+  return std::make_pair(std::move(new_names), std::move(index_map));
 }
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
