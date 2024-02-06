@@ -979,7 +979,7 @@ static bool try_find_baked_data(bake::NodeBakeCache &bake,
     bake.frames.append(std::move(frame_cache));
   }
   bake.blobs_dir = bake_path->blobs_dir;
-  bake.blob_sharing = std::make_unique<bake::BlobSharing>();
+  bake.blob_sharing = std::make_unique<bake::BlobReadSharing>();
   return true;
 }
 
@@ -1469,7 +1469,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   {
     if (frame_cache.meta_path && frame_cache.state.items_by_id.is_empty()) {
       auto &read_error_info = behavior.behavior.emplace<sim_output::ReadError>();
-      read_error_info.message = RPT_("Can not load the baked data");
+      read_error_info.message = RPT_("Cannot load the baked data");
       return true;
     }
     return false;
@@ -1567,8 +1567,7 @@ static void add_data_block_items_writeback(const ModifierEvalContext &ctx,
 
   deg::sync_writeback::add(
       *depsgraph,
-      [depsgraph = depsgraph,
-       object_eval = ctx.object,
+      [object_eval = ctx.object,
        bmain,
        &nmd_orig,
        &nmd_eval,
@@ -1917,8 +1916,6 @@ static void add_attribute_search_button(const bContext &C,
                                  md_ptr,
                                  rna_path_attribute_name.c_str(),
                                  0,
-                                 0.0f,
-                                 0.0f,
                                  0.0f,
                                  0.0f,
                                  socket.description);
