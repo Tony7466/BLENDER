@@ -25,7 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(true)
       .supports_field()
       .description(("Determine wether to realize nested instances completly"));
-  b.add_input<decl::Int>("Depth").default_value(99).min(0).supports_field().description(
+  b.add_input<decl::Int>("Depth").default_value(0).min(0).supports_field().description(
       ("Number of levels of nested instances to realize for each top-level instance"));
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }

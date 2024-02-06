@@ -185,7 +185,7 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   options.keep_original_ids = true;
   options.realize_instance_attributes = false;
   options.propagation_info = propagation_info;
-  options.depths = VArray<int>::ForSingle(99, instances.get()->instances_num());
+  options.depths = VArray<int>::ForSingle(-1, instances.get()->instances_num());
   IndexMaskMemory memory;
   options.selection = IndexMask::from_bools(
       VArray<bool>::ForSingle(true, instances.get()->instances_num()), memory);
