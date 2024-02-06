@@ -71,7 +71,60 @@ static float from_16dot16(FT_Fixed value)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Glyph Cache
+/** \name Glyph Cache List
+ * \{ */
+
+GlyphCacheListBLF::GlyphCacheListBLF() : list{nullptr, nullptr}
+{
+  BLI_mutex_init(&this->glyph_cache_mutex);
+};
+
+GlyphCacheListBLF ::~GlyphCacheListBLF()
+{
+  this->clear();
+  BLI_mutex_end(&this->glyph_cache_mutex);
+};
+
+GlyphCacheBLF *GlyphCacheListBLF::acquire(FontBLF *font)
+{
+  BLI_mutex_lock(&this->glyph_cache_mutex);
+
+  GlyphCacheBLF *gc = nullptr;
+
+  LISTBASE_FOREACH (GlyphCacheBLF *, cache_entry, &this->list) {
+    if (cache_entry->matches(font)) {
+      gc = cache_entry;
+      break;
+    }
+  }
+
+  if (!gc) {
+    gc = new GlyphCacheBLF();
+    gc->init(font);
+    BLI_addhead(&this->list, gc);
+  }
+
+  return gc;
+}
+
+void GlyphCacheListBLF::release()
+{
+  BLI_mutex_unlock(&this->glyph_cache_mutex);
+}
+
+void GlyphCacheListBLF::clear()
+{
+  BLI_mutex_lock(&this->glyph_cache_mutex);
+  while (GlyphCacheBLF *gc = static_cast<GlyphCacheBLF *>(BLI_pophead(&this->list))) {
+    delete gc;
+  }
+  BLI_mutex_unlock(&this->glyph_cache_mutex);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Glyph Cache Entry
  * \{ */
 
 GlyphCacheBLF::GlyphCacheBLF()
@@ -109,53 +162,41 @@ GlyphCacheBLF::~GlyphCacheBLF()
   }
 }
 
-GlyphCacheBLF *GlyphCacheBLF::cache_acquire(FontBLF *font)
+bool GlyphCacheBLF::matches(FontBLF *font) const
 {
-  BLI_mutex_lock(&font->glyph_cache_mutex);
+  return (this->size == font->size && (this->bold == ((font->flags & BLF_BOLD) != 0)) &&
+          (this->italic == ((font->flags & BLF_ITALIC) != 0)) &&
+          (this->char_weight == font->char_weight) && (this->char_slant == font->char_slant) &&
+          (this->char_width == font->char_width) && (this->char_spacing == font->char_spacing));
+}
 
-  GlyphCacheBLF *gc = static_cast<GlyphCacheBLF *>(font->cache.first);
-  while (gc) {
-    if (gc->size == font->size && (gc->bold == ((font->flags & BLF_BOLD) != 0)) &&
-        (gc->italic == ((font->flags & BLF_ITALIC) != 0)) &&
-        (gc->char_weight == font->char_weight) && (gc->char_slant == font->char_slant) &&
-        (gc->char_width == font->char_width) && (gc->char_spacing == font->char_spacing))
-    {
-      break;
-    }
-    gc = gc->next;
+void GlyphCacheBLF::init(FontBLF *font)
+{
+  this->size = font->size;
+  this->char_weight = font->char_weight;
+  this->char_slant = font->char_slant;
+  this->char_width = font->char_width;
+  this->char_spacing = font->char_spacing;
+  this->bold = (font->flags & BLF_BOLD) != 0;
+  this->italic = ((font->flags & BLF_ITALIC) != 0);
+
+  blf_ensure_size(font);
+
+  /* Determine ideal fixed-width size for monospaced output. */
+  FT_UInt gindex = blf_get_char_index(font, U'0');
+  if (gindex && font->face) {
+    FT_Fixed advance = 0;
+    FT_Get_Advance(font->face, gindex, FT_LOAD_NO_HINTING, &advance);
+    /* Use CSS 'ch unit' width, advance of zero character. */
+    this->fixed_width = int(advance >> 16);
   }
-
-  if (!gc) {
-    gc = new GlyphCacheBLF();
-    gc->size = font->size;
-    gc->char_weight = font->char_weight;
-    gc->char_slant = font->char_slant;
-    gc->char_width = font->char_width;
-    gc->char_spacing = font->char_spacing;
-    gc->bold = (font->flags & BLF_BOLD) != 0;
-    gc->italic = ((font->flags & BLF_ITALIC) != 0);
-
-    blf_ensure_size(font);
-
-    /* Determine ideal fixed-width size for monospaced output. */
-    FT_UInt gindex = blf_get_char_index(font, U'0');
-    if (gindex && font->face) {
-      FT_Fixed advance = 0;
-      FT_Get_Advance(font->face, gindex, FT_LOAD_NO_HINTING, &advance);
-      /* Use CSS 'ch unit' width, advance of zero character. */
-      gc->fixed_width = int(advance >> 16);
-    }
-    else {
-      /* Font does not have a face or does not contain "0" so use CSS fallback of 1/2 of em. */
-      gc->fixed_width = int((font->ft_size->metrics.height / 2) >> 6);
-    }
-    if (gc->fixed_width < 1) {
-      gc->fixed_width = 1;
-    }
-    BLI_addhead(&font->cache, gc);
+  else {
+    /* Font does not have a face or does not contain "0" so use CSS fallback of 1/2 of em. */
+    this->fixed_width = int((font->ft_size->metrics.height / 2) >> 6);
   }
-
-  return gc;
+  if (this->fixed_width < 1) {
+    this->fixed_width = 1;
+  }
 }
 
 void GlyphCacheBLF::cache_glyph(GlyphBLF *glyph, uint charcode, uint8_t subpixel)
@@ -167,20 +208,6 @@ GlyphBLF *GlyphCacheBLF::find_glyph(uint charcode, uint8_t subpixel) const
 {
   GlyphBLF *g = static_cast<GlyphBLF *>(this->bucket[blf_hash(charcode << 6 | subpixel)].first);
   return GlyphBLF::cache_match(g, charcode, subpixel);
-}
-
-void GlyphCacheBLF::cache_release(FontBLF *font)
-{
-  BLI_mutex_unlock(&font->glyph_cache_mutex);
-}
-
-void GlyphCacheBLF::cache_clear(FontBLF *font)
-{
-  BLI_mutex_lock(&font->glyph_cache_mutex);
-  while (GlyphCacheBLF *gc = static_cast<GlyphCacheBLF *>(BLI_pophead(&font->cache))) {
-    delete gc;
-  }
-  BLI_mutex_unlock(&font->glyph_cache_mutex);
 }
 
 /** \} */
@@ -1318,10 +1345,10 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
   return nullptr;
 }
 
-GlyphBLF *GlyphBLF::get_glyph(FontBLF *font,
-                              GlyphCacheBLF *gc,
-                              const uint charcode,
-                              uint8_t subpixel)
+GlyphBLF *GlyphBLF::glyph_ensure(FontBLF *font,
+                                 GlyphCacheBLF *gc,
+                                 const uint charcode,
+                                 uint8_t subpixel)
 {
   GlyphBLF *g = gc->find_glyph(charcode, subpixel);
   if (g) {
@@ -1349,7 +1376,7 @@ GlyphBLF *GlyphBLF::get_glyph(FontBLF *font,
 }
 
 #ifdef BLF_SUBPIXEL_AA
-GlyphBLF *GlyphBLF::glyph_refine_aa(FontBLF *font, GlyphCacheBLF *gc, int32_t pen_x)
+GlyphBLF *GlyphBLF::glyph_refine(FontBLF *font, GlyphCacheBLF *gc, int32_t pen_x)
 {
   if (!(font->flags & BLF_RENDER_SUBPIXELAA)) {
     /* Not if we are in mono mode (aliased) or the feature is turned off. */
@@ -1365,7 +1392,7 @@ GlyphBLF *GlyphBLF::glyph_refine_aa(FontBLF *font, GlyphCacheBLF *gc, int32_t pe
   const uint8_t subpixel = uint8_t(pen_x & ((font->size > 16.0f) ? 32L : 48L));
 
   if (this->subpixel != subpixel) {
-    return GlyphBLF::get_glyph(font, gc, this->c, subpixel);
+    return GlyphBLF::glyph_ensure(font, gc, this->c, subpixel);
   }
 
   return this;
@@ -1378,7 +1405,7 @@ GlyphBLF *GlyphBLF::glyph_refine_aa(FontBLF *font, GlyphCacheBLF *gc, int32_t pe
 /** \name Glyph Bounds Calculation
  * \{ */
 
-void GlyphBLF::calc_rect(rcti *rect, const int x, const int y)
+void GlyphBLF::calc_rect(rcti *rect, const int x, const int y) const
 {
   rect->xmin = x + this->pos[0];
   rect->xmax = rect->xmin + this->dims[0];
@@ -1397,7 +1424,7 @@ void GlyphBLF::calc_rect_test(rcti *rect, const int x, const int y)
   rect->ymax = rect->ymin - this->dims[1];
 }
 
-void GlyphBLF::calc_rect_shadow(rcti *rect, const int x, const int y, FontBLF *font)
+void GlyphBLF::calc_rect_shadow(rcti *rect, const int x, const int y, FontBLF *font) const
 {
   this->calc_rect(rect, x + font->shadow_x, y + font->shadow_y);
 }
@@ -1413,7 +1440,7 @@ void GlyphBLF::texture_draw(const uchar color[4],
                             const int x1,
                             const int y1,
                             const int x2,
-                            const int y2)
+                            const int y2) const
 {
   /* Only one vertex per glyph, geometry shader expand it into a quad. */
   /* TODO: Get rid of Geom Shader because it's not optimal AT ALL for the GPU. */
@@ -1436,7 +1463,7 @@ void GlyphBLF::texture_draw(const uchar color[4],
 }
 
 void GlyphBLF::texture5_draw(
-    const uchar color_in[4], const int x1, const int y1, const int x2, const int y2)
+    const uchar color_in[4], const int x1, const int y1, const int x2, const int y2) const
 {
   int glyph_size_flag[2] = {0};
   /* flag the x and y component signs for 5x5 blurring */
@@ -1447,7 +1474,7 @@ void GlyphBLF::texture5_draw(
 }
 
 void GlyphBLF::texture3_draw(
-    const uchar color_in[4], const int x1, const int y1, const int x2, const int y2)
+    const uchar color_in[4], const int x1, const int y1, const int x2, const int y2) const
 {
   int glyph_size_flag[2] = {0};
   /* flag the x component sign for 3x3 blurring */

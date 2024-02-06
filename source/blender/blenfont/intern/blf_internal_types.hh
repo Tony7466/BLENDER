@@ -106,6 +106,25 @@ typedef struct KerningCacheBLF {
   int ascii_table[KERNING_CACHE_TABLE_SIZE][KERNING_CACHE_TABLE_SIZE];
 } KerningCacheBLF;
 
+class GlyphCacheListBLF {
+ private:
+  /**
+   * List of glyph caches (#GlyphCacheBLF) for this font for size, DPI, bold, italic.
+   * Use GlyphCacheBLF::cache_acquire(font) and GlyphCacheBLF::cache_release(font) to access cache!
+   */
+  ListBase list;
+
+  /** Mutex lock for glyph cache. */
+  ThreadMutex glyph_cache_mutex;
+
+ public:
+  GlyphCacheListBLF();
+  ~GlyphCacheListBLF();
+  GlyphCacheBLF *acquire(FontBLF *font);
+  void release();
+  void clear();
+};
+
 class GlyphCacheBLF {
  private:
   GlyphCacheBLF *next;
@@ -138,12 +157,10 @@ class GlyphCacheBLF {
 
   GlyphCacheBLF();
   ~GlyphCacheBLF();
-  GlyphBLF *find_glyph(uint charcode, uint8_t subpixel) const;
+  bool matches(FontBLF *font) const;
+  void init(FontBLF *font);
   void cache_glyph(GlyphBLF *glyph, uint charcode, uint8_t subpixel);
-
-  static GlyphCacheBLF *cache_acquire(FontBLF *font);
-  static void cache_release(FontBLF *font);
-  static void cache_clear(FontBLF *font);
+  GlyphBLF *find_glyph(uint charcode, uint8_t subpixel) const;
 };
 
 class GlyphBLF {
@@ -196,20 +213,20 @@ class GlyphBLF {
    */
   int pos[2];
 
-  void calc_rect(rcti *rect, const int x, const int y);
+  void calc_rect(rcti *rect, const int x, const int y) const;
   void calc_rect_test(rcti *rect, const int x, const int y);
-  void calc_rect_shadow(rcti *rect, const int x, const int y, FontBLF *font);
+  void calc_rect_shadow(rcti *rect, const int x, const int y, FontBLF *font) const;
 
   void texture_draw(const uchar color[4],
                     const int glyph_size[2],
                     const int x1,
                     const int y1,
                     const int x2,
-                    const int y2);
+                    const int y2) const;
   void texture5_draw(
-      const uchar color_in[4], const int x1, const int y1, const int x2, const int y2);
+      const uchar color_in[4], const int x1, const int y1, const int x2, const int y2) const;
   void texture3_draw(
-      const uchar color_in[4], const int x1, const int y1, const int x2, const int y2);
+      const uchar color_in[4], const int x1, const int y1, const int x2, const int y2) const;
 
   static GlyphBLF *create(
       FontBLF *font, FT_GlyphSlot glyph, uint charcode, FT_UInt glyph_index, uint8_t subpixel);
@@ -218,13 +235,13 @@ class GlyphBLF {
   GlyphBLF();
   ~GlyphBLF();
 
-  static GlyphBLF *get_glyph(struct FontBLF *font,
-                             GlyphCacheBLF *gc,
-                             uint charcode,
-                             uint8_t subpixel = 0);
+  static GlyphBLF *glyph_ensure(struct FontBLF *font,
+                                GlyphCacheBLF *gc,
+                                uint charcode,
+                                uint8_t subpixel = 0);
 
 #ifdef BLF_SUBPIXEL_AA
-  GlyphBLF *glyph_refine_aa(struct FontBLF *font, GlyphCacheBLF *gc, int32_t pen_x);
+  GlyphBLF *glyph_refine(struct FontBLF *font, GlyphCacheBLF *gc, int32_t pen_x);
 #endif
 
   void draw(FontBLF *font, GlyphCacheBLF *gc, const int x, const int y);
@@ -403,7 +420,7 @@ typedef struct FontBLF {
    * List of glyph caches (#GlyphCacheBLF) for this font for size, DPI, bold, italic.
    * Use GlyphCacheBLF::cache_acquire(font) and GlyphCacheBLF::cache_release(font) to access cache!
    */
-  ListBase cache;
+  GlyphCacheListBLF *cache;
 
   /** Cache of unscaled kerning values. Will be NULL if font does not have kerning. */
   KerningCacheBLF *kerning_cache;
@@ -427,5 +444,5 @@ typedef struct FontBLF {
   FontBufInfoBLF buf_info;
 
   /** Mutex lock for glyph cache. */
-  ThreadMutex glyph_cache_mutex;
+  // ThreadMutex glyph_cache_mutex;
 } FontBLF;
