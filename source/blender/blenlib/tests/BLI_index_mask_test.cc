@@ -120,6 +120,26 @@ TEST(index_mask, ForeachRange)
   EXPECT_EQ(ranges[2], IndexRange(40, 2));
 }
 
+TEST(index_mask, ForeachRealRange)
+{
+  IndexMaskMemory memory;
+  IndexMask mask = IndexMask::from_initializers({IndexRange(max_segment_size),
+                                                 IndexRange(max_segment_size, 5),
+                                                 max_segment_size + 7,
+                                                 max_segment_size + 9,
+                                                 max_segment_size + 10,
+                                                 IndexRange(max_segment_size * 2, 7)},
+                                                memory);
+  Vector<IndexRange> ranges;
+  mask.foreach_real_range([&](const IndexRange range) { ranges.append(range); });
+
+  EXPECT_EQ(ranges.size(), 4);
+  EXPECT_EQ(ranges[0], IndexRange(max_segment_size + 5));
+  EXPECT_EQ(ranges[1], IndexRange(max_segment_size + 7, 1));
+  EXPECT_EQ(ranges[2], IndexRange(max_segment_size + 9, 2));
+  EXPECT_EQ(ranges[3], IndexRange(max_segment_size * 2, 7));
+}
+
 TEST(index_mask, ToRange)
 {
   IndexMaskMemory memory;

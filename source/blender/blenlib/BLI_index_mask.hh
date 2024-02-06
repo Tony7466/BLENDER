@@ -351,6 +351,11 @@ class IndexMask : private IndexMaskData {
   template<typename Fn> void foreach_range(Fn &&fn) const;
 
   /**
+   * Same as #foreach_range, but merge ranges between segments.
+   */
+  template<typename Fn> void foreach_real_range(Fn &&fn) const;
+
+  /**
    * Fill the provided span with the indices in the mask. The span is expected to have the same
    * size as the mask.
    */
@@ -848,6 +853,48 @@ template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
       base_indices = base_indices.drop_front(next_range_size);
     }
   });
+}
+
+template<typename Fn> inline void IndexMask::foreach_real_range(Fn &&fn) const
+{
+  if (const std::optional<IndexRange> range = this->to_range()) {
+    fn(*range);
+  }
+
+  IndexRange segments(this->segments_num());
+  IndexMaskSegment segment = this->segment(segments.first());
+  segments = segments.drop_front(1);
+
+  while (!segment.is_empty()) {
+    const int64_t current_begin = segment[0];
+
+    /* Checking for begin of range. */
+    int64_t range_size = unique_sorted_indices::find_size_of_next_range(segment.base_span());
+    segment = IndexMaskSegment(segment.offset(), segment.base_span().drop_front(range_size));
+    if (!segment.is_empty()) {
+      fn(IndexRange(current_begin, range_size));
+      continue;
+    }
+
+    /* Body of range. */
+    for (const int64_t segment_i : segments) {
+      segment = this->segment(segment_i);
+      segments = segments.drop_front(1);
+      /* End of range and segment. */
+      if (segment[0] != current_begin + range_size) {
+        break;
+      }
+
+      range_size += unique_sorted_indices::find_size_of_next_range(segment.base_span());
+      segment = IndexMaskSegment(segment.offset(), segment.base_span().drop_front(range_size));
+      /* End of range. */
+      if (!segment.is_empty()) {
+        break;
+      }
+    }
+
+    fn(IndexRange(current_begin, range_size));
+  }
 }
 
 namespace detail {
