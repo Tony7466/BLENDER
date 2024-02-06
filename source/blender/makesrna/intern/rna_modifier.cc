@@ -223,7 +223,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Duplicate strokes like a mirror"},
     {eModifierType_GreasePencilMultiply,
      "GREASE_PENCIL_MULTIPLY",
-     ICON_MOD_CURVE,
+     ICON_GP_MULTIFRAME_EDITING,
      "Multiple Strokes",
      "Generate multiple strokes around original strokes"},
 

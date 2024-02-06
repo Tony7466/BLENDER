@@ -208,7 +208,7 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   radii.finish();
   opacities.finish();
 
-  curves = duplicated_strokes;
+  curves = std::move(duplicated_strokes);
   drawing.tag_topology_changed();
 }
 
