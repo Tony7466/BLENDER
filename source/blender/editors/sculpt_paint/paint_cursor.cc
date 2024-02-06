@@ -31,7 +31,6 @@
 #include "BKE_curve.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
-#include "BKE_layer.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
@@ -1411,19 +1410,6 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
   if (!ups->stroke_active) {
     pcontext->is_cursor_over_mesh = SCULPT_cursor_geometry_info_update(
         C, &gi, mval_fl, (pcontext->brush->falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE));
-
-    /* Ideally, this code would go inside SCULPT_cursor_geometry_info_update when we perform a
-     * raycast check, however the method is used by many different editors across the entirety of
-     * sculpt. To mitigate potential unwanted changes of hiding the cursor, the logic is extracted
-     * here. */
-    const View3D *v3d = CTX_wm_view3d(C);
-    const Base *base = CTX_data_active_base(C);
-    if (!BKE_base_is_visible(v3d, base)) {
-      zero_v3(gi.location);
-      zero_v3(gi.normal);
-      zero_v3(gi.active_vertex_co);
-      pcontext->is_cursor_over_mesh = false;
-    }
     copy_v3_v3(pcontext->location, gi.location);
     copy_v3_v3(pcontext->normal, gi.normal);
   }
