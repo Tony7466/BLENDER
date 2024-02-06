@@ -106,42 +106,48 @@ static int floored_modulo(const int a, const int b)
 
 /* Combined segment info used by all strokes. */
 struct PatternInfo {
-  /* Segment indices per point over the length of the pattern.
-   * -1: Gap, discard point.
-   * >= 0: Segment index, same indices form a curve.
-   */
-  Array<int> dash_ids;
-  int dash_offset = 0;
-
-  int point_num = 0;
-  int curve_num = 0;
+  int offset = 0;
+  int length = 0;
+  Array<IndexRange> segments;
 };
 
 static PatternInfo get_pattern_info(const GreasePencilDashModifierData &dmd)
 {
-  int pattern_length = 0;
+  PatternInfo info;
   for (const GreasePencilDashModifierSegment &dash_segment : dmd.segments()) {
-    pattern_length += dash_segment.dash + dash_segment.gap;
+    info.length += dash_segment.dash + dash_segment.gap;
   }
 
-  PatternInfo info;
-  info.dash_ids.reinitialize(pattern_length);
-  info.dash_offset = floored_modulo(dmd.dash_offset, pattern_length);
-  info.curve_num = dmd.segments().size();
+  info.segments.reinitialize(dmd.segments().size());
+  info.offset = floored_modulo(dmd.dash_offset, info.length);
 
-  /* Bake segments into a single pattern array for simplicity. */
+  /* Store segments as ranges. */
   IndexRange dash_range(0);
   IndexRange gap_range(0);
   for (const int i : dmd.segments().index_range()) {
     const GreasePencilDashModifierSegment &dash_segment = dmd.segments()[i];
     dash_range = gap_range.after(dash_segment.dash);
     gap_range = dash_range.after(dash_segment.gap);
-    info.dash_ids.as_mutable_span().slice(dash_range).fill(i);
-    info.dash_ids.as_mutable_span().slice(gap_range).fill(-1);
-
-    info.point_num += dash_range.size();
+    info.segments[i] = dash_range;
   }
   return info;
+}
+
+/* Returns the segment covering the given index, including repetitions.*/
+static int find_dash_segment(const PatternInfo &pattern_info, const int index)
+{
+  const int repeat = index / pattern_info.length;
+  const int segments_num = pattern_info.segments.size();
+
+  const int local_index = index - repeat * pattern_info.length;
+  for (const int i : pattern_info.segments.index_range().drop_back(1)) {
+    const IndexRange segment = pattern_info.segments[i];
+    const IndexRange next_segment = pattern_info.segments[i + 1];
+    if (local_index >= segment.start() && local_index < next_segment.start()) {
+      return i + repeat * segments_num;
+    }
+  }
+  return segments_num - 1 + repeat * segments_num;
 }
 
 /**
@@ -154,71 +160,43 @@ static void foreach_dash(const PatternInfo &pattern_info,
                          const bool cyclic,
                          Fn fn)
 {
-  BLI_assert(!src_points.is_empty());
+  const int points_num = src_points.size();
+  const int segments_num = pattern_info.segments.size();
 
-  const Span<int> dash_ids = pattern_info.dash_ids;
-  const int pattern_length = dash_ids.size();
-  /* Points range in "pattern space". */
-  const IndexRange points = {pattern_info.dash_offset, src_points.size()};
+  auto segment_to_points_mask = [&](const int segment, IndexMaskMemory &memory) -> IndexMask {
+    const int repeat = segment / segments_num;
+    const IndexRange range = pattern_info.segments[segment - repeat * segments_num].shift(
+        repeat * pattern_info.length);
 
-  /* Range of points at the start of the curve which connects to the last dash
-   * (remains empty for non-cyclic curves). */
-  IndexRange cyclic_start_range(0);
-  if (cyclic) {
-    int prev_dash_id = -1;
-    for (const int i : points.index_range()) {
-      /* Only count the first pattern. */
-      if (points[i] >= pattern_length) {
-        break;
-      }
-      const int pattern_i = points[i];
-      const int dash_id = dash_ids[pattern_i];
-      if (dash_id >= 0 && dash_id == prev_dash_id) {
-        /* Extend curve. */
-        cyclic_start_range = IndexRange(cyclic_start_range.start(), cyclic_start_range.size() + 1);
-      }
-      else {
-        break;
-      }
+    const int64_t point_shift = src_points.start() - pattern_info.offset;
+    const int64_t min_point = src_points.start();
+    const int64_t max_point = cyclic ? src_points.last() : src_points.one_after_last();
+    const int64_t start = std::clamp(range.start() + point_shift, min_point, max_point);
+    const int64_t end = std::clamp(range.one_after_last() + point_shift, min_point, max_point);
 
-      prev_dash_id = dash_id;
-    }
-  }
-
-  int prev_dash_id = -1;
-  IndexRange src_curve_points(0);
-  for (const int i : points.index_range().drop_front(cyclic_start_range.size())) {
-    const int repeat = points[i] / pattern_length;
-    const int pattern_i = points[i] - repeat * pattern_length;
-    BLI_assert(pattern_i < pattern_length);
-    /* Unique ID, to ensure curve breaks in case there is just one dash. */
-    const int dash_id = (dash_ids[pattern_i] >= 0 ?
-                             dash_ids[pattern_i] + repeat * pattern_info.curve_num :
-                             -1);
-    if (dash_id >= 0 && dash_id == prev_dash_id) {
-      /* Extend curve. */
-      src_curve_points = IndexRange(src_curve_points.start(), src_curve_points.size() + 1);
+    if (cyclic && end == max_point) {
+      return IndexMask::from_union(IndexRange(start, std::max(end - start - 1, int64_t(0))),
+                                   IndexRange(min_point, 1),
+                                   memory);
     }
     else {
-      if (!src_curve_points.is_empty()) {
-        const IndexMask src_points_mask(src_curve_points.shift(src_points.start()));
-        if (i < points.size() - 1) {
-          /* Report finished curve. */
-          fn(src_points_mask);
-        }
-        else {
-          /* Last dash, combine with start range in case of cyclic curves. */
-          const IndexMask cyclic_start_mask(cyclic_start_range.shift(src_points.start()));
-          IndexMaskMemory mask_memory;
-          fn(IndexMask::from_union(src_points_mask, cyclic_start_mask, mask_memory));
-        }
-      }
-
-      /* New curve. */
-      src_curve_points = (dash_id >= 0 ? IndexRange(i, 1) : IndexRange(0));
+      return IndexRange(start, end - start);
     }
+  };
 
-    prev_dash_id = dash_id;
+  const int first_segment = find_dash_segment(pattern_info, pattern_info.offset);
+  const int last_segment = find_dash_segment(pattern_info, pattern_info.offset + points_num - 1);
+  BLI_assert(first_segment < segments_num);
+  BLI_assert(last_segment >= first_segment);
+  const IndexRange first_segment_points = pattern_info.segments[first_segment];
+
+  const IndexRange all_segments = IndexRange(first_segment, last_segment - first_segment + 1);
+  for (const int i : all_segments) {
+    IndexMaskMemory mask_memory;
+    const IndexMask points_mask = segment_to_points_mask(i, mask_memory);
+    if (!points_mask.is_empty()) {
+      fn(points_mask);
+    }
   }
 }
 
@@ -250,31 +228,16 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
   Array<int> src_point_indices(dst_point_num);
   Array<int> src_curve_indices(dst_curve_num);
 
-  std::cout << "Dash Curves (points=" << dst_point_num << ", curves=" << dst_curve_num << ")"
-            << std::endl;
   {
     /* Start at curve offset and add points for each dash. */
     IndexRange dst_point_range(0);
     int dst_curve_i = 0;
     for (const int src_curve_i : src_curves.curves_range()) {
       const IndexRange src_points = src_curves.points_by_curve()[src_curve_i];
-      std::cout << "Original curve " << src_curve_i << " (" << src_points.size() << " points)"
-                << std::endl;
       foreach_dash(
           pattern_info, src_points, src_cyclic[src_curve_i], [&](const IndexMask &src_points) {
-            {
-              std::cout << "Dash source points: ";
-              Array<int> src_indices(src_points.size());
-              src_points.to_indices(src_indices.as_mutable_span());
-              for (const int i : src_indices) {
-                std::cout << i << ", ";
-              }
-              std::cout << std::endl;
-            }
-
             dst_point_range = dst_point_range.after(src_points.size());
             dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.start();
-            // std::cout << dst_curve_i << ": " << dst_point_range << std::endl;
 
             src_points.to_indices(src_point_indices.as_mutable_span().slice(dst_point_range));
             src_curve_indices[dst_curve_i] = src_curve_i;
@@ -286,17 +249,7 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
       /* Last offset entry is total point count. */
       dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.one_after_last();
     }
-    // std::cout << dst_curve_i << ": " << dst_point_range.one_after_last() << std::endl;
   }
-  std::cout << "Dash Points: " << std::endl;
-  for (const int i : src_point_indices.index_range()) {
-    std::cout << i << " <- " << src_point_indices[i] << std::endl;
-  }
-  std::cout << "Dash Curves: " << std::endl;
-  for (const int i : src_curve_indices.index_range()) {
-    std::cout << i << " <- " << src_curve_indices[i] << std::endl;
-  }
-  std::flush(std::cout);
 
   bke::gather_attributes(
       src_attributes, bke::AttrDomain::Point, {}, {}, src_point_indices, dst_attributes);
@@ -305,7 +258,7 @@ static bke::CurvesGeometry create_dashes(const GreasePencilDashModifierData &dmd
 
   dst_curves.update_curve_types();
 
-  return std::move(dst_curves);
+  return dst_curves;
 }
 
 static void modify_drawing(const GreasePencilDashModifierData &dmd,
