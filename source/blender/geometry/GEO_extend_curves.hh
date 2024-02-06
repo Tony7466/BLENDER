@@ -17,7 +17,7 @@ namespace blender::geometry {
  * Extend curves from their end-points, selectively allow curvature from the original curve to
  * influence extended segments.
  */
-bke::CurvesGeometry extend_curves(const bke::CurvesGeometry &src_curves,
+bke::CurvesGeometry extend_curves(bke::CurvesGeometry &src_curves,
                                   const IndexMask &selection,
                                   const VArray<float> &start_lengths,
                                   const VArray<float> &end_lengths,
