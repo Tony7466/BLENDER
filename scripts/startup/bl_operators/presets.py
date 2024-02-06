@@ -717,7 +717,8 @@ class WM_OT_operator_presets_cleanup(Operator):
                          'WM_OT_stl_export',
                          'WM_OT_stl_import',
                          'WM_OT_usd_export',
-                         'WM_OT_usd_import',]
+                         'WM_OT_usd_import',
+                         ]
             properties = ["filepath", "directory", "files", "filename"]
 
         self.cleanup_operators_presets(operators, properties)
