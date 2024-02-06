@@ -658,16 +658,14 @@ class WM_MT_operator_presets(Menu):
 
 
 class WM_OT_operator_presets_cleanup(Operator):
-
     bl_idname = "wm.operator_presets_cleanup"
     bl_label = "Clean Up Operator Presets"
-    bl_label = "Remove outdated operator properties from presets that may cause problems"
+    bl_description = "Remove outdated operator properties from presets that may cause problems"
 
     operator: StringProperty(name="operator")
     properties: CollectionProperty(name="properties", type=OperatorFileListElement)
 
-    @staticmethod
-    def cleanup_preset(filepath, properties):
+    def cleanup_preset(self, filepath, properties):
         from pathlib import Path
         file = Path(filepath)
         if not (file.is_file() and filepath.suffix == ".py"):
@@ -681,19 +679,19 @@ class WM_OT_operator_presets_cleanup(Operator):
                 new_lines.append(line)
         file.write_text("".join(new_lines))
 
-    @staticmethod
-    def cleanup_operators_presets(operators, properties):
+    def cleanup_operators_presets(self, operators, properties):
         base_preset_directory = bpy.utils.user_resource(
             'SCRIPTS', path="presets", create=False)
         for operator in operators:
             from pathlib import Path
-            directory = Path(base_preset_directory, AddPresetOperator.operator_path(operator))
+            operator_path = AddPresetOperator.operator_path(operator)
+            directory = Path(base_preset_directory, operator_path)
 
             if not directory.is_dir():
                 continue
 
             for filepath in directory.iterdir():
-                WM_OT_operator_presets_cleanup.cleanup_preset(filepath, properties)
+                self.cleanup_preset(filepath, properties)
 
     def execute(self, context):
         properties = []
@@ -703,7 +701,7 @@ class WM_OT_operator_presets_cleanup(Operator):
             for prop in self.properties:
                 properties.append(prop.name)
         else:
-            # Cleanup by dafult I/O Operators Presets
+            # Cleanup by default I/O Operators Presets
             operators = ['WM_OT_alembic_export',
                          'WM_OT_alembic_import',
                          'WM_OT_collada_export',
@@ -722,8 +720,7 @@ class WM_OT_operator_presets_cleanup(Operator):
                          'WM_OT_usd_import',]
             properties = ["filepath", "directory", "files", "filename"]
 
-        WM_OT_operator_presets_cleanup.cleanup_operators_presets(
-            operators, properties)
+        self.cleanup_operators_presets(operators, properties)
         return {'FINISHED'}
 
 
