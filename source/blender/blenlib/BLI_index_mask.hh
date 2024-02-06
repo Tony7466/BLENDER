@@ -115,7 +115,28 @@ class IndexMaskMemory : public LinearAllocator<> {
   }
 };
 
-using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
+class IndexMaskSegment : public OffsetSpan<int64_t, int16_t> {
+ public:
+  using OffsetSpan::OffsetSpan;
+  IndexMaskSegment(OffsetSpan<int64_t, int16_t> other);
+
+  bool is_range() const;
+  int64_t first_range_size() const;
+  std::optional<IndexRange> as_range() const;
+
+  bool contains(int64_t query_index) const;
+  std::optional<int16_t> find(int64_t query_index) const;
+  std::optional<int16_t> find_larger_equal(int64_t query_index) const;
+  std::optional<int16_t> find_smaller_equal(int64_t query_index) const;
+
+  friend bool operator==(IndexMaskSegment a, IndexMaskSegment b);
+  friend bool operator!=(IndexMaskSegment a, IndexMaskSegment b);
+
+  int64_t first() const;
+
+  IndexMaskSegment drop_front(int64_t n) const;
+  IndexMaskSegment drop_back(int64_t n) const;
+};
 
 /**
  * An #IndexMask is a sequence of unique and sorted indices (`BLI_unique_sorted_indices.hh`).
