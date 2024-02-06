@@ -386,7 +386,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     }
   }
 
-  bool only_handles_selected = true;
+  bool at_least_one_key_selected = false;
 
   /* loop 2: build transdata arrays */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
@@ -426,7 +426,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
         TransDataCurveHandleFlags *hdata = nullptr;
 
         graph_bezt_get_transform_selection(t, bezt, use_handle, &sel_left, &sel_key, &sel_right);
-        only_handles_selected &= !sel_key;
+        at_least_one_key_selected |= sel_key;
         if (is_prop_edit) {
           bool is_sel = (sel_key || sel_left || sel_right);
           /* we always select all handles for proportional editing if central handle is selected */
@@ -637,7 +637,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     }
   }
 
-  if (sipo->flag & SIPO_AUTOLOCK_AXIS && !only_handles_selected) {
+  if (sipo->flag & SIPO_AUTOLOCK_AXIS && at_least_one_key_selected) {
     enable_autolock(t, sipo);
   }
 
