@@ -870,51 +870,65 @@ template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 
 /* Any mask is built from segments. Even if masks is the same, segments fragmentation might be
  * different. Produce re-fragmentation of each mask on the fly to have segment of each mask in some
- * certain range and call function for them. */
-template<int Count, typename Func>
-static void foreach_sequence(std::array<IndexMask, Count> masks, Func &&func)
+ * certain range and call function for them.
+ * Instance for two masks:
+ * A: [0, 15), {20, 24, 25}
+ * B: [0, 5), [5, 15), {20, 24, 25}
+ * Func will be called for:
+ * [0, 5), [0, 5)
+ * [5, 15), [5, 15)
+ * {20, 24, 25}, {20, 24, 25}.
+ * Fragmentation only care to construct segments with the same size. So fragmentation is produced
+ * in positions space. Indices can be any.
+ */
+template<int IndexMaskNum, typename Func>
+static void foreach_sequence(std::array<IndexMask, IndexMaskNum> masks, Func &&func)
 {
   BLI_assert(std::all_of(masks.begin() + 1, masks.end(), [&](const IndexMask &maks) {
     return masks[0].size() == maks.size();
   }));
 
-  std::array<int64_t, Count> segment_iter;
+  std::array<int64_t, IndexMaskNum> segment_iter;
   MutableSpan(segment_iter).fill(0);
 
-  std::array<int16_t, Count> start_iter;
+  std::array<int16_t, IndexMaskNum> start_iter;
   MutableSpan(start_iter).fill(0);
 
-  std::array<IndexMaskSegment, Count> segments;
+  std::array<IndexMaskSegment, IndexMaskNum> segments;
 
+  /* This function only take positions of indices in to account.
+   * Masks with the same size is fragmented in positions space.
+   * So, all last segments (index in mask does not matter) of all masks will be ended in the same
+   * position. All segment iterators will be out of range at the same time. */
   while (segment_iter[0] != masks[0].segments_num()) {
-    for (const int64_t mask_i : IndexRange(Count)) {
+    for (const int64_t mask_i : IndexRange(IndexMaskNum)) {
       if (start_iter[mask_i] == 0) {
         segments[mask_i] = masks[mask_i].segment(segment_iter[mask_i]);
       }
     }
 
-    int16_t min_sequence_size = std::numeric_limits<int16_t>::max();
-    for (const int64_t mask_i : IndexRange(Count)) {
-      min_sequence_size = math::min(min_sequence_size,
-                                    int16_t(segments[mask_i].size() - start_iter[mask_i]));
+    int16_t next_common_sequence_size = std::numeric_limits<int16_t>::max();
+    for (const int64_t mask_i : IndexRange(IndexMaskNum)) {
+      next_common_sequence_size = math::min(next_common_sequence_size,
+                                            int16_t(segments[mask_i].size() - start_iter[mask_i]));
     }
 
-    std::array<IndexMaskSegment, Count> sequences;
-    for (const int64_t mask_i : IndexRange(Count)) {
-      sequences[mask_i] = segments[mask_i].slice(start_iter[mask_i], min_sequence_size);
+    std::array<IndexMaskSegment, IndexMaskNum> sequences;
+    for (const int64_t mask_i : IndexRange(IndexMaskNum)) {
+      sequences[mask_i] = segments[mask_i].slice(start_iter[mask_i], next_common_sequence_size);
     }
 
     if (!func(sequences)) {
       break;
     }
 
-    for (const int64_t mask_i : IndexRange(Count)) {
-      if (segments[mask_i].size() - start_iter[mask_i] == min_sequence_size) {
+    for (const int64_t mask_i : IndexRange(IndexMaskNum)) {
+      if (segments[mask_i].size() - start_iter[mask_i] == next_common_sequence_size) {
         segment_iter[mask_i]++;
         start_iter[mask_i] = 0;
       }
       else {
-        start_iter[mask_i] += min_sequence_size;
+        start_iter[mask_i] += next_common_sequence_size;
       }
     }
   }
