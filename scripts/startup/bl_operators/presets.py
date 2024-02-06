@@ -670,30 +670,26 @@ class WM_OT_operator_presets_cleanup(Operator):
     def cleanup_preset(filepath, properties):
         from pathlib import Path
         file = Path(filepath)
-        if not (file.exists() and file.is_file() and filepath.suffix == ".py"):
+        if not (file.is_file() and filepath.suffix == ".py"):
             return
-        lines = file.read_text().split('\n')
+        lines = file.read_text().splitlines(True)
         if len(lines) == 0:
             return
-        text = ''
+        new_lines = []
         for line in lines:
             if not any(line.startswith(("op.%s" % prop)) for prop in properties):
-                text += line + '\n'
-        # Remove an additional line break added with the last element in previous the for-loop
-        text = text[:len(text) - 1]
-        file.write_text(text)
+                new_lines.append(line)
+        file.write_text("".join(new_lines))
 
     @staticmethod
     def cleanup_operators_presets(operators, properties):
         base_preset_directory = bpy.utils.user_resource(
             'SCRIPTS', path="presets", create=False)
         for operator in operators:
-            import os
-            operator_preset_directory = os.path.join(
-                base_preset_directory, AddPresetOperator.operator_path(operator))
             from pathlib import Path
-            directory = Path(operator_preset_directory)
-            if not (directory.exists() and directory.is_dir()):
+            directory = Path(base_preset_directory, AddPresetOperator.operator_path(operator))
+
+            if not directory.is_dir():
                 continue
 
             for filepath in directory.iterdir():
