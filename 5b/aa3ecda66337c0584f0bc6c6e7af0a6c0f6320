@@ -6,3 +6,4 @@ Referenced by issue #74610, Saving image from image editor resets Image Texture 
 Referenced by issue #68926, Color Management Improvements
 Referenced by issue #108754, Test bf_imbuf_save fails with an assert in debug builds (DPX 8-bit save)
 Referenced by pull request #117914, Fix #108754: remove overactive color management assert
+Referenced by commit 434bb0c93f5ec5f87a3e216466a4a408d1058c61, Fix #108754: remove overactive color management assert
