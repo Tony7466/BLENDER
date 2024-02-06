@@ -11,8 +11,10 @@ const char *denoiserTypeToHumanReadable(DenoiserType type)
   switch (type) {
     case DENOISER_OPTIX:
       return "OptiX";
-    case DENOISER_OPENIMAGEDENOISE:
-      return "OpenImageDenoise";
+    case DENOISER_OPENIMAGEDENOISE_CPU:
+      return "OpenImageDenoise on CPU";
+    case DENOISER_OPENIMAGEDENOISE_GPU:
+      return "OpenImageDenoise on GPU";
 
     case DENOISER_NUM:
     case DENOISER_NONE:
@@ -29,7 +31,8 @@ const NodeEnum *DenoiseParams::get_type_enum()
 
   if (type_enum.empty()) {
     type_enum.insert("optix", DENOISER_OPTIX);
-    type_enum.insert("openimageio", DENOISER_OPENIMAGEDENOISE);
+    type_enum.insert("openimagedenoise_cpu", DENOISER_OPENIMAGEDENOISE_CPU);
+    type_enum.insert("openimagedenoise_gpu", DENOISER_OPENIMAGEDENOISE_GPU);
   }
 
   return &type_enum;
@@ -57,7 +60,7 @@ NODE_DEFINE(DenoiseParams)
 
   SOCKET_BOOLEAN(use, "Use", false);
 
-  SOCKET_ENUM(type, "Type", *type_enum, DENOISER_OPENIMAGEDENOISE);
+  SOCKET_ENUM(type, "Type", *type_enum, DENOISER_OPENIMAGEDENOISE_CPU);
 
   SOCKET_INT(start_sample, "Start Sample", 0);
 

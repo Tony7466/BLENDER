@@ -129,7 +129,8 @@ NODE_DEFINE(Integrator)
 
   static NodeEnum denoiser_type_enum;
   denoiser_type_enum.insert("optix", DENOISER_OPTIX);
-  denoiser_type_enum.insert("openimagedenoise", DENOISER_OPENIMAGEDENOISE);
+  denoiser_type_enum.insert("openimagedenoise_cpu", DENOISER_OPENIMAGEDENOISE_CPU);
+  denoiser_type_enum.insert("openimagedenoise_gpu", DENOISER_OPENIMAGEDENOISE_GPU);
 
   static NodeEnum denoiser_prefilter_enum;
   denoiser_prefilter_enum.insert("none", DENOISER_PREFILTER_NONE);
@@ -140,7 +141,7 @@ NODE_DEFINE(Integrator)
    * it's best use OptiX and disable the normal pass since it does not always have
    * the desired effect for that denoiser. */
   SOCKET_BOOLEAN(use_denoise, "Use Denoiser", false);
-  SOCKET_ENUM(denoiser_type, "Denoiser Type", denoiser_type_enum, DENOISER_OPENIMAGEDENOISE);
+  SOCKET_ENUM(denoiser_type, "Denoiser Type", denoiser_type_enum, DENOISER_OPENIMAGEDENOISE_CPU);
   SOCKET_INT(denoise_start_sample, "Start Sample to Denoise", 0);
   SOCKET_BOOLEAN(use_denoise_pass_albedo, "Use Albedo Pass for Denoiser", true);
   SOCKET_BOOLEAN(use_denoise_pass_normal, "Use Normal Pass for Denoiser", true);

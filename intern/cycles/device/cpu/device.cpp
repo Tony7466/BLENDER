@@ -37,7 +37,7 @@ void device_cpu_info(vector<DeviceInfo> &devices)
     info.has_guiding = false;
   }
   if (openimagedenoise_supported()) {
-    info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    info.denoisers |= DENOISER_OPENIMAGEDENOISE_CPU;
   }
 
   devices.insert(devices.begin(), info);

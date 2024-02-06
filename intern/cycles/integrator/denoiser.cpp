@@ -21,22 +21,26 @@ unique_ptr<Denoiser> Denoiser::create(Device *path_trace_device, const DenoisePa
   DCHECK(params.use);
 
 #ifdef WITH_OPTIX
-  if (params.type == DENOISER_OPTIX && Device::available_devices(DEVICE_MASK_OPTIX).size()) {
+  bool has_optix_denoise_device = Device::available_devices(DEVICE_MASK_OPTIX).size();
+  if (params.type == DENOISER_OPTIX && has_optix_denoise_device) {
     return make_unique<OptiXDenoiser>(path_trace_device, params);
   }
 #endif
 
 #ifdef WITH_OPENIMAGEDENOISE
-  if (params.type == DENOISER_OPENIMAGEDENOISE && path_trace_device->info.type != DEVICE_CPU &&
-      OIDNDenoiserGPU::is_device_supported(path_trace_device->info))
-  {
+  const ccl::vector<DeviceInfo> devices = Device::available_devices(DEVICE_MASK_ALL);
+  bool has_oidn_gpu_denoise_device = false;
+  for (const DeviceInfo device : devices) {
+    has_oidn_gpu_denoise_device |= device.denoisers & DENOISER_OPENIMAGEDENOISE_GPU;
+  }
+  if (params.type == DENOISER_OPENIMAGEDENOISE_GPU && has_oidn_gpu_denoise_device) {
     return make_unique<OIDNDenoiserGPU>(path_trace_device, params);
   }
 #endif
 
   /* Always fallback to OIDN. */
   DenoiseParams oidn_params = params;
-  oidn_params.type = DENOISER_OPENIMAGEDENOISE;
+  oidn_params.type = DENOISER_OPENIMAGEDENOISE_CPU;
   return make_unique<OIDNDenoiser>(path_trace_device, oidn_params);
 }
 

@@ -997,11 +997,20 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
 
     /* Auto select fastest denoiser. */
     if (denoising.type == DENOISER_NONE) {
-      if (!Device::available_devices(DEVICE_MASK_OPTIX).empty()) {
+      const vector<DeviceInfo> devices = Device::available_devices();
+      ccl::DenoiserTypeMask denoiser_mask_all = DENOISER_NONE;
+      for (const DeviceInfo &device : devices) {
+        denoiser_mask_all |= device.denoisers;
+      }
+
+      if (denoiser_mask_all & DENOISER_OPTIX) {
         denoising.type = DENOISER_OPTIX;
       }
-      else if (openimagedenoise_supported()) {
-        denoising.type = DENOISER_OPENIMAGEDENOISE;
+      else if (denoiser_mask_all & DENOISER_OPENIMAGEDENOISE_GPU) {
+        denoising.type = DENOISER_OPENIMAGEDENOISE_GPU;
+      }
+      else if (denoiser_mask_all & DENOISER_OPENIMAGEDENOISE_CPU) {
+        denoising.type = DENOISER_OPENIMAGEDENOISE_CPU;
       }
       else {
         denoising.use = false;

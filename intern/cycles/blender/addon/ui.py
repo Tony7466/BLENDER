@@ -154,7 +154,10 @@ def get_effective_preview_denoiser(context):
     if context.preferences.addons[__package__].preferences.get_devices_for_type('OPTIX'):
         return 'OPTIX'
 
-    return 'OIDN'
+    if use_cpu(context):
+        return 'OPENIMAGEDENOISE_CPU'
+    else:
+        return 'OPENIMAGEDENOISE_GPU'
 
 
 def use_mnee(context):
@@ -231,7 +234,7 @@ class CYCLES_RENDER_PT_sampling_viewport_denoise(CyclesButtonsPanel, Panel):
         col.prop(cscene, "preview_denoising_input_passes", text="Passes")
 
         effective_preview_denoiser = get_effective_preview_denoiser(context)
-        if effective_preview_denoiser == 'OPENIMAGEDENOISE':
+        if effective_preview_denoiser == 'OPENIMAGEDENOISE_CPU' or effective_preview_denoiser == 'OPENIMAGEDENOISE_GPU':
             col.prop(cscene, "preview_denoising_prefilter", text="Prefilter")
 
         col.prop(cscene, "preview_denoising_start_sample", text="Start Sample")
@@ -292,7 +295,7 @@ class CYCLES_RENDER_PT_sampling_render_denoise(CyclesButtonsPanel, Panel):
         col.active = cscene.use_denoising
         col.prop(cscene, "denoiser", text="Denoiser")
         col.prop(cscene, "denoising_input_passes", text="Passes")
-        if cscene.denoiser == 'OPENIMAGEDENOISE':
+        if cscene.denoiser == 'OPENIMAGEDENOISE_CPU' or cscene.denoiser == 'OPENIMAGEDENOISE_GPU':
             col.prop(cscene, "denoising_prefilter", text="Prefilter")
 
 

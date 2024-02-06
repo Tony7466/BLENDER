@@ -24,7 +24,7 @@ thread_mutex OIDNDenoiser::mutex_;
 OIDNDenoiser::OIDNDenoiser(Device *path_trace_device, const DenoiseParams &params)
     : Denoiser(path_trace_device, params)
 {
-  DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE);
+  DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE_CPU);
 }
 
 #ifdef WITH_OPENIMAGEDENOISE

@@ -12,7 +12,8 @@ CCL_NAMESPACE_BEGIN
 
 enum DenoiserType {
   DENOISER_OPTIX = 2,
-  DENOISER_OPENIMAGEDENOISE = 4,
+  DENOISER_OPENIMAGEDENOISE_CPU = 4,
+  DENOISER_OPENIMAGEDENOISE_GPU = 8,
   DENOISER_NUM,
 
   DENOISER_NONE = 0,
@@ -51,7 +52,7 @@ class DenoiseParams : public Node {
   bool use = false;
 
   /* Denoiser type. */
-  DenoiserType type = DENOISER_OPENIMAGEDENOISE;
+  DenoiserType type = DENOISER_OPENIMAGEDENOISE_CPU;
 
   /* Viewport start sample. */
   int start_sample = 0;

@@ -166,7 +166,7 @@ void device_cuda_info(vector<DeviceInfo> &devices)
 
 #  if defined(WITH_OPENIMAGEDENOISE)
     if (OIDNDenoiserGPU::is_device_supported(info)) {
-      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE_GPU;
     }
 #  endif
 

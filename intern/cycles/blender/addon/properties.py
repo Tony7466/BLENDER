@@ -216,8 +216,33 @@ enum_guiding_directional_sampling_types = (
 def enum_openimagedenoise_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise:
-        return [('OPENIMAGEDENOISE', "OpenImageDenoise",
-                 "Use Intel OpenImageDenoise AI denoiser", 4)]
+        has_oidn_cpu_devices = False
+        has_oidn_gpu_devices = False
+
+        items = []
+
+        compute_device_type = context.preferences.addons[__package__].preferences.get_compute_device_type()
+        # Blender always add CPU device to list of device of any compute type, so
+        # no need to request CPU devices separately.
+        for device in _cycles.available_devices(compute_device_type):
+            has_oidn_support_in_device = device[5];
+            device_type = device[1]
+            if has_oidn_support_in_device:
+                if device_type == 'CPU':
+                    has_oidn_cpu_devices = True
+                else:
+                    has_oidn_gpu_devices = True
+
+        if has_oidn_cpu_devices:
+            items.append(('OPENIMAGEDENOISE_CPU', "OpenImageDenoise on CPU",
+                 "Use Intel OpenImageDenoise AI denoiser on CPU", 4))
+
+        if has_oidn_gpu_devices:
+            items.append(('OPENIMAGEDENOISE_GPU', "OpenImageDenoise on GPU",
+                 "Use Intel OpenImageDenoise AI denoiser on GPU", 8))
+
+        return items
+
     return []
 
 
