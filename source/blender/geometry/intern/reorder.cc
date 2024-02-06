@@ -54,7 +54,6 @@ static void reorder_attributes_group_to_group(const bke::AttributeAccessor src_a
           return true;
         }
         const GVArray src = *src_attributes.lookup(id, domain);
-        dst_attributes.remove(id);
         bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
             id, domain, meta_data.data_type);
         if (!dst) {
