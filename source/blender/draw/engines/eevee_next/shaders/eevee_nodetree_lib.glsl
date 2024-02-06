@@ -21,28 +21,43 @@ vec3 g_volume_absorption;
 #define CLOSURE_DEFAULT 0.0
 
 /* Sampled closure parameters. */
-ClosureUndetermined g_diffuse_data;
-ClosureUndetermined g_translucent_data;
-ClosureUndetermined g_reflection_data;
-ClosureUndetermined g_refraction_data;
+ClosureUndetermined g_closures_data[4];
 /* Random number per sampled closure type. */
-float g_diffuse_rand;
-float g_translucent_rand;
-float g_reflection_rand;
-float g_refraction_rand;
+vec4 g_closure_rand;
+/* Random number per sampled closure type. */
+vec4 g_closure_weights;
 
 ClosureUndetermined g_closure_get(int i)
 {
   switch (i) {
     default:
     case 0:
-      return g_diffuse_data;
+      return g_closures_data[0];
     case 1:
-      return g_translucent_data;
+      return g_closures_data[1];
     case 2:
-      return g_reflection_data;
+      return g_closures_data[2];
     case 3:
-      return g_refraction_data;
+      return g_closures_data[3];
+  }
+}
+
+void g_closure_set(int i, ClosureUndetermined cl)
+{
+  switch (i) {
+    default:
+    case 0:
+      g_closures_data[0] = cl;
+      break;
+    case 1:
+      g_closures_data[1] = cl;
+      break;
+    case 2:
+      g_closures_data[2] = cl;
+      break;
+    case 3:
+      g_closures_data[3] = cl;
+      break;
   }
 }
 
@@ -95,39 +110,50 @@ bool closure_select_check(float weight, inout float total_weight, inout float r)
   return chosen;
 }
 
+/* Returns the reservoir id with the least weight. */
+int closure_reservoir_select()
+{
+  /* TODO(fclem): This surely can be optimized. */
+  if (all(lessThanEqual(g_closure_weights.xxxx, g_closure_weights.xyzw))) {
+    return 0;
+  }
+  if (all(lessThanEqual(g_closure_weights.yyyy, g_closure_weights.xyzw))) {
+    return 1;
+  }
+  if (all(lessThanEqual(g_closure_weights.zzzz, g_closure_weights.xyzw))) {
+    return 2;
+  }
+  return 2;
+}
+
 /**
  * Assign `candidate` to `destination` based on a random value and the respective weights.
  */
-void closure_select(inout ClosureUndetermined destination,
-                    float random,
-                    ClosureUndetermined candidate)
+void closure_select(ClosureUndetermined candidate)
 {
-  if (closure_select_check(candidate.weight, destination.weight, random)) {
-    float tmp = destination.weight;
-    destination = candidate;
-    destination.weight = tmp;
+  int reservoir_id = closure_reservoir_select();
+
+  float destination_weight = g_closure_weights[reservoir_id];
+  float destination_random = g_closure_rand[reservoir_id];
+
+  if (closure_select_check(candidate.weight, destination_weight, destination_random)) {
+    candidate.weight = destination_weight;
+    g_closure_weights[reservoir_id] = destination_weight;
+    g_closure_set(reservoir_id, candidate);
   }
+
+  g_closure_rand[reservoir_id] = destination_random;
 }
 
 void closure_weights_reset(float closure_rand)
 {
-  g_diffuse_data.weight = 0.0;
-  g_translucent_data.weight = 0.0;
-  g_reflection_data.weight = 0.0;
-  g_refraction_data.weight = 0.0;
+  g_closure_weights = vec4(0.0);
 
   g_volume_scattering = vec3(0.0);
   g_volume_anisotropy = 0.0;
   g_volume_absorption = vec3(0.0);
 
-#if defined(GPU_FRAGMENT_SHADER)
-  g_diffuse_rand = g_translucent_rand = g_reflection_rand = g_refraction_rand = closure_rand;
-#else
-  g_diffuse_rand = 0.0;
-  g_translucent_rand = 0.0;
-  g_reflection_rand = 0.0;
-  g_refraction_rand = 0.0;
-#endif
+  g_closure_rand = vec4(closure_rand);
 
   g_emission = vec3(0.0);
   g_transmittance = vec3(0.0);
@@ -147,7 +173,7 @@ Closure closure_eval(ClosureDiffuse diffuse)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
-  closure_select(g_diffuse_data, g_diffuse_rand, cl);
+  closure_select(cl);
   return Closure(0);
 }
 
@@ -156,7 +182,7 @@ Closure closure_eval(ClosureSubsurface diffuse)
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
   cl.data.rgb = diffuse.sss_radius;
-  closure_select(g_diffuse_data, g_diffuse_rand, cl);
+  closure_select(cl);
   return Closure(0);
 }
 
@@ -164,7 +190,7 @@ Closure closure_eval(ClosureTranslucent translucent)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, translucent);
-  closure_select(g_translucent_data, g_translucent_rand, cl);
+  closure_select(cl);
   return Closure(0);
 }
 
@@ -173,7 +199,7 @@ Closure closure_eval(ClosureReflection reflection)
   ClosureUndetermined cl;
   closure_base_copy(cl, reflection);
   cl.data.r = reflection.roughness;
-  closure_select(g_reflection_data, g_reflection_rand, cl);
+  closure_select(cl);
   return Closure(0);
 }
 
@@ -183,7 +209,7 @@ Closure closure_eval(ClosureRefraction refraction)
   closure_base_copy(cl, refraction);
   cl.data.r = refraction.roughness;
   cl.data.g = refraction.ior;
-  closure_select(g_refraction_data, g_refraction_rand, cl);
+  closure_select(cl);
   return Closure(0);
 }
 
