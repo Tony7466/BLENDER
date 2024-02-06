@@ -521,10 +521,16 @@ static void generate_keyframe_reports_from_result(ReportList *reports,
                                                   const CombinedKeyingResult &result)
 {
   std::string error = "Inserting keyframes failed due to the following reasons:";
+
   if (result.get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE) > 0) {
+    const int error_count = result.get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE);
     error.append(
-        "\n- Cannot create F-Curves. Can happen when only inserting to available F-Curves.");
+        fmt::format("\n- Could not create {} F-Curve{}. This can happen when only inserting to "
+                    "available F-Curves.",
+                    error_count,
+                    error_count > 1 ? "s" : ""));
   }
+
   if (result.get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE) > 0) {
     const int error_count = result.get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE);
     if (error_count == 1) {
@@ -535,10 +541,15 @@ static void generate_keyframe_reports_from_result(ReportList *reports,
           "\n- {} F-Curves are not keyframeable. They might be locked or sampled.", error_count));
     }
   }
+
   if (result.get_count(SingleKeyingResult::NO_KEY_NEEDED) > 0) {
-    error.append(
-        "\n- The setting 'Only Insert Needed' is enabled and no changes have been recorded.");
+    const int error_count = result.get_count(SingleKeyingResult::NO_KEY_NEEDED);
+    error.append(fmt::format(
+        "\n- Due to the setting 'Only Insert Needed', {} keyframe{} not been inserted.",
+        error_count,
+        error_count > 1 ? "s have" : " has"));
   }
+
   BKE_reportf(reports, RPT_ERROR, "%s", error.c_str());
 }
 
