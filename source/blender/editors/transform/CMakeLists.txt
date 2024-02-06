@@ -13,7 +13,6 @@ set(INC
   ../../render
   ../../sequencer
   ../../windowmanager
-  ../../../../extern/fmtlib/include
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -118,6 +117,7 @@ set(SRC
 set(LIB
   PRIVATE bf::animrig
   PRIVATE bf::blenfont
+  PRIVATE bf::extern::fmtlib
   bf_blenkernel
   PRIVATE bf::blenlib
   bf_bmesh
