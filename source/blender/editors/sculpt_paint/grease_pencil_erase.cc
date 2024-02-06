@@ -61,17 +61,7 @@ struct EraseOperationExecutor {
   int2 mouse_position_pixels{};
   int64_t eraser_squared_radius_pixels{};
 
-  bke::greasepencil::DrawingTransforms transforms_;
-
-  EraseOperationExecutor(const bContext &C)
-  {
-    Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-    Object *object = CTX_data_active_object(&C);
-    Object *eval_object = DEG_get_evaluated_object(depsgraph, object);
-    const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(eval_object->data);
-    transforms_ = bke::greasepencil::DrawingTransforms(
-        *eval_object, *grease_pencil.get_layer_index(*grease_pencil.get_active_layer()));
-  }
+  EraseOperationExecutor(const bContext &C) {}
 
   /**
    * Computes the intersections between a 2D line segment and a circle with integer values.
@@ -763,50 +753,51 @@ struct EraseOperationExecutor {
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
     bool changed = false;
-    const auto execute_eraser_on_drawing =
-        [&](const int layer_index, const int frame_number, Drawing &drawing) {
-          const bke::CurvesGeometry &src = drawing.strokes();
+    const auto execute_eraser_on_drawing = [&](const int layer_index,
+                                               const int frame_number,
+                                               Drawing &drawing) {
+      const Layer &layer = *grease_pencil.layers()[layer_index];
+      const bke::CurvesGeometry &src = drawing.strokes();
 
-          /* Evaluated geometry. */
-          bke::crazyspace::GeometryDeformation deformation =
-              bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                  ob_eval, *obact, layer_index, frame_number);
+      /* Evaluated geometry. */
+      bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+              ob_eval, *obact, layer_index, frame_number);
 
-          /* Compute screen space positions. */
-          Array<float2> screen_space_positions(src.points_num());
-          threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
-            for (const int src_point : src_points) {
-              ED_view3d_project_float_global(
-                  region,
-                  math::transform_point(transforms_.layer_space_to_world_space,
-                                        deformation.positions[src_point]),
-                  screen_space_positions[src_point],
-                  V3D_PROJ_TEST_NOP);
-            }
-          });
+      /* Compute screen space positions. */
+      Array<float2> screen_space_positions(src.points_num());
+      threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
+        for (const int src_point : src_points) {
+          ED_view3d_project_float_global(region,
+                                         math::transform_point(layer.to_world_space(*ob_eval),
+                                                               deformation.positions[src_point]),
+                                         screen_space_positions[src_point],
+                                         V3D_PROJ_TEST_NOP);
+        }
+      });
 
-          /* Erasing operator. */
-          bke::CurvesGeometry dst;
-          bool erased = false;
-          switch (self.eraser_mode) {
-            case GP_BRUSH_ERASER_STROKE:
-              erased = stroke_eraser(src, screen_space_positions, dst);
-              break;
-            case GP_BRUSH_ERASER_HARD:
-              erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
-              break;
-            case GP_BRUSH_ERASER_SOFT:
-              // To be implemented
-              return;
-          }
+      /* Erasing operator. */
+      bke::CurvesGeometry dst;
+      bool erased = false;
+      switch (self.eraser_mode) {
+        case GP_BRUSH_ERASER_STROKE:
+          erased = stroke_eraser(src, screen_space_positions, dst);
+          break;
+        case GP_BRUSH_ERASER_HARD:
+          erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
+          break;
+        case GP_BRUSH_ERASER_SOFT:
+          // To be implemented
+          return;
+      }
 
-          if (erased) {
-            /* Set the new geometry. */
-            drawing.geometry.wrap() = std::move(dst);
-            drawing.tag_topology_changed();
-            changed = true;
-          }
-        };
+      if (erased) {
+        /* Set the new geometry. */
+        drawing.geometry.wrap() = std::move(dst);
+        drawing.tag_topology_changed();
+        changed = true;
+      }
+    };
 
     if (self.active_layer_only) {
       /* Erase only on the drawing at the current frame of the active layer. */

@@ -259,8 +259,8 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   int total_line_ids_num = 0;
   int drawing_start_offset = 0;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
-    const Layer *layer = layers[info.layer_index];
-    const float4x4 layer_space_to_object_space = layer->runtime->transform_;
+    const Layer &layer = *layers[info.layer_index];
+    const float4x4 layer_space_to_object_space = layer.to_object_space(object);
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const bke::AttributeAccessor attributes = curves.attributes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -284,7 +284,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     });
     MutableSpan<float> selection_slice = edit_points_selection.slice(points);
     /* Do not show selection for locked layers. */
-    if (layer->is_locked()) {
+    if (layer.is_locked()) {
       selection_slice.fill(0.0f);
     }
     else {
@@ -304,7 +304,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     total_line_ids_num += array_utils::count_booleans(curves.cyclic(), editable_strokes);
 
     /* Do not show points for locked layers. */
-    if (layer->is_locked()) {
+    if (layer.is_locked()) {
       continue;
     }
 
@@ -501,8 +501,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   /* Fill buffers with data. */
   for (const int drawing_i : drawings.index_range()) {
     const ed::greasepencil::DrawingInfo &info = drawings[drawing_i];
-    const float4x4 layer_space_to_object_space =
-        grease_pencil.layers()[info.layer_index]->runtime->transform_;
+    const Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const float4x4 layer_space_to_object_space = layer.to_object_space(object);
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const bke::AttributeAccessor attributes = curves.attributes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();

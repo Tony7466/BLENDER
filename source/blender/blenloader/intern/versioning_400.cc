@@ -2873,9 +2873,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    
-  }
 
   /* Always run this versioning; meshes are written with the legacy format which always needs to
    * be converted to the new format on file load. Can be moved to a subversion check in a larger

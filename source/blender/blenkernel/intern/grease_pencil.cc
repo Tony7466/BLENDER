@@ -39,7 +39,6 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_string_utils.hh"
-#include "BLI_task.hh"
 #include "BLI_vector_set.hh"
 #include "BLI_virtual_array.hh"
 
@@ -49,7 +48,6 @@
 
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
-#include "DNA_action_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
@@ -264,23 +262,6 @@ static blender::MutableSpan<T> get_mutable_span_attribute(CustomData &custom_dat
 }
 
 namespace blender::bke::greasepencil {
-
-DrawingTransforms::DrawingTransforms(const Object &eval_object, const int layer_index)
-{
-  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(eval_object.data);
-
-  const Layer &layer = *grease_pencil.layers()[layer_index];
-
-  // const float3 translation = grease_pencil.layer_translations()[layer_index];
-  // const math::EulerXYZ rot_euler(grease_pencil.layer_rotations()[layer_index]);
-  // const float3 scale = grease_pencil.layer_scales()[layer_index];
-  // const float4x4 layer_matrix = math::from_loc_rot_scale<float4x4>(translation, rot_euler,
-  // scale);
-
-  this->layer_space_to_world_space = layer.runtime->transform_ *
-                                     float4x4_view(eval_object.object_to_world);
-  this->world_space_to_layer_space = math::invert(this->layer_space_to_world_space);
-}
 
 static const std::string ATTR_RADIUS = "radius";
 static const std::string ATTR_OPACITY = "opacity";
@@ -726,7 +707,7 @@ Layer::Layer(const Layer &other) : Layer()
 
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
-  this->runtime->transform_ = other.runtime->transform_;
+  this->runtime->local_transform_ = other.runtime->local_transform_;
   /* TODO: what about masks cache? */
 }
 
@@ -989,29 +970,40 @@ void Layer::update_from_dna_read()
 float4x4 Layer::to_world_space(const Object &object) const
 {
   if (this->parent == nullptr) {
-    return float4x4_view(object.world_to_object) * this->transform();
+    return float4x4(object.object_to_world) * this->local_transform();
   }
-  const Object &parent = *layer->parent;
-  /* Get the parent matrix for this layer. */
-  const float4x4 parent_matrix = [&]() {
-    if (parent.type == OB_ARMATURE && layer->parsubstr[0] != '\0') {
-      if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer->parsubstr)) {
-        return float4x4_view(parent.object_to_world) * float4x4_view(channel->pose_mat);
-      }
-    }
-    return float4x4(float4x4_view(parent.object_to_world));
-  }();
-  
-  return float4x4_view(object.world_to_object) * parent_matrix * this->transform();
+  const Object &parent = *this->parent;
+  return this->parent_to_world(parent) * this->local_transform();
 }
 
-float4x4 Layer::transform() const
+float4x4 Layer::to_object_space(const Object &object) const
 {
-  this->runtime->transform_.ensure([&](float4x4 &transform) {
+  if (this->parent == nullptr) {
+    return this->local_transform();
+  }
+  const Object &parent = *this->parent;
+  return float4x4(object.world_to_object) * this->parent_to_world(parent) *
+         this->local_transform();
+}
+
+float4x4 Layer::parent_to_world(const Object &parent) const
+{
+  const float4x4 parent_object_to_world(parent.object_to_world);
+  if (parent.type == OB_ARMATURE && this->parsubstr[0] != '\0') {
+    if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, this->parsubstr)) {
+      return parent_object_to_world * float4x4_view(channel->pose_mat);
+    }
+  }
+  return parent_object_to_world;
+}
+
+float4x4 Layer::local_transform() const
+{
+  this->runtime->local_transform_.ensure([&](float4x4 &transform) {
     transform = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
         float3(this->translation), float3(this->rotation), float3(this->scale));
   });
-  return this->runtime->transform_.data();
+  return this->runtime->local_transform_.data();
 }
 
 LayerGroup::LayerGroup()
@@ -1342,39 +1334,6 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
   return grease_pencil;
 }
 
-static void grease_pencil_initialize_layer_transforms(const Object &object,
-                                                      bool &r_is_any_transformed)
-{
-  using namespace blender;
-  using namespace blender::bke::greasepencil;
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
-
-  for (Layer *layer : grease_pencil.layers_for_write()) {
-    if (layer->parent == nullptr) {
-      layer->runtime->transform_ = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
-          float3(layer->translation), float3(layer->rotation), float3(layer->scale));
-    }
-    else {
-      Object &parent = *layer->parent;
-      /* Get the parent matrix for this layer. */
-      const float4x4 parent_matrix = [&]() {
-        if (parent.type == OB_ARMATURE && layer->parsubstr[0] != '\0') {
-          if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, layer->parsubstr)) {
-            return float4x4_view(parent.object_to_world) * float4x4_view(channel->pose_mat);
-          }
-        }
-        return float4x4(float4x4_view(parent.object_to_world));
-      }();
-      layer->runtime->transform_ = float4x4_view(object.world_to_object) * parent_matrix;
-    }
-    if (!math::is_equal(layer->runtime->transform_, float4x4::identity())) {
-      r_is_any_transformed = true;
-    }
-
-    float test[3] = math::transform_point(float4x4::identity(), float3(1.0f)).xyz();
-  }
-}
-
 static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
                                              Scene *scene,
                                              Object *object,
@@ -1420,10 +1379,6 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
   /* Store the frame that this grease pencil is evaluated on. */
   grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
-  /* Initialize layer transforms. */
-  bool is_any_layer_transformed = false;
-  grease_pencil_initialize_layer_transforms(*object, is_any_layer_transformed);
-
   GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil,
                                                              GeometryOwnershipType::ReadOnly);
   /* Only add the edit hint component in edit mode for now so users can properly select deformed
@@ -1433,9 +1388,6 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
         geometry_set.get_component_for_write<GeometryComponentEditData>();
     edit_component.grease_pencil_edit_hints_ = std::make_unique<GreasePencilEditHints>(
         *static_cast<const GreasePencil *>(DEG_get_original_object(object)->data));
-    if (is_any_layer_transformed) {
-      GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
-    }
   }
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 

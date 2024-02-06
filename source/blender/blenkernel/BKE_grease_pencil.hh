@@ -34,14 +34,6 @@ namespace blender::bke {
 
 namespace greasepencil {
 
-struct DrawingTransforms {
-  float4x4 world_space_to_layer_space;
-  float4x4 layer_space_to_world_space;
-
-  DrawingTransforms() = default;
-  DrawingTransforms(const Object &eval_object, int layer_index);
-};
-
 class DrawingRuntime {
  public:
   /**
@@ -335,7 +327,7 @@ class LayerRuntime {
   LayerTransformData trans_data_;
 
   /* Runtime transform data. */
-  mutable SharedCache<float4x4> transform_;
+  mutable SharedCache<float4x4> local_transform_;
 
  public:
   /* Reset all runtime data. */
@@ -450,8 +442,15 @@ class Layer : public ::GreasePencilLayer {
    */
   void update_from_dna_read();
 
-  float4x4 to_world_space(Object &eval_object) const;
-  float4x4 transform() const;
+  /**
+   * Returns the transformation from layer space to object space.
+   */
+  float4x4 to_object_space(const Object &object) const;
+
+  /**
+   * Returns the transformation from layer space to world space.
+   */
+  float4x4 to_world_space(const Object &object) const;
 
  private:
   using SortedKeysIterator = const int *;
@@ -466,6 +465,16 @@ class Layer : public ::GreasePencilLayer {
    */
   SortedKeysIterator remove_leading_null_frames_in_range(SortedKeysIterator begin,
                                                          SortedKeysIterator end);
+
+  /**
+   * The local transform of the layer (in layer space, not object space).
+   */
+  float4x4 local_transform() const;
+
+  /**
+   * Get the parent to world marix for this layer.
+   */
+  float4x4 parent_to_world(const Object &parent) const;
 };
 
 class LayerGroupRuntime {

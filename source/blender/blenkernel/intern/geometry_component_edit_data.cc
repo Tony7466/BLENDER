@@ -87,7 +87,6 @@ static void remember_deformed_grease_pencil_if_necessary(const GreasePencil *gre
   for (const int layer_index : layers.index_range()) {
     const greasepencil::Drawing *drawing = greasepencil::get_eval_grease_pencil_layer_drawing(
         *grease_pencil, layer_index);
-    const greasepencil::Layer &layer = *layers[layer_index];
     const greasepencil::Layer &orig_layer = *orig_layers[layer_index];
     const greasepencil::Drawing *orig_drawing = orig_grease_pencil.get_drawing_at(
         orig_layer, grease_pencil->runtime->eval_frame);
@@ -99,17 +98,7 @@ static void remember_deformed_grease_pencil_if_necessary(const GreasePencil *gre
     if (drawing->strokes().points_num() != orig_drawing->strokes().points_num()) {
       continue;
     }
-    /* Bring the positions into object space. */
-    const float4x4 layer_space_to_object_space = layer.to_object_space();
-    const Span<float3> positions = drawing->strokes().positions();
-    Array<float3> deformed_positions(drawing->strokes().points_num());
-    threading::parallel_for(drawing->strokes().points_range(), 1024, [&](const IndexRange range) {
-      for (const int point_i : range) {
-        deformed_positions[point_i] = math::transform_point(layer_space_to_object_space,
-                                                            positions[point_i]);
-      }
-    });
-    drawing_hints.positions.emplace(std::move(deformed_positions));
+    drawing_hints.positions.emplace(drawing->strokes().positions());
   }
 }
 
