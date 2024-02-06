@@ -32,7 +32,6 @@ struct RealizeInstancesOptions {
    */
   VArray<int> depths;
 
-
   bke::AnonymousAttributePropagationInfo propagation_info;
 };
 

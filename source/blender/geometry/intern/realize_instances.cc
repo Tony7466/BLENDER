@@ -2,9 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_geometry_set.hh"
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
-#include "BKE_geometry_set.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
@@ -232,7 +232,7 @@ struct AllCurvesInfo {
   bool create_nurbs_weight_attribute = false;
   bool create_custom_normal_attribute = false;
 };
-struct AllInstancesInfo{
+struct AllInstancesInfo {
   /** store an array of void pointer to attributes for each component. */
   Vector<AttributeFallbacksArray> attribute_fallback;
   /** Instance components to merge for output geometry. */
@@ -272,7 +272,7 @@ struct GatherTasksInfo {
 
   /** Depth to realize instances for each selected top-level instance. */
   const VArray<int> &depths;
-  
+
   /**
    * Under some circumstances, temporary arrays need to be allocated during the gather operation.
    * For example, when an instance attribute has to be realized as a different data type. This
@@ -280,7 +280,6 @@ struct GatherTasksInfo {
    * Use #std::unique_ptr to avoid depending on whether #GArray has an inline buffer or not.
    */
   Vector<std::unique_ptr<GArray<>>> &r_temporary_arrays;
-
 
   AllInstancesInfo instances;
 
@@ -314,7 +313,8 @@ struct InstanceContext {
   }
 };
 
-static void realize_collections(Collection *collection, bke::Instances* instances){
+static void realize_collections(Collection *collection, bke::Instances *instances)
+{
   Vector<Collection *> children_collections;
   LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
     children_collections.append(collection_child->collection);
@@ -337,8 +337,8 @@ static void realize_collections(Collection *collection, bke::Instances* instance
   for (Object *child_object : children_objects) {
     const int handle = instances->add_reference(*child_object);
     float4x4 transform = float4x4::identity();
-      transform.location() -= float3(collection->instance_offset);
-      transform *= float4x4(child_object->object_to_world);
+    transform.location() -= float3(collection->instance_offset);
+    transform *= float4x4(child_object->object_to_world);
     entries.append({handle, &(child_object->id.name[2]), transform});
   }
   for (const InstanceListEntry &entry : entries) {
@@ -529,9 +529,10 @@ static void foreach_geometry_in_reference(
       Collection *collection_ptr = &reference.collection();
       std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
       realize_collections(collection_ptr, instances.get());
-      const bke::GeometrySet colleciton_geometry = bke::GeometrySet::from_instances(instances.release());
+      const bke::GeometrySet colleciton_geometry = bke::GeometrySet::from_instances(
+          instances.release());
       /* important as otherwise the Instances pointer would be deleted with the GeomtrySet*/
-      colleciton_geometry.get_component(bke::GeometryComponent::Type::Instance)->add_user(); 
+      colleciton_geometry.get_component(bke::GeometryComponent::Type::Instance)->add_user();
       fn(colleciton_geometry, base_transform, id);
       break;
     }
@@ -576,14 +577,14 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   Vector<std::pair<int, GSpan>> instance_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.instances_attriubutes);
 
-
   /* If at top level, get instance indices from selection field, else use all instances. */
-  const IndexMask indices = current_depth == 0 ? gather_info.selection :IndexMask(IndexRange(instances.instances_num()));
+  const IndexMask indices = current_depth == 0 ? gather_info.selection :
+                                                 IndexMask(IndexRange(instances.instances_num()));
   for (const int mask_index : indices.index_range()) {
     const int i = indices[mask_index];
 
     /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
-    const int depth_target = current_depth == 0 ? gather_info.depths[mask_index] :  target_depth;
+    const int depth_target = current_depth == 0 ? gather_info.depths[mask_index] : target_depth;
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
@@ -702,20 +703,21 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           gather_info.instances.attribute_fallback.append(base_instance_context.instances);
           gather_info.instances.instances_components_to_merge.append(component);
           gather_info.instances.instances_components_transforms.append(base_transform);
-          }
-        else{
-          const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
+        }
+        else {
+          const auto &instances_component = *static_cast<const bke::InstancesComponent *>(
+              component);
           const Instances *instances = instances_component.get();
           if (instances != nullptr && instances->instances_num() > 0) {
-              gather_realize_tasks_for_instances(gather_info,
-                                                current_depth,
-                                                target_depth,
-                                                *instances,
-                                                base_transform,
-                                                base_instance_context);
+            gather_realize_tasks_for_instances(gather_info,
+                                               current_depth,
+                                               target_depth,
+                                               *instances,
+                                               base_transform,
+                                               base_instance_context);
           }
         }
-          break;
+        break;
       }
       case bke::GeometryComponent::Type::Volume: {
         const auto *volume_component = static_cast<const bke::VolumeComponent *>(component);
@@ -901,21 +903,24 @@ static void execute_realize_pointcloud_task(
       },
       dst_attribute_writers);
 }
-static void execute_instances_tasks(const Span<const bke::GeometryComponent *> src_components,
-                              Span<blender::float4x4> src_base_transforms,
-                              OrderedAttributes all_instances_attributes,
-                              Span<blender::geometry::AttributeFallbacksArray> attribute_fallback,
-                              bke::GeometrySet &result) 
+static void execute_instances_tasks(
+    const Span<const bke::GeometryComponent *> src_components,
+    Span<blender::float4x4> src_base_transforms,
+    OrderedAttributes all_instances_attributes,
+    Span<blender::geometry::AttributeFallbacksArray> attribute_fallback,
+    bke::GeometrySet &result)
 {
-  BLI_assert(src_components.size() == src_base_transforms.size() && src_components.size() == attribute_fallback.size());
-  if (src_components.is_empty()){
+  BLI_assert(src_components.size() == src_base_transforms.size() &&
+             src_components.size() == attribute_fallback.size());
+  if (src_components.is_empty()) {
     return;
   }
 
   VArray<blender::float4x4>::ForSpan(src_base_transforms);
   Array<int> offsets_data(src_components.size() + 1);
   for (const int component_index : src_components.index_range()) {
-    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[component_index]);
+    const auto &src_component = static_cast<const bke::InstancesComponent &>(
+        *src_components[component_index]);
     offsets_data[component_index] = src_component.get()->instances_num();
   }
   const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(offsets_data);
@@ -927,16 +932,17 @@ static void execute_instances_tasks(const Span<const bke::GeometryComponent *> s
   for (const int attribute_index : all_instances_attributes.index_range()) {
     bke::AttrDomain domain = bke::AttrDomain::Instance;
     bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
-    eCustomDataType type =  all_instances_attributes.kinds[attribute_index].data_type;
+    eCustomDataType type = all_instances_attributes.kinds[attribute_index].data_type;
     blender::bke::MutableAttributeAccessor attr = dst_instances->attributes_for_write();
     attr.lookup_or_add_for_write_only_span(id, domain, type).finish();
   }
-  
+
   MutableSpan<float4x4> all_transforms = dst_instances->transforms();
   MutableSpan<int> all_handles = dst_instances->reference_handles();
 
   for (const int component_index : src_components.index_range()) {
-    const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[component_index]);
+    const auto &src_component = static_cast<const bke::InstancesComponent &>(
+        *src_components[component_index]);
     const bke::Instances &src_instances = *src_component.get();
     const blender::float4x4 src_base_transform = src_base_transforms[component_index];
     const Array<const void *> attribute_fallback_array = attribute_fallback[component_index].array;
@@ -949,34 +955,34 @@ static void execute_instances_tasks(const Span<const bke::GeometryComponent *> s
     const IndexRange dst_range = offsets[component_index];
     for (const int attribute_index : all_instances_attributes.index_range()) {
       bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
-      eCustomDataType type =  all_instances_attributes.kinds[attribute_index].data_type;
+      eCustomDataType type = all_instances_attributes.kinds[attribute_index].data_type;
 
       const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(type);
       BLI_assert(cpp_type != nullptr);
-      bke::GSpanAttributeWriter write_attribute = dst_instances->attributes_for_write().lookup_for_write_span(id);
+      bke::GSpanAttributeWriter write_attribute =
+          dst_instances->attributes_for_write().lookup_for_write_span(id);
       GMutableSpan dst_span = write_attribute.span;
-      if (!write_attribute) { // do not override existing attributes
+      if (!write_attribute) {  // do not override existing attributes
         continue;
       }
 
-      const void *attribute_ptr;          // Declare a pointer to an integer
-      if (attribute_fallback_array[attribute_index] != nullptr){
+      const void *attribute_ptr;  // Declare a pointer to an integer
+      if (attribute_fallback_array[attribute_index] != nullptr) {
         attribute_ptr = attribute_fallback_array[attribute_index];
       }
-      else{
+      else {
         attribute_ptr = cpp_type->default_value();
       }
-      GVArray src_span = GVArray::ForSingle(*cpp_type, dst_range.size() , attribute_ptr);
+      GVArray src_span = GVArray::ForSingle(*cpp_type, dst_range.size(), attribute_ptr);
       array_utils::copy(src_span, dst_span.slice(dst_range));
       write_attribute.finish();
     }
     const Span<int> src_handles = src_instances.reference_handles();
     array_utils::gather(handle_map.as_span(), src_handles, all_handles.slice(dst_range));
     array_utils::copy(src_instances.transforms(), all_transforms.slice(dst_range));
-    for (blender::float4x4& transfrom : all_transforms.slice(dst_range)){
+    for (blender::float4x4 &transfrom : all_transforms.slice(dst_range)) {
       transfrom *= src_base_transform;
     }
-    
   }
   result.replace_instances(dst_instances.release());
   auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
@@ -1786,7 +1792,7 @@ static void propagate_instances_to_keep(
   const Instances &instances = *geometry_set.get_instances();
   IndexMaskMemory inverse_selection_indices;
   const IndexMask inverse_selection = selection.complement(IndexRange(instances.instances_num()),
-                                                       inverse_selection_indices);
+                                                           inverse_selection_indices);
   /* Check not all instances are being realized. */
   if (inverse_selection.is_empty()) {
     return;
@@ -1826,7 +1832,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options);
   bool tmp = true;
-  OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(geometry_set, options, tmp);
+  OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(
+      geometry_set, options, tmp);
 
   Vector<std::unique_ptr<GArray<>>> temporary_arrays;
   const bool create_id_attribute = all_pointclouds_info.create_id_attribute ||
@@ -1840,9 +1847,9 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                  options.selection,
                                  options.depths,
                                  temporary_arrays};
-  
+
   bke::GeometrySet new_geometry_set;
-  
+
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
 
@@ -1855,11 +1862,11 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
 
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
 
-  execute_instances_tasks(gather_info.instances.instances_components_to_merge, 
-                           gather_info.instances.instances_components_transforms, 
-                           all_instance_attributes,
-                           gather_info.instances.attribute_fallback,
-                           new_geometry_set);
+  execute_instances_tasks(gather_info.instances.instances_components_to_merge,
+                          gather_info.instances.instances_components_transforms,
+                          all_instance_attributes,
+                          gather_info.instances.attribute_fallback,
+                          new_geometry_set);
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,

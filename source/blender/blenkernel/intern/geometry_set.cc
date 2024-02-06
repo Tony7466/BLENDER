@@ -9,8 +9,8 @@
 #include "BLT_translation.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_curves.hh"
 #include "BKE_collection.h"
+#include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_grease_pencil.hh"
@@ -593,7 +593,7 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
    * - selection: Index mask for selection.
    * - callback: Callback function for attribute processing.
    */
-  
+
   //  Initialize flag to track if child instances have the specified components.
   bool is_child_has_component = true;
 
@@ -606,22 +606,31 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
     // ensure objects and collection are included.
     Instances ensure_instances = instances;
     ensure_instances.ensure_geometry_instances();
-    const IndexMask indices = (current_depth == 0) ? selection : IndexMask(IndexRange(ensure_instances.instances_num()));
+    const IndexMask indices = (current_depth == 0) ?
+                                  selection :
+                                  IndexMask(IndexRange(ensure_instances.instances_num()));
     for (const int index : indices.index_range()) {
       const int i = indices[index];
       const int depth_target_tmp = (current_depth == 0) ? instance_depth[i] : depth_target;
-      bke::InstanceReference reference = ensure_instances.references()[ensure_instances.reference_handles()[i]];
+      bke::InstanceReference reference =
+          ensure_instances.references()[ensure_instances.reference_handles()[i]];
 
       // Process child instances with a recursive call.
       if (reference.type() == InstanceReference::Type::GeometrySet) {
         bke::GeometrySet instance_geometry_set = reference.geometry_set();
         if (current_depth != depth_target_tmp) {
-          is_child_has_component = instance_geometry_set.attribute_foreach(component_types, include_instances, current_depth + 1, depth_target_tmp, instance_depth, selection, callback);
+          is_child_has_component = instance_geometry_set.attribute_foreach(component_types,
+                                                                           include_instances,
+                                                                           current_depth + 1,
+                                                                           depth_target_tmp,
+                                                                           instance_depth,
+                                                                           selection,
+                                                                           callback);
         }
-      }       
+      }
     }
   }
-  
+
   // Flag to track if any relevant attributes were found.
   bool is_relevant = false;
 
@@ -633,7 +642,8 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
     }
 
     // Check for a special instance condition.
-    const bool is_special_instance = (component_type == GeometryComponent::Type::Instance) && (component_types.size() > 1);
+    const bool is_special_instance = (component_type == GeometryComponent::Type::Instance) &&
+                                     (component_types.size() > 1);
     if (is_special_instance && !is_child_has_component) {
       continue;
     }

@@ -74,8 +74,8 @@ static void fill_new_attribute(const Span<const GeometryComponent *> src_compone
 }
 
 void join_attributes(const Span<const GeometryComponent *> src_components,
-                            GeometryComponent &result,
-                            const Span<StringRef> ignored_attributes = {})
+                     GeometryComponent &result,
+                     const Span<StringRef> ignored_attributes = {})
 {
   const Map<AttributeIDRef, AttributeMetaData> info = get_final_attribute_info(src_components,
                                                                                ignored_attributes);
@@ -185,9 +185,10 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   options.keep_original_ids = true;
   options.realize_instance_attributes = false;
   options.propagation_info = propagation_info;
-  options.depths = VArray<int>::ForSingle( 99, instances.get()->instances_num());
+  options.depths = VArray<int>::ForSingle(99, instances.get()->instances_num());
   IndexMaskMemory memory;
-  options.selection = IndexMask::from_bools(VArray<bool>::ForSingle(true, instances.get()->instances_num()), memory);
+  options.selection = IndexMask::from_bools(
+      VArray<bool>::ForSingle(true, instances.get()->instances_num()), memory);
   GeometrySet joined_components = realize_instances(
       GeometrySet::from_instances(instances.release()), options);
   result.add(joined_components.get_component_for_write(component_type));
