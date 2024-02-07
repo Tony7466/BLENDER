@@ -1045,27 +1045,26 @@ static void uv_vert_positions(const int edge_edges_num,
 
       const int r_line_i = top_faces.hight() - line_i - 1;
       const float factor = float(r_line_i) / float(top_faces.hight());
-      const float2 flip = -(c_corner_face_uv[Corner::C] -
-                            math::midpoint(c_corner_face_uv[Corner::A],
-                                           c_corner_face_uv[Corner::B])) *
-                          2.0f;
+      const float2 bottom_middle = math::midpoint(c_corner_face_uv[Corner::A],
+                                                  c_corner_face_uv[Corner::B]);
+      const float2 flip = (bottom_middle - c_corner_face_uv[Corner::C]) * 2.0f;
       line_begin_uv[Corner::A] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::B], a_corner_face_uv[Corner::B]);
       line_begin_uv[Corner::B] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::A], a_corner_face_uv[Corner::A]);
-      line_begin_uv[Corner::C] = bke::attribute_math::mix2<float2>(factor,
-                                                                   c_corner_face_uv[Corner::C],
-                                                                   a_corner_face_uv[Corner::C]) +
-                                 flip;
+      line_begin_uv[Corner::C] = bke::attribute_math::mix2<float2>(
+          factor, c_corner_face_uv[Corner::C], a_corner_face_uv[Corner::C]);
+      line_begin_uv[Corner::C] += flip;
 
+      /* This write in the end of current span. This slight distributed write. But using temporal
+       * values to delay filing end will save just ~10%. */
       line_end_uv[Corner::A] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::B], b_corner_face_uv[Corner::B]);
       line_end_uv[Corner::B] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::A], b_corner_face_uv[Corner::A]);
-      line_end_uv[Corner::C] = bke::attribute_math::mix2<float2>(factor,
-                                                                 c_corner_face_uv[Corner::C],
-                                                                 b_corner_face_uv[Corner::C]) +
-                               flip;
+      line_end_uv[Corner::C] = bke::attribute_math::mix2<float2>(
+          factor, c_corner_face_uv[Corner::C], b_corner_face_uv[Corner::C]);
+      line_end_uv[Corner::C] += flip;
 
       fill_uv_line_of_triangles(line_begin_uv[Corner::A],
                                 line_begin_uv[Corner::B],
