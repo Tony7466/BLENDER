@@ -38,8 +38,7 @@ void shadow_tag_usage_tilemap_directional_at_level(uint l_idx, vec3 P, int level
 {
   LightData light = light_buf[l_idx];
 
-  if (light.tilemap_index == LIGHT_NO_SHADOW || light.tilemap_index > light_tilemap_max_get(light))
-  {
+  if (light.tilemap_index == LIGHT_NO_SHADOW) {
     return;
   }
 
@@ -80,7 +79,7 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
           light, lP + vec3(radius, radius, 0.0), level);
 
       if (coord_min.tilemap_index > light_tilemap_max_get(light)) {
-        return;
+        continue;
       }
 
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
@@ -179,7 +178,7 @@ void shadow_tag_usage_tilemap_punctual(
       ShadowCoordinates coord_max = shadow_punctual_coordinates(light, _lP + offset, face_id);
 
       if (tilemap_index > light_tilemap_max_get(light)) {
-        return;
+        continue;
       }
 
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
