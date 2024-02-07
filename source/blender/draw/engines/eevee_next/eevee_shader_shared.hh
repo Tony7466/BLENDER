@@ -740,6 +740,11 @@ static inline bool is_spot_light(eLightType type)
   return type == LIGHT_SPOT_SPHERE || type == LIGHT_SPOT_DISK;
 }
 
+static inline bool is_sphere_light(eLightType type)
+{
+  return type == LIGHT_SPOT_SPHERE || type == LIGHT_OMNI_SPHERE;
+}
+
 static inline bool is_sun_light(eLightType type)
 {
   return type < LIGHT_OMNI_SPHERE;

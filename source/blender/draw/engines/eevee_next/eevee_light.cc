@@ -24,16 +24,16 @@ namespace blender::eevee {
 
 static eLightType to_light_type(short blender_light_type,
                                 short blender_area_type,
-                                bool use_falloff)
+                                bool use_soft_falloff)
 {
   switch (blender_light_type) {
     default:
     case LA_LOCAL:
-      return use_falloff ? LIGHT_OMNI_DISK : LIGHT_OMNI_SPHERE;
+      return use_soft_falloff ? LIGHT_OMNI_DISK : LIGHT_OMNI_SPHERE;
     case LA_SUN:
       return LIGHT_SUN;
     case LA_SPOT:
-      return use_falloff ? LIGHT_SPOT_DISK : LIGHT_SPOT_SPHERE;
+      return use_soft_falloff ? LIGHT_SPOT_DISK : LIGHT_SPOT_SPHERE;
     case LA_AREA:
       return ELEM(blender_area_type, LA_AREA_DISK, LA_AREA_ELLIPSE) ? LIGHT_ELLIPSE : LIGHT_RECT;
   }

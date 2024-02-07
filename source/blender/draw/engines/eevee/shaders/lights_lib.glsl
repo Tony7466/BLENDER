@@ -87,11 +87,12 @@ uniform depth2DArrayShadow shadowCascadeTexture;
  * \{ */
 
 /* Type. Consistent with DNA `Light::type`, except for `OMNI_DISK`/`SPOT_DISK` and `AREA_ELLIPSE`,
- * which are reinterpreted from `light.spot_type` and `light.area_type`. */
-#define SUN 1.0
-
+ * which are reinterpreted from `light.mode` and `light.area_type`. The decimal numbers are chosen
+ * so that they can be exactly represented by float, and guarantee an increasing sequence. */
 #define OMNI_SPHERE 0.0
 #define OMNI_DISK 0.5
+
+#define SUN 1.0
 
 #define SPOT_SPHERE 2.0
 #define SPOT_DISK 2.5
@@ -315,6 +316,11 @@ float light_visibility(LightData ld, vec3 P, vec4 l_vector)
   return light_shadowing(ld, P, l_atten);
 }
 
+bool is_sphere_light(float type)
+{
+  return type == OMNI_SPHERE || type == SPOT_SPHERE;
+}
+
 float light_diffuse(LightData ld, vec3 N, vec3 V, vec4 l_vector)
 {
   if (ld.l_type == AREA_RECT) {
@@ -334,7 +340,7 @@ float light_diffuse(LightData ld, vec3 N, vec3 V, vec4 l_vector)
 
     return ltc_evaluate_disk(N, V, mat3(1.0), points);
   }
-  else if (ld.l_type == OMNI_SPHERE) {
+  else if (is_sphere_light(ld.l_type)) {
     if (l_vector.w < ld.l_radius) {
       /* Inside, treat as hemispherical light. */
       return 1.0;
@@ -371,7 +377,7 @@ float light_specular(LightData ld, vec4 ltc_mat, vec3 N, vec3 V, vec4 l_vector)
 
     return ltc_evaluate_quad(corners, vec3(0.0, 0.0, 1.0));
   }
-  else if ((ld.l_type == OMNI_SPHERE || ld.l_type == SPOT_SPHERE) && l_vector.w < ld.l_radius) {
+  else if (is_sphere_light(ld.l_type) && l_vector.w < ld.l_radius) {
     /* Inside the sphere light, integrate over the hemisphere. */
     return 1.0;
   }
@@ -380,7 +386,7 @@ float light_specular(LightData ld, vec4 ltc_mat, vec3 N, vec3 V, vec4 l_vector)
     float radius_x = is_ellipse ? ld.l_sizex : ld.l_radius;
     float radius_y = is_ellipse ? ld.l_sizey : ld.l_radius;
 
-    if (ld.l_type == OMNI_SPHERE || ld.l_type == SPOT_SPHERE) {
+    if (is_sphere_light(ld.l_type)) {
       /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
        * half-angle spanned by a disk light with the same radius. */
       radius_x *= inversesqrt(1.0 - sqr(radius_x / l_vector.w));

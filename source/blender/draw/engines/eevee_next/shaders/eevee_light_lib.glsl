@@ -183,7 +183,7 @@ float light_sphere_disk_radius(float sphere_radius, float distance_to_sphere)
 float light_ltc(
     sampler2DArray utility_tx, LightData light, vec3 N, vec3 V, LightVector lv, vec4 ltc_mat)
 {
-  if (light.type == LIGHT_OMNI_SPHERE && lv.dist < light._radius) {
+  if (is_sphere_light(light.type) && lv.dist < light._radius) {
     /* Inside the sphere light, integrate over the hemisphere. */
     return 1.0;
   }
@@ -214,16 +214,16 @@ float light_ltc(
     }
 
     vec2 size;
-    if (light.type == LIGHT_OMNI_SPHERE) {
-      /* Sphere. */
+    if (is_sphere_light(light.type)) {
+      /* Spherical omni or spot light. */
       size = vec2(light_sphere_disk_radius(light._radius, lv.dist));
     }
-    else if (light.type == LIGHT_OMNI_DISK) {
+    else if (light.type == LIGHT_OMNI_DISK || light.type == LIGHT_SPOT_DISK) {
       /* View direction-aligned disk. */
       size = vec2(light._radius);
     }
     else {
-      /* Elliptical area light. */
+      /* Sun light and elliptical area light. */
       size = vec2(light._area_size_x, light._area_size_y);
     }
 
