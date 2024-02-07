@@ -4542,14 +4542,11 @@ static uiBut *ui_def_but_rna(uiBlock *block,
                              int index,
                              float min,
                              float max,
-                             float a1,
-                             float a2,
                              const char *tip)
 {
   const PropertyType proptype = RNA_property_type(prop);
   int icon = 0;
   uiMenuCreateFunc func = nullptr;
-  const bool always_set_a1_a2 = ELEM(type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER);
 
   if (ELEM(type, UI_BTYPE_COLOR, UI_BTYPE_HSVCIRCLE, UI_BTYPE_HSVCUBE)) {
     BLI_assert(index == -1);
@@ -4613,61 +4610,51 @@ static uiBut *ui_def_but_rna(uiBlock *block,
     tip = RNA_property_ui_description(prop);
   }
 
-  if (min == max || a1 == -1 || a2 == -1 || always_set_a1_a2) {
-    if (proptype == PROP_INT) {
-      int hardmin, hardmax, softmin, softmax, step;
+  float step = -1.0f;
+  float precision = -1.0f;
+  if (proptype == PROP_INT) {
+    int hardmin, hardmax, softmin, softmax, int_step;
 
-      RNA_property_int_range(ptr, prop, &hardmin, &hardmax);
-      RNA_property_int_ui_range(ptr, prop, &softmin, &softmax, &step);
+    RNA_property_int_range(ptr, prop, &hardmin, &hardmax);
+    RNA_property_int_ui_range(ptr, prop, &softmin, &softmax, &int_step);
 
-      if (!ELEM(type, UI_BTYPE_ROW, UI_BTYPE_LISTROW) && min == max) {
-        min = hardmin;
-        max = hardmax;
-      }
-      if (a1 == -1 || always_set_a1_a2) {
-        a1 = step;
-      }
-      if (a2 == -1 || always_set_a1_a2) {
-        a2 = 0;
-      }
+    if (!ELEM(type, UI_BTYPE_ROW, UI_BTYPE_LISTROW) && min == max) {
+      min = hardmin;
+      max = hardmax;
     }
-    else if (proptype == PROP_FLOAT) {
-      float hardmin, hardmax, softmin, softmax, step, precision;
+    step = int_step;
+    precision = 0;
+  }
+  else if (proptype == PROP_FLOAT) {
+    float hardmin, hardmax, softmin, softmax;
 
-      RNA_property_float_range(ptr, prop, &hardmin, &hardmax);
-      RNA_property_float_ui_range(ptr, prop, &softmin, &softmax, &step, &precision);
+    RNA_property_float_range(ptr, prop, &hardmin, &hardmax);
+    RNA_property_float_ui_range(ptr, prop, &softmin, &softmax, &step, &precision);
 
-      if (!ELEM(type, UI_BTYPE_ROW, UI_BTYPE_LISTROW) && min == max) {
-        min = hardmin;
-        max = hardmax;
-      }
-      if (a1 == -1 || always_set_a1_a2) {
-        a1 = step;
-      }
-      if (a2 == -1 || always_set_a1_a2) {
-        a2 = precision;
-      }
+    if (!ELEM(type, UI_BTYPE_ROW, UI_BTYPE_LISTROW) && min == max) {
+      min = hardmin;
+      max = hardmax;
     }
-    else if (proptype == PROP_STRING) {
-      min = 0;
-      max = RNA_property_string_maxlength(prop);
-      /* NOTE: 'max' may be zero (code for dynamically resized array). */
-    }
+  }
+  else if (proptype == PROP_STRING) {
+    min = 0;
+    max = RNA_property_string_maxlength(prop);
+    /* NOTE: 'max' may be zero (code for dynamically resized array). */
   }
 
   /* now create button */
   uiBut *but = ui_def_but(
-      block, type, retval, str, x, y, width, height, nullptr, min, max, a1, a2, tip);
+      block, type, retval, str, x, y, width, height, nullptr, min, max, step, precision, tip);
 
   if (but->type == UI_BTYPE_NUM) {
     /* Set default values, can be overridden later. */
-    UI_but_number_step_size_set(but, a1);
-    UI_but_number_precision_set(but, a2);
+    UI_but_number_step_size_set(but, step);
+    UI_but_number_precision_set(but, precision);
   }
   else if (but->type == UI_BTYPE_NUM_SLIDER) {
     /* Set default values, can be overridden later. */
-    UI_but_number_slider_step_size_set(but, a1);
-    UI_but_number_slider_precision_set(but, a2);
+    UI_but_number_slider_step_size_set(but, step);
+    UI_but_number_slider_precision_set(but, precision);
   }
 
   but->rnapoin = *ptr;
@@ -4750,8 +4737,6 @@ static uiBut *ui_def_but_rna_propname(uiBlock *block,
                                       int index,
                                       float min,
                                       float max,
-                                      float a1,
-                                      float a2,
                                       const char *tip)
 {
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
@@ -4759,11 +4744,11 @@ static uiBut *ui_def_but_rna_propname(uiBlock *block,
   uiBut *but;
   if (prop) {
     but = ui_def_but_rna(
-        block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
+        block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, tip);
   }
   else {
     but = ui_def_but(
-        block, type, retval, propname, x, y, width, height, nullptr, min, max, a1, a2, tip);
+        block, type, retval, propname, x, y, width, height, nullptr, min, max, -1.0f, -1.0f, tip);
 
     UI_but_disable(but, "Unknown Property.");
   }
@@ -5110,8 +5095,6 @@ uiBut *uiDefButBitI(uiBlock *block,
                     int *poin,
                     float min,
                     float max,
-                    float a1,
-                    float a2,
                     const char *tip)
 {
   return uiDefButBit(block,
@@ -5126,8 +5109,8 @@ uiBut *uiDefButBitI(uiBlock *block,
                      (void *)poin,
                      min,
                      max,
-                     a1,
-                     a2,
+                     0.0f,
+                     0.0f,
                      tip);
 }
 uiBut *uiDefButS(uiBlock *block,
@@ -5172,8 +5155,6 @@ uiBut *uiDefButBitS(uiBlock *block,
                     short *poin,
                     float min,
                     float max,
-                    float a1,
-                    float a2,
                     const char *tip)
 {
   return uiDefButBit(block,
@@ -5188,8 +5169,8 @@ uiBut *uiDefButBitS(uiBlock *block,
                      (void *)poin,
                      min,
                      max,
-                     a1,
-                     a2,
+                     0.0f,
+                     0.0f,
                      tip);
 }
 uiBut *uiDefButC(uiBlock *block,
@@ -5203,8 +5184,6 @@ uiBut *uiDefButC(uiBlock *block,
                  char *poin,
                  float min,
                  float max,
-                 float a1,
-                 float a2,
                  const char *tip)
 {
   return uiDefBut(block,
@@ -5218,8 +5197,8 @@ uiBut *uiDefButC(uiBlock *block,
                   (void *)poin,
                   min,
                   max,
-                  a1,
-                  a2,
+                  0.0f,
+                  0.0f,
                   tip);
 }
 uiBut *uiDefButBitC(uiBlock *block,
@@ -5234,8 +5213,6 @@ uiBut *uiDefButBitC(uiBlock *block,
                     char *poin,
                     float min,
                     float max,
-                    float a1,
-                    float a2,
                     const char *tip)
 {
   return uiDefButBit(block,
@@ -5250,8 +5227,8 @@ uiBut *uiDefButBitC(uiBlock *block,
                      (void *)poin,
                      min,
                      max,
-                     a1,
-                     a2,
+                     0,
+                     0,
                      tip);
 }
 uiBut *uiDefButR(uiBlock *block,
@@ -5267,12 +5244,10 @@ uiBut *uiDefButR(uiBlock *block,
                  int index,
                  float min,
                  float max,
-                 float a1,
-                 float a2,
                  const char *tip)
 {
   uiBut *but = ui_def_but_rna_propname(
-      block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
+      block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, tip);
   ui_but_update(but);
   return but;
 }
@@ -5289,12 +5264,10 @@ uiBut *uiDefButR_prop(uiBlock *block,
                       int index,
                       float min,
                       float max,
-                      float a1,
-                      float a2,
                       const char *tip)
 {
   uiBut *but = ui_def_but_rna(
-      block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
+      block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, tip);
   ui_but_update(but);
   return but;
 }
@@ -5557,12 +5530,10 @@ uiBut *uiDefIconButR(uiBlock *block,
                      int index,
                      float min,
                      float max,
-                     float a1,
-                     float a2,
                      const char *tip)
 {
   uiBut *but = ui_def_but_rna_propname(
-      block, type, retval, "", x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
+      block, type, retval, "", x, y, width, height, ptr, propname, index, min, max, tip);
   ui_but_update_and_icon_set(but, icon);
   return but;
 }
@@ -5579,12 +5550,10 @@ uiBut *uiDefIconButR_prop(uiBlock *block,
                           int index,
                           float min,
                           float max,
-                          float a1,
-                          float a2,
                           const char *tip)
 {
   uiBut *but = ui_def_but_rna(
-      block, type, retval, "", x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
+      block, type, retval, "", x, y, width, height, ptr, prop, index, min, max, tip);
   ui_but_update_and_icon_set(but, icon);
   return but;
 }
@@ -5719,12 +5688,10 @@ uiBut *uiDefIconTextButR(uiBlock *block,
                          int index,
                          float min,
                          float max,
-                         float a1,
-                         float a2,
                          const char *tip)
 {
   uiBut *but = ui_def_but_rna_propname(
-      block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, a1, a2, tip);
+      block, type, retval, str, x, y, width, height, ptr, propname, index, min, max, tip);
   ui_but_update_and_icon_set(but, icon);
   but->drawflag |= UI_BUT_ICON_LEFT;
   return but;
@@ -5743,12 +5710,10 @@ uiBut *uiDefIconTextButR_prop(uiBlock *block,
                               int index,
                               float min,
                               float max,
-                              float a1,
-                              float a2,
                               const char *tip)
 {
   uiBut *but = ui_def_but_rna(
-      block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, a1, a2, tip);
+      block, type, retval, str, x, y, width, height, ptr, prop, index, min, max, tip);
   ui_but_update_and_icon_set(but, icon);
   but->drawflag |= UI_BUT_ICON_LEFT;
   return but;
