@@ -2097,7 +2097,7 @@ static void rna_Scene_use_simplify_update(bContext *C, PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   rna_Scene_simplify_update_impl(bmain, scene, false, depsgraph);
 }
 
@@ -2105,7 +2105,7 @@ static void rna_Scene_simplify_volume_update(bContext *C, PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   if (scene->r.mode & R_SIMPLIFY) {
     rna_Scene_simplify_update_impl(bmain, scene, false, depsgraph);
   }
