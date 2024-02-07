@@ -2,6 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/** \file
+ * \ingroup edmesh
+ */
+
 #include "BLI_math_angle_types.hh"
 #include "BLI_math_vector.hh"
 
