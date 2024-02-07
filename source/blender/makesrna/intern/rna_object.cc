@@ -1865,7 +1865,12 @@ bool rna_Object_modifiers_override_apply(Main *bmain,
   ParticleSystem *psys_dst = (mod_dst->type == eModifierType_ParticleSystem) ?
                                  (reinterpret_cast<ParticleSystemModifierData *>(mod_dst))->psys :
                                  nullptr;
+  const bool uid_is_used_already = BKE_modifiers_findby_persistent_uid(
+                                       ob_dst, mod_src->persistent_uid) != nullptr;
   BKE_modifier_copydata(mod_src, mod_dst);
+  if (uid_is_used_already) {
+    BKE_modifiers_persistent_uid_init(*ob_dst, *mod_dst);
+  }
   if (mod_dst->type == eModifierType_ParticleSystem) {
     psys_dst->flag &= ~PSYS_DELETE;
     (reinterpret_cast<ParticleSystemModifierData *>(mod_dst))->psys = psys_dst;
