@@ -1237,11 +1237,14 @@ static const char arg_handle_gpu_backend_set_doc[] =
     " or "
 #    endif
 #  endif
+#  ifdef WITH_METAL_BACKEND
+    "'metal'"
+#    if defined(WITH_VULKAN_BACKEND)
+    " or "
+#    endif
 #  ifdef WITH_VULKAN_BACKEND
     "'vulkan' (experimental)"
 #  endif
-#  ifdef WITH_METAL_BACKEND
-    "'metal'"
 #  endif
     ".";
 static int arg_handle_gpu_backend_set(int argc, const char **argv, void * /*data*/)

@@ -47,7 +47,7 @@ find_library(MOLTENVK_LIBRARY
   HINTS
     ${_moltenvk_SEARCH_DIRS}
   PATH_SUFFIXES
-    dylib/macOS
+    lib
 )
 
 # handle the QUIETLY and REQUIRED arguments and set MOLTENVK_FOUND to TRUE if
