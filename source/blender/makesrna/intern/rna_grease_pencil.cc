@@ -119,14 +119,6 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
   grease_pencil->rename_node(layer->wrap().as_node(), value);
 }
 
-static void rna_grease_pencil_transform_update(Main * /*bmain*/,
-                                               Scene * /*scene*/,
-                                               PointerRNA *ptr)
-{
-  GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
-  layer->wrap().runtime->local_transform_.tag_dirty();
-}
-
 static PointerRNA rna_GreasePencil_active_layer_get(PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
@@ -264,14 +256,14 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "translation");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_ui_text(prop, "Translation", "Translation of the layer");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_transform_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_EULER);
   RNA_def_property_array(prop, 3);
   RNA_def_property_float_sdna(prop, nullptr, "rotation");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_ui_text(prop, "Rotation", "Euler rotation of the layer");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_transform_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_array(prop, 3);
@@ -279,7 +271,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_float_array_default(prop, scale_defaults);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
   RNA_def_property_ui_text(prop, "Scale", "Scale of the layer");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_transform_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)

@@ -326,9 +326,6 @@ class LayerRuntime {
   /* Runtime data used for frame transformations. */
   LayerTransformData trans_data_;
 
-  /* Runtime transform data. */
-  mutable SharedCache<float4x4> local_transform_;
-
  public:
   /* Reset all runtime data. */
   void clear();

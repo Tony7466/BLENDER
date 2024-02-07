@@ -707,7 +707,6 @@ Layer::Layer(const Layer &other) : Layer()
 
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
-  this->runtime->local_transform_ = other.runtime->local_transform_;
   /* TODO: what about masks cache? */
 }
 
@@ -999,11 +998,8 @@ float4x4 Layer::parent_to_world(const Object &parent) const
 
 float4x4 Layer::local_transform() const
 {
-  this->runtime->local_transform_.ensure([&](float4x4 &transform) {
-    transform = math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
-        float3(this->translation), float3(this->rotation), float3(this->scale));
-  });
-  return this->runtime->local_transform_.data();
+  return math::from_loc_rot_scale<float4x4, math::EulerXYZ>(
+      float3(this->translation), float3(this->rotation), float3(this->scale));
 }
 
 LayerGroup::LayerGroup()
