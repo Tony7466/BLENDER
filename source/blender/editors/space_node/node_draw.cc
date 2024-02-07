@@ -2463,7 +2463,7 @@ static std::optional<std::chrono::nanoseconds> geo_node_get_execution_time(
   return std::nullopt;
 }
 
-/* Cerate node key instance, assuming the node comes from the currently editing node tree. */
+/* Create node key instance, assuming the node comes from the currently editing node tree. */
 static bNodeInstanceKey current_node_instance_key(const SpaceNode &snode, const bNode &node)
 {
   /* Assume that the currently editing tree is the last in the path. */
@@ -2739,7 +2739,7 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
   }
 
   if (!(snode.edittree->type == NTREE_GEOMETRY)) {
-    /* Currently geometry and compositor nodes are the only nodes to have extra infos per nodes. */
+    /* Currently geometry and compositor nodes are the only nodes to have extra info per nodes. */
     return rows;
   }
 

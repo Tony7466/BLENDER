@@ -17,7 +17,7 @@ class NodeOperation;
 
 class Profiler {
   /* Per-node accumulated execution time. Includes execution time of all operations the node was
-   * break down into. */
+   * broken down into. */
   Map<bNodeInstanceKey, timeit::Nanoseconds> per_node_execution_time_;
 
  public:
