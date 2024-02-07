@@ -2725,6 +2725,14 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
     node.typeinfo->get_extra_info(params);
   }
 
+  if (node.typeinfo->deprecation_notice) {
+    NodeExtraInfoRow row;
+    row.text = IFACE_("Deprecated");
+    row.icon = ICON_INFO;
+    row.tooltip = TIP_(node.typeinfo->deprecation_notice);
+    rows.append(std::move(row));
+  }
+
   if (snode.edittree->type == NTREE_COMPOSIT) {
     node_get_compositor_extra_info(tree_draw_ctx, snode, node, rows);
     return rows;

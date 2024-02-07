@@ -595,6 +595,8 @@ if(WITH_COMPOSITOR_CPU)
 
     algorithms/COM_JumpFloodingAlgorithm.cc
     algorithms/COM_JumpFloodingAlgorithm.h
+    algorithms/COM_SymmetricSeparableBlurVariableSizeAlgorithm.cc
+    algorithms/COM_SymmetricSeparableBlurVariableSizeAlgorithm.h
   )
 
   set(LIB

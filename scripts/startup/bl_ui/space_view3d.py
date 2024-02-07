@@ -3173,6 +3173,7 @@ class VIEW3D_MT_object_parent(Menu):
 
 class VIEW3D_MT_object_track(Menu):
     bl_label = "Track"
+    bl_translation_context = i18n_contexts.constraint
 
     def draw(self, _context):
         layout = self.layout
@@ -4465,6 +4466,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
             col.operator("mesh.mark_sharp")
             col.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
+            col.operator("mesh.set_sharpness_by_angle")
 
             if with_freestyle:
                 col.separator()
@@ -5822,6 +5824,10 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout = self.layout
         layout.menu("VIEW3D_MT_transform")
         layout.menu("VIEW3D_MT_mirror")
+
+        layout.separator()
+
+        layout.operator_menu_enum("grease_pencil.separate", "mode", text="Separate")
 
         layout.separator()
 
@@ -8225,6 +8231,10 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.menu("VIEW3D_MT_mirror", text="Mirror Points")
 
+            col.separator()
+
+            col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
+
             # Removal Operators
             col.separator()
 
@@ -8253,6 +8263,10 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.separator()
 
             col.menu("VIEW3D_MT_mirror")
+
+            col.separator()
+
+            col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
 
 
 def draw_gpencil_layer_active(context, layout):
