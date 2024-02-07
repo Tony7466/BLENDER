@@ -724,14 +724,6 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
     return {};
   }
 
-  const auto *io_handles = io_instances->lookup_dict("handles");
-  if (!io_handles) {
-    return {};
-  }
-  if (!read_blob_simple_gspan(blob_reader, *io_handles, instances->reference_handles())) {
-    return {};
-  }
-
   MutableAttributeAccessor attributes = instances->attributes_for_write();
   if (!load_attributes(*io_attributes, attributes, blob_reader, blob_sharing)) {
     return {};
@@ -969,9 +961,6 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
 
     io_instances->append(
         "transforms", write_blob_simple_gspan(blob_writer, blob_sharing, instances.transforms()));
-    io_instances->append(
-        "handles",
-        write_blob_simple_gspan(blob_writer, blob_sharing, instances.reference_handles()));
 
     auto io_attributes = serialize_attributes(
         instances.attributes(), blob_writer, blob_sharing, {"position"});
