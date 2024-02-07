@@ -246,7 +246,6 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "parent_bone", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "parsubstr");
-  RNA_def_property_string_maxlength(prop, 64);
   RNA_def_property_ui_text(
       prop, "Parent Bone", "Name of parent bone. Only used when the parent object is an armature");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_dependency_update");

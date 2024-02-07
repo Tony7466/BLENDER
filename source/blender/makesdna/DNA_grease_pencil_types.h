@@ -296,7 +296,7 @@ typedef struct GreasePencilLayer {
    * Layer parent object. Can be an armature in which case the `parsubstr` is the bone name.
    */
   struct Object *parent;
-  char parsubstr[64];
+  char *parsubstr;
   /**
    * Layer transform UI settings. These should *not* be used to do any computation. They are
    * automatically converted to a matrix in `Layer::transform()`.

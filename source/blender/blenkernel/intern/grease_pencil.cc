@@ -660,7 +660,7 @@ Layer::Layer()
   this->opacity = 1.0f;
 
   this->parent = nullptr;
-  this->parsubstr[0] = '\0';
+  this->parsubstr = nullptr;
 
   zero_v3(this->translation);
   zero_v3(this->rotation);
@@ -688,8 +688,7 @@ Layer::Layer(const Layer &other) : Layer()
   this->opacity = other.opacity;
 
   this->parent = other.parent;
-  BLI_strncpy(
-      this->parsubstr, other.parsubstr, sizeof(this->parsubstr) / sizeof(*this->parsubstr));
+  this->set_parent_bone_name(other.parsubstr);
 
   copy_v3_v3(this->translation, other.translation);
   copy_v3_v3(this->rotation, other.rotation);
@@ -711,6 +710,8 @@ Layer::~Layer()
     MEM_SAFE_FREE(mask->layer_name);
     MEM_freeN(mask);
   }
+
+  MEM_SAFE_FREE(this->parsubstr);
 
   MEM_delete(this->runtime);
   this->runtime = nullptr;
@@ -975,11 +976,26 @@ float4x4 Layer::to_object_space(const Object &object) const
          this->local_transform();
 }
 
+StringRefNull Layer::parent_bone_name() const
+{
+  return (this->parsubstr != nullptr) ? StringRefNull(this->parsubstr) : StringRefNull();
+}
+
+void Layer::set_parent_bone_name(const char *new_name)
+{
+  if (this->parsubstr != nullptr) {
+    MEM_freeN(this->parsubstr);
+  }
+  this->parsubstr = BLI_strdup_null(new_name);
+}
+
 float4x4 Layer::parent_to_world(const Object &parent) const
 {
   const float4x4 parent_object_to_world(parent.object_to_world);
-  if (parent.type == OB_ARMATURE && this->parsubstr[0] != '\0') {
-    if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose, this->parsubstr)) {
+  if (parent.type == OB_ARMATURE && !this->parent_bone_name().is_empty()) {
+    if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose,
+                                                           this->parent_bone_name().c_str()))
+    {
       return parent_object_to_world * float4x4_view(channel->pose_mat);
     }
   }

@@ -2742,8 +2742,8 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
         if (parent == nullptr) {
           continue;
         }
-        if (parent->type == OB_ARMATURE && layer->parsubstr[0] != '\0') {
-          ComponentKey bone_key(&parent->id, NodeType::BONE, layer->parsubstr);
+        if (parent->type == OB_ARMATURE && !layer->parent_bone_name().is_empty()) {
+          ComponentKey bone_key(&parent->id, NodeType::BONE, layer->parent_bone_name().c_str());
           OperationKey armature_key(
               &parent->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
 

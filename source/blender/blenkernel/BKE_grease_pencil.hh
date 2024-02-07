@@ -449,6 +449,13 @@ class Layer : public ::GreasePencilLayer {
    */
   float4x4 to_world_space(const Object &object) const;
 
+  /**
+   * Returns the name of the parent bone. Should only be used in case the parent object is an
+   * armature.
+   */
+  StringRefNull parent_bone_name() const;
+  void set_parent_bone_name(const char *new_name);
+
  private:
   using SortedKeysIterator = const int *;
 
