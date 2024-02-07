@@ -41,22 +41,6 @@ template<typename T> class SharedCache {
     /* The cache should be allocated to trigger sharing of the cached data as early as possible. */
     cache_ = std::make_shared<CacheData>();
   }
-  SharedCache(const SharedCache &other) : cache_(other.cache_) {}
-  SharedCache(SharedCache &&other) : cache_(std::move(other.cache_)) {}
-  SharedCache &operator=(const SharedCache &other)
-  {
-    if (this != &other) {
-      cache_ = other.cache_;
-    }
-    return *this;
-  }
-  SharedCache &operator=(SharedCache &&other)
-  {
-    if (this != &other) {
-      cache_ = std::move(other.cache_);
-    }
-    return *this;
-  }
 
   /** Tag the data for recomputation and stop sharing the cache with other objects. */
   void tag_dirty()
