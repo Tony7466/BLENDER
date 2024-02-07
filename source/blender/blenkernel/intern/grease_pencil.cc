@@ -241,26 +241,6 @@ IDTypeInfo IDType_ID_GP = {
     /*lib_override_apply_post*/ nullptr,
 };
 
-template<typename T>
-static blender::MutableSpan<T> get_mutable_span_attribute(CustomData &custom_data,
-                                                          const blender::StringRefNull name,
-                                                          const eCustomDataType type,
-                                                          const int size,
-                                                          const T default_value = T())
-{
-  using namespace blender;
-  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name.c_str(), size);
-  if (data != nullptr) {
-    return {data, size};
-  }
-  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, size, name.c_str());
-  MutableSpan<T> span = {data, size};
-  if (size > 0 && span.first() != default_value) {
-    span.fill(default_value);
-  }
-  return span;
-}
-
 namespace blender::bke::greasepencil {
 
 static const std::string ATTR_RADIUS = "radius";
@@ -277,15 +257,25 @@ static CustomData &domain_custom_data(CurvesGeometry &curves, const AttrDomain d
   return domain == AttrDomain::Point ? curves.point_data : curves.curve_data;
 }
 template<typename T>
-static MutableSpan<T> get_mutable_curves_attribute(CurvesGeometry &curves,
-                                                   const AttrDomain domain,
-                                                   const StringRefNull name,
-                                                   const T default_value = T())
+static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
+                                            const AttrDomain domain,
+                                            const StringRefNull name,
+                                            const T default_value = T())
 {
   const int num = domain_num(curves, domain);
   const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
   CustomData &custom_data = domain_custom_data(curves, domain);
-  return get_mutable_span_attribute<T>(custom_data, name, type, num, default_value);
+
+  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name.c_str(), num);
+  if (data != nullptr) {
+    return {data, num};
+  }
+  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name.c_str());
+  MutableSpan<T> span = {data, num};
+  if (num > 0 && span.first() != default_value) {
+    span.fill(default_value);
+  }
+  return span;
 }
 
 Drawing::Drawing()
@@ -437,7 +427,7 @@ VArray<float> Drawing::radii() const
 
 MutableSpan<float> Drawing::radii_for_write()
 {
-  return get_mutable_curves_attribute<float>(
+  return get_mutable_attribute<float>(
       this->strokes_for_write(), AttrDomain::Point, ATTR_RADIUS, 0.01f);
 }
 
@@ -449,7 +439,7 @@ VArray<float> Drawing::opacities() const
 
 MutableSpan<float> Drawing::opacities_for_write()
 {
-  return get_mutable_curves_attribute<float>(
+  return get_mutable_attribute<float>(
       this->strokes_for_write(), AttrDomain::Point, ATTR_OPACITY, 1.0f);
 }
 
@@ -461,10 +451,10 @@ VArray<ColorGeometry4f> Drawing::vertex_colors() const
 
 MutableSpan<ColorGeometry4f> Drawing::vertex_colors_for_write()
 {
-  return get_mutable_curves_attribute<ColorGeometry4f>(this->strokes_for_write(),
-                                                       AttrDomain::Point,
-                                                       ATTR_VERTEX_COLOR,
-                                                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+  return get_mutable_attribute<ColorGeometry4f>(this->strokes_for_write(),
+                                                AttrDomain::Point,
+                                                ATTR_VERTEX_COLOR,
+                                                ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 void Drawing::tag_positions_changed()
