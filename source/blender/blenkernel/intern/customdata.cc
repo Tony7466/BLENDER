@@ -45,7 +45,7 @@
 #include "BKE_anonymous_attribute_id.hh"
 #include "BKE_customdata.hh"
 #include "BKE_customdata_file.h"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_remap.hh"
@@ -152,10 +152,8 @@ struct LayerTypeInfo {
    *    (there should be (sub element count)^2 weights per element)
    * count gives the number of elements in sources
    *
-   * \note in some cases \a dest pointer is in \a sources
-   *       so all functions have to take this into account and delay
-   *       applying changes while reading from sources.
-   *       See bug #32395 - Campbell.
+   * \note in some cases `dest` pointer is in `sources` so all functions have to take this
+   * into account and delay applying changes while reading from sources. See #32395.
    */
   cd_interp interp;
 

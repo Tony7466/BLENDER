@@ -30,12 +30,13 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
+#include "BKE_bake_data_block_id.hh"
 #include "BKE_bpath.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
@@ -170,6 +171,11 @@ static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, con
   STRNCPY(volume_dst->runtime->velocity_y_grid, volume_src->runtime->velocity_y_grid);
   STRNCPY(volume_dst->runtime->velocity_z_grid, volume_src->runtime->velocity_z_grid);
 
+  if (volume_src->runtime->bake_materials) {
+    volume_dst->runtime->bake_materials = std::make_unique<blender::bke::bake::BakeMaterialsList>(
+        *volume_src->runtime->bake_materials);
+  }
+
   volume_dst->batch_cache = nullptr;
 }
 
@@ -202,9 +208,8 @@ static void volume_foreach_cache(ID *id,
 {
   Volume *volume = (Volume *)id;
   IDCacheKey key = {
-      /*id_session_uuid*/ id->session_uuid,
-      /* This is just some identifier and does not have to be an actual offset. */
-      /*offset_in_ID*/ 1,
+      /*id_session_uid*/ id->session_uid,
+      /*identifier*/ 1,
   };
 
   function_callback(id, &key, (void **)&volume->runtime->grids, 0, user_data);
@@ -556,11 +561,11 @@ bool BKE_volume_save(const Volume *volume,
   openvdb::GridCPtrVec vdb_grids;
 
   /* Tree users need to be kept alive for as long as the grids may be accessed. */
-  blender::Vector<blender::bke::VolumeTreeAccessToken> tree_users;
+  blender::Vector<blender::bke::VolumeTreeAccessToken> tree_tokens;
 
   for (const GVolumeGrid &grid : grids) {
-    tree_users.append(grid->tree_access_token());
-    vdb_grids.push_back(grid->grid_ptr(tree_users.last()));
+    tree_tokens.append_as();
+    vdb_grids.push_back(grid->grid_ptr(tree_tokens.last()));
   }
 
   try {
@@ -594,9 +599,9 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
     std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
-      blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
+      blender::bke::VolumeTreeAccessToken tree_token;
       result = blender::bounds::merge(result,
-                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(access_token)));
+                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(tree_token)));
     }
     return result;
   }

@@ -203,7 +203,7 @@ static void do_draw_face_sets_brush_faces(Object *ob,
           ss, &test, brush->falloff_shape);
 
       auto_mask::NodeData automask_data = auto_mask::node_begin(
-          *ob, ss->cache->automasking, *node);
+          *ob, ss->cache->automasking.get(), *node);
 
       bool changed = false;
 
@@ -269,7 +269,7 @@ static void do_draw_face_sets_brush_grids(Object *ob,
           ss, &test, brush->falloff_shape);
 
       auto_mask::NodeData automask_data = auto_mask::node_begin(
-          *ob, ss->cache->automasking, *node);
+          *ob, ss->cache->automasking.get(), *node);
 
       bool changed = false;
 
@@ -414,7 +414,8 @@ static void do_relax_face_sets_brush_task(Object *ob,
   }
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     auto_mask::node_update(automask_data, vd);
@@ -490,8 +491,10 @@ static void face_sets_update(Object &object,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     TLS &tls = all_tls.local();
     for (PBVHNode *node : nodes.slice(range)) {
-      const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-          pbvh, *node, tls.face_indices);
+      const Span<int> faces =
+          BKE_pbvh_type(&pbvh) == PBVH_FACES ?
+              bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, tls.face_indices) :
+              bke::pbvh::node_face_indices_calc_grids(pbvh, *node, tls.face_indices);
 
       tls.new_face_sets.reinitialize(faces.size());
       MutableSpan<int> new_face_sets = tls.new_face_sets;
@@ -876,6 +879,10 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
   }
 
   undo::push_end(ob);
+
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_redraw(node);
+  }
 
   SCULPT_tag_update_overlays(C);
 
