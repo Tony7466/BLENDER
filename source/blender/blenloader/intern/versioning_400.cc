@@ -2887,7 +2887,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 21)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 1)) {
     using namespace blender::bke::greasepencil;
     /* Initialize newly added scale layer transform to one. */
     LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
