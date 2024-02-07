@@ -191,7 +191,7 @@ static void eevee_light_setup(Object *ob, EEVEE_Light *evli)
   if ((la->type == LA_AREA) && ELEM(la->area_shape, LA_AREA_DISK, LA_AREA_ELLIPSE)) {
     evli->light_type = LAMPTYPE_AREA_ELLIPSE;
   }
-  else if (la->mode & LA_USE_FALLOFF) {
+  else if (la->mode & LA_USE_SOFT_FALLOFF) {
     if (la->type == LA_LOCAL) {
       evli->light_type = LAMPTYPE_OMNI_DISK;
     }
