@@ -217,7 +217,7 @@ void AssetViewItem::build_grid_tile(uiLayout &layout) const
     asset::operator_asset_reference_props_set(*handle_get_representation(&asset_), op_props);
   }
 
-  ui::PreviewGridItem::build_grid_tile_button(layout, ot, op_props);
+  ui::PreviewGridItem::build_grid_tile_button(layout, ot, &op_props);
 }
 
 void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const

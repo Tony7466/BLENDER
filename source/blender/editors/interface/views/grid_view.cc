@@ -413,7 +413,7 @@ PreviewGridItem::PreviewGridItem(StringRef identifier, StringRef label, int prev
 
 void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
                                              const wmOperatorType *ot,
-                                             const PointerRNA &op_props) const
+                                             const PointerRNA *op_props) const
 {
   const GridViewStyle &style = this->get_view().get_style();
   uiBlock *block = uiLayoutGetBlock(&layout);
@@ -430,7 +430,7 @@ void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
                         style.tile_width,
                         style.tile_height,
                         "");
-    but->opptr = MEM_new<PointerRNA>(__func__, op_props);
+    but->opptr = MEM_new<PointerRNA>(__func__, *op_props);
   }
   else {
     but = uiDefBut(block,
@@ -465,7 +465,7 @@ void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
 
 void PreviewGridItem::build_grid_tile(uiLayout &layout) const
 {
-  this->build_grid_tile_button(layout, nullptr, {});
+  this->build_grid_tile_button(layout);
 }
 
 void PreviewGridItem::set_on_activate_fn(ActivateFn fn)
