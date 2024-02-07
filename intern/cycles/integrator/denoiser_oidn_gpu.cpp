@@ -149,6 +149,18 @@ OIDNFilter OIDNDenoiserGPU::create_filter()
       denoiser_device_->set_error(error_message);
     }
   }
+
+#  if OIDN_VERSION_MAJOR >= 2
+  switch (quality_) {
+    case DENOISER_QUALITY_BALANCED:
+      oidnSetFilterInt(filter, "quality", OIDN_QUALITY_BALANCED);
+      break;
+    case DENOISER_QUALITY_HIGH:
+    default:
+      oidnSetFilterInt(filter, "quality", OIDN_QUALITY_HIGH);
+  }
+#  endif
+
   return filter;
 }
 
@@ -259,17 +271,7 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
   oidnSetFilterBool(oidn_filter_, "hdr", true);
   oidnSetFilterBool(oidn_filter_, "srgb", false);
 
-#  if OIDN_VERSION_MAJOR >= 2
-  switch (params_.quality) {
-    case DENOISER_QUALITY_BALANCED:
-      oidnSetFilterInt(oidn_filter_, "quality", OIDN_QUALITY_BALANCED);
-      break;
-    case DENOISER_QUALITY_HIGH:
-    default:
-      oidnSetFilterInt(oidn_filter_, "quality", OIDN_QUALITY_HIGH);
-  }
   quality_ = params_.quality;
-#  endif
 
   if (context.use_pass_albedo) {
     albedo_filter_ = create_filter();
