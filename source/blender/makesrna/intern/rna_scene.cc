@@ -4725,8 +4725,7 @@ void rna_def_view_layer_common(BlenderRNA *brna, StructRNA *srna, const bool sce
     RNA_def_property_struct_type(prop, "World");
     RNA_def_property_flag(prop, PROP_EDITABLE);
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-    RNA_def_property_ui_text(
-        prop, "World Override", "World to override world in this view layer");
+    RNA_def_property_ui_text(prop, "World Override", "World to override world in this view layer");
     RNA_def_property_update(
         prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_world_override_update");
 
