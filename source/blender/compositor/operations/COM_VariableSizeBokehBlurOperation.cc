@@ -2,8 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "COM_VariableSizeBokehBlurOperation.h"
+#include "BLI_math_base.hh"
+#include "BLI_math_vector.hh"
+
 #include "COM_OpenCLDevice.h"
+#include "COM_VariableSizeBokehBlurOperation.h"
 
 namespace blender::compositor {
 
