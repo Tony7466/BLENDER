@@ -1050,13 +1050,9 @@ static void uv_vert_positions(const int edge_edges_num,
   }
 }
 
-static Mesh *ico_sphere(const int subdivisions,
-                        const float radius,
-                        const AttributeIDRef &uv_map_id)
+static Mesh *ico_sphere(const int line_subdiv, const float radius, const AttributeIDRef &uv_map_id)
 {
   std::cout << std::endl;
-  BLI_assert(subdivisions > 0);
-  const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
 
   const int edge_verts_num = math::max<int>(0, line_subdiv - 2);
   const int face_verts_num = math::max<int>(0,
@@ -1128,7 +1124,8 @@ static Mesh *ico_sphere(const int subdivisions,
   mesh->tag_overlapping_none();
   mesh->no_overlapping_topology();
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
-  mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, subdivisions));
+  /* Use line_subdiv as subdivisions for now. */
+  mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, line_subdiv - 1));
 
   bke::mesh_smooth_set(*mesh, false);
 
@@ -1146,7 +1143,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   if (new_type) {
-    Mesh *mesh = ico_sphere(subdivisions, radius, uv_map_id.get());
+    const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+    Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
     return;
   }
