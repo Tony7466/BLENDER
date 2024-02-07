@@ -250,32 +250,39 @@ class TriangleRange {
   }
 };
 
-static void base_ico_sphere_positions(MutableSpan<float3> positions)
+static Span<float3> base_ico_sphere_positions()
 {
   SCOPED_TIMER_AVERAGED(__func__);
-  positions.first() = float3(0.0f, 0.0f, 1.0f);
+  static const auto positions = []() -> std::array<float3, base_verts_num> {
+    std::array<float3, base_verts_num> positions;
+    MutableSpan<float3> positions_span(positions);
+    positions_span.first() = float3(0.0f, 0.0f, 1.0f);
 
-  const float latitude = math::atan(0.5f);
+    const float latitude = math::atan(0.5f);
 
-  MutableSpan<float3> top_latitude = positions.drop_front(1).take_front(latitude_verts_num);
-  MutableSpan<float3> bottom_latitude = positions.drop_back(1).take_back(latitude_verts_num);
+    MutableSpan<float3> top_latitude = positions_span.drop_front(1).take_front(latitude_verts_num);
+    MutableSpan<float3> bottom_latitude = positions_span.drop_back(1).take_back(
+        latitude_verts_num);
 
-  const constexpr float step = M_PI / latitude_verts_num * 2.0f;
-  const float3 base_vector(1.0f, 0.0f, 0.0f);
-  for (const int i : IndexRange(latitude_verts_num)) {
-    const math::EulerXYZ rotation(0.0f, -latitude, i * step);
-    top_latitude[i] = math::transform_point(math::to_quaternion(rotation), base_vector);
-  }
-  for (const int i : IndexRange(latitude_verts_num)) {
-    const math::EulerXYZ rotation(0.0f, latitude, (i - 0.5f) * step);
-    bottom_latitude[i] = math::transform_point(math::to_quaternion(rotation), base_vector);
-  }
+    const constexpr float step = M_PI / latitude_verts_num * 2.0f;
+    const float3 base_vector(1.0f, 0.0f, 0.0f);
+    for (const int i : IndexRange(latitude_verts_num)) {
+      const math::EulerXYZ rotation(0.0f, -latitude, i * step);
+      top_latitude[i] = math::transform_point(math::to_quaternion(rotation), base_vector);
+    }
+    for (const int i : IndexRange(latitude_verts_num)) {
+      const math::EulerXYZ rotation(0.0f, latitude, (i - 0.5f) * step);
+      bottom_latitude[i] = math::transform_point(math::to_quaternion(rotation), base_vector);
+    }
 
-  positions.last() = float3(0.0f, 0.0f, -1.0f);
+    positions_span.last() = float3(0.0f, 0.0f, -1.0f);
 
-  BLI_assert(std::all_of(positions.begin(), positions.end(), [](const float3 &pos) -> bool {
-    return math::is_unit_scale(pos);
-  }));
+    BLI_assert(std::all_of(positions_span.begin(),
+                           positions_span.end(),
+                           [](const float3 &pos) -> bool { return math::is_unit_scale(pos); }));
+    return positions;
+  }();
+  return positions;
 }
 
 static Span<int2> base_edge_verts_indices()
@@ -445,37 +452,32 @@ static void fill_interpolation(const float3 &begin, const float3 &end, MutableSp
   }
 }
 
-static void interpolate_edge_verts_linear(const int edge_verts_num,
-                                          const Span<float3> base_verts,
-                                          MutableSpan<float3> edge_verts)
+static void interpolate_edge_verts_linear(const int edge_verts_num, MutableSpan<float3> edge_verts)
 {
   SCOPED_TIMER_AVERAGED(__func__);
+  const Span<float3> base_verts = base_ico_sphere_positions();
   const Span<int2> base_edge_verts = base_edge_verts_indices();
 
   const IndexRange edge_verts_range(edge_verts_num);
-
   for (const int edge_i : IndexRange(base_edges_num)) {
     MutableSpan<float3> verts = edge_verts.slice(edge_verts_range.step(edge_i));
     const int2 edge_vert_indices = base_edge_verts[edge_i];
     const float3 &vert_a = base_verts[edge_vert_indices[EdgeVert::A]];
     const float3 &vert_b = base_verts[edge_vert_indices[EdgeVert::B]];
-
     fill_interpolation(vert_a, vert_b, verts);
   }
 }
 
-static void interpolate_face_verts_linear(const int line_subdiv,
-                                          const Span<float3> base_verts,
+static void interpolate_face_verts_linear(const TriangleRange inner_face_verts,
                                           MutableSpan<float3> faces_verts)
 {
   SCOPED_TIMER_AVERAGED(__func__);
+  const Span<float3> base_verts = base_ico_sphere_positions();
   const Span<int3> base_face_verts = base_face_verts_indices();
 
-  const constexpr int left_right_points = 2;
-  const TriangleRange inner_face_verts =
-      TriangleRange(line_subdiv - left_right_points).drop_bottom(1);
-
   const IndexRange face_verts_range(inner_face_verts.total());
+  /* Bottom line of verts plus left and right base verts. */
+  const float count = float(inner_face_verts.size_of(0) + 2);
 
   for (const int face_i : IndexRange(base_faces_num)) {
     MutableSpan<float3> face_verts = faces_verts.slice(face_verts_range.step(face_i));
@@ -485,14 +487,12 @@ static void interpolate_face_verts_linear(const int line_subdiv,
     const float3 &vert_a = base_verts[face_vert_indices[FaceVert::A]];
     const float3 &vert_b = base_verts[face_vert_indices[FaceVert::B]];
     const float3 &vert_c = base_verts[face_vert_indices[FaceVert::C]];
-
     for (const int y_index : IndexRange(inner_face_verts.hight())) {
       MutableSpan<float3> level_verts = face_verts.slice(inner_face_verts.slice_at(y_index));
 
-      const float factor = float(y_index + 1) / float(line_subdiv - 1);
+      const float factor = float(y_index + 1) / count;
       const float3 sub_a = bke::attribute_math::mix2<float3>(factor, vert_a, vert_c);
       const float3 sub_b = bke::attribute_math::mix2<float3>(factor, vert_b, vert_c);
-
       fill_interpolation(sub_a, sub_b, level_verts);
     }
   }
@@ -514,8 +514,9 @@ static void edges_line_fill_verts(const int2 ends, MutableSpan<int2> edges, Func
   edges.last()[EdgeVert::B] = ends[EdgeVert::B];
 }
 
-static void vert_edge_topology(const int edge_edges_num,
-                               const int edge_verts_num,
+static void vert_edge_topology(const IndexRange edges_of_edge_range,
+                               const IndexRange verts_of_edge_range,
+                               const IndexRange verts_of_edges_range,
                                MutableSpan<int2> edge_edges)
 {
   SCOPED_TIMER_AVERAGED(__func__);
@@ -525,20 +526,21 @@ static void vert_edge_topology(const int edge_edges_num,
     return;
   }
 
-  const IndexRange verts_of_edges_range(base_verts_num, base_edges_num * edge_verts_num);
   for (const int edge_i : IndexRange(base_edges_num)) {
     const int2 base_edge = base_edges[edge_i];
-    MutableSpan<int2> edges = edge_edges.slice(IndexRange(edge_edges_num).step(edge_i));
-    const IndexRange edge_verts = verts_of_edges_range.slice(
-        IndexRange(edge_verts_num).step(edge_i));
+    MutableSpan<int2> edges = edge_edges.slice(edges_of_edge_range.step(edge_i));
+    const IndexRange edge_verts = verts_of_edges_range.slice(verts_of_edge_range.step(edge_i));
     edges_line_fill_verts(
         base_edge, edges, [=](const int edge_i) -> int { return edge_verts[edge_i]; });
   }
 }
 
-static void face_edge_topology(const int edge_edges_num,
-                               const int face_verts_num,
-                               const int edge_verts_num,
+static void face_edge_topology(const IndexRange verts_of_edge_range,
+                               const IndexRange verts_of_face_range,
+                               const IndexRange edges_of_face_range,
+                               const IndexRange verts_of_edges_range,
+                               const TriangleRange inner_face_verts,
+                               const TriangleRange inner_face_edges,
                                const IndexRange faces_verts,
                                MutableSpan<int2> face_edges)
 {
@@ -547,26 +549,17 @@ static void face_edge_topology(const int edge_edges_num,
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
 
-  const TriangleRange inner_face_edges = TriangleRange(edge_edges_num).drop_bottom(1);
-  const TriangleRange inner_face_verts = TriangleRange(edge_edges_num).drop_bottom(2);
-
-  const IndexRange face_verts_range(face_verts_num);
-  const IndexRange face_edges_range(inner_face_edges.total());
-
-  const IndexRange edge_verts_range(edge_verts_num);
-  const IndexRange edges_verts_range(base_verts_num, base_edges_num * edge_verts_num);
-
   {
     SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
-      const IndexRange face_verts = faces_verts.slice(face_verts_range.step(face_i));
+      const IndexRange face_verts = faces_verts.slice(verts_of_face_range.step(face_i));
 
-      const IndexRange edge_ac_verts = edges_verts_range.slice(
-          edge_verts_range.step(face_edge_indices[FaceEdge::CA]));
-      const IndexRange edge_bc_verts = edges_verts_range.slice(
-          edge_verts_range.step(face_edge_indices[FaceEdge::BC]));
+      const IndexRange edge_ac_verts = verts_of_edges_range.slice(
+          verts_of_edge_range.step(face_edge_indices[FaceEdge::CA]));
+      const IndexRange edge_bc_verts = verts_of_edges_range.slice(
+          verts_of_edge_range.step(face_edge_indices[FaceEdge::BC]));
 
       /* Check if order of vertices in face side (edge) is the same as in edge (real edge). */
       const bool edge_ac_order = int2(face_vert_indices[FaceVert::A],
@@ -578,7 +571,7 @@ static void face_edge_topology(const int edge_edges_num,
 
       /* Edges parallel to AB base edge. */
       MutableSpan<int2> edges = face_edges.slice(
-          face_edges_range.step(base_faces_num * InnerEdges::Base + face_i));
+          edges_of_face_range.step(base_faces_num * InnerEdges::Base + face_i));
       for (const int line_i : IndexRange(inner_face_edges.hight())) {
         const int begin_vert = edge_ac_order ? edge_ac_verts[line_i] :
                                                edge_ac_verts.from_end(line_i);
@@ -598,12 +591,12 @@ static void face_edge_topology(const int edge_edges_num,
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
-      const IndexRange face_verts = faces_verts.slice(face_verts_range.step(face_i));
+      const IndexRange face_verts = faces_verts.slice(verts_of_face_range.step(face_i));
 
-      const IndexRange edge_ba_verts = edges_verts_range.slice(
-          edge_verts_range.step(face_edge_indices[FaceEdge::AB]));
-      const IndexRange edge_ca_verts = edges_verts_range.slice(
-          edge_verts_range.step(face_edge_indices[FaceEdge::CA]));
+      const IndexRange edge_ba_verts = verts_of_edges_range.slice(
+          verts_of_edge_range.step(face_edge_indices[FaceEdge::AB]));
+      const IndexRange edge_ca_verts = verts_of_edges_range.slice(
+          verts_of_edge_range.step(face_edge_indices[FaceEdge::CA]));
 
       const bool edge_ba_order = int2(face_vert_indices[FaceVert::A],
                                       face_vert_indices[FaceVert::B]) ==
@@ -614,7 +607,7 @@ static void face_edge_topology(const int edge_edges_num,
 
       /* Edges parallel to BC base edge. */
       MutableSpan<int2> edges = face_edges.slice(
-          face_edges_range.step(base_faces_num * InnerEdges::Left + face_i));
+          edges_of_face_range.step(base_faces_num * InnerEdges::Left + face_i));
       for (const int line_i : IndexRange(inner_face_edges.hight())) {
         const int r_line_i = inner_face_edges.hight() - 1 - line_i;
         const int begin_vert = edge_ba_order ? edge_ba_verts[r_line_i] :
@@ -635,12 +628,12 @@ static void face_edge_topology(const int edge_edges_num,
     for (const int face_i : IndexRange(base_faces_num)) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
-      const IndexRange face_verts = faces_verts.slice(face_verts_range.step(face_i));
+      const IndexRange face_verts = faces_verts.slice(verts_of_face_range.step(face_i));
 
-      const IndexRange edge_ab_verts = edges_verts_range.slice(
-          edge_verts_range.step(face_edge_indices[FaceEdge::AB]));
-      const IndexRange edge_cb_verts = edges_verts_range.slice(
-          edge_verts_range.step(face_edge_indices[FaceEdge::BC]));
+      const IndexRange edge_ab_verts = verts_of_edges_range.slice(
+          verts_of_edge_range.step(face_edge_indices[FaceEdge::AB]));
+      const IndexRange edge_cb_verts = verts_of_edges_range.slice(
+          verts_of_edge_range.step(face_edge_indices[FaceEdge::BC]));
 
       const bool edge_ab_order = int2(face_vert_indices[FaceVert::A],
                                       face_vert_indices[FaceVert::B]) ==
@@ -651,7 +644,7 @@ static void face_edge_topology(const int edge_edges_num,
 
       /* Edges parallel to AC base edge. */
       MutableSpan<int2> edges = face_edges.slice(
-          face_edges_range.step(base_faces_num * InnerEdges::Right + face_i));
+          edges_of_face_range.step(base_faces_num * InnerEdges::Right + face_i));
       for (const int line_i : IndexRange(inner_face_edges.hight())) {
         const int begin_vert = edge_ab_order ? edge_ab_verts[line_i] :
                                                edge_ab_verts.from_end(line_i);
@@ -1065,18 +1058,15 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
   const TriangleRange face_triangle_of_bottom_faces(base_edge_edges_num);
   const TriangleRange face_triangle_of_top_faces(base_edge_edges_num - 1);
 
-  const int base_face_edges_num = inner_face_of_edges.total() * 3;
   const int base_face_faces_num = face_triangle_of_bottom_faces.total() +
                                   face_triangle_of_top_faces.total();
 
   const int verts_num = base_verts_num + base_edges_num * base_edge_verts_num +
                         base_faces_num * inner_face_of_verts.total();
   const int edges_num = base_edges_num * base_edge_edges_num +
-                        base_faces_num * base_face_edges_num;
+                        base_faces_num * inner_face_of_edges.total() * 3;
   const int faces_num = base_faces_num * base_face_faces_num;
   const int corners_num = faces_num * face_size;
-
-  std::cout << verts_num << ", " << edges_num << ", " << faces_num << ", " << corners_num << ";\n";
 
   Mesh *mesh = BKE_mesh_new_nomain(verts_num, edges_num, faces_num, corners_num);
 
@@ -1088,29 +1078,32 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
 
   offset_indices::fill_constant_group_size(3, 0, mesh->face_offsets_for_write());
 
-  const IndexRange verts_range(base_verts_num);
-  const IndexRange edge_verts_range = verts_range.after(base_edges_num * base_edge_verts_num);
-  const IndexRange face_verts_range = edge_verts_range.after(inner_face_of_verts.total() *
-                                                             base_faces_num);
+  const IndexRange verts_of_verts_range(base_verts_num);
+  const IndexRange verts_of_edges_range = verts_of_verts_range.after(base_edges_num *
+                                                                     base_edge_verts_num);
+  const IndexRange verts_of_faces_range = verts_of_edges_range.after(inner_face_of_verts.total() *
+                                                                     base_faces_num);
 
-  base_ico_sphere_positions(positions.take_front(base_verts_num));
+  positions.take_front(base_verts_num).copy_from(base_ico_sphere_positions());
+  interpolate_edge_verts_linear(base_edge_verts_num, positions.slice(verts_of_edges_range));
+  interpolate_face_verts_linear(inner_face_of_verts, positions.slice(verts_of_faces_range));
 
-  interpolate_edge_verts_linear(
-      base_edge_verts_num, positions.slice(verts_range), positions.slice(edge_verts_range));
+  const IndexRange edges_of_edge_range(base_edges_num * base_edge_edges_num);
+  const IndexRange edge_of_face_range = edges_of_edge_range.after(base_faces_num *
+                                                                  inner_face_of_edges.total() * 3);
 
-  interpolate_face_verts_linear(
-      side_verts, positions.slice(verts_range), positions.slice(face_verts_range));
-
-  const IndexRange edge_edges(base_edges_num * base_edge_edges_num);
-  const IndexRange face_edges_range(edge_edges.one_after_last(),
-                                    base_face_edges_num * base_faces_num);
-
-  vert_edge_topology(base_edge_edges_num, base_edge_verts_num, edges.slice(edge_edges));
-  face_edge_topology(base_edge_edges_num,
-                     inner_face_of_verts.total(),
-                     base_edge_verts_num,
-                     face_verts_range,
-                     edges.slice(face_edges_range));
+  vert_edge_topology(IndexRange(base_edge_edges_num),
+                     IndexRange(base_edge_verts_num),
+                     verts_of_edges_range,
+                     edges.slice(edges_of_edge_range));
+  face_edge_topology(IndexRange(base_edge_verts_num),
+                     IndexRange(inner_face_of_verts.total()),
+                     IndexRange(inner_face_of_edges.total()),
+                     verts_of_edges_range,
+                     inner_face_of_verts,
+                     inner_face_of_edges,
+                     verts_of_faces_range,
+                     edges.slice(edge_of_face_range));
 
   corner_edges_topology(base_edge_edges_num, base_face_faces_num, corner_edges);
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
