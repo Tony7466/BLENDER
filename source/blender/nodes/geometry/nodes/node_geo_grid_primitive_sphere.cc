@@ -2,13 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-#  include <openvdb/tools/Dense.h>
-#  include <openvdb/tools/LevelSetUtil.h>
-#  include <openvdb/tools/ParticlesToLevelSet.h>
-#endif
-
 #include "node_geometry_util.hh"
 
 #include "DNA_mesh_types.h"
@@ -17,9 +10,16 @@
 
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_mesh.hh"
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
+
+#include "NOD_rna_define.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "RNA_enum_types.hh"
 
 namespace blender::nodes::node_geo_grid_primitive_sphere_cc {
 
@@ -32,13 +32,17 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   eCustomDataType data_type = eCustomDataType(node->custom1);
 
-  b.add_input<decl::MaskGrid>("Grid");
   b.add_input(data_type, "Value").supports_field();
   b.add_input(data_type, "Background");
+  b.add_input(data_type, "Tolerance")
+      .description("Deactivate voxels withing tolerance of the background value");
 
-  b.add_input<decl::Vector>("Radius")
+  b.add_input<decl::Vector>("Min")
+      .default_value(float3(-1.0f))
+      .description("Minimum boundary of volume");
+  b.add_input<decl::Vector>("Max")
       .default_value(float3(1.0f))
-      .description("Radius of the sphere");
+      .description("Maximum boundary of volume");
 
   b.add_input<decl::Int>("Resolution X")
       .default_value(32)
@@ -56,65 +60,17 @@ static void node_declare(NodeDeclarationBuilder &b)
   grids::declare_grid_type_output(b, data_type, "Grid");
 }
 
-static float map(const float x,
-                 const float in_min,
-                 const float in_max,
-                 const float out_min,
-                 const float out_max)
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
-class Grid3DFieldContext : public FieldContext {
- private:
-  int3 resolution_;
-  float3 bounds_min_;
-  float3 bounds_max_;
-
- public:
-  Grid3DFieldContext(const int3 resolution, const float3 bounds_min, const float3 bounds_max)
-      : resolution_(resolution), bounds_min_(bounds_min), bounds_max_(bounds_max)
-  {
-  }
-
-  int64_t points_num() const
-  {
-    return int64_t(resolution_.x) * int64_t(resolution_.y) * int64_t(resolution_.z);
-  }
-
-  GVArray get_varray_for_input(const FieldInput &field_input,
-                               const IndexMask & /*mask*/,
-                               ResourceScope & /*scope*/) const
-  {
-    const bke::AttributeFieldInput *attribute_field_input =
-        dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
-    if (attribute_field_input == nullptr) {
-      return {};
-    }
-    if (attribute_field_input->attribute_name() != "position") {
-      return {};
-    }
-
-    Array<float3> positions(this->points_num());
-
-    threading::parallel_for(IndexRange(resolution_.x), 1, [&](const IndexRange x_range) {
-      /* Start indexing at current X slice. */
-      int64_t index = x_range.start() * resolution_.y * resolution_.z;
-      for (const int64_t x_i : x_range) {
-        const float x = map(x_i, 0.0f, resolution_.x - 1, bounds_min_.x, bounds_max_.x);
-        for (const int64_t y_i : IndexRange(resolution_.y)) {
-          const float y = map(y_i, 0.0f, resolution_.y - 1, bounds_min_.y, bounds_max_.y);
-          for (const int64_t z_i : IndexRange(resolution_.z)) {
-            const float z = map(z_i, 0.0f, resolution_.z - 1, bounds_min_.z, bounds_max_.z);
-            positions[index] = float3(x, y, z);
-            index++;
-          }
-        }
-      }
-    });
-    return VArray<float3>::ForContainer(std::move(positions));
-  }
-};
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = CD_PROP_FLOAT;
+}
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -148,39 +104,37 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  Field<float> input_field = params.extract_input<Field<float>>("Density");
+  const float4x4 transform = math::from_location<float4x4>(bounds_min) *
+                             math::from_scale<float4x4>(float3(scale_fac)) *
+                             math::from_location<float4x4>(float3(-0.5f));
 
-  /* Evaluate input field on a 3D grid. */
-  Grid3DFieldContext context(resolution, bounds_min, bounds_max);
-  FieldEvaluator evaluator(context, context.points_num());
-  Array<float> densities(context.points_num());
-  evaluator.add_with_destination(std::move(input_field), densities.as_mutable_span());
-  evaluator.evaluate();
+  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  BLI_assert(grid_type_supported(data_type));
 
-  /* Store resulting values in openvdb grid. */
-  const float background = params.extract_input<float>("Background");
-  openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background);
-  grid->setGridClass(openvdb::GRID_FOG_VOLUME);
+  bke::GVolumeGrid grid = grids::try_capture_dense_grid(
+      data_type,
+      transform,
+      resolution,
+      params.extract_input<GField>("Value"),
+      params.extract_input<SocketValueVariant>("Background").get_single_ptr(),
+      params.extract_input<SocketValueVariant>("Tolerance").get_single_ptr());
 
-  openvdb::tools::Dense<float, openvdb::tools::LayoutZYX> dense_grid{
-      openvdb::math::CoordBBox({0, 0, 0}, {resolution.x - 1, resolution.y - 1, resolution.z - 1}),
-      densities.data()};
-  openvdb::tools::copyFromDense(dense_grid, *grid, 0.0f);
-
-  grid->transform().preTranslate(openvdb::math::Vec3<float>(-0.5f));
-  grid->transform().postScale(openvdb::math::Vec3<double>(scale_fac.x, scale_fac.y, scale_fac.z));
-  grid->transform().postTranslate(
-      openvdb::math::Vec3<float>(bounds_min.x, bounds_min.y, bounds_min.z));
-
-  Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
-  BKE_volume_grid_add_vdb(*volume, "density", std::move(grid));
-
-  GeometrySet r_geometry_set;
-  r_geometry_set.replace_volume(volume);
-  params.set_output("Volume", r_geometry_set);
+  params.set_output("Grid", grid);
 #else
   node_geo_exec_with_missing_openvdb(params);
 #endif
+}
+
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(srna,
+                    "data_type",
+                    "Data Type",
+                    "Type of grid data",
+                    rna_enum_attribute_type_items,
+                    NOD_inline_enum_accessors(custom1),
+                    CD_PROP_FLOAT,
+                    grid_custom_data_type_items_filter_fn);
 }
 
 static void node_register()
@@ -190,8 +144,12 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_GRID_PRIMITIVE_SPHERE, "Grid Sphere", NODE_CLASS_GEOMETRY);
 
   ntype.declare = node_declare;
+  ntype.initfunc = node_init;
+  ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

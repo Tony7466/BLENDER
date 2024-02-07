@@ -2,6 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#ifdef WITH_OPENVDB
+#  include <openvdb/tools/Dense.h>
+#endif
+
 #include "node_geometry_util.hh"
 #include "node_util.hh"
 
@@ -312,6 +316,113 @@ bke::GVolumeGrid try_capture_field_as_grid(const eCustomDataType data_type,
 {
   CaptureGridOp capture_op = {topology_grid, value_field, background};
   return grids::apply(data_type, capture_op);
+}
+
+class DensePrimitiveFieldContext : public FieldContext {
+ private:
+  float4x4 transform_;
+  int3 resolution_;
+
+  Array<float3> positions_;
+
+ public:
+  DensePrimitiveFieldContext(const float4x4 &transform, const int3 resolution)
+      : transform_(transform), resolution_(resolution)
+  {
+    positions_.reinitialize(points_num());
+    threading::parallel_for(IndexRange(resolution_.x), 512, [&](const IndexRange x_range) {
+      /* Start indexing at current X slice. */
+      int64_t index = x_range.start() * resolution_.y * resolution_.z;
+      for (const int64_t x : x_range) {
+        for (const int64_t y : IndexRange(resolution_.y)) {
+          for (const int64_t z : IndexRange(resolution_.z)) {
+            positions_[index] = math::transform_point(transform_, float3(x, y, z));
+            index++;
+          }
+        }
+      }
+    });
+  }
+
+  int64_t points_num() const
+  {
+    return int64_t(resolution_.x) * int64_t(resolution_.y) * int64_t(resolution_.z);
+  }
+
+  IndexRange points_range() const
+  {
+    return IndexRange(points_num());
+  }
+
+  GVArray get_varray_for_input(const FieldInput &field_input,
+                               const IndexMask & /*mask*/,
+                               ResourceScope & /*scope*/) const
+  {
+    const bke::AttributeFieldInput *attribute_field_input =
+        dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
+    if (attribute_field_input == nullptr) {
+      return {};
+    }
+    if (attribute_field_input->attribute_name() == "position") {
+      return VArray<float3>::ForSpan(positions_);
+    }
+    return {};
+  }
+};
+
+struct MakeDensePrimitiveOp {
+  float4x4 transform;
+  int3 resolution;
+  GField value_field;
+  GPointer background;
+  GPointer tolerance;
+
+  template<typename T> bke::GVolumeGrid operator()()
+  {
+    using GridType = bke::OpenvdbGridType<T>;
+    using Converter = bke::grids::Converter<T>;
+    using ValueType = typename GridType::ValueType;
+
+    const ValueType vdb_background = Converter::to_openvdb(*background.get<T>());
+    const ValueType vdb_tolerance = Converter::to_openvdb(*tolerance.get<T>());
+
+    /* Evaluate input field on a 3D grid. */
+    DensePrimitiveFieldContext context(transform, resolution);
+    FieldEvaluator evaluator(context, context.points_num());
+    Array<T> values(context.points_num(), *background.get<T>());
+    evaluator.add_with_destination(value_field, values.as_mutable_span());
+    evaluator.evaluate();
+
+    Array<ValueType> vdb_values(context.points_num());
+    threading::parallel_for(vdb_values.index_range(), 4096, [&](const IndexRange range) {
+      for (const int64_t i : range) {
+        vdb_values[i] = Converter::to_openvdb(values[i]);
+      }
+    });
+    openvdb::tools::Dense<ValueType, openvdb::tools::LayoutZYX> dense_grid{
+        openvdb::math::CoordBBox({0, 0, 0},
+                                 {resolution.x - 1, resolution.y - 1, resolution.z - 1}),
+        vdb_values.data()};
+
+    /* Store resulting values in openvdb grid. */
+    typename GridType::Ptr grid = GridType::create(vdb_background);
+    grid->setGridClass(openvdb::GRID_FOG_VOLUME);
+    openvdb::tools::copyFromDense(dense_grid, *grid, vdb_tolerance);
+    grid->setTransform(BKE_volume_matrix_to_vdb_transform(transform));
+
+    return bke::GVolumeGrid(std::move(grid));
+  }
+};
+
+bke::GVolumeGrid try_capture_dense_grid(const eCustomDataType data_type,
+                                        const float4x4 &transform,
+                                        const int3 &resolution,
+                                        GField value_field,
+                                        GPointer background,
+                                        GPointer tolerance)
+{
+  MakeDensePrimitiveOp op = {transform, resolution, value_field, background, tolerance};
+  return apply(data_type, op);
 }
 
 }  // namespace grids
