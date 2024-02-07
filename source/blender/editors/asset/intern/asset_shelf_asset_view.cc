@@ -209,10 +209,13 @@ void AssetViewItem::build_grid_tile(uiLayout &layout) const
 {
   const AssetView &asset_view = reinterpret_cast<const AssetView &>(this->get_view());
   const AssetShelfType &shelf_type = *asset_view.shelf_.type;
-  wmOperatorType *ot = WM_operatortype_find(shelf_type.activate_operator.c_str(), false);
-  PointerRNA op_props;
-  WM_operator_properties_create_ptr(&op_props, ot);
-  asset::operator_asset_reference_props_set(*handle_get_representation(&asset_), op_props);
+
+  wmOperatorType *ot = WM_operatortype_find(shelf_type.activate_operator.c_str(), true);
+  PointerRNA op_props = PointerRNA_NULL;
+  if (ot) {
+    WM_operator_properties_create_ptr(&op_props, ot);
+    asset::operator_asset_reference_props_set(*handle_get_representation(&asset_), op_props);
+  }
 
   ui::PreviewGridItem::build_grid_tile_button(layout, ot, op_props);
 }
