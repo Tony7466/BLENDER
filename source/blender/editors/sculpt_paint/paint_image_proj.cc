@@ -3712,9 +3712,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
     copy_m4_m4(viewmat, ps->rv3d->viewmat);
     copy_m4_m4(viewinv, ps->rv3d->viewinv);
 
-    blender::float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(
-        ps->rv3d, blender::float4x4(ps->obmat));
-    copy_m4_m4(ps->projectMat, projection.ptr());
+    ED_view3d_ob_project_mat_get_from_obmat(ps->rv3d, ps->obmat, ps->projectMat);
 
     ps->is_ortho = ED_view3d_clip_range_get(
         ps->depsgraph, ps->v3d, ps->rv3d, &ps->clip_start, &ps->clip_end, true);

@@ -710,15 +710,14 @@ blender::float4x4 ED_view3d_ob_project_mat_get(const RegionView3D *rv3d, const O
   return r_pmat;
 }
 
-blender::float4x4 ED_view3d_ob_project_mat_get_from_obmat(const RegionView3D *rv3d,
-                                                          const blender::float4x4 obmat)
+void ED_view3d_ob_project_mat_get_from_obmat(const RegionView3D *rv3d,
+                                             const float obmat[4][4],
+                                             float r_pmat[4][4])
 {
   float vmat[4][4];
-  blender::float4x4 r_pmat;
 
-  mul_m4_m4m4(vmat, rv3d->viewmat, obmat.ptr());
-  mul_m4_m4m4(r_pmat.ptr(), rv3d->winmat, vmat);
-  return r_pmat;
+  mul_m4_m4m4(vmat, rv3d->viewmat, obmat);
+  mul_m4_m4m4(r_pmat, rv3d->winmat, vmat);
 }
 
 void ED_view3d_project_v3(const ARegion *region, const float world[3], float r_region_co[3])
