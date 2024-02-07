@@ -67,8 +67,6 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
     /* PDF. */
     const float invarea = (r_sq > 0.0f) ? 1.0f / (r_sq * M_PI_F) : 1.0f;
     ls->pdf = invarea * light_pdf_area_to_solid_angle(lightN, -ls->D, ls->t);
-
-    /* TODO: texture coordinates. */
   }
 
   /* Texture coordinates. */
@@ -178,8 +176,6 @@ ccl_device_inline bool point_light_sample_from_intersection(
       ls->pdf = 0.0f;
     }
     ls->Ng = -ray_D;
-
-    // TODO: texture coordinates.
   }
 
   /* Texture coordinates. */
