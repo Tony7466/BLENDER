@@ -250,51 +250,6 @@ class TriangleRange {
   }
 };
 
-class SphericalIterator {
- private:
-  /* Float have not enough precision for iteration over large subdivision. */
-  double3 previous_;
-  double3 current_;
-  double product_;
-
- public:
-  SphericalIterator(const double3 begin, const double3 next, const double product)
-      : previous_(begin), current_(next), product_(product)
-  {
-    BLI_assert(math::is_unit_scale(begin) && math::is_unit_scale(next));
-  }
-
-  static SphericalIterator between_points(const double3 from, const double3 &to, const int steps)
-  {
-    const double3 normal = math::normalize(math::cross_tri(double3(0.0f), from, to));
-    const math::AngleRadianBase<double> rotation = math::angle_between<double>(from, to) / steps;
-    const double reflection_factor = math::cos(rotation) * 2.0f;
-    const math::AxisAngleBase<double, math::AngleRadianBase<double>> axis(normal, rotation);
-    return SphericalIterator(
-        from, math::transform_point(math::to_quaternion(axis), from), reflection_factor);
-  }
-
-  SphericalIterator &operator++()
-  {
-    const double3 next = current_ * product_ - previous_;
-    previous_ = current_;
-    current_ = next;
-    return *this;
-  }
-
-  SphericalIterator operator++(int)
-  {
-    SphericalIterator copied_iterator = *this;
-    ++(*this);
-    return copied_iterator;
-  }
-
-  double3 operator*() const
-  {
-    return current_;
-  }
-};
-
 static void base_ico_sphere_positions(MutableSpan<float3> positions)
 {
   SCOPED_TIMER_AVERAGED(__func__);
