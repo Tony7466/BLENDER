@@ -6,7 +6,7 @@
  * \ingroup eevee
  */
 
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_node.hh"
 #include "BKE_world.h"
 #include "DEG_depsgraph_query.hh"
@@ -94,6 +94,9 @@ void World::sync()
   if (inst_.use_studio_light()) {
     has_update = lookdev_world_.sync(LookdevParameters(inst_.v3d));
     bl_world = lookdev_world_.world_get();
+  }
+  else if ((inst_.view_layer->layflag & SCE_LAY_SKY) == 0) {
+    bl_world = default_world_get();
   }
   else if (has_volume_absorption_) {
     bl_world = default_world_get();

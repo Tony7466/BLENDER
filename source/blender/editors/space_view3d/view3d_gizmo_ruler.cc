@@ -22,7 +22,7 @@
 #include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
@@ -60,7 +60,7 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 using blender::float2;
 using blender::float2x2;
@@ -515,10 +515,24 @@ static RulerItem *gzgroup_ruler_item_first_get(wmGizmoGroup *gzgroup)
 }
 
 #define RULER_ID "RulerData3D"
-static bool view3d_ruler_to_gpencil(bContext *C, wmGizmoGroup *gzgroup)
+
+/* GP data creation has to happen before the undo step is stored.
+ * See also #116734. */
+static void view3d_ruler_gpencil_ensure(bContext *C)
 {
   // RulerInfo *ruler_info = gzgroup->customdata;
   Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  if (scene->gpd == nullptr) {
+    scene->gpd = BKE_gpencil_data_addnew(bmain, "Annotations");
+    DEG_id_tag_update_ex(bmain, &scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_relations_tag_update(bmain);
+  }
+}
+
+static bool view3d_ruler_to_gpencil(bContext *C, wmGizmoGroup *gzgroup)
+{
+  // RulerInfo *ruler_info = gzgroup->customdata;
   Scene *scene = CTX_data_scene(C);
 
   bGPdata *gpd;
@@ -529,9 +543,7 @@ static bool view3d_ruler_to_gpencil(bContext *C, wmGizmoGroup *gzgroup)
   const char *ruler_name = RULER_ID;
   bool changed = false;
 
-  if (scene->gpd == nullptr) {
-    scene->gpd = BKE_gpencil_data_addnew(bmain, "Annotations");
-  }
+  BLI_assert(scene->gpd != nullptr);
   gpd = scene->gpd;
 
   gpl = view3d_ruler_layer_get(gpd);
@@ -1191,6 +1203,9 @@ static int gizmo_ruler_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
 
   ruler_info->item_active = ruler_item_pick;
 
+  /* Ensures there is a valid GPencil data in current scene. */
+  view3d_ruler_gpencil_ensure(C);
+
   return OPERATOR_RUNNING_MODAL;
 }
 
@@ -1419,6 +1434,7 @@ static int view3d_ruler_remove_invoke(bContext *C, wmOperator *op, const wmEvent
       }
 
       /* Update the annotation layer. */
+      view3d_ruler_gpencil_ensure(C);
       view3d_ruler_to_gpencil(C, gzgroup);
 
       ED_region_tag_redraw_editor_overlays(region);

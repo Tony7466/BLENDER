@@ -6,7 +6,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_type_conversions.hh"
 
@@ -20,8 +20,6 @@
 #include "BLT_translation.h"
 
 #include "FN_field.hh"
-
-#include "BLT_translation.h"
 
 #include "CLG_log.h"
 
@@ -109,7 +107,7 @@ std::ostream &operator<<(std::ostream &stream, const AttributeIDRef &attribute_i
 }
 
 const char *no_procedural_access_message = N_(
-    "This attribute can not be accessed in a procedural context");
+    "This attribute cannot be accessed in a procedural context");
 
 bool allow_procedural_attribute_access(StringRef attribute_name)
 {
@@ -589,7 +587,6 @@ bool CustomDataAttributeProvider::try_delete(void *owner, const AttributeIDRef &
     return false;
   }
   const int element_num = custom_data_access_.get_element_num(owner);
-  ;
   for (const int i : IndexRange(custom_data->totlayer)) {
     const CustomDataLayer &layer = custom_data->layers[i];
     if (this->type_is_supported((eCustomDataType)layer.type) &&
@@ -936,29 +933,6 @@ void gather_attributes(const AttributeAccessor src_attributes,
   });
 }
 
-static bool indices_are_range(const Span<int> indices, const IndexRange range)
-{
-  if (indices.size() != range.size()) {
-    return false;
-  }
-  return threading::parallel_reduce(
-      range,
-      4096,
-      true,
-      [&](const IndexRange range, const bool init) {
-        if (!init) {
-          return false;
-        }
-        for (const int i : range) {
-          if (indices[i] != i) {
-            return false;
-          }
-        }
-        return true;
-      },
-      std::logical_and());
-}
-
 void gather_attributes(const AttributeAccessor src_attributes,
                        const AttrDomain domain,
                        const AnonymousAttributePropagationInfo &propagation_info,
@@ -966,7 +940,7 @@ void gather_attributes(const AttributeAccessor src_attributes,
                        const Span<int> indices,
                        MutableAttributeAccessor dst_attributes)
 {
-  if (indices_are_range(indices, IndexRange(src_attributes.domain_size(domain)))) {
+  if (array_utils::indices_are_range(indices, IndexRange(src_attributes.domain_size(domain)))) {
     copy_attributes(src_attributes, domain, propagation_info, skip, dst_attributes);
   }
   else {
