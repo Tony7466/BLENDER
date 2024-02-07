@@ -4895,7 +4895,10 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   ob = vc.obact;
   ss = ob->sculpt;
 
-  if (!ss->pbvh || !vc.rv3d) {
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+
+  if (!ss->pbvh || !vc.rv3d || !BKE_base_is_visible(v3d, base)) {
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
@@ -4930,9 +4933,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
       srd.original);
 
   /* Cursor is not over the mesh, return default values. */
-  const View3D *v3d = CTX_wm_view3d(C);
-  const Base *base = CTX_data_active_base(C);
-  if (!srd.hit || !BKE_base_is_visible(v3d, base)) {
+  if (!srd.hit) {
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
