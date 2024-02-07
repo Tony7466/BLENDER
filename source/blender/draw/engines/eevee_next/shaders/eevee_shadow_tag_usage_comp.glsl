@@ -37,23 +37,39 @@ void main()
 #if SHADOW_TAG_USAGE_NUM_CELLS_PER_THREAD_DIM >= 2
   /* Use texture gather to read 2x2 depth blocks. */
   ivec2 max_texel_round = (max_texel / 2) * 2;
+
+  // TOOD: Process inside 4x4 blocks to make last_light_ind more favourable to multi lights, while
+  // retaining perf for single-light cases.
   for (; base_texel.y < max_texel_round.y; base_texel.y += 2) {
     for (; base_texel.x < max_texel_round.x; base_texel.x += 2) {
-      vec4 depths = textureGather(depth_tx, vec2(base_texel) / vec2(imageSize(depth_tx).xy));
 
-      /* Perform faster boolean check to take single branch for the case where all depths flag
-       * updates. */
-      if (all(lessThan(depths, vec4(1.0)))) {
-        SHADOW_TAG_USAGE_DEPTH(depths.r, ivec2(0, 1))
-        SHADOW_TAG_USAGE_DEPTH(depths.g, ivec2(1, 1))
-        SHADOW_TAG_USAGE_DEPTH(depths.b, ivec2(1, 0))
-        SHADOW_TAG_USAGE_DEPTH(depths.a, ivec2(0, 0))
-      }
-      else {
-        SHADOW_TAG_USAGE_DEPTH_CHECK(depths.r, ivec2(0, 1))
-        SHADOW_TAG_USAGE_DEPTH_CHECK(depths.g, ivec2(1, 1))
-        SHADOW_TAG_USAGE_DEPTH_CHECK(depths.b, ivec2(1, 0))
-        SHADOW_TAG_USAGE_DEPTH_CHECK(depths.a, ivec2(0, 0))
+      /* Iterate over spatially local blocks to increase cache efficiency and take advantage of
+       * light bin locality. This will aid in increasing the hit-rate for skipping atomic ops when
+       * the same tile is flagged by subsequent per-pixel evaluations.*/
+      const int BLOCK_SIZE = 4;
+      int base_texel_sub_block_max_y = min(max_texel_round.y, base_texel.y + BLOCK_SIZE);
+      int base_texel_sub_block_max_x = min(max_texel_round.x, base_texel.x + BLOCK_SIZE);
+
+      for (; base_texel.y < base_texel_sub_block_max_y; base_texel.y += 2) {
+        for (; base_texel.x < base_texel_sub_block_max_x; base_texel.x += 2) {
+
+          vec4 depths = textureGather(depth_tx, vec2(base_texel) / vec2(imageSize(depth_tx).xy));
+
+          /* Perform faster boolean check to take single branch for the case where all depths flag
+           * updates. */
+          if (all(lessThan(depths, vec4(1.0)))) {
+            SHADOW_TAG_USAGE_DEPTH(depths.r, ivec2(0, 1))
+            SHADOW_TAG_USAGE_DEPTH(depths.g, ivec2(1, 1))
+            SHADOW_TAG_USAGE_DEPTH(depths.b, ivec2(1, 0))
+            SHADOW_TAG_USAGE_DEPTH(depths.a, ivec2(0, 0))
+          }
+          else {
+            SHADOW_TAG_USAGE_DEPTH_CHECK(depths.r, ivec2(0, 1))
+            SHADOW_TAG_USAGE_DEPTH_CHECK(depths.g, ivec2(1, 1))
+            SHADOW_TAG_USAGE_DEPTH_CHECK(depths.b, ivec2(1, 0))
+            SHADOW_TAG_USAGE_DEPTH_CHECK(depths.a, ivec2(0, 0))
+          }
+        }
       }
     }
   }
