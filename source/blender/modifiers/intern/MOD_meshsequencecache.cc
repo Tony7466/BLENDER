@@ -60,7 +60,7 @@
 #endif
 
 #ifdef WITH_USD
-#  include "usd.h"
+#  include "usd.hh"
 #endif
 
 using namespace blender;
@@ -136,7 +136,9 @@ static bool can_use_mesh_for_orco_evaluation(MeshSeqCacheModifierData *mcmd,
       break;
     case CACHEFILE_TYPE_USD:
 #  ifdef WITH_USD
-      if (!USD_mesh_topology_changed(mcmd->reader, ctx->object, mesh, time, err_str)) {
+      if (!blender::io::usd::USD_mesh_topology_changed(
+              mcmd->reader, ctx->object, mesh, time, err_str))
+      {
         return true;
       }
 #  endif

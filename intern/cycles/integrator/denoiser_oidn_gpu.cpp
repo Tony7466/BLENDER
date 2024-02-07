@@ -96,18 +96,7 @@ OIDNDenoiserGPU::OIDNDenoiserGPU(Device *path_trace_device, const DenoiseParams 
 
 OIDNDenoiserGPU::~OIDNDenoiserGPU()
 {
-  if (albedo_filter_) {
-    oidnReleaseFilter(albedo_filter_);
-  }
-  if (normal_filter_) {
-    oidnReleaseFilter(normal_filter_);
-  }
-  if (oidn_filter_) {
-    oidnReleaseFilter(oidn_filter_);
-  }
-  if (oidn_device_) {
-    oidnReleaseDevice(oidn_device_);
-  }
+  release_all_resources();
 }
 
 bool OIDNDenoiserGPU::denoise_buffer(const BufferParams &buffer_params,
@@ -149,7 +138,53 @@ OIDNFilter OIDNDenoiserGPU::create_filter()
       denoiser_device_->set_error(error_message);
     }
   }
+
+#  if OIDN_VERSION_MAJOR >= 2
+  switch (quality_) {
+    case DENOISER_QUALITY_BALANCED:
+      oidnSetFilterInt(filter, "quality", OIDN_QUALITY_BALANCED);
+      break;
+    case DENOISER_QUALITY_HIGH:
+    default:
+      oidnSetFilterInt(filter, "quality", OIDN_QUALITY_HIGH);
+  }
+#  endif
+
   return filter;
+}
+
+bool OIDNDenoiserGPU::commit_and_execute_filter(OIDNFilter filter, ExecMode mode)
+{
+  const char *error_message = nullptr;
+  OIDNError err = OIDN_ERROR_NONE;
+
+  for (;;) {
+    oidnCommitFilter(filter);
+    if (mode == ExecMode::ASYNC) {
+      oidnExecuteFilterAsync(filter);
+    }
+    else {
+      oidnExecuteFilter(filter);
+    }
+
+    /* If OIDN runs out of memory, reduce mem limit and retry */
+    err = oidnGetDeviceError(oidn_device_, (const char **)&error_message);
+    if (err != OIDN_ERROR_OUT_OF_MEMORY || max_mem_ < 200) {
+      break;
+    }
+    max_mem_ = max_mem_ / 2;
+    oidnSetFilterInt(oidn_filter_, "maxMemoryMB", max_mem_);
+  }
+
+  if (err != OIDN_ERROR_NONE) {
+    if (error_message == nullptr) {
+      error_message = "Unspecified OIDN error";
+    }
+    LOG(ERROR) << "OIDN error: " << error_message;
+    denoiser_device_->set_error(error_message);
+    return false;
+  }
+  return true;
 }
 
 bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
@@ -162,14 +197,8 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
     return true;
   }
 
-  /* Destroy existing handle before creating new one. */
-  if (oidn_filter_) {
-    oidnReleaseFilter(oidn_filter_);
-  }
-
-  if (oidn_device_) {
-    oidnReleaseDevice(oidn_device_);
-  }
+  /* Destroy existing handles before creating new ones. */
+  release_all_resources();
 
   switch (denoiser_device_->info.type) {
 #  if defined(OIDN_DEVICE_SYCL) && defined(WITH_ONEAPI)
@@ -217,6 +246,8 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
 
   oidnCommitDevice(oidn_device_);
 
+  quality_ = params_.quality;
+
   oidn_filter_ = create_filter();
   if (oidn_filter_ == nullptr) {
     return false;
@@ -224,24 +255,6 @@ bool OIDNDenoiserGPU::denoise_create_if_needed(DenoiseContext &context)
 
   oidnSetFilterBool(oidn_filter_, "hdr", true);
   oidnSetFilterBool(oidn_filter_, "srgb", false);
-  oidnSetFilterInt(oidn_filter_, "maxMemoryMB", max_mem_);
-  if (params_.prefilter == DENOISER_PREFILTER_NONE ||
-      params_.prefilter == DENOISER_PREFILTER_ACCURATE)
-  {
-    oidnSetFilterInt(oidn_filter_, "cleanAux", true);
-  }
-
-#  if OIDN_VERSION_MAJOR >= 2
-  switch (params_.quality) {
-    case DENOISER_QUALITY_BALANCED:
-      oidnSetFilterInt(oidn_filter_, "quality", OIDN_QUALITY_BALANCED);
-      break;
-    case DENOISER_QUALITY_HIGH:
-    default:
-      oidnSetFilterInt(oidn_filter_, "quality", OIDN_QUALITY_HIGH);
-  }
-  quality_ = params_.quality;
-#  endif
 
   if (context.use_pass_albedo) {
     albedo_filter_ = create_filter();
@@ -295,6 +308,7 @@ bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePa
                   pass.denoised_offset * sizeof(float),
                   pass_stride_in_bytes,
                   pass_stride_in_bytes * context.buffer_params.stride);
+
   set_filter_pass(oidn_filter_,
                   "output",
                   context.render_buffers->buffer.device_pointer,
@@ -312,8 +326,18 @@ bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePa
     const int64_t row_stride_in_bytes = context.guiding_params.stride * pixel_stride_in_bytes;
 
     if (context.use_pass_albedo) {
-      if (params_.prefilter == DENOISER_PREFILTER_NONE) {
-        set_filter_pass(oidn_filter_,
+      set_filter_pass(oidn_filter_,
+                      "albedo",
+                      d_guiding_buffer,
+                      OIDN_FORMAT_FLOAT3,
+                      context.buffer_params.width,
+                      context.buffer_params.height,
+                      context.guiding_params.pass_albedo * sizeof(float),
+                      pixel_stride_in_bytes,
+                      row_stride_in_bytes);
+
+      if (params_.prefilter == DENOISER_PREFILTER_ACCURATE) {
+        set_filter_pass(albedo_filter_,
                         "albedo",
                         d_guiding_buffer,
                         OIDN_FORMAT_FLOAT3,
@@ -322,17 +346,7 @@ bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePa
                         context.guiding_params.pass_albedo * sizeof(float),
                         pixel_stride_in_bytes,
                         row_stride_in_bytes);
-      }
-      else {
-        set_filter_pass(albedo_filter_,
-                        "color",
-                        d_guiding_buffer,
-                        OIDN_FORMAT_FLOAT3,
-                        context.buffer_params.width,
-                        context.buffer_params.height,
-                        context.guiding_params.pass_albedo * sizeof(float),
-                        pixel_stride_in_bytes,
-                        row_stride_in_bytes);
+
         set_filter_pass(albedo_filter_,
                         "output",
                         d_guiding_buffer,
@@ -342,36 +356,27 @@ bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePa
                         context.guiding_params.pass_albedo * sizeof(float),
                         pixel_stride_in_bytes,
                         row_stride_in_bytes);
-        oidnCommitFilter(albedo_filter_);
-        oidnExecuteFilterAsync(albedo_filter_);
 
-        set_filter_pass(oidn_filter_,
-                        "albedo",
-                        d_guiding_buffer,
-                        OIDN_FORMAT_FLOAT3,
-                        context.buffer_params.width,
-                        context.buffer_params.height,
-                        context.guiding_params.pass_albedo * sizeof(float),
-                        pixel_stride_in_bytes,
-                        row_stride_in_bytes);
+        if (!commit_and_execute_filter(albedo_filter_, ExecMode::ASYNC)) {
+          return false;
+        }
       }
     }
 
     if (context.use_pass_normal) {
-      if (params_.prefilter == DENOISER_PREFILTER_NONE) {
-        set_filter_pass(oidn_filter_,
-                        "normal",
-                        d_guiding_buffer,
-                        OIDN_FORMAT_FLOAT3,
-                        context.buffer_params.width,
-                        context.buffer_params.height,
-                        context.guiding_params.pass_normal * sizeof(float),
-                        pixel_stride_in_bytes,
-                        row_stride_in_bytes);
-      }
-      else {
+      set_filter_pass(oidn_filter_,
+                      "normal",
+                      d_guiding_buffer,
+                      OIDN_FORMAT_FLOAT3,
+                      context.buffer_params.width,
+                      context.buffer_params.height,
+                      context.guiding_params.pass_normal * sizeof(float),
+                      pixel_stride_in_bytes,
+                      row_stride_in_bytes);
+
+      if (params_.prefilter == DENOISER_PREFILTER_ACCURATE) {
         set_filter_pass(normal_filter_,
-                        "color",
+                        "normal",
                         d_guiding_buffer,
                         OIDN_FORMAT_FLOAT3,
                         context.buffer_params.width,
@@ -390,47 +395,15 @@ bool OIDNDenoiserGPU::denoise_run(const DenoiseContext &context, const DenoisePa
                         pixel_stride_in_bytes,
                         row_stride_in_bytes);
 
-        oidnCommitFilter(normal_filter_);
-        oidnExecuteFilterAsync(normal_filter_);
-
-        set_filter_pass(oidn_filter_,
-                        "normal",
-                        d_guiding_buffer,
-                        OIDN_FORMAT_FLOAT3,
-                        context.buffer_params.width,
-                        context.buffer_params.height,
-                        context.guiding_params.pass_normal * sizeof(float),
-                        pixel_stride_in_bytes,
-                        row_stride_in_bytes);
+        if (!commit_and_execute_filter(normal_filter_, ExecMode::ASYNC)) {
+          return false;
+        }
       }
     }
   }
 
-  oidnCommitFilter(oidn_filter_);
-  oidnExecuteFilter(oidn_filter_);
-
-  const char *out_message = nullptr;
-  OIDNError err = oidnGetDeviceError(oidn_device_, (const char **)&out_message);
-  if (OIDN_ERROR_NONE != err) {
-    /* If OIDN runs out of memory, reduce mem limit and retry */
-    while (err == OIDN_ERROR_OUT_OF_MEMORY && max_mem_ > 200) {
-      max_mem_ = max_mem_ / 2;
-      oidnSetFilterInt(oidn_filter_, "maxMemoryMB", max_mem_);
-      oidnCommitFilter(oidn_filter_);
-      oidnExecuteFilter(oidn_filter_);
-      err = oidnGetDeviceError(oidn_device_, &out_message);
-    }
-    if (out_message) {
-      LOG(ERROR) << "OIDN error: " << out_message;
-      denoiser_device_->set_error(out_message);
-    }
-    else {
-      LOG(ERROR) << "OIDN error: unspecified";
-      denoiser_device_->set_error("Unspecified OIDN error");
-    }
-    return false;
-  }
-  return true;
+  oidnSetFilterInt(oidn_filter_, "cleanAux", params_.prefilter != DENOISER_PREFILTER_FAST);
+  return commit_and_execute_filter(oidn_filter_);
 }
 
 void OIDNDenoiserGPU::set_filter_pass(OIDNFilter filter,
@@ -472,6 +445,26 @@ void OIDNDenoiserGPU::set_filter_pass(OIDNFilter filter,
                              offset_in_bytes,
                              pixel_stride_in_bytes,
                              row_stride_in_bytes);
+  }
+}
+
+void OIDNDenoiserGPU::release_all_resources()
+{
+  if (albedo_filter_) {
+    oidnReleaseFilter(albedo_filter_);
+    albedo_filter_ = nullptr;
+  }
+  if (normal_filter_) {
+    oidnReleaseFilter(normal_filter_);
+    normal_filter_ = nullptr;
+  }
+  if (oidn_filter_) {
+    oidnReleaseFilter(oidn_filter_);
+    oidn_filter_ = nullptr;
+  }
+  if (oidn_device_) {
+    oidnReleaseDevice(oidn_device_);
+    oidn_device_ = nullptr;
   }
 }
 
