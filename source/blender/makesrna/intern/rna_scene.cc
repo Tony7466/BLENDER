@@ -1884,7 +1884,6 @@ void rna_ViewLayer_world_override_update(Main *bmain, Scene *scene, PointerRNA *
   rna_Scene_render_update(bmain, scene, ptr);
   WM_main_add_notifier(NC_WORLD | ND_WORLD, &screen->id);
   DEG_relations_tag_update(bmain);
-  ED_render_engine_changed(bmain, true);
 }
 
 void rna_ViewLayer_pass_update(Main *bmain, Scene *activescene, PointerRNA *ptr)
@@ -4721,21 +4720,13 @@ void rna_def_view_layer_common(BlenderRNA *brna, StructRNA *srna, const bool sce
     RNA_def_property_update(
         prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_material_override_update");
 
-
-    //prop = RNA_def_property(srna, "world", PROP_POINTER, PROP_NONE);
-    //RNA_def_property_flag(prop, PROP_EDITABLE);
-    //RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-    //RNA_def_property_ui_text(prop, "World", "World used for rendering the scene");
-    //RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_WORLD);
-    //RNA_def_property_update(prop, NC_SCENE | ND_WORLD, "rna_Scene_world_update");
-
     prop = RNA_def_property(srna, "world_override", PROP_POINTER, PROP_NONE);
     RNA_def_property_pointer_sdna(prop, nullptr, "world_override");
     RNA_def_property_struct_type(prop, "World");
     RNA_def_property_flag(prop, PROP_EDITABLE);
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
     RNA_def_property_ui_text(
-        prop, "World Override", "World to override all other worlds in this view layer");
+        prop, "World Override", "World to override world in this view layer");
     RNA_def_property_update(
         prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_world_override_update");
 
