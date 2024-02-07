@@ -266,7 +266,7 @@ class VIEW3D_FH_image_plane(FileHandler):
     bl_idname = "VIEW3D_FH_image_plane"
     bl_label = "Add image plane"
     bl_import_operator = "OBJECT_OT_drop_named_image"
-    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';'.join(bpy.path.extensions_movie)
+    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';' + ';'.join(bpy.path.extensions_movie)
 
     @classmethod
     def poll_drop(cls, context):
@@ -280,7 +280,7 @@ class VIEW3D_FH_background_image(FileHandler):
     bl_idname = "VIEW3D_FH_background_image"
     bl_label = "Add background image"
     bl_import_operator = "VIEW3D_OT_background_image_add"
-    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';'.join(bpy.path.extensions_movie)
+    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';' + ';'.join(bpy.path.extensions_movie)
 
     @classmethod
     def poll_drop(cls, context):
