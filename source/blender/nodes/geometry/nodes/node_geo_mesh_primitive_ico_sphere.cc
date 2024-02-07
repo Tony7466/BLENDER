@@ -1050,24 +1050,33 @@ static void uv_vert_positions(const int edge_edges_num,
   }
 }
 
-static Mesh *ico_sphere(const int line_subdiv, const float radius, const AttributeIDRef &uv_map_id)
+static Mesh *ico_sphere(const int side_verts, const float radius, const AttributeIDRef &uv_map_id)
 {
   std::cout << std::endl;
+  const int base_edge_verts_num = math::max<int>(0, side_verts - 2);
+  const int base_edge_edges_num = math::max<int>(0, side_verts - 1);
 
-  const int edge_verts_num = math::max<int>(0, line_subdiv - 2);
-  const int face_verts_num = math::max<int>(0,
-                                            pyramid_sum(line_subdiv) - (edge_verts_num * 3 + 3));
+  const TriangleRange face_of_verts(base_edge_verts_num);
+  const TriangleRange face_of_edges(base_edge_edges_num);
 
-  const int edge_edges_num = edge_verts_num + 1;
-  const int face_edges_num = pyramid_sum(edge_edges_num - 1);
+  const TriangleRange inner_face_of_verts = face_of_verts.drop_bottom(1);
+  const TriangleRange inner_face_of_edges = face_of_edges.drop_bottom(1);
 
-  const int face_faces_num = pyramid_sum(edge_verts_num + 1) * 2 - (edge_verts_num + 1);
+  const TriangleRange face_triangle_of_bottom_faces(base_edge_edges_num);
+  const TriangleRange face_triangle_of_top_faces(base_edge_edges_num - 1);
 
-  const int verts_num = base_verts_num + (base_edges_num - base_face_quads) * edge_verts_num +
-                        base_face_quads * edge_verts_num * edge_verts_num;
-  const int edges_num = base_edges_num * edge_edges_num + face_edges_num * base_faces_num * 3;
-  const int faces_num = base_faces_num * face_faces_num;
-  const int corners_num = faces_num * 3;
+  const int base_face_edges_num = inner_face_of_edges.total() * 3;
+  const int base_face_faces_num = face_triangle_of_bottom_faces.total() +
+                                  face_triangle_of_top_faces.total();
+
+  const int verts_num = base_verts_num + base_edges_num * base_edge_verts_num +
+                        base_faces_num * inner_face_of_verts.total();
+  const int edges_num = base_edges_num * base_edge_edges_num +
+                        base_faces_num * base_face_edges_num;
+  const int faces_num = base_faces_num * base_face_faces_num;
+  const int corners_num = faces_num * face_size;
+
+  std::cout << verts_num << ", " << edges_num << ", " << faces_num << ", " << corners_num << ";\n";
 
   Mesh *mesh = BKE_mesh_new_nomain(verts_num, edges_num, faces_num, corners_num);
 
@@ -1079,25 +1088,31 @@ static Mesh *ico_sphere(const int line_subdiv, const float radius, const Attribu
 
   offset_indices::fill_constant_group_size(3, 0, mesh->face_offsets_for_write());
 
-  const IndexRange vert_points(base_verts_num);
-  const IndexRange edge_points(vert_points.one_after_last(), base_edges_num * edge_verts_num);
-  const IndexRange face_points(edge_points.one_after_last(), face_verts_num * base_faces_num);
+  const IndexRange verts_range(base_verts_num);
+  const IndexRange edge_verts_range = verts_range.after(base_edges_num * base_edge_verts_num);
+  const IndexRange face_verts_range = edge_verts_range.after(inner_face_of_verts.total() *
+                                                             base_faces_num);
 
   base_ico_sphere_positions(positions.take_front(base_verts_num));
 
   interpolate_edge_verts_linear(
-      edge_verts_num, positions.slice(vert_points), positions.slice(edge_points));
+      base_edge_verts_num, positions.slice(verts_range), positions.slice(edge_verts_range));
+
   interpolate_face_verts_linear(
-      line_subdiv, positions.slice(vert_points), positions.slice(face_points));
+      side_verts, positions.slice(verts_range), positions.slice(face_verts_range));
 
-  const IndexRange edge_edges(base_edges_num * edge_edges_num);
-  const IndexRange face_edges(edge_edges.one_after_last(), face_edges_num * base_faces_num * 3);
+  const IndexRange edge_edges(base_edges_num * base_edge_edges_num);
+  const IndexRange face_edges_range(edge_edges.one_after_last(),
+                                    base_face_edges_num * base_faces_num);
 
-  vert_edge_topology(edge_edges_num, edge_verts_num, edges.slice(edge_edges));
-  face_edge_topology(
-      edge_edges_num, face_verts_num, edge_verts_num, face_points, edges.slice(face_edges));
+  vert_edge_topology(base_edge_edges_num, base_edge_verts_num, edges.slice(edge_edges));
+  face_edge_topology(base_edge_edges_num,
+                     inner_face_of_verts.total(),
+                     base_edge_verts_num,
+                     face_verts_range,
+                     edges.slice(face_edges_range));
 
-  corner_edges_topology(edge_edges_num, face_faces_num, corner_edges);
+  corner_edges_topology(base_edge_edges_num, base_face_faces_num, corner_edges);
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
 
   {
@@ -1111,7 +1126,7 @@ static Mesh *ico_sphere(const int line_subdiv, const float radius, const Attribu
     SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
         uv_map_id, AttrDomain::Corner);
     uv_map.span.fill(float2(0.0f));
-    uv_vert_positions(edge_edges_num, face_faces_num, uv_map.span);
+    uv_vert_positions(base_edge_edges_num, base_face_faces_num, uv_map.span);
     uv_map.finish();
   }
 
@@ -1124,8 +1139,8 @@ static Mesh *ico_sphere(const int line_subdiv, const float radius, const Attribu
   mesh->tag_overlapping_none();
   mesh->no_overlapping_topology();
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
-  /* Use line_subdiv as subdivisions for now. */
-  mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, line_subdiv - 1));
+  /* Use side_verts as subdivisions for now. */
+  mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, side_verts - 1));
 
   bke::mesh_smooth_set(*mesh, false);
 
