@@ -2466,14 +2466,15 @@ static std::optional<std::chrono::nanoseconds> geo_node_get_execution_time(
 /* Create node key instance, assuming the node comes from the currently editing node tree. */
 static bNodeInstanceKey current_node_instance_key(const SpaceNode &snode, const bNode &node)
 {
-  /* Assume that the currently editing tree is the last in the path. */
-  BLI_assert(snode.edittree == snode.treepath.last);
-
   const bNodeTreePath *path = static_cast<const bNodeTreePath *>(snode.treepath.last);
+
   /* Some code in this file checks for the non-null elements of the tree path. However, if we did
    * iterate into a node it is expected that there is a tree, and it should be in the path.
    * Otherwise something else went wrong. */
   BLI_assert(path);
+
+  /* Assume that the currently editing tree is the last in the path. */
+  BLI_assert(snode.edittree == path->nodetree);
 
   return BKE_node_instance_key(path->parent_key, snode.edittree, &node);
 }
