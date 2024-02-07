@@ -709,7 +709,7 @@ bool ED_view3d_win_to_segment_clipped(const Depsgraph *depsgraph,
                                       bool do_clip_planes);
 blender::float4x4 ED_view3d_ob_project_mat_get(const RegionView3D *rv3d, const Object *ob);
 blender::float4x4 ED_view3d_ob_project_mat_get_from_obmat(const RegionView3D *rv3d,
-                                                          blender::float4x4 obmat);
+                                                          const blender::float4x4 &obmat);
 
 /**
  * Convert between region relative coordinates (x,y) and depth component z and
