@@ -21,10 +21,12 @@
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_fcurve.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_nla.h"
 #include "BKE_report.h"
+
+#include "DNA_scene_types.h"
 
 #include "BLI_dynstr.h"
 #include "BLI_math_base.h"
@@ -64,6 +66,14 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop)
       fcu->flag |= (FCURVE_DISCRETE_VALUES | FCURVE_INT_VALUES);
       break;
   }
+}
+
+bool is_keying_flag(const Scene *scene, const eKeying_Flag flag)
+{
+  if (scene) {
+    return (scene->toolsettings->keying_flag & flag) || (U.keying_flag & flag);
+  }
+  return U.keying_flag & flag;
 }
 
 /** Used to make curves newly added to a cyclic Action cycle with the correct period. */
@@ -938,19 +948,18 @@ void insert_key_rna(PointerRNA *rna_pointer,
                   rna_path.c_str());
       continue;
     }
-    char *rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
+    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
+                                                                                        prop);
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
 
     insert_key_count += insert_key_action(bmain,
                                           action,
                                           rna_pointer,
-                                          rna_path_id_to_prop,
+                                          rna_path_id_to_prop->c_str(),
                                           nla_frame,
                                           rna_values.as_span(),
                                           insert_key_flags,
                                           key_type);
-
-    MEM_freeN(rna_path_id_to_prop);
   }
 
   if (insert_key_count == 0) {

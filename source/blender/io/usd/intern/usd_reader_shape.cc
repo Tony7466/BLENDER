@@ -15,7 +15,7 @@
 
 #include "WM_api.hh"
 
-#include "usd_reader_shape.h"
+#include "usd_reader_shape.hh"
 
 #include <pxr/usd/usdGeom/capsule.h>
 #include <pxr/usd/usdGeom/cone.h>

@@ -7,8 +7,8 @@
 #include "IO_subdiv_disabler.hh"
 #include "usd.h"
 #include "usd.hh"
-#include "usd_hierarchy_iterator.h"
-#include "usd_hook.h"
+#include "usd_hierarchy_iterator.hh"
+#include "usd_hook.hh"
 
 #include <pxr/base/plug/registry.h>
 #include <pxr/base/tf/token.h>
@@ -28,7 +28,7 @@
 
 #include "DNA_scene_types.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
 #include "BKE_global.h"
@@ -255,8 +255,8 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   /* For restoring the current frame after exporting animation is done. */
   const int orig_frame = scene->r.cfra;
 
-  /* Ensure Python types for invoking export hooks are registered. */
-  register_export_hook_converters();
+  /* Ensure Python types for invoking hooks are registered. */
+  register_hook_converters();
 
   usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
   ensure_root_prim(usd_stage, params);
