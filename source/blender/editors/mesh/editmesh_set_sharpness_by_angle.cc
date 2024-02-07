@@ -40,26 +40,33 @@ static int set_sharpness_by_angle_exec(bContext *C, wmOperator *op)
   for (Object *object : objects) {
     Mesh &mesh = *static_cast<Mesh *>(object->data);
     BMEditMesh *em = mesh.edit_mesh;
+
+    bool changed = false;
     BMIter iter;
     BMEdge *e;
     BM_ITER_MESH (e, &iter, em->bm, BM_EDGES_OF_MESH) {
       if (!BM_elem_flag_test(e, BM_ELEM_SELECT)) {
         continue;
       }
-      if (extend && !BM_elem_flag_test(e, BM_ELEM_SMOOTH)) {
+      const bool prev_sharp = !BM_elem_flag_test(e, BM_ELEM_SMOOTH);
+      if (extend && prev_sharp) {
         continue;
       }
       BMLoop *l1, *l2;
-      if (BM_edge_loop_pair(e, &l1, &l2)) {
-        const float angle_cos = math::dot(float3(l1->f->no), float3(l2->f->no));
-        BM_elem_flag_set(e, BM_ELEM_SMOOTH, angle_cos > angle_limit_cos);
+      if (!BM_edge_loop_pair(e, &l1, &l2)) {
+        continue;
       }
+      const float angle_cos = math::dot(float3(l1->f->no), float3(l2->f->no));
+      const bool sharp = angle_cos <= angle_limit_cos;
+      BM_elem_flag_set(e, BM_ELEM_SMOOTH, !sharp);
+      changed = changed || sharp != prev_sharp;
     }
 
-    BKE_editmesh_lnorspace_update(em);
-
-    DEG_id_tag_update(&mesh.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, &mesh.id);
+    if (changed) {
+      BKE_editmesh_lnorspace_update(em);
+      DEG_id_tag_update(&mesh.id, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, &mesh.id);
+    }
   }
 
   return OPERATOR_FINISHED;
