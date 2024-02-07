@@ -169,21 +169,21 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
       C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &affect_str);
 
   const std::string status_text = fmt::format(
-      RPT_("{}: Confirm, "
-           "{}: Cancel, "
-           "{}: Width Type ({}), "
-           "{}: Width ({}), "
-           "{}: Segments ({}), "
-           "{}: Profile ({:.3f}), "
-           "{}: Clamp Overlap ({}), "
-           "{}: Affect ({}), "
-           "{}: Outer Miter ({}), "
-           "{}: Inner Miter ({}), "
-           "{}: Harden Normals ({}), "
-           "{}: Mark Seam ({}), "
-           "{}: Mark Sharp ({}), "
-           "{}: Profile Type ({}), "
-           "{}: Intersection ({})"),
+      IFACE_("{}: Confirm, "
+             "{}: Cancel, "
+             "{}: Width Type ({}), "
+             "{}: Width ({}), "
+             "{}: Segments ({}), "
+             "{}: Profile ({:.3f}), "
+             "{}: Clamp Overlap ({}), "
+             "{}: Affect ({}), "
+             "{}: Outer Miter ({}), "
+             "{}: Inner Miter ({}), "
+             "{}: Harden Normals ({}), "
+             "{}: Mark Seam ({}), "
+             "{}: Mark Sharp ({}), "
+             "{}: Profile Type ({}), "
+             "{}: Intersection ({})"),
       get_modal_key_str(BEV_MODAL_CONFIRM),
       get_modal_key_str(BEV_MODAL_CANCEL),
       get_modal_key_str(BEV_MODAL_OFFSET_MODE_CHANGE),

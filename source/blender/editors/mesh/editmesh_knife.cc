@@ -1105,13 +1105,13 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
   };
 
   const std::string header = fmt::format(
-      RPT_("{}: confirm, {}: cancel, {}: undo, "
-           "{}: start/define cut, {}: close cut, {}: new cut, "
-           "{}: midpoint snap ({}), {}: ignore snap ({}), "
-           "{}: angle constraint {:.2f}({:.2f}) ({}{}{}{}), {}: cut through ({}), "
-           "{}: panning, {}{}{}: orientation lock ({}), "
-           "{}: distance/angle measurements ({}), "
-           "{}: x-ray ({})"),
+      IFACE_("{}: confirm, {}: cancel, {}: undo, "
+             "{}: start/define cut, {}: close cut, {}: new cut, "
+             "{}: midpoint snap ({}), {}: ignore snap ({}), "
+             "{}: angle constraint {:.2f}({:.2f}) ({}{}{}{}), {}: cut through ({}), "
+             "{}: panning, {}{}{}: orientation lock ({}), "
+             "{}: distance/angle measurements ({}), "
+             "{}: x-ray ({})"),
       get_modal_key_str(KNF_MODAL_CONFIRM),
       get_modal_key_str(KNF_MODAL_CANCEL),
       get_modal_key_str(KNF_MODAL_UNDO),

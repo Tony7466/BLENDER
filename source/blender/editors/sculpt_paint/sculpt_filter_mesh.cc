@@ -700,7 +700,7 @@ static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
     return WM_modalkeymap_operator_items_to_string(op->type, id, true).value_or("");
   };
 
-  const std::string header = fmt::format(RPT_("{}: Confirm, {}: Cancel"),
+  const std::string header = fmt::format(IFACE_("{}: Confirm, {}: Cancel"),
                                          get_modal_key_str(FILTER_MESH_MODAL_CONFIRM),
                                          get_modal_key_str(FILTER_MESH_MODAL_CANCEL));
 

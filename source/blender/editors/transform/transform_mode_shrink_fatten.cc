@@ -105,7 +105,7 @@ static void applyShrinkFatten(TransInfo *t)
   t->values_final[0] = distance;
 
   /* header print for NumInput */
-  fmt::format_to(fmt::appender(str), RPT_("Shrink/Fatten: "));
+  fmt::format_to(fmt::appender(str), IFACE_("Shrink/Fatten: "));
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
     outputNumInput(&(t->num), c, unit);
@@ -135,7 +135,7 @@ static void applyShrinkFatten(TransInfo *t)
   }
 
   fmt::format_to(fmt::appender(str),
-                 RPT_(" or Alt) Even Thickness {}"),
+                 IFACE_(" or Alt) Even Thickness {}"),
                  WM_bool_as_string((t->flag & T_ALT_TRANSFORM) != 0));
   /* done with header string */
 
