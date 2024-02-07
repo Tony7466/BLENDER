@@ -195,7 +195,7 @@ void EEVEE_shadows_draw_cubemap(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata,
       continue;
     }
     /* Skip +Z face. */
-    if ((evli->light_type != LA_LOCAL || evli->light_type != LAMPTYPE_OMNI_DISK) && j == 4) {
+    if (!(evli->light_type == LA_LOCAL || evli->light_type == LAMPTYPE_OMNI_DISK) && j == 4) {
       continue;
     }
     /* TODO(fclem): some cube sides can be invisible in the main views. Cull them. */
