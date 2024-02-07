@@ -171,6 +171,11 @@ static constexpr int C = 2;
 }  // namespace Corner
 
 namespace InnerEdges {
+/**
+ * Base edges of face:  A-----B
+ * Left edges of face:  A/////B
+ * Right edges of face: A\\\\\B
+ */
 static constexpr int Base = 0;
 static constexpr int Left = 1;
 static constexpr int Right = 2;
@@ -476,12 +481,12 @@ static Span<float2> base_face_uv_positions()
   return base_uv;
 }
 
-static void fill_interpolation(const float3 &begin, const float3 &end, MutableSpan<float3> points)
+static void fill_interpolation(const float3 &begin, const float3 &end, MutableSpan<float3> verts)
 {
-  const float count = float(points.size() + 1);
-  for (const int i : points.index_range()) {
+  const float count = float(verts.size() + 1);
+  for (const int i : verts.index_range()) {
     const float factor = float(i + 1) / count;
-    points[i] = bke::attribute_math::mix2<float3>(factor, begin, end);
+    verts[i] = bke::attribute_math::mix2<float3>(factor, begin, end);
   }
 }
 
@@ -492,8 +497,10 @@ static void interpolate_edge_verts_linear(const int edge_verts_num,
   SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
 
+  const IndexRange edge_verts_range(edge_verts_num);
+
   for (const int edge_i : IndexRange(base_edges_num)) {
-    MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
+    MutableSpan<float3> verts = edge_verts.slice(edge_verts_range.step(edge_i));
     const int2 edge_vert_indices = base_edge_verts[edge_i];
     const float3 &vert_a = base_verts[edge_vert_indices[EdgeVert::A]];
     const float3 &vert_b = base_verts[edge_vert_indices[EdgeVert::B]];
@@ -513,9 +520,10 @@ static void interpolate_face_verts_linear(const int line_subdiv,
   const TriangleRange inner_face_verts =
       TriangleRange(line_subdiv - left_right_points).drop_bottom(1);
 
+  const IndexRange face_verts_range(inner_face_verts.total());
+
   for (const int face_i : IndexRange(base_faces_num)) {
-    MutableSpan<float3> face_verts = faces_verts.slice(face_i * inner_face_verts.total(),
-                                                       inner_face_verts.total());
+    MutableSpan<float3> face_verts = faces_verts.slice(face_verts_range.step(face_i));
 
     const int3 face_vert_indices = base_face_verts[face_i];
 
@@ -562,13 +570,14 @@ static void vert_edge_topology(const int edge_edges_num,
     return;
   }
 
-  const IndexRange edges_verts(base_verts_num, base_edges_num * edge_verts_num);
+  const IndexRange verts_of_edges_range(base_verts_num, base_edges_num * edge_verts_num);
   for (const int edge_i : IndexRange(base_edges_num)) {
     const int2 base_edge = base_edges[edge_i];
     MutableSpan<int2> edges = edge_edges.slice(IndexRange(edge_edges_num).step(edge_i));
-    const IndexRange verts = edges_verts.slice(IndexRange(edge_verts_num).step(edge_i));
+    const IndexRange edge_verts = verts_of_edges_range.slice(
+        IndexRange(edge_verts_num).step(edge_i));
     edges_line_fill_verts(
-        base_edge, edges, [=](const int edge_i) -> int { return verts[edge_i]; });
+        base_edge, edges, [=](const int edge_i) -> int { return edge_verts[edge_i]; });
   }
 }
 
@@ -916,7 +925,6 @@ static void uv_vert_positions(const int edge_edges_num,
   }
 
   const IndexRange faces_range(face_faces_num);
-
   const IndexRange face_corners_range(face_size);
 
   const TriangleRange top_faces(edge_edges_num - 1);
@@ -950,6 +958,7 @@ static void uv_vert_positions(const int edge_edges_num,
     const float2 uv_bc_edge = uv_corner_b - uv_corner_c;
     const float2 uv_ca_edge = uv_corner_c - uv_corner_a;
 
+    /* Faces in corners of base face. */
     MutableSpan<float2> a_corner_face_uv = corner_face_edges_uv.slice(
         face_corners_range.step(Corner::B));
     a_corner_face_uv[Corner::A] = uv_corner_a;
@@ -985,6 +994,7 @@ static void uv_vert_positions(const int edge_edges_num,
       }
     }
 
+    /* Faces along left edge. */
     {
       std::array<float2, face_size> face_template;
       face_template[FaceVert::A] = c_corner_face_uv[FaceVert::B];
@@ -1001,6 +1011,7 @@ static void uv_vert_positions(const int edge_edges_num,
       }
     }
 
+    /* Faces along right edge. */
     {
       std::array<float2, face_size> face_template;
       face_template[FaceVert::A] = a_corner_face_uv[FaceVert::C];
