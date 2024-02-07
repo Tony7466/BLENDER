@@ -113,12 +113,20 @@ bke::GVolumeGrid try_capture_field_as_grid(eCustomDataType data_type,
                                            fn::GField value_field,
                                            GPointer background);
 
-bke::GVolumeGrid try_capture_dense_grid(eCustomDataType data_type,
-                                        const float4x4 &transform,
-                                        const int3 &resolution,
-                                        GField value_field,
-                                        GPointer background,
-                                        GPointer tolerance);
+bke::GVolumeGrid try_capture_field_as_dense_grid(eCustomDataType data_type,
+                                                 const float4x4 &transform,
+                                                 const int3 &resolution,
+                                                 GField value_field,
+                                                 GPointer background,
+                                                 GPointer tolerance);
+
+bke::GVolumeGrid try_capture_field_as_dense_grid(eCustomDataType data_type,
+                                                 const float4x4 &transform,
+                                                 const int3 &resolution,
+                                                 FunctionRef<bool(const float3 &)> mask_fn,
+                                                 GField value_field,
+                                                 GPointer background,
+                                                 GPointer tolerance);
 
 }  // namespace grids
 

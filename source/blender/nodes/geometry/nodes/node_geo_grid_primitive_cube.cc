@@ -46,15 +46,15 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Int>("Resolution X")
       .default_value(32)
-      .min(2)
+      .min(1)
       .description("Number of voxels in the X axis");
   b.add_input<decl::Int>("Resolution Y")
       .default_value(32)
-      .min(2)
+      .min(1)
       .description("Number of voxels in the Y axis");
   b.add_input<decl::Int>("Resolution Z")
       .default_value(32)
-      .min(2)
+      .min(1)
       .description("Number of voxels in the Z axis");
 
   grids::declare_grid_type_output(b, data_type, "Grid");
@@ -82,8 +82,8 @@ static void node_geo_exec(GeoNodeExecParams params)
                                params.extract_input<int>("Resolution Y"),
                                params.extract_input<int>("Resolution Z"));
 
-  if (resolution.x < 2 || resolution.y < 2 || resolution.z < 2) {
-    params.error_message_add(NodeWarningType::Error, TIP_("Resolution must be greater than 1"));
+  if (resolution.x < 1 || resolution.y < 1 || resolution.z < 1) {
+    params.error_message_add(NodeWarningType::Error, TIP_("Resolution must be at least 1"));
     params.set_default_remaining_outputs();
     return;
   }
@@ -96,7 +96,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  const double3 scale_fac = double3(bounds_max - bounds_min) / double3(resolution - 1);
+  const double3 scale_fac = double3(bounds_max - bounds_min) / double3(resolution);
   if (!BKE_volume_grid_determinant_valid(scale_fac.x * scale_fac.y * scale_fac.z)) {
     params.error_message_add(NodeWarningType::Warning,
                              TIP_("Volume scale is lower than permitted by OpenVDB"));
@@ -105,13 +105,12 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   const float4x4 transform = math::from_location<float4x4>(bounds_min) *
-                             math::from_scale<float4x4>(float3(scale_fac)) *
-                             math::from_location<float4x4>(float3(-0.5f));
+                             math::from_scale<float4x4>(float3(scale_fac));
 
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
   BLI_assert(grid_type_supported(data_type));
 
-  bke::GVolumeGrid grid = grids::try_capture_dense_grid(
+  bke::GVolumeGrid grid = grids::try_capture_field_as_dense_grid(
       data_type,
       transform,
       resolution,

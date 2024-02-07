@@ -336,7 +336,9 @@ class DensePrimitiveFieldContext : public FieldContext {
       for (const int64_t x : x_range) {
         for (const int64_t y : IndexRange(resolution_.y)) {
           for (const int64_t z : IndexRange(resolution_.z)) {
-            positions_[index] = math::transform_point(transform_, float3(x, y, z));
+            /* Transform converts from index space to voxel corners.
+             * For the position field add a 0.5 offset to generate voxel centers instead. */
+            positions_[index] = math::transform_point(transform_, float3(x, y, z) + float3(0.5f));
             index++;
           }
         }
@@ -352,6 +354,11 @@ class DensePrimitiveFieldContext : public FieldContext {
   IndexRange points_range() const
   {
     return IndexRange(points_num());
+  }
+
+  Span<float3> positions() const
+  {
+    return positions_;
   }
 
   GVArray get_varray_for_input(const FieldInput &field_input,
@@ -371,8 +378,10 @@ class DensePrimitiveFieldContext : public FieldContext {
 };
 
 struct MakeDensePrimitiveOp {
+  /* Transform from index space to voxel corners. */
   float4x4 transform;
   int3 resolution;
+  FunctionRef<bool(const float3 &)> mask_fn;
   GField value_field;
   GPointer background;
   GPointer tolerance;
@@ -383,13 +392,26 @@ struct MakeDensePrimitiveOp {
     using Converter = bke::grids::Converter<T>;
     using ValueType = typename GridType::ValueType;
 
-    const ValueType vdb_background = Converter::to_openvdb(*background.get<T>());
-    const ValueType vdb_tolerance = Converter::to_openvdb(*tolerance.get<T>());
+    const DensePrimitiveFieldContext context(transform, resolution);
+
+    const T background_value = *background.get<T>();
+    const T tolerance_value = *tolerance.get<T>();
+    const ValueType vdb_background_value = Converter::to_openvdb(background_value);
+    const ValueType vdb_tolerance_value = Converter::to_openvdb(tolerance_value);
+
+    IndexMaskMemory mask_memory;
+    IndexMask mask = mask_fn ?
+                         IndexMask::from_predicate(context.points_range(),
+                                                   GrainSize(4096),
+                                                   mask_memory,
+                                                   [&](const int64_t index) {
+                                                     return mask_fn(context.positions()[index]);
+                                                   }) :
+                         context.points_range();
 
     /* Evaluate input field on a 3D grid. */
-    DensePrimitiveFieldContext context(transform, resolution);
-    FieldEvaluator evaluator(context, context.points_num());
-    Array<T> values(context.points_num(), *background.get<T>());
+    FieldEvaluator evaluator(context, &mask);
+    Array<T> values(context.points_num(), background_value);
     evaluator.add_with_destination(value_field, values.as_mutable_span());
     evaluator.evaluate();
 
@@ -405,23 +427,35 @@ struct MakeDensePrimitiveOp {
         vdb_values.data()};
 
     /* Store resulting values in openvdb grid. */
-    typename GridType::Ptr grid = GridType::create(vdb_background);
+    typename GridType::Ptr grid = GridType::create(vdb_background_value);
     grid->setGridClass(openvdb::GRID_FOG_VOLUME);
-    openvdb::tools::copyFromDense(dense_grid, *grid, vdb_tolerance);
+    openvdb::tools::copyFromDense(dense_grid, *grid, vdb_tolerance_value);
     grid->setTransform(BKE_volume_matrix_to_vdb_transform(transform));
 
     return bke::GVolumeGrid(std::move(grid));
   }
 };
 
-bke::GVolumeGrid try_capture_dense_grid(const eCustomDataType data_type,
-                                        const float4x4 &transform,
-                                        const int3 &resolution,
-                                        GField value_field,
-                                        GPointer background,
-                                        GPointer tolerance)
+bke::GVolumeGrid try_capture_field_as_dense_grid(const eCustomDataType data_type,
+                                                 const float4x4 &transform,
+                                                 const int3 &resolution,
+                                                 GField value_field,
+                                                 GPointer background,
+                                                 GPointer tolerance)
 {
-  MakeDensePrimitiveOp op = {transform, resolution, value_field, background, tolerance};
+  return try_capture_field_as_dense_grid(
+      data_type, transform, resolution, nullptr, value_field, background, tolerance);
+}
+
+bke::GVolumeGrid try_capture_field_as_dense_grid(const eCustomDataType data_type,
+                                                 const float4x4 &transform,
+                                                 const int3 &resolution,
+                                                 FunctionRef<bool(const float3 &)> mask_fn,
+                                                 GField value_field,
+                                                 GPointer background,
+                                                 GPointer tolerance)
+{
+  MakeDensePrimitiveOp op = {transform, resolution, mask_fn, value_field, background, tolerance};
   return apply(data_type, op);
 }
 
