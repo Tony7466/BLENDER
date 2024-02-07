@@ -155,7 +155,7 @@ static void recalcData_curves(TransInfo *t)
 
 void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        blender::bke::CurvesGeometry &curves,
-                                       const blender::float4x4 &matrix,
+                                       const blender::float4x4 &transform,
                                        std::optional<blender::MutableSpan<float>> value_attribute,
                                        const blender::IndexMask &selected_indices,
                                        const bool use_proportional_edit,
@@ -166,7 +166,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   using namespace blender;
 
   float mtx[3][3], smtx[3][3];
-  copy_m3_m4(mtx, matrix.ptr());
+  copy_m3_m4(mtx, transform.ptr());
   pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
   MutableSpan<float3> positions = curves.positions_for_write();
