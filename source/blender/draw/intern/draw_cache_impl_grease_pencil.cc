@@ -199,6 +199,16 @@ BLI_INLINE int32_t pack_rotation_aspect_hardness(float rot, float asp, float har
   return packed;
 }
 
+static void copy_transformed_positions(const Span<float3> src_positions,
+                                       const IndexRange range,
+                                       const float4x4 &transform,
+                                       MutableSpan<float3> dst_positions)
+{
+  for (const int point_i : range) {
+    dst_positions[point_i] = math::transform_point(transform, src_positions[point_i]);
+  }
+}
+
 static void grease_pencil_edit_batch_ensure(Object &object,
                                             const GreasePencil &grease_pencil,
                                             const Scene &scene)
@@ -277,10 +287,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const Span<float3> positions = curves.positions();
     MutableSpan<float3> positions_slice = edit_points.slice(points);
     threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange range) {
-      for (const int point_i : range) {
-        positions_slice[point_i + drawing_start_offset] = math::transform_point(
-            layer_space_to_object_space, positions[point_i]);
-      }
+      copy_transformed_positions(positions, range, layer_space_to_object_space, positions_slice);
     });
     MutableSpan<float> selection_slice = edit_points_selection.slice(points);
     /* Do not show selection for locked layers. */
