@@ -51,6 +51,16 @@ class OIDNDenoiserGPU : public DenoiserGPU {
 
   OIDNFilter create_filter();
 
+  void set_filter_pass(OIDNFilter filter,
+                       const char *name,
+                       device_ptr ptr,
+                       int format,
+                       int width,
+                       int height,
+                       size_t offset_in_bytes,
+                       size_t pixel_stride_in_bytes,
+                       size_t row_stride_in_bytes);
+
   OIDNDevice oidn_device_ = nullptr;
   OIDNFilter oidn_filter_ = nullptr;
   OIDNFilter albedo_filter_ = nullptr;
@@ -61,6 +71,7 @@ class OIDNDenoiserGPU : public DenoiserGPU {
 
   bool use_pass_albedo_ = false;
   bool use_pass_normal_ = false;
+  DenoiserQuality quality_ = DENOISER_QUALITY_HIGH;
 
   int max_mem_ = 3000;
 };
