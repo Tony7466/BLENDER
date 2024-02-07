@@ -269,7 +269,7 @@ class IMAGE_FH_drop_handler(FileHandler):
     bl_idname = "IMAGE_FH_drop_handler"
     bl_label = "Open droped imagenes"
     bl_import_operator = "image.open_images"
-    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';'.join(bpy.path.extensions_movie)
+    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';' + ';'.join(bpy.path.extensions_movie)
 
     @classmethod
     def poll_drop(cls, context):
