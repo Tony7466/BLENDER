@@ -8,6 +8,7 @@
 
 #include "DNA_mesh_types.h"
 
+#include "BKE_attribute_math.hh"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -475,66 +476,14 @@ static Span<float2> base_face_uv_positions()
   return base_uv;
 }
 
-/*
-static void interpolate_edge_verts(const int edge_verts_num,
-                                   const Span<float3> base_verts,
-                                   MutableSpan<float3> edge_verts)
+static void fill_interpolation(const float3 &begin, const float3 &end, MutableSpan<float3> points)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
-  const Span<int2> base_edge_verts = base_edge_verts_indices();
-
-  for (const int edge_i : IndexRange(base_edges_num)) {
-    MutableSpan<float3> verts = edge_verts.slice(edge_i * edge_verts_num, edge_verts_num);
-    const int2 edge_vert_indices = base_edge_verts[edge_i];
-    const double3 vert_a(base_verts[edge_vert_indices[EdgeVert::A]]);
-    const double3 vert_b(base_verts[edge_vert_indices[EdgeVert::B]]);
-
-    SphericalIterator rotation = SphericalIterator::between_points(
-        vert_a, vert_b, edge_verts_num + 1);
-    for (float3 &vert : verts) {
-      vert = float3(*rotation);
-      rotation++;
-    }
+  const float count = float(points.size() + 1);
+  for (const int i : points.index_range()) {
+    const float factor = float(i + 1) / count;
+    points[i] = bke::attribute_math::mix2<float3>(factor, begin, end);
   }
 }
-
-static void interpolate_face_verts(const int line_subdiv,
-                                   const Span<float3> base_verts,
-                                   MutableSpan<float3> faces_verts)
-{
-  SCOPED_TIMER_AVERAGED(__func__);
-  const Span<int3> base_face_verts = base_face_verts_indices();
-
-  const constexpr int left_righr_points = 2;
-  const TriangleRange inner_face_verts =
-      TriangleRange(line_subdiv - left_righr_points).drop_bottom(1);
-  const int steps = inner_face_verts.hight() + left_righr_points;
-
-  for (const int face_i : IndexRange(base_faces_num)) {
-    const int3 face_vert_indices = base_face_verts[face_i];
-
-    const double3 vert_a(base_verts[face_vert_indices[FaceVert::A]]);
-    const double3 vert_b(base_verts[face_vert_indices[FaceVert::B]]);
-    const double3 vert_c(base_verts[face_vert_indices[FaceVert::C]]);
-
-    SphericalIterator rotation_ac = SphericalIterator::between_points(vert_a, vert_c, steps);
-    SphericalIterator rotation_bc = SphericalIterator::between_points(vert_b, vert_c, steps);
-    MutableSpan<float3> face_verts = faces_verts.slice(face_i * inner_face_verts.total(),
-                                                       inner_face_verts.total());
-    for (const int y_index : IndexRange(inner_face_verts.hight())) {
-      MutableSpan<float3> level_verts = face_verts.slice(inner_face_verts.slice_at(y_index));
-      SphericalIterator rotation_ab = SphericalIterator::between_points(
-          *rotation_ac, *rotation_bc, level_verts.size() + 1);
-      rotation_ac++;
-      rotation_bc++;
-      for (float3 &vert : level_verts) {
-        vert = float3(*rotation_ab);
-        rotation_ab++;
-      }
-    }
-  }
-}
-*/
 
 static void interpolate_edge_verts_linear(const int edge_verts_num,
                                           const Span<float3> base_verts,
@@ -549,12 +498,7 @@ static void interpolate_edge_verts_linear(const int edge_verts_num,
     const float3 &vert_a = base_verts[edge_vert_indices[EdgeVert::A]];
     const float3 &vert_b = base_verts[edge_vert_indices[EdgeVert::B]];
 
-    const float3 step = (vert_b - vert_a) / (edge_verts_num + 1);
-    float3 offset = vert_a + step;
-    for (float3 &vert : verts) {
-      vert = offset;
-      offset += step;
-    }
+    fill_interpolation(vert_a, vert_b, verts);
   }
 }
 
@@ -565,36 +509,28 @@ static void interpolate_face_verts_linear(const int line_subdiv,
   SCOPED_TIMER_AVERAGED(__func__);
   const Span<int3> base_face_verts = base_face_verts_indices();
 
-  const constexpr int left_righr_points = 2;
+  const constexpr int left_right_points = 2;
   const TriangleRange inner_face_verts =
-      TriangleRange(line_subdiv - left_righr_points).drop_bottom(1);
-  const int steps = inner_face_verts.hight() + left_righr_points;
+      TriangleRange(line_subdiv - left_right_points).drop_bottom(1);
 
   for (const int face_i : IndexRange(base_faces_num)) {
+    MutableSpan<float3> face_verts = faces_verts.slice(face_i * inner_face_verts.total(),
+                                                       inner_face_verts.total());
+
     const int3 face_vert_indices = base_face_verts[face_i];
 
     const float3 &vert_a = base_verts[face_vert_indices[FaceVert::A]];
     const float3 &vert_b = base_verts[face_vert_indices[FaceVert::B]];
     const float3 &vert_c = base_verts[face_vert_indices[FaceVert::C]];
 
-    const float3 step_ac = (vert_c - vert_a) / steps;
-    const float3 step_bc = (vert_c - vert_b) / steps;
-
-    float3 offset_ac = vert_a + step_ac;
-    float3 offset_bc = vert_b + step_bc;
-
-    MutableSpan<float3> face_verts = faces_verts.slice(face_i * inner_face_verts.total(),
-                                                       inner_face_verts.total());
     for (const int y_index : IndexRange(inner_face_verts.hight())) {
       MutableSpan<float3> level_verts = face_verts.slice(inner_face_verts.slice_at(y_index));
-      const float3 step = (offset_bc - offset_ac) / (level_verts.size() + 1);
-      float3 offset = offset_ac + step;
-      offset_ac += step_ac;
-      offset_bc += step_bc;
-      for (float3 &vert : level_verts) {
-        vert = offset;
-        offset += step;
-      }
+
+      const float factor = float(y_index + 1) / float(line_subdiv - 1);
+      const float3 sub_a = bke::attribute_math::mix2<float3>(factor, vert_a, vert_c);
+      const float3 sub_b = bke::attribute_math::mix2<float3>(factor, vert_b, vert_c);
+
+      fill_interpolation(sub_a, sub_b, level_verts);
     }
   }
 }
@@ -1191,16 +1127,9 @@ static Mesh *ico_sphere(const int subdivisions,
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
 
   {
-    SCOPED_TIMER_AVERAGED("new_old_normalize");
+    SCOPED_TIMER_AVERAGED("new_old_normalize + Scaling");
     std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
-      return math::normalize(pos);
-    });
-  }
-
-  {
-    SCOPED_TIMER_AVERAGED("Scaling");
-    std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
-      return pos * radius;
+      return math::normalize(pos) * radius;
     });
   }
 
