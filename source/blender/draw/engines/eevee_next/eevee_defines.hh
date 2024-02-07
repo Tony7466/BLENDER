@@ -97,7 +97,7 @@
 #define SHADOW_MAX_RAY 4
 #define SHADOW_ROG_ID 0
 
-/* Option to process multiple cells per thread in shadow_tag_usage_* for better GPU work
+/* Option to process multiple pixels per thread in shadow_tag_usage_* for better GPU work
  * saturation. */
 #define SHADOW_TAG_USAGE_NUM_CELLS_PER_THREAD_DIM 16
 
