@@ -3,3 +3,4 @@ Referenced by issue #101607, Regression: Blender 3.4 can't find missing files
 Referenced by issue #97251, Generated UDIM tiles do not store any info about their parameter
 Referenced by pull request #117472, Fix #117411: In memory UDIMs fail to pack correctly
 Referenced by commit 0c0885d32390d95102f08720d95d409059a06c5e, Fix #117411: In memory UDIMs fail to pack correctly
+Referenced by issue #117907, EEVEE: UDIM Bump/Height Texture makes UV seams visible
