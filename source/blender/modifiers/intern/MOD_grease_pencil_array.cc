@@ -92,12 +92,6 @@ static float4x4 get_array_matrix(const Object &ob,
                                  const int elem_idx,
                                  const bool use_object_offset)
 {
-  const float3 offset = [&]() {
-    if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
-      return float3(mmd.offset) * elem_idx;
-    }
-    return float3(0.0f);
-  }();
 
   if (use_object_offset) {
     float4x4 mat_offset = float4x4::identity();
@@ -109,6 +103,13 @@ static float4x4 get_array_matrix(const Object &ob,
 
     return mat_offset * obinv * float4x4(mmd.object->object_to_world);
   }
+
+  const float3 offset = [&]() {
+    if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
+      return float3(mmd.offset) * elem_idx;
+    }
+    return float3(0.0f);
+  }();
 
   return math::from_location<float4x4>(offset);
 }
