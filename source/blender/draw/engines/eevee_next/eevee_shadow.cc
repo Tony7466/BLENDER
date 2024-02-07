@@ -863,7 +863,6 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.bind_texture("depth_tx", &src_depth_tx_);
-      sub.bind_texture("hiz_tx", &inst_.hiz_buffer.front.ref_tx_);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
       sub.bind_resources(inst_.lights);
       sub.dispatch(&dispatch_depth_scan_size_);

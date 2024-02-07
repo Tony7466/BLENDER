@@ -15,22 +15,31 @@
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
+int last_tile_index = -1;
+void shadow_tag_usage_tile_skipmaxcheck(LightData light, ivec2 tile_co, int lod, int tilemap_index)
+{
+  tile_co >>= lod;
+  int tile_index = shadow_tile_offset(tile_co, tilemaps_buf[tilemap_index].tiles_index, lod);
+  if (tile_index != last_tile_index) {
+    atomicOr(tiles_buf[tile_index], uint(SHADOW_IS_USED));
+    last_tile_index = tile_index;
+  }
+}
 void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_index)
 {
   if (tilemap_index > light_tilemap_max_get(light)) {
     return;
   }
 
-  tile_co >>= lod;
-  int tile_index = shadow_tile_offset(tile_co, tilemaps_buf[tilemap_index].tiles_index, lod);
-  atomicOr(tiles_buf[tile_index], uint(SHADOW_IS_USED));
+  shadow_tag_usage_tile_skipmaxcheck(light, tile_co, lod, tilemap_index);
 }
 
 void shadow_tag_usage_tilemap_directional_at_level(uint l_idx, vec3 P, int level)
 {
   LightData light = light_buf[l_idx];
 
-  if (light.tilemap_index == LIGHT_NO_SHADOW) {
+  if (light.tilemap_index == LIGHT_NO_SHADOW || light.tilemap_index > light_tilemap_max_get(light))
+  {
     return;
   }
 
@@ -70,9 +79,13 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
       ShadowCoordinates coord_max = shadow_directional_coordinates_at_level(
           light, lP + vec3(radius, radius, 0.0), level);
 
+      if (coord_min.tilemap_index > light_tilemap_max_get(light)) {
+        return;
+      }
+
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
         for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
-          shadow_tag_usage_tile(light, ivec2(x, y), 0, coord_min.tilemap_index);
+          shadow_tag_usage_tile_skipmaxcheck(light, ivec2(x, y), 0, coord_min.tilemap_index);
         }
       }
     }
@@ -165,9 +178,13 @@ void shadow_tag_usage_tilemap_punctual(
       ShadowCoordinates coord_min = shadow_punctual_coordinates(light, _lP - offset, face_id);
       ShadowCoordinates coord_max = shadow_punctual_coordinates(light, _lP + offset, face_id);
 
+      if (tilemap_index > light_tilemap_max_get(light)) {
+        return;
+      }
+
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
         for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
-          shadow_tag_usage_tile(light, ivec2(x, y), lod, tilemap_index);
+          shadow_tag_usage_tile_skipmaxcheck(light, ivec2(x, y), lod, tilemap_index);
         }
       }
     }

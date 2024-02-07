@@ -99,7 +99,7 @@
 
 /* Option to process multiple cells per thread in shadow_tag_usage_* for better GPU work
  * saturation. */
-#define SHADOW_TAG_USAGE_NUM_CELLS_PER_THREAD_DIM 4
+#define SHADOW_TAG_USAGE_NUM_CELLS_PER_THREAD_DIM 16
 
 /* Deferred Lighting. */
 #define DEFERRED_RADIANCE_FORMAT GPU_R11F_G11F_B10F
