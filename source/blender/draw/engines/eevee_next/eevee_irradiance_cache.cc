@@ -71,7 +71,7 @@ void IrradianceCache::init()
       irradiance_atlas_tx_.clear(float4(0.0f));
     }
 
-    inst_.reflection_probes.do_world_update_irradiance_set(true);
+    inst_.reflection_probes.tag_world_irradiance_for_update();
   }
 
   if (irradiance_atlas_tx_.is_valid() == false) {

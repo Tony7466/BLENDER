@@ -238,7 +238,7 @@ void ShadingView::update_view()
 void CaptureView::render_world()
 {
   const std::optional<ReflectionProbeUpdateInfo> update_info =
-      inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::WORLD);
+      inst_.reflection_probes.world_update_info_pop();
   if (!update_info.has_value()) {
     return;
   }
@@ -281,7 +281,7 @@ void CaptureView::render_probes()
   View view = {"Capture.View"};
   bool do_update_mipmap_chain = false;
   while (const std::optional<ReflectionProbeUpdateInfo> update_info =
-             inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::PROBE))
+             inst_.reflection_probes.probe_update_info_pop())
   {
     GPU_debug_group_begin("Probe.Capture");
     do_update_mipmap_chain = true;

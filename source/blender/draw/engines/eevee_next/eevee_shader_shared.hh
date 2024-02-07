@@ -1055,19 +1055,13 @@ struct ReflectionProbeData {
   float3x4 world_to_probe_transposed;
 
   packed_float3 location;
-  float _pad2;
-
   /** Shape of the parallax projection. */
+  float parallax_distance;
   LightProbeShape parallax_shape;
   LightProbeShape influence_shape;
-  float parallax_distance;
   /** Influence factor based on the distance to the parallax shape. */
   float influence_scale;
   float influence_bias;
-  /** LOD factor for mipmap selection. */
-  float lod_factor;
-  float _pad0;
-  float _pad1;
 
   ReflectionProbeCoordinate atlas_coord;
 

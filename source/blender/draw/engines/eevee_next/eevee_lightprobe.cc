@@ -57,13 +57,56 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
   }
 }
 
-void LightProbeModule::sync_cube(const Object * /*ob*/, ObjectHandle &handle)
+void LightProbeModule::sync_cube(const Object *ob, ObjectHandle &handle)
 {
   ReflectionCube &cube = cube_map_.lookup_or_add_default(handle.object_key);
   cube.used = true;
   if (handle.recalc != 0 || cube.initialized == false) {
+    const ::LightProbe &light_probe = *(::LightProbe *)ob->data;
+
     cube.initialized = true;
     cube.updated = true;
+    cube.do_render = true;
+
+    ReflectionProbeModule &probe_module = inst_.reflection_probes;
+    eLightProbeResolution probe_resolution = probe_module.reflection_probe_resolution();
+    int max_resolution = probe_module.max_resolution_;
+    int subdivision_lvl = ReflectionCube::subdivision_level_get(max_resolution, probe_resolution);
+
+    if (cube.atlas_coord.layer_subdivision != subdivision_lvl) {
+      cube.atlas_coord = probe_module.find_empty_atlas_region(subdivision_lvl);
+      ReflectionProbeData &cube_data = *static_cast<ReflectionProbeData *>(&cube);
+      /* Update gpu data sampling coordinates. */
+      cube_data.atlas_coord = cube.atlas_coord.as_sampling_coord(max_resolution);
+      /* Coordinates have changed. Area might contain random data. Do not use for rendering. */
+      cube.use_for_render = false;
+    }
+
+    bool use_custom_parallax = (light_probe.flag & LIGHTPROBE_FLAG_CUSTOM_PARALLAX) != 0;
+    float influence_distance = light_probe.distinf;
+    float influence_falloff = light_probe.falloff;
+    float parallax_distance = light_probe.distpar;
+    parallax_distance = use_custom_parallax ? max_ff(parallax_distance, influence_distance) :
+                                              influence_distance;
+
+    auto to_eevee_shape = [](int bl_shape_type) {
+      return (bl_shape_type == LIGHTPROBE_SHAPE_BOX) ? SHAPE_CUBOID : SHAPE_ELIPSOID;
+    };
+    cube.influence_shape = to_eevee_shape(light_probe.attenuation_type);
+    cube.parallax_shape = to_eevee_shape(light_probe.parallax_type);
+
+    float4x4 object_to_world = math::scale(float4x4(ob->object_to_world),
+                                           float3(influence_distance));
+    cube.location = object_to_world.location();
+    cube.volume = math::abs(math::determinant(object_to_world));
+    cube.world_to_probe_transposed = float3x4(math::transpose(math::invert(object_to_world)));
+    cube.influence_scale = 1.0 / max_ff(1e-8f, influence_falloff);
+    cube.influence_bias = cube.influence_scale;
+    cube.parallax_distance = parallax_distance / influence_distance;
+    cube.clipping_distances = float2(light_probe.clipsta, light_probe.clipend);
+
+    cube.viewport_display = light_probe.flag & LIGHTPROBE_FLAG_SHOW_DATA;
+    cube.viewport_display_size = light_probe.data_display_size;
   }
 }
 

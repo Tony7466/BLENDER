@@ -121,13 +121,13 @@ void World::sync()
 
   inst_.reflection_probes.sync_world(bl_world);
   if (has_update) {
-    inst_.reflection_probes.do_world_update_set(true);
+    inst_.reflection_probes.tag_world_for_update();
   }
 
   /* We have to manually test here because we have overrides. */
   ::World *orig_world = (::World *)DEG_get_original_id(&bl_world->id);
   if (assign_if_different(prev_original_world, orig_world)) {
-    inst_.reflection_probes.do_world_update_set(true);
+    inst_.reflection_probes.tag_world_for_update();
   }
 
   GPUMaterial *gpumat = inst_.shaders.world_shader_get(bl_world, ntree, MAT_PIPE_DEFERRED);
