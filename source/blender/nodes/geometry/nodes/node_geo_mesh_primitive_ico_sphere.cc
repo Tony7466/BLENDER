@@ -173,8 +173,8 @@ static constexpr int C = 2;
 namespace InnerEdges {
 /**
  * Base edges of face:  A-----B
- * Left edges of face:  A/////B
- * Right edges of face: A\\\\\B
+ * Left edges of face:  A\\\\\B
+ * Right edges of face: A/////B
  */
 static constexpr int Base = 0;
 static constexpr int Left = 1;
@@ -909,6 +909,28 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
   }
 }
 
+static void fill_uv_line_of_triangles(const float2 &begin_a,
+                                      const float2 &begin_b,
+                                      const float2 &begin_c,
+                                      const float2 &end_a,
+                                      const float2 &end_b,
+                                      const float2 &end_c,
+                                      const int faces_num,
+                                      MutableSpan<float2> triangles_uv)
+{
+  BLI_assert(triangles_uv.size() / 3 == faces_num);
+  const float count = float(faces_num + 1);
+  for (const int i : IndexRange(faces_num)) {
+    const float factor = float(i + 1) / count;
+    triangles_uv[i * face_size + Corner::A] = bke::attribute_math::mix2<float2>(
+        factor, begin_a, end_a);
+    triangles_uv[i * face_size + Corner::B] = bke::attribute_math::mix2<float2>(
+        factor, begin_b, end_b);
+    triangles_uv[i * face_size + Corner::C] = bke::attribute_math::mix2<float2>(
+        factor, begin_c, end_c);
+  }
+}
+
 static void uv_vert_positions(const int edge_edges_num,
                               const int face_faces_num,
                               MutableSpan<float2> uv)
@@ -932,11 +954,12 @@ static void uv_vert_positions(const int edge_edges_num,
 
   /* Faces along base edge except corner faces. */
   const int edge_faces_num = edge_edges_num - 2;
+  const IndexRange edge_faces_range(edge_faces_num);
 
   const IndexRange corner_faces_range(base_face_corners_num);
-  const IndexRange edge_faces_range = corner_faces_range.after(edge_faces_num *
-                                                               base_face_corners_num);
-  const IndexRange top_faces_range = edge_faces_range.after(top_faces.total());
+  const IndexRange edges_faces_range = corner_faces_range.after(edge_faces_num *
+                                                                base_face_corners_num);
+  const IndexRange top_faces_range = edges_faces_range.after(top_faces.total());
   const IndexRange bottom_faces_range = top_faces_range.after(bottom_faces.total());
 
   for (const int face_i : IndexRange(base_faces_num)) {
@@ -946,7 +969,7 @@ static void uv_vert_positions(const int edge_edges_num,
     MutableSpan<float2> face_uv = uv.slice(faces_range.step(face_i).scale(face_size));
 
     MutableSpan<float2> corner_face_edges_uv = face_uv.slice(corner_faces_range.scale(face_size));
-    MutableSpan<float2> edge_face_edges_uv = face_uv.slice(edge_faces_range.scale(face_size));
+    MutableSpan<float2> edge_face_edges_uv = face_uv.slice(edges_faces_range.scale(face_size));
     MutableSpan<float2> top_face_edges_uv = face_uv.slice(top_faces_range.scale(face_size));
     MutableSpan<float2> bottom_face_edges_uv = face_uv.slice(bottom_faces_range.scale(face_size));
 
@@ -977,108 +1000,98 @@ static void uv_vert_positions(const int edge_edges_num,
     c_corner_face_uv[Corner::B] = uv_corner_c + uv_bc_edge / edge_edges_num;
     c_corner_face_uv[Corner::C] = uv_corner_c;
 
-    /* Faces along base edge. */
-    {
-      std::array<float2, face_size> face_template;
-      face_template[FaceVert::A] = a_corner_face_uv[FaceVert::A];
-      face_template[FaceVert::B] = a_corner_face_uv[FaceVert::B];
-      face_template[FaceVert::C] = a_corner_face_uv[FaceVert::C];
-      const float2 offset = face_template[FaceVert::B] - face_template[FaceVert::A];
-      float2 offset_accumulate = offset;
-      for (const int i : IndexRange(edge_faces_num)) {
-        const int face_i = (edge_faces_num * InnerEdges::Base + i) * face_size;
-        edge_face_edges_uv[face_i + Corner::A] = face_template[Corner::A] + offset_accumulate;
-        edge_face_edges_uv[face_i + Corner::B] = face_template[Corner::B] + offset_accumulate;
-        edge_face_edges_uv[face_i + Corner::C] = face_template[Corner::C] + offset_accumulate;
-        offset_accumulate += offset;
-      }
-    }
+    MutableSpan<float2> base_edge_faces_uv = edge_face_edges_uv.slice(
+        edge_faces_range.step(InnerEdges::Base).scale(face_size));
+    fill_uv_line_of_triangles(a_corner_face_uv[Corner::A],
+                              a_corner_face_uv[Corner::B],
+                              a_corner_face_uv[Corner::C],
+                              b_corner_face_uv[Corner::A],
+                              b_corner_face_uv[Corner::B],
+                              b_corner_face_uv[Corner::C],
+                              edge_faces_num,
+                              base_edge_faces_uv);
 
-    /* Faces along left edge. */
-    {
-      std::array<float2, face_size> face_template;
-      face_template[FaceVert::A] = c_corner_face_uv[FaceVert::B];
-      face_template[FaceVert::B] = c_corner_face_uv[FaceVert::C];
-      face_template[FaceVert::C] = c_corner_face_uv[FaceVert::A];
-      const float2 offset = face_template[FaceVert::A] - face_template[FaceVert::B];
-      float2 offset_accumulate = offset;
-      for (const int i : IndexRange(edge_faces_num)) {
-        const int face_i = (edge_faces_num * InnerEdges::Left + i) * face_size;
-        edge_face_edges_uv[face_i + Corner::A] = face_template[Corner::A] + offset_accumulate;
-        edge_face_edges_uv[face_i + Corner::B] = face_template[Corner::B] + offset_accumulate;
-        edge_face_edges_uv[face_i + Corner::C] = face_template[Corner::C] + offset_accumulate;
-        offset_accumulate += offset;
-      }
-    }
+    MutableSpan<float2> left_edge_faces_uv = edge_face_edges_uv.slice(
+        edge_faces_range.step(InnerEdges::Left).scale(face_size));
+    fill_uv_line_of_triangles(c_corner_face_uv[Corner::B],
+                              c_corner_face_uv[Corner::C],
+                              c_corner_face_uv[Corner::A],
+                              b_corner_face_uv[Corner::B],
+                              b_corner_face_uv[Corner::C],
+                              b_corner_face_uv[Corner::A],
+                              edge_faces_num,
+                              left_edge_faces_uv);
 
-    /* Faces along right edge. */
-    {
-      std::array<float2, face_size> face_template;
-      face_template[FaceVert::A] = a_corner_face_uv[FaceVert::C];
-      face_template[FaceVert::B] = a_corner_face_uv[FaceVert::A];
-      face_template[FaceVert::C] = a_corner_face_uv[FaceVert::B];
-      const float2 offset = face_template[FaceVert::A] - face_template[FaceVert::B];
-      float2 offset_accumulate = offset;
-      for (const int i : IndexRange(edge_faces_num)) {
-        const int face_i = (edge_faces_num * InnerEdges::Right + i) * face_size;
-        edge_face_edges_uv[face_i + Corner::A] = face_template[Corner::A] + offset_accumulate;
-        edge_face_edges_uv[face_i + Corner::B] = face_template[Corner::B] + offset_accumulate;
-        edge_face_edges_uv[face_i + Corner::C] = face_template[Corner::C] + offset_accumulate;
-        offset_accumulate += offset;
-      }
-    }
+    MutableSpan<float2> right_edge_faces_uv = edge_face_edges_uv.slice(
+        edge_faces_range.step(InnerEdges::Right).scale(face_size));
+    fill_uv_line_of_triangles(a_corner_face_uv[Corner::C],
+                              a_corner_face_uv[Corner::A],
+                              a_corner_face_uv[Corner::B],
+                              c_corner_face_uv[Corner::C],
+                              c_corner_face_uv[Corner::A],
+                              c_corner_face_uv[Corner::B],
+                              edge_faces_num,
+                              right_edge_faces_uv);
 
     /* Faces (flipped). */
-    {
-      std::array<float2, face_size> face_template;
-      face_template[FaceVert::A] = c_corner_face_uv[FaceVert::B];
-      face_template[FaceVert::B] = c_corner_face_uv[FaceVert::A];
-      face_template[FaceVert::C] = c_corner_face_uv[FaceVert::C];
-      const float2 face_hight = c_corner_face_uv[FaceVert::C] -
-                                math::midpoint(c_corner_face_uv[FaceVert::A],
-                                               c_corner_face_uv[FaceVert::B]);
-      /* Flip triangle uv. */
-      face_template[FaceVert::C] -= face_hight * 2.0f;
-      const float2 offset_in_line = c_corner_face_uv[FaceVert::B] - c_corner_face_uv[FaceVert::A];
-      const float2 offset_by_line = face_template[FaceVert::C] - face_template[FaceVert::A];
-      for (const int line_i : IndexRange(top_faces.hight())) {
-        MutableSpan<float2> line_uv = top_face_edges_uv.slice(
-            top_faces.slice_at(line_i).scale(face_size));
-        const int r_line_i = top_faces.hight() - line_i - 1;
-        float2 offset_accumulate = offset_by_line * float(r_line_i);
-        for (const int i : IndexRange(top_faces.size_of(line_i))) {
-          const int face_i = i * face_size;
-          line_uv[face_i + Corner::A] = face_template[FaceVert::A] + offset_accumulate;
-          line_uv[face_i + Corner::B] = face_template[FaceVert::B] + offset_accumulate;
-          line_uv[face_i + Corner::C] = face_template[FaceVert::C] + offset_accumulate;
-          offset_accumulate += offset_in_line;
-        }
-      }
+    for (const int line_i : IndexRange(top_faces.hight())) {
+      const IndexRange line_range = top_faces.slice_at(line_i);
+      const IndexRange line_body_range = line_range.drop_front(1).drop_back(1);
+      MutableSpan<float2> line_uv = top_face_edges_uv.slice(line_body_range.scale(face_size));
+      MutableSpan<float2> line_begin_uv = top_face_edges_uv.slice(
+          line_range.take_front(1).scale(face_size));
+      MutableSpan<float2> line_end_uv = top_face_edges_uv.slice(
+          line_range.take_back(1).scale(face_size));
+
+      const int r_line_i = top_faces.hight() - line_i - 1;
+      const float factor = float(r_line_i) / float(top_faces.hight());
+      const float2 flip = -(c_corner_face_uv[Corner::C] -
+                            math::midpoint(c_corner_face_uv[Corner::A],
+                                           c_corner_face_uv[Corner::B])) *
+                          2.0f;
+      line_begin_uv[Corner::A] = bke::attribute_math::mix2<float2>(
+          factor, c_corner_face_uv[Corner::B], a_corner_face_uv[Corner::B]);
+      line_begin_uv[Corner::B] = bke::attribute_math::mix2<float2>(
+          factor, c_corner_face_uv[Corner::A], a_corner_face_uv[Corner::A]);
+      line_begin_uv[Corner::C] = bke::attribute_math::mix2<float2>(factor,
+                                                                   c_corner_face_uv[Corner::C],
+                                                                   a_corner_face_uv[Corner::C]) +
+                                 flip;
+
+      line_end_uv[Corner::A] = bke::attribute_math::mix2<float2>(
+          factor, c_corner_face_uv[Corner::B], b_corner_face_uv[Corner::B]);
+      line_end_uv[Corner::B] = bke::attribute_math::mix2<float2>(
+          factor, c_corner_face_uv[Corner::A], b_corner_face_uv[Corner::A]);
+      line_end_uv[Corner::C] = bke::attribute_math::mix2<float2>(factor,
+                                                                 c_corner_face_uv[Corner::C],
+                                                                 b_corner_face_uv[Corner::C]) +
+                               flip;
+
+      fill_uv_line_of_triangles(line_begin_uv[Corner::A],
+                                line_begin_uv[Corner::B],
+                                line_begin_uv[Corner::C],
+                                line_end_uv[Corner::A],
+                                line_end_uv[Corner::B],
+                                line_end_uv[Corner::C],
+                                line_body_range.size(),
+                                line_uv);
     }
 
     /* Faces (non-flipped). */
-    {
-      std::array<float2, face_size> face_template;
-      face_template[FaceVert::A] = c_corner_face_uv[FaceVert::A];
-      face_template[FaceVert::B] = c_corner_face_uv[FaceVert::B];
-      face_template[FaceVert::C] = c_corner_face_uv[FaceVert::C];
-      const float2 offset_in_line = c_corner_face_uv[FaceVert::B] - c_corner_face_uv[FaceVert::A];
-      const float2 offset_by_line = face_template[FaceVert::C] - face_template[FaceVert::A];
-
-      for (const int line_i : IndexRange(bottom_faces.hight())) {
-        MutableSpan<float2> line_uv = bottom_face_edges_uv.slice(
-            bottom_faces.slice_at(line_i).scale(face_size));
-        const int r_line_i = bottom_faces.hight() - line_i;
-        const int inner_r_line_i = r_line_i + 1;
-        float2 offset_accumulate = -offset_by_line * float(inner_r_line_i) + offset_in_line;
-        for (const int i : IndexRange(bottom_faces.size_of(line_i))) {
-          const int face_i = i * face_size;
-          line_uv[face_i + Corner::A] = face_template[FaceVert::A] + offset_accumulate;
-          line_uv[face_i + Corner::B] = face_template[FaceVert::B] + offset_accumulate;
-          line_uv[face_i + Corner::C] = face_template[FaceVert::C] + offset_accumulate;
-          offset_accumulate += offset_in_line;
-        }
-      }
+    for (const int line_i : IndexRange(bottom_faces.hight())) {
+      const int r_line_i = bottom_faces.hight() - line_i - 1;
+      const int face_i = line_i * face_size;
+      const int r_face_i = (r_line_i + 1) * face_size;
+      const IndexRange line_range = bottom_faces.slice_at(line_i);
+      MutableSpan<float2> line_uv = bottom_face_edges_uv.slice(line_range.scale(face_size));
+      fill_uv_line_of_triangles(right_edge_faces_uv[face_i + Corner::B],
+                                right_edge_faces_uv[face_i + Corner::C],
+                                right_edge_faces_uv[face_i + Corner::A],
+                                left_edge_faces_uv[r_face_i + Corner::C],
+                                left_edge_faces_uv[r_face_i + Corner::A],
+                                left_edge_faces_uv[r_face_i + Corner::B],
+                                line_range.size(),
+                                line_uv);
     }
   }
 }
