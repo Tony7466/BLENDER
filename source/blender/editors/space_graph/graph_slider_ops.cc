@@ -432,7 +432,7 @@ static void decimate_graph_keys(bAnimContext *ac, float factor, float error_sq_m
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     if (!decimate_fcurve(ale, factor, error_sq_max)) {
       /* The selection contains unsupported keyframe types! */
-      WM_report(RPT_WARNING, "Decimate: Skipping non linear/bezier keyframes!");
+      WM_report(RPT_WARNING, "Decimate: Skipping non linear/Bézier keyframes!");
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1461,7 +1461,7 @@ static void shear_draw_status_header(bContext *C, tGraphSliderOp *gso)
     SNPRINTF(status_str, "%s: %s", mode_str, str_ofs);
   }
   else {
-    const char *operator_string = "D - Toggle Direction";
+    const char *operator_string = IFACE_("D - Toggle Direction");
     SNPRINTF(status_str, "%s: %s | %s", mode_str, slider_string, operator_string);
   }
 
@@ -2330,11 +2330,11 @@ static void scale_from_neighbor_draw_status_header(bContext *C, wmOperator *op)
   const FCurveSegmentAnchor anchor = FCurveSegmentAnchor(RNA_enum_get(op->ptr, "anchor"));
   switch (anchor) {
     case FCurveSegmentAnchor::LEFT:
-      SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Scale From Right End");
+      SNPRINTF(op_slider_string, "%s | %s", slider_string, IFACE_("[D] - Scale From Right End"));
       break;
 
     case FCurveSegmentAnchor::RIGHT:
-      SNPRINTF(op_slider_string, "%s | %s", slider_string, "[D] - Scale From Left End");
+      SNPRINTF(op_slider_string, "%s | %s", slider_string, IFACE_("[D] - Scale From Left End"));
       break;
   }
 
