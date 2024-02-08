@@ -14,6 +14,7 @@
 #include "BKE_mesh.hh"
 
 #include "BLI_array_utils.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_base.hh"
@@ -259,7 +260,7 @@ class TriangleRange {
 
 static Span<float3> base_ico_sphere_positions()
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   static const auto positions = []() -> std::array<float3, base_verts_num> {
     std::array<float3, base_verts_num> positions;
     MutableSpan<float3> positions_span(positions);
@@ -294,7 +295,7 @@ static Span<float3> base_ico_sphere_positions()
 
 static Span<int2> base_edge_verts_indices()
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   static const auto edge_points = []() -> std::array<int2, base_edges_num> {
     std::array<int2, base_edges_num> edge_points;
 
@@ -327,7 +328,7 @@ static Span<int2> base_edge_verts_indices()
 
 static Span<int3> base_face_verts_indices()
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_points = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_points;
 
@@ -356,7 +357,7 @@ static Span<int3> base_face_verts_indices()
 
 static Span<int3> base_face_edge_indices()
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   static const auto face_edges = []() -> std::array<int3, base_faces_num> {
     std::array<int3, base_faces_num> face_edges;
 
@@ -461,7 +462,7 @@ static void fill_interpolation(const float3 &begin, const float3 &end, MutableSp
 
 static void interpolate_edge_verts_linear(const int edge_verts_num, MutableSpan<float3> edge_verts)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<float3> base_verts = base_ico_sphere_positions();
   const Span<int2> base_edge_verts = base_edge_verts_indices();
 
@@ -475,10 +476,21 @@ static void interpolate_edge_verts_linear(const int edge_verts_num, MutableSpan<
   }
 }
 
+static void foreach_face(const int face_verts_num, const FunctionRef<void(int)> call)
+{
+  const int grain_size = math::max<int>(
+      1, (4096 * base_faces_num) / math::max<int>(1, face_verts_num));
+  threading::parallel_for(IndexRange(base_faces_num), grain_size, [&](const IndexRange range) {
+    for (const int64_t face_i : range) {
+      call(face_i);
+    }
+  });
+}
+
 static void interpolate_face_verts_linear(const TriangleRange inner_face_verts,
                                           MutableSpan<float3> faces_verts)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<float3> base_verts = base_ico_sphere_positions();
   const Span<int3> base_face_verts = base_face_verts_indices();
 
@@ -486,7 +498,7 @@ static void interpolate_face_verts_linear(const TriangleRange inner_face_verts,
   /* Bottom line of face verts plus left and right base verts is the side of triangle. */
   const float count = float(inner_face_verts.size_of(0) + 2);
 
-  for (const int face_i : IndexRange(base_faces_num)) {
+  foreach_face(face_verts_range.size(), [&](const int face_i) {
     MutableSpan<float3> face_verts = faces_verts.slice(face_verts_range.step(face_i));
 
     const int3 face_vert_indices = base_face_verts[face_i];
@@ -502,7 +514,7 @@ static void interpolate_face_verts_linear(const TriangleRange inner_face_verts,
       const float3 sub_b = bke::attribute_math::mix2<float3>(factor, vert_b, vert_c);
       fill_interpolation(sub_a, sub_b, level_verts);
     }
-  }
+  });
 }
 
 template<typename Func>
@@ -526,7 +538,7 @@ static void vert_edge_topology(const IndexRange verts_of_edge_range,
                                const IndexRange verts_of_edges_range,
                                MutableSpan<int2> edge_edges)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edges = base_edge_verts_indices();
   if (edge_edges.size() == base_edges.size()) {
     edge_edges.copy_from(base_edges);
@@ -551,14 +563,13 @@ static void face_edge_topology(const IndexRange verts_of_edge_range,
                                const IndexRange faces_verts,
                                MutableSpan<int2> face_edges)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
 
   {
-    SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
-    for (const int face_i : IndexRange(base_faces_num)) {
+    foreach_face(verts_of_face_range.size(), [&](const int face_i) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
       const IndexRange face_verts = faces_verts.slice(verts_of_face_range.step(face_i));
@@ -590,12 +601,11 @@ static void face_edge_topology(const IndexRange verts_of_edge_range,
                               line_edges,
                               [=](const int vert_i) -> int { return line_verts[vert_i]; });
       }
-    }
+    });
   }
 
   {
-    SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
-    for (const int face_i : IndexRange(base_faces_num)) {
+    foreach_face(verts_of_face_range.size(), [&](const int face_i) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
       const IndexRange face_verts = faces_verts.slice(verts_of_face_range.step(face_i));
@@ -627,12 +637,11 @@ static void face_edge_topology(const IndexRange verts_of_edge_range,
               return face_verts[inner_face_verts.last_of(vert_i) - line_i];
             });
       }
-    }
+    });
   }
 
   {
-    SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
-    for (const int face_i : IndexRange(base_faces_num)) {
+    foreach_face(verts_of_face_range.size(), [&](const int face_i) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
       const IndexRange face_verts = faces_verts.slice(verts_of_face_range.step(face_i));
@@ -663,7 +672,7 @@ static void face_edge_topology(const IndexRange verts_of_edge_range,
               return face_verts[inner_face_verts.first_of(vert_i) + line_i];
             });
       }
-    }
+    });
   }
 }
 
@@ -685,7 +694,7 @@ static void corner_edges_topology(const int edge_edges_num,
                                   const TriangleRange inner_face_edges,
                                   MutableSpan<int> corner_edges)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   const Span<int2> base_edge_verts = base_edge_verts_indices();
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -695,7 +704,7 @@ static void corner_edges_topology(const int edge_edges_num,
     return;
   }
 
-  for (const int face_i : IndexRange(base_faces_num)) {
+  foreach_face(faces_of_face_range.size(), [&](const int face_i) {
     const int3 face_vert_indices = base_face_verts[face_i];
     const int3 face_edge_indices = base_faces_edges[face_i];
     MutableSpan<int> face_corner_edges = corner_edges.slice(
@@ -822,7 +831,7 @@ static void corner_edges_topology(const int edge_edges_num,
         line[face_i + Corner::C] = face_edges_c[inner_face_edges.first_of(i) + inner_line_i];
       }
     }
-  }
+  });
 }
 
 static void corner_verts_from_edges(const Span<int> corner_edges,
@@ -836,26 +845,28 @@ static void corner_verts_from_edges(const Span<int> corner_edges,
     return;
   }
 
-  SCOPED_TIMER_AVERAGED(__func__);
-  for (const int i : IndexRange(faces_num)) {
-    const int face_i = i * face_size;
-    const int2 edge_a = edges[corner_edges[face_i + FaceVert::A]];
-    const int2 edge_b = edges[corner_edges[face_i + FaceVert::B]];
-    const int2 edge_c = edges[corner_edges[face_i + FaceVert::C]];
+  // SCOPED_TIMER_AVERAGED(__func__);
+  threading::parallel_for(IndexRange(faces_num), 2048, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int face_i = i * face_size;
+      const int2 edge_a = edges[corner_edges[face_i + FaceVert::A]];
+      const int2 edge_b = edges[corner_edges[face_i + FaceVert::B]];
+      const int2 edge_c = edges[corner_edges[face_i + FaceVert::C]];
 
-    BLI_assert(elem_of(edge_a[EdgeVert::A], edge_b) != elem_of(edge_a[EdgeVert::A], edge_c));
-    BLI_assert(elem_of(edge_b[EdgeVert::A], edge_a) != elem_of(edge_b[EdgeVert::A], edge_c));
-    BLI_assert(elem_of(edge_c[EdgeVert::A], edge_b) != elem_of(edge_c[EdgeVert::A], edge_a));
+      BLI_assert(elem_of(edge_a[EdgeVert::A], edge_b) != elem_of(edge_a[EdgeVert::A], edge_c));
+      BLI_assert(elem_of(edge_b[EdgeVert::A], edge_a) != elem_of(edge_b[EdgeVert::A], edge_c));
+      BLI_assert(elem_of(edge_c[EdgeVert::A], edge_b) != elem_of(edge_c[EdgeVert::A], edge_a));
 
-    const int vert_a = elem_of(edge_a[EdgeVert::A], edge_c) ? edge_a[EdgeVert::A] :
-                                                              edge_a[EdgeVert::B];
-    const int vert_c = bke::mesh::edge_other_vert(edge_c, vert_a);
-    const int vert_b = bke::mesh::edge_other_vert(edge_b, vert_c);
+      const int vert_a = elem_of(edge_a[EdgeVert::A], edge_c) ? edge_a[EdgeVert::A] :
+                                                                edge_a[EdgeVert::B];
+      const int vert_c = bke::mesh::edge_other_vert(edge_c, vert_a);
+      const int vert_b = bke::mesh::edge_other_vert(edge_b, vert_c);
 
-    corner_verts[face_i + FaceVert::A] = vert_a;
-    corner_verts[face_i + FaceVert::B] = vert_b;
-    corner_verts[face_i + FaceVert::C] = vert_c;
-  }
+      corner_verts[face_i + FaceVert::A] = vert_a;
+      corner_verts[face_i + FaceVert::B] = vert_b;
+      corner_verts[face_i + FaceVert::C] = vert_c;
+    }
+  });
 }
 
 static void fill_uv_line_of_triangles(const float2 &begin_a,
@@ -891,7 +902,7 @@ static void uv_vert_positions(const int edge_edges_num,
                               const TriangleRange inner_top_faces_of_face,
                               MutableSpan<float2> uv)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
 
   const Span<int3> base_face_verts = base_face_verts_indices();
   const Span<int3> base_faces_edges = base_face_edge_indices();
@@ -902,7 +913,7 @@ static void uv_vert_positions(const int edge_edges_num,
     return;
   }
 
-  for (const int face_i : IndexRange(base_faces_num)) {
+  foreach_face(faces_of_face_range.size(), [&](const int face_i) {
     const int3 face_vert_indices = base_face_verts[face_i];
     const int3 face_edge_indices = base_faces_edges[face_i];
 
@@ -1028,7 +1039,7 @@ static void uv_vert_positions(const int edge_edges_num,
                                 left_edge_faces_uv[r_face_i + Corner::B],
                                 line_uv);
     }
-  }
+  });
 }
 
 static Mesh *ico_sphere(const int side_verts, const float radius, const AttributeIDRef &uv_map_id)
@@ -1134,7 +1145,7 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
   corner_verts_from_edges(corner_edges, edges, faces_num, corner_verts);
 
   {
-    SCOPED_TIMER_AVERAGED("new_old_normalize + Scaling");
+    // SCOPED_TIMER_AVERAGED("new_old_normalize + Scaling");
     std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
       return math::normalize(pos) * radius;
     });
@@ -1185,12 +1196,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   if (new_type) {
+    SCOPED_TIMER_AVERAGED("New");
     const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
     Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
     return;
   }
 
+  SCOPED_TIMER_AVERAGED("Old");
   Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }
