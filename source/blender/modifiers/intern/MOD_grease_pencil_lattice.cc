@@ -128,7 +128,6 @@ static void modify_curves(ModifierData *md,
     }
   });
 
-  curves.tag_positions_changed();
   drawing.tag_positions_changed();
 }
 
