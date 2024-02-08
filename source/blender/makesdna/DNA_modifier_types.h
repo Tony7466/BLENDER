@@ -102,7 +102,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilNoise = 67,
   eModifierType_GreasePencilMirror = 68,
   eModifierType_GreasePencilThickness = 69,
-  eModifierType_GreasePencilEnvelope = 70,
+  eModifierType_GreasePencilLattice = 70,
+  eModifierType_GreasePencilEnvelope = 71,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2773,6 +2774,14 @@ typedef enum GreasePencilThicknessModifierFlag {
   MOD_GREASE_PENCIL_THICK_NORMALIZE = (1 << 0),
   MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR = (1 << 1),
 } GreasePencilThicknessModifierFlag;
+
+typedef struct GreasePencilLatticeModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  struct Object *object;
+  float strength;
+  char _pad[4];
+} GreasePencilLatticeModifierData;
 
 typedef struct GreasePencilEnvelopeModifierData {
   ModifierData modifier;
