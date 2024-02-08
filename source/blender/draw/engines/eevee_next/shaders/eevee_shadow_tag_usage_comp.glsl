@@ -38,20 +38,18 @@ void main()
   /* Use texture gather to read 2x2 depth blocks. */
   ivec2 max_texel_round = (max_texel / 2) * 2;
 
-  // TOOD: Process inside 4x4 blocks to make last_light_ind more favourable to multi lights, while
-  // retaining perf for single-light cases.
-  for (; base_texel.y < max_texel_round.y; base_texel.y += 2) {
-    for (; base_texel.x < max_texel_round.x; base_texel.x += 2) {
+  /* Iterate over spatially local blocks to increase cache efficiency and take advantage of
+   * light bin locality. This will aid in increasing the hit-rate for skipping atomic ops when
+   * the same tile is flagged by subsequent per-pixel evaluations.*/
+  const int CHUNK_SIZE = 4;
+  ivec2 chunk_base_texel = base_texel;
+  for (; chunk_base_texel.y < max_texel_round.y; chunk_base_texel.y += CHUNK_SIZE) {
+    for (; chunk_base_texel.x < max_texel_round.x; chunk_base_texel.x += CHUNK_SIZE) {
 
-      /* Iterate over spatially local blocks to increase cache efficiency and take advantage of
-       * light bin locality. This will aid in increasing the hit-rate for skipping atomic ops when
-       * the same tile is flagged by subsequent per-pixel evaluations.*/
-      const int BLOCK_SIZE = 4;
-      int base_texel_sub_block_max_y = min(max_texel_round.y, base_texel.y + BLOCK_SIZE);
-      int base_texel_sub_block_max_x = min(max_texel_round.x, base_texel.x + BLOCK_SIZE);
-
-      for (; base_texel.y < base_texel_sub_block_max_y; base_texel.y += 2) {
-        for (; base_texel.x < base_texel_sub_block_max_x; base_texel.x += 2) {
+      base_texel = chunk_base_texel;
+      ivec2 chunk_max_texel = min(max_texel_round, chunk_base_texel + ivec2(CHUNK_SIZE));
+      for (; base_texel.y < chunk_max_texel.y; base_texel.y += 2) {
+        for (; base_texel.x < chunk_max_texel.x; base_texel.x += 2) {
 
           vec4 depths = textureGather(depth_tx, vec2(base_texel) / vec2(imageSize(depth_tx).xy));
 
