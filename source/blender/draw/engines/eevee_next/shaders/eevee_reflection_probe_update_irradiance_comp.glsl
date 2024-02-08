@@ -46,11 +46,10 @@ void main()
   float layer_mipmap = 5;
   /* Perform multiple sample. */
   uint store_index = gl_LocalInvocationID.x;
-  float total_samples = float(gl_WorkGroupSize.x * REFLECTION_PROBE_SH_SAMPLES_PER_GROUP);
+  float total_samples = float(gl_WorkGroupSize.x * SPHERE_PROBE_SH_SAMPLES_PER_GROUP);
   float sample_weight = 4.0 * M_PI / total_samples;
-  float sample_offset = float(gl_LocalInvocationID.x * REFLECTION_PROBE_SH_SAMPLES_PER_GROUP);
-  for (int sample_index = 0; sample_index < REFLECTION_PROBE_SH_SAMPLES_PER_GROUP; sample_index++)
-  {
+  float sample_offset = float(gl_LocalInvocationID.x * SPHERE_PROBE_SH_SAMPLES_PER_GROUP);
+  for (int sample_index = 0; sample_index < SPHERE_PROBE_SH_SAMPLES_PER_GROUP; sample_index++) {
     vec2 rand = fract(hammersley_2d(sample_index + sample_offset, total_samples));
     vec3 direction = sample_sphere(rand);
     vec4 light = reflection_probes_sample(direction, layer_mipmap, atlas_coord);

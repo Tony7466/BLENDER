@@ -105,8 +105,8 @@ class SphereProbeModule {
 
   template<typename PassType> void bind_resources(PassType &pass)
   {
-    pass.bind_texture(REFLECTION_PROBE_TEX_SLOT, &probes_tx_);
-    pass.bind_ubo(REFLECTION_PROBE_BUF_SLOT, &data_buf_);
+    pass.bind_texture(SPHERE_PROBE_TEX_SLOT, &probes_tx_);
+    pass.bind_ubo(SPHERE_PROBE_BUF_SLOT, &data_buf_);
   }
 
   void set_view(View &view);
@@ -155,7 +155,7 @@ class SphereProbeModule {
     bool do_world_irradiance_update;
   };
 
-  UpdateInfo update_info_from_probe(const ReflectionCube &probe);
+  UpdateInfo update_info_from_probe(const SphereProbe &probe);
 
   /**
    * Pop the next reflection probe that requires to be updated.

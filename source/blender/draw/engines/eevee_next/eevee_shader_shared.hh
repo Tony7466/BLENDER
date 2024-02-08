@@ -1102,7 +1102,7 @@ BLI_STATIC_ASSERT_ALIGN(SphereProbeDisplayData, 16)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Irradiance Cache
+/** \name Volume Probe Cache
  * \{ */
 
 struct SurfelRadiance {
@@ -1207,7 +1207,7 @@ struct SurfelListInfoData {
 };
 BLI_STATIC_ASSERT_ALIGN(SurfelListInfoData, 16)
 
-struct IrradianceGridData {
+struct VolumeProbeData {
   /** World to non-normalized local grid space [0..size-1]. Stored transposed for compactness. */
   float3x4 world_to_grid_transposed;
   /** Number of bricks for this grid. */
@@ -1220,7 +1220,7 @@ struct IrradianceGridData {
   float facing_bias;
   int _pad1;
 };
-BLI_STATIC_ASSERT_ALIGN(IrradianceGridData, 16)
+BLI_STATIC_ASSERT_ALIGN(VolumeProbeData, 16)
 
 struct IrradianceBrick {
   /* Offset in pixel to the start of the data inside the atlas texture. */
@@ -1416,7 +1416,7 @@ static inline float3 burley_eval(float3 d, float r)
 /** \name Light-probe Planar Data
  * \{ */
 
-struct ProbePlanarData {
+struct PlanarProbeData {
   /** Matrices used to render the planar capture. */
   float4x4 viewmat;
   float4x4 winmat;
@@ -1427,7 +1427,7 @@ struct ProbePlanarData {
   /** Layer in the planar capture textures used by this probe. */
   int layer_id;
 };
-BLI_STATIC_ASSERT_ALIGN(ProbePlanarData, 16)
+BLI_STATIC_ASSERT_ALIGN(PlanarProbeData, 16)
 
 struct ClipPlaneData {
   /** World space clip plane equation. Used to render planar light-probes. */
@@ -1436,14 +1436,14 @@ struct ClipPlaneData {
 BLI_STATIC_ASSERT_ALIGN(ClipPlaneData, 16)
 
 /** Viewport Display Pass. */
-struct ProbePlanarDisplayData {
+struct PlanarProbeDisplayData {
   float4x4 plane_to_world;
   int probe_index;
   float _pad0;
   float _pad1;
   float _pad2;
 };
-BLI_STATIC_ASSERT_ALIGN(ProbePlanarDisplayData, 16)
+BLI_STATIC_ASSERT_ALIGN(PlanarProbeDisplayData, 16)
 
 /** \} */
 
@@ -1573,7 +1573,7 @@ using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, tru
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using DispatchIndirectBuf = draw::StorageBuffer<DispatchCommand>;
 using UniformDataBuf = draw::UniformBuffer<UniformData>;
-using IrradianceGridDataBuf = draw::UniformArrayBuffer<IrradianceGridData, IRRADIANCE_GRID_MAX>;
+using VolumeProbeDataBuf = draw::UniformArrayBuffer<VolumeProbeData, IRRADIANCE_GRID_MAX>;
 using IrradianceBrickBuf = draw::StorageVectorBuffer<IrradianceBrickPacked, 16>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;
 using LightCullingKeyBuf = draw::StorageArrayBuffer<uint, LIGHT_CHUNK, true>;
@@ -1585,10 +1585,10 @@ using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
 using SubsurfaceTileBuf = RayTraceTileBuf;
-using SphereProbeDataBuf = draw::UniformArrayBuffer<SphereProbeData, REFLECTION_PROBE_MAX>;
-using ProbePlanarDataBuf = draw::UniformArrayBuffer<ProbePlanarData, PLANAR_PROBE_MAX>;
+using SphereProbeDataBuf = draw::UniformArrayBuffer<SphereProbeData, SPHERE_PROBE_MAX>;
 using SphereProbeDisplayDataBuf = draw::StorageArrayBuffer<SphereProbeDisplayData>;
-using ProbePlanarDisplayDataBuf = draw::StorageArrayBuffer<ProbePlanarDisplayData>;
+using PlanarProbeDataBuf = draw::UniformArrayBuffer<PlanarProbeData, PLANAR_PROBE_MAX>;
+using PlanarProbeDisplayDataBuf = draw::StorageArrayBuffer<PlanarProbeDisplayData>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;

@@ -8,10 +8,10 @@
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 
-#ifdef REFLECTION_PROBE
+#ifdef SPHERE_PROBE
 int reflection_probes_select(vec3 P, float random_probe)
 {
-  for (int index = 0; index < REFLECTION_PROBE_MAX; index++) {
+  for (int index = 0; index < SPHERE_PROBE_MAX; index++) {
     SphereProbeData probe_data = reflection_probe_buf[index];
     /* SphereProbeData doesn't contain any gap, exit at first item that is invalid. */
     if (probe_data.atlas_coord.layer == -1) {
@@ -29,6 +29,6 @@ int reflection_probes_select(vec3 P, float random_probe)
     }
   }
   /* This should never happen (world probe is always last). */
-  return REFLECTION_PROBE_MAX - 1;
+  return SPHERE_PROBE_MAX - 1;
 }
-#endif /* REFLECTION_PROBE */
+#endif /* SPHERE_PROBE */

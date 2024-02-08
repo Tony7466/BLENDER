@@ -7,7 +7,7 @@
  *
  * Module that handles light probe update tagging.
  * Lighting data is contained in their respective module `VolumeProbeModule`, `SphereProbeModule`
- * and `PlaneProbeModule`.
+ * and `PlanarProbeModule`.
  */
 
 #include "DNA_lightprobe_types.h"
@@ -29,16 +29,16 @@ namespace blender::eevee {
 LightProbeModule::LightProbeModule(Instance &inst) : inst_(inst)
 {
   /* Initialize the world probe. */
-  world_cube_.clipping_distances = float2(1.0f, 10.0f);
-  world_cube_.world_to_probe_transposed = float3x4::identity();
-  world_cube_.influence_shape = SHAPE_ELIPSOID;
-  world_cube_.parallax_shape = SHAPE_ELIPSOID;
+  world_sphere_.clipping_distances = float2(1.0f, 10.0f);
+  world_sphere_.world_to_probe_transposed = float3x4::identity();
+  world_sphere_.influence_shape = SHAPE_ELIPSOID;
+  world_sphere_.parallax_shape = SHAPE_ELIPSOID;
   /* Full influence. */
-  world_cube_.influence_scale = 0.0f;
-  world_cube_.influence_bias = 1.0f;
-  world_cube_.parallax_distance = 1e10f;
+  world_sphere_.influence_scale = 0.0f;
+  world_sphere_.influence_bias = 1.0f;
+  world_sphere_.parallax_distance = 1e10f;
   /* In any case, the world must always be up to valid and used for render. */
-  world_cube_.use_for_render = true;
+  world_sphere_.use_for_render = true;
 }
 
 static eLightProbeResolution resolution_to_probe_resolution_enum(int resolution)
@@ -64,7 +64,7 @@ static eLightProbeResolution resolution_to_probe_resolution_enum(int resolution)
 void LightProbeModule::init()
 {
   const SceneEEVEE &sce_eevee = inst_.scene->eevee;
-  cube_object_resolution_ = resolution_to_probe_resolution_enum(sce_eevee.gi_cubemap_resolution);
+  sphere_object_resolution_ = resolution_to_probe_resolution_enum(sce_eevee.gi_cubemap_resolution);
 }
 
 void LightProbeModule::begin_sync()
@@ -73,9 +73,9 @@ void LightProbeModule::begin_sync()
                        (inst_.scene->eevee.flag & SCE_EEVEE_GI_AUTOBAKE) != 0;
 }
 
-void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
+void LightProbeModule::sync_volume(const Object *ob, ObjectHandle &handle)
 {
-  IrradianceGrid &grid = grid_map_.lookup_or_add_default(handle.object_key);
+  VolumeProbe &grid = volume_map_.lookup_or_add_default(handle.object_key);
   grid.used = true;
   if (handle.recalc != 0 || grid.initialized == false) {
     const ::LightProbe *lightprobe = static_cast<const ::LightProbe *>(ob->data);
@@ -105,9 +105,9 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
   }
 }
 
-void LightProbeModule::sync_cube(const Object *ob, ObjectHandle &handle)
+void LightProbeModule::sync_sphere(const Object *ob, ObjectHandle &handle)
 {
-  ReflectionCube &cube = cube_map_.lookup_or_add_default(handle.object_key);
+  SphereProbe &cube = sphere_map_.lookup_or_add_default(handle.object_key);
   cube.used = true;
   if (handle.recalc != 0 || cube.initialized == false) {
     const ::LightProbe &light_probe = *(::LightProbe *)ob->data;
@@ -117,7 +117,7 @@ void LightProbeModule::sync_cube(const Object *ob, ObjectHandle &handle)
     cube.do_render = true;
 
     SphereProbeModule &probe_module = inst_.sphere_probes;
-    eLightProbeResolution probe_resolution = cube_object_resolution_;
+    eLightProbeResolution probe_resolution = sphere_object_resolution_;
     int subdivision_lvl = probe_module.subdivision_level_get(probe_resolution);
 
     if (cube.atlas_coord.subdivision_lvl != subdivision_lvl) {
@@ -158,9 +158,9 @@ void LightProbeModule::sync_cube(const Object *ob, ObjectHandle &handle)
   }
 }
 
-void LightProbeModule::sync_plane(const Object *ob, ObjectHandle &handle)
+void LightProbeModule::sync_planar(const Object *ob, ObjectHandle &handle)
 {
-  ProbePlane &plane = plane_map_.lookup_or_add_default(handle.object_key);
+  PlanarProbe &plane = planar_map_.lookup_or_add_default(handle.object_key);
   plane.used = true;
   if (handle.recalc != 0 || plane.initialized == false) {
     const ::LightProbe *light_probe = (::LightProbe *)ob->data;
@@ -181,13 +181,13 @@ void LightProbeModule::sync_probe(const Object *ob, ObjectHandle &handle)
   const ::LightProbe *lightprobe = static_cast<const ::LightProbe *>(ob->data);
   switch (lightprobe->type) {
     case LIGHTPROBE_TYPE_SPHERE:
-      sync_cube(ob, handle);
+      sync_sphere(ob, handle);
       return;
     case LIGHTPROBE_TYPE_PLANE:
-      sync_plane(ob, handle);
+      sync_planar(ob, handle);
       return;
     case LIGHTPROBE_TYPE_VOLUME:
-      sync_grid(ob, handle);
+      sync_volume(ob, handle);
       return;
   }
   BLI_assert_unreachable();
@@ -201,16 +201,17 @@ void LightProbeModule::sync_world(const ::World *world, bool has_update)
   SphereProbeModule &sph_module = inst_.sphere_probes;
   int subdivision_lvl = sph_module.subdivision_level_get(probe_resolution);
 
-  if (subdivision_lvl != world_cube_.atlas_coord.subdivision_lvl) {
-    world_cube_.atlas_coord.free();
-    world_cube_.atlas_coord = find_empty_atlas_region(subdivision_lvl);
-    SphereProbeData &world_data = *static_cast<SphereProbeData *>(&world_cube_);
-    world_data.atlas_coord = world_cube_.atlas_coord.as_sampling_coord(sph_module.max_resolution_);
+  if (subdivision_lvl != world_sphere_.atlas_coord.subdivision_lvl) {
+    world_sphere_.atlas_coord.free();
+    world_sphere_.atlas_coord = find_empty_atlas_region(subdivision_lvl);
+    SphereProbeData &world_data = *static_cast<SphereProbeData *>(&world_sphere_);
+    world_data.atlas_coord = world_sphere_.atlas_coord.as_sampling_coord(
+        sph_module.max_resolution_);
     has_update = true;
   }
 
   if (has_update) {
-    world_cube_.do_render = true;
+    world_sphere_.do_render = true;
     sph_module.tag_world_irradiance_for_update();
   }
 }
@@ -218,12 +219,12 @@ void LightProbeModule::sync_world(const ::World *world, bool has_update)
 void LightProbeModule::end_sync()
 {
   /* Check for deleted or updated grid. */
-  grid_update_ = false;
-  grid_map_.remove_if([&](const Map<ObjectKey, IrradianceGrid>::MutableItem &item) {
-    IrradianceGrid &grid = item.value;
+  volume_update_ = false;
+  volume_map_.remove_if([&](const Map<ObjectKey, VolumeProbe>::MutableItem &item) {
+    VolumeProbe &grid = item.value;
     bool remove_grid = !grid.used;
     if (grid.updated || remove_grid) {
-      grid_update_ = true;
+      volume_update_ = true;
     }
     grid.updated = false;
     grid.used = false;
@@ -231,12 +232,12 @@ void LightProbeModule::end_sync()
   });
 
   /* Check for deleted or updated cube. */
-  cube_update_ = false;
-  cube_map_.remove_if([&](const Map<ObjectKey, ReflectionCube>::MutableItem &item) {
-    ReflectionCube &cube = item.value;
+  sphere_update_ = false;
+  sphere_map_.remove_if([&](const Map<ObjectKey, SphereProbe>::MutableItem &item) {
+    SphereProbe &cube = item.value;
     bool remove_cube = !cube.used;
     if (cube.updated || remove_cube) {
-      cube_update_ = true;
+      sphere_update_ = true;
     }
     cube.updated = false;
     cube.used = false;
@@ -244,12 +245,12 @@ void LightProbeModule::end_sync()
   });
 
   /* Check for deleted or updated plane. */
-  plane_update_ = false;
-  plane_map_.remove_if([&](const Map<ObjectKey, ProbePlane>::MutableItem &item) {
-    ProbePlane &plane = item.value;
+  planar_update_ = false;
+  planar_map_.remove_if([&](const Map<ObjectKey, PlanarProbe>::MutableItem &item) {
+    PlanarProbe &plane = item.value;
     bool remove_plane = !plane.used;
     if (plane.updated || remove_plane) {
-      plane_update_ = true;
+      planar_update_ = true;
     }
     plane.updated = false;
     plane.used = false;
@@ -259,20 +260,20 @@ void LightProbeModule::end_sync()
 
 SphereProbeAtlasCoord LightProbeModule::find_empty_atlas_region(int subdivision_level) const
 {
-  int layer_count = cube_layer_count();
+  int layer_count = sphere_layer_count();
   SphereProbeAtlasCoord::LocationFinder location_finder(layer_count, subdivision_level);
 
-  location_finder.mark_space_used(world_cube_.atlas_coord);
-  for (const ReflectionCube &probe : cube_map_.values()) {
+  location_finder.mark_space_used(world_sphere_.atlas_coord);
+  for (const SphereProbe &probe : sphere_map_.values()) {
     location_finder.mark_space_used(probe.atlas_coord);
   }
   return location_finder.first_free_spot();
 }
 
-int LightProbeModule::cube_layer_count() const
+int LightProbeModule::sphere_layer_count() const
 {
-  int max_layer = world_cube_.atlas_coord.atlas_layer;
-  for (const ReflectionCube &probe : cube_map_.values()) {
+  int max_layer = world_sphere_.atlas_coord.atlas_layer;
+  for (const SphereProbe &probe : sphere_map_.values()) {
     max_layer = max_ii(max_layer, probe.atlas_coord.atlas_layer);
   }
   int layer_count = max_layer + 1;

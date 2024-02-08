@@ -202,7 +202,7 @@ class VolumeProbeModule {
   /** Reserved atlas brick for world irradiance. */
   int world_brick_index_ = 0;
   /** Data structure used to index irradiance cache pages inside the atlas. */
-  IrradianceGridDataBuf grids_infos_buf_ = {"grids_infos_buf_"};
+  VolumeProbeDataBuf grids_infos_buf_ = {"grids_infos_buf_"};
   IrradianceBrickBuf bricks_infos_buf_ = {"bricks_infos_buf_"};
   /** Pool of atlas regions to allocate to different grids. */
   Vector<IrradianceBrickPacked> brick_pool_;
@@ -236,7 +236,7 @@ class VolumeProbeModule {
   {
     pass.bind_ubo(IRRADIANCE_GRID_BUF_SLOT, &grids_infos_buf_);
     pass.bind_ssbo(IRRADIANCE_BRICK_BUF_SLOT, &bricks_infos_buf_);
-    pass.bind_texture(IRRADIANCE_ATLAS_TEX_SLOT, &irradiance_atlas_tx_);
+    pass.bind_texture(VOLUME_PROBE_TEX_SLOT, &irradiance_atlas_tx_);
   }
 
  private:

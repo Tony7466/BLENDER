@@ -26,7 +26,7 @@ struct ObjectHandle;
 /** \name Planar Probe Module
  * \{ */
 
-class PlaneProbeModule {
+class PlanarProbeModule {
   friend class Instance;
   friend class HiZBuffer;
   friend class PlanarProbePipeline;
@@ -46,17 +46,17 @@ class PlaneProbeModule {
   Texture depth_tx_ = {"planar.depth_tx"};
 
   ClipPlaneBuf world_clip_buf_ = {"world_clip_buf"};
-  ProbePlanarDataBuf probe_planar_buf_ = {"probe_planar_buf"};
+  PlanarProbeDataBuf probe_planar_buf_ = {"probe_planar_buf"};
 
   bool update_probes_ = false;
 
   /** Viewport data display drawing. */
   bool do_display_draw_ = false;
-  ProbePlanarDisplayDataBuf display_data_buf_;
-  PassSimple viewport_display_ps_ = {"PlaneProbeModule.Viewport Display"};
+  PlanarProbeDisplayDataBuf display_data_buf_;
+  PassSimple viewport_display_ps_ = {"PlanarProbeModule.Viewport Display"};
 
  public:
-  PlaneProbeModule(Instance &instance) : inst_(instance) {}
+  PlanarProbeModule(Instance &instance) : inst_(instance) {}
 
   void init();
   void end_sync();

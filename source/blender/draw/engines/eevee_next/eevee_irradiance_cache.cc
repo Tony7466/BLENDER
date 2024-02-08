@@ -48,7 +48,7 @@ void VolumeProbeModule::init()
 
   if (do_full_update_) {
     /* Delete all references to existing bricks. */
-    for (IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
+    for (VolumeProbe &grid : inst_.light_probes.volume_map_.values()) {
       grid.bricks.clear();
     }
     brick_pool_.clear();
@@ -109,12 +109,12 @@ void VolumeProbeModule::bricks_free(Vector<IrradianceBrickPacked> &bricks)
 
 void VolumeProbeModule::set_view(View & /*view*/)
 {
-  Vector<IrradianceGrid *> grid_loaded;
+  Vector<VolumeProbe *> grid_loaded;
 
   bool any_update = false;
   /* First allocate the needed bricks and populate the brick buffer. */
   bricks_infos_buf_.clear();
-  for (IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
+  for (VolumeProbe &grid : inst_.light_probes.volume_map_.values()) {
     LightProbeGridCacheFrame *cache = grid.cache ? grid.cache->grid_static_cache : nullptr;
     if (cache == nullptr) {
       continue;
@@ -182,7 +182,7 @@ void VolumeProbeModule::set_view(View & /*view*/)
    * before tagging update. But this is a bit too complex and update is quite cheap. So we update
    * everything if there is any update on any grid. */
   if (any_update) {
-    for (IrradianceGrid *grid : grid_loaded) {
+    for (VolumeProbe *grid : grid_loaded) {
       grid->do_update = true;
     }
   }
@@ -190,44 +190,43 @@ void VolumeProbeModule::set_view(View & /*view*/)
   /* Then create brick & grid infos UBOs content. */
   {
     /* Stable sorting of grids. */
-    std::sort(grid_loaded.begin(),
-              grid_loaded.end(),
-              [](const IrradianceGrid *a, const IrradianceGrid *b) {
-                float volume_a = math::determinant(float3x3(a->object_to_world));
-                float volume_b = math::determinant(float3x3(b->object_to_world));
-                if (volume_a != volume_b) {
-                  /* Smallest first. */
-                  return volume_a < volume_b;
-                }
-                /* Volumes are identical. Any arbitrary criteria can be used to sort them.
-                 * Use position to avoid unstable result caused by depsgraph non deterministic eval
-                 * order. This could also become a priority parameter. */
-                float3 _a = a->object_to_world.location();
-                float3 _b = b->object_to_world.location();
-                if (_a.x != _b.x) {
-                  return _a.x < _b.x;
-                }
-                else if (_a.y != _b.y) {
-                  return _a.y < _b.y;
-                }
-                else if (_a.z != _b.z) {
-                  return _a.z < _b.z;
-                }
-                else {
-                  /* Fallback to memory address, since there's no good alternative. */
-                  return a < b;
-                }
-              });
+    std::sort(
+        grid_loaded.begin(), grid_loaded.end(), [](const VolumeProbe *a, const VolumeProbe *b) {
+          float volume_a = math::determinant(float3x3(a->object_to_world));
+          float volume_b = math::determinant(float3x3(b->object_to_world));
+          if (volume_a != volume_b) {
+            /* Smallest first. */
+            return volume_a < volume_b;
+          }
+          /* Volumes are identical. Any arbitrary criteria can be used to sort them.
+           * Use position to avoid unstable result caused by depsgraph non deterministic eval
+           * order. This could also become a priority parameter. */
+          float3 _a = a->object_to_world.location();
+          float3 _b = b->object_to_world.location();
+          if (_a.x != _b.x) {
+            return _a.x < _b.x;
+          }
+          else if (_a.y != _b.y) {
+            return _a.y < _b.y;
+          }
+          else if (_a.z != _b.z) {
+            return _a.z < _b.z;
+          }
+          else {
+            /* Fallback to memory address, since there's no good alternative. */
+            return a < b;
+          }
+        });
 
     /* Insert grids in UBO in sorted order. */
     int grids_len = 0;
-    for (IrradianceGrid *grid : grid_loaded) {
+    for (VolumeProbe *grid : grid_loaded) {
       grid->grid_index = grids_len;
       grids_infos_buf_[grids_len++] = *grid;
     }
 
     /* Insert world grid last. */
-    IrradianceGridData grid;
+    VolumeProbeData grid;
     grid.world_to_grid_transposed = float3x4::identity();
     grid.grid_size = int3(1);
     grid.brick_offset = bricks_infos_buf_.size();
@@ -253,7 +252,7 @@ void VolumeProbeModule::set_view(View & /*view*/)
   for (auto it = grid_loaded.rbegin(); it != grid_loaded.rend(); ++it) {
     grid_start_index--;
 
-    IrradianceGrid *grid = *it;
+    VolumeProbe *grid = *it;
     if (!grid->do_update) {
       continue;
     }
@@ -425,7 +424,7 @@ void VolumeProbeModule::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
       return;
   }
 
-  for (const IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
+  for (const VolumeProbe &grid : inst_.light_probes.volume_map_.values()) {
     if (grid.cache == nullptr) {
       continue;
     }
@@ -533,7 +532,7 @@ void VolumeProbeModule::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
     return;
   }
 
-  for (const IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
+  for (const VolumeProbe &grid : inst_.light_probes.volume_map_.values()) {
     if (!grid.viewport_display || grid.viewport_display_size == 0.0f || !grid.cache ||
         !grid.cache->grid_static_cache)
     {
@@ -826,7 +825,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   capture_info_buf_.capture_emission = capture_emission_;
 
   LightProbeModule &light_probes = inst_.light_probes;
-  SphereProbeData &world_data = *static_cast<SphereProbeData *>(&light_probes.world_cube_);
+  SphereProbeData &world_data = *static_cast<SphereProbeData *>(&light_probes.world_sphere_);
   capture_info_buf_.world_atlas_coord = world_data.atlas_coord;
 
   dispatch_per_grid_sample_ = math::divide_ceil(grid_resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));

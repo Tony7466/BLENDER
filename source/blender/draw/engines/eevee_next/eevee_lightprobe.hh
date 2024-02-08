@@ -7,7 +7,7 @@
  *
  * Module that handles light probe update tagging.
  * Lighting data is contained in their respective module `VolumeProbeModule`, `SphereProbeModule`
- * and `PlaneProbeModule`.
+ * and `PlanarProbeModule`.
  */
 
 #pragma once
@@ -81,7 +81,7 @@ struct SphereProbeAtlasCoord {
      */
     /* Max level only need half a pixel of padding around the sampling area. */
     const int mip_max_lvl_padding = 1;
-    const int mip_min_lvl_padding = mip_max_lvl_padding << REFLECTION_PROBE_MIPMAP_LEVELS;
+    const int mip_min_lvl_padding = mip_max_lvl_padding << SPHERE_PROBE_MIPMAP_LEVELS;
     /* Extent and offset in mip 0 texels. */
     const int sampling_area_extent = area_extent(atlas_extent) - mip_min_lvl_padding;
     const int2 sampling_area_offset = area_offset(atlas_extent) + mip_min_lvl_padding / 2;
@@ -139,11 +139,11 @@ struct LightProbe {
   /* NOTE: Might be not needed if depsgraph updates work as intended. */
   bool updated = false;
   /** Display debug visuals in the viewport. */
-  bool viewport_display;
-  float viewport_display_size;
+  bool viewport_display = false;
+  float viewport_display_size = 0.0f;
 };
 
-struct IrradianceGrid : public LightProbe, IrradianceGridData {
+struct VolumeProbe : public LightProbe, VolumeProbeData {
   /** Copy of the transform matrix. */
   float4x4 object_to_world;
   /** Precomputed inverse transform with normalized axes. No position. Used for rotating SH. */
@@ -170,7 +170,7 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
   float intensity;
 };
 
-struct ReflectionCube : public LightProbe, SphereProbeData {
+struct SphereProbe : public LightProbe, SphereProbeData {
   /** Used to sort the probes by priority. */
   float volume;
   /** True if the area in the atlas needs to be updated. */
@@ -183,7 +183,7 @@ struct ReflectionCube : public LightProbe, SphereProbeData {
   SphereProbeAtlasCoord atlas_coord;
 };
 
-struct ProbePlane : public LightProbe, ProbePlanarData {
+struct PlanarProbe : public LightProbe, PlanarProbeData {
   /* Copy of object matrices. */
   float4x4 plane_to_world;
   float4x4 world_to_plane;
@@ -194,7 +194,7 @@ struct ProbePlane : public LightProbe, ProbePlanarData {
 
  public:
   /**
-   * Update the ProbePlanarData part of the struct.
+   * Update the PlanarProbeData part of the struct.
    * `view` is the view we want to render this probe with.
    */
   void set_view(const draw::View &view, int layer_id);
@@ -224,26 +224,26 @@ struct ProbePlane : public LightProbe, ProbePlanarData {
 class LightProbeModule {
   friend class IrradianceBake;
   friend class VolumeProbeModule;
-  friend class PlaneProbeModule;
+  friend class PlanarProbeModule;
   friend class SphereProbeModule;
 
  private:
   Instance &inst_;
 
   /** Light Probe map to detect deletion and store associated data. */
-  Map<ObjectKey, IrradianceGrid> grid_map_;
-  Map<ObjectKey, ReflectionCube> cube_map_;
-  Map<ObjectKey, ProbePlane> plane_map_;
+  Map<ObjectKey, VolumeProbe> volume_map_;
+  Map<ObjectKey, SphereProbe> sphere_map_;
+  Map<ObjectKey, PlanarProbe> planar_map_;
   /* World probe is stored separately. */
-  ReflectionCube world_cube_;
+  SphereProbe world_sphere_;
   /** True if a light-probe update was detected. */
-  bool grid_update_;
-  bool cube_update_;
-  bool plane_update_;
+  bool volume_update_;
+  bool sphere_update_;
+  bool planar_update_;
   /** True if the auto bake feature is enabled & available in this context. */
   bool auto_bake_enabled_;
 
-  eLightProbeResolution cube_object_resolution_ = LIGHT_PROBE_RESOLUTION_64;
+  eLightProbeResolution sphere_object_resolution_ = LIGHT_PROBE_RESOLUTION_64;
 
  public:
   LightProbeModule(Instance &inst);
@@ -257,12 +257,12 @@ class LightProbeModule {
   void end_sync();
 
  private:
-  void sync_cube(const Object *ob, ObjectHandle &handle);
-  void sync_grid(const Object *ob, ObjectHandle &handle);
-  void sync_plane(const Object *ob, ObjectHandle &handle);
+  void sync_sphere(const Object *ob, ObjectHandle &handle);
+  void sync_volume(const Object *ob, ObjectHandle &handle);
+  void sync_planar(const Object *ob, ObjectHandle &handle);
 
   /** Get the number of atlas layers needed to store light probe spheres. */
-  int cube_layer_count() const;
+  int sphere_layer_count() const;
 
   /** Returns coordinates of an area in the atlas for a probe with the given subdivision level. */
   SphereProbeAtlasCoord find_empty_atlas_region(int subdivision_level) const;

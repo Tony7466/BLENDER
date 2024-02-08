@@ -6,7 +6,7 @@
 #pragma BLENDER_REQUIRE(eevee_octahedron_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
-#ifdef REFLECTION_PROBE
+#ifdef SPHERE_PROBE
 vec4 reflection_probes_sample(vec3 L, float lod, SphereProbeUvArea atlas_coord)
 {
   vec2 octahedral_uv = octahedral_uv_from_direction(L) * atlas_coord.scale + atlas_coord.offset;

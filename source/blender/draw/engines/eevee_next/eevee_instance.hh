@@ -102,7 +102,7 @@ class Instance {
   LookdevView lookdev_view;
   LookdevModule lookdev;
   SphereProbeModule sphere_probes;
-  PlaneProbeModule planar_probes;
+  PlanarProbeModule planar_probes;
   VolumeProbeModule volume_probes;
   LightProbeModule light_probes;
   VolumeModule volume;

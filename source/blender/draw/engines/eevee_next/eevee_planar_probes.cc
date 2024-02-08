@@ -13,7 +13,7 @@ using namespace blender::math;
 /** \name Planar Probe
  * \{ */
 
-void ProbePlane::set_view(const draw::View &view, int layer_id)
+void PlanarProbe::set_view(const draw::View &view, int layer_id)
 {
   this->viewmat = view.viewmat() * reflection_matrix_get();
   this->winmat = view.winmat();
@@ -34,12 +34,12 @@ void ProbePlane::set_view(const draw::View &view, int layer_id)
 /** \name Planar Probe Module
  * \{ */
 
-void PlaneProbeModule::init()
+void PlanarProbeModule::init()
 {
   /* This triggers the compilation of clipped shader only if we can detect lightprobe planes. */
   if (inst_.is_viewport()) {
     /* This check needs to happen upfront before sync, so we use the previous sync result. */
-    update_probes_ = !inst_.light_probes.plane_map_.is_empty();
+    update_probes_ = !inst_.light_probes.planar_map_.is_empty();
   }
   else {
     /* TODO(jbakker): should we check on the subtype as well? Now it also populates even when
@@ -50,19 +50,19 @@ void PlaneProbeModule::init()
   do_display_draw_ = false;
 }
 
-void PlaneProbeModule::end_sync()
+void PlanarProbeModule::end_sync()
 {
   /* When first planar probes are enabled it can happen that the first sample is off. */
-  if (!update_probes_ && !inst_.light_probes.plane_map_.is_empty()) {
+  if (!update_probes_ && !inst_.light_probes.planar_map_.is_empty()) {
     DRW_viewport_request_redraw();
   }
 }
 
-void PlaneProbeModule::set_view(const draw::View &main_view, int2 main_view_extent)
+void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_extent)
 {
   GBuffer &gbuf = inst_.gbuffer;
 
-  const int64_t num_probes = inst_.light_probes.plane_map_.size();
+  const int64_t num_probes = inst_.light_probes.planar_map_.size();
 
   /* TODO resolution percentage. */
   int2 extent = main_view_extent;
@@ -83,7 +83,7 @@ void PlaneProbeModule::set_view(const draw::View &main_view, int2 main_view_exte
 
   int resource_index = 0;
   int display_index = 0;
-  for (ProbePlane &probe : inst_.light_probes.plane_map_.values()) {
+  for (PlanarProbe &probe : inst_.light_probes.planar_map_.values()) {
     if (resource_index == PLANAR_PROBE_MAX) {
       break;
     }
@@ -139,7 +139,7 @@ void PlaneProbeModule::set_view(const draw::View &main_view, int2 main_view_exte
   }
 }
 
-void PlaneProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
+void PlanarProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (!do_display_draw_) {
     return;
