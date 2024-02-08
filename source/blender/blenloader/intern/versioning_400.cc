@@ -2887,7 +2887,26 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 21)) {
+  /* Keep point/spot light soft falloff for files created before 4.0. */
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 0)) {
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      if (light->type == LA_LOCAL || light->type == LA_SPOT) {
+        light->mode |= LA_USE_SOFT_FALLOFF;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 1)) {
+    using namespace blender::bke::greasepencil;
+    /* Initialize newly added scale layer transform to one. */
+    LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
+      for (Layer *layer : grease_pencil->layers_for_write()) {
+        copy_v3_fl(layer->scale, 1.0f);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 2)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
       if (is_cycles) {
