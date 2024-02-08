@@ -133,6 +133,46 @@ IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
   return sliced;
 }
 
+IndexMask IndexMask::slice(const RawMaskIterator first_it,
+                           const RawMaskIterator last_it,
+                           const int64_t size) const
+{
+  BLI_assert(this->iterator_to_index(last_it) - this->iterator_to_index(first_it) + 1 == size);
+  IndexMask sliced = *this;
+  sliced.indices_num_ = size;
+  sliced.segments_num_ = last_it.segment_i - first_it.segment_i + 1;
+  sliced.indices_by_segment_ += first_it.segment_i;
+  sliced.segment_offsets_ += first_it.segment_i;
+  sliced.cumulative_segment_sizes_ += first_it.segment_i;
+  sliced.begin_index_in_segment_ = first_it.index_in_segment;
+  sliced.end_index_in_segment_ = last_it.index_in_segment + 1;
+  return sliced;
+}
+
+IndexMask IndexMask::slice_content(const IndexRange range) const
+{
+  return this->slice_content(range.start(), range.size());
+}
+
+IndexMask IndexMask::slice_content(const int64_t start, const int64_t size) const
+{
+  if (size <= 0) {
+    return {};
+  }
+  const std::optional<RawMaskIterator> first_it = this->find_larger_equal(start);
+  const std::optional<RawMaskIterator> last_it = this->find_smaller_equal(start + size - 1);
+  if (!first_it || !last_it) {
+    return {};
+  }
+  const int64_t first_index = this->iterator_to_index(*first_it);
+  const int64_t last_index = this->iterator_to_index(*last_it);
+  if (last_index < first_index) {
+    return {};
+  }
+  const int64_t sliced_mask_size = last_index - first_index + 1;
+  return this->slice(*first_it, *last_it, sliced_mask_size);
+}
+
 IndexMask IndexMask::slice_and_offset(const IndexRange range,
                                       const int64_t offset,
                                       IndexMaskMemory &memory) const
@@ -776,37 +816,70 @@ IndexMask from_predicate_impl(
 
 std::optional<RawMaskIterator> IndexMask::find(const int64_t query_index) const
 {
-  if (this->is_empty()) {
-    return std::nullopt;
+  if (const std::optional<RawMaskIterator> it = this->find_larger_equal(query_index)) {
+    if ((*this)[*it] == query_index) {
+      return it;
+    }
   }
-  if (query_index < this->first()) {
-    return std::nullopt;
-  }
-  if (query_index > this->last()) {
-    return std::nullopt;
-  }
+  return std::nullopt;
+}
 
-  const int64_t segment_i = -1 + binary_search::find_predicate_begin(
-                                     IndexRange(segments_num_), [&](const int64_t value) {
-                                       return query_index < this->segment(value)[0];
-                                     });
-
+std::optional<RawMaskIterator> IndexMask::find_larger_equal(const int64_t query_index) const
+{
+  const int64_t segment_i = binary_search::find_predicate_begin(
+      IndexRange(segments_num_),
+      [&](const int64_t seg_i) { return this->segment(seg_i).last() >= query_index; });
+  if (segment_i == segments_num_) {
+    /* The query index is larger than the largest index in this mask. */
+    return std::nullopt;
+  }
   const IndexMaskSegment segment = this->segment(segment_i);
-  const Span<int16_t> local_segment = segment.base_span();
-  const int64_t local_query_index = query_index - segment.offset();
-  if (local_query_index > local_segment.last()) {
-    return std::nullopt;
+  const int64_t segment_begin_index = segment.base_span().data() - indices_by_segment_[segment_i];
+  if (query_index < segment[0]) {
+    /* The query index is the first element in this segment. */
+    const int64_t index_in_segment = segment_begin_index;
+    BLI_assert(index_in_segment < max_segment_size);
+    return RawMaskIterator{segment_i, int16_t(index_in_segment)};
   }
-  const int64_t index_in_segment = -1 + binary_search::find_predicate_begin(
-                                            local_segment, [&](const int16_t value) {
-                                              return local_query_index < value;
-                                            });
-  if (local_segment[index_in_segment] != local_query_index) {
-    return std::nullopt;
-  }
-  const int64_t actual_index_in_segment = index_in_segment +
-                                          (segment_i == 0 ? begin_index_in_segment_ : 0);
+  /* The query index is somewhere within this segment. */
+  const int64_t local_index = query_index - segment.offset();
+  const int64_t index_in_segment = binary_search::find_predicate_begin(
+      segment.base_span(), [&](const int16_t i) { return i >= local_index; });
+  const int64_t actual_index_in_segment = index_in_segment + segment_begin_index;
+  BLI_assert(actual_index_in_segment < max_segment_size);
   return RawMaskIterator{segment_i, int16_t(actual_index_in_segment)};
+}
+
+std::optional<RawMaskIterator> IndexMask::find_smaller_equal(const int64_t query_index) const
+{
+  if (indices_num_ == 0) {
+    return std::nullopt;
+  }
+  const std::optional<RawMaskIterator> larger_equal_it = this->find_larger_equal(query_index);
+  if (!larger_equal_it) {
+    /* Return the last element. */
+    return RawMaskIterator{segments_num_ - 1, int16_t(end_index_in_segment_ - 1)};
+  }
+  if ((*this)[*larger_equal_it] == query_index) {
+    /* This is an exact hit. */
+    return larger_equal_it;
+  }
+  if (larger_equal_it->segment_i > 0) {
+    if (larger_equal_it->index_in_segment > 0) {
+      /* Previous element in same segment. */
+      return RawMaskIterator{larger_equal_it->segment_i,
+                             int16_t(larger_equal_it->index_in_segment - 1)};
+    }
+    /* Last element in previous segment. */
+    return RawMaskIterator{larger_equal_it->segment_i - 1,
+                           int16_t(cumulative_segment_sizes_[larger_equal_it->segment_i] -
+                                   cumulative_segment_sizes_[larger_equal_it->segment_i - 1] - 1)};
+  }
+  if (larger_equal_it->index_in_segment > begin_index_in_segment_) {
+    /* Previous element in same segment. */
+    return RawMaskIterator{0, int16_t(larger_equal_it->index_in_segment - 1)};
+  }
+  return std::nullopt;
 }
 
 bool IndexMask::contains(const int64_t query_index) const
