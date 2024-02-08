@@ -1,1 +1,2 @@
 Referenced by issue #114053, Sculpt Mode visibility broken after undo
+Referenced by pull request #117986, Fix #117971: wrong indices in sculpt undo/restore colors
