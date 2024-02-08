@@ -709,13 +709,13 @@ static void corner_edges_topology(const int edge_edges_num,
 
     /* Inner face edge ranges. */
     const IndexRange face_edges_a = IndexRange(inner_face_of_edges.total())
-                                        .step(base_faces_num * 0 + face_i)
+                                        .step(base_faces_num * InnerEdges::Base + face_i)
                                         .shift(base_edges_num * edge_edges_num);
     const IndexRange face_edges_b = IndexRange(inner_face_of_edges.total())
-                                        .step(base_faces_num * 1 + face_i)
+                                        .step(base_faces_num * InnerEdges::Left + face_i)
                                         .shift(base_edges_num * edge_edges_num);
     const IndexRange face_edges_c = IndexRange(inner_face_of_edges.total())
-                                        .step(base_faces_num * 2 + face_i)
+                                        .step(base_faces_num * InnerEdges::Right + face_i)
                                         .shift(base_edges_num * edge_edges_num);
 
     const bool corner_cab_order = elem_of(
@@ -992,14 +992,14 @@ static void uv_vert_positions(const int edge_edges_num,
       const float factor = float(r_line_i) / float(top_faces.hight());
       const float2 bottom_middle = math::midpoint(c_corner_face_uv[Corner::A],
                                                   c_corner_face_uv[Corner::B]);
-      const float2 flip = (bottom_middle - c_corner_face_uv[Corner::C]) * 2.0f;
+      const float2 offset_to_mirror_c = (bottom_middle - c_corner_face_uv[Corner::C]) * 2.0f;
       line_begin_uv[Corner::A] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::B], a_corner_face_uv[Corner::B]);
       line_begin_uv[Corner::B] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::A], a_corner_face_uv[Corner::A]);
       line_begin_uv[Corner::C] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::C], a_corner_face_uv[Corner::C]);
-      line_begin_uv[Corner::C] += flip;
+      line_begin_uv[Corner::C] += offset_to_mirror_c;
 
       /* This write in the end of current span. This slight distributed write. But using temporal
        * values to delay filing end will save just ~10%. */
@@ -1009,7 +1009,7 @@ static void uv_vert_positions(const int edge_edges_num,
           factor, c_corner_face_uv[Corner::A], b_corner_face_uv[Corner::A]);
       line_end_uv[Corner::C] = bke::attribute_math::mix2<float2>(
           factor, c_corner_face_uv[Corner::C], b_corner_face_uv[Corner::C]);
-      line_end_uv[Corner::C] += flip;
+      line_end_uv[Corner::C] += offset_to_mirror_c;
 
       fill_uv_line_of_triangles(line_begin_uv[Corner::A],
                                 line_begin_uv[Corner::B],
