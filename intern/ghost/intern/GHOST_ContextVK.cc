@@ -352,7 +352,11 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
       }
     }
 
-#if STRICT_REQUIREMENTS
+#ifdef __APPLE__
+    if (!device_vk.features.features.dualSrcBlend || !device_vk.features.features.imageCubeArray) {
+      continue;
+    }
+#else
     if (!device_vk.features.features.geometryShader || !device_vk.features.features.dualSrcBlend ||
         !device_vk.features.features.logicOp || !device_vk.features.features.imageCubeArray)
     {
