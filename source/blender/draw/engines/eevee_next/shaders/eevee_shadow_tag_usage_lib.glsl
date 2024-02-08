@@ -15,14 +15,14 @@
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
-int last_tile_index = -1;
-void shadow_tag_usage_tile_skipmaxcheck(LightData light, ivec2 tile_co, int lod, int tilemap_index)
+int g_last_tile_index = -1;
+void shadow_tag_usage_tile_unchecked(LightData light, ivec2 tile_co, int lod, int tilemap_index)
 {
   tile_co >>= lod;
   int tile_index = shadow_tile_offset(tile_co, tilemaps_buf[tilemap_index].tiles_index, lod);
-  if (tile_index != last_tile_index) {
+  if (tile_index != g_last_tile_index) {
     atomicOr(tiles_buf[tile_index], uint(SHADOW_IS_USED));
-    last_tile_index = tile_index;
+    g_last_tile_index = tile_index;
   }
 }
 void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_index)
@@ -31,7 +31,7 @@ void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_
     return;
   }
 
-  shadow_tag_usage_tile_skipmaxcheck(light, tile_co, lod, tilemap_index);
+  shadow_tag_usage_tile_unchecked(light, tile_co, lod, tilemap_index);
 }
 
 void shadow_tag_usage_tilemap_directional_at_level(uint l_idx, vec3 P, int level)
@@ -84,7 +84,7 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
 
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
         for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
-          shadow_tag_usage_tile_skipmaxcheck(light, ivec2(x, y), 0, coord_min.tilemap_index);
+          shadow_tag_usage_tile_unchecked(light, ivec2(x, y), 0, coord_min.tilemap_index);
         }
       }
     }
@@ -183,7 +183,7 @@ void shadow_tag_usage_tilemap_punctual(
 
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
         for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
-          shadow_tag_usage_tile_skipmaxcheck(light, ivec2(x, y), lod, tilemap_index);
+          shadow_tag_usage_tile_unchecked(light, ivec2(x, y), lod, tilemap_index);
         }
       }
     }
