@@ -139,17 +139,17 @@ static void modify_geometry_set(ModifierData *md,
   BLI_assert(lmd->object != nullptr && lmd->object->type == OB_LATTICE);
   LatticeDeformData *cache_data = BKE_lattice_deform_data_create(lmd->object, ctx->object);
 
-  GreasePencil *grease_pencil = geometry_set->get_grease_pencil_for_write();
-  if (grease_pencil == nullptr) {
+  if (!geometry_set->has_grease_pencil()) {
     return;
   }
+  GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      *grease_pencil, lmd->influence, mask_memory);
-  const int frame = grease_pencil->runtime->eval_frame;
+      grease_pencil, lmd->influence, mask_memory);
+  const int frame = grease_pencil.runtime->eval_frame;
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
-      *grease_pencil, layer_mask, frame);
+      grease_pencil, layer_mask, frame);
   threading::parallel_for_each(
       drawings, [&](Drawing *drawing) { modify_curves(md, ctx, *cache_data, *drawing); });
 
