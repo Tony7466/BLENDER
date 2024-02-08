@@ -32,6 +32,7 @@ if(NOT APPLE)
   endif()
 
 
+  unset(HIP_VERSION)
   find_package(HIP QUIET)
   if (NOT HIP_FOUND)
     message(STATUS "Missing HIP compiler")
