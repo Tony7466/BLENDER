@@ -1149,8 +1149,11 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
 
   {
     // SCOPED_TIMER_AVERAGED("new_old_normalize + Scaling");
-    std::transform(positions.begin(), positions.end(), positions.begin(), [=](const float3 pos) {
-      return math::normalize(pos) * radius;
+    threading::parallel_for(positions.index_range(), 8192, [&](const IndexRange range) {
+      MutableSpan<float3> slice = positions.slice(range);
+      std::transform(slice.begin(), slice.end(), slice.begin(), [=](const float3 pos) {
+        return math::normalize(pos) * radius;
+      });
     });
   }
 
