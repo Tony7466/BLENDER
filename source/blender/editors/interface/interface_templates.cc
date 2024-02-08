@@ -2414,7 +2414,7 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
 
     PointerRNA io_handler_ptr = RNA_pointer_create(&collection->id, &RNA_IOHandlerData, data);
 
-    PanelLayout panel = uiLayoutPanelWithHeader(C, layout, &io_handler_ptr, "is_open");
+    PanelLayout panel = uiLayoutPanelProp(C, layout, &io_handler_ptr, "is_open");
     draw_export_controls(panel.header, fh->label, index);
     if (panel.body) {
       draw_export_properties(C, panel.body, &collection->id, ot, data);
