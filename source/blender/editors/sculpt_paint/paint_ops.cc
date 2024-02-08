@@ -1222,38 +1222,6 @@ static bool asset_is_editable(const AssetWeakReference &asset_weak_ref)
     return false;
   }
 
-  bUserAssetLibrary *library = BKE_preferences_asset_library_find_by_name(
-      &U, asset_weak_ref.asset_library_identifier);
-  if (!library) {
-    return false;
-  }
-
-  std::string root_path_for_save = brush_asset_root_path_for_save(*library);
-  if (root_path_for_save.empty() || !StringRef(dir).startswith(root_path_for_save)) {
-    return false;
-  }
-
-  /* TODO: Do we want more checks here? E.g. check actual content of the file? */
-  return true;
-}
-
-static bool asset_is_editable(const AssetWeakReference &asset_weak_ref)
-{
-  /* Fairly simple checks, based on filepath only:
-   *   - The blendlib filepath ends up with the `.asset.blend` extension.
-   *   - The blendlib is located in the expected sub-directory of the editable asset library.
-   *
-   * TODO: Right now no check is done on file content, e.g. to ensure that the blendlib file has
-   * not been manually edited by the user (that it does not have any UI IDs e.g.). */
-
-  char path_buffer[FILE_MAX_LIBEXTRA];
-  char *dir, *group, *name;
-  AS_asset_full_path_explode_from_weak_ref(&asset_weak_ref, path_buffer, &dir, &group, &name);
-
-  if (!StringRef(dir).endswith(BLENDER_ASSET_FILE_SUFFIX)) {
-    return false;
-  }
-
   const bUserAssetLibrary *library = BKE_preferences_asset_library_find_by_name(
       &U, asset_weak_ref.asset_library_identifier);
   if (!library) {
