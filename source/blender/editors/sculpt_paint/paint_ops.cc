@@ -1263,7 +1263,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Check if belongs to an editable blend file. */
+  /* Check if the asset belongs to an editable blend file. */
   if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
     if (!asset_is_editable(*paint->brush_asset_reference)) {
       BKE_report(op->reports, RPT_ERROR, "Asset blend file is not editable");
@@ -1329,7 +1329,7 @@ static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent
 
   RNA_string_set(op->ptr, "name", brush->id.name + 2);
 
-  return WM_operator_props_dialog_popup(C, op, 400);
+  return WM_operator_props_dialog_popup(C, op, 400, std::nullopt, IFACE_("Save"));
 }
 
 static const EnumPropertyItem *rna_asset_library_reference_itemf(bContext * /*C*/,
