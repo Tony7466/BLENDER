@@ -2404,20 +2404,27 @@ static void placeholders_ensure_valid(Main *bmain)
 static const char *idtype_alloc_name_get(short id_code)
 {
   static const std::array<std::string, INDEX_ID_MAX> id_alloc_names = [] {
-    auto n = decltype(id_alloc_names){};
+    auto n = decltype(id_alloc_names)();
     for (int idtype_index = 0; idtype_index < INDEX_ID_MAX; idtype_index++) {
       const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_idtype_index(idtype_index);
-      if (idtype_info) {
-        n[size_t(idtype_index)] = std::string("Data from '") + idtype_info->name + "'";
+      BLI_assert(idtype_info);
+      if (idtype_index == INDEX_ID_NULL) {
+        /* #INDEX_ID_NULL returns the #IDType_ID_LINK_PLACEHOLDER type info, here we will rather
+         * use it for unknown/invalid ID types. */
+        n[size_t(idtype_index)] = "Data from UNKNWOWN ID Type";
       }
       else {
-        n[size_t(idtype_index)] = "Data from UNKNWOWN ID Type";
+        n[size_t(idtype_index)] = std::string("Data from '") + idtype_info->name + "'";
       }
     }
     return n;
   }();
 
-  return id_alloc_names[size_t(BKE_idtype_idcode_to_index(id_code))].c_str();
+  const size_t idtype_index(size_t(BKE_idtype_idcode_to_index(id_code)));
+  if (idtype_index < INDEX_ID_MAX) {
+    return id_alloc_names[idtype_index].c_str();
+  }
+  return id_alloc_names[INDEX_ID_NULL].c_str();
 }
 
 static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *id_old)
