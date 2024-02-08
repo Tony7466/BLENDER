@@ -476,7 +476,7 @@ static void interpolate_face_verts_linear(const TriangleRange inner_face_verts,
   const Span<int3> base_face_verts = base_face_verts_indices();
 
   const IndexRange face_verts_range(inner_face_verts.total());
-  /* Bottom line of verts plus left and right base verts. */
+  /* Bottom line of face verts plus left and right base verts is the side of triangle. */
   const float count = float(inner_face_verts.size_of(0) + 2);
 
   for (const int face_i : IndexRange(base_faces_num)) {
@@ -514,8 +514,8 @@ static void edges_line_fill_verts(const int2 ends, MutableSpan<int2> edges, Func
   edges.last()[EdgeVert::B] = ends[EdgeVert::B];
 }
 
-static void vert_edge_topology(const IndexRange edges_of_edge_range,
-                               const IndexRange verts_of_edge_range,
+static void vert_edge_topology(const IndexRange verts_of_edge_range,
+                               const IndexRange edges_of_edge_range,
                                const IndexRange verts_of_edges_range,
                                MutableSpan<int2> edge_edges)
 {
@@ -666,8 +666,8 @@ static bool elem_of(int elem, const int2 elems)
 }
 
 static void corner_edges_topology(const int edge_edges_num,
-                                  const IndexRange faces_of_edge_range,
                                   const IndexRange edges_of_edge_range,
+                                  const IndexRange faces_of_edge_range,
                                   const IndexRange faces_of_face_range,
                                   const IndexRange corner_faces_of_face_range,
                                   const IndexRange edge_faces_of_face_range,
@@ -880,8 +880,8 @@ static void uv_vert_positions(const int edge_edges_num,
                               const IndexRange edges_faces_range,
                               const IndexRange top_faces_range,
                               const IndexRange bottom_faces_range,
-                              const TriangleRange bottom_faces,
-                              const TriangleRange top_faces,
+                              const TriangleRange inner_bottom_faces_of_face,
+                              const TriangleRange inner_top_faces_of_face,
                               MutableSpan<float2> uv)
 {
   SCOPED_TIMER_AVERAGED(__func__);
@@ -965,8 +965,8 @@ static void uv_vert_positions(const int edge_edges_num,
                               right_edge_faces_uv);
 
     /* Faces (flipped). */
-    for (const int line_i : IndexRange(top_faces.hight())) {
-      const IndexRange line_range = top_faces.slice_at(line_i);
+    for (const int line_i : IndexRange(inner_top_faces_of_face.hight())) {
+      const IndexRange line_range = inner_top_faces_of_face.slice_at(line_i);
       const IndexRange line_body_range = line_range.drop_front(1).drop_back(1);
       MutableSpan<float2> line_uv = top_face_edges_uv.slice(line_body_range.scale(face_size));
       MutableSpan<float2> line_begin_uv = top_face_edges_uv.slice(
@@ -974,8 +974,8 @@ static void uv_vert_positions(const int edge_edges_num,
       MutableSpan<float2> line_end_uv = top_face_edges_uv.slice(
           line_range.take_back(1).scale(face_size));
 
-      const int r_line_i = top_faces.hight() - line_i - 1;
-      const float factor = float(r_line_i) / float(top_faces.hight());
+      const int r_line_i = inner_top_faces_of_face.hight() - line_i - 1;
+      const float factor = float(r_line_i) / float(inner_top_faces_of_face.hight());
       const float2 bottom_middle = math::midpoint(c_corner_face_uv[Corner::A],
                                                   c_corner_face_uv[Corner::B]);
       const float2 offset_to_mirror_c = (bottom_middle - c_corner_face_uv[Corner::C]) * 2.0f;
@@ -1007,11 +1007,11 @@ static void uv_vert_positions(const int edge_edges_num,
     }
 
     /* Faces (non-flipped). */
-    for (const int line_i : IndexRange(bottom_faces.hight())) {
-      const int r_line_i = bottom_faces.hight() - line_i - 1;
+    for (const int line_i : IndexRange(inner_bottom_faces_of_face.hight())) {
+      const int r_line_i = inner_bottom_faces_of_face.hight() - line_i - 1;
       const int face_i = line_i * face_size;
       const int r_face_i = (r_line_i + 1) * face_size;
-      const IndexRange line_range = bottom_faces.slice_at(line_i);
+      const IndexRange line_range = inner_bottom_faces_of_face.slice_at(line_i);
       MutableSpan<float2> line_uv = bottom_face_edges_uv.slice(line_range.scale(face_size));
       fill_uv_line_of_triangles(right_edge_faces_uv[face_i + Corner::B],
                                 right_edge_faces_uv[face_i + Corner::C],
@@ -1079,6 +1079,7 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
   const IndexRange edges_of_faces_range = edges_of_edges_range.after(base_faces_num *
                                                                      inner_face_edges.total() * 3);
 
+  /* All faces, not inner ones. */
   const IndexRange faces_of_face_range(base_face_faces_num);
 
   const int faces_of_edge_num = math::max<int>(0, base_edge_edges_num - 2);
@@ -1098,8 +1099,8 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
   interpolate_edge_verts_linear(base_edge_verts_num, positions.slice(verts_of_edges_range));
   interpolate_face_verts_linear(inner_face_of_verts, positions.slice(verts_of_faces_range));
 
-  vert_edge_topology(edges_of_edge_range,
-                     verts_of_edge_range,
+  vert_edge_topology(verts_of_edge_range,
+                     edges_of_edge_range,
                      verts_of_edges_range,
                      edges.slice(edges_of_edges_range));
   face_edge_topology(verts_of_edge_range,
@@ -1112,8 +1113,8 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
                      edges.slice(edges_of_faces_range));
 
   corner_edges_topology(base_edge_edges_num,
-                        faces_of_edge_range,
                         edges_of_edge_range,
+                        faces_of_edge_range,
                         faces_of_face_range,
                         corner_faces_of_face_range,
                         edge_faces_of_face_range,
