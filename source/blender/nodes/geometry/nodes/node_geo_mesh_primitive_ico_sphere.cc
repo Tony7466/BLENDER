@@ -1047,7 +1047,7 @@ static void uv_vert_positions(const int edge_edges_num,
 
 static Mesh *ico_sphere(const int side_verts, const float radius, const AttributeIDRef &uv_map_id)
 {
-  std::cout << std::endl;
+  // std::cout << std::endl;
   const int base_edge_verts_num = math::max<int>(0, side_verts - 2);
   const int base_edge_edges_num = math::max<int>(0, side_verts - 1);
 
