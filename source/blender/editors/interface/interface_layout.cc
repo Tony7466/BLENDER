@@ -3440,7 +3440,7 @@ void uiItemV(uiLayout *layout, const char *name, int icon, int argval)
   }
 }
 
-void uiItemS_ex(uiLayout *layout, float factor, LayoutSeparatorType type)
+void uiItemS_ex(uiLayout *layout, float factor, const LayoutSeparatorType type)
 {
   uiBlock *block = layout->root->block;
   const bool is_menu = ui_block_is_menu(block);
