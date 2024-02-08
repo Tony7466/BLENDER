@@ -1892,6 +1892,7 @@ static void rna_GreasePencilOpacityModifier_opacity_factor_max_set(PointerRNA *p
                           std::min(value, 1.0f) :
                           value;
 }
+
 #else
 
 static void rna_def_modifier_panel_open_prop(StructRNA *srna, const char *identifier, const int id)
