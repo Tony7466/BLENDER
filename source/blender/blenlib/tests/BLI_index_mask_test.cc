@@ -529,4 +529,100 @@ TEST(index_mask, NotEqualsRangeAndIndices)
   EXPECT_NE(mask_a, mask_b);
 }
 
+static bool index_mask_segment_equal(const IndexMaskSegment &a, const IndexMaskSegment &b)
+{
+  if (a.size() != b.size() || a[0] != b[0]) {
+    return false;
+  }
+  for (const int64_t i : a.index_range()) {
+    if (a[i] != b[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+TEST(index_mask, ZippedForeachSelf)
+{
+  IndexMaskMemory memory;
+  IndexMask mask = IndexMask::from_initializers({IndexRange(500), 555, 699, 222, 900, 100},
+                                                memory);
+  IndexMask::foreach_segment_zipped({mask}, [](Span<IndexMaskSegment> segments) {
+    EXPECT_TRUE(!segments.is_empty());
+    return true;
+  });
+  IndexMask::foreach_segment_zipped({mask, mask}, [](Span<IndexMaskSegment> segments) {
+    EXPECT_TRUE(!segments.is_empty());
+    EXPECT_TRUE(index_mask_segment_equal(segments[0], segments[1]));
+    return true;
+  });
+  IndexMask::foreach_segment_zipped({mask, mask, mask}, [](Span<IndexMaskSegment> segments) {
+    EXPECT_TRUE(!segments.is_empty());
+    EXPECT_TRUE(index_mask_segment_equal(segments[0], segments[1]));
+    EXPECT_TRUE(index_mask_segment_equal(segments[0], segments[2]));
+    return true;
+  });
+  IndexMask::foreach_segment_zipped({mask, mask, mask, mask}, [](Span<IndexMaskSegment> segments) {
+    EXPECT_TRUE(!segments.is_empty());
+    EXPECT_TRUE(index_mask_segment_equal(segments[0], segments[1]));
+    EXPECT_TRUE(index_mask_segment_equal(segments[0], segments[2]));
+    EXPECT_TRUE(index_mask_segment_equal(segments[0], segments[3]));
+    return true;
+  });
+}
+
+TEST(index_mask, ZippedForeachSameSegments)
+{
+  IndexMaskMemory memory;
+  IndexMask mask_a = IndexMask::from_initializers({0, 1, 2}, memory);
+  IndexMask mask_b = IndexMask::from_initializers({3, 4, 5}, memory);
+  IndexMask mask_c = IndexMask::from_initializers({6, 7, 8}, memory);
+  IndexMask::foreach_segment_zipped({mask_a}, [](Span<IndexMaskSegment> segments) {
+    EXPECT_TRUE(!segments.is_empty());
+    return true;
+  });
+  IndexMask::foreach_segment_zipped({mask_a, mask_b}, [](Span<IndexMaskSegment> segments) {
+    EXPECT_TRUE(!segments.is_empty());
+    EXPECT_EQ(segments[0].size(), segments[1].size());
+    EXPECT_TRUE(!index_mask_segment_equal(segments[0], segments[1]));
+    return true;
+  });
+  IndexMask::foreach_segment_zipped({mask_a, mask_b, mask_c}, [](Span<IndexMaskSegment> segments) {
+    EXPECT_TRUE(!segments.is_empty());
+    EXPECT_EQ(segments[0].size(), segments[1].size());
+    EXPECT_EQ(segments[0].size(), segments[2].size());
+    EXPECT_TRUE(!index_mask_segment_equal(segments[0], segments[1]));
+    EXPECT_TRUE(!index_mask_segment_equal(segments[0], segments[2]));
+    EXPECT_TRUE(!index_mask_segment_equal(segments[1], segments[2]));
+    return true;
+  });
+}
+
+TEST(index_mask, ZippedForeachEqual)
+{
+  Span<int16_t> indices(get_static_indices_array());
+
+  IndexMaskMemory memory;
+  IndexMask mask_a = IndexMask::from_segments(
+      {{0, indices.take_front(5)}, {5, indices.take_front(5)}}, memory);
+  IndexMask mask_b = IndexMask::from_segments(
+      {{0, indices.take_front(3)}, {3, indices.take_front(4)}, {7, indices.take_front(3)}},
+      memory);
+  IndexMask mask_c = IndexMask::from_segments({{0, indices.take_front(10)}}, memory);
+
+  int index = 0;
+  Array<IndexMaskSegment> reference_segments{{0, indices.take_front(3)},
+                                             {3, indices.take_front(2)},
+                                             {5, indices.take_front(2)},
+                                             {7, indices.take_front(3)}};
+  IndexMask::foreach_segment_zipped(
+      {mask_a, mask_b, mask_c}, [&](Span<IndexMaskSegment> segments) {
+        EXPECT_TRUE(index_mask_segment_equal(reference_segments[index], segments[0]));
+        EXPECT_TRUE(index_mask_segment_equal(reference_segments[index], segments[1]));
+        EXPECT_TRUE(index_mask_segment_equal(reference_segments[index], segments[2]));
+        index++;
+        return true;
+      });
+}
+
 }  // namespace blender::index_mask::tests

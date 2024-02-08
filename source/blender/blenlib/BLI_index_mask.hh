@@ -293,6 +293,22 @@ class IndexMask : private IndexMaskData {
   IndexMaskSegment segment(int64_t segment_i) const;
 
   /**
+   * Iterate over the indices in multiple masks which have the same size. The given function is
+   * called for groups of segments where each segment has the same size and comes from a different
+   * input mask.
+   * For example, if the input masks are (both have size 18):
+   *   A: [0, 15), {20, 24, 25}
+   *   B: [0, 5), [10, 15], {20, 30, 40, 50, 60, 70, 80, 90}
+   * Then the function will be called multiple times, each time with two segments:
+   *   1. [0, 5), [0, 5)
+   *   2. [5, 10), [10, 15)
+   *   3. [10, 15), {20, 30, 40, 50, 60}
+   *   4. {20, 24, 25}, {70, 80, 90}
+   */
+  static void foreach_segment_zipped(Span<IndexMask> masks,
+                                     FunctionRef<bool(Span<IndexMaskSegment> segments)> fn);
+
+  /**
    * Calls the function once for every index.
    *
    * Supported function signatures:
