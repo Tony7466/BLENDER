@@ -3884,12 +3884,12 @@ void OBJECT_OT_grease_pencil_dash_modifier_segment_remove(wmOperatorType *ot)
       ot->srna, "index", 0, 0, INT_MAX, "Index", "Index of the segment to remove", 0, INT_MAX);
 }
 
-enum {
-  MOD_GREASE_PENCIL_DASH_SEGMENT_MOVE_UP = -1,
-  MOD_GREASE_PENCIL_DASH_SEGMENT_MOVE_DOWN = 1,
-};
-
 namespace blender::ed::grease_pencil {
+
+enum class DashSegmentMoveDirection {
+  Up = -1,
+  Down = 1,
+};
 
 static int dash_modifier_segment_move_exec(bContext *C, wmOperator *op)
 {
@@ -3905,29 +3905,31 @@ static int dash_modifier_segment_move_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const int direction = RNA_enum_get(op->ptr, "type");
-  if (direction == MOD_GREASE_PENCIL_DASH_SEGMENT_MOVE_UP) {
-    if (dmd->segment_active_index == 0) {
+  const DashSegmentMoveDirection direction = DashSegmentMoveDirection(
+      RNA_enum_get(op->ptr, "type"));
+  switch (direction) {
+    case DashSegmentMoveDirection::Up:
+      if (dmd->segment_active_index == 0) {
+        return OPERATOR_CANCELLED;
+      }
+
+      std::swap(dmd->segments_array[dmd->segment_active_index],
+                dmd->segments_array[dmd->segment_active_index - 1]);
+
+      dmd->segment_active_index--;
+      break;
+    case DashSegmentMoveDirection::Down:
+      if (dmd->segment_active_index == dmd->segments_num - 1) {
+        return OPERATOR_CANCELLED;
+      }
+
+      std::swap(dmd->segments_array[dmd->segment_active_index],
+                dmd->segments_array[dmd->segment_active_index + 1]);
+
+      dmd->segment_active_index++;
+      break;
+    default:
       return OPERATOR_CANCELLED;
-    }
-
-    std::swap(dmd->segments_array[dmd->segment_active_index],
-              dmd->segments_array[dmd->segment_active_index - 1]);
-
-    dmd->segment_active_index--;
-  }
-  else if (direction == MOD_GREASE_PENCIL_DASH_SEGMENT_MOVE_DOWN) {
-    if (dmd->segment_active_index == dmd->segments_num - 1) {
-      return OPERATOR_CANCELLED;
-    }
-
-    std::swap(dmd->segments_array[dmd->segment_active_index],
-              dmd->segments_array[dmd->segment_active_index + 1]);
-
-    dmd->segment_active_index++;
-  }
-  else {
-    return OPERATOR_CANCELLED;
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
@@ -3950,9 +3952,11 @@ static int dash_modifier_segment_move_invoke(bContext *C,
 
 void OBJECT_OT_grease_pencil_dash_modifier_segment_move(wmOperatorType *ot)
 {
+  using blender::ed::grease_pencil::DashSegmentMoveDirection;
+
   static const EnumPropertyItem segment_move[] = {
-      {MOD_GREASE_PENCIL_DASH_SEGMENT_MOVE_UP, "UP", 0, "Up", ""},
-      {MOD_GREASE_PENCIL_DASH_SEGMENT_MOVE_DOWN, "DOWN", 0, "Down", ""},
+      {int(DashSegmentMoveDirection::Up), "UP", 0, "Up", ""},
+      {int(DashSegmentMoveDirection::Down), "DOWN", 0, "Down", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
