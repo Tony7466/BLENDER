@@ -313,12 +313,6 @@ class IndexRange {
     return IndexRange(start_ + size_ - new_size, new_size);
   }
 
-  /* Reverse index on sampling. Zero index will retrieve last reachable index of range. */
-  constexpr int64_t from_end(int64_t i) const
-  {
-    return start_ + size_ - 1 - i;
-  }
-
   /* Consider this range as segment of sequence of ranges with the same size and make step forward
    * in this sequence. */
   constexpr IndexRange step(int64_t n) const
