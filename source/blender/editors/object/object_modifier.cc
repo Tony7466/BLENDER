@@ -3735,7 +3735,7 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 /** \name Dash Modifier
  * \{ */
 
-namespace blender::ed::grease_pencil {
+namespace blender::ed::greasepencil {
 
 static bool dash_modifier_segment_poll(bContext *C)
 {
@@ -3803,7 +3803,7 @@ static int dash_modifier_segment_add_invoke(bContext *C, wmOperator *op, const w
   return OPERATOR_CANCELLED;
 }
 
-}  // namespace blender::ed::grease_pencil
+}  // namespace blender::ed::greasepencil
 
 void OBJECT_OT_grease_pencil_dash_modifier_segment_add(wmOperatorType *ot)
 {
@@ -3813,16 +3813,16 @@ void OBJECT_OT_grease_pencil_dash_modifier_segment_add(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_grease_pencil_dash_modifier_segment_add";
 
   /* api callbacks */
-  ot->poll = blender::ed::grease_pencil::dash_modifier_segment_poll;
-  ot->invoke = blender::ed::grease_pencil::dash_modifier_segment_add_invoke;
-  ot->exec = blender::ed::grease_pencil::dash_modifier_segment_add_exec;
+  ot->poll = blender::ed::greasepencil::dash_modifier_segment_poll;
+  ot->invoke = blender::ed::greasepencil::dash_modifier_segment_add_invoke;
+  ot->exec = blender::ed::greasepencil::dash_modifier_segment_add_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
   edit_modifier_properties(ot);
 }
 
-namespace blender::ed::grease_pencil {
+namespace blender::ed::greasepencil {
 
 static void dash_modifier_segment_free(GreasePencilDashModifierSegment * /*ds*/) {}
 
@@ -3862,7 +3862,7 @@ static int dash_modifier_segment_remove_invoke(bContext *C,
   return OPERATOR_CANCELLED;
 }
 
-}  // namespace blender::ed::grease_pencil
+}  // namespace blender::ed::greasepencil
 
 void OBJECT_OT_grease_pencil_dash_modifier_segment_remove(wmOperatorType *ot)
 {
@@ -3872,9 +3872,9 @@ void OBJECT_OT_grease_pencil_dash_modifier_segment_remove(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_grease_pencil_dash_modifier_segment_remove";
 
   /* api callbacks */
-  ot->poll = blender::ed::grease_pencil::dash_modifier_segment_poll;
-  ot->invoke = blender::ed::grease_pencil::dash_modifier_segment_remove_invoke;
-  ot->exec = blender::ed::grease_pencil::dash_modifier_segment_remove_exec;
+  ot->poll = blender::ed::greasepencil::dash_modifier_segment_poll;
+  ot->invoke = blender::ed::greasepencil::dash_modifier_segment_remove_invoke;
+  ot->exec = blender::ed::greasepencil::dash_modifier_segment_remove_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -3884,7 +3884,7 @@ void OBJECT_OT_grease_pencil_dash_modifier_segment_remove(wmOperatorType *ot)
       ot->srna, "index", 0, 0, INT_MAX, "Index", "Index of the segment to remove", 0, INT_MAX);
 }
 
-namespace blender::ed::grease_pencil {
+namespace blender::ed::greasepencil {
 
 enum class DashSegmentMoveDirection {
   Up = -1,
@@ -3948,11 +3948,11 @@ static int dash_modifier_segment_move_invoke(bContext *C,
   return OPERATOR_CANCELLED;
 }
 
-}  // namespace blender::ed::grease_pencil
+}  // namespace blender::ed::greasepencil
 
 void OBJECT_OT_grease_pencil_dash_modifier_segment_move(wmOperatorType *ot)
 {
-  using blender::ed::grease_pencil::DashSegmentMoveDirection;
+  using blender::ed::greasepencil::DashSegmentMoveDirection;
 
   static const EnumPropertyItem segment_move[] = {
       {int(DashSegmentMoveDirection::Up), "UP", 0, "Up", ""},
@@ -3966,9 +3966,9 @@ void OBJECT_OT_grease_pencil_dash_modifier_segment_move(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_grease_pencil_dash_modifier_segment_move";
 
   /* api callbacks */
-  ot->poll = blender::ed::grease_pencil::dash_modifier_segment_poll;
-  ot->invoke = blender::ed::grease_pencil::dash_modifier_segment_move_invoke;
-  ot->exec = blender::ed::grease_pencil::dash_modifier_segment_move_exec;
+  ot->poll = blender::ed::greasepencil::dash_modifier_segment_poll;
+  ot->invoke = blender::ed::greasepencil::dash_modifier_segment_move_invoke;
+  ot->exec = blender::ed::greasepencil::dash_modifier_segment_move_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
