@@ -110,6 +110,8 @@ const char *operationCodeAsString(OperationCode opcode)
       return "POSE_INIT";
     case OperationCode::POSE_INIT_IK:
       return "POSE_INIT_IK";
+    case OperationCode::POSE_IK_CLEANUP:
+      return "POSE_IK_CLEANUP";
     case OperationCode::POSE_CLEANUP:
       return "POSE_CLEANUP";
     case OperationCode::POSE_DONE:

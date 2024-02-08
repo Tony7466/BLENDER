@@ -14,6 +14,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
+#include "BLI_stack.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
@@ -34,6 +35,7 @@
 #include "BIK_api.h"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 /* ********************** SPLINE IK SOLVER ******************* */
 
@@ -864,6 +866,62 @@ void BKE_pose_eval_init_ik(Depsgraph *depsgraph, Scene *scene, Object *object)
    * - this is not integrated as an IK plugin, since it should be able
    *   to function in conjunction with standard IK. */
   BKE_pose_splineik_init_tree(scene, object, ctime);
+}
+
+/**
+ * Call BKE_pose_where_is_bone() for the bones whose IK constraint was muted.
+ *
+ * This is necessary because #find_ik_constraints can skip certain constraints. The bones in those
+ * chains still need to get a call to BKE_pose_where_is_bone() as otherwise their matrix is
+ * inconsistent with their local properties, and they can even get detached from their parents.
+ */
+void BKE_pose_eval_ik_cleanup(Depsgraph *depsgraph, Scene *scene, Object *object)
+{
+  DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);
+  BLI_assert(object->type == OB_ARMATURE);
+  const float ctime = DEG_get_ctime(depsgraph);
+
+  bool shown_debug_print_header = false;
+  LISTBASE_FOREACH_MUTABLE (bPoseChannel *, pchan, &object->pose->chanbase) {
+    /* Skip bones for which iksolver_initialize_tree() did not call initialize_posetree(). */
+    if ((pchan->constflag & PCHAN_HAS_IK) == 0) {
+      continue;
+    }
+
+    /* Skip bones that have already been handled by the IK solver. */
+    if (pchan->flag & POSE_DONE) {
+      continue;
+    }
+
+    /* This bone has an IK constraint, but was not handled by the IK solver. This means it still
+     * needs a call to BKE_pose_where_is_bone() to properly update it for its local loc/rot/scale
+     * properties. This has to happen parent-to-child though, and the IK tip is the childiest of
+     * them all. */
+    blender::Stack<bPoseChannel *> stack;
+    while (pchan && (pchan->flag & POSE_DONE) == 0 && (pchan->constflag & PCHAN_INFLUENCED_BY_IK))
+    {
+      stack.push(pchan);
+      pchan = pchan->parent;
+    }
+
+    if (!shown_debug_print_header) {
+      printf("\033[92mposition_skipped_bones(%s):\033[0m\n", object->id.name + 2);
+      shown_debug_print_header = true;
+    }
+
+    while (!stack.is_empty()) {
+      bPoseChannel *pchan = stack.pop();
+      if (pchan->flag & POSE_DONE) {
+        /* It could be that this bone is the common ancestor of two muted IK chains. */
+        continue;
+      }
+      printf("  - %s (%s)\n",
+             pchan->name,
+             pchan->constflag & PCHAN_INFLUENCED_BY_IK ? "PCHAN_INFLUENCED_BY_IK" : "-");
+      BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, true);
+      pchan->flag |= POSE_DONE;
+    }
+  }
 }
 
 void BKE_pose_eval_bone(Depsgraph *depsgraph, Scene *scene, Object *object, int pchan_index)

@@ -196,6 +196,13 @@ void DepsgraphNodeBuilder::build_rig(Object *object)
 
   add_operation_node(&object->id,
                      NodeType::EVAL_POSE,
+                     OperationCode::POSE_IK_CLEANUP,
+                     [scene_cow, object_cow](::Depsgraph *depsgraph) {
+                       BKE_pose_eval_ik_cleanup(depsgraph, scene_cow, object_cow);
+                     });
+
+  add_operation_node(&object->id,
+                     NodeType::EVAL_POSE,
                      OperationCode::POSE_CLEANUP,
                      [scene_cow, object_cow](::Depsgraph *depsgraph) {
                        BKE_pose_eval_cleanup(depsgraph, scene_cow, object_cow);

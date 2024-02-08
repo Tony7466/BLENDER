@@ -608,6 +608,7 @@ void BKE_pose_pchan_index_rebuild(bPose *pose);
 void BKE_pose_eval_init(Depsgraph *depsgraph, Scene *scene, Object *object);
 
 void BKE_pose_eval_init_ik(Depsgraph *depsgraph, Scene *scene, Object *object);
+void BKE_pose_eval_ik_cleanup(Depsgraph *depsgraph, Scene *scene, Object *object);
 
 void BKE_pose_eval_bone(Depsgraph *depsgraph, Scene *scene, Object *object, int pchan_index);
 

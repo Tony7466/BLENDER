@@ -72,6 +72,7 @@ void DepsgraphRelationBuilder::build_ik_pose(Object *object,
   OperationKey init_ik_key(&object->id, NodeType::EVAL_POSE, OperationCode::POSE_INIT_IK);
   OperationKey solver_key(
       &object->id, NodeType::EVAL_POSE, rootchan->name, OperationCode::POSE_IK_SOLVER);
+  OperationKey ik_cleanup_key(&object->id, NodeType::EVAL_POSE, OperationCode::POSE_IK_CLEANUP);
   OperationKey pose_cleanup_key(&object->id, NodeType::EVAL_POSE, OperationCode::POSE_CLEANUP);
   /* If any of the constraint parameters are animated, connect the relation. Since there is only
    * one Init IK node per armature, this link has quite high risk of spurious dependency cycles.
@@ -83,7 +84,9 @@ void DepsgraphRelationBuilder::build_ik_pose(Object *object,
   }
   add_relation(init_ik_key, solver_key, "Init IK -> IK Solver");
   /* Never cleanup before solver is run. */
-  add_relation(solver_key, pose_cleanup_key, "IK Solver -> Cleanup", RELATION_FLAG_GODMODE);
+  add_relation(solver_key, ik_cleanup_key, "IK Solver -> IK Cleanup");
+  add_relation(
+      ik_cleanup_key, pose_cleanup_key, "IK Cleanup -> Pose Cleanup", RELATION_FLAG_GODMODE);
   /* The ITASC solver currently accesses the target transforms in init tree :(
    * TODO: Fix ITASC and remove this.
    */
@@ -217,11 +220,14 @@ void DepsgraphRelationBuilder::build_splineik_pose(Object *object,
   OperationKey init_ik_key(&object->id, NodeType::EVAL_POSE, OperationCode::POSE_INIT_IK);
   OperationKey solver_key(
       &object->id, NodeType::EVAL_POSE, rootchan->name, OperationCode::POSE_SPLINE_IK_SOLVER);
+  OperationKey pose_ik_cleanup_key(
+      &object->id, NodeType::EVAL_POSE, OperationCode::POSE_IK_CLEANUP);
   OperationKey pose_cleanup_key(&object->id, NodeType::EVAL_POSE, OperationCode::POSE_CLEANUP);
+
   /* Solver depends on initialization. */
   add_relation(init_ik_key, solver_key, "Init IK -> IK Solver");
-  /* Never cleanup before solver is run. */
-  add_relation(solver_key, pose_cleanup_key, "IK Solver -> Cleanup");
+  add_relation(solver_key, pose_ik_cleanup_key, "IK Solver -> IK Cleanup");
+  add_relation(pose_ik_cleanup_key, pose_cleanup_key, "IK Cleanup -> Pose Cleanup");
   /* Attach owner to IK Solver. */
   add_relation(transforms_key, solver_key, "Spline IK Solver Owner", RELATION_FLAG_GODMODE);
   /* Attach path dependency to solver. */
@@ -299,7 +305,7 @@ void DepsgraphRelationBuilder::build_rig(Object *object)
   OperationKey pose_done_key(&object->id, NodeType::EVAL_POSE, OperationCode::POSE_DONE);
   add_relation(local_transform, pose_init_key, "Local Transform -> Pose Init");
   add_relation(pose_init_key, pose_init_ik_key, "Pose Init -> Pose Init IK");
-  add_relation(pose_init_ik_key, pose_done_key, "Pose Init IK -> Pose Cleanup");
+  add_relation(pose_init_ik_key, pose_done_key, "Pose Init IK -> Pose Done");
   /* Make sure pose is up-to-date with armature updates. */
   build_armature(armature);
   OperationKey armature_key(&armature->id, NodeType::ARMATURE, OperationCode::ARMATURE_EVAL);

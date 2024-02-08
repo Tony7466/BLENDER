@@ -109,6 +109,8 @@ enum class OperationCode {
   POSE_INIT,
   /* Initialize IK solver related pose stuff. */
   POSE_INIT_IK,
+  /* Evaluate remainder of pose after IK solver, as the latter may skip some bones. */
+  POSE_IK_CLEANUP,
   /* Pose is evaluated, and runtime data can be freed. */
   POSE_CLEANUP,
   /* Pose has been fully evaluated and ready to be used by others. */
