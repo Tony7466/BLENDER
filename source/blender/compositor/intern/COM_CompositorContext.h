@@ -249,7 +249,7 @@ class CompositorContext {
   }
   bool is_groupnode_buffer_enabled() const
   {
-    return (this->get_bnodetree()->flag & NTREE_COM_GROUPNODE_BUFFER) != 0;
+    return false;
   }
 
   /**

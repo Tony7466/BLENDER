@@ -825,12 +825,8 @@ enum {
 enum {
   /** For animation editors. */
   NTREE_DS_EXPAND = 1 << 0,
-  /** Use OPENCL. */
-  NTREE_COM_OPENCL = 1 << 1,
   /** Two pass. */
   NTREE_TWO_PASS = 1 << 2,
-  /** Use group-node buffers. */
-  NTREE_COM_GROUPNODE_BUFFER = 1 << 3,
   /** Use a border for viewer nodes. */
   NTREE_VIEWER_BORDER = 1 << 4,
   /**
@@ -842,9 +838,8 @@ enum {
 
 /* tree->execution_mode */
 typedef enum eNodeTreeExecutionMode {
-  NTREE_EXECUTION_MODE_TILED = 0,
-  NTREE_EXECUTION_MODE_FULL_FRAME = 1,
-  NTREE_EXECUTION_MODE_REALTIME = 2,
+  NTREE_EXECUTION_MODE_CPU = 0,
+  NTREE_EXECUTION_MODE_GPU = 2,
 } eNodeTreeExecutionMode;
 
 /* tree->precision */

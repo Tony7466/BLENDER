@@ -133,21 +133,8 @@ static const EnumPropertyItem node_chunksize_items[] = {
 #endif
 
 static const EnumPropertyItem rna_enum_execution_mode_items[] = {
-    {NTREE_EXECUTION_MODE_TILED,
-     "TILED",
-     0,
-     "Tiled",
-     "Compositing is tiled, having as priority to display first tiles as fast as possible"},
-    {NTREE_EXECUTION_MODE_FULL_FRAME,
-     "FULL_FRAME",
-     0,
-     "Full Frame",
-     "Composites full image result as fast as possible"},
-    {NTREE_EXECUTION_MODE_REALTIME,
-     "REALTIME",
-     0,
-     "GPU",
-     "Use GPU accelerated compositing with more limited functionality"},
+    {NTREE_EXECUTION_MODE_CPU, "CPU", 0, "CPU", ""},
+    {NTREE_EXECUTION_MODE_GPU, "GPU", 0, "GPU", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -10617,14 +10604,6 @@ static void rna_def_composite_nodetree(BlenderRNA *brna)
                            "Chunksize",
                            "Max size of a tile (smaller values gives better distribution "
                            "of multiple threads, but more overhead)");
-
-  prop = RNA_def_property(srna, "use_opencl", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NTREE_COM_OPENCL);
-  RNA_def_property_ui_text(prop, "OpenCL", "Enable GPU calculations");
-
-  prop = RNA_def_property(srna, "use_groupnode_buffer", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NTREE_COM_GROUPNODE_BUFFER);
-  RNA_def_property_ui_text(prop, "Buffer Groups", "Enable buffering of group nodes");
 
   prop = RNA_def_property(srna, "use_two_pass", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", NTREE_TWO_PASS);
