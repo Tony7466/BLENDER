@@ -68,6 +68,9 @@ bNodeTreeExec *ntreeShaderBeginExecTree_internal(bNodeExecContext *context,
                                                  bNodeInstanceKey parent_key);
 void ntreeShaderEndExecTree_internal(bNodeTreeExec *exec);
 
+/* If depth_level is not null, only nodes where `node->runtime->tmp_flag == depth_level` will be
+ * executed. This allows finer control over node execution order without modifying the tree
+ * topology. */
 void ntreeExecGPUNodes(bNodeTreeExec *exec,
                        GPUMaterial *mat,
                        bNode *output_node,
