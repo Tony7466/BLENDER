@@ -872,4 +872,14 @@
     .thickness = 0.02, \
   }
 
+#define _DNA_DEFAULT_GreasePencilEnvelopeModifierData \
+  { \
+    .spread = 10, \
+    .mode = MOD_GREASE_PENCIL_ENVELOPE_SEGMENTS, \
+    .mat_nr = -1, \
+    .thickness = 1.0f, \
+    .strength = 1.0f, \
+    .skip = 0, \
+  }
+
 /* clang-format off */

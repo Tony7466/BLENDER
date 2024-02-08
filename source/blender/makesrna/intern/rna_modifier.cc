@@ -221,6 +221,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_MIRROR,
      "Mirror strokes",
      "Duplicate strokes like a mirror"},
+    {eModifierType_GreasePencilEnvelope,
+     "GREASE_PENCIL_ENVELOPE",
+     ICON_MOD_ENVELOPE,
+     "Envelope",
+     "Create an envelope shape"},
 
     RNA_ENUM_ITEM_HEADING(N_("Deform"), nullptr),
     {eModifierType_Armature,
@@ -1854,6 +1859,7 @@ RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilTint);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilSmooth);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilNoise);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilThick);
+RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilEnvelope);
 
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOffset);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOpacity);
@@ -1862,6 +1868,7 @@ RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilTint);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilSmooth);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilNoise);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilThick);
+RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilEnvelope);
 
 static void rna_GreasePencilOpacityModifier_opacity_factor_range(
     PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
@@ -8421,6 +8428,90 @@ static void rna_def_modifier_grease_pencil_thickness(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_grease_pencil_envelope(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem envelope_mode_items[] = {
+      {MOD_GREASE_PENCIL_ENVELOPE_DEFORM,
+       "DEFORM",
+       0,
+       "Deform",
+       "Deform the stroke to best match the envelope shape"},
+      {MOD_GREASE_PENCIL_ENVELOPE_SEGMENTS,
+       "SEGMENTS",
+       0,
+       "Segments",
+       "Add segments to create the envelope. Keep the original stroke"},
+      {MOD_GREASE_PENCIL_ENVELOPE_FILLS,
+       "FILLS",
+       0,
+       "Fills",
+       "Add fill segments to create the envelope. Don't keep the original stroke"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  srna = RNA_def_struct(brna, "GreasePencilEnvelopeModifier", "Modifier");
+  RNA_def_struct_ui_text(
+      srna, "Grease Pencil Envelope Modifier", "AEnvelope stroke effect modifier");
+  RNA_def_struct_sdna(srna, "GreasePencilEnvelopeModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_ENVELOPE);
+
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilEnvelopeModifier_material_filter_set");
+  rna_def_modifier_grease_pencil_vertex_group(
+      srna, "rna_GreasePencilEnvelopeModifier_vertex_group_name_set");
+  rna_def_modifier_grease_pencil_custom_curve(srna);
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "mode");
+  RNA_def_property_enum_items(prop, envelope_mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "Algorithm to use for generating the envelope");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "spread", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "spread");
+  RNA_def_property_range(prop, 1, INT_MAX);
+  RNA_def_property_ui_text(
+      prop, "Spread Length", "The number of points to skip to create straight segments");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "mat_nr", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "mat_nr");
+  RNA_def_property_range(prop, -1, INT16_MAX);
+  RNA_def_property_ui_text(prop, "Material Index", "The material to use for the new strokes");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "thickness", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "thickness");
+  RNA_def_property_range(prop, 0, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0, 1, 10, 3);
+  RNA_def_property_ui_text(prop, "Thickness", "Multiplier for the thickness of the new strokes");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "strength", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "strength");
+  RNA_def_property_range(prop, 0, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0, 1, 10, 3);
+  RNA_def_property_ui_text(prop, "Strength", "Multiplier for the strength of the new strokes");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "skip", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "skip");
+  RNA_def_property_range(prop, 0, INT_MAX);
+  RNA_def_property_ui_text(
+      prop, "Skip Segments", "The number of generated segments to skip to reduce complexity");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -8597,6 +8688,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_noise(brna);
   rna_def_modifier_grease_pencil_mirror(brna);
   rna_def_modifier_grease_pencil_thickness(brna);
+  rna_def_modifier_grease_pencil_envelope(brna);
 }
 
 #endif
