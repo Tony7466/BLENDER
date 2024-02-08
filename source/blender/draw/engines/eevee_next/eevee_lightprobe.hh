@@ -6,7 +6,8 @@
  * \ingroup eevee
  *
  * Module that handles light probe update tagging.
- * Lighting data is contained in their respective module `IrradianceCache` and `ReflectionProbes`.
+ * Lighting data is contained in their respective module `VolumeProbeModule`, `SphereProbeModule`
+ * and `PlaneProbeModule`.
  */
 
 #pragma once
@@ -19,13 +20,13 @@
 namespace blender::eevee {
 
 class Instance;
-class IrradianceCache;
+class VolumeProbeModule;
 
 /* -------------------------------------------------------------------- */
-/** \name ReflectionProbeAtlasCoordinate
+/** \name SphereProbeAtlasCoord
  * \{ */
 
-struct ReflectionProbeAtlasCoordinate {
+struct SphereProbeAtlasCoord {
   /** On which layer of the texture array is this reflection probe stored. */
   int atlas_layer = -1;
   /** Gives the extent of this probe relative to the atlas size. */
@@ -58,7 +59,7 @@ struct ReflectionProbeAtlasCoordinate {
     return area_location() * area_extent(atlas_extent);
   }
 
-  ReflectionProbeCoordinate as_sampling_coord(int atlas_extent) const
+  SphereProbeUvArea as_sampling_coord(int atlas_extent) const
   {
     /**
      * We want to cover the last mip exactly at the pixel center to reduce padding texels and
@@ -85,16 +86,16 @@ struct ReflectionProbeAtlasCoordinate {
     const int sampling_area_extent = area_extent(atlas_extent) - mip_min_lvl_padding;
     const int2 sampling_area_offset = area_offset(atlas_extent) + mip_min_lvl_padding / 2;
     /* Convert to atlas UVs. */
-    ReflectionProbeCoordinate coord;
+    SphereProbeUvArea coord;
     coord.scale = sampling_area_extent / float(atlas_extent);
     coord.offset = float2(sampling_area_offset) / float(atlas_extent);
     coord.layer = atlas_layer;
     return coord;
   }
 
-  ReflectionProbeWriteCoordinate as_write_coord(int atlas_extent, int mip_lvl) const
+  SphereProbePixelArea as_write_coord(int atlas_extent, int mip_lvl) const
   {
-    ReflectionProbeWriteCoordinate coord;
+    SphereProbePixelArea coord;
     coord.extent = atlas_extent >> (subdivision_lvl + mip_lvl);
     coord.offset = (area_location() * coord.extent) >> mip_lvl;
     coord.layer = atlas_layer;
@@ -122,9 +123,9 @@ struct ReflectionProbeAtlasCoordinate {
     LocationFinder(int allocated_layer_count, int subdivision_level);
 
     /* Mark space to be occupied by the given probe_data. */
-    void mark_space_used(const ReflectionProbeAtlasCoordinate &coord);
+    void mark_space_used(const SphereProbeAtlasCoord &coord);
 
-    ReflectionProbeAtlasCoordinate first_free_spot() const;
+    SphereProbeAtlasCoord first_free_spot() const;
 
     void print_debug() const;
   };
@@ -169,7 +170,7 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
   float intensity;
 };
 
-struct ReflectionCube : public LightProbe, ReflectionProbeData {
+struct ReflectionCube : public LightProbe, SphereProbeData {
   /** Used to sort the probes by priority. */
   float volume;
   /** True if the area in the atlas needs to be updated. */
@@ -179,7 +180,7 @@ struct ReflectionCube : public LightProbe, ReflectionProbeData {
   /** Far and near clipping distances for rendering. */
   float2 clipping_distances;
   /** Atlas region this probe is rendered at (or will be rendered at). */
-  ReflectionProbeAtlasCoordinate atlas_coord;
+  SphereProbeAtlasCoord atlas_coord;
 };
 
 struct ProbePlane : public LightProbe, ProbePlanarData {
@@ -222,9 +223,9 @@ struct ProbePlane : public LightProbe, ProbePlanarData {
 
 class LightProbeModule {
   friend class IrradianceBake;
-  friend class IrradianceCache;
-  friend class PlanarProbeModule;
-  friend class ReflectionProbeModule;
+  friend class VolumeProbeModule;
+  friend class PlaneProbeModule;
+  friend class SphereProbeModule;
 
  private:
   Instance &inst_;
@@ -264,7 +265,7 @@ class LightProbeModule {
   int cube_layer_count() const;
 
   /** Returns coordinates of an area in the atlas for a probe with the given subdivision level. */
-  ReflectionProbeAtlasCoordinate find_empty_atlas_region(int subdivision_level) const;
+  SphereProbeAtlasCoord find_empty_atlas_region(int subdivision_level) const;
 };
 
 }  // namespace blender::eevee

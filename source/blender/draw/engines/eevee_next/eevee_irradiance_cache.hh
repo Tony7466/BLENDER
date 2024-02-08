@@ -24,7 +24,7 @@ class Instance;
 class CapturePipeline;
 class ShadowModule;
 class Camera;
-class ReflectionProbeModule;
+class SphereProbeModule;
 
 /**
  * Baking related pass and data. Not used at runtime.
@@ -186,7 +186,7 @@ class IrradianceBake {
  * Runtime container of diffuse indirect lighting.
  * Also have debug and baking components.
  */
-class IrradianceCache {
+class VolumeProbeModule {
  public:
   IrradianceBake bake;
 
@@ -207,22 +207,22 @@ class IrradianceCache {
   /** Pool of atlas regions to allocate to different grids. */
   Vector<IrradianceBrickPacked> brick_pool_;
   /** Stream data into the irradiance atlas texture. */
-  PassSimple grid_upload_ps_ = {"IrradianceCache.Upload"};
+  PassSimple grid_upload_ps_ = {"VolumeProbeModule.Upload"};
   /** If true, will trigger the reupload of all grid data instead of just streaming new ones. */
   bool do_full_update_ = true;
 
   /** Display debug data. */
-  PassSimple debug_ps_ = {"IrradianceCache.Debug"};
+  PassSimple debug_ps_ = {"VolumeProbeModule.Debug"};
   /** Debug surfel elements copied from the light cache. */
   draw::StorageArrayBuffer<Surfel> debug_surfels_buf_;
 
   /** Display grid cache data. */
   bool display_grids_enabled_ = false;
-  PassSimple display_grids_ps_ = {"IrradianceCache.Display Grids"};
+  PassSimple display_grids_ps_ = {"VolumeProbeModule.Display Grids"};
 
  public:
-  IrradianceCache(Instance &inst) : bake(inst), inst_(inst){};
-  ~IrradianceCache(){};
+  VolumeProbeModule(Instance &inst) : bake(inst), inst_(inst){};
+  ~VolumeProbeModule(){};
 
   void init();
   void sync();
@@ -243,7 +243,7 @@ class IrradianceCache {
   void debug_pass_draw(View &view, GPUFrameBuffer *view_fb);
   void display_pass_draw(View &view, GPUFrameBuffer *view_fb);
 
-  friend class ReflectionProbeModule;
+  friend class SphereProbeModule;
 };
 
 }  // namespace blender::eevee

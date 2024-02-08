@@ -34,7 +34,7 @@ void ProbePlane::set_view(const draw::View &view, int layer_id)
 /** \name Planar Probe Module
  * \{ */
 
-void PlanarProbeModule::init()
+void PlaneProbeModule::init()
 {
   /* This triggers the compilation of clipped shader only if we can detect lightprobe planes. */
   if (inst_.is_viewport()) {
@@ -50,7 +50,7 @@ void PlanarProbeModule::init()
   do_display_draw_ = false;
 }
 
-void PlanarProbeModule::end_sync()
+void PlaneProbeModule::end_sync()
 {
   /* When first planar probes are enabled it can happen that the first sample is off. */
   if (!update_probes_ && !inst_.light_probes.plane_map_.is_empty()) {
@@ -58,7 +58,7 @@ void PlanarProbeModule::end_sync()
   }
 }
 
-void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_extent)
+void PlaneProbeModule::set_view(const draw::View &main_view, int2 main_view_extent)
 {
   GBuffer &gbuf = inst_.gbuffer;
 
@@ -84,7 +84,7 @@ void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_ext
   int resource_index = 0;
   int display_index = 0;
   for (ProbePlane &probe : inst_.light_probes.plane_map_.values()) {
-    if (resource_index == PLANAR_PROBES_MAX) {
+    if (resource_index == PLANAR_PROBE_MAX) {
       break;
     }
 
@@ -126,7 +126,7 @@ void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_ext
 
   gbuf.release();
 
-  if (resource_index < PLANAR_PROBES_MAX) {
+  if (resource_index < PLANAR_PROBE_MAX) {
     /* Tag the end of the array. */
     probe_planar_buf_[resource_index].layer_id = -1;
   }
@@ -139,7 +139,7 @@ void PlanarProbeModule::set_view(const draw::View &main_view, int2 main_view_ext
   }
 }
 
-void PlanarProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
+void PlaneProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (!do_display_draw_) {
     return;

@@ -6,7 +6,8 @@
  * \ingroup eevee
  *
  * Module that handles light probe update tagging.
- * Lighting data is contained in their respective module `IrradianceCache` and `ReflectionProbes`.
+ * Lighting data is contained in their respective module `VolumeProbeModule`, `SphereProbeModule`
+ * and `PlaneProbeModule`.
  */
 
 #include "DNA_lightprobe_types.h"
@@ -100,7 +101,7 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
     grid.viewport_display_size = lightprobe->data_display_size;
 
     /* Force reupload. */
-    inst_.irradiance_cache.bricks_free(grid.bricks);
+    inst_.volume_probes.bricks_free(grid.bricks);
   }
 }
 
@@ -115,14 +116,14 @@ void LightProbeModule::sync_cube(const Object *ob, ObjectHandle &handle)
     cube.updated = true;
     cube.do_render = true;
 
-    ReflectionProbeModule &probe_module = inst_.reflection_probes;
+    SphereProbeModule &probe_module = inst_.sphere_probes;
     eLightProbeResolution probe_resolution = cube_object_resolution_;
     int subdivision_lvl = probe_module.subdivision_level_get(probe_resolution);
 
     if (cube.atlas_coord.subdivision_lvl != subdivision_lvl) {
       cube.atlas_coord.free();
       cube.atlas_coord = find_empty_atlas_region(subdivision_lvl);
-      ReflectionProbeData &cube_data = *static_cast<ReflectionProbeData *>(&cube);
+      SphereProbeData &cube_data = *static_cast<SphereProbeData *>(&cube);
       /* Update gpu data sampling coordinates. */
       cube_data.atlas_coord = cube.atlas_coord.as_sampling_coord(probe_module.max_resolution_);
       /* Coordinates have changed. Area might contain random data. Do not use for rendering. */
@@ -197,13 +198,13 @@ void LightProbeModule::sync_world(const ::World *world, bool has_update)
   const eLightProbeResolution probe_resolution = static_cast<eLightProbeResolution>(
       world->probe_resolution);
 
-  ReflectionProbeModule &sph_module = inst_.reflection_probes;
+  SphereProbeModule &sph_module = inst_.sphere_probes;
   int subdivision_lvl = sph_module.subdivision_level_get(probe_resolution);
 
   if (subdivision_lvl != world_cube_.atlas_coord.subdivision_lvl) {
     world_cube_.atlas_coord.free();
     world_cube_.atlas_coord = find_empty_atlas_region(subdivision_lvl);
-    ReflectionProbeData &world_data = *static_cast<ReflectionProbeData *>(&world_cube_);
+    SphereProbeData &world_data = *static_cast<SphereProbeData *>(&world_cube_);
     world_data.atlas_coord = world_cube_.atlas_coord.as_sampling_coord(sph_module.max_resolution_);
     has_update = true;
   }
@@ -256,11 +257,10 @@ void LightProbeModule::end_sync()
   });
 }
 
-ReflectionProbeAtlasCoordinate LightProbeModule::find_empty_atlas_region(
-    int subdivision_level) const
+SphereProbeAtlasCoord LightProbeModule::find_empty_atlas_region(int subdivision_level) const
 {
   int layer_count = cube_layer_count();
-  ReflectionProbeAtlasCoordinate::LocationFinder location_finder(layer_count, subdivision_level);
+  SphereProbeAtlasCoord::LocationFinder location_finder(layer_count, subdivision_level);
 
   location_finder.mark_space_used(world_cube_.atlas_coord);
   for (const ReflectionCube &probe : cube_map_.values()) {
@@ -282,11 +282,11 @@ int LightProbeModule::cube_layer_count() const
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name ReflectionProbeAtlasCoordinate
+/** \name SphereProbeAtlasCoord
  * \{ */
 
-ReflectionProbeAtlasCoordinate::LocationFinder::LocationFinder(int allocated_layer_count,
-                                                               int subdivision_level)
+SphereProbeAtlasCoord::LocationFinder::LocationFinder(int allocated_layer_count,
+                                                      int subdivision_level)
 {
   subdivision_level_ = subdivision_level;
   areas_per_dimension_ = 1 << subdivision_level_;
@@ -297,8 +297,7 @@ ReflectionProbeAtlasCoordinate::LocationFinder::LocationFinder(int allocated_lay
   areas_occupancy_.resize(area_len, false);
 }
 
-void ReflectionProbeAtlasCoordinate::LocationFinder::mark_space_used(
-    const ReflectionProbeAtlasCoordinate &coord)
+void SphereProbeAtlasCoord::LocationFinder::mark_space_used(const SphereProbeAtlasCoord &coord)
 {
   if (coord.atlas_layer == -1) {
     /* Coordinate not allocated yet. */
@@ -321,10 +320,9 @@ void ReflectionProbeAtlasCoordinate::LocationFinder::mark_space_used(
   }
 }
 
-ReflectionProbeAtlasCoordinate ReflectionProbeAtlasCoordinate::LocationFinder::first_free_spot()
-    const
+SphereProbeAtlasCoord SphereProbeAtlasCoord::LocationFinder::first_free_spot() const
 {
-  ReflectionProbeAtlasCoordinate result;
+  SphereProbeAtlasCoord result;
   result.subdivision_lvl = subdivision_level_;
   for (int index : areas_occupancy_.index_range()) {
     if (!areas_occupancy_[index]) {
@@ -338,7 +336,7 @@ ReflectionProbeAtlasCoordinate ReflectionProbeAtlasCoordinate::LocationFinder::f
   return result;
 }
 
-void ReflectionProbeAtlasCoordinate::LocationFinder::print_debug() const
+void SphereProbeAtlasCoord::LocationFinder::print_debug() const
 {
   std::ostream &os = std::cout;
   int layer = 0, row = 0, column = 0;

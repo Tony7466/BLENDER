@@ -9,9 +9,9 @@
 #pragma BLENDER_REQUIRE(eevee_octahedron_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
-ReflectionProbeCoordinate reinterpret_as_atlas_coord(ivec4 packed_coord)
+SphereProbeUvArea reinterpret_as_atlas_coord(ivec4 packed_coord)
 {
-  ReflectionProbeCoordinate unpacked;
+  SphereProbeUvArea unpacked;
   unpacked.offset = intBitsToFloat(packed_coord.xy);
   unpacked.scale = intBitsToFloat(packed_coord.z);
   unpacked.layer = intBitsToFloat(packed_coord.w);
@@ -42,7 +42,7 @@ void main()
   cooef.L1.M0 = vec4(0.0);
   cooef.L1.Mp1 = vec4(0.0);
 
-  ReflectionProbeCoordinate atlas_coord = reinterpret_as_atlas_coord(world_coord_packed);
+  SphereProbeUvArea atlas_coord = reinterpret_as_atlas_coord(world_coord_packed);
   float layer_mipmap = 5;
   /* Perform multiple sample. */
   uint store_index = gl_LocalInvocationID.x;

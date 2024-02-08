@@ -34,7 +34,7 @@ LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 }
 
 /* Return the best parallax corrected ray direction from the probe center. */
-vec3 lightprobe_sphere_parallax(ReflectionProbeData probe, vec3 P, vec3 L)
+vec3 lightprobe_sphere_parallax(SphereProbeData probe, vec3 P, vec3 L)
 {
   bool is_world = (probe.influence_scale == 0.0);
   if (is_world) {
@@ -63,7 +63,7 @@ vec3 lightprobe_sphere_parallax(ReflectionProbeData probe, vec3 P, vec3 L)
 vec3 lightprobe_spherical_sample_normalized_with_parallax(
     int probe_index, vec3 P, vec3 L, float lod, SphericalHarmonicL1 P_sh)
 {
-  ReflectionProbeData probe = reflection_probe_buf[probe_index];
+  SphereProbeData probe = reflection_probe_buf[probe_index];
   ReflectionProbeLowFreqLight shading_sh = reflection_probes_extract_low_freq(P_sh);
   vec3 normalization_factor = reflection_probes_normalization_eval(
       L, shading_sh, probe.low_freq_light);

@@ -68,7 +68,7 @@ int lightprobe_planar_select(vec3 P, vec3 V, vec3 L)
   float best_score = saturate(dot(L, -V));
   int best_index = -1;
 
-  for (int index = 0; index < PLANAR_PROBES_MAX; index++) {
+  for (int index = 0; index < PLANAR_PROBE_MAX; index++) {
     if (probe_planar_buf[index].layer_id == -1) {
       /* ProbePlanarData doesn't contain any gap, exit at first item that is invalid. */
       break;

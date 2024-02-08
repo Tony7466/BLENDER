@@ -1043,7 +1043,8 @@ enum LightProbeShape : uint32_t {
   SHAPE_CUBOID = 1u,
 };
 
-struct ReflectionProbeCoordinate {
+/* Sampling coordinates using UV space. */
+struct SphereProbeUvArea {
   /* Offset in UV space to the start of the sampling space of the octahedron map. */
   float2 offset;
   /* Scaling of the squared UV space of the octahedron map. */
@@ -1051,9 +1052,10 @@ struct ReflectionProbeCoordinate {
   /* Layer of the atlas where the octahedron map is stored. */
   float layer;
 };
-BLI_STATIC_ASSERT_ALIGN(ReflectionProbeCoordinate, 16)
+BLI_STATIC_ASSERT_ALIGN(SphereProbeUvArea, 16)
 
-struct ReflectionProbeWriteCoordinate {
+/* Pixel read/write coordinates using pixel space. */
+struct SphereProbePixelArea {
   /* Offset in pixel space to the start of the writing space of the octahedron map.
    * Note that the writing space is not the same as the sampling space as we have borders. */
   int2 offset;
@@ -1062,10 +1064,10 @@ struct ReflectionProbeWriteCoordinate {
   /* Layer of the atlas where the octahedron map is stored. */
   int layer;
 };
-BLI_STATIC_ASSERT_ALIGN(ReflectionProbeWriteCoordinate, 16)
+BLI_STATIC_ASSERT_ALIGN(SphereProbePixelArea, 16)
 
 /** Mapping data to locate a reflection probe in texture. */
-struct ReflectionProbeData {
+struct SphereProbeData {
   /** Transform to probe local position with non-uniform scaling. */
   float3x4 world_to_probe_transposed;
 
@@ -1078,7 +1080,7 @@ struct ReflectionProbeData {
   float influence_scale;
   float influence_bias;
 
-  ReflectionProbeCoordinate atlas_coord;
+  SphereProbeUvArea atlas_coord;
 
   /**
    * Irradiance at the probe location encoded as spherical harmonics.
@@ -1086,16 +1088,16 @@ struct ReflectionProbeData {
    */
   ReflectionProbeLowFreqLight low_freq_light;
 };
-BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
+BLI_STATIC_ASSERT_ALIGN(SphereProbeData, 16)
 
 /** Viewport Display Pass. */
-struct ReflectionProbeDisplayData {
+struct SphereProbeDisplayData {
   int probe_index;
   float display_size;
   float _pad0;
   float _pad1;
 };
-BLI_STATIC_ASSERT_ALIGN(ReflectionProbeDisplayData, 16)
+BLI_STATIC_ASSERT_ALIGN(SphereProbeDisplayData, 16)
 
 /** \} */
 
@@ -1191,7 +1193,7 @@ struct CaptureInfoData {
   bool1 capture_emission;
   int _pad0;
   /* World light probe atlas coordinate. */
-  ReflectionProbeCoordinate world_atlas_coord;
+  SphereProbeUvArea world_atlas_coord;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 
@@ -1583,10 +1585,9 @@ using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
 using SubsurfaceTileBuf = RayTraceTileBuf;
-using ReflectionProbeDataBuf =
-    draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
-using ReflectionProbeDisplayDataBuf = draw::StorageArrayBuffer<ReflectionProbeDisplayData>;
-using ProbePlanarDataBuf = draw::UniformArrayBuffer<ProbePlanarData, PLANAR_PROBES_MAX>;
+using SphereProbeDataBuf = draw::UniformArrayBuffer<SphereProbeData, REFLECTION_PROBE_MAX>;
+using ProbePlanarDataBuf = draw::UniformArrayBuffer<ProbePlanarData, PLANAR_PROBE_MAX>;
+using SphereProbeDisplayDataBuf = draw::StorageArrayBuffer<SphereProbeDisplayData>;
 using ProbePlanarDisplayDataBuf = draw::StorageArrayBuffer<ProbePlanarDisplayData>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;

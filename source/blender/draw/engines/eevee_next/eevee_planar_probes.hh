@@ -26,7 +26,7 @@ struct ObjectHandle;
 /** \name Planar Probe Module
  * \{ */
 
-class PlanarProbeModule {
+class PlaneProbeModule {
   friend class Instance;
   friend class HiZBuffer;
   friend class PlanarProbePipeline;
@@ -40,7 +40,7 @@ class PlanarProbeModule {
     draw::View view = {"planar.view"};
   };
 
-  std::array<PlanarResources, PLANAR_PROBES_MAX> resources_;
+  std::array<PlanarResources, PLANAR_PROBE_MAX> resources_;
 
   Texture radiance_tx_ = {"planar.radiance_tx"};
   Texture depth_tx_ = {"planar.depth_tx"};
@@ -53,10 +53,10 @@ class PlanarProbeModule {
   /** Viewport data display drawing. */
   bool do_display_draw_ = false;
   ProbePlanarDisplayDataBuf display_data_buf_;
-  PassSimple viewport_display_ps_ = {"PlanarProbeModule.Viewport Display"};
+  PassSimple viewport_display_ps_ = {"PlaneProbeModule.Viewport Display"};
 
  public:
-  PlanarProbeModule(Instance &instance) : inst_(instance) {}
+  PlaneProbeModule(Instance &instance) : inst_(instance) {}
 
   void init();
   void end_sync();

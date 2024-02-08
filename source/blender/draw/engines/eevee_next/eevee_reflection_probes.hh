@@ -23,13 +23,12 @@ class Instance;
 struct ObjectHandle;
 struct WorldHandle;
 class CaptureView;
-struct ReflectionProbeUpdateInfo;
 
 /* -------------------------------------------------------------------- */
 /** \name Reflection Probe Module
  * \{ */
 
-class ReflectionProbeModule {
+class SphereProbeModule {
   friend LightProbeModule;
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
   friend class CaptureView;
@@ -45,7 +44,7 @@ class ReflectionProbeModule {
   static constexpr int max_resolution_ = 2048;
 
   Instance &instance_;
-  ReflectionProbeDataBuf data_buf_;
+  SphereProbeDataBuf data_buf_;
 
   /** Probes texture stored in octahedral mapping. */
   Texture probes_tx_ = {"Probes"};
@@ -70,10 +69,10 @@ class ReflectionProbeModule {
   /** Mip level being sampled for remapping. */
   int probe_mip_level_ = 0;
   /** Updated Probe coordinates in the atlas. */
-  ReflectionProbeCoordinate probe_sampling_coord_;
-  ReflectionProbeWriteCoordinate probe_write_coord_;
+  SphereProbeUvArea probe_sampling_coord_;
+  SphereProbePixelArea probe_write_coord_;
   /** World coordinates in the atlas. */
-  ReflectionProbeCoordinate world_sampling_coord_;
+  SphereProbeUvArea world_sampling_coord_;
   /** Number of the probe to process in the select phase. */
   int reflection_probe_count_ = 0;
 
@@ -92,11 +91,11 @@ class ReflectionProbeModule {
 
   /** Viewport data display drawing. */
   bool do_display_draw_ = false;
-  ReflectionProbeDisplayDataBuf display_data_buf_;
-  PassSimple viewport_display_ps_ = {"ReflectionProbeModule.Viewport Display"};
+  SphereProbeDisplayDataBuf display_data_buf_;
+  PassSimple viewport_display_ps_ = {"ProbeSphereModule.Viewport Display"};
 
  public:
-  ReflectionProbeModule(Instance &instance) : instance_(instance){};
+  SphereProbeModule(Instance &instance) : instance_(instance){};
 
   void init();
   void begin_sync();
@@ -143,31 +142,31 @@ class ReflectionProbeModule {
    */
   void ensure_cubemap_render_target(int resolution);
 
-  struct ReflectionProbeUpdateInfo {
+  struct UpdateInfo {
     float3 probe_pos;
     /** Resolution of the cube-map to be rendered. */
     int resolution;
 
     float2 clipping_distances;
 
-    ReflectionProbeAtlasCoordinate atlas_coord;
+    SphereProbeAtlasCoord atlas_coord;
 
     bool do_render;
     bool do_world_irradiance_update;
   };
 
-  ReflectionProbeUpdateInfo update_info_from_probe(const ReflectionCube &probe);
+  UpdateInfo update_info_from_probe(const ReflectionCube &probe);
 
   /**
    * Pop the next reflection probe that requires to be updated.
    */
-  std::optional<ReflectionProbeUpdateInfo> world_update_info_pop();
-  std::optional<ReflectionProbeUpdateInfo> probe_update_info_pop();
+  std::optional<UpdateInfo> world_update_info_pop();
+  std::optional<UpdateInfo> probe_update_info_pop();
 
   /**
    * Internal processing passes.
    */
-  void remap_to_octahedral_projection(const ReflectionProbeAtlasCoordinate &atlas_coord);
+  void remap_to_octahedral_projection(const SphereProbeAtlasCoord &atlas_coord);
   void update_probes_texture_mipmaps();
   void update_world_irradiance();
 };

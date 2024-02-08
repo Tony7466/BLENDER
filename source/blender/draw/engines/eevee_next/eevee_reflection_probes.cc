@@ -11,12 +11,12 @@ namespace blender::eevee {
 /** \name Reflection Probe Module
  * \{ */
 
-int ReflectionProbeModule::probe_render_extent() const
+int SphereProbeModule::probe_render_extent() const
 {
   return instance_.scene->eevee.gi_cubemap_resolution / 2;
 }
 
-void ReflectionProbeModule::init()
+void SphereProbeModule::init()
 {
   if (!instance_.is_viewport()) {
     /* TODO(jbakker): should we check on the subtype as well? Now it also populates even when
@@ -27,12 +27,12 @@ void ReflectionProbeModule::init()
   do_display_draw_ = false;
 }
 
-void ReflectionProbeModule::begin_sync()
+void SphereProbeModule::begin_sync()
 {
   update_probes_this_sample_ = update_probes_next_sample_;
 
   LightProbeModule &light_probes = instance_.light_probes;
-  ReflectionProbeData &world_data = *static_cast<ReflectionProbeData *>(&light_probes.world_cube_);
+  SphereProbeData &world_data = *static_cast<SphereProbeData *>(&light_probes.world_cube_);
   {
     const RaytraceEEVEE &options = instance_.scene->eevee.ray_tracing_options;
     float probe_brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
@@ -55,7 +55,7 @@ void ReflectionProbeModule::begin_sync()
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_UPDATE_IRRADIANCE));
     pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
-    pass.bind_image("irradiance_atlas_img", &instance_.irradiance_cache.irradiance_atlas_tx_);
+    pass.bind_image("irradiance_atlas_img", &instance_.volume_probes.irradiance_atlas_tx_);
     pass.bind_texture("reflection_probes_tx", &probes_tx_);
     pass.dispatch(int2(1, 1));
   }
@@ -65,14 +65,14 @@ void ReflectionProbeModule::begin_sync()
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_SELECT));
     pass.push_constant("reflection_probe_count", &reflection_probe_count_);
     pass.bind_ssbo("reflection_probe_buf", &data_buf_);
-    instance_.irradiance_cache.bind_resources(pass);
+    instance_.volume_probes.bind_resources(pass);
     instance_.sampling.bind_resources(pass);
     pass.dispatch(&dispatch_probe_select_);
     pass.barrier(GPU_BARRIER_UNIFORM);
   }
 }
 
-bool ReflectionProbeModule::ensure_atlas()
+bool SphereProbeModule::ensure_atlas()
 {
   /* Make sure the atlas is always initialized even if there is nothing to render to it to fullfil
    * the resource bindings. */
@@ -96,7 +96,7 @@ bool ReflectionProbeModule::ensure_atlas()
   return false;
 }
 
-void ReflectionProbeModule::end_sync()
+void SphereProbeModule::end_sync()
 {
   const bool world_updated = instance_.light_probes.world_cube_.do_render;
   const bool atlas_resized = ensure_atlas();
@@ -120,7 +120,7 @@ void ReflectionProbeModule::end_sync()
   }
 }
 
-void ReflectionProbeModule::ensure_cubemap_render_target(int resolution)
+void SphereProbeModule::ensure_cubemap_render_target(int resolution)
 {
   if (cubemap_tx_.ensure_cube(
           GPU_RGBA16F, resolution, GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ))
@@ -130,12 +130,12 @@ void ReflectionProbeModule::ensure_cubemap_render_target(int resolution)
   /* TODO(fclem): dealocate it. */
 }
 
-ReflectionProbeModule::ReflectionProbeUpdateInfo ReflectionProbeModule::update_info_from_probe(
+SphereProbeModule::UpdateInfo SphereProbeModule::update_info_from_probe(
     const ReflectionCube &probe)
 {
   const int max_shift = int(log2(max_resolution_));
 
-  ReflectionProbeModule::ReflectionProbeUpdateInfo info = {};
+  SphereProbeModule::UpdateInfo info = {};
   info.atlas_coord = probe.atlas_coord;
   info.resolution = 1 << (max_shift - probe.atlas_coord.subdivision_lvl - 1);
   info.clipping_distances = probe.clipping_distances;
@@ -145,14 +145,13 @@ ReflectionProbeModule::ReflectionProbeUpdateInfo ReflectionProbeModule::update_i
   return info;
 }
 
-std::optional<ReflectionProbeModule::ReflectionProbeUpdateInfo> ReflectionProbeModule::
-    world_update_info_pop()
+std::optional<SphereProbeModule::UpdateInfo> SphereProbeModule::world_update_info_pop()
 {
   ReflectionCube &world_probe = instance_.light_probes.world_cube_;
   if (!world_probe.do_render && !do_world_irradiance_update) {
     return std::nullopt;
   }
-  ReflectionProbeModule::ReflectionProbeUpdateInfo info = update_info_from_probe(world_probe);
+  SphereProbeModule::UpdateInfo info = update_info_from_probe(world_probe);
   info.do_world_irradiance_update = do_world_irradiance_update;
   world_probe.do_render = false;
   do_world_irradiance_update = false;
@@ -160,8 +159,7 @@ std::optional<ReflectionProbeModule::ReflectionProbeUpdateInfo> ReflectionProbeM
   return info;
 }
 
-std::optional<ReflectionProbeModule::ReflectionProbeUpdateInfo> ReflectionProbeModule::
-    probe_update_info_pop()
+std::optional<SphereProbeModule::UpdateInfo> SphereProbeModule::probe_update_info_pop()
 {
   if (!instance_.do_reflection_probe_sync()) {
     /* Do not update probes during this sample as we did not sync the draw::Passes. */
@@ -172,7 +170,7 @@ std::optional<ReflectionProbeModule::ReflectionProbeUpdateInfo> ReflectionProbeM
     if (!probe.do_render) {
       continue;
     }
-    ReflectionProbeModule::ReflectionProbeUpdateInfo info = update_info_from_probe(probe);
+    SphereProbeModule::UpdateInfo info = update_info_from_probe(probe);
     probe.do_render = false;
     probe.use_for_render = true;
     ensure_cubemap_render_target(info.resolution);
@@ -182,8 +180,7 @@ std::optional<ReflectionProbeModule::ReflectionProbeUpdateInfo> ReflectionProbeM
   return std::nullopt;
 }
 
-void ReflectionProbeModule::remap_to_octahedral_projection(
-    const ReflectionProbeAtlasCoordinate &atlas_coord)
+void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoord &atlas_coord)
 {
   int resolution = max_resolution_ >> atlas_coord.subdivision_lvl;
   /* Update shader parameters that change per dispatch. */
@@ -195,22 +192,22 @@ void ReflectionProbeModule::remap_to_octahedral_projection(
   instance_.manager->submit(remap_ps_);
 }
 
-void ReflectionProbeModule::update_world_irradiance()
+void SphereProbeModule::update_world_irradiance()
 {
   instance_.manager->submit(update_irradiance_ps_);
 }
 
-void ReflectionProbeModule::update_probes_texture_mipmaps()
+void SphereProbeModule::update_probes_texture_mipmaps()
 {
   GPU_texture_update_mipmap_chain(probes_tx_);
 }
 
-void ReflectionProbeModule::set_view(View & /*view*/)
+void SphereProbeModule::set_view(View & /*view*/)
 {
   Vector<ReflectionCube *> probe_active;
   for (auto &probe : instance_.light_probes.cube_map_.values()) {
     /* Last slot is reserved for the world probe. */
-    if (reflection_probe_count_ >= REFLECTION_PROBES_MAX - 1) {
+    if (reflection_probe_count_ >= REFLECTION_PROBE_MAX - 1) {
       break;
     }
     if (!probe.use_for_render) {
@@ -254,7 +251,7 @@ void ReflectionProbeModule::set_view(View & /*view*/)
   /* Add world probe at the end. */
   data_buf_[probe_id++] = instance_.light_probes.world_cube_;
   /* Tag the end of the array. */
-  if (probe_id < REFLECTION_PROBES_MAX) {
+  if (probe_id < REFLECTION_PROBE_MAX) {
     data_buf_[probe_id].atlas_coord.layer = -1;
   }
   data_buf_.push_update();
@@ -282,7 +279,7 @@ void ReflectionProbeModule::set_view(View & /*view*/)
   instance_.manager->submit(select_ps_);
 }
 
-void ReflectionProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
+void SphereProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (!do_display_draw_) {
     return;

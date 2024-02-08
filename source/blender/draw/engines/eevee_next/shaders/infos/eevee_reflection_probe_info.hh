@@ -12,8 +12,8 @@
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_data)
     .define("REFLECTION_PROBE")
     .uniform_buf(REFLECTION_PROBE_BUF_SLOT,
-                 "ReflectionProbeData",
-                 "reflection_probe_buf[REFLECTION_PROBES_MAX]")
+                 "SphereProbeData",
+                 "reflection_probe_buf[REFLECTION_PROBE_MAX]")
     .sampler(REFLECTION_PROBE_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "reflection_probes_tx");
 
 /* Sample cubemap and remap into an octahedral texture. */
@@ -47,8 +47,8 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_select)
     .local_group_size(REFLECTION_PROBE_SELECT_GROUP_SIZE)
     .storage_buf(0,
                  Qualifier::READ_WRITE,
-                 "ReflectionProbeData",
-                 "reflection_probe_buf[REFLECTION_PROBES_MAX]")
+                 "SphereProbeData",
+                 "reflection_probe_buf[REFLECTION_PROBE_MAX]")
     .push_constant(Type::INT, "reflection_probe_count")
     .additional_info("eevee_shared", "eevee_sampling_data", "eevee_volume_probe_data")
     .compute_source("eevee_reflection_probe_select_comp.glsl")
@@ -60,7 +60,7 @@ GPU_SHADER_INTERFACE_INFO(eevee_display_probe_reflection_iface, "")
 
 GPU_SHADER_CREATE_INFO(eevee_display_probe_reflection)
     .additional_info("eevee_shared", "draw_view", "eevee_reflection_probe_data")
-    .storage_buf(0, Qualifier::READ, "ReflectionProbeDisplayData", "display_data_buf[]")
+    .storage_buf(0, Qualifier::READ, "SphereProbeDisplayData", "display_data_buf[]")
     .vertex_source("eevee_display_probe_reflection_vert.glsl")
     .vertex_out(eevee_display_probe_reflection_iface)
     .fragment_source("eevee_display_probe_reflection_frag.glsl")

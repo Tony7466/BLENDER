@@ -30,7 +30,6 @@
 #define CULLING_TILE_GROUP_SIZE 256
 
 /* Reflection Probes. */
-#define REFLECTION_PROBES_MAX 128
 #define REFLECTION_PROBE_GROUP_SIZE 16
 #define REFLECTION_PROBE_SELECT_GROUP_SIZE 64
 /* Number of additional pixels on the border of an octahedral map to reserve for fixing seams.
@@ -38,8 +37,17 @@
 #define REFLECTION_PROBE_MIPMAP_LEVELS 5
 #define REFLECTION_PROBE_SH_GROUP_SIZE 512
 #define REFLECTION_PROBE_SH_SAMPLES_PER_GROUP 64
+/**
+ * Limited by the UBO size limit (16384 bytes / sizeof(SphereProbeData)).
+ */
+#define REFLECTION_PROBE_MAX 128
 
-#define PLANAR_PROBES_MAX 16
+/**
+ * Limited by the performance impact it can cause.
+ * Limited by the max layer count supported by a hardware (256).
+ * Limited by the UBO size limit (16384 bytes / sizeof(ProbePlanarData)).
+ */
+#define PLANAR_PROBE_MAX 16
 
 /**
  * IMPORTANT: Some data packing are tweaked for these values.

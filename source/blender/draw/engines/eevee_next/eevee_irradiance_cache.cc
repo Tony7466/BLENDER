@@ -21,7 +21,7 @@ namespace blender::eevee {
 /** \name Interface
  * \{ */
 
-void IrradianceCache::init()
+void VolumeProbeModule::init()
 {
   display_grids_enabled_ = DRW_state_draw_support();
 
@@ -71,7 +71,7 @@ void IrradianceCache::init()
       irradiance_atlas_tx_.clear(float4(0.0f));
     }
 
-    inst_.reflection_probes.tag_world_irradiance_for_update();
+    inst_.sphere_probes.tag_world_irradiance_for_update();
   }
 
   if (irradiance_atlas_tx_.is_valid() == false) {
@@ -79,14 +79,14 @@ void IrradianceCache::init()
   }
 }
 
-void IrradianceCache::sync()
+void VolumeProbeModule::sync()
 {
   if (inst_.is_baking()) {
     bake.sync();
   }
 }
 
-Vector<IrradianceBrickPacked> IrradianceCache::bricks_alloc(int brick_len)
+Vector<IrradianceBrickPacked> VolumeProbeModule::bricks_alloc(int brick_len)
 {
   if (brick_pool_.size() < brick_len) {
     /* Fail allocation. Not enough brick in the atlas. */
@@ -101,13 +101,13 @@ Vector<IrradianceBrickPacked> IrradianceCache::bricks_alloc(int brick_len)
   return allocated;
 }
 
-void IrradianceCache::bricks_free(Vector<IrradianceBrickPacked> &bricks)
+void VolumeProbeModule::bricks_free(Vector<IrradianceBrickPacked> &bricks)
 {
   brick_pool_.extend(bricks.as_span());
   bricks.clear();
 }
 
-void IrradianceCache::set_view(View & /*view*/)
+void VolumeProbeModule::set_view(View & /*view*/)
 {
   Vector<IrradianceGrid *> grid_loaded;
 
@@ -391,7 +391,7 @@ void IrradianceCache::set_view(View & /*view*/)
   do_update_world_ = false;
 }
 
-void IrradianceCache::viewport_draw(View &view, GPUFrameBuffer *view_fb)
+void VolumeProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (!inst_.is_baking()) {
     debug_pass_draw(view, view_fb);
@@ -399,7 +399,7 @@ void IrradianceCache::viewport_draw(View &view, GPUFrameBuffer *view_fb)
   }
 }
 
-void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
+void VolumeProbeModule::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
 {
   switch (inst_.debug_mode) {
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
@@ -527,7 +527,7 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
   }
 }
 
-void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
+void VolumeProbeModule::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (!display_grids_enabled_) {
     return;
@@ -701,7 +701,7 @@ void IrradianceBake::sync()
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
       sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
       sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
-      sub.bind_resources(inst_.reflection_probes);
+      sub.bind_resources(inst_.sphere_probes);
       sub.push_constant("radiance_src", &radiance_src_);
       sub.push_constant("radiance_dst", &radiance_dst_);
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
@@ -714,7 +714,7 @@ void IrradianceBake::sync()
     pass.shader_set(inst_.shaders.static_shader_get(LIGHTPROBE_IRRADIANCE_RAY));
     pass.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
     pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
-    pass.bind_resources(inst_.reflection_probes);
+    pass.bind_resources(inst_.sphere_probes);
     pass.bind_ssbo("list_start_buf", &list_start_buf_);
     pass.bind_ssbo("list_info_buf", &list_info_buf_);
     pass.push_constant("radiance_src", &radiance_src_);
@@ -826,7 +826,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   capture_info_buf_.capture_emission = capture_emission_;
 
   LightProbeModule &light_probes = inst_.light_probes;
-  ReflectionProbeData &world_data = *static_cast<ReflectionProbeData *>(&light_probes.world_cube_);
+  SphereProbeData &world_data = *static_cast<SphereProbeData *>(&light_probes.world_cube_);
   capture_info_buf_.world_atlas_coord = world_data.atlas_coord;
 
   dispatch_per_grid_sample_ = math::divide_ceil(grid_resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
