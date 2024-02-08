@@ -302,9 +302,6 @@ void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope
     case CURVE_PRESET_MID8:
       cuma->totpoint = 8;
       break;
-    case CURVE_PRESET_MID9:
-      cuma->totpoint = 9;
-      break;
     case CURVE_PRESET_ROUND:
       cuma->totpoint = 4;
       break;
@@ -374,13 +371,6 @@ void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope
     case CURVE_PRESET_MID8: {
       for (int i = 0; i < cuma->totpoint; i++) {
         cuma->curve[i].x = i / (float(cuma->totpoint));
-        cuma->curve[i].y = 0.5;
-      }
-      break;
-    }
-    case CURVE_PRESET_MID9: {
-      for (int i = 0; i < cuma->totpoint; i++) {
-        cuma->curve[i].x = i / (float(cuma->totpoint) - 1);
         cuma->curve[i].y = 0.5;
       }
       break;
@@ -685,8 +675,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   float table_range = cuma->maxtable - cuma->mintable;
 
   /* Rely on Blender interpolation for bezier curves, support extra functionality here as well. */
-  int bezt_count = cuma->totpoint;
-  bezt = static_cast<BezTriple *>(MEM_callocN((bezt_count) * sizeof(BezTriple), "beztarr"));
+  bezt = static_cast<BezTriple *>(MEM_callocN(cuma->totpoint * sizeof(BezTriple), "beztarr"));
 
   for (int a = 0; a < cuma->totpoint; a++) {
     cuma->mintable = min_ff(cuma->mintable, cmp[a].x);
@@ -751,7 +740,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
 
   /* first and last handle need correction, instead of pointing to center of next/prev,
    * we let it point to the closest handle */
-  if (cuma->totpoint > 2 && not use_wrapping) {
+  if (cuma->totpoint > 2 && !use_wrapping) {
     float hlen, nlen, vec[3];
 
     if (bezt[0].h2 == HD_AUTO) {
@@ -857,7 +846,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
       point += 2;
     }
     /* Check if we are on or outside the start or end point. */
-    if ((point == firstpoint || (point == lastpoint && cur_x >= point[0])) && not use_wrapping) {
+    if ((point == firstpoint || (point == lastpoint && cur_x >= point[0])) && !use_wrapping) {
       if (compare_ff(cur_x, point[0], 1e-6f)) {
         /* When on the point exactly, use the value directly to avoid precision
          * issues with extrapolation of extreme slopes. */
