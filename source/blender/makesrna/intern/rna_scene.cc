@@ -1870,12 +1870,10 @@ static void rna_SceneRenderView_name_set(PointerRNA *ptr, const char *value)
                  sizeof(rv->name));
 }
 
-void rna_ViewLayer_override_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+void rna_ViewLayer_override_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  Scene *screen = (Scene *)ptr->owner_id;
-
+  Scene *scene = (Scene *)ptr->owner_id;
   rna_Scene_render_update(bmain, scene, ptr);
-  WM_main_add_notifier(NC_SCENE | ND_RENDER_OPTIONS, &screen->id);
   DEG_relations_tag_update(bmain);
 }
 
