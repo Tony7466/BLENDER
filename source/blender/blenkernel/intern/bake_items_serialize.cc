@@ -729,6 +729,20 @@ static std::unique_ptr<Instances> try_load_instances(const DictionaryValue &io_g
     return {};
   }
 
+  if (!attributes.contains(".reference_index")) {
+    /* Try reading the reference index attribute from the old bake format from before it was an
+     * attribute. */
+    const auto *io_handles = io_instances->lookup_dict("handles");
+    if (!io_handles) {
+      return {};
+    }
+    if (!read_blob_simple_gspan(
+            blob_reader, *io_handles, instances->reference_handles_for_write()))
+    {
+      return {};
+    }
+  }
+
   return instances;
 }
 
