@@ -20,11 +20,10 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_rand.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
-
-#include "PIL_time.h"
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -37,13 +36,13 @@
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
@@ -2094,7 +2093,7 @@ static bool gpencil_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
 
     ushort local_view_bits = 0;
     if (v3d->localvd) {
-      local_view_bits = v3d->local_view_uuid;
+      local_view_bits = v3d->local_view_uid;
     }
     /* create new default object */
     obact = ED_gpencil_add_object(C, cur, local_view_bits);
@@ -2166,7 +2165,7 @@ static tGPsdata *gpencil_session_initpaint(bContext *C, wmOperator *op)
   }
 
   /* Random generator, only init once. */
-  uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
+  uint rng_seed = uint(BLI_check_seconds_timer_i() & UINT_MAX);
   rng_seed ^= POINTER_AS_UINT(p);
   p->rng = BLI_rng_new(rng_seed);
 
@@ -2615,21 +2614,22 @@ static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
         case GP_PAINTMODE_ERASER: {
           ED_workspace_status_text(
               C,
-              RPT_("Grease Pencil Erase Session: Hold and drag LMB or RMB to erase | "
-                   "ESC/Enter to end  (or click outside this area)"));
+              IFACE_("Grease Pencil Erase Session: Hold and drag LMB or RMB to erase | "
+                     "ESC/Enter to end  (or click outside this area)"));
           break;
         }
         case GP_PAINTMODE_DRAW_STRAIGHT: {
-          ED_workspace_status_text(C,
-                                   RPT_("Grease Pencil Line Session: Hold and drag LMB to draw | "
-                                        "ESC/Enter to end  (or click outside this area)"));
+          ED_workspace_status_text(
+              C,
+              IFACE_("Grease Pencil Line Session: Hold and drag LMB to draw | "
+                     "ESC/Enter to end  (or click outside this area)"));
           break;
         }
         case GP_PAINTMODE_SET_CP: {
           ED_workspace_status_text(
               C,
-              RPT_("Grease Pencil Guides: LMB click and release to place reference point | "
-                   "Esc/RMB to cancel"));
+              IFACE_("Grease Pencil Guides: LMB click and release to place reference point | "
+                     "Esc/RMB to cancel"));
           break;
         }
         case GP_PAINTMODE_DRAW: {
@@ -2637,19 +2637,19 @@ static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
           if (guide->use_guide) {
             ED_workspace_status_text(
                 C,
-                RPT_("Grease Pencil Freehand Session: Hold and drag LMB to draw | "
-                     "M key to flip guide | O key to move reference point"));
+                IFACE_("Grease Pencil Freehand Session: Hold and drag LMB to draw | "
+                       "M key to flip guide | O key to move reference point"));
           }
           else {
             ED_workspace_status_text(
-                C, RPT_("Grease Pencil Freehand Session: Hold and drag LMB to draw"));
+                C, IFACE_("Grease Pencil Freehand Session: Hold and drag LMB to draw"));
           }
           break;
         }
         default: /* unhandled future cases */
         {
           ED_workspace_status_text(
-              C, RPT_("Grease Pencil Session: ESC/Enter to end (or click outside this area)"));
+              C, IFACE_("Grease Pencil Session: ESC/Enter to end (or click outside this area)"));
           break;
         }
       }
@@ -2967,7 +2967,7 @@ static void gpencil_draw_apply_event(bContext *C,
     }
   }
 
-  p->curtime = PIL_check_seconds_timer();
+  p->curtime = BLI_check_seconds_timer();
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;

@@ -27,7 +27,7 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
@@ -1959,7 +1959,8 @@ static void draw_bone_name(const ArmatureDrawContext *ctx,
                      10,
                      0,
                      DRW_TEXT_CACHE_GLOBALSPACE | DRW_TEXT_CACHE_STRING_PTR,
-                     color);
+                     color,
+                     true);
 }
 
 /** \} */
