@@ -440,23 +440,26 @@ static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  Layer *active_layer = grease_pencil.get_active_layer();
-  Layer &new_layer = grease_pencil.add_layer(active_layer->name());
-  const Array<int> frame_numbers = active_layer->sorted_keys();
+  Layer &active_layer = *grease_pencil.get_active_layer();
+  Layer &new_layer = grease_pencil.add_layer(active_layer.name());
+  const Array<int> frame_numbers = active_layer.sorted_keys();
 
-  for (int frame : frame_numbers) {
-    grease_pencil.insert_blank_frame(new_layer, frame, 0, BEZT_KEYTYPE_KEYFRAME);
+  for (auto [key, frame] : active_layer.frames().items()) {
+    grease_pencil.insert_blank_frame(new_layer,
+                                     key,
+                                     active_layer.get_frame_duration_at(key),
+                                     eBezTriple_KeyframeType(frame.type));
   }
 
   if (!empty_keyframes) {
     for (const int frame_number : frame_numbers) {
-      const Drawing *drawing = grease_pencil.get_drawing_at(*active_layer, frame_number);
+      const Drawing &drawing = *grease_pencil.get_drawing_at(active_layer, frame_number);
       Drawing *new_drawing = grease_pencil.get_editable_drawing_at(new_layer, frame_number);
-      *new_drawing = *MEM_new<bke::greasepencil::Drawing>(__func__, *drawing);
+      *new_drawing = *MEM_new<bke::greasepencil::Drawing>(__func__, drawing);
     }
   }
 
-  grease_pencil.move_node_after(new_layer.as_node(), active_layer->as_node());
+  grease_pencil.move_node_after(new_layer.as_node(), active_layer.as_node());
   grease_pencil.set_active_layer(&new_layer);
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
