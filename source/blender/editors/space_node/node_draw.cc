@@ -2467,7 +2467,7 @@ static std::optional<std::chrono::nanoseconds> geo_node_get_execution_time(
   return std::nullopt;
 }
 
-/* Create node key instance, assuming the node comes from the currently editing node tree. */
+/* Create node key instance, assuming the node comes from the currently edited node tree. */
 static bNodeInstanceKey current_node_instance_key(const SpaceNode &snode, const bNode &node)
 {
   const bNodeTreePath *path = static_cast<const bNodeTreePath *>(snode.treepath.last);

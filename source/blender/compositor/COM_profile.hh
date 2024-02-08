@@ -26,7 +26,7 @@ class ProfilerData {
 /* Profiler implementation which is used by the node execution system. */
 class Profiler {
   /* Local copy of the profiling data, which is known to not cause threading conflicts with the
-   * interface thread while the compositing tree is evaluated in background. */
+   * interface thread while the compositing tree is evaluated in the background. */
   ProfilerData data_;
 
  public:
