@@ -26,6 +26,8 @@
 #include "BLI_sort_utils.h"
 #include "BLI_string_utils.hh"
 
+#include "BLT_translation.h"
+
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
@@ -169,7 +171,7 @@ void BKE_fmodifier_name_set(FModifier *fcm, const char *name)
    * Ensure the name is unique. */
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(fcm->type);
   ListBase list = BLI_listbase_from_link((Link *)fcm);
-  BLI_uniquename(&list, fcm, fmi->name, '.', offsetof(FModifier, name), sizeof(fcm->name));
+  BLI_uniquename(&list, fcm, DATA_(fmi->name), '.', offsetof(FModifier, name), sizeof(fcm->name));
 }
 
 void BKE_fmodifiers_foreach_id(ListBase *fmodifiers, LibraryForeachIDData *data)
@@ -1343,7 +1345,7 @@ void sort_time_fcurve(FCurve *fcu)
       if (a < (fcu->totvert - 1)) {
         /* Swap if one is after the other (and indicate that order has changed). */
         if (bezt->vec[1][0] > (bezt + 1)->vec[1][0]) {
-          SWAP(BezTriple, *bezt, *(bezt + 1));
+          std::swap(*bezt, *(bezt + 1));
           ok = true;
         }
       }

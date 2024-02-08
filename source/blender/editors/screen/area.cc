@@ -2335,11 +2335,11 @@ void ED_area_data_copy(ScrArea *area_dst, ScrArea *area_src, const bool do_free)
 
 void ED_area_data_swap(ScrArea *area_dst, ScrArea *area_src)
 {
-  SWAP(char, area_dst->spacetype, area_src->spacetype);
-  SWAP(SpaceType *, area_dst->type, area_src->type);
+  std::swap(area_dst->spacetype, area_src->spacetype);
+  std::swap(area_dst->type, area_src->type);
 
-  SWAP(ListBase, area_dst->spacedata, area_src->spacedata);
-  SWAP(ListBase, area_dst->regionbase, area_src->regionbase);
+  std::swap(area_dst->spacedata, area_src->spacedata);
+  std::swap(area_dst->regionbase, area_src->regionbase);
 }
 
 /* -------------------------------------------------------------------- */
@@ -2794,8 +2794,6 @@ int ED_area_header_switchbutton(const bContext *C, uiBlock *block, int yco)
             &areaptr,
             "ui_type",
             0,
-            0.0f,
-            0.0f,
             0.0f,
             0.0f,
             "");

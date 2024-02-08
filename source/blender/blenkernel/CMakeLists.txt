@@ -29,7 +29,6 @@ set(INC
   ../../../intern/memutil
   ../../../intern/mikktspace
   ../../../intern/opensubdiv
-  ../../../extern/fmtlib/include
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -70,6 +69,7 @@ set(SRC
   intern/attribute_math.cc
   intern/autoexec.cc
   intern/bake_geometry_nodes_modifier.cc
+  intern/bake_data_block_map.cc
   intern/bake_items.cc
   intern/bake_items_paths.cc
   intern/bake_items_serialize.cc
@@ -336,6 +336,7 @@ set(SRC
   BKE_attribute_math.hh
   BKE_autoexec.hh
   BKE_bake_geometry_nodes_modifier.hh
+  BKE_bake_data_block_map.hh
   BKE_bake_items.hh
   BKE_bake_items_paths.hh
   BKE_bake_items_serialize.hh
@@ -486,6 +487,7 @@ set(SRC
   BKE_report.h
   BKE_rigidbody.h
   BKE_scene.h
+  BKE_scene_runtime.hh
   BKE_screen.hh
   BKE_sequencer_offscreen.h
   BKE_shader_fx.h
@@ -573,7 +575,7 @@ set(LIB
   bf_rna
   bf_shader_fx
   bf_simulation
-  extern_fmtlib
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::atomic
   # For `vfontdata_freetype.c`.
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
