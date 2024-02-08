@@ -17,7 +17,54 @@
 
 #include "draw_debug.hh"
 
+#include <iostream>
+
 namespace blender::eevee {
+
+/* -------------------------------------------------------------------- */
+/** \name Light-Probe Module
+ * \{ */
+
+LightProbeModule::LightProbeModule(Instance &inst) : inst_(inst)
+{
+  /* Initialize the world probe. */
+  world_cube_.clipping_distances = float2(1.0f, 10.0f);
+  world_cube_.world_to_probe_transposed = float3x4::identity();
+  world_cube_.influence_shape = SHAPE_ELIPSOID;
+  world_cube_.parallax_shape = SHAPE_ELIPSOID;
+  /* Full influence. */
+  world_cube_.influence_scale = 0.0f;
+  world_cube_.influence_bias = 1.0f;
+  world_cube_.parallax_distance = 1e10f;
+  /* In any case, the world must always be up to valid and used for render. */
+  world_cube_.use_for_render = true;
+}
+
+static eLightProbeResolution resolution_to_probe_resolution_enum(int resolution)
+{
+  switch (resolution) {
+    case 64:
+      return LIGHT_PROBE_RESOLUTION_64;
+    case 128:
+      return LIGHT_PROBE_RESOLUTION_128;
+    case 256:
+      return LIGHT_PROBE_RESOLUTION_256;
+    case 512:
+      return LIGHT_PROBE_RESOLUTION_512;
+    case 1024:
+      return LIGHT_PROBE_RESOLUTION_1024;
+    default:
+      /* Default to maximum resolution because the old max was 4K for Legacy-EEVEE. */
+    case 2048:
+      return LIGHT_PROBE_RESOLUTION_2048;
+  }
+}
+
+void LightProbeModule::init()
+{
+  const SceneEEVEE &sce_eevee = inst_.scene->eevee;
+  cube_object_resolution_ = resolution_to_probe_resolution_enum(sce_eevee.gi_cubemap_resolution);
+}
 
 void LightProbeModule::begin_sync()
 {
@@ -69,15 +116,15 @@ void LightProbeModule::sync_cube(const Object *ob, ObjectHandle &handle)
     cube.do_render = true;
 
     ReflectionProbeModule &probe_module = inst_.reflection_probes;
-    eLightProbeResolution probe_resolution = probe_module.reflection_probe_resolution();
-    int max_resolution = probe_module.max_resolution_;
-    int subdivision_lvl = ReflectionCube::subdivision_level_get(max_resolution, probe_resolution);
+    eLightProbeResolution probe_resolution = cube_object_resolution_;
+    int subdivision_lvl = probe_module.subdivision_level_get(probe_resolution);
 
-    if (cube.atlas_coord.layer_subdivision != subdivision_lvl) {
-      cube.atlas_coord = probe_module.find_empty_atlas_region(subdivision_lvl);
+    if (cube.atlas_coord.subdivision_lvl != subdivision_lvl) {
+      cube.atlas_coord.free();
+      cube.atlas_coord = find_empty_atlas_region(subdivision_lvl);
       ReflectionProbeData &cube_data = *static_cast<ReflectionProbeData *>(&cube);
       /* Update gpu data sampling coordinates. */
-      cube_data.atlas_coord = cube.atlas_coord.as_sampling_coord(max_resolution);
+      cube_data.atlas_coord = cube.atlas_coord.as_sampling_coord(probe_module.max_resolution_);
       /* Coordinates have changed. Area might contain random data. Do not use for rendering. */
       cube.use_for_render = false;
     }
@@ -145,6 +192,28 @@ void LightProbeModule::sync_probe(const Object *ob, ObjectHandle &handle)
   BLI_assert_unreachable();
 }
 
+void LightProbeModule::sync_world(const ::World *world, bool has_update)
+{
+  const eLightProbeResolution probe_resolution = static_cast<eLightProbeResolution>(
+      world->probe_resolution);
+
+  ReflectionProbeModule &sph_module = inst_.reflection_probes;
+  int subdivision_lvl = sph_module.subdivision_level_get(probe_resolution);
+
+  if (subdivision_lvl != world_cube_.atlas_coord.subdivision_lvl) {
+    world_cube_.atlas_coord.free();
+    world_cube_.atlas_coord = find_empty_atlas_region(subdivision_lvl);
+    ReflectionProbeData &world_data = *static_cast<ReflectionProbeData *>(&world_cube_);
+    world_data.atlas_coord = world_cube_.atlas_coord.as_sampling_coord(sph_module.max_resolution_);
+    has_update = true;
+  }
+
+  if (has_update) {
+    world_cube_.do_render = true;
+    sph_module.tag_world_irradiance_for_update();
+  }
+}
+
 void LightProbeModule::end_sync()
 {
   /* Check for deleted or updated grid. */
@@ -186,5 +255,112 @@ void LightProbeModule::end_sync()
     return remove_plane;
   });
 }
+
+ReflectionProbeAtlasCoordinate LightProbeModule::find_empty_atlas_region(
+    int subdivision_level) const
+{
+  int layer_count = cube_layer_count();
+  ReflectionProbeAtlasCoordinate::LocationFinder location_finder(layer_count, subdivision_level);
+
+  location_finder.mark_space_used(world_cube_.atlas_coord);
+  for (const ReflectionCube &probe : cube_map_.values()) {
+    location_finder.mark_space_used(probe.atlas_coord);
+  }
+  return location_finder.first_free_spot();
+}
+
+int LightProbeModule::cube_layer_count() const
+{
+  int max_layer = world_cube_.atlas_coord.atlas_layer;
+  for (const ReflectionCube &probe : cube_map_.values()) {
+    max_layer = max_ii(max_layer, probe.atlas_coord.atlas_layer);
+  }
+  int layer_count = max_layer + 1;
+  return layer_count;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name ReflectionProbeAtlasCoordinate
+ * \{ */
+
+ReflectionProbeAtlasCoordinate::LocationFinder::LocationFinder(int allocated_layer_count,
+                                                               int subdivision_level)
+{
+  subdivision_level_ = subdivision_level;
+  areas_per_dimension_ = 1 << subdivision_level_;
+  areas_per_layer_ = square_i(areas_per_dimension_);
+  /* Always add an additional layer to make sure that there is always a free area.
+   * If this area is chosen the atlas will grow. */
+  int area_len = (allocated_layer_count + 1) * areas_per_layer_;
+  areas_occupancy_.resize(area_len, false);
+}
+
+void ReflectionProbeAtlasCoordinate::LocationFinder::mark_space_used(
+    const ReflectionProbeAtlasCoordinate &coord)
+{
+  if (coord.atlas_layer == -1) {
+    /* Coordinate not allocated yet. */
+    return;
+  }
+  /* The input probe data can be stored in a different subdivision level and should tag all areas
+   * of the target subdivision level. Shift right if subdivision is higher, left if lower. */
+  const int shift_right = max_ii(coord.subdivision_lvl - subdivision_level_, 0);
+  const int shift_left = max_ii(subdivision_level_ - coord.subdivision_lvl, 0);
+  const int2 pos_in_location_finder = (coord.area_location() >> shift_right) << shift_left;
+  /* Tag all areas this probe overlaps. */
+  const int layer_offset = coord.atlas_layer * areas_per_layer_;
+  const int areas_overlapped_per_dim = 1 << shift_left;
+  for (const int y : IndexRange(areas_overlapped_per_dim)) {
+    for (const int x : IndexRange(areas_overlapped_per_dim)) {
+      const int2 pos = pos_in_location_finder + int2(x, y);
+      const int area_index = pos.x + pos.y * areas_per_dimension_;
+      areas_occupancy_[area_index + layer_offset].set();
+    }
+  }
+}
+
+ReflectionProbeAtlasCoordinate ReflectionProbeAtlasCoordinate::LocationFinder::first_free_spot()
+    const
+{
+  ReflectionProbeAtlasCoordinate result;
+  result.subdivision_lvl = subdivision_level_;
+  for (int index : areas_occupancy_.index_range()) {
+    if (!areas_occupancy_[index]) {
+      result.atlas_layer = index / areas_per_layer_;
+      result.area_index = index % areas_per_layer_;
+      return result;
+    }
+  }
+  /* There should always be a free area. See constructor. */
+  BLI_assert_unreachable();
+  return result;
+}
+
+void ReflectionProbeAtlasCoordinate::LocationFinder::print_debug() const
+{
+  std::ostream &os = std::cout;
+  int layer = 0, row = 0, column = 0;
+  os << "subdivision " << subdivision_level_ << "\n";
+  for (bool spot_taken : areas_occupancy_) {
+    if (row == 0 && column == 0) {
+      os << "layer " << layer << "\n";
+    }
+    os << (spot_taken ? 'X' : '-');
+    column++;
+    if (column == areas_per_dimension_) {
+      os << "\n";
+      column = 0;
+      row++;
+    }
+    if (row == areas_per_dimension_) {
+      row = 0;
+      layer++;
+    }
+  }
+}
+
+/** \} */
 
 }  // namespace blender::eevee

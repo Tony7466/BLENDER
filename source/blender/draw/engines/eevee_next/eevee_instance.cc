@@ -90,6 +90,7 @@ void Instance::init(const int2 &output_res,
   shadows.init();
   motion_blur.init();
   main_view.init();
+  light_probes.init();
   planar_probes.init();
   /* Irradiance Cache needs reflection probes to be initialized. */
   reflection_probes.init();
@@ -124,6 +125,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   depth_of_field.init();
   shadows.init();
   main_view.init();
+  light_probes.init();
   planar_probes.init();
   /* Irradiance Cache needs reflection probes to be initialized. */
   reflection_probes.init();

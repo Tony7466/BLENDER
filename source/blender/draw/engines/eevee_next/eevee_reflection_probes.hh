@@ -47,13 +47,12 @@ class ReflectionProbeModule {
   Instance &instance_;
   ReflectionProbeDataBuf data_buf_;
 
-  /* World probe is stored and managed by the reflection probe module. */
-  ReflectionCube world_probe;
-
   /** Probes texture stored in octahedral mapping. */
   Texture probes_tx_ = {"Probes"};
 
+  /** Copy the rendered cube-map to the atlas texture. */
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
+  /** Extract irradiance information from the world. */
   PassSimple update_irradiance_ps_ = {"Probe.UpdateIrradiance"};
   PassSimple select_ps_ = {"Probe.Select"};
 
@@ -97,11 +96,10 @@ class ReflectionProbeModule {
   PassSimple viewport_display_ps_ = {"ReflectionProbeModule.Viewport Display"};
 
  public:
-  ReflectionProbeModule(Instance &instance);
+  ReflectionProbeModule(Instance &instance) : instance_(instance){};
 
   void init();
   void begin_sync();
-  void sync_world(::World *world);
   void end_sync();
 
   void viewport_draw(View &view, GPUFrameBuffer *view_fb);
@@ -114,13 +112,6 @@ class ReflectionProbeModule {
 
   void set_view(View &view);
 
-  void debug_print() const;
-
-  int atlas_extent() const
-  {
-    return max_resolution_;
-  }
-
   /**
    * Get the resolution of a single cube-map side when rendering probes.
    *
@@ -128,42 +119,18 @@ class ReflectionProbeModule {
    */
   int probe_render_extent() const;
 
-  ReflectionProbeAtlasCoordinate world_atlas_coord_get() const;
-
-  void tag_world_for_update()
-  {
-    world_probe.do_render = true;
-    do_world_irradiance_update = true;
-  }
-
   void tag_world_irradiance_for_update()
   {
     do_world_irradiance_update = true;
   }
 
  private:
-  /** Get the number of layers that is needed to store probes. */
-  int needed_layers_get() const;
-
-  void ensure_cubemap_render_target(int resolution);
-
-  /**
-   * Create a reflection probe data element that points to an empty spot in the cubemap that
-   * can hold a texture with the given subdivision_level.
-   */
-  ReflectionProbeAtlasCoordinate find_empty_atlas_region(int subdivision_level) const;
-
-  /**
-   * Pop the next reflection probe that requires to be updated.
-   */
-  std::optional<ReflectionProbeUpdateInfo> world_update_info_pop();
-  std::optional<ReflectionProbeUpdateInfo> probe_update_info_pop();
-
-  void remap_to_octahedral_projection(const ReflectionProbeAtlasCoordinate &atlas_coord);
-  void update_probes_texture_mipmaps();
-  void update_world_irradiance();
-
-  bool has_only_world_probe() const;
+  /* Return the subdivision level for the requested probe resolution.
+   * Result is safely clamped to max resolution. */
+  int subdivision_level_get(const eLightProbeResolution probe_resolution)
+  {
+    return max_ii(int(log2(max_resolution_)) - int(probe_resolution), 0);
+  }
 
   /**
    * Ensure atlas texture is the right size.
@@ -171,30 +138,38 @@ class ReflectionProbeModule {
    */
   bool ensure_atlas();
 
+  /**
+   * Ensure the cube-map target texture for rendering the probe is allocated.
+   */
+  void ensure_cubemap_render_target(int resolution);
+
+  struct ReflectionProbeUpdateInfo {
+    float3 probe_pos;
+    /** Resolution of the cube-map to be rendered. */
+    int resolution;
+
+    float2 clipping_distances;
+
+    ReflectionProbeAtlasCoordinate atlas_coord;
+
+    bool do_render;
+    bool do_world_irradiance_update;
+  };
+
   ReflectionProbeUpdateInfo update_info_from_probe(const ReflectionCube &probe);
 
-  eLightProbeResolution reflection_probe_resolution() const;
-};
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Reflection Probe Update Info
- * \{ */
-
-struct ReflectionProbeUpdateInfo {
-  float3 probe_pos;
   /**
-   * Resolution of the cubemap to be rendered.
+   * Pop the next reflection probe that requires to be updated.
    */
-  int resolution;
+  std::optional<ReflectionProbeUpdateInfo> world_update_info_pop();
+  std::optional<ReflectionProbeUpdateInfo> probe_update_info_pop();
 
-  float2 clipping_distances;
-
-  ReflectionProbeAtlasCoordinate atlas_coord;
-
-  bool do_render;
-  bool do_world_irradiance_update;
+  /**
+   * Internal processing passes.
+   */
+  void remap_to_octahedral_projection(const ReflectionProbeAtlasCoordinate &atlas_coord);
+  void update_probes_texture_mipmaps();
+  void update_world_irradiance();
 };
 
 /** \} */

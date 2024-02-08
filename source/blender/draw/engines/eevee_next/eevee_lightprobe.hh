@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "BLI_bit_vector.hh"
 #include "BLI_map.hh"
 
 #include "eevee_sync.hh"
@@ -21,34 +22,33 @@ class Instance;
 class IrradianceCache;
 
 /* -------------------------------------------------------------------- */
-/** \name Atlas coord
+/** \name ReflectionProbeAtlasCoordinate
  * \{ */
 
 struct ReflectionProbeAtlasCoordinate {
   /** On which layer of the texture array is this reflection probe stored. */
-  int layer = -1;
-  /**
-   * Subdivision of the layer. 0 = no subdivision and resolution would be
-   * ReflectionProbeModule::MAX_RESOLUTION.
-   */
-  int layer_subdivision = -1;
-  /**
-   * Which area of the subdivided layer is the reflection probe located.
-   *
-   * A layer has (2^layer_subdivision)^2 areas.
-   */
+  int atlas_layer = -1;
+  /** Gives the extent of this probe relative to the atlas size. */
+  int subdivision_lvl = -1;
+  /** Area index within the layer with the according subdivision level. */
   int area_index = -1;
+
+  /** Release the current atlas space held by this probe. */
+  void free()
+  {
+    atlas_layer = -1;
+  }
 
   /* Return the area extent in pixel. */
   int area_extent(int atlas_extent) const
   {
-    return atlas_extent >> layer_subdivision;
+    return atlas_extent >> subdivision_lvl;
   }
 
   /* Coordinate of the area in [0..area_count_per_dimension[ range. */
   int2 area_location() const
   {
-    const int area_count_per_dimension = 1 << layer_subdivision;
+    const int area_count_per_dimension = 1 << subdivision_lvl;
     return int2(area_index % area_count_per_dimension, area_index / area_count_per_dimension);
   }
 
@@ -78,7 +78,7 @@ struct ReflectionProbeAtlasCoordinate {
      *     ^-------^
      *       sampling area
      */
-    /* First level only need half a pixel of padding around the sampling area. */
+    /* Max level only need half a pixel of padding around the sampling area. */
     const int mip_max_lvl_padding = 1;
     const int mip_min_lvl_padding = mip_max_lvl_padding << REFLECTION_PROBE_MIPMAP_LEVELS;
     /* Extent and offset in mip 0 texels. */
@@ -88,18 +88,46 @@ struct ReflectionProbeAtlasCoordinate {
     ReflectionProbeCoordinate coord;
     coord.scale = sampling_area_extent / float(atlas_extent);
     coord.offset = float2(sampling_area_offset) / float(atlas_extent);
-    coord.layer = layer;
+    coord.layer = atlas_layer;
     return coord;
   }
 
   ReflectionProbeWriteCoordinate as_write_coord(int atlas_extent, int mip_lvl) const
   {
     ReflectionProbeWriteCoordinate coord;
-    coord.extent = atlas_extent >> (layer_subdivision + mip_lvl);
+    coord.extent = atlas_extent >> (subdivision_lvl + mip_lvl);
     coord.offset = (area_location() * coord.extent) >> mip_lvl;
-    coord.layer = layer;
+    coord.layer = atlas_layer;
     return coord;
   }
+
+  /**
+   * Utility class to find a location in the probe atlas that can be used to store a new probe in
+   * a specified subdivision level.
+   *
+   * The allocation space is subdivided in target subdivision level and is multi layered.
+   * A layer has `(2 ^ subdivision_lvl) ^ 2` areas.
+   *
+   * All allocated probe areas are then process and the candidate areas containing allocated probes
+   * are marked as occupied. The location finder then return the first available area.
+   */
+  class LocationFinder {
+    BitVector<> areas_occupancy_;
+    int subdivision_level_;
+    /* Area count for the given subdivision level. */
+    int areas_per_dimension_;
+    int areas_per_layer_;
+
+   public:
+    LocationFinder(int allocated_layer_count, int subdivision_level);
+
+    /* Mark space to be occupied by the given probe_data. */
+    void mark_space_used(const ReflectionProbeAtlasCoordinate &coord);
+
+    ReflectionProbeAtlasCoordinate first_free_spot() const;
+
+    void print_debug() const;
+  };
 };
 
 /** \} */
@@ -109,6 +137,9 @@ struct LightProbe {
   bool initialized = false;
   /* NOTE: Might be not needed if depsgraph updates work as intended. */
   bool updated = false;
+  /** Display debug visuals in the viewport. */
+  bool viewport_display;
+  float viewport_display_size;
 };
 
 struct IrradianceGrid : public LightProbe, IrradianceGridData {
@@ -136,9 +167,6 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
   float dilation_threshold;
   float dilation_radius;
   float intensity;
-  /** Display irradiance samples in the viewport. */
-  bool viewport_display;
-  float viewport_display_size;
 };
 
 struct ReflectionCube : public LightProbe, ReflectionProbeData {
@@ -152,18 +180,6 @@ struct ReflectionCube : public LightProbe, ReflectionProbeData {
   float2 clipping_distances;
   /** Atlas region this probe is rendered at (or will be rendered at). */
   ReflectionProbeAtlasCoordinate atlas_coord;
-
-  /** Display debug spheres in the viewport. */
-  bool viewport_display;
-  float viewport_display_size;
-
-  /* Return the subdivision level for the requested probe resolution.
-   * Result is safely clamped to max resolution. */
-  static int subdivision_level_get(const int max_resolution,
-                                   const eLightProbeResolution probe_resolution)
-  {
-    return max_ii(int(log2(max_resolution)) - int(probe_resolution), 0);
-  }
 };
 
 struct ProbePlane : public LightProbe, ProbePlanarData {
@@ -174,8 +190,6 @@ struct ProbePlane : public LightProbe, ProbePlanarData {
   float clipping_offset;
   /* Index in the resource array. */
   int resource_index;
-  /** Display a debug plane in the viewport. */
-  bool viewport_display = false;
 
  public:
   /**
@@ -207,6 +221,7 @@ struct ProbePlane : public LightProbe, ProbePlanarData {
 };
 
 class LightProbeModule {
+  friend class IrradianceBake;
   friend class IrradianceCache;
   friend class PlanarProbeModule;
   friend class ReflectionProbeModule;
@@ -218,6 +233,8 @@ class LightProbeModule {
   Map<ObjectKey, IrradianceGrid> grid_map_;
   Map<ObjectKey, ReflectionCube> cube_map_;
   Map<ObjectKey, ProbePlane> plane_map_;
+  /* World probe is stored separately. */
+  ReflectionCube world_cube_;
   /** True if a light-probe update was detected. */
   bool grid_update_;
   bool cube_update_;
@@ -225,20 +242,29 @@ class LightProbeModule {
   /** True if the auto bake feature is enabled & available in this context. */
   bool auto_bake_enabled_;
 
+  eLightProbeResolution cube_object_resolution_ = LIGHT_PROBE_RESOLUTION_64;
+
  public:
-  LightProbeModule(Instance &inst) : inst_(inst){};
+  LightProbeModule(Instance &inst);
   ~LightProbeModule(){};
 
+  void init();
+
   void begin_sync();
-
   void sync_probe(const Object *ob, ObjectHandle &handle);
-
+  void sync_world(const ::World *world, bool has_update);
   void end_sync();
 
  private:
   void sync_cube(const Object *ob, ObjectHandle &handle);
   void sync_grid(const Object *ob, ObjectHandle &handle);
   void sync_plane(const Object *ob, ObjectHandle &handle);
+
+  /** Get the number of atlas layers needed to store light probe spheres. */
+  int cube_layer_count() const;
+
+  /** Returns coordinates of an area in the atlas for a probe with the given subdivision level. */
+  ReflectionProbeAtlasCoordinate find_empty_atlas_region(int subdivision_level) const;
 };
 
 }  // namespace blender::eevee

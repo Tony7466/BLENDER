@@ -237,8 +237,7 @@ void ShadingView::update_view()
 
 void CaptureView::render_world()
 {
-  const std::optional<ReflectionProbeUpdateInfo> update_info =
-      inst_.reflection_probes.world_update_info_pop();
+  const auto update_info = inst_.reflection_probes.world_update_info_pop();
   if (!update_info.has_value()) {
     return;
   }
@@ -280,9 +279,7 @@ void CaptureView::render_probes()
   Framebuffer prepass_fb;
   View view = {"Capture.View"};
   bool do_update_mipmap_chain = false;
-  while (const std::optional<ReflectionProbeUpdateInfo> update_info =
-             inst_.reflection_probes.probe_update_info_pop())
-  {
+  while (const auto update_info = inst_.reflection_probes.probe_update_info_pop()) {
     GPU_debug_group_begin("Probe.Capture");
     do_update_mipmap_chain = true;
 
