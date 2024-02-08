@@ -857,10 +857,10 @@ static void fill_uv_line_of_triangles(const float2 &begin_a,
                                       const float2 &end_a,
                                       const float2 &end_b,
                                       const float2 &end_c,
-                                      const int faces_num,
                                       MutableSpan<float2> triangles_uv)
 {
-  BLI_assert(triangles_uv.size() / 3 == faces_num);
+  BLI_assert(triangles_uv.size() % 3 == 0);
+  const int faces_num = triangles_uv.size() / 3;
   const float count = float(faces_num + 1);
   for (const int i : IndexRange(faces_num)) {
     const float factor = float(i + 1) / count;
@@ -942,7 +942,6 @@ static void uv_vert_positions(const int edge_edges_num,
                               b_corner_face_uv[Corner::A],
                               b_corner_face_uv[Corner::B],
                               b_corner_face_uv[Corner::C],
-                              faces_of_edge_range.size(),
                               base_edge_faces_uv);
 
     MutableSpan<float2> left_edge_faces_uv = edge_face_edges_uv.slice(
@@ -953,7 +952,6 @@ static void uv_vert_positions(const int edge_edges_num,
                               b_corner_face_uv[Corner::B],
                               b_corner_face_uv[Corner::C],
                               b_corner_face_uv[Corner::A],
-                              faces_of_edge_range.size(),
                               left_edge_faces_uv);
 
     MutableSpan<float2> right_edge_faces_uv = edge_face_edges_uv.slice(
@@ -964,7 +962,6 @@ static void uv_vert_positions(const int edge_edges_num,
                               c_corner_face_uv[Corner::C],
                               c_corner_face_uv[Corner::A],
                               c_corner_face_uv[Corner::B],
-                              faces_of_edge_range.size(),
                               right_edge_faces_uv);
 
     /* Faces (flipped). */
@@ -1006,7 +1003,6 @@ static void uv_vert_positions(const int edge_edges_num,
                                 line_end_uv[Corner::A],
                                 line_end_uv[Corner::B],
                                 line_end_uv[Corner::C],
-                                line_body_range.size(),
                                 line_uv);
     }
 
@@ -1023,7 +1019,6 @@ static void uv_vert_positions(const int edge_edges_num,
                                 left_edge_faces_uv[r_face_i + Corner::C],
                                 left_edge_faces_uv[r_face_i + Corner::A],
                                 left_edge_faces_uv[r_face_i + Corner::B],
-                                line_range.size(),
                                 line_uv);
     }
   }
