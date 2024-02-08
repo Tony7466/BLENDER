@@ -104,9 +104,10 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
 static void modify_curves(ModifierData *md,
                           const ModifierEvalContext *ctx,
                           const LatticeDeformData &cache_data,
-                          bke::CurvesGeometry &curves)
+                          Drawing &drawing)
 {
   const auto *lmd = reinterpret_cast<GreasePencilLatticeModifierData *>(md);
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   IndexMaskMemory mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
@@ -128,6 +129,7 @@ static void modify_curves(ModifierData *md,
   });
 
   curves.tag_positions_changed();
+  drawing.tag_positions_changed();
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -149,9 +151,8 @@ static void modify_geometry_set(ModifierData *md,
   const int frame = grease_pencil->runtime->eval_frame;
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       *grease_pencil, layer_mask, frame);
-  threading::parallel_for_each(drawings, [&](Drawing *drawing) {
-    modify_curves(md, ctx, *cache_data, drawing->strokes_for_write());
-  });
+  threading::parallel_for_each(
+      drawings, [&](Drawing *drawing) { modify_curves(md, ctx, *cache_data, *drawing); });
 
   BKE_lattice_deform_data_destroy(cache_data);
 }
