@@ -71,6 +71,13 @@ template<typename T, typename BaseT> class OffsetSpan {
   }
 
   class Iterator {
+   public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = T;
+    using pointer = const T *;
+    using reference = const int64_t &;
+    using difference_type = std::ptrdiff_t;
+
    private:
     T offset_;
     const BaseT *data_;

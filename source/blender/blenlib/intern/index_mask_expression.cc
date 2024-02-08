@@ -529,13 +529,32 @@ static FastResult evaluate_fast_union(const Span<const FastResultSegment *> term
 
 static FastResult evaluate_fast_intersection(const Span<const FastResult *> terms)
 {
-  return {};
+  if (terms.is_empty()) {
+    return {};
+  }
+  /* TODO */
+  int64_t bounds_min = std::numeric_limits<int64_t>::max();
+  int64_t bounds_max = std::numeric_limits<int64_t>::min();
+  for (const FastResult *term : terms) {
+    if (!term->segments.is_empty()) {
+      bounds_min = std::min(bounds_min, term->segments[0].bounds.start());
+      bounds_max = std::max(bounds_max, term->segments.last().bounds.one_after_last());
+    }
+  }
+  if (bounds_min > bounds_max) {
+    return {};
+  }
+  FastResult result;
+  result.segments.append(
+      {FastResultSegment::Type::Unknown, IndexRange::from_begin_end(bounds_min, bounds_max)});
+  return result;
 }
 
 static FastResult evaluate_fast_difference(const FastResult &main_term,
-                                           const Span<const FastResult *> subtract_terms)
+                                           const Span<const FastResult *> /*subtract_terms*/)
 {
-  return {};
+  /* TODO */
+  return evaluate_fast_intersection({&main_term});
 }
 
 static FastResult evaluate_fast(const Expr &root_expression,
@@ -637,14 +656,6 @@ static FastResult evaluate_fast(const Expr &root_expression,
   }
 
   const FastResult &final_result = *expression_results[root_expression.index];
-  fmt::println("Result:");
-  for (const FastResultSegment &segment : final_result.segments) {
-    fmt::println("  Start: {}, Size: {}, Type: {}",
-                 segment.bounds.start(),
-                 segment.bounds.size(),
-                 int(segment.type));
-  }
-
   return final_result;
 }
 
@@ -666,7 +677,165 @@ static IndexMaskSegment evaluate_segment(const Expr &root_expression,
                                          const IndexRange bounds)
 {
   BLI_assert(bounds.size() <= max_segment_size);
-  return {};
+  const int64_t segment_offset = bounds.start();
+  const int expr_array_size = root_expression.expression_array_size();
+  Array<std::optional<IndexMaskSegment>> results(expr_array_size);
+  Stack<const Expr *> expressions_to_compute;
+  expressions_to_compute.push(&root_expression);
+
+  while (!expressions_to_compute.is_empty()) {
+    const Expr &expression = *expressions_to_compute.peek();
+    if (results[expression.index].has_value()) {
+      expressions_to_compute.pop();
+      continue;
+    }
+    switch (expression.type) {
+      case Expr::Type::Atomic: {
+        const auto &expr = expression.as_atomic();
+        const IndexMask sliced_mask = expr.mask->slice_content(bounds);
+        const int64_t segments_num = sliced_mask.segments_num();
+        IndexMaskSegment segment;
+        if (segments_num == 1) {
+          segment = sliced_mask.segment(0);
+        }
+        else if (segments_num > 1) {
+          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(sliced_mask.size());
+          sliced_mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
+            const int64_t index = i - segment_offset;
+            BLI_assert(index < max_segment_size);
+            indices[pos] = int16_t(index);
+          });
+          segment = IndexMaskSegment(segment_offset, indices);
+        }
+        results[expr.index] = segment;
+        break;
+      }
+      case Expr::Type::Union: {
+        const auto &expr = expression.as_union();
+        bool all_terms_computed = true;
+        for (const Expr *term : expr.terms) {
+          if (const std::optional<IndexMaskSegment> &term_result = results[term->index]) {
+            if (term_result->size() == bounds.size()) {
+              results[expr.index] = *term_result;
+              break;
+            }
+          }
+          else {
+            expressions_to_compute.push(term);
+            all_terms_computed = false;
+            break;
+          }
+        }
+        if (all_terms_computed && !results[expr.index]) {
+          /* TODO: Generalize. */
+          BLI_assert(expr.terms.size() == 2);
+          const IndexMaskSegment segment_0 = *results[expr.terms[0]->index];
+          const IndexMaskSegment segment_1 = *results[expr.terms[1]->index];
+          Vector<int64_t, max_segment_size> indices_vec(max_segment_size);
+          const int64_t indices_num = std::set_union(segment_0.begin(),
+                                                     segment_0.end(),
+                                                     segment_1.begin(),
+                                                     segment_1.end(),
+                                                     indices_vec.begin()) -
+                                      indices_vec.begin();
+          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(indices_num);
+          for (const int64_t i : IndexRange(indices_num)) {
+            indices[i] = int16_t(indices_vec[i] - segment_offset);
+          }
+          results[expr.index] = IndexMaskSegment(segment_offset, indices);
+        }
+        break;
+      }
+      case Expr::Type::Intersection: {
+        const auto &expr = expression.as_intersection();
+        bool all_terms_computed = true;
+        for (const Expr *term : expr.terms) {
+          if (const std::optional<IndexMaskSegment> &term_result = results[term->index]) {
+            if (term_result->is_empty()) {
+              results[expr.index] = IndexMaskSegment();
+              break;
+            }
+          }
+          else {
+            expressions_to_compute.push(term);
+            all_terms_computed = false;
+          }
+        }
+        if (all_terms_computed && !results[expr.index]) {
+          /* TODO: Generalize. */
+          BLI_assert(expr.terms.size() == 2);
+          const IndexMaskSegment segment_0 = *results[expr.terms[0]->index];
+          const IndexMaskSegment segment_1 = *results[expr.terms[1]->index];
+          Vector<int64_t, max_segment_size> indices_vec(max_segment_size);
+          const int64_t indices_num = std::set_intersection(segment_0.begin(),
+                                                            segment_0.end(),
+                                                            segment_1.begin(),
+                                                            segment_1.end(),
+                                                            indices_vec.begin()) -
+                                      indices_vec.begin();
+          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(indices_num);
+          for (const int64_t i : IndexRange(indices_num)) {
+            indices[i] = int16_t(indices_vec[i] - segment_offset);
+          }
+          results[expr.index] = IndexMaskSegment(segment_offset, indices);
+        }
+        break;
+      }
+      case Expr::Type::Difference: {
+        const auto &expr = expression.as_difference();
+        bool all_terms_computed = true;
+        if (const std::optional<IndexMaskSegment> main_term_result =
+                results[expr.main_term->index])
+        {
+          if (main_term_result->is_empty()) {
+            results[expr.index] = IndexMaskSegment();
+            break;
+          }
+          for (const Expr *subtract_term : expr.subtract_terms) {
+            if (const std::optional<IndexMaskSegment> subtract_term_result =
+                    results[subtract_term->index])
+            {
+              if (subtract_term_result->size() == bounds.size()) {
+                results[expr.index] = IndexMaskSegment();
+                break;
+              }
+            }
+            else {
+              expressions_to_compute.push(subtract_term);
+              all_terms_computed = false;
+              break;
+            }
+          }
+        }
+        else {
+          expressions_to_compute.push(expr.main_term);
+          all_terms_computed = false;
+          break;
+        }
+        if (all_terms_computed && !results[expr.index]) {
+          /* TODO: Generalize. */
+          BLI_assert(expr.subtract_terms.size() == 1);
+          const IndexMaskSegment segment_main = *results[expr.main_term->index];
+          const IndexMaskSegment segment_subtract = *results[expr.subtract_terms[0]->index];
+          Vector<int64_t, max_segment_size> indices_vec(max_segment_size);
+          const int64_t indices_num = std::set_difference(segment_main.begin(),
+                                                          segment_main.end(),
+                                                          segment_subtract.begin(),
+                                                          segment_subtract.end(),
+                                                          indices_vec.begin()) -
+                                      indices_vec.begin();
+          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(indices_num);
+          for (const int64_t i : IndexRange(indices_num)) {
+            indices[i] = int16_t(indices_vec[i] - segment_offset);
+          }
+          results[expr.index] = IndexMaskSegment(segment_offset, indices);
+        }
+        break;
+      }
+    }
+  }
+
+  return *results[root_expression.index];
 }
 
 static IndexMask evaluate_expression_impl(const Expr &root_expression, IndexMaskMemory &memory)
