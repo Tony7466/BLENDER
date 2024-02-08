@@ -159,7 +159,7 @@ class BokehBlurOperation : public NodeOperation {
     const float maximum_size = maximum_float(context(), input_size.texture());
 
     const float base_size = compute_blur_radius();
-    return math::clamp(0, int(maximum_size * base_size), get_max_size());
+    return math::clamp(int(maximum_size * base_size), 0, get_max_size());
   }
 
   float compute_blur_radius()

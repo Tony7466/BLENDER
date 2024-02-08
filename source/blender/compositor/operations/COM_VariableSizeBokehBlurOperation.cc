@@ -289,7 +289,7 @@ void VariableSizeBokehBlurOperation::update_memory_buffer_partial(MemoryBuffer *
   const float max_dim = std::max(get_width(), get_height());
   const float base_size = do_size_scale_ ? (max_dim / 100.0f) : 1.0f;
   const float maximum_size = size_buffer->get_max_value();
-  const int search_radius = math::clamp(0, int(maximum_size * base_size), max_blur_);
+  const int search_radius = math::clamp(int(maximum_size * base_size), 0, max_blur_);
   const int2 bokeh_size = int2(bokeh_buffer->get_width(), bokeh_buffer->get_height());
 
   BuffersIterator<float> it = output->iterate_with({}, area);
