@@ -209,6 +209,8 @@ static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
   const VArray<bool> src_cyclic = *src_attributes.lookup_or_default(
       "cyclic", bke::AttrDomain::Curve, false);
+  const VArray<int> src_material = *src_attributes.lookup_or_default(
+      "material_index", bke::AttrDomain::Curve, 0);
   const VArray<float> src_radius = *src_attributes.lookup<float>("radius", bke::AttrDomain::Point);
   const VArray<float> src_opacity = *src_attributes.lookup<float>("opacity",
                                                                   bke::AttrDomain::Point);
@@ -273,7 +275,7 @@ static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
       }
       src_curve_indices[dst_curve_i] = src_curve;
       dst_cyclic.span[dst_curve_i] = cyclic;
-      dst_material.span[dst_curve_i] = material;
+      dst_material.span[dst_curve_i] = material >= 0 ? material : src_material[src_curve];
       for (const int i : dst_point_range) {
         dst_radius.span[i] = src_radius[src_point_indices[i]] * radius;
         dst_opacity.span[i] = src_opacity[src_point_indices[i]] * opacity;
