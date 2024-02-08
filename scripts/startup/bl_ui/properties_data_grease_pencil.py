@@ -48,8 +48,13 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
 
     def draw(self, context):
         layout = self.layout
+        space = context.space_data
+        if space.type == 'PROPERTIES':
+            layout.operator("grease_pencil.layer_group_add", text="Add Group")
 
-        layout.operator("grease_pencil.layer_group_add", text="Add Group")
+        layout.separator()
+        layout.operator("grease_pencil.layer_duplicate", text="Duplicate", icon='DUPLICATE')
+        layout.operator("grease_pencil.layer_duplicate", text="Duplicate Empty Keyframes").empty_keyframes = True
 
 
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):

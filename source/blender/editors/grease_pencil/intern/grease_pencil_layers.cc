@@ -8,6 +8,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_report.h"
 
 #include "DEG_depsgraph.hh"
 
@@ -434,6 +435,11 @@ static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool empty_keyframes = RNA_boolean_get(op->ptr, "empty_keyframes");
 
+  if (!grease_pencil.has_active_layer()) {
+    BKE_reportf(op->reports, RPT_ERROR, "No Active Layer to duplicate");
+    return OPERATOR_CANCELLED;
+  }
+
   Layer *active_layer = grease_pencil.get_active_layer();
   Layer &new_layer = grease_pencil.add_layer(active_layer->name());
   const Array<int> frame_numbers = active_layer->sorted_keys();
@@ -450,9 +456,10 @@ static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
     }
   }
 
+  grease_pencil.move_node_after(new_layer.as_node(), active_layer->as_node());
+  grease_pencil.set_active_layer(&new_layer);
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
-  WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
