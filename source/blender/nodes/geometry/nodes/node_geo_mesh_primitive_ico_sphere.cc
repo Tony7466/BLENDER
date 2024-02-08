@@ -478,6 +478,10 @@ static void interpolate_edge_verts_linear(const int edge_verts_num, MutableSpan<
 
 static void foreach_face(const int face_verts_num, const FunctionRef<void(int)> call)
 {
+  for (const int i : IndexRange(base_faces_num)) {
+    call(i);
+  }
+  return;
   const int grain_size = math::max<int>(
       1, (4096 * base_faces_num) / math::max<int>(1, face_verts_num));
   threading::parallel_for(IndexRange(base_faces_num), grain_size, [&](const IndexRange range) {
@@ -1202,16 +1206,311 @@ static void node_geo_exec(GeoNodeExecParams params)
   AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   if (new_type) {
-    SCOPED_TIMER_AVERAGED("New");
-    const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
-    Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
-    params.set_output("Mesh", GeometrySet::from_mesh(mesh));
-    return;
+
+    if (bool(uv_map_id.get())) {
+      switch (subdivisions) {
+        case 1: {
+          SCOPED_TIMER_AVERAGED("New 1 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 2: {
+          SCOPED_TIMER_AVERAGED("New 2 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 3: {
+          SCOPED_TIMER_AVERAGED("New 3 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 4: {
+          SCOPED_TIMER_AVERAGED("New 4 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 5: {
+          SCOPED_TIMER_AVERAGED("New 5 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 6: {
+          SCOPED_TIMER_AVERAGED("New 6 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 7: {
+          SCOPED_TIMER_AVERAGED("New 7 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 8: {
+          SCOPED_TIMER_AVERAGED("New 8 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 9: {
+          SCOPED_TIMER_AVERAGED("New 9 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 10: {
+          SCOPED_TIMER_AVERAGED("New 10 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 11: {
+          SCOPED_TIMER_AVERAGED("New 11 UV");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+      }
+    }
+    else {
+      switch (subdivisions) {
+        case 1: {
+          SCOPED_TIMER_AVERAGED("New 1");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 2: {
+          SCOPED_TIMER_AVERAGED("New 2");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 3: {
+          SCOPED_TIMER_AVERAGED("New 3");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 4: {
+          SCOPED_TIMER_AVERAGED("New 4");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 5: {
+          SCOPED_TIMER_AVERAGED("New 5");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 6: {
+          SCOPED_TIMER_AVERAGED("New 6");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 7: {
+          SCOPED_TIMER_AVERAGED("New 7");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 8: {
+          SCOPED_TIMER_AVERAGED("New 8");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 9: {
+          SCOPED_TIMER_AVERAGED("New 9");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 10: {
+          SCOPED_TIMER_AVERAGED("New 10");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+        case 11: {
+          SCOPED_TIMER_AVERAGED("New 11");
+          const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+          Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+          params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+          return;
+        }
+      }
+    }
   }
 
-  SCOPED_TIMER_AVERAGED("Old");
-  Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
-  params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+  if (bool(uv_map_id.get())) {
+    switch (subdivisions) {
+      case 1: {
+        SCOPED_TIMER_AVERAGED("Old 1 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 2: {
+        SCOPED_TIMER_AVERAGED("Old 2 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 3: {
+        SCOPED_TIMER_AVERAGED("Old 3 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 4: {
+        SCOPED_TIMER_AVERAGED("Old 4 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 5: {
+        SCOPED_TIMER_AVERAGED("Old 5 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 6: {
+        SCOPED_TIMER_AVERAGED("Old 6 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 7: {
+        SCOPED_TIMER_AVERAGED("Old 7 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 8: {
+        SCOPED_TIMER_AVERAGED("Old 8 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 9: {
+        SCOPED_TIMER_AVERAGED("Old 9 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 10: {
+        SCOPED_TIMER_AVERAGED("Old 10 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 11: {
+        SCOPED_TIMER_AVERAGED("Old 1111111 UV");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, 5, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+    }
+  }
+  else {
+    switch (subdivisions) {
+      case 1: {
+        SCOPED_TIMER_AVERAGED("Old 1");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 2: {
+        SCOPED_TIMER_AVERAGED("Old 2");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 3: {
+        SCOPED_TIMER_AVERAGED("Old 3");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 4: {
+        SCOPED_TIMER_AVERAGED("Old 4");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 5: {
+        SCOPED_TIMER_AVERAGED("Old 5");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 6: {
+        SCOPED_TIMER_AVERAGED("Old 6");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 7: {
+        SCOPED_TIMER_AVERAGED("Old 7");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 8: {
+        SCOPED_TIMER_AVERAGED("Old 8");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 9: {
+        SCOPED_TIMER_AVERAGED("Old 9");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 10: {
+        SCOPED_TIMER_AVERAGED("Old 10");
+        Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+      case 11: {
+        SCOPED_TIMER_AVERAGED("Old 11111111");
+        Mesh *mesh = create_ico_sphere_mesh(2, radius, uv_map_id.get());
+        params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+        return;
+      }
+    }
+  }
 }
 
 static void node_register()
