@@ -1456,13 +1456,13 @@ static int brush_asset_update_exec(bContext *C, wmOperator *op)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = nullptr;
-  const AssetWeakReference *brush_weak_ref =
+  const AssetWeakReference *asset_weak_ref =
       BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
 
   char path_buffer[FILE_MAX_LIBEXTRA];
   char *filepath;
   AS_asset_full_path_explode_from_weak_ref(
-      brush_weak_ref, path_buffer, &filepath, nullptr, nullptr);
+      asset_weak_ref, path_buffer, &filepath, nullptr, nullptr);
 
   BLI_assert(BKE_paint_brush_is_valid_asset(brush));
 
