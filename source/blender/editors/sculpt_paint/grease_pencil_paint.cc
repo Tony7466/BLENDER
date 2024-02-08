@@ -172,7 +172,7 @@ struct PaintOperationExecutor {
                                               float4(0.0f);
     srgb_to_linearrgb_v4(vertex_color_, vertex_color_);
     /* TODO: UI setting. */
-    hardness_ = 0.0f;
+    hardness_ = 1.0f;
 
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
