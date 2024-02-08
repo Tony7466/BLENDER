@@ -216,21 +216,21 @@ static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
   /* Count new curves and points. */
   int dst_point_num = 0;
   int dst_curve_num = 0;
-  for (const int src_curve_i : src_curves.curves_range()) {
+  curves_mask.foreach_index([&](const int64_t src_curve_i) {
     const IndexRange src_points = src_curves.points_by_curve()[src_curve_i];
 
     foreach_dash(pattern_info,
                  src_points,
                  src_cyclic[src_curve_i],
-                 [&](const IndexMask &src_points,
+                 [&](const IndexRange copy_points,
                      bool /*cyclic*/,
                      int /*material*/,
                      float /*radius*/,
                      float /*opacity*/) {
-                   dst_point_num += src_points.size();
+                   dst_point_num += copy_points.size();
                    dst_curve_num += 1;
                  });
-  }
+  });
 
   bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
@@ -250,42 +250,52 @@ static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
     /* Start at curve offset and add points for each dash. */
     IndexRange dst_point_range(0);
     int dst_curve_i = 0;
-    for (const int src_curve_i : src_curves.curves_range()) {
+    auto add_dash_curve = [&](const int src_curve,
+                              const IndexRange src_points,
+                              const IndexRange copy_points,
+                              bool cyclic,
+                              int material,
+                              float radius,
+                              float opacity) {
+      dst_point_range = dst_point_range.after(copy_points.size());
+      dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.start();
+
+      if (src_points.contains(copy_points.last())) {
+        array_utils::fill_index_range(src_point_indices.as_mutable_span().slice(dst_point_range),
+                                      int(copy_points.start()));
+      }
+      else {
+        /* Cyclic curve. */
+        array_utils::fill_index_range(
+            src_point_indices.as_mutable_span().slice(dst_point_range.drop_back(1)),
+            int(copy_points.start()));
+        src_point_indices[dst_point_range.last()] = src_points.first();
+      }
+      src_curve_indices[dst_curve_i] = src_curve;
+      dst_cyclic.span[dst_curve_i] = cyclic;
+      dst_material.span[dst_curve_i] = material;
+      for (const int i : dst_point_range) {
+        dst_radius.span[i] = src_radius[src_point_indices[i]] * radius;
+        dst_opacity.span[i] = src_opacity[src_point_indices[i]] * opacity;
+      }
+
+      ++dst_curve_i;
+    };
+
+    curves_mask.foreach_index([&](const int64_t src_curve_i) {
       const IndexRange src_points = src_curves.points_by_curve()[src_curve_i];
       foreach_dash(pattern_info,
                    src_points,
                    src_cyclic[src_curve_i],
-                   [&](const IndexRange &src_points_range,
+                   [&](const IndexRange copy_points,
                        bool cyclic,
                        int material,
                        float radius,
                        float opacity) {
-                     dst_point_range = dst_point_range.after(src_points_range.size());
-                     dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.start();
-
-                     if (src_points.contains(src_points_range.last())) {
-                       array_utils::fill_index_range(
-                           src_point_indices.as_mutable_span().slice(dst_point_range),
-                           int(src_points_range.start()));
-                     }
-                     else {
-                       /* Cyclic curve. */
-                       array_utils::fill_index_range(
-                           src_point_indices.as_mutable_span().slice(dst_point_range.drop_back(1)),
-                           int(src_points_range.start()));
-                       src_point_indices[dst_point_range.last()] = src_points.first();
-                     }
-                     src_curve_indices[dst_curve_i] = src_curve_i;
-                     dst_cyclic.span[dst_curve_i] = cyclic;
-                     dst_material.span[dst_curve_i] = material;
-                     for (const int i : dst_point_range) {
-                       dst_radius.span[i] = src_radius[src_point_indices[i]] * radius;
-                       dst_opacity.span[i] = src_opacity[src_point_indices[i]] * opacity;
-                     }
-
-                     ++dst_curve_i;
+                     add_dash_curve(
+                         src_curve_i, src_points, copy_points, cyclic, material, radius, opacity);
                    });
-    }
+    });
     if (dst_curve_i > 0) {
       /* Last offset entry is total point count. */
       dst_curves.offsets_for_write()[dst_curve_i] = dst_point_range.one_after_last();
