@@ -185,9 +185,9 @@ static constexpr int Right = 2;
  * Representation of triangle prefix sum. For /p base, sizes to compute prefix sum would looks
  * like: {base, base - 1, base - 2, base - 3, base - 4, ..., 0}. This triangle is sliced by
  * horizontal ranges with size = base - i. Such ranges is known as levels or floors. Count of
- * levels us equal to length os side and equal to size of base. This is equilateral triangle. Total
- * size of sum of all levels is total size of triangle. All parametrs of triangle can be known in
- * O(1) and without random memory access.
+ * levels is equal to length of side and equal to size of base side exactly. This is equilateral
+ * triangle. Total size of sum of all levels is total size of triangle. All parametrs of triangle
+ * can be known in O(1) and without random memory access.
  */
 class TriangleRange {
  private:
