@@ -431,26 +431,6 @@ struct FastResult {
   Vector<FastResultSegment> segments;
 };
 
-static std::optional<FastResultSegment> evaluate_fast_union_logical(
-    const Span<const FastResultSegment *> unknown_segments,
-    const Span<const FastResultSegment *> full_segments,
-    const Span<const FastResultSegment *> copy_segments)
-{
-  if (!full_segments.is_empty()) {
-    return FastResultSegment{FastResultSegment::Type::Full};
-  }
-  if (!unknown_segments.is_empty()) {
-    return FastResultSegment{FastResultSegment::Type::Unknown};
-  }
-  if (copy_segments.size() >= 2) {
-    return FastResultSegment{FastResultSegment::Type::Unknown};
-  }
-  if (copy_segments.size() == 1) {
-    return FastResultSegment{FastResultSegment::Type::Copy, IndexRange(), copy_segments[0]->mask};
-  }
-  return std::nullopt;
-}
-
 static FastResult evaluate_fast_union(const Span<const FastResultSegment *> terms)
 {
   FastResult result;
@@ -483,7 +463,8 @@ static FastResult evaluate_fast_union(const Span<const FastResultSegment *> term
   for (const Boundary &boundary : boundaries) {
     if (active_segments.is_empty()) {
       BLI_assert(boundary.is_begin);
-      result.segments.append({boundary.segment->type, IndexRange(boundary.index, 0)});
+      result.segments.append(
+          {boundary.segment->type, IndexRange(boundary.index, 0), boundary.segment->mask});
       active_segments.append(boundary.segment);
     }
     else {
@@ -496,48 +477,49 @@ static FastResult evaluate_fast_union(const Span<const FastResultSegment *> term
       }
       else {
         active_segments.remove_first_occurrence_and_reorder(boundary.segment);
-        int full_count = 0;
-        int unknown_count = 0;
-        int copy_count = 0;
-        const IndexMask *copy_from_mask = nullptr;
-        for (const FastResultSegment *active_segment : active_segments) {
-          switch (active_segment->type) {
-            case FastResultSegment::Type::Unknown: {
-              unknown_count++;
-              break;
-            }
-            case FastResultSegment::Type::Full: {
-              full_count++;
-              break;
-            }
-            case FastResultSegment::Type::Copy: {
-              copy_count++;
-              copy_from_mask = active_segment->mask;
-              break;
-            }
+      }
+      int full_count = 0;
+      int unknown_count = 0;
+      int copy_count = 0;
+      const IndexMask *copy_from_mask = nullptr;
+      for (const FastResultSegment *active_segment : active_segments) {
+        switch (active_segment->type) {
+          case FastResultSegment::Type::Unknown: {
+            unknown_count++;
+            break;
+          }
+          case FastResultSegment::Type::Full: {
+            full_count++;
+            break;
+          }
+          case FastResultSegment::Type::Copy: {
+            copy_count++;
+            copy_from_mask = active_segment->mask;
+            break;
           }
         }
-        if (full_count > 0) {
-          if (prev_segment.type == FastResultSegment::Type::Full) {
-            /* Do nothing. */
-          }
-          else {
-            result.segments.append({FastResultSegment::Type::Full, IndexRange(boundary.index, 0)});
-          }
+      }
+      if (full_count > 0) {
+        if (prev_segment.type == FastResultSegment::Type::Full) {
+          /* Do nothing. */
         }
-        else if (unknown_count > 0 || copy_count > 1) {
-          if (prev_segment.type == FastResultSegment::Type::Unknown) {
-            /* Do nothing. */
-          }
-          else {
-            result.segments.append(
-                {FastResultSegment::Type::Unknown, IndexRange(boundary.index, 0)});
-          }
+        else {
+          result.segments.append({FastResultSegment::Type::Full, IndexRange(boundary.index, 0)});
         }
-        else if (copy_count == 1) {
+      }
+      else if (unknown_count > 0 || copy_count > 1) {
+        if (prev_segment.type == FastResultSegment::Type::Unknown) {
+          /* Do nothing. */
+        }
+        else {
           result.segments.append(
-              {FastResultSegment::Type::Copy, IndexRange(boundary.index, 0), copy_from_mask});
+              {FastResultSegment::Type::Unknown, IndexRange(boundary.index, 0)});
         }
+      }
+      else if (copy_count == 1) {
+        BLI_assert(copy_from_mask);
+        result.segments.append(
+            {FastResultSegment::Type::Copy, IndexRange(boundary.index, 0), copy_from_mask});
       }
     }
   }
@@ -556,7 +538,9 @@ static FastResult evaluate_fast_difference(const FastResult &main_term,
   return {};
 }
 
-static FastResult evaluate_fast(const Expr &root_expression, IndexMaskMemory &memory)
+static FastResult evaluate_fast(const Expr &root_expression,
+                                IndexMaskMemory &memory,
+                                const std::optional<IndexRange> eval_bounds = std::nullopt)
 {
   Array<std::optional<FastResult>> expression_results(root_expression.expression_array_size());
   Stack<const Expr *> remaining_expressions;
@@ -572,14 +556,23 @@ static FastResult evaluate_fast(const Expr &root_expression, IndexMaskMemory &me
     switch (expression.type) {
       case Expr::Type::Atomic: {
         const AtomicExpr &expr = expression.as_atomic();
-        const IndexMask &mask = *expr.mask;
         FastResult &result = expr_result_opt.emplace();
+
+        IndexMask mask;
+        if (eval_bounds.has_value()) {
+          mask = expr.mask->slice_content(*eval_bounds);
+        }
+        else {
+          mask = *expr.mask;
+        }
+
         if (!mask.is_empty()) {
+          const IndexRange bounds = mask.bounds();
           if (const std::optional<IndexRange> range = mask.to_range()) {
-            result.segments.append({FastResultSegment::Type::Full, *range});
+            result.segments.append({FastResultSegment::Type::Full, bounds});
           }
           else {
-            result.segments.append({FastResultSegment::Type::Copy, expr.mask->bounds(), &mask});
+            result.segments.append({FastResultSegment::Type::Copy, bounds, expr.mask});
           }
         }
         break;
@@ -655,11 +648,135 @@ static FastResult evaluate_fast(const Expr &root_expression, IndexMaskMemory &me
   return final_result;
 }
 
+struct FinalResultSegment {
+  enum class Type {
+    Full,
+    Copy,
+    Indices,
+  };
+
+  Type type = Type::Indices;
+  IndexRange bounds;
+  const IndexMask *copy_mask = nullptr;
+  IndexMaskSegment indices;
+};
+
+static IndexMaskSegment evaluate_segment(const Expr &root_expression,
+                                         IndexMaskMemory &memory,
+                                         const IndexRange bounds)
+{
+  BLI_assert(bounds.size() <= max_segment_size);
+  return {};
+}
+
+static IndexMask evaluate_expression_impl(const Expr &root_expression, IndexMaskMemory &memory)
+{
+  Vector<FinalResultSegment> final_segments;
+  Stack<IndexRange> long_unknown_segments;
+  Vector<IndexRange> short_unknown_segments;
+
+  auto handle_fast_result = [&](const FastResult &fast_result) {
+    for (const FastResultSegment &segment : fast_result.segments) {
+      switch (segment.type) {
+        case FastResultSegment::Type::Unknown: {
+          if (segment.bounds.size() > max_segment_size) {
+            long_unknown_segments.push(segment.bounds);
+          }
+          else {
+            short_unknown_segments.append(segment.bounds);
+          }
+          break;
+        }
+        case FastResultSegment::Type::Copy: {
+          BLI_assert(segment.mask);
+          final_segments.append({FinalResultSegment::Type::Copy, segment.bounds, segment.mask});
+          break;
+        }
+        case FastResultSegment::Type::Full: {
+          final_segments.append({FinalResultSegment::Type::Full, segment.bounds});
+          break;
+        }
+      }
+    }
+  };
+  const FastResult initial_fast_result = evaluate_fast(root_expression, memory);
+  handle_fast_result(initial_fast_result);
+
+  while (!long_unknown_segments.is_empty()) {
+    const IndexRange unknown_bounds = long_unknown_segments.pop();
+    const int64_t split_pos = unknown_bounds.size() / 2;
+    const IndexRange left_half = unknown_bounds.take_front(split_pos);
+    const IndexRange right_half = unknown_bounds.drop_front(split_pos);
+    const FastResult left_result = evaluate_fast(root_expression, memory, left_half);
+    const FastResult right_result = evaluate_fast(root_expression, memory, right_half);
+    handle_fast_result(left_result);
+    handle_fast_result(right_result);
+  }
+
+  for (const IndexRange &unknown_bounds : short_unknown_segments) {
+    const IndexMaskSegment indices = evaluate_segment(root_expression, memory, unknown_bounds);
+    if (!indices.is_empty()) {
+      final_segments.append({FinalResultSegment::Type::Indices, unknown_bounds, nullptr, indices});
+    }
+  }
+
+  if (final_segments.is_empty()) {
+    return {};
+  }
+  if (final_segments.size() == 1) {
+    const FinalResultSegment &final_segment = final_segments[0];
+    switch (final_segment.type) {
+      case FinalResultSegment::Type::Full: {
+        return IndexMask(IndexRange(final_segment.bounds));
+      }
+      case FinalResultSegment::Type::Copy: {
+        return final_segment.copy_mask->slice_content(final_segment.bounds);
+      }
+      case FinalResultSegment::Type::Indices: {
+        return IndexMask::from_segments({final_segment.indices}, memory);
+      }
+    }
+  }
+
+  std::sort(final_segments.begin(),
+            final_segments.end(),
+            [](const FinalResultSegment &a, const FinalResultSegment &b) {
+              return a.bounds.start() < b.bounds.start();
+            });
+
+  const std::array<int16_t, max_segment_size> static_indices_array = get_static_indices_array();
+
+  Vector<IndexMaskSegment> result_segments;
+  for (const FinalResultSegment &final_segment : final_segments) {
+    switch (final_segment.type) {
+      case FinalResultSegment::Type::Full: {
+        const int64_t full_size = final_segment.bounds.size();
+        for (int64_t i = 0; i < full_size; i += max_segment_size) {
+          const int64_t size = std::min(i + max_segment_size, full_size) - i;
+          result_segments.append(IndexMaskSegment(i, Span(static_indices_array).take_front(size)));
+        }
+        break;
+      }
+      case FinalResultSegment::Type::Copy: {
+        const IndexMask sliced_mask = final_segment.copy_mask->slice_content(final_segment.bounds);
+        sliced_mask.foreach_segment(
+            [&](const IndexMaskSegment &segment) { result_segments.append(segment); });
+        break;
+      }
+      case FinalResultSegment::Type::Indices: {
+        result_segments.append(final_segment.indices);
+        break;
+      }
+    }
+  }
+
+  return IndexMask::from_segments(result_segments, memory);
+}
+
 IndexMask evaluate_expression(const Expr &expression, IndexMaskMemory &memory)
 {
   SCOPED_TIMER(__func__);
-  evaluate_fast(expression, memory);
-  return evaluated_generic(expression, memory);
+  return evaluate_expression_impl(expression, memory);
 }
 
 }  // namespace blender::index_mask
