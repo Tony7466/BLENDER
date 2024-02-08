@@ -1307,7 +1307,8 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
   GPU_texture_get_mipmap_size(depth_tx, 0, target_size);
 
   dispatch_depth_scan_size_ = math::divide_ceil(
-      target_size, int3(SHADOW_DEPTH_SCAN_GROUP_SIZE * SHADOW_TAG_USAGE_NUM_CELLS_PER_THREAD_DIM));
+      target_size,
+      int3(SHADOW_DEPTH_SCAN_GROUP_SIZE * SHADOW_TAG_USAGE_NUM_PIXELS_PER_THREAD_DIM));
 
   pixel_world_radius_ = screen_pixel_radius(view, int2(target_size));
   tilemap_projection_ratio_ = tilemap_pixel_radius() / pixel_world_radius_;
