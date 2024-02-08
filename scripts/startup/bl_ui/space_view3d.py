@@ -5861,7 +5861,7 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.menu("GREASE_PENCIL_MT_move_to_layer")
         layout.menu("VIEW3D_MT_grease_pencil_assign_material")
         layout.operator("grease_pencil.set_active_material")
-        layout.operator_menu_enum("grease_pencil.reorder", text="Reorder", property="direction")
+        layout.operator_menu_enum("grease_pencil.reorder", text="Arrange", property="direction")
 
         layout.separator()
 
@@ -8260,7 +8260,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.menu("GREASE_PENCIL_MT_move_to_layer")
             col.menu("VIEW3D_MT_grease_pencil_assign_material")
             col.operator("grease_pencil.set_active_material", text="Set as Active Material")
-            col.operator_menu_enum("grease_pencil.reorder", text="Reorder", property="direction")
+            col.operator_menu_enum("grease_pencil.reorder", text="Arrange", property="direction")
 
             col.separator()
 
