@@ -895,11 +895,7 @@ bool USDMaterialReader::follow_connection(const pxr::UsdShadeInput &usd_input,
 
     /* Create a Separate Color node if necessary. */
     IntermediateNode separate_color = add_separate_color(
-<<<<<<< HEAD
         source_shader, source_name, ntree, column + shift, r_ctx);
-=======
-        source_name, ntree, column + shift, r_ctx);
->>>>>>> blender-v4.1-release
     if (separate_color.node) {
       shift++;
     }
