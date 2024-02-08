@@ -888,7 +888,7 @@ static bool node_ima_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = static_cast<eFileSel_File_Types>(
         WM_drag_get_path_file_type(drag));
-    return ELEM(file_type, 0, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE);
+    return ELEM(file_type, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE);
   }
   return WM_drag_is_ID_type(drag, ID_IM);
 }
@@ -1399,7 +1399,7 @@ void ED_spacetype_node()
 {
   using namespace blender::ed::space_node;
 
-  SpaceType *st = MEM_cnew<SpaceType>("spacetype node");
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_NODE;
@@ -1480,5 +1480,5 @@ void ED_spacetype_node()
   WM_menutype_add(MEM_new<MenuType>(__func__, add_unassigned_assets_menu_type()));
   WM_menutype_add(MEM_new<MenuType>(__func__, add_root_catalogs_menu_type()));
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

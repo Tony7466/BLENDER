@@ -22,7 +22,7 @@
 
 #include "RNA_define.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -36,7 +36,7 @@
 #  include "RNA_access.hh"
 
 #  include "BKE_idprop.h"
-#  include "BKE_layer.h"
+#  include "BKE_layer.hh"
 #  include "BKE_mesh.hh"
 #  include "BKE_node.h"
 #  include "BKE_scene.h"
@@ -118,14 +118,12 @@ size_t rna_ViewLayer_path_buffer_get(const ViewLayer *view_layer,
   return BLI_snprintf_rlen(r_rna_path, rna_path_buffer_size, "view_layers[\"%s\"]", name_esc);
 }
 
-static char *rna_ViewLayer_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ViewLayer_path(const PointerRNA *ptr)
 {
   const ViewLayer *view_layer = (ViewLayer *)ptr->data;
   char rna_path[sizeof(view_layer->name) * 3];
-
   rna_ViewLayer_path_buffer_get(view_layer, rna_path, sizeof(rna_path));
-
-  return BLI_strdup(rna_path);
+  return rna_path;
 }
 
 static IDProperty **rna_ViewLayer_idprops(PointerRNA *ptr)
@@ -142,7 +140,7 @@ static bool rna_LayerCollection_visible_get(LayerCollection *layer_collection, b
     return (layer_collection->runtime_flag & LAYER_COLLECTION_VISIBLE_VIEW_LAYER) != 0;
   }
 
-  if (v3d->local_collections_uuid & layer_collection->local_collections_bits) {
+  if (v3d->local_collections_uid & layer_collection->local_collections_bits) {
     return (layer_collection->runtime_flag & LAYER_COLLECTION_HIDE_VIEWPORT) == 0;
   }
 

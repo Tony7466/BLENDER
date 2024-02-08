@@ -36,7 +36,7 @@ struct bSound;
 
 typedef struct StripAnim {
   struct StripAnim *next, *prev;
-  struct anim *anim;
+  struct ImBufAnim *anim;
 } StripAnim;
 
 typedef struct StripElem {
@@ -84,7 +84,7 @@ typedef struct StripProxy {
   char dirpath[768];
   /** Custom file. */
   char filename[256];
-  struct anim *anim; /* custom proxy anim file */
+  struct ImBufAnim *anim; /* custom proxy anim file */
 
   short tc; /* time code in use */
 
@@ -836,10 +836,12 @@ typedef enum SequenceColorTag {
 
 /* Sequence->StripTransform->filter */
 enum {
+  SEQ_TRANSFORM_FILTER_AUTO = -1,
   SEQ_TRANSFORM_FILTER_NEAREST = 0,
   SEQ_TRANSFORM_FILTER_BILINEAR = 1,
-  SEQ_TRANSFORM_FILTER_NEAREST_3x3 = 2,
-  SEQ_TRANSFORM_FILTER_BICUBIC = 3,
+  SEQ_TRANSFORM_FILTER_BOX = 2,
+  SEQ_TRANSFORM_FILTER_CUBIC_BSPLINE = 3,
+  SEQ_TRANSFORM_FILTER_CUBIC_MITCHELL = 4,
 };
 
 typedef enum eSeqChannelFlag {

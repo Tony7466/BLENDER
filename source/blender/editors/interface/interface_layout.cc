@@ -240,8 +240,13 @@ static const char *ui_item_name_add_colon(const char *name, char namestr[UI_MAX_
   return name;
 }
 
-static int ui_item_fit(
-    int item, int pos, int all, int available, bool is_last, int alignment, float *extra_pixel)
+static int ui_item_fit(const int item,
+                       const int pos,
+                       const int all,
+                       const int available,
+                       const bool is_last,
+                       const int alignment,
+                       float *extra_pixel)
 {
   /* available == 0 is unlimited */
   if (ELEM(0, available, all)) {
@@ -307,17 +312,16 @@ struct uiTextIconPadFactor {
  * this is done because most buttons need additional space (drop-down chevron for example).
  * menus and labels use much smaller `text` values compared to this default.
  *
- * \note It may seem odd that the icon only adds 0.25
- * but taking margins into account its fine,
+ * \note It may seem odd that the icon only adds 0.25, but taking margins into account it's fine,
  * except for #ui_text_pad_compact where a bit more margin is required.
  */
-static const uiTextIconPadFactor ui_text_pad_default = {1.50f, 0.25f, 0.0f};
+constexpr uiTextIconPadFactor ui_text_pad_default = {1.50f, 0.25f, 0.0f};
 
 /** #ui_text_pad_default scaled down. */
-static const uiTextIconPadFactor ui_text_pad_compact = {1.25f, 0.35f, 0.0f};
+constexpr uiTextIconPadFactor ui_text_pad_compact = {1.25f, 0.35f, 0.0f};
 
 /** Least amount of padding not to clip the text or icon. */
-static const uiTextIconPadFactor ui_text_pad_none = {0.25f, 1.50f, 0.0f};
+constexpr uiTextIconPadFactor ui_text_pad_none = {0.25f, 1.50f, 0.0f};
 
 /**
  * Estimated size of text + icon.
@@ -325,7 +329,7 @@ static const uiTextIconPadFactor ui_text_pad_none = {0.25f, 1.50f, 0.0f};
 static int ui_text_icon_width_ex(uiLayout *layout,
                                  const char *name,
                                  int icon,
-                                 const uiTextIconPadFactor *pad_factor,
+                                 const uiTextIconPadFactor &pad_factor,
                                  const uiFontStyle *fstyle)
 {
   const int unit_x = UI_UNIT_X * (layout->scale[0] ? layout->scale[0] : 1.0f);
@@ -333,21 +337,21 @@ static int ui_text_icon_width_ex(uiLayout *layout,
   /* When there is no text, always behave as if this is an icon-only button
    * since it's not useful to return empty space. */
   if (icon && !name[0]) {
-    return unit_x * (1.0f + pad_factor->icon_only);
+    return unit_x * (1.0f + pad_factor.icon_only);
   }
 
   if (ui_layout_variable_size(layout)) {
     if (!icon && !name[0]) {
-      return unit_x * (1.0f + pad_factor->icon_only);
+      return unit_x * (1.0f + pad_factor.icon_only);
     }
 
     if (layout->alignment != UI_LAYOUT_ALIGN_EXPAND) {
       layout->item.flag |= UI_ITEM_FIXED_SIZE;
     }
 
-    float margin = pad_factor->text;
+    float margin = pad_factor.text;
     if (icon) {
-      margin += pad_factor->icon;
+      margin += pad_factor.icon;
     }
 
     const float aspect = layout->root->block->aspect;
@@ -357,10 +361,13 @@ static int ui_text_icon_width_ex(uiLayout *layout,
   return unit_x * 10;
 }
 
-static int ui_text_icon_width(uiLayout *layout, const char *name, int icon, bool compact)
+static int ui_text_icon_width(uiLayout *layout,
+                              const char *name,
+                              const int icon,
+                              const bool compact)
 {
   return ui_text_icon_width_ex(
-      layout, name, icon, compact ? &ui_text_pad_compact : &ui_text_pad_default, UI_FSTYLE_WIDGET);
+      layout, name, icon, compact ? ui_text_pad_compact : ui_text_pad_default, UI_FSTYLE_WIDGET);
 }
 
 static void ui_item_size(uiItem *item, int *r_w, int *r_h)
@@ -409,7 +416,7 @@ static void ui_item_offset(uiItem *item, int *r_x, int *r_y)
   }
 }
 
-static void ui_item_position(uiItem *item, int x, int y, int w, int h)
+static void ui_item_position(uiItem *item, const int x, const int y, const int w, const int h)
 {
   if (item->type == ITEM_BUTTON) {
     uiButtonItem *bitem = (uiButtonItem *)item;
@@ -431,7 +438,7 @@ static void ui_item_position(uiItem *item, int x, int y, int w, int h)
   }
 }
 
-static void ui_item_move(uiItem *item, int delta_xmin, int delta_xmax)
+static void ui_item_move(uiItem *item, const int delta_xmin, const int delta_xmax)
 {
   if (item->type == ITEM_BUTTON) {
     uiButtonItem *bitem = (uiButtonItem *)item;
@@ -527,17 +534,17 @@ static void ui_item_array(uiLayout *layout,
                           int icon,
                           PointerRNA *ptr,
                           PropertyRNA *prop,
-                          int len,
+                          const int len,
                           int x,
-                          int y,
+                          const int y,
                           int w,
-                          int /*h*/,
-                          bool expand,
-                          bool slider,
-                          int toggle,
-                          bool icon_only,
-                          bool compact,
-                          bool show_text)
+                          const int /*h*/,
+                          const bool expand,
+                          const bool slider,
+                          const int toggle,
+                          const bool icon_only,
+                          const bool compact,
+                          const bool show_text)
 {
   const uiStyle *style = layout->root->style;
 
@@ -649,9 +656,12 @@ static void ui_item_array(uiLayout *layout,
                                  UI_UNIT_Y);
       if (slider && but->type == UI_BTYPE_NUM) {
         uiButNumber *number_but = (uiButNumber *)but;
-
-        but->a1 = number_but->step_size;
+        const float step_size = number_but->step_size;
+        const float precision = number_but->precision;
         but = ui_but_change_type(but, UI_BTYPE_NUM_SLIDER);
+        uiButNumberSlider *slider_but = reinterpret_cast<uiButNumberSlider *>(but);
+        slider_but->step_size = step_size;
+        slider_but->precision = precision;
       }
     }
   }
@@ -669,8 +679,6 @@ static void ui_item_array(uiLayout *layout,
                    -1,
                    0,
                    0,
-                   -1,
-                   -1,
                    nullptr);
   }
   else {
@@ -719,9 +727,12 @@ static void ui_item_array(uiLayout *layout,
             block, ptr, prop, a, str_buf, icon, 0, 0, width_item, UI_UNIT_Y);
         if (slider && but->type == UI_BTYPE_NUM) {
           uiButNumber *number_but = (uiButNumber *)but;
-
-          but->a1 = number_but->step_size;
+          const float step_size = number_but->step_size;
+          const float precision = number_but->precision;
           but = ui_but_change_type(but, UI_BTYPE_NUM_SLIDER);
+          uiButNumberSlider *slider_but = reinterpret_cast<uiButNumberSlider *>(but);
+          slider_but->step_size = step_size;
+          slider_but->precision = precision;
         }
         if ((toggle == 1) && but->type == UI_BTYPE_CHECKBOX) {
           but->type = UI_BTYPE_TOGGLE;
@@ -781,16 +792,16 @@ static void ui_item_enum_expand_elem_exec(uiLayout *layout,
   uiBut *but;
   if (icon && name[0] && !icon_only) {
     but = uiDefIconTextButR_prop(
-        block, but_type, 0, icon, name, 0, 0, itemw, h, ptr, prop, -1, 0, value, -1, -1, nullptr);
+        block, but_type, 0, icon, name, 0, 0, itemw, h, ptr, prop, -1, 0, value, nullptr);
   }
   else if (icon) {
     const int w = (is_first) ? itemw : ceilf(itemw - U.pixelsize);
     but = uiDefIconButR_prop(
-        block, but_type, 0, icon, 0, 0, w, h, ptr, prop, -1, 0, value, -1, -1, nullptr);
+        block, but_type, 0, icon, 0, 0, w, h, ptr, prop, -1, 0, value, nullptr);
   }
   else {
     but = uiDefButR_prop(
-        block, but_type, 0, name, 0, 0, itemw, h, ptr, prop, -1, 0, value, -1, -1, nullptr);
+        block, but_type, 0, name, 0, 0, itemw, h, ptr, prop, -1, 0, value, nullptr);
   }
 
   if (RNA_property_flag(prop) & PROP_ENUM_FLAG) {
@@ -983,15 +994,15 @@ static void ui_keymap_but_cb(bContext * /*C*/, void *but_v, void * /*key_v*/)
 static uiBut *ui_item_with_label(uiLayout *layout,
                                  uiBlock *block,
                                  const char *name,
-                                 int icon,
+                                 const int icon,
                                  PointerRNA *ptr,
                                  PropertyRNA *prop,
-                                 int index,
-                                 int x,
-                                 int y,
-                                 int w_hint,
-                                 int h,
-                                 int flag)
+                                 const int index,
+                                 const int x,
+                                 const int y,
+                                 const int w_hint,
+                                 const int h,
+                                 const int flag)
 {
   uiLayout *sub = layout;
   int prop_but_width = w_hint;
@@ -1038,7 +1049,7 @@ static uiBut *ui_item_with_label(uiLayout *layout,
          * Use a default width for property button(s). */
         prop_but_width = UI_UNIT_X * 5;
         w_label = ui_text_icon_width_ex(
-            layout, name, ICON_NONE, &ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
+            layout, name, ICON_NONE, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
       }
       else {
         w_label = w_hint / 3;
@@ -1082,20 +1093,16 @@ static uiBut *ui_item_with_label(uiLayout *layout,
                          index,
                          0,
                          0,
-                         -1,
-                         -1,
                          nullptr);
   }
   else if ((flag & UI_ITEM_R_FULL_EVENT) && is_keymapitem_ptr) {
-    char buf[128];
-
-    WM_keymap_item_to_string(
-        static_cast<const wmKeyMapItem *>(ptr->data), false, buf, sizeof(buf));
+    std::string kmi_str =
+        WM_keymap_item_to_string(static_cast<const wmKeyMapItem *>(ptr->data), false).value_or("");
 
     but = uiDefButR_prop(block,
                          UI_BTYPE_HOTKEY_EVENT,
                          0,
-                         buf,
+                         kmi_str.c_str(),
                          x,
                          y,
                          prop_but_width,
@@ -1105,8 +1112,6 @@ static uiBut *ui_item_with_label(uiLayout *layout,
                          0,
                          0,
                          0,
-                         -1,
-                         -1,
                          nullptr);
     UI_but_func_set(but, ui_keymap_but_cb, but, nullptr);
     if (flag & UI_ITEM_R_IMMEDIATE) {
@@ -1215,7 +1220,7 @@ static uiBut *uiItemFullO_ptr_ex(uiLayout *layout,
                                  const char *name,
                                  int icon,
                                  IDProperty *properties,
-                                 wmOperatorCallContext context,
+                                 const wmOperatorCallContext context,
                                  const eUI_Item_Flag flag,
                                  PointerRNA *r_opptr)
 {
@@ -1286,7 +1291,7 @@ static uiBut *uiItemFullO_ptr_ex(uiLayout *layout,
 
   /* assign properties */
   if (properties || r_opptr) {
-    PointerRNA *opptr = UI_but_operator_ptr_get(but);
+    PointerRNA *opptr = UI_but_operator_ptr_ensure(but);
     if (properties) {
       opptr->data = properties;
     }
@@ -1312,7 +1317,7 @@ static void ui_item_menu_hold(bContext *C, ARegion *butregion, uiBut *but)
   block->flag |= UI_BLOCK_POPUP_HOLD;
 
   char direction = UI_DIR_DOWN;
-  if (!but->drawstr[0]) {
+  if (but->drawstr.empty()) {
     switch (RGN_ALIGN_ENUM_FROM_MASK(butregion->alignment)) {
       case RGN_ALIGN_LEFT:
         direction = UI_DIR_RIGHT;
@@ -1346,9 +1351,9 @@ static void ui_item_menu_hold(bContext *C, ARegion *butregion, uiBut *but)
 void uiItemFullO_ptr(uiLayout *layout,
                      wmOperatorType *ot,
                      const char *name,
-                     int icon,
+                     const int icon,
                      IDProperty *properties,
-                     wmOperatorCallContext context,
+                     const wmOperatorCallContext context,
                      const eUI_Item_Flag flag,
                      PointerRNA *r_opptr)
 {
@@ -1360,7 +1365,7 @@ void uiItemFullOMenuHold_ptr(uiLayout *layout,
                              const char *name,
                              int icon,
                              IDProperty *properties,
-                             wmOperatorCallContext context,
+                             const wmOperatorCallContext context,
                              const eUI_Item_Flag flag,
                              const char *menu_id,
                              PointerRNA *r_opptr)
@@ -1636,7 +1641,7 @@ void uiItemsFullEnumO(uiLayout *layout,
 
   if (!ot || !ot->srna) {
     ui_item_disabled(layout, opname);
-    RNA_warning("%s '%s'", ot ? "unknown operator" : "operator missing srna", opname);
+    RNA_warning("%s '%s'", ot ? "operator missing srna" : "unknown operator", opname);
     return;
   }
 
@@ -2392,31 +2397,15 @@ void uiItemFullR(uiLayout *layout,
   /* enum item */
   else if (type == PROP_ENUM && index == RNA_ENUM_VALUE) {
     if (icon && name[0] && !icon_only) {
-      uiDefIconTextButR_prop(block,
-                             UI_BTYPE_ROW,
-                             0,
-                             icon,
-                             name,
-                             0,
-                             0,
-                             w,
-                             h,
-                             ptr,
-                             prop,
-                             -1,
-                             0,
-                             value,
-                             -1,
-                             -1,
-                             nullptr);
+      uiDefIconTextButR_prop(
+          block, UI_BTYPE_ROW, 0, icon, name, 0, 0, w, h, ptr, prop, -1, 0, value, nullptr);
     }
     else if (icon) {
       uiDefIconButR_prop(
-          block, UI_BTYPE_ROW, 0, icon, 0, 0, w, h, ptr, prop, -1, 0, value, -1, -1, nullptr);
+          block, UI_BTYPE_ROW, 0, icon, 0, 0, w, h, ptr, prop, -1, 0, value, nullptr);
     }
     else {
-      uiDefButR_prop(
-          block, UI_BTYPE_ROW, 0, name, 0, 0, w, h, ptr, prop, -1, 0, value, -1, -1, nullptr);
+      uiDefButR_prop(block, UI_BTYPE_ROW, 0, name, 0, 0, w, h, ptr, prop, -1, 0, value, nullptr);
     }
   }
   /* expanded enum */
@@ -2448,10 +2437,13 @@ void uiItemFullR(uiLayout *layout,
     but = uiDefAutoButR(block, ptr, prop, index, name, icon, 0, 0, w, h);
 
     if (slider && but->type == UI_BTYPE_NUM) {
-      uiButNumber *num_but = (uiButNumber *)but;
-
-      but->a1 = num_but->step_size;
+      uiButNumber *number_but = (uiButNumber *)but;
+      const float step_size = number_but->step_size;
+      const float precision = number_but->precision;
       but = ui_but_change_type(but, UI_BTYPE_NUM_SLIDER);
+      uiButNumberSlider *slider_but = reinterpret_cast<uiButNumberSlider *>(but);
+      slider_but->step_size = step_size;
+      slider_but->precision = precision;
     }
 
     if (flag & UI_ITEM_R_CHECKBOX_INVERT) {
@@ -3023,7 +3015,7 @@ static uiBut *ui_item_menu(uiLayout *layout,
     }
   }
 
-  const int w = ui_text_icon_width_ex(layout, name, icon, &pad_factor, UI_FSTYLE_WIDGET);
+  const int w = ui_text_icon_width_ex(layout, name, icon, pad_factor, UI_FSTYLE_WIDGET);
   const int h = UI_UNIT_Y;
 
   if (heading_layout) {
@@ -3286,7 +3278,7 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon)
   }
 
   const int w = ui_text_icon_width_ex(
-      layout, name, icon, &ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
+      layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
   uiBut *but;
   if (icon && name[0]) {
     but = uiDefIconTextBut(block,
@@ -3602,6 +3594,9 @@ static int menu_item_enum_opname_menu_active(bContext *C, uiBut *but, MenuItemLe
   /* so the context is passed to itemf functions (some need it) */
   WM_operator_properties_sanitize(&ptr, false);
   PropertyRNA *prop = RNA_struct_find_property(&ptr, lvl->propname);
+  if (!prop) {
+    return -1;
+  }
   RNA_property_enum_items_gettexted(C, &ptr, prop, &item_array, &totitem, &free);
   int active = RNA_enum_from_name(item_array, but->str.c_str());
   if (free) {
@@ -3670,11 +3665,10 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
 
   /* add hotkey here, lower UI code can't detect it */
   if ((layout->root->block->flag & UI_BLOCK_LOOP) && (ot->prop && ot->invoke)) {
-    char keybuf[128];
-    if (WM_key_event_operator_string(
-            C, ot->idname, layout->root->opcontext, nullptr, false, keybuf, sizeof(keybuf)))
+    if (std::optional<std::string> shortcut_str = WM_key_event_operator_string(
+            C, ot->idname, layout->root->opcontext, nullptr, false))
     {
-      ui_but_add_shortcut(but, keybuf, false);
+      ui_but_add_shortcut(but, shortcut_str->c_str(), false);
     }
   }
 }
@@ -4974,11 +4968,10 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-uiLayout *uiLayoutPanel(const bContext *C,
-                        uiLayout *layout,
-                        const char *name,
-                        PointerRNA *open_prop_owner,
-                        const char *open_prop_name)
+PanelLayout uiLayoutPanelProp(const bContext *C,
+                              uiLayout *layout,
+                              PointerRNA *open_prop_owner,
+                              const char *open_prop_name)
 {
   const ARegion *region = CTX_wm_region(C);
 
@@ -4986,6 +4979,7 @@ uiLayout *uiLayoutPanel(const bContext *C,
   const bool search_filter_active = region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE;
   const bool is_open = is_real_open || search_filter_active;
 
+  PanelLayout panel_layout{};
   {
     uiLayoutItemPanelHeader *header_litem = MEM_cnew<uiLayoutItemPanelHeader>(__func__);
     uiLayout *litem = &header_litem->litem;
@@ -4995,30 +4989,33 @@ uiLayout *uiLayoutPanel(const bContext *C,
     header_litem->open_prop_owner = *open_prop_owner;
     STRNCPY(header_litem->open_prop_name, open_prop_name);
 
-    UI_block_layout_set_current(layout->root->block, litem);
+    uiLayout *row = uiLayoutRow(litem, true);
+    uiLayoutSetUnitsY(row, 1.2f);
 
-    uiBlock *block = uiLayoutGetBlock(layout);
+    uiBlock *block = uiLayoutGetBlock(row);
     const int icon = is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW;
-    const int width = ui_text_icon_width(layout, name, icon, false);
+    const int width = ui_text_icon_width(layout, "", icon, false);
     uiDefIconTextBut(block,
                      UI_BTYPE_LABEL,
                      0,
                      icon,
-                     name,
+                     "",
                      0,
                      0,
                      width,
-                     UI_UNIT_Y * 1.2f,
+                     UI_UNIT_Y,
                      nullptr,
-                     0.0,
-                     0.0,
-                     0.0,
-                     0.0,
+                     0.0f,
+                     0.0f,
+                     0.0f,
+                     0.0f,
                      "");
+
+    panel_layout.header = row;
   }
 
   if (!is_open) {
-    return nullptr;
+    return panel_layout;
   }
 
   uiLayoutItemPanelBody *body_litem = MEM_cnew<uiLayoutItemPanelBody>(__func__);
@@ -5027,7 +5024,47 @@ uiLayout *uiLayoutPanel(const bContext *C,
   litem->space = layout->root->style->templatespace;
   ui_litem_init_from_parent(litem, layout, false);
   UI_block_layout_set_current(layout->root->block, litem);
-  return litem;
+  panel_layout.body = litem;
+
+  return panel_layout;
+}
+
+uiLayout *uiLayoutPanelProp(const bContext *C,
+                            uiLayout *layout,
+                            PointerRNA *open_prop_owner,
+                            const char *open_prop_name,
+                            const char *label)
+{
+  PanelLayout panel = uiLayoutPanelProp(C, layout, open_prop_owner, open_prop_name);
+  uiItemL(panel.header, label, ICON_NONE);
+
+  return panel.body;
+}
+
+PanelLayout uiLayoutPanel(const bContext *C,
+                          uiLayout *layout,
+                          const char *idname,
+                          const bool default_closed)
+{
+  Panel *panel = uiLayoutGetRootPanel(layout);
+  BLI_assert(panel != nullptr);
+
+  LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(panel, idname, default_closed);
+  PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
+
+  return uiLayoutPanelProp(C, layout, &state_ptr, "is_open");
+}
+
+uiLayout *uiLayoutPanel(const bContext *C,
+                        uiLayout *layout,
+                        const char *idname,
+                        const bool default_closed,
+                        const char *label)
+{
+  PanelLayout panel = uiLayoutPanel(C, layout, idname, default_closed);
+  uiItemL(panel.header, label, ICON_NONE);
+
+  return panel.body;
 }
 
 bool uiLayoutEndsWithPanelHeader(const uiLayout &layout)
@@ -6167,7 +6204,7 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
     if (subitem->type == ITEM_BUTTON) {
       uiButtonItem *bitem = (uiButtonItem *)subitem;
       if (!(bitem->but->flag & UI_HIDDEN) &&
-          STREQ(bitem->but->str.c_str(), CTX_IFACE_(pt->translation_context, pt->label)))
+          bitem->but->str == CTX_IFACE_(pt->translation_context, pt->label))
       {
         return true;
       }
@@ -6265,30 +6302,28 @@ static void ui_layout_introspect_button(DynStr *ds, uiButtonItem *bitem)
 {
   uiBut *but = bitem->but;
   BLI_dynstr_appendf(ds, "'type':%d, ", int(but->type));
-  BLI_dynstr_appendf(ds, "'draw_string':'''%s''', ", but->drawstr);
+  BLI_dynstr_appendf(ds, "'draw_string':'''%s''', ", but->drawstr.c_str());
   /* Not exactly needed, rna has this. */
   BLI_dynstr_appendf(ds, "'tip':'''%s''', ", but->tip ? but->tip : "");
 
   if (but->optype) {
-    char *opstr = WM_operator_pystring_ex(static_cast<bContext *>(but->block->evil_C),
-                                          nullptr,
-                                          false,
-                                          true,
-                                          but->optype,
-                                          but->opptr);
-    BLI_dynstr_appendf(ds, "'operator':'''%s''', ", opstr ? opstr : "");
-    MEM_freeN(opstr);
+    std::string opstr = WM_operator_pystring_ex(static_cast<bContext *>(but->block->evil_C),
+                                                nullptr,
+                                                false,
+                                                true,
+                                                but->optype,
+                                                but->opptr);
+    BLI_dynstr_appendf(ds, "'operator':'''%s''', ", opstr.c_str());
   }
 
   {
     PropertyRNA *prop = nullptr;
     wmOperatorType *ot = UI_but_operatortype_get_from_enum_menu(but, &prop);
     if (ot) {
-      char *opstr = WM_operator_pystring_ex(
+      std::string opstr = WM_operator_pystring_ex(
           static_cast<bContext *>(but->block->evil_C), nullptr, false, true, ot, nullptr);
-      BLI_dynstr_appendf(ds, "'operator':'''%s''', ", opstr ? opstr : "");
+      BLI_dynstr_appendf(ds, "'operator':'''%s''', ", opstr.c_str());
       BLI_dynstr_appendf(ds, "'property':'''%s''', ", prop ? RNA_property_identifier(prop) : "");
-      MEM_freeN(opstr);
     }
   }
 
@@ -6379,12 +6414,12 @@ const char *UI_layout_introspect(uiLayout *layout)
 /** \name Alert Box with Big Icon
  * \{ */
 
-uiLayout *uiItemsAlertBox(uiBlock *block, const int size, const eAlertIcon icon)
+uiLayout *uiItemsAlertBox(uiBlock *block,
+                          const uiStyle *style,
+                          const int dialog_width,
+                          const eAlertIcon icon,
+                          const int icon_size)
 {
-  const uiStyle *style = UI_style_get_dpi();
-  const short icon_size = 64 * UI_SCALE_FAC;
-  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
-  const int dialog_width = icon_size + (text_points_max * size * UI_SCALE_FAC);
   /* By default, the space between icon and text/buttons will be equal to the 'columnspace',
    * this extra padding will add some space by increasing the left column width,
    * making the icon placement more symmetrical, between the block edge and the text. */
@@ -6409,6 +6444,15 @@ uiLayout *uiItemsAlertBox(uiBlock *block, const int size, const eAlertIcon icon)
   layout = uiLayoutColumn(split_block, false);
 
   return layout;
+}
+
+uiLayout *uiItemsAlertBox(uiBlock *block, const int size, const eAlertIcon icon)
+{
+  const uiStyle *style = UI_style_get_dpi();
+  const short icon_size = 64 * UI_SCALE_FAC;
+  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
+  const int dialog_width = icon_size + (text_points_max * size * UI_SCALE_FAC);
+  return uiItemsAlertBox(block, style, dialog_width, icon, icon_size);
 }
 
 /** \} */

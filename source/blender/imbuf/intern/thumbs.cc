@@ -16,7 +16,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_ghash.h"
-#include "BLI_hash_md5.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
@@ -391,7 +391,7 @@ static ImBuf *thumb_create_ex(const char *file_path,
         }
       }
       else if (THB_SOURCE_MOVIE == source) {
-        anim *anim = nullptr;
+        ImBufAnim *anim = nullptr;
         anim = IMB_open_anim(file_path, IB_rect | IB_metadata, 0, nullptr);
         if (anim != nullptr) {
           img = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);

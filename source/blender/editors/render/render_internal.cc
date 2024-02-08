@@ -33,7 +33,7 @@
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
@@ -1184,7 +1184,7 @@ void RENDER_OT_render(wmOperatorType *ot)
       "write_still",
       false,
       "Write Image",
-      "Save rendered the image to the output path (used only when animation is disabled)");
+      "Save the rendered image to the output path (used only when animation is disabled)");
   prop = RNA_def_boolean(ot->srna,
                          "use_viewport",
                          false,

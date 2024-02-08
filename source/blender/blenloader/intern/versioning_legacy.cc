@@ -57,7 +57,7 @@
 #include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_fcurve.h"
 #include "BKE_lattice.hh"
 #include "BKE_main.hh" /* for Main */
@@ -618,8 +618,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   if (bmain->versionfile <= 153) {
     Scene *sce = static_cast<Scene *>(bmain->scenes.first);
     while (sce) {
-      if (sce->r.blurfac == 0.0f) {
-        sce->r.blurfac = 1.0f;
+      if (sce->r.motion_blur_shutter == 0.0f) {
+        sce->r.motion_blur_shutter = 1.0f;
       }
       sce = static_cast<Scene *>(sce->id.next);
     }

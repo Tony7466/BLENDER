@@ -39,7 +39,7 @@
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
@@ -1137,9 +1137,9 @@ static void gpencil_sculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
   char str[UI_MAX_DRAW_STR] = "";
 
   SNPRINTF(str,
-           RPT_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
-                " | Ctrl to Invert Action | Wheel Up/Down for Size "
-                " | Shift-Wheel Up/Down for Strength"),
+           IFACE_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
+                  " | Ctrl to Invert Action | Wheel Up/Down for Size "
+                  " | Shift-Wheel Up/Down for Strength"),
            brush->id.name + 2);
 
   ED_workspace_status_text(C, str);

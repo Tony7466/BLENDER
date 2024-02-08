@@ -247,7 +247,7 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
   }
   else if (pup->but) {
     /* Minimum width to enforce. */
-    if (pup->but->drawstr[0]) {
+    if (!pup->but->drawstr.empty()) {
       minwidth = BLI_rctf_size_x(&pup->but->rect);
     }
     else {
@@ -404,7 +404,7 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->but = but;
 
     if (but->type == UI_BTYPE_PULLDOWN) {
-      ED_workspace_status_text(C, TIP_("Press spacebar to search..."));
+      ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
     }
   }
 
@@ -625,10 +625,10 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   handle->can_refresh = true;
 
   if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
-    ED_workspace_status_text(C, RPT_("Type to search..."));
+    ED_workspace_status_text(C, IFACE_("Type to search..."));
   }
   else if (mt->idname[0]) {
-    ED_workspace_status_text(C, RPT_("Press spacebar to search..."));
+    ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
   }
 }
 

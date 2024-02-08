@@ -37,8 +37,8 @@
 #include "BLT_translation.h"
 
 #include "BKE_idtype.hh"
-#include "BKE_key.h"
-#include "BKE_layer.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_query.hh"
@@ -559,7 +559,7 @@ static void loose_data_instantiate_object_base_instance_init(Main *bmain,
   Base *base = BKE_view_layer_base_find(view_layer, ob);
 
   if (v3d != nullptr) {
-    base->local_view_bits |= v3d->local_view_uuid;
+    base->local_view_bits |= v3d->local_view_uid;
   }
 
   if (flag & FILE_AUTOSELECT) {

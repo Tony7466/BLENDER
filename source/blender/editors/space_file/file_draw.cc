@@ -36,7 +36,7 @@
 
 #include "BLT_translation.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
@@ -96,8 +96,6 @@ void ED_file_path_button(bScreen *screen,
                   0,
                   0.0f,
                   float(FILE_MAX),
-                  0.0f,
-                  0.0f,
                   TIP_("File path"));
 
   BLI_assert(!UI_but_flag_is_set(but, UI_BUT_UNDO));
@@ -323,7 +321,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, uiTooltipData *tip, 
   }
 }
 
-static char *file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
+static std::string file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
 {
   const auto *asset = static_cast<blender::asset_system::AssetRepresentation *>(argN);
   std::string complete_string = asset->get_name();
@@ -332,7 +330,7 @@ static char *file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const ch
     complete_string += '\n';
     complete_string += meta_data.description;
   }
-  return BLI_strdupn(complete_string.c_str(), complete_string.size());
+  return complete_string;
 }
 
 static void draw_tile_background(const rcti *draw_rect, int colorid, int shade)
@@ -1458,18 +1456,19 @@ static void file_draw_invalid_asset_library_hint(const bContext *C,
         sx + UI_UNIT_X, sy, suggestion, width - UI_UNIT_X, line_height, text_col, nullptr, &sy);
 
     uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
-    uiBut *but = uiDefIconTextButO(block,
-                                   UI_BTYPE_BUT,
-                                   "SCREEN_OT_userpref_show",
-                                   WM_OP_INVOKE_DEFAULT,
-                                   ICON_PREFERENCES,
-                                   nullptr,
-                                   sx + UI_UNIT_X,
-                                   sy - line_height - UI_UNIT_Y * 1.2f,
-                                   UI_UNIT_X * 8,
-                                   UI_UNIT_Y,
-                                   nullptr);
-    PointerRNA *but_opptr = UI_but_operator_ptr_get(but);
+    wmOperatorType *ot = WM_operatortype_find("SCREEN_OT_userpref_show", false);
+    uiBut *but = uiDefIconTextButO_ptr(block,
+                                       UI_BTYPE_BUT,
+                                       ot,
+                                       WM_OP_INVOKE_DEFAULT,
+                                       ICON_PREFERENCES,
+                                       WM_operatortype_name(ot, nullptr),
+                                       sx + UI_UNIT_X,
+                                       sy - line_height - UI_UNIT_Y * 1.2f,
+                                       UI_UNIT_X * 8,
+                                       UI_UNIT_Y,
+                                       nullptr);
+    PointerRNA *but_opptr = UI_but_operator_ptr_ensure(but);
     RNA_enum_set(but_opptr, "section", USER_SECTION_FILE_PATHS);
 
     UI_block_end(C, block);
