@@ -181,51 +181,50 @@ static constexpr int Left = 1;
 static constexpr int Right = 2;
 }  // namespace InnerEdges
 
-/* Sum of pyramid of elements with floor of /p floor.
- * In other words: /return = floor + floor - 1 + floor - 2 + ... 0. */
-static constexpr int pyramid_sum(const int floor)
-{
-  /* Zero level have zero length which one is known from prefix sum from -1 level. */
-  BLI_assert(floor >= -1);
-  return floor * (floor + 1) / 2;
-}
-
+/**
+ * Representation of triangle prefix sum. For /p base, sizes to compute prefix sum would looks
+ * like: {base, base - 1, base - 2, base - 3, base - 4, ..., 0}. This triangle is sliced by
+ * horizontal ranges with size = base - i. Such ranges is known as levels or floors. Count of
+ * levels us equal to length os side and equal to size of base. This is equilateral triangle. Total
+ * size of sum of all levels is total size of triangle. All parametrs of triangle can be known in
+ * O(1) and without random memory access.
+ */
 class TriangleRange {
  private:
   int base_;
   int total_;
 
  public:
-  TriangleRange(const int base) : base_(base), total_(pyramid_sum(base)) {}
+  TriangleRange(const int base) : base_(base), total_(this->pyramid_sum(base)) {}
 
   IndexRange slice_at(const int level_i) const
   {
-    const int begin = pyramid_sum(base_ - level_i);
+    const int begin = this->pyramid_sum(base_ - level_i);
     const int size = base_ - level_i;
     return IndexRange(total_ - begin, size);
   }
 
   int start_of(const int level_i) const
   {
-    const int begin = pyramid_sum(base_ - level_i);
+    const int begin = this->pyramid_sum(base_ - level_i);
     return total_ - begin;
   }
 
   int end_of(const int level_i) const
   {
-    const int end = pyramid_sum(base_ - 1 - level_i);
+    const int end = this->pyramid_sum(base_ - 1 - level_i);
     return total_ - end;
   }
 
   int first_of(const int level_i) const
   {
-    const int begin = pyramid_sum(base_ - level_i);
+    const int begin = this->pyramid_sum(base_ - level_i);
     return total_ - begin;
   }
 
   int last_of(const int level_i) const
   {
-    const int end = pyramid_sum(base_ - 1 - level_i);
+    const int end = this->pyramid_sum(base_ - 1 - level_i);
     return total_ - end - 1;
   }
 
@@ -247,6 +246,14 @@ class TriangleRange {
   TriangleRange drop_bottom(const int levels_num) const
   {
     return TriangleRange(math::max<int>(0, base_ - levels_num));
+  }
+
+ private:
+  static constexpr int pyramid_sum(const int floor)
+  {
+    /* Zero level have zero length which one is known from prefix sum from -1 level... */
+    BLI_assert(floor >= -1);
+    return floor * (floor + 1) / 2;
   }
 };
 
