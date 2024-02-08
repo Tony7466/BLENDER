@@ -121,7 +121,7 @@ void cache_init(bContext *C,
       pbvh, [&](PBVHNode &node) { return !node_fully_masked_or_hidden(node); });
 
   for (PBVHNode *node : ss->filter_cache->nodes) {
-    BKE_pbvh_node_mark_normals_update(node);
+    BKE_pbvh_node_mark_positions_update(node);
   }
 
   /* `mesh->runtime.subdiv_ccg` is not available. Updating of the normals is done during drawing.
@@ -704,13 +704,13 @@ static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
       op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
 
   SNPRINTF(header,
-           RPT_("%s: Confirm, %s: Cancel"),
+           IFACE_("%s: Confirm, %s: Cancel"),
            WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
            WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
 
 #undef WM_MODALKEY
 
-  ED_workspace_status_text(C, RPT_(header));
+  ED_workspace_status_text(C, header);
 }
 
 static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
@@ -1010,7 +1010,7 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
 
   filter::Cache *filter_cache = ss->filter_cache;
   filter_cache->active_face_set = SCULPT_FACE_SET_NONE;
-  filter_cache->automasking = auto_mask::cache_init(sd, nullptr, ob);
+  filter_cache->automasking = auto_mask::cache_init(sd, ob);
 
   sculpt_filter_specific_init(filter_type, op, ss);
 
