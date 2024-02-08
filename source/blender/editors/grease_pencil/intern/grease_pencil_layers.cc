@@ -445,10 +445,9 @@ static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
   const Array<int> frame_numbers = active_layer.sorted_keys();
 
   for (auto [key, frame] : active_layer.frames().items()) {
-    grease_pencil.insert_blank_frame(new_layer,
-                                     key,
-                                     active_layer.get_frame_duration_at(key),
-                                     eBezTriple_KeyframeType(frame.type));
+    const int duration = frame.is_implicit_hold() ? 0 : active_layer.get_frame_duration_at(key);
+    grease_pencil.insert_blank_frame(
+        new_layer, key, duration, eBezTriple_KeyframeType(frame.type));
   }
 
   if (!empty_keyframes) {
