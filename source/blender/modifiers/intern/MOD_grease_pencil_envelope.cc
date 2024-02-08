@@ -71,10 +71,68 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&emd->influence, ob, walk, user_data);
 }
 
+static void find_envelope(const Span<float3> positions,
+                          const int point,
+                          float3 &r_position,
+                          float &r_radius)
+{
+  const float distance = 0.0;
+  r_position = positions[point_i];
+  r_radius = 1.0f;
+}
+
+static void deform_drawing_as_envelope(const GreasePencilEnvelopeModifierData &emd,
+                                       const ModifierEvalContext &ctx,
+                                       bke::greasepencil::Drawing &drawing,
+                                       const IndexMask &curves_mask)
+{
+  /* TODO is this still needed? */
+  const float pixfactor = 1.0f;
+
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const MutableSpan<float3> positions = curves.positions_for_write();
+  const MutableSpan<float> radii = drawing.radii_for_write();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const VArray<float> vgroup_weights = modifier::greasepencil::get_influence_vertex_weights(
+      curves, emd.influence);
+
+  curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    for (const int64_t point_i : points) {
+      const float weight = vgroup_weights[point_i];
+
+      float3 envelope_center;
+      float envelope_radius;
+      find_envelope(positions, point_i, envelope_center, envelope_radius);
+
+      const float target_radius = radii[point_i] * emd.thickness + envelope_radius * pixfactor;
+      radii[point_i] = math::interpolate(radii[point_i], target_radius, weight);
+      positions[point_i] = math::interpolate(positions[point_i], envelope_center, weight);
+    }
+  });
+
+  drawing.tag_positions_changed();
+  curves.tag_radii_changed();
+}
+
 static void modify_drawing(const GreasePencilEnvelopeModifierData &emd,
                            const ModifierEvalContext &ctx,
                            bke::greasepencil::Drawing &drawing)
 {
+  IndexMaskMemory mask_memory;
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+      ctx.object, drawing.strokes(), emd.influence, mask_memory);
+
+  const auto mode = GreasePencilEnvelopeModifierMode(emd.mode);
+  switch (mode) {
+    case MOD_GREASE_PENCIL_ENVELOPE_DEFORM:
+      deform_drawing_as_envelope(emd, ctx, drawing, curves_mask);
+      break;
+    case MOD_GREASE_PENCIL_ENVELOPE_SEGMENTS:
+      break;
+    case MOD_GREASE_PENCIL_ENVELOPE_FILLS:
+      break;
+  }
 }
 
 static void modify_geometry_set(ModifierData *md,
