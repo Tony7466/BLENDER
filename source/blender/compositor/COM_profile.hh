@@ -15,10 +15,19 @@ namespace blender::compositor {
 
 class NodeOperation;
 
-class Profiler {
+/* Profiling ddata gathered during execution of a compositing node tree. */
+class ProfilerData {
+ public:
   /* Per-node accumulated execution time. Includes execution time of all operations the node was
    * broken down into. */
-  Map<bNodeInstanceKey, timeit::Nanoseconds> per_node_execution_time_;
+  Map<bNodeInstanceKey, timeit::Nanoseconds> per_node_execution_time;
+};
+
+/* Profiler implementation which is used by the node execution system. */
+class Profiler {
+  /* Local copy of the profiling data, which is known to not cause threading conflicts with the
+   * interface thread while the compositing tree is evaluated in background. */
+  ProfilerData data_;
 
  public:
   void add_operation_execution_time(const NodeOperation &operation,
@@ -26,6 +35,11 @@ class Profiler {
                                     const timeit::TimePoint &end);
 
   void finalize(const bNodeTree &node_tree);
+
+  const ProfilerData &get_data() const
+  {
+    return data_;
+  }
 
  private:
   /* Add execution time to the node denoted by its key. */

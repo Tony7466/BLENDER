@@ -47,6 +47,7 @@
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.h"
+#include "BKE_scene_runtime.hh"
 #include "BKE_type_conversions.hh"
 
 #include "IMB_imbuf.hh"
@@ -128,6 +129,9 @@ struct TreeDrawContext {
    * True if there is an active realtime compositor using the node tree, false otherwise.
    */
   bool used_by_realtime_compositor = false;
+
+  blender::Map<bNodeInstanceKey, blender::timeit::Nanoseconds>
+      *compositor_per_node_execution_time = nullptr;
 };
 
 float ED_node_grid_size()
@@ -2480,10 +2484,9 @@ static bNodeInstanceKey current_node_instance_key(const SpaceNode &snode, const 
 }
 
 static std::optional<std::chrono::nanoseconds> compositor_accumulate_frame_node_execution_time(
-    const SpaceNode &snode, const bNode &node)
+    const TreeDrawContext &tree_draw_ctx, const SpaceNode &snode, const bNode &node)
 {
-  const bNodeTree &compositor_tree = *snode.nodetree;
-  const bke::bCompositorNodeTreeRuntime &compositor_runtime = compositor_tree.runtime->compositor;
+  BLI_assert(tree_draw_ctx.compositor_per_node_execution_time);
 
   timeit::Nanoseconds frame_execution_time(0);
   bool has_any_execution_time = false;
@@ -2491,7 +2494,7 @@ static std::optional<std::chrono::nanoseconds> compositor_accumulate_frame_node_
   for (const bNode *current_node : node.direct_children_in_frame()) {
     const bNodeInstanceKey key = current_node_instance_key(snode, *current_node);
     if (const timeit::Nanoseconds *node_execution_time =
-            compositor_runtime.per_node_execution_time.lookup_ptr(key))
+            tree_draw_ctx.compositor_per_node_execution_time->lookup_ptr(key))
     {
       frame_execution_time += *node_execution_time;
       has_any_execution_time = true;
@@ -2506,22 +2509,20 @@ static std::optional<std::chrono::nanoseconds> compositor_accumulate_frame_node_
 }
 
 static std::optional<std::chrono::nanoseconds> compositor_node_get_execution_time(
-    const TreeDrawContext & /*tree_draw_ctx*/, const SpaceNode &snode, const bNode &node)
+    const TreeDrawContext &tree_draw_ctx, const SpaceNode &snode, const bNode &node)
 {
-
-  const bNodeTree &compositor_tree = *snode.nodetree;
-  const bke::bCompositorNodeTreeRuntime &compositor_runtime = compositor_tree.runtime->compositor;
+  BLI_assert(tree_draw_ctx.compositor_per_node_execution_time);
 
   /* For the frame nodes accumulate execution time of its children. */
   if (node.is_frame()) {
-    return compositor_accumulate_frame_node_execution_time(snode, node);
+    return compositor_accumulate_frame_node_execution_time(tree_draw_ctx, snode, node);
   }
 
   /* For other nodes simply lookup execution time.
    * The group node instances have their own entries in the execution times map. */
   const bNodeInstanceKey key = current_node_instance_key(snode, node);
   if (const timeit::Nanoseconds *execution_time =
-          compositor_runtime.per_node_execution_time.lookup_ptr(key))
+          tree_draw_ctx.compositor_per_node_execution_time->lookup_ptr(key))
   {
     return *execution_time;
   }
@@ -4251,7 +4252,10 @@ static void draw_nodetree(const bContext &C,
         workspace->viewer_path, *snode);
   }
   else if (ntree.type == NTREE_COMPOSIT) {
+    const Scene *scene = CTX_data_scene(&C);
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
+    tree_draw_ctx.compositor_per_node_execution_time =
+        &scene->runtime->compositor.per_node_execution_time;
   }
   else if (ntree.type == NTREE_SHADER && U.experimental.use_shader_node_previews &&
            BKE_scene_uses_shader_previews(CTX_data_scene(&C)) &&

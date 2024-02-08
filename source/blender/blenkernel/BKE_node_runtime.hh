@@ -11,7 +11,6 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_resource_scope.hh"
-#include "BLI_timeit.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
@@ -75,13 +74,6 @@ struct NodeIDEquality {
 namespace blender::bke {
 
 using NodeIDVectorSet = VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, NodeIDEquality>;
-
-/* Runtime data specific to the compositing trees. */
-struct bCompositorNodeTreeRuntime {
-  /* Per-node instance total execution time for the corresponding node, during the last tree
-   * evaluation. */
-  Map<bNodeInstanceKey, timeit::Nanoseconds> per_node_execution_time;
-};
 
 class bNodeTreeRuntime : NonCopyable, NonMovable {
  public:
@@ -179,8 +171,6 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   bool has_undefined_nodes_or_sockets = false;
   bNode *group_output_node = nullptr;
   Vector<bNode *> root_frames;
-
-  bCompositorNodeTreeRuntime compositor;
 };
 
 /**

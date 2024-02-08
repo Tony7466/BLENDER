@@ -31,7 +31,7 @@ void Profiler::add_operation_execution_time(const NodeOperation &operation,
 void Profiler::add_execution_time(const bNodeInstanceKey key,
                                   const timeit::Nanoseconds &execution_time)
 {
-  per_node_execution_time_.add_or_modify(
+  data_.per_node_execution_time.add_or_modify(
       key,
       [&](timeit::Nanoseconds *total_execution_time) { *total_execution_time = execution_time; },
       [&](timeit::Nanoseconds *total_execution_time) { *total_execution_time += execution_time; });
@@ -40,9 +40,6 @@ void Profiler::add_execution_time(const bNodeInstanceKey key,
 void Profiler::finalize(const bNodeTree &node_tree)
 {
   accumulate_node_group_times(node_tree);
-
-  bke::bCompositorNodeTreeRuntime &compositor_runtime = node_tree.runtime->compositor;
-  compositor_runtime.per_node_execution_time = std::move(per_node_execution_time_);
 }
 
 timeit::Nanoseconds Profiler::accumulate_node_group_times(const bNodeTree &node_tree,
@@ -56,7 +53,8 @@ timeit::Nanoseconds Profiler::accumulate_node_group_times(const bNodeTree &node_
     if (node->type != NODE_GROUP) {
       /* Non-group node, no need to recurs into. Simply accumulate the node's execution time to the
        * current tree's execution time. */
-      tree_execution_time += per_node_execution_time_.lookup_default(key, timeit::Nanoseconds(0));
+      tree_execution_time += data_.per_node_execution_time.lookup_default(key,
+                                                                          timeit::Nanoseconds(0));
       continue;
     }
 
