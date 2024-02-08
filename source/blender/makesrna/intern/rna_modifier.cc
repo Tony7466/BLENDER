@@ -948,9 +948,9 @@ RNA_MOD_OBJECT_SET(NormalEdit, target, OB_EMPTY);
 RNA_MOD_OBJECT_SET(Shrinkwrap, target, OB_MESH);
 RNA_MOD_OBJECT_SET(Shrinkwrap, auxTarget, OB_MESH);
 RNA_MOD_OBJECT_SET(SurfaceDeform, target, OB_MESH);
-RNA_MOD_OBJECT_SET(GreasePencilLattice, object, OB_LATTICE);
 RNA_MOD_OBJECT_SET(GreasePencilMirror, object, OB_EMPTY);
 RNA_MOD_OBJECT_SET(GreasePencilTint, object, OB_EMPTY);
+RNA_MOD_OBJECT_SET(GreasePencilLattice, object, OB_LATTICE);
 
 static void rna_HookModifier_object_set(PointerRNA *ptr,
                                         PointerRNA value,
@@ -1892,7 +1892,6 @@ static void rna_GreasePencilOpacityModifier_opacity_factor_max_set(PointerRNA *p
                           std::min(value, 1.0f) :
                           value;
 }
-
 #else
 
 static void rna_def_modifier_panel_open_prop(StructRNA *srna, const char *identifier, const int id)
