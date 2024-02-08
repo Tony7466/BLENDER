@@ -36,7 +36,7 @@ static void node_composit_init_huecorrect(bNodeTree * /*ntree*/, bNode *node)
 
   CurveMapping *cumapping = (CurveMapping *)node->storage;
 
-  cumapping->preset = CURVE_PRESET_MID9;
+  cumapping->preset = CURVE_PRESET_MID8;
 
   for (int c = 0; c < 3; c++) {
     CurveMap *cuma = &cumapping->cm[c];

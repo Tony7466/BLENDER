@@ -299,6 +299,9 @@ void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope
     case CURVE_PRESET_MAX:
       cuma->totpoint = 2;
       break;
+    case CURVE_PRESET_MID8:
+      cuma->totpoint = 8;
+      break;
     case CURVE_PRESET_MID9:
       cuma->totpoint = 9;
       break;
@@ -368,6 +371,13 @@ void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope
       cuma->curve[1].x = 1;
       cuma->curve[1].y = 1;
       break;
+    case CURVE_PRESET_MID8: {
+      for (int i = 0; i < cuma->totpoint; i++) {
+        cuma->curve[i].x = i / (float(cuma->totpoint));
+        cuma->curve[i].y = 0.5;
+      }
+      break;
+    }
     case CURVE_PRESET_MID9: {
       for (int i = 0; i < cuma->totpoint; i++) {
         cuma->curve[i].x = i / (float(cuma->totpoint) - 1);
@@ -643,7 +653,7 @@ static float curvemap_calc_extend(const CurveMapping *cumap,
 }
 
 /* Evaluate a point on a curve, given two bezier triples */
-static void BKE_curve_eval_bezier_point(float bezt1[3][3], float bezt2[3][3], float *point)
+static void curve_eval_bezier_point(float bezt1[3][3], float bezt2[3][3], float *point)
 {
   BKE_curve_correct_bezpart(bezt1[1], bezt1[2], bezt2[0], bezt2[1]);
   BKE_curve_forward_diff_bezier(
@@ -672,10 +682,11 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   /* default rect also is table range */
   cuma->mintable = clipr->xmin;
   cuma->maxtable = clipr->xmax;
+  float table_range = cuma->maxtable - cuma->mintable;
 
   /* Rely on Blender interpolation for bezier curves, support extra functionality here as well. */
   int bezt_count = cuma->totpoint;
-  bezt = static_cast<BezTriple *>(MEM_callocN((bezt_count + 2) * sizeof(BezTriple), "beztarr"));
+  bezt = static_cast<BezTriple *>(MEM_callocN((bezt_count) * sizeof(BezTriple), "beztarr"));
 
   for (int a = 0; a < cuma->totpoint; a++) {
     cuma->mintable = min_ff(cuma->mintable, cmp[a].x);
@@ -697,23 +708,23 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   const BezTriple *bezt_prev = nullptr;
 
   /* Create two extra points for wrapping curves. */
-  BezTriple *bezt_pre = &bezt[bezt_count];
-  BezTriple *bezt_post = &bezt[bezt_count + 1];
+  BezTriple bezt_pre = bezt[cuma->totpoint - 1];
+  BezTriple bezt_post = bezt[0];
 
   BezTriple *bezt_post_ptr;
 
   if (use_wrapping) {
     /* Handle location of pre and post points for wrapping curves. */
-    bezt_pre->h1 = bezt_pre->h2 = bezt[cuma->totpoint - 1].h2;
-    bezt_pre->vec[1][0] = bezt[cuma->totpoint - 1].vec[1][0] - 1.0f;
-    bezt_pre->vec[1][1] = bezt[cuma->totpoint - 1].vec[1][1];
+    bezt_pre.h1 = bezt_pre.h2 = bezt[cuma->totpoint - 1].h2;
+    bezt_pre.vec[1][0] = bezt[cuma->totpoint - 1].vec[1][0] - table_range;
+    bezt_pre.vec[1][1] = bezt[cuma->totpoint - 1].vec[1][1];
 
-    bezt_post->h1 = bezt_post->h2 = bezt[0].h1;
-    bezt_post->vec[1][0] = bezt[0].vec[1][0] + 1.0f;
-    bezt_post->vec[1][1] = bezt[0].vec[1][1];
+    bezt_post.h1 = bezt_post.h2 = bezt[0].h1;
+    bezt_post.vec[1][0] = bezt[0].vec[1][0] + table_range;
+    bezt_post.vec[1][1] = bezt[0].vec[1][1];
 
-    bezt_prev = bezt_pre;
-    bezt_post_ptr = bezt_post;
+    bezt_prev = &bezt_pre;
+    bezt_post_ptr = &bezt_post;
   }
   else {
     bezt_prev = nullptr;
@@ -728,15 +739,15 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   }
 
   /* Correct handles of pre and post points for wrapping curves. */
-  bezt_pre->vec[0][0] = bezt[cuma->totpoint - 1].vec[0][0] - 1.0f;
-  bezt_pre->vec[0][1] = bezt[cuma->totpoint - 1].vec[0][1];
-  bezt_pre->vec[2][0] = bezt[cuma->totpoint - 1].vec[2][0] - 1.0f;
-  bezt_pre->vec[2][1] = bezt[cuma->totpoint - 1].vec[2][1];
+  bezt_pre.vec[0][0] = bezt[cuma->totpoint - 1].vec[0][0] - table_range;
+  bezt_pre.vec[0][1] = bezt[cuma->totpoint - 1].vec[0][1];
+  bezt_pre.vec[2][0] = bezt[cuma->totpoint - 1].vec[2][0] - table_range;
+  bezt_pre.vec[2][1] = bezt[cuma->totpoint - 1].vec[2][1];
 
-  bezt_post->vec[0][0] = bezt[0].vec[0][0] + 1.0f;
-  bezt_post->vec[0][1] = bezt[0].vec[0][1];
-  bezt_post->vec[2][0] = bezt[0].vec[2][0] + 1.0f;
-  bezt_post->vec[2][1] = bezt[0].vec[2][1];
+  bezt_post.vec[0][0] = bezt[0].vec[0][0] + table_range;
+  bezt_post.vec[0][1] = bezt[0].vec[0][1];
+  bezt_post.vec[2][0] = bezt[0].vec[2][0] + table_range;
+  bezt_post.vec[2][1] = bezt[0].vec[2][1];
 
   /* first and last handle need correction, instead of pointing to center of next/prev,
    * we let it point to the closest handle */
@@ -785,31 +796,27 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
     MEM_freeN(cuma->table);
   }
 
-  int totpoint;
-  float *allpoints = nullptr;
-  float *point = nullptr;
-
-  totpoint = use_wrapping ? (cuma->totpoint + 1) * CM_RESOL : (cuma->totpoint - 1) * CM_RESOL;
-  allpoints = static_cast<float *>(MEM_callocN(totpoint * 2 * sizeof(float), "table"));
-  point = allpoints;
+  int totpoint = use_wrapping ? (cuma->totpoint + 1) * CM_RESOL : (cuma->totpoint - 1) * CM_RESOL;
+  float *allpoints = static_cast<float *>(MEM_callocN(totpoint * 2 * sizeof(float), "table"));
+  float *point = allpoints;
 
   /* Handle pre point for wrapping */
   if (use_wrapping) {
-    BKE_curve_eval_bezier_point(bezt_pre->vec, bezt[0].vec, point);
+    curve_eval_bezier_point(bezt_pre.vec, bezt[0].vec, point);
     point += 2 * CM_RESOL;
   }
 
   /* Process middle elements */
   for (int a = 0; a < cuma->totpoint - 1; a++, point += 2 * CM_RESOL) {
     int b = a + 1;
-    BKE_curve_eval_bezier_point(bezt[a].vec, bezt[b].vec, point);
+    curve_eval_bezier_point(bezt[a].vec, bezt[b].vec, point);
   }
 
   if (use_wrapping) {
     /* Handle post point for wrapping */
-    BKE_curve_eval_bezier_point(bezt[cuma->totpoint - 1].vec, bezt_post->vec, point);
+    curve_eval_bezier_point(bezt[cuma->totpoint - 1].vec, bezt_post.vec, point);
   }
-  else {
+  if (!use_wrapping) {
     /* store first and last handle for extrapolation, unit length */
     cuma->ext_in[0] = bezt[0].vec[0][0] - bezt[0].vec[1][0];
     cuma->ext_in[1] = bezt[0].vec[0][1] - bezt[0].vec[1][1];
@@ -830,7 +837,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   /* cleanup */
   MEM_freeN(bezt);
 
-  float range = CM_TABLEDIV * (cuma->maxtable - cuma->mintable);
+  float range = CM_TABLEDIV * table_range;
   cuma->range = 1.0f / range;
 
   /* now make a table with CM_TABLE equal x distances */
