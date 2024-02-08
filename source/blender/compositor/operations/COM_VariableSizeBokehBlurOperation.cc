@@ -88,15 +88,12 @@ void VariableSizeBokehBlurOperation::execute_pixel(float output[4], int x, int y
   MemoryBuffer *input_buffer = tile_data->color;
   MemoryBuffer *bokeh_buffer = tile_data->bokeh;
   MemoryBuffer *size_buffer = tile_data->size;
-
-/* Does not work. Mask buffer is uninitialized for some reason. */
-#if 0
   MemoryBuffer *mask_buffer = tile_data->mask;
+
   if (*mask_buffer->get_elem(x, y) <= 0.0f) {
     copy_v4_v4(output, input_buffer->get_elem(x, y));
     return;
   }
-#endif
 
   const float max_dim = std::max(get_width(), get_height());
   const float base_size = do_size_scale_ ? (max_dim / 100.0f) : 1.0f;
@@ -196,28 +193,29 @@ void VariableSizeBokehBlurOperation::deinit_execution()
 bool VariableSizeBokehBlurOperation::determine_depending_area_of_interest(
     rcti *input, ReadBufferOperation *read_operation, rcti *output)
 {
-  rcti new_input;
-  rcti bokeh_input;
+  if (read_operation == (ReadBufferOperation *)get_input_operation(BOKEH_INPUT_INDEX)) {
+    rcti bokeh_input;
+    bokeh_input.xmax = COM_BLUR_BOKEH_PIXELS;
+    bokeh_input.xmin = 0;
+    bokeh_input.ymax = COM_BLUR_BOKEH_PIXELS;
+    bokeh_input.ymin = 0;
+
+    NodeOperation *operation = get_input_operation(BOKEH_INPUT_INDEX);
+    return operation->determine_depending_area_of_interest(&bokeh_input, read_operation, output);
+  }
 
   const float max_dim = std::max(get_width(), get_height());
   const float scalar = do_size_scale_ ? (max_dim / 100.0f) : 1.0f;
   int max_blur_scalar = max_blur_ * scalar;
 
+  rcti new_input;
   new_input.xmax = input->xmax + max_blur_scalar + 2;
   new_input.xmin = input->xmin - max_blur_scalar + 2;
   new_input.ymax = input->ymax + max_blur_scalar - 2;
   new_input.ymin = input->ymin - max_blur_scalar - 2;
-  bokeh_input.xmax = COM_BLUR_BOKEH_PIXELS;
-  bokeh_input.xmin = 0;
-  bokeh_input.ymax = COM_BLUR_BOKEH_PIXELS;
-  bokeh_input.ymin = 0;
 
-  NodeOperation *operation = get_input_operation(2);
+  NodeOperation *operation = get_input_operation(SIZE_INPUT_INDEX);
   if (operation->determine_depending_area_of_interest(&new_input, read_operation, output)) {
-    return true;
-  }
-  operation = get_input_operation(1);
-  if (operation->determine_depending_area_of_interest(&bokeh_input, read_operation, output)) {
     return true;
   }
 #ifdef COM_DEFOCUS_SEARCH
@@ -226,15 +224,21 @@ bool VariableSizeBokehBlurOperation::determine_depending_area_of_interest(
   search_input.xmin = (input->xmin / InverseSearchRadiusOperation::DIVIDER) - 1;
   search_input.ymax = (input->ymax / InverseSearchRadiusOperation::DIVIDER) + 1;
   search_input.ymin = (input->ymin / InverseSearchRadiusOperation::DIVIDER) - 1;
-  operation = get_input_operation(3);
+  operation = get_input_operation(DEFOCUS_INPUT_INDEX);
   if (operation->determine_depending_area_of_interest(&search_input, read_operation, output)) {
     return true;
   }
 #endif
-  operation = get_input_operation(0);
+  operation = get_input_operation(IMAGE_INPUT_INDEX);
   if (operation->determine_depending_area_of_interest(&new_input, read_operation, output)) {
     return true;
   }
+
+  operation = get_input_operation(BOUNDING_BOX_INPUT_INDEX);
+  if (operation->determine_depending_area_of_interest(&new_input, read_operation, output)) {
+    return true;
+  }
+
   return false;
 }
 
