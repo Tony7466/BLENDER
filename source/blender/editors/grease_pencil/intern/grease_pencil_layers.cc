@@ -426,6 +426,54 @@ static void GREASE_PENCIL_OT_layer_isolate(wmOperatorType *ot)
   RNA_def_boolean(
       ot->srna, "affect_visibility", false, "Affect Visibility", "Also affect the visibility");
 }
+
+static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
+{
+  using namespace ::blender::bke::greasepencil;
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const bool empty_keyframes = RNA_boolean_get(op->ptr, "empty_keyframes");
+
+  Layer *active_layer = grease_pencil.get_active_layer();
+  Layer &new_layer = grease_pencil.add_layer(active_layer->name());
+  const Array<int> frame_numbers = active_layer->sorted_keys();
+
+  for (int frame : frame_numbers) {
+    grease_pencil.insert_blank_frame(new_layer, frame, 0, BEZT_KEYTYPE_KEYFRAME);
+  }
+
+  if (!empty_keyframes) {
+    for (const int frame_number : frame_numbers) {
+      const Drawing *drawing = grease_pencil.get_drawing_at(*active_layer, frame_number);
+      Drawing *new_drawing = grease_pencil.get_editable_drawing_at(new_layer, frame_number);
+      *new_drawing = *MEM_new<bke::greasepencil::Drawing>(__func__, *drawing);
+    }
+  }
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_layer_duplicate(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Duplicate Layer";
+  ot->idname = "GREASE_PENCIL_OT_layer_duplicate";
+  ot->description = "Make a copy of the active Grease Pencil layer";
+
+  /* callbacks */
+  ot->exec = grease_pencil_layer_duplicate_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_boolean(ot->srna, "empty_keyframes", false, "Empty Keyframes", "Add Empty Keyframes");
+}
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_layers()
@@ -438,6 +486,7 @@ void ED_operatortypes_grease_pencil_layers()
   WM_operatortype_append(GREASE_PENCIL_OT_layer_hide);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_reveal);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_isolate);
+  WM_operatortype_append(GREASE_PENCIL_OT_layer_duplicate);
 
   WM_operatortype_append(GREASE_PENCIL_OT_layer_group_add);
 }
