@@ -172,7 +172,7 @@ struct PaintOperationExecutor {
                                               float4(0.0f);
     srgb_to_linearrgb_v4(vertex_color_, vertex_color_);
     /* TODO: UI setting. */
-    hardness_ = 1.0f;
+    hardness_ = 0.0f;
 
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
@@ -237,8 +237,7 @@ struct PaintOperationExecutor {
     bke::SpanAttributeWriter<bool> cyclic = attributes.lookup_or_add_for_write_span<bool>(
         "cyclic", bke::AttrDomain::Curve);
     bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_or_add_for_write_span<float>(
-        "hardness", bke::AttrDomain::Curve,
-      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
+        "hardness", bke::AttrDomain::Curve);
     cyclic.span.last() = false;
     materials.span.last() = material_index;
     hardnesses.span.last() = hardness_;

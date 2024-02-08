@@ -10,7 +10,7 @@
 #endif
 
 #ifdef GPU_FRAGMENT_SHADER
-float gpencil_stroke_round_cap_mask(vec2 p1, vec2 p2, vec2 aspect, float thickness, float hardfac)
+float gpencil_stroke_round_cap_mask(vec2 p1, vec2 p2, vec2 aspect, float thickness, float hardness)
 {
   /* We create our own uv space to avoid issues with triangulation and linear
    * interpolation artifacts. */
@@ -29,12 +29,11 @@ float gpencil_stroke_round_cap_mask(vec2 p1, vec2 p2, vec2 aspect, float thickne
   uv_end *= aspect;
 
   float dist = clamp(1.0 - length(uv_end) * 2.0, 0.0, 1.0);
-  if (hardfac > 0.999) {
+  if (hardness < 0.0001) {
     return step(1e-8, dist);
   }
   else {
     /* Modulate the falloff profile */
-    float hardness = 1.0 - hardfac;
     dist = pow(dist, mix(0.01, 10.0, hardness));
     return smoothstep(0.0, 1.0, dist);
   }

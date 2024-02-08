@@ -529,7 +529,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const VArray<int8_t> end_caps = *attributes.lookup_or_default<int8_t>(
         "end_cap", bke::AttrDomain::Curve, 0);
     const VArray<float> stroke_hardnesses = *attributes.lookup_or_default<float>(
-        "hardness", bke::AttrDomain::Curve, 1.0f);
+        "hardness", bke::AttrDomain::Curve, 0.0f);
     const VArray<float> stroke_point_aspect_ratios = *attributes.lookup_or_default<float>(
         "aspect_ratio", bke::AttrDomain::Curve, 1.0f);
     const VArray<ColorGeometry4f> stroke_fill_colors =
