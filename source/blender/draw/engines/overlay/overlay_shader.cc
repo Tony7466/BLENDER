@@ -720,9 +720,18 @@ GPUShader *OVERLAY_shader_outline_prepass_gpencil()
   const DRWContextState *draw_ctx = DRW_context_state_get();
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
   if (!sh_data->outline_prepass_gpencil) {
-    sh_data->outline_prepass_gpencil = GPU_shader_create_from_info_name(
-        (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_outline_prepass_gpencil_clipped" :
-                                                       "overlay_outline_prepass_gpencil");
+    if (U.experimental.use_grease_pencil_version3) {
+      sh_data->outline_prepass_gpencil = GPU_shader_create_from_info_name(
+          (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ?
+              "overlay_outline_prepass_grease_pencil_clipped" :
+              "overlay_outline_prepass_grease_pencil");
+    }
+    else {
+      sh_data->outline_prepass_gpencil = GPU_shader_create_from_info_name(
+          (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ?
+              "overlay_outline_prepass_gpencil_clipped" :
+              "overlay_outline_prepass_gpencil");
+    }
   }
   return sh_data->outline_prepass_gpencil;
 }

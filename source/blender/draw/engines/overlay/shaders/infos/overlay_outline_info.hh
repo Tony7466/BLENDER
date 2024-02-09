@@ -93,6 +93,33 @@ GPU_SHADER_CREATE_INFO(overlay_outline_prepass_gpencil_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_outline_prepass_gpencil", "drw_clipped");
 
+GPU_SHADER_INTERFACE_INFO(overlay_outline_prepass_grease_pencil_flat_iface, "gp_interp_flat")
+    .flat(Type::VEC2, "aspect")
+    .flat(Type::VEC4, "sspos");
+GPU_SHADER_INTERFACE_INFO(overlay_outline_prepass_grease_pencil_noperspective_iface,
+                          "gp_interp_noperspective")
+    .no_perspective(Type::VEC2, "thickness")
+    .no_perspective(Type::FLOAT, "hardness");
+
+GPU_SHADER_CREATE_INFO(overlay_outline_prepass_grease_pencil)
+    .do_static_compilation(true)
+    .push_constant(Type::BOOL, "isTransform")
+    .vertex_out(overlay_outline_prepass_iface)
+    .vertex_out(overlay_outline_prepass_grease_pencil_flat_iface)
+    .vertex_out(overlay_outline_prepass_grease_pencil_noperspective_iface)
+    .vertex_source("overlay_outline_prepass_grease_pencil_vert.glsl")
+    .push_constant(Type::BOOL, "gpStrokeOrder3d") /* TODO(fclem): Move to a GPencil object UBO. */
+    .push_constant(Type::VEC4, "gpDepthPlane")    /* TODO(fclem): Move to a GPencil object UBO. */
+    /* Using uint because 16bit uint can contain more ids than int. */
+    .fragment_out(0, Type::UINT, "out_object_id")
+    .fragment_source("overlay_outline_prepass_grease_pencil_frag.glsl")
+    .depth_write(DepthWrite::ANY)
+    .additional_info("draw_gpencil_new", "draw_resource_handle", "draw_globals");
+
+GPU_SHADER_CREATE_INFO(overlay_outline_prepass_grease_pencil_clipped)
+    .do_static_compilation(true)
+    .additional_info("overlay_outline_prepass_grease_pencil", "drw_clipped");
+
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_pointcloud)
     .do_static_compilation(true)
     .vertex_source("overlay_outline_prepass_pointcloud_vert.glsl")

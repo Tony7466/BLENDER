@@ -828,6 +828,8 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_outline_prepass_geom.glsl
   engines/overlay/shaders/overlay_outline_prepass_gpencil_frag.glsl
   engines/overlay/shaders/overlay_outline_prepass_gpencil_vert.glsl
+  engines/overlay/shaders/overlay_outline_prepass_grease_pencil_frag.glsl
+  engines/overlay/shaders/overlay_outline_prepass_grease_pencil_vert.glsl
   engines/overlay/shaders/overlay_outline_prepass_pointcloud_vert.glsl
   engines/overlay/shaders/overlay_outline_prepass_vert.glsl
   engines/overlay/shaders/overlay_outline_prepass_vert_no_geom.glsl
