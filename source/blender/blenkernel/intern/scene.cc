@@ -50,7 +50,7 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "BLT_translation.h"
 
@@ -901,6 +901,7 @@ static void scene_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, view_layer->mat_override, IDWALK_CB_USER);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, view_layer->world_override, IDWALK_CB_USER);
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
         data,
         IDP_foreach_property(view_layer->id_properties,
