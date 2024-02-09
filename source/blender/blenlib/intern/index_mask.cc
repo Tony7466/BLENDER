@@ -930,17 +930,21 @@ static bool segments_is_equal(const IndexMaskSegment &a, const IndexMaskSegment 
     return a_is_range && b_is_range;
   }
 
-  /* Offset differents, for the equal int16_t indices, should be bounded in int16_t range.
-   * Make type of offset smaller for the hot loop. */
-  const int16_t offset_different = int16_t(b.offset() - a.offset());
   const Span<int16_t> a_indices = a.base_span();
+  [[maybe_unused]] const Span<int16_t> b_indices = b.base_span();
+
+  BLI_assert(a_indices[0] >= 0 && b_indices[0] >= 0);
+  BLI_assert(a.offset() + a_indices[0] == b.offset() + b_indices[0]);
+  BLI_assert(b_indices[0] == a_indices[0] - (a.offset() - b.offset()));
+  BLI_assert(std::numeric_limits<int16_t>::min() <= a.offset() - b.offset());
+  BLI_assert(a.offset() - b.offset() <= std::numeric_limits<int16_t>::max());
+
+  const int16_t offset_different = int16_t(b.offset() - a.offset());
 
   return std::equal(a_indices.begin(),
                     a_indices.end(),
                     b.base_span().begin(),
                     [offset_different](const int16_t a, const int16_t b) -> bool {
-                      /* Be careful with int16_t overflow. /p a and /p b always will be positive.
-                       */
                       return a - offset_different == b;
                     });
 }
