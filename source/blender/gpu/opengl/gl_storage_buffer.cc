@@ -235,7 +235,7 @@ void GLStorageBuf::read(void *data)
   glDeleteSync(read_fence_);
   read_fence_ = 0;
 
-  memmove(data, persistent_ptr_, size_in_bytes_);
+  memcpy(data, persistent_ptr_, size_in_bytes_);
 }
 
 /** \} */
