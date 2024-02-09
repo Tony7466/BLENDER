@@ -259,18 +259,18 @@ static CustomData &domain_custom_data(CurvesGeometry &curves, const AttrDomain d
 template<typename T>
 static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
                                             const AttrDomain domain,
-                                            const StringRefNull name,
+                                            const StringRef name,
                                             const T default_value = T())
 {
   const int num = domain_num(curves, domain);
   const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
   CustomData &custom_data = domain_custom_data(curves, domain);
 
-  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name.c_str(), num);
+  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name, num);
   if (data != nullptr) {
     return {data, num};
   }
-  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name.c_str());
+  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name);
   MutableSpan<T> span = {data, num};
   if (num > 0 && span.first() != default_value) {
     span.fill(default_value);
@@ -2580,6 +2580,7 @@ static void read_layer(BlendDataReader *reader,
 {
   BLO_read_data_address(reader, &node->base.name);
   node->base.parent = parent;
+  BLO_read_data_address(reader, &node->parsubstr);
 
   /* Read frames storage. */
   BLO_read_int32_array(reader, node->frames_storage.num, &node->frames_storage.keys);
@@ -2647,6 +2648,7 @@ static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
 {
   BLO_write_struct(writer, GreasePencilLayer, node);
   BLO_write_string(writer, node->base.name);
+  BLO_write_string(writer, node->parsubstr);
 
   BLO_write_int32_array(writer, node->frames_storage.num, node->frames_storage.keys);
   BLO_write_struct_array(
