@@ -34,34 +34,22 @@ struct FastResult {
   Vector<FastResultSegment> segments;
 };
 
-BLI_NOINLINE static FastResult evaluate_fast_union(const Span<const FastResultSegment *> terms)
+struct Boundary {
+  int64_t index;
+  bool is_begin;
+  const FastResultSegment *segment;
+};
+
+static void sort_boundaries(MutableSpan<Boundary> boundaries)
 {
-  FastResult result;
-  if (terms.is_empty()) {
-    return result;
-  }
-  if (terms.size() == 1) {
-    result.segments.append(*terms[0]);
-    return result;
-  }
-
-  struct Boundary {
-    int64_t index;
-    bool is_begin;
-    const FastResultSegment *segment;
-  };
-
-  Vector<Boundary> boundaries;
-  for (const FastResultSegment *segment : terms) {
-    if (!segment->bounds.is_empty()) {
-      boundaries.append({segment->bounds.first(), true, segment});
-      boundaries.append({segment->bounds.one_after_last(), false, segment});
-    }
-  }
   std::sort(boundaries.begin(), boundaries.end(), [](const Boundary &a, const Boundary &b) {
     return a.index < b.index;
   });
+}
 
+BLI_NOINLINE static FastResult evaluate_fast_union(const Span<Boundary> boundaries)
+{
+  FastResult result;
   Vector<const FastResultSegment *> active_segments;
   for (const Boundary &boundary : boundaries) {
     if (active_segments.is_empty()) {
@@ -195,14 +183,16 @@ BLI_NOINLINE static FastResult evaluate_fast(
       }
       case Expr::Type::Union: {
         const UnionExpr &expr = expression->as_union();
-        Vector<const FastResultSegment *, 16> segments_to_union;
+        Vector<Boundary, 16> boundaries;
         for (const Expr *term : expr.terms) {
           const FastResult &term_result = *expression_results[term->index];
           for (const FastResultSegment &segment : term_result.segments) {
-            segments_to_union.append(&segment);
+            boundaries.append({segment.bounds.first(), true, &segment});
+            boundaries.append({segment.bounds.one_after_last(), false, &segment});
           }
         }
-        expr_result = evaluate_fast_union(segments_to_union);
+        sort_boundaries(boundaries);
+        expr_result = evaluate_fast_union(boundaries);
         break;
       }
       case Expr::Type::Intersection: {
