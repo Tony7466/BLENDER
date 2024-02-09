@@ -70,7 +70,7 @@ void main()
   if (imageSize(rp_cryptomatte_img).x > 1) {
     vec4 cryptomatte_output = vec4(
         cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
-    imageStoreFast(rp_cryptomatte_img, out_texel, cryptomatte_output);
+    imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
   }
   output_renderpass_color(uniform_buf.render_pass.position_id, vec4(g_data.P, 1.0));
   output_renderpass_color(uniform_buf.render_pass.emission_id, vec4(g_emission, 1.0));
@@ -98,11 +98,11 @@ void main()
   /* Output remaining closures using image store. */
   /* NOTE: The image view start at layer 2 so all destination layer is `layer - 2`. */
   for (int layer = 2; layer < GBUFFER_DATA_MAX && layer < gbuf.layer_data; layer++) {
-    imageStoreFast(out_gbuf_closure_img, ivec3(out_texel, layer - 2), float4(gbuf.data[layer]));
+    imageStore(out_gbuf_closure_img, ivec3(out_texel, layer - 2), float4(gbuf.data[layer]));
   }
   /* NOTE: The image view start at layer 1 so all destination layer is `layer - 1`. */
   for (int layer = 1; layer < GBUFFER_NORMAL_MAX && layer < gbuf.layer_normal; layer++) {
-    imageStoreFast(out_gbuf_normal_img, ivec3(out_texel, layer - 1), gbuf.N[layer].xyyy);
+    imageStore(out_gbuf_normal_img, ivec3(out_texel, layer - 1), gbuf.N[layer].xyyy);
   }
 
   /* ----- Radiance output ----- */

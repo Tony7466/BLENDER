@@ -137,13 +137,13 @@ void main()
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
     /* TODO(fclem): Layered texture. */
     if (i == 0) {
-      imageStoreFast(direct_radiance_1_img, texel, vec4(stack.cl[i].light_shadowed, 1.0));
+      imageStore(direct_radiance_1_img, texel, vec4(stack.cl[i].light_shadowed, 1.0));
     }
     else if (i == 1) {
-      imageStoreFast(direct_radiance_2_img, texel, vec4(stack.cl[i].light_shadowed, 1.0));
+      imageStore(direct_radiance_2_img, texel, vec4(stack.cl[i].light_shadowed, 1.0));
     }
     else if (i == 2) {
-      imageStoreFast(direct_radiance_3_img, texel, vec4(stack.cl[i].light_shadowed, 1.0));
+      imageStore(direct_radiance_3_img, texel, vec4(stack.cl[i].light_shadowed, 1.0));
     }
   }
 }
