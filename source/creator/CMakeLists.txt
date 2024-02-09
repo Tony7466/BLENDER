@@ -332,9 +332,15 @@ else()
     PRIVATE bf::blenlib
     PRIVATE ${PLATFORM_LINKLIBS}
   )
+  setup_platform_linker_flags(blender_cpu_check)
   # blender_cpu_check *NEEDS* to be linked first, there can be no exceptions
   # to this.
   target_link_libraries(blender PRIVATE blender_cpu_check)
+  set_target_properties(blender_cpu_check
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
+  )
   if(WIN32)
     add_executable(blender-launcher WIN32
       blender_launcher_win32.c
