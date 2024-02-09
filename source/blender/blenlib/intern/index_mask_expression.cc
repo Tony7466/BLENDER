@@ -161,7 +161,7 @@ BLI_NOINLINE static FastResult evaluate_fast_difference(
 BLI_NOINLINE static FastResult evaluate_fast(
     const Expr &root_expression, const std::optional<IndexRange> eval_bounds = std::nullopt)
 {
-  Array<std::optional<FastResult>> expression_results(root_expression.expression_array_size());
+  Array<std::optional<FastResult>, 16> expression_results(root_expression.expression_array_size());
   Stack<const Expr *> remaining_expressions;
   remaining_expressions.push(&root_expression);
 
