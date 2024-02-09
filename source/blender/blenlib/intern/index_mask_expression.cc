@@ -47,6 +47,65 @@ static void sort_boundaries(MutableSpan<Boundary> boundaries)
   });
 }
 
+static FastResultSegment &evaluate_fast_make_full_segment(FastResultSegment *prev_segment,
+                                                          const int64_t prev_boundary_index,
+                                                          const int64_t current_boundary_index,
+                                                          FastResult &result)
+{
+  if (prev_segment && prev_segment->type == FastResultSegment::Type::Full &&
+      prev_segment->bounds.one_after_last() == prev_boundary_index)
+  {
+    /* Extend previous segment. */
+    prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                      current_boundary_index);
+    return *prev_segment;
+  }
+  result.segments.append(
+      {FastResultSegment::Type::Full,
+       IndexRange::from_begin_end(prev_boundary_index, current_boundary_index)});
+  return result.segments.last();
+}
+
+static FastResultSegment &evaluate_fast_make_unknown_segment(FastResultSegment *prev_segment,
+                                                             const int64_t prev_boundary_index,
+                                                             const int64_t current_boundary_index,
+                                                             FastResult &result)
+{
+  if (prev_segment && prev_segment->type == FastResultSegment::Type::Unknown &&
+      prev_segment->bounds.one_after_last() == prev_boundary_index)
+  {
+    /* Extend previous segment. */
+    prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                      current_boundary_index);
+    return *prev_segment;
+  }
+  result.segments.append(
+      {FastResultSegment::Type::Unknown,
+       IndexRange::from_begin_end(prev_boundary_index, current_boundary_index)});
+  return result.segments.last();
+}
+
+static FastResultSegment &evaluate_fast_make_copy_segment(FastResultSegment *prev_segment,
+                                                          const int64_t prev_boundary_index,
+                                                          const int64_t current_boundary_index,
+                                                          const IndexMask &copy_from_mask,
+                                                          FastResult &result)
+{
+  if (prev_segment && prev_segment->type == FastResultSegment::Type::Copy &&
+      prev_segment->bounds.one_after_last() == prev_boundary_index &&
+      prev_segment->mask == &copy_from_mask)
+  {
+    /* Extend previous segment. */
+    prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                      current_boundary_index);
+    return *prev_segment;
+  }
+  result.segments.append({FastResultSegment::Type::Copy,
+                          IndexRange::from_begin_end(prev_boundary_index, current_boundary_index),
+                          &copy_from_mask});
+  return result.segments.last();
+}
+
 BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, FastResult &r_result)
 {
   if (boundaries.is_empty()) {
@@ -60,73 +119,40 @@ BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, Fa
 
   for (const Boundary &boundary : boundaries) {
     if (prev_boundary_index < boundary.index) {
-      int full_count = 0;
-      int unknown_count = 0;
-      int copy_count = 0;
+      bool has_full = false;
+      bool has_unknown = false;
+      bool copy_from_mask_unique = true;
       const IndexMask *copy_from_mask = nullptr;
       for (const FastResultSegment *active_segment : active_segments) {
         switch (active_segment->type) {
           case FastResultSegment::Type::Unknown: {
-            unknown_count++;
+            has_unknown = true;
             break;
           }
           case FastResultSegment::Type::Full: {
-            full_count++;
+            has_full = true;
             break;
           }
           case FastResultSegment::Type::Copy: {
-            copy_count++;
+            if (copy_from_mask != nullptr && copy_from_mask != active_segment->mask) {
+              copy_from_mask_unique = false;
+            }
             copy_from_mask = active_segment->mask;
             break;
           }
         }
       }
-      if (full_count > 0) {
-        if (prev_segment && prev_segment->type == FastResultSegment::Type::Full &&
-            prev_segment->bounds.one_after_last() == prev_boundary_index)
-        {
-          /* Extend previous segment. */
-          prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                            boundary.index);
-        }
-        else {
-          result.segments.append(
-              {FastResultSegment::Type::Full,
-               IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
-          prev_segment = &result.segments.last();
-        }
+      if (has_full) {
+        prev_segment = &evaluate_fast_make_full_segment(
+            prev_segment, prev_boundary_index, boundary.index, result);
       }
-      else if (unknown_count > 0 || copy_count > 1) {
-        if (prev_segment && prev_segment->type == FastResultSegment::Type::Unknown &&
-            prev_segment->bounds.one_after_last() == prev_boundary_index)
-        {
-          /* Extend previous segment. */
-          prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                            boundary.index);
-        }
-        else {
-          result.segments.append(
-              {FastResultSegment::Type::Unknown,
-               IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
-          prev_segment = &result.segments.last();
-        }
+      else if (has_unknown || !copy_from_mask_unique) {
+        prev_segment = &evaluate_fast_make_unknown_segment(
+            prev_segment, prev_boundary_index, boundary.index, result);
       }
-      else if (copy_count == 1) {
-        BLI_assert(copy_from_mask != nullptr);
-        if (prev_segment && prev_segment->type == FastResultSegment::Type::Copy &&
-            prev_segment->bounds.one_after_last() == prev_boundary_index &&
-            prev_segment->mask == copy_from_mask)
-        {
-          /* Extend previous segment. */
-          prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                            boundary.index);
-        }
-        else {
-          result.segments.append({FastResultSegment::Type::Copy,
-                                  IndexRange::from_begin_end(prev_boundary_index, boundary.index),
-                                  copy_from_mask});
-          prev_segment = &result.segments.last();
-        }
+      else if (copy_from_mask != nullptr && copy_from_mask_unique) {
+        prev_segment = &evaluate_fast_make_copy_segment(
+            prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
       }
 
       prev_boundary_index = boundary.index;
@@ -186,51 +212,16 @@ BLI_NOINLINE static void evaluate_fast_intersection(const Span<Boundary> boundar
         }
         BLI_assert(full_count + unknown_count + copy_count == terms_num);
         if (full_count == terms_num) {
-          if (prev_segment && prev_segment->type == FastResultSegment::Type::Full &&
-              prev_segment->bounds.one_after_last() == prev_boundary_index)
-          {
-            /* Extend previous segment. */
-            prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                              boundary.index);
-          }
-          else {
-            result.segments.append(
-                {FastResultSegment::Type::Full,
-                 IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
-            prev_segment = &result.segments.last();
-          }
+          prev_segment = &evaluate_fast_make_full_segment(
+              prev_segment, prev_boundary_index, boundary.index, result);
         }
-        else if (unknown_count > 0 || !copy_from_mask_unique) {
-          if (prev_segment && prev_segment->type == FastResultSegment::Type::Unknown &&
-              prev_segment->bounds.one_after_last() == prev_boundary_index)
-          {
-            /* Extend previous segment. */
-            prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                              boundary.index);
-          }
-          else {
-            result.segments.append(
-                {FastResultSegment::Type::Unknown,
-                 IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
-            prev_segment = &result.segments.last();
-          }
+        else if (unknown_count > 0 || copy_count < terms_num || !copy_from_mask_unique) {
+          prev_segment = &evaluate_fast_make_unknown_segment(
+              prev_segment, prev_boundary_index, boundary.index, result);
         }
-        else if (copy_from_mask && copy_from_mask_unique) {
-          if (prev_segment && prev_segment->type == FastResultSegment::Type::Copy &&
-              prev_segment->bounds.one_after_last() == prev_boundary_index &&
-              prev_segment->mask == copy_from_mask)
-          {
-            /* Extend previous segment. */
-            prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                              boundary.index);
-          }
-          else {
-            result.segments.append(
-                {FastResultSegment::Type::Copy,
-                 IndexRange::from_begin_end(prev_boundary_index, boundary.index),
-                 copy_from_mask});
-            prev_segment = &result.segments.last();
-          }
+        else if (copy_count == terms_num && copy_from_mask_unique) {
+          prev_segment = &evaluate_fast_make_copy_segment(
+              prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
         }
       }
 
