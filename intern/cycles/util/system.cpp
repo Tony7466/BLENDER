@@ -184,8 +184,8 @@ static CPUCapabilities &system_cpu_capabilities()
         bool bmi2 = (result[1] & ((int)1 << 8)) != 0;
         bool avx2 = (result[1] & ((int)1 << 5)) != 0;
 
-        caps.avx2 = sse && sse2 && sse3 && ssse3 && sse41 && sse42 && avx && f16c && avx2 && fma3 && bmi1 &&
-                    bmi2;
+        caps.avx2 = sse && sse2 && sse3 && ssse3 && sse41 && sse42 && avx && f16c && avx2 &&
+                    fma3 && bmi1 && bmi2;
       }
     }
 
