@@ -871,6 +871,7 @@ template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 void IndexMask::foreach_segment_zipped(const Span<IndexMask> masks,
                                        const FunctionRef<bool(Span<IndexMaskSegment> segments)> fn)
 {
+  BLI_assert(!masks.is_empty());
   BLI_assert(std::all_of(masks.begin() + 1, masks.end(), [&](const IndexMask &maks) {
     return masks[0].size() == maks.size();
   }));
