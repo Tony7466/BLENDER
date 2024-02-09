@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # simple script to enable all addons, and disable
@@ -24,10 +26,6 @@ BLACKLIST = {
     # The unpacked wheel is only loaded when actually used, not directly on import:
     os.path.join("io_blend_utils", "blender_bam-unpacked.whl"),
 }
-
-for mod in addon_utils.modules():
-    if addon_utils.module_bl_info(mod)['blender'] < (2, 80, 0):
-        BLACKLIST.add(mod.__name__)
 
 # Some modules need to add to the `sys.path`.
 MODULE_SYS_PATHS = {

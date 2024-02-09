@@ -1,17 +1,16 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation.
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_Debug.h"
 
-extern "C" {
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
 
-#include "BKE_appdir.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-}
+#include "BKE_appdir.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "COM_ExecutionGroup.h"
 #include "COM_ReadBufferOperation.h"

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,7 +29,7 @@ class AssetStorage {
 
   StorageT external_assets_;
   /* Store local ID assets separately for efficient lookups.
-   * TODO(Julian): A [ID *, asset] or even [ID.session_uuid, asset] map would be preferable for
+   * TODO(Julian): A [ID *, asset] or even [ID.session_uid, asset] map would be preferable for
    * faster lookups. Not possible until each asset is only represented once in the storage. */
   StorageT local_id_assets_;
 
@@ -37,6 +37,7 @@ class AssetStorage {
   /** See #AssetLibrary::add_external_asset(). */
   AssetRepresentation &add_external_asset(AssetIdentifier &&identifier,
                                           StringRef name,
+                                          int id_type,
                                           std::unique_ptr<AssetMetaData> metadata,
                                           const AssetLibrary &owner_asset_library);
   /** See #AssetLibrary::add_external_asset(). */

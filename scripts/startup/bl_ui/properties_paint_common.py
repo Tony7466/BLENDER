@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from bpy.types import Menu
 
 
@@ -79,6 +82,8 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_vertex_paint
         elif mode == 'SCULPT_CURVES':
             return tool_settings.curves_sculpt
+        elif mode == 'PAINT_GREASE_PENCIL':
+            return tool_settings.gpencil_paint
         return None
 
     @staticmethod
@@ -357,7 +362,14 @@ class StrokePanel(BrushPanel):
             col.row().prop(brush, "jitter_unit", expand=True)
 
         col.separator()
-        col.prop(settings, "input_samples")
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "input_samples",
+            unified_name="use_unified_input_samples",
+            slider=True,
+        )
 
 
 class SmoothStrokePanel(BrushPanel):
@@ -632,6 +644,9 @@ def brush_settings(layout, context, brush, popover=False):
             row = layout.row()
             row.prop(brush, "tip_roundness")
 
+            row = layout.row()
+            row.prop(brush, "tip_scale_x")
+
         elif sculpt_tool == 'ELASTIC_DEFORM':
             layout.separator()
             layout.prop(brush, "elastic_deform_type")
@@ -860,6 +875,11 @@ def brush_shared_settings(layout, context, brush, popover=False):
         strength = True
         direction = brush.curves_sculpt_tool in {'GROW_SHRINK', 'SELECTION_PAINT'}
 
+    # Grease Pencil #
+    if mode == 'PAINT_GREASE_PENCIL':
+        size = True
+        strength = True
+
     ### Draw settings. ###
     ups = context.scene.tool_settings.unified_paint_settings
 
@@ -930,14 +950,12 @@ def brush_settings_advanced(layout, context, brush, popover=False):
     use_frontface = False
 
     if mode == 'SCULPT':
-        sculpt = context.tool_settings.sculpt
         capabilities = brush.sculpt_capabilities
         use_accumulate = capabilities.has_accumulate
         use_frontface = True
 
         col = layout.column(heading="Auto-Masking", align=True)
 
-        col = layout.column(align=True)
         col.prop(brush, "use_automasking_topology", text="Topology")
         col.prop(brush, "use_automasking_face_sets", text="Face Sets")
 
@@ -988,16 +1006,16 @@ def brush_settings_advanced(layout, context, brush, popover=False):
             col.prop(brush, "use_automasking_view_occlusion", text="Occlusion")
             subcol = col.column(align=True)
             subcol.active = not brush.use_automasking_view_occlusion
-            subcol.prop(sculpt, "automasking_view_normal_limit", text="Limit")
-            subcol.prop(sculpt, "automasking_view_normal_falloff", text="Falloff")
+            subcol.prop(brush, "automasking_view_normal_limit", text="Limit")
+            subcol.prop(brush, "automasking_view_normal_falloff", text="Falloff")
 
         col = layout.column()
         col.prop(brush, "use_automasking_start_normal", text="Area Normal")
 
         if brush.use_automasking_start_normal:
             col = layout.column(align=True)
-            col.prop(sculpt, "automasking_start_normal_limit", text="Limit")
-            col.prop(sculpt, "automasking_start_normal_falloff", text="Falloff")
+            col.prop(brush, "automasking_start_normal_limit", text="Limit")
+            col.prop(brush, "automasking_start_normal_falloff", text="Falloff")
 
         layout.separator()
 

@@ -1,15 +1,20 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
 
+#include "BLI_math_vector.hh"
+
 #include "BLI_kdtree.h"
 #include "BLI_length_parameterize.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_task.hh"
 
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
+
+#include "GEO_randomize.hh"
 
 #include "DNA_pointcloud_types.h"
 
@@ -356,7 +361,7 @@ static void interpolate_curve_shapes(bke::CurvesGeometry &child_curves,
         const float neighbor_weight = neighbor_weights[neighbor_i];
         const IndexRange guide_points = guide_points_by_curve[neighbor_index];
         const Span<float3> neighbor_positions = guide_positions.slice(guide_points);
-        const float3 &neighbor_root = neighbor_positions[0];
+        const float3 &neighbor_root = neighbor_positions.first();
         const float3 neighbor_up = guides_up[neighbor_index];
         BLI_assert(math::is_unit_scale(neighbor_up));
 
@@ -385,12 +390,27 @@ static void interpolate_curve_shapes(bke::CurvesGeometry &child_curves,
           /* This method is used when guide curves have different amounts of control points. In
            * this case, some additional interpolation is necessary compared to the method above. */
 
-          const Span<float> lengths = parameterized_guide_lengths.slice(
-              parameterized_guide_offsets[neighbor_index]);
+          const IndexRange guide_offsets = parameterized_guide_offsets[neighbor_index];
+
+          if (guide_offsets.is_empty()) {
+            /* Single point curve. */
+            float3 rotated_relative = neighbor_root;
+            if (!is_same_up_vector) {
+              rotated_relative = normal_rotation * rotated_relative;
+            }
+            const float3 global_pos = rotated_relative * neighbor_weight;
+            for (float3 &position : child_positions) {
+              position += global_pos;
+            }
+            continue;
+          }
+
+          const Span<float> lengths = parameterized_guide_lengths.slice(guide_offsets);
           const float neighbor_length = lengths.last();
 
           sample_lengths.reinitialize(points.size());
-          const float sample_length_factor = safe_divide(neighbor_length, points.size() - 1);
+          const float sample_length_factor = math::safe_divide(neighbor_length,
+                                                               float(points.size() - 1));
           for (const int i : sample_lengths.index_range()) {
             sample_lengths[i] = i * sample_length_factor;
           }
@@ -458,11 +478,11 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
       return true;
     }
 
-    if (meta_data.domain == ATTR_DOMAIN_CURVE) {
-      const GVArraySpan src_generic = *guide_curve_attributes.lookup(id, ATTR_DOMAIN_CURVE, type);
+    if (meta_data.domain == AttrDomain::Curve) {
+      const GVArraySpan src_generic = *guide_curve_attributes.lookup(id, AttrDomain::Curve, type);
 
       GSpanAttributeWriter dst_generic = children_attributes.lookup_or_add_for_write_only_span(
-          id, ATTR_DOMAIN_CURVE, type);
+          id, AttrDomain::Curve, type);
       if (!dst_generic) {
         return true;
       }
@@ -492,10 +512,10 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
       dst_generic.finish();
     }
     else {
-      BLI_assert(meta_data.domain == ATTR_DOMAIN_POINT);
-      const GVArraySpan src_generic = *guide_curve_attributes.lookup(id, ATTR_DOMAIN_POINT, type);
+      BLI_assert(meta_data.domain == AttrDomain::Point);
+      const GVArraySpan src_generic = *guide_curve_attributes.lookup(id, AttrDomain::Point, type);
       GSpanAttributeWriter dst_generic = children_attributes.lookup_or_add_for_write_only_span(
-          id, ATTR_DOMAIN_POINT, type);
+          id, AttrDomain::Point, type);
       if (!dst_generic) {
         return true;
       }
@@ -530,12 +550,22 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
                 }
               }
               else {
-                const Span<float> lengths = parameterized_guide_lengths.slice(
-                    parameterized_guide_offsets[neighbor_index]);
+                const IndexRange guide_offsets = parameterized_guide_offsets[neighbor_index];
+                if (guide_offsets.is_empty()) {
+                  /* Single point curve. */
+                  const T &curve_value = src[guide_points.first()];
+                  for (const int i : points) {
+                    mixer.mix_in(i, curve_value, neighbor_weight);
+                  }
+                  continue;
+                }
+
+                const Span<float> lengths = parameterized_guide_lengths.slice(guide_offsets);
                 const float neighbor_length = lengths.last();
 
                 sample_lengths.reinitialize(points.size());
-                const float sample_length_factor = safe_divide(neighbor_length, points.size() - 1);
+                const float sample_length_factor = math::safe_divide(neighbor_length,
+                                                                     float(points.size() - 1));
                 for (const int i : sample_lengths.index_range()) {
                   sample_lengths[i] = i * sample_length_factor;
                 }
@@ -585,11 +615,11 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     if (src.sharing_info && src.varray.is_span()) {
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
-      children_attributes.add(id, ATTR_DOMAIN_CURVE, meta_data.data_type, init);
+      children_attributes.add(id, AttrDomain::Curve, meta_data.data_type, init);
     }
     else {
       children_attributes.add(
-          id, ATTR_DOMAIN_CURVE, meta_data.data_type, bke::AttributeInitVArray(src.varray));
+          id, AttrDomain::Curve, meta_data.data_type, bke::AttributeInitVArray(src.varray));
     }
     return true;
   });
@@ -610,12 +640,12 @@ static void store_output_attributes(bke::CurvesGeometry &child_curves,
   if (weight_attribute_id) {
     weight_attribute =
         child_curves.attributes_for_write().lookup_or_add_for_write_only_span<float>(
-            *weight_attribute_id, ATTR_DOMAIN_CURVE);
+            *weight_attribute_id, AttrDomain::Curve);
   }
   SpanAttributeWriter<int> index_attribute;
   if (index_attribute_id) {
     index_attribute = child_curves.attributes_for_write().lookup_or_add_for_write_only_span<int>(
-        *index_attribute_id, ATTR_DOMAIN_CURVE);
+        *index_attribute_id, AttrDomain::Curve);
   }
   threading::parallel_for(child_curves.curves_range(), 512, [&](const IndexRange range) {
     for (const int child_curve_i : range) {
@@ -678,7 +708,7 @@ static GeometrySet generate_interpolated_curves(
   });
 
   const VArraySpan point_positions = *point_attributes.lookup<float3>("position");
-  const int num_child_curves = point_attributes.domain_size(ATTR_DOMAIN_POINT);
+  const int num_child_curves = point_attributes.domain_size(AttrDomain::Point);
 
   /* The set of guides per child are stored in a flattened array to allow fast access, reduce
    * memory consumption and reduce number of allocations. */
@@ -756,7 +786,9 @@ static GeometrySet generate_interpolated_curves(
     child_curves_id->totcol = guide_curves_id.totcol;
   }
 
-  return GeometrySet::create_with_curves(child_curves_id);
+  geometry::debug_randomize_curve_order(&child_curves);
+
+  return GeometrySet::from_curves(child_curves_id);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -764,14 +796,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet guide_curves_geometry = params.extract_input<GeometrySet>("Guide Curves");
   const GeometrySet points_geometry = params.extract_input<GeometrySet>("Points");
 
-  if (!guide_curves_geometry.has_curves()) {
+  if (!guide_curves_geometry.has_curves() ||
+      guide_curves_geometry.get_curves()->geometry.curve_num == 0)
+  {
     params.set_default_remaining_outputs();
     return;
   }
-  const GeometryComponent *points_component =
-      points_geometry.get_component_for_read<PointCloudComponent>();
+  const GeometryComponent *points_component = points_geometry.get_component<PointCloudComponent>();
   if (points_component == nullptr) {
-    points_component = points_geometry.get_component_for_read<MeshComponent>();
+    points_component = points_geometry.get_component<MeshComponent>();
   }
   if (points_component == nullptr || points_geometry.is_empty()) {
     params.set_default_remaining_outputs();
@@ -794,9 +827,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<int> guide_group_field = params.extract_input<Field<int>>("Guide Group ID");
   Field<int> point_group_field = params.extract_input<Field<int>>("Point Group ID");
 
-  const Curves &guide_curves_id = *guide_curves_geometry.get_curves_for_read();
+  const Curves &guide_curves_id = *guide_curves_geometry.get_curves();
 
-  const bke::CurvesFieldContext curves_context{guide_curves_id.geometry.wrap(), ATTR_DOMAIN_CURVE};
+  const bke::CurvesFieldContext curves_context{guide_curves_id.geometry.wrap(), AttrDomain::Curve};
   fn::FieldEvaluator curves_evaluator{curves_context, guide_curves_id.geometry.curve_num};
   curves_evaluator.add(guides_up_field);
   curves_evaluator.add(guide_group_field);
@@ -804,9 +837,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   const VArray<float3> guides_up = curves_evaluator.get_evaluated<float3>(0);
   const VArray<int> guide_group_ids = curves_evaluator.get_evaluated<int>(1);
 
-  const bke::GeometryFieldContext points_context(*points_component, ATTR_DOMAIN_POINT);
+  const bke::GeometryFieldContext points_context(*points_component, AttrDomain::Point);
   fn::FieldEvaluator points_evaluator{points_context,
-                                      points_component->attribute_domain_size(ATTR_DOMAIN_POINT)};
+                                      points_component->attribute_domain_size(AttrDomain::Point)};
   points_evaluator.add(points_up_field);
   points_evaluator.add(point_group_field);
   points_evaluator.evaluate();
@@ -832,9 +865,9 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                         index_attribute_id,
                                                         weight_attribute_id);
 
-  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(guide_curves_geometry);
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(guide_curves_geometry);
   if (const auto *curve_edit_data =
-          guide_curves_geometry.get_component_for_read<GeometryComponentEditData>())
+          guide_curves_geometry.get_component<GeometryComponentEditData>())
   {
     new_curves.add(*curve_edit_data);
   }
@@ -842,17 +875,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curves", std::move(new_curves));
 }
 
-}  // namespace blender::nodes::node_geo_interpolate_curves_cc
-
-void register_node_type_geo_interpolate_curves()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_interpolate_curves_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_INTERPOLATE_CURVES, "Interpolate Curves", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_interpolate_curves_cc

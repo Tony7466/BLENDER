@@ -6,18 +6,17 @@
  * \ingroup imbuf
  */
 
-#include <math.h>
+#include <cmath>
 
 #include "BLI_math_color.h"
-#include "BLI_math_interp.h"
 #include "BLI_utildefines.h"
 #include "MEM_guardedalloc.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "imbuf.h"
-
-#include "IMB_filter.h"
+#include "IMB_filter.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_interp.hh"
+#include "imbuf.hh"
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
@@ -1565,70 +1564,6 @@ static ImBuf *scaleupy(ImBuf *ibuf, int newy)
   return ibuf;
 }
 
-static void scalefast_Z_ImBuf(ImBuf *ibuf, int newx, int newy)
-{
-  int *zbuf, *newzbuf, *_newzbuf = nullptr;
-  float *zbuf_float, *newzbuf_float, *_newzbuf_float = nullptr;
-  int x, y;
-  int ofsx, ofsy, stepx, stepy;
-
-  if (ibuf->z_buffer.data) {
-    _newzbuf = static_cast<int *>(MEM_mallocN(newx * newy * sizeof(int), __func__));
-    if (_newzbuf == nullptr) {
-      IMB_freezbufImBuf(ibuf);
-    }
-  }
-
-  if (ibuf->float_z_buffer.data) {
-    _newzbuf_float = static_cast<float *>(
-        MEM_mallocN(size_t(newx) * newy * sizeof(float), __func__));
-    if (_newzbuf_float == nullptr) {
-      IMB_freezbuffloatImBuf(ibuf);
-    }
-  }
-
-  if (!_newzbuf && !_newzbuf_float) {
-    return;
-  }
-
-  stepx = round(65536.0 * (ibuf->x - 1.0) / (newx - 1.0));
-  stepy = round(65536.0 * (ibuf->y - 1.0) / (newy - 1.0));
-  ofsy = 32768;
-
-  newzbuf = _newzbuf;
-  newzbuf_float = _newzbuf_float;
-
-  for (y = newy; y > 0; y--, ofsy += stepy) {
-    if (newzbuf) {
-      zbuf = ibuf->z_buffer.data;
-      zbuf += (ofsy >> 16) * ibuf->x;
-      ofsx = 32768;
-      for (x = newx; x > 0; x--, ofsx += stepx) {
-        *newzbuf++ = zbuf[ofsx >> 16];
-      }
-    }
-
-    if (newzbuf_float) {
-      zbuf_float = ibuf->float_z_buffer.data;
-      zbuf_float += (ofsy >> 16) * ibuf->x;
-      ofsx = 32768;
-      for (x = newx; x > 0; x--, ofsx += stepx) {
-        *newzbuf_float++ = zbuf_float[ofsx >> 16];
-      }
-    }
-  }
-
-  if (_newzbuf) {
-    IMB_freezbufImBuf(ibuf);
-    IMB_assign_z_buffer(ibuf, _newzbuf, IB_TAKE_OWNERSHIP);
-  }
-
-  if (_newzbuf_float) {
-    IMB_freezbuffloatImBuf(ibuf);
-    IMB_assign_float_z_buffer(ibuf, _newzbuf_float, IB_TAKE_OWNERSHIP);
-  }
-}
-
 bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
 {
   BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
@@ -1644,13 +1579,9 @@ bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
     return false;
   }
 
-  /* Scale-up / scale-down functions below change ibuf->x and ibuf->y
-   * so we first scale the Z-buffer (if any). */
-  scalefast_Z_ImBuf(ibuf, newx, newy);
-
   /* try to scale common cases in a fast way */
   /* disabled, quality loss is unacceptable, see report #18609  (ton) */
-  if (0 && q_scale_linear_interpolation(ibuf, newx, newy)) {
+  if (false && q_scale_linear_interpolation(ibuf, newx, newy)) {
     return true;
   }
 
@@ -1764,8 +1695,6 @@ bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
     IMB_assign_float_buffer(ibuf, reinterpret_cast<float *>(_newrectf), IB_TAKE_OWNERSHIP);
   }
 
-  scalefast_Z_ImBuf(ibuf, newx, newy);
-
   ibuf->x = newx;
   ibuf->y = newy;
   return true;
@@ -1773,7 +1702,7 @@ bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
 
 /* ******** threaded scaling ******** */
 
-typedef struct ScaleTreadInitData {
+struct ScaleTreadInitData {
   ImBuf *ibuf;
 
   uint newx;
@@ -1781,9 +1710,9 @@ typedef struct ScaleTreadInitData {
 
   uchar *byte_buffer;
   float *float_buffer;
-} ScaleTreadInitData;
+};
 
-typedef struct ScaleThreadData {
+struct ScaleThreadData {
   ImBuf *ibuf;
 
   uint newx;
@@ -1794,7 +1723,7 @@ typedef struct ScaleThreadData {
 
   uchar *byte_buffer;
   float *float_buffer;
-} ScaleThreadData;
+};
 
 static void scale_thread_init(void *data_v, int start_line, int tot_line, void *init_data_v)
 {
@@ -1815,6 +1744,7 @@ static void scale_thread_init(void *data_v, int start_line, int tot_line, void *
 
 static void *do_scale_thread(void *data_v)
 {
+  using namespace blender::imbuf;
   ScaleThreadData *data = (ScaleThreadData *)data_v;
   ImBuf *ibuf = data->ibuf;
   int i;
@@ -1831,13 +1761,12 @@ static void *do_scale_thread(void *data_v)
       int offset = y * data->newx + x;
 
       if (data->byte_buffer) {
-        uchar *pixel = data->byte_buffer + 4 * offset;
-        BLI_bilinear_interpolation_char(ibuf->byte_buffer.data, pixel, ibuf->x, ibuf->y, 4, u, v);
+        interpolate_bilinear_border_byte(ibuf, data->byte_buffer + 4 * offset, u, v);
       }
 
       if (data->float_buffer) {
         float *pixel = data->float_buffer + ibuf->channels * offset;
-        BLI_bilinear_interpolation_fl(
+        blender::math::interpolate_bilinear_border_fl(
             ibuf->float_buffer.data, pixel, ibuf->x, ibuf->y, ibuf->channels, u, v);
       }
     }

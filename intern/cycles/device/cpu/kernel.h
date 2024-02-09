@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -59,7 +60,7 @@ class CPUKernels {
                                  int x,
                                  int y,
                                  float threshold,
-                                 bool reset,
+                                 int reset,
                                  int offset,
                                  int stride)>;
 

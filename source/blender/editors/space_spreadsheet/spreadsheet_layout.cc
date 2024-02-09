@@ -1,11 +1,16 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <iomanip>
 #include <sstream>
 
+#include <fmt/format.h>
+
+#include "BLI_math_color.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
@@ -17,12 +22,12 @@
 #include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 namespace blender::ed::spreadsheet {
 
@@ -46,7 +51,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   UI_BTYPE_LABEL,
                                   0,
                                   ICON_NONE,
-                                  name.c_str(),
+                                  name,
                                   params.xmin,
                                   params.ymin,
                                   params.width,
@@ -70,7 +75,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   UI_BTYPE_LABEL,
                                   0,
                                   ICON_NONE,
-                                  index_str.c_str(),
+                                  index_str,
                                   params.xmin,
                                   params.ymin,
                                   params.width,
@@ -103,7 +108,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -125,7 +130,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -153,7 +158,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -203,6 +208,10 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
     else if (data.type().is<ColorGeometry4b>()) {
       const ColorGeometry4b value = data.get<ColorGeometry4b>(real_index);
       this->draw_byte_color(params, value);
+    }
+    else if (data.type().is<math::Quaternion>()) {
+      const float4 value = float4(data.get<math::Quaternion>(real_index));
+      this->draw_float_vector(params, Span(&value.x, 4));
     }
     else if (data.type().is<bke::InstanceReference>()) {
       const bke::InstanceReference value = data.get<bke::InstanceReference>(real_index);
@@ -273,7 +282,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        UI_BTYPE_LABEL,
                        0,
                        ICON_NONE,
-                       data.get<std::string>(real_index).c_str(),
+                       data.get<std::string>(real_index),
                        params.xmin,
                        params.ymin,
                        params.width,
@@ -300,7 +309,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
@@ -330,7 +339,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
@@ -361,7 +370,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
@@ -382,11 +391,11 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
           [](bContext * /*C*/, void *argN, const char * /*tip*/) {
             const uint32_t uint_color = POINTER_AS_UINT(argN);
             ColorGeometry4b color = *(ColorGeometry4b *)&uint_color;
-            return BLI_sprintfN(TIP_("Byte Color (sRGB encoded):\n%3d  %3d  %3d  %3d"),
-                                color.r,
-                                color.g,
-                                color.b,
-                                color.a);
+            return fmt::format(TIP_("Byte Color (sRGB encoded):\n{}  {}  {}  {}"),
+                               color.r,
+                               color.g,
+                               color.b,
+                               color.a);
           },
           POINTER_FROM_UINT(*(uint32_t *)&color),
           nullptr);

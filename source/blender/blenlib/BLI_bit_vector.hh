@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -36,8 +36,6 @@
  * - `blender::BitVector` offers a more C++ friendly interface.
  * - `BLI_bitmap` should only be used in C code that can not use `blender::BitVector`.
  */
-
-#include <cstring>
 
 #include "BLI_allocator.hh"
 #include "BLI_bit_span.hh"
@@ -95,10 +93,10 @@ class BitVector {
 
   BitVector(NoExceptConstructor, Allocator allocator = {}) noexcept : BitVector(allocator) {}
 
-  BitVector(const BitVector &other) : BitVector(NoExceptConstructor(), other.allocator_)
+  BitVector(const BoundedBitSpan span) : BitVector(NoExceptConstructor())
   {
-    const int64_t ints_to_copy = other.used_ints_amount();
-    if (other.size_in_bits_ <= BitsInInlineBuffer) {
+    const int64_t ints_to_copy = required_ints_for_bits(span.size());
+    if (span.size() <= BitsInInlineBuffer) {
       /* The data is copied into the owned inline buffer. */
       data_ = inline_buffer_;
       capacity_in_bits_ = BitsInInlineBuffer;
@@ -109,15 +107,26 @@ class BitVector {
           allocator_.allocate(ints_to_copy * sizeof(BitInt), AllocationAlignment, __func__));
       capacity_in_bits_ = ints_to_copy * BitsPerInt;
     }
-    size_in_bits_ = other.size_in_bits_;
-    uninitialized_copy_n(other.data_, ints_to_copy, data_);
+    size_in_bits_ = span.size();
+    uninitialized_copy_n(span.data(), ints_to_copy, data_);
+  }
+
+  BitVector(const BitVector &other) : BitVector(BoundedBitSpan(other))
+  {
+    allocator_ = other.allocator_;
   }
 
   BitVector(BitVector &&other) noexcept : BitVector(NoExceptConstructor(), other.allocator_)
   {
     if (other.is_inline()) {
       /* Copy the data into the inline buffer. */
-      const int64_t ints_to_copy = other.used_ints_amount();
+      /* For small inline buffers, always copy all the bits because checking how many bits to copy
+       * would add additional overhead. */
+      int64_t ints_to_copy = IntsInInlineBuffer;
+      if constexpr (IntsInInlineBuffer > 8) {
+        /* Avoid copying too much unnecessary data in case the inline buffer is large. */
+        ints_to_copy = other.used_ints_amount();
+      }
       data_ = inline_buffer_;
       uninitialized_copy_n(other.data_, ints_to_copy, data_);
     }
@@ -208,7 +217,7 @@ class BitVector {
   /**
    * Get a read-only reference to a specific bit.
    */
-  BitRef operator[](const int64_t index) const
+  [[nodiscard]] BitRef operator[](const int64_t index) const
   {
     BLI_assert(index >= 0);
     BLI_assert(index < size_in_bits_);
@@ -218,7 +227,7 @@ class BitVector {
   /**
    * Get a mutable reference to a specific bit.
    */
-  MutableBitRef operator[](const int64_t index)
+  [[nodiscard]] MutableBitRef operator[](const int64_t index)
   {
     BLI_assert(index >= 0);
     BLI_assert(index < size_in_bits_);

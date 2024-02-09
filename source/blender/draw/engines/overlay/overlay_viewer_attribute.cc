@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
@@ -22,7 +22,7 @@
 #include "BKE_geometry_set.hh"
 
 #include "draw_cache_extract.hh"
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 #include "overlay_private.hh"
 
 void OVERLAY_viewer_attribute_cache_init(OVERLAY_Data *vedata)
@@ -56,10 +56,10 @@ static void populate_cache_for_instance(Object &object,
 {
   using namespace blender;
   using namespace blender::bke;
+  using namespace blender::draw;
 
   const GeometrySet &base_geometry = *dupli_object.preview_base_geometry;
-  const InstancesComponent &instances =
-      *base_geometry.get_component_for_read<InstancesComponent>();
+  const InstancesComponent &instances = *base_geometry.get_component<InstancesComponent>();
   const AttributeAccessor instance_attributes = *instances.attributes();
   const VArray attribute = *instance_attributes.lookup<ColorGeometry4f>(".viewer");
   if (!attribute) {
@@ -109,6 +109,7 @@ static void populate_cache_for_geometry(Object &object,
 {
   using namespace blender;
   using namespace blender::bke;
+  using namespace blender::draw;
 
   switch (object.type) {
     case OB_MESH: {
@@ -168,8 +169,8 @@ void OVERLAY_viewer_attribute_cache_populate(OVERLAY_Data *vedata, Object *objec
   DupliObject *dupli_object = DRW_object_get_dupli(object);
 
   if (dupli_object->preview_instance_index >= 0) {
-    const InstancesComponent &instances =
-        *dupli_object->preview_base_geometry->get_component_for_read<InstancesComponent>();
+    const auto &instances =
+        *dupli_object->preview_base_geometry->get_component<blender::bke::InstancesComponent>();
     if (instances.attributes()->contains(".viewer")) {
       populate_cache_for_instance(*object, *pd, *dupli_object, opacity);
       return;

@@ -15,11 +15,11 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_image_format.h"
 
 /* Init/Copy/Free */
@@ -196,16 +196,6 @@ bool BKE_imtype_is_movie(const char imtype)
   return false;
 }
 
-bool BKE_imtype_supports_zbuf(const char imtype)
-{
-  switch (imtype) {
-    case R_IMF_IMTYPE_IRIZ:
-    case R_IMF_IMTYPE_OPENEXR: /* but not R_IMF_IMTYPE_MULTILAYER */
-      return true;
-  }
-  return false;
-}
-
 bool BKE_imtype_supports_compress(const char imtype)
 {
   switch (imtype) {
@@ -316,14 +306,8 @@ char BKE_imtype_from_arg(const char *imtype_arg)
   if (STREQ(imtype_arg, "IRIS")) {
     return R_IMF_IMTYPE_IRIS;
   }
-  if (STREQ(imtype_arg, "DDS")) {
-    return R_IMF_IMTYPE_DDS;
-  }
   if (STREQ(imtype_arg, "JPEG")) {
     return R_IMF_IMTYPE_JPEG90;
-  }
-  if (STREQ(imtype_arg, "IRIZ")) {
-    return R_IMF_IMTYPE_IRIZ;
   }
   if (STREQ(imtype_arg, "RAWTGA")) {
     return R_IMF_IMTYPE_RAWTGA;
@@ -360,9 +344,11 @@ char BKE_imtype_from_arg(const char *imtype_arg)
     return R_IMF_IMTYPE_MULTILAYER;
   }
 #endif
+#ifdef WITH_FFMPEG
   if (STREQ(imtype_arg, "FFMPEG")) {
     return R_IMF_IMTYPE_FFMPEG;
   }
+#endif
 #ifdef WITH_CINEON
   if (STREQ(imtype_arg, "CINEON")) {
     return R_IMF_IMTYPE_CINEON;
@@ -642,11 +628,6 @@ void BKE_image_format_to_imbuf(ImBuf *ibuf, const ImageFormatData *imf)
       ibuf->foptions.flag |= OPENEXR_HALF;
     }
     ibuf->foptions.flag |= (imf->exr_codec & OPENEXR_COMPRESS);
-
-    if (!(imf->flag & R_IMF_FLAG_ZBUF)) {
-      /* Signal for exr saving. */
-      IMB_freezbuffloatImBuf(ibuf);
-    }
   }
 #endif
 #ifdef WITH_CINEON
@@ -799,9 +780,6 @@ void BKE_image_format_from_imbuf(ImageFormatData *im_format, const ImBuf *imbuf)
     }
     if (custom_flags & OPENEXR_COMPRESS) {
       im_format->exr_codec = R_IMF_EXR_CODEC_ZIP; /* Can't determine compression */
-    }
-    if (imbuf->float_z_buffer.data) {
-      im_format->flag |= R_IMF_FLAG_ZBUF;
     }
   }
 #endif

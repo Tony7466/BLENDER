@@ -13,14 +13,14 @@
 #include "dpxlib.h"
 #include "logmemfile.h"
 
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_fileops.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
 #include "MEM_guardedalloc.h"
 

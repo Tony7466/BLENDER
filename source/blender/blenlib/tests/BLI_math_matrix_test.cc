@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -166,7 +166,9 @@ TEST(math_matrix, MatrixPseudoInverse)
                                        {0.389669f, 0.647565f, 0.168130f, 0.200000f},
                                        {-0.536231f, 0.330541f, 0.443163f, 0.300000f},
                                        {0.000000f, 0.000000f, 0.000000f, 1.000000f}));
-  float4x4 inv = pseudo_invert(mat);
+  /* MSVC 2019 has issues deducing the right template parameters, use an explicit template
+   * instantiating to sidestep the issue. */
+  float4x4 inv = pseudo_invert<float, 4>(mat);
   pseudoinverse_m4_m4(expect.ptr(), mat.ptr(), 1e-8f);
   EXPECT_M4_NEAR(inv, expect, 1e-5f);
 
@@ -178,7 +180,9 @@ TEST(math_matrix, MatrixPseudoInverse)
                                         {-0.51311f, 1.02638f, 0.496437f, -0.302896f},
                                         {0.952803f, 0.221885f, 0.527413f, -0.297881f},
                                         {-0.0275438f, -0.0477073f, 0.0656508f, 0.9926f}));
-  float4x4 inv2 = pseudo_invert(mat2);
+  /* MSVC 2019 has issues deducing the right template parameters, use an explicit template
+   * instantiating to sidestep the issue. */
+  float4x4 inv2 = pseudo_invert<float, 4>(mat2);
   EXPECT_M4_NEAR(inv2, expect2, 1e-5f);
 }
 
@@ -274,6 +278,15 @@ TEST(math_matrix, MatrixInit)
                     {-1.10289, 2.70714, -0.674535, 0},
                     {1, 2, 3, 1});
   EXPECT_TRUE(is_equal(m, expect, 0.00001f));
+
+  float3 up = normalize(float3(1, 2, 3));
+  m = from_up_axis<float4x4>(up);
+  /* Output is not expected to be stable. Just test if they satisfy the expectations. */
+  EXPECT_EQ(m.z_axis(), up);
+  EXPECT_LE(abs(dot(m.z_axis(), m.x_axis())), 0.000001f);
+  EXPECT_LE(abs(dot(m.y_axis(), m.x_axis())), 0.000001f);
+  EXPECT_LE(abs(dot(m.z_axis(), m.y_axis())), 0.000001f);
+  EXPECT_NEAR(1.0f, determinant(m), 1e-6);
 }
 
 TEST(math_matrix, MatrixModify)
@@ -328,6 +341,36 @@ TEST(math_matrix, MatrixCompareTest)
   EXPECT_FALSE(is_negative(m6));
 }
 
+TEST(math_matrix, MatrixMultiply)
+{
+
+  {
+    const float4x4 matrix_a = {
+        {1.0, 2.0, 3.0, 4.0},
+        {5.0, 6.0, 7.0, 8.0},
+        {9.0, 10.0, 11.0, 12.0},
+        {13.0, 14.0, 15.0, 16.0},
+    };
+    const float4x4 matrix_b = {
+        {0.1f, 0.2f, 0.3f, 0.4f},
+        {0.5f, 0.6f, 0.7f, 0.8f},
+        {0.9f, 1.0f, 1.1f, 1.2f},
+        {1.3f, 1.4f, 1.5f, 1.6f},
+    };
+
+    const float4x4 expected = {
+        {9.0f, 10.0f, 11.0f, 12.0f},
+        {20.2f, 22.8f, 25.4f, 28.0f},
+        {31.4f, 35.6f, 39.8f, 44.0f},
+        {42.6f, 48.4f, 54.2f, 60.0f},
+    };
+
+    const float4x4 result = matrix_a * matrix_b;
+
+    EXPECT_M4_NEAR(result, expected, 1e-5f);
+  }
+}
+
 TEST(math_matrix, MatrixToNearestEuler)
 {
   EulerXYZ eul1 = EulerXYZ(225.08542, -1.12485, -121.23738);
@@ -379,6 +422,23 @@ TEST(math_matrix, MatrixMethods)
   EXPECT_V3_NEAR(loc, expect_location, 0.00001f);
   EXPECT_V4_NEAR(float4(qt), float4(expect_qt), 0.0002f);
   EXPECT_V3_NEAR(float3(eul), float3(expect_eul), 0.0002f);
+}
+
+TEST(math_matrix, Transformation2DMatrixDecomposition)
+{
+  const float2 translation = float2(1.0f, 2.0f);
+  const AngleRadian rotation = AngleRadian(0.5f);
+  const float2 scale = float2(5.0f, 3.0f);
+
+  const float3x3 transformation = from_loc_rot_scale<float3x3>(translation, rotation, scale);
+
+  AngleRadian decomposed_rotation;
+  float2 decomposed_translation, decomposed_scale;
+  to_loc_rot_scale(transformation, decomposed_translation, decomposed_rotation, decomposed_scale);
+
+  EXPECT_V2_NEAR(decomposed_translation, translation, 0.00001f);
+  EXPECT_V2_NEAR(decomposed_scale, scale, 0.00001f);
+  EXPECT_NEAR(decomposed_rotation.radian(), rotation.radian(), 0.00001f);
 }
 
 TEST(math_matrix, MatrixToQuaternionLegacy)

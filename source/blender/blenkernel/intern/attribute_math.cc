@@ -1,12 +1,40 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
+#include "BLI_math_quaternion.hh"
 
 #include "BKE_attribute_math.hh"
 
 namespace blender::bke::attribute_math {
+
+template<>
+math::Quaternion mix2(const float factor, const math::Quaternion &a, const math::Quaternion &b)
+{
+  return math::interpolate(a, b, factor);
+}
+
+template<>
+math::Quaternion mix3(const float3 &weights,
+                      const math::Quaternion &v0,
+                      const math::Quaternion &v1,
+                      const math::Quaternion &v2)
+{
+  const float3 expmap_mixed = mix3(weights, v0.expmap(), v1.expmap(), v2.expmap());
+  return math::Quaternion::expmap(expmap_mixed);
+}
+
+template<>
+math::Quaternion mix4(const float4 &weights,
+                      const math::Quaternion &v0,
+                      const math::Quaternion &v1,
+                      const math::Quaternion &v2,
+                      const math::Quaternion &v3)
+{
+  const float3 expmap_mixed = mix4(weights, v0.expmap(), v1.expmap(), v2.expmap(), v3.expmap());
+  return math::Quaternion::expmap(expmap_mixed);
+}
 
 ColorGeometry4fMixer::ColorGeometry4fMixer(MutableSpan<ColorGeometry4f> buffer,
                                            ColorGeometry4f default_color)
@@ -145,6 +173,30 @@ void gather(const GVArray &src, const Span<int> map, GMutableSpan dst)
   attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
     using T = decltype(dummy);
     array_utils::gather(src.typed<T>(), map, dst.typed<T>());
+  });
+}
+
+void gather_group_to_group(const OffsetIndices<int> src_offsets,
+                           const OffsetIndices<int> dst_offsets,
+                           const IndexMask &selection,
+                           const GSpan src,
+                           GMutableSpan dst)
+{
+  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    array_utils::gather_group_to_group(
+        src_offsets, dst_offsets, selection, src.typed<T>(), dst.typed<T>());
+  });
+}
+
+void gather_to_groups(const OffsetIndices<int> dst_offsets,
+                      const IndexMask &src_selection,
+                      const GSpan src,
+                      GMutableSpan dst)
+{
+  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    array_utils::gather_to_groups(dst_offsets, src_selection, src.typed<T>(), dst.typed<T>());
   });
 }
 

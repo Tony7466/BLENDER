@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/light.h"
 
@@ -32,8 +33,9 @@ void BlenderSync::sync_light(BL::Object &b_parent,
   if (!light_map.add_or_update(&light, b_ob_info.real_object, b_parent, key) && !tfm_updated) {
     Shader *shader;
     if (!shader_map.add_or_update(&shader, b_light)) {
-      if (light->get_is_portal())
+      if (light->get_is_portal()) {
         *use_portal = true;
+      }
       return;
     }
   }
@@ -46,16 +48,16 @@ void BlenderSync::sync_light(BL::Object &b_parent,
       BL::PointLight b_point_light(b_light);
       light->set_size(b_point_light.shadow_soft_size());
       light->set_light_type(LIGHT_POINT);
+      light->set_is_sphere(!b_point_light.use_soft_falloff());
       break;
     }
     case BL::Light::type_SPOT: {
       BL::SpotLight b_spot_light(b_light);
       light->set_size(b_spot_light.shadow_soft_size());
-      light->set_axisu(transform_get_column(&tfm, 0));
-      light->set_axisv(transform_get_column(&tfm, 1));
       light->set_light_type(LIGHT_SPOT);
       light->set_spot_angle(b_spot_light.spot_size());
       light->set_spot_smooth(b_spot_light.spot_blend());
+      light->set_is_sphere(!b_spot_light.use_soft_falloff());
       break;
     }
     /* Hemi were removed from 2.8 */
@@ -73,8 +75,6 @@ void BlenderSync::sync_light(BL::Object &b_parent,
     case BL::Light::type_AREA: {
       BL::AreaLight b_area_light(b_light);
       light->set_size(1.0f);
-      light->set_axisu(transform_get_column(&tfm, 0));
-      light->set_axisv(transform_get_column(&tfm, 1));
       light->set_sizeu(b_area_light.size());
       light->set_spread(b_area_light.spread());
       switch (b_area_light.shape()) {
@@ -105,8 +105,6 @@ void BlenderSync::sync_light(BL::Object &b_parent,
   light->set_strength(strength);
 
   /* location and (inverted!) direction */
-  light->set_co(transform_get_column(&tfm, 3));
-  light->set_dir(-transform_get_column(&tfm, 2));
   light->set_tfm(tfm);
 
   /* shader */
@@ -131,13 +129,16 @@ void BlenderSync::sync_light(BL::Object &b_parent,
     light->set_random_id(hash_uint2(hash_string(b_ob_info.real_object.name().c_str()), 0));
   }
 
-  if (light->get_light_type() == LIGHT_AREA)
+  if (light->get_light_type() == LIGHT_AREA) {
     light->set_is_portal(get_boolean(clight, "is_portal"));
-  else
+  }
+  else {
     light->set_is_portal(false);
+  }
 
-  if (light->get_is_portal())
+  if (light->get_is_portal()) {
     *use_portal = true;
+  }
 
   /* visibility */
   uint visibility = object_ray_visibility(b_ob_info.real_object);
@@ -149,7 +150,11 @@ void BlenderSync::sync_light(BL::Object &b_parent,
   light->set_is_shadow_catcher(b_ob_info.real_object.is_shadow_catcher());
 
   /* Light group and linking. */
-  light->set_lightgroup(ustring(b_ob_info.real_object.lightgroup()));
+  string lightgroup = b_ob_info.real_object.lightgroup();
+  if (lightgroup.empty()) {
+    lightgroup = b_parent.lightgroup();
+  }
+  light->set_lightgroup(ustring(lightgroup));
   light->set_light_set_membership(
       BlenderLightLink::get_light_set_membership(PointerRNA_NULL, b_ob_info.real_object));
   light->set_shadow_set_membership(
@@ -161,7 +166,7 @@ void BlenderSync::sync_light(BL::Object &b_parent,
 
 void BlenderSync::sync_background_light(BL::SpaceView3D &b_v3d, bool use_portal)
 {
-  BL::World b_world = b_scene.world();
+  BL::World b_world = view_layer.world_override ? view_layer.world_override : b_scene.world();
 
   if (b_world) {
     PointerRNA cworld = RNA_pointer_get(&b_world.ptr, "cycles");

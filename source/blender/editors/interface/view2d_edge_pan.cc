@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,25 +6,23 @@
  * \ingroup spnode
  */
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
-#include "BLI_math.h"
 #include "BLI_rect.h"
+#include "BLI_time.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "PIL_time.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
-
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "view2d_intern.hh"
 
@@ -101,7 +99,7 @@ void UI_view2d_edge_pan_reset(View2DEdgePanData *vpd)
 {
   vpd->edge_pan_start_time_x = 0.0;
   vpd->edge_pan_start_time_y = 0.0;
-  vpd->edge_pan_last_time = PIL_check_seconds_timer();
+  vpd->edge_pan_last_time = BLI_check_seconds_timer();
   vpd->initial_rect = vpd->region->v2d.cur;
 }
 
@@ -174,7 +172,7 @@ static float edge_pan_speed(View2DEdgePanData *vpd,
   /* Zoom factor increases speed when zooming in and decreases speed when zooming out. */
   const float zoomx = float(BLI_rcti_size_x(&region->winrct) + 1) /
                       BLI_rctf_size_x(&region->v2d.cur);
-  const float zoom_factor = 1.0f + CLAMPIS(vpd->zoom_influence, 0.0f, 1.0f) * (zoomx - 1.0f);
+  const float zoom_factor = 1.0f + std::clamp(vpd->zoom_influence, 0.0f, 1.0f) * (zoomx - 1.0f);
 
   return distance_factor * delay_factor * zoom_factor * vpd->max_speed * U.widget_unit *
          float(UI_SCALE_FAC);
@@ -253,7 +251,7 @@ void UI_view2d_edge_pan_apply(bContext *C, View2DEdgePanData *vpd, const int xy[
     }
   }
 
-  const double current_time = PIL_check_seconds_timer();
+  const double current_time = BLI_check_seconds_timer();
   edge_pan_manage_delay_timers(vpd, pan_dir_x, pan_dir_y, current_time);
 
   /* Calculate the delta since the last time the operator was called. */

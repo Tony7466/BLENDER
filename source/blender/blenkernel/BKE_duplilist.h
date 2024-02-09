@@ -8,6 +8,15 @@
  */
 
 #ifdef __cplusplus
+namespace blender::bke {
+struct GeometrySet;
+}
+using GeometrySetHandle = blender::bke::GeometrySet;
+#else
+typedef struct GeometrySetHandle GeometrySetHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -19,7 +28,6 @@ struct ParticleSystem;
 struct Scene;
 struct ViewLayer;
 struct ViewerPath;
-struct GeometrySet;
 
 /* ---------------------------------------------------- */
 /* Dupli-Geometry */
@@ -51,7 +59,7 @@ typedef struct DupliObject {
   short type; /* from Object.transflag */
   char no_draw;
   /* If this dupli object is belongs to a preview, this is non-null. */
-  const struct GeometrySet *preview_base_geometry;
+  const GeometrySetHandle *preview_base_geometry;
   /* Index of the top-level instance this dupli is part of or -1 when unused. */
   int preview_instance_index;
 
@@ -71,7 +79,7 @@ typedef struct DupliObject {
    * size between 1 and MAX_DUPLI_RECUR can be used without issues.
    */
   int instance_idx[4];
-  const struct GeometrySet *instance_data[4];
+  const GeometrySetHandle *instance_data[4];
 
   /* Random ID for shading */
   unsigned int random_id;
@@ -81,9 +89,9 @@ typedef struct DupliObject {
  * Look up the RGBA value of a uniform shader attribute.
  * \return true if the attribute was found; if not, r_value is also set to zero.
  */
-bool BKE_object_dupli_find_rgba_attribute(struct Object *ob,
-                                          struct DupliObject *dupli,
-                                          struct Object *dupli_parent,
+bool BKE_object_dupli_find_rgba_attribute(const struct Object *ob,
+                                          const struct DupliObject *dupli,
+                                          const struct Object *dupli_parent,
                                           const char *name,
                                           float r_value[4]);
 
@@ -91,8 +99,8 @@ bool BKE_object_dupli_find_rgba_attribute(struct Object *ob,
  * Look up the RGBA value of a view layer/scene/world shader attribute.
  * \return true if the attribute was found; if not, r_value is also set to zero.
  */
-bool BKE_view_layer_find_rgba_attribute(struct Scene *scene,
-                                        struct ViewLayer *layer,
+bool BKE_view_layer_find_rgba_attribute(const struct Scene *scene,
+                                        const struct ViewLayer *layer,
                                         const char *name,
                                         float r_value[4]);
 

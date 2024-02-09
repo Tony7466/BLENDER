@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -61,6 +61,42 @@ TEST(index_mask, FromSize)
     EXPECT_EQ(mask.first(), 0);
     EXPECT_EQ(mask.last(), max_segment_size - 1);
     EXPECT_EQ(mask.min_array_size(), max_segment_size);
+  }
+}
+
+TEST(index_mask, FromUnion)
+{
+  {
+    IndexMaskMemory memory;
+    Array<int> data_a = {1, 2};
+    IndexMask mask_a = IndexMask::from_indices<int>(data_a, memory);
+    Array<int> data_b = {2, 20000, 20001};
+    IndexMask mask_b = IndexMask::from_indices<int>(data_b, memory);
+
+    IndexMask mask_union = IndexMask::from_union(mask_a, mask_b, memory);
+
+    EXPECT_EQ(mask_union.size(), 4);
+    EXPECT_EQ(mask_union[0], 1);
+    EXPECT_EQ(mask_union[1], 2);
+    EXPECT_EQ(mask_union[2], 20000);
+    EXPECT_EQ(mask_union[3], 20001);
+  }
+  {
+    IndexMaskMemory memory;
+    Array<int> data_a = {1, 2, 3};
+    IndexMask mask_a = IndexMask::from_indices<int>(data_a, memory);
+    Array<int> data_b = {20000, 20001, 20002};
+    IndexMask mask_b = IndexMask::from_indices<int>(data_b, memory);
+
+    IndexMask mask_union = IndexMask::from_union(mask_a, mask_b, memory);
+
+    EXPECT_EQ(mask_union.size(), 6);
+    EXPECT_EQ(mask_union[0], 1);
+    EXPECT_EQ(mask_union[1], 2);
+    EXPECT_EQ(mask_union[2], 3);
+    EXPECT_EQ(mask_union[3], 20000);
+    EXPECT_EQ(mask_union[4], 20001);
+    EXPECT_EQ(mask_union[5], 20002);
   }
 }
 
@@ -281,6 +317,139 @@ TEST(index_mask, ComplementFuzzy)
     EXPECT_EQ(universe_size - mask.size(), complement.size());
     complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
     mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
+  }
+}
+
+TEST(index_mask, OffsetIndexRangeFind)
+{
+  IndexMask mask = IndexRange(1, 2);
+  auto result = mask.find(1);
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(mask.iterator_to_index(*result), 0);
+  EXPECT_EQ(mask[0], 1);
+}
+
+TEST(index_mask, FindLargerEqual)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexMask mask = IndexMask::from_initializers(
+        {0, 1, 3, 6, IndexRange(50, 50), IndexRange(100'000, 30)}, memory);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(0)), 0);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(1)), 1);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(2)), 2);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(3)), 2);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(4)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(5)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(6)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(7)), 4);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(10)), 4);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(40)), 4);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(49)), 4);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(50)), 4);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(60)), 14);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(70)), 24);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(99)), 53);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(100)), 54);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(1'000)), 54);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(10'000)), 54);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(50'000)), 54);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(100'000)), 54);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(100'001)), 55);
+    EXPECT_FALSE(mask.find_larger_equal(101'000).has_value());
+  }
+  {
+    const IndexMask mask{IndexRange(10'000, 30'000)};
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(0)), 0);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(50)), 0);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(9'999)), 0);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(10'000)), 0);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(10'001)), 1);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(39'998)), 29'998);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_larger_equal(39'999)), 29'999);
+    EXPECT_FALSE(mask.find_larger_equal(40'000).has_value());
+    EXPECT_FALSE(mask.find_larger_equal(40'001).has_value());
+    EXPECT_FALSE(mask.find_larger_equal(100'000).has_value());
+  }
+}
+
+TEST(index_mask, FindSmallerEqual)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexMask mask = IndexMask::from_initializers(
+        {0, 1, 3, 6, IndexRange(50, 50), IndexRange(100'000, 30)}, memory);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(0)), 0);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(1)), 1);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(2)), 1);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(3)), 2);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(4)), 2);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(5)), 2);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(6)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(7)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(10)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(40)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(49)), 3);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(50)), 4);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(60)), 14);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(70)), 24);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(99)), 53);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(100)), 53);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(1'000)), 53);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(10'000)), 53);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(50'000)), 53);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(100'000)), 54);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(100'001)), 55);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(101'000)), 83);
+  }
+  {
+    const IndexMask mask{IndexRange(10'000, 30'000)};
+    EXPECT_FALSE(mask.find_smaller_equal(0).has_value());
+    EXPECT_FALSE(mask.find_smaller_equal(1).has_value());
+    EXPECT_FALSE(mask.find_smaller_equal(50).has_value());
+    EXPECT_FALSE(mask.find_smaller_equal(9'999).has_value());
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(10'000)), 0);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(10'001)), 1);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(39'998)), 29'998);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(39'999)), 29'999);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(40'000)), 29'999);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(40'001)), 29'999);
+    EXPECT_EQ(mask.iterator_to_index(*mask.find_smaller_equal(100'000)), 29'999);
+  }
+}
+
+TEST(index_mask, SliceContent)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexMask mask;
+    EXPECT_TRUE(mask.slice_content(IndexRange(50, 10)).is_empty());
+  }
+  {
+    const IndexMask mask{IndexRange(10, 90)};
+    const IndexMask a = mask.slice_content(IndexRange(30));
+    EXPECT_EQ(a.size(), 20);
+    const IndexMask b = mask.slice_content(IndexRange(10, 90));
+    EXPECT_EQ(b.size(), 90);
+    const IndexMask c = mask.slice_content(IndexRange(80, 100));
+    EXPECT_EQ(c.size(), 20);
+    const IndexMask d = mask.slice_content(IndexRange(1000, 100));
+    EXPECT_EQ(d.size(), 0);
+  }
+  {
+    const IndexMask mask = IndexMask::from_initializers(
+        {4, 5, 100, 1'000, 10'000, 20'000, 25'000, 100'000}, memory);
+    EXPECT_EQ(mask.slice_content(IndexRange(10)).size(), 2);
+    EXPECT_EQ(mask.slice_content(IndexRange(200)).size(), 3);
+    EXPECT_EQ(mask.slice_content(IndexRange(2'000)).size(), 4);
+    EXPECT_EQ(mask.slice_content(IndexRange(10'000)).size(), 4);
+    EXPECT_EQ(mask.slice_content(IndexRange(10'001)).size(), 5);
+    EXPECT_EQ(mask.slice_content(IndexRange(1'000'000)).size(), 8);
+    EXPECT_EQ(mask.slice_content(IndexRange(10'000, 100'000)).size(), 4);
+    EXPECT_EQ(mask.slice_content(IndexRange(1'001, 100'000)).size(), 4);
+    EXPECT_EQ(mask.slice_content(IndexRange(1'000, 100'000)).size(), 5);
+    EXPECT_EQ(mask.slice_content(IndexRange(1'000, 99'000)).size(), 4);
+    EXPECT_EQ(mask.slice_content(IndexRange(1'000, 10'000)).size(), 2);
   }
 }
 

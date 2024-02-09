@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2009-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -9,7 +11,7 @@
 #include "BlenderContext.h"
 #include "ExportSettings.h"
 
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_scene.h"
 
 #include "BLI_listbase.h"

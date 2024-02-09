@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup bke
  */
 
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 
-#include <stdio.h>
+#include <cstdio>
 
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 void BKE_subdiv_stats_init(SubdivStats *stats)
 {
@@ -26,12 +26,12 @@ void BKE_subdiv_stats_init(SubdivStats *stats)
 
 void BKE_subdiv_stats_begin(SubdivStats *stats, eSubdivStatsValue value)
 {
-  stats->begin_timestamp_[value] = PIL_check_seconds_timer();
+  stats->begin_timestamp_[value] = BLI_check_seconds_timer();
 }
 
 void BKE_subdiv_stats_end(SubdivStats *stats, eSubdivStatsValue value)
 {
-  stats->values_[value] = PIL_check_seconds_timer() - stats->begin_timestamp_[value];
+  stats->values_[value] = BLI_check_seconds_timer() - stats->begin_timestamp_[value];
 }
 
 void BKE_subdiv_stats_reset(SubdivStats *stats, eSubdivStatsValue value)

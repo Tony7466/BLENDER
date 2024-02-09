@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2019, NVIDIA Corporation.
- * Copyright 2019-2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/optix/device.h"
 
 #include "device/cuda/device.h"
 #include "device/optix/device_impl.h"
+
+#include "integrator/denoiser_oidn_gpu.h"
 
 #include "util/log.h"
 
@@ -73,6 +76,11 @@ void device_optix_info(const vector<DeviceInfo> &cuda_devices, vector<DeviceInfo
     info.has_osl = true;
 #  endif
     info.denoisers |= DENOISER_OPTIX;
+#  if defined(WITH_OPENIMAGEDENOISE)
+    if (OIDNDenoiserGPU::is_device_supported(info)) {
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
 
     devices.push_back(info);
   }

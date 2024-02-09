@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation. All rights reserved.
+/* SPDX-FileCopyrightText: 2023 Blender Authors All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 #pragma once
 
 #include "BKE_global.h"
+#include "BLI_compiler_attrs.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 
@@ -78,11 +79,17 @@ void pop_marker(VkCommandBuffer vk_command_buffer);
 void push_marker(const VKDevice &device, const char *name);
 void set_marker(const VKDevice &device, const char *name);
 void pop_marker(const VKDevice &device);
-/* how to use : debug::raise_message(0xB41ca2,VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,"This
- * is a raise message. %llx", (uintptr_t)vk_object); */
+
+/**
+ * How to use:
+ * \code{.cc}
+ * debug::raise_message(0xB41ca2, VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+ *                      "This is a raise message. %llx", (uintptr_t)vk_object);
+ * \endcode
+ */
 void raise_message(int32_t id_number,
                    VkDebugUtilsMessageSeverityFlagBitsEXT vk_severity_flag_bits,
                    const char *fmt,
-                   ...);
+                   ...) ATTR_PRINTF_FORMAT(3, 4);
 }  // namespace debug
 }  // namespace blender::gpu

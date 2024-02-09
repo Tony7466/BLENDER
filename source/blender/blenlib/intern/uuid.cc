@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -88,19 +88,25 @@ bool BLI_uuid_equal(const bUUID uuid1, const bUUID uuid2)
 
 void BLI_uuid_format(char *buffer, const bUUID uuid)
 {
-  BLI_sprintf(buffer,
-              "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-              uuid.time_low,
-              uuid.time_mid,
-              uuid.time_hi_and_version,
-              uuid.clock_seq_hi_and_reserved,
-              uuid.clock_seq_low,
-              uuid.node[0],
-              uuid.node[1],
-              uuid.node[2],
-              uuid.node[3],
-              uuid.node[4],
-              uuid.node[5]);
+  const size_t buffer_len_unclamped = BLI_snprintf(
+      buffer,
+      UUID_STRING_SIZE,
+      "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+      uuid.time_low,
+      uuid.time_mid,
+      uuid.time_hi_and_version,
+      uuid.clock_seq_hi_and_reserved,
+      uuid.clock_seq_low,
+      uuid.node[0],
+      uuid.node[1],
+      uuid.node[2],
+      uuid.node[3],
+      uuid.node[4],
+      uuid.node[5]);
+
+  /* Assert the string length is not clamped. */
+  BLI_assert(buffer_len_unclamped == UUID_STRING_SIZE - 1);
+  UNUSED_VARS_NDEBUG(buffer_len_unclamped);
 }
 
 bool BLI_uuid_parse_string(bUUID *uuid, const char *buffer)
@@ -147,7 +153,7 @@ bUUID::bUUID(const std::initializer_list<uint32_t> field_values)
   std::copy(field_iter, field_values.end(), this->node);
 }
 
-bUUID::bUUID(const std::string &string_formatted_uuid)
+bUUID::bUUID(const StringRefNull string_formatted_uuid)
 {
   const bool parsed_ok = BLI_uuid_parse_string(this, string_formatted_uuid.c_str());
   if (!parsed_ok) {

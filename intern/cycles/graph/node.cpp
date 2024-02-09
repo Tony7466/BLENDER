@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "graph/node.h"
 #include "graph/node_type.h"
@@ -565,8 +566,9 @@ bool Node::equals(const Node &other) const
   assert(type == other.type);
 
   foreach (const SocketType &socket, type->inputs) {
-    if (!equals_value(other, socket))
+    if (!equals_value(other, socket)) {
       return false;
+    }
   }
 
   return true;

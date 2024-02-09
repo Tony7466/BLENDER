@@ -1,10 +1,12 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 if(WIN32)
   set(ISPC_EXTRA_ARGS_WIN
     -DFLEX_EXECUTABLE=${LIBDIR}/flexbison/win_flex.exe
     -DBISON_EXECUTABLE=${LIBDIR}/flexbison/win_bison.exe
-    -DM4_EXECUTABLE=${DOWNLOAD_DIR}/mingw/mingw64/msys/1.0/bin/m4.exe
+    -DM4_EXECUTABLE=${DOWNLOAD_DIR}/msys2/msys64/usr/bin/m4.exe
     -DARM_ENABLED=Off
     -DPython3_FIND_REGISTRY=NEVER
   )
@@ -37,7 +39,9 @@ set(ISPC_EXTRA_ARGS
   -DISPC_NO_DUMPS=On
   -DISPC_INCLUDE_EXAMPLES=Off
   -DISPC_INCLUDE_TESTS=Off
-  -DLLVM_ROOT=${LIBDIR}/llvm/lib/cmake/llvm
+  -DISPC_INCLUDE_RT=Off
+  -DLLVM_CONFIG_EXECUTABLE=${LIBDIR}/llvm/bin/llvm-config
+  -DLLVM_DIR=${LIBDIR}/llvm/lib/cmake/llvm/
   -DLLVM_LIBRARY_DIR=${LIBDIR}/llvm/lib
   -DCLANG_EXECUTABLE=${LIBDIR}/llvm/bin/clang
   -DCLANGPP_EXECUTABLE=${LIBDIR}/llvm/bin/clang++

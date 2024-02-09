@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,7 @@
 #include "gpu_node_graph.h"
 
 #include "GPU_context.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "GPU_uniform_buffer.h"
 #include "gpu_uniform_buffer_private.hh"
@@ -101,7 +101,7 @@ static void buffer_from_list_inputs_sort(ListBase *inputs)
     return;
   }
 
-  /* Creates a lookup table for the different types; */
+  /* Creates a lookup table for the different types. */
   LinkData *inputs_lookup[MAX_UBO_GPU_TYPE + 1] = {nullptr};
   eGPUType cur_type = static_cast<eGPUType>(MAX_UBO_GPU_TYPE + 1);
 

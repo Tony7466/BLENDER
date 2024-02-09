@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,16 +9,15 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
-#include "BLI_math.h"
 
-#include "IMB_filetype.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "openjpeg.h"
+
+#include <cstring>
 
 #define JP2_FILEHEADER_SIZE 12
 
@@ -28,7 +27,7 @@ static const char J2K_HEAD[] = {0xFF, 0x4F, 0xFF, 0x51, 0x00};
 
 /* We only need this because of how the presets are set */
 /* this typedef is copied from 'openjpeg-1.5.0/applications/codec/image_to_j2k.c' */
-typedef struct img_folder {
+struct img_fol_t {
   /** The directory path of the folder containing input images. */
   char *imgdirpath;
   /** Output format. */
@@ -39,14 +38,14 @@ typedef struct img_folder {
   char set_out_format;
   /** User specified rate stored in case of cinema option. */
   float *rates;
-} img_fol_t;
+};
 
 static bool check_jp2(const uchar *mem, const size_t size) /* J2K_CFMT */
 {
   if (size < sizeof(JP2_HEAD)) {
     return false;
   }
-  return memcmp(JP2_HEAD, mem, sizeof(JP2_HEAD)) ? 0 : 1;
+  return memcmp(JP2_HEAD, mem, sizeof(JP2_HEAD)) ? false : true;
 }
 
 static bool check_j2k(const uchar *mem, const size_t size) /* J2K_CFMT */
@@ -54,7 +53,7 @@ static bool check_j2k(const uchar *mem, const size_t size) /* J2K_CFMT */
   if (size < sizeof(J2K_HEAD)) {
     return false;
   }
-  return memcmp(J2K_HEAD, mem, sizeof(J2K_HEAD)) ? 0 : 1;
+  return memcmp(J2K_HEAD, mem, sizeof(J2K_HEAD)) ? false : true;
 }
 
 static OPJ_CODEC_FORMAT format_from_header(const uchar mem[JP2_FILEHEADER_SIZE], const size_t size)
@@ -91,7 +90,7 @@ static void warning_callback(const char *msg, void *client_data)
   fprintf(stream, "[WARNING] %s", msg);
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 /**
  * sample debug callback expecting no client object
  */
@@ -377,7 +376,7 @@ static ImBuf *imb_load_jp2_stream(opj_stream_t *stream,
   /* configure the event callbacks (not required) */
   opj_set_error_handler(codec, error_callback, stderr);
   opj_set_warning_handler(codec, warning_callback, stderr);
-#ifdef DEBUG /* too noisy */
+#ifndef NDEBUG /* too noisy */
   opj_set_info_handler(codec, info_callback, stderr);
 #endif
 
@@ -444,7 +443,7 @@ static ImBuf *imb_load_jp2_stream(opj_stream_t *stream,
   }
 
   ibuf->ftype = IMB_FTYPE_JP2;
-  if (1 /* is_jp2 */) {
+  if (true /* is_jp2 */) {
     ibuf->foptions.flag |= JP2_JP2;
   }
   else {
@@ -825,7 +824,7 @@ static opj_image_t *ibuftoimage(ImBuf *ibuf, opj_cparameters_t *parameters)
   img_fol_t img_fol; /* only needed for cinema presets */
   memset(&img_fol, 0, sizeof(img_fol_t));
 
-  if (ibuf->float_colorspace || (ibuf->colormanage_flag & IMB_COLORMANAGE_IS_DATA)) {
+  if (ibuf->float_buffer.colorspace || (ibuf->colormanage_flag & IMB_COLORMANAGE_IS_DATA)) {
     /* float buffer was managed already, no need in color space conversion */
     chanel_colormanage_cb = channel_colormanage_noop;
   }
@@ -1188,7 +1187,7 @@ bool imb_save_jp2(ImBuf *ibuf, const char *filepath, int flags)
   opj_stream_t *stream = opj_stream_create_from_file(
       filepath, OPJ_J2K_STREAM_CHUNK_SIZE, false, nullptr);
   if (stream == nullptr) {
-    return 0;
+    return false;
   }
   const bool ok = imb_save_jp2_stream(ibuf, stream, flags);
   opj_stream_destroy(stream);
@@ -1234,7 +1233,7 @@ bool imb_save_jp2_stream(ImBuf *ibuf, opj_stream_t *stream, int /*flags*/)
     /* configure the event callbacks (not required) */
     opj_set_error_handler(codec, error_callback, stderr);
     opj_set_warning_handler(codec, warning_callback, stderr);
-#ifdef DEBUG /* too noisy */
+#ifndef NDEBUG /* too noisy */
     opj_set_info_handler(codec, info_callback, stderr);
 #endif
 

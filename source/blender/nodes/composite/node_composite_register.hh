@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -60,6 +60,7 @@ void register_node_type_cmp_inpaint();
 void register_node_type_cmp_invert();
 void register_node_type_cmp_keying();
 void register_node_type_cmp_keyingscreen();
+void register_node_type_cmp_kuwahara();
 void register_node_type_cmp_lensdist();
 void register_node_type_cmp_luma_matte();
 void register_node_type_cmp_map_range();
@@ -90,7 +91,7 @@ void register_node_type_cmp_seprgba();
 void register_node_type_cmp_sepycca();
 void register_node_type_cmp_sepyuva();
 void register_node_type_cmp_setalpha();
-void register_node_type_cmp_splitviewer();
+void register_node_type_cmp_split();
 void register_node_type_cmp_stabilize2d();
 void register_node_type_cmp_sunbeams();
 void register_node_type_cmp_switch_view();

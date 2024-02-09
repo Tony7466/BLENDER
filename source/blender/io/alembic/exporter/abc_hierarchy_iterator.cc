@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 
 #include "BLI_assert.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_ID.h"
 #include "DNA_layer_types.h"
@@ -85,6 +85,7 @@ std::string ABCHierarchyIterator::make_valid_name(const std::string &name) const
   std::replace(abc_name.begin(), abc_name.end(), ' ', '_');
   std::replace(abc_name.begin(), abc_name.end(), '.', '_');
   std::replace(abc_name.begin(), abc_name.end(), ':', '_');
+  std::replace(abc_name.begin(), abc_name.end(), '/', '_');
   return abc_name;
 }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,6 +22,7 @@
 #include "BKE_action.hh"
 #include "BKE_armature.hh"
 #include "BKE_idprop.h"
+#include "BKE_object_types.hh"
 
 using namespace blender::bke;
 
@@ -57,7 +58,7 @@ static PoseBackup *pose_backup_create(const Object *ob,
 
   BoneNameSet backed_up_bone_names;
   /* Make a backup of the given pose channel. */
-  auto store_animated_pchans = [&](FCurve * /* unused */, const char *bone_name) {
+  auto store_animated_pchans = [&](FCurve * /*unused*/, const char *bone_name) {
     if (backed_up_bone_names.contains(bone_name)) {
       /* Only backup each bone once. */
       return;
@@ -76,7 +77,7 @@ static PoseBackup *pose_backup_create(const Object *ob,
     PoseChannelBackup *chan_bak = static_cast<PoseChannelBackup *>(
         MEM_callocN(sizeof(*chan_bak), "PoseChannelBackup"));
     chan_bak->pchan = pchan;
-    memcpy(&chan_bak->olddata, chan_bak->pchan, sizeof(chan_bak->olddata));
+    chan_bak->olddata = blender::dna::shallow_copy(*chan_bak->pchan);
 
     if (pchan->prop) {
       chan_bak->oldprops = IDP_CopyProperty(pchan->prop);
@@ -116,7 +117,7 @@ bool BKE_pose_backup_is_selection_relevant(const PoseBackup *pose_backup)
 void BKE_pose_backup_restore(const PoseBackup *pbd)
 {
   LISTBASE_FOREACH (PoseChannelBackup *, chan_bak, &pbd->backups) {
-    memcpy(chan_bak->pchan, &chan_bak->olddata, sizeof(chan_bak->olddata));
+    *chan_bak->pchan = blender::dna::shallow_copy(chan_bak->olddata);
 
     if (chan_bak->oldprops) {
       IDP_SyncGroupValues(chan_bak->pchan->prop, chan_bak->oldprops);
@@ -142,24 +143,24 @@ void BKE_pose_backup_create_on_object(Object *ob, const bAction *action)
 {
   BKE_pose_backup_clear(ob);
   PoseBackup *pose_backup = BKE_pose_backup_create_all_bones(ob, action);
-  ob->runtime.pose_backup = pose_backup;
+  ob->runtime->pose_backup = pose_backup;
 }
 
 bool BKE_pose_backup_restore_on_object(Object *ob)
 {
-  if (ob->runtime.pose_backup == nullptr) {
+  if (ob->runtime->pose_backup == nullptr) {
     return false;
   }
-  BKE_pose_backup_restore(ob->runtime.pose_backup);
+  BKE_pose_backup_restore(ob->runtime->pose_backup);
   return true;
 }
 
 void BKE_pose_backup_clear(Object *ob)
 {
-  if (ob->runtime.pose_backup == nullptr) {
+  if (ob->runtime->pose_backup == nullptr) {
     return;
   }
 
-  BKE_pose_backup_free(ob->runtime.pose_backup);
-  ob->runtime.pose_backup = nullptr;
+  BKE_pose_backup_free(ob->runtime->pose_backup);
+  ob->runtime->pose_backup = nullptr;
 }

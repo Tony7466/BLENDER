@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/render_scheduler.h"
 
@@ -43,6 +44,11 @@ bool RenderScheduler::is_background() const
 void RenderScheduler::set_denoiser_params(const DenoiseParams &params)
 {
   denoiser_params_ = params;
+}
+
+bool RenderScheduler::is_denoiser_gpu_used() const
+{
+  return denoiser_params_.use_gpu;
 }
 
 void RenderScheduler::set_limit_samples_per_update(const int limit_samples)
@@ -970,7 +976,8 @@ bool RenderScheduler::work_need_denoise(bool &delayed, bool &ready_to_display)
 
   /* Immediately denoise when we reach the start sample or last sample. */
   if (num_samples_finished == denoiser_params_.start_sample ||
-      num_samples_finished == num_samples_) {
+      num_samples_finished == num_samples_)
+  {
     return true;
   }
 

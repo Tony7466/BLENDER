@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,20 +6,20 @@
  * \ingroup depsgraph
  */
 
-#include "intern/node/deg_node.h"
+#include "intern/node/deg_node.hh"
 
 #include <cstdio>
 
 #include "BLI_utildefines.h"
 
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_relation.h"
+#include "intern/depsgraph.hh"
+#include "intern/depsgraph_relation.hh"
 #include "intern/eval/deg_eval_copy_on_write.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_factory.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
-#include "intern/node/deg_node_time.h"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_factory.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
+#include "intern/node/deg_node_time.hh"
 
 namespace blender::deg {
 
@@ -68,7 +68,7 @@ const char *nodeTypeAsString(NodeType type)
       return "OBJECT_FROM_LAYER";
     case NodeType::HIERARCHY:
       return "HIERARCHY";
-    /* **** Evaluation-Related Outer Types (with Subdata) **** */
+    /* **** Evaluation-Related Outer Types (with Sub-data) **** */
     case NodeType::EVAL_POSE:
       return "EVAL_POSE";
     case NodeType::BONE:
@@ -87,8 +87,8 @@ const char *nodeTypeAsString(NodeType type)
       return "IMAGE_ANIMATION";
     case NodeType::BATCH_CACHE:
       return "BATCH_CACHE";
-    case NodeType::DUPLI:
-      return "DUPLI";
+    case NodeType::INSTANCING:
+      return "INSTANCING";
     case NodeType::SYNCHRONIZATION:
       return "SYNCHRONIZATION";
     case NodeType::AUDIO:
@@ -97,10 +97,10 @@ const char *nodeTypeAsString(NodeType type)
       return "ARMATURE";
     case NodeType::GENERIC_DATABLOCK:
       return "GENERIC_DATABLOCK";
+    case NodeType::SCENE:
+      return "SCENE";
     case NodeType::VISIBILITY:
       return "VISIBILITY";
-    case NodeType::SIMULATION:
-      return "SIMULATION";
     case NodeType::NTREE_OUTPUT:
       return "NTREE_OUTPUT";
     case NodeType::NTREE_GEOMETRY_PREPROCESS:
@@ -147,12 +147,13 @@ eDepsSceneComponentType nodeTypeToSceneComponent(NodeType type)
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:
+    case NodeType::SCENE:
     case NodeType::PARTICLE_SYSTEM:
     case NodeType::PARTICLE_SETTINGS:
     case NodeType::POINT_CACHE:
     case NodeType::IMAGE_ANIMATION:
     case NodeType::BATCH_CACHE:
-    case NodeType::DUPLI:
+    case NodeType::INSTANCING:
     case NodeType::SYNCHRONIZATION:
     case NodeType::UNDEFINED:
     case NodeType::NUM_TYPES:
@@ -162,7 +163,6 @@ eDepsSceneComponentType nodeTypeToSceneComponent(NodeType type)
     case NodeType::BONE:
     case NodeType::SHADING:
     case NodeType::CACHE:
-    case NodeType::SIMULATION:
     case NodeType::NTREE_OUTPUT:
     case NodeType::NTREE_GEOMETRY_PREPROCESS:
       return DEG_SCENE_COMP_PARAMETERS;
@@ -231,14 +231,14 @@ eDepsObjectComponentType nodeTypeToObjectComponent(NodeType type)
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:
+    case NodeType::SCENE:
     case NodeType::PARTICLE_SYSTEM:
     case NodeType::PARTICLE_SETTINGS:
     case NodeType::POINT_CACHE:
     case NodeType::IMAGE_ANIMATION:
     case NodeType::BATCH_CACHE:
-    case NodeType::DUPLI:
+    case NodeType::INSTANCING:
     case NodeType::SYNCHRONIZATION:
-    case NodeType::SIMULATION:
     case NodeType::NTREE_OUTPUT:
     case NodeType::NTREE_GEOMETRY_PREPROCESS:
     case NodeType::UNDEFINED:

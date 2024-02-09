@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 /**
@@ -14,7 +14,7 @@
  *
  * Usage:
  *
- * ```
+ * \code{.cc}
  * Image *image = ...;
  * ImBuf *image_buffer = ...;
  *
@@ -44,8 +44,7 @@
  *
  * // Free partial_update_user.
  * BKE_image_partial_update_free(partial_update_user);
- *
- * ```
+ * \endcode
  */
 
 #include <optional>
@@ -55,9 +54,10 @@
 
 #include "DNA_image_types.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
+#include "BLI_listbase.h"
 #include "BLI_vector.hh"
 
 namespace blender::bke::image::partial_update {
@@ -542,7 +542,7 @@ extern "C" {
 
 using namespace blender::bke::image::partial_update;
 
-// TODO(jbakker): cleanup parameter.
+/* TODO(@jbakker): cleanup parameter. */
 PartialUpdateUser *BKE_image_partial_update_create(const Image *image)
 {
   PartialUpdateUserImpl *user_impl = MEM_new<PartialUpdateUserImpl>(__func__);

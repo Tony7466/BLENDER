@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -59,7 +59,7 @@
  * `serialize`/`deserialize` methods should be implemented.
  */
 
-#include <ostream>
+#include <iosfwd>
 
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
@@ -80,6 +80,7 @@ enum class eValueType {
   Boolean,
   Double,
   Dictionary,
+  Enum,
 };
 
 class Value;
@@ -89,6 +90,7 @@ template<typename T, eValueType V> class PrimitiveValue;
 using IntValue = PrimitiveValue<int64_t, eValueType::Int>;
 using DoubleValue = PrimitiveValue<double, eValueType::Double>;
 using BooleanValue = PrimitiveValue<bool, eValueType::Boolean>;
+using EnumValue = PrimitiveValue<int, eValueType::Enum>;
 class ArrayValue;
 
 /**
@@ -145,6 +147,12 @@ class Value {
    * Will return nullptr when it is a different type.
    */
   const BooleanValue *as_boolean_value() const;
+
+  /**
+   * Casts to a EnumValue.
+   * Will return nullptr when it is a different type.
+   */
+  const EnumValue *as_enum_value() const;
 
   /**
    * Casts to an ArrayValue.

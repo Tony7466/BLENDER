@@ -10,10 +10,6 @@
 
 #include "DNA_vec_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* ---------------------------------- */
 
 /** View 2D data - stored per region. */
@@ -61,7 +57,11 @@ typedef struct View2D {
   /* Usually set externally (as in, not in view2d files). */
   /** Alpha of vertical and horizontal scroll-bars (range is [0, 255]). */
   char alpha_vert, alpha_hor;
-  char _pad[6];
+
+  char _pad[2];
+  /** When set (not 0), determines how many pixels to scroll when scrolling an entire page.
+   * Otherwise the height of #View2D.mask is used. */
+  float page_size_y;
 
   /* animated smooth view */
   struct SmoothView2DStore *sms;
@@ -110,8 +110,6 @@ enum {
 /** General refresh settings (#View2D.flag). */
 enum {
   /* global view2d horizontal locking (for showing same time interval) */
-  /* TODO: this flag may be set in old files but is not accessible currently,
-   * should be exposed from RNA - Campbell */
   V2D_VIEWSYNC_SCREEN_TIME = (1 << 0),
   /* within area (i.e. between regions) view2d vertical locking */
   V2D_VIEWSYNC_AREA_VERTICAL = (1 << 1),
@@ -123,6 +121,9 @@ enum {
   V2D_IS_NAVIGATING = (1 << 9),
   /* view settings need to be set still... */
   V2D_IS_INIT = (1 << 10),
+  /* Ensure scrolling always snaps to multiples of #View2D.page_size_y or the #View2D.mask height
+   * if this is 0. Zooming doesn't respect this. */
+  V2D_SNAP_TO_PAGESIZE_Y = (1 << 11),
 };
 
 /** Scroller flags for View2D (#View2D.scroll). */
@@ -168,7 +169,3 @@ enum {
   V2D_ALIGN_NO_POS_Y = (1 << 2),
   V2D_ALIGN_NO_NEG_Y = (1 << 3),
 };
-
-#ifdef __cplusplus
-}
-#endif

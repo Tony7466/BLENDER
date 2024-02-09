@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,7 +47,7 @@ void GPU_debug_get_groups_names(int name_buf_len, char *r_name_buf)
     return;
   }
   DebugStack &stack = ctx->debug_stack;
-  if (stack.size() == 0) {
+  if (stack.is_empty()) {
     r_name_buf[0] = '\0';
     return;
   }

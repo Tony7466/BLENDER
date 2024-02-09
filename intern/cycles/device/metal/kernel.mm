@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_METAL
 
@@ -13,9 +14,6 @@
 #  include "util/unique_ptr.h"
 
 CCL_NAMESPACE_BEGIN
-
-/* limit to 2 MTLCompiler instances */
-int max_mtlcompiler_threads = 2;
 
 const char *kernel_type_as_string(MetalPipelineType pso_type)
 {
@@ -43,6 +41,12 @@ struct ShaderCache {
     if (MetalInfo::get_device_vendor(mtlDevice) == METAL_GPU_APPLE) {
       switch (MetalInfo::get_apple_gpu_architecture(mtlDevice)) {
         default:
+        case APPLE_M3:
+          /* Peak occupancy is achieved through Dynamic Caching on M3 GPUs. */
+          for (size_t i = 0; i < DEVICE_KERNEL_NUM; i++) {
+            occupancy_tuning[i] = {64, 64};
+          }
+          break;
         case APPLE_M2_BIG:
           occupancy_tuning[DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES] = {384, 128};
           occupancy_tuning[DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA] = {640, 128};
@@ -170,7 +174,7 @@ void ShaderCache::wait_for_all()
   }
 }
 
-void ShaderCache::compile_thread_func(int thread_index)
+void ShaderCache::compile_thread_func(int /*thread_index*/)
 {
   while (running) {
 
@@ -291,6 +295,19 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
     /* create compiler threads on first run */
     thread_scoped_lock lock(cache_mutex);
     if (compile_threads.empty()) {
+      /* Limit to 2 MTLCompiler instances by default. In macOS >= 13.3 we can query the upper
+       * limit. */
+      int max_mtlcompiler_threads = 2;
+
+#  if defined(MAC_OS_VERSION_13_3)
+      if (@available(macOS 13.3, *)) {
+        /* Subtract one to avoid contention with the real-time GPU module. */
+        max_mtlcompiler_threads = max(2,
+                                      int([mtlDevice maximumConcurrentCompilationTaskCount]) - 1);
+      }
+#  endif
+
+      metal_printf("Spawning %d Cycles kernel compilation threads\n", max_mtlcompiler_threads);
       for (int i = 0; i < max_mtlcompiler_threads; i++) {
         compile_threads.push_back(std::thread([&] { compile_thread_func(i); }));
       }
@@ -344,7 +361,8 @@ MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const M
       thread_scoped_lock lock(cache_mutex);
       for (auto &candidate : pipelines[kernel]) {
         if (candidate->loaded &&
-            candidate->kernels_md5 == device->kernels_md5[candidate->pso_type]) {
+            candidate->kernels_md5 == device->kernels_md5[candidate->pso_type])
+        {
           /* Replace existing match if candidate is more specialized. */
           if (!best_match || candidate->pso_type > best_match->pso_type) {
             best_match = candidate.get();
@@ -478,14 +496,14 @@ void MetalKernelPipeline::compile()
           "__anyhit__cycles_metalrt_visibility_test_box",
           "__anyhit__cycles_metalrt_shadow_all_hit_tri",
           "__anyhit__cycles_metalrt_shadow_all_hit_box",
+          "__anyhit__cycles_metalrt_volume_test_tri",
+          "__anyhit__cycles_metalrt_volume_test_box",
           "__anyhit__cycles_metalrt_local_hit_tri",
           "__anyhit__cycles_metalrt_local_hit_box",
           "__anyhit__cycles_metalrt_local_hit_tri_prim",
           "__anyhit__cycles_metalrt_local_hit_box_prim",
-          "__intersection__curve_ribbon",
-          "__intersection__curve_ribbon_shadow",
-          "__intersection__curve_all",
-          "__intersection__curve_all_shadow",
+          "__intersection__curve",
+          "__intersection__curve_shadow",
           "__intersection__point",
           "__intersection__point_shadow",
       };
@@ -529,17 +547,8 @@ void MetalKernelPipeline::compile()
     id<MTLFunction> point_intersect_default = nil;
     id<MTLFunction> point_intersect_shadow = nil;
     if (kernel_features & KERNEL_FEATURE_HAIR) {
-      /* Add curve intersection programs. */
-      if (kernel_features & KERNEL_FEATURE_HAIR_THICK) {
-        /* Slower programs for thick hair since that also slows down ribbons.
-         * Ideally this should not be needed. */
-        curve_intersect_default = rt_intersection_function[METALRT_FUNC_CURVE_ALL];
-        curve_intersect_shadow = rt_intersection_function[METALRT_FUNC_CURVE_ALL_SHADOW];
-      }
-      else {
-        curve_intersect_default = rt_intersection_function[METALRT_FUNC_CURVE_RIBBON];
-        curve_intersect_shadow = rt_intersection_function[METALRT_FUNC_CURVE_RIBBON_SHADOW];
-      }
+      curve_intersect_default = rt_intersection_function[METALRT_FUNC_CURVE];
+      curve_intersect_shadow = rt_intersection_function[METALRT_FUNC_CURVE_SHADOW];
     }
     if (kernel_features & KERNEL_FEATURE_POINTCLOUD) {
       point_intersect_default = rt_intersection_function[METALRT_FUNC_POINT];
@@ -563,6 +572,11 @@ void MetalKernelPipeline::compile()
                              point_intersect_shadow :
                              rt_intersection_function[METALRT_FUNC_SHADOW_BOX],
                          nil];
+    table_functions[METALRT_TABLE_VOLUME] = [NSArray
+        arrayWithObjects:rt_intersection_function[METALRT_FUNC_VOLUME_TRI],
+                         rt_intersection_function[METALRT_FUNC_VOLUME_BOX],
+                         rt_intersection_function[METALRT_FUNC_VOLUME_BOX],
+                         nil];
     table_functions[METALRT_TABLE_LOCAL] = [NSArray
         arrayWithObjects:rt_intersection_function[METALRT_FUNC_LOCAL_TRI],
                          rt_intersection_function[METALRT_FUNC_LOCAL_BOX],
@@ -574,9 +588,10 @@ void MetalKernelPipeline::compile()
                          rt_intersection_function[METALRT_FUNC_LOCAL_BOX_PRIM],
                          nil];
 
-    NSMutableSet *unique_functions = [NSMutableSet
-        setWithArray:table_functions[METALRT_TABLE_DEFAULT]];
+    NSMutableSet *unique_functions = [[NSMutableSet alloc] init];
+    [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_DEFAULT]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_SHADOW]];
+    [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_VOLUME]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL_PRIM]];
 
@@ -700,7 +715,7 @@ void MetalKernelPipeline::compile()
           newComputePipelineStateWithDescriptor:computePipelineStateDescriptor
                                         options:pipelineOptions
                               completionHandler:^(id<MTLComputePipelineState> computePipelineState,
-                                                  MTLComputePipelineReflection *reflection,
+                                                  MTLComputePipelineReflection * /*reflection*/,
                                                   NSError *error) {
                                 pipeline = computePipelineState;
 
@@ -781,7 +796,8 @@ void MetalKernelPipeline::compile()
     if (ShaderCache::running) {
       if (creating_new_archive || recreate_archive) {
         if (![archive serializeToURL:[NSURL fileURLWithPath:@(metalbin_path.c_str())]
-                               error:&error]) {
+                               error:&error])
+        {
           metal_printf("Failed to save binary archive to %s, error:\n%s\n",
                        metalbin_path.c_str(),
                        [[error localizedDescription] UTF8String]);

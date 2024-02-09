@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -241,7 +241,8 @@ bool _bli_array_iter_span(const void *arr,
       else {
         uint i_step = i_curr + 1;
         while ((i_step != arr_len) &&
-               test_fn(POINTER_OFFSET(arr, i_step * arr_stride_uint), user_data)) {
+               test_fn(POINTER_OFFSET(arr, i_step * arr_stride_uint), user_data))
+        {
           i_step_prev = i_step;
           i_step++;
         }
@@ -327,9 +328,9 @@ bool _bli_array_iter_spiral_square(const void *arr_v,
 
     bool check_bounds = steps > steps_in;
 
-    /* sign: 0 neg; 1 pos; */
+    /* Sign: 0=negative 1=positive. */
     for (int sign = 2; sign--;) {
-      /* axis: 0 x; 1 y; */
+      /* Axis: 0=x; 1=y. */
       for (int axis = 2; axis--;) {
         int ofs_step = stride[axis];
         if (!sign) {

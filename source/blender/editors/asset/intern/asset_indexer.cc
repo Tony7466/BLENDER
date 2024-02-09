@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 #include <iomanip>
 #include <optional>
 
-#include "ED_asset_indexer.h"
+#include "ED_asset_indexer.hh"
 
 #include "DNA_asset_types.h"
 #include "DNA_userdef_types.h"
@@ -22,15 +22,18 @@
 #include "BLI_path_util.h"
 #include "BLI_serialize.hh"
 #include "BLI_set.hh"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_uuid.h"
 
 #include "AS_asset_catalog.hh"
-#include "BKE_appdir.h"
-#include "BKE_asset.h"
+#include "BKE_appdir.hh"
+#include "BKE_asset.hh"
 #include "BKE_idprop.hh"
 
 #include "CLG_log.h"
+
+#include <sstream>
 
 static CLG_LogRef LOG = {"ed.asset"};
 
@@ -141,7 +144,7 @@ struct AssetEntryReader {
    */
   DictionaryValue::Lookup lookup;
 
-  StringRefNull get_name_with_idcode() const
+  StringRef get_name_with_idcode() const
   {
     return lookup.lookup(ATTRIBUTE_ENTRIES_NAME)->as_string_value()->value();
   }
@@ -151,13 +154,13 @@ struct AssetEntryReader {
 
   ID_Type get_idcode() const
   {
-    const StringRefNull name_with_idcode = get_name_with_idcode();
-    return GS(name_with_idcode.c_str());
+    const StringRef name_with_idcode = get_name_with_idcode();
+    return GS(name_with_idcode.data());
   }
 
   StringRef get_name() const
   {
-    const StringRefNull name_with_idcode = get_name_with_idcode();
+    const StringRef name_with_idcode = get_name_with_idcode();
     return name_with_idcode.substr(2);
   }
 
@@ -166,7 +169,7 @@ struct AssetEntryReader {
     return lookup.contains(ATTRIBUTE_ENTRIES_DESCRIPTION);
   }
 
-  StringRefNull get_description() const
+  StringRef get_description() const
   {
     return lookup.lookup(ATTRIBUTE_ENTRIES_DESCRIPTION)->as_string_value()->value();
   }
@@ -176,7 +179,7 @@ struct AssetEntryReader {
     return lookup.contains(ATTRIBUTE_ENTRIES_AUTHOR);
   }
 
-  StringRefNull get_author() const
+  StringRef get_author() const
   {
     return lookup.lookup(ATTRIBUTE_ENTRIES_AUTHOR)->as_string_value()->value();
   }
@@ -186,7 +189,7 @@ struct AssetEntryReader {
     return lookup.contains(ATTRIBUTE_ENTRIES_COPYRIGHT);
   }
 
-  StringRefNull get_copyright() const
+  StringRef get_copyright() const
   {
     return lookup.lookup(ATTRIBUTE_ENTRIES_COPYRIGHT)->as_string_value()->value();
   }
@@ -196,19 +199,19 @@ struct AssetEntryReader {
     return lookup.contains(ATTRIBUTE_ENTRIES_LICENSE);
   }
 
-  StringRefNull get_license() const
+  StringRef get_license() const
   {
     return lookup.lookup(ATTRIBUTE_ENTRIES_LICENSE)->as_string_value()->value();
   }
 
-  StringRefNull get_catalog_name() const
+  StringRef get_catalog_name() const
   {
     return lookup.lookup(ATTRIBUTE_ENTRIES_CATALOG_NAME)->as_string_value()->value();
   }
 
   CatalogID get_catalog_id() const
   {
-    const std::string &catalog_id =
+    const StringRefNull catalog_id =
         lookup.lookup(ATTRIBUTE_ENTRIES_CATALOG_ID)->as_string_value()->value();
     CatalogID catalog_uuid(catalog_id);
     return catalog_uuid;
@@ -268,7 +271,7 @@ struct AssetEntryWriter {
 
   void add_catalog_id(const CatalogID &catalog_id)
   {
-    char catalog_id_str[UUID_STRING_LEN];
+    char catalog_id_str[UUID_STRING_SIZE];
     BLI_uuid_format(catalog_id_str, catalog_id);
     attributes.append_as(std::pair(ATTRIBUTE_ENTRIES_CATALOG_ID, new StringValue(catalog_id_str)));
   }
@@ -397,32 +400,24 @@ static void init_indexer_entry_from_value(FileIndexerEntry &indexer_entry,
   indexer_entry.datablock_info.free_asset_data = true;
 
   if (entry.has_description()) {
-    const StringRefNull description = entry.get_description();
-    char *description_c_str = static_cast<char *>(MEM_mallocN(description.size() + 1, __func__));
-    BLI_strncpy(description_c_str, description.c_str(), description.size() + 1);
-    asset_data->description = description_c_str;
+    const StringRef description = entry.get_description();
+    asset_data->description = BLI_strdupn(description.data(), description.size());
   }
   if (entry.has_author()) {
-    const StringRefNull author = entry.get_author();
-    char *author_c_str = static_cast<char *>(MEM_mallocN(author.size() + 1, __func__));
-    BLI_strncpy(author_c_str, author.c_str(), author.size() + 1);
-    asset_data->author = author_c_str;
+    const StringRef author = entry.get_author();
+    asset_data->author = BLI_strdupn(author.data(), author.size());
   }
   if (entry.has_copyright()) {
-    const StringRefNull copyright = entry.get_copyright();
-    char *copyright_c_str = static_cast<char *>(MEM_mallocN(copyright.size() + 1, __func__));
-    BLI_strncpy(copyright_c_str, copyright.c_str(), copyright.size() + 1);
-    asset_data->copyright = copyright_c_str;
+    const StringRef copyright = entry.get_copyright();
+    asset_data->copyright = BLI_strdupn(copyright.data(), copyright.size());
   }
   if (entry.has_license()) {
-    const StringRefNull license = entry.get_license();
-    char *license_c_str = static_cast<char *>(MEM_mallocN(license.size() + 1, __func__));
-    BLI_strncpy(license_c_str, license.c_str(), license.size() + 1);
-    asset_data->license = license_c_str;
+    const StringRef license = entry.get_license();
+    asset_data->license = BLI_strdupn(license.data(), license.size());
   }
 
-  const StringRefNull catalog_name = entry.get_catalog_name();
-  STRNCPY(asset_data->catalog_simple_name, catalog_name.c_str());
+  const StringRef catalog_name = entry.get_catalog_name();
+  catalog_name.copy(asset_data->catalog_simple_name);
 
   asset_data->catalog_id = entry.get_catalog_id();
 
@@ -482,7 +477,7 @@ struct AssetLibraryIndex {
   /**
    * \brief Absolute path where the indices of `library` are stored.
    *
-   * \NOTE: includes trailing directory separator.
+   * \note includes trailing directory separator.
    */
   std::string indices_base_path;
 
@@ -641,7 +636,7 @@ struct AssetIndex {
   const int UNKNOWN_VERSION = -1;
 
   /**
-   * `blender::io::serialize::Value` representing the contents of an index file.
+   * `io::serialize::Value` representing the contents of an index file.
    *
    * Value is used over #DictionaryValue as the contents of the index could be corrupted and
    * doesn't represent an object. In case corrupted files are detected the `get_version` would
@@ -933,8 +928,6 @@ constexpr FileIndexerType asset_indexer()
   return indexer;
 }
 
-}  // namespace blender::ed::asset::index
+const FileIndexerType file_indexer_asset = asset_indexer();
 
-extern "C" {
-const FileIndexerType file_indexer_asset = blender::ed::asset::index::asset_indexer();
-}
+}  // namespace blender::ed::asset::index

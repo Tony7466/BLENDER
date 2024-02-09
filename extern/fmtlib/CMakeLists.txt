@@ -1,7 +1,9 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  include
+  PUBLIC include
 )
 
 set(INC_SYS
@@ -18,3 +20,4 @@ set(LIB
 )
 
 blender_add_lib(extern_fmtlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+add_library(bf::extern::fmtlib ALIAS extern_fmtlib)
