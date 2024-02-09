@@ -642,19 +642,15 @@ static float curvemap_calc_extend(const CurveMapping *cumap,
   return 0.0f;
 }
 
-/* Evaluate a point on a curve, given two bezier triples */
-static void curve_eval_bezier_point(float bezt1[3][3], float bezt2[3][3], float *point)
+/* Evaluates CM_RESOL number of points on the Bezier segment defined by the given start and end
+ * Bezier triples, writing the output to the points array. */
+static void curve_eval_bezier_point(float start[3][3], float end[3][3], float *point)
 {
-  BKE_curve_correct_bezpart(bezt1[1], bezt1[2], bezt2[0], bezt2[1]);
+  BKE_curve_correct_bezpart(start[1], start[2], end[0], end[1]);
   BKE_curve_forward_diff_bezier(
-      bezt1[1][0], bezt1[2][0], bezt2[0][0], bezt2[1][0], point, CM_RESOL - 1, sizeof(float[2]));
-  BKE_curve_forward_diff_bezier(bezt1[1][1],
-                                bezt1[2][1],
-                                bezt2[0][1],
-                                bezt2[1][1],
-                                point + 1,
-                                CM_RESOL - 1,
-                                sizeof(float[2]));
+      start[1][0], start[2][0], end[0][0], end[1][0], point, CM_RESOL - 1, sizeof(float[2]));
+  BKE_curve_forward_diff_bezier(
+      start[1][1], start[2][1], end[0][1], end[1][1], point + 1, CM_RESOL - 1, sizeof(float[2]));
 }
 
 /* only creates a table for a single channel in CurveMapping */
@@ -663,6 +659,13 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   const rctf *clipr = &cumap->clipr;
   CurveMapPoint *cmp = cuma->curve;
   BezTriple *bezt;
+
+  /*
+  Wrapping ensures that the heights of the first and last points are the same. It adds two virtual
+  points, which are copies of the first and last points, and moves them to the opposite side of the
+  curve offset by the table range. The handles of these points are calculated, as if they were
+  between the last and first real points.
+  */
   const bool use_wrapping = cuma->use_wrapping;
 
   if (cuma->curve == nullptr) {
@@ -805,23 +808,22 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
     /* Handle post point for wrapping */
     curve_eval_bezier_point(bezt[cuma->totpoint - 1].vec, bezt_post.vec, point);
   }
-  if (!use_wrapping) {
-    /* store first and last handle for extrapolation, unit length */
-    cuma->ext_in[0] = bezt[0].vec[0][0] - bezt[0].vec[1][0];
-    cuma->ext_in[1] = bezt[0].vec[0][1] - bezt[0].vec[1][1];
-    float ext_in_range = sqrtf(cuma->ext_in[0] * cuma->ext_in[0] +
-                               cuma->ext_in[1] * cuma->ext_in[1]);
-    cuma->ext_in[0] /= ext_in_range;
-    cuma->ext_in[1] /= ext_in_range;
+  /* store first and last handle for extrapolation, unit length
+  (only relevant when not using wrapping) */
+  cuma->ext_in[0] = bezt[0].vec[0][0] - bezt[0].vec[1][0];
+  cuma->ext_in[1] = bezt[0].vec[0][1] - bezt[0].vec[1][1];
+  float ext_in_range = sqrtf(cuma->ext_in[0] * cuma->ext_in[0] +
+                             cuma->ext_in[1] * cuma->ext_in[1]);
+  cuma->ext_in[0] /= ext_in_range;
+  cuma->ext_in[1] /= ext_in_range;
 
-    int out_a = cuma->totpoint - 1;
-    cuma->ext_out[0] = bezt[out_a].vec[1][0] - bezt[out_a].vec[2][0];
-    cuma->ext_out[1] = bezt[out_a].vec[1][1] - bezt[out_a].vec[2][1];
-    float ext_out_range = sqrtf(cuma->ext_out[0] * cuma->ext_out[0] +
-                                cuma->ext_out[1] * cuma->ext_out[1]);
-    cuma->ext_out[0] /= ext_out_range;
-    cuma->ext_out[1] /= ext_out_range;
-  }
+  int out_a = cuma->totpoint - 1;
+  cuma->ext_out[0] = bezt[out_a].vec[1][0] - bezt[out_a].vec[2][0];
+  cuma->ext_out[1] = bezt[out_a].vec[1][1] - bezt[out_a].vec[2][1];
+  float ext_out_range = sqrtf(cuma->ext_out[0] * cuma->ext_out[0] +
+                              cuma->ext_out[1] * cuma->ext_out[1]);
+  cuma->ext_out[0] /= ext_out_range;
+  cuma->ext_out[1] /= ext_out_range;
 
   /* cleanup */
   MEM_freeN(bezt);

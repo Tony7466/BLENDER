@@ -57,8 +57,8 @@ typedef struct CurveMap {
   float premul_ext_in[2];
   float premul_ext_out[2];
   short default_handle_type;
-  char _pad[2];
-  int use_wrapping;
+  char use_wrapping;
+  char _pad[5];
 } CurveMap;
 
 typedef struct CurveMapping {
