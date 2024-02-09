@@ -108,11 +108,9 @@ void main()
     output_renderpass_color(uniform_buf.render_pass.normal_id, vec4(average_normal, 1.0));
   }
 
-#ifndef NDEBUG
   if (any(isnan(out_combined))) {
     out_combined = vec4(1.0, 0.0, 1.0, 0.0);
   }
-#endif
 
   out_combined = colorspace_safe_color(out_combined);
 }
