@@ -188,8 +188,17 @@ static void OVERLAY_cache_init(void *vedata)
     case CTX_MODE_PARTICLE:
       OVERLAY_edit_particle_cache_init(data);
       break;
+    case CTX_MODE_PAINT_WEIGHT: {
+      const DRWContextState *draw_ctx = DRW_context_state_get();
+      if (draw_ctx->obact != nullptr && draw_ctx->obact->type == OB_GREASE_PENCIL) {
+        OVERLAY_edit_grease_pencil_cache_init(data);
+      }
+      else {
+        OVERLAY_paint_cache_init(data);
+      }
+      break;
+    }
     case CTX_MODE_POSE:
-    case CTX_MODE_PAINT_WEIGHT:
     case CTX_MODE_PAINT_VERTEX:
     case CTX_MODE_PAINT_TEXTURE:
       OVERLAY_paint_cache_init(data);
@@ -750,6 +759,7 @@ static void OVERLAY_draw_scene(void *vedata)
       OVERLAY_edit_curves_draw(data);
       break;
     case CTX_MODE_EDIT_GREASE_PENCIL:
+    case CTX_MODE_PAINT_WEIGHT:
       OVERLAY_edit_grease_pencil_draw(data);
       break;
     default:
