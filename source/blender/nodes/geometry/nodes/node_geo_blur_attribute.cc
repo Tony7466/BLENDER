@@ -84,10 +84,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   if (fixed_data_type == CD_PROP_STRING) {
     return;
   }
-  if (fixed_data_type == CD_PROP_QUATERNION) {
-    /* Don't implement quaternion blurring for now. */
-    return;
-  }
   if (fixed_data_type == CD_PROP_BOOL) {
     /* This node does not support boolean sockets, use integer instead. */
     fixed_data_type = CD_PROP_INT32;
@@ -476,7 +472,12 @@ static void node_rna(StructRNA *srna)
       [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
         *r_free = true;
         return enum_items_filter(rna_enum_attribute_type_items, [](const EnumPropertyItem &item) {
-          return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_COLOR, CD_PROP_INT32);
+          return ELEM(item.value,
+                      CD_PROP_FLOAT,
+                      CD_PROP_FLOAT3,
+                      CD_PROP_COLOR,
+                      CD_PROP_INT32,
+                      CD_PROP_QUATERNION);
         });
       });
 }
