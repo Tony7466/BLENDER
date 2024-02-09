@@ -155,13 +155,13 @@ using ClosureType = uint8_t;
 #define CLOSURE_BSSRDF_BURLEY_ID 14u
 
 struct ClosureUndetermined {
-  /* Additional data different for each closure type. */
-  packed_vec4 data;
   packed_vec3 color;
   float weight;
   packed_vec3 N;
   ClosureType type;
-};
+  /* Additional data different for each closure type. */
+  packed_vec4 data;
+}
 
 ClosureUndetermined closure_new(ClosureType type)
 {
