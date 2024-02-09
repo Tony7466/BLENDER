@@ -24,8 +24,7 @@ struct Expr {
 
   Type type;
   int index;
-
-  Expr(const Type type, const int index) : type(type), index(index) {}
+  Vector<const Expr *> terms;
 
   int expression_array_size() const
   {
@@ -39,43 +38,14 @@ struct Expr {
 };
 
 struct AtomicExpr : public Expr {
-  const IndexMask *mask = nullptr;
-
-  AtomicExpr(const IndexMask &mask, const int index) : Expr(Type::Atomic, index), mask(&mask) {}
+  const IndexMask *mask;
 };
 
-struct UnionExpr : public Expr {
-  Vector<const Expr *> terms;
+struct UnionExpr : public Expr {};
 
-  UnionExpr(const Span<const Expr *> terms, const int index)
-      : Expr(Type::Union, index), terms(terms)
-  {
-    BLI_assert(!terms.is_empty());
-    BLI_assert(!terms.contains(nullptr));
-  }
-};
+struct IntersectionExpr : public Expr {};
 
-struct IntersectionExpr : public Expr {
-  Vector<const Expr *> terms;
-
-  IntersectionExpr(const Span<const Expr *> terms, const int index)
-      : Expr(Type::Intersection, index), terms(terms)
-  {
-    BLI_assert(!terms.is_empty());
-    BLI_assert(!terms.contains(nullptr));
-  }
-};
-
-struct DifferenceExpr : public Expr {
-  const Expr *main_term;
-  Vector<const Expr *> subtract_terms;
-
-  DifferenceExpr(const Expr &main_term, const Span<const Expr *> subtract_terms, const int index)
-      : Expr(Type::Difference, index), main_term(&main_term), subtract_terms(subtract_terms)
-  {
-    BLI_assert(!subtract_terms.contains(nullptr));
-  }
-};
+struct DifferenceExpr : public Expr {};
 
 class ExprBuilder {
  private:
@@ -89,21 +59,33 @@ class ExprBuilder {
   {
     const auto &expr_a = this->term_to_expr(a);
     const auto &expr_b = this->term_to_expr(b);
-    return scope_.construct<UnionExpr>(Span<const Expr *>{&expr_a, &expr_b}, expr_count_++);
+    UnionExpr &expr = scope_.construct<UnionExpr>();
+    expr.type = Expr::Type::Union;
+    expr.index = expr_count_++;
+    expr.terms.extend({&expr_a, &expr_b});
+    return expr;
   }
 
   const DifferenceExpr &subtract(const Term &a, const Term &b)
   {
     const auto &expr_a = this->term_to_expr(a);
     const auto &expr_b = this->term_to_expr(b);
-    return scope_.construct<DifferenceExpr>(expr_a, Span<const Expr *>{&expr_b}, expr_count_++);
+    DifferenceExpr &expr = scope_.construct<DifferenceExpr>();
+    expr.type = Expr::Type::Difference;
+    expr.index = expr_count_++;
+    expr.terms.extend({&expr_a, &expr_b});
+    return expr;
   }
 
   const IntersectionExpr &intersect(const Term &a, const Term &b)
   {
     const auto &expr_a = this->term_to_expr(a);
     const auto &expr_b = this->term_to_expr(b);
-    return scope_.construct<IntersectionExpr>(Span<const Expr *>{&expr_a, &expr_b}, expr_count_++);
+    IntersectionExpr &expr = scope_.construct<IntersectionExpr>();
+    expr.type = Expr::Type::Intersection;
+    expr.index = expr_count_++;
+    expr.terms.extend({&expr_a, &expr_b});
+    return expr;
   }
 
  private:
@@ -112,7 +94,11 @@ class ExprBuilder {
     if (const Expr *const *expr = std::get_if<const Expr *>(&term)) {
       return **expr;
     }
-    return scope_.construct<AtomicExpr>(*std::get<const IndexMask *>(term), expr_count_++);
+    AtomicExpr &expr = scope_.construct<AtomicExpr>();
+    expr.type = Expr::Type::Atomic;
+    expr.index = expr_count_++;
+    expr.mask = std::get<const IndexMask *>(term);
+    return expr;
   }
 };
 

@@ -217,9 +217,9 @@ BLI_NOINLINE static FastResult evaluate_fast(
       }
       case Expr::Type::Difference: {
         const DifferenceExpr &expr = expression->as_difference();
-        const FastResult &main_result = *expression_results[expr.main_term->index];
+        const FastResult &main_result = *expression_results[expr.terms[0]->index];
         Vector<const FastResult *> subtract_term_results;
-        for (const Expr *term : expr.subtract_terms) {
+        for (const Expr *term : expr.terms.as_span().drop_front(1)) {
           const FastResult &subtract_term_result = *expression_results[term->index];
           subtract_term_results.append(&subtract_term_result);
         }
@@ -358,14 +358,13 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
       case Expr::Type::Difference: {
         const auto &expr = expression.as_difference();
         bool all_terms_computed = true;
-        if (const std::optional<IndexMaskSegment> main_term_result =
-                results[expr.main_term->index])
+        if (const std::optional<IndexMaskSegment> main_term_result = results[expr.terms[0]->index])
         {
           if (main_term_result->is_empty()) {
             results[expr.index] = IndexMaskSegment();
             break;
           }
-          for (const Expr *subtract_term : expr.subtract_terms) {
+          for (const Expr *subtract_term : expr.terms.as_span().drop_front(1)) {
             if (const std::optional<IndexMaskSegment> subtract_term_result =
                     results[subtract_term->index])
             {
@@ -382,15 +381,15 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
           }
         }
         else {
-          expressions_to_compute.push(expr.main_term);
+          expressions_to_compute.push(expr.terms[0]);
           all_terms_computed = false;
           break;
         }
         if (all_terms_computed && !results[expr.index]) {
           /* TODO: Generalize. */
-          BLI_assert(expr.subtract_terms.size() == 1);
-          const IndexMaskSegment segment_main = *results[expr.main_term->index];
-          const IndexMaskSegment segment_subtract = *results[expr.subtract_terms[0]->index];
+          BLI_assert(expr.terms.size() == 2);
+          const IndexMaskSegment segment_main = *results[expr.terms[0]->index];
+          const IndexMaskSegment segment_subtract = *results[expr.terms[1]->index];
           Vector<int64_t, max_segment_size> indices_vec(max_segment_size);
           const int64_t indices_num = std::set_difference(segment_main.begin(),
                                                           segment_main.end(),
@@ -458,22 +457,6 @@ BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_e
   Stack<const Expr *, inline_expr_array_size> expr_stack;
   expr_stack.push(&root_expression);
 
-  auto handle_term = [&](const Expr &term) {
-    bool &is_evaluated = is_evaluated_states[term.index];
-    if (!is_evaluated) {
-      if (term.type == Expr::Type::Atomic) {
-        /* Handle term directly to avoid some overhead of pushing it to and popping it from the
-         * stack. */
-        eval_order.append(&term);
-        is_evaluated = true;
-      }
-      else {
-        expr_stack.push(&term);
-      }
-    }
-    return is_evaluated;
-  };
-
   while (!expr_stack.is_empty()) {
     const Expr &expression = *expr_stack.peek();
     bool &is_evaluated = is_evaluated_states[expression.index];
@@ -482,33 +465,17 @@ BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_e
       continue;
     }
     bool all_terms_evaluated = true;
-    switch (expression.type) {
-      case Expr::Type::Atomic: {
-        /* Should be handled in #handle_term. */
-        BLI_assert_unreachable();
-        break;
-      }
-      case Expr::Type::Union: {
-        const UnionExpr &expr = expression.as_union();
-        for (const Expr *term : expr.terms) {
-          all_terms_evaluated &= handle_term(*term);
+    for (const Expr *term : expression.terms) {
+      bool &term_evaluated = is_evaluated_states[term->index];
+      if (!term_evaluated) {
+        if (term->type == Expr::Type::Atomic) {
+          eval_order.append(term);
+          term_evaluated = true;
         }
-        break;
-      }
-      case Expr::Type::Intersection: {
-        const IntersectionExpr &expr = expression.as_intersection();
-        for (const Expr *term : expr.terms) {
-          all_terms_evaluated &= handle_term(*term);
+        else {
+          expr_stack.push(term);
+          all_terms_evaluated = false;
         }
-        break;
-      }
-      case Expr::Type::Difference: {
-        const DifferenceExpr &expr = expression.as_difference();
-        all_terms_evaluated &= handle_term(*expr.main_term);
-        for (const Expr *subtract_term : expr.subtract_terms) {
-          all_terms_evaluated &= handle_term(*subtract_term);
-        }
-        break;
       }
     }
     if (all_terms_evaluated) {
