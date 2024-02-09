@@ -501,6 +501,8 @@ class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
 
 
 def _create_nla_anim_object():
+    # Creates an object with 3 NLA tracks each with a strip that has its own action.
+    # The middle layer is additive.
     anim_object = bpy.data.objects.new("anim_object", None)
     bpy.context.scene.collection.objects.link(anim_object)
     bpy.context.view_layer.objects.active = anim_object
