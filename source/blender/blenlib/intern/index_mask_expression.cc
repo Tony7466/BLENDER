@@ -43,7 +43,17 @@ struct Boundary {
 static void sort_boundaries(MutableSpan<Boundary> boundaries)
 {
   std::sort(boundaries.begin(), boundaries.end(), [](const Boundary &a, const Boundary &b) {
-    return a.index < b.index;
+    if (a.index < b.index) {
+      return true;
+    }
+    if (a.index == b.index) {
+      if (a.is_begin) {
+        /* Sort beginnings of segmens before ends of other segments to better handle overlapping
+         * segments. */
+        return true;
+      }
+    }
+    return false;
   });
 }
 
