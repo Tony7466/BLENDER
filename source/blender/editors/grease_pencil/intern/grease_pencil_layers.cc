@@ -436,7 +436,7 @@ static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
   const bool empty_keyframes = RNA_boolean_get(op->ptr, "empty_keyframes");
 
   if (!grease_pencil.has_active_layer()) {
-    BKE_reportf(op->reports, RPT_ERROR, "No Active Layer to duplicate");
+    BKE_reportf(op->reports, RPT_ERROR, "No active layer to duplicate");
     return OPERATOR_CANCELLED;
   }
 
