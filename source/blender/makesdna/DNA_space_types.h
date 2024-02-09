@@ -76,18 +76,21 @@ namespace blender::ed::text {
 struct SpaceText_Runtime;
 }  // namespace blender::ed::text
 using SpaceText_Runtime = blender::ed::text::SpaceText_Runtime;
+
+namespace blender::ed::spreadsheet {
+struct SpaceSpreadsheet_Runtime;
+}  // namespace blender::ed::spreadsheet
+using SpaceSpreadsheet_Runtime = blender::ed::spreadsheet::SpaceSpreadsheet_Runtime;
 #else
 typedef struct SpaceNode_Runtime SpaceNode_Runtime;
 typedef struct SpaceOutliner_Runtime SpaceOutliner_Runtime;
 typedef struct SpaceSeq_Runtime SpaceSeq_Runtime;
 typedef struct SpaceText_Runtime SpaceText_Runtime;
+typedef struct SpaceSpreadsheet_Runtime SpaceSpreadsheet_Runtime;
 #endif
 
 /** Defined in `file_intern.hh`. */
 typedef struct SpaceFile_Runtime SpaceFile_Runtime;
-
-/** Defined in `spreadsheet_intern.hh`. */
-typedef struct SpaceSpreadsheet_Runtime SpaceSpreadsheet_Runtime;
 
 /* -------------------------------------------------------------------- */
 /** \name SpaceLink (Base)
@@ -506,7 +509,8 @@ typedef enum eGraphEdit_Flag {
   SIPO_NOTRANSKEYCULL = (1 << 1),
   /* don't show any keyframe handles at all */
   SIPO_NOHANDLES = (1 << 2),
-  /* SIPO_NODRAWCFRANUM = (1 << 3), DEPRECATED */
+  /* Automatically lock the transform to whichever axis the cursor has moved the most. */
+  SIPO_AUTOLOCK_AXIS = (1 << 3),
   /* show timing in seconds instead of frames */
   SIPO_DRAWTIME = (1 << 4),
   /* draw names of F-Curves beside the respective curves */

@@ -320,7 +320,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   /* New EEVEE defaults. */
   scene->eevee.bloom_intensity = 0.05f;
   scene->eevee.bloom_clamp = 0.0f;
-  scene->eevee.motion_blur_shutter = 0.5f;
+  scene->eevee.motion_blur_shutter_deprecated = 0.5f;
 
   copy_v3_v3(scene->display.light_direction, blender::float3(M_SQRT1_3));
   copy_v2_fl2(scene->safe_areas.title, 0.1f, 0.05f);
@@ -386,6 +386,11 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 
   if (ts->sculpt) {
     ts->sculpt->automasking_boundary_edges_propagation_steps = 1;
+  }
+
+  /* Ensure input_samples has a correct default value of 1. */
+  if (ts->unified_paint_settings.input_samples == 0) {
+    ts->unified_paint_settings.input_samples = 1;
   }
 }
 
@@ -679,6 +684,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
     /* Enable anti-aliasing by default. */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
+
+    /* By default, each brush should use a single input sample. */
+    brush->input_samples = 1;
   }
 
   {

@@ -58,7 +58,7 @@
 #include "BKE_displist.h"
 #include "BKE_effect.h"
 #include "BKE_idtype.hh"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -3958,6 +3958,7 @@ static ModifierData *object_add_or_copy_particle_system(
   psmd->psys = psys;
   BLI_addtail(&ob->modifiers, md);
   BKE_object_modifier_set_active(ob, md);
+  BKE_modifiers_persistent_uid_init(*ob, *md);
 
   psys->totpart = 0;
   psys->flag = PSYS_CURRENT;

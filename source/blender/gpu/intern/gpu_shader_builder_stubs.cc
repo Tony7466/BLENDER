@@ -117,7 +117,7 @@ void BKE_paint_face_set_overlay_color_get(const int /*face_set*/,
   BLI_assert_unreachable();
 }
 
-bool paint_is_grid_face_hidden(const uint * /*grid_hidden*/,
+bool paint_is_grid_face_hidden(blender::BoundedBitSpan /*grid_hidden*/,
                                int /*gridsize*/,
                                int /*x*/,
                                int /*y*/)
@@ -153,13 +153,6 @@ int CustomData_get_offset(const struct CustomData * /*data*/, eCustomDataType /*
 {
   BLI_assert_unreachable();
   return 0;
-}
-
-int CustomData_get_named_layer_index(const struct CustomData * /*data*/,
-                                     eCustomDataType /*type*/,
-                                     const char * /*name*/)
-{
-  return -1;
 }
 
 int CustomData_get_active_layer_index(const struct CustomData * /*data*/, eCustomDataType /*type*/)

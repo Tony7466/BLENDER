@@ -333,8 +333,9 @@ static void graph_main_region_draw_overlay(const bContext *C, ARegion *region)
   }
 
   /* scrollers */
+  const rcti scroller_mask = ED_time_scrub_clamp_scroller_mask(v2d->mask);
   /* FIXME: args for scrollers depend on the type of data being shown. */
-  UI_view2d_scrollers_draw(v2d, nullptr);
+  UI_view2d_scrollers_draw(v2d, &scroller_mask);
 
   /* scale numbers */
   {
@@ -874,7 +875,7 @@ static void graph_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_ipo()
 {
-  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype ipo"));
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_GRAPH;
@@ -949,5 +950,5 @@ void ED_spacetype_ipo()
   art = ED_area_type_hud(st->spaceid);
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

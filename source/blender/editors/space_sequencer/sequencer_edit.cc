@@ -643,10 +643,10 @@ static void sequencer_slip_update_header(Scene *scene, ScrArea *area, SlipData *
     if (hasNumInput(&data->num_input)) {
       char num_str[NUM_STR_REP_LEN];
       outputNumInput(&data->num_input, num_str, &scene->unit);
-      SNPRINTF(msg, RPT_("Slip offset: %s"), num_str);
+      SNPRINTF(msg, IFACE_("Slip offset: %s"), num_str);
     }
     else {
-      SNPRINTF(msg, RPT_("Slip offset: %d"), offset);
+      SNPRINTF(msg, IFACE_("Slip offset: %d"), offset);
     }
   }
 
@@ -2585,7 +2585,7 @@ static int sequencer_change_effect_input_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  SWAP(Sequence *, *seq_1, *seq_2);
+  std::swap(*seq_1, *seq_2);
 
   SEQ_relations_invalidate_cache_preprocessed(scene, seq);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);

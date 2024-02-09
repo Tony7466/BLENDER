@@ -25,7 +25,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "BLT_translation.h"
 
@@ -51,7 +51,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   UI_BTYPE_LABEL,
                                   0,
                                   ICON_NONE,
-                                  name.c_str(),
+                                  name,
                                   params.xmin,
                                   params.ymin,
                                   params.width,
@@ -75,7 +75,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   UI_BTYPE_LABEL,
                                   0,
                                   ICON_NONE,
-                                  index_str.c_str(),
+                                  index_str,
                                   params.xmin,
                                   params.ymin,
                                   params.width,
@@ -108,7 +108,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -130,7 +130,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -158,7 +158,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -285,7 +285,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        UI_BTYPE_LABEL,
                        0,
                        ICON_NONE,
-                       data.get<std::string>(real_index).c_str(),
+                       data.get<std::string>(real_index),
                        params.xmin,
                        params.ymin,
                        params.width,
@@ -312,7 +312,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
@@ -342,7 +342,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
@@ -373,7 +373,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
