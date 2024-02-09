@@ -32,7 +32,7 @@ struct FastResult {
   Vector<FastResultSegment> segments;
 };
 
-static FastResult evaluate_fast_union(const Span<const FastResultSegment *> terms)
+BLI_NOINLINE static FastResult evaluate_fast_union(const Span<const FastResultSegment *> terms)
 {
   FastResult result;
   if (terms.is_empty()) {
@@ -128,7 +128,7 @@ static FastResult evaluate_fast_union(const Span<const FastResultSegment *> term
   return result;
 }
 
-static FastResult evaluate_fast_intersection(const Span<const FastResult *> terms)
+BLI_NOINLINE static FastResult evaluate_fast_intersection(const Span<const FastResult *> terms)
 {
   if (terms.is_empty()) {
     return {};
@@ -151,15 +151,15 @@ static FastResult evaluate_fast_intersection(const Span<const FastResult *> term
   return result;
 }
 
-static FastResult evaluate_fast_difference(const FastResult &main_term,
-                                           const Span<const FastResult *> /*subtract_terms*/)
+BLI_NOINLINE static FastResult evaluate_fast_difference(
+    const FastResult &main_term, const Span<const FastResult *> /*subtract_terms*/)
 {
   /* TODO */
   return evaluate_fast_intersection({&main_term});
 }
 
-static FastResult evaluate_fast(const Expr &root_expression,
-                                const std::optional<IndexRange> eval_bounds = std::nullopt)
+BLI_NOINLINE static FastResult evaluate_fast(
+    const Expr &root_expression, const std::optional<IndexRange> eval_bounds = std::nullopt)
 {
   Array<std::optional<FastResult>> expression_results(root_expression.expression_array_size());
   Stack<const Expr *> remaining_expressions;
@@ -272,9 +272,9 @@ struct FinalResultSegment {
   IndexMaskSegment indices;
 };
 
-static IndexMaskSegment evaluate_segment(const Expr &root_expression,
-                                         IndexMaskMemory &memory,
-                                         const IndexRange bounds)
+BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expression,
+                                                      IndexMaskMemory &memory,
+                                                      const IndexRange bounds)
 {
   BLI_assert(bounds.size() <= max_segment_size);
   const int64_t segment_offset = bounds.start();
@@ -438,7 +438,40 @@ static IndexMaskSegment evaluate_segment(const Expr &root_expression,
   return *results[root_expression.index];
 }
 
-static IndexMask evaluate_expression_impl(const Expr &root_expression, IndexMaskMemory &memory)
+BLI_NOINLINE static Vector<IndexMaskSegment> build_result_segments(
+    const Span<FinalResultSegment> final_segments)
+{
+  const std::array<int16_t, max_segment_size> &static_indices_array = get_static_indices_array();
+
+  Vector<IndexMaskSegment> result_segments;
+  for (const FinalResultSegment &final_segment : final_segments) {
+    switch (final_segment.type) {
+      case FinalResultSegment::Type::Full: {
+        const int64_t full_size = final_segment.bounds.size();
+        for (int64_t i = 0; i < full_size; i += max_segment_size) {
+          const int64_t size = std::min(i + max_segment_size, full_size) - i;
+          result_segments.append(IndexMaskSegment(final_segment.bounds.first() + i,
+                                                  Span(static_indices_array).take_front(size)));
+        }
+        break;
+      }
+      case FinalResultSegment::Type::Copy: {
+        const IndexMask sliced_mask = final_segment.copy_mask->slice_content(final_segment.bounds);
+        sliced_mask.foreach_segment(
+            [&](const IndexMaskSegment &segment) { result_segments.append(segment); });
+        break;
+      }
+      case FinalResultSegment::Type::Indices: {
+        result_segments.append(final_segment.indices);
+        break;
+      }
+    }
+  }
+  return result_segments;
+}
+
+BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expression,
+                                                       IndexMaskMemory &memory)
 {
   Vector<FinalResultSegment> final_segments;
   Stack<IndexRange> long_unknown_segments;
@@ -513,38 +546,12 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression, IndexMask
               return a.bounds.start() < b.bounds.start();
             });
 
-  const std::array<int16_t, max_segment_size> static_indices_array = get_static_indices_array();
-
-  Vector<IndexMaskSegment> result_segments;
-  for (const FinalResultSegment &final_segment : final_segments) {
-    switch (final_segment.type) {
-      case FinalResultSegment::Type::Full: {
-        const int64_t full_size = final_segment.bounds.size();
-        for (int64_t i = 0; i < full_size; i += max_segment_size) {
-          const int64_t size = std::min(i + max_segment_size, full_size) - i;
-          result_segments.append(IndexMaskSegment(i, Span(static_indices_array).take_front(size)));
-        }
-        break;
-      }
-      case FinalResultSegment::Type::Copy: {
-        const IndexMask sliced_mask = final_segment.copy_mask->slice_content(final_segment.bounds);
-        sliced_mask.foreach_segment(
-            [&](const IndexMaskSegment &segment) { result_segments.append(segment); });
-        break;
-      }
-      case FinalResultSegment::Type::Indices: {
-        result_segments.append(final_segment.indices);
-        break;
-      }
-    }
-  }
-
+  Vector<IndexMaskSegment> result_segments = build_result_segments(final_segments);
   return IndexMask::from_segments(result_segments, memory);
 }
 
 IndexMask evaluate_expression(const Expr &expression, IndexMaskMemory &memory)
 {
-  SCOPED_TIMER(__func__);
   return evaluate_expression_impl(expression, memory);
 }
 

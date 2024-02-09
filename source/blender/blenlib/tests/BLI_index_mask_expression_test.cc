@@ -71,4 +71,22 @@ TEST(index_mask_expression, UnionLargeRanges)
   EXPECT_EQ(result_mask, IndexMask(IndexRange(0, 2'000'000)));
 }
 
+TEST(index_mask_expression, Benchmark)
+{
+  const int64_t iterations = 1'000'000;
+
+  for ([[maybe_unused]] const int64_t _1 : IndexRange(5)) {
+    const IndexMask a{IndexRange::from_begin_end(100, 200)};
+    const IndexMask b{IndexRange::from_begin_end(300, 400)};
+    ExprBuilder builder;
+    const Expr &expr = builder.merge(&a, &b);
+
+    SCOPED_TIMER("benchmark");
+    for ([[maybe_unused]] const int64_t _2 : IndexRange(iterations)) {
+      IndexMaskMemory memory;
+      evaluate_expression(expr, memory);
+    }
+  }
+}
+
 }  // namespace blender::index_mask::tests
