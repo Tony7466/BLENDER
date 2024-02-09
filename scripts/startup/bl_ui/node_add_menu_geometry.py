@@ -293,8 +293,6 @@ class NODE_MT_geometry_node_GEO_INPUT_SCENE(Menu):
         if context.preferences.experimental.use_grease_pencil_version3:
             node_add_menu.add_node_type(layout, "GeometryNodeInputNamedLayerSelection")
         node_add_menu.add_node_type(layout, "GeometryNodeObjectInfo")
-        if context.preferences.experimental.use_new_matrix_socket:
-            node_add_menu.add_node_type(layout, "GeometryNodeObjectTransform")
         node_add_menu.add_node_type(layout, "GeometryNodeInputSceneTime")
         node_add_menu.add_node_type(layout, "GeometryNodeSelfObject")
         node_add_menu.draw_assets_for_catalog(layout, "Input/Scene")
@@ -607,7 +605,7 @@ class NODE_MT_category_utilities_matrix(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeMatrixMultiply")
         node_add_menu.add_node_type(layout, "FunctionNodeSeparateTransform")
         node_add_menu.add_node_type(layout, "FunctionNodeTransformDirection")
-        node_add_menu.add_node_type(layout, "FunctionNodeTransformVector")
+        node_add_menu.add_node_type(layout, "FunctionNodeTransformPoint")
         node_add_menu.add_node_type(layout, "FunctionNodeTransposeMatrix")
         node_add_menu.draw_assets_for_catalog(layout, "Utilities/Matrix")
 
