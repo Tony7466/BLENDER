@@ -327,20 +327,29 @@ if(WITH_PYTHON_MODULE)
 
 else()
   add_executable(blender ${EXETYPE} ${SRC})
-  add_library(blender_cpu_check SHARED creator_cpu_check_windows.cc)
+
+  # we cannot directly link against any blender libraries for the cpu_check module
+  # as they may have been build for an ISA that is unsupported by the CPU
+  # running this code.
+  add_library(blender_cpu_check SHARED
+    creator_cpu_check.cc
+  )
   target_link_libraries(blender_cpu_check
-    PRIVATE bf::blenlib
     PRIVATE ${PLATFORM_LINKLIBS}
   )
-  setup_platform_linker_flags(blender_cpu_check)
   # blender_cpu_check *NEEDS* to be linked first, there can be no exceptions
-  # to this.
+  # to this, this is to ensure, this will be the first code to run once the
+  # blender binary has been loaded by the OS.
   target_link_libraries(blender PRIVATE blender_cpu_check)
+  if(NOT WIN32)
+    set(_LIB_SUB_FOLDER "lib/")
+  endif()
   set_target_properties(blender_cpu_check
     PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${_LIB_SUB_FOLDER}"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${_LIB_SUB_FOLDER}"
   )
+  unset(_LIB_SUB_FOLDER)
   if(WIN32)
     add_executable(blender-launcher WIN32
       blender_launcher_win32.c
