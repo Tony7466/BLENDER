@@ -58,6 +58,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
+#include "AS_asset_catalog_tree.hh"
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
@@ -1237,6 +1238,30 @@ static bool asset_is_editable(const AssetWeakReference &asset_weak_ref)
   return true;
 }
 
+static const bUserAssetLibrary *get_library_from_props(PointerRNA &ptr)
+{
+  const int enum_value = RNA_enum_get(&ptr, "asset_library_reference");
+  const AssetLibraryReference lib_ref = asset::library_reference_from_enum_value(enum_value);
+  return BKE_preferences_asset_library_find_index(&U, lib_ref.custom_library_index);
+}
+
+static asset_system::AssetCatalog &asset_library_ensure_catalog(
+    asset_system::AssetLibrary &library, const asset_system::AssetCatalogPath &path)
+{
+  if (asset_system::AssetCatalog *catalog = library.catalog_service->find_catalog_by_path(path)) {
+    return *catalog;
+  }
+  return *library.catalog_service->create_catalog(path);
+}
+
+static AssetLibraryReference user_library_to_library_ref(const bUserAssetLibrary &user_library)
+{
+  AssetLibraryReference library_ref{};
+  library_ref.custom_library_index = BLI_findindex(&U.asset_libraries, &user_library);
+  library_ref.type = ASSET_LIBRARY_CUSTOM;
+  return library_ref;
+}
+
 static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
@@ -1255,13 +1280,20 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     STRNCPY(name, brush->id.name + 2);
   }
 
-  const int enum_value = RNA_enum_get(op->ptr, "asset_library_reference");
-  const AssetLibraryReference lib_ref = asset::library_reference_from_enum_value(enum_value);
-  const bUserAssetLibrary *library = BKE_preferences_asset_library_find_index(
-      &U, lib_ref.custom_library_index);
+  const bUserAssetLibrary *user_library = get_library_from_props(*op->ptr);
+  if (!user_library) {
+    return OPERATOR_CANCELLED;
+  }
+
+  asset_system::AssetLibrary *library = AS_asset_library_load(
+      CTX_data_main(C), user_library_to_library_ref(*user_library));
   if (!library) {
     return OPERATOR_CANCELLED;
   }
+
+  char catalog_path[MAX_NAME];
+  RNA_string_get(op->ptr, "catalog_path", catalog_path);
+  const asset_system::AssetCatalog &catalog = asset_library_ensure_catalog(*library, catalog_path);
 
   /* Check if the asset belongs to an editable blend file. */
   if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
@@ -1271,7 +1303,8 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     }
   }
 
-  const std::string filepath = brush_asset_blendfile_path_for_save(op->reports, *library, name);
+  const std::string filepath = brush_asset_blendfile_path_for_save(
+      op->reports, *user_library, name);
   if (filepath.empty()) {
     return OPERATOR_CANCELLED;
   }
@@ -1279,6 +1312,9 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   /* Turn brush into asset if it isn't yet. */
   if (!BKE_paint_brush_is_valid_asset(brush)) {
     asset::mark_id(&brush->id);
+    // TODO: Somehow get the catalog file to save in the library.
+    brush->id.asset_data->catalog_id = catalog.catalog_id;
+    STRNCPY(brush->id.asset_data->catalog_simple_name, catalog.simple_name.c_str());
     asset::generate_preview(C, &brush->id);
   }
   BLI_assert(BKE_paint_brush_is_valid_asset(brush));
@@ -1294,7 +1330,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   }
 
   AssetWeakReference *new_brush_weak_ref = brush_asset_create_weakref_hack(
-      library, final_full_asset_filepath);
+      user_library, final_full_asset_filepath);
 
   /* TODO: maybe not needed, even less so if there is more visual confirmation of change. */
   BKE_reportf(op->reports, RPT_INFO, "Saved \"%s\"", filepath.c_str());
@@ -1307,7 +1343,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "Unable to activate just-saved brush asset");
   }
 
-  refresh_asset_library(C, *library);
+  refresh_asset_library(C, *user_library);
   WM_main_add_notifier(NC_ASSET | ND_ASSET_LIST | NA_ADDED, nullptr);
   WM_main_add_notifier(NC_BRUSH | NA_EDITED, brush);
 
@@ -1317,11 +1353,9 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   if (const bUserAssetLibrary *library = brush_asset_get_default_library()) {
-    AssetLibraryReference library_ref{};
-    library_ref.custom_library_index = BLI_findindex(&U.asset_libraries, library);
-    library_ref.type = ASSET_LIBRARY_CUSTOM;
-    RNA_enum_set(
-        op->ptr, "asset_library_reference", asset::library_reference_to_enum_value(&library_ref));
+    const AssetLibraryReference library_ref = user_library_to_library_ref(*library);
+    const int enum_value = asset::library_reference_to_enum_value(&library_ref);
+    RNA_enum_set(op->ptr, "asset_library_reference", enum_value);
   }
 
   Paint *paint = BKE_paint_get_active_from_context(C);
@@ -1347,6 +1381,32 @@ static const EnumPropertyItem *rna_asset_library_reference_itemf(bContext * /*C*
   return items;
 }
 
+static void visit_asset_catalog_for_search_fn(const bContext *C,
+                                              PointerRNA *ptr,
+                                              PropertyRNA * /*prop*/,
+                                              const char * /*edit_text*/,
+                                              StringPropertySearchVisitFunc visit_fn,
+                                              void *visit_user_data)
+{
+  const bUserAssetLibrary *user_library = get_library_from_props(*ptr);
+  if (!user_library) {
+    return;
+  }
+  asset_system::AssetLibrary *library = AS_asset_library_load(
+      CTX_data_main(C), user_library_to_library_ref(*user_library));
+  if (!library) {
+    return;
+  }
+
+  asset_system::AssetCatalogTree &full_tree = *library->catalog_service->get_catalog_tree();
+  full_tree.foreach_root_item([&](const asset_system::AssetCatalogTreeItem &item) {
+    StringPropertySearchVisitParams visit_params{};
+    visit_params.text = item.catalog_path().c_str();
+    visit_params.info = "";
+    visit_fn(visit_user_data, &visit_params);
+  });
+}
+
 static void BRUSH_OT_asset_save_as(wmOperatorType *ot)
 {
   ot->name = "Save as Brush Asset";
@@ -1365,6 +1425,11 @@ static void BRUSH_OT_asset_save_as(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_property(ot->srna, "asset_library_reference", PROP_ENUM, PROP_NONE);
   RNA_def_enum_funcs(prop, rna_asset_library_reference_itemf);
   RNA_def_property_ui_text(prop, "Library", "Asset library used to store the new brush");
+
+  prop = RNA_def_string(
+      ot->srna, "catalog_path", nullptr, MAX_NAME, "Catalog", "Catalog to use for the new asset");
+  RNA_def_property_string_search_func_runtime(
+      prop, visit_asset_catalog_for_search_fn, PROP_STRING_SEARCH_SUGGESTION);
 }
 
 static bool brush_asset_delete_poll(bContext *C)
