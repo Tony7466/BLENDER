@@ -1,2 +1,3 @@
 Referenced by commit 188ccfb0dd6, Fix T74662: Prefetching causes random crashes
 Referenced by issue #70229,  VSE Low Playback Rate: Show Cache On will cause a lower fps
+Referenced by pull request #118027, VSE: Simplify and speedup sequencer cache drawing
