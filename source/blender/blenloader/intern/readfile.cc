@@ -2420,9 +2420,9 @@ static const char *idtype_alloc_name_get(short id_code)
     return n;
   }();
 
-  const size_t idtype_index(size_t(BKE_idtype_idcode_to_index(id_code)));
-  if (idtype_index < INDEX_ID_MAX) {
-    return id_alloc_names[idtype_index].c_str();
+  const int idtype_index = BKE_idtype_idcode_to_index(id_code);
+  if (LIKELY(idtype_index >= 0 && idtype_index < INDEX_ID_MAX)) {
+    return id_alloc_names[size_t(idtype_index)].c_str();
   }
   return id_alloc_names[INDEX_ID_NULL].c_str();
 }
