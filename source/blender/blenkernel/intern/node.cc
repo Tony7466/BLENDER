@@ -704,10 +704,12 @@ static void write_node_socket_default_value(BlendWriter *writer, const bNodeSock
     case SOCK_ROTATION:
       BLO_write_struct(writer, bNodeSocketValueRotation, sock->default_value);
       break;
-    case SOCK_MENU: {
+    case SOCK_MENU:
       BLO_write_struct(writer, bNodeSocketValueMenu, sock->default_value);
       break;
-    }
+    case SOCK_MATRIX:
+      /* Matrix sockets currently have no default value. */
+      break;
     case SOCK_CUSTOM:
       /* Custom node sockets where default_value is defined uses custom properties for storage. */
       break;
@@ -2767,6 +2769,9 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
     case SOCK_MENU:
       return &socket.default_value_typed<bNodeSocketValueMenu>()->value;
+    case SOCK_MATRIX:
+      /* Matrix sockets currently have no default value. */
+      return nullptr;
     case SOCK_STRING:
       /* We don't want do this now! */
       return nullptr;
