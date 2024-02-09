@@ -17,6 +17,8 @@
 
 namespace blender::index_mask {
 
+constexpr int64_t inline_expr_array_size = 16;
+
 struct FastResultSegment {
   enum class Type {
     Unknown,
@@ -161,7 +163,8 @@ BLI_NOINLINE static FastResult evaluate_fast_difference(
 BLI_NOINLINE static FastResult evaluate_fast(
     const Expr &root_expression, const std::optional<IndexRange> eval_bounds = std::nullopt)
 {
-  Array<std::optional<FastResult>, 16> expression_results(root_expression.expression_array_size());
+  Array<std::optional<FastResult>, inline_expr_array_size> expression_results(
+      root_expression.expression_array_size());
   Stack<const Expr *> remaining_expressions;
   remaining_expressions.push(&root_expression);
 
@@ -279,7 +282,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
   BLI_assert(bounds.size() <= max_segment_size);
   const int64_t segment_offset = bounds.start();
   const int expr_array_size = root_expression.expression_array_size();
-  Array<std::optional<IndexMaskSegment>> results(expr_array_size);
+  Array<std::optional<IndexMaskSegment>, inline_expr_array_size> results(expr_array_size);
   Stack<const Expr *> expressions_to_compute;
   expressions_to_compute.push(&root_expression);
 
