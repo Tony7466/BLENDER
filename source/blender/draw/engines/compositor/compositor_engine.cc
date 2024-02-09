@@ -22,9 +22,7 @@
 
 #include "ED_view3d.hh"
 
-#include "DRW_render.h"
-
-#include "IMB_colormanagement.h"
+#include "DRW_render.hh"
 
 #include "COM_context.hh"
 #include "COM_domain.hh"

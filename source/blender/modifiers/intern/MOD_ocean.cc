@@ -22,7 +22,8 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.h"
+#include "BKE_customdata.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_ocean.h"
@@ -512,7 +513,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   modifier_panel_end(layout, ptr);
 
 #else  /* WITH_OCEANSIM */
-  uiItemL(layout, TIP_("Built without Ocean modifier"), ICON_NONE);
+  uiItemL(layout, RPT_("Built without Ocean modifier"), ICON_NONE);
 #endif /* WITH_OCEANSIM */
 }
 
@@ -722,4 +723,5 @@ ModifierTypeInfo modifierType_Ocean = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ blend_read,
+    /*foreach_cache*/ nullptr,
 };

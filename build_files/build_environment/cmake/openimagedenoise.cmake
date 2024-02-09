@@ -9,13 +9,19 @@ set(OIDN_EXTRA_ARGS
   -DOIDN_FILTER_RTLIGHTMAP=OFF
   -DPython_EXECUTABLE=${PYTHON_BINARY}
 )
-if(NOT APPLE)
+if(APPLE)
+  set(OIDN_EXTRA_ARGS
+    ${OIDN_EXTRA_ARGS}
+    -DOIDN_DEVICE_METAL=ON
+  )
+else()
   set(OIDN_EXTRA_ARGS
     ${OIDN_EXTRA_ARGS}
     -DOIDN_DEVICE_SYCL=ON
     -DOIDN_DEVICE_SYCL_AOT=OFF
+    -DOIDN_DEVICE_CUDA=ON
     -DOIDN_DEVICE_HIP=ON
-    -DLEVEL_ZERO_ROOT=${LIBDIR}/level-zero/lib
+    -DLEVEL_ZERO_ROOT=${LIBDIR}/level-zero
   )
 endif()
 
@@ -69,6 +75,13 @@ if(UNIX AND NOT APPLE)
     external_openimagedenoise
     external_dpcpp
     external_ocloc
+  )
+endif()
+
+if(NOT APPLE)
+  add_dependencies(
+    external_openimagedenoise
+    external_level-zero
   )
 endif()
 

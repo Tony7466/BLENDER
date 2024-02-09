@@ -582,7 +582,7 @@ if(WIN32)
       DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
       CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
     )
-  endif()  
+  endif()
   if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/openimagedenoise.dll) # 4.0
     windows_install_shared_manifest(
       FILES
@@ -590,6 +590,18 @@ if(WIN32)
         ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_core.dll
         ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cpu.dll
         ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_sycl.dll
+    )
+  endif()
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_hip.dll) # 4.1
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_hip.dll
+    )
+  endif()
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cuda.dll) # 4.1
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cuda.dll
     )
   endif()
 endif()
@@ -698,7 +710,8 @@ if(UNIX AND NOT APPLE)
       # Pass.
     elseif(EXISTS ${LIBDIR}/mesa)
       install(
-        DIRECTORY ${LIBDIR}/mesa/lib
+        # Trailing slash is needed to install contents instead of directory itself.
+        DIRECTORY ${LIBDIR}/mesa/lib/
         DESTINATION "./lib/mesa"
       )
 
@@ -1136,7 +1149,7 @@ elseif(WIN32)
         ${LIBDIR}/materialx/bin/MaterialXGenMsl_d.dll
       DEBUG
     )
-  endif()  
+  endif()
   windows_install_shared_manifest(
     FILES
       ${LIBDIR}/materialx/bin/MaterialXCore_d.dll
@@ -1292,7 +1305,7 @@ elseif(WIN32)
           CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
         )
       endif()
-      
+
       # this will exist for 4.1 lib folders
       if(EXISTS ${LIBDIR}/openvdb/python/pyopenvdb_d.cp${_PYTHON_VERSION_NO_DOTS}-win_amd64.pyd)
         install(
@@ -1305,7 +1318,7 @@ elseif(WIN32)
           DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
           CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
         )
-      endif()  
+      endif()
 
       # MaterialX python bindings
       install(

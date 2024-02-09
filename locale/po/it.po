@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'0b00b360f7ae')\n"
+"Project-Id-Version: Blender 4.1.0 Alpha (b'3d7e84f57d8a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-18 13:45:58\n"
+"POT-Creation-Date: 2024-02-05 09:44+0000\n"
 "PO-Revision-Date: 2023-12-17 02:53+0000\n"
 "Last-Translator: Jad Musallam <rubber.444332@gmail.com>\n"
 "Language-Team: Italian <https://translate.blender.org/projects/blender-ui/ui/it/>\n"
@@ -3571,6 +3571,10 @@ msgstr "Raccolta di ossa in un blocco-dati Armatura"
 
 msgid "Bones"
 msgstr "Ossa"
+
+
+msgid "Index"
+msgstr "Indice"
 
 
 msgid "Is Editable"
@@ -7559,10 +7563,6 @@ msgstr "Punto della Curva"
 
 msgid "Curve control point"
 msgstr "Punto di controllo della curva"
-
-
-msgid "Index"
-msgstr "Indice"
 
 
 msgid "Index of this point"
@@ -17167,10 +17167,6 @@ msgid "Unit Settings"
 msgstr "Imposta Unità"
 
 
-msgid "Audio Muted"
-msgstr "Audio Disattivato"
-
-
 msgid "Global Gravity"
 msgstr "Gravità Globale"
 
@@ -23678,14 +23674,6 @@ msgid "Object To"
 msgstr "Oggetto A"
 
 
-msgid "UV Layer"
-msgstr "Livello UV"
-
-
-msgid "UV Layer name"
-msgstr "Nome del livello UV"
-
-
 msgid "WeightVG Edit Modifier"
 msgstr "Modificatore WeightVG Edit"
 
@@ -25940,6 +25928,10 @@ msgid "Pixelate"
 msgstr "Squadrettatura"
 
 
+msgid "Pixel Size"
+msgstr "Dimensione Pixel"
+
+
 msgid "Alpha Convert"
 msgstr "Conversione Alfa"
 
@@ -26138,6 +26130,10 @@ msgstr "Uguale"
 
 msgid "Compare"
 msgstr "Compara"
+
+
+msgid "Menu"
+msgstr "Menu"
 
 
 msgid "Dot Product"
@@ -28002,6 +27998,10 @@ msgid "Align selected bones to the active bone (or to their parent)"
 msgstr "Allinea le ossa selezionate con l'osso attivo (o i loro genitori)"
 
 
+msgid "Collection Index"
+msgstr "Indice Raccolta"
+
+
 msgid "Automatically renames the selected bones according to which side of the target axis they fall on"
 msgstr "Rinomina automaticamente le ossa selezionate in accordo a quale lato dell'asse bersaglio cadono"
 
@@ -29817,6 +29817,19 @@ msgid "Duplicate"
 msgstr "Duplica"
 
 
+msgid "Extrude selected control point(s)"
+msgstr "Estrude il punto(i) di controllo selezionato(i)"
+
+
+msgctxt "Operator"
+msgid "Extrude Curve and Move"
+msgstr "Estrudi Curva e Muovi"
+
+
+msgid "Extrude curve and move result"
+msgstr "Estrude la curva e la muove"
+
+
 msgid "(De)select all control points"
 msgstr "(De)seleziona tutti i rapporti"
 
@@ -29927,10 +29940,6 @@ msgid "Duplicate Curve"
 msgstr "Duplica Curva"
 
 
-msgid "Extrude selected control point(s)"
-msgstr "Estrude il punto(i) di controllo selezionato(i)"
-
-
 msgid "Init"
 msgstr "Inizializza"
 
@@ -29961,15 +29970,6 @@ msgstr "Scivola Spigolo"
 
 msgid "Sequence Slide"
 msgstr "Scorri Sequenza"
-
-
-msgctxt "Operator"
-msgid "Extrude Curve and Move"
-msgstr "Estrudi Curva e Muovi"
-
-
-msgid "Extrude curve and move result"
-msgstr "Estrude la curva e la muove"
 
 
 msgctxt "Operator"
@@ -30502,16 +30502,8 @@ msgstr "Converte le rotazioni nell'euleriana ZYX"
 
 
 msgctxt "Operator"
-msgid "Export STL"
-msgstr "Esporta STL"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Salva il file nel formato di file ASCII"
+msgid "Export PLY"
+msgstr "Esporta PLY"
 
 
 msgid "X Forward"
@@ -30558,6 +30550,26 @@ msgid "-Z Up"
 msgstr "-Z In Alto"
 
 
+msgid "Apply Modifiers"
+msgstr "Applica Modificatori"
+
+
+msgid "Selection Only"
+msgstr "Solo Selezione"
+
+
+msgid "Export selected objects only"
+msgstr "Esporta solo gli oggetti selezionati"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Salva il file nel formato di file ASCII"
+
+
 msgid "Batch Mode"
 msgstr "Modo Batch"
 
@@ -30570,24 +30582,12 @@ msgid "Each object as a file"
 msgstr "Ogni oggetto come un file"
 
 
-msgid "Apply Modifiers"
-msgstr "Applica Modificatori"
-
-
 msgid "Apply the modifiers before saving"
 msgstr "Applica i modificatori prima di salvare"
 
 
 msgid "Scene Unit"
 msgstr "Unità Scena"
-
-
-msgid "Selection Only"
-msgstr "Solo Selezione"
-
-
-msgid "Export selected objects only"
-msgstr "Esporta solo gli oggetti selezionati"
 
 
 msgctxt "Operator"
@@ -30777,6 +30777,10 @@ msgstr "Converte tutte le facce in triangoli"
 
 msgid "General"
 msgstr "Generale"
+
+
+msgid "Material Groups"
+msgstr "Gruppi Materiale"
 
 
 msgid "Compress"
@@ -32647,8 +32651,8 @@ msgstr "Senza ombre"
 
 
 msgctxt "Operator"
-msgid "Import STL"
-msgstr "Importa STL"
+msgid "Import PLY"
+msgstr "Importa PLY"
 
 
 msgid "Load STL triangle mesh data"
@@ -32722,6 +32726,10 @@ msgstr "Specifica orientamento e scala, anzichè usare quelli inclusi nel file F
 
 msgid "Use Pre/Post Rotation"
 msgstr "Usa Pre/Post Rotazione"
+
+
+msgid "Import OBJ groups as vertex groups"
+msgstr "Importa gruppi OBJ come gruppo di vertici"
 
 
 msgctxt "Operator"
@@ -35834,6 +35842,10 @@ msgid "Bake image textures of selected objects"
 msgstr "Precalcola immagini texture degli oggetti selezionati"
 
 
+msgid "UV Layer"
+msgstr "Livello UV"
+
+
 msgctxt "Operator"
 msgid "Add Camera"
 msgstr "Aggiungi Camera"
@@ -36150,10 +36162,6 @@ msgstr "Muovi Modificatore Su"
 
 msgid "Move modifier up in the stack"
 msgstr "Muovi in su il modificatore nella lista"
-
-
-msgid "Collection Index"
-msgstr "Indice Raccolta"
 
 
 msgctxt "Operator"
@@ -36890,14 +36898,6 @@ msgid "Name filter using '*', '?' and '[abc]' unix style wildcards"
 msgstr "Filtra il nome usando i caratteri jolly stile unix '*', '?' e '[abc]'"
 
 
-msgid "Render and display faces uniform, using Face Normals"
-msgstr "Renderizza e mostra le facce uniformi, usando le normali delle facce"
-
-
-msgid "Render and display faces smooth, using interpolated Vertex Normals"
-msgstr "Renderizza e mostra le facce levigate, usando l'interpolazione delle normali dei vertici"
-
-
 msgctxt "Operator"
 msgid "Add Shape Key"
 msgstr "Agg. Chiave Forma"
@@ -36918,6 +36918,10 @@ msgstr "Pulisci Chiavi Forma"
 
 msgid "Clear weights for all shape keys"
 msgstr "Cancella pesi per tutte le chiavi forma"
+
+
+msgid "Lock action to execute on vertex groups"
+msgstr "Blocca l'azione da eseguire sui gruppi vertici"
 
 
 msgctxt "Operator"
@@ -37237,10 +37241,6 @@ msgstr "Numero massimo di pesi di deformazione"
 msgctxt "Operator"
 msgid "Change the Lock On Vertex Groups"
 msgstr "Cambia il Blocco Sui Gruppi Vertici"
-
-
-msgid "Lock action to execute on vertex groups"
-msgstr "Blocca l'azione da eseguire sui gruppi vertici"
 
 
 msgid "Lock all vertex groups"
@@ -38944,6 +38944,10 @@ msgstr "Copia Impostazioni Precedenti"
 
 msgid "Copy settings from previous version"
 msgstr "Copia le impostazioni dalla versione precedente"
+
+
+msgid "URL"
+msgstr "URL"
 
 
 msgctxt "Operator"
@@ -43287,10 +43291,6 @@ msgid "Print memory statistics to the console"
 msgstr "Stampa la statistica della memoria nella console"
 
 
-msgid "Import OBJ groups as vertex groups"
-msgstr "Importa gruppi OBJ come gruppo di vertici"
-
-
 msgid "Open a Blender file"
 msgstr "Apre un file Blender"
 
@@ -43335,16 +43335,6 @@ msgstr "Aggiunge o rimuove una Preimpostazione Operatore"
 
 msgid "Open a path in a file browser"
 msgstr "Apre un percorso nel file browser"
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Esporta PLY"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importa PLY"
 
 
 msgctxt "Operator"
@@ -43734,16 +43724,22 @@ msgstr "Apre lo splash screen con le informazioni di versione"
 
 
 msgctxt "Operator"
+msgid "Export STL"
+msgstr "Esporta STL"
+
+
+msgctxt "Operator"
+msgid "Import STL"
+msgstr "Importa STL"
+
+
+msgctxt "Operator"
 msgid "Save System Info"
 msgstr "Salva Info di Sistema"
 
 
 msgid "Generate system information, saved into a text file"
 msgstr "Genera le informazioni di sistema, salvate in un file di testo"
-
-
-msgid "URL"
-msgstr "URL"
 
 
 msgid "URL to open"
@@ -44587,10 +44583,6 @@ msgid "Helpers"
 msgstr "Assistenti"
 
 
-msgid "Viscosity"
-msgstr "Viscosità"
-
-
 msgid "Indirect Lighting"
 msgstr "Illuminazione Indiretta"
 
@@ -44786,10 +44778,6 @@ msgstr "Colori Icone"
 
 msgid "Styles"
 msgstr "Stili"
-
-
-msgid "Menu"
-msgstr "Menu"
 
 
 msgid "Menu Item"
@@ -46182,16 +46170,8 @@ msgid "Auto Keyframe Insert Available"
 msgstr "Auto Inserisci Fotogrammi Chiave Disponibile"
 
 
-msgid "Automatic keyframe insertion in available F-Curves"
-msgstr "Inserimento automatico del fotogramma chiave nelle Curve-F disponibili"
-
-
 msgid "Keyframe Insert Needed"
 msgstr "Necessario inserimento di fotogramma"
-
-
-msgid "Keyframe insertion only when keyframe needed"
-msgstr "Inserisce fotogramma chiave solo quando è necessario"
 
 
 msgid "Allow Negative Frames"
@@ -48154,10 +48134,6 @@ msgid "Vertical aspect ratio - for anamorphic or non-square pixel output"
 msgstr "Proporzione verticale - per produrre pixel non-quadrati o anamorfici"
 
 
-msgid "Pixel Size"
-msgstr "Dimensione Pixel"
-
-
 msgid "Pixel size for viewport rendering"
 msgstr "Dimensione pixel per il rendering nella vista"
 
@@ -48772,6 +48748,10 @@ msgstr "Raggio Interazione"
 
 msgid "Fluid interaction radius"
 msgstr "Raggio di interazione del fluido"
+
+
+msgid "Viscosity"
+msgstr "Viscosità"
 
 
 msgid "Linear viscosity"
@@ -49572,18 +49552,6 @@ msgstr "Mostra Griglia"
 
 msgid "Show Offsets"
 msgstr "Mostra Scostamento"
-
-
-msgid "Waveforms Off"
-msgstr "Forma d'onda Off"
-
-
-msgid "Waveforms On"
-msgstr "Forma d'onda On"
-
-
-msgid "Use Strip Option"
-msgstr "Usa Opzione Spezzone"
 
 
 msgid "Bounding Box Center"
@@ -53849,6 +53817,16 @@ msgid "Failed to assign value: "
 msgstr "Impossibile impostare il valore: "
 
 
+msgctxt "Operator"
+msgid "Location"
+msgstr "Posizione"
+
+
+msgctxt "Operator"
+msgid "Rotation"
+msgstr "Rotazione"
+
+
 msgid "Unknown"
 msgstr "Sconosciuto"
 
@@ -54650,11 +54628,6 @@ msgstr "Dopo"
 
 
 msgctxt "Operator"
-msgid "Location"
-msgstr "Posizione"
-
-
-msgctxt "Operator"
 msgid "Set Viewport Background"
 msgstr "Imposta Sfondo Vista"
 
@@ -55207,10 +55180,6 @@ msgid "Online Manual"
 msgstr "Manuale Online"
 
 
-msgid "Inputs:"
-msgstr "Ingressi:"
-
-
 msgctxt "Operator"
 msgid "Backdrop Zoom In"
 msgstr "Ingrandisci Sfondo"
@@ -55412,11 +55381,6 @@ msgstr "Ricarica Spezzoni e Aggiusta Lunghezza"
 msgctxt "Operator"
 msgid "Position"
 msgstr "Posizione"
-
-
-msgctxt "Operator"
-msgid "Rotation"
-msgstr "Rotazione"
 
 
 msgid "Tracker"
@@ -55769,16 +55733,16 @@ msgid "Auto-Keyframing"
 msgstr "Keyframing Automatico"
 
 
+msgid "Enable in New Scenes"
+msgstr "Abilita in Scene Nuove"
+
+
 msgid "Show Warning"
 msgstr "Mostra Avvisi"
 
 
 msgid "Only Insert Available"
 msgstr "Inserisce Solo Se Disponibile"
-
-
-msgid "Enable in New Scenes"
-msgstr "Abilita in Scene Nuove"
 
 
 msgid "Default Interpolation"
@@ -55854,6 +55818,10 @@ msgid "Pan Sensitivity"
 msgstr "Sensibilità Pan"
 
 
+msgid "Preferences:"
+msgstr "Preferenze:"
+
+
 msgid "Use Light"
 msgstr "Usa Luce"
 
@@ -55874,12 +55842,12 @@ msgid "Missing script files"
 msgstr "File di script mancanti"
 
 
+msgid "Error (see console)"
+msgstr "Errore (vedi console)"
+
+
 msgid ":"
 msgstr ":"
-
-
-msgid "Color Set %d"
-msgstr "Set Colori %d"
 
 
 msgid "Description:"
@@ -55914,25 +55882,13 @@ msgid "User:"
 msgstr "Utente:"
 
 
-msgid "description"
-msgstr "descrizione"
-
-
-msgid "location"
-msgstr "posizione"
+msgid "Color Set %d"
+msgstr "Set Colori %d"
 
 
 msgctxt "Operator"
 msgid "Documentation"
 msgstr "Documentazione"
-
-
-msgid "Preferences:"
-msgstr "Preferenze:"
-
-
-msgid "Error (see console)"
-msgstr "Errore (vedi console)"
 
 
 msgctxt "Operator"
@@ -56753,86 +56709,6 @@ msgstr "Cancella Segmento"
 msgctxt "Operator"
 msgid "Delete Point"
 msgstr "Cancella Punto"
-
-
-msgctxt "Operator"
-msgid "Copyright"
-msgstr "Copyright"
-
-
-msgctxt "Operator"
-msgid "Registered Trademark"
-msgstr "Marchio Registrato"
-
-
-msgctxt "Operator"
-msgid "Degree Sign"
-msgstr "Segno Gradi"
-
-
-msgctxt "Operator"
-msgid "Multiplication Sign"
-msgstr "Segno Moltiplicazione"
-
-
-msgctxt "Operator"
-msgid "Superscript 1"
-msgstr "Superscript 1"
-
-
-msgctxt "Operator"
-msgid "Superscript 2"
-msgstr "Superscript 2"
-
-
-msgctxt "Operator"
-msgid "Superscript 3"
-msgstr "Superscript 3"
-
-
-msgctxt "Operator"
-msgid "Double >>"
-msgstr "Doppio >>"
-
-
-msgctxt "Operator"
-msgid "Double <<"
-msgstr "Doppio <<"
-
-
-msgctxt "Operator"
-msgid "Promillage"
-msgstr "Per Mille"
-
-
-msgctxt "Operator"
-msgid "Dutch Florin"
-msgstr "Fiorino Olandese"
-
-
-msgctxt "Operator"
-msgid "British Pound"
-msgstr "Sterlina Inglese"
-
-
-msgctxt "Operator"
-msgid "Japanese Yen"
-msgstr "Yen Giapponese"
-
-
-msgctxt "Operator"
-msgid "German S"
-msgstr "S Tedesca"
-
-
-msgctxt "Operator"
-msgid "Spanish Question Mark"
-msgstr "Punto Interrogativo Spagnolo"
-
-
-msgctxt "Operator"
-msgid "Spanish Exclamation Mark"
-msgstr "Punto Esclamativo Spagnolo"
 
 
 msgctxt "Operator"
@@ -58020,40 +57896,8 @@ msgid "Internal error!"
 msgstr "Errore Interno!"
 
 
-msgid "Shortcut: %s"
-msgstr "Scorciatoia: %s"
-
-
-msgid "Python: %s"
-msgstr "Python: %s"
-
-
 msgid "(Shift-Click/Drag to select multiple)"
 msgstr "(Shift-Click/Trascina per selezione multipla)"
-
-
-msgid "Value: %s"
-msgstr "Valore: %s"
-
-
-msgid "Radians: %f"
-msgstr "Radianti: %f"
-
-
-msgid "Expression: %s"
-msgstr "Espressione: %s"
-
-
-msgid "Library: %s"
-msgstr "Libreria: %s"
-
-
-msgid "Disabled: %s"
-msgstr "Disabilitato: %s"
-
-
-msgid "Python: %s.%s"
-msgstr "Python: %s.%s"
 
 
 msgctxt "Operator"
@@ -58274,6 +58118,14 @@ msgid "Browse ID data to be linked"
 msgstr "Naviga Dati ID da collegare"
 
 
+msgid "File Not Found"
+msgstr "File Non Trovato"
+
+
+msgid "Modified"
+msgstr "Modificato"
+
+
 msgctxt "Object"
 msgid "New"
 msgstr "Nuovo"
@@ -58440,8 +58292,8 @@ msgid "Object Groups"
 msgstr "Gruppi Oggetto"
 
 
-msgid "Material Groups"
-msgstr "Gruppi Materiale"
+msgid "Rigging"
+msgstr "Rigging"
 
 
 msgid "Mesh Data"
@@ -59617,6 +59469,14 @@ msgid "Driver:"
 msgstr "Guidatore:"
 
 
+msgid "Invalid variable name, click here for details"
+msgstr "Nome variabile non valido, clicca qui per i dettagli"
+
+
+msgid "Delete target variable"
+msgstr "Cancella variabile obiettivo"
+
+
 msgid "F-Curve only has F-Modifiers"
 msgstr "La Curva-F ha solo Modificatori-F"
 
@@ -59647,14 +59507,6 @@ msgstr "ERRORE: Canale/i obiettivo non valido/i"
 
 msgid "ERROR: Driver is useless without any inputs"
 msgstr "ERRORE: la Guida è inutile senza alcun ingresso"
-
-
-msgid "Invalid variable name, click here for details"
-msgstr "Nome variabile non valido, clicca qui per i dettagli"
-
-
-msgid "Delete target variable"
-msgstr "Cancella variabile obiettivo"
 
 
 msgctxt "Operator"
@@ -61650,14 +61502,6 @@ msgid "unable to open the file"
 msgstr "impossibile aprire il file"
 
 
-msgid "File Not Found"
-msgstr "File Non Trovato"
-
-
-msgid "Modified"
-msgstr "Modificato"
-
-
 msgid "Save changes before closing?"
 msgstr "Salvare le modifiche prima di chiudere?"
 
@@ -61801,10 +61645,6 @@ msgstr "Aggiungi Mesh"
 
 msgid "Import-Export"
 msgstr "Importa-Esporta"
-
-
-msgid "Rigging"
-msgstr "Rigging"
 
 
 msgid "English (English)"

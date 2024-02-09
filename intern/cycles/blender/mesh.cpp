@@ -30,6 +30,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 
 CCL_NAMESPACE_BEGIN
@@ -42,7 +43,7 @@ template<bool is_subd> struct MikkMeshWrapper {
                   const Mesh *mesh,
                   float3 *tangent,
                   float *tangent_sign)
-      : mesh(mesh), texface(NULL), orco(NULL), tangent(tangent), tangent_sign(tangent_sign)
+      : mesh(mesh), uv(NULL), orco(NULL), tangent(tangent), tangent_sign(tangent_sign)
   {
     const AttributeSet &attributes = is_subd ? mesh->subd_attributes : mesh->attributes;
 
@@ -62,7 +63,7 @@ template<bool is_subd> struct MikkMeshWrapper {
     else {
       Attribute *attr_uv = attributes.find(ustring(layer_name));
       if (attr_uv != NULL) {
-        texface = attr_uv->data_float2();
+        uv = attr_uv->data_float2();
       }
     }
   }
@@ -119,9 +120,9 @@ template<bool is_subd> struct MikkMeshWrapper {
   {
     /* TODO: Check whether introducing a template boolean in order to
      * turn this into a constexpr is worth it. */
-    if (texface != NULL) {
+    if (uv != NULL) {
       const int corner_index = CornerIndex(face_num, vert_num);
-      float2 tfuv = texface[corner_index];
+      float2 tfuv = uv[corner_index];
       return mikk::float3(tfuv.x, tfuv.y, 1.0f);
     }
     else if (orco != NULL) {
@@ -174,6 +175,7 @@ template<bool is_subd> struct MikkMeshWrapper {
 
   float3 *vertex_normal;
   float2 *texface;
+  float2 *uv;
   float3 *orco;
   float3 orco_loc, inv_orco_size;
 
@@ -236,11 +238,14 @@ static void mikk_compute_tangents(
   }
 }
 
-static void attr_create_motion(Mesh *mesh,
-                               const blender::Span<blender::float3> b_attr,
-                               const float motion_scale)
+static void attr_create_motion_from_velocity(Mesh *mesh,
+                                             const blender::Span<blender::float3> b_attr,
+                                             const float motion_scale)
 {
   const int numverts = mesh->get_verts().size();
+
+  /* Override motion steps to fixed number. */
+  mesh->set_motion_steps(3);
 
   /* Find or add attribute */
   float3 *P = &mesh->get_verts()[0];
@@ -288,7 +293,7 @@ static void attr_create_generic(Scene *scene,
     if (need_motion && name == u_velocity) {
       const blender::VArraySpan b_attribute = *b_attributes.lookup<blender::float3>(
           id, blender::bke::AttrDomain::Point);
-      attr_create_motion(mesh, b_attribute, motion_scale);
+      attr_create_motion_from_velocity(mesh, b_attribute, motion_scale);
     }
 
     if (!(mesh->need_attribute(scene, name) ||
@@ -312,7 +317,8 @@ static void attr_create_generic(Scene *scene,
     }
 
     if (b_attr.domain == blender::bke::AttrDomain::Corner &&
-        meta_data.data_type == CD_PROP_BYTE_COLOR) {
+        meta_data.data_type == CD_PROP_BYTE_COLOR)
+    {
       Attribute *attr = attributes.add(name, TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);
       if (is_render_color) {
         attr->std = ATTR_STD_VERTEX_COLOR;
@@ -421,7 +427,8 @@ static set<ustring> get_blender_uv_names(const ::Mesh &b_mesh)
   b_mesh.attributes().for_all([&](const blender::bke::AttributeIDRef &id,
                                   const blender::bke::AttributeMetaData meta_data) {
     if (meta_data.domain == blender::bke::AttrDomain::Corner &&
-        meta_data.data_type == CD_PROP_FLOAT2) {
+        meta_data.data_type == CD_PROP_FLOAT2)
+    {
       if (!id.is_anonymous()) {
         uv_names.emplace(std::string_view(id.name()));
       }
@@ -819,11 +826,11 @@ static void create_mesh(Scene *scene,
   const blender::OffsetIndices faces = b_mesh.faces();
   const blender::Span<int> corner_verts = b_mesh.corner_verts();
   const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
-  const blender::bke::MeshNormalDomain normals_domain = b_mesh.normals_domain();
+  const blender::bke::MeshNormalDomain normals_domain = b_mesh.normals_domain(true);
   int numfaces = (!subdivision) ? b_mesh.corner_tris().size() : faces.size();
 
-  bool use_loop_normals = normals_domain == blender::bke::MeshNormalDomain::Corner &&
-                          (mesh->get_subdivision_type() != Mesh::SUBDIVISION_CATMULL_CLARK);
+  bool use_corner_normals = normals_domain == blender::bke::MeshNormalDomain::Corner &&
+                            (mesh->get_subdivision_type() != Mesh::SUBDIVISION_CATMULL_CLARK);
 
   /* If no faces, create empty mesh. */
   if (faces.is_empty()) {
@@ -835,7 +842,7 @@ static void create_mesh(Scene *scene,
   const blender::VArraySpan sharp_faces = *b_attributes.lookup<bool>(
       "sharp_face", blender::bke::AttrDomain::Face);
   blender::Span<blender::float3> corner_normals;
-  if (use_loop_normals) {
+  if (use_corner_normals) {
     corner_normals = b_mesh.corner_normals();
   }
 
@@ -866,7 +873,7 @@ static void create_mesh(Scene *scene,
   Attribute *attr_N = attributes.add(ATTR_STD_VERTEX_NORMAL);
   float3 *N = attr_N->data_float3();
 
-  if (subdivision || !(use_loop_normals && !corner_normals.is_empty())) {
+  if (subdivision || !(use_corner_normals && !corner_normals.is_empty())) {
     const blender::Span<blender::float3> vert_normals = b_mesh.vert_normals();
     for (const int i : vert_normals.index_range()) {
       N[i] = make_float3(vert_normals[i][0], vert_normals[i][1], vert_normals[i][2]);
@@ -934,7 +941,7 @@ static void create_mesh(Scene *scene,
       std::fill(shader, shader + numtris, 0);
     }
 
-    if (!sharp_faces.is_empty() && !(use_loop_normals && !corner_normals.is_empty())) {
+    if (!sharp_faces.is_empty() && !(use_corner_normals && !corner_normals.is_empty())) {
       const blender::Span<int> tri_faces = b_mesh.corner_tri_faces();
       for (const int i : corner_tris.index_range()) {
         smooth[i] = !sharp_faces[tri_faces[i]];
@@ -945,7 +952,7 @@ static void create_mesh(Scene *scene,
       std::fill(smooth, smooth + numtris, normals_domain != blender::bke::MeshNormalDomain::Face);
     }
 
-    if (use_loop_normals && !corner_normals.is_empty()) {
+    if (use_corner_normals && !corner_normals.is_empty()) {
       for (const int i : corner_tris.index_range()) {
         const blender::int3 &tri = corner_tris[i];
         for (int i = 0; i < 3; i++) {
@@ -969,7 +976,7 @@ static void create_mesh(Scene *scene,
     int *subd_ptex_offset = mesh->get_subd_ptex_offset().data();
     int *subd_face_corners = mesh->get_subd_face_corners().data();
 
-    if (!sharp_faces.is_empty() && !use_loop_normals) {
+    if (!sharp_faces.is_empty() && !use_corner_normals) {
       for (int i = 0; i < numfaces; i++) {
         subd_smooth[i] = !sharp_faces[i];
       }
@@ -1249,7 +1256,8 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph b_depsgraph,
     if (new_attribute) {
       /* In case of new attribute, we verify if there really was any motion. */
       if (b_verts_num != numverts ||
-          memcmp(mP, &mesh->get_verts()[0], sizeof(float3) * numverts) == 0) {
+          memcmp(mP, &mesh->get_verts()[0], sizeof(float3) * numverts) == 0)
+      {
         /* no motion, remove attributes again */
         if (b_verts_num != numverts) {
           VLOG_WARNING << "Topology differs, disabling motion blur for object " << ob_name;

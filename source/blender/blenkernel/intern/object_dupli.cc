@@ -417,7 +417,7 @@ static void make_child_duplis(const DupliContext *ctx,
   }
   else {
     /* FIXME: using a mere counter to generate a 'persistent' dupli id is very weak. One possible
-     * better solution could be to use `session_uuid` of ID's instead? */
+     * better solution could be to use `session_uid` of ID's instead? */
     int persistent_dupli_id = 0;
     DEGObjectIterSettings deg_iter_settings{};
     deg_iter_settings.depsgraph = ctx->depsgraph;
@@ -1464,7 +1464,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
         psys_find_group_weights(part);
         LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
           FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-              part->instance_collection, object, mode) {
+              part->instance_collection, object, mode)
+          {
             if (dw->ob == object) {
               totcollection += dw->count;
               break;
@@ -1489,7 +1490,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
         a = 0;
         LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
           FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-              part->instance_collection, object, mode) {
+              part->instance_collection, object, mode)
+          {
             if (dw->ob == object) {
               for (b = 0; b < dw->count; b++, a++) {
                 oblist[a] = dw->ob;
