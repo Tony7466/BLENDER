@@ -220,16 +220,6 @@ def bake_action_iter(
         if isinstance(value, (list, tuple, set, dict)):
             # These types are certainly not keyable.
             return False
-        if isinstance(value, str):
-            # Strings might be an enum property for which RNA uses a string to
-            # indicate a specific item (keyable) or an actual string property
-            # (not keyable).
-            return None
-        if type(value).__name__ == 'IDPropertyGroup':
-            # This type doesn't seem to be exposed in bpy.types, hence the awkward
-            # test here. A property group behaves somewhat like a dictionary, and
-            # cannot be keyed itself.
-            return False
         # Maybe this could be made stricter, as also ID pointer properties and
         # some other types cannot be keyed. However, the above checks are enough
         # to fix the crash that this code was written for (#117988).
