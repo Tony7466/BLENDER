@@ -111,11 +111,6 @@ static void standard_defines(Vector<const char *> &sources)
   if (GPU_crappy_amd_driver()) {
     sources.append("#define GPU_DEPRECATED_AMD_DRIVER\n");
   }
-
-  /* NDebug flag. */
-#ifdef NDEBUG
-    sources.append("#define NDEBUG\n");
-#endif
 }
 
 GPUShader *GPU_shader_create_ex(const char *vertcode,
