@@ -464,9 +464,9 @@ __forceinline uint64_t bitscan(uint64_t value)
 #ifdef __KERNEL_SSE2__
 
 /* Test __KERNEL_SSE42__ for MSVC which does not define __SSE4_2__, and test
- * __SSE4_2__ to avoid OpenImageIO conflicts with our emulation macros on other
+ * __SSE4_1__ and to __SSE4_2__avoid OpenImageIO conflicts with our emulation macros on other
  * platforms when compiling code outside the kernel. */
-#  if !(defined(__KERNEL_SSE42__) || defined(__SSE4_2__))
+#  if !(defined(__KERNEL_SSE42__) || defined(__SSE4_1__) || defined(__SSE4_2__))
 
 /* Emulation of SSE4 functions with SSE2 */
 
@@ -573,7 +573,7 @@ __forceinline __m128 _mm_round_ps_emu(__m128 value, const int flags)
   return value;
 }
 
-#  endif /* !(defined(__KERNEL_SSE42__) || defined(__SSE4_2__)) */
+#  endif /* !(defined(__KERNEL_SSE42__) || defined(__SSE4_1__) || defined(__SSE4_2__)) */
 
 /* Older GCC versions do not have _mm256_cvtss_f32 yet, so define it ourselves.
  * _mm256_castps256_ps128 generates no instructions so this is just as efficient. */
