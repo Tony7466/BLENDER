@@ -18,9 +18,9 @@
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
-#include "gpencil_layer.hh"
-#include "gpencil_material.hh"
-#include "gpencil_shader.hh"
+#include "grease_pencil_layer.hh"
+#include "grease_pencil_material.hh"
+#include "grease_pencil_shader.hh"
 
 namespace blender::draw::greasepencil {
 
@@ -84,13 +84,13 @@ class ObjectModule {
       const bool hide_overlay = ((v3d->flag2 & V3D_HIDE_OVERLAYS) != 0);
       const bool show_onion = ((v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) != 0);
       use_onion_ = show_onion && !hide_overlay && !playing;
-      use_stroke_fill_ = GPENCIL_SIMPLIFY_FILL(scene, playing);
-      use_vfx_ = GPENCIL_SIMPLIFY_FX(scene, playing);
+      use_stroke_fill_ = true;/* GPENCIL_SIMPLIFY_FILL(scene, playing); */
+      use_vfx_ = playing;/* GPENCIL_SIMPLIFY_FX(scene, playing); */
       is_render_ = false;
     }
     else {
-      use_stroke_fill_ = GPENCIL_SIMPLIFY_FILL(scene, false);
-      use_vfx_ = GPENCIL_SIMPLIFY_FX(scene, false);
+      use_stroke_fill_ = true;/* GPENCIL_SIMPLIFY_FILL(scene, false); */
+      use_vfx_ = true;/* GPENCIL_SIMPLIFY_FX(scene, false); */
     }
   }
 

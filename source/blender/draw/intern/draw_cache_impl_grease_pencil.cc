@@ -27,8 +27,8 @@
 
 #include "draw_cache_impl.hh"
 
-#include "../engines/gpencil/gpencil_defines.h"
-#include "../engines/gpencil/gpencil_shader_shared.h"
+#include "../engines/grease_pencil_v3/grease_pencil_defines.hh"
+#include "../engines/grease_pencil_v3/grease_pencil_shader_shared.h"
 
 namespace blender::draw {
 

@@ -691,6 +691,8 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_volume_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_vfx_info.hh
+  ../draw/engines/grease_pencil_v3/shaders/infos/grease_pencil_info.hh
+  ../draw/engines/grease_pencil_v3/shaders/infos/grease_pencil_vfx_info.hh
   ../draw/engines/overlay/shaders/infos/overlay_antialiasing_info.hh
   ../draw/engines/overlay/shaders/infos/overlay_armature_info.hh
   ../draw/engines/overlay/shaders/infos/overlay_background_info.hh

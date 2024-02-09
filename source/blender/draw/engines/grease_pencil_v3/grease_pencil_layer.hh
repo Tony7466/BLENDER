@@ -15,6 +15,8 @@
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
+#include "grease_pencil_shader_shared.h"
+
 namespace blender::draw::greasepencil {
 
 using namespace draw;

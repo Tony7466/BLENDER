@@ -6,7 +6,7 @@
  * \ingroup draw
  */
 
-#include "gpencil_shader.hh"
+#include "grease_pencil_shader.hh"
 
 #include <iostream>
 
@@ -64,35 +64,35 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
 {
   switch (shader_type) {
     case ANTIALIASING_EDGE_DETECT:
-      return "gpencil_antialiasing_stage_0";
+      return "grease_pencil_antialiasing_stage_0";
     case ANTIALIASING_BLEND_WEIGHT:
-      return "gpencil_antialiasing_stage_1";
+      return "grease_pencil_antialiasing_stage_1";
     case ANTIALIASING_RESOLVE:
-      return "gpencil_antialiasing_stage_2";
+      return "grease_pencil_antialiasing_stage_2";
     case GREASE_PENCIL:
-      return "gpencil_geometry_next";
+      return "grease_pencil_geometry";
     case LAYER_BLEND:
-      return "gpencil_layer_blend";
+      return "grease_pencil_layer_blend";
     case DEPTH_MERGE:
       return "grease_pencil_depth_merge";
     case MASK_INVERT:
-      return "gpencil_mask_invert";
+      return "grease_pencil_mask_invert";
     case FX_COMPOSITE:
-      return "gpencil_fx_composite";
+      return "grease_pencil_fx_composite";
     case FX_COLORIZE:
-      return "gpencil_fx_colorize";
+      return "grease_pencil_fx_colorize";
     case FX_BLUR:
-      return "gpencil_fx_blur";
+      return "grease_pencil_fx_blur";
     case FX_GLOW:
-      return "gpencil_fx_glow";
+      return "grease_pencil_fx_glow";
     case FX_PIXEL:
-      return "gpencil_fx_pixelize";
+      return "grease_pencil_fx_pixelize";
     case FX_RIM:
-      return "gpencil_fx_rim";
+      return "grease_pencil_fx_rim";
     case FX_SHADOW:
-      return "gpencil_fx_shadow";
+      return "grease_pencil_fx_shadow";
     case FX_TRANSFORM:
-      return "gpencil_fx_transform";
+      return "grease_pencil_fx_transform";
     /* To avoid compiler warning about missing case. */
     case MAX_SHADER_TYPE:
       return "";

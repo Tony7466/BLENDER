@@ -165,8 +165,8 @@ GPU_SHADER_CREATE_INFO(draw_gpencil)
     .push_constant(Type::FLOAT, "gpThicknessOffset")
     .additional_info("draw_modelmat", "draw_object_infos");
 
-GPU_SHADER_CREATE_INFO(draw_gpencil_new)
-    .typedef_source("gpencil_shader_shared.h")
+GPU_SHADER_CREATE_INFO(draw_grease_pencil)
+    .typedef_source("grease_pencil_shader_shared.h")
     .define("DRW_GPENCIL_INFO")
     .sampler(0, ImageType::FLOAT_BUFFER, "gp_pos_tx")
     .sampler(1, ImageType::FLOAT_BUFFER, "gp_col_tx")

@@ -8,15 +8,14 @@
 #include "BKE_camera.h"
 #include "BLI_listbase_wrapper.hh"
 #include "DNA_camera_types.h"
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_shader_fx_types.h"
 
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
-#include "gpencil_engine.h"
-#include "gpencil_shader.hh"
-#include "gpencil_shader_shared.h"
+#include "grease_pencil_engine.h"
+#include "grease_pencil_shader.hh"
+#include "grease_pencil_shader_shared.h"
 
 namespace blender::draw::greasepencil {
 
@@ -231,9 +230,8 @@ class VfxModule {
       /* TODO(fclem): Replace by this->render_size. */
       const float *vp_size = DRW_viewport_size_get();
 
-      float world_pixel_scale = 1.0f / GPENCIL_PIXEL_FACTOR;
       float scale = mat4_to_scale(object->object_to_world);
-      float distance_factor = world_pixel_scale * scale * winmat[1][1] * vp_size[1] / w;
+      float distance_factor = scale * winmat[1][1] * vp_size[1] / w;
       blur_size *= distance_factor;
     }
 

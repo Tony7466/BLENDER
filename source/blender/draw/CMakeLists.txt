@@ -181,12 +181,12 @@ set(SRC
   engines/gpencil/gpencil_antialiasing.cc
   engines/gpencil/gpencil_cache_utils.cc
   engines/gpencil/gpencil_draw_data.cc
-  engines/gpencil/gpencil_engine.cc
   engines/gpencil/gpencil_engine_c.cc
   engines/gpencil/gpencil_render.cc
-  engines/gpencil/gpencil_shader.cc
   engines/gpencil/gpencil_shader_c.cc
   engines/gpencil/gpencil_shader_fx.cc
+  engines/grease_pencil_v3/grease_pencil_engine.cc
+  engines/grease_pencil_v3/grease_pencil_shader.cc
   engines/select/select_draw_utils.cc
   engines/select/select_engine.cc
   engines/select/select_instance.cc
@@ -305,14 +305,15 @@ set(SRC
   engines/eevee_next/eevee_volume.hh
   engines/eevee_next/eevee_world.hh
   engines/external/external_engine.h
-  engines/gpencil/gpencil_antialiasing.hh
   engines/gpencil/gpencil_engine.h
-  engines/gpencil/gpencil_layer.hh
-  engines/gpencil/gpencil_light.hh
-  engines/gpencil/gpencil_material.hh
-  engines/gpencil/gpencil_object.hh
-  engines/gpencil/gpencil_shader.hh
-  engines/gpencil/gpencil_vfx.hh
+  engines/grease_pencil_v3/grease_pencil_antialiasing.hh
+  engines/grease_pencil_v3/grease_pencil_engine.h
+  engines/grease_pencil_v3/grease_pencil_layer.hh
+  engines/grease_pencil_v3/grease_pencil_light.hh
+  engines/grease_pencil_v3/grease_pencil_material.hh
+  engines/grease_pencil_v3/grease_pencil_object.hh
+  engines/grease_pencil_v3/grease_pencil_shader.hh
+  engines/grease_pencil_v3/grease_pencil_vfx.hh
   engines/image/image_batches.hh
   engines/image/image_buffer_cache.hh
   engines/image/image_drawing_mode.hh
@@ -714,9 +715,7 @@ set(GLSL_SRC
   intern/draw_shader_shared.h
 
   engines/gpencil/shaders/gpencil_frag.glsl
-  engines/gpencil/shaders/grease_pencil_frag.glsl
   engines/gpencil/shaders/gpencil_vert.glsl
-  engines/gpencil/shaders/grease_pencil_vert.glsl
   engines/gpencil/shaders/gpencil_antialiasing_frag.glsl
   engines/gpencil/shaders/gpencil_antialiasing_vert.glsl
   engines/gpencil/shaders/gpencil_blend_mode.glsl
@@ -724,11 +723,24 @@ set(GLSL_SRC
   engines/gpencil/shaders/gpencil_mask_invert_frag.glsl
   engines/gpencil/shaders/gpencil_depth_merge_frag.glsl
   engines/gpencil/shaders/gpencil_depth_merge_vert.glsl
-  engines/gpencil/shaders/grease_pencil_depth_merge_vert.glsl
   engines/gpencil/shaders/gpencil_vfx_frag.glsl
 
   engines/gpencil/gpencil_defines.h
   engines/gpencil/gpencil_shader_shared.h
+
+  engines/grease_pencil_v3/shaders/grease_pencil_antialiasing_frag.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_antialiasing_vert.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_blend_mode.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_depth_merge_frag.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_depth_merge_vert.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_frag.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_layer_blend_frag.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_mask_invert_frag.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_vert.glsl
+  engines/grease_pencil_v3/shaders/grease_pencil_vfx_frag.glsl
+
+  engines/grease_pencil_v3/grease_pencil_defines.hh
+  engines/grease_pencil_v3/grease_pencil_shader_shared.h
 
   engines/select/shaders/select_id_vert.glsl
   engines/select/shaders/select_id_frag.glsl

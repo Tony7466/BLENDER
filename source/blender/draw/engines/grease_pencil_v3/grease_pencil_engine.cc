@@ -6,10 +6,6 @@
  * \ingroup draw
  */
 
-#include "BKE_gpencil_modifier_legacy.h"
-
-#include "BLI_listbase_wrapper.hh"
-
 #include "DEG_depsgraph_query.hh"
 
 #include "DNA_shader_fx_types.h"
@@ -30,16 +26,15 @@
 #include "draw_pass.hh"
 
 #define GP_LIGHT
-#include "gpencil_antialiasing.hh"
-#include "gpencil_defines.h"
-#include "gpencil_engine.h"
-#include "gpencil_layer.hh"
-#include "gpencil_light.hh"
-#include "gpencil_material.hh"
-#include "gpencil_object.hh"
-#include "gpencil_shader.hh"
-#include "gpencil_shader_shared.h"
-#include "gpencil_vfx.hh"
+#include "grease_pencil_antialiasing.hh"
+#include "grease_pencil_engine.h"
+#include "grease_pencil_layer.hh"
+#include "grease_pencil_light.hh"
+#include "grease_pencil_material.hh"
+#include "grease_pencil_object.hh"
+#include "grease_pencil_shader.hh"
+#include "grease_pencil_shader_shared.h"
+#include "grease_pencil_vfx.hh"
 
 namespace blender::draw::greasepencil {
 
