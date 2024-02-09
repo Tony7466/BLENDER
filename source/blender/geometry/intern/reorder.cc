@@ -14,6 +14,7 @@
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_multi_value_map.hh"
+#include "BLI_string_ref.hh"
 
 #include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
@@ -39,6 +40,14 @@ components_supported_reordering()
         return supported_types_and_domains;
       }();
   return supported_types_and_domains;
+}
+
+static void remove_attributes(const Span<StringRef> names,
+                              bke::MutableAttributeAccessor attributes)
+{
+  for (const StringRef name : names) {
+    attributes.remove(name);
+  }
 }
 
 static void reorder_attributes_group_to_group(
@@ -94,29 +103,30 @@ static void copy_and_reorder_mesh_verts(
     const bke::AnonymousAttributePropagationInfo &propagation_info,
     Mesh &dst_mesh)
 {
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Edge,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Face,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
-  array_utils::copy(src_mesh.face_offsets(), dst_mesh.face_offsets_for_write());
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Corner,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
+  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_mesh.attributes_for_write();
 
-  bke::gather_attributes(src_mesh.attributes(),
+  remove_attributes({"position", ".edge_verts", ".corner_vert", ".corner_edge"}, dst_attributes);
+
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Edge, propagation_info, {}, dst_attributes);
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Face, propagation_info, {}, dst_attributes);
+  implicit_sharing::free_shared_data(&dst_mesh.face_offset_indices,
+                                     &dst_mesh.runtime->face_offsets_sharing_info);
+  implicit_sharing::copy_shared_pointer(src_mesh.face_offset_indices,
+                                        src_mesh.runtime->face_offsets_sharing_info,
+                                        &dst_mesh.face_offset_indices,
+                                        &dst_mesh.runtime->face_offsets_sharing_info);
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Corner, propagation_info, {}, dst_attributes);
+
+  bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
                          propagation_info,
                          {},
                          old_by_new_map,
-                         dst_mesh.attributes_for_write());
+                         dst_attributes);
   const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
   array_utils::gather(new_by_old_map.as_span(),
                       dst_mesh.edges().cast<int>(),
@@ -131,29 +141,26 @@ static void copy_and_reorder_mesh_edges(
     const bke::AnonymousAttributePropagationInfo &propagation_info,
     Mesh &dst_mesh)
 {
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Point,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Face,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
-  array_utils::copy(src_mesh.face_offsets(), dst_mesh.face_offsets_for_write());
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Corner,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
+  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_mesh.attributes_for_write();
 
-  bke::gather_attributes(src_mesh.attributes(),
-                         bke::AttrDomain::Edge,
-                         propagation_info,
-                         {},
-                         old_by_new_map,
-                         dst_mesh.attributes_for_write());
+  remove_attributes({"position", ".edge_verts", ".corner_vert", ".corner_edge"}, dst_attributes);
+
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Point, propagation_info, {}, dst_attributes);
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Face, propagation_info, {}, dst_attributes);
+  implicit_sharing::free_shared_data(&dst_mesh.face_offset_indices,
+                                     &dst_mesh.runtime->face_offsets_sharing_info);
+  implicit_sharing::copy_shared_pointer(src_mesh.face_offset_indices,
+                                        src_mesh.runtime->face_offsets_sharing_info,
+                                        &dst_mesh.face_offset_indices,
+                                        &dst_mesh.runtime->face_offsets_sharing_info);
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Corner, propagation_info, {}, dst_attributes);
+
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Edge, propagation_info, {}, old_by_new_map, dst_attributes);
   const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
   array_utils::gather(
       new_by_old_map.as_span(), dst_mesh.corner_edges(), dst_mesh.corner_edges_for_write());
@@ -165,34 +172,29 @@ static void copy_and_reorder_mesh_faces(
     const bke::AnonymousAttributePropagationInfo &propagation_info,
     Mesh &dst_mesh)
 {
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Point,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
-  bke::copy_attributes(src_mesh.attributes(),
-                       bke::AttrDomain::Edge,
-                       propagation_info,
-                       {},
-                       dst_mesh.attributes_for_write());
+  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_mesh.attributes_for_write();
 
-  bke::gather_attributes(src_mesh.attributes(),
-                         bke::AttrDomain::Face,
-                         propagation_info,
-                         {},
-                         old_by_new_map,
-                         dst_mesh.attributes_for_write());
+  remove_attributes({"position", ".edge_verts", ".corner_vert", ".corner_edge"}, dst_attributes);
+
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Point, propagation_info, {}, dst_attributes);
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Edge, propagation_info, {}, dst_attributes);
+
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Face, propagation_info, {}, old_by_new_map, dst_attributes);
   const Span<int> old_offsets = src_mesh.face_offsets();
   MutableSpan<int> new_offsets = dst_mesh.face_offsets_for_write();
   offset_indices::gather_group_sizes(old_offsets, old_by_new_map, new_offsets);
   offset_indices::accumulate_counts_to_offsets(new_offsets);
-  reorder_attributes_group_to_group(src_mesh.attributes(),
+  reorder_attributes_group_to_group(src_attributes,
                                     bke::AttrDomain::Corner,
                                     propagation_info,
                                     old_offsets,
                                     new_offsets.as_span(),
                                     old_by_new_map,
-                                    dst_mesh.attributes_for_write());
+                                    dst_attributes);
 }
 
 static void copy_and_reorder_mesh(const Mesh &src_mesh,
@@ -239,25 +241,28 @@ static void copy_and_reorder_curves(const bke::CurvesGeometry &src_curves,
                                     const bke::AnonymousAttributePropagationInfo &propagation_info,
                                     bke::CurvesGeometry &dst_curves)
 {
-  bke::gather_attributes(src_curves.attributes(),
+  const bke::AttributeAccessor src_attributes = src_curves.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+
+  bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Curve,
                          propagation_info,
                          {},
                          old_by_new_map,
-                         dst_curves.attributes_for_write());
+                         dst_attributes);
 
   const Span<int> old_offsets = src_curves.offsets();
   MutableSpan<int> new_offsets = dst_curves.offsets_for_write();
   offset_indices::gather_group_sizes(old_offsets, old_by_new_map, new_offsets);
   offset_indices::accumulate_counts_to_offsets(new_offsets);
 
-  reorder_attributes_group_to_group(src_curves.attributes(),
+  reorder_attributes_group_to_group(src_attributes,
                                     bke::AttrDomain::Point,
                                     propagation_info,
                                     old_offsets,
                                     new_offsets.as_span(),
                                     old_by_new_map,
-                                    dst_curves.attributes_for_write());
+                                    dst_attributes);
   dst_curves.tag_topology_changed();
 }
 
@@ -275,18 +280,10 @@ static void copy_and_reorder_instaces(
                          old_by_new_map,
                          dst_instances.attributes_for_write());
 
-  Vector<int> mapping;
-  mapping.reserve(src_instances.references_num());
   for (const bke::InstanceReference &reference : src_instances.references()) {
-    mapping.append(dst_instances.add_reference(reference));
+    dst_instances.add_reference(reference);
   }
-
-  const Span<int> old_reference_handles = src_instances.reference_handles();
-  MutableSpan<int> new_reference_handles = dst_instances.reference_handles();
-  array_utils::gather(old_reference_handles, old_by_new_map, new_reference_handles);
-  if (!array_utils::indices_are_range(mapping.as_span(), mapping.index_range())) {
-    array_utils::gather(mapping.as_span(), new_reference_handles.as_span(), new_reference_handles);
-  }
+  BLI_assert(src_instances.references() == dst_instances.references());
 
   const Span<float4x4> old_transforms = src_instances.transforms();
   MutableSpan<float4x4> new_transforms = dst_instances.transforms();

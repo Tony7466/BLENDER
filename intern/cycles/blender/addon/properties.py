@@ -355,7 +355,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     denoising_use_gpu: BoolProperty(
         name="Denoise on GPU",
         description="Perform denoising on GPU devices, if available. This is significantly faster than on CPU, but requires additional GPU memory. When large scenes need more GPU memory, this option can be disabled",
-        default=True,
+        default=False,
     )
 
     use_preview_denoising: BoolProperty(
@@ -886,17 +886,6 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=50,
         min=0.0,
         unit='LENGTH'
-    )
-
-    motion_blur_position: EnumProperty(
-        name="Motion Blur Position",
-        default='CENTER',
-        description="Offset for the shutter's time interval, allows to change the motion blur trails",
-        items=(
-            ('START', "Start on Frame", "The shutter opens at the current frame"),
-            ('CENTER', "Center on Frame", "The shutter is open during the current frame"),
-            ('END', "End on Frame", "The shutter closes at the current frame"),
-        ),
     )
 
     rolling_shutter_type: EnumProperty(
@@ -1603,7 +1592,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
     def has_oidn_gpu_devices(self):
         import _cycles
-        compute_device_type = context.preferences.addons[__package__].preferences.get_compute_device_type()
+        compute_device_type = self.get_compute_device_type()
 
         # We need non-CPU devices, used for rendering and supporting OIDN GPU denoising
         for device in _cycles.available_devices(compute_device_type):

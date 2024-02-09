@@ -479,6 +479,7 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
     integrator->set_use_denoise_pass_albedo(denoise_params.use_pass_albedo);
     integrator->set_use_denoise_pass_normal(denoise_params.use_pass_normal);
     integrator->set_denoiser_prefilter(denoise_params.prefilter);
+    integrator->set_denoiser_quality(denoise_params.quality);
   }
 
   /* UPDATE_NONE as we don't want to tag the integrator as modified (this was done by the
@@ -554,6 +555,8 @@ void BlenderSync::sync_view_layer(BL::ViewLayer &b_view_layer)
 
   /* Material override. */
   view_layer.material_override = b_view_layer.material_override();
+  /* World override. */
+  view_layer.world_override = b_view_layer.world_override();
 
   /* Sample override. */
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
@@ -974,6 +977,9 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
     denoising.use_gpu = get_boolean(cscene, "denoising_use_gpu");
     denoising.prefilter = (DenoiserPrefilter)get_enum(
         cscene, "denoising_prefilter", DENOISER_PREFILTER_NUM, DENOISER_PREFILTER_NONE);
+    /* This currently only affects NVIDIA and the difference in quality is too small to justify
+     * exposing a setting to the user. */
+    denoising.quality = DENOISER_QUALITY_HIGH;
 
     input_passes = (DenoiserInput)get_enum(
         cscene, "denoising_input_passes", DENOISER_INPUT_NUM, DENOISER_INPUT_RGB_ALBEDO_NORMAL);
@@ -993,6 +999,9 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
     denoising.use_gpu = get_boolean(cscene, "preview_denoising_use_gpu");
     denoising.prefilter = (DenoiserPrefilter)get_enum(
         cscene, "preview_denoising_prefilter", DENOISER_PREFILTER_NUM, DENOISER_PREFILTER_FAST);
+    /* This currently only affects NVIDIA and the difference in quality is too small to justify
+     * exposing a setting to the user. */
+    denoising.quality = DENOISER_QUALITY_BALANCED;
     denoising.start_sample = get_int(cscene, "preview_denoising_start_sample");
 
     input_passes = (DenoiserInput)get_enum(
