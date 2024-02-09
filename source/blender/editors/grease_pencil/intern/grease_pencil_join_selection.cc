@@ -40,7 +40,7 @@ struct PointsRange {
 
 enum class ActionOnNextRange { Nothing, ReverseExisting, ReverseAddition, ReverseBoth };
 
-enum class ActiveLayerBehavior { CopySelection, MoveSelection };
+enum class ActiveLayerBehavior { JoinAndCopySelection, JoinSelection };
 
 /**
  * Iterates over \a drawings and returns a vector with all the selected ranges of points.
@@ -454,7 +454,7 @@ int grease_pencil_join_selection_exec(bContext *C, wmOperator *op)
   }
 
   const ActiveLayerBehavior active_layer_behavior = static_cast<ActiveLayerBehavior>(
-      RNA_enum_get(op->ptr, "active_layer_behavior"));
+      RNA_enum_get(op->ptr, "type"));
   const Layer &active_layer = *grease_pencil.get_active_layer();
 
   const std::optional<int> opt_layer_index = grease_pencil.get_layer_index(active_layer);
@@ -491,7 +491,7 @@ int grease_pencil_join_selection_exec(bContext *C, wmOperator *op)
   clear_selection_attribute(working_range_collection, selection_domain);
 
   bke::CurvesGeometry &dst_curves = dst_drawing->strokes_for_write();
-  if (active_layer_behavior == ActiveLayerBehavior::MoveSelection) {
+  if (active_layer_behavior == ActiveLayerBehavior::JoinSelection) {
     remove_selected_points_in_active_layer(ranges_selected, dst_curves);
   }
 
@@ -510,23 +510,26 @@ int grease_pencil_join_selection_exec(bContext *C, wmOperator *op)
 void GREASE_PENCIL_OT_join_selection(wmOperatorType *ot)
 {
   static const EnumPropertyItem active_layer_behavior[] = {
-      {int(ActiveLayerBehavior::CopySelection),
-       "COPY",
+      {int(ActiveLayerBehavior::JoinAndCopySelection),
+       "JOINCOPY",
        0,
-       "Copy selection",
+       "Join and Copy",
        "Copy the selection in the new stroke"},
-      {int(ActiveLayerBehavior::MoveSelection),
-       "MOVE",
+      {int(ActiveLayerBehavior::JoinSelection),
+       "JOIN",
        0,
-       "Move selection",
+       "Join",
        "Move the selection to the new stroke"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  /* identifiers. */
   ot->name = "Join Selection";
   ot->idname = "GREASE_PENCIL_OT_join_selection";
   ot->description = "New stroke from selected points/strokes";
 
+  /* callbacks. */
+  ot->invoke = WM_menu_invoke;
   ot->exec = grease_pencil_join_selection_exec;
   ot->poll = editable_grease_pencil_poll;
 
@@ -534,10 +537,10 @@ void GREASE_PENCIL_OT_join_selection(wmOperatorType *ot)
 
   ot->prop = RNA_def_enum(
       ot->srna,
-      "active_layer_behavior",
+      "type",
       active_layer_behavior,
-      int(ActiveLayerBehavior::CopySelection),
-      "Active layer behavior",
+      int(ActiveLayerBehavior::JoinSelection),
+      "Type",
       "Defines how the operator will behave on the selection in the active layer");
 }
 

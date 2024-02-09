@@ -5841,7 +5841,6 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout.menu("VIEW3D_MT_edit_greasepencil_showhide")
         layout.operator_menu_enum("grease_pencil.separate", "mode", text="Separate")
         layout.operator("grease_pencil.clean_loose")
-        layout.operator("grease_pencil.join_selection")
 
         layout.separator()
 
@@ -5874,6 +5873,12 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.operator("grease_pencil.set_uniform_thickness")
         layout.operator("grease_pencil.set_uniform_opacity")
+
+        layout.separator()
+
+        layout.operator_menu_enum("grease_pencil.join_selection", "type", text="Join")
+
+        layout.separator()
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
