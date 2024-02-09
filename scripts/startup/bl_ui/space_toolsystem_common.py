@@ -106,10 +106,16 @@ ToolDef = namedtuple(
         "draw_cursor",
         # Various options, see: `bpy.types.WorkSpaceTool.setup` options argument.
         "options",
+        # Handlers
+        "handlers"
     )
 )
 del namedtuple
 
+class ToolDefHandlers:
+    def __init__ (self):
+        self.set = []
+        self.unset = []
 
 def from_dict(kw_args):
     """
@@ -129,6 +135,7 @@ def from_dict(kw_args):
         "operator": None,
         "draw_settings": None,
         "draw_cursor": None,
+        "handlers" : ToolDefHandlers()
     }
     kw.update(kw_args)
 
@@ -985,6 +992,9 @@ def _activate_by_item(context, space_type, item, index, *, as_fallback=False):
     tool = ToolSelectPanelHelper._tool_active_from_context(context, space_type, create=True)
     tool_fallback_id = cls.tool_fallback_id
 
+    curr_tool = ToolSelectPanelHelper._tool_active_from_context(context, space_type)
+    curr_item, curr_index = cls._tool_get_by_id(context, getattr(curr_tool, "idname", None))
+
     if as_fallback:
         # To avoid complicating logic too much, isolate all fallback logic to this block.
         # This will set the tool again, using the item for the fallback instead of the primary tool.
@@ -1030,6 +1040,12 @@ def _activate_by_item(context, space_type, item, index, *, as_fallback=False):
     keymap_fallback = (item_fallback and item_fallback.keymap and item_fallback.keymap[0]) or ""
     if keymap_fallback:
         keymap_fallback = keymap_fallback + " (fallback)"
+
+    for cb in curr_item.handlers.unset:
+        cb()
+
+    for cb in item.handlers.set:
+        cb()
 
     tool.setup(
         idname=item.idname,
