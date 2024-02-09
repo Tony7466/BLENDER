@@ -464,7 +464,7 @@ __forceinline uint64_t bitscan(uint64_t value)
 #ifdef __KERNEL_SSE2__
 
 /* Test __KERNEL_SSE42__ for MSVC which does not define __SSE4_2__, and test
- * __SSE4_1__ and to __SSE4_2__avoid OpenImageIO conflicts with our emulation macros on other
+ * __SSE4_1__ and __SSE4_2__ to avoid OpenImageIO conflicts with our emulation macros on other
  * platforms when compiling code outside the kernel. */
 #  if !(defined(__KERNEL_SSE42__) || defined(__SSE4_1__) || defined(__SSE4_2__))
 
