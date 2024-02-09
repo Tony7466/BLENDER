@@ -99,7 +99,7 @@
 
 /* Option to process multiple pixels per thread in shadow_tag_usage_* for better GPU work
  * saturation. */
-#if defined(WITH_METAL_BACKEND) || defined(GPU_METAL)
+#if (defined(WITH_METAL_BACKEND) || defined(GPU_METAL))
 #  define SHADOW_TAG_USAGE_NUM_PIXELS_PER_THREAD_DIM 4
 #else
 #  define SHADOW_TAG_USAGE_NUM_PIXELS_PER_THREAD_DIM 1

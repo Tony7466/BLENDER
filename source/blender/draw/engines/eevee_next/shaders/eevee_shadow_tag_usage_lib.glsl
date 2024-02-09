@@ -15,15 +15,24 @@
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
+#if SHADOW_TAG_USAGE_NUM_PIXELS_PER_THREAD_DIM > 1
 int g_last_tile_index = -1;
+#endif
 void shadow_tag_usage_tile_unchecked(LightData light, ivec2 tile_co, int lod, int tilemap_index)
 {
   tile_co >>= lod;
   int tile_index = shadow_tile_offset(tile_co, tilemaps_buf[tilemap_index].tiles_index, lod);
+
+#if SHADOW_TAG_USAGE_NUM_PIXELS_PER_THREAD_DIM > 1
+  /* If evaluating more than one pixel per thread invocation, compare tile index to reduce atomic
+   * contention. */
   if (tile_index != g_last_tile_index) {
     atomicOr(tiles_buf[tile_index], uint(SHADOW_IS_USED));
     g_last_tile_index = tile_index;
   }
+#else
+  atomicOr(tiles_buf[tile_index], uint(SHADOW_IS_USED));
+#endif
 }
 void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_index)
 {
