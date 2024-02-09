@@ -1,3 +1,4 @@
 Referenced by issue #42894, Strange wrong selection behavior
 Referenced by issue #42885, mathutils.Matrix.Identity(4).zero() returns None
 Referenced by pull request #118003, Fix return types in docs for matrix.zero, quat's .negate and .identity
+Referenced by commit 8144252aa9c0cef6bd07efaf3cad9d3131f4087f, Fix return types in docs for matrix.zero, quat's .negate and .identity
