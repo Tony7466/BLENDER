@@ -9,7 +9,7 @@
 
 #include "gpencil_engine.h"
 
-extern "C" char datatoc_gpencil_common_lib_glsl[];
+extern "C" char datatoc_gpencil_blend_mode_glsl[];
 extern "C" char datatoc_gpencil_frag_glsl[];
 extern "C" char datatoc_gpencil_vert_glsl[];
 extern "C" char datatoc_gpencil_antialiasing_frag_glsl[];

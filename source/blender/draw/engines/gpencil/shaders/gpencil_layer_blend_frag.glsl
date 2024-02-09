@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(gpencil_common_lib.glsl)
+#pragma BLENDER_REQUIRE(gpencil_blend_mode.glsl)
 
 void main()
 {
