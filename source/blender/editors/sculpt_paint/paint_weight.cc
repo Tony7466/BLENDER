@@ -1607,7 +1607,8 @@ bool weight_paint_mode_poll(bContext *C)
 {
   const Object *ob = CTX_data_active_object(C);
 
-  return ob && ob->mode == OB_MODE_WEIGHT_PAINT && ((const Mesh *)ob->data)->faces_num;
+  return ob && ob->mode == OB_MODE_WEIGHT_PAINT && ob->type != OB_GREASE_PENCIL &&
+         ((const Mesh *)ob->data)->faces_num;
 }
 
 bool weight_paint_mode_region_view3d_poll(bContext *C)

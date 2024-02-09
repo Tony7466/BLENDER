@@ -1000,6 +1000,8 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
         default:
           return rna_enum_dummy_DEFAULT_items;
       }
+    case PaintMode::Weight:
+      return prop_direction_items;
     default:
       return rna_enum_dummy_DEFAULT_items;
   }

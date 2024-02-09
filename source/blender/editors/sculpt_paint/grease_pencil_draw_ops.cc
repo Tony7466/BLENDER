@@ -316,6 +316,111 @@ static void GREASE_PENCIL_OT_draw_mode_toggle(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Weight Brush Stroke Operator
+ * \{ */
+
+static bool weight_stroke_test_start(bContext *C, wmOperator *op, const float mouse[2])
+{
+  PaintStroke *paint_stroke = static_cast<PaintStroke *>(op->customdata);
+
+  InputSample start_sample;
+  start_sample.mouse_position = float2(mouse);
+  start_sample.pressure = 0.0f;
+
+  GreasePencilStrokeOperation *operation = greasepencil::new_weight_paint_operation().release();
+
+  if (operation) {
+    paint_stroke_set_mode_data(paint_stroke, operation);
+    operation->on_stroke_begin(*C, start_sample);
+    return true;
+  }
+  return false;
+}
+
+static int grease_pencil_weight_brush_stroke_invoke(bContext *C,
+                                                    wmOperator *op,
+                                                    const wmEvent *event)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const Object *object = CTX_data_active_object(C);
+  if (!object || object->type != OB_GREASE_PENCIL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const Paint *paint = BKE_paint_get_active_from_context(C);
+  const Brush *brush = BKE_paint_brush_for_read(paint);
+  if (brush == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+      ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
+  if (drawings.is_empty()) {
+    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw weight on");
+    return OPERATOR_CANCELLED;
+  }
+
+  op->customdata = paint_stroke_new(C,
+                                    op,
+                                    stroke_get_location,
+                                    weight_stroke_test_start,
+                                    stroke_update_step,
+                                    stroke_redraw,
+                                    stroke_done,
+                                    event->type);
+
+  const int return_value = op->type->modal(C, op, event);
+  if (return_value == OPERATOR_FINISHED) {
+    return OPERATOR_FINISHED;
+  }
+
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int grease_pencil_weight_brush_stroke_modal(bContext *C,
+                                                   wmOperator *op,
+                                                   const wmEvent *event)
+{
+  return paint_stroke_modal(C, op, event, reinterpret_cast<PaintStroke **>(&op->customdata));
+}
+
+static void grease_pencil_weight_brush_stroke_cancel(bContext *C, wmOperator *op)
+{
+  paint_stroke_cancel(C, op, static_cast<PaintStroke *>(op->customdata));
+}
+
+static bool grease_pencil_weight_brush_stroke_poll(bContext *C)
+{
+  if (!ed::greasepencil::grease_pencil_weight_painting_poll(C)) {
+    return false;
+  }
+  if (!WM_toolsystem_active_tool_is_brush(C)) {
+    return false;
+  }
+  return true;
+}
+
+static void GREASE_PENCIL_OT_weight_brush_stroke(wmOperatorType *ot)
+{
+  ot->name = "Grease Pencil Paint Weight";
+  ot->idname = "GREASE_PENCIL_OT_weight_brush_stroke";
+  ot->description = "Draw weight on stroke points in the active Grease Pencil object";
+
+  ot->poll = grease_pencil_weight_brush_stroke_poll;
+  ot->invoke = grease_pencil_weight_brush_stroke_invoke;
+  ot->modal = grease_pencil_weight_brush_stroke_modal;
+  ot->cancel = grease_pencil_weight_brush_stroke_cancel;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  paint_stroke_operator_properties(ot);
+}
+
+/** \} */
+
 }  // namespace blender::ed::sculpt_paint
 
 /* -------------------------------------------------------------------- */
@@ -327,6 +432,7 @@ void ED_operatortypes_grease_pencil_draw()
   using namespace blender::ed::sculpt_paint;
   WM_operatortype_append(GREASE_PENCIL_OT_brush_stroke);
   WM_operatortype_append(GREASE_PENCIL_OT_draw_mode_toggle);
+  WM_operatortype_append(GREASE_PENCIL_OT_weight_brush_stroke);
 }
 
 /** \} */

@@ -45,6 +45,7 @@ class VIEW3D_HT_tool_header(Header):
     def draw_tool_settings(self, context):
         layout = self.layout
         tool_mode = context.mode
+        is_greasepencil = context.object.type == 'GREASEPENCIL'
 
         # Active Tool
         # -----------
@@ -83,7 +84,13 @@ class VIEW3D_HT_tool_header(Header):
                 draw_3d_brush_settings(layout, tool_mode)
         elif tool_mode == 'PAINT_WEIGHT':
             if is_valid_context:
-                draw_3d_brush_settings(layout, tool_mode)
+                if not is_greasepencil:
+                    draw_3d_brush_settings(layout, tool_mode)
+                else:
+                    layout.popover("VIEW3D_PT_tools_grease_pencil_weight_options", text="Options")
+                    layout.popover("VIEW3D_PT_tools_brush_falloff")
+                    layout.popover("VIEW3D_PT_tools_brush_display")
+
         elif tool_mode == 'PAINT_TEXTURE':
             if is_valid_context:
                 draw_3d_brush_settings(layout, tool_mode)
@@ -130,6 +137,7 @@ class VIEW3D_HT_tool_header(Header):
     def draw_mode_settings(self, context):
         layout = self.layout
         mode_string = context.mode
+        is_greasepencil = context.object.type == 'GREASEPENCIL'
 
         def row_for_mirror():
             row = layout.row(align=True)
@@ -144,7 +152,8 @@ class VIEW3D_HT_tool_header(Header):
         elif mode_string == 'POSE':
             _row, sub = row_for_mirror()
             sub.prop(context.object.pose, "use_mirror_x", text="X", toggle=True)
-        elif mode_string in {'EDIT_MESH', 'PAINT_WEIGHT', 'SCULPT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
+        elif ((not is_greasepencil) and 
+              (mode_string in {'EDIT_MESH', 'PAINT_WEIGHT', 'SCULPT', 'PAINT_VERTEX', 'PAINT_TEXTURE'})):
             # Mesh Modes, Use Mesh Symmetry
             row, sub = row_for_mirror()
             sub.prop(context.object, "use_mesh_mirror_x", text="X", toggle=True)
@@ -154,7 +163,8 @@ class VIEW3D_HT_tool_header(Header):
                 tool_settings = context.tool_settings
                 layout.prop(tool_settings, "use_mesh_automerge", text="")
             elif mode_string == 'PAINT_WEIGHT':
-                row.popover(panel="VIEW3D_PT_tools_weightpaint_symmetry_for_topbar", text="")
+                if not is_greasepencil:
+                    row.popover(panel="VIEW3D_PT_tools_weightpaint_symmetry_for_topbar", text="")
             elif mode_string == 'SCULPT':
                 row.popover(panel="VIEW3D_PT_sculpt_symmetry_for_topbar", text="")
             elif mode_string == 'PAINT_VERTEX':
@@ -175,7 +185,8 @@ class VIEW3D_HT_tool_header(Header):
         elif mode_string == 'PAINT_VERTEX':
             layout.popover_group(context=".vertexpaint", **popover_kw)
         elif mode_string == 'PAINT_WEIGHT':
-            layout.popover_group(context=".weightpaint", **popover_kw)
+            if not is_greasepencil:
+                layout.popover_group(context=".weightpaint", **popover_kw)
         elif mode_string == 'PAINT_TEXTURE':
             layout.popover_group(context=".imagepaint", **popover_kw)
         elif mode_string == 'EDIT_TEXT':
@@ -320,39 +331,76 @@ class _draw_tool_settings_context_mode:
         brush = paint.brush
         if brush is None:
             return False
-
+            
         capabilities = brush.weight_paint_capabilities
-        if capabilities.has_weight:
+        
+        if context.object.type != 'GREASEPENCIL':
+            if capabilities.has_weight:
+                UnifiedPaintPanel.prop_unified(
+                    layout,
+                    context,
+                    brush,
+                    "weight",
+                    unified_name="use_unified_weight",
+                    slider=True,
+                    header=True,
+                )
+
             UnifiedPaintPanel.prop_unified(
                 layout,
                 context,
                 brush,
-                "weight",
-                unified_name="use_unified_weight",
+                "size",
+                pressure_name="use_pressure_size",
+                unified_name="use_unified_size",
                 slider=True,
+                text="Radius",
+                header=True,
+            )
+            UnifiedPaintPanel.prop_unified(
+                layout,
+                context,
+                brush,
+                "strength",
+                pressure_name="use_pressure_strength",
+                unified_name="use_unified_strength",
+                header=True,
+            )
+        else:
+            UnifiedPaintPanel.prop_unified(
+                layout,
+                context,
+                brush,
+                "size",
+                pressure_name="use_pressure_size",
+                unified_name="use_unified_size",
+                slider=True,
+                text="Radius",
+                header=True,
+            )
+            UnifiedPaintPanel.prop_unified(
+                layout,
+                context,
+                brush,
+                "strength",
+                pressure_name="use_pressure_strength",
+                unified_name="use_unified_strength",
                 header=True,
             )
 
-        UnifiedPaintPanel.prop_unified(
-            layout,
-            context,
-            brush,
-            "size",
-            pressure_name="use_pressure_size",
-            unified_name="use_unified_size",
-            slider=True,
-            text="Radius",
-            header=True,
-        )
-        UnifiedPaintPanel.prop_unified(
-            layout,
-            context,
-            brush,
-            "strength",
-            pressure_name="use_pressure_strength",
-            unified_name="use_unified_strength",
-            header=True,
-        )
+            if capabilities.has_weight:
+                UnifiedPaintPanel.prop_unified(
+                    layout,
+                    context,
+                    brush,
+                    "weight",
+                    unified_name="use_unified_weight",
+                    slider=True,
+                    header=True,
+                )
+
+            if brush.weight_tool in {'DRAW'}:
+                layout.prop(brush, "direction", expand=True, text="")
 
         return True
 
@@ -827,13 +875,21 @@ class VIEW3D_HT_header(Header):
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
 
+            if object_mode == 'PAINT_GREASE_PENCIL':
+                row = layout.row(align=True)
+                row.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+
+            if object_mode in {'PAINT_GREASE_PENCIL', 'EDIT', 'WEIGHT_PAINT'}:
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_grease_pencil_multi_frame_editing", text="")
 
-            if object_mode == 'PAINT_GREASE_PENCIL':
-                row = layout.row()
-                sub = row.row(align=True)
-                sub.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+                if object_mode in {'EDIT', 'WEIGHT_PAINT'}:
+                    sub = row.row(align=True)
+                    sub.enabled = tool_settings.use_grease_pencil_multi_frame_editing
+                    sub.popover(
+                        panel="VIEW3D_PT_gpencil_multi_frame",
+                        text="Multiframe",
+                    )
 
         # Grease Pencil (legacy)
         if obj and obj.type == 'GPENCIL' and context.gpencil_data:
@@ -7999,15 +8055,13 @@ class VIEW3D_PT_gpencil_multi_frame(Panel):
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
-
-        gpd = context.gpencil_data
         settings = tool_settings.gpencil_sculpt
 
         col = layout.column(align=True)
         col.prop(settings, "use_multiframe_falloff")
 
         # Falloff curve
-        if gpd.use_multiedit and settings.use_multiframe_falloff:
+        if settings.use_multiframe_falloff:
             layout.template_curve_mapping(settings, "multiframe_falloff_curve", brush=True)
 
 

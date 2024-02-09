@@ -4668,6 +4668,35 @@ def km_grease_pencil_edit_mode(params):
     return keymap
 
 
+def km_grease_pencil_weight_paint(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Weight Paint",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
+        ("grease_pencil.weight_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.weight_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
+        #*_template_paint_radial_control("gpencil_paint"),
+        # Active layer
+        #op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+
+        # Show/hide
+        #*_template_items_hide_reveal_actions("grease_pencil.layer_hide", "grease_pencil.layer_reveal"),
+
+        #("paint.sample_color", {"type": 'X', "value": 'PRESS', "shift": True}, None),
+    ])
+
+    return keymap
+
+
 # ------------------------------------------------------------------------------
 # Object/Pose Modes
 
@@ -8587,6 +8616,7 @@ def generate_keymaps(params=None):
         # Grease Pencil v3
         km_grease_pencil_paint_mode(params),
         km_grease_pencil_edit_mode(params),
+        km_grease_pencil_weight_paint(params),
         # Object mode.
         km_object_mode(params),
         km_object_non_modal(params),

@@ -161,6 +161,7 @@ bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
+bool grease_pencil_weight_painting_poll(bContext *C);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
@@ -171,11 +172,16 @@ struct MutableDrawingInfo {
   bke::greasepencil::Drawing &drawing;
   const int layer_index;
   const int frame_number;
+  const float influence;
 };
 Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                      GreasePencil &grease_pencil);
 Array<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
+
+Array<Array<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(const Scene &scene,
+                                                                      GreasePencil &grease_pencil);
+
 Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
                                              const GreasePencil &grease_pencil);
 
@@ -228,5 +234,11 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   int samples_max,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
+
+float get_multi_frame_falloff(const int frame_number,
+                              const int center_frame,
+                              const int min_frame,
+                              const int max_frame,
+                              const CurveMapping *falloff_curve);
 
 }  // namespace blender::ed::greasepencil

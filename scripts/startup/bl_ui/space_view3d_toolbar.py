@@ -2110,6 +2110,9 @@ class GreasePencilWeightPanel:
     @classmethod
     def poll(cls, context):
         if context.space_data.type in {'VIEW_3D', 'PROPERTIES'}:
+            if context.object and context.object.type == 'GREASEPENCIL' and context.mode == 'PAINT_WEIGHT':
+                return True
+
             if context.gpencil_data is None:
                 return False
 
