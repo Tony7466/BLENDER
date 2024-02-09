@@ -7,7 +7,6 @@
  */
 
 #include "BLI_string.h"
-#include "BLI_time.h"
 
 #include "GPU_capabilities.h"
 #include "gpu_backend.hh"
