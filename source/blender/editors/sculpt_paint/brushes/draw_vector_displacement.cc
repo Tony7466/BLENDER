@@ -9,7 +9,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
@@ -90,8 +90,7 @@ static void calc_faces(const Sculpt &sd,
   apply_translations(translations, verts, positions_orig);
   flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
 
-  // XXX: Maybe try not to tag verts with factor == 0.0f
-  BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
+  BKE_pbvh_node_mark_positions_update(&node.pbvh_node());
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -105,7 +104,8 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  auto_mask::NodeData automask_data = auto_mask::node_begin(object, ss.cache->automasking, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -142,7 +142,8 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  auto_mask::NodeData automask_data = auto_mask::node_begin(object, ss.cache->automasking, node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
