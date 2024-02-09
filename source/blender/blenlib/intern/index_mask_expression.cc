@@ -237,14 +237,113 @@ BLI_NOINLINE static void evaluate_fast_intersection(const Span<Boundary> boundar
   }
 }
 
-BLI_NOINLINE static FastResult evaluate_fast_difference(
-    const FastResult &main_term, const Span<const FastResult *> /*subtract_terms*/)
+/* TODO: Use struct instead of pair. */
+BLI_NOINLINE static void evaluate_fast_difference(const Span<std::pair<Boundary, bool>> boundaries,
+                                                  FastResult &r_result)
 {
-  FastResult result = main_term;
-  for (FastResultSegment &segment : result.segments) {
-    segment.type = FastResultSegment::Type::Unknown;
+  if (boundaries.is_empty()) {
+    return;
   }
-  return result;
+
+  FastResult &result = r_result;
+  FastResultSegment *prev_segment = nullptr;
+  Vector<const FastResultSegment *> active_main_segments;
+  Vector<const FastResultSegment *, 16> active_subtract_segments;
+  int64_t prev_boundary_index = boundaries[0].first.index;
+
+  for (const std::pair<Boundary, bool> &boundary : boundaries) {
+    if (prev_boundary_index < boundary.first.index) {
+      BLI_assert(active_main_segments.size() <= 1);
+      if (active_main_segments.size() == 1) {
+        const FastResultSegment &active_main_segment = *active_main_segments[0];
+        bool has_subtract_full = false;
+        bool subtract_copy_from_mask_unique = true;
+        const IndexMask *subtract_copy_from_mask = nullptr;
+        for (const FastResultSegment *active_subtract_segment : active_subtract_segments) {
+          switch (active_subtract_segment->type) {
+            case FastResultSegment::Type::Unknown: {
+              break;
+            }
+            case FastResultSegment::Type::Full: {
+              has_subtract_full = true;
+              break;
+            }
+            case FastResultSegment::Type::Copy: {
+              if (subtract_copy_from_mask != nullptr &&
+                  subtract_copy_from_mask != active_subtract_segment->mask)
+              {
+                subtract_copy_from_mask_unique = false;
+              }
+              subtract_copy_from_mask = active_subtract_segment->mask;
+              break;
+            }
+          }
+        }
+
+        if (has_subtract_full) {
+          /* Do nothing. */
+        }
+        else {
+          switch (active_main_segment.type) {
+            case FastResultSegment::Type::Unknown: {
+              prev_segment = &evaluate_fast_make_unknown_segment(
+                  prev_segment, prev_boundary_index, boundary.first.index, result);
+              break;
+            }
+            case FastResultSegment::Type::Full: {
+              if (active_subtract_segments.is_empty()) {
+                prev_segment = &evaluate_fast_make_full_segment(
+                    prev_segment, prev_boundary_index, boundary.first.index, result);
+              }
+              else {
+                prev_segment = &evaluate_fast_make_unknown_segment(
+                    prev_segment, prev_boundary_index, boundary.first.index, result);
+              }
+              break;
+            }
+            case FastResultSegment::Type::Copy: {
+              if (active_subtract_segments.is_empty()) {
+                prev_segment = &evaluate_fast_make_copy_segment(prev_segment,
+                                                                prev_boundary_index,
+                                                                boundary.first.index,
+                                                                *active_main_segment.mask,
+                                                                result);
+              }
+              else if (subtract_copy_from_mask == active_main_segment.mask &&
+                       subtract_copy_from_mask_unique)
+              {
+                /* Do nothing. */
+              }
+              else {
+                prev_segment = &evaluate_fast_make_unknown_segment(
+                    prev_segment, prev_boundary_index, boundary.first.index, result);
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      prev_boundary_index = boundary.first.index;
+    }
+
+    if (boundary.second) {
+      if (boundary.first.is_begin) {
+        active_main_segments.append(boundary.first.segment);
+      }
+      else {
+        active_main_segments.remove_first_occurrence_and_reorder(boundary.first.segment);
+      }
+    }
+    else {
+      if (boundary.first.is_begin) {
+        active_subtract_segments.append(boundary.first.segment);
+      }
+      else {
+        active_subtract_segments.remove_first_occurrence_and_reorder(boundary.first.segment);
+      }
+    }
+  }
 }
 
 BLI_NOINLINE static FastResult evaluate_fast(
@@ -310,13 +409,25 @@ BLI_NOINLINE static FastResult evaluate_fast(
       }
       case Expr::Type::Difference: {
         const DifferenceExpr &expr = expression->as_difference();
-        const FastResult &main_result = *expression_results[expr.terms[0]->index];
-        Vector<const FastResult *> subtract_term_results;
-        for (const Expr *term : expr.terms.as_span().drop_front(1)) {
-          const FastResult &subtract_term_result = *expression_results[term->index];
-          subtract_term_results.append(&subtract_term_result);
+        Vector<std::pair<Boundary, bool>, 16> boundaries;
+        const FastResult &main_term_result = *expression_results[expr.terms[0]->index];
+        for (const FastResultSegment &segment : main_term_result.segments) {
+          boundaries.append({{segment.bounds.first(), true, &segment}, true});
+          boundaries.append({{segment.bounds.one_after_last(), false, &segment}, true});
         }
-        expr_result = evaluate_fast_difference(main_result, subtract_term_results);
+        for (const Expr *term : expr.terms.as_span().drop_front(1)) {
+          const FastResult &term_result = *expression_results[term->index];
+          for (const FastResultSegment &segment : term_result.segments) {
+            boundaries.append({{segment.bounds.first(), true, &segment}, false});
+            boundaries.append({{segment.bounds.one_after_last(), false, &segment}, false});
+          }
+        }
+        std::sort(boundaries.begin(),
+                  boundaries.end(),
+                  [](const std::pair<Boundary, bool> &a, const std::pair<Boundary, bool> &b) {
+                    return a.first.index < b.first.index;
+                  });
+        evaluate_fast_difference(boundaries, expr_result);
         break;
       }
     }

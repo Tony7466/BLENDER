@@ -80,10 +80,10 @@ TEST(index_mask_expression, Benchmark)
 #endif
 
   for ([[maybe_unused]] const int64_t _1 : IndexRange(5)) {
-    const IndexMask a{IndexRange::from_begin_end(0, 1'000'000)};
-    const IndexMask b{IndexRange::from_begin_end(500'000, 2'000'000)};
+    const IndexMask a{IndexRange::from_begin_end(0, 3'000'000)};
+    const IndexMask b{IndexRange::from_begin_end(000'000, 2'000'000)};
     ExprBuilder builder;
-    const Expr &expr = builder.intersect(&a, &b);
+    const Expr &expr = builder.subtract(&a, &b);
 
     SCOPED_TIMER("benchmark");
     for ([[maybe_unused]] const int64_t _2 : IndexRange(iterations)) {
