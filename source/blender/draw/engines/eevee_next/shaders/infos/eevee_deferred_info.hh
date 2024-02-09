@@ -56,7 +56,6 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .fragment_source("eevee_deferred_light_frag.glsl")
     /* Early fragment test is needed to avoid processing background fragments. */
     .early_fragment_test(true)
-
     .fragment_out(0, Type::VEC4, "out_combined")
     /* Chaining to next pass. */
     .image_out(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_1_img")

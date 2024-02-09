@@ -29,7 +29,8 @@
 #define packed_vec3 vec3
 #define packed_vec4 vec4
 /* uint8_t/uchar types unsupported in GLSL. */
-#define uint8_t int
+#define uint8_t uint
+#define uint16_t uint
 
 /* Backend Functions. */
 #define select(A, B, mask) mix(A, B, mask)
