@@ -50,7 +50,7 @@ static void sort_boundaries(MutableSpan<Boundary> boundaries)
 BLI_NOINLINE static FastResult evaluate_fast_union(const Span<Boundary> boundaries)
 {
   FastResult result;
-  Vector<const FastResultSegment *> active_segments;
+  Vector<const FastResultSegment *, 16> active_segments;
   for (const Boundary &boundary : boundaries) {
     if (active_segments.is_empty()) {
       BLI_assert(boundary.is_begin);
