@@ -154,22 +154,22 @@ const EnumPropertyItem rna_enum_property_unit_items[] = {
 };
 
 /* Descriptions for rna_enum_property_flag_items and rna_enum_property_flag_enum_items. */
-constexpr auto PROP_HIDDEN_DESCR =
-    "For operators: exclude from the 'Redo' panel. The property will still be visible when "
-    "explicitly drawn in UI code. Also this property is not written to presets";
-constexpr auto PROP_SKIP_SAVE_DESCR =
-    "For operators: the value of this property will not be remembered between invocations to the "
+static constexpr auto PROP_HIDDEN_DESCR =
+    "For operators: hide from places in the user interface where Blender would add the property "
+    "automatically, like Adjust Last Operation. Also this property is not written to presets";
+static constexpr auto PROP_SKIP_SAVE_DESCR =
+    "For operators: the value of this property will not be remembered between invocations of the "
     "operator; instead, each invocation will start by using the default value. Also this "
     "property is not written to presets";
-constexpr auto PROP_SKIP_PRESET_DESCR = "Do not write in presets";
-constexpr auto PROP_ANIMATABLE_DESCR = "";
-constexpr auto PROP_LIB_EXCEPTION_DESCR =
+static constexpr auto PROP_SKIP_PRESET_DESCR = "Do not write in presets";
+static constexpr auto PROP_ANIMATABLE_DESCR = "";
+static constexpr auto PROP_LIB_EXCEPTION_DESCR =
     "This property can be edited, even when it is used on linked data (which normally is "
     "read-only). Note that edits to the property will not be saved to the blend file";
-constexpr auto PROP_PROPORTIONAL_DESCR = "";
-constexpr auto PROP_TEXTEDIT_UPDATE_DESCR = "";
-constexpr auto PROP_PATH_OUTPUT_DESCR = "";
-constexpr auto PROP_ENUM_FLAG_DESCR = "";
+static constexpr auto PROP_PROPORTIONAL_DESCR = "";
+static constexpr auto PROP_TEXTEDIT_UPDATE_DESCR = "";
+static constexpr auto PROP_PATH_OUTPUT_DESCR = "";
+static constexpr auto PROP_ENUM_FLAG_DESCR = "";
 
 const EnumPropertyItem rna_enum_property_flag_items[] = {
     {PROP_HIDDEN, "HIDDEN", 0, "Hidden", PROP_HIDDEN_DESCR},
