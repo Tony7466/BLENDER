@@ -43,42 +43,23 @@ struct Boundary {
 static void sort_boundaries(MutableSpan<Boundary> boundaries)
 {
   std::sort(boundaries.begin(), boundaries.end(), [](const Boundary &a, const Boundary &b) {
-    if (a.index < b.index) {
-      return true;
-    }
-    if (a.index == b.index) {
-      if (a.is_begin) {
-        /* Sort beginnings of segmens before ends of other segments to better handle overlapping
-         * segments. */
-        return true;
-      }
-    }
-    return false;
+    return a.index < b.index;
   });
 }
 
 BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, FastResult &r_result)
 {
+  if (boundaries.is_empty()) {
+    return;
+  }
+
   FastResult &result = r_result;
+  FastResultSegment *prev_segment = nullptr;
   Vector<const FastResultSegment *, 16> active_segments;
+  int64_t prev_boundary_index = boundaries[0].index;
+
   for (const Boundary &boundary : boundaries) {
-    if (active_segments.is_empty()) {
-      BLI_assert(boundary.is_begin);
-      result.segments.append(
-          {boundary.segment->type, IndexRange(boundary.index, 0), boundary.segment->mask});
-      active_segments.append(boundary.segment);
-    }
-    else {
-      FastResultSegment &prev_segment = result.segments.last();
-      /* Previous segment goes at least until current boundary. */
-      prev_segment.bounds = IndexRange::from_begin_end(prev_segment.bounds.start(),
-                                                       boundary.index);
-      if (boundary.is_begin) {
-        active_segments.append(boundary.segment);
-      }
-      else {
-        active_segments.remove_first_occurrence_and_reorder(boundary.segment);
-      }
+    if (prev_boundary_index < boundary.index) {
       int full_count = 0;
       int unknown_count = 0;
       int copy_count = 0;
@@ -101,27 +82,61 @@ BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, Fa
         }
       }
       if (full_count > 0) {
-        if (prev_segment.type == FastResultSegment::Type::Full) {
-          /* Do nothing. */
-        }
-        else {
-          result.segments.append({FastResultSegment::Type::Full, IndexRange(boundary.index, 0)});
-        }
-      }
-      else if (unknown_count > 0 || copy_count > 1) {
-        if (prev_segment.type == FastResultSegment::Type::Unknown) {
-          /* Do nothing. */
+        if (prev_segment && prev_segment->type == FastResultSegment::Type::Full &&
+            prev_segment->bounds.one_after_last() == prev_boundary_index)
+        {
+          /* Extend previous segment. */
+          prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                            boundary.index);
         }
         else {
           result.segments.append(
-              {FastResultSegment::Type::Unknown, IndexRange(boundary.index, 0)});
+              {FastResultSegment::Type::Full,
+               IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
+          prev_segment = &result.segments.last();
+        }
+      }
+      else if (unknown_count > 0 || copy_count > 1) {
+        if (prev_segment && prev_segment->type == FastResultSegment::Type::Unknown &&
+            prev_segment->bounds.one_after_last() == prev_boundary_index)
+        {
+          /* Extend previous segment. */
+          prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                            boundary.index);
+        }
+        else {
+          result.segments.append(
+              {FastResultSegment::Type::Unknown,
+               IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
+          prev_segment = &result.segments.last();
         }
       }
       else if (copy_count == 1) {
-        BLI_assert(copy_from_mask);
-        result.segments.append(
-            {FastResultSegment::Type::Copy, IndexRange(boundary.index, 0), copy_from_mask});
+        BLI_assert(copy_from_mask != nullptr);
+        if (prev_segment && prev_segment->type == FastResultSegment::Type::Copy &&
+            prev_segment->bounds.one_after_last() == prev_boundary_index &&
+            prev_segment->mask == copy_from_mask)
+        {
+          /* Extend previous segment. */
+          prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                            boundary.index);
+        }
+        else {
+          result.segments.append({FastResultSegment::Type::Copy,
+                                  IndexRange::from_begin_end(prev_boundary_index, boundary.index),
+                                  copy_from_mask});
+          prev_segment = &result.segments.last();
+        }
       }
+
+      prev_boundary_index = boundary.index;
+    }
+
+    if (boundary.is_begin) {
+      active_segments.append(boundary.segment);
+    }
+    else {
+      active_segments.remove_first_occurrence_and_reorder(boundary.segment);
     }
   }
 }
