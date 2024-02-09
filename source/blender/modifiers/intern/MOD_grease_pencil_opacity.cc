@@ -161,10 +161,10 @@ static void modify_hardness(const GreasePencilOpacityModifierData &omd,
                             const IndexMask &curves_mask)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_for_write_span<float>("hardness");
-  if (!hardnesses) {
-    return;
-  }
+  bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_or_add_for_write_span<float>(
+      "hardness",
+      bke::AttrDomain::Curve,
+      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curve_num)));
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     hardnesses.span[curve_i] = std::clamp(
@@ -256,12 +256,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
   }
 
-  LayoutPanelState *influence_panel_state = BKE_panel_layout_panel_state_ensure(
-      panel, "influence", true);
-  PointerRNA influence_state_ptr = RNA_pointer_create(
-      nullptr, &RNA_LayoutPanelState, influence_panel_state);
   if (uiLayout *influence_panel = uiLayoutPanelProp(
-          C, layout, &influence_state_ptr, "is_open", "Influence"))
+          C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);

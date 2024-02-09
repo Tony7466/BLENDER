@@ -67,6 +67,7 @@
 
 #include "NOD_composite.hh"
 
+#include "COM_profile.hh"
 #include "COM_render_context.hh"
 
 #include "DEG_depsgraph.hh"
@@ -1301,6 +1302,7 @@ static void do_render_compositor(Render *re)
         }
 
         blender::realtime_compositor::RenderContext compositor_render_context;
+        blender::compositor::ProfilerData profiler_data;
         LISTBASE_FOREACH (RenderView *, rv, &re->result->views) {
           ntreeCompositExecTree(re,
                                 re->pipeline_scene_eval,
@@ -1309,7 +1311,8 @@ static void do_render_compositor(Render *re)
                                 true,
                                 G.background == 0,
                                 rv->name,
-                                &compositor_render_context);
+                                &compositor_render_context,
+                                profiler_data);
         }
         compositor_render_context.save_file_outputs(re->pipeline_scene_eval);
 
@@ -2403,18 +2406,17 @@ void RE_RenderAnim(Render *re,
         }
         else {
           bool is_skip = false;
-          char filepath[FILE_MAX];
+          char filepath_view[FILE_MAX];
 
           LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
             if (!BKE_scene_multiview_is_render_view_active(&scene->r, srv)) {
               continue;
             }
 
-            BKE_scene_multiview_filepath_get(srv, filepath, filepath);
-
-            if (BLI_exists(filepath)) {
+            BKE_scene_multiview_filepath_get(srv, filepath, filepath_view);
+            if (BLI_exists(filepath_view)) {
               is_skip = true;
-              printf("skipping existing frame \"%s\" for view \"%s\"\n", filepath, srv->name);
+              printf("skipping existing frame \"%s\" for view \"%s\"\n", filepath_view, srv->name);
             }
           }
 

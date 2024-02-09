@@ -157,7 +157,7 @@ class TOPBAR_PT_gpencil_layers(Panel):
             srow = col.row(align=True)
             srow.prop(gpl, "opacity", text="Opacity", slider=True)
             srow.prop(gpl, "use_mask_layer", text="",
-                      icon='MOD_MASK' if gpl.use_mask_layer else 'LAYER_ACTIVE')
+                      icon='CLIPUV_DEHLT' if gpl.use_mask_layer else 'CLIPUV_HLT')
 
             srow = col.row(align=True)
             srow.prop(gpl, "use_lights", text="Lights")
@@ -454,6 +454,7 @@ class TOPBAR_MT_blender_system(Menu):
         layout.separator()
 
         layout.operator("screen.spacedata_cleanup")
+        layout.operator("wm.operator_presets_cleanup")
 
 
 class TOPBAR_MT_templates_more(Menu):
