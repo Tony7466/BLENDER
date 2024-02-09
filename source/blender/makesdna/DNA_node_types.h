@@ -618,16 +618,6 @@ enum {
   NTREE_QUALITY_LOW = 2,
 };
 
-/** #bNodeTree::chunksize */
-enum {
-  NTREE_CHUNKSIZE_32 = 32,
-  NTREE_CHUNKSIZE_64 = 64,
-  NTREE_CHUNKSIZE_128 = 128,
-  NTREE_CHUNKSIZE_256 = 256,
-  NTREE_CHUNKSIZE_512 = 512,
-  NTREE_CHUNKSIZE_1024 = 1024,
-};
-
 typedef struct bNestedNodePath {
   /** ID of the node that is or contains the nested node. */
   int32_t node_id;
@@ -688,14 +678,10 @@ typedef struct bNodeTree {
   short edit_quality;
   /** Quality setting when rendering. */
   short render_quality;
-  /** Tile size for compositor engine. */
-  int chunksize;
   /** Execution mode to use for compositor engine. */
   int execution_mode;
   /** Execution mode to use for compositor engine. */
   int precision;
-
-  char _pad[4];
 
   rctf viewer_border;
 

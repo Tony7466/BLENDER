@@ -818,7 +818,6 @@ class NODE_PT_quality(bpy.types.Panel):
         col.active = not use_realtime
         col.prop(tree, "render_quality", text="Render")
         col.prop(tree, "edit_quality", text="Edit")
-        col.prop(tree, "chunk_size")
 
         col = layout.column()
         col.active = not use_realtime

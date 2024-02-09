@@ -639,7 +639,6 @@ void ED_node_composit_default(const bContext *C, Scene *sce)
   sce->nodetree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &sce->id, "Compositing Nodetree", ntreeType_Composite->idname);
 
-  sce->nodetree->chunksize = 256;
   sce->nodetree->edit_quality = NTREE_QUALITY_HIGH;
   sce->nodetree->render_quality = NTREE_QUALITY_HIGH;
 

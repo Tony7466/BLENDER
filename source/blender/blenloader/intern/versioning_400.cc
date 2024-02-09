@@ -2932,13 +2932,18 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     constexpr int NTREE_COM_GROUPNODE_BUFFER = 1 << 3;
     constexpr int NTREE_COM_OPENCL = 1 << 1;
 
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+
       ntree->flag &= ~(NTREE_COM_GROUPNODE_BUFFER | NTREE_COM_OPENCL);
 
       if (ntree->execution_mode == NTREE_EXECUTION_MODE_FULL_FRAME) {
         ntree->execution_mode = NTREE_EXECUTION_MODE_CPU;
       }
     }
+    FOREACH_NODETREE_END;
   }
 
   /**

@@ -236,7 +236,7 @@ class CompositorContext {
 
   int get_chunksize() const
   {
-    return this->get_bnodetree()->chunksize;
+    return 256;
   }
 
   void set_fast_calculation(bool fast_calculation)
