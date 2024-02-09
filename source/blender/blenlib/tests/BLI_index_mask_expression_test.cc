@@ -73,13 +73,17 @@ TEST(index_mask_expression, UnionLargeRanges)
 
 TEST(index_mask_expression, Benchmark)
 {
+#ifdef NDEBUG
   const int64_t iterations = 1'000'000;
+#else
+  const int64_t iterations = 10;
+#endif
 
   for ([[maybe_unused]] const int64_t _1 : IndexRange(5)) {
-    const IndexMask a{IndexRange::from_begin_end(100, 200)};
-    const IndexMask b{IndexRange::from_begin_end(300, 400)};
+    const IndexMask a{IndexRange::from_begin_end(0, 1'000'000)};
+    const IndexMask b{IndexRange::from_begin_end(500'000, 2'000'000)};
     ExprBuilder builder;
-    const Expr &expr = builder.merge(&a, &b);
+    const Expr &expr = builder.intersect(&a, &b);
 
     SCOPED_TIMER("benchmark");
     for ([[maybe_unused]] const int64_t _2 : IndexRange(iterations)) {

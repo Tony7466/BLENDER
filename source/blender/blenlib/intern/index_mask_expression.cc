@@ -141,34 +141,119 @@ BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, Fa
   }
 }
 
-BLI_NOINLINE static FastResult evaluate_fast_intersection(const Span<const FastResult *> terms)
+BLI_NOINLINE static void evaluate_fast_intersection(const Span<Boundary> boundaries,
+                                                    const int64_t terms_num,
+                                                    FastResult &r_result)
 {
-  if (terms.is_empty()) {
-    return {};
+  if (boundaries.is_empty()) {
+    return;
   }
-  /* TODO */
-  int64_t bounds_min = std::numeric_limits<int64_t>::max();
-  int64_t bounds_max = std::numeric_limits<int64_t>::min();
-  for (const FastResult *term : terms) {
-    if (!term->segments.is_empty()) {
-      bounds_min = std::min(bounds_min, term->segments[0].bounds.start());
-      bounds_max = std::max(bounds_max, term->segments.last().bounds.one_after_last());
+
+  FastResult &result = r_result;
+  FastResultSegment *prev_segment = nullptr;
+  Vector<const FastResultSegment *, 16> active_segments;
+  int64_t prev_boundary_index = boundaries[0].index;
+
+  for (const Boundary &boundary : boundaries) {
+    if (prev_boundary_index < boundary.index) {
+      /* Only if one segment of each term is active, it's possible that the output contains
+       * anything. */
+      if (active_segments.size() == terms_num) {
+        int full_count = 0;
+        int unknown_count = 0;
+        int copy_count = 0;
+        bool copy_from_mask_unique = true;
+        const IndexMask *copy_from_mask = nullptr;
+        for (const FastResultSegment *active_segment : active_segments) {
+          switch (active_segment->type) {
+            case FastResultSegment::Type::Unknown: {
+              unknown_count++;
+              break;
+            }
+            case FastResultSegment::Type::Full: {
+              full_count++;
+              break;
+            }
+            case FastResultSegment::Type::Copy: {
+              copy_count++;
+              if (copy_from_mask != nullptr && copy_from_mask != active_segment->mask) {
+                copy_from_mask_unique = false;
+              }
+              copy_from_mask = active_segment->mask;
+              break;
+            }
+          }
+        }
+        BLI_assert(full_count + unknown_count + copy_count == terms_num);
+        if (full_count == terms_num) {
+          if (prev_segment && prev_segment->type == FastResultSegment::Type::Full &&
+              prev_segment->bounds.one_after_last() == prev_boundary_index)
+          {
+            /* Extend previous segment. */
+            prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                              boundary.index);
+          }
+          else {
+            result.segments.append(
+                {FastResultSegment::Type::Full,
+                 IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
+            prev_segment = &result.segments.last();
+          }
+        }
+        else if (unknown_count > 0 || !copy_from_mask_unique) {
+          if (prev_segment && prev_segment->type == FastResultSegment::Type::Unknown &&
+              prev_segment->bounds.one_after_last() == prev_boundary_index)
+          {
+            /* Extend previous segment. */
+            prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                              boundary.index);
+          }
+          else {
+            result.segments.append(
+                {FastResultSegment::Type::Unknown,
+                 IndexRange::from_begin_end(prev_boundary_index, boundary.index)});
+            prev_segment = &result.segments.last();
+          }
+        }
+        else if (copy_from_mask && copy_from_mask_unique) {
+          if (prev_segment && prev_segment->type == FastResultSegment::Type::Copy &&
+              prev_segment->bounds.one_after_last() == prev_boundary_index &&
+              prev_segment->mask == copy_from_mask)
+          {
+            /* Extend previous segment. */
+            prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
+                                                              boundary.index);
+          }
+          else {
+            result.segments.append(
+                {FastResultSegment::Type::Copy,
+                 IndexRange::from_begin_end(prev_boundary_index, boundary.index),
+                 copy_from_mask});
+            prev_segment = &result.segments.last();
+          }
+        }
+      }
+
+      prev_boundary_index = boundary.index;
+    }
+
+    if (boundary.is_begin) {
+      active_segments.append(boundary.segment);
+    }
+    else {
+      active_segments.remove_first_occurrence_and_reorder(boundary.segment);
     }
   }
-  if (bounds_min > bounds_max) {
-    return {};
-  }
-  FastResult result;
-  result.segments.append(
-      {FastResultSegment::Type::Unknown, IndexRange::from_begin_end(bounds_min, bounds_max)});
-  return result;
 }
 
 BLI_NOINLINE static FastResult evaluate_fast_difference(
     const FastResult &main_term, const Span<const FastResult *> /*subtract_terms*/)
 {
-  /* TODO */
-  return evaluate_fast_intersection({&main_term});
+  FastResult result = main_term;
+  for (FastResultSegment &segment : result.segments) {
+    segment.type = FastResultSegment::Type::Unknown;
+  }
+  return result;
 }
 
 BLI_NOINLINE static FastResult evaluate_fast(
@@ -220,12 +305,16 @@ BLI_NOINLINE static FastResult evaluate_fast(
       }
       case Expr::Type::Intersection: {
         const IntersectionExpr &expr = expression->as_intersection();
-        Vector<const FastResult *> term_results;
+        Vector<Boundary, 16> boundaries;
         for (const Expr *term : expr.terms) {
           const FastResult &term_result = *expression_results[term->index];
-          term_results.append(&term_result);
+          for (const FastResultSegment &segment : term_result.segments) {
+            boundaries.append({segment.bounds.first(), true, &segment});
+            boundaries.append({segment.bounds.one_after_last(), false, &segment});
+          }
         }
-        expr_result = evaluate_fast_intersection(term_results);
+        sort_boundaries(boundaries);
+        evaluate_fast_intersection(boundaries, expr.terms.size(), expr_result);
         break;
       }
       case Expr::Type::Difference: {
