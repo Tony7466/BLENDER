@@ -327,6 +327,14 @@ if(WITH_PYTHON_MODULE)
 
 else()
   add_executable(blender ${EXETYPE} ${SRC})
+  add_library(blender_cpu_check SHARED creator_cpu_check_windows.cc)
+  target_link_libraries(blender_cpu_check
+    PRIVATE bf::blenlib
+    PRIVATE ${PLATFORM_LINKLIBS}
+  )
+  # blender_cpu_check *NEEDS* to be linked first, there can be no exceptions
+  # to this.
+  target_link_libraries(blender PRIVATE blender_cpu_check)
   if(WIN32)
     add_executable(blender-launcher WIN32
       blender_launcher_win32.c
@@ -1846,7 +1854,7 @@ endif()
 if(WIN32 AND NOT WITH_PYTHON_MODULE)
   set(BLENDER_BIN "blender.exe")
   install(
-    TARGETS blender blender-launcher
+    TARGETS blender blender-launcher blender_cpu_check
     COMPONENT Blender
     DESTINATION "."
   )
