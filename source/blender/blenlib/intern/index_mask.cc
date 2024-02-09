@@ -875,11 +875,11 @@ void IndexMask::foreach_segment_zipped(const Span<IndexMask> masks,
     return masks[0].size() == maks.size();
   }));
 
-  Array<int64_t> segment_iter(masks.size(), 0);
-  Array<int16_t> start_iter(masks.size(), 0);
+  Array<int64_t, 8> segment_iter(masks.size(), 0);
+  Array<int16_t, 8> start_iter(masks.size(), 0);
 
-  Array<IndexMaskSegment> segments(masks.size());
-  Array<IndexMaskSegment> sequences(masks.size());
+  Array<IndexMaskSegment, 8> segments(masks.size());
+  Array<IndexMaskSegment, 8> sequences(masks.size());
 
   /* This function only take positions of indices in to account.
    * Masks with the same size is fragmented in positions space.
