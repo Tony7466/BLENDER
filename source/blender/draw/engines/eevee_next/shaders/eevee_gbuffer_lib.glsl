@@ -44,31 +44,30 @@ struct GBufferWriter {
   uint header;
   /** Only used for book-keeping. Not actually written. Can be derived from header. */
   /* Number of layers written in the header. */
-  uchar layer_gbuf;
+  uint8_t layer_gbuf;
   /* Number of data written in the data array. */
-  uchar layer_data;
+  uint8_t layer_data;
   /* Number of normal written in the normal array. */
-  uchar layer_normal;
+  uint8_t layer_normal;
 };
 
 /* Result of loading the GBuffer. */
 struct GBufferReader {
   ClosureUndetermined closures[GBUFFER_LAYER_MAX];
+  /* Texel of the gbuffer being read. */
+  ivec2 texel;
   /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
   packed_vec3 surface_N;
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;
 
-  /* Texel of the gbuffer being read. */
-  ivec2 texel;
-
   uint header;
   /* Number of valid closure encoded in the gbuffer. */
-  uchar closure_count;
+  uint8_t closure_count;
   /* Only used for book-keeping when reading. */
-  uchar layer_data;
-  uchar layer_normal;
+  uint8_t layer_data;
+  uint8_t layer_normal;
 };
 
 /** \} */
@@ -442,7 +441,7 @@ vec3 gbuffer_normal_get(inout GBufferReader gbuf, int layer_id, samplerGBufferNo
 {
   int normal_layer_id = gbuffer_header_normal_layer_id_get(gbuf.header, layer_id);
   vec2 normal_packed = fetchGBuffer(normal_tx, gbuf.texel, normal_layer_id).rg;
-  gbuf.layer_normal = max(gbuf.layer_normal, normal_layer_id + 1);
+  gbuf.layer_normal = max(gbuf.layer_normal, uint8_t(normal_layer_id + 1));
   return gbuffer_normal_unpack(normal_packed);
 }
 
