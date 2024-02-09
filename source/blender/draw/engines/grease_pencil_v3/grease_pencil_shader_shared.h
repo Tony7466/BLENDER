@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef USE_GPU_SHADER_CREATE_INFO
+#ifndef GPU_SHADER
 #  pragma once
 
 #  include "GPU_shader_shared_utils.h"
@@ -167,11 +167,8 @@ struct gpLayer {
 };
 BLI_STATIC_ASSERT_ALIGN(gpLayer, 16)
 
-#ifndef USE_GPU_SHADER_CREATE_INFO
-}  // namespace blender::draw::greasepencil
-#endif
-
 #ifndef GPU_SHADER
+}  // namespace blender::draw::greasepencil
 #  undef gpMaterialFlag
 #  undef gpLightType
 #endif
