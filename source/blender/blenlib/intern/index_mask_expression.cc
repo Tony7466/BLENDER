@@ -47,9 +47,9 @@ static void sort_boundaries(MutableSpan<Boundary> boundaries)
   });
 }
 
-BLI_NOINLINE static FastResult evaluate_fast_union(const Span<Boundary> boundaries)
+BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, FastResult &r_result)
 {
-  FastResult result;
+  FastResult &result = r_result;
   Vector<const FastResultSegment *, 16> active_segments;
   for (const Boundary &boundary : boundaries) {
     if (active_segments.is_empty()) {
@@ -114,8 +114,6 @@ BLI_NOINLINE static FastResult evaluate_fast_union(const Span<Boundary> boundari
       }
     }
   }
-
-  return result;
 }
 
 BLI_NOINLINE static FastResult evaluate_fast_intersection(const Span<const FastResult *> terms)
@@ -192,7 +190,7 @@ BLI_NOINLINE static FastResult evaluate_fast(
           }
         }
         sort_boundaries(boundaries);
-        expr_result = evaluate_fast_union(boundaries);
+        evaluate_fast_union(boundaries, expr_result);
         break;
       }
       case Expr::Type::Intersection: {
