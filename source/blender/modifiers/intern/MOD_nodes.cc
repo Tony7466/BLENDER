@@ -66,7 +66,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -407,6 +407,7 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
       new_bake.id = id;
       new_bake.frame_start = 1;
       new_bake.frame_end = 100;
+      new_bake.bake_mode = NODES_MODIFIER_BAKE_MODE_STILL;
     }
   }
 

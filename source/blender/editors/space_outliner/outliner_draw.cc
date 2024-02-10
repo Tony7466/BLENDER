@@ -24,7 +24,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
@@ -1855,7 +1855,7 @@ static void outliner_draw_overrides_rna_buts(uiBlock *block,
       uiBut *but = uiDefBut(block,
                             UI_BTYPE_LABEL,
                             0,
-                            override_elem->rna_path.c_str(),
+                            override_elem->rna_path,
                             x + pad_x,
                             te->ys + pad_y,
                             item_max_width,
@@ -1878,7 +1878,7 @@ static void outliner_draw_overrides_rna_buts(uiBlock *block,
         uiDefBut(block,
                  UI_BTYPE_LABEL,
                  0,
-                 op_label.c_str(),
+                 op_label,
                  x + pad_x,
                  te->ys + pad_y,
                  item_max_width,
