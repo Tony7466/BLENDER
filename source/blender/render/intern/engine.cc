@@ -12,7 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -960,7 +960,7 @@ bool RE_engine_render(Render *re, bool do_all)
   if ((type->flag & RE_USE_GPU_CONTEXT) && !GPU_backend_supported()) {
     /* Clear UI drawing locks. */
     re->draw_unlock();
-    BKE_report(re->reports, RPT_ERROR, "Can not initialize the GPU");
+    BKE_report(re->reports, RPT_ERROR, "Cannot initialize the GPU");
     G.is_break = true;
     return true;
   }

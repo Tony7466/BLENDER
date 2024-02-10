@@ -45,8 +45,8 @@
 #include "BLI_utildefines.h"
 #include BLI_SYSTEM_PID_H
 
-#include "BLO_readfile.h"
-#include "BLT_translation.h"
+#include "BLO_readfile.hh"
+#include "BLT_translation.hh"
 
 #include "BLF_api.hh"
 
@@ -64,10 +64,10 @@
 #include "BKE_addon.h"
 #include "BKE_appdir.hh"
 #include "BKE_autoexec.hh"
-#include "BKE_blender.h"
+#include "BKE_blender.hh"
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.hh"
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -4324,8 +4324,6 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
                  &save_images_when_file_is_closed,
                  0,
                  0,
-                 0,
-                 0,
                  "");
     has_extra_checkboxes = true;
   }
@@ -4349,8 +4347,6 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
                               0,
                               UI_UNIT_Y,
                               &save_catalogs_when_file_is_closed,
-                              0,
-                              0,
                               0,
                               0,
                               "");

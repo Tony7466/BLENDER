@@ -21,7 +21,7 @@
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -1184,7 +1184,7 @@ void RENDER_OT_render(wmOperatorType *ot)
       "write_still",
       false,
       "Write Image",
-      "Save rendered the image to the output path (used only when animation is disabled)");
+      "Save the rendered image to the output path (used only when animation is disabled)");
   prop = RNA_def_boolean(ot->srna,
                          "use_viewport",
                          false,

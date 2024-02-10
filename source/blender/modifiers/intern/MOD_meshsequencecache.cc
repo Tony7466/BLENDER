@@ -13,7 +13,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_cachefile_types.h"
 #include "DNA_defaults.h"
@@ -25,7 +25,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_cachefile.h"
+#include "BKE_cachefile.hh"
 #include "BKE_context.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
@@ -59,7 +59,7 @@
 #endif
 
 #ifdef WITH_USD
-#  include "usd.h"
+#  include "usd.hh"
 #endif
 
 using blender::float3;
@@ -136,7 +136,9 @@ static bool can_use_mesh_for_orco_evaluation(MeshSeqCacheModifierData *mcmd,
       break;
     case CACHEFILE_TYPE_USD:
 #  ifdef WITH_USD
-      if (!USD_mesh_topology_changed(mcmd->reader, ctx->object, mesh, time, err_str)) {
+      if (!blender::io::usd::USD_mesh_topology_changed(
+              mcmd->reader, ctx->object, mesh, time, err_str))
+      {
         return true;
       }
 #  endif
@@ -254,8 +256,9 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     }
     case CACHEFILE_TYPE_USD: {
 #  ifdef WITH_USD
-      const USDMeshReadParams params = create_mesh_read_params(time * FPS, mcmd->read_flag);
-      result = USD_read_mesh(mcmd->reader, ctx->object, mesh, params, &err_str);
+      const blender::io::usd::USDMeshReadParams params = blender::io::usd::create_mesh_read_params(
+          time * FPS, mcmd->read_flag);
+      result = blender::io::usd::USD_read_mesh(mcmd->reader, ctx->object, mesh, params, &err_str);
 #  endif
       break;
     }

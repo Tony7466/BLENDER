@@ -21,7 +21,7 @@
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
@@ -36,7 +36,7 @@
 #include "DNA_view3d_types.h"
 
 #include "BKE_animsys.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_fcurve.h"
@@ -99,12 +99,12 @@ enum {
 /* RNA enum define */
 static const EnumPropertyItem prop_gpencil_convertmodes[] = {
     {GP_STROKECONVERT_PATH, "PATH", ICON_CURVE_PATH, "Path", "Animation path"},
-    {GP_STROKECONVERT_CURVE, "CURVE", ICON_CURVE_BEZCURVE, "Bezier Curve", "Smooth Bezier curve"},
+    {GP_STROKECONVERT_CURVE, "CURVE", ICON_CURVE_BEZCURVE, "Bézier Curve", "Smooth Bézier curve"},
     {GP_STROKECONVERT_POLY,
      "POLY",
      ICON_MESH_DATA,
      "Polygon Curve",
-     "Bezier curve with straight-line segments (vector handles)"},
+     "Bézier curve with straight-line segments (vector handles)"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

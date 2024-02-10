@@ -22,7 +22,7 @@
 #include "BLI_string_utf8.h"
 #include "BLI_time.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
@@ -4106,6 +4106,9 @@ static int text_jump_to_file_at_point_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "File path property not set");
     return OPERATOR_CANCELLED;
   }
+
+  /* Useful to copy-paste from the terminal. */
+  printf("%s:%d:%d\n", filepath, line_index + 1, column_index);
 
   bool success;
   if (U.text_editor[0] != '\0') {

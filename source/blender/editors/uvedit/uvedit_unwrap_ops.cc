@@ -34,7 +34,7 @@
 #include "BLI_uvproject.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
@@ -831,9 +831,9 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
     blender::geometry::uv_parametrizer_flush(ms->handle);
 
     if (area) {
-      SNPRINTF(str, RPT_("Minimize Stretch. Blend %.2f"), ms->blend);
+      SNPRINTF(str, IFACE_("Minimize Stretch. Blend %.2f"), ms->blend);
       ED_area_status_text(area, str);
-      ED_workspace_status_text(C, RPT_("Press + and -, or scroll wheel to set blending"));
+      ED_workspace_status_text(C, IFACE_("Press + and -, or scroll wheel to set blending"));
     }
 
     ms->lasttime = BLI_check_seconds_timer();

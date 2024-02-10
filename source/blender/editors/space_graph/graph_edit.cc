@@ -32,7 +32,7 @@
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
@@ -2646,14 +2646,14 @@ void GRAPH_OT_equalize_handles(wmOperatorType *ot)
                           prop_graphkeys_equalize_handles_sides,
                           0,
                           "Side",
-                          "Side of the keyframes' bezier handles to affect");
+                          "Side of the keyframes' Bézier handles to affect");
   RNA_def_float(ot->srna,
                 "handle_length",
                 5.0f,
                 0.1f,
                 FLT_MAX,
                 "Handle Length",
-                "Length to make selected keyframes' bezier handles",
+                "Length to make selected keyframes' Bézier handles",
                 1.0f,
                 50.0f);
   RNA_def_boolean(

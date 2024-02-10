@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "BKE_bake_geometry_nodes_modifier.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_curves.hh"
 #include "BKE_main.hh"
 
@@ -15,7 +15,7 @@
 
 #include "BLI_binary_search.hh"
 #include "BLI_fileops.hh"
-#include "BLI_hash_md5.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"

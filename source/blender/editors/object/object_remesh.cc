@@ -22,7 +22,7 @@
 #include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
@@ -592,7 +592,7 @@ static int voxel_size_edit_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   ED_region_tag_redraw(region);
 
-  const char *status_str = RPT_(
+  const char *status_str = IFACE_(
       "Move the mouse to change the voxel size. CTRL: Relative Scale, SHIFT: Precision Mode, "
       "ENTER/LMB: Confirm Size, ESC/RMB: Cancel");
   ED_workspace_status_text(C, status_str);

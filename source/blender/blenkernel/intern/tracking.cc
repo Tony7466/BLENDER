@@ -36,7 +36,7 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_fcurve.h"
 #include "BKE_layer.hh"
@@ -500,7 +500,7 @@ MovieTrackingTrack *BKE_tracking_track_add_empty(MovieTracking *tracking, ListBa
   const MovieTrackingSettings *settings = &tracking->settings;
 
   MovieTrackingTrack *track = MEM_cnew<MovieTrackingTrack>("add_marker_exec track");
-  STRNCPY(track->name, "Track");
+  STRNCPY(track->name, CTX_DATA_(BLT_I18NCONTEXT_ID_MOVIECLIP, "Track"));
 
   /* Fill track's settings from default settings. */
   track->motion_model = settings->default_motion_model;

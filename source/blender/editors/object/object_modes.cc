@@ -18,7 +18,7 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_gpencil_modifier_legacy.h"
@@ -152,7 +152,7 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
       }
       break;
     case OB_GREASE_PENCIL:
-      if (mode & (OB_MODE_EDIT | OB_MODE_PAINT_GREASE_PENCIL)) {
+      if (mode & (OB_MODE_EDIT | OB_MODE_PAINT_GREASE_PENCIL | OB_MODE_WEIGHT_PAINT)) {
         return true;
       }
       break;

@@ -12,7 +12,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -237,7 +237,8 @@ static int pose_calculate_paths_invoke(bContext *C, wmOperator *op, const wmEven
 
   /* show popup dialog to allow editing of range... */
   /* FIXME: hard-coded dimensions here are just arbitrary. */
-  return WM_operator_props_dialog_popup(C, op, 270);
+  return WM_operator_props_dialog_popup(
+      C, op, 270, IFACE_("Calculate Paths for the Selected Bones"), IFACE_("Calculate"));
 }
 
 /**
