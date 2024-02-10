@@ -454,6 +454,46 @@ struct FinalResultSegment {
   IndexMaskSegment indices;
 };
 
+BLI_NOINLINE static void indices_to_bits(const int16_t *indices,
+                                         const int64_t indices_num,
+                                         uint64_t *r_bits,
+                                         const int64_t offset)
+{
+  for (int64_t i = 0; i < indices_num; i++) {
+    const uint64_t index = uint64_t(indices[i] + offset);
+    r_bits[index >> bits::BitToIntIndexShift] |= bits::mask_single_bit(index & bits::BitIndexMask);
+  }
+}
+
+BLI_NOINLINE static void mask_to_bits(const IndexMask &mask,
+                                      MutableBitSpan r_bits,
+                                      const int64_t offset)
+{
+  mask.foreach_segment_optimized([&](const auto segment) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
+      const IndexRange range = segment;
+      const IndexRange shifted_range = range.shift(offset);
+      r_bits.slice(shifted_range).set_all();
+    }
+    else {
+      const IndexMaskSegment indices = segment;
+      indices_to_bits(
+          indices.base_span().data(), indices.size(), r_bits.data(), indices.offset() + offset);
+    }
+  });
+}
+
+BLI_NOINLINE static Span<int16_t> bits_to_indices(const BoundedBitSpan bits,
+                                                  LinearAllocator<> &allocator)
+{
+  Vector<int16_t, max_segment_size> indices_vec;
+  bits::foreach_1_index(bits, [&](const int64_t i) {
+    BLI_assert(i < max_segment_size);
+    indices_vec.append(int16_t(i));
+  });
+  return allocator.construct_array_copy<int16_t>(indices_vec);
+}
+
 BLI_NOINLINE static IndexMaskSegment evaluate_segment_with_bits(
     const Expr &root_expression,
     LinearAllocator<> &allocator,
@@ -474,7 +514,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment_with_bits(
       case Expr::Type::Atomic: {
         const auto &expr = expression->as_atomic();
         const IndexMask mask = expr.mask->slice_content(bounds);
-        mask.to_bits(expr_result, -segment_offset);
+        mask_to_bits(mask, expr_result, -segment_offset);
         break;
       }
       case Expr::Type::Union: {
@@ -503,12 +543,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment_with_bits(
     }
   }
   const BoundedBitSpan final_bits = expression_results[root_expression.index];
-  Vector<int16_t, max_segment_size> indices_vec;
-  bits::foreach_1_index(final_bits, [&](const int64_t i) {
-    BLI_assert(i < max_segment_size);
-    indices_vec.append(int16_t(i));
-  });
-  const Span<int16_t> indices = allocator.construct_array_copy<int16_t>(indices_vec);
+  const Span<int16_t> indices = bits_to_indices(final_bits, allocator);
   return IndexMaskSegment(segment_offset, indices);
 }
 
@@ -807,8 +842,9 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
                                       LinearAllocator<> &allocator,
                                       Vector<FinalResultSegment, 16> &segments) {
-    const IndexMaskSegment indices = evaluate_segment_with_bits(
-        root_expression, allocator, bounds, eager_eval_order);
+    // const IndexMaskSegment indices = evaluate_segment_with_bits(
+    //     root_expression, allocator, bounds, eager_eval_order);
+    const IndexMaskSegment indices = evaluate_segment(root_expression, allocator, bounds);
     if (!indices.is_empty()) {
       segments.append({FinalResultSegment::Type::Indices, bounds, nullptr, indices});
     }

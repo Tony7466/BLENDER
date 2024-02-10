@@ -118,15 +118,17 @@ TEST(index_mask_expression, Benchmark)
 
   for ([[maybe_unused]] const int64_t _1 : IndexRange(5)) {
     IndexMaskMemory m;
-    const IndexMask a = IndexMask::from_every_nth(3, 10'000, 0, m);
-    const IndexMask b = IndexMask::from_every_nth(5, 5'000, 0, m);
+    const IndexMask a = IndexMask::from_every_nth(3, 1'000'000, 0, m);
+    const IndexMask b = IndexMask::from_every_nth(100, 5'000, 0, m);
     ExprBuilder builder;
     const Expr &expr = builder.merge(&a, &b);
+    const Expr &expr_2 = builder.intersect(&expr, &expr);
+    const Expr &expr_3 = builder.merge(&expr, &expr_2);
 
     SCOPED_TIMER("benchmark");
     for ([[maybe_unused]] const int64_t _2 : IndexRange(iterations)) {
       IndexMaskMemory memory;
-      const IndexMask result = evaluate_expression(expr, memory);
+      const IndexMask result = evaluate_expression(expr_3, memory);
       UNUSED_VARS(result);
     }
   }
