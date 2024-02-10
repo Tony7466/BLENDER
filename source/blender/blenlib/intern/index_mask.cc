@@ -921,7 +921,14 @@ void IndexMask::foreach_segment_zipped(const Span<IndexMask> masks,
 
 static bool segments_is_equal(const IndexMaskSegment &a, const IndexMaskSegment &b)
 {
-  if (a.size() != b.size() || a[0] != b[0]) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  if (a.is_empty()) {
+    /* Both segments are empty. */
+    return true;
+  }
+  if (a[0] != b[0]) {
     return false;
   }
 
