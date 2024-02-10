@@ -196,10 +196,14 @@ class TriangleRange {
   int total_;
 
  public:
-  TriangleRange(const int base) : base_(base), total_(this->pyramid_sum(base)) {}
+  TriangleRange(const int base) : base_(base), total_(this->pyramid_sum(base))
+  {
+    BLI_assert(base >= 0);
+  }
 
   IndexRange slice_at(const int level_i) const
   {
+    BLI_assert(this->is_level_i(level_i));
     const int begin = this->pyramid_sum(base_ - level_i);
     const int size = base_ - level_i;
     return IndexRange(total_ - begin, size);
@@ -207,30 +211,35 @@ class TriangleRange {
 
   int start_of(const int level_i) const
   {
+    BLI_assert(this->is_level_i(level_i));
     const int begin = this->pyramid_sum(base_ - level_i);
     return total_ - begin;
   }
 
   int end_of(const int level_i) const
   {
+    BLI_assert(this->is_level_i(level_i));
     const int end = this->pyramid_sum(base_ - 1 - level_i);
     return total_ - end;
   }
 
   int first_of(const int level_i) const
   {
+    BLI_assert(!this->slice_at(level_i).is_empty());
     const int begin = this->pyramid_sum(base_ - level_i);
     return total_ - begin;
   }
 
   int last_of(const int level_i) const
   {
+    BLI_assert(!this->slice_at(level_i).is_empty());
     const int end = this->pyramid_sum(base_ - 1 - level_i);
     return total_ - end - 1;
   }
 
   int size_of(const int level_i) const
   {
+    BLI_assert(this->is_level_i(level_i));
     return base_ - level_i;
   }
 
@@ -244,17 +253,24 @@ class TriangleRange {
     return base_;
   }
 
-  TriangleRange drop_bottom(const int levels_num) const
+  TriangleRange drop_bottom(const int n) const
   {
-    return TriangleRange(math::max<int>(0, base_ - levels_num));
+    return TriangleRange(math::max<int>(0, base_ - n));
   }
 
  private:
-  static constexpr int pyramid_sum(const int floor)
+  const bool is_level_i(const int i) const
+  {
+    /* Unlike to usually reachable indices in [0, size) range, levels enumeration is in rage [0,
+     * size]. So, latest element can be empty. */
+    return 0 <= i && i <= base_;
+  }
+
+  static constexpr int pyramid_sum(const int i)
   {
     /* Zero level have zero length which one is known from prefix sum from -1 level... */
-    BLI_assert(floor >= -1);
-    return floor * (floor + 1) / 2;
+    BLI_assert(i >= -1);
+    return i * (i + 1) / 2;
   }
 };
 
