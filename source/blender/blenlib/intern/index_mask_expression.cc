@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <fmt/format.h>
+#include <mutex>
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -695,9 +696,9 @@ BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_e
 BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expression,
                                                        IndexMaskMemory &memory)
 {
-  Vector<FinalResultSegment> final_segments;
-  Stack<IndexRange> long_unknown_segments;
-  Vector<IndexRange> short_unknown_segments;
+  Vector<FinalResultSegment, 16> final_segments;
+  Stack<IndexRange, 16> long_unknown_segments;
+  Vector<IndexRange, 16> short_unknown_segments;
 
   const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
       root_expression);
@@ -740,11 +741,41 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
     handle_fast_result(right_result);
   }
 
-  for (const IndexRange &unknown_bounds : short_unknown_segments) {
-    const IndexMaskSegment indices = evaluate_segment(root_expression, memory, unknown_bounds);
+  auto evaluate_unknown_segment = [&](const IndexRange bounds,
+                                      Vector<FinalResultSegment, 16> &segments) {
+    const IndexMaskSegment indices = evaluate_segment(root_expression, memory, bounds);
     if (!indices.is_empty()) {
-      final_segments.append({FinalResultSegment::Type::Indices, unknown_bounds, nullptr, indices});
+      segments.append({FinalResultSegment::Type::Indices, bounds, nullptr, indices});
     }
+  };
+
+  const int64_t unknown_segment_eval_grain_size = 8;
+  if (short_unknown_segments.size() < unknown_segment_eval_grain_size) {
+    for (const IndexRange &bounds : short_unknown_segments) {
+      evaluate_unknown_segment(bounds, final_segments);
+    }
+  }
+  else {
+    std::mutex mutex;
+    threading::parallel_for(
+        short_unknown_segments.index_range(),
+        unknown_segment_eval_grain_size,
+        [&](const IndexRange range) {
+          Vector<FinalResultSegment, 16> local_segments;
+          for (const int64_t unknown_bounds_i : range) {
+            const IndexRange &unknown_bounds = short_unknown_segments[unknown_bounds_i];
+            const IndexMaskSegment indices = evaluate_segment(
+                root_expression, memory, unknown_bounds);
+            if (!indices.is_empty()) {
+              local_segments.append(
+                  {FinalResultSegment::Type::Indices, unknown_bounds, nullptr, indices});
+            }
+          }
+          {
+            std::lock_guard lock{mutex};
+            final_segments.extend(local_segments);
+          }
+        });
   }
 
   if (final_segments.is_empty()) {
