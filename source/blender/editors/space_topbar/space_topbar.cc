@@ -218,34 +218,30 @@ static void undo_history_draw_menu(const bContext *C, Menu *menu)
     return;
   }
 
-  int undo_step_count = 0;
-  int undo_step_count_all = 0;
-  LISTBASE_FOREACH_BACKWARD (UndoStep *, us, &wm->undo_stack->steps) {
-    undo_step_count_all += 1;
-    if (us->skip) {
-      continue;
-    }
-    undo_step_count += 1;
-  }
-
   uiLayout *split = uiLayoutSplit(menu->layout, 0.0f, false);
-  uiLayout *column = nullptr;
+  uiLayout *column = uiLayoutColumn(split, false);
 
-  const int col_size = 20 + (undo_step_count / 12);
+  uiItemO(column, IFACE_("Add Waypoint"), ICON_ADD, "ED_OT_undo_push_waypoint");
+  uiItemS(column);
 
-  undo_step_count = 0;
+  int rows = 2;
+
+  int undo_steps = BLI_listbase_count(&wm->undo_stack->steps);
+  const int col_size = 20 + (undo_steps / 12);
 
   /* Reverse the order so the most recent state is first in the menu. */
-  int i = undo_step_count_all - 1;
-  for (UndoStep *us = static_cast<UndoStep *>(wm->undo_stack->steps.last); us; us = us->prev, i--)
-  {
+  int i = undo_steps;
+  LISTBASE_FOREACH_BACKWARD (UndoStep *, us, &wm->undo_stack->steps) {
+    i--;
     if (us->skip) {
       continue;
     }
-    if (!(undo_step_count % col_size)) {
+
+    if (rows > 0 && !(rows % col_size)) {
       column = uiLayoutColumn(split, false);
     }
     const bool is_active = (us == wm->undo_stack->step_active);
+
     uiLayout *row = uiLayoutRow(column, false);
     uiLayoutSetEnabled(row, !is_active);
     uiItemIntO(row,
@@ -254,7 +250,7 @@ static void undo_history_draw_menu(const bContext *C, Menu *menu)
                "ED_OT_undo_history",
                "item",
                i);
-    undo_step_count += 1;
+    rows += 1;
   }
 }
 

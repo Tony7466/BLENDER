@@ -40,6 +40,7 @@ void ED_undo_pop(bContext *C);
 void ED_undo_redo(bContext *C);
 void ED_OT_undo(wmOperatorType *ot);
 void ED_OT_undo_push(wmOperatorType *ot);
+void ED_OT_undo_push_waypoint(wmOperatorType *ot);
 void ED_OT_redo(wmOperatorType *ot);
 void ED_OT_undo_redo(wmOperatorType *ot);
 void ED_OT_undo_history(wmOperatorType *ot);

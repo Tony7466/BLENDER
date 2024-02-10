@@ -16,6 +16,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.hh"
@@ -623,6 +624,42 @@ void ED_OT_undo_push(wmOperatorType *ot)
                  BKE_UNDO_STR_MAX,
                  "Undo Message",
                  "");
+}
+
+static int ed_undo_push_waypoint_exec(bContext *C, wmOperator *op)
+{
+  if (G.background) {
+    /* Exception for background mode, see: #60934.
+     * NOTE: since the undo stack isn't initialized on startup, background mode behavior
+     * won't match regular usage, this is just for scripts to do explicit undo pushes. */
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (wm->undo_stack == nullptr) {
+      wm->undo_stack = BKE_undosys_stack_create();
+    }
+  }
+
+  time_t time_now = time(NULL);
+  struct tm *tm_local = localtime(&time_now);
+  char time_str[26];
+  strftime(time_str, 26, "%H:%M:%S", tm_local);
+
+  char str[BKE_UNDO_STR_MAX];
+  SNPRINTF_RLEN(str, "Waypoint at %s", time_str);
+  ED_undo_push(C, str);
+  return OPERATOR_FINISHED;
+}
+
+void ED_OT_undo_push_waypoint(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Undo Waypoint Push";
+  ot->description = "Add an undo waypoint";
+  ot->idname = "ED_OT_undo_push_waypoint";
+
+  /* api callbacks */
+  ot->exec = ed_undo_push_waypoint_exec;
+  /* Unlike others undo operators this initializes undo stack. */
+  ot->poll = ED_operator_screenactive;
 }
 
 static bool ed_redo_poll(bContext *C)
