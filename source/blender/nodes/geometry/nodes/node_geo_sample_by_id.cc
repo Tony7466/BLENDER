@@ -13,7 +13,11 @@ namespace blender::nodes::node_geo_sample_by_id_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Geometry").supported_type({GeometryComponent::Type::Mesh, GeometryComponent::Type::PointCloud, GeometryComponent::Type::Curve,GeometryComponent::Type::Instance});
+  b.add_input<decl::Geometry>("Geometry")
+      .supported_type({GeometryComponent::Type::Mesh,
+                       GeometryComponent::Type::PointCloud,
+                       GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::Instance});
 
   b.add_input<decl::Int>("ID").implicit_field_on(implicit_field_inputs::id_or_index, {0});
   b.add_input<decl::Int>("Sample ID").supports_field();
@@ -122,9 +126,8 @@ class SampleIDFunction : public mf::MultiFunction {
     MutableSpan<int> indices = params.uninitialized_single_output<int>(1, "Index");
 
     devirtualize_varray(ids, [&](auto &ids) {
-      mask.foreach_index_optimized<int>([&](const int i) {
-        indices[i] = id_map_.lookup_default(ids[i], 0);
-      });
+      mask.foreach_index_optimized<int>(
+          [&](const int i) { indices[i] = id_map_.lookup_default(ids[i], 0); });
     });
   }
 };
@@ -139,14 +142,16 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   std::unique_ptr<SampleIDFunction> sample_id_fn;
   try {
-    sample_id_fn = std::make_unique<SampleIDFunction>(std::move(geometry), std::move(id_field), domain);
+    sample_id_fn = std::make_unique<SampleIDFunction>(
+        std::move(geometry), std::move(id_field), domain);
   }
   catch (const std::runtime_error &) {
     params.set_default_remaining_outputs();
     return;
   }
 
-  auto sample_id_op = FieldOperation::Create(std::move(sample_id_fn), {std::move(sample_id_field)});
+  auto sample_id_op = FieldOperation::Create(std::move(sample_id_fn),
+                                             {std::move(sample_id_field)});
   params.set_output("Index", GField(std::move(sample_id_op)));
 }
 
