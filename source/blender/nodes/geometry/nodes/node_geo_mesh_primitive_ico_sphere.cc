@@ -1199,8 +1199,6 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
   mesh->tag_overlapping_none();
   mesh->no_overlapping_topology();
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
-  /* Use side_verts as subdivisions for now. */
-  mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, side_verts - 1));
 
   bke::mesh_smooth_set(*mesh, false);
 
@@ -1221,6 +1219,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     SCOPED_TIMER_AVERAGED("New");
     const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
     Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
+    /* Icosphere is constructed from count of details, rather than at subdivision level. Compute
+     * bounds from subdivision level. */
+    mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, subdivisions));
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
     return;
   }
