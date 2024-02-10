@@ -863,6 +863,65 @@ bool IndexMask::contains(const int64_t query_index) const
   return this->find(query_index).has_value();
 }
 
+IndexMask IndexMask::from_repeating(const IndexMask &mask_to_repeat,
+                                    const int64_t repetitions,
+                                    const int64_t stride,
+                                    const int64_t initial_offset,
+                                    IndexMaskMemory &memory)
+{
+  if (mask_to_repeat.is_empty()) {
+    return {};
+  }
+  BLI_assert(mask_to_repeat.last() < stride);
+  if (repetitions == 0) {
+    return {};
+  }
+  if (repetitions == 1 && initial_offset == 0) {
+    return mask_to_repeat;
+  }
+  const std::optional<IndexRange> range_to_repeat = mask_to_repeat.to_range();
+  if (range_to_repeat && range_to_repeat->first() == 0 && range_to_repeat->size() == stride) {
+    return IndexRange(initial_offset, repetitions * stride);
+  }
+  const int64_t segments_num = mask_to_repeat.segments_num();
+  const IndexRange bounds = mask_to_repeat.bounds();
+  if (segments_num == 1 && stride <= max_segment_size / 2 && mask_to_repeat.size() <= 256) {
+    const IndexMaskSegment src_segment = mask_to_repeat.segment(0);
+    const int64_t inline_repetitions_num = std::min(repetitions, max_segment_size / stride);
+    MutableSpan<int16_t> repeated_indices = memory.allocate_array<int16_t>(inline_repetitions_num *
+                                                                           src_segment.size());
+    for (const int64_t repetition : IndexRange(inline_repetitions_num)) {
+      for (const int64_t i : src_segment.index_range()) {
+        const int64_t index = src_segment[i] - src_segment[0] + repetition * stride;
+        BLI_assert(index < max_segment_size);
+        repeated_indices[repetition * src_segment.size() + i] = int16_t(index);
+      }
+    }
+    BLI_assert(repeated_indices[0] == 0);
+
+    Vector<IndexMaskSegment, 16> repeated_segments;
+    const int64_t result_segments_num = ceil_division(repetitions, inline_repetitions_num);
+    for (const int64_t i : IndexRange(result_segments_num)) {
+      const int64_t used_repetitions = std::min(inline_repetitions_num,
+                                                repetitions - i * inline_repetitions_num);
+      repeated_segments.append(
+          IndexMaskSegment(initial_offset + bounds.first() + i * stride * inline_repetitions_num,
+                           repeated_indices.take_front(used_repetitions * src_segment.size())));
+    }
+    return IndexMask::from_segments(repeated_segments, memory);
+  }
+
+  Vector<IndexMaskSegment, 16> repeated_segments;
+  for (const int64_t repetition : IndexRange(repetitions)) {
+    for (const int64_t segment_i : IndexRange(segments_num)) {
+      const IndexMaskSegment segment = mask_to_repeat.segment(segment_i);
+      repeated_segments.append(IndexMaskSegment(
+          segment.offset() + repetition * stride + initial_offset, segment.base_span()));
+    }
+  }
+  return IndexMask::from_segments(repeated_segments, memory);
+}
+
 template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
 template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;

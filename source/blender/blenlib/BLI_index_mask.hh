@@ -186,6 +186,11 @@ class IndexMask : private IndexMaskData {
   static IndexMask from_bools(const IndexMask &universe,
                               const VArray<bool> &bools,
                               IndexMaskMemory &memory);
+  static IndexMask from_repeating(const IndexMask &mask_to_repeat,
+                                  int64_t repetitions,
+                                  int64_t stride,
+                                  int64_t initial_offset,
+                                  IndexMaskMemory &memory);
   /**
    * Construct a mask from the given segments. The provided segments are expected to be
    * sorted and owned by #memory already.
@@ -218,6 +223,7 @@ class IndexMask : private IndexMaskData {
   int64_t size() const;
   bool is_empty() const;
   IndexRange index_range() const;
+  IndexRange bounds() const;
   int64_t first() const;
   int64_t last() const;
 
@@ -547,6 +553,17 @@ inline bool IndexMask::is_empty() const
 inline IndexRange IndexMask::index_range() const
 {
   return IndexRange(indices_num_);
+}
+
+inline IndexRange IndexMask::bounds() const
+{
+  if (this->is_empty()) {
+    return IndexRange();
+  }
+  const int64_t first = this->first();
+  const int64_t last = this->last();
+  const int64_t range = last - first + 1;
+  return IndexRange(first, range);
 }
 
 inline int64_t IndexMask::first() const
