@@ -941,19 +941,16 @@ static bool segments_is_equal(const IndexMaskSegment &a, const IndexMaskSegment 
   const Span<int16_t> a_indices = a.base_span();
   [[maybe_unused]] const Span<int16_t> b_indices = b.base_span();
 
-  BLI_assert(a_indices[0] >= 0 && b_indices[0] >= 0);
-  BLI_assert(a.offset() + a_indices[0] == b.offset() + b_indices[0]);
-  BLI_assert(b_indices[0] == a_indices[0] - (a.offset() - b.offset()));
-  BLI_assert(std::numeric_limits<int16_t>::min() <= a.offset() - b.offset());
-  BLI_assert(a.offset() - b.offset() <= std::numeric_limits<int16_t>::max());
+  const int64_t offset_difference = int16_t(b.offset() - a.offset());
 
-  const int16_t offset_different = int16_t(b.offset() - a.offset());
+  BLI_assert(a_indices[0] >= 0 && b_indices[0] >= 0);
+  BLI_assert(b_indices[0] == a_indices[0] - offset_difference);
 
   return std::equal(a_indices.begin(),
                     a_indices.end(),
                     b.base_span().begin(),
-                    [offset_different](const int16_t a_index, const int16_t b_index) -> bool {
-                      return a_index - offset_different == b_index;
+                    [offset_difference](const int16_t a_index, const int16_t b_index) -> bool {
+                      return a_index - offset_difference == b_index;
                     });
 }
 
