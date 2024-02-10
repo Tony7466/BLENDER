@@ -600,17 +600,21 @@ template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
       });
 }
 
-void IndexMask::to_bits(MutableBitSpan r_bits) const
+void IndexMask::to_bits(MutableBitSpan r_bits, const int64_t offset) const
 {
-  BLI_assert(r_bits.size() >= this->min_array_size());
+  BLI_assert(r_bits.size() >= this->min_array_size() + offset);
   r_bits.reset_all();
   this->foreach_segment_optimized([&](const auto segment) {
     if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
       const IndexRange range = segment;
-      r_bits.slice(range).set_all();
+      const IndexRange shifted_range = range.shift(offset);
+      r_bits.slice(shifted_range).set_all();
     }
     else {
-      for (const int64_t i : segment) {
+      const IndexMaskSegment indices = segment;
+      const IndexMaskSegment shifted_indices = IndexMaskSegment(indices.offset() + offset,
+                                                                indices.base_span());
+      for (const int64_t i : shifted_indices) {
         r_bits[i].set();
       }
     }

@@ -396,7 +396,7 @@ class IndexMask : private IndexMaskData {
   /**
    * Set the bits at indices in the mask to 1 and all other bits to 0.
    */
-  void to_bits(MutableBitSpan r_bits) const;
+  void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
   /**
    * Set the bools at indices in the mask to true and all others to false.
    */

@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <fmt/format.h>
+#include <iostream>
 #include <mutex>
 
 #include "BLI_array.hh"
+#include "BLI_bit_group_vector.hh"
+#include "BLI_bit_span_ops.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask_expression.hh"
 #include "BLI_multi_value_map.hh"
@@ -451,6 +454,64 @@ struct FinalResultSegment {
   IndexMaskSegment indices;
 };
 
+BLI_NOINLINE static IndexMaskSegment evaluate_segment_with_bits(
+    const Expr &root_expression,
+    LinearAllocator<> &allocator,
+    const IndexRange bounds,
+    const Span<const Expr *> eager_eval_order)
+{
+  BLI_assert(bounds.size() <= max_segment_size);
+  const int64_t segment_offset = bounds.start();
+  const int expr_array_size = root_expression.expression_array_size();
+  const int64_t ints_in_bounds = ceil_division(bounds.size(), bits::BitsPerInt);
+
+  BitGroupVector<1024 * 16> expression_results(
+      expr_array_size, ints_in_bounds * bits::BitsPerInt, false);
+
+  for (const Expr *expression : eager_eval_order) {
+    MutableBoundedBitSpan expr_result = expression_results[expression->index];
+    switch (expression->type) {
+      case Expr::Type::Atomic: {
+        const auto &expr = expression->as_atomic();
+        const IndexMask mask = expr.mask->slice_content(bounds);
+        mask.to_bits(expr_result, -segment_offset);
+        break;
+      }
+      case Expr::Type::Union: {
+        for (const Expr *term : expression->terms) {
+          expr_result |= expression_results[term->index];
+        }
+        break;
+      }
+      case Expr::Type::Intersection: {
+        bits::copy_from_or(expr_result, expression_results[expression->terms[0]->index]);
+        for (const Expr *term : expression->terms.as_span().drop_front(1)) {
+          expr_result &= expression_results[term->index];
+        }
+        break;
+      }
+      case Expr::Type::Difference: {
+        bits::copy_from_or(expr_result, expression_results[expression->terms[0]->index]);
+        for (const Expr *term : expression->terms.as_span().drop_front(1)) {
+          bits::mix_into_first_expr(
+              [](const bits::BitInt a, const bits::BitInt b) { return a & ~b; },
+              expr_result,
+              expression_results[term->index]);
+        }
+        break;
+      }
+    }
+  }
+  const BoundedBitSpan final_bits = expression_results[root_expression.index];
+  Vector<int16_t, max_segment_size> indices_vec;
+  bits::foreach_1_index(final_bits, [&](const int64_t i) {
+    BLI_assert(i < max_segment_size);
+    indices_vec.append(int16_t(i));
+  });
+  const Span<int16_t> indices = allocator.construct_array_copy<int16_t>(indices_vec);
+  return IndexMaskSegment(segment_offset, indices);
+}
+
 BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expression,
                                                       LinearAllocator<> &allocator,
                                                       const IndexRange bounds)
@@ -746,7 +807,8 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
                                       LinearAllocator<> &allocator,
                                       Vector<FinalResultSegment, 16> &segments) {
-    const IndexMaskSegment indices = evaluate_segment(root_expression, allocator, bounds);
+    const IndexMaskSegment indices = evaluate_segment_with_bits(
+        root_expression, allocator, bounds, eager_eval_order);
     if (!indices.is_empty()) {
       segments.append({FinalResultSegment::Type::Indices, bounds, nullptr, indices});
     }
