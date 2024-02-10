@@ -452,7 +452,7 @@ struct FinalResultSegment {
 };
 
 BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expression,
-                                                      IndexMaskMemory &memory,
+                                                      LinearAllocator<> &allocator,
                                                       const IndexRange bounds)
 {
   BLI_assert(bounds.size() <= max_segment_size);
@@ -478,7 +478,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
           segment = sliced_mask.segment(0);
         }
         else if (segments_num > 1) {
-          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(sliced_mask.size());
+          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(sliced_mask.size());
           sliced_mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
             const int64_t index = i - segment_offset;
             BLI_assert(index < max_segment_size);
@@ -517,7 +517,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
                                                      segment_1.end(),
                                                      indices_vec.begin()) -
                                       indices_vec.begin();
-          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(indices_num);
+          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_num);
           for (const int64_t i : IndexRange(indices_num)) {
             indices[i] = int16_t(indices_vec[i] - segment_offset);
           }
@@ -552,7 +552,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
                                                             segment_1.end(),
                                                             indices_vec.begin()) -
                                       indices_vec.begin();
-          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(indices_num);
+          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_num);
           for (const int64_t i : IndexRange(indices_num)) {
             indices[i] = int16_t(indices_vec[i] - segment_offset);
           }
@@ -602,7 +602,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
                                                           segment_subtract.end(),
                                                           indices_vec.begin()) -
                                       indices_vec.begin();
-          MutableSpan<int16_t> indices = memory.allocate_array<int16_t>(indices_num);
+          MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_num);
           for (const int64_t i : IndexRange(indices_num)) {
             indices[i] = int16_t(indices_vec[i] - segment_offset);
           }
@@ -742,8 +742,9 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   }
 
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
+                                      LinearAllocator<> &allocator,
                                       Vector<FinalResultSegment, 16> &segments) {
-    const IndexMaskSegment indices = evaluate_segment(root_expression, memory, bounds);
+    const IndexMaskSegment indices = evaluate_segment(root_expression, allocator, bounds);
     if (!indices.is_empty()) {
       segments.append({FinalResultSegment::Type::Indices, bounds, nullptr, indices});
     }
@@ -752,30 +753,30 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   const int64_t unknown_segment_eval_grain_size = 8;
   if (short_unknown_segments.size() < unknown_segment_eval_grain_size) {
     for (const IndexRange &bounds : short_unknown_segments) {
-      evaluate_unknown_segment(bounds, final_segments);
+      evaluate_unknown_segment(bounds, memory, final_segments);
     }
   }
   else {
-    std::mutex mutex;
-    threading::parallel_for(
-        short_unknown_segments.index_range(),
-        unknown_segment_eval_grain_size,
-        [&](const IndexRange range) {
-          Vector<FinalResultSegment, 16> local_segments;
-          for (const int64_t unknown_bounds_i : range) {
-            const IndexRange &unknown_bounds = short_unknown_segments[unknown_bounds_i];
-            const IndexMaskSegment indices = evaluate_segment(
-                root_expression, memory, unknown_bounds);
-            if (!indices.is_empty()) {
-              local_segments.append(
-                  {FinalResultSegment::Type::Indices, unknown_bounds, nullptr, indices});
-            }
-          }
-          {
-            std::lock_guard lock{mutex};
-            final_segments.extend(local_segments);
-          }
-        });
+    struct LocalData {
+      LinearAllocator<> allocator;
+      Vector<FinalResultSegment, 16> segments;
+    };
+    threading::EnumerableThreadSpecific<LocalData> data_by_thread;
+    threading::parallel_for(short_unknown_segments.index_range(),
+                            unknown_segment_eval_grain_size,
+                            [&](const IndexRange range) {
+                              LocalData &data = data_by_thread.local();
+                              for (const IndexRange &bounds :
+                                   short_unknown_segments.as_span().slice(range)) {
+                                evaluate_unknown_segment(bounds, data.allocator, data.segments);
+                              }
+                            });
+    for (LocalData &data : data_by_thread) {
+      if (!data.segments.is_empty()) {
+        final_segments.extend(data.segments);
+        memory.transfer_ownership_from(data.allocator);
+      }
+    }
   }
 
   if (final_segments.is_empty()) {
