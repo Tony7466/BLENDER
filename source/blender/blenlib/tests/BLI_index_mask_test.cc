@@ -23,6 +23,7 @@ TEST(index_mask, IndicesToMask)
   EXPECT_EQ(mask.first(), 5);
   EXPECT_EQ(mask.last(), 101000);
   EXPECT_EQ(mask.min_array_size(), 101001);
+  EXPECT_EQ(mask.bounds(), IndexRange(5, 101001 - 5));
 }
 
 TEST(index_mask, FromBits)
@@ -51,6 +52,7 @@ TEST(index_mask, FromSize)
     EXPECT_EQ(mask.first(), 0);
     EXPECT_EQ(mask.last(), 4);
     EXPECT_EQ(mask.min_array_size(), 5);
+    EXPECT_EQ(mask.bounds(), IndexRange(5));
   }
   {
     const IndexMask mask(max_segment_size);
@@ -61,6 +63,7 @@ TEST(index_mask, FromSize)
     EXPECT_EQ(mask.first(), 0);
     EXPECT_EQ(mask.last(), max_segment_size - 1);
     EXPECT_EQ(mask.min_array_size(), max_segment_size);
+    EXPECT_EQ(mask.bounds(), IndexRange(max_segment_size));
   }
 }
 
@@ -105,6 +108,7 @@ TEST(index_mask, DefaultConstructor)
   IndexMask mask;
   EXPECT_EQ(mask.size(), 0);
   EXPECT_EQ(mask.min_array_size(), 0);
+  EXPECT_EQ(mask.bounds(), IndexRange());
 }
 
 TEST(index_mask, ForeachRange)

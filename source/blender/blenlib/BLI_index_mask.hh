@@ -235,9 +235,13 @@ class IndexMask : private IndexMaskData {
   int64_t size() const;
   bool is_empty() const;
   IndexRange index_range() const;
-  IndexRange bounds() const;
   int64_t first() const;
   int64_t last() const;
+
+  /**
+   * Returns the smallest range that contains all indices stored in this mask.
+   */
+  IndexRange bounds() const;
 
   /**
    * \return Minimum number of elements an array has to have so that it can be indexed by every
