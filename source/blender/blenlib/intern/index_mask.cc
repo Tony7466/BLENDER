@@ -863,6 +863,49 @@ bool IndexMask::contains(const int64_t query_index) const
   return this->find(query_index).has_value();
 }
 
+static Array<int16_t> build_every_nth_index_array(const int64_t n)
+{
+  Array<int16_t> data(max_segment_size / n);
+  for (const int64_t i : data.index_range()) {
+    const int64_t index = i * n;
+    BLI_assert(index < max_segment_size);
+    data[i] = int16_t(index);
+  }
+  return data;
+}
+
+static Span<int16_t> get_every_nth_index(const int64_t n,
+                                         const int64_t repetitions,
+                                         IndexMaskMemory &memory)
+{
+  BLI_assert(n >= 2);
+  BLI_assert(n * repetitions <= max_segment_size);
+
+  switch (n) {
+    case 2: {
+      static auto data = build_every_nth_index_array(2);
+      return data.as_span().take_front(repetitions);
+    }
+    case 3: {
+      static auto data = build_every_nth_index_array(3);
+      return data.as_span().take_front(repetitions);
+    }
+    case 4: {
+      static auto data = build_every_nth_index_array(4);
+      return data.as_span().take_front(repetitions);
+    }
+    default: {
+      MutableSpan<int16_t> data = memory.allocate_array<int16_t>(repetitions);
+      for (const int64_t i : IndexRange(repetitions)) {
+        const int64_t index = i * n;
+        BLI_assert(index < max_segment_size);
+        data[i] = int16_t(index);
+      }
+      return data;
+    }
+  }
+}
+
 IndexMask IndexMask::from_repeating(const IndexMask &mask_to_repeat,
                                     const int64_t repetitions,
                                     const int64_t stride,
@@ -888,14 +931,21 @@ IndexMask IndexMask::from_repeating(const IndexMask &mask_to_repeat,
   if (segments_num == 1 && stride <= max_segment_size / 2 && mask_to_repeat.size() <= 256) {
     const IndexMaskSegment src_segment = mask_to_repeat.segment(0);
     const int64_t inline_repetitions_num = std::min(repetitions, max_segment_size / stride);
-    MutableSpan<int16_t> repeated_indices = memory.allocate_array<int16_t>(inline_repetitions_num *
-                                                                           src_segment.size());
-    for (const int64_t repetition : IndexRange(inline_repetitions_num)) {
-      for (const int64_t i : src_segment.index_range()) {
-        const int64_t index = src_segment[i] - src_segment[0] + repetition * stride;
-        BLI_assert(index < max_segment_size);
-        repeated_indices[repetition * src_segment.size() + i] = int16_t(index);
+    Span<int16_t> repeated_indices;
+    if (src_segment.size() == 1) {
+      repeated_indices = get_every_nth_index(stride, inline_repetitions_num, memory);
+    }
+    else {
+      MutableSpan<int16_t> repeated_indices_mut = memory.allocate_array<int16_t>(
+          inline_repetitions_num * src_segment.size());
+      for (const int64_t repetition : IndexRange(inline_repetitions_num)) {
+        for (const int64_t i : src_segment.index_range()) {
+          const int64_t index = src_segment[i] - src_segment[0] + repetition * stride;
+          BLI_assert(index < max_segment_size);
+          repeated_indices_mut[repetition * src_segment.size() + i] = int16_t(index);
+        }
       }
+      repeated_indices = repeated_indices_mut;
     }
     BLI_assert(repeated_indices[0] == 0);
 
