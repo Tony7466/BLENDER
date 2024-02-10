@@ -1388,6 +1388,89 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
 
+def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=False, props=None):
+    tool_settings = context.tool_settings
+    settings = tool_settings.gpencil_paint
+    gp_settings = brush.gpencil_settings
+    tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
+    if gp_settings is None:
+        return
+
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "size",
+        unified_name="use_unified_size",
+        pressure_name="use_pressure_size",
+        text="Radius",
+        slider=True,
+        header=True,
+    )
+
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "strength",
+        pressure_name="use_pressure_strength",
+        unified_name="use_unified_strength",
+        slider=True,
+        header=True,
+    )
+
+    # Brush details
+    if tool.idname in {
+            "builtin.arc",
+            "builtin.curve",
+            "builtin.line",
+            "builtin.box",
+            "builtin.circle",
+            "builtin.polyline",
+    }:
+        row = layout.row(align=True)
+        if context.region.type == 'TOOL_HEADER':
+            row.prop(gp_settings, "caps_type", text="", expand=True)
+        else:
+            row.prop(gp_settings, "caps_type", text="Caps Type")
+
+        if props is not None:
+            row = layout.row(align=True)
+            row.prop(props, "interpolate_mode", icon="VIEW_ORTHO", text="", invert_checkbox=True)
+            row.prop(props, "interpolate_mode", icon="VIEW_PERSPECTIVE", text="")
+
+        settings = context.tool_settings.gpencil_sculpt
+        if compact:
+            row = layout.row(align=True)
+            row.prop(settings, "use_thickness_curve", text="", icon='SPHERECURVE')
+            sub = row.row(align=True)
+            sub.active = settings.use_thickness_curve
+            sub.popover(
+                panel="TOPBAR_PT_gpencil_primitive",
+                text="Thickness Profile",
+            )
+        else:
+            row = layout.row(align=True)
+            row.prop(settings, "use_thickness_curve", text="Use Thickness Profile")
+            sub = row.row(align=True)
+            if settings.use_thickness_curve:
+                # Curve
+                layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
+    elif brush.gpencil_tool == 'ERASE':
+        layout.prop(brush.gpencil_settings, "eraser_mode", expand=True)
+        if brush.gpencil_settings.eraser_mode == "HARD":
+            layout.prop(brush.gpencil_settings, "use_keep_caps_eraser")
+        layout.prop(brush.gpencil_settings, "use_active_layer_only")
+    elif brush.gpencil_tool == 'DRAW':
+        layout.prop(brush.gpencil_settings, "active_smooth_factor")
+
+        row = layout.row(align=True)
+        if context.region.type == 'TOOL_HEADER':
+            row.prop(gp_settings, "caps_type", text="", expand=True)
+        else:
+            row.prop(gp_settings, "caps_type", text="Caps Type")
+
+
 def brush_basic_gpencil_sculpt_settings(layout, _context, brush, *, compact=False):
     if brush is None:
         return

@@ -8045,106 +8045,204 @@ def km_3d_view_tool_paint_weight_gradient(params):
 # ------------------------------------------------------------------------------
 # Tool System (3D View, Grease Pencil, Paint)
 
+
 def km_3d_view_tool_paint_gpencil_line(params):
-    return (
-        "3D View Tool: Paint Gpencil, Line",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("gpencil.primitive_line", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("wait_for_input", False)]}),
-            # Lasso select
-            ("gpencil.select_lasso",
-             {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
-        ]},
-    )
+    if params.use_experimental_grease_pencil_version3:
+        return (
+            "3D View Tool: Paint Grease Pencil, Line",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("grease_pencil.primitive_line", params.tool_maybe_tweak_event,
+                # ("grease_pencil.primitive_line", params.tool_mouse,
+                 {"properties": [("wait_for_input", False)]}),
+                ("grease_pencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                ("grease_pencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("grease_pencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
+    else:
+        return (
+            "3D View Tool: Paint Gpencil, Line",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("gpencil.primitive_line", params.tool_maybe_tweak_event,
+                 {"properties": [("wait_for_input", False)]}),
+                ("gpencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                ("gpencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("gpencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
 
 
 def km_3d_view_tool_paint_gpencil_polyline(params):
-    return (
-        "3D View Tool: Paint Gpencil, Polyline",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("gpencil.primitive_polyline", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
-            # Lasso select
-            ("gpencil.select_lasso",
-             {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
-        ]},
-    )
+    if params.use_experimental_grease_pencil_version3:
+        return (
+            "3D View Tool: Paint Grease Pencil, Polyline",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("grease_pencil.primitive_polyline", params.tool_maybe_tweak_event,
+                 {"properties": [("wait_for_input", False)]}),
+                ("grease_pencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("grease_pencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
+    else:
+        return (
+            "3D View Tool: Paint Gpencil, Polyline",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("gpencil.primitive_polyline", params.tool_maybe_tweak_event,
+                 {"properties": [("wait_for_input", False)]}),
+                ("gpencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("gpencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
 
 
 def km_3d_view_tool_paint_gpencil_box(params):
-    return (
-        "3D View Tool: Paint Gpencil, Box",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("gpencil.primitive_box", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("wait_for_input", False)]}),
-            # Lasso select
-            ("gpencil.select_lasso",
-             {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
-        ]},
-    )
+    if params.use_experimental_grease_pencil_version3:
+        return (
+            "3D View Tool: Paint Grease Pencil, Box",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("grease_pencil.primitive_box", params.tool_maybe_tweak_event,
+                 {"properties": [("wait_for_input", False)]}),
+                ("grease_pencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                ("grease_pencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("grease_pencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
+    else:
+        return (
+            "3D View Tool: Paint Gpencil, Box",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("gpencil.primitive_box", params.tool_maybe_tweak_event,
+                 {"properties": [("wait_for_input", False)]}),
+                ("gpencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                ("gpencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("gpencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
 
 
 def km_3d_view_tool_paint_gpencil_circle(params):
-    return (
-        "3D View Tool: Paint Gpencil, Circle",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("gpencil.primitive_circle", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("wait_for_input", False)]}),
-            # Lasso select
-            ("gpencil.select_lasso",
-             {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
-        ]},
-    )
+    if params.use_experimental_grease_pencil_version3:
+        return (
+            "3D View Tool: Paint Grease Pencil, Circle",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("grease_pencil.primitive_circle", params.tool_maybe_tweak_event,
+                 {"properties": [("wait_for_input", False)]}),
+                ("grease_pencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                ("grease_pencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("grease_pencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
+    else:
+        return (
+            "3D View Tool: Paint Gpencil, Circle",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("gpencil.primitive_circle", params.tool_maybe_tweak_event,
+                 {"properties": [("wait_for_input", False)]}),
+                ("gpencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("wait_for_input", False)]}),
+                ("gpencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("wait_for_input", False)]}),
+                # Lasso select
+                ("gpencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
 
 
 def km_3d_view_tool_paint_gpencil_arc(params):
-    return (
-        "3D View Tool: Paint Gpencil, Arc",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("gpencil.primitive_curve", params.tool_maybe_tweak_event,
-             {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
-            ("gpencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
-            ("gpencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
-            # Lasso select
-            ("gpencil.select_lasso",
-             {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
-        ]},
-    )
+    if params.use_experimental_grease_pencil_version3:
+        return (
+            "3D View Tool: Paint Grease Pencil, Arc",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("grease_pencil.primitive_curve", params.tool_maybe_tweak_event,
+                 {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
+                ("grease_pencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
+                ("grease_pencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
+                # Lasso select
+                ("grease_pencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
+    else:
+        return (
+            "3D View Tool: Paint Gpencil, Arc",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("gpencil.primitive_curve", params.tool_maybe_tweak_event,
+                 {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
+                ("gpencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                 {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
+                ("gpencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                 {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
+                # Lasso select
+                ("gpencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
 
 
 def km_3d_view_tool_paint_gpencil_curve(params):
-    return (
-        "3D View Tool: Paint Gpencil, Curve",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("gpencil.primitive_curve", params.tool_maybe_tweak_event,
-             {"properties": [("type", 'CURVE'), ("wait_for_input", False)]}),
-            # Lasso select
-            ("gpencil.select_lasso",
-             {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
-        ]},
-    )
+    if params.use_experimental_grease_pencil_version3:
+        return (
+            "3D View Tool: Paint Grease Pencil, Curve",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("grease_pencil.primitive_curve", params.tool_maybe_tweak_event,
+                 {"properties": [("type", 'CURVE'), ("wait_for_input", False)]}),
+                # Lasso select
+                ("grease_pencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
+    else:
+        return (
+            "3D View Tool: Paint Gpencil, Curve",
+            {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+            {"items": [
+                ("gpencil.primitive_curve", params.tool_maybe_tweak_event,
+                 {"properties": [("type", 'CURVE'), ("wait_for_input", False)]}),
+                # Lasso select
+                ("gpencil.select_lasso",
+                 {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ]},
+        )
 
 
 def km_3d_view_tool_paint_gpencil_cutter(params):
