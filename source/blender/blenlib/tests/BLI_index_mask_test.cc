@@ -756,4 +756,25 @@ TEST(index_mask, FromRepeatingNoRepetitions)
   EXPECT_TRUE(mask.is_empty());
 }
 
+TEST(index_mask, FromEveryNth)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexMask mask = IndexMask::from_every_nth(2, 5, 0, memory);
+    EXPECT_EQ(mask, IndexMask::from_initializers({0, 2, 4, 6, 8}, memory));
+  }
+  {
+    const IndexMask mask = IndexMask::from_every_nth(10, 5, 100, memory);
+    EXPECT_EQ(mask, IndexMask::from_initializers({100, 110, 120, 130, 140}, memory));
+  }
+  {
+    const IndexMask mask = IndexMask::from_every_nth(1, 5, 100, memory);
+    EXPECT_EQ(mask, IndexMask::from_initializers({100, 101, 102, 103, 104}, memory));
+  }
+  {
+    const IndexMask mask = IndexMask::from_every_nth(100'000, 5, 0, memory);
+    EXPECT_EQ(mask, IndexMask::from_initializers({0, 100'000, 200'000, 300'000, 400'000}, memory));
+  }
+}
+
 }  // namespace blender::index_mask::tests

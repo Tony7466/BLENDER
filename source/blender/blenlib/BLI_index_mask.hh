@@ -191,6 +191,10 @@ class IndexMask : private IndexMaskData {
                                   int64_t stride,
                                   int64_t initial_offset,
                                   IndexMaskMemory &memory);
+  static IndexMask from_every_nth(int64_t n,
+                                  int64_t repetitions,
+                                  const int64_t initial_offset,
+                                  IndexMaskMemory &memory);
   /**
    * Construct a mask from the given segments. The provided segments are expected to be
    * sorted and owned by #memory already.

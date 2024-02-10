@@ -922,10 +922,14 @@ IndexMask IndexMask::from_repeating(const IndexMask &mask_to_repeat,
   return IndexMask::from_segments(repeated_segments, memory);
 }
 
-template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
-template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
-template void IndexMask::to_indices(MutableSpan<int32_t>) const;
-template void IndexMask::to_indices(MutableSpan<int64_t>) const;
+IndexMask IndexMask::from_every_nth(const int64_t n,
+                                    const int64_t repetitions,
+                                    const int64_t initial_offset,
+                                    IndexMaskMemory &memory)
+{
+  BLI_assert(n >= 1);
+  return IndexMask::from_repeating(IndexRange(1), repetitions, n, initial_offset, memory);
+}
 
 void IndexMask::foreach_segment_zipped(const Span<IndexMask> masks,
                                        const FunctionRef<bool(Span<IndexMaskSegment> segments)> fn)
@@ -1033,5 +1037,10 @@ bool operator==(const IndexMask &a, const IndexMask &b)
 
   return equals;
 }
+
+template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
+template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
+template void IndexMask::to_indices(MutableSpan<int32_t>) const;
+template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 
 }  // namespace blender::index_mask
