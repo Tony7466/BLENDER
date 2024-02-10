@@ -428,10 +428,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
         // info.define("LIGHT_CLOSURE_EVAL_COUNT", "2");
         // break;
       case 3:
-        // info.define("LIGHT_CLOSURE_EVAL_COUNT", "3");
-        // break;
-      case 4:
-        info.define("LIGHT_CLOSURE_EVAL_COUNT", "4");
+        info.define("LIGHT_CLOSURE_EVAL_COUNT", "3");
         break;
       default:
         BLI_assert_unreachable();

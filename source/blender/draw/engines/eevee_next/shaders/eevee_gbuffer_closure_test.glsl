@@ -18,7 +18,6 @@ GBufferData gbuffer_new()
   data.closure[0].weight = 0.0;
   data.closure[1].weight = 0.0;
   data.closure[2].weight = 0.0;
-  data.closure[3].weight = 0.0;
   data.thickness = 0.2;
   data.object_id = 0xF220u;
   data.surface_N = normalize(vec3(0.1, 0.2, 0.3));

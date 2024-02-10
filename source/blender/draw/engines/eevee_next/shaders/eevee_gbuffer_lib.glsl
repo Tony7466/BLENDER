@@ -24,7 +24,7 @@
 #define GBUFFER_NORMAL_BITS_SHIFT 12
 
 struct GBufferData {
-  ClosureUndetermined closure[4];
+  ClosureUndetermined closure[GBUFFER_LAYER_MAX];
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;
@@ -694,7 +694,7 @@ GBufferWriter gbuffer_pack(GBufferData data_in)
   /* Check special configurations first. */
 
   bool has_additional_data = false;
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < GBUFFER_LAYER_MAX; i++) {
     ClosureUndetermined cl = data_in.closure[i];
 
     if (cl.weight <= 1e-5) {

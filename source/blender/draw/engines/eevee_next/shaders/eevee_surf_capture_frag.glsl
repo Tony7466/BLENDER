@@ -33,7 +33,7 @@ void main()
 
   vec3 albedo = vec3(0.0);
 
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 3; i++) {
     ClosureUndetermined cl = g_closure_get_resolved(i, 1.0);
     if (cl.type != CLOSURE_BSDF_TRANSLUCENT_ID &&
         cl.type != CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID)

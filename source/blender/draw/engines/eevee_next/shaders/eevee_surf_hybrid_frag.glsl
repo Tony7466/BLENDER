@@ -78,7 +78,6 @@ void main()
   gbuf_data.closure[0] = g_closure_get_resolved(0, transparency_rcp);
   gbuf_data.closure[1] = g_closure_get_resolved(1, transparency_rcp);
   gbuf_data.closure[2] = g_closure_get_resolved(2, transparency_rcp);
-  gbuf_data.closure[3] = g_closure_get_resolved(3, transparency_rcp);
   gbuf_data.surface_N = g_data.N;
   gbuf_data.thickness = g_thickness;
   gbuf_data.object_id = resource_id;
