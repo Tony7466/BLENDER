@@ -206,12 +206,8 @@ static void area_draw_azone(short /*x1*/, short /*y1*/, short /*x2*/, short /*y2
  */
 static void draw_azone_arrow(float x1, float y1, float x2, float y2, AZEdge edge)
 {
-  const float size = 0.2f * U.widget_unit;
-  const float l = 1.0f;  /* arrow length */
-  const float s = 0.25f; /* arrow thickness */
-  const float hl = l / 2.0f;
-  const float points[6][2] = {
-      {0, -hl}, {l, hl}, {l - s, hl + s}, {0, s + s - hl}, {s - l, hl + s}, {-l, hl}};
+  const float offset1 = 0.5f * U.pixelsize + UI_SCALE_FAC;
+  const float offset2 = 2.0 * U.pixelsize + 5.0 * UI_SCALE_FAC;
   const float center[2] = {(x1 + x2) / 2, (y1 + y2) / 2};
 
   int axis;
@@ -241,18 +237,25 @@ static void draw_azone_arrow(float x1, float y1, float x2, float y2, AZEdge edge
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  GPU_blend(GPU_BLEND_ALPHA);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor4f(0.8f, 0.8f, 0.8f, 0.4f);
+  float viewport[4];
+  GPU_viewport_size_get_f(viewport);
 
-  immBegin(GPU_PRIM_TRI_FAN, 6);
-  for (int i = 0; i < 6; i++) {
-    if (axis == 0) {
-      immVertex2f(pos, center[0] + points[i][0] * size, center[1] + points[i][1] * sign * size);
-    }
-    else {
-      immVertex2f(pos, center[0] + points[i][1] * sign * size, center[1] + points[i][0] * size);
-    }
+  GPU_blend(GPU_BLEND_ALPHA);
+  immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+  immUniformColor4f(0.8f, 0.8f, 0.8f, 0.4f);
+  immUniform2fv("viewportSize", &viewport[2]);
+  immUniform1f("lineWidth", U.pixelsize);
+
+  immBegin(GPU_PRIM_LINE_STRIP, 3);
+  if (axis == 1) {
+    immVertex2f(pos, center[0] + offset1 * sign, center[1] + offset2);
+    immVertex2f(pos, center[0] - offset1 * sign, center[1]);
+    immVertex2f(pos, center[0] + offset1 * sign, center[1] - offset2);
+  }
+  else {
+    immVertex2f(pos, center[0] - offset2, center[1] + offset1 * sign);
+    immVertex2f(pos, center[0], center[1] - offset1 * sign);
+    immVertex2f(pos, center[0] + offset2, center[1] + offset1 * sign);
   }
   immEnd();
 
@@ -288,7 +291,9 @@ static void region_draw_azone_tab_arrow(ScrArea *area, ARegion *region, AZone *a
   rect.xmax = float(az->x2);
   rect.ymin = float(az->y1);
   rect.ymax = float(az->y2);
-  UI_draw_roundbox_aa(&rect, true, 4.0f, color);
+
+  const float corner_radius = (std::min(BLI_rctf_size_x(&rect), BLI_rctf_size_y(&rect))) * 0.7f;
+  UI_draw_roundbox_aa(&rect, true, corner_radius, color);
 
   draw_azone_arrow(float(az->x1), float(az->y1), float(az->x2), float(az->y2), az->edge);
 }
@@ -1034,8 +1039,8 @@ static void region_azone_edge(const ScrArea *area, AZone *az, const ARegion *reg
 static void region_azone_tab_plus(ScrArea *area, AZone *az, ARegion *region)
 {
   float edge_offset = 1.0f;
-  const float tab_size_x = 0.7f * U.widget_unit;
-  const float tab_size_y = 0.4f * U.widget_unit;
+  const float tab_size_x = 2.0 * U.pixelsize + U.widget_unit;
+  const float tab_size_y = 2.0 * U.pixelsize + 0.3f * U.widget_unit;
 
   switch (az->edge) {
     case AE_TOP_TO_BOTTOMRIGHT: {
