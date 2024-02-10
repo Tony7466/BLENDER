@@ -945,8 +945,8 @@ static bool segments_is_equal(const IndexMaskSegment &a, const IndexMaskSegment 
   return std::equal(a_indices.begin(),
                     a_indices.end(),
                     b.base_span().begin(),
-                    [offset_different](const int16_t a, const int16_t b) -> bool {
-                      return a - offset_different == b;
+                    [offset_different](const int16_t a_index, const int16_t b_index) -> bool {
+                      return a_index - offset_different == b_index;
                     });
 }
 
