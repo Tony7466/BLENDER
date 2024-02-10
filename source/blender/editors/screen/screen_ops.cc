@@ -17,7 +17,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -32,14 +32,14 @@
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_object.hh"
 #include "BKE_report.h"
@@ -1443,6 +1443,7 @@ static void area_dupli_fn(bScreen * /*screen*/, ScrArea *area, void *user_data)
 {
   ScrArea *area_src = static_cast<ScrArea *>(user_data);
   ED_area_data_copy(area, area_src, true);
+  ED_area_tag_redraw(area);
 };
 
 /* operator callback */
@@ -3778,7 +3779,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
     uiItemFullO(layout,
                 "SCREEN_OT_area_join",
                 IFACE_("Join Areas"),
-                ICON_NONE,
+                ICON_AREA_JOIN,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
                 UI_ITEM_NONE,
@@ -3791,7 +3792,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
     uiItemFullO(layout,
                 "SCREEN_OT_area_swap",
                 IFACE_("Swap Areas"),
-                ICON_NONE,
+                ICON_AREA_SWAP,
                 nullptr,
                 WM_OP_EXEC_DEFAULT,
                 UI_ITEM_NONE,
@@ -4071,7 +4072,7 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
 
         if (ED_view3d_context_user_region(C, &v3d_user, &region_user)) {
           if (region != region_user) {
-            SWAP(void *, region->regiondata, region_user->regiondata);
+            std::swap(region->regiondata, region_user->regiondata);
             rv3d = static_cast<RegionView3D *>(region->regiondata);
           }
         }
@@ -4701,7 +4702,7 @@ static void screen_animation_region_tag_redraw(
   ED_region_tag_redraw(region);
 }
 
-//#define PROFILE_AUDIO_SYNCH
+// #define PROFILE_AUDIO_SYNCH
 
 static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
@@ -5943,7 +5944,7 @@ static bool blend_file_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent *
 static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
 void ED_keymap_screen(wmKeyConfig *keyconf)

@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
@@ -103,7 +103,10 @@ void Instances::ensure_geometry_instances()
   new_references.reserve(references_.size());
   for (const InstanceReference &reference : references_) {
     switch (reference.type()) {
-      case InstanceReference::Type::None:
+      case InstanceReference::Type::None: {
+        new_references.append(InstanceReference(GeometrySet{}));
+        break;
+      }
       case InstanceReference::Type::GeometrySet: {
         /* Those references can stay as their were. */
         new_references.append(reference);

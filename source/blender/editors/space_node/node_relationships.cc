@@ -18,8 +18,8 @@
 #include "BKE_anim_data.h"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
@@ -47,7 +47,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
@@ -434,7 +434,8 @@ static bool socket_can_be_viewed(const bNode &node, const bNodeSocket &socket)
               SOCK_INT,
               SOCK_BOOLEAN,
               SOCK_ROTATION,
-              SOCK_RGBA);
+              SOCK_RGBA,
+              SOCK_MENU);
 }
 
 /**
@@ -471,7 +472,7 @@ static bNodeSocket *node_link_viewer_get_socket(bNodeTree &ntree,
 
 static bool is_viewer_node(const bNode &node)
 {
-  return ELEM(node.type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER, GEO_NODE_VIEWER);
+  return ELEM(node.type, CMP_NODE_VIEWER, GEO_NODE_VIEWER);
 }
 
 static bool is_viewer_socket_in_viewer(const bNodeSocket &socket)
@@ -1189,10 +1190,10 @@ static void node_link_find_socket(bContext &C, wmOperator &op, const float2 &cur
 }
 
 enum class NodeLinkAction : int {
-  Begin,
-  Cancel,
-  Swap,
-  Confirm,
+  Begin = 0,
+  Cancel = 1,
+  Swap = 2,
+  Confirm = 3,
 };
 
 wmKeyMap *node_link_modal_keymap(wmKeyConfig *keyconf)
@@ -1891,7 +1892,7 @@ static bNode *node_find_frame_to_attach(ARegion &region, bNodeTree &ntree, const
 
   for (bNode *frame : tree_draw_order_calc_nodes_reversed(ntree)) {
     /* skip selected, those are the nodes we want to attach */
-    if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
+    if (!frame->is_frame() || (frame->flag & NODE_SELECT)) {
       continue;
     }
     if (BLI_rctf_isect_pt_v(&frame->runtime->totr, cursor)) {
@@ -1913,6 +1914,8 @@ static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
     return OPERATOR_FINISHED;
   }
 
+  bool changed = false;
+
   for (bNode *node : tree_draw_order_calc_nodes_reversed(*snode.edittree)) {
     if (!(node->flag & NODE_SELECT)) {
       continue;
@@ -1925,6 +1928,11 @@ static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
 
     if (node->parent == nullptr) {
       nodeAttachNode(&ntree, node, frame);
+      changed = true;
+      continue;
+    }
+
+    if (node->parent == frame) {
       continue;
     }
 
@@ -1936,27 +1944,26 @@ static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
 
     nodeDetachNode(&ntree, node);
     nodeAttachNode(&ntree, node, frame);
+    changed = true;
   }
 
-  tree_draw_order_update(ntree);
-  WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+  if (changed) {
+    tree_draw_order_update(ntree);
+    WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+  }
 
   return OPERATOR_FINISHED;
 }
 
 void NODE_OT_attach(wmOperatorType *ot)
 {
-  /* identifiers */
   ot->name = "Attach Nodes";
   ot->description = "Attach active node to a frame";
   ot->idname = "NODE_OT_attach";
 
-  /* api callbacks */
-
   ot->invoke = node_attach_invoke;
   ot->poll = ED_operator_node_editable;
 
-  /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
@@ -2239,6 +2246,7 @@ static int get_main_socket_priority(const bNodeSocket *socket)
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL:
+    case SOCK_MENU:
       return 6;
   }
   return -1;

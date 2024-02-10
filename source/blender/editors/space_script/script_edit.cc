@@ -15,11 +15,11 @@
 #include "BKE_context.hh"
 #include "BKE_report.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

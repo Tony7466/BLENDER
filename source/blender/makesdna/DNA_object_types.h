@@ -100,17 +100,7 @@ enum {
  */
 typedef struct BoundBox {
   float vec[8][3];
-  int flag;
-  char _pad0[4];
 } BoundBox;
-
-/** #BoundBox.flag */
-enum {
-  /* BOUNDBOX_DISABLED = (1 << 0), */ /* UNUSED */
-  BOUNDBOX_DIRTY = (1 << 1),
-};
-
-struct CustomData_MeshMasks;
 
 typedef struct ObjectLineArt {
   short usage;
@@ -485,8 +475,10 @@ typedef enum ObjectType {
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
   (((_type) >= OB_MESH && (_type) <= OB_MBALL) || \
    ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_GREASE_PENCIL))
-/** Does the object have some render-able geometry (unlike empties, cameras, etc.). True for
- * #OB_CURVES_LEGACY, since these often evaluate to objects with geometry. */
+/**
+ * Does the object have some render-able geometry (unlike empties, cameras, etc.). True for
+ * #OB_CURVES_LEGACY, since these often evaluate to objects with geometry.
+ */
 #define OB_TYPE_IS_GEOMETRY(_type) \
   (ELEM(_type, \
         OB_MESH, \
@@ -499,7 +491,8 @@ typedef enum ObjectType {
         OB_POINTCLOUD, \
         OB_VOLUME, \
         OB_GREASE_PENCIL))
-#define OB_TYPE_SUPPORT_VGROUP(_type) (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL_LEGACY))
+#define OB_TYPE_SUPPORT_VGROUP(_type) \
+  (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL))
 #define OB_TYPE_SUPPORT_EDITMODE(_type) \
   (ELEM(_type, \
         OB_MESH, \

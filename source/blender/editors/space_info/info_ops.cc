@@ -18,14 +18,14 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_bpath.h"
+#include "BKE_bpath.hh"
 #include "BKE_context.hh"
 #include "BKE_global.h"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_screen.hh"

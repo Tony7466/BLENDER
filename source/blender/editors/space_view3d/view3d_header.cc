@@ -17,11 +17,12 @@
 #include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
+#include "BKE_object.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -126,6 +127,9 @@ static void uiTemplatePaintModeSelection(uiLayout *layout, bContext *C)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
+  if (ob->type != OB_MESH) {
+    return;
+  }
 
   /* Gizmos aren't used in paint modes */
   if (!ELEM(ob->mode, OB_MODE_SCULPT, OB_MODE_PARTICLE_EDIT)) {
@@ -138,6 +142,12 @@ static void uiTemplatePaintModeSelection(uiLayout *layout, bContext *C)
       uiLayout *row = uiLayoutRow(layout, true);
       uiItemR(row, &meshptr, "use_paint_mask", UI_ITEM_R_ICON_ONLY, "", ICON_NONE);
       uiItemR(row, &meshptr, "use_paint_mask_vertex", UI_ITEM_R_ICON_ONLY, "", ICON_NONE);
+
+      /* Show the bone selection mode icon only if there is a pose mode armature */
+      Object *ob_armature = BKE_object_pose_armature_get(ob);
+      if (ob_armature) {
+        uiItemR(row, &meshptr, "use_paint_bone_selection", UI_ITEM_R_ICON_ONLY, "", ICON_NONE);
+      }
     }
   }
 }

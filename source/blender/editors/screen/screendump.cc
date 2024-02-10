@@ -15,8 +15,8 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -26,11 +26,11 @@
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
