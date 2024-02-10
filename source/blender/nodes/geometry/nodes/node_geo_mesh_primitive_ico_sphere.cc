@@ -45,7 +45,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>("Subdivisions")
       .default_value(1)
       .min(1)
-      .max(12)
+      .max(7)
       .description("Number of subdivisions on top of the basic icosahedron");
 
   b.add_input<decl::Bool>("New");
@@ -1210,7 +1210,7 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  const int subdivisions = math::max<int>(1, params.extract_input<int>("Subdivisions"));
+  const int subdivisions = std::min(params.extract_input<int>("Subdivisions"), 10);
   const float radius = params.extract_input<float>("Radius");
 
   const bool new_type = params.extract_input<bool>("New");
