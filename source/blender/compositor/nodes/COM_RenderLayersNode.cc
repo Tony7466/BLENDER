@@ -59,7 +59,6 @@ void RenderLayersNode::test_render_link(NodeConverter &converter,
 
   for (NodeOutput *output : get_output_sockets()) {
     const char *selected_render_pass;
-    BLI_assert(output->get_bnode_socket()->name != nullptr);
     if (STREQ(output->get_bnode_socket()->name, "Image") ||
         STREQ(output->get_bnode_socket()->name, "Alpha"))
     {
