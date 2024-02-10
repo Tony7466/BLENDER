@@ -365,12 +365,29 @@ static void curves_batch_ensure_attribute(const Curves &curves,
 
 static void curves_batch_cache_fill_strands_data(const bke::CurvesGeometry &curves,
                                                  GPUVertBufRaw &data_step,
-                                                 GPUVertBufRaw &seg_step)
+                                                 GPUVertBufRaw &seg_step,
+                                                 GPUVertBufRaw &radius_step)
 {
+  VArray<float> radii = *curves.attributes().lookup_or_default(
+      "radius", bke::AttrDomain::Point, 0.005f);
   const OffsetIndices points_by_curve = curves.points_by_curve();
 
   for (const int i : IndexRange(curves.curves_num())) {
     const IndexRange points = points_by_curve[i];
+
+    const float first_radius = radii[points.first()];
+    const float middle_radius = radii[points.size() / 2];
+    const float last_radius = radii[points.last()];
+
+    vec3f *data = (vec3f *)GPU_vertbuf_raw_step(&radius_step);
+    data->x = first_radius;
+    data->y = last_radius;
+
+    const float hair_rad_shape = std::clamp(
+        math::safe_divide(middle_radius - first_radius, last_radius - first_radius) * 2.0f - 1.0f,
+        -1.0f,
+        1.0f);
+    data->z = hair_rad_shape;
 
     *(uint *)GPU_vertbuf_raw_step(&data_step) = points.start();
     *(ushort *)GPU_vertbuf_raw_step(&seg_step) = points.size() - 1;
@@ -380,13 +397,18 @@ static void curves_batch_cache_fill_strands_data(const bke::CurvesGeometry &curv
 static void curves_batch_cache_ensure_procedural_strand_data(const bke::CurvesGeometry &curves,
                                                              CurvesEvalCache &cache)
 {
-  GPUVertBufRaw data_step, seg_step;
+  GPUVertBufRaw data_step, seg_step, radius_step;
 
   GPUVertFormat format_data = {0};
   uint data_id = GPU_vertformat_attr_add(&format_data, "data", GPU_COMP_U32, 1, GPU_FETCH_INT);
 
   GPUVertFormat format_seg = {0};
   uint seg_id = GPU_vertformat_attr_add(&format_seg, "data", GPU_COMP_U16, 1, GPU_FETCH_INT);
+
+  GPUVertFormat format_radius = {0};
+  // store radius bottom, radius top and the shape for each curve
+  uint radius_id = GPU_vertformat_attr_add(
+      &format_radius, "data", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   /* Curve Data. */
   cache.proc_strand_buf = GPU_vertbuf_create_with_format_ex(
@@ -399,7 +421,12 @@ static void curves_batch_cache_ensure_procedural_strand_data(const bke::CurvesGe
   GPU_vertbuf_data_alloc(cache.proc_strand_seg_buf, cache.strands_len);
   GPU_vertbuf_attr_get_raw_data(cache.proc_strand_seg_buf, seg_id, &seg_step);
 
-  curves_batch_cache_fill_strands_data(curves, data_step, seg_step);
+  cache.proc_strand_radius_buf = GPU_vertbuf_create_with_format_ex(
+      &format_radius, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  GPU_vertbuf_data_alloc(cache.proc_strand_radius_buf, cache.strands_len);
+  GPU_vertbuf_attr_get_raw_data(cache.proc_strand_radius_buf, radius_id, &radius_step);
+
+  curves_batch_cache_fill_strands_data(curves, data_step, seg_step, radius_step);
 }
 
 static void curves_batch_cache_ensure_procedural_final_points(CurvesEvalCache &cache, int subdiv)

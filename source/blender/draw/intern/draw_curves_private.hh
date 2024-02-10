@@ -72,6 +72,8 @@ struct CurvesEvalCache {
 
   GPUVertBuf *proc_strand_seg_buf;
 
+  GPUVertBuf *proc_strand_radius_buf;
+
   CurvesEvalFinalCache final[MAX_HAIR_SUBDIV];
 
   /* For point attributes, which need subdivision, these buffers contain the input data.

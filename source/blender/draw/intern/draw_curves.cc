@@ -120,6 +120,7 @@ static void drw_curves_cache_shgrp_attach_resources(DRWShadingGroup *shgrp,
   DRW_shgroup_buffer_texture(shgrp, "hairPointBuffer", point_buf);
   DRW_shgroup_buffer_texture(shgrp, "hairStrandBuffer", cache->proc_strand_buf);
   DRW_shgroup_buffer_texture(shgrp, "hairStrandSegBuffer", cache->proc_strand_seg_buf);
+  DRW_shgroup_buffer_texture(shgrp, "hairStrandRadiusBuffer", cache->proc_strand_radius_buf);
   DRW_shgroup_uniform_int(shgrp, "hairStrandsRes", &cache->final[subdiv].strands_res, 1);
 }
 
@@ -247,30 +248,11 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
   DRW_shgroup_buffer_texture(shgrp, "ac", g_dummy_vbo);
 
   /* TODO: Generalize radius implementation for curves data type. */
-  float hair_rad_shape = 0.0f;
-  float hair_rad_root = 0.005f;
-  float hair_rad_tip = 0.0f;
   bool hair_close_tip = true;
 
-  /* Use the radius of the root and tip of the first curve for now. This is a workaround that we
-   * use for now because we can't use a per-point radius yet. */
-  const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-  if (curves.curves_num() >= 1) {
-    VArray<float> radii = *curves.attributes().lookup_or_default(
-        "radius", bke::AttrDomain::Point, 0.005f);
-    const IndexRange first_curve_points = curves.points_by_curve()[0];
-    const float first_radius = radii[first_curve_points.first()];
-    const float last_radius = radii[first_curve_points.last()];
-    const float middle_radius = radii[first_curve_points.size() / 2];
-    hair_rad_root = radii[first_curve_points.first()];
-    hair_rad_tip = radii[first_curve_points.last()];
-    hair_rad_shape = std::clamp(
-        math::safe_divide(middle_radius - first_radius, last_radius - first_radius) * 2.0f - 1.0f,
-        -1.0f,
-        1.0f);
-  }
-
   DRW_shgroup_buffer_texture(shgrp, "hairPointBuffer", curves_cache->final[subdiv].proc_buf);
+  DRW_shgroup_buffer_texture(
+      shgrp, "hairStrandRadiusBuffer", curves_cache->proc_strand_radius_buf);
   if (curves_cache->proc_length_buf) {
     DRW_shgroup_buffer_texture(shgrp, "hairLen", curves_cache->proc_length_buf);
   }
@@ -313,11 +295,10 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
   DRW_shgroup_uniform_int(shgrp, "hairStrandsRes", &curves_cache->final[subdiv].strands_res, 1);
   DRW_shgroup_uniform_int_copy(shgrp, "hairThicknessRes", thickness_res);
-  DRW_shgroup_uniform_float_copy(shgrp, "hairRadShape", hair_rad_shape);
   DRW_shgroup_uniform_mat4_copy(shgrp, "hairDupliMatrix", object->object_to_world);
-  DRW_shgroup_uniform_float_copy(shgrp, "hairRadRoot", hair_rad_root);
-  DRW_shgroup_uniform_float_copy(shgrp, "hairRadTip", hair_rad_tip);
   DRW_shgroup_uniform_bool_copy(shgrp, "hairCloseTip", hair_close_tip);
+  bool usePerHairStrandRadius = true;
+  DRW_shgroup_uniform_bool_copy(shgrp, "usePerHairStrandRadius", usePerHairStrandRadius);
   if (gpu_material) {
     /* NOTE: This needs to happen before the drawcall to allow correct attribute extraction.
      * (see #101896) */
@@ -396,6 +377,7 @@ static CurvesEvalCache *curves_cache_get(Curves &curves,
     ob_ps.bind_texture("hairPointBuffer", input_buf);
     ob_ps.bind_texture("hairStrandBuffer", cache->proc_strand_buf);
     ob_ps.bind_texture("hairStrandSegBuffer", cache->proc_strand_seg_buf);
+    ob_ps.bind_texture("hairStrandRadiusBuffer", cache->proc_strand_radius_buf);
     ob_ps.push_constant("hairStrandsRes", &cache->final[subdiv].strands_res);
     ob_ps.bind_ssbo("posTime", output_buf);
 
@@ -475,30 +457,10 @@ GPUBatch *curves_sub_pass_setup_implementation(PassT &sub_ps,
   sub_ps.bind_texture("ac", g_dummy_vbo);
 
   /* TODO: Generalize radius implementation for curves data type. */
-  float hair_rad_shape = 0.0f;
-  float hair_rad_root = 0.005f;
-  float hair_rad_tip = 0.0f;
   bool hair_close_tip = true;
 
-  /* Use the radius of the root and tip of the first curve for now. This is a workaround that we
-   * use for now because we can't use a per-point radius yet. */
-  const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-  if (curves.curves_num() >= 1) {
-    VArray<float> radii = *curves.attributes().lookup_or_default(
-        "radius", bke::AttrDomain::Point, 0.005f);
-    const IndexRange first_curve_points = curves.points_by_curve()[0];
-    const float first_radius = radii[first_curve_points.first()];
-    const float last_radius = radii[first_curve_points.last()];
-    const float middle_radius = radii[first_curve_points.size() / 2];
-    hair_rad_root = radii[first_curve_points.first()];
-    hair_rad_tip = radii[first_curve_points.last()];
-    hair_rad_shape = std::clamp(
-        math::safe_divide(middle_radius - first_radius, last_radius - first_radius) * 2.0f - 1.0f,
-        -1.0f,
-        1.0f);
-  }
-
   sub_ps.bind_texture("hairPointBuffer", curves_cache->final[subdiv].proc_buf);
+  sub_ps.bind_texture("hairStrandRadiusBuffer", curves_cache->proc_strand_radius_buf);
   if (curves_cache->proc_length_buf) {
     sub_ps.bind_texture("hairLen", curves_cache->proc_length_buf);
   }
@@ -539,11 +501,10 @@ GPUBatch *curves_sub_pass_setup_implementation(PassT &sub_ps,
 
   sub_ps.push_constant("hairStrandsRes", &curves_cache->final[subdiv].strands_res, 1);
   sub_ps.push_constant("hairThicknessRes", thickness_res);
-  sub_ps.push_constant("hairRadShape", hair_rad_shape);
   sub_ps.push_constant("hairDupliMatrix", float4x4(ob->object_to_world));
-  sub_ps.push_constant("hairRadRoot", hair_rad_root);
-  sub_ps.push_constant("hairRadTip", hair_rad_tip);
   sub_ps.push_constant("hairCloseTip", hair_close_tip);
+  bool usePerHairStrandRadius = true;
+  sub_ps.push_constant("usePerHairStrandRadius", usePerHairStrandRadius);
 
   return curves_cache->final[subdiv].proc_hairs[thickness_res - 1];
 }

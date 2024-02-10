@@ -238,6 +238,7 @@ DRWShadingGroup *DRW_shgroup_hair_create_sub(Object *object,
   DRW_shgroup_uniform_float_copy(shgrp, "hairRadRoot", hair_rad_root);
   DRW_shgroup_uniform_float_copy(shgrp, "hairRadTip", hair_rad_tip);
   DRW_shgroup_uniform_bool_copy(shgrp, "hairCloseTip", hair_close_tip);
+  DRW_shgroup_uniform_bool_copy(shgrp, "usePerHairStrandRadius", false);
   if (gpu_material) {
     /* NOTE: This needs to happen before the drawcall to allow correct attribute extraction.
      * (see #101896) */
@@ -410,6 +411,7 @@ GPUBatch *hair_sub_pass_setup_implementation(PassT &sub_ps,
   sub_ps.push_constant("hairRadRoot", hair_rad_root);
   sub_ps.push_constant("hairRadTip", hair_rad_tip);
   sub_ps.push_constant("hairCloseTip", hair_close_tip);
+  sub_ps.push_constant("usePerHairStrandRadius", false);
 
   return hair_cache->final[subdiv].proc_hairs[thickness_res - 1];
 }

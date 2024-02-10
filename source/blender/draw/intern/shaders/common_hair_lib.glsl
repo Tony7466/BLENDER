@@ -39,6 +39,10 @@ uniform float hairRadRoot = 0.01;
 uniform float hairRadTip = 0.0;
 uniform float hairRadShape = 0.5;
 uniform bool hairCloseTip = true;
+/** If this is set to true then hairRadRoot, hairRadTip, hairRadShape are ignored and
+ * the hairStrandRadiusBuffer is sampled per hair strand 
+ */
+uniform bool usePerHairStrandRadius = true;
 
 uniform mat4 hairDupliMatrix;
 
@@ -51,6 +55,8 @@ uniform samplerBuffer hairPointBuffer; /* RGBA32F */
 /* -- Per strands data -- */
 uniform usamplerBuffer hairStrandBuffer;    /* R32UI */
 uniform usamplerBuffer hairStrandSegBuffer; /* R16UI */
+
+uniform samplerBuffer hairStrandRadiusBuffer; /* RGBA32F */
 
 /* Not used, use one buffer per uv layer */
 // uniform samplerBuffer hairUVBuffer; /* RG32F */
@@ -114,7 +120,9 @@ void hair_get_interp_attrs(
   float local_time = hair_get_local_time();
 
   int hair_id = hair_get_id();
+  // index of the base of this hair strand
   int strand_offset = int(texelFetch(hairStrandBuffer, hair_id).x);
+  // number of hair segements for this hair strand
   int strand_segments = int(texelFetch(hairStrandSegBuffer, hair_id).x);
 
   int id = hair_get_base_id(local_time, strand_segments, interp_time);
@@ -213,7 +221,16 @@ void hair_get_center_pos_tan_binor_time(bool is_persp,
   vec3 camera_vec = (is_persp) ? camera_pos - wpos : camera_z;
   wbinor = normalize(cross(camera_vec, wtan));
 
-  thickness = hair_shaperadius(hairRadShape, hairRadRoot, hairRadTip, time);
+  if(usePerHairStrandRadius){
+    int hair_id = hair_get_strand_id();
+    vec4 radiusInformation = texelFetch(hairStrandRadiusBuffer, hair_id);
+    float radiusBottom = radiusInformation.x; 
+    float radiusTop = radiusInformation.y; 
+    float hairShape = radiusInformation.z;
+    thickness = hair_shaperadius(hairShape, radiusBottom, radiusTop, time);
+  }else{
+    thickness = hair_shaperadius(hairRadShape, hairRadRoot, hairRadTip, time);
+  }
 }
 
 void hair_get_pos_tan_binor_time(bool is_persp,
