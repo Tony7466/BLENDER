@@ -85,7 +85,7 @@ class SeparateRGBAFunction : public mf::MultiFunction {
       used_outputs.append(3);
     }
 
-    devirtualize_varray(colors, [&](auto colors) {
+    devirtualize_varray(colors, [&](auto &colors) {
       mask.foreach_segment_optimized([&](const auto segment) {
         const int used_outputs_num = used_outputs.size();
         const int *used_outputs_data = used_outputs.data();

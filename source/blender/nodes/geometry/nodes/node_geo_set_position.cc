@@ -85,7 +85,7 @@ static void set_computed_position_and_offset(GeometryComponent &component,
       AttributeWriter<float3> positions = attributes.lookup_for_write<float3>("position");
       MutableVArraySpan<float3> out_positions_span = positions.varray;
       if (positions_are_original) {
-        devirtualize_varray(in_offsets, [&](const auto in_offsets) {
+        devirtualize_varray(in_offsets, [&](const auto &in_offsets) {
           selection.foreach_index_optimized<int>(
               grain_size, [&](const int i) { out_positions_span[i] += in_offsets[i]; });
         });

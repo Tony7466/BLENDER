@@ -67,7 +67,7 @@ class MF_SeparateXYZ : public mf::MultiFunction {
       used_outputs.append(2);
     }
 
-    devirtualize_varray(vectors, [&](auto vectors) {
+    devirtualize_varray(vectors, [&](auto &vectors) {
       mask.foreach_segment_optimized([&](const auto segment) {
         const int used_outputs_num = used_outputs.size();
         const int *used_outputs_data = used_outputs.data();

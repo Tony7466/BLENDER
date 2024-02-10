@@ -377,7 +377,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       Vector<int> valid_indices;
       Vector<int> invalid_indices;
       VectorSet<int> used_curves;
-      devirtualize_varray(curve_indices, [&](const auto curve_indices) {
+      devirtualize_varray(curve_indices, [&](const auto &curve_indices) {
         mask.foreach_index([&](const int i) {
           const int curve_i = curve_indices[i];
           if (curves.curves_range().contains(curve_i)) {

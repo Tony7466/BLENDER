@@ -64,7 +64,7 @@ static void calculate_result_offsets(const OffsetIndices<int> src_points_by_curv
       point_counts.last() = 1;
     }
     /* Implicitly "deselect" points with zero radius. */
-    devirtualize_varray(radii, [&](const auto radii) {
+    devirtualize_varray(radii, [&](const auto &radii) {
       for (const int i : IndexRange(src_points.size())) {
         if (radii[src_points[i]] == 0.0f) {
           point_counts[i] = 1;

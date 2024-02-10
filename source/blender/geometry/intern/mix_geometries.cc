@@ -29,7 +29,7 @@ void mix_with_indices(MutableSpan<T> a,
                       const float factor)
 {
   threading::parallel_for(a.index_range(), 1024, [&](const IndexRange range) {
-    devirtualize_varray(b, [&](const auto b) {
+    devirtualize_varray(b, [&](const auto &b) {
       for (const int i : range) {
         if (index_map[i] != -1) {
           a[i] = bke::attribute_math::mix2(factor, a[i], b[index_map[i]]);
@@ -53,7 +53,7 @@ static void mix_with_indices(GMutableSpan a,
 template<typename T> static void mix(MutableSpan<T> a, const VArray<T> &b, const float factor)
 {
   threading::parallel_for(a.index_range(), 1024, [&](const IndexRange range) {
-    devirtualize_varray(b, [&](const auto b) {
+    devirtualize_varray(b, [&](const auto &b) {
       for (const int i : range) {
         a[i] = bke::attribute_math::mix2(factor, a[i], b[i]);
       }
