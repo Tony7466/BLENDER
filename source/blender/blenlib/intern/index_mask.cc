@@ -459,25 +459,6 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
   finish_indices();
 }
 
-static void invert_segments(const IndexMask &mask,
-                            const IndexRange segment_range,
-                            LinearAllocator<> &allocator,
-                            Vector<IndexMaskSegment, 16> &r_segments)
-{
-  for (const int64_t segment_i : segment_range) {
-    const IndexMaskSegment segment = mask.segment(segment_i);
-    inverted_indices_to_segments(segment, allocator, r_segments);
-
-    const IndexMaskSegment next_segment = mask.segment(segment_i + 1);
-    const int64_t between_start = segment.last() + 1;
-    const int64_t size_between_segments = next_segment[0] - segment.last() - 1;
-    const IndexRange range_between_segments(between_start, size_between_segments);
-    if (!range_between_segments.is_empty()) {
-      range_to_segments(range_between_segments, r_segments);
-    }
-  }
-}
-
 IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
 {
   ExprBuilder builder;
