@@ -550,7 +550,7 @@ TEST(index_mask, ZippedForeachSelf)
   {
     int calls_num = 0;
     IndexMask::foreach_segment_zipped({mask}, [&](Span<IndexMaskSegment> segments) {
-      EXPECT_TRUE(!segments.is_empty());
+      EXPECT_FALSE(segments.is_empty());
       calls_num++;
       return true;
     });
@@ -560,7 +560,7 @@ TEST(index_mask, ZippedForeachSelf)
   {
     int calls_num = 0;
     IndexMask::foreach_segment_zipped({mask, mask}, [&](Span<IndexMaskSegment> segments) {
-      EXPECT_TRUE(!segments.is_empty());
+      EXPECT_FALSE(segments.is_empty());
       EXPECT_TRUE(mask_segments_equals(segments[0], segments[1]));
       calls_num++;
       return true;
@@ -571,7 +571,7 @@ TEST(index_mask, ZippedForeachSelf)
   {
     int calls_num = 0;
     IndexMask::foreach_segment_zipped({mask, mask, mask}, [&](Span<IndexMaskSegment> segments) {
-      EXPECT_TRUE(!segments.is_empty());
+      EXPECT_FALSE(segments.is_empty());
       EXPECT_TRUE(mask_segments_equals(segments[0], segments[1]));
       EXPECT_TRUE(mask_segments_equals(segments[0], segments[2]));
       calls_num++;
@@ -584,7 +584,7 @@ TEST(index_mask, ZippedForeachSelf)
     int calls_num = 0;
     IndexMask::foreach_segment_zipped(
         {mask, mask, mask, mask}, [&](Span<IndexMaskSegment> segments) {
-          EXPECT_TRUE(!segments.is_empty());
+          EXPECT_FALSE(segments.is_empty());
           EXPECT_TRUE(mask_segments_equals(segments[0], segments[1]));
           EXPECT_TRUE(mask_segments_equals(segments[0], segments[2]));
           EXPECT_TRUE(mask_segments_equals(segments[0], segments[3]));
@@ -604,7 +604,7 @@ TEST(index_mask, ZippedForeachSameSegments)
   {
     int calls_num = 0;
     IndexMask::foreach_segment_zipped({mask_a}, [&](Span<IndexMaskSegment> segments) {
-      EXPECT_TRUE(!segments.is_empty());
+      EXPECT_FALSE(segments.is_empty());
       calls_num++;
       return true;
     });
@@ -613,9 +613,9 @@ TEST(index_mask, ZippedForeachSameSegments)
   {
     int calls_num = 0;
     IndexMask::foreach_segment_zipped({mask_a, mask_b}, [&](Span<IndexMaskSegment> segments) {
-      EXPECT_TRUE(!segments.is_empty());
+      EXPECT_FALSE(segments.is_empty());
       EXPECT_EQ(segments[0].size(), segments[1].size());
-      EXPECT_TRUE(!mask_segments_equals(segments[0], segments[1]));
+      EXPECT_FALSE(mask_segments_equals(segments[0], segments[1]));
       calls_num++;
       return true;
     });
@@ -625,12 +625,12 @@ TEST(index_mask, ZippedForeachSameSegments)
     int calls_num = 0;
     IndexMask::foreach_segment_zipped(
         {mask_a, mask_b, mask_c}, [&](Span<IndexMaskSegment> segments) {
-          EXPECT_TRUE(!segments.is_empty());
+          EXPECT_FALSE(segments.is_empty());
           EXPECT_EQ(segments[0].size(), segments[1].size());
           EXPECT_EQ(segments[0].size(), segments[2].size());
-          EXPECT_TRUE(!mask_segments_equals(segments[0], segments[1]));
-          EXPECT_TRUE(!mask_segments_equals(segments[0], segments[2]));
-          EXPECT_TRUE(!mask_segments_equals(segments[1], segments[2]));
+          EXPECT_FALSE(mask_segments_equals(segments[0], segments[1]));
+          EXPECT_FALSE(mask_segments_equals(segments[0], segments[2]));
+          EXPECT_FALSE(mask_segments_equals(segments[1], segments[2]));
           calls_num++;
           return true;
         });
