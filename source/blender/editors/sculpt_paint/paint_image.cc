@@ -18,7 +18,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
@@ -631,9 +631,10 @@ static void sample_color_update_header(SampleColorData *data, bContext *C)
 
   if (area) {
     SNPRINTF(msg,
-             RPT_("Sample color for %s"),
-             !data->sample_palette ? RPT_("Brush. Use Left Click to sample for palette instead") :
-                                     RPT_("Palette. Use Left Click to sample more colors"));
+             IFACE_("Sample color for %s"),
+             !data->sample_palette ?
+                 IFACE_("Brush. Use Left Click to sample for palette instead") :
+                 IFACE_("Palette. Use Left Click to sample more colors"));
     ED_workspace_status_text(C, msg);
   }
 }

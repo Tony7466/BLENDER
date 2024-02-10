@@ -16,7 +16,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
@@ -79,7 +79,7 @@ enum {
 static void gpencil_uv_transform_update_header(wmOperator *op, bContext *C)
 {
   const int mode = RNA_enum_get(op->ptr, "mode");
-  const char *str = RPT_("Confirm: Enter/LMB, Cancel: (Esc/RMB) %s");
+  const char *str = IFACE_("Confirm: Enter/LMB, Cancel: (Esc/RMB) %s");
 
   char msg[UI_MAX_DRAW_STR];
   ScrArea *area = CTX_wm_area(C);

@@ -29,10 +29,10 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_camera.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_editlattice.h"
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
@@ -1865,7 +1865,9 @@ bool rna_Object_modifiers_override_apply(Main *bmain,
   ParticleSystem *psys_dst = (mod_dst->type == eModifierType_ParticleSystem) ?
                                  (reinterpret_cast<ParticleSystemModifierData *>(mod_dst))->psys :
                                  nullptr;
+  const int persistent_uid = mod_dst->persistent_uid;
   BKE_modifier_copydata(mod_src, mod_dst);
+  mod_dst->persistent_uid = persistent_uid;
   if (mod_dst->type == eModifierType_ParticleSystem) {
     psys_dst->flag &= ~PSYS_DELETE;
     (reinterpret_cast<ParticleSystemModifierData *>(mod_dst))->psys = psys_dst;

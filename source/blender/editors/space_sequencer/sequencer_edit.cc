@@ -15,7 +15,7 @@
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -643,10 +643,10 @@ static void sequencer_slip_update_header(Scene *scene, ScrArea *area, SlipData *
     if (hasNumInput(&data->num_input)) {
       char num_str[NUM_STR_REP_LEN];
       outputNumInput(&data->num_input, num_str, &scene->unit);
-      SNPRINTF(msg, RPT_("Slip offset: %s"), num_str);
+      SNPRINTF(msg, IFACE_("Slip offset: %s"), num_str);
     }
     else {
-      SNPRINTF(msg, RPT_("Slip offset: %d"), offset);
+      SNPRINTF(msg, IFACE_("Slip offset: %d"), offset);
     }
   }
 
