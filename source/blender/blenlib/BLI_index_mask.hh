@@ -186,13 +186,21 @@ class IndexMask : private IndexMaskData {
   static IndexMask from_bools(const IndexMask &universe,
                               const VArray<bool> &bools,
                               IndexMaskMemory &memory);
+  /**
+   * Constructs a mask by repeating the indices inthe given mask with a stride.
+   * For example, with an input mask containing `{3, 5}` and a stride of 10 the resulting mask
+   * would contain `{3, 5, 13, 15, 23, 25, ...}`.
+   */
   static IndexMask from_repeating(const IndexMask &mask_to_repeat,
                                   int64_t repetitions,
                                   int64_t stride,
                                   int64_t initial_offset,
                                   IndexMaskMemory &memory);
+  /**
+   * Constructs a mask that contains every nth index the given number of times.
+   */
   static IndexMask from_every_nth(int64_t n,
-                                  int64_t repetitions,
+                                  int64_t indices_num,
                                   const int64_t initial_offset,
                                   IndexMaskMemory &memory);
   /**

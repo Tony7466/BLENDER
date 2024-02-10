@@ -681,6 +681,14 @@ TEST(index_mask, FromRepeatingSingle)
   EXPECT_EQ(mask, IndexMask::from_initializers({2, 12, 22, 32, 42}, memory));
 }
 
+TEST(index_mask, FromRepeatingSame)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_indices<int>({4, 6, 7}, memory);
+  const IndexMask repeated_mask = IndexMask::from_repeating(mask, 1, 100, 0, memory);
+  EXPECT_EQ(mask, repeated_mask);
+}
+
 TEST(index_mask, FromRepeatingMultiple)
 {
   IndexMaskMemory memory;
@@ -762,6 +770,14 @@ TEST(index_mask, FromEveryNth)
   {
     const IndexMask mask = IndexMask::from_every_nth(2, 5, 0, memory);
     EXPECT_EQ(mask, IndexMask::from_initializers({0, 2, 4, 6, 8}, memory));
+  }
+  {
+    const IndexMask mask = IndexMask::from_every_nth(3, 5, 100, memory);
+    EXPECT_EQ(mask, IndexMask::from_initializers({100, 103, 106, 109, 112}, memory));
+  }
+  {
+    const IndexMask mask = IndexMask::from_every_nth(4, 5, 0, memory);
+    EXPECT_EQ(mask, IndexMask::from_initializers({0, 4, 8, 12, 16}, memory));
   }
   {
     const IndexMask mask = IndexMask::from_every_nth(10, 5, 100, memory);

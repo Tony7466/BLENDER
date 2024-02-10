@@ -874,6 +874,11 @@ static Array<int16_t> build_every_nth_index_array(const int64_t n)
   return data;
 }
 
+/**
+ * Returns a span containting every nth index. This is optimized for a few special values values of
+ * n which are cached. The returned indices have either static life-time, or they are freed when
+ * the given memory is feed.
+ */
 static Span<int16_t> get_every_nth_index(const int64_t n,
                                          const int64_t repetitions,
                                          IndexMaskMemory &memory)
@@ -920,22 +925,30 @@ IndexMask IndexMask::from_repeating(const IndexMask &mask_to_repeat,
     return {};
   }
   if (repetitions == 1 && initial_offset == 0) {
+    /* The output is the same as the input mask. */
     return mask_to_repeat;
   }
   const std::optional<IndexRange> range_to_repeat = mask_to_repeat.to_range();
   if (range_to_repeat && range_to_repeat->first() == 0 && range_to_repeat->size() == stride) {
+    /* The output is a range. */
     return IndexRange(initial_offset, repetitions * stride);
   }
   const int64_t segments_num = mask_to_repeat.segments_num();
   const IndexRange bounds = mask_to_repeat.bounds();
+
+  /* Avoid having many very small segments by creating a single segment that contains the input
+   * multiple times already. This way, a lower total number of segments is necessary. */
   if (segments_num == 1 && stride <= max_segment_size / 2 && mask_to_repeat.size() <= 256) {
     const IndexMaskSegment src_segment = mask_to_repeat.segment(0);
+    /* Number of repetitions that fit into a single segment. */
     const int64_t inline_repetitions_num = std::min(repetitions, max_segment_size / stride);
     Span<int16_t> repeated_indices;
     if (src_segment.size() == 1) {
+      /* Optimize the case when a single index is repeated. */
       repeated_indices = get_every_nth_index(stride, inline_repetitions_num, memory);
     }
     else {
+      /* More general case that repeats multiple indices. */
       MutableSpan<int16_t> repeated_indices_mut = memory.allocate_array<int16_t>(
           inline_repetitions_num * src_segment.size());
       for (const int64_t repetition : IndexRange(inline_repetitions_num)) {
@@ -961,6 +974,7 @@ IndexMask IndexMask::from_repeating(const IndexMask &mask_to_repeat,
     return IndexMask::from_segments(repeated_segments, memory);
   }
 
+  /* Simply repeat and offset the existing segments in the input mask. */
   Vector<IndexMaskSegment, 16> repeated_segments;
   for (const int64_t repetition : IndexRange(repetitions)) {
     for (const int64_t segment_i : IndexRange(segments_num)) {
@@ -973,12 +987,12 @@ IndexMask IndexMask::from_repeating(const IndexMask &mask_to_repeat,
 }
 
 IndexMask IndexMask::from_every_nth(const int64_t n,
-                                    const int64_t repetitions,
+                                    const int64_t indices_num,
                                     const int64_t initial_offset,
                                     IndexMaskMemory &memory)
 {
   BLI_assert(n >= 1);
-  return IndexMask::from_repeating(IndexRange(1), repetitions, n, initial_offset, memory);
+  return IndexMask::from_repeating(IndexRange(1), indices_num, n, initial_offset, memory);
 }
 
 void IndexMask::foreach_segment_zipped(const Span<IndexMask> masks,
