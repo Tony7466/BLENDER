@@ -235,7 +235,6 @@ class IndexMask : private IndexMaskData {
   int64_t size() const;
   bool is_empty() const;
   IndexRange index_range() const;
-  IndexRange bounds() const;
   int64_t first() const;
   int64_t last() const;
 
@@ -249,9 +248,6 @@ class IndexMask : private IndexMaskData {
    * index stored in the mask.
    */
   int64_t min_array_size() const;
-
-  friend bool operator==(const IndexMask &a, const IndexMask &b);
-  friend bool operator!=(const IndexMask &a, const IndexMask &b);
 
   /**
    * \return Position where the #query_index is stored, or none if the index is not in the mask.

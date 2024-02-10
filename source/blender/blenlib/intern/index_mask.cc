@@ -675,30 +675,6 @@ IndexMask IndexMask::from_initializers(const Span<Initializer> initializers,
   return IndexMask::from_indices(values_vec.as_span(), memory);
 }
 
-bool operator==(const IndexMask &a, const IndexMask &b)
-{
-  if (a.size() != b.size()) {
-    return false;
-  }
-  Array<int64_t> indices_a(a.size());
-  a.to_indices(indices_a.as_mutable_span());
-  Array<int64_t> indices_b(b.size());
-  b.to_indices(indices_b.as_mutable_span());
-  for (const int64_t i : indices_a.index_range()) {
-    const int64_t val_a = indices_a[i];
-    const int64_t val_b = indices_b[i];
-    if (val_a != val_b) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool operator!=(const IndexMask &a, const IndexMask &b)
-{
-  return !(a == b);
-}
-
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
 {
   BLI_assert(this->size() == r_indices.size());
