@@ -49,7 +49,7 @@
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_curve.hh"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
@@ -71,10 +71,10 @@
 
 #include "ED_armature.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLO_read_write.hh"
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "readfile.hh"
 
@@ -2907,6 +2907,26 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 2)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
+      if (is_cycles) {
+        if (IDProperty *cscene = version_cycles_properties_from_ID(&scene->id)) {
+          int cposition = version_cycles_property_int(cscene, "motion_blur_position", 1);
+          BLI_assert(cposition >= 0 && cposition < 3);
+          int order_conversion[3] = {SCE_MB_START, SCE_MB_CENTER, SCE_MB_END};
+          scene->r.motion_blur_position = order_conversion[std::clamp(cposition, 0, 2)];
+        }
+      }
+      else {
+        SET_FLAG_FROM_TEST(
+            scene->r.mode, scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED_DEPRECATED, R_MBLUR);
+        scene->r.motion_blur_position = scene->eevee.motion_blur_position_deprecated;
+        scene->r.motion_blur_shutter = scene->eevee.motion_blur_shutter_deprecated;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 3)) {
     if (!DNA_struct_member_exists(fd->filesdna, "SpaceImage", "float", "stretch_opacity")) {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
