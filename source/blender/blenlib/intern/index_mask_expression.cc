@@ -510,17 +510,19 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
           BLI_assert(expr.terms.size() == 2);
           const IndexMaskSegment segment_0 = *results[expr.terms[0]->index];
           const IndexMaskSegment segment_1 = *results[expr.terms[1]->index];
-          Vector<int64_t, max_segment_size> indices_vec(max_segment_size);
-          const int64_t indices_num = std::set_union(segment_0.begin(),
-                                                     segment_0.end(),
-                                                     segment_1.begin(),
-                                                     segment_1.end(),
+          const IndexMaskSegment segment_0_shift{segment_0.offset() - segment_offset,
+                                                 segment_0.base_span()};
+          const IndexMaskSegment segment_1_shift{segment_1.offset() - segment_offset,
+                                                 segment_1.base_span()};
+          Vector<int16_t, max_segment_size> indices_vec(max_segment_size);
+          const int64_t indices_num = std::set_union(segment_0_shift.begin(),
+                                                     segment_0_shift.end(),
+                                                     segment_1_shift.begin(),
+                                                     segment_1_shift.end(),
                                                      indices_vec.begin()) -
                                       indices_vec.begin();
           MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(indices_num);
-          for (const int64_t i : IndexRange(indices_num)) {
-            indices[i] = int16_t(indices_vec[i] - segment_offset);
-          }
+          indices.copy_from(indices_vec.as_span().take_front(indices_num));
           results[expr.index] = IndexMaskSegment(segment_offset, indices);
         }
         break;
