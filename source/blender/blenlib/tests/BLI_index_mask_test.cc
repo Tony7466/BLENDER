@@ -678,11 +678,7 @@ TEST(index_mask, FromRepeatingSingle)
 {
   IndexMaskMemory memory;
   const IndexMask mask = IndexMask::from_repeating(IndexMask(1), 5, 10, 2, memory);
-  EXPECT_EQ(mask[0], 2);
-  EXPECT_EQ(mask[1], 12);
-  EXPECT_EQ(mask[2], 22);
-  EXPECT_EQ(mask[3], 32);
-  EXPECT_EQ(mask[4], 42);
+  EXPECT_EQ(mask, IndexMask::from_initializers({2, 12, 22, 32, 42}, memory));
 }
 
 TEST(index_mask, FromRepeatingMultiple)
