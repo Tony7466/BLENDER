@@ -440,18 +440,7 @@ static void cmp_node_create_sockets(void *userdata,
 {
   NodeDeclarationBuilder *builder = static_cast<NodeDeclarationBuilder *>(userdata);
   if (!STREQ(name, RE_PASSNAME_COMBINED)) {
-    switch (type) {
-      case SOCK_FLOAT:
-        builder->add_output<decl::Float>(name);
-        break;
-      case SOCK_VECTOR:
-        builder->add_output<decl::Vector>(name);
-        break;
-      case SOCK_RGBA:
-        builder->add_output<decl::Color>(name);
-      default:
-        break;
-    }
+    builder->add_output(type, name);
   }
   else {
     builder->add_output<decl::Float>("Alpha");
@@ -518,18 +507,6 @@ static bool node_composit_poll_rlayers(const bNodeType * /*ntype*/,
     return false;
   }
   return true;
-}
-
-static void node_composit_free_rlayers(bNode *node)
-{
-  node_free_standard_storage(node);
-}
-
-static void node_composit_copy_rlayers(bNodeTree *dst_ntree,
-                                       bNode *dest_node,
-                                       const bNode *src_node)
-{
-  node_copy_standard_storage(dst_ntree, dest_node, src_node);
 }
 
 static void node_composit_buts_viewlayers(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -693,8 +670,6 @@ void register_node_type_cmp_rlayers()
   ntype.realtime_compositor_unsupported_message = N_(
       "Render passes not supported in the Viewport compositor");
   ntype.flag |= NODE_PREVIEW;
-  node_type_storage(
-      &ntype, nullptr, file_ns::node_composit_free_rlayers, file_ns::node_composit_copy_rlayers);
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
 
   nodeRegisterType(&ntype);
