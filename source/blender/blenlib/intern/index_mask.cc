@@ -9,6 +9,7 @@
 #include "BLI_bit_vector.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_index_mask_expression.hh"
 #include "BLI_math_base.hh"
 #include "BLI_set.hh"
 #include "BLI_sort.hh"
@@ -479,72 +480,10 @@ static void invert_segments(const IndexMask &mask,
 
 IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
 {
-  if (this->is_empty()) {
-    return universe;
-  }
-  if (universe.is_empty()) {
-    return {};
-  }
-  const std::optional<IndexRange> this_range = this->to_range();
-  if (this_range) {
-    const bool first_in_range = this_range->first() <= universe.first();
-    const bool last_in_range = this_range->last() >= universe.last();
-    if (first_in_range && last_in_range) {
-      /* This mask fills the entire universe, so the complement is empty. */
-      return {};
-    }
-    if (first_in_range) {
-      /* This mask is a range that contains the start of the universe.
-       * The complement is a range that contains the end of the universe. */
-      const int64_t complement_start = this_range->one_after_last();
-      const int64_t complement_size = universe.one_after_last() - complement_start;
-      return IndexRange(complement_start, complement_size);
-    }
-    if (last_in_range) {
-      /* This mask is a range that contains the end of the universe.
-       * The complement is a range that contains the start of the universe. */
-      const int64_t complement_start = universe.first();
-      const int64_t complement_size = this_range->first() - complement_start;
-      return IndexRange(complement_start, complement_size);
-    }
-  }
-
-  Vector<IndexMaskSegment, 16> segments;
-
-  if (universe.start() < this->first()) {
-    range_to_segments(universe.take_front(this->first() - universe.start()), segments);
-  }
-
-  if (!this_range) {
-    const int64_t segments_num = this->segments_num();
-
-    constexpr int64_t min_grain_size = 16;
-    constexpr int64_t max_grain_size = 4096;
-    const int64_t threads_num = BLI_system_thread_count();
-    const int64_t grain_size = std::clamp(
-        segments_num / threads_num, min_grain_size, max_grain_size);
-
-    const IndexRange non_last_segments = IndexRange(segments_num).drop_back(1);
-    if (segments_num < min_grain_size) {
-      invert_segments(*this, non_last_segments, memory, segments);
-    }
-    else {
-      ParallelSegmentsCollector segments_collector;
-      threading::parallel_for(non_last_segments, grain_size, [&](const IndexRange range) {
-        ParallelSegmentsCollector::LocalData &local_data =
-            segments_collector.data_by_thread.local();
-        invert_segments(*this, range, local_data.allocator, local_data.segments);
-      });
-      segments_collector.reduce(memory, segments);
-    }
-    inverted_indices_to_segments(this->segment(segments_num - 1), memory, segments);
-  }
-
-  if (universe.last() > this->first()) {
-    range_to_segments(universe.take_back(universe.last() - this->last()), segments);
-  }
-
-  return IndexMask::from_segments(segments, memory);
+  ExprBuilder builder;
+  const IndexMask universe_mask{universe};
+  const Expr &expr = builder.subtract(&universe_mask, this);
+  return evaluate_expression(expr, memory);
 }
 
 template<typename T>
@@ -636,13 +575,9 @@ IndexMask IndexMask::from_union(const IndexMask &mask_a,
                                 const IndexMask &mask_b,
                                 IndexMaskMemory &memory)
 {
-  const int64_t new_size = math::max(mask_a.min_array_size(), mask_b.min_array_size());
-  Array<bool> tmp(new_size, false);
-  mask_a.foreach_index_optimized<int64_t>(GrainSize(2048),
-                                          [&](const int64_t i) { tmp[i] = true; });
-  mask_b.foreach_index_optimized<int64_t>(GrainSize(2048),
-                                          [&](const int64_t i) { tmp[i] = true; });
-  return IndexMask::from_bools(tmp, memory);
+  ExprBuilder builder;
+  const Expr &expr = builder.merge(&mask_a, &mask_b);
+  return evaluate_expression(expr, memory);
 }
 
 IndexMask IndexMask::from_initializers(const Span<Initializer> initializers,
