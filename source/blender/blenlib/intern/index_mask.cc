@@ -963,7 +963,7 @@ bool operator==(const IndexMask &a, const IndexMask &b)
   const std::optional<IndexRange> a_as_range = a.to_range();
   const std::optional<IndexRange> b_as_range = b.to_range();
   if (a_as_range.has_value() || b_as_range.has_value()) {
-    return a_as_range.value_or(IndexRange()) == b_as_range.value_or(IndexRange());
+    return a_as_range == b_as_range;
   }
 
   bool equals = true;
