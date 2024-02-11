@@ -413,11 +413,6 @@ void register_node_type_cmp_image()
 
 /* **************** RENDER RESULT ******************** */
 
-void node_cmp_rlayers_outputs(bNodeTree *ntree, bNode *node)
-{
-  blender::nodes::update_node_declaration_and_sockets(*ntree, *node);
-}
-
 const char *node_cmp_rlayers_sock_to_pass(int sock_index)
 {
   if (sock_index >= NUM_LEGACY_SOCKETS) {
@@ -449,7 +444,6 @@ static void cmp_node_create_sockets(void *userdata,
 
 static void node_rlayer_declare(NodeDeclarationBuilder &builder)
 {
-
   builder.add_output<decl::Color>("Image");
   const bNode *node = builder.node_or_null();
   if (node == nullptr || node->id == nullptr) {

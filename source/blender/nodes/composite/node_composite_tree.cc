@@ -202,7 +202,7 @@ void ntreeCompositUpdateRLayers(bNodeTree *ntree)
 
   for (bNode *node : ntree->all_nodes()) {
     if (node->type == CMP_NODE_R_LAYERS) {
-      node_cmp_rlayers_outputs(ntree, node);
+      blender::nodes::update_node_declaration_and_sockets(*ntree, *node);
     }
   }
 }
