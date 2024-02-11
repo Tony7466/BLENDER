@@ -1455,6 +1455,15 @@ static ImBuf *ffmpeg_fetchibuf(ImBufAnim *anim, int position, IMB_Timecode_Type 
   return cur_frame_final;
 }
 
+void IMB_anim_flush_buffers(ImBufAnim *anim)
+{
+  if (anim->pCodecCtx == nullptr) {
+    return;
+  }
+
+  avcodec_flush_buffers(anim->pCodecCtx);
+}
+
 static void free_anim_ffmpeg(ImBufAnim *anim)
 {
   if (anim == nullptr) {
@@ -1577,11 +1586,14 @@ ImBuf *IMB_anim_previewframe(ImBufAnim *anim)
   return ibuf;
 }
 
+#include "BLI_timeit.hh"
+
 ImBuf *IMB_anim_absolute(ImBufAnim *anim,
                          int position,
                          IMB_Timecode_Type tc,
                          IMB_Proxy_Size preview_size)
 {
+  SCOPED_TIMER(__func__);
   ImBuf *ibuf = nullptr;
   int filter_y;
   if (anim == nullptr) {
