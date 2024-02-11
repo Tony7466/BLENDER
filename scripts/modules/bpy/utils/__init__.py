@@ -904,7 +904,7 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
                 cls._km_action_simple(kc_default, kc, context_descr, tool_def.label, keymap_data)
         return tool_def
 
-    tool_converted = tool_from_class(tool_cls)
+    tool_created = tool_converted = tool_from_class(tool_cls)
 
     if group:
         # Create a new group
@@ -956,6 +956,7 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
     if not changed:
         tools.extend(tool_def_insert)
 
+    return tool_created
 
 def unregister_tool(tool_cls):
     space_type = tool_cls.bl_space_type

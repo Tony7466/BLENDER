@@ -1041,8 +1041,9 @@ def _activate_by_item(context, space_type, item, index, *, as_fallback=False):
     if keymap_fallback:
         keymap_fallback = keymap_fallback + " (fallback)"
 
-    for cb in curr_item.handlers.unset:
-        cb()
+    if curr_item is not None:
+        for cb in curr_item.handlers.unset:
+            cb()
 
     for cb in item.handlers.set:
         cb()
