@@ -827,13 +827,21 @@ class VIEW3D_HT_header(Header):
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
 
+            if object_mode == 'PAINT_GREASE_PENCIL':
+                row = layout.row(align=True)
+                row.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+
+            if object_mode in {'PAINT_GREASE_PENCIL', 'EDIT', 'WEIGHT_PAINT'}:
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_grease_pencil_multi_frame_editing", text="")
 
-            if object_mode == 'PAINT_GREASE_PENCIL':
-                row = layout.row()
-                sub = row.row(align=True)
-                sub.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+                if object_mode in {'EDIT', 'WEIGHT_PAINT'}:
+                    sub = row.row(align=True)
+                    sub.enabled = tool_settings.use_grease_pencil_multi_frame_editing
+                    sub.popover(
+                        panel="VIEW3D_PT_gpencil_multi_frame",
+                        text="Multiframe",
+                    )
 
         # Grease Pencil (legacy)
         if obj and obj.type == 'GPENCIL' and context.gpencil_data:
@@ -7993,14 +8001,13 @@ class VIEW3D_PT_gpencil_multi_frame(Panel):
         layout = self.layout
         tool_settings = context.tool_settings
 
-        gpd = context.gpencil_data
         settings = tool_settings.gpencil_sculpt
 
         col = layout.column(align=True)
         col.prop(settings, "use_multiframe_falloff")
 
         # Falloff curve
-        if gpd.use_multiedit and settings.use_multiframe_falloff:
+        if settings.use_multiframe_falloff:
             layout.template_curve_mapping(settings, "multiframe_falloff_curve", brush=True)
 
 
