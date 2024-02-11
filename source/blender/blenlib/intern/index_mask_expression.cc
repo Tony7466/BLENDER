@@ -547,6 +547,99 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment_with_bits(
   return IndexMaskSegment(segment_offset, indices);
 }
 
+// BLI_NOINLINE static Vector<IndexMaskSegment> union_segments(const Span<IndexMaskSegment>
+// segments,
+//                                                             const int64_t segment_offset,
+//                                                             LinearAllocator<> &allocator)
+// {
+//   Vector<IndexMaskSegment> result;
+
+//   if (segments.is_empty()) {
+//     return result;
+//   }
+
+//   struct SegmentBound {
+//     int64_t index;
+//     bool is_begin;
+//     const IndexMaskSegment *segment;
+//   };
+
+//   Vector<SegmentBound> boundaries;
+//   for (const IndexMaskSegment &segment : segments) {
+//     if (!segment.is_empty()) {
+//       boundaries.append({segment[0], true, &segment});
+//       boundaries.append({segment.last() + 1, false, &segment});
+//     }
+//   }
+
+//   if (boundaries.is_empty()) {
+//     return result;
+//   }
+
+//   std::sort(boundaries.begin(),
+//             boundaries.end(),
+//             [](const SegmentBound &a, const SegmentBound &b) { return a.index < b.index; });
+
+//   Vector<const IndexMaskSegment *> active_segments;
+//   int64_t prev_boundary_index = boundaries[0].index;
+//   for (const SegmentBound &boundary : boundaries) {
+//     if (prev_boundary_index < boundary.index) {
+//       Vector<IndexMaskSegment> sliced_segments;
+//       for (const IndexMaskSegment *segment : active_segments) {
+//         if (segment->last() < boundary.index) {
+//           sliced_segments.append(*segment);
+//         }
+//         else {
+//           const int64_t start_index = binary_search::find_predicate_begin(
+//               *segment, [&](const int64_t i) { return i >= prev_boundary_index; });
+//           const int64_t end_index = binary_search::find_predicate_begin(
+//               *segment, [&](const int64_t i) { return i >= boundary.index; });
+//           const IndexMaskSegment sliced_segment = segment->slice(
+//               IndexRange::from_begin_end(start_index, end_index));
+//           if (!sliced_segment.is_empty()) {
+//             sliced_segments.append(sliced_segment);
+//           }
+//         }
+//       }
+
+//       if (!sliced_segments.is_empty()) {
+//         Vector<int64_t, max_segment_size> vec_1(max_segment_size);
+//         Vector<int64_t, max_segment_size> vec_2(max_segment_size);
+//         MutableSpan<int64_t> a = vec_1;
+//         MutableSpan<int64_t> b = vec_2;
+
+//         int64_t result_size = sliced_segments.size();
+//         std::copy(sliced_segments[0].begin(), sliced_segments[0].end(), a.begin());
+//         for (const IndexMaskSegment &segment : sliced_segments) {
+//           result_size = std::set_union(a.begin(),
+//                                        a.begin() + result_size,
+//                                        segment.begin(),
+//                                        segment.end(),
+//                                        b.begin()) -
+//                         b.begin();
+//           std::swap(a, b);
+//         }
+
+//         MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(result_size);
+//         for (const int64_t i : IndexRange(result_size)) {
+//           indices[i] = int16_t(a[i] - segment_offset);
+//         }
+//       }
+
+//       prev_boundary_index = boundary.index;
+//     }
+
+//     if (boundary.is_begin) {
+//       active_segments.append(boundary.segment);
+//     }
+//     else {
+//       active_segments.remove_first_occurrence_and_reorder(boundary.segment);
+//     }
+//   }
+
+//   return result;
+// }
+
 BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expression,
                                                       LinearAllocator<> &allocator,
                                                       const IndexRange bounds)
