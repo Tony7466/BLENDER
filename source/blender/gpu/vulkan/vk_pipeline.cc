@@ -7,29 +7,118 @@
  */
 #include "BLI_timer.hh"
 
-#include "vk_pipeline.hh"
 #include "vk_backend.hh"
 #include "vk_batch.hh"
 #include "vk_context.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
+#include "vk_pipeline.hh"
 #include "vk_shader.hh"
 #include "vk_state_manager.hh"
 #include "vk_vertex_attribute_object.hh"
 
 namespace blender::gpu {
+#ifdef VK_STAT_PIPELINE_CACHE
+static int pipeline_cache_global_count = 0;
+
+static std::mutex mutex_cache_global;
+void StateCache::set_name(std::string sh_name, std::string fb_name)
+{
+  std::unique_lock<std::mutex> lock(mutex_cache_global);
+  BLI_assert(name_ == "" || sh_name == name_);
+  name_ = sh_name;
+  pipeline_cache_global_count++;
+  BLI_info_always(
+      "StateCache  %s  Layout %zu prim_types %zu  blend %u   line_smooth %u   write_mask %u   "
+      "point_size  %u   line_width %u  stencil_write_mask %u vertex %zu  fragment %zu geometry "
+      "%zu states %zu  mutable_states %zu  vertex_inputs %zu  framebufer %s\n",
+      sh_name.c_str(),
+      pipeline_layouts.size(),
+      prim_types.size(),
+      blend.size(),
+      line_smooth.size(),
+      write_mask.size(),
+      point_size.size(),
+      line_width.size(),
+      stencil_write_mask.size(),
+      vertex.size(),
+      fragment.size(),
+      geometry.size(),
+      states.size(),
+      mutable_states.size(),
+      vertex_inputs.size(),
+      fb_name.c_str());
+  BLI_info_always("PipelineCreationGlobalCount %d\n", pipeline_cache_global_count);
+}
+void StateCache::append(VkPipelineLayout layout,
+                        GPUPrimType type,
+                        VkShaderModule vmodule,
+                        VkShaderModule gmodule,
+                        VkShaderModule fmodule,
+                        const GPUState &state,
+                        const GPUStateMutable &mutable_state,
+                        const VkPipelineVertexInputStateCreateInfo &info)
+{
+  std::unique_lock<std::mutex> lock(mutex_cache_global);
+  pipeline_layouts.add(layout);
+  prim_types.add(type);
+  vertex.add(vmodule);
+  fragment.add(gmodule);
+  geometry.add(fmodule);
+  states.add(state.data);
+  blend.add(state.blend);
+  line_smooth.add(state.line_smooth);
+  write_mask.add(state.write_mask);
+  point_size.add(mutable_state.point_size);
+  line_width.add(mutable_state.line_width);
+  stencil_write_mask.add(mutable_state.stencil_write_mask);
+  std::stringstream stream;
+  for (int i = 0; i < 9; i++) {
+    stream << std::setfill('0') << std::setw(20) << mutable_state.data[i];
+  }
+  mutable_states.add(stream.str());
+
+  std::string bytes = "";
+  bytes += encode_struct(info.pVertexBindingDescriptions, info.vertexBindingDescriptionCount);
+  bytes += encode_struct(info.pVertexAttributeDescriptions, info.vertexAttributeDescriptionCount);
+  if (info.pNext != VK_NULL_HANDLE) {
+    auto *dev_info = reinterpret_cast<VkPipelineVertexInputDivisorStateCreateInfoEXT *>(
+        const_cast<void *>(info.pNext));
+    bytes += encode_struct(dev_info->pVertexBindingDivisors, dev_info->vertexBindingDivisorCount);
+  }
+  vertex_inputs.add(bytes);
+}
+
+StateCache &StateCacheMap::get(std::string fb_name)
+{
+  std::unique_lock<std::mutex> lock(mutex_cache_global);
+  if (state_cache_map.count(fb_name) > 0) {
+    return state_cache_map[fb_name];
+  };
+  state_cache_map[fb_name] = StateCache();
+  return state_cache_map[fb_name];
+}
+#endif
 
 VKPipeline::VKPipeline(VKPushConstants &&push_constants)
     : active_vk_pipeline_(VK_NULL_HANDLE), push_constants_(std::move(push_constants))
 {
 }
-
+#ifdef VK_PIPELINE_REFACTOR
+VKPipeline::VKPipeline(VkPipeline vk_pipeline, VKPushConstants &&push_constants, bool is_compute)
+    : active_vk_pipeline_(vk_pipeline), push_constants_(std::move(push_constants))
+{
+  if (is_compute) {
+    vk_pipelines_.append(vk_pipeline);
+  }
+}
+#else
 VKPipeline::VKPipeline(VkPipeline vk_pipeline, VKPushConstants &&push_constants)
     : active_vk_pipeline_(vk_pipeline), push_constants_(std::move(push_constants))
 {
   vk_pipelines_.append(vk_pipeline);
 }
-
+#endif
 VKPipeline::~VKPipeline()
 {
   destroy();
@@ -37,6 +126,7 @@ VKPipeline::~VKPipeline()
 
 void VKPipeline::destroy()
 {
+
   VK_ALLOCATION_CALLBACKS
   const VKDevice &device = VKBackend::get().device_get();
   for (VkPipeline vk_pipeline : vk_pipelines_) {
@@ -76,7 +166,12 @@ VKPipeline VKPipeline::create_compute_pipeline(
   }
 
   VKPushConstants push_constants(&push_constants_layout);
+
+#ifdef VK_PIPELINE_REFACTOR
+  return VKPipeline(vk_pipeline, std::move(push_constants), true);
+#else
   return VKPipeline(vk_pipeline, std::move(push_constants));
+#endif
 }
 
 VKPipeline VKPipeline::create_graphics_pipeline(
@@ -108,13 +203,66 @@ void VKPipeline::finalize(VKContext &context,
 
   VK_ALLOCATION_CALLBACKS
   VKShader *shader = reinterpret_cast<VKShader *>(context.shader);
+  shader->specialzation_ensure();
+  VKFrameBuffer &framebuffer = *context.active_framebuffer_get();
+  framebuffer.renderpass_ensure();
+  VKPipelineStateManager &state_manager = state_manager_get();
+
+#ifdef VK_PIPELINE_REFACTOR
+  VKRenderPass &renderpass = framebuffer.render_pass_get();
+  int type = 3;  // shader->cache_enable();
+  if (type > 0) {
+    switch (type) {
+      case 1:
+        active_vk_pipeline_ = renderpass.has_pipeline_cache(
+            prim_type, state_manager.get_state(), 1);
+        break;
+      case 2:
+        active_vk_pipeline_ = renderpass.has_pipeline_cache(prim_type,
+                                                            state_manager.get_state(),
+                                                            vertex_module,
+                                                            geometry_module,
+                                                            fragment_module,
+                                                            2);
+        break;
+      case 3:
+        active_vk_pipeline_ = renderpass.has_pipeline_cache(prim_type,
+                                                            state_manager.get_state(),
+                                                            vertex_module,
+                                                            geometry_module,
+                                                            fragment_module,
+                                                            vertex_attribute_object.info,
+                                                            3);
+        break;
+    }
+    if (active_vk_pipeline_) {
+      return;
+    }
+  }
+#endif
+#ifdef VK_STAT_PIPELINE_CACHE
+  {
+    auto name_ = std::string(framebuffer.name_get());
+    auto num = std::to_string((uintptr_t)(&framebuffer));
+    auto name = (name_.size() == 0) ? std::string("none") : name_;
+    auto &state_cache = state_cache_map.get(name);
+    state_cache.append(pipeline_layout,
+                       prim_type,
+                       vertex_module,
+                       geometry_module,
+                       fragment_module,
+                       state_manager.get_state(),
+                       state_manager.get_mutable_state(),
+                       vertex_attribute_object.info);
+    state_cache.set_name(shader->name_get(), name);
+  }
+#endif
   Vector<VkPipelineShaderStageCreateInfo> pipeline_stages;
   VkPipelineShaderStageCreateInfo vertex_stage_info = {};
   vertex_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   vertex_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
   vertex_stage_info.module = vertex_module;
   vertex_stage_info.pName = "main";
-  shader->specialzation_ensure();
   auto specialization_info = shader->build_specialzation();
   vertex_stage_info.pSpecializationInfo = &specialization_info;
   pipeline_stages.append(vertex_stage_info);
@@ -138,9 +286,6 @@ void VKPipeline::finalize(VKContext &context,
     fragment_stage_info.pName = "main";
     pipeline_stages.append(fragment_stage_info);
   }
-
-  VKFrameBuffer &framebuffer = *context.active_framebuffer_get();
-  framebuffer.renderpass_ensure();
 
   VkGraphicsPipelineCreateInfo pipeline_create_info = {};
   pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -177,7 +322,6 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pMultisampleState = &multisample_state;
 
   /* States from the state manager. */
-  VKPipelineStateManager &state_manager = state_manager_get();
   state_manager.finalize_color_blend_state(framebuffer);
   pipeline_create_info.pColorBlendState = &state_manager.pipeline_color_blend_state;
   pipeline_create_info.pRasterizationState = &state_manager.rasterization_state;
@@ -198,10 +342,46 @@ void VKPipeline::finalize(VKContext &context,
                             &pipeline_create_info,
                             vk_allocation_callbacks,
                             &active_vk_pipeline_);
+
+#ifdef VK_PIPELINE_REFACTOR
+  if (type > 0) {
+    switch (type) {
+      case 1:
+        renderpass.set_pipeline(active_vk_pipeline_, prim_type, state_manager.get_state(), 1);
+        break;
+      case 2:
+        renderpass.set_pipeline(active_vk_pipeline_,
+                                prim_type,
+                                vertex_module,
+                                geometry_module,
+                                fragment_module,
+                                state_manager.get_state(),
+                                2);
+        break;
+      case 3:
+        renderpass.set_pipeline(active_vk_pipeline_,
+                                prim_type,
+                                vertex_module,
+                                geometry_module,
+                                fragment_module,
+                                state_manager.get_state(),
+                                vertex_attribute_object.info,
+                                3);
+        break;
+    }
+  }
+  /*
+  else {
+    vk_pipelines_.append(active_vk_pipeline_);
+  }
+  */
+#else
   /* TODO: we should cache several pipeline instances and detect pipelines we can reuse. This might
    * also be done using a VkPipelineCache. For now we just destroy any available pipeline so it
    * won't be overwritten by the newly created one. */
   vk_pipelines_.append(active_vk_pipeline_);
+#endif
+
   debug::object_label(active_vk_pipeline_, "GraphicsPipeline");
 }
 

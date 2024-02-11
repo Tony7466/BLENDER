@@ -61,7 +61,7 @@
 #include "BLO_read_write.hh"
 
 #ifdef _WIN32
-#include "BLI_timer.hh"
+#  include "BLI_timer.hh"
 #endif
 /* ****************************************************** */
 

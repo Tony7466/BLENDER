@@ -7,6 +7,8 @@
  */
 
 #pragma once
+#define VK_PIPELINE_REFACTOR
+#define VK_STAT_PIPELINE_CACHE
 
 #include <typeinfo>
 

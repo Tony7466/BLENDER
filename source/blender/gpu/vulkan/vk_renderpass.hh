@@ -108,8 +108,8 @@ template<class T> std::string encode_struct(T *data, int width)
   return b64.Encode((uint8_t *)(data), size);
 };
 
-#define VK_PIPELINE_CACHE_MAX 16
-#define VK_PIPELINE_VAO_BYTES_SIZE 128
+#  define VK_PIPELINE_CACHE_MAX 16
+#  define VK_PIPELINE_VAO_BYTES_SIZE 128
 #endif
 
 class VKRenderPass {
@@ -118,6 +118,18 @@ class VKRenderPass {
   bool is_clear_pass_ = false;
   bool dirty_ = false;
   VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
+#ifdef VK_PIPELINE_REFACTOR
+  VkPipeline vk_pipelines[GPU_PRIM_NONE][VK_PIPELINE_CACHE_MAX];
+  struct cache_info {
+    uint64_t state;
+    uint64_t v_module;
+    uint64_t g_module;
+    uint64_t f_module;
+    char vao_info[VK_PIPELINE_VAO_BYTES_SIZE];
+  };
+  cache_info pipeline_cache_by_prims[GPU_PRIM_NONE][VK_PIPELINE_CACHE_MAX];
+  int pipeline_cache_nums[GPU_PRIM_NONE];
+#endif
   eRenderpassType render_pass_enum_ = eRenderpassType::Any;
   VkRenderPassCreateInfo2 vk_create_info_[2] = {vk_renderpass::create_info_default,
                                                 vk_renderpass::create_info_default};
@@ -137,7 +149,7 @@ class VKRenderPass {
   Vector<int> subpass_input_orders_[GPU_TEX_MAX_SUBPASS];
 
  public:
-  VKRenderPass(){};
+  VKRenderPass();
   ~VKRenderPass()
   {
     free();
@@ -154,6 +166,47 @@ class VKRenderPass {
                                       VkImageLayout dst_layout);
   void imageless_pass_set();
   void multiview_set();
+#ifdef VK_PIPELINE_REFACTOR
+  void pipeline_free(VKDevice &device);
+  VkPipeline has_pipeline_cache(const GPUPrimType prim_type,
+                                const GPUState state,
+                                VkShaderModule v_module,
+                                VkShaderModule g_module,
+                                VkShaderModule f_module,
+                                const VkPipelineVertexInputStateCreateInfo &info,
+                                int type);
+
+  VkPipeline has_pipeline_cache(const GPUPrimType prim_type,
+                                const GPUState state,
+                                VkShaderModule v_module,
+                                VkShaderModule g_module,
+                                VkShaderModule f_module,
+                                int type);
+
+  VkPipeline has_pipeline_cache(const GPUPrimType prim_type, const GPUState state, int type);
+
+  void set_pipeline(VkPipeline pipeline,
+                    const GPUPrimType prim_type,
+                    const GPUState state,
+                    int type);
+
+  void set_pipeline(VkPipeline pipeline,
+                    const GPUPrimType prim_type,
+                    VkShaderModule v_module,
+                    VkShaderModule g_module,
+                    VkShaderModule f_module,
+                    const GPUState state,
+                    int type);
+
+  void set_pipeline(VkPipeline pipeline,
+                    const GPUPrimType prim_type,
+                    VkShaderModule v_module,
+                    VkShaderModule g_module,
+                    VkShaderModule f_module,
+                    const GPUState state,
+                    const VkPipelineVertexInputStateCreateInfo &info,
+                    int type);
+#endif
   friend class VKFrameBuffer;
 };
 

@@ -118,6 +118,11 @@ class VKFrameBuffer : public FrameBuffer {
     return vk_framebuffer_ != VK_NULL_HANDLE;
   }
 
+  VKRenderPass &render_pass_get()
+  {
+    return *renderpass_;
+  };
+
   VkRenderPass vk_render_pass_get();
   VkFramebuffer vk_framebuffer_get()
   {

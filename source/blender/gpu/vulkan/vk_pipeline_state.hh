@@ -31,6 +31,16 @@ class VKPipelineStateManager {
   VKPipelineStateManager();
 
   void set_state(const GPUState &state, const GPUStateMutable &mutable_state);
+#ifdef VK_STAT_PIPELINE_CACHE
+  const GPUState get_state() const
+  {
+    return current_;
+  };
+  const GPUStateMutable get_mutable_state() const
+  {
+    return current_mutable_;
+  }
+#endif
   void force_state(const GPUState &state, const GPUStateMutable &mutable_state);
 
   void finalize_color_blend_state(const VKFrameBuffer &framebuffer);

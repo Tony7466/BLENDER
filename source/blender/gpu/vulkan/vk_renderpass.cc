@@ -204,6 +204,14 @@ const static VkSubpassDependency2 dependencies[static_cast<uint64_t>(
 };
 }  // namespace vk_subpass
 
+VKRenderPass::VKRenderPass()
+{
+#ifdef VK_PIPELINE_REFACTOR
+  VKDevice &device = VKBackend::get().device_get();
+  pipeline_free(device);
+#endif
+};
+
 bool VKRenderPass::ensure()
 {
   if (vk_render_pass_ == VK_NULL_HANDLE || dirty_) {
@@ -237,10 +245,14 @@ void VKRenderPass::create()
 void VKRenderPass::free()
 {
   VK_ALLOCATION_CALLBACKS
+  VKDevice &device = VKBackend::get().device_get();
+#ifdef VK_PIPELINE_REFACTOR
+  pipeline_free(device);
+#endif
   if (vk_render_pass_ == VK_NULL_HANDLE) {
     return;
   }
-  VKDevice &device = VKBackend::get().device_get();
+
   if (device.is_initialized()) {
     VKContext *context = VKContext::get();
     if (context == nullptr) {
@@ -250,6 +262,7 @@ void VKRenderPass::free()
       context->discard_render_pass(vk_render_pass_);
     }
   }
+
   dirty_ = true;
   vk_render_pass_ = VK_NULL_HANDLE;
 }
@@ -736,4 +749,142 @@ void VKRenderPass::multiview_set()
     dirty_ = true;
   }
 }
+#ifdef VK_PIPELINE_REFACTOR
+void VKRenderPass::pipeline_free(VKDevice &device)
+{
+  VK_ALLOCATION_CALLBACKS
+  for (int i = 0; i < GPU_PRIM_NONE; i++) {
+    for (int j = 0; j < pipeline_cache_nums[i]; j++) {
+      vkDestroyPipeline(device.device_get(), vk_pipelines[i][j], vk_allocation_callbacks);
+    }
+  }
+  memset(vk_pipelines, 0, sizeof(VkPipeline) * GPU_PRIM_NONE * VK_PIPELINE_CACHE_MAX);
+  memset(pipeline_cache_by_prims, 0, sizeof(uint64_t) * GPU_PRIM_NONE * VK_PIPELINE_CACHE_MAX);
+  memset(pipeline_cache_nums, 0, sizeof(uint32_t) * GPU_PRIM_NONE);
+}
+
+VkPipeline VKRenderPass::has_pipeline_cache(const GPUPrimType prim_type,
+                                            const GPUState state,
+                                            VkShaderModule v_module,
+                                            VkShaderModule g_module,
+                                            VkShaderModule f_module,
+                                            const VkPipelineVertexInputStateCreateInfo &info,
+                                            int type)
+{
+  BLI_assert(type == 3);
+  std::string vao_info = "";
+  vao_info += encode_struct(info.pVertexBindingDescriptions, info.vertexBindingDescriptionCount);
+  vao_info += encode_struct(info.pVertexAttributeDescriptions,
+                            info.vertexAttributeDescriptionCount);
+  if (info.pNext != VK_NULL_HANDLE) {
+    auto *dev_info = reinterpret_cast<VkPipelineVertexInputDivisorStateCreateInfoEXT *>(
+        const_cast<void *>(info.pNext));
+    vao_info += encode_struct(dev_info->pVertexBindingDivisors,
+                              dev_info->vertexBindingDivisorCount);
+  }
+  for (int i = 0; i < pipeline_cache_nums[prim_type]; i++) {
+    if ((pipeline_cache_by_prims[prim_type][i].state == state.data) &&
+        (pipeline_cache_by_prims[prim_type][i].v_module == (uint64_t)v_module) &&
+        (pipeline_cache_by_prims[prim_type][i].g_module == (uint64_t)g_module) &&
+        (pipeline_cache_by_prims[prim_type][i].f_module == (uint64_t)f_module) &&
+        (vao_info == pipeline_cache_by_prims[prim_type][i].vao_info))
+      return vk_pipelines[prim_type][i];
+  }
+  return VK_NULL_HANDLE;
+};
+
+VkPipeline VKRenderPass::has_pipeline_cache(const GPUPrimType prim_type,
+                                            const GPUState state,
+                                            VkShaderModule v_module,
+                                            VkShaderModule g_module,
+                                            VkShaderModule f_module,
+                                            int type)
+{
+  BLI_assert(type == 2);
+  for (int i = 0; i < pipeline_cache_nums[prim_type]; i++) {
+    if ((pipeline_cache_by_prims[prim_type][i].state == state.data) &&
+        (pipeline_cache_by_prims[prim_type][i].v_module == (uint64_t)v_module) &&
+        (pipeline_cache_by_prims[prim_type][i].g_module == (uint64_t)g_module) &&
+        (pipeline_cache_by_prims[prim_type][i].f_module == (uint64_t)f_module))
+      return vk_pipelines[prim_type][i];
+  }
+  return VK_NULL_HANDLE;
+};
+
+VkPipeline VKRenderPass::has_pipeline_cache(const GPUPrimType prim_type,
+                                            const GPUState state,
+                                            int type)
+{
+  BLI_assert(type == 1);
+  for (int i = 0; i < pipeline_cache_nums[prim_type]; i++) {
+    if (pipeline_cache_by_prims[prim_type][i].state == state.data) {
+      return vk_pipelines[prim_type][i];
+    }
+  }
+  return VK_NULL_HANDLE;
+};
+
+void VKRenderPass::set_pipeline(VkPipeline pipeline,
+                                const GPUPrimType prim_type,
+                                const GPUState state,
+                                int type)
+{
+  BLI_assert(type == 1);
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].state = state.data;
+  vk_pipelines[prim_type][pipeline_cache_nums[prim_type]] = pipeline;
+  pipeline_cache_nums[prim_type]++;
+  BLI_assert(pipeline_cache_nums[prim_type] < VK_PIPELINE_CACHE_MAX);
+}
+
+void VKRenderPass::set_pipeline(VkPipeline pipeline,
+                                const GPUPrimType prim_type,
+                                VkShaderModule v_module,
+                                VkShaderModule g_module,
+                                VkShaderModule f_module,
+                                const GPUState state,
+                                int type)
+{
+  BLI_assert(type == 2);
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].state = state.data;
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].v_module = (uint64_t)v_module;
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].g_module = (uint64_t)g_module;
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].f_module = (uint64_t)f_module;
+  vk_pipelines[prim_type][pipeline_cache_nums[prim_type]] = pipeline;
+  pipeline_cache_nums[prim_type]++;
+  BLI_assert(pipeline_cache_nums[prim_type] < VK_PIPELINE_CACHE_MAX);
+}
+
+void VKRenderPass::set_pipeline(VkPipeline pipeline,
+                                const GPUPrimType prim_type,
+                                VkShaderModule v_module,
+                                VkShaderModule g_module,
+                                VkShaderModule f_module,
+                                const GPUState state,
+                                const VkPipelineVertexInputStateCreateInfo &info,
+                                int type)
+{
+  BLI_assert(type == 3);
+  std::string vao_info = "";
+  vao_info += encode_struct(info.pVertexBindingDescriptions, info.vertexBindingDescriptionCount);
+  vao_info += encode_struct(info.pVertexAttributeDescriptions,
+                            info.vertexAttributeDescriptionCount);
+  if (info.pNext != VK_NULL_HANDLE) {
+    auto *dev_info = reinterpret_cast<VkPipelineVertexInputDivisorStateCreateInfoEXT *>(
+        const_cast<void *>(info.pNext));
+    vao_info += encode_struct(dev_info->pVertexBindingDivisors,
+                              dev_info->vertexBindingDivisorCount);
+  }
+  vao_info += '\0';
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].state = state.data;
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].v_module = (uint64_t)v_module;
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].g_module = (uint64_t)g_module;
+  pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].f_module = (uint64_t)f_module;
+  memcpy(pipeline_cache_by_prims[prim_type][pipeline_cache_nums[prim_type]].vao_info,
+         vao_info.data(),
+         vao_info.size());
+  vk_pipelines[prim_type][pipeline_cache_nums[prim_type]] = pipeline;
+  pipeline_cache_nums[prim_type]++;
+  BLI_assert(pipeline_cache_nums[prim_type] < VK_PIPELINE_CACHE_MAX);
+}
+#endif
 }  // namespace blender::gpu

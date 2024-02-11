@@ -31,7 +31,8 @@ VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
   size_set(1, 1);
   srgb_ = false;
   enabled_srgb_ = true;
-  renderpass_.emplace(VKRenderPass());
+  VKRenderPass renderpass;
+  renderpass_.emplace(renderpass);
   cache_init();
 }
 

@@ -752,7 +752,6 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
 
   VKShaderInterface *vk_interface = reinterpret_cast<VKShaderInterface *>(interface);
 
-
   const VKDevice &device = VKBackend::get().device_get();
   if (!finalize_descriptor_set_layouts(device.device_get(), *vk_interface, *info)) {
     return false;
@@ -1289,7 +1288,8 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
   VKShaderInterface &vk_interface = *reinterpret_cast<VKShaderInterface *>(interface);
   ss << "\n/* Sub-pass Inputs. */\n";
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
-    auto location = vk_interface.descriptor_set_location(shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT, input.index);
+    auto location = vk_interface.descriptor_set_location(
+        shader::ShaderCreateInfo::Resource::BindType::INPUT_ATTACHMENT, input.index);
     std::string image_name = "gpu_subpass_img_";
     image_name += std::to_string(input.index);
     /* Declare global for input. */
