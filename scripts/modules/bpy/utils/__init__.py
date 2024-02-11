@@ -886,9 +886,9 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
             "draw_cursor": getattr(tool_cls, "draw_cursor", None),
         })
 
-        if not tool_cls.set_cb is None:
+        if  hasattr( tool_cls, 'set_cb' ) and callable(tool_cls.set_cb ):
             tool_def.handlers.set.append(tool_cls.set_cb)
-        if not tool_cls.unset_cb is None:
+        if  hasattr( tool_cls, 'unset_cb' ) and callable(tool_cls.unset_cb ):
             tool_def.handlers.set.append(tool_cls.unset_cb)
 
         tool_cls._bl_tool = tool_def
