@@ -1216,7 +1216,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (new_type) {
     SCOPED_TIMER_AVERAGED("New");
-    const int line_subdiv = math::pow<int>(2, subdivisions - 1) + 1;
+    const int line_subdiv = math::pow<int>(2, std::max<int>(0, subdivisions - 1)) + 1;
     Mesh *mesh = ico_sphere(line_subdiv, radius, uv_map_id.get());
     /* Icosphere is constructed from count of details, rather than at subdivision level. Compute
      * bounds from subdivision level. */
