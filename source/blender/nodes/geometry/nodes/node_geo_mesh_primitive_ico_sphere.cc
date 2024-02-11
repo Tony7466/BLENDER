@@ -536,10 +536,6 @@ static void interpolate_face_verts_linear(const TriangleRange inner_face_verts,
 template<typename Func>
 static void edges_line_fill_verts(const int2 ends, MutableSpan<int2> edges, Func &&func)
 {
-  if (UNLIKELY(edges.size() == 1)) {
-    edges.first() = ends;
-    return;
-  }
   edges.first()[EdgeVert::A] = ends[EdgeVert::A];
   for (const int i : edges.index_range().drop_back(1)) {
     const int vert_i = func(i);
