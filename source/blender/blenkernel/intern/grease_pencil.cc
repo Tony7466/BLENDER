@@ -534,12 +534,13 @@ Span<uint3> Drawing::triangles() const
       offset = 0; /* Reuse `offset`. */
       group.foreach_index([&](const int64_t curve_i, const int64_t pos) {
         const IndexRange points = points_by_curve[curve_i];
+        faces[pos].resize(points.size());
         for (const int p_id : points.index_range()) {
           vert_to_point_map[p_id + offset] = points[p_id];
           verts[p_id + offset] = double2(projverts[p_id + offset]);
           edges[p_id + offset] = std::pair<int, int>(p_id + offset,
                                                      (p_id + 1) % points.size() + offset);
-          faces[pos].append(p_id + offset);
+          faces[pos][p_id] = p_id + offset;
         }
         offset += points.size();
       });
