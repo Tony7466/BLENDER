@@ -133,7 +133,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   openvdb::FloatGrid::Ptr output_grid_vdb = input_grid.grid(input_tree_token).copyWithNewTree();
-  output_grid_vdb->setTree(output_tree);
+  output_grid_vdb->setTree(std::move(output_tree));
   bke::GVolumeGrid output_grid(std::move(output_grid_vdb));
 
   params.set_output("Grid", output_grid);
