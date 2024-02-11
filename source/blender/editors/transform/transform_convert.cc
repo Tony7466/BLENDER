@@ -23,14 +23,14 @@
 #include "BKE_anim_data.h"
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_nla.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframing.hh"
@@ -700,9 +700,7 @@ static int countAndCleanTransDataContainer(TransInfo *t)
     if (tc->data_len == 0) {
       uint index = tc - t->data_container;
       if (index + 1 != t->data_container_len) {
-        SWAP(TransDataContainer,
-             t->data_container[index],
-             t->data_container[t->data_container_len - 1]);
+        std::swap(t->data_container[index], t->data_container[t->data_container_len - 1]);
       }
       t->data_container_len -= 1;
     }
@@ -910,7 +908,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
   if (t->options & CTX_EDGE_DATA) {
     return &TransConvertType_MeshEdge;
   }
-  if ((t->options & CTX_GPENCIL_STROKES) && (t->spacetype == SPACE_VIEW3D)) {
+  if (t->options & CTX_GPENCIL_STROKES) {
     if (t->obedit_type == OB_GREASE_PENCIL) {
       return &TransConvertType_GreasePencil;
     }

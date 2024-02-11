@@ -34,7 +34,7 @@
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
@@ -43,7 +43,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -4218,7 +4218,7 @@ BLI_INLINE uint overlap_hash(const void *overlap_v)
   int x = overlap->indexA;
   int y = overlap->indexB;
   if (x > y) {
-    SWAP(int, x, y);
+    std::swap(x, y);
   }
   return BLI_hash_int_2d(x, y);
 }

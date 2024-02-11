@@ -33,11 +33,11 @@
 #include "BLO_undofile.hh"
 #include "BLO_writefile.hh"
 
-#include "BKE_blender.h"
+#include "BKE_blender.hh"
 #include "BKE_blendfile.hh"
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_keyconfig.h"
@@ -46,8 +46,8 @@
 #include "BKE_mball_tessellate.hh"
 #include "BKE_node.hh"
 #include "BKE_preview_image.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_vfont.hh"
@@ -102,8 +102,8 @@
 #include "ED_util.hh"
 #include "ED_view3d.hh"
 
-#include "BLF_api.h"
-#include "BLT_lang.h"
+#include "BLF_api.hh"
+#include "BLT_lang.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -111,7 +111,7 @@
 
 #include "GPU_context.h"
 #include "GPU_init_exit.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "COM_compositor.hh"
 

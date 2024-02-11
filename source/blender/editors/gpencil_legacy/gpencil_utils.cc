@@ -26,7 +26,7 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
@@ -41,10 +41,10 @@
 
 #include "BKE_action.h"
 #include "BKE_brush.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -3051,10 +3051,10 @@ void ED_gpencil_projected_2d_bound_box(const GP_SpaceConversion *gsc,
 
   /* Ensure the bounding box is oriented to axis. */
   if (r_max[0] < r_min[0]) {
-    SWAP(float, r_min[0], r_max[0]);
+    std::swap(r_min[0], r_max[0]);
   }
   if (r_max[1] < r_min[1]) {
-    SWAP(float, r_min[1], r_max[1]);
+    std::swap(r_min[1], r_max[1]);
   }
 }
 

@@ -17,7 +17,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -36,7 +36,7 @@
 #include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_tracking.h"
 
 #include "DEG_depsgraph.hh"
@@ -1089,28 +1089,22 @@ static int followpath_path_animate_exec(bContext *C, wmOperator *op)
   else {
     /* animate constraint's "fixed offset" */
     PropertyRNA *prop;
-    char *path;
 
     /* get RNA pointer to constraint's "offset_factor" property - to build RNA path */
     PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_FollowPathConstraint, con);
     prop = RNA_struct_find_property(&ptr, "offset_factor");
 
-    path = RNA_path_from_ID_to_property(&ptr, prop);
+    const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
 
     /* create F-Curve for constraint */
     act = blender::animrig::id_action_ensure(bmain, &ob->id);
-    fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, path, 0);
+    fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, path->c_str(), 0);
 
     /* standard vertical range - 0.0 to 1.0 */
     standardRange = 1.0f;
 
     /* enable "Use Fixed Position" so that animating this has effect */
     data->followflag |= FOLLOWPATH_STATIC;
-
-    /* path needs to be freed */
-    if (path) {
-      MEM_freeN(path);
-    }
   }
 
   /* setup dummy 'generator' modifier here to get 1-1 correspondence still working

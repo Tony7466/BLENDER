@@ -16,9 +16,9 @@
 
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "GPU_batch.h"
 #include "GPU_batch_utils.h"

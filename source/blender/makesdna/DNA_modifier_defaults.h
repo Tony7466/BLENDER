@@ -847,4 +847,53 @@
     .stroke_start_offset = 0, \
   }
 
+#define _DNA_DEFAULT_GreasePencilNoiseModifierData \
+  { \
+    .flag = GP_NOISE_FULL_STROKE | GP_NOISE_USE_RANDOM, \
+    .factor = 0.5f, \
+    .factor_strength = 0.0f, \
+    .factor_thickness = 0.0f, \
+    .factor_uvs = 0.0f, \
+    .noise_scale = 0.0f, \
+    .noise_offset = 0.0f, \
+    .step = 4, \
+    .seed = 1, \
+  }
+
+#define _DNA_DEFAULT_GreasePencilMirrorModifierData \
+  { \
+    .flag = MOD_GREASE_PENCIL_MIRROR_AXIS_X, \
+  }
+
+#define _DNA_DEFAULT_GreasePencilThickModifierData \
+  { \
+    .flag = 0, \
+    .thickness_fac = 1.0f, \
+    .thickness = 0.02, \
+  }
+
+#define _DNA_DEFAULT_GreasePencilLatticeModifierData \
+  { \
+    .object = NULL, \
+    .strength = 1.0f, \
+  }
+
+#define _DNA_DEFAULT_GreasePencilDashModifierData \
+  { \
+    .dash_offset = 0, \
+    .segments_array = NULL, \
+    .segments_num = 0, \
+    .segment_active_index = 0, \
+  }
+
+#define _DNA_DEFAULT_GreasePencilDashModifierSegment \
+  { \
+    .name = "", \
+    .dash = 2, \
+    .gap = 1, \
+    .radius = 1.0f, \
+    .opacity = 1.0f, \
+    .mat_nr = -1, \
+  }
+
 /* clang-format off */

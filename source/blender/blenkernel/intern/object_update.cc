@@ -36,7 +36,7 @@
 #include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
 #include "BKE_light.h"
@@ -48,7 +48,7 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_volume.hh"
 
 #include "MEM_guardedalloc.h"

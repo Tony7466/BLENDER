@@ -21,7 +21,7 @@
 
 #include "BLI_math_vector.hh"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 namespace blender::gpu {
 static VkImageAspectFlags to_vk_image_aspect_single_bit(const VkImageAspectFlags format,
