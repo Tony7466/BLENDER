@@ -308,6 +308,7 @@ static void sequencer_all_free_anim_ibufs(const Scene *scene,
 
 void SEQ_relations_free_all_anim_ibufs(Scene *scene, int timeline_frame)
 {
+
   Editing *ed = SEQ_editing_get(scene);
   if (ed == nullptr) {
     return;
@@ -395,17 +396,15 @@ bool SEQ_relations_render_loop_check(Sequence *seq_main, Sequence *seq)
 
 void SEQ_relations_sequence_free_anim(Sequence *seq)
 {
-  while (seq->anims.last) {
-    StripAnim *sanim = static_cast<StripAnim *>(seq->anims.last);
-
+  LISTBASE_FOREACH (StripAnim *, sanim, &seq->anims) {
     if (sanim->anim) {
-      IMB_free_anim(sanim->anim);
-      sanim->anim = nullptr;
+      IMB_anim_flush_buffers(sanim->anim);
+      // sanim->anim = nullptr;
     }
 
-    BLI_freelinkN(&seq->anims, sanim);
+    // BLI_freelinkN(&seq->anims, sanim);
   }
-  BLI_listbase_clear(&seq->anims);
+  // BLI_listbase_clear(&seq->anims);
 }
 
 void SEQ_relations_session_uid_generate(Sequence *sequence)

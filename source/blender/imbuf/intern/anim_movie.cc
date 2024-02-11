@@ -442,6 +442,39 @@ static ImBuf *avi_fetchibuf(ImBufAnim *anim, int position)
 
 #ifdef WITH_FFMPEG
 
+static void codec_context_ensure(ImBufAnim *anim)
+{
+  if (anim->pCodecCtx != nullptr) {
+    return;
+  }
+
+  AVStream *video_stream = anim->pFormatCtx->streams[anim->streamindex];
+
+  AVCodecContext *pCodecCtx = avcodec_alloc_context3(nullptr);
+  avcodec_parameters_to_context(pCodecCtx, video_stream->codecpar);
+  pCodecCtx->workaround_bugs = FF_BUG_AUTODETECT;
+
+  if (anim->pCodec->capabilities & AV_CODEC_CAP_OTHER_THREADS) {
+    pCodecCtx->thread_count = 0;
+  }
+  else {
+    pCodecCtx->thread_count = BLI_system_thread_count();
+  }
+
+  if (anim->pCodec->capabilities & AV_CODEC_CAP_FRAME_THREADS) {
+    pCodecCtx->thread_type = FF_THREAD_FRAME;
+  }
+  else if (anim->pCodec->capabilities & AV_CODEC_CAP_SLICE_THREADS) {
+    pCodecCtx->thread_type = FF_THREAD_SLICE;
+  }
+
+  anim->pCodecCtx = pCodecCtx;
+
+  if (avcodec_open2(pCodecCtx, anim->pCodec, nullptr) < 0) {
+    return;
+  }
+}
+
 static int startffmpeg(ImBufAnim *anim)
 {
   int i, video_stream_index;
@@ -1374,6 +1407,8 @@ static ImBuf *ffmpeg_fetchibuf(ImBufAnim *anim, int position, IMB_Timecode_Type 
     return nullptr;
   }
 
+  codec_context_ensure(anim);
+
   av_log(anim->pFormatCtx, AV_LOG_DEBUG, "FETCH: seek_pos=%d\n", position);
 
   ImBufAnimIndex *tc_index = IMB_anim_open_index(anim, tc);
@@ -1453,6 +1488,17 @@ static ImBuf *ffmpeg_fetchibuf(ImBufAnim *anim, int position, IMB_Timecode_Type 
   anim->cur_position = position;
 
   return cur_frame_final;
+}
+
+void IMB_anim_flush_buffers(ImBufAnim *anim)
+{
+  if (anim->pCodecCtx == nullptr) {
+    return;
+  }
+
+  // avcodec_flush_buffers(anim->pCodecCtx);
+  avcodec_free_context(&anim->pCodecCtx);
+  anim->pCodecCtx = nullptr;
 }
 
 static void free_anim_ffmpeg(ImBufAnim *anim)
@@ -1577,11 +1623,14 @@ ImBuf *IMB_anim_previewframe(ImBufAnim *anim)
   return ibuf;
 }
 
+#include "BLI_timeit.hh"
+
 ImBuf *IMB_anim_absolute(ImBufAnim *anim,
                          int position,
                          IMB_Timecode_Type tc,
                          IMB_Proxy_Size preview_size)
 {
+  SCOPED_TIMER(__func__);
   ImBuf *ibuf = nullptr;
   int filter_y;
   if (anim == nullptr) {

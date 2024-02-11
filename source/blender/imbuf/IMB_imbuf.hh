@@ -350,6 +350,8 @@ ImBuf *IMB_anim_previewframe(ImBufAnim *anim);
 
 void IMB_free_anim(ImBufAnim *anim);
 
+void IMB_anim_flush_buffers(ImBufAnim *anim);
+
 #define FILTER_MASK_NULL 0
 #define FILTER_MASK_MARGIN 1
 #define FILTER_MASK_USED 2
