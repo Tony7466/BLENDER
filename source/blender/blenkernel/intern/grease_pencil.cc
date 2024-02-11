@@ -390,10 +390,7 @@ Span<uint32_t> Drawing::triangles_offsets() const
 
 Span<uint3> Drawing::triangles() const
 {
-  const char *func = __func__;
   this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
-    MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, func);
-
     const CurvesGeometry &curves = this->strokes();
     const Span<float3> positions = curves.positions();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -418,8 +415,7 @@ Span<uint3> Drawing::triangles() const
         num_points += points.size();
       });
 
-      float(*projverts)[2] = static_cast<float(*)[2]>(
-          BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(num_points)));
+      Array<float2> projverts(num_points);
 
       int offset = 0;
       group.foreach_index([&](const int64_t curve_i) {
@@ -559,12 +555,8 @@ Span<uint3> Drawing::triangles() const
 
       triangles_offsets[group_id] = triangles_offset;
       triangles_offset += result.face.size();
-
-      BLI_memarena_clear(pf_arena);
     }
     triangles_offsets.last() = triangles_offset;
-
-    BLI_memarena_free(pf_arena);
 
     this->runtime->triangles_offsets_cache.update([&](Vector<uint32_t> &r_data) {
       r_data.resize(triangles_offsets.size());
