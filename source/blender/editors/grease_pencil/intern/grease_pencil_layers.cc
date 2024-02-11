@@ -442,19 +442,18 @@ static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
 
   Layer &active_layer = *grease_pencil.get_active_layer();
   Layer &new_layer = grease_pencil.add_layer(active_layer.name());
-  const Array<int> frame_numbers = active_layer.sorted_keys();
 
   for (auto [key, frame] : active_layer.frames().items()) {
     const int duration = frame.is_implicit_hold() ? 0 : active_layer.get_frame_duration_at(key);
-    grease_pencil.insert_blank_frame(
-        new_layer, key, duration, eBezTriple_KeyframeType(frame.type));
-  }
-
-  if (!empty_keyframes) {
-    for (const int frame_number : frame_numbers) {
-      const Drawing &drawing = *grease_pencil.get_drawing_at(active_layer, frame_number);
-      Drawing *new_drawing = grease_pencil.get_editable_drawing_at(new_layer, frame_number);
-      *new_drawing = *MEM_new<bke::greasepencil::Drawing>(__func__, drawing);
+    const int drawing_index = grease_pencil.drawings().size();
+    GreasePencilFrame *new_frame = new_layer.add_frame(key, drawing_index, duration);
+    new_frame->type = frame.type;
+    if (empty_keyframes) {
+      grease_pencil.add_empty_drawings(1);
+    }
+    else {
+      const Drawing &drawing = *grease_pencil.get_drawing_at(active_layer, key);
+      grease_pencil.add_duplicate_drawings(1, drawing);
     }
   }
 
