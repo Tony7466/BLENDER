@@ -5880,8 +5880,8 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.separator()
 
-        layout.operator("grease_pencil.set_shape_id")
-        layout.operator("grease_pencil.clear_shape_id")
+        layout.operator("grease_pencil.join_shape")
+        layout.operator("grease_pencil.separate_shape")
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):

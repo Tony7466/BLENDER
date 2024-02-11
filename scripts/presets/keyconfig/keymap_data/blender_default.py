@@ -4660,8 +4660,9 @@ def km_grease_pencil_edit_mode(params):
         ("grease_pencil.reorder", {"type": 'DOWN_ARROW', "value": 'PRESS',
          "ctrl": True, "shift": True}, {"properties": [("direction", "BOTTOM")]}),
 
-        ("grease_pencil.set_shape_id", {"type": 'P', "value": 'PRESS', "ctrl": True}, None),
-        ("grease_pencil.clear_shape_id", {"type": 'P', "value": 'PRESS', "alt": True}, None),
+        # Shape operators.
+        ("grease_pencil.join_shape", {"type": 'J', "value": 'PRESS', "shift": True}, None),
+        ("grease_pencil.separate_shape", {"type": 'P', "value": 'PRESS', "alt": True}, None),
         ("grease_pencil.select_shape", {"type": 'L', "value": 'PRESS', "shift": True}, None),
     ])
 

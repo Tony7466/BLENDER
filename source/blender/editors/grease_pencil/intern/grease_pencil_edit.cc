@@ -1737,7 +1737,7 @@ static Array<int> get_gapless_indices(const IndexRange universe, const IndexMask
   return indices_data;
 }
 
-static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
+static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -1800,15 +1800,15 @@ static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_set_shape_id(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_join_shape(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Set Shape ID";
-  ot->idname = "GREASE_PENCIL_OT_set_shape_id";
+  ot->idname = "GREASE_PENCIL_OT_join_shape";
   ot->description = "Set shape id";
 
   /* callbacks */
-  ot->exec = grease_pencil_set_shape_id_exec;
+  ot->exec = grease_pencil_join_shape_exec;
   ot->poll = editable_grease_pencil_poll;
 
   /* flags */
@@ -1821,7 +1821,7 @@ static void GREASE_PENCIL_OT_set_shape_id(wmOperatorType *ot)
 /** \name Clear Shape ID Operator
  * \{ */
 
-static int grease_pencil_clear_shape_id_exec(bContext *C, wmOperator * /*op*/)
+static int grease_pencil_separate_shape_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -1862,15 +1862,15 @@ static int grease_pencil_clear_shape_id_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_clear_shape_id(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_separate_shape(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Clear Shape ID";
-  ot->idname = "GREASE_PENCIL_OT_clear_shape_id";
+  ot->idname = "GREASE_PENCIL_OT_separate_shape";
   ot->description = "Clear shape id";
 
   /* callbacks */
-  ot->exec = grease_pencil_clear_shape_id_exec;
+  ot->exec = grease_pencil_separate_shape_exec;
   ot->poll = editable_grease_pencil_poll;
 
   /* flags */
@@ -2385,6 +2385,6 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_subdivide);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_reorder);
   WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);
-  WM_operatortype_append(GREASE_PENCIL_OT_set_shape_id);
-  WM_operatortype_append(GREASE_PENCIL_OT_clear_shape_id);
+  WM_operatortype_append(GREASE_PENCIL_OT_join_shape);
+  WM_operatortype_append(GREASE_PENCIL_OT_separate_shape);
 }
