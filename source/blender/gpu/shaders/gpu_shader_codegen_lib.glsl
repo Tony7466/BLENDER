@@ -161,7 +161,7 @@ struct ClosureUndetermined {
   ClosureType type;
   /* Additional data different for each closure type. */
   packed_vec4 data;
-}
+};
 
 ClosureUndetermined closure_new(ClosureType type)
 {
