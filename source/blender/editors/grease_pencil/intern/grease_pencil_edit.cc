@@ -1699,6 +1699,44 @@ static void GREASE_PENCIL_OT_stroke_reorder(wmOperatorType *ot)
 /** \name Set Shape ID Operator
  * \{ */
 
+static Array<int> get_gapless_indices(const IndexRange universe, const IndexMask selected)
+{
+  const int first_curve = selected.first();
+  Array<int> indices_data(universe.size());
+  MutableSpan<int> indices = indices_data.as_mutable_span();
+
+  /*
+   * Make the selected indices be in ascending order with the first indices staying at the same
+   * place.
+   *
+   * Here's a diagram:
+   *
+   *        Input
+   * 0 1 2 3 4 5 6 7 8 9
+   *       ^   ^ ^
+   *
+   * |-A-| |-B-| |--C--|
+   * 0 1 2 3 5 6 4 7 8 9
+   *       ^ ^ ^
+   *
+   * The `A` range gets filled with increasing indices starting at zero, ending at `first_curve`.
+   * The `B` range gets filled with the selected indices starting at `first_curve`.
+   * The `C` range gets filled with the unselected indices not including the `A` range.
+   */
+
+  IndexMaskMemory memory;
+  const IndexMask unselected = selected.complement(universe.drop_front(first_curve), memory);
+
+  /* Fill `A`. */
+  array_utils::fill_index_range<int>(indices.take_front(first_curve));
+  /* Fill `B`. */
+  selected.to_indices(indices.drop_front(first_curve).take_front(selected.size()));
+  /* Fill `C`. */
+  unselected.to_indices(indices.take_back(unselected.size()));
+
+  return indices_data;
+}
+
 static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
@@ -1729,9 +1767,7 @@ static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
     const int active_curve = strokes.first();
 
     index_mask::masked_fill(shape_ids.span, shape_ids.span[active_curve], strokes);
-
     shape_ids.finish();
-    info.drawing.tag_topology_changed();
 
     /* Copy curve attributes to all selected curves. */
     Set<std::string> attributes_to_skip{{"curve_type", "cyclic", "shape_id"}};
@@ -1748,6 +1784,10 @@ static int grease_pencil_set_shape_id_exec(bContext *C, wmOperator * /*op*/)
       attribute.finish();
       return true;
     });
+
+    Array<int> indices = get_gapless_indices(curves.curves_range(), strokes);
+    curves = geometry::reorder_curves_geometry(curves, indices, {});
+    info.drawing.tag_topology_changed();
 
     changed = true;
   };
