@@ -298,7 +298,6 @@ struct GlobalData {
   packed_vec2 barycentric_coords;
   packed_vec3 barycentric_dists;
   /** Ray properties (approximation). */
-
   float ray_depth;
   float ray_length;
   /** Hair time along hair length. 0 at base 1 at tip. */
@@ -310,7 +309,7 @@ struct GlobalData {
   /** Index of the strand for per strand effects. */
   int hair_strand_id;
   /** Is hair. */
-  uint8_t is_strand;
+  bool8_t is_strand;
   /** Ray type. */
   uint8_t ray_type;
 };

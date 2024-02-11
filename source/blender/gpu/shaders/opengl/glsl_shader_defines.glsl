@@ -31,6 +31,7 @@
 /* uint8_t/uchar types unsupported in GLSL. */
 #define uint8_t uint
 #define uint16_t uint
+#define bool8_t bool
 
 /* Backend Functions. */
 #define select(A, B, mask) mix(A, B, mask)
