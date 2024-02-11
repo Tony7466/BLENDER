@@ -8046,6 +8046,30 @@ def km_3d_view_tool_paint_weight_gradient(params):
 # Tool System (3D View, Grease Pencil, Paint)
 
 
+def km_grease_pencil_primitive_tool_modal_map(params):
+    items = []
+    keymap = (
+        "Primitive Tool Modal Map",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'Q', "value": 'PRESS', "any": True}, None),
+        ("PANNING", {"type": 'MIDDLEMOUSE', "value": 'ANY', "any": True}, None),
+        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
+        # ("LEFTCLICK", {"type": 'LEFTMOUSE', "value": 'ANY', "any": True}, None),
+        ("EXTRUDE", {"type": 'E', "value": 'PRESS'}, None),
+        ("GRAB", {"type": 'G', "value": 'PRESS'}, None),
+        ("ROTATE", {"type": 'R', "value": 'PRESS'}, None),
+        ("SCALE", {"type": 'S', "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+
 def km_3d_view_tool_paint_gpencil_line(params):
     if params.use_experimental_grease_pencil_version3:
         return (
@@ -8053,7 +8077,6 @@ def km_3d_view_tool_paint_gpencil_line(params):
             {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
             {"items": [
                 ("grease_pencil.primitive_line", params.tool_maybe_tweak_event,
-                # ("grease_pencil.primitive_line", params.tool_mouse,
                  {"properties": [("wait_for_input", False)]}),
                 ("grease_pencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
                  {"properties": [("wait_for_input", False)]}),
@@ -8725,6 +8748,7 @@ def generate_keymaps(params=None):
         km_sculpt_mesh_filter_modal_map(params),
         km_curve_pen_modal_map(params),
         km_node_link_modal_map(params),
+        km_grease_pencil_primitive_tool_modal_map(params),
 
         # Gizmos.
         km_generic_gizmo(params),

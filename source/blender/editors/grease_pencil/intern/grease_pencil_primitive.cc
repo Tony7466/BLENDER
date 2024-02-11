@@ -86,6 +86,17 @@ enum class InterpolationMode : bool {
   Mode3D = true,
 };
 
+enum class ModelKeyMode : int8_t {
+  CANCEL = 1,
+  CONFIRM,
+  LEFTCLICK,
+  EXTRUDE,
+  PANNING,
+  GRAB,
+  ROTATE,
+  SCALE,
+};
+
 static constexpr float UI_PRIMARY_POINT_DRAW_SIZE_PX = 8.0f;
 static constexpr float UI_SECONDARY_POINT_DRAW_SIZE_PX = 5.0f;
 static constexpr float UI_TERTIARY_POINT_DRAW_SIZE_PX = 3.0f;
@@ -119,6 +130,8 @@ struct PrimitiveTool_OpData {
   OperatorMode mode;
   float2 start_position_2d;
   int active_control_point_index;
+
+  ViewOpsData *vod;
 };
 
 static int control_points_per_segment(const PrimitiveTool_OpData &ptd)
@@ -207,8 +220,6 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
     sizes[active_index] *= 1.5;
     colors[active_index] = math::interpolate(colors[active_index], color_gizmo_a, 0.5f);
   }
-
-  return;
 }
 
 static void draw_control_points(PrimitiveTool_OpData &ptd)
@@ -643,6 +654,16 @@ static void grease_pencil_primitive_status_indicators(bContext *C, PrimitiveTool
   ED_workspace_status_text(C, status_str);
 }
 
+static void grease_pencil_primitive_update_view(bContext *C, PrimitiveTool_OpData &ptd)
+{
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(ptd.vc.obact->data);
+
+  DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, grease_pencil);
+
+  ED_region_tag_redraw(ptd.region);
+}
+
 /* Invoke handler: Initialize the operator */
 static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -703,6 +724,26 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   pttehte.placement_ = placement_;
 
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmKeyMap *keymap = WM_keymap_active(wm, op->type->modalkeymap);
+  const wmKeyMapItem *kmi_passthrough = nullptr;
+  // printf("\n");
+  LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &keymap->items) {
+    // printf("kmi->propvalue %i \n", kmi->propvalue);
+    if (kmi->flag & KMI_INACTIVE) {
+      continue;
+    }
+
+    // if (kmi->propvalue == TFM_MODAL_PASSTHROUGH_NAVIGATE) {
+    // if (kmi->propvalue == int(ModelKeyMode::PANNING)) {
+    //   kmi_passthrough = kmi;
+    //   break;
+    // }
+  }
+  // printf("\n");
+
+  pttehte.vod = ED_view3d_navigation_init(C, kmi_passthrough);
+
   pttehte.subdivision = RNA_int_get(op->ptr, "subdivision");
   pttehte.type = PrimitiveType(RNA_enum_get(op->ptr, "type"));
   pttehte.interpolate_mode = InterpolationMode(RNA_boolean_get(op->ptr, "interpolate_mode"));
@@ -761,10 +802,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   grease_pencil_primitive_init_curves(*ptd);
 
-  DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, grease_pencil);
-
-  ED_region_tag_redraw(pttehte.region);
+  grease_pencil_primitive_update_view(C, pttehte);
 
   pttehte.draw_handle = ED_region_draw_cb_activate(
       pttehte.region->type, grease_pencil_primitive_draw, ptd, REGION_DRAW_POST_VIEW);
@@ -786,17 +824,14 @@ static void grease_pencil_primitive_exit(bContext *C, wmOperator *op)
   /* Clear status message area. */
   ED_workspace_status_text(C, nullptr);
 
-  ED_region_tag_redraw(ptd->region);
-
   WM_cursor_modal_restore(ptd->vc.win);
 
   /* Deactivate the extra drawing stuff in 3D-View. */
   ED_region_draw_cb_exit(ptd->region->type, ptd->draw_handle);
 
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(ptd->vc.obact->data);
+  ED_view3d_navigation_free(C, ptd->vod);
 
-  DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, grease_pencil);
+  grease_pencil_primitive_update_view(C, *ptd);
 
   MEM_delete<PrimitiveTool_OpData>(ptd);
   /* clear pointer */
@@ -1046,28 +1081,106 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
   PrimitiveTool_OpData &ptd = *((PrimitiveTool_OpData *)op->customdata);
   ptd.projection = ED_view3d_ob_project_mat_get(ptd.vc.rv3d, ptd.vc.obact);
 
+  const float3 pos = ptd.control_points.first();
+  if (ED_view3d_navigation_do(C, ptd.vod, event, pos)) {
+    if (ptd.vc.rv3d->rflag & RV3D_NAVIGATING) {
+
+      grease_pencil_primitive_update_curves(ptd);
+      grease_pencil_primitive_update_view(C, ptd);
+
+      return OPERATOR_RUNNING_MODAL;
+    }
+  }
+
   // printf("\naaaaaaaaaaaaaaaaaa-----------aaaaaaaaaaaaaaaaaa\n\n");
 
   // WM_event_print(event);
 
   grease_pencil_primitive_cursor_update(C, ptd, event);
 
+  if (event->type == EVT_MODAL_MAP) {
+    switch (event->val) {
+      case int(ModelKeyMode::CANCEL): {
+        grease_pencil_primitive_undo_curves(ptd);
+        grease_pencil_primitive_exit(C, op);
+
+        return OPERATOR_CANCELLED;
+      }
+      case int(ModelKeyMode::CONFIRM): {
+        grease_pencil_primitive_exit(C, op);
+
+        return OPERATOR_FINISHED;
+      }
+      case int(ModelKeyMode::EXTRUDE): {
+        if (ptd.mode == OperatorMode::IDLE &&
+            ELEM(ptd.type, PrimitiveType::LINE, PrimitiveType::ARC, PrimitiveType::CURVE))
+        {
+          ptd.mode = OperatorMode::EXTRUDING;
+          ptd.start_position_2d = ED_view3d_project_float_v2_m4(
+              ptd.vc.region, ptd.control_points.last(), ptd.projection);
+          const float3 pos = ptd.placement_.project(ptd.start_position_2d);
+
+          const int number_control_points = control_points_per_segment(ptd);
+          ptd.control_points.append_n_times(pos, number_control_points);
+          ptd.active_control_point_index = -1;
+          ptd.segments++;
+          break;
+        }
+
+        if (ptd.type == PrimitiveType::POLYLINE &&
+            ELEM(ptd.mode, OperatorMode::IDLE, OperatorMode::EXTRUDING) && event->val == KM_PRESS)
+        {
+          ptd.mode = OperatorMode::EXTRUDING;
+          ptd.start_position_2d = ED_view3d_project_float_v2_m4(
+              ptd.vc.region, ptd.control_points.last(), ptd.projection);
+          ptd.control_points.append(ptd.placement_.project(float2(event->mval)));
+          ptd.active_control_point_index = -1;
+          ptd.segments++;
+
+          break;
+        }
+      }
+      // case int(ModelKeyMode::LEFTCLICK): {
+      //   printf("LEFTCLICK\n");
+      //   break;
+      // }
+      case int(ModelKeyMode::GRAB): {
+        if (ptd.mode == OperatorMode::IDLE) {
+          ptd.start_position_2d = float2(event->mval);
+          ptd.mode = OperatorMode::DRAG_ALL;
+
+          ptd.temp_control_points.resize(ptd.control_points.size());
+          array_utils::copy(ptd.control_points.as_span(),
+                            ptd.temp_control_points.as_mutable_span());
+        }
+        break;
+      }
+      case int(ModelKeyMode::ROTATE): {
+        if (ptd.mode == OperatorMode::IDLE) {
+          ptd.start_position_2d = float2(event->mval);
+          ptd.mode = OperatorMode::ROTATE_ALL;
+
+          ptd.temp_control_points.resize(ptd.control_points.size());
+          array_utils::copy(ptd.control_points.as_span(),
+                            ptd.temp_control_points.as_mutable_span());
+        }
+        break;
+      }
+      case int(ModelKeyMode::SCALE): {
+        if (ptd.mode == OperatorMode::IDLE) {
+          ptd.start_position_2d = float2(event->mval);
+          ptd.mode = OperatorMode::SCALE_ALL;
+
+          ptd.temp_control_points.resize(ptd.control_points.size());
+          array_utils::copy(ptd.control_points.as_span(),
+                            ptd.temp_control_points.as_mutable_span());
+        }
+        break;
+      }
+    }
+  }
+
   switch (event->type) {
-    case EVT_ESCKEY:
-    case RIGHTMOUSE: {
-      grease_pencil_primitive_undo_curves(ptd);
-      grease_pencil_primitive_exit(C, op);
-
-      return OPERATOR_CANCELLED;
-    }
-    case EVT_RETKEY: {
-      grease_pencil_primitive_exit(C, op);
-
-      return OPERATOR_FINISHED;
-    }
-    case MOUSEMOVE: {
-      break;
-    }
     case LEFTMOUSE: {
       if (event->val == KM_RELEASE && ELEM(ptd.mode,
                                            OperatorMode::GRAB,
@@ -1131,82 +1244,23 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
 
       break;
     }
-    case EVT_PADPLUSKEY:
-    case WHEELUPMOUSE: {
-      if (event->val != KM_RELEASE) {
-        ptd.subdivision++;
-        RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
-      }
-      break;
-    }
-    case EVT_PADMINUS:
-    case WHEELDOWNMOUSE: {
-      if (event->val != KM_RELEASE) {
-        ptd.subdivision--;
-        ptd.subdivision = std::max(ptd.subdivision, 0);
-        RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
-      }
-      break;
-    }
-    case EVT_GKEY: {
-      if (ptd.mode == OperatorMode::IDLE) {
-        ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::DRAG_ALL;
-
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
-      }
-      break;
-    }
-    case EVT_RKEY: {
-      if (ptd.mode == OperatorMode::IDLE) {
-        ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::ROTATE_ALL;
-
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
-      }
-      break;
-    }
-    case EVT_SKEY: {
-      if (ptd.mode == OperatorMode::IDLE) {
-        ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::SCALE_ALL;
-
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
-      }
-      break;
-    }
-    case EVT_EKEY: {
-      if (ptd.mode == OperatorMode::IDLE &&
-          ELEM(ptd.type, PrimitiveType::LINE, PrimitiveType::ARC, PrimitiveType::CURVE))
-      {
-        ptd.mode = OperatorMode::EXTRUDING;
-        ptd.start_position_2d = ED_view3d_project_float_v2_m4(
-            ptd.vc.region, ptd.control_points.last(), ptd.projection);
-        const float3 pos = ptd.placement_.project(ptd.start_position_2d);
-
-        const int number_control_points = control_points_per_segment(ptd);
-        ptd.control_points.append_n_times(pos, number_control_points);
-        ptd.active_control_point_index = -1;
-        ptd.segments++;
-        break;
-      }
-
-      if (ptd.type == PrimitiveType::POLYLINE &&
-          ELEM(ptd.mode, OperatorMode::IDLE, OperatorMode::EXTRUDING) && event->val == KM_PRESS)
-      {
-        ptd.mode = OperatorMode::EXTRUDING;
-        ptd.start_position_2d = ED_view3d_project_float_v2_m4(
-            ptd.vc.region, ptd.control_points.last(), ptd.projection);
-        ptd.control_points.append(ptd.placement_.project(float2(event->mval)));
-        ptd.active_control_point_index = -1;
-        ptd.segments++;
-
-        break;
-      }
-    }
+      // case EVT_PADPLUSKEY:
+      // case WHEELUPMOUSE: {
+      //   if (event->val != KM_RELEASE) {
+      //     ptd.subdivision++;
+      //     RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
+      //   }
+      //   break;
+      // }
+      // case EVT_PADMINUS:
+      // case WHEELDOWNMOUSE: {
+      //   if (event->val != KM_RELEASE) {
+      //     ptd.subdivision--;
+      //     ptd.subdivision = std::max(ptd.subdivision, 0);
+      //     RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
+      //   }
+      //   break;
+      // }
   }
 
   /* Updating is done every event not just MOUSEMOVE. */
@@ -1244,12 +1298,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
   /* Updates indicator in header. */
   grease_pencil_primitive_status_indicators(C, ptd);
 
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(ptd.vc.obact->data);
-
-  DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, grease_pencil);
-
-  ED_region_tag_redraw(ptd.region);
+  grease_pencil_primitive_update_view(C, ptd);
 
   /* Still running... */
   return OPERATOR_RUNNING_MODAL;
@@ -1385,4 +1434,39 @@ void ED_operatortypes_grease_pencil_primitives()
   WM_operatortype_append(GREASE_PENCIL_OT_primitive_curve);
   WM_operatortype_append(GREASE_PENCIL_OT_primitive_box);
   WM_operatortype_append(GREASE_PENCIL_OT_primitive_circle);
+}
+
+// wmKeyMap *knifetool_modal_keymap(wmKeyConfig *keyconf)
+wmKeyMap *ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
+{
+  using namespace blender::ed::greasepencil;
+  static const EnumPropertyItem modal_items[] = {
+      {int(ModelKeyMode::CANCEL), "CANCEL", 0, "Cancel", ""},
+      {int(ModelKeyMode::CONFIRM), "CONFIRM", 0, "Confirm", ""},
+      {int(ModelKeyMode::PANNING), "PANNING", 0, "Panning", ""},
+      {int(ModelKeyMode::LEFTCLICK), "LEFTCLICK", 0, "Left Click", ""},
+      {int(ModelKeyMode::EXTRUDE), "EXTRUDE", 0, "Extrude", ""},
+      {int(ModelKeyMode::GRAB), "GRAB", 0, "Grab", ""},
+      {int(ModelKeyMode::ROTATE), "ROTATE", 0, "Rotate", ""},
+      {int(ModelKeyMode::SCALE), "SCALE", 0, "Scale", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  wmKeyMap *keymap = WM_modalkeymap_find(keyconf, "Primitive Tool Modal Map");
+
+  /* This function is called for each space-type, only needs to add map once. */
+  if (keymap && keymap->modal_items) {
+    return nullptr;
+  }
+
+  keymap = WM_modalkeymap_ensure(keyconf, "Primitive Tool Modal Map", modal_items);
+
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_line");
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_polyline");
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_arc");
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_curve");
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_box");
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_circle");
+
+  return keymap;
 }

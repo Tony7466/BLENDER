@@ -128,4 +128,5 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
   using namespace blender::ed::greasepencil;
   keymap_grease_pencil_edit_mode(keyconf);
   keymap_grease_pencil_paint_mode(keyconf);
+  ED_primitivetool_modal_keymap(keyconf);
 }
