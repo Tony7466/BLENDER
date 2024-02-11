@@ -8,7 +8,7 @@
 
 #include "BLI_span.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -16,8 +16,8 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh_mirror.hh"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
@@ -145,7 +145,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
   MirrorModifierData *mmd = (MirrorModifierData *)ptr->data;
   bool has_bisect = (mmd->flag &
-                     (MOD_MIR_BISECT_AXIS_X | MOD_MIR_BISECT_AXIS_X | MOD_MIR_BISECT_AXIS_X));
+                     (MOD_MIR_BISECT_AXIS_X | MOD_MIR_BISECT_AXIS_Y | MOD_MIR_BISECT_AXIS_Z));
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
@@ -270,4 +270,5 @@ ModifierTypeInfo modifierType_Mirror = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

@@ -345,7 +345,8 @@ UVEdge *UVIsland::lookup(const UVEdge &edge)
   for (UVEdge *e : found_vertex->uv_edges) {
     UVVertex *other_vertex = e->get_other_uv_vertex(found_vertex->vertex);
     if (other_vertex->vertex == edge.vertices[1]->vertex &&
-        other_vertex->uv == edge.vertices[1]->uv) {
+        other_vertex->uv == edge.vertices[1]->uv)
+    {
       return e;
     }
   }
@@ -1185,7 +1186,7 @@ bool UVBorder::is_ccw() const
   copy_v2_v2(poly[0], uv_vertex1->uv);
   copy_v2_v2(poly[1], uv_vertex2->uv);
   copy_v2_v2(poly[2], uv_vertex3->uv);
-  const bool ccw = cross_poly_v2(poly, 3) < 0.0;
+  const bool ccw = cross_poly_v2(poly, 3) > 0.0;
   return ccw;
 }
 

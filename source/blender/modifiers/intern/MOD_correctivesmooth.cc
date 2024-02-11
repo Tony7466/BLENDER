@@ -13,7 +13,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -25,9 +25,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_screen.hh"
@@ -48,9 +48,9 @@
 
 // #define DEBUG_TIME
 
-#include "PIL_time.h"
+#include "BLI_time.h"
 #ifdef DEBUG_TIME
-#  include "PIL_time_utildefines.h"
+#  include "BLI_time_utildefines.h"
 
 #endif
 
@@ -610,7 +610,8 @@ static void correctivesmooth_modifier_do(ModifierData *md,
   }
 
   if ((csmd->rest_source == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) &&
-      (csmd->bind_coords == nullptr)) {
+      (csmd->bind_coords == nullptr))
+  {
     BKE_modifier_set_error(ob, md, "Bind data required");
     goto error;
   }
@@ -857,4 +858,5 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /*panel_register*/ panel_register,
     /*blend_write*/ blend_write,
     /*blend_read*/ blend_read,
+    /*foreach_cache*/ nullptr,
 };

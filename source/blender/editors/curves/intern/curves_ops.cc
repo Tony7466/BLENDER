@@ -18,7 +18,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ED_curves.hh"
 #include "ED_object.hh"
@@ -34,8 +34,8 @@
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
@@ -43,7 +43,7 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -1332,6 +1332,7 @@ void ED_operatortypes_curves()
   WM_operatortype_append(CURVES_OT_convert_to_particle_system);
   WM_operatortype_append(CURVES_OT_convert_from_particle_system);
   WM_operatortype_append(CURVES_OT_draw);
+  WM_operatortype_append(CURVES_OT_extrude);
   WM_operatortype_append(CURVES_OT_snap_curves_to_surface);
   WM_operatortype_append(CURVES_OT_set_selection_domain);
   WM_operatortype_append(CURVES_OT_select_all);
@@ -1357,6 +1358,16 @@ void ED_operatormacros_curves()
                                     "Make copies of selected elements and move them",
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
   WM_operatortype_macro_define(ot, "CURVES_OT_duplicate");
+  otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
+  RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
+  RNA_boolean_set(otmacro->ptr, "mirror", false);
+
+  /* Extrude + Move */
+  ot = WM_operatortype_append_macro("CURVES_OT_extrude_move",
+                                    "Extrude Curve and Move",
+                                    "Extrude curve and move result",
+                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  WM_operatortype_macro_define(ot, "CURVES_OT_extrude");
   otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
   RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
   RNA_boolean_set(otmacro->ptr, "mirror", false);

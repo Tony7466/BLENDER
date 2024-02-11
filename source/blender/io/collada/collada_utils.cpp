@@ -37,17 +37,17 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
-#include "BKE_key.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_global.hh"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "ANIM_bone_collections.hh"
 
@@ -226,10 +226,10 @@ static void bc_add_armature_collections(COLLADAFW::Node *node,
   for (const std::string &name : collection_names) {
     BoneCollection *bcoll = ANIM_armature_bonecoll_new(arm, name.c_str());
     if (visible_names_set.find(name) == visible_names_set.end()) {
-      ANIM_bonecoll_hide(bcoll);
+      ANIM_bonecoll_hide(arm, bcoll);
     }
     else {
-      ANIM_bonecoll_show(bcoll);
+      ANIM_bonecoll_show(arm, bcoll);
     }
   }
 

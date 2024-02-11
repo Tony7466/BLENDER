@@ -215,6 +215,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeDeleteGeometry")
         node_add_menu.add_node_type(layout, "GeometryNodeDuplicateElements")
         node_add_menu.add_node_type(layout, "GeometryNodeMergeByDistance")
+        node_add_menu.add_node_type(layout, "GeometryNodeSortElements")
         node_add_menu.add_node_type(layout, "GeometryNodeTransform")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeSeparateComponents")
@@ -541,12 +542,23 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         layout.menu("NODE_MT_category_GEO_UTILITIES_FIELD")
         layout.menu("NODE_MT_category_GEO_UTILITIES_MATH")
         layout.menu("NODE_MT_category_GEO_UTILITIES_ROTATION")
+        layout.menu("NODE_MT_category_GEO_UTILITIES_DEPRECATED")
         layout.separator()
+        node_add_menu.add_node_type(layout, "GeometryNodeIndexSwitch")
+        node_add_menu.add_node_type(layout, "GeometryNodeMenuSwitch")
         node_add_menu.add_node_type(layout, "FunctionNodeRandomValue")
         node_add_menu.add_repeat_zone(layout, label="Repeat Zone")
         node_add_menu.add_node_type(layout, "GeometryNodeSwitch")
-        node_add_menu.add_node_type(layout, "GeometryNodeIndexSwitch")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+
+
+class NODE_MT_category_GEO_UTILITIES_DEPRECATED(Menu):
+    bl_idname = "NODE_MT_category_GEO_UTILITIES_DEPRECATED"
+    bl_label = "Deprecated"
+
+    def draw(self, context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "FunctionNodeRotateEuler")
 
 
 class NODE_MT_category_GEO_UTILITIES_FIELD(Menu):
@@ -571,7 +583,7 @@ class NODE_MT_category_GEO_UTILITIES_ROTATION(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeAxisAngleToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeEulerToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeInvertRotation")
-        node_add_menu.add_node_type(layout, "FunctionNodeRotateEuler")
+        node_add_menu.add_node_type(layout, "FunctionNodeRotateRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeRotateVector")
         node_add_menu.add_node_type(layout, "FunctionNodeRotationToAxisAngle")
         node_add_menu.add_node_type(layout, "FunctionNodeRotationToEuler")
@@ -767,6 +779,7 @@ classes = (
     NODE_MT_category_GEO_UTILITIES_FIELD,
     NODE_MT_category_GEO_UTILITIES_MATH,
     NODE_MT_category_GEO_UTILITIES_ROTATION,
+    NODE_MT_category_GEO_UTILITIES_DEPRECATED,
     NODE_MT_category_GEO_GROUP,
 )
 

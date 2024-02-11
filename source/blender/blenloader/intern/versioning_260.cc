@@ -34,6 +34,7 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_sdna_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
@@ -49,7 +50,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_anim_visualization.h"
 #include "BKE_customdata.hh"
@@ -62,7 +63,7 @@
 #include "BKE_node_tree_update.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_text.h" /* for txt_extended_ascii_as_utf8 */
 #include "BKE_texture.h"
@@ -76,13 +77,13 @@
 #  include "BKE_writeffmpeg.hh"
 #endif
 
-#include "IMB_imbuf.h" /* for proxy / time-code versioning stuff. */
+#include "IMB_imbuf.hh" /* for proxy / time-code versioning stuff. */
 
 #include "NOD_common.h"
 #include "NOD_composite.hh"
 #include "NOD_texture.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "readfile.hh"
 
@@ -359,7 +360,7 @@ static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *mesh)
     if (layer->type == CD_PROP_BYTE_COLOR) {
       MLoopCol *mloopcol = static_cast<MLoopCol *>(layer->data);
       for (int i = 0; i < mesh->corners_num; i++, mloopcol++) {
-        SWAP(uchar, mloopcol->r, mloopcol->b);
+        std::swap(mloopcol->r, mloopcol->b);
       }
     }
   }
@@ -2824,10 +2825,12 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     if (!DNA_struct_member_exists(
-            fd->filesdna, "MovieTrackingPlaneTrack", "float", "image_opacity")) {
+            fd->filesdna, "MovieTrackingPlaneTrack", "float", "image_opacity"))
+    {
       LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
         LISTBASE_FOREACH (
-            MovieTrackingPlaneTrack *, plane_track, &clip->tracking.plane_tracks_legacy) {
+            MovieTrackingPlaneTrack *, plane_track, &clip->tracking.plane_tracks_legacy)
+        {
           plane_track->image_opacity = 1.0f;
         }
       }

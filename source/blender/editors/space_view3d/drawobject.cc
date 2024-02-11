@@ -14,7 +14,7 @@
 #include "BKE_DerivedMesh.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_object.hh"
@@ -31,7 +31,7 @@
 
 #include "UI_resources.hh"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "view3d_intern.h" /* bad level include */
 

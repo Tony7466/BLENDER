@@ -20,8 +20,8 @@
 #include "BKE_fcurve.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_key.h"
-#include "BKE_layer.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
 #include "BKE_mask.h"
 #include "BKE_nla.h"
 
@@ -795,7 +795,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
         if (use_duplicated) {
           /* Also count for duplicated frames. */
           for (const auto [frame_number, frame] :
-               layer->runtime->trans_data_.temp_frames_buffer.items()) {
+               layer->runtime->trans_data_.temp_frames_buffer.items())
+          {
             grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
           }
         }

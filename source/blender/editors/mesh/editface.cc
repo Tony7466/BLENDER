@@ -17,8 +17,8 @@
 #include "BLI_task.hh"
 #include "BLI_vector_set.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -27,7 +27,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
@@ -256,7 +256,8 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
         }
 
         for (const int inner_edge :
-             face_edges.slice(poly_loop_index, face_edges.size() - poly_loop_index)) {
+             face_edges.slice(poly_loop_index, face_edges.size() - poly_loop_index))
+        {
           if (outer_edge == inner_edge) {
             continue;
           }

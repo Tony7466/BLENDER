@@ -24,14 +24,14 @@
 #include "BLI_string.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -39,8 +39,8 @@
 #include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 
 #include "DEG_depsgraph.hh"
@@ -50,9 +50,9 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -687,7 +687,8 @@ static bool bake_objects_check(Main *bmain,
 
     LISTBASE_FOREACH (CollectionPointerLink *, link, selected_objects) {
       if (!bake_object_check(
-              scene, view_layer, static_cast<Object *>(link->ptr.data), target, reports)) {
+              scene, view_layer, static_cast<Object *>(link->ptr.data), target, reports))
+      {
         return false;
       }
     }
@@ -1739,7 +1740,8 @@ static int bake(const BakeAPIRender *bkr,
   else {
     /* save the results */
     if (bake_targets_output(
-            bkr, &targets, ob_low, ob_low_eval, me_low_eval, pixel_array_low, reports)) {
+            bkr, &targets, ob_low, ob_low_eval, me_low_eval, pixel_array_low, reports))
+    {
       op_result = OPERATOR_FINISHED;
     }
     else {

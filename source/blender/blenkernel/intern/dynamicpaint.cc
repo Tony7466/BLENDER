@@ -22,7 +22,7 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -40,17 +40,17 @@
 
 #include "BKE_armature.hh"
 #include "BKE_bvhutils.hh" /* bvh tree */
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_collision.h"
 #include "BKE_colorband.hh"
 #include "BKE_constraint.h"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_dynamicpaint.h"
 #include "BKE_effect.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -60,14 +60,14 @@
 #include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 /* for image output */
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "RE_texture.h"
 
@@ -79,7 +79,7 @@ using blender::int3;
 
 /* could enable at some point but for now there are far too many conversions */
 #ifdef __GNUC__
-//#  pragma GCC diagnostic ignored "-Wdouble-promotion"
+// #  pragma GCC diagnostic ignored "-Wdouble-promotion"
 #endif
 
 static CLG_LogRef LOG = {"bke.dynamicpaint"};
@@ -2121,7 +2121,8 @@ static void dynamicPaint_frameUpdate(
 
       /* image sequences are handled by bake operator */
       if ((surface->format == MOD_DPAINT_SURFACE_F_IMAGESEQ) ||
-          !(surface->flags & MOD_DPAINT_ACTIVE)) {
+          !(surface->flags & MOD_DPAINT_ACTIVE))
+      {
         continue;
       }
 
@@ -3024,7 +3025,8 @@ int dynamicPaint_createUVSurface(Scene *scene,
 
                 if (n_target >= 0 && n_target != index) {
                   if (!dynamicPaint_pointHasNeighbor(
-                          ed, final_index[index], final_index[n_target])) {
+                          ed, final_index[index], final_index[n_target]))
+                  {
                     ed->n_target[n_pos] = final_index[n_target];
                     ed->n_num[final_index[index]]++;
                     n_pos++;
@@ -4770,7 +4772,8 @@ static void dynamic_paint_paint_single_point_cb_ex(void *__restrict userdata,
 
     if (surface->type == MOD_DPAINT_SURFACE_T_PAINT) {
       if (brush->proximity_falloff == MOD_DPAINT_PRFALL_RAMP &&
-          !(brush->flags & MOD_DPAINT_RAMP_ALPHA)) {
+          !(brush->flags & MOD_DPAINT_RAMP_ALPHA))
+      {
         paintColor[0] = colorband[0];
         paintColor[1] = colorband[1];
         paintColor[2] = colorband[2];

@@ -85,7 +85,8 @@ static void add_instances_from_component(
   const int select_len = selection.index_range().size();
   dst_component.resize(start_len + select_len);
 
-  MutableSpan<int> dst_handles = dst_component.reference_handles().slice(start_len, select_len);
+  MutableSpan<int> dst_handles = dst_component.reference_handles_for_write().slice(start_len,
+                                                                                   select_len);
   MutableSpan<float4x4> dst_transforms = dst_component.transforms().slice(start_len, select_len);
 
   const VArraySpan positions = *src_attributes.lookup<float3>("position");
@@ -167,7 +168,8 @@ static void add_instances_from_component(
 
     if (!dst_attributes.contains(id)) {
       if (src.varray.size() == dst_component.instances_num() && src.sharing_info &&
-          src.varray.is_span()) {
+          src.varray.is_span())
+      {
         const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                             *src.sharing_info);
         dst_attributes.add(id, AttrDomain::Instance, data_type, init);
@@ -212,6 +214,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                    propagation_info,
                                                    attributes_to_propagate);
     attributes_to_propagate.remove("position");
+    attributes_to_propagate.remove(".reference_index");
 
     for (const GeometryComponent::Type type : types) {
       if (geometry_set.has(type)) {
