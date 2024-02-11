@@ -41,7 +41,6 @@ static void node_composit_init_huecorrect(bNodeTree * /*ntree*/, bNode *node)
   for (int c = 0; c < 3; c++) {
     CurveMap *cuma = &cumapping->cm[c];
     BKE_curvemap_reset(cuma, &cumapping->clipr, cumapping->preset, CURVEMAP_SLOPE_POSITIVE);
-    BKE_curvemap_set_wrapping(cuma, true);
   }
 
   /* default to showing Saturation */

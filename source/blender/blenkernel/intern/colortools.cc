@@ -274,9 +274,9 @@ CurveMapPoint *BKE_curvemap_insert(CurveMap *cuma, float x, float y)
   return newcmp;
 }
 
-void BKE_curvemap_set_wrapping(CurveMap *cuma, bool use_wrapping)
+void BKE_curvemap_set_wrapping(CurveMapping *cumapping, bool use_wrapping)
 {
-  cuma->use_wrapping = use_wrapping;
+  cumapping->use_wrapping = use_wrapping;
 }
 
 void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope)
@@ -666,7 +666,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   curve offset by the table range. The handles of these points are calculated, as if they were
   between the last and first real points.
   */
-  const bool use_wrapping = cuma->use_wrapping;
+  const bool use_wrapping = cumap->use_wrapping;
 
   if (cuma->curve == nullptr) {
     return;

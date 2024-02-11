@@ -4426,7 +4426,7 @@ static uiBlock *curvemap_tools_func(
                      "");
   }
 
-  if (show_extend) {
+  if (show_extend && !cumap->use_wrapping) {
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT_MENU,
                      1,
@@ -4563,6 +4563,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
                                     bool brush,
                                     bool neg_slope,
                                     bool tone,
+                                    bool use_wrapping,
                                     RNAUpdateCb *cb)
 {
   CurveMapping *cumap = static_cast<CurveMapping *>(ptr->data);
@@ -4574,6 +4575,10 @@ static void curvemap_buttons_layout(uiLayout *layout,
   uiBlock *block = uiLayoutGetBlock(layout);
 
   UI_block_emboss_set(block, UI_EMBOSS);
+
+  if (use_wrapping) {
+    BKE_curvemap_set_wrapping(cumap, true);
+  }
 
   if (tone) {
     uiLayout *split = uiLayoutSplit(layout, 0.0f, false);
@@ -4934,7 +4939,8 @@ void uiTemplateCurveMapping(uiLayout *layout,
                             bool levels,
                             bool brush,
                             bool neg_slope,
-                            bool tone)
+                            bool tone,
+                            bool use_wrapping)
 {
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
   uiBlock *block = uiLayoutGetBlock(layout);
@@ -4961,7 +4967,7 @@ void uiTemplateCurveMapping(uiLayout *layout,
   ID *id = cptr.owner_id;
   UI_block_lock_set(block, (id && ID_IS_LINKED(id)), ERROR_LIBDATA_MESSAGE);
 
-  curvemap_buttons_layout(layout, &cptr, type, levels, brush, neg_slope, tone, cb);
+  curvemap_buttons_layout(layout, &cptr, type, levels, brush, neg_slope, tone, use_wrapping, cb);
 
   UI_block_lock_clear(block);
 
@@ -6802,7 +6808,7 @@ void uiTemplateColormanagedViewSettings(uiLayout *layout,
   uiItemR(col, &view_transform_ptr, "use_curve_mapping", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (view_settings->flag & COLORMANAGE_VIEW_USE_CURVES) {
     uiTemplateCurveMapping(
-        col, &view_transform_ptr, "curve_mapping", 'c', true, false, false, false);
+        col, &view_transform_ptr, "curve_mapping", 'c', true, false, false, false, false);
   }
 }
 

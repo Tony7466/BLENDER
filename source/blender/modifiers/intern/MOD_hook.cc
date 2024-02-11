@@ -506,7 +506,7 @@ static void falloff_panel_draw(const bContext * /*C*/, Panel *panel)
   uiItemR(layout, ptr, "use_falloff_uniform", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_enum_get(ptr, "falloff_type") == eWarp_Falloff_Curve) {
-    uiTemplateCurveMapping(layout, ptr, "falloff_curve", 0, false, false, false, false);
+    uiTemplateCurveMapping(layout, ptr, "falloff_curve", 0, false, false, false, false, false);
   }
 }
 

@@ -2647,7 +2647,7 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
                     elif mod.type == 'CURVES':
                         box.template_curve_mapping(mod, "curve_mapping", type='COLOR', show_tone=True)
                     elif mod.type == 'HUE_CORRECT':
-                        box.template_curve_mapping(mod, "curve_mapping", type='HUE')
+                        box.template_curve_mapping(mod, "curve_mapping", type='HUE', use_wrapping=True)
                     elif mod.type == 'BRIGHT_CONTRAST':
                         col = box.column()
                         col.prop(mod, "bright")
