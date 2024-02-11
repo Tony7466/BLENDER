@@ -277,8 +277,7 @@ void select_frames_region(KeyframeEditData *ked,
       }
       else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
         if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data),
-                                        pt))
-        {
+                                        pt)) {
           select_frame(frame, select_mode);
         }
       }
@@ -523,9 +522,10 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
       frames_to_delete.append(next);
     }
 
-    for (const FramesMapKey frame : frames_to_delete) {
-      layer->remove_frame(frame);
-    }
+    grease_pencil.remove_frames(*layer, frames_to_delete);
+    // for (const FramesMapKey frame : frames_to_delete) {
+    //   layer->remove_frame(frame);
+    // }
 
     changed = true;
   }
