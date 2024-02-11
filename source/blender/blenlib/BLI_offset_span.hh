@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BLI_random_access_iterator_util.hh"
 #include "BLI_span.hh"
 
 namespace blender {
@@ -70,7 +71,7 @@ template<typename T, typename BaseT> class OffsetSpan {
     return {offset_, data_.slice(start, size)};
   }
 
-  class Iterator {
+  class Iterator : public iterator::RandomAccessIteratorMixin<Iterator> {
    private:
     T offset_;
     const BaseT *data_;
@@ -78,21 +79,19 @@ template<typename T, typename BaseT> class OffsetSpan {
    public:
     Iterator(const T offset, const BaseT *data) : offset_(offset), data_(data) {}
 
-    Iterator &operator++()
-    {
-      data_++;
-      return *this;
-    }
-
     T operator*() const
     {
       return T(*data_) + offset_;
     }
 
-    friend bool operator!=(const Iterator &a, const Iterator &b)
+    const BaseT *&get_property()
     {
-      BLI_assert(a.offset_ == b.offset_);
-      return a.data_ != b.data_;
+      return data_;
+    }
+
+    const BaseT *const &get_property() const
+    {
+      return data_;
     }
   };
 
