@@ -388,6 +388,97 @@ Span<uint32_t> Drawing::triangles_offsets() const
   return this->runtime->triangles_offsets_cache.data().as_span();
 }
 
+static bool check_valid_curves(const CurvesGeometry &curves,
+                               Span<float2> projverts,
+                               const IndexMask group)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+
+  int offset = 0;
+  bool is_invalid = false;
+  /* Check if self intersect. */
+  group.foreach_index([&](const int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    for (const int e2_id : points.index_range()) {
+      for (const int e1_id : points.index_range()) {
+        if (e2_id >= e1_id) {
+          continue;
+        }
+        const int p1 = e1_id;
+        const int p2 = (e1_id + 1) % points.size();
+        const int p3 = e2_id;
+        const int p4 = (e2_id + 1) % points.size();
+        if (p1 == p4) {
+          continue;
+        }
+        if (p2 == p3) {
+          continue;
+        }
+
+        is_invalid |= isect_seg_seg_v2_simple(projverts[offset + p1],
+                                              projverts[offset + p2],
+                                              projverts[offset + p3],
+                                              projverts[offset + p4]);
+        if (is_invalid) {
+          return;
+        }
+      }
+    }
+
+    offset += points.size();
+  });
+
+  if (is_invalid) {
+    return false;
+  }
+
+  int offset1 = 0;
+  /* Check if other intersect. */
+  group.foreach_index([&](const int64_t curve_i1, const int64_t pos1) {
+    const IndexRange points1 = points_by_curve[curve_i1];
+    if (is_invalid) {
+      return;
+    }
+
+    int offset2 = 0;
+    group.foreach_index([&](const int64_t curve_i2, const int64_t pos2) {
+      if (is_invalid) {
+        return;
+      }
+      const IndexRange points2 = points_by_curve[curve_i2];
+
+      if (pos2 >= pos1) {
+        offset2 += points2.size();
+        return;
+      }
+      for (const int e1_id : points1.index_range()) {
+        for (const int e2_id : points2.index_range()) {
+          const int p11 = e1_id;
+          const int p12 = (e1_id + 1) % points1.size();
+          const int p21 = e2_id;
+          const int p22 = (e2_id + 1) % points2.size();
+
+          is_invalid |= isect_seg_seg_v2_simple(projverts[offset1 + p11],
+                                                projverts[offset1 + p12],
+                                                projverts[offset2 + p21],
+                                                projverts[offset2 + p22]);
+          if (is_invalid) {
+            return;
+          }
+        }
+      }
+      offset2 += points2.size();
+    });
+    offset1 += points1.size();
+  });
+
+  if (is_invalid) {
+    return false;
+  }
+
+  return true;
+}
+
 Span<uint3> Drawing::triangles() const
 {
   this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
@@ -426,90 +517,7 @@ Span<uint3> Drawing::triangles() const
         offset += points.size();
       });
 
-      offset = 0; /* Reuse `offset`. */
-      bool is_invalid = false;
-      /* Check if self intersect. */
-      group.foreach_index([&](const int64_t curve_i) {
-        const IndexRange points = points_by_curve[curve_i];
-        for (const int e2_id : points.index_range()) {
-          for (const int e1_id : points.index_range()) {
-            if (e2_id >= e1_id) {
-              continue;
-            }
-            const int p1 = e1_id;
-            const int p2 = (e1_id + 1) % points.size();
-            const int p3 = e2_id;
-            const int p4 = (e2_id + 1) % points.size();
-            if (p1 == p4) {
-              continue;
-            }
-            if (p2 == p3) {
-              continue;
-            }
-
-            // is_invalid |= isect_seg_seg_v2_simple(projverts[offset + p1],
-            //                                       projverts[offset + p2],
-            //                                       projverts[offset + p3],
-            //                                       projverts[offset + p4]);
-            is_invalid |= isect_seg_seg_v2_simple(float2(projverts[offset + p1]),
-                                                  float2(projverts[offset + p2]),
-                                                  float2(projverts[offset + p3]),
-                                                  float2(projverts[offset + p4]));
-            if (is_invalid) {
-              return;
-            }
-          }
-        }
-
-        offset += points.size();
-      });
-
-      if (is_invalid) {
-        triangles_offsets[group_id] = triangles_offset;
-        continue;
-      }
-
-      int offset1 = 0;
-      /* Check if other intersect. */
-      group.foreach_index([&](const int64_t curve_i1, const int64_t pos1) {
-        const IndexRange points1 = points_by_curve[curve_i1];
-        if (is_invalid) {
-          return;
-        }
-
-        int offset2 = 0;
-        group.foreach_index([&](const int64_t curve_i2, const int64_t pos2) {
-          if (is_invalid) {
-            return;
-          }
-          const IndexRange points2 = points_by_curve[curve_i2];
-
-          if (pos2 >= pos1) {
-            offset2 += points2.size();
-            return;
-          }
-          for (const int e1_id : points1.index_range()) {
-            for (const int e2_id : points2.index_range()) {
-              const int p11 = e1_id;
-              const int p12 = (e1_id + 1) % points1.size();
-              const int p21 = e2_id;
-              const int p22 = (e2_id + 1) % points2.size();
-
-              is_invalid |= isect_seg_seg_v2_simple(float2(projverts[offset1 + p11]),
-                                                    float2(projverts[offset1 + p12]),
-                                                    float2(projverts[offset2 + p21]),
-                                                    float2(projverts[offset2 + p22]));
-              if (is_invalid) {
-                return;
-              }
-            }
-          }
-          offset2 += points2.size();
-        });
-        offset1 += points1.size();
-      });
-
-      if (is_invalid) {
+      if (!check_valid_curves(curves, projverts, group)) {
         triangles_offsets[group_id] = triangles_offset;
         continue;
       }
