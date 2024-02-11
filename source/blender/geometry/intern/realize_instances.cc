@@ -58,11 +58,6 @@ struct OrderedAttributes {
   }
 };
 
-struct InstanceListEntry {
-  int handle;
-  char *name;
-  float4x4 transform;
-};
 struct AttributeFallbacksArray {
   /**
    * Instance attribute values used as fallback when the geometry does not have the
@@ -324,25 +319,20 @@ static void realize_collections(Collection *collection, bke::Instances *instance
     children_objects.append(collection_object->ob);
   }
 
-  Vector<InstanceListEntry> entries;
-  entries.reserve(children_collections.size() + children_objects.size());
-
   for (Collection *child_collection : children_collections) {
     float4x4 transform = float4x4::identity();
     transform.location() += float3(child_collection->instance_offset);
     transform.location() -= float3(collection->instance_offset);
     const int handle = instances->add_reference(*child_collection);
-    entries.append({handle, &(child_collection->id.name[2]), transform});
+    instances->add_instance(handle, transform);
+    // entries.append({handle, &(child_collection->id.name[2]), transform});
   }
   for (Object *child_object : children_objects) {
     const int handle = instances->add_reference(*child_object);
     float4x4 transform = float4x4::identity();
     transform.location() -= float3(collection->instance_offset);
     transform *= float4x4(child_object->object_to_world);
-    entries.append({handle, &(child_object->id.name[2]), transform});
-  }
-  for (const InstanceListEntry &entry : entries) {
-    instances->add_instance(entry.handle, entry.transform);
+    instances->add_instance(handle, transform);instances->add_instance(handle, transform);
   }
 }
 
