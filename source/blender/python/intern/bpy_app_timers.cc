@@ -7,7 +7,7 @@
  */
 
 #include "BLI_time.h"
-#include "BLI_timer.h"
+#include "BLI_timer.hh"
 #include "BLI_utildefines.h"
 
 #include <Python.h>

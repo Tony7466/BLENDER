@@ -50,7 +50,7 @@ void VKStateManager::force_state()
   pipeline.state_manager_get().force_state(state, mutable_state);
 }
 
-void VKStateManager::issue_barrier(eGPUBarrier barrier_bits)
+void VKStateManager::issue_barrier(eGPUBarrier /*barrier_bits*/)
 {
 #if 0
   VKContext &context = *VKContext::get();

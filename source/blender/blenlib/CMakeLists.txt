@@ -40,7 +40,7 @@ set(SRC
   intern/BLI_memiter.c
   intern/BLI_mempool.c
   intern/BLI_mmap.c
-  intern/BLI_timer.c
+  intern/BLI_timer.cc
   intern/DLRB_tree.c
   intern/array_store.cc
   intern/array_store_utils.cc
@@ -367,7 +367,7 @@ set(SRC
   BLI_time_utildefines.h
   BLI_timecode.h
   BLI_timeit.hh
-  BLI_timer.h
+  BLI_timer.hh
   BLI_unique_sorted_indices.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h

@@ -31,7 +31,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_timer.h"
+#include "BLI_timer.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"

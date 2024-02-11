@@ -8,7 +8,7 @@
 #include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"

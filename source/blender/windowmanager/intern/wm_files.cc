@@ -41,7 +41,7 @@
 #include "BLI_system.h"
 #include "BLI_threads.h"
 #include "BLI_time.h"
-#include "BLI_timer.h"
+#include "BLI_timer.hh"
 #include "BLI_utildefines.h"
 #include BLI_SYSTEM_PID_H
 

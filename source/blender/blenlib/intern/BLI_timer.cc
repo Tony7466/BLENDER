@@ -6,15 +6,16 @@
  * \ingroup bli
  */
 
-#include "BLI_timer.h"
+#include "BLI_time.h"
+
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
+#include "BLI_timer.hh"
 
 #include "MEM_guardedalloc.h"
-#include "PIL_time.h"
 
-#define GET_TIME() PIL_check_seconds_timer()
+#define GET_TIME() BLI_check_seconds_timer()
 
 typedef struct TimedFunction {
   struct TimedFunction *next, *prev;
@@ -146,8 +147,6 @@ void BLI_timer_on_file_load(void)
   remove_non_persistent_functions();
 }
 
-#define VK_TIMER
-// #define VK_TIMER_OFF
 #if defined(VK_TIMER)
 #  include "BLI_dynstr.h"
 
@@ -159,12 +158,15 @@ void BLI_timer_on_file_load(void)
 #  include <stdarg.h>
 #  include <synchapi.h>
 
-#  define LOG_THREAD_FILE "C:\\blender\\script\\log\\vulkan\\"
+#  define LOG_THREAD_FILE "path/to/log/file"
 
 #  include "dbghelp.h"
 #  pragma comment(lib, "DbgHelp.lib ")
+#  include <chrono>
 #  include <fcntl.h>
 #  include <io.h>
+
+namespace blidebug {
 
 static DWORD thread_main;
 void BackTrace(char *dst)
@@ -226,6 +228,7 @@ typedef struct SynchronizedTime {
   int imm_count = 0;
   int frame_count = 0;
   int frame_num = 0;
+  // std::chrono::time_point time_prev = std::chrono::time_point();
   SynchronizedTime()
   {
     for (int i = 0; i < 4; i++)
@@ -243,7 +246,7 @@ typedef struct SynchronizedTime {
 } SynchronizedTime;
 
 static thread_local SynchronizedTime syncTimeCom;
-static const int active_index_ = 0b1000;
+static const int active_index_ = 0b010;
 // 0b000000000011;
 
 SynchronizedTime::~SynchronizedTime()
@@ -266,8 +269,7 @@ void SyncTime_Open(SynchronizedTime &syncTime)
   return;
 #  endif
   char buf[256];
-  int len = 0;
-  STR_CONCATF(buf, len, "%sTID%d-%d.log", LOG_THREAD_FILE, _threadid, syncTimeCom.file_id);
+  sprintf(buf, "%sBLI_TID%d-%d.log", LOG_THREAD_FILE, _threadid, syncTimeCom.file_id);
   syncTime.fp[syncTimeCom.file_id] = fopen(buf, "a+");
   syncTime.write_off = false;
   syncTime.capture_on = false;
@@ -324,7 +326,7 @@ void BLI_timeit_start(int i)
 #  endif
   SYNC_ACTIVE_INDEX(i)
   return;
-  syncTimeCom.time_last[i] = PIL_check_seconds_timer();
+  syncTimeCom.time_last[i] = BLI_check_seconds_timer();
 }
 
 void BLI_timeit_step(const char *message, int i)
@@ -336,7 +338,7 @@ void BLI_timeit_step(const char *message, int i)
   return;
   BLI_timeit_end(message, i);
   // printf("BLI_timeit_step %s\n", message);
-  syncTimeCom.time_last[i] = PIL_check_seconds_timer();
+  syncTimeCom.time_last[i] = BLI_check_seconds_timer();
 }
 
 void BLI_timeit_end(const char *message, int i)
@@ -346,7 +348,7 @@ void BLI_timeit_end(const char *message, int i)
 #  endif
   SYNC_ACTIVE_INDEX(i)
   return;
-  double time = PIL_check_seconds_timer();
+  double time = BLI_check_seconds_timer();
   SyncTime_Write(message, time - syncTimeCom.time_last[i]);
 }
 
@@ -425,7 +427,7 @@ void BLI_timeit_count_start(int cnt)
 {
   syncTimeCom.batch_count = 0;
   syncTimeCom.imm_count = 0;
-  double time = PIL_check_seconds_timer();
+  double time = BLI_check_seconds_timer();
   double t = time - syncTimeCom.time_last[2];
   syncTimeCom.frame_num = cnt;
   if (t > 1) {
@@ -439,9 +441,8 @@ void BLI_timeit_count_start(int cnt)
         cnt);
     syncTimeCom.file_id = id;
     syncTimeCom.frame_count = 0;
-    syncTimeCom.time_last[2] = PIL_check_seconds_timer();
+    syncTimeCom.time_last[2] = BLI_check_seconds_timer();
   }
-  syncTimeCom.frame_count++;
 }
 
 void BLI_timeit_count_end(const char *message)
@@ -449,6 +450,7 @@ void BLI_timeit_count_end(const char *message)
   if (syncTimeCom.batch_count == 0 && syncTimeCom.imm_count == 0) {
     return;
   }
+  syncTimeCom.frame_count++;
   int id = syncTimeCom.file_id;
   syncTimeCom.file_id = 2;
   BLI_info_always("BatchCount  %d  ImmCount %d  %s\n",
@@ -456,6 +458,26 @@ void BLI_timeit_count_end(const char *message)
                   syncTimeCom.imm_count,
                   message);
   syncTimeCom.file_id = id;
+}
+
+void BLI_timeit_fps(bool /*start*/)
+{
+  static std::chrono::time_point lastTimestamp = std::chrono::high_resolution_clock::now();
+  static int frame_count = 0;
+  frame_count++;
+  std::chrono::time_point tEnd = std::chrono::high_resolution_clock::now();
+
+  float fpsTimer =
+      (float)(std::chrono::duration<double, std::milli>(tEnd - lastTimestamp).count());
+  if (fpsTimer > 1000.0f) {
+    uint32_t lastFPS = static_cast<uint32_t>((float)frame_count * (1000.0f / fpsTimer));
+    frame_count = 0;
+    lastTimestamp = tEnd;
+    BLI_info_always("  %.2f ms     frame(% .1d fps)    fpsTimer %.4f ms  \n",
+                    (1000.0f / lastFPS),
+                    lastFPS,
+                    fpsTimer);
+  }
 }
 
 void BLI_timeit_batch_count()
@@ -467,5 +489,5 @@ void BLI_timeit_imm_count()
 {
   syncTimeCom.imm_count++;
 }
-
+}  // namespace blidebug
 #endif

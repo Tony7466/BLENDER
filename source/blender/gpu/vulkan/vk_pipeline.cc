@@ -5,6 +5,7 @@
 /** \file
  * \ingroup gpu
  */
+#include "BLI_timer.hh"
 
 #include "vk_pipeline.hh"
 #include "vk_backend.hh"

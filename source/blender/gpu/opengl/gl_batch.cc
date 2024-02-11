@@ -12,7 +12,7 @@
 
 #include "BLI_assert.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "GPU_debug.h"
 
 #include "gpu_batch_private.hh"

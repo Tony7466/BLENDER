@@ -60,6 +60,9 @@
 
 #include "BLO_read_write.hh"
 
+#ifdef _WIN32
+#include "BLI_timer.hh"
+#endif
 /* ****************************************************** */
 
 static void window_manager_free_data(ID *id)
@@ -605,7 +608,7 @@ void WM_main(bContext *C)
   wm_event_do_refresh_wm_and_depsgraph(C);
 
   while (true) {
-
+    blidebug::BLI_timeit_fps(true);
     /* Get events from ghost, handle window events, add to window queues. */
     wm_window_events_process(C);
 

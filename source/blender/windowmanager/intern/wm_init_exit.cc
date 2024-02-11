@@ -27,7 +27,7 @@
 #include "BLI_string.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
-#include "BLI_timer.h"
+#include "BLI_timer.hh"
 #include "BLI_utildefines.h"
 
 #include "BLO_undofile.hh"
