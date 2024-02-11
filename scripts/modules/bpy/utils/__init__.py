@@ -885,6 +885,12 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
             "draw_settings": getattr(tool_cls, "draw_settings", None),
             "draw_cursor": getattr(tool_cls, "draw_cursor", None),
         })
+
+        if not tool_cls.set_cb is None:
+            tool_def.handlers.set.append(tool_cls.set_cb)
+        if not tool_cls.unset_cb is None:
+            tool_def.handlers.set.append(tool_cls.unset_cb)
+
         tool_cls._bl_tool = tool_def
 
         keymap_data = tool_def.keymap
