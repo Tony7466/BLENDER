@@ -585,6 +585,7 @@ static void face_edge_topology(const IndexRange verts_of_edge_range,
   const Span<int3> base_faces_edges = base_face_edge_indices();
 
   {
+    // SCOPED_TIMER_AVERAGED("face_edge_topology: 1");
     foreach_face(verts_of_face_range.size(), [&](const int face_i) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -619,6 +620,7 @@ static void face_edge_topology(const IndexRange verts_of_edge_range,
   }
 
   {
+    // SCOPED_TIMER_AVERAGED("face_edge_topology: 2");
     foreach_face(verts_of_face_range.size(), [&](const int face_i) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
@@ -655,6 +657,7 @@ static void face_edge_topology(const IndexRange verts_of_edge_range,
   }
 
   {
+    // SCOPED_TIMER_AVERAGED("face_edge_topology: 3");
     foreach_face(verts_of_face_range.size(), [&](const int face_i) {
       const int3 face_vert_indices = base_face_verts[face_i];
       const int3 face_edge_indices = base_faces_edges[face_i];
