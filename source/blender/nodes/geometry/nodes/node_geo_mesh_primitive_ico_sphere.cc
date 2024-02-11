@@ -315,24 +315,24 @@ static Span<int2> base_edge_verts_indices()
   static const auto edge_verts = []() -> std::array<int2, base_edges_num> {
     std::array<int2, base_edges_num> edge_verts;
 
-    const constexpr int first_point = 0;
-    const constexpr IndexRange top_latitude_points(1, latitude_verts_num);
+    const constexpr int first_vert = 0;
+    const constexpr IndexRange top_latitude_verts(1, latitude_verts_num);
     const constexpr IndexRange bottom_latitude_verts(1 + latitude_verts_num, latitude_verts_num);
-    const constexpr int last_point = base_verts_num - 1;
+    const constexpr int last_vert = base_verts_num - 1;
 
     for (const int i : IndexRange(latitude_verts_num)) {
-      edge_verts[latitude_verts_num * 0 + i] = int2(first_point, top_latitude_points[i]);
-      edge_verts[latitude_verts_num * 1 + i] = int2(last_point, bottom_latitude_verts[i]);
+      edge_verts[latitude_verts_num * 0 + i] = int2(first_vert, top_latitude_verts[i]);
+      edge_verts[latitude_verts_num * 1 + i] = int2(last_vert, bottom_latitude_verts[i]);
 
       const int next_i = math::mod(i + 1, latitude_verts_num);
-      edge_verts[latitude_verts_num * 2 + i] = int2(top_latitude_points[i],
-                                                    top_latitude_points[next_i]);
+      edge_verts[latitude_verts_num * 2 + i] = int2(top_latitude_verts[i],
+                                                    top_latitude_verts[next_i]);
       edge_verts[latitude_verts_num * 3 + i] = int2(bottom_latitude_verts[i],
                                                     bottom_latitude_verts[next_i]);
 
-      edge_verts[latitude_verts_num * 4 + i] = int2(top_latitude_points[i],
+      edge_verts[latitude_verts_num * 4 + i] = int2(top_latitude_verts[i],
                                                     bottom_latitude_verts[i]);
-      edge_verts[latitude_verts_num * 5 + i] = int2(top_latitude_points[i],
+      edge_verts[latitude_verts_num * 5 + i] = int2(top_latitude_verts[i],
                                                     bottom_latitude_verts[next_i]);
     }
 
@@ -345,30 +345,30 @@ static Span<int2> base_edge_verts_indices()
 static Span<int3> base_face_verts_indices()
 {
   // SCOPED_TIMER_AVERAGED(__func__);
-  static const auto face_points = []() -> std::array<int3, base_faces_num> {
-    std::array<int3, base_faces_num> face_points;
+  static const auto face_verts = []() -> std::array<int3, base_faces_num> {
+    std::array<int3, base_faces_num> face_verts;
 
-    const constexpr int first_point = 0;
-    const constexpr IndexRange top_latitude_points(1, latitude_verts_num);
+    const constexpr int first_vert = 0;
+    const constexpr IndexRange top_latitude_verts(1, latitude_verts_num);
     const constexpr IndexRange bottom_latitude_verts(1 + latitude_verts_num, latitude_verts_num);
-    const constexpr int last_point = base_verts_num - 1;
+    const constexpr int last_vert = base_verts_num - 1;
 
     for (const int i : IndexRange(latitude_verts_num)) {
       const int next_i = math::mod(i + 1, latitude_verts_num);
-      face_points[latitude_verts_num * 0 + i] = int3(
-          top_latitude_points[i], top_latitude_points[next_i], first_point);
-      face_points[latitude_verts_num * 1 + i] = int3(
-          bottom_latitude_verts[i], last_point, bottom_latitude_verts[next_i]);
-      face_points[latitude_verts_num * 2 + i] = int3(
-          top_latitude_points[i], bottom_latitude_verts[next_i], top_latitude_points[next_i]);
-      face_points[latitude_verts_num * 3 + i] = int3(
-          bottom_latitude_verts[i], bottom_latitude_verts[next_i], top_latitude_points[i]);
+      face_verts[latitude_verts_num * 0 + i] = int3(
+          top_latitude_verts[i], top_latitude_verts[next_i], first_vert);
+      face_verts[latitude_verts_num * 1 + i] = int3(
+          bottom_latitude_verts[i], last_vert, bottom_latitude_verts[next_i]);
+      face_verts[latitude_verts_num * 2 + i] = int3(
+          top_latitude_verts[i], bottom_latitude_verts[next_i], top_latitude_verts[next_i]);
+      face_verts[latitude_verts_num * 3 + i] = int3(
+          bottom_latitude_verts[i], bottom_latitude_verts[next_i], top_latitude_verts[i]);
     }
 
-    return face_points;
+    return face_verts;
   }();
 
-  return face_points;
+  return face_verts;
 }
 
 static Span<int3> base_face_edge_indices()
@@ -378,7 +378,7 @@ static Span<int3> base_face_edge_indices()
     std::array<int3, base_faces_num> face_edges;
 
     Span<int2> edge_verts = base_edge_verts_indices();
-    Span<int3> face_points = base_face_verts_indices();
+    Span<int3> face_verts = base_face_verts_indices();
 
     Map<OrderedEdge, int> edge_index_by_verts;
     for (const int i : IndexRange(base_edges_num)) {
@@ -386,12 +386,12 @@ static Span<int3> base_face_edge_indices()
     }
 
     for (const int face_i : IndexRange(base_faces_num)) {
-      const OrderedEdge ab_edge_verts(face_points[face_i][FaceVert::A],
-                                      face_points[face_i][FaceVert::B]);
-      const OrderedEdge bc_edge_verts(face_points[face_i][FaceVert::B],
-                                      face_points[face_i][FaceVert::C]);
-      const OrderedEdge ca_edge_verts(face_points[face_i][FaceVert::C],
-                                      face_points[face_i][FaceVert::A]);
+      const OrderedEdge ab_edge_verts(face_verts[face_i][FaceVert::A],
+                                      face_verts[face_i][FaceVert::B]);
+      const OrderedEdge bc_edge_verts(face_verts[face_i][FaceVert::B],
+                                      face_verts[face_i][FaceVert::C]);
+      const OrderedEdge ca_edge_verts(face_verts[face_i][FaceVert::C],
+                                      face_verts[face_i][FaceVert::A]);
 
       face_edges[face_i][FaceEdge::AB] = edge_index_by_verts.lookup(ab_edge_verts);
       face_edges[face_i][FaceEdge::BC] = edge_index_by_verts.lookup(bc_edge_verts);
