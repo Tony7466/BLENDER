@@ -522,14 +522,11 @@ Span<uint3> Drawing::triangles() const
         continue;
       }
 
-      const int nverts = num_points;
-      const int nedges = num_points;
-      const int nfaces = group.size();
-      Array<double2> verts(nverts);
-      Array<std::pair<int, int>> edges(nedges);
-      Array<Vector<int>> faces(nfaces);
+      Array<double2> verts(num_points);
+      Array<std::pair<int, int>> edges(num_points);
+      Array<Vector<int>> faces(group.size());
 
-      Array<int> vert_to_point_map(nverts);
+      Array<int> vert_to_point_map(num_points);
 
       offset = 0; /* Reuse `offset`. */
       group.foreach_index([&](const int64_t curve_i, const int64_t pos) {
