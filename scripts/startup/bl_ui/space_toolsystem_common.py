@@ -333,11 +333,11 @@ class ToolSelectPanelHelper:
         return None, None, 0
 
     @classmethod
-    def _tool_get_by_id(cls, context, idname):
+    def _tool_get_by_id(cls, context, idname, mode = None):
         """
         Return the active Python tool definition and index (if in sub-group, else -1).
         """
-        for item, index in ToolSelectPanelHelper._tools_flatten_with_tool_index(cls.tools_from_context(context)):
+        for item, index in ToolSelectPanelHelper._tools_flatten_with_tool_index(cls.tools_from_context(context, mode)):
             if item is not None:
                 if item.idname == idname:
                     return (item, index)
@@ -1172,12 +1172,12 @@ def description_from_id(context, space_type, idname, *, use_operator=True):
     return ""
 
 
-def item_from_id(context, space_type, idname):
+def item_from_id(context, space_type, idname, mode = None):
     # Used directly for tooltips.
     cls = ToolSelectPanelHelper._tool_class_from_space_type(space_type)
     if cls is None:
         return None
-    item, _index = cls._tool_get_by_id(context, idname)
+    item, _index = cls._tool_get_by_id(context, idname, mode)
     return item
 
 
